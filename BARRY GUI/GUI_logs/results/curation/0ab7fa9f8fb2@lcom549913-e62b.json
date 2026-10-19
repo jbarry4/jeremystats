@@ -1,0 +1,24 @@
+{
+  "_at": {
+    "key": "2026-09-16T13:35:21.815700+00:00",
+    "rel": "2026-09-16T13:35:21.815700+00:00",
+    "starred": "2026-09-16T13:35:21.815700+00:00",
+    "updated": "2026-09-16T13:35:21.815700+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-16T13:35:21.815700+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "key": "unfiled/m34/s5 2024-06-10/figures/m34 s5 2024-06-10_20260902_170623.png",
+  "rel": "Unfiled/m34/s5 2024-06-10/Figures/m34 s5 2024-06-10_20260902_170623.png",
+  "starred": false,
+  "updated": {
+    "at": "2026-09-16T09:35:21-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

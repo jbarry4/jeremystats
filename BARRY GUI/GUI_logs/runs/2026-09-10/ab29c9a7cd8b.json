@@ -1,0 +1,64 @@
+{
+  "format": "csv",
+  "id": "ab29c9a7cd8b",
+  "kind": "toolkit",
+  "label": "Bad channels -- every recorded session",
+  "output": {
+    "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/ToolKit/bad-channels_all_20260910_153232.csv",
+    "path": "C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\ToolKit\\bad-channels_all_20260910_153232.csv",
+    "rel": "ToolKit/bad-channels_all_20260910_153232.csv"
+  },
+  "parameters": {
+    "date_from": null,
+    "date_to": null,
+    "form": "long",
+    "group": null,
+    "include_clean": false,
+    "key": null,
+    "mouse": null,
+    "scope": "all"
+  },
+  "provenance": {
+    "at": "2026-09-10T15:32:32-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "rows": 114,
+  "schema": 1,
+  "script": "ToolKit bad-channel export",
+  "status": "done",
+  "summary": {
+    "bad_total": 114,
+    "clean": 488,
+    "distinct_channels": 9,
+    "first_day": "2020-01-01",
+    "last_day": "2026-09-10",
+    "repeat_offenders": [
+      {
+        "channel": 59,
+        "sessions": 63
+      },
+      {
+        "channel": 41,
+        "sessions": 21
+      },
+      {
+        "channel": 8,
+        "sessions": 19
+      },
+      {
+        "channel": 55,
+        "sessions": 5
+      },
+      {
+        "channel": 25,
+        "sessions": 2
+      }
+    ],
+    "sessions": 552,
+    "with_bad": 64
+  }
+}

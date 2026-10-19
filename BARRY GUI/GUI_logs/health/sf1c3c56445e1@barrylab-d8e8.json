@@ -1,0 +1,45 @@
+{
+  "_at": {
+    "gid": "2026-09-14T16:30:31.560634+00:00",
+    "label": "2026-09-14T16:30:31.560634+00:00",
+    "path": "2026-09-14T16:30:31.560634+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "703040be6a21": [
+        "set",
+        "2026-09-14T16:30:31.560634+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T16:30:31.560634+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:30:31.468578+00:00",
+      "by": "Rain Younger",
+      "concat_duration_s": 1974.1183666666666,
+      "gap_map_sha": "8b656b8725c2eb74",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "703040be6a21",
+      "level": "ok",
+      "machine": "Strawbarry",
+      "max_time_error_ms": 0.0,
+      "mismatches": 0,
+      "n_gaps": 0,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 1,
+      "seconds_lost": 0.0,
+      "sub_threshold_lost_s": 0.0,
+      "true_duration_s": 1974.105351
+    }
+  ],
+  "gid": "sf1c3c56445e1",
+  "label": "PTEN m28 s6 2024-06-18",
+  "path": "Y:\\ProcessedPtenData\\m28_ptenblind\\m28s6jun18\\2024-06-18_16-03-40"
+}

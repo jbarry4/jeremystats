@@ -1,0 +1,114 @@
+{
+  "_at": {
+    "created": "2026-09-02T23:51:19.968325+00:00",
+    "duration_s": "2026-09-03T00:08:56.694603+00:00",
+    "first_seen_by": "2026-09-03T00:08:56.694603+00:00",
+    "fs": "2026-09-03T00:08:56.694603+00:00",
+    "gid": "2026-09-02T23:51:19.968325+00:00",
+    "group": "2026-09-03T00:08:56.694603+00:00",
+    "has_video": "2026-09-03T00:08:56.694603+00:00",
+    "key": "2026-09-03T00:08:56.694603+00:00",
+    "label": "2026-09-03T00:08:56.694603+00:00",
+    "loose_key": "2026-09-03T00:08:56.694603+00:00",
+    "mouse": "2026-09-03T00:08:56.694603+00:00",
+    "n_channels": "2026-09-03T00:08:56.694603+00:00",
+    "project": "2026-09-03T00:08:56.694603+00:00",
+    "project_source": "2026-09-03T00:08:56.694603+00:00",
+    "retired": "2026-09-03T13:40:53.866832+00:00",
+    "schema": "2026-09-03T00:08:56.694603+00:00",
+    "session": "2026-09-03T00:08:56.694603+00:00",
+    "start": "2026-09-03T00:08:56.694603+00:00",
+    "updated": "2026-10-01T16:30:07.731741+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s3_072126\\2026-07-21_13-35-25": [
+        "set",
+        "2026-09-03T00:08:56.694603+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s3_072126\\2026-07-21_13-35-25": [
+        "set",
+        "2026-09-03T00:08:56.694603+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-03T00:08:56.694603+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-03T00:08:56.694603+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-10-01T16:30:07.731741+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-01T16:30:07.731741+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-02T18:50:53-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 1360.4181333333333,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s819bac57336d",
+  "group": "KCNT1",
+  "has_video": true,
+  "key": "m536_s003_2026-07-21_13-35-25",
+  "label": "KCNT1 m536 s3 2026-07-21",
+  "loose_key": "m536_s003",
+  "mouse": 536,
+  "n_channels": 64,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s3_072126\\2026-07-21_13-35-25",
+    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s3_072126\\2026-07-21_13-35-25"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-02T19:40:03-04:00",
+      "by": "barry",
+      "path": "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s3_072126\\2026-07-21_13-35-25",
+      "root": "Y:/Jeremy3/KCNT1/Summer'26",
+      "scan": "scan_ff32bceba3"
+    },
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:53-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s3_072126\\2026-07-21_13-35-25",
+      "root": "//netfiles03.uvm.edu/bigdata_jbarry/Jeremy3/KCNT1",
+      "scan": "scan_94ff1eb81c"
+    },
+    "barrylab-d8e8": {
+      "at": "2026-10-01T12:30:07-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s3_072126\\2026-07-21_13-35-25",
+      "root": "Y:/Jeremy3/KCNT1",
+      "scan": "scan_22235c040e"
+    }
+  },
+  "session": 3,
+  "start": "2026-07-21T13:35:25",
+  "updated": {
+    "app_version": "2026.10.01.2",
+    "at": "2026-10-01T12:30:07-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

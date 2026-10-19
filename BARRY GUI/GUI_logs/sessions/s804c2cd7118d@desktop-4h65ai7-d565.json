@@ -1,0 +1,50 @@
+{
+  "_at": {
+    "created": "2026-09-09T04:22:01.931399+00:00",
+    "gid": "2026-09-09T04:22:01.931399+00:00",
+    "group": "2026-09-09T04:22:01.931399+00:00",
+    "key": "2026-09-09T04:22:01.931399+00:00",
+    "label": "2026-09-09T04:22:01.931399+00:00",
+    "loose_key": "2026-09-09T04:22:01.931399+00:00",
+    "mouse": "2026-09-09T04:22:01.931399+00:00",
+    "project": "2026-09-09T04:22:01.931399+00:00",
+    "project_source": "2026-09-09T04:22:01.931399+00:00",
+    "schema": "2026-09-09T04:22:01.931399+00:00",
+    "session": "2026-09-09T04:22:01.931399+00:00",
+    "start": "2026-09-09T04:22:01.931399+00:00",
+    "updated": "2026-09-09T04:22:01.931399+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-09T04:22:01.931399+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-09T00:22:01-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s804c2cd7118d",
+  "group": null,
+  "key": null,
+  "label": "PTEN_CFCs",
+  "loose_key": null,
+  "mouse": null,
+  "paths": [],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "schema": 2,
+  "session": null,
+  "start": null,
+  "updated": {
+    "at": "2026-09-09T00:22:01-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

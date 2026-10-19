@@ -1,0 +1,54 @@
+{
+  "_at": {
+    "created": "2026-09-24T20:04:04.461716+00:00",
+    "gid": "2026-09-24T20:04:04.461716+00:00",
+    "group": "2026-09-24T20:04:04.461716+00:00",
+    "key": "2026-09-25T14:30:45.557581+00:00",
+    "label": "2026-09-24T20:04:04.461716+00:00",
+    "loose_key": "2026-09-24T20:04:04.461716+00:00",
+    "mouse": "2026-09-24T20:04:04.461716+00:00",
+    "project": "2026-09-25T14:30:45.557581+00:00",
+    "project_source": "2026-09-25T14:30:45.557581+00:00",
+    "retired": "2026-09-24T20:10:21.422296+00:00",
+    "schema": "2026-09-24T20:04:04.461716+00:00",
+    "session": "2026-09-24T20:04:04.461716+00:00",
+    "start": "2026-09-24T20:04:04.461716+00:00",
+    "updated": "2026-09-25T14:30:45.557581+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-25T14:30:45.557581+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-24T16:04:04-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "s049c8a9dac3d",
+  "group": null,
+  "key": null,
+  "label": "DEWEY m3 s1 Precon1 SPC 2026-04-04",
+  "loose_key": null,
+  "mouse": 3,
+  "paths": [],
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 1,
+  "start": "2026-04-04T18:13:54+00:00",
+  "updated": {
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-25T10:30:45-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

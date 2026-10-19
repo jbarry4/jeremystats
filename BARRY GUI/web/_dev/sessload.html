@@ -1,0 +1,159 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — what the Sessions wait says</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 52vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 48vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The registry read is about six seconds on a full catalogue, and for all
+   of it the Sessions view showed six skeleton cards and the words "Reading
+   the catalogue". Which is true, and says nothing: the same six cards were
+   on screen whether the answer was being merged, was already warm, or the
+   server had stopped answering.
+
+   This checks the wait now states the SIZE of the job, that it says it
+   while the job is running rather than after, that it clears on every exit
+   including the failing one, and that it leaves behind the figure the next
+   cold open needs in order to be specific.
+
+   Timing is the whole subject here, so nothing is polled for "eventually".
+   The loader is looked for while the request is still in flight, which
+   means this page must get to Sessions before the answer does -- the first
+   assertion is that it managed to, and it says so rather than passing when
+   it arrived too late to see anything. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  const ready = await untilN(() => typeof win().setView === 'function');
+  check('the application loads', ready >= 0, 'no setView after 25s');
+  if (ready < 0) { document.title = 'FAIL'; return; }
+
+  /* A cold open is the case under test, so the remembered size is cleared
+     first -- and put back at the end, because it is a real preference and
+     this page is not entitled to spend somebody's. */
+  const KEY = 'barry.catalogueSize';
+  let saved = null;
+  try { saved = win().localStorage.getItem(KEY); } catch (e) { /* ignore */ }
+
+  try {
+    head('a first cold open, with nothing remembered');
+    try { win().localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+    win().setView('sessions');
+
+    /* Caught in flight, not after. */
+    const seen = await untilN(() => doc().querySelector('#sessTree .loader'),
+                              60, 50);
+    check('a loader appears while the catalogue is being read', seen >= 0,
+          'no .loader in #sessTree within 3s of opening the view');
+
+    if (seen >= 0) {
+      const wait = doc().querySelector('#sessTree .loader');
+      const label = (wait.querySelector('strong') || {}).textContent || '';
+      const line = (wait.querySelector('.loader-text span') || {}).textContent || '';
+      check('it names what is being read', /catalogue/i.test(label),
+            'label was ' + JSON.stringify(label));
+      check('with nothing remembered it does not invent a number',
+            /every recording/i.test(line) && !/\d/.test(line),
+            'line was ' + JSON.stringify(line));
+
+      /* The bones are the other half: the loader says what is happening,
+         the skeleton says what is coming. Losing either is a regression. */
+      check('the skeleton is still there under it',
+            !!doc().querySelector('#sessTree .sk-wrap'),
+            'no .sk-wrap alongside the loader');
+      check('the loader sits above the bones, not inside them',
+            !wait.closest('.sk-wrap'), 'the loader is inside the skeleton');
+    }
+
+    head('when the answer lands');
+    const gone = await untilN(() => !doc().querySelector('#sessTree .loader'),
+                              300, 100);
+    check('the loader clears', gone >= 0, 'still on screen after 30s');
+    check('the bones clear with it',
+          !doc().querySelector('#sessTree .sk-wrap'),
+          'skeleton outlived the loader');
+    check('the tree actually filled',
+          (doc().querySelectorAll('#sessTree .sess-card, #sessTree .tree-item')
+             .length > 0),
+          'no rows in #sessTree after the read');
+
+    let stored = null;
+    try { stored = win().localStorage.getItem(KEY); } catch (e) { /* ignore */ }
+    check('it remembers the size for next time',
+          !!stored && parseInt(stored, 10) > 0,
+          'stored value was ' + JSON.stringify(stored));
+
+    head('a second cold open, now that it knows');
+    if (stored) {
+      /* `knownLoaded` latches, so a genuine second cold open means the view
+         module starting over. Reloading the frame is the honest way to get
+         one; calling the loader again would test a path nobody takes. */
+      f.contentWindow.location.reload();
+      await new Promise((r) => f.addEventListener('load', r, { once: true }));
+      await untilN(() => typeof win().setView === 'function');
+      win().setView('sessions');
+      const seen2 = await untilN(
+        () => doc().querySelector('#sessTree .loader'), 60, 50);
+      if (seen2 < 0) {
+        say('note', 'skipped: the answer was warm and arrived before the '
+                  + 'loader could be read -- not a failure, but this run '
+                  + 'did not see the second case');
+      } else {
+        const line2 = (doc().querySelector('#sessTree .loader .loader-text span')
+                       || {}).textContent || '';
+        check('it now states the size of the job',
+              /about \d+ recordings/.test(line2),
+              'line was ' + JSON.stringify(line2));
+        check('the number it states is the one it stored',
+              line2.indexOf(String(parseInt(stored, 10))) >= 0,
+              'said ' + JSON.stringify(line2) + ', stored ' + stored);
+      }
+    }
+  } finally {
+    /* Put the preference back whatever happened above. Clearing a real
+       stored value and leaving it cleared is the harness changing the thing
+       it was sent to look at. */
+    try {
+      if (saved === null) win().localStorage.removeItem(KEY);
+      else win().localStorage.setItem(KEY, saved);
+    } catch (e) { /* ignore */ }
+  }
+
+  head(bad === 0 ? 'the wait says what it is doing' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+} catch (e) {
+  say('bad', 'harness threw: ' + e.message);
+  document.title = 'FAIL';
+} })();
+</script>

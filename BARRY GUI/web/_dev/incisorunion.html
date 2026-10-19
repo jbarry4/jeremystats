@@ -1,0 +1,295 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Incisor, extract all</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1400px; height:1000px; border:1px solid #333; background:#fff; }
+ h4 { color:#9cf; margin:14px 0 4px; font-weight:normal; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">Extract all pools a range of channels' candidates and keeps
+each spike once. This scans three NEIGHBOURING channels of a short recording
+through the real panel, then checks that the count is on screen before
+anything is banked, that it matches an independent recount from each
+channel's own list, that the range controls move it, and that Extract all
+sends one set with every spike once. The bank write is intercepted in the
+frame, so the real Event Bank is never touched.</p>
+<div id="out"></div>
+<iframe id="A"></iframe>
+<script>
+let bad = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1;
+                        /* Also to the console, so a page that never
+                           finishes still says how far it got. */
+                        console.log('[incisorunion] ' + c + ' ' + t); };
+const head = (t) => { const h = document.createElement('h4');
+                      h.textContent = t; out.appendChild(h);
+                      console.log('[incisorunion] == ' + t); };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 20000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(150);
+  }
+  return null;
+}
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+/* `BARRY` is a const in core.js: reached through the frame's own eval. */
+const EV = (src) => { try { return W().eval(src); } catch (e) { return null; } };
+const JEV = (src) => { const r = EV('JSON.stringify(' + src + ')');
+                       try { return r ? JSON.parse(r) : null; }
+                       catch (e) { return null; } };
+const panel = () => (D().getElementById('tkResult') || {}).textContent || '';
+const U = () => JEV('BARRY.incisor._union()') || {};
+function btnLike(re) {
+  return Array.from(D().querySelectorAll('#tkResult button'))
+    .find((b) => re.test(b.textContent.trim()));
+}
+
+async function pickShortest() {
+  const reg = await (await fetch('/api/registry')).json();
+  let best = null;
+  for (const p of (reg.tree || [])) {
+    for (const m of (p.mice || [])) {
+      for (const s of (m.sessions || [])) {
+        if (!(s.here || []).length) continue;
+        const d = Number(s.duration_s) || 1e9;
+        if (!best || d < best.d) best = { d, row: s };
+      }
+    }
+  }
+  return best && best.row;
+}
+
+/* The merge rule, written again here from the definition rather than
+   imported: sorted by time, a new spike opens when a detection is more
+   than `tol` past the FIRST detection of the open group. */
+function recount(lists, tolS) {
+  const t = [].concat(...lists).map((e) => Number(e.start))
+    .sort((a, b) => a - b);
+  if (!t.length) return 0;
+  let n = 1, s0 = t[0];
+  for (const x of t.slice(1)) { if (x - s0 > tolS) { n += 1; s0 = x; } }
+  return n;
+}
+
+let realFetch = null, realDialog = null;
+(async () => { try {
+  const row = await pickShortest();
+  ck('a reachable recording to scan', !!row, 'none');
+  if (!row) { document.title = 'incisorunion: passed'; return; }
+  const path = (row.here || [])[0];
+  say('note', '  ' + (row.label || row.gid));
+
+  A.src = '/#toolkit';
+  await until(() => EV('typeof BARRY !== "undefined" && !!BARRY.incisor'),
+              40000);
+  ck('the module loaded', !!EV('!!BARRY.incisor'), 'no BARRY.incisor');
+  const tool = await until(() => Array.from(
+    D().querySelectorAll('#tkBody .tk-tool, #tkBody .tk-step'))
+    .find((b) => /Incisor/.test(b.textContent)), 15000);
+  ck('there is an Incisor step', !!tool, 'not in the list');
+  if (!tool) { document.title = 'incisorunion: ' + (bad || 1) + ' FAILED'; return; }
+  tool.click();
+  await until(() => Array.from(D().querySelectorAll('#tkBody .section-label'))
+    .some((n) => n.textContent.trim() === 'Recording'), 15000);
+
+  head('Three neighbouring channels, scanned through the panel');
+  /* Neighbours, because that is what extract-all is for: CSC34, 35 and 36
+     each find a different fifty-odd. Three rather than sixty-four so the
+     read fits the harness's time. */
+  EV('(function(){var s=BARRY.incisor._state();s.q.gid='
+     + JSON.stringify(row.gid) + ';s.q.path=' + JSON.stringify(path)
+     + ';s.q.channels=[0,1,2];})()');
+  EV('BARRY.incisor.paint()');
+  EV('BARRY.incisor.scan()');
+  const res = await until(() => JEV('(BARRY.incisor._state().res||null)'
+                                    + '&&{n:BARRY.incisor._state().res.n,'
+                                    + 'nb:BARRY.incisor._state().res.n_by_channel,'
+                                    + 'ch:BARRY.incisor._state().res.channels}'),
+                          600000);
+  ck('the scan finished and the panel has it', !!res, 'no result');
+  if (!res) { document.title = 'incisorunion: ' + (bad || 1) + ' FAILED'; return; }
+  const per = (res.ch || []).map((c) => c.label + ' ' + (res.nb || {})[String(c.index)]);
+  say('note', '  per channel: ' + per.join(', '));
+
+  head('The count is on screen before anything is banked');
+  const u0 = await until(() => { const u = U(); return u.unionRes && u.unionRes.ok ? u : null; },
+                         20000);
+  ck('the union was counted without pressing anything', !!u0,
+     JSON.stringify(U().unionRes));
+  if (!u0) { document.title = 'incisorunion: ' + (bad || 1) + ' FAILED'; return; }
+  const n0 = u0.unionRes.n;
+  await until(() => /candidates? across/.test(panel()), 8000);
+  ck('the panel says how many, and across which channels',
+     new RegExp(n0 + ' candidates? across').test(panel()),
+     panel().slice(panel().indexOf('Or extract'), panel().indexOf('Or extract') + 200));
+  const ex = btnLike(/^Extract all/);
+  ck('and the button carries the same number',
+     !!ex && ex.textContent.indexOf(String(n0)) >= 0, ex && ex.textContent);
+
+  head('It matches a recount from each channel’s own list');
+  const q = JEV('BARRY.incisor._state().q') || {};
+  const lists = [];
+  for (const idx of u0.range) {
+    const r = await (await fetch('/api/incisor/events', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: q.path, channels: q.channels,
+                             height_sd: q.height_sd, abs_uv: q.abs_uv,
+                             dist_ms: q.dist_ms, wlen_ms: q.wlen_ms,
+                             estimator: q.estimator, channel: idx }),
+    })).json();
+    lists.push(r.events || []);
+  }
+  const mine = recount(lists, u0.tolMs / 1000);
+  ck('the same count, worked out again from the channels’ own events',
+     mine === n0, 'recount ' + mine + ', panel ' + n0);
+  ck('never fewer than the busiest channel, never more than all of them',
+     n0 >= Math.max(...lists.map((l) => l.length))
+     && n0 <= lists.reduce((a, l) => a + l.length, 0),
+     n0 + ' vs ' + lists.map((l) => l.length).join('/'));
+  const ur = u0.unionRes;
+  if (ur.only_off_hilus != null) {
+    ck('the hilus’s own count plus what it missed is the whole union',
+       ur.n_hilus + ur.only_off_hilus === ur.n,
+       ur.n_hilus + ' + ' + ur.only_off_hilus + ' vs ' + ur.n);
+  }
+
+  head('The range moves the count');
+  const every = btnLike(/^Every scanned channel$/);
+  ck('there is an every-channel button', !!every, 'none');
+  if (every) {
+    every.click();
+    const ue = await until(() => { const u = U();
+      return u.pool && u.unionRes && u.unionRes.ok ? u : null; }, 15000);
+    const good = (res.ch || []).filter((c) => !c.bad).length;
+    ck('it pools every scanned channel', ue && ue.range.length === good,
+       ue && ue.range.length + ' of ' + good);
+  }
+  const around = btnLike(/^Around the hilus$/);
+  if (around) {
+    around.click();
+    await until(() => U().pool === null, 5000);
+    ck('and "around the hilus" goes back to following the hilus',
+       U().pool === null, JSON.stringify(U().pool));
+  }
+  EV('BARRY.incisor._setPool(' + u0.range[0] + ',' + u0.range[0] + ')');
+  const u1 = await until(() => { const u = U();
+    return u.range.length === 1 && u.unionRes && u.unionRes.ok ? u : null; },
+    15000);
+  ck('one channel alone is just that channel’s count',
+     u1 && u1.unionRes.n === lists[0].length,
+     u1 && (u1.unionRes.n + ' vs ' + lists[0].length));
+  EV('BARRY.incisor._setPool(null)');
+  await until(() => { const u = U(); return u.pool === null && u.unionRes
+                      && u.unionRes.ok && u.unionRes.n === n0; }, 15000);
+
+  head('The merge window cannot be made to merge separate spikes');
+  const tol = D().querySelector('.inc-union-tol input');
+  ck('there is a merge-window field, at 25 ms', !!tol && tol.value === '25',
+     tol && tol.value);
+  if (tol) {
+    tol.value = '500';
+    tol.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    await sleep(300);
+    ck('a window past the detector’s own spacing is brought back to it',
+       U().tolMs === Number(q.dist_ms || 100), U().tolMs);
+    EV('BARRY.incisor._setTol(25)');
+  }
+  const refused = await fetch('/api/incisor/union', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: q.path, channels: q.channels,
+                           height_sd: q.height_sd, abs_uv: q.abs_uv,
+                           dist_ms: q.dist_ms, wlen_ms: q.wlen_ms,
+                           estimator: q.estimator, pool: u0.range,
+                           tol_ms: 150 }),
+  });
+  const rj = await refused.json();
+  ck('and the server refuses one, with a sentence',
+     refused.status === 400 && /at most/.test(rj.error || ''),
+     refused.status + ' ' + (rj.error || ''));
+
+  head('Extract all banks one set, each spike once');
+  await until(() => { const u = U(); return u.pool === null && u.tolMs === 25
+                      && u.unionRes && u.unionRes.ok; }, 15000);
+  const nNow = U().unionRes.n;
+  /* Intercepted in the frame: the dialog answers for a person and the bank
+     write is caught before it leaves, so nothing reaches GUI_logs. Put back
+     in the finally below whatever happens. */
+  realFetch = W().fetch;
+  EV('window.__cap=null;window.__of=window.fetch;window.fetch=function(u,o){'
+     + 'if(String(u).indexOf("/api/bank/add")>=0){window.__cap=o&&o.body;'
+     + 'return Promise.resolve(new Response(JSON.stringify({ok:true,entry:{id:'
+     + '"harness-union"}}),{status:200,headers:{"Content-Type":'
+     + '"application/json"}}));}return window.__of.apply(this,arguments);}');
+  EV('BARRY.ui.__bd=BARRY.ui.bankDialog;BARRY.ui.bankDialog=async function(o){'
+     + 'window.__title=o.title;window.__what=o.what;'
+     + 'await o.onBank({name:"harness union",note:"",who:"harness@test"});'
+     + 'return false;}');
+  realDialog = true;
+  EV('BARRY.incisor._extractAll()');
+  const cap = await until(() => EV('window.__cap'), 20000);
+  ck('Extract all sends one set to the bank', !!cap, 'nothing sent');
+  if (cap) {
+    const b = JSON.parse(cap);
+    const evs = b.events || [];
+    ck('with exactly the number the panel promised',
+       evs.length === nNow, evs.length + ' vs ' + nNow);
+    const t = evs.map((e) => Number(e.start));
+    ck('each spike once, and in time order',
+       new Set(t.map((x) => x.toFixed(6))).size === t.length
+       && t.every((x, i) => i === 0 || x >= t[i - 1]), 'duplicates or out of order');
+    const lab = {};
+    for (const c of (res.ch || [])) lab[c.index] = Number(c.number);
+    const nums = new Set(u0.range.map((i) => lab[i]));
+    ck('every spike names a channel in the range, by CSC number',
+       evs.every((e) => nums.has(Number(e.channel))),
+       JSON.stringify(evs.slice(0, 2)));
+    ck('the set says it is a union, of which channels, and at what window',
+       (b.parameters || {}).channel === 'union'
+       && ((b.parameters || {}).pool || []).length === u0.range.length
+       && (b.parameters || {}).union_tol_ms === 25,
+       JSON.stringify(b.parameters || {}).slice(0, 200));
+    ck('and records the counts it was chosen on',
+       ((b.parameters || {}).union || {}).n === nNow,
+       JSON.stringify((b.parameters || {}).union || {}));
+    ck('it goes in as a detector’s output, the same as one channel',
+       b.type === 'ds' && b.pipeline === 'Incisor (dentate spike)',
+       b.type + ' / ' + b.pipeline);
+    ck('the dialog says how the times were chosen',
+       /largest/.test(EV('window.__what') || ''), EV('window.__what'));
+  }
+
+  /* Unload the app before finishing. The page is done, but the app frame
+     keeps requests in flight, and headless Edge only dumps once its
+     VIRTUAL clock runs out -- which stands still while a request is
+     pending. So a page with every check passed never dumped, and the
+     runner reported it as TIMED OUT with nothing to show. */
+  A.src = 'about:blank';
+  await sleep(200);
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'incisorunion: ' + bad + ' FAILED'
+                       : 'incisorunion: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'incisorunion: harness CRASH';
+} finally {
+  try {
+    if (realFetch) EV('window.fetch=window.__of');
+    if (realDialog) EV('BARRY.ui.bankDialog=BARRY.ui.__bd');
+  } catch (e) { /* the frame may be gone */ }
+} })();
+</script>

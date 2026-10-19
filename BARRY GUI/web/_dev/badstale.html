@@ -1,0 +1,150 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — a stale view update must not resurrect a cleared bad channel</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1200px; height:740px; border:1px solid #333; background:#fff; }
+ h4 { color:#9cf; margin:14px 0 4px; font-weight:normal; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">Bad channels travel on the facts channel. The time/view
+channel used to carry them too — and it is only published while the windows
+are linked, so clearing a mark updated facts and left the view channel
+holding the old list. Any window that then applied that view update marked
+the channel bad again, wrote it back to the store, and the mark came back on
+its own.</p>
+<div id="out"></div>
+<iframe id="A" src="/"></iframe>
+<script>
+let bad = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const head = (t) => { const h = document.createElement('h4');
+                      h.textContent = t; out.appendChild(h); };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 15000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(150);
+  }
+  return null;
+}
+const post = (url, body) => fetch(url, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+}).then((r) => r.json());
+
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const errs = [];
+
+(async () => { try {
+  A.contentWindow.addEventListener('error', (e) => errs.push(e.message));
+  await until(() => W().BARRY);
+
+  const reg = await (await fetch('/api/registry')).json();
+  let path = null;
+  outer: for (const p of (reg.tree || [])) {
+    for (const m of (p.mice || [])) {
+      for (const s of (m.sessions || [])) {
+        if ((s.here || []).length) { path = s.here[0]; break outer; }
+      }
+    }
+  }
+  if (!path) { say('bad', 'no reachable recording'); return; }
+  say('note', '  ' + path.slice(-46));
+
+  W().eval("setView('xplore')");
+  await sleep(300);
+  await W().eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  await until(() => W().eval(
+    'Object.keys(BARRY.views.xplore.state.sessions).length') > 0);
+  await sleep(2200);
+
+  const S = 'BARRY.views.xplore.state';
+  const NUM = '(function(){var s=' + S + ';'
+    + 'return s.sessions[s.active].info.channels[3].number;})()';
+  const num = W().eval(NUM);
+  const HAS = (n) => '(function(){var s=' + S + ';var x=s.sessions[s.active];'
+    + 'return !!x && x.bad.has(' + n + ');})()';
+  const BADS = '(function(){var s=' + S + ';var x=s.sessions[s.active];'
+    + 'return x?Array.from(x.bad).sort(function(a,b){return a-b;}).join(","):"?";})()';
+  /* The channel names the app uses, asked of the app rather than guessed. */
+  const key = W().eval('(function(){var s=' + S + ';'
+    + 'var x=s.sessions[s.active];'
+    + 'return (x.identity && (x.identity.gid || x.identity.key)) || x.id;})()');
+  say('note', '  channel key: ' + key + ', testing CSC' + num);
+
+  head('Start from no marks');
+  if (W().eval(HAS(num))) {
+    W().eval('BARRY.views.xplore.toggleBad(' + num + ')');
+    await until(() => !W().eval(HAS(num)));
+    say('note', '  cleared a mark an earlier run left');
+  }
+  check('the channel starts unmarked', !W().eval(HAS(num)),
+        W().eval(BADS));
+
+  head('Mark it, then clear it -- the ordinary way');
+  W().eval('BARRY.views.xplore.toggleBad(' + num + ')');
+  check('marking it takes', !!await until(() => W().eval(HAS(num))),
+        W().eval(BADS));
+  await sleep(900);
+  W().eval('BARRY.views.xplore.toggleBad(' + num + ')');
+  check('clearing it takes', !!await until(() => !W().eval(HAS(num))),
+        W().eval(BADS));
+  await sleep(900);
+
+  const stored = await post('/api/csc/open', { path });
+  check('the store agrees it is clear',
+        !(stored.bad_channels || []).includes(num),
+        JSON.stringify(stored.bad_channels));
+
+  head('Now a view update that still carries the old list');
+  /* Exactly what a window that moved the time cursor while linked used to
+     publish: the view, with the bad list of the moment attached. Sent from
+     a different origin, so the window treats it as somebody else's. */
+  const chan = 'time:' + key;
+  const res = await post('/api/link', {
+    channel: chan, origin: 'harness-stale',
+    value: {
+      t0: W().eval(S + '.sessions[' + S + '.active].t0') || 0,
+      span: W().eval(S + '.sessions[' + S + '.active].span') || 10,
+      mode: 'session',
+      channels: W().eval('Array.from(' + S + '.sessions[' + S
+                         + '.active].sel)'),
+      bad: [num],
+    },
+  });
+  say('note', '  published ' + chan + ' with bad=[' + num + ']'
+      + (res && res.slot ? ' (version ' + res.slot.version + ')' : ''));
+
+  /* Long enough for the link poller to have seen it several times. */
+  await sleep(4000);
+  check('the window did NOT mark it again', !W().eval(HAS(num)),
+        'window has [' + W().eval(BADS) + ']');
+
+  const after = await post('/api/csc/open', { path });
+  check('and the store was not written back',
+        !(after.bad_channels || []).includes(num),
+        JSON.stringify(after.bad_channels));
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'badstale: ' + bad + ' FAILED' : 'badstale: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'badstale: harness CRASH';
+} })();
+</script>

@@ -1,0 +1,208 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — session filters</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Three filters that answer questions the session list could not:
+
+     which recordings still need layers,
+     which already have them,
+     and which are on a drive this machine can actually reach.
+
+   Checked against the registry's own numbers rather than against constants,
+   so the harness keeps working as the catalogue grows -- and so a filter
+   that quietly matches everything (or nothing) is caught, which a fixed
+   expected count would not do. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(900);
+
+  /* What the registry says, which is what the filters ought to reproduce. */
+  const reg = await (await W().fetch('/api/registry')).json();
+  let total = 0, withLayers = 0, reachable = 0;
+  for (const proj of reg.tree || []) {
+    for (const m of proj.mice || []) {
+      for (const s of m.sessions || []) {
+        total += 1;
+        if (((s.has || {}).layers) || 0) withLayers += 1;
+        if ((s.here || []).length) reachable += 1;
+      }
+    }
+  }
+  p('  registry: ' + total + ' sessions, ' + withLayers + ' with layers, '
+    + (total - withLayers) + ' to do, ' + reachable + ' reachable here');
+
+  W().eval("setView('sessions')");
+  await untilN(() => D().querySelectorAll('.sess-card').length, 200);
+  await sleep(1500);
+
+  /* One button and a popover, not nine pills.
+
+     Everything is re-queried after every click, because the popover
+     repaints itself in place so that turning three filters on is three
+     clicks and not three clicks and two re-opens. A held reference is a
+     detached node. */
+  const shown = () => D().querySelectorAll('.sess-card').length;
+  const pop = () => D().querySelector('.ctl-pop');
+  const openFilters = async () => {
+    if (pop()) return;
+    const b = D().querySelector('#sessFilterBar .filter-open');
+    ck('there is one Filter button', !!b);
+    if (!b) return;
+    b.click();
+    await sleep(500);
+  };
+  const box = (flag) => pop()
+    && pop().querySelector('[data-flag="' + flag + '"] input');
+  const avail = (id) => pop()
+    && pop().querySelector('[data-avail="' + id + '"] input');
+  const chipFor = (flag) =>
+    D().querySelector('#sessFilterBar .fb-chip[data-flag="' + flag + '"]');
+  const toggle = async (flag) => {
+    await openFilters();
+    box(flag).click();
+    await sleep(900);
+  };
+
+  hd('1. The filters are reachable');
+  await openFilters();
+  for (const flag of ['layers', 'nolayers', 'video', 'bad']) {
+    ck('there is a "' + flag + '" filter', !!box(flag));
+  }
+  ck('and the two availability choices', !!avail('all') && !!avail('open'));
+
+  hd('2. They divide the list rather than emptying it');
+  const all = shown();
+  p('  unfiltered: ' + all + ' card(s)');
+  ck('the list has cards to filter', all > 10, all);
+
+  await toggle('layers');
+  const onlyLayers = shown();
+  p('  Layers labelled: ' + onlyLayers);
+  ck('it shows fewer than everything', onlyLayers < all, onlyLayers);
+  ck('and not none of them', onlyLayers > 0, onlyLayers);
+  /* The chip is the whole cost of collapsing the pills: compactness must
+     not cost you knowing what is on once the popover is shut. */
+  ck('a chip says it is on', !!chipFor('layers'));
+  await toggle('layers');
+
+  await toggle('nolayers');
+  const toDo = shown();
+  p('  Layers to do: ' + toDo);
+  ck('it shows fewer than everything', toDo < all, toDo);
+  /* The two halves must add up. If they do not, one of them is matching on
+     something other than the layer count -- which is the failure that looks
+     like it works. */
+  p('  ' + onlyLayers + ' + ' + toDo + ' = ' + (onlyLayers + toDo)
+    + '  (of ' + all + ' shown)');
+  ck('the two halves account for every card',
+     onlyLayers + toDo === all, (onlyLayers + toDo) + ' vs ' + all);
+  await toggle('nolayers');
+
+  hd('3. "Only what opens here" means openable now, not merely known');
+  await openFilters();
+  avail('open').click();
+  await sleep(1200);
+  const here = shown();
+  p('  opens here: ' + here + ' of ' + all);
+  ck('some can be opened', here > 0, here);
+  ck('and it is a real filter, not everything', here <= all,
+     here + ' vs ' + all);
+  ck('a chip says it is on', !!chipFor('open'));
+  await openFilters();
+  avail('all').click();
+  await sleep(1200);
+  ck('turning it off restores the list', shown() === all,
+     shown() + ' vs ' + all);
+
+  hd('4. Clear all puts everything back at once');
+  await toggle('layers');
+  await openFilters();
+  box('video').click();
+  await sleep(900);
+  const nChips = D().querySelectorAll('#sessFilterBar .fb-chip').length;
+  ck('two filters on, two chips', nChips === 2, nChips);
+  const clear = D().querySelector('#sessFilterBar .fb-clear');
+  ck('Clear all appears once more than one is on', !!clear);
+  if (clear) {
+    clear.click();
+    await sleep(1200);
+    ck('no chips left',
+       D().querySelectorAll('#sessFilterBar .fb-chip').length === 0);
+    ck('and the whole list is back', shown() === all, shown() + ' vs ' + all);
+  }
+  hd('5. The scan’s own settings are behind one button too');
+  /* "Read headers" and "Depth" were a checkbox and a number box sharing a
+     line with the recent-roots list -- the other half of "make the
+     filtering/selection more centralizied clean and compact". */
+  const optsBtn = () => D().querySelector('#rootOptsBar .filter-open');
+  ck('there is one Scan options button', !!optsBtn());
+  if (optsBtn()) {
+    ck('and nothing else is left loose in that row',
+       !D().querySelector('#rootHeaders') && !D().querySelector('#rootDepth'),
+       'headers box: ' + !!D().querySelector('#rootHeaders')
+       + ', depth box: ' + !!D().querySelector('#rootDepth'));
+    optsBtn().click();
+    await sleep(500);
+    const box = D().querySelector('.ctl-pop');
+    ck('it opens a popover', !!box);
+    const cb = box && box.querySelector('input[type="checkbox"]');
+    const num = box && box.querySelector('input[type="number"]');
+    ck('with the header choice in it', !!cb);
+    ck('and the depth', !!num, num && num.value);
+    /* The button has to say when the settings are not standard -- a changed
+       depth is the usual explanation for a scan that found nothing, and a
+       setting you cannot see is worse than a box in the way. */
+    ck('the button is unmarked at the defaults',
+       !optsBtn().classList.contains('on'));
+    if (num) {
+      num.value = '2';
+      num.dispatchEvent(new (W().Event)('input', { bubbles: true }));
+      await sleep(600);
+      ck('changing the depth marks the button',
+         !!optsBtn() && optsBtn().classList.contains('on'));
+      const badge = optsBtn().querySelector('.fb-count');
+      ck('and it says what changed, not how many things changed',
+         !!badge && /depth\s*2/.test(badge.textContent || ''),
+         badge && badge.textContent);
+      /* And it is the state the scan will actually use, not just a label. */
+      const asked = W().eval('BARRY.views.sessions._scanOpts '
+        + '? JSON.stringify(BARRY.views.sessions._scanOpts()) : "no seam"');
+      p('  the scan would be told: ' + asked);
+    }
+  }
+
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'session filters';
+} catch (e) {
+  p('THREW: ' + (e && e.message) + '\n' + (e && e.stack));
+  document.title = 'threw';
+} })();
+</script>

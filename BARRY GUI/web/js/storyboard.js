@@ -919,7 +919,8 @@ BARRY.views.storyboard = (function () {
           el('div', { class: 'res-sub', text: d.slides + ' slide(s)'
             + (d.author ? '  ·  ' + d.author : '') }),
           el('div', { class: 'res-sub',
-            text: (d.updated || '').replace('T', ' ').slice(0, 16) }),
+            title: BARRY.whenRaw(d.updated),
+            text: BARRY.when(d.updated, 'minute') }),
         ]),
         el('div', { class: 'res-acts' }, [
           el('button', { class: 'mini', text: 'Open', onclick: () => openDeck(d.id) }),
@@ -1576,7 +1577,7 @@ BARRY.views.storyboard = (function () {
     if (it) col.appendChild(alignBar());
 
     if (!it) {
-      col.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+      col.appendChild(el('div', { class: 'section-label',
         text: 'Slide' }));
       col.appendChild(field('Background', colorField(
         current().background || '#ffffff',
@@ -1600,7 +1601,7 @@ BARRY.views.storyboard = (function () {
       return col;
     }
 
-    col.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    col.appendChild(el('div', { class: 'section-label',
       text: it.type === 'result' ? 'Result' : it.type }));
 
     if (it.type === 'text') {

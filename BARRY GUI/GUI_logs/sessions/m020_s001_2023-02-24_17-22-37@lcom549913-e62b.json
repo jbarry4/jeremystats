@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-09-18T19:04:29.313407+00:00",
+    "gid": "2026-09-18T19:04:29.313407+00:00",
+    "group": "2026-09-18T19:04:29.313407+00:00",
+    "key": "2026-09-18T19:04:29.313407+00:00",
+    "label": "2026-09-18T19:04:29.313407+00:00",
+    "loose_key": "2026-09-18T19:04:29.313407+00:00",
+    "mouse": "2026-09-18T19:04:29.313407+00:00",
+    "project": "2026-09-18T19:04:29.313407+00:00",
+    "project_source": "2026-09-18T19:04:29.313407+00:00",
+    "retired": "2026-09-18T19:04:29.313407+00:00",
+    "schema": "2026-09-18T19:04:29.313407+00:00",
+    "session": "2026-09-18T19:04:29.313407+00:00",
+    "start": "2026-09-18T19:04:29.313407+00:00",
+    "updated": "2026-09-18T19:07:22.642791+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\KCNT1\\urethane\\het\\KCNT1M20_het\\kcnt1m20s1feb24\\2023-02-24_17-22-37": [
+        "set",
+        "2026-09-18T19:07:22.642791+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-18T19:07:22.642791+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T15:04:29-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "sf5bd0f143360",
+  "group": null,
+  "key": "m020_s001_2023-02-24_17-22-37",
+  "label": "KCNT1 m20 s1 2023-02-24",
+  "loose_key": "m020_s001",
+  "mouse": 20,
+  "paths": [
+    "D:\\KCNT1\\urethane\\het\\KCNT1M20_het\\kcnt1m20s1feb24\\2023-02-24_17-22-37"
+  ],
+  "project": "KCNT1 Urethane",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 1,
+  "start": "2023-02-24T22:22:37+00:00",
+  "updated": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T15:07:22-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

@@ -1,0 +1,2415 @@
+{
+ "id": "f9d1e3ca40ae",
+ "kind": "bug",
+ "title": "Archiving not working",
+ "detail": "Archived m33s8, but I was still able to open it without creating a new session in Event Curation\n\nBARRY GUI debug report\ngenerated  2026-09-08 15:35:36\nmachine    BarryLab / Windows 11\npython     3.12.10\nmatlab     C:\\Program Files\\MATLAB\\R2025b\\bin\\matlab.EXE\nffmpeg     C:\\Users\\barry\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.1-full_build\\bin\\ffmpeg.EXE\nrepo       C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\nview       errors\nsession    PTEN m33 s8 2024-06-14\n\nUI ACTIONS, oldest first (6)\n------------------------------------------------------------------\n:56.518Z  link.scope                 {\"scope\": \"session\"}\n:57.079Z  session.open               {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"channels\": 64, \"fs\": 30000, \"duration_s\": 1863.0485333333334, \"rest\n:57.095Z  events.import              {\"file\": \"Events.nev\", \"n\": 2, \"source\": \"nev\", \"relative_to\": \"recording\", \"auto\": true}\n:30.983Z  window.change              {\"t0\": 1.671, \"span\": 1, \"scope\": \"session\"}\n:30.990Z  curation.enter             {\"gid\": \"s0a1cd99454b9\", \"kind\": \"ds\", \"n\": 832, \"left\": 416}\n:43.887Z  window.change              {\"t0\": 1.671, \"span\": 1, \"scope\": \"session\"}\n\nREQUESTS AS THE BROWSER SAW THEM (53)\n------------------------------------------------------------------\n15:33:56  GET  /api/profile                         200        8 ms\n15:33:56  GET  /api/catalog                         200        9 ms\n15:33:56  GET  /api/prefs                           200        3 ms\n15:33:56  GET  /api/pipeline                        200        4 ms\n15:33:56  GET  /api/probes                          200        6 ms\n15:33:56  GET  /api/presets/filters                 200        6 ms\n15:33:56  GET  /api/panels                          200        5 ms\n15:33:56  GET  /api/jobs                            200        7 ms\n15:33:56  GET  /api/presets/layouts                 200        8 ms\n15:33:56  POST /api/pipeline/check                  200      245 ms\n15:33:56  GET  /api/sync/status                     200      446 ms\n15:33:56  POST /api/prefs                           200      109 ms\n15:33:57  POST /api/csc/open                        200      298 ms\n15:33:57  POST /api/events/nev                      200       15 ms\n15:33:57  POST /api/csc/window                      200      454 ms\n15:33:59  GET  /api/toolkit/scopes                  200     1495 ms\n15:34:01  POST /api/csc/overview                    200     3924 ms\n15:34:01  POST /api/csc/window                      200      160 ms\n15:34:03  GET  /api/curation                        200     4450 ms\n15:34:03  GET  /api/curation                        200     4672 ms\n15:34:04  GET  /api/curation                        200     4286 ms\n15:34:04  GET  /api/curation                        200     4120 ms\n15:34:09  GET  /api/registry                        200     5935 ms\n15:34:14  POST /api/csc/window                      200      326 ms\n15:34:21  GET  /api/curation                        200     2637 ms\n15:34:22  GET  /api/curation                        200     2750 ms\n15:34:23  GET  /api/registry                        200    19343 ms\n15:34:23  GET  /api/registry                        200    19004 ms\n15:34:23  GET  /api/registry                        200    18999 ms\n15:34:23  GET  /api/link                            200    25019 ms\n15:34:28  POST /api/curation/s0a1cd99454b9/ds/open  200       62 ms\n15:34:30  GET  /api/curation/s0a1cd99454b9/ds       200       48 ms\n15:34:31  POST /api/curation/s0a1cd99454b9/ds/open  200      160 ms\n15:34:31  POST /api/link                            200       34 ms\n15:34:31  POST /api/link                            200       37 ms\n15:34:31  GET  /api/link                            200     7418 ms\n15:34:31  GET  /api/registry                        200     9570 ms\n15:34:31  GET  /api/registry                        200     8701 ms\n15:34:31  POST /api/link                            200        8 ms\n15:34:31  POST /api/csc/window                      200      467 ms\n15:34:33  POST /api/session/state                   200     1407 ms\n15:34:43  POST /api/link                            200       19 ms\n15:34:43  GET  /api/link                            200    12813 ms\n15:34:43  POST /api/link                            200       15 ms\n15:34:44  POST /api/csc/window                      200      315 ms\n15:34:46  POST /api/session/state                   200     1060 ms\n15:34:48  GET  /api/errors                          200       13 ms\n15:34:48  GET  /api/feedback                        200       15 ms\n15:34:48  GET  /api/errors/grouped                  200        8 ms\n15:34:48  GET  /api/debug/trace                     200        3 ms\n15:34:54  GET  /api/feedback                        200        8 ms\n15:35:08  GET  /api/link                            200    25011 ms\n15:35:34  GET  /api/link                            200    25016 ms\n\nREQUESTS AS THE SERVER SAW THEM, newest first (82)\n------------------------------------------------------------------\n15:34:54  GET  /api/feedback                    200      5.4 ms  \n15:34:48  GET  /api/errors/grouped              200      6.0 ms  limit=600\n15:34:48  GET  /api/feedback                    200      7.6 ms  \n15:34:48  GET  /api/errors                      200      6.6 ms  limit=300\n15:34:46  POST /api/session/state               200   1055.5 ms  {\"identity\": \"{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}\", \"state\": \"{channels, clim, even_only, fdefault, flock, gain, hp, invert}\"}\n15:34:44  POST /api/csc/window                  200    305.3 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"t0\": 1.6709999999999998, \"t1\": 2.671, \"channels\": \"\n15:34:44  POST /api/panel                       200      1.4 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"spectrogram\", \"t0\": 1.6709999999999998, \"t\n15:34:44  POST /api/panel                       200      0.5 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"voltage\", \"t0\": 1.6709999999999998, \"t1\": \n15:34:44  POST /api/panel                       200      1.1 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"theta\", \"t0\": 1.6709999999999998, \"t1\": 2.\n15:34:44  POST /api/panel                       200      1.4 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"csd\", \"t0\": 1.6709999999999998, \"t1\": 2.67\n15:34:39  POST /api/panel                       200      1.7 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"spectrogram\", \"t0\": 1.6709999999999998, \"t\n15:34:39  POST /api/panel                       200      1.7 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"voltage\", \"t0\": 1.6709999999999998, \"t1\": \n15:34:39  POST /api/panel                       200      0.2 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"theta\", \"t0\": 1.6709999999999998, \"t1\": 2.\n15:34:39  POST /api/panel                       200      1.4 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"csd\", \"t0\": 1.6709999999999998, \"t1\": 2.67\n15:34:37  POST /api/panel                       200      2.4 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"spectrogram\", \"t0\": 1.6709999999999998, \"t\n15:34:37  POST /api/panel                       200      0.4 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"voltage\", \"t0\": 1.6709999999999998, \"t1\": \n15:34:37  POST /api/panel                       200      0.2 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"theta\", \"t0\": 1.6709999999999998, \"t1\": 2.\n15:34:37  POST /api/panel                       200      0.5 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"csd\", \"t0\": 1.6709999999999998, \"t1\": 2.67\n15:34:37  POST /api/panel                       200      1.4 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"spectrogram\", \"t0\": 1.6709999999999998, \"t\n15:34:37  POST /api/panel                       200      0.5 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"voltage\", \"t0\": 1.6709999999999998, \"t1\": \n15:34:37  POST /api/panel                       200      0.3 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"theta\", \"t0\": 1.6709999999999998, \"t1\": 2.\n15:34:37  POST /api/panel                       200      0.6 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"csd\", \"t0\": 1.6709999999999998, \"t1\": 2.67\n15:34:34  POST /api/panel                       200    542.7 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"spectrogram\", \"t0\": 1.6709999999999998, \"t\n15:34:34  POST /api/panel                       200    269.5 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"theta\", \"t0\": 1.6709999999999998, \"t1\": 2.\n15:34:34  POST /api/panel                       200    172.3 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"voltage\", \"t0\": 1.6709999999999998, \"t1\": \n15:34:34  POST /api/panel                       200    150.1 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"csd\", \"t0\": 1.6709999999999998, \"t1\": 2.67\n15:34:34  GET  /api/curation/s0a1cd99454b9/ds   200    979.7 ms  \n15:34:33  POST /api/session/state               200   1404.3 ms  {\"identity\": \"{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}\", \"state\": \"{channels, clim, even_only, fdefault, flock, gain, hp, invert}\"}\n15:34:33  POST /api/panel                       200    742.9 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"spectrogram\", \"t0\": 1.671, \"t1\": 2.6710000\n15:34:33  POST /api/panel                       200    300.3 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"theta\", \"t0\": 1.671, \"t1\": 2.6710000000000\n15:34:32  POST /api/panel                       200    183.5 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"voltage\", \"t0\": 1.671, \"t1\": 2.67100000000\n15:34:32  POST /api/panel                       200    176.3 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"panel\": \"csd\", \"t0\": 1.671, \"t1\": 2.671000000000000\n15:34:32  POST /api/events/nev                  200     14.5 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\\\\Events.nev\", \"session_path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-1\n15:34:32  POST /api/csc/overview                200      0.7 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"channel\": 0, \"bins\": 700}\n15:34:32  POST /api/csc/open                    200   1475.1 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"invert\": true}\n15:34:32  POST /api/prefs                       200    899.0 ms  {\"patch\": \"{themes}\"}\n15:34:32  GET  /api/sync/status                 200   1295.6 ms  \n15:34:31  POST /api/pipeline/check              200    612.6 ms  {\"folder\": \"\\\\\\\\netfiles03.uvm.edu\\\\bigdata_jbarry\\\\Jeremy3\\\\KCNT1\\\\Summer'26\\\\KCNT1_m0522\\\\m22s4bjun18\\\\2026-06-18_17-13-10\", \"track\": \"session\"}\n15:34:31  POST /api/csc/window                  200    453.5 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"t0\": 1.6709999999999998, \"t1\": 2.671, \"channels\": \"\n15:34:31  GET  /api/presets/layouts             200      2.6 ms  \n15:34:31  GET  /api/panels                      200      8.7 ms  \n15:34:31  GET  /api/jobs                        200      0.1 ms  \n15:34:31  GET  /api/presets/filters             200      1.9 ms  \n15:34:31  GET  /api/probes                      200      0.1 ms  \n15:34:31  GET  /api/pipeline                    200      0.1 ms  \n15:34:31  GET  /api/prefs                       200      1.0 ms  \n15:34:31  GET  /api/catalog                     200      6.2 ms  \n15:34:31  GET  /api/profile                     200      1.6 ms  \n15:34:30  GET  /api/registry                    200   8677.5 ms  \n15:34:30  GET  /api/registry                    200   9517.4 ms  \n15:34:30  POST /api/curation/s0a1cd99454b9/ds/o 200     66.6 ms  {\"open\": true}\n15:34:30  GET  /api/curation/s0a1cd99454b9/ds   200     42.2 ms  \n15:34:28  POST /api/curation/s0a1cd99454b9/ds/o 200     59.0 ms  {\"open\": true}\n15:34:23  GET  /api/registry                    200  13522.0 ms  \n15:34:23  GET  /api/registry                    200  13463.7 ms  \n15:34:23  GET  /api/registry                    200  13406.4 ms  \n15:34:22  GET  /api/curation                    200   2745.6 ms  \n15:34:21  GET  /api/curation                    200   2632.9 ms  \n15:34:14  POST /api/csc/window                  200    313.6 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"t0\": 1.6709999999999998, \"t1\": 2.671, \"channels\": \"\n15:34:09  GET  /api/registry                    200   5915.7 ms  \n15:34:04  GET  /api/curation                    200   4116.4 ms  \n15:34:04  GET  /api/curation                    200   4263.7 ms  \n15:34:03  GET  /api/curation                    200   4667.8 ms  \n15:34:03  GET  /api/curation                    200   4444.7 ms  \n15:34:01  POST /api/csc/window                  200    151.4 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"t0\": 1.6709999999999998, \"t1\": 2.671, \"channels\": \"\n15:34:01  POST /api/csc/overview                200   3920.6 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"channel\": 0, \"bins\": 700}\n15:33:59  GET  /api/toolkit/scopes              200   1490.1 ms  \n15:33:57  POST /api/csc/window                  200    423.5 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"even_only\": false, \"invert\": true, \"t0\": 1.6709999999999998, \"t1\": 2.671, \"channels\": \"\n15:33:57  POST /api/events/nev                  200     12.8 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\\\\Events.nev\", \"session_path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-1\n15:33:57  POST /api/csc/open                    200    295.2 ms  {\"path\": \"Y:\\\\ProcessedPtenData\\\\m33_ptenblind\\\\m33s8jun14\\\\2024-06-14_14-16-58\", \"invert\": true}\n15:33:56  POST /api/prefs                       200    106.6 ms  {\"patch\": \"{themes}\"}\n15:33:56  GET  /api/sync/status                 200    438.7 ms  \n15:33:56  POST /api/pipeline/check              200    243.4 ms  {\"folder\": \"\\\\\\\\netfiles03.uvm.edu\\\\bigdata_jbarry\\\\Jeremy3\\\\KCNT1\\\\Summer'26\\\\KCNT1_m0522\\\\m22s4bjun18\\\\2026-06-18_17-13-10\", \"track\": \"session\"}\n15:33:56  GET  /api/presets/layouts             200      0.3 ms  \n15:33:56  GET  /api/jobs                        200      0.0 ms  \n15:33:56  GET  /api/panels                      200      3.3 ms  \n15:33:56  GET  /api/presets/filters             200      1.3 ms  \n15:33:56  GET  /api/probes                      200      0.1 ms  \n15:33:56  GET  /api/pipeline                    200      0.1 ms  \n15:33:56  GET  /api/prefs                       200      0.6 ms  \n15:33:56  GET  /api/catalog                     200      2.9 ms  \n15:33:56  GET  /api/profile                     200      0.6 ms  \n\nLAST 12 LOGGED ERRORS\n------------------------------------------------------------------\n[2026-09-08T15:07:31-04:00] selftest: Test error from the Errors panel\nNo stack trace -- this entry was created on purpose.\n[2026-09-08T14:57:46-04:00] selftest: Test error from the Errors panel\nNo stack trace -- this entry was created on purpose.\n[2026-09-08T14:41:46-04:00] selftest: Test error from the Errors panel\nNo stack trace -- this entry was created on purpose.\n[2026-09-08T14:06:17-04:00] selftest: Test error from the Errors panel\nNo stack trace -- this entry was created on purpose.\n[2026-09-08T14:00:15-04:00] cloud.sync: GET /rest/v1/curation_sets?updated_at=gt.2026-09-08T15:32:37%2B00:00&select=*&limit=1000&offset=0 -> HTTP 504 {\"message\":\"Gateway Timeout\"}\n\nThe database itself returned an error, not a refusal -- nothing is wrong with the request or the key. These are usually brief; the next sync will pick up where this one stopped. If it keeps happening, check the Supabase project status page.\n[2026-09-08T13:57:22-04:00] selftest: Test error from the Errors panel\nNo stack trace -- this entry was created on purpose.\n[2026-09-05T16:36:19-04:00] cloud.sync: GET /rest/v1/sessions?updated_at=gt.2026-09-04T16:17:44.655608%2B00:00&select=*&limit=1000&offset=0 -> HTTP 401 {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"JWT issued at future\"}\n\nThis machine's clock is ahead of Supabase's, so the token it signs looks like it was issued in the future and is rejected. Set the clock (Windows: Settings > Time & language > Date & time > Sync now). Nothing is wrong with the key or the data.\n[2026-09-04T13:52:35-04:00] cloud.sync: [WinError 5] Access is denied: 'C:\\\\Users\\\\barry\\\\OneDrive\\\\Desktop\\\\jeremystats\\\\BARRY GUI\\\\Data Bank\\\\PTEN\\\\m33\\\\s8 2024-06-14\\\\ds - m33s8jun14 — Dentate Spike.json.tmp' -> 'C:\\\\Users\\\\barry\\\\OneDrive\\\\Desktop\\\\jeremystats\\\\BARRY GUI\\\\Data Bank\\\\PTEN\\\\m33\\\\s8 2024-06-14\\\\ds - m33s8jun14 — Dentate Spike.json'\n[2026-09-04T11:56:01-04:00] csc/window: could not convert string to float: 'M13'\nTraceback (most recent call last):\n  File \"C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\backend\\app.py\", line 511, in api_csc_window\n  File \"C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\backend\\csc.py\", line 628, in get_window\n    t0 = max(0.0, float(t0))\n                             \n  File \"C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\backend\\csc.py\", line 326, in _read_channel_window\n    i1 = max(i0, int(np.ceil(t1 * fs)))\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^\nValueError: could not convert string to float: 'M13'\n\n[2026-09-04T11:50:37-04:00] csc/window: could not convert string to float: 'M13'\nTraceback (most recent call last):\n  File \"C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\backend\\app.py\", line 511, in api_csc_window\n  File \"C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\backend\\csc.py\", line 628, in get_window\n    t0 = max(0.0, float(t0))\n                             \n  File \"C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\backend\\csc.py\", line 326, in _read_channel_window\n    i1 = max(i0, int(np.ceil(t1 * fs)))\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^\nValueError: could not convert string to float: 'M13'\n\n[2026-09-04T11:50:34-04:00] csc/window: could not convert string to float: 'M13'\nTraceback (most recent call last):\n  File \"C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\backend\\app.py\", line 511, in api_csc_window\n  File \"C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\backend\\csc.py\", line 628, in get_window\n    t0 = max(0.0, float(t0))\n                             \n  File \"C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\backend\\csc.py\", line 326, in _read_channel_window\n    i1 = max(i0, int(np.ceil(t1 * fs)))\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^\nValueError: could not convert string to float: 'M13'\n\n[2026-09-04T11:44:01-04:00] selftest: Test error from the Errors panel\nNo stack trace -- this entry was created on purpose.",
+ "context": {
+  "view": "errors",
+  "recording": "PTEN m33 s8 2024-06-14",
+  "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+  "panels": [
+   "traces"
+  ],
+  "window": {
+   "t0": 1.6709999999999998,
+   "span": 1
+  },
+  "screen": "1920x918",
+  "agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:153.0) Gecko/20100101 Firefox/153.0"
+ },
+ "wants": "Rain",
+ "state": "open",
+ "at": "2026-09-08T15:35:45-0400",
+ "by": "Rain",
+ "machine": "BARRYLAB",
+ "shard": "barrylab-d8e8",
+ "screenshots": [],
+ "recent": {
+  "window_s": 600,
+  "actions": [
+   {
+    "id": "4e98685548",
+    "at": "2026-09-08T19:34:43.887Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1.671,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "fb995af801",
+    "at": "2026-09-08T19:34:32.616Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "deec153ee5",
+    "at": "2026-09-08T19:34:32.595Z",
+    "action": "session.open",
+    "detail": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1863.0485333333334,
+     "restored": [
+      "3 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "eb8f827b72",
+    "at": "2026-09-08T19:34:31.109Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "da42fc5fac",
+    "at": "2026-09-08T19:34:30.990Z",
+    "action": "curation.enter",
+    "detail": {
+     "gid": "s0a1cd99454b9",
+     "kind": "ds",
+     "n": 832,
+     "left": 416
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "c339eff314",
+    "at": "2026-09-08T19:34:30.983Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1.671,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "d881b60e6a",
+    "at": "2026-09-08T19:33:57.095Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "6036e330c4",
+    "at": "2026-09-08T19:33:57.079Z",
+    "action": "session.open",
+    "detail": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1863.0485333333334,
+     "restored": [
+      "3 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "pipeline",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "45bbea4e7a",
+    "at": "2026-09-08T19:33:56.518Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "7a05fef71f",
+    "at": "2026-09-08T19:33:06.786Z",
+    "action": "sessions.scan",
+    "detail": {
+     "root": "Y:/ProcessedPtenData/m33_ptenblind/m33s8jun14/2024-06-14_14-16-58",
+     "found": 384,
+     "elapsed": 0.2
+    },
+    "session": {},
+    "view": "sessions",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "8db3b85370",
+    "at": "2026-09-08T19:33:06.777Z",
+    "action": "registry.confirmed",
+    "detail": {
+     "root": "Y:/ProcessedPtenData/m33_ptenblind/m33s8jun14/2024-06-14_14-16-58",
+     "n": 1,
+     "total": 1
+    },
+    "session": {},
+    "view": "sessions",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "db48b8ce84",
+    "at": "2026-09-08T19:32:20.609Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "7c4ad3ee5e",
+    "at": "2026-09-08T19:32:19.846Z",
+    "action": "curation.enter",
+    "detail": {
+     "gid": "s0a1cd99454b9",
+     "kind": "ds",
+     "n": 832,
+     "left": 416
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "9f04221065",
+    "at": "2026-09-08T19:32:19.840Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1.671,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "8e86e1c1bd",
+    "at": "2026-09-08T19:32:19.664Z",
+    "action": "curation.leave",
+    "detail": {
+     "gid": "s0a1cd99454b9",
+     "kind": "ds",
+     "left": 416
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "toolkit",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "a2539c3642",
+    "at": "2026-09-08T19:30:49.359Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "7f78e44937",
+    "at": "2026-09-08T19:30:49.340Z",
+    "action": "session.open",
+    "detail": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1863.0485333333334,
+     "restored": [
+      "3 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "d261ceb761",
+    "at": "2026-09-08T19:30:48.043Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "ee33e0ea9d",
+    "at": "2026-09-08T19:30:47.939Z",
+    "action": "curation.enter",
+    "detail": {
+     "gid": "s0a1cd99454b9",
+     "kind": "ds",
+     "n": 832,
+     "left": 416
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "e6202c0881",
+    "at": "2026-09-08T19:30:47.934Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1.671,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "c65da786fa",
+    "at": "2026-09-08T19:30:47.792Z",
+    "action": "curation.leave",
+    "detail": {
+     "gid": "sef04f3b4eb4d",
+     "kind": "ds",
+     "left": 0
+    },
+    "session": {
+     "key": "m059_s010_2025-07-07_16-42-40",
+     "loose_key": "m059_s010",
+     "label": "PTENDKO m59 s10 2025-07-07",
+     "mouse": 59,
+     "session": 10,
+     "path": "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40"
+    },
+    "view": "toolkit",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "9d1f959fa9",
+    "at": "2026-09-08T19:30:01.240Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 254.363,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m059_s010_2025-07-07_16-42-40",
+     "loose_key": "m059_s010",
+     "label": "PTENDKO m59 s10 2025-07-07",
+     "mouse": 59,
+     "session": 10,
+     "path": "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "b42d344a51",
+    "at": "2026-09-08T19:29:38.841Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m059_s010_2025-07-07_16-42-40",
+     "loose_key": "m059_s010",
+     "label": "PTENDKO m59 s10 2025-07-07",
+     "mouse": 59,
+     "session": 10,
+     "path": "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "949b6f4f03",
+    "at": "2026-09-08T19:29:38.830Z",
+    "action": "session.open",
+    "detail": {
+     "path": "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1802.5984,
+     "restored": [
+      "1 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m059_s010_2025-07-07_16-42-40",
+     "loose_key": "m059_s010",
+     "label": "PTENDKO m59 s10 2025-07-07",
+     "mouse": 59,
+     "session": 10,
+     "path": "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "d8afc11ebf",
+    "at": "2026-09-08T19:29:37.446Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "0312062f79",
+    "at": "2026-09-08T19:29:37.355Z",
+    "action": "curation.enter",
+    "detail": {
+     "gid": "sef04f3b4eb4d",
+     "kind": "ds",
+     "n": 373,
+     "left": 0
+    },
+    "session": {
+     "key": "m059_s010_2025-07-07_16-42-40",
+     "loose_key": "m059_s010",
+     "label": "PTENDKO m59 s10 2025-07-07",
+     "mouse": 59,
+     "session": 10,
+     "path": "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "4f578971d9",
+    "at": "2026-09-08T19:29:37.353Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 196.574,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m059_s010_2025-07-07_16-42-40",
+     "loose_key": "m059_s010",
+     "label": "PTENDKO m59 s10 2025-07-07",
+     "mouse": 59,
+     "session": 10,
+     "path": "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "292d0d54eb",
+    "at": "2026-09-08T19:29:37.329Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m059_s010_2025-07-07_16-42-40",
+     "loose_key": "m059_s010",
+     "label": "PTENDKO m59 s10 2025-07-07",
+     "mouse": 59,
+     "session": 10,
+     "path": "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "490939eb26",
+    "at": "2026-09-08T19:29:37.269Z",
+    "action": "session.open",
+    "detail": {
+     "path": "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1802.5984,
+     "restored": [
+      "1 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m059_s010_2025-07-07_16-42-40",
+     "loose_key": "m059_s010",
+     "label": "PTENDKO m59 s10 2025-07-07",
+     "mouse": 59,
+     "session": 10,
+     "path": "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "258211d17f",
+    "at": "2026-09-08T19:29:34.888Z",
+    "action": "curation.leave",
+    "detail": {
+     "gid": "s0a1cd99454b9",
+     "kind": "ds",
+     "left": 416
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "toolkit",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "a01c68504f",
+    "at": "2026-09-08T19:27:27.051Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "ae4045b1af",
+    "at": "2026-09-08T19:27:26.918Z",
+    "action": "curation.enter",
+    "detail": {
+     "gid": "s0a1cd99454b9",
+     "kind": "ds",
+     "n": 832,
+     "left": 416
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "88f6f0cebd",
+    "at": "2026-09-08T19:27:26.912Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1.671,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "742228d94b",
+    "at": "2026-09-08T19:27:26.728Z",
+    "action": "curation.leave",
+    "detail": {
+     "gid": "s0a1cd99454b9",
+     "kind": "ds",
+     "left": 416
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "toolkit",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "e50e274752",
+    "at": "2026-09-08T19:26:20.254Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 478.453,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "634f5c36c9",
+    "at": "2026-09-08T19:26:04.399Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 470.614,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "99f2543612",
+    "at": "2026-09-08T19:26:01.460Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 458.532,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "e70dfcb91a",
+    "at": "2026-09-08T19:26:01.456Z",
+    "action": "curation.review",
+    "detail": {
+     "mode": "flag",
+     "n": 68
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "ac26eb6ed2",
+    "at": "2026-09-08T19:25:54.786Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "9e69be9b60",
+    "at": "2026-09-08T19:25:54.769Z",
+    "action": "session.open",
+    "detail": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1863.0485333333334,
+     "restored": [
+      "3 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "370c6feca6",
+    "at": "2026-09-08T19:25:54.570Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "c55d087c44",
+    "at": "2026-09-08T19:25:54.494Z",
+    "action": "curation.enter",
+    "detail": {
+     "gid": "s0a1cd99454b9",
+     "kind": "ds",
+     "n": 832,
+     "left": 416
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "4189901cee",
+    "at": "2026-09-08T19:25:54.491Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1.671,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Rain",
+    "machine": "StrawBarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   }
+  ],
+  "errors": [],
+  "requests": [
+   {
+    "at": "15:33:56",
+    "method": "GET",
+    "path": "/api/profile",
+    "status": 200,
+    "ms": 0.6,
+    "n": 1
+   },
+   {
+    "at": "15:33:56",
+    "method": "GET",
+    "path": "/api/catalog",
+    "status": 200,
+    "ms": 2.9,
+    "n": 2
+   },
+   {
+    "at": "15:33:56",
+    "method": "GET",
+    "path": "/api/prefs",
+    "status": 200,
+    "ms": 0.6,
+    "n": 3
+   },
+   {
+    "at": "15:33:56",
+    "method": "GET",
+    "path": "/api/pipeline",
+    "status": 200,
+    "ms": 0.1,
+    "n": 4
+   },
+   {
+    "at": "15:33:56",
+    "method": "GET",
+    "path": "/api/probes",
+    "status": 200,
+    "ms": 0.1,
+    "n": 5
+   },
+   {
+    "at": "15:33:56",
+    "method": "GET",
+    "path": "/api/presets/filters",
+    "status": 200,
+    "ms": 1.3,
+    "n": 6
+   },
+   {
+    "at": "15:33:56",
+    "method": "GET",
+    "path": "/api/panels",
+    "status": 200,
+    "ms": 3.3,
+    "n": 7
+   },
+   {
+    "at": "15:33:56",
+    "method": "GET",
+    "path": "/api/jobs",
+    "status": 200,
+    "ms": 0.0,
+    "n": 8
+   },
+   {
+    "at": "15:33:56",
+    "method": "GET",
+    "path": "/api/presets/layouts",
+    "status": 200,
+    "ms": 0.3,
+    "n": 9
+   },
+   {
+    "at": "15:33:56",
+    "method": "POST",
+    "path": "/api/pipeline/check",
+    "status": 200,
+    "ms": 243.4,
+    "body": {
+     "folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+     "track": "session"
+    },
+    "n": 10
+   },
+   {
+    "at": "15:33:56",
+    "method": "GET",
+    "path": "/api/sync/status",
+    "status": 200,
+    "ms": 438.7,
+    "n": 11
+   },
+   {
+    "at": "15:33:56",
+    "method": "POST",
+    "path": "/api/prefs",
+    "status": 200,
+    "ms": 106.6,
+    "body": {
+     "patch": "{themes}"
+    },
+    "n": 12
+   },
+   {
+    "at": "15:33:57",
+    "method": "POST",
+    "path": "/api/csc/open",
+    "status": 200,
+    "ms": 295.2,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "invert": true
+    },
+    "n": 13
+   },
+   {
+    "at": "15:33:57",
+    "method": "POST",
+    "path": "/api/events/nev",
+    "status": 200,
+    "ms": 12.8,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58\\Events.nev",
+     "session_path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "n": 14
+   },
+   {
+    "at": "15:33:57",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 423.5,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "px": 1660,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 15
+   },
+   {
+    "at": "15:33:59",
+    "method": "GET",
+    "path": "/api/toolkit/scopes",
+    "status": 200,
+    "ms": 1490.1,
+    "n": 16
+   },
+   {
+    "at": "15:34:01",
+    "method": "POST",
+    "path": "/api/csc/overview",
+    "status": 200,
+    "ms": 3920.6,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "channel": 0,
+     "bins": 700
+    },
+    "n": 17
+   },
+   {
+    "at": "15:34:01",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 151.4,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "px": 200,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 18
+   },
+   {
+    "at": "15:34:03",
+    "method": "GET",
+    "path": "/api/curation",
+    "status": 200,
+    "ms": 4444.7,
+    "n": 19
+   },
+   {
+    "at": "15:34:03",
+    "method": "GET",
+    "path": "/api/curation",
+    "status": 200,
+    "ms": 4667.8,
+    "n": 20
+   },
+   {
+    "at": "15:34:04",
+    "method": "GET",
+    "path": "/api/curation",
+    "status": 200,
+    "ms": 4263.7,
+    "n": 21
+   },
+   {
+    "at": "15:34:04",
+    "method": "GET",
+    "path": "/api/curation",
+    "status": 200,
+    "ms": 4116.4,
+    "n": 22
+   },
+   {
+    "at": "15:34:09",
+    "method": "GET",
+    "path": "/api/registry",
+    "status": 200,
+    "ms": 5915.7,
+    "n": 23
+   },
+   {
+    "at": "15:34:14",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 313.6,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "px": 1660,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 24
+   },
+   {
+    "at": "15:34:21",
+    "method": "GET",
+    "path": "/api/curation",
+    "status": 200,
+    "ms": 2632.9,
+    "n": 25
+   },
+   {
+    "at": "15:34:22",
+    "method": "GET",
+    "path": "/api/curation",
+    "status": 200,
+    "ms": 2745.6,
+    "n": 26
+   },
+   {
+    "at": "15:34:23",
+    "method": "GET",
+    "path": "/api/registry",
+    "status": 200,
+    "ms": 13406.4,
+    "n": 27
+   },
+   {
+    "at": "15:34:23",
+    "method": "GET",
+    "path": "/api/registry",
+    "status": 200,
+    "ms": 13463.7,
+    "n": 28
+   },
+   {
+    "at": "15:34:23",
+    "method": "GET",
+    "path": "/api/registry",
+    "status": 200,
+    "ms": 13522.0,
+    "n": 29
+   },
+   {
+    "at": "15:34:28",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/open",
+    "status": 200,
+    "ms": 59.0,
+    "body": {
+     "open": true
+    },
+    "n": 30
+   },
+   {
+    "at": "15:34:30",
+    "method": "GET",
+    "path": "/api/curation/s0a1cd99454b9/ds",
+    "status": 200,
+    "ms": 42.2,
+    "n": 31
+   },
+   {
+    "at": "15:34:30",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/open",
+    "status": 200,
+    "ms": 66.6,
+    "body": {
+     "open": true
+    },
+    "n": 32
+   },
+   {
+    "at": "15:34:30",
+    "method": "GET",
+    "path": "/api/registry",
+    "status": 200,
+    "ms": 9517.4,
+    "n": 33
+   },
+   {
+    "at": "15:34:30",
+    "method": "GET",
+    "path": "/api/registry",
+    "status": 200,
+    "ms": 8677.5,
+    "n": 34
+   },
+   {
+    "at": "15:34:31",
+    "method": "GET",
+    "path": "/api/profile",
+    "status": 200,
+    "ms": 1.6,
+    "n": 35
+   },
+   {
+    "at": "15:34:31",
+    "method": "GET",
+    "path": "/api/catalog",
+    "status": 200,
+    "ms": 6.2,
+    "n": 36
+   },
+   {
+    "at": "15:34:31",
+    "method": "GET",
+    "path": "/api/prefs",
+    "status": 200,
+    "ms": 1.0,
+    "n": 37
+   },
+   {
+    "at": "15:34:31",
+    "method": "GET",
+    "path": "/api/pipeline",
+    "status": 200,
+    "ms": 0.1,
+    "n": 38
+   },
+   {
+    "at": "15:34:31",
+    "method": "GET",
+    "path": "/api/probes",
+    "status": 200,
+    "ms": 0.1,
+    "n": 39
+   },
+   {
+    "at": "15:34:31",
+    "method": "GET",
+    "path": "/api/presets/filters",
+    "status": 200,
+    "ms": 1.9,
+    "n": 40
+   },
+   {
+    "at": "15:34:31",
+    "method": "GET",
+    "path": "/api/jobs",
+    "status": 200,
+    "ms": 0.1,
+    "n": 41
+   },
+   {
+    "at": "15:34:31",
+    "method": "GET",
+    "path": "/api/panels",
+    "status": 200,
+    "ms": 8.7,
+    "n": 42
+   },
+   {
+    "at": "15:34:31",
+    "method": "GET",
+    "path": "/api/presets/layouts",
+    "status": 200,
+    "ms": 2.6,
+    "n": 43
+   },
+   {
+    "at": "15:34:31",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 453.5,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "px": 1660,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 44
+   },
+   {
+    "at": "15:34:31",
+    "method": "POST",
+    "path": "/api/pipeline/check",
+    "status": 200,
+    "ms": 612.6,
+    "body": {
+     "folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+     "track": "session"
+    },
+    "n": 45
+   },
+   {
+    "at": "15:34:32",
+    "method": "GET",
+    "path": "/api/sync/status",
+    "status": 200,
+    "ms": 1295.6,
+    "n": 46
+   },
+   {
+    "at": "15:34:32",
+    "method": "POST",
+    "path": "/api/prefs",
+    "status": 200,
+    "ms": 899.0,
+    "body": {
+     "patch": "{themes}"
+    },
+    "n": 47
+   },
+   {
+    "at": "15:34:32",
+    "method": "POST",
+    "path": "/api/csc/open",
+    "status": 200,
+    "ms": 1475.1,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "invert": true
+    },
+    "n": 48
+   },
+   {
+    "at": "15:34:32",
+    "method": "POST",
+    "path": "/api/csc/overview",
+    "status": 200,
+    "ms": 0.7,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "channel": 0,
+     "bins": 700
+    },
+    "n": 49
+   },
+   {
+    "at": "15:34:32",
+    "method": "POST",
+    "path": "/api/events/nev",
+    "status": 200,
+    "ms": 14.5,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58\\Events.nev",
+     "session_path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "n": 50
+   },
+   {
+    "at": "15:34:32",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 176.3,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1.671,
+     "t1": 2.6710000000000003,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 51
+   },
+   {
+    "at": "15:34:32",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 183.5,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "voltage",
+     "t0": 1.671,
+     "t1": 2.6710000000000003,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 52
+   },
+   {
+    "at": "15:34:33",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 300.3,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "theta",
+     "t0": 1.671,
+     "t1": 2.6710000000000003,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 53
+   },
+   {
+    "at": "15:34:33",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 742.9,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "spectrogram",
+     "t0": 1.671,
+     "t1": 2.6710000000000003,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000,
+     "_edge_s": 0.057166666666666664,
+     "_db_mult": 30.0,
+     "_legacy_stft": true
+    },
+    "n": 54
+   },
+   {
+    "at": "15:34:33",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 1404.3,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 55
+   },
+   {
+    "at": "15:34:34",
+    "method": "GET",
+    "path": "/api/curation/s0a1cd99454b9/ds",
+    "status": 200,
+    "ms": 979.7,
+    "n": 56
+   },
+   {
+    "at": "15:34:34",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 150.1,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 57
+   },
+   {
+    "at": "15:34:34",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 172.3,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "voltage",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 58
+   },
+   {
+    "at": "15:34:34",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 269.5,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "theta",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 59
+   },
+   {
+    "at": "15:34:34",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 542.7,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "spectrogram",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000,
+     "_edge_s": 0.057166666666666664,
+     "_db_mult": 30.0,
+     "_legacy_stft": true
+    },
+    "n": 60
+   },
+   {
+    "at": "15:34:37",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.6,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 61
+   },
+   {
+    "at": "15:34:37",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.3,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "theta",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 62
+   },
+   {
+    "at": "15:34:37",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.5,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "voltage",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 63
+   },
+   {
+    "at": "15:34:37",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.4,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "spectrogram",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 64
+   },
+   {
+    "at": "15:34:37",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.5,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 65
+   },
+   {
+    "at": "15:34:37",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.2,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "theta",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 66
+   },
+   {
+    "at": "15:34:37",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.4,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "voltage",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 67
+   },
+   {
+    "at": "15:34:37",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 2.4,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "spectrogram",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 68
+   },
+   {
+    "at": "15:34:39",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.4,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 69
+   },
+   {
+    "at": "15:34:39",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.2,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "theta",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 70
+   },
+   {
+    "at": "15:34:39",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.7,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "voltage",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 71
+   },
+   {
+    "at": "15:34:39",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.7,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "spectrogram",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 72
+   },
+   {
+    "at": "15:34:44",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.4,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 73
+   },
+   {
+    "at": "15:34:44",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.1,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "theta",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 74
+   },
+   {
+    "at": "15:34:44",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.5,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "voltage",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 75
+   },
+   {
+    "at": "15:34:44",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.4,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "spectrogram",
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 76
+   },
+   {
+    "at": "15:34:44",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 305.3,
+    "body": {
+     "path": "Y:\\ProcessedPtenData\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "t0": 1.6709999999999998,
+     "t1": 2.671,
+     "channels": "[30 items]",
+     "px": 1660,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 77
+   },
+   {
+    "at": "15:34:46",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 1055.5,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 78
+   },
+   {
+    "at": "15:34:48",
+    "method": "GET",
+    "path": "/api/errors",
+    "status": 200,
+    "ms": 6.6,
+    "query": "limit=300",
+    "n": 79
+   },
+   {
+    "at": "15:34:48",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 7.6,
+    "n": 80
+   },
+   {
+    "at": "15:34:48",
+    "method": "GET",
+    "path": "/api/errors/grouped",
+    "status": 200,
+    "ms": 6.0,
+    "query": "limit=600",
+    "n": 81
+   },
+   {
+    "at": "15:34:54",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 5.4,
+    "n": 82
+   },
+   {
+    "at": "15:35:37",
+    "method": "GET",
+    "path": "/api/sync/status",
+    "status": 200,
+    "ms": 819.3,
+    "n": 83
+   },
+   {
+    "at": "15:35:37",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 8.6,
+    "n": 84
+   }
+  ]
+ },
+ "notes": []
+}

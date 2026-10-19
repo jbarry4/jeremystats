@@ -1,0 +1,497 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>jarvisname: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:700px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:700px;top:0;right:0;bottom:0;width:calc(100vw - 700px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The name, the mark, and the switch that hides both (js/jarvis.js).
+
+   What this has to catch:
+
+   ONE. A name left behind. "Remove it everywhere" fails quietly: one
+   tooltip, one toast, one view drawn after the switch and still saying
+   Jarvis. So this counts every text node and tooltip in the document --
+   not only the visible ones -- right after hiding, after visiting every
+   view, and for things that arrive later or change in place.
+
+   TWO. A name not put back. The reveal restores what it rewrote; a node
+   it misses keeps saying "the workbench" for the rest of the session, and
+   a decode that is cut short leaves letters scrambled. So the same count
+   has to come back, the stand-in count has to go back to what it was, and
+   the rail must say exactly "Jarvis".
+
+   THREE. A fanfare nobody asked for. Boot, the preferences reconcile and
+   another window changing its mind all arrive at the same `set`; only a
+   person's press plays the reveal.
+
+   FOUR. The mark drifting. The desktop icon is a file and the tab icon is
+   drawn live; both must be what `markSvg` returns.
+
+   Writes nothing to the store: the activity log and the preference writes
+   are recorded by stubs and put back, and the switch is left as found. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(60);
+  }
+  return null;
+}
+function lum(c) {
+  const m = /^#([0-9a-f]{6})/i.exec(String(c).trim());
+  if (!m) return NaN;
+  const v = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16) / 255)
+    .map((n) => n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4));
+  return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  const W = () => frame.contentWindow;
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog')
+                    && ev('!!BARRY.jarvis'), 30000);
+  const J = ev('BARRY.jarvis');
+
+  // What this machine had, so it is what this machine gets back.
+  const wasShown = J.shown();
+  let savedLs = null;
+  try { savedLs = W().localStorage.getItem('barry.jarvis'); } catch (e) {}
+  // A press remembers the choice and logs it -- both writes to the live
+  // store. Recorded instead, for the whole run, and put back at the end.
+  const realLog = ev('BARRY.activity.log');
+  const logged = [];
+  W().BARRY_TEST_LOG = logged;
+  ev('BARRY.activity.log = function (k, d) { window.BARRY_TEST_LOG.push([k, d]); }');
+  const realSet = ev('BARRY.prefs.set');
+  const prefs = [];
+  W().BARRY_TEST_PREFS = prefs;
+  ev('BARRY.prefs.set = function (k, v) { window.BARRY_TEST_PREFS.push([k, JSON.parse(JSON.stringify(v))]); }');
+  const injected = [];
+  try {
+
+  /* A harness that assumes its starting state reports inverted results. */
+  J.set(true, { remember: false });
+  await sleep(150);
+  check('it starts with the name shown', J.shown() === true
+        && D().documentElement.dataset.jarvis === undefined);
+
+  ev(`window.__scan = function () {
+    var out = [], w = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_TEXT), n;
+    while ((n = w.nextNode())) {
+      var p = n.parentNode;
+      if (p && /^(SCRIPT|STYLE)$/.test(p.nodeName)) continue;
+      if (/Jarvis|JARVIS/.test(n.data)) out.push((p && p.nodeName) + ': ' + n.data.trim().slice(0, 80));
+    }
+    document.querySelectorAll('[title],[placeholder],[aria-label],[alt]').forEach(function (e) {
+      ['title','placeholder','aria-label','alt'].forEach(function (a) {
+        var v = e.getAttribute(a); if (v && /Jarvis|JARVIS/.test(v)) out.push('@' + a + ': ' + v.slice(0, 80));
+      });
+    });
+    return out;
+  };
+  window.__wb = function () {
+    var c = 0, w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), n;
+    while ((n = w.nextNode())) { var m = n.data.match(/[Ww]orkbench/g); if (m) c += m.length; }
+    return c;
+  };`);
+  const scan = () => ev('__scan()');
+
+  say('');
+  say('=== the mark ===');
+  const rail = () => D().querySelector('#rail .brand-mark');
+  check('the rail badge is drawn by markSvg',
+        !!rail().querySelector('svg .jm-ring') && !!rail().querySelector('svg .jm-trace')
+        && !rail().querySelector('.jm-flat'));
+  const icon = () => decodeURIComponent((D().querySelector('link[rel="icon"]') || {}).href || '');
+  check('the tab icon is the same mark', icon().indexOf('jm-ring') >= 0,
+        icon().slice(0, 40));
+  const ids = (s) => s.replace(/jm\d+([a-z])/g, 'jmN$1').trim();
+  const file = await (await fetch('/img/jarvis.svg', { cache: 'no-store' })).text();
+  check('img/jarvis.svg is exactly what markSvg draws (tools/make_icons.py)',
+        ids(file) === ids(J.markSvg(J.UVM, 'full', { file: true })));
+  const dfile = await (await fetch('/img/workbench.svg', { cache: 'no-store' })).text();
+  check('img/workbench.svg is exactly the dormant tile',
+        dfile.trim() === J.markSvg(J.UVM, 'tiny', { dormant: true }));
+  const themeNow = ev('BARRY.state.theme');
+  const themes = ev('THEMES.map(function (t) { return t.id; })');
+  let worst = Infinity, worstAt = '';
+  for (const t of themes) {
+    ev("applyTheme('" + t + "', false)");
+    const c = J.colours();
+    const r = (Math.max(lum(c.ink), lum(c.ground)) + 0.05)
+            / (Math.min(lum(c.ink), lum(c.ground)) + 0.05);
+    if (!(lum(c.ground) < lum(c.ink))) { worst = -1; worstAt = t + ' ground is lighter'; break; }
+    if (r < worst) { worst = r; worstAt = t; }
+  }
+  check('every theme: a dark ground under a bright stroke, 3:1 or better',
+        worst >= 3, 'lowest ' + (worst > 0 ? worst.toFixed(2) : worst) + ' on ' + worstAt);
+  ev("applyTheme('" + themeNow + "', false)");
+
+  say('');
+  say('=== the words ===');
+  const cases = [
+    ['Restart Jarvis to pick up Drift.', 'Restart the workbench to pick up Drift.'],
+    ['Jarvis is running older code', 'The workbench is running older code'],
+    ['This Jarvis is running code from before this tab existed.',
+     'This workbench is running code from before this tab existed.'],
+    ['started by a Jarvis since restarted', 'started by a workbench since restarted'],
+    ['Measured. Jarvis’s eegfilt uses 3.', 'Measured. The workbench’s eegfilt uses 3.'],
+    ['Everything Jarvis knows', 'Everything the workbench knows'],
+    ['Jarvis', 'Workbench'],
+    ['Jarvis 2026.10.12.2', 'Workbench 2026.10.12.2'],
+    ['Jarvis — error: no route', 'Workbench — error: no route'],
+    ['web/img/jarvis.ico', 'web/img/jarvis.ico'],
+    ['JARVIS', 'WORKBENCH'],
+  ];
+  for (const [inp, want] of cases) {
+    const got = J.neutral(inp);
+    check(JSON.stringify(inp), got === want, got);
+  }
+
+  say('');
+  say('=== hiding ===');
+  // Every view drawn once first, so the counts below cover all of them --
+  // and so a view drawn for the first time later cannot look like a leak.
+  const views = ['pipeline', 'explorer', 'xplore', 'sessions', 'history', 'errors',
+                 'results', 'eventbank', 'storyboard', 'toolkit', 'misc'];
+  for (const v of views) { ev("setView('" + v + "')"); await sleep(900); }
+  ev("setView('pipeline')");
+  await sleep(300);
+  const n0 = scan().length;
+  const wb0 = ev('__wb()');
+  check('there is something to hide (else every check below is vacuous)', n0 > 50,
+        n0 + ' mentions');
+  // A stub in place before hiding, so the wrapper is seen to wrap it.
+  W().__seen = null;
+  ev('window.confirm = function (m) { window.__seen = m; return true; }');
+  const stub = ev('window.confirm');
+  J.set(false, { remember: false });
+  await sleep(50);
+  check('hidden: the root says so', D().documentElement.dataset.jarvis === 'off');
+  let left = scan();
+  check('no text or tooltip anywhere says Jarvis', left.length === 0,
+        left.length ? left.slice(0, 3).join(' | ') : n0 + ' rewritten');
+  check('the tab title is the stand-in', D().title === 'Workbench', D().title);
+  check('the rail says the stand-in',
+        (D().querySelector('#rail .brand-text strong') || {}).textContent === 'Workbench');
+  check('the rail badge is the plain tile',
+        !!rail().querySelector('.jm-flat') && !rail().querySelector('.jm-ring'));
+  check('the tab icon is the plain tile', icon().indexOf('jm-flat') >= 0
+        && icon().indexOf('jm-ring') < 0);
+  const chip = D().getElementById('jarvisActivate');
+  check('the Activate chip is on screen', !!chip && chip.offsetParent !== null);
+
+  const late = D().createElement('div');
+  late.textContent = 'Restart Jarvis to pick up Drift.';
+  late.title = 'Everything Jarvis knows';
+  D().body.appendChild(late);
+  injected.push(late);
+  await sleep(30);
+  check('something drawn later is rewritten as it arrives',
+        late.textContent === 'Restart the workbench to pick up Drift.', late.textContent);
+  check('and so is its tooltip', late.title === 'Everything the workbench knows', late.title);
+  const inPlace = D().createElement('div');
+  inPlace.textContent = 'nothing yet';
+  D().body.appendChild(inPlace);
+  injected.push(inPlace);
+  await sleep(20);
+  inPlace.firstChild.data = 'Jarvis again';
+  await sleep(30);
+  check('text changed in place is rewritten', inPlace.textContent === 'The workbench again',
+        inPlace.textContent);
+  const keep = D().createElement('div');
+  keep.setAttribute('data-jarvis-keep', '');
+  keep.textContent = 'Jarvis, kept';
+  D().body.appendChild(keep);
+  injected.push(keep);
+  await sleep(30);
+  check('data-jarvis-keep is left alone', keep.textContent === 'Jarvis, kept');
+  keep.remove();
+  W().confirm('Restart Jarvis now?');
+  check('a confirm() says the stand-in, through whatever was there before',
+        W().__seen === 'Restart the workbench now?', W().__seen);
+
+  D().getElementById('themeToggle').click();
+  await sleep(80);
+  const row = D().querySelector('#themePop .jv-opt');
+  check('the theme picker has the switch', !!row);
+  check('and it says it is off without saying the name',
+        !!row && row.getAttribute('role') === 'switch'
+        && row.getAttribute('aria-checked') === 'false'
+        && /hidden/.test(row.textContent) && !/Jarvis/.test(row.textContent),
+        row && row.textContent);
+  D().getElementById('themeToggle').click();
+  await sleep(50);
+
+  const dirty = [];
+  for (const v of views) {
+    ev("setView('" + v + "')");
+    await sleep(900);
+    const l = scan();
+    if (l.length) dirty.push(v + ': ' + l.slice(0, 2).join(' | '));
+  }
+  ev("setView('pipeline')");
+  await sleep(300);
+  check('every one of the eleven views, once drawn, says nothing either',
+        dirty.length === 0, dirty.join(' || '));
+  ev("toast('Restart Jarvis first.')");
+  await sleep(40);
+  check('nor does a toast', scan().length === 0, scan().slice(0, 2).join(' | '));
+
+  say('');
+  say('=== the reveal ===');
+  chip.click();
+  await sleep(20);
+  check('pressing Activate starts the reveal', !!D().getElementById('jarvisReveal')
+        && J.revealing());
+  check('which is not the name yet: it arrives part-way through',
+        D().documentElement.dataset.jarvis === 'off');
+  check('the overlay keeps its own copy of the name from being rewritten',
+        D().getElementById('jarvisReveal').hasAttribute('data-jarvis-keep'));
+  await until(() => J.holding(), 12000);
+  check('it builds, then HOLDS rather than leaving by itself',
+        J.holding() && !!D().getElementById('jarvisReveal'));
+  const goes = Array.from(D().querySelectorAll('#jarvisReveal .jv-go'));
+  check('with four ways on: home, dentate spikes, Monolith, IEDs',
+        goes.map((b) => b.dataset.k).join(',') === 'home,ds,mono,ied',
+        goes.map((b) => b.textContent.trim().slice(0, 24)).join(' | '));
+  check('and "Who is Jarvis?" under the greeting',
+        /Who is Jarvis\?/.test((D().querySelector('#jarvisReveal .jv-who') || {}).textContent || ''));
+  check('the name is shown underneath it', J.shown()
+        && D().documentElement.dataset.jarvis === undefined);
+  await sleep(4000);
+  check('and it is still holding seconds later', J.holding());
+
+  say('');
+  say('=== where the choices go ===');
+  const errs = [];
+  W().addEventListener('error', (e) => errs.push(String(e.message)));
+  const ink = (cv) => {
+    try {
+      const c = cv.getContext('2d');
+      const d = c.getImageData(0, 0, cv.width, cv.height).data;
+      let lit = 0;
+      for (let i = 3; i < d.length; i += 4 * 7) if (d[i] > 0) lit++;
+      return lit;
+    } catch (e) { return -1; }
+  };
+  goes[1].click();
+  await until(() => D().getElementById('jarvisShow'), 3000);
+  await sleep(400);
+  for (const k of ['ds', 'mono', 'ied']) {
+    const tab = D().querySelector('#jarvisShow .jx-tab[data-k="' + k + '"]');
+    if (k !== 'ds') { tab.click(); await sleep(400); }
+    const cv = D().querySelector('#jarvisShow .jx-canvas');
+    const lit = cv ? ink(cv) : 0;
+    check(k + ': the live picture draws', lit > 200, lit + ' lit samples');
+    check(k + ': and says it is simulated',
+          /Simulated/.test((D().querySelector('#jarvisShow .jx-sim') || {}).textContent || ''));
+    const imgs = Array.from(D().querySelectorAll('#jarvisShow .jx-fig img'));
+    await until(() => imgs.every((i) => i.complete), 8000);
+    const bad = imgs.filter((i) => !i.naturalWidth).map((i) => i.getAttribute('src'));
+    check(k + ': every real figure loads (' + imgs.length + ')', imgs.length >= 3 && !bad.length,
+          bad.join(', '));
+  }
+  D().querySelector('#jarvisShow .jx-tab[data-k="mono"]').click();
+  await sleep(200);
+  check('the Monolith tab offers the full page, in a new tab',
+        /full Monolith page/.test((D().querySelector('#jarvisShow .jx-ext') || {}).textContent || ''));
+  D().querySelector('#jarvisShow .jx-fig').click();
+  await sleep(100);
+  check('a figure opens full size', !!D().getElementById('jarvisLight'));
+  D().getElementById('jarvisLight').click();
+  await sleep(50);
+  check('and closes on a click', !D().getElementById('jarvisLight'));
+  const KE = W().KeyboardEvent;
+  D().dispatchEvent(new KE('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(400);
+  check('Escape goes back to the choices, still holding',
+        !D().getElementById('jarvisShow') && J.holding());
+  check('nothing threw in there', errs.length === 0, errs.join(' | '));
+
+  say('');
+  say('=== who is Jarvis ===');
+  D().querySelector('#jarvisReveal .jv-who').click();
+  await sleep(150);
+  const card = D().getElementById('jarvisAbout');
+  check('the card opens', !!card);
+  const ctext = card ? card.textContent : '';
+  check('it says who he was', /Dr\. Paul Jarvis/.test(ctext) && /1987/.test(ctext) && /2021/.test(ctext)
+        && /Larner College of Medicine/.test(ctext));
+  const gift = card && card.querySelector('a.jx-gift');
+  check('it links to the memorial fund, in a new tab',
+        !!gift && gift.getAttribute('href') === 'https://go.uvm.edu/pjarvis'
+        && gift.getAttribute('target') === '_blank' && /noopener/.test(gift.getAttribute('rel') || ''));
+  const ph = card && card.querySelector('.jx-photo img');
+  if (ph) await until(() => ph.complete, 5000);
+  check('his photo loads', !!ph && ph.naturalWidth > 0, ph ? ph.getAttribute('src') : 'no img');
+  D().dispatchEvent(new KE('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(400);
+  check('Escape closes it and leaves the choices up', !D().getElementById('jarvisAbout') && J.holding());
+
+  say('');
+  say('=== home ===');
+  D().querySelector('#jarvisReveal .jv-go[data-k="home"]').click();
+  await until(() => !J.revealing(), 6000);
+  // The names decode in a wave out of the badge; frames do not run under
+  // the runner's virtual clock, so this waits for the wave's own timer.
+  await sleep(3000);
+  check('Home ends it, overlay and all', !J.revealing() && !D().getElementById('jarvisReveal'));
+  check('on the home page', ev('BARRY.state.view') === 'pipeline');
+  check('the name is shown', J.shown() && D().documentElement.dataset.jarvis === undefined);
+  check('the tab title is Jarvis', D().title === 'Jarvis', D().title);
+  check('the rail says exactly Jarvis, nothing still scrambled',
+        (D().querySelector('#rail .brand-text strong') || {}).textContent === 'Jarvis');
+  check('the rail badge is live and visible again',
+        !!rail().querySelector('.jm-ring') && !rail().classList.contains('jv-await'));
+  check('the tab icon is live again', icon().indexOf('jm-ring') >= 0);
+  check('the Activate chip has gone', chip.offsetParent === null);
+  check('what arrived while hidden is put back',
+        late.textContent === 'Restart Jarvis to pick up Drift.'
+        && late.title === 'Everything Jarvis knows', late.textContent);
+  check('what changed in place is put back', inPlace.textContent === 'Jarvis again',
+        inPlace.textContent);
+  const n1 = scan().length;
+  check('every mention is back', n1 >= n0, n0 + ' before, ' + n1 + ' after');
+  // The toast and the two test nodes add workbench-free text; nothing should
+  // still be saying the stand-in that did not before.
+  check('and no stand-in is left behind', ev('__wb()') <= wb0, wb0 + ' before, ' + ev('__wb()') + ' after');
+  check('confirm() is the one that was there before', W().confirm === stub);
+  check('the press was logged once, as jarvis.name',
+        logged.filter((x) => x[0] === 'jarvis.name').length === 1,
+        JSON.stringify(logged));
+  const pressed = prefs.filter((x) => x[0] === 'jarvis').pop();
+  check('and remembered for this host (recorded here, not written)',
+        !!pressed && pressed[1][ev('BARRY.state.catalog.system.hostname')] === true,
+        JSON.stringify(pressed));
+  check('the badge in the rail opens the card about Paul',
+        rail().getAttribute('role') === 'button' && /Who is Jarvis/.test(rail().title || ''));
+  rail().click();
+  await sleep(150);
+  check('and does', !!D().getElementById('jarvisAbout'));
+  D().dispatchEvent(new KE('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(400);
+
+  say('');
+  say('=== skipping ===');
+  J.set(false, { remember: false });
+  await sleep(50);
+  chip.click();
+  await sleep(300);
+  check('the reveal is building', J.revealing() && !J.holding());
+  const PE = W().PointerEvent;
+  W().dispatchEvent(new PE('pointerdown', { bubbles: true }));
+  await sleep(60);
+  check('a click while it builds skips to the choices -- never past them',
+        J.holding() && !!D().getElementById('jarvisReveal') && J.shown());
+  check('with the name complete, nothing still scrambled',
+        Array.from(D().querySelectorAll('#jarvisReveal .jv-word span')).map((s) => s.textContent).join('') === 'JARVIS');
+  D().dispatchEvent(new KE('keydown', { key: '1', bubbles: true }));
+  await until(() => !J.revealing(), 6000);
+  check('and 1 on the keyboard is home', !J.revealing() && !D().getElementById('jarvisReveal'));
+
+  say('');
+  say('=== only a press plays it ===');
+  J.set(false, { remember: false });
+  await sleep(30);
+  J.set(true, { remember: false });
+  await sleep(30);
+  check('set() from boot or the reconcile shows it quietly',
+        J.shown() && !D().getElementById('jarvisReveal'));
+  J.set(false, { remember: false });
+  await sleep(30);
+  const SE = W().StorageEvent;
+  W().dispatchEvent(new SE('storage', { key: 'barry.jarvis', newValue: 'on' }));
+  await sleep(30);
+  check('another window turning it on shows it quietly',
+        J.shown() && !D().getElementById('jarvisReveal'));
+  J.set(false, { remember: false });
+  await sleep(30);
+  chip.click();
+  await sleep(40);
+  chip.click();
+  await sleep(40);
+  check('two presses make one reveal', D().querySelectorAll('#jarvisReveal').length <= 1);
+  J.home();
+  await until(() => !J.revealing(), 8000);
+  check('and Home from mid-build still ends shown', J.shown() && !D().getElementById('jarvisReveal'));
+
+  say('');
+  say('=== replay, and the sounds ===');
+  const remembered = prefs.filter((x) => x[0] === 'jarvis').length;
+  check('Replay plays it again from a shown name', J.replay() === true && J.revealing());
+  check('hiding the names while it builds', D().documentElement.dataset.jarvis === 'off');
+  J.toHold();
+  await sleep(50);
+  check('and holds like the first time', J.holding() && J.shown());
+  J.home();
+  await until(() => !J.revealing(), 6000);
+  check('a replay is not remembered', prefs.filter((x) => x[0] === 'jarvis').length === remembered);
+  const fxo = ev('BARRY.jarvisfx');
+  let threw = '';
+  for (const name of ['unlock', 'charge', 'fire', 'tick', 'chatter', 'chord', 'hover', 'select',
+                      'whoosh', 'land', 'pop', 'zap', 'bell', 'hush']) {
+    try { fxo[name](0.05); } catch (e) { threw += name + ': ' + e.message + ' '; }
+  }
+  check('every sound can be played and none throws', !!fxo && !threw, threw);
+  const wasMuted = fxo.muted;
+  fxo.setMuted(true);
+  check('Sound off is remembered in this browser', W().localStorage.getItem('barry.jarvis.sound') === 'off');
+  fxo.setMuted(wasMuted);
+
+  say('');
+  say('=== remembering ===');
+  const host = ev('BARRY.state.catalog.system.hostname');
+  {
+    J.set(false);
+    check('hiding is remembered in this browser', W().localStorage.getItem('barry.jarvis') === 'off');
+    const p1 = prefs.filter((x) => x[0] === 'jarvis').pop();
+    check('and for this host, in the shared preferences',
+          !!p1 && p1[1][host] === false, JSON.stringify(p1));
+    J.set(true);
+    const p2 = prefs.filter((x) => x[0] === 'jarvis').pop();
+    check('showing likewise', W().localStorage.getItem('barry.jarvis') === 'on'
+          && !!p2 && p2[1][host] === true);
+  }
+  } finally {
+    // Leave the machine as it was found.
+    injected.forEach((n) => n.remove());
+    try { J.set(wasShown, { remember: false }); } catch (e) {}
+    try {
+      if (savedLs === null) W().localStorage.removeItem('barry.jarvis');
+      else W().localStorage.setItem('barry.jarvis', savedLs);
+    } catch (e) {}
+    // BARRY is a const in the frame, not a property of its window, so the
+    // real function goes back through eval.
+    W().__realLog = realLog;
+    W().__realSet = realSet;
+    ev('BARRY.activity.log = window.__realLog; BARRY.prefs.set = window.__realSet');
+  }
+
+  say('');
+  say('ran ' + checks + ' checks');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'jarvisname: ' + fails + ' FAILED'
+                         : 'jarvisname: passed';
+  // The app polls for as long as it is open, which pins the runner's
+  // virtual clock to the wall; blank it so the dump is taken now.
+  frame.src = 'about:blank';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'jarvisname CRASH'; });
+</script></body></html>

@@ -1,0 +1,27 @@
+{
+  "_at": {
+    "key": "2026-09-11T18:28:46.563669+00:00",
+    "rel": "2026-09-11T18:28:46.563669+00:00",
+    "starred": "2026-09-11T18:28:46.563669+00:00",
+    "title": "2026-09-14T14:21:35.027613+00:00",
+    "updated": "2026-09-14T14:21:35.027613+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-14T14:21:35.027613+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "key": "toolkit/bad-channels_all_20260911_135601.csv",
+  "rel": "ToolKit/bad-channels_all_20260911_135601.csv",
+  "starred": false,
+  "tags": [],
+  "title": "Bad channels -- every recorded session",
+  "updated": {
+    "at": "2026-09-14T10:21:35-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

@@ -1,0 +1,837 @@
+{
+ "id": "fedbae88650f",
+ "kind": "bug",
+ "title": "Auto/Pinned on Theta Power Raster",
+ "detail": "When you click on Auto to pin the theta power raster it breaks things",
+ "context": {
+  "view": "errors",
+  "recording": "PTEN m8 s9 2024-02-09",
+  "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+  "panels": [
+   "traces"
+  ],
+  "window": {
+   "t0": 1876.2900000000002,
+   "span": 1.22
+  },
+  "screen": "1745x835",
+  "agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36"
+ },
+ "wants": "",
+ "state": "open",
+ "at": "2026-09-11T12:15:56-0400",
+ "by": "Shahriar Tafti",
+ "machine": "DESKTOP-4H65AI7",
+ "shard": "desktop-4h65ai7-d565",
+ "screenshots": [],
+ "recent": {
+  "window_s": 600,
+  "actions": [
+   {
+    "id": "babd96e76f",
+    "at": "2026-09-11T16:15:49.668Z",
+    "action": "clim.change",
+    "detail": {
+     "clim": null,
+     "panel": "bandpower"
+    },
+    "session": {
+     "key": "m008_s009_2024-02-09_16-43-46",
+     "loose_key": "m008_s009",
+     "label": "PTEN m8 s9 2024-02-09",
+     "mouse": 8,
+     "session": 9,
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46"
+    },
+    "view": "xplore",
+    "user": "Shahriar Tafti",
+    "machine": "Bluebarry",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "48c4045121",
+    "at": "2026-09-11T16:15:47.628Z",
+    "action": "clim.change",
+    "detail": {
+     "clim": [
+      -1,
+      1
+     ],
+     "panel": "bandpower"
+    },
+    "session": {
+     "key": "m008_s009_2024-02-09_16-43-46",
+     "loose_key": "m008_s009",
+     "label": "PTEN m8 s9 2024-02-09",
+     "mouse": 8,
+     "session": 9,
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46"
+    },
+    "view": "xplore",
+    "user": "Shahriar Tafti",
+    "machine": "Bluebarry",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "7c727bb217",
+    "at": "2026-09-11T16:15:44.751Z",
+    "action": "panel.change",
+    "detail": {
+     "from": "traces",
+     "to": "bandpower",
+     "pane": 0,
+     "alsoSet": 0
+    },
+    "session": {
+     "key": "m008_s009_2024-02-09_16-43-46",
+     "loose_key": "m008_s009",
+     "label": "PTEN m8 s9 2024-02-09",
+     "mouse": 8,
+     "session": 9,
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46"
+    },
+    "view": "xplore",
+    "user": "Shahriar Tafti",
+    "machine": "Bluebarry",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "395e35fd72",
+    "at": "2026-09-11T16:15:36.374Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m008_s009_2024-02-09_16-43-46",
+     "loose_key": "m008_s009",
+     "label": "PTEN m8 s9 2024-02-09",
+     "mouse": 8,
+     "session": 9,
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46"
+    },
+    "view": "xplore",
+    "user": "Shahriar Tafti",
+    "machine": "Bluebarry",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "e1fba9eca7",
+    "at": "2026-09-11T16:15:36.316Z",
+    "action": "session.open",
+    "detail": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 2124.544,
+     "restored": [
+      "1 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m008_s009_2024-02-09_16-43-46",
+     "loose_key": "m008_s009",
+     "label": "PTEN m8 s9 2024-02-09",
+     "mouse": 8,
+     "session": 9,
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46"
+    },
+    "view": "errors",
+    "user": "Shahriar Tafti",
+    "machine": "Bluebarry",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "de1d2234ec",
+    "at": "2026-09-11T16:15:34.420Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Shahriar Tafti",
+    "machine": "Bluebarry",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "af44b9c07b",
+    "at": "2026-09-11T16:14:49.093Z",
+    "action": "errors.export",
+    "detail": {
+     "open": 46
+    },
+    "session": {},
+    "view": "errors",
+    "user": "Shahriar Tafti",
+    "machine": "Bluebarry",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "a7fe32282d",
+    "at": "2026-09-11T16:14:21.560Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m008_s009_2024-02-09_16-43-46",
+     "loose_key": "m008_s009",
+     "label": "PTEN m8 s9 2024-02-09",
+     "mouse": 8,
+     "session": 9,
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46"
+    },
+    "view": "xplore",
+    "user": "Shahriar Tafti",
+    "machine": "Bluebarry",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "ab4308b539",
+    "at": "2026-09-11T16:14:21.496Z",
+    "action": "session.open",
+    "detail": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 2124.544,
+     "restored": [
+      "1 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m008_s009_2024-02-09_16-43-46",
+     "loose_key": "m008_s009",
+     "label": "PTEN m8 s9 2024-02-09",
+     "mouse": 8,
+     "session": 9,
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46"
+    },
+    "view": "pipeline",
+    "user": "Shahriar Tafti",
+    "machine": "Bluebarry",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "67684e4dc1",
+    "at": "2026-09-11T16:14:19.676Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Shahriar Tafti",
+    "machine": "Bluebarry",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   }
+  ],
+  "errors": [
+   {
+    "id": "97ea7f3b354a",
+    "at": "2026-09-11T12:15:08-04:00",
+    "where": "cloud.sync",
+    "message": "GET /rest/v1/curation_events?updated_at=gt.2026-09-11T16:14:32.565615%2B00:00&select=*&limit=1000&offset=0 -> HTTP 504 {\"message\":\"Gateway Timeout\"}\n\nThe database itself returned an error, not a refusal -- nothing is wrong with the request or the key. These are usually brief; the next sync will pick up where this one stopped. If it keeps happening, check the Supabase project status page.",
+    "detail": null,
+    "context": {},
+    "machine": "Bluebarry",
+    "shard": "desktop-4h65ai7-d565",
+    "user": "Shahriar Tafti"
+   }
+  ],
+  "requests": [
+   {
+    "at": "12:14:19",
+    "method": "GET",
+    "path": "/api/profile",
+    "status": 200,
+    "ms": 2.1,
+    "n": 1
+   },
+   {
+    "at": "12:14:19",
+    "method": "GET",
+    "path": "/api/prefs",
+    "status": 200,
+    "ms": 20.8,
+    "n": 2
+   },
+   {
+    "at": "12:14:19",
+    "method": "GET",
+    "path": "/api/catalog",
+    "status": 200,
+    "ms": 45.9,
+    "n": 3
+   },
+   {
+    "at": "12:14:19",
+    "method": "GET",
+    "path": "/api/pipeline",
+    "status": 200,
+    "ms": 0.3,
+    "n": 4
+   },
+   {
+    "at": "12:14:19",
+    "method": "GET",
+    "path": "/api/presets/filters",
+    "status": 200,
+    "ms": 0.7,
+    "n": 5
+   },
+   {
+    "at": "12:14:19",
+    "method": "GET",
+    "path": "/api/probes",
+    "status": 200,
+    "ms": 0.1,
+    "n": 6
+   },
+   {
+    "at": "12:14:19",
+    "method": "GET",
+    "path": "/api/jobs",
+    "status": 200,
+    "ms": 0.2,
+    "n": 7
+   },
+   {
+    "at": "12:14:19",
+    "method": "GET",
+    "path": "/api/panels",
+    "status": 200,
+    "ms": 16.5,
+    "n": 8
+   },
+   {
+    "at": "12:14:19",
+    "method": "GET",
+    "path": "/api/presets/layouts",
+    "status": 200,
+    "ms": 2.1,
+    "n": 9
+   },
+   {
+    "at": "12:14:19",
+    "method": "GET",
+    "path": "/api/notes",
+    "status": 200,
+    "ms": 184.0,
+    "n": 10
+   },
+   {
+    "at": "12:14:20",
+    "method": "POST",
+    "path": "/api/pipeline/check",
+    "status": 200,
+    "ms": 309.1,
+    "body": {
+     "folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+     "track": "session"
+    },
+    "n": 11
+   },
+   {
+    "at": "12:14:21",
+    "method": "POST",
+    "path": "/api/csc/open",
+    "status": 200,
+    "ms": 1554.9,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+     "invert": true
+    },
+    "n": 12
+   },
+   {
+    "at": "12:14:21",
+    "method": "POST",
+    "path": "/api/prefs",
+    "status": 200,
+    "ms": 1480.2,
+    "body": {
+     "patch": "{themes}"
+    },
+    "n": 13
+   },
+   {
+    "at": "12:14:21",
+    "method": "POST",
+    "path": "/api/events/nev",
+    "status": 200,
+    "ms": 1.4,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46\\Events.nev",
+     "session_path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46"
+    },
+    "n": 14
+   },
+   {
+    "at": "12:14:21",
+    "method": "GET",
+    "path": "/api/sync/status",
+    "status": 200,
+    "ms": 1847.9,
+    "n": 15
+   },
+   {
+    "at": "12:14:21",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 302.2,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+     "even_only": false,
+     "invert": true,
+     "t0": 1876.2900000000002,
+     "t1": 1877.5100000000002,
+     "channels": "[32 items]",
+     "px": 1485,
+     "highpass": 5,
+     "lowpass": 100,
+     "notch": 60,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "ylim": null,
+     "full_rate": false
+    },
+    "n": 16
+   },
+   {
+    "at": "12:14:22",
+    "method": "POST",
+    "path": "/api/csc/overview",
+    "status": 200,
+    "ms": 460.8,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+     "even_only": false,
+     "invert": true,
+     "channel": 1,
+     "bins": 700
+    },
+    "n": 17
+   },
+   {
+    "at": "12:14:22",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 275.8,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+     "even_only": false,
+     "invert": true,
+     "t0": 1876.2900000000002,
+     "t1": 1877.5100000000002,
+     "channels": "[32 items]",
+     "px": 1485,
+     "highpass": 5,
+     "lowpass": 100,
+     "notch": 60,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "ylim": null,
+     "full_rate": false
+    },
+    "n": 18
+   },
+   {
+    "at": "12:14:45",
+    "method": "GET",
+    "path": "/api/errors",
+    "status": 200,
+    "ms": 35.5,
+    "query": "limit=300",
+    "n": 19
+   },
+   {
+    "at": "12:14:45",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 43.9,
+    "n": 20
+   },
+   {
+    "at": "12:14:45",
+    "method": "GET",
+    "path": "/api/errors/grouped",
+    "status": 200,
+    "ms": 445.6,
+    "query": "limit=600",
+    "n": 21
+   },
+   {
+    "at": "12:14:46",
+    "method": "GET",
+    "path": "/api/devices",
+    "status": 200,
+    "ms": 1025.1,
+    "n": 22
+   },
+   {
+    "at": "12:14:51",
+    "method": "GET",
+    "path": "/api/errors/export",
+    "status": 200,
+    "ms": 2371.7,
+    "n": 23
+   },
+   {
+    "at": "12:14:58",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 22.5,
+    "n": 24
+   },
+   {
+    "at": "12:15:34",
+    "method": "GET",
+    "path": "/api/notes",
+    "status": 200,
+    "ms": 0.9,
+    "n": 25
+   },
+   {
+    "at": "12:15:34",
+    "method": "GET",
+    "path": "/api/profile",
+    "status": 200,
+    "ms": 4.0,
+    "n": 26
+   },
+   {
+    "at": "12:15:34",
+    "method": "GET",
+    "path": "/api/prefs",
+    "status": 200,
+    "ms": 5.9,
+    "n": 27
+   },
+   {
+    "at": "12:15:34",
+    "method": "GET",
+    "path": "/api/catalog",
+    "status": 200,
+    "ms": 44.4,
+    "n": 28
+   },
+   {
+    "at": "12:15:34",
+    "method": "GET",
+    "path": "/api/pipeline",
+    "status": 200,
+    "ms": 0.2,
+    "n": 29
+   },
+   {
+    "at": "12:15:34",
+    "method": "GET",
+    "path": "/api/presets/filters",
+    "status": 200,
+    "ms": 0.9,
+    "n": 30
+   },
+   {
+    "at": "12:15:34",
+    "method": "GET",
+    "path": "/api/probes",
+    "status": 200,
+    "ms": 0.1,
+    "n": 31
+   },
+   {
+    "at": "12:15:34",
+    "method": "GET",
+    "path": "/api/panels",
+    "status": 200,
+    "ms": 8.6,
+    "n": 32
+   },
+   {
+    "at": "12:15:34",
+    "method": "GET",
+    "path": "/api/jobs",
+    "status": 200,
+    "ms": 0.1,
+    "n": 33
+   },
+   {
+    "at": "12:15:34",
+    "method": "GET",
+    "path": "/api/presets/layouts",
+    "status": 200,
+    "ms": 1.7,
+    "n": 34
+   },
+   {
+    "at": "12:15:34",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 28.1,
+    "n": 35
+   },
+   {
+    "at": "12:15:34",
+    "method": "GET",
+    "path": "/api/errors",
+    "status": 200,
+    "ms": 47.4,
+    "query": "limit=300",
+    "n": 36
+   },
+   {
+    "at": "12:15:34",
+    "method": "GET",
+    "path": "/api/errors/grouped",
+    "status": 200,
+    "ms": 284.3,
+    "query": "limit=600",
+    "n": 37
+   },
+   {
+    "at": "12:15:34",
+    "method": "POST",
+    "path": "/api/pipeline/check",
+    "status": 200,
+    "ms": 389.2,
+    "body": {
+     "folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+     "track": "session"
+    },
+    "n": 38
+   },
+   {
+    "at": "12:15:35",
+    "method": "GET",
+    "path": "/api/devices",
+    "status": 200,
+    "ms": 1200.5,
+    "n": 39
+   },
+   {
+    "at": "12:15:36",
+    "method": "POST",
+    "path": "/api/csc/open",
+    "status": 200,
+    "ms": 1631.4,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+     "invert": true
+    },
+    "n": 40
+   },
+   {
+    "at": "12:15:36",
+    "method": "POST",
+    "path": "/api/prefs",
+    "status": 200,
+    "ms": 1551.3,
+    "body": {
+     "patch": "{themes}"
+    },
+    "n": 41
+   },
+   {
+    "at": "12:15:36",
+    "method": "POST",
+    "path": "/api/events/nev",
+    "status": 200,
+    "ms": 1.3,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46\\Events.nev",
+     "session_path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46"
+    },
+    "n": 42
+   },
+   {
+    "at": "12:15:36",
+    "method": "GET",
+    "path": "/api/sync/status",
+    "status": 200,
+    "ms": 1929.2,
+    "n": 43
+   },
+   {
+    "at": "12:15:36",
+    "method": "POST",
+    "path": "/api/csc/overview",
+    "status": 200,
+    "ms": 1.6,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+     "even_only": false,
+     "invert": true,
+     "channel": 1,
+     "bins": 700
+    },
+    "n": 44
+   },
+   {
+    "at": "12:15:36",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 313.8,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+     "even_only": false,
+     "invert": true,
+     "t0": 1876.2900000000002,
+     "t1": 1877.5100000000002,
+     "channels": "[32 items]",
+     "px": 1485,
+     "highpass": 5,
+     "lowpass": 100,
+     "notch": 60,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "ylim": null,
+     "full_rate": false
+    },
+    "n": 45
+   },
+   {
+    "at": "12:15:45",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 482.3,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+     "even_only": false,
+     "invert": true,
+     "panel": "bandpower",
+     "t0": 1876.2900000000002,
+     "t1": 1877.5100000000002,
+     "channels": "[32 items]",
+     "highpass": 5,
+     "lowpass": 100,
+     "notch": 60,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "full_rate": false,
+     "channel": 1,
+     "band_lo": 4,
+     "band_hi": 12,
+     "band_step": 0.5,
+     "band_bw": 0.5,
+     "band_scale": "log"
+    },
+    "n": 46
+   },
+   {
+    "at": "12:15:47",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 204.9,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+     "even_only": false,
+     "invert": true,
+     "panel": "bandpower",
+     "t0": 1876.2900000000002,
+     "t1": 1877.5100000000002,
+     "channels": "[32 items]",
+     "highpass": 5,
+     "lowpass": 100,
+     "notch": 60,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "max_cols": 1800,
+     "clim": [
+      -1,
+      1
+     ],
+     "full_rate": false,
+     "channel": 1,
+     "band_lo": 4,
+     "band_hi": 12,
+     "band_step": 0.5,
+     "band_bw": 0.5,
+     "band_scale": "log"
+    },
+    "n": 47
+   },
+   {
+    "at": "12:15:49",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.3,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+     "even_only": false,
+     "invert": true,
+     "panel": "bandpower",
+     "t0": 1876.2900000000002,
+     "t1": 1877.5100000000002,
+     "channels": "[32 items]",
+     "highpass": 5,
+     "lowpass": 100,
+     "notch": 60,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "full_rate": false,
+     "channel": 1,
+     "band_lo": 4,
+     "band_hi": 12,
+     "band_step": 0.5,
+     "band_bw": 0.5,
+     "band_scale": "log"
+    },
+    "n": 48
+   }
+  ]
+ },
+ "notes": []
+}

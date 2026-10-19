@@ -1,0 +1,160 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — picking a row keeps your place</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:40vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:60vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* One claim, measured in pixels: clicking a row in the Event Bank does not
+   move the list.
+
+   It is worth a harness rather than a look because the failure is invisible
+   in the code. `render()` produces a correct list every time -- the bug is
+   that it produces a NEW scrollable element, so the browser starts it at
+   zero and the row you had scrolled to is gone off the top. Reading the
+   markup tells you nothing; reading `scrollTop` before and after tells you
+   everything.
+
+   Both sides are checked, because the events side has had the fix for a
+   while and the sheets side had the identical bug sitting next to it. A test
+   for one and not the other is how that happened. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 200, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(900);
+  const run = (src) => W().eval(src);
+
+  /* The scroller is whichever ancestor of the rows actually overflows. Found
+     rather than assumed: the list is `.bank-tree` inside `.bank-split`
+     inside `#bankBody`, and which of those scrolls is a CSS decision that
+     has changed before. */
+  const scrollerOf = (row) => {
+    let n = row;
+    while (n && n !== D().body) {
+      if (n.scrollHeight > n.clientHeight + 4) return n;
+      n = n.parentElement;
+    }
+    return null;
+  };
+
+  run("setView('eventbank')");
+  await untilN(() => D().querySelector('#bankBody .bank-row'), 200);
+  await sleep(1200);
+
+  for (const side of ['events', 'layers']) {
+    hd(side === 'events' ? '1. The events list' : '2. The layer sheets');
+
+    if (side === 'layers') {
+      /* Whatever the tab is called on this build -- it has been "Layers"
+         and "StrataScope". */
+      const tab = Array.from(D().querySelectorAll('.pill, .tab, button'))
+        .find((b) => /^(Layers|StrataScope)$/i.test(
+          (b.textContent || '').trim()));
+      ck('there is a layers tab', !!tab,
+         Array.from(D().querySelectorAll('.pill')).map(
+           (b) => b.textContent.trim()).join(' | '));
+      if (!tab) continue;
+      tab.click();
+      await untilN(() => D().querySelector('#bankBody .bank-row[data-gid]'),
+                  200);
+      await sleep(1000);
+    }
+
+    const rows = () => Array.from(D().querySelectorAll(
+      side === 'layers' ? '#bankBody .bank-row[data-gid]'
+                        : '#bankBody .bank-row[data-id]'));
+    const list = rows();
+    p('  ' + list.length + ' row(s)');
+    ck('there are enough rows to scroll', list.length >= 8, list.length);
+    if (list.length < 8) continue;
+
+    const scroller = scrollerOf(list[0]);
+    ck('the list actually scrolls', !!scroller,
+       'nothing between the row and the body overflows');
+    if (!scroller) continue;
+    p('  scroller: .' + (scroller.className || scroller.id || '?')
+      + '  ' + scroller.scrollHeight + 'px of ' + scroller.clientHeight);
+
+    /* Down to a row that is off screen, so "it went back to the top" is a
+       visible difference rather than a rounding one. */
+    scroller.scrollTop = Math.min(220, scroller.scrollHeight
+                                       - scroller.clientHeight);
+    await sleep(250);
+    const was = scroller.scrollTop;
+    ck('it can be scrolled away from the top', was > 20, was + 'px');
+
+    /* A row that is currently in view, so the click is the one a person
+       would make. */
+    const top = scroller.getBoundingClientRect().top;
+    const target = rows().find((r) => {
+      const y = r.getBoundingClientRect().top - top;
+      return y > 10 && y < scroller.clientHeight - 30;
+    }) || rows()[rows().length - 1];
+    const label = (target.querySelector('strong') || {}).textContent || '?';
+    p('  clicking: ' + label.slice(0, 40));
+    target.click();
+
+    /* Twice over, because the old code moved the list once on the click and
+       again when the fetch came back -- so a check that looked immediately
+       would have passed on the broken version. */
+    await sleep(400);
+    const straight = D().querySelector(
+      side === 'layers' ? '#bankBody .bank-row[data-gid]'
+                        : '#bankBody .bank-row[data-id]');
+    const nowScroller = straight ? scrollerOf(straight) : null;
+    const after1 = nowScroller ? nowScroller.scrollTop : -1;
+    await sleep(2200);
+    const after2 = nowScroller ? nowScroller.scrollTop : -1;
+    p('  scrollTop: ' + was + ' -> ' + after1 + ' -> ' + after2);
+
+    ck('the list is the same element afterwards', nowScroller === scroller,
+       nowScroller === scroller ? '' : 'it was rebuilt');
+    ck('your place is kept when the row is clicked', after1 === was,
+       was + ' -> ' + after1);
+    /* The one that actually bit: the detail arrives from the server a
+       moment later, and re-rendering then is just as bad. */
+    ck('and kept when the detail comes back', after2 === was,
+       was + ' -> ' + after2);
+
+    /* And the click still did its job -- a fix that stopped the selection
+       working would pass every check above. */
+    ck('the row is marked as selected',
+       target.classList.contains('on')
+       || target.classList.contains('active'),
+       target.className);
+    const detail = D().querySelector('.bank-detail');
+    ck('and the detail panel shows something',
+       !!detail && detail.textContent.trim().length > 20,
+       detail ? detail.textContent.trim().slice(0, 40) : 'no .bank-detail');
+  }
+
+  hd('Done');
+  p(bad ? bad + ' FAILURE(S)' : 'all checks passed');
+} catch (e) {
+  p('THREW: ' + (e && e.stack || e));
+  p('1 FAILURE(S)');
+} })();
+</script>

@@ -1,0 +1,1551 @@
+{
+  "_at": {
+    "accepted_at": "2026-10-06T15:48:27.403045+00:00",
+    "accepted_by": "2026-10-06T15:48:27.403045+00:00",
+    "applied": "2026-10-06T15:48:27.403045+00:00",
+    "at": "2026-10-06T15:48:27.403045+00:00",
+    "bank": "2026-10-06T15:48:27.403045+00:00",
+    "basis": "2026-10-06T15:48:27.403045+00:00",
+    "columns": "2026-10-06T15:48:27.403045+00:00",
+    "counts": "2026-10-06T15:48:27.403045+00:00",
+    "ds_loss": "2026-10-06T15:48:27.403045+00:00",
+    "gid": "2026-10-06T15:48:27.403045+00:00",
+    "id": "2026-10-06T15:48:27.403045+00:00",
+    "kind": "2026-10-06T15:48:27.403045+00:00",
+    "model": "2026-10-06T15:48:27.403045+00:00",
+    "policy": "2026-10-06T15:48:27.403045+00:00",
+    "rows": "2026-10-06T15:48:27.403045+00:00",
+    "run_id": "2026-10-06T15:48:27.403045+00:00",
+    "session_label": "2026-10-06T15:48:27.403045+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-06T15:48:27.403045+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "accepted_at": "2026-10-06T11:48:27-0400",
+  "accepted_by": "Rain Younger",
+  "applied": 0,
+  "at": "2026-10-06T11:47:58-0400",
+  "bank": {
+    "entry": "80ca39fd6931",
+    "version": 5
+  },
+  "basis": "neuralynx_true",
+  "columns": [
+    "id",
+    "start",
+    "p_ds",
+    "avery",
+    "person_before",
+    "person_by"
+  ],
+  "counts": {
+    "flag": 49,
+    "garbage": 69,
+    "review": 11,
+    "spike": 57
+  },
+  "ds_loss": 0.2,
+  "gid": "s14510e30e1bd",
+  "id": "b562e3aa99a8",
+  "kind": "ds",
+  "model": "avery_gd",
+  "policy": {
+    "t_ds": 0.994631,
+    "t_garbage": 0.90972,
+    "t_review": 0.989232
+  },
+  "rows": [
+    [
+      "ebf82165c8c",
+      6.690965,
+      0.4939,
+      "garbage",
+      "garbage",
+      "Rain Younger"
+    ],
+    [
+      "e805e644f4c",
+      6.721965,
+      0.9398,
+      "flag",
+      "garbage",
+      "Rain Younger"
+    ],
+    [
+      "ebbc3681ed9",
+      19.0939,
+      0.6086,
+      "garbage",
+      "garbage",
+      "Rain Younger"
+    ],
+    [
+      "ec9d7a18075",
+      19.1279,
+      0.9886,
+      "flag",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "ed9cd3a2cbc",
+      29.735844,
+      0.9981,
+      "spike",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "eaaf1c0ff38",
+      64.396663,
+      0.9362,
+      "flag",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "efe7ba38fff",
+      79.045586,
+      0.6638,
+      "garbage",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e65d739a20c",
+      85.750551,
+      0.9436,
+      "flag",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e3ffba64382",
+      98.539485,
+      0.622,
+      "garbage",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e9e84347588",
+      132.959304,
+      0.9222,
+      "flag",
+      "garbage",
+      "Rain Younger"
+    ],
+    [
+      "e2a358eef86",
+      132.988304,
+      0.9883,
+      "flag",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "ea0082299c6",
+      136.120288,
+      0.9951,
+      "spike",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e936b497447",
+      138.284277,
+      0.9972,
+      "spike",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e455f669ae1",
+      138.915273,
+      0.9989,
+      "spike",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "ebd14d446c1",
+      141.358261,
+      0.9951,
+      "spike",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "eb4ba3cd048",
+      154.068194,
+      0.5098,
+      "garbage",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e5207b213c2",
+      170.297109,
+      0.9689,
+      "flag",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e2e780952c2",
+      180.670055,
+      0.9521,
+      "flag",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e5a8752e037",
+      180.671055,
+      0.9902,
+      "review",
+      "garbage",
+      "Rain Younger"
+    ],
+    [
+      "e4c4d54f1c3",
+      188.358015,
+      0.9974,
+      "spike",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "eee4c4d7f95",
+      188.668013,
+      0.9957,
+      "spike",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e9fceb48463",
+      193.421988,
+      0.999,
+      "spike",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e27f592131b",
+      204.365931,
+      0.8386,
+      "garbage",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e22060b16ba",
+      211.554893,
+      0.9947,
+      "spike",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e766765f224",
+      213.112885,
+      0.9744,
+      "flag",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e8d627f1569",
+      227.312811,
+      0.9987,
+      "spike",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e87b22c81b5",
+      230.704793,
+      0.9993,
+      "spike",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "ef02a5f38b7",
+      232.025786,
+      0.9973,
+      "spike",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "ef40b969b5f",
+      242.235733,
+      0.9977,
+      "spike",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "ec851041627",
+      242.84373,
+      0.9914,
+      "review",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e5a8965342c",
+      243.047729,
+      0.0878,
+      "garbage",
+      "garbage",
+      "Rain Younger"
+    ],
+    [
+      "e733d7ec3ec",
+      255.256665,
+      0.9488,
+      "flag",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "ef850d28da8",
+      265.394612,
+      0.6972,
+      "garbage",
+      "spike",
+      "Rain Younger"
+    ],
+    [
+      "e3544ff995e",
+      281.09953,
+      0.344,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e6ee4e1056f",
+      286.261503,
+      0.9976,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e2a491ebb88",
+      286.879499,
+      0.9987,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "ef7f910e699",
+      287.390497,
+      0.9889,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "eeb9406cdf2",
+      288.871489,
+      0.9427,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e5909bee18c",
+      299.570433,
+      0.954,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "eee43aecb93",
+      299.734432,
+      0.3263,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ea900517cf7",
+      300.003431,
+      0.9846,
+      "flag",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e46effbfb98",
+      300.11343,
+      0.4407,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e3e9a8fd229",
+      300.14743,
+      0.7411,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e151f96e3a9",
+      303.510412,
+      0.9976,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e666d3f72a7",
+      313.58436,
+      0.9552,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e74285ef858",
+      313.643359,
+      0.1803,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e15551aad79",
+      319.705328,
+      0.9466,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e450e90fb13",
+      327.061289,
+      0.9994,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "ea394ad5039",
+      334.942248,
+      0.992,
+      "review",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e95835cefde",
+      351.199163,
+      0.356,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e3b81202f7f",
+      351.640161,
+      0.9924,
+      "review",
+      "review",
+      "Avery (AI)"
+    ],
+    [
+      "e4053e6ad96",
+      355.214142,
+      0.4839,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ee12ce34ce4",
+      355.286141,
+      0.988,
+      "flag",
+      "review",
+      "Avery (AI)"
+    ],
+    [
+      "ee29542b41e",
+      359.750118,
+      0.9982,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e9f0c4eb984",
+      366.043085,
+      0.9989,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e776e345f60",
+      367.611077,
+      0.9935,
+      "review",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "ef1f174d129",
+      373.057048,
+      0.9892,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e1b03e01958",
+      379.465015,
+      0.2811,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e28d1d4d64f",
+      387.715972,
+      0.8017,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e2ee83d2150",
+      387.799971,
+      0.9703,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e4981231427",
+      391.83995,
+      0.8854,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ef4426f8113",
+      399.194912,
+      0.599,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e25863b47dd",
+      403.44189,
+      0.8853,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e282fdc1e55",
+      406.069876,
+      0.9068,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ec5ad98a9b1",
+      411.787846,
+      0.6387,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e256553464a",
+      412.714841,
+      0.9905,
+      "review",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "ebdfd582b18",
+      419.754804,
+      0.9904,
+      "review",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "ef77a6ef50e",
+      420.069803,
+      0.9981,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e28298be4d4",
+      422.901788,
+      0.9657,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e7de0050624",
+      424.867777,
+      0.9667,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e46b212132f",
+      439.6907,
+      0.5763,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e9cde13193b",
+      439.833699,
+      0.7497,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "eeec86c9dcb",
+      477.249503,
+      0.7899,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "eb5549ab69d",
+      489.35444,
+      0.9965,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e405d508ef5",
+      495.832406,
+      0.721,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "eb03a6bc283",
+      495.877406,
+      0.9797,
+      "flag",
+      "review",
+      "Avery (AI)"
+    ],
+    [
+      "e2579b068b9",
+      498.529392,
+      0.6397,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e3c507bdcd7",
+      518.581287,
+      0.9981,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "ee5ba75df2f",
+      518.745286,
+      0.9154,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ea717da3349",
+      523.334262,
+      0.9991,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e51cff12deb",
+      529.47023,
+      0.8161,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e4a3a8cd6c4",
+      530.454225,
+      0.5693,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ed2aec33247",
+      530.800223,
+      0.0413,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e0975fd97ec",
+      531.042222,
+      0.0365,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e98ac57db8c",
+      532.546214,
+      0.5934,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ee38a6cbdfd",
+      540.003175,
+      0.9988,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "eb8efa1c50f",
+      610.760805,
+      0.7476,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e0016f2557a",
+      614.618785,
+      0.866,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e65caa24590",
+      622.703743,
+      0.9931,
+      "review",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "eb4dfed1342",
+      630.228703,
+      0.9341,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ea2acac8e54",
+      630.285703,
+      0.5226,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e6e591dc47b",
+      630.317703,
+      0.9743,
+      "flag",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "eec0b77583b",
+      639.154656,
+      0.8424,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "efe9da6801c",
+      640.130651,
+      0.8789,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "efc53345043",
+      640.917647,
+      0.8207,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ef39a674665",
+      680.188442,
+      0.4992,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e6c7ddda423",
+      682.907428,
+      0.9941,
+      "review",
+      "review",
+      "Avery (AI)"
+    ],
+    [
+      "e095a0ae282",
+      683.249426,
+      0.9972,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e4008b8fe5c",
+      683.789423,
+      0.8901,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ef59aff19f9",
+      688.938396,
+      0.7625,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ee37da572f3",
+      688.978396,
+      0.9837,
+      "flag",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "edf9910a4c4",
+      689.289394,
+      0.9981,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e0044f56325",
+      699.959338,
+      0.9984,
+      "spike",
+      "review",
+      "Avery (AI)"
+    ],
+    [
+      "ed7d42922c1",
+      700.627335,
+      0.9518,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e30b08a2247",
+      701.258332,
+      0.998,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "eb287084b37",
+      706.205306,
+      0.5335,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "edc1ca75080",
+      715.613257,
+      0.9993,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "eaa776605f4",
+      719.158238,
+      0.9959,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e0a18679230",
+      722.375221,
+      0.8031,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e55f2c6bd92",
+      729.555184,
+      0.9985,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "ea3ac7cff23",
+      734.993155,
+      0.9983,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e1dec29a944",
+      739.222133,
+      0.9988,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e8c3775687f",
+      748.821083,
+      0.9517,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e12ab6e811d",
+      749.043082,
+      0.8874,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e0a712edfb8",
+      750.483074,
+      0.7238,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e0886669f52",
+      782.343907,
+      0.9972,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e3b03a66623",
+      782.909904,
+      0.9975,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "ed03d504ec7",
+      785.72389,
+      0.9993,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e70ab104d26",
+      785.917889,
+      0.9869,
+      "flag",
+      "review",
+      "Avery (AI)"
+    ],
+    [
+      "e4f93895216",
+      808.067773,
+      0.7096,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e576fc890b9",
+      808.386771,
+      0.9971,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e965b549e87",
+      812.654749,
+      0.9987,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "ea8eb7443fb",
+      817.397724,
+      0.9137,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e978e22638e",
+      854.41453,
+      0.9982,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e8ea7bffd51",
+      899.903292,
+      0.9349,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e0ee6137b6c",
+      899.928292,
+      0.9864,
+      "flag",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e15593f8470",
+      917.6222,
+      0.9992,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e89055fab11",
+      955.194003,
+      0.0445,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e95747e22d6",
+      956.231998,
+      0.9984,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e84f02ac6e4",
+      1029.123616,
+      0.1619,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ec7c1fc72ec",
+      1029.733613,
+      0.8308,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "eb0f8441c55",
+      1036.962575,
+      0.9974,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e42647c2a98",
+      1038.612567,
+      0.9993,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e0202634d27",
+      1043.169543,
+      0.9808,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ee9a4c26b64",
+      1045.294532,
+      0.9986,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "ec3dca71a3d",
+      1067.263417,
+      0.4209,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "efbfb4ae32a",
+      1067.344417,
+      0.9819,
+      "flag",
+      "review",
+      "Avery (AI)"
+    ],
+    [
+      "ec014da0f33",
+      1078.046361,
+      0.9991,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "ed25463e064",
+      1079.857351,
+      0.9985,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "eacd1855dca",
+      1080.902346,
+      0.9971,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e75277970c0",
+      1086.194318,
+      0.9346,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e6e6410821d",
+      1098.417254,
+      0.9985,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e13f8719edf",
+      1098.636253,
+      0.9338,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ec2133824ef",
+      1098.672253,
+      0.9919,
+      "review",
+      "review",
+      "Avery (AI)"
+    ],
+    [
+      "e0fca2b0c6a",
+      1101.898236,
+      0.308,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e64c9f7fdf6",
+      1103.962225,
+      0.9936,
+      "review",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e27f8643b66",
+      1104.108224,
+      0.1047,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e08c5abdb54",
+      1104.254223,
+      0.7244,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e4e73a3a156",
+      1104.99422,
+      0.9775,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e0af4549b14",
+      1105.041219,
+      0.9784,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ef9047378e2",
+      1107.607206,
+      0.9307,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e429a717e0f",
+      1107.751205,
+      0.968,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e3d1cfd2061",
+      1147.808996,
+      0.9985,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e1fa521dfa0",
+      1148.237993,
+      0.9994,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "ea88b7e4326",
+      1151.405977,
+      0.9611,
+      "flag",
+      "review",
+      "Avery (AI)"
+    ],
+    [
+      "eac47b0e79a",
+      1151.501976,
+      0.7519,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e9daa3980ff",
+      1151.532976,
+      0.9611,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e659860a81f",
+      1152.441971,
+      0.9948,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e320f12b324",
+      1155.800954,
+      0.6775,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "eb4c6e127ee",
+      1155.950953,
+      0.9985,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e4b476a2fad",
+      1159.472935,
+      0.9982,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e92a9b2d83b",
+      1159.908932,
+      0.9964,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e4d5f07dbf0",
+      1160.034932,
+      0.9971,
+      "spike",
+      "review",
+      "Avery (AI)"
+    ],
+    [
+      "e3de73359b4",
+      1164.20791,
+      0.9455,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e4b25a417ff",
+      1164.291909,
+      0.5953,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e960b4786e3",
+      1171.637871,
+      0.1329,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ec0abd27542",
+      1171.78487,
+      0.8536,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "eff7bb28ef1",
+      1171.89187,
+      0.2355,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e27f584cb5b",
+      1175.965848,
+      0.8818,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e4e3cfdce37",
+      1186.326794,
+      0.9866,
+      "flag",
+      "review",
+      "Avery (AI)"
+    ],
+    [
+      "ee659eda517",
+      1187.737787,
+      0.7906,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e431f24db13",
+      1196.856739,
+      0.9992,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e32bf0d3418",
+      1197.340737,
+      0.9381,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "efac7c4d216",
+      1197.365736,
+      0.9767,
+      "flag",
+      "review",
+      "Avery (AI)"
+    ],
+    [
+      "e428801f06a",
+      1197.729734,
+      0.0699,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ed881140bf3",
+      1208.892676,
+      0.9823,
+      "flag",
+      "spike",
+      "Avery (AI)"
+    ],
+    [
+      "e9c9558d729",
+      1208.954676,
+      0.113,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e54497719a4",
+      1209.058675,
+      0.389,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e26afe81a0c",
+      1209.170675,
+      0.7977,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e6a2d4f56a3",
+      1209.201674,
+      0.9802,
+      "flag",
+      "review",
+      "Avery (AI)"
+    ],
+    [
+      "ee3e4c189bf",
+      1216.007639,
+      0.0204,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ea19b1128ad",
+      1216.135638,
+      0.1845,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ef25004371c",
+      1217.318632,
+      0.2959,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ed92d9c5f5b",
+      1240.832509,
+      0.9852,
+      "flag",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "ec736147dd8",
+      1272.722342,
+      0.1542,
+      "garbage",
+      "flag",
+      "Avery (AI)"
+    ],
+    [
+      "e7ccf18f6d7",
+      1286.51927,
+      0.9987,
+      "spike",
+      "spike",
+      "Avery (AI)"
+    ]
+  ],
+  "run_id": "ai20261003-192215-2d64",
+  "session_label": "PTEN m34 s5 2024-06-10"
+}

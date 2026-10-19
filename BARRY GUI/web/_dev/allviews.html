@@ -1,0 +1,83 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — every view, opened once, timed</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:46vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:54vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app"></iframe>
+<script>
+/* "Opening Jarvis takes a minute" is not a claim about the splash screen.
+
+   It is about the first minute: the splash goes, and then every view you
+   walk into stops and reads the catalogue off disk again. So this opens
+   every one of them in rail order, waits for each to settle, and reports
+   what each cost -- and, more importantly, whether any of them CHANGED THE
+   VIEW or lost the person's place while doing it.
+
+   A timing here is only half a measurement: headless runs under a virtual
+   clock, so what the browser calls a millisecond is fiction. The honest
+   numbers come from the server side of the same run (firstminute.py prints
+   them); what this side is for is the part the server cannot see -- did
+   anything move. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+async function until(fn, t, g) {
+  for (let i = 0; i < (t || 300); i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g || 100);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  f.src = '/';
+  /* `#app` as well as the missing overlay: the iframe starts on
+     about:blank, which has no overlay either, so waiting only for the
+     overlay to be gone matches the blank document on the first tick. */
+  await until(() => {
+    const d = f.contentDocument;
+    return d && d.getElementById('app') && !d.getElementById('boot');
+  }, 600, 50);
+  const win = f.contentWindow, doc = f.contentDocument;
+  const val = (e) => win.eval('(' + e + ')');
+
+  p('== every rail view, opened once ==');
+  const rails = Array.from(doc.querySelectorAll('.nav-item'))
+    .map((b) => b.dataset.view).filter(Boolean);
+  ck('the rail has views to walk', rails.length > 4, rails.length + ' found');
+
+  for (const view of rails) {
+    doc.querySelector('.nav-item[data-view="' + view + '"]').click();
+    await until(() => val('BARRY.state.view') === view, 80, 50);
+    // Let whatever it fetches land.
+    await sleep(2500);
+    const now = val('BARRY.state.view');
+    const ok = now === view;
+    p((ok ? 'ok    ' : 'FAIL  ') + view.padEnd(12)
+      + ' stayed put' + (ok ? '' : ' -- ended up in ' + now));
+    if (!ok) bad++;
+  }
+
+  p('\n== and nothing bounced afterwards ==');
+  const landed = val('BARRY.state.view');
+  const seen = new Set();
+  for (let i = 0; i < 60; i++) { seen.add(val('BARRY.state.view')); await sleep(100); }
+  ck('the view stayed where the last click left it',
+     seen.size === 1 && seen.has(landed), Array.from(seen).join(' -> '));
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = bad ? ('allviews ' + bad + ' FAILED') : 'allviews ok';
+} catch (e) {
+  p('\nHARNESS THREW: ' + (e && e.stack || e));
+  document.title = 'allviews THREW';
+} })();
+</script>

@@ -1,0 +1,113 @@
+{
+  "_at": {
+    "created": "2026-10-05T21:46:26.058702+00:00",
+    "gid": "2026-10-05T21:46:26.058702+00:00",
+    "group": "2026-10-05T21:46:26.058702+00:00",
+    "key": "2026-10-05T21:46:52.603535+00:00",
+    "label": "2026-10-05T21:46:26.058702+00:00",
+    "loose_key": "2026-10-05T21:46:26.058702+00:00",
+    "mouse": "2026-10-05T21:46:26.058702+00:00",
+    "retired": "2026-10-05T21:46:52.603535+00:00",
+    "schema": "2026-10-05T21:46:26.058702+00:00",
+    "session": "2026-10-05T21:46:26.058702+00:00",
+    "start": "2026-10-05T21:46:26.058702+00:00",
+    "updated": "2026-10-05T21:46:52.603535+00:00",
+    "view_state": "2026-10-05T21:46:26.058702+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1604\\2026-06-29_13-38-08": [
+        "set",
+        "2026-10-05T21:46:26.058702+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-05T21:46:52.603535+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.05.1",
+    "at": "2026-10-05T17:46:26-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "sbe5c4af6a170",
+  "group": "KCNT1",
+  "key": null,
+  "label": "KCNT1 m1604 2026-06-29",
+  "loose_key": null,
+  "mouse": 1604,
+  "paths": [
+    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1604\\2026-06-29_13-38-08"
+  ],
+  "retired": false,
+  "schema": 1,
+  "session": null,
+  "start": "2026-06-29T13:38:08",
+  "updated": {
+    "app_version": "2026.10.05.1",
+    "at": "2026-10-05T17:46:52-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "view_state": {
+    "channels": [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19,
+      21,
+      23,
+      25,
+      27,
+      29,
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
+    ],
+    "clim": null,
+    "fdefault": null,
+    "flock": true,
+    "gain": 2.5,
+    "hp": 5,
+    "invert": true,
+    "lp": 100,
+    "marks_view": "show",
+    "normalize": "shared",
+    "notch": 60,
+    "probe": "h3",
+    "spacing": 50,
+    "span": 1,
+    "stft_mode": null,
+    "t0": 5.772981,
+    "ylim": null
+  }
+}

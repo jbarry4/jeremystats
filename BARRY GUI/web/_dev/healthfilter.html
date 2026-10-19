@@ -1,0 +1,206 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>healthfilter — the kept checks, the filters, and the tracking</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1500px; height:900px; border:1px solid #333; background:#fff; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">"Which of these three hundred recordings have gaps, who
+established that, and has anything been done about it" is a question about the
+archive. It is only answerable because every check is kept.</p>
+<div id="out"></div>
+<iframe id="A" src="/"></iframe>
+<script>
+let bad = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 30000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(150);
+  }
+  return null;
+}
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const ev = (src) => W().eval(src);
+const get = async (u) => (await fetch(u)).json();
+const post = async (u, b) => (await fetch(u, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(b || {}),
+})).json();
+
+const DIRTY = 'D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46';
+
+(async () => { try {
+  await until(() => ev('!!(typeof BARRY !== "undefined" && BARRY.views'
+                       + ' && BARRY.views.sessions)'));
+
+  /* ---- a check is kept, with who and when ---- */
+  const before = await get('/api/health/summary');
+  const rep = await post('/api/session/continuity', { path: DIRTY });
+  if (!rep.ok) {
+    say('note', 'D: not mounted here, so the raw-file checks are skipped ('
+              + (rep.error || '?') + ')');
+    say('note', 'ran 0 checks');
+    document.title = 'DONE ok=0 fail=0';
+    return;
+  }
+  ck('a check resolves the session it is about', !!rep.gid, rep.gid);
+
+  const log = await post('/api/session/healthlog', { path: DIRTY });
+  ck('and is filed against it', log.ok === true && log.n_checks > 0,
+     JSON.stringify(log).slice(0, 90));
+  const last = log.latest || {};
+  say('note', '  latest: ' + last.at + ' by ' + last.by + ' on '
+            + last.machine + ', ' + last.n_segments + ' segments');
+  ck('  with a time, an author and a machine',
+     !!(last.at && last.by && last.machine),
+     JSON.stringify(last).slice(0, 90));
+  ck('  and the map it produced',
+     /^[0-9a-f]{16}$/.test(last.gap_map_sha || ''), last.gap_map_sha);
+  ck('  which is the one the check returned',
+     last.gap_map_sha === rep.gap_map_sha,
+     last.gap_map_sha + ' vs ' + rep.gap_map_sha);
+
+  /* Running it again must not grow the history: the same map, the same
+     machine and the same verdict is not a new fact. */
+  await post('/api/session/continuity', { path: DIRTY });
+  const log2 = await post('/api/session/healthlog', { path: DIRTY });
+  ck('re-running does not pile up duplicate checks',
+     log2.n_checks === log.n_checks,
+     log.n_checks + ' -> ' + log2.n_checks);
+
+  /* ---- what is banked against it, and whether it is corrected ---- */
+  ck('the log says what is banked against the recording',
+     (log.banked || []).length > 0, (log.banked || []).length);
+  const b0 = (log.banked || [])[0] || {};
+  say('note', '  banked: ' + b0.name + '  ' + b0.n + ' event(s), added '
+            + String(b0.added_at).slice(0, 10) + ' by ' + b0.added_by);
+  ck('  with when it was generated and by whom',
+     !!(b0.added_at && b0.added_by), JSON.stringify(b0).slice(0, 90));
+  /* Either answer is correct -- this set has since been corrected for
+     real. What must hold is that the two records agree about it. */
+  say('note', '  patched: ' + b0.patched + '  basis: ' + b0.time_basis);
+  ck('  and whether it has been re-timed',
+     typeof b0.patched === 'boolean', String(b0.patched));
+  ck('  a patched set carries when and by whom',
+     !b0.patched || !!(b0.retimed_at && b0.retimed_by),
+     b0.retimed_at + ' / ' + b0.retimed_by);
+  ck('  and the map it was corrected against',
+     !b0.patched || /^[0-9a-f]{16}$/.test(b0.retimed_map || ''),
+     b0.retimed_map);
+
+  /* ---- the archive-wide summary ---- */
+  const sum = await get('/api/health/summary');
+  ck('the summary counts what has been checked', sum.n_checked >= 1,
+     sum.n_checked);
+  ck('  and how many have gaps', sum.n_concat >= 1, sum.n_concat);
+  /* The count is the number of rows the flag is true for, whatever that
+     number happens to be today. Asserting "at least one" was asserting that
+     nobody had fixed anything yet. */
+  const rows = Object.values(sum.sessions || {});
+  ck('  and how many of those nobody has corrected',
+     sum.n_unpatched === rows.filter((r) => r.unpatched).length,
+     sum.n_unpatched + ' vs ' + rows.filter((r) => r.unpatched).length);
+  const row = (sum.sessions || {})[rep.gid] || {};
+  say('note', '  ' + rep.gid + ': concat=' + row.concat_issue
+            + ' patched=' + row.patched + ' unpatched=' + row.unpatched);
+  ck('  this recording is known to have gaps',
+     row.concat_issue === true, JSON.stringify(row).slice(0, 120));
+  /* The relationship, which holds in both states and is the thing the
+     filter depends on. */
+  ck('  and "not corrected" means exactly that',
+     row.unpatched === (row.concat_issue && row.n_banked > 0
+                        && !row.patched),
+     'unpatched=' + row.unpatched + ' concat=' + row.concat_issue
+     + ' banked=' + row.n_banked + ' patched=' + row.patched);
+  ck('  nothing is unpatched without having gaps',
+     rows.every((r) => !r.unpatched || r.concat_issue),
+     JSON.stringify(rows.filter((r) => r.unpatched && !r.concat_issue)));
+  ck('  carrying its event count', (row.n_events || 0) === 1224,
+     row.n_events);
+
+  /* ---- the filters exist and mean different things ---- */
+  const ids = ev('JSON.stringify(BARRY.views.sessions._filterIds'
+                 + ' ? BARRY.views.sessions._filterIds() : null)');
+  if (ids && ids !== 'null') {
+    const list = JSON.parse(ids);
+    ck('the session list can filter on gaps',
+       list.indexOf('concat') >= 0, list.join(', '));
+    ck('  and on gaps nobody has corrected',
+       list.indexOf('unpatched') >= 0, list.join(', '));
+    ck('  and on never checked, which is not the same as clean',
+       list.indexOf('unchecked') >= 0, list.join(', '));
+  } else {
+    say('note', '  (no _filterIds export; filter identity not checked)');
+  }
+
+  /* ---- and they actually filter ---- */
+  /* The registry has to be loaded for there to be anything to filter, and
+     the view loads it on show rather than on construction. */
+  ev("setView('sessions')");
+  await until(() => ev('BARRY.views.sessions._filterIds().length > 0'));
+  /* Through eval: BARRY is a const inside the iframe's own script, so
+     W().BARRY is undefined out here however loaded the app is. The promise
+     it returns belongs to that realm and awaits perfectly well from this
+     one. */
+  const tryFilter = (ids) =>
+    ev('BARRY.views.sessions._tryFilter(' + JSON.stringify(ids) + ')');
+  /* Awaited properly rather than through `until`, which calls its probe
+     and tests the return value -- and an async probe returns a Promise,
+     which is truthy, so the wait would pass on the first tick and measure
+     an empty list. */
+  const endBy = Date.now() + 60000;
+  while (Date.now() < endBy) {
+    const r = await tryFilter([]);
+    if (r && r.total > 0) break;
+    await sleep(300);
+  }
+
+  const none = await tryFilter([]);
+  const gaps = await tryFilter(['concat']);
+  const todo = await tryFilter(['unpatched']);
+  const never = await tryFilter(['unchecked']);
+  say('note', '  ' + none.total + ' session(s): ' + gaps.kept + ' with gaps, '
+            + todo.kept + ' of those not corrected, ' + never.kept
+            + ' never checked');
+
+  ck('the gap filter keeps fewer than everything',
+     gaps.kept > 0 && gaps.kept < none.total,
+     gaps.kept + ' of ' + none.total);
+  ck('  not-corrected is a subset of has-gaps', todo.kept <= gaps.kept,
+     todo.kept + ' vs ' + gaps.kept);
+  if (todo.kept === 0) {
+    say('note', '  nothing is uncorrected right now, which is the filter '
+              + 'having nothing to show rather than not working');
+  }
+  ck('  never-checked excludes the ones that have been',
+     never.kept === none.total - none.total + (none.total - gaps.kept)
+       ? true : never.kept < none.total,
+     never.kept + ' of ' + none.total);
+  ck('  and a checked recording is not in never-checked',
+     never.kept + gaps.kept <= none.total,
+     never.kept + ' + ' + gaps.kept + ' vs ' + none.total);
+
+} catch (e) {
+  say('bad', 'threw: ' + (e && e.message ? e.message : e));
+}
+  say('note', 'done');
+  document.title = 'DONE ok=' + (out.querySelectorAll('.ok').length)
+                 + ' fail=' + bad;
+})();
+</script>

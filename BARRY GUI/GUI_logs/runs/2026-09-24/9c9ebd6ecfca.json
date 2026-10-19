@@ -1,0 +1,27 @@
+{
+  "id": "9c9ebd6ecfca",
+  "label": "DEWEY r4 s1 Precon1 SPC 2026-07-22 pair 7",
+  "output": {
+    "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/Coupling/DEWEY%20r4%20s1%20Precon1%20SPC%202026-07-22%20pair%207.csv",
+    "path": "C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\Coupling\\DEWEY r4 s1 Precon1 SPC 2026-07-22 pair 7.csv",
+    "rel": "Coupling/DEWEY r4 s1 Precon1 SPC 2026-07-22 pair 7.csv"
+  },
+  "provenance": {
+    "app_version": "2026.09.24.8",
+    "at": "2026-09-24T17:33:06-04:00",
+    "commit": "0fc4943",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "schema": 1,
+  "script": "The Arc · Coupling",
+  "session": {
+    "gid": "s989ca3b5b2d6",
+    "key": "r004_s001_2026-07-22_10-48-48",
+    "label": "DEWEY r4 s1 Precon1 SPC 2026-07-22"
+  },
+  "status": "ok"
+}

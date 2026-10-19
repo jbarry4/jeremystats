@@ -1,0 +1,26 @@
+{
+  "_at": {
+    "key": "2026-09-10T01:18:59.170615+00:00",
+    "rel": "2026-09-10T01:18:59.170615+00:00",
+    "starred": "2026-09-10T01:18:59.170615+00:00",
+    "title": "2026-09-10T01:25:15.188233+00:00",
+    "updated": "2026-09-10T01:25:15.188233+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-10T01:25:15.188233+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "key": "rebuild harness_20260909_211717.png",
+  "rel": "rebuild harness_20260909_211717.png",
+  "starred": false,
+  "title": "rebuild harness_20260909_211717",
+  "updated": {
+    "at": "2026-09-09T21:25:15-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

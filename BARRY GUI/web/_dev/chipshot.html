@@ -1,0 +1,57 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>chipshot — the session cards with the gap chip, for looking at</title>
+<style>
+ /* No harness chrome: this exists to be screenshotted. */
+ html, body { margin:0; padding:0; background:#0a1310; overflow:hidden; }
+ iframe { display:block; width:100vw; height:100vh; border:0; }
+ #err { position:fixed; left:0; right:0; bottom:0; z-index:9;
+        background:#300; color:#fbb; font:12px/1.5 Consolas,monospace;
+        padding:8px 12px; white-space:pre-wrap; }
+</style>
+<iframe id="A" src="/"></iframe>
+<div id="err" hidden></div>
+<script>
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 60000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(150);
+  }
+  return null;
+}
+const fail = (t) => {
+  const box = document.getElementById('err');
+  box.hidden = false; box.textContent = 'chipshot: ' + t;
+  document.title = 'chipshot ERR: ' + t;
+};
+
+(async () => { try {
+  const ev = (src) => W().eval(src);
+  const ready = '!!(typeof BARRY !== "undefined" && BARRY.views'
+              + ' && BARRY.views.sessions)';
+  await until(() => ev(ready));
+  if (!ev(ready)) return fail('the sessions view never appeared');
+
+  ev("setView('sessions')");
+  /* The chips come from the health log, which the view reads on show, so
+     wait for one rather than for the cards. */
+  const chip = await until(
+    () => D().querySelector('.flagchip.concat'), 60000);
+  if (!chip) return fail('no gap chip on any card');
+
+  /* Scroll the first one into view and put the picture on it, so the shot
+     is of the thing rather than of wherever the list happened to be. */
+  chip.scrollIntoView({ block: 'center' });
+  await sleep(700);
+  document.title = 'chipshot: ready';
+} catch (e) {
+  fail((e && e.stack ? e.stack : String(e)).slice(0, 400));
+} })();
+</script>

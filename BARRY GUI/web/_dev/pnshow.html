@@ -1,0 +1,147 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Panorama: changing how it is shown</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:44vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0#toolkit"></iframe>
+<script>
+/* Reported: clicking log/linear made the Holistic view disappear.
+
+   It did. The control called `reset()`, which throws the result away -- and
+   it did that because the bin scale was part of the cache key, so the old
+   result really had become invalid and getting a new one meant another
+   three-minute run of identical arithmetic.
+
+   Neither is true now: re-binning counts numbers already computed and
+   re-colouring paints a matrix already held. So the four controls that
+   change only how a finished run is SHOWN must leave it on screen, and must
+   not start a job. That is what this checks, one control at a time.
+
+   It also checks the explanations, since a control whose meaning has to be
+   guessed at is how a default becomes a number nobody can defend. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 1500, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+
+(async () => {
+  const f = document.getElementById('app');
+  const ev = (s) => f.contentWindow.eval(s);
+  const D = () => f.contentWindow.document;
+
+  hd('a finished run');
+  let ok = await untilN(() => ev('typeof BARRY') === 'object'
+                           && ev('!!BARRY.panorama'));
+  ck('Panorama is registered', ok >= 0);
+  if (ok < 0) { p('\nFAILED ' + (++bad)); document.title = 'FAIL'; return; }
+  ev('setView("toolkit")');
+  await untilN(() => D().querySelector('.tk-tools'));
+  Array.from(D().querySelectorAll('.tk-tool, .tk-step'))
+    .find((b) => (b.querySelector('strong') || {}).textContent === 'Panorama')
+    .click();
+  await untilN(() => ev('BARRY.views.toolkit.tool()') === 'panorama');
+  ev('BARRY.panorama.openRecording("demo:long-session",'
+     + ' {label: "demo", t0: 0, t1: 150})');
+  await untilN(() => ev('!!BARRY.panorama.estimate'), 300);
+  ev('BARRY.panorama.run(true)');
+  ok = await untilN(() => ev('!!BARRY.panorama.result'), 1200);
+  ck('it ran', ok >= 0);
+
+  const steps = () => D().querySelectorAll('.pn-step-head strong').length;
+  const running = () => ev('BARRY.panorama.running');
+  ck('three steps are on screen', steps() === 3, steps() + '');
+
+  /* ---- the one that was reported ---- */
+  hd('log / linear bins');
+  const before = ev('JSON.stringify(BARRY.panorama.result.channels[0]'
+                    + '.hist.edges.slice(0,3))');
+  const lin = Array.from(D().querySelectorAll('.pn-opts .pill'))
+    .find((b) => b.textContent.trim() === 'linear');
+  ck('the linear button is there', !!lin);
+  lin.click();
+  await sleep(1200);
+  ck('the Holistic view is STILL on screen', steps() === 3, steps() + '');
+  ck('the spectrogram is still drawn', !!D().querySelector('.pn-sg-img'));
+  ck('the histogram is still drawn', !!D().querySelector('#pnHist'));
+  ck('and no job was started', !running());
+  const after = ev('JSON.stringify(BARRY.panorama.result.channels[0]'
+                   + '.hist.edges.slice(0,3))');
+  ck('the bins really did change', before !== after,
+     before + ' -> ' + after);
+  ck('and the result says which it is now',
+     ev('BARRY.panorama.result.channels[0].hist.scale') === 'linear');
+
+  const logb = Array.from(D().querySelectorAll('.pn-opts .pill'))
+    .find((b) => b.textContent.trim() === 'log');
+  logb.click();
+  await sleep(1200);
+  ck('and back to log, still on screen', steps() === 3);
+  ck('with the log bins restored',
+     ev('BARRY.panorama.result.channels[0].hist.scale') === 'log');
+
+  /* ---- the colour controls, same rule ---- */
+  hd('colormap and log power');
+  const png0 = ev('BARRY.panorama.result.channels[0].spectrogram.png.length');
+  const sel = D().querySelector('.pn-pick');
+  ck('the colormap picker is there', !!sel);
+  sel.value = 'viridis';
+  sel.dispatchEvent(new f.contentWindow.Event('change'));
+  await sleep(1500);
+  ck('the view survived changing the colours', steps() === 3, steps() + '');
+  ck('no job was started', !running());
+  const png1 = ev('BARRY.panorama.result.channels[0].spectrogram.png.length');
+  ck('and the picture really was repainted', png0 !== png1,
+     png0 + ' -> ' + png1);
+  ck('the result knows its new colormap',
+     ev('BARRY.panorama.result.channels[0].spectrogram.cmap') === 'viridis',
+     ev('BARRY.panorama.result.channels[0].spectrogram.cmap'));
+
+  /* ---- what each control does ---- */
+  hd('the explanations');
+  const eyes = D().querySelectorAll('.pn-i');
+  ck('every control offers one (' + eyes.length + ')', eyes.length >= 6);
+  ck('none is open to begin with', !D().querySelector('.pn-info'));
+  eyes[0].click();
+  await sleep(300);
+  const note = D().querySelector('.pn-info');
+  ck('clicking one opens an explanation', !!note);
+  ck('and it says something worth reading',
+     !!note && note.textContent.length > 80,
+     note ? note.textContent.length + ' chars' : '0');
+  ck('the view is still there behind it', steps() === 3);
+  eyes[0].click();
+  await sleep(300);
+  ck('clicking again closes it', !D().querySelector('.pn-info'));
+
+  hd('a setting that DOES change the measurement still clears it');
+  const box = D().querySelector('input[data-fk="num:f_hi"]')
+           || Array.from(D().querySelectorAll('.pn-num'))
+                .find((i) => i.value === '200');
+  ck('the frequency box is there', !!box);
+  if (box) {
+    box.value = '120';
+    box.dispatchEvent(new f.contentWindow.Event('input'));
+    await sleep(900);
+    ck('changing the range does clear the result — it is a different '
+       + 'measurement', !ev('!!BARRY.panorama.result'));
+  }
+
+  p('\n' + (bad ? 'FAILED ' + bad : 'ALL PASS'));
+  document.title = bad ? ('FAIL ' + bad) : 'PASS';
+})();
+</script>

@@ -1,0 +1,80 @@
+{
+  "_at": {
+    "created": "2026-09-24T19:32:56.066453+00:00",
+    "gid": "2026-09-24T20:07:38.802747+00:00",
+    "group": "2026-09-24T19:32:56.066453+00:00",
+    "key": "2026-09-24T19:32:56.066453+00:00",
+    "label": "2026-09-25T16:52:56.532989+00:00",
+    "loose_key": "2026-09-24T19:32:56.066453+00:00",
+    "mouse": "2026-09-24T19:32:56.066453+00:00",
+    "probe": "2026-09-24T19:53:42.660438+00:00",
+    "probe_source": "2026-09-24T19:53:42.660438+00:00",
+    "project": "2026-09-24T19:32:56.066453+00:00",
+    "project_source": "2026-09-24T19:32:56.066453+00:00",
+    "retired": "2026-09-24T19:32:56.066453+00:00",
+    "schema": "2026-09-24T19:32:56.066453+00:00",
+    "session": "2026-09-24T19:32:56.066453+00:00",
+    "start": "2026-09-24T19:32:56.066453+00:00",
+    "updated": "2026-09-25T16:52:56.532989+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J11\\J11_Con1\\J11_Con1_FP1\\2026-08-17_16-37-35": [
+        "set",
+        "2026-09-24T19:33:12.196771+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J11\\J11_Con1\\J11_Con1_FP2\\2026-08-17_18-18-00": [
+        "set",
+        "2026-09-24T19:33:12.196771+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J11\\J11_Con1\\J11_Con1_SPC\\2026-08-17_16-45-06": [
+        "set",
+        "2026-09-24T19:33:12.196771+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T16:52:56.532989+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.23.8",
+    "at": "2026-09-24T15:32:56-04:00",
+    "commit": "cd809b2",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s7dde97f93631",
+  "group": null,
+  "key": "m011_s011_2026-08-17_16-37-35",
+  "label": "DEWEY r11 s11 Con1 FP2 2026-08-17",
+  "loose_key": "m011_s011",
+  "mouse": 11,
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J11\\J11_Con1\\J11_Con1_FP1\\2026-08-17_16-37-35",
+    "E:\\Joe Multisite 2026 data\\J11\\J11_Con1\\J11_Con1_SPC\\2026-08-17_16-45-06",
+    "E:\\Joe Multisite 2026 data\\J11\\J11_Con1\\J11_Con1_FP2\\2026-08-17_18-18-00"
+  ],
+  "probe": "dewey32",
+  "probe_source": "manual",
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 11,
+  "start": "2026-08-17T20:37:35+00:00",
+  "updated": {
+    "app_version": "2026.09.23.8",
+    "at": "2026-09-25T12:52:56-04:00",
+    "commit": "cd809b2",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

@@ -28,10 +28,15 @@ import textwrap
 
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib.patches import Ellipse, FancyArrow, Rectangle
-from matplotlib.transforms import Affine2D
+# pyplot and the classes below load on first use, not at start-up;
+# see lazyimp.py. `use("Agg")` stays eager: it must run before pyplot
+# is imported by anything.
+from . import lazyimp  # noqa: E402
+plt = lazyimp.module("matplotlib.pyplot")
+PdfPages = lazyimp.names("matplotlib.backends.backend_pdf", "PdfPages")
+Ellipse, FancyArrow, Rectangle = lazyimp.names(
+    "matplotlib.patches", "Ellipse", "FancyArrow", "Rectangle")
+Affine2D = lazyimp.names("matplotlib.transforms", "Affine2D")
 
 UVM_GREEN = "#154734"
 UVM_GOLD = "#FFB81C"

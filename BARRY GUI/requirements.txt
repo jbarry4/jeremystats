@@ -1,7 +1,33 @@
 flask>=2.0
-numpy>=1.20
+# 2.0 for np.trapezoid, which Panorama's band integrals use. np.trapz is the
+# older spelling and is gone in NumPy 2.
+numpy>=2.0
 scipy>=1.7
 matplotlib>=3.4
 h5py>=3.0
 pandas>=1.3
 openpyxl>=3.0
+# Spectral parameterization -- the aperiodic/periodic split, Donoghue et al.
+# 2020. Used only by backend/panorama.py, so its numbers match the analysis
+# the lab already ran from the command line. The GUI also carries
+# backend/specparam.py, a dependency-free reimplementation of the same
+# algorithm that Braid and the Spectrum view use; the two have slightly
+# different defaults, so every Panorama result records which fitter produced
+# it and with what settings.
+fooof>=1.1.1
+# PCA and K-means, for The Dentist's fourth step (backend/dspca.py). Toothy
+# classifies DS1 vs DS2 with sklearn's own PCA and KMeans, and parity with
+# Toothy is the thing being ported -- so this is the one place the app takes
+# a dependency rather than reimplementing. A hand-rolled k-means would be a
+# second answer to the same question with nothing to check it against, which
+# is exactly what backend/specparam.py exists to avoid for the OTHER case,
+# where there was a reference implementation to check against.
+#
+# Guarded at the import in dspca.py: a machine that has not run Setup since
+# this line landed loses that one tool, not the whole server.
+scikit-learn>=1.1
+# Mixed models and the repeated-measures ANOVA, for the Monolith's tab 8
+# (backend/joe.py, Joe's planned tests). Imported only when tab 8 is worked
+# out, so a machine that has not run Setup since this line landed loses that
+# one button, not the server. Viewing tab 8 needs nothing.
+statsmodels>=0.14

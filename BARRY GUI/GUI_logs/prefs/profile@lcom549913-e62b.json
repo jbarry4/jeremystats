@@ -1,0 +1,19 @@
+{
+  "_at": {
+    "device": "2026-09-14T14:09:33.839128+00:00",
+    "email": "2026-09-14T14:09:33.839128+00:00",
+    "initials": "2026-09-14T14:09:33.839128+00:00",
+    "name": "2026-09-14T14:09:33.839128+00:00",
+    "role": "2026-09-14T14:09:33.839128+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-14T14:09:33.839128+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "device": "Bluebarry",
+  "email": "Isabella.Piatek@uvm.edu",
+  "initials": "IP",
+  "name": "Isabella Piatek",
+  "role": "Graduate Student"
+}

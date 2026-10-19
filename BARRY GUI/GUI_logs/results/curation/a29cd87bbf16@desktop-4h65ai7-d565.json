@@ -1,0 +1,24 @@
+{
+  "_at": {
+    "key": "2026-09-15T23:29:17.816345+00:00",
+    "rel": "2026-09-15T23:29:17.816345+00:00",
+    "starred": "2026-09-15T23:29:17.816345+00:00",
+    "title": "2026-09-15T23:29:17.816345+00:00",
+    "updated": "2026-09-15T23:29:17.816345+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-15T23:29:17.816345+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "key": "_scratch/harness/rebuild harness_20260909_175324.png",
+  "rel": "_scratch/harness/rebuild harness_20260909_175324.png",
+  "starred": false,
+  "title": "rebuild harness_20260909_175324",
+  "updated": {
+    "at": "2026-09-15T19:29:17-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

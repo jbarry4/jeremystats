@@ -1,0 +1,85 @@
+{
+  "_at": {
+    "converted": "2026-09-04T15:57:01.665426+00:00",
+    "created": "2026-09-04T15:57:01.665426+00:00",
+    "duration_s": "2026-09-04T15:57:01.665426+00:00",
+    "first_seen_by": "2026-09-04T15:57:01.665426+00:00",
+    "fs": "2026-09-04T15:57:01.665426+00:00",
+    "gid": "2026-09-04T15:57:01.665426+00:00",
+    "group": "2026-09-04T15:57:01.665426+00:00",
+    "key": "2026-09-04T15:57:01.665426+00:00",
+    "label": "2026-09-04T15:57:01.665426+00:00",
+    "loose_key": "2026-09-04T15:57:01.665426+00:00",
+    "mouse": "2026-09-04T15:57:01.665426+00:00",
+    "n_channels": "2026-09-04T15:57:01.665426+00:00",
+    "project": "2026-09-04T15:57:01.665426+00:00",
+    "project_source": "2026-09-04T15:57:01.665426+00:00",
+    "retired": "2026-09-08T18:35:24.939517+00:00",
+    "schema": "2026-09-04T15:57:01.665426+00:00",
+    "session": "2026-09-04T15:57:01.665426+00:00",
+    "start": "2026-09-04T15:57:01.665426+00:00",
+    "updated": "2026-09-08T18:35:25.957098+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\ProcessedPtenData\\M13_pten\\HF4s16aug4\\2023-08-04_13-32-19": [
+        "set",
+        "2026-09-04T15:57:01.665426+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-04T15:57:01.665426+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-08T18:35:25.957098+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "converted": true,
+  "created": {
+    "at": "2026-09-04T11:26:34-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "duration_s": 602.1461333333333,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s089712b4d7da",
+  "group": "PTEN",
+  "key": "m013_s016_2023-08-04_13-32-19",
+  "label": "PTEN m13 s16 2023-08-04",
+  "loose_key": "m013_s016",
+  "mouse": 13,
+  "n_channels": 64,
+  "paths": [
+    "Y:\\ProcessedPtenData\\M13_pten\\HF4s16aug4\\2023-08-04_13-32-19"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-04T11:26:34-04:00",
+      "by": "barry",
+      "path": "Y:\\ProcessedPtenData\\M13_pten\\HF4s16aug4\\2023-08-04_13-32-19",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    }
+  },
+  "session": 16,
+  "start": "2023-08-04T13:32:19",
+  "updated": {
+    "at": "2026-09-08T14:35:25-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "StrawBarry",
+    "os": "Windows",
+    "user": "Rain"
+  }
+}

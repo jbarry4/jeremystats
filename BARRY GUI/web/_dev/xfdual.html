@@ -1,0 +1,287 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>xfdual: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:640px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:640px;top:0;right:0;bottom:0;width:calc(100vw - 640px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* A probe layout, two recordings, and the tabs between them.
+
+   What was reported, each one a check below:
+     - the uV scale moved one array of a dual implant and not the other, and
+       with nothing pinned the two arrays were drawn at different scales;
+     - switching to an H3 recording's tab left the dual implant's two panes
+       up, and only picking H3 and then the probe back put it right;
+     - opening and closing tabs left empty panes and stale columns;
+     - marking a channel bad in the Ch menu did not change the menu;
+     - there was no way to pick the first or second half of the channels.
+
+   The probe is a template injected into this window only -- two columns of
+   the 64-channel demo -- so nothing here asks for a 128-channel recording
+   and nothing is written to the registry. Saves of the demo's view and bad
+   channels are answered here and never reach the server. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 30000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(80);
+  }
+  return null;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const ev = (c) => W().eval(c);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  let realApi = null;
+  try {
+    await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.views.xplore'),
+                30000);
+    const B = ev('BARRY');
+    const XF = B.views.xplore.state;
+    realApi = W().api;
+    const swallowed = [];
+    W().api = async (path, opts) => {
+      if (path === '/api/session/state' || path === '/api/session/bad'
+          || /^\/api\/registry\/[^/]+\/probe$/.test(path)) {
+        swallowed.push(path);
+        return { ok: true };
+      }
+      return realApi(path, opts);
+    };
+
+    ev("setView('xplore')");
+    await sleep(300);
+    // Starting state: nothing open. Established, not assumed.
+    await until(() => XF.probes && XF.probes.length, 20000);
+    for (let n = 0; n < 8 && XF.order.length; n++) {
+      const x = D().querySelector('.xf-tab .x');
+      if (x) x.click();
+      await sleep(100);
+    }
+    check('it starts with nothing open', XF.order.length === 0,
+          XF.order.length + ' open');
+
+    say('=== two recordings, one of them split ===');
+    await B.views.xplore.open('demo:long-session');
+    const A = await until(() => Object.values(XF.sessions)
+      .find((s) => s.path === 'demo:long-session'));
+    check('the 64-channel demo opens', !!A);
+    const nums = A.info.channels.map((c) => c.number);
+    XF.probes.push({
+      id: 'zzsplit', name: 'zz split (harness)', n_columns: 2,
+      columns: [
+        { id: 'zzA', label: 'Array 1', csc: nums.slice(0, 32) },
+        { id: 'zzB', label: 'Array 2', csc: nums.slice(32) },
+      ],
+    });
+    const sel = D().getElementById('xfProbe');
+    if (sel && !Array.from(sel.options).some((o) => o.value === 'zzsplit')) {
+      const o = D().createElement('option');
+      o.value = 'zzsplit'; o.textContent = 'zz split';
+      sel.appendChild(o);
+    }
+    A.probe = 'zzsplit';
+
+    await B.views.xplore.open('demo:ds-tutorial');
+    const Bs = await until(() => Object.values(XF.sessions)
+      .find((s) => s.path === 'demo:ds-tutorial'));
+    check('the 32-channel demo opens beside it', !!Bs && XF.order.length === 2);
+
+    const tab = (sess) => $$('.xf-tab').find((t) =>
+      t.querySelector('.nm').textContent === (sess.identity.label || sess.info.name));
+    const live = () => XF.panes.slice(0, XF.nPanes);
+    const shape = () => live().map((p) => p
+      ? (p.sessionId === A.id ? 'A' : p.sessionId === Bs.id ? 'B' : '?')
+        + (p.colTag ? ':' + p.colTag : '') + (p.colLabel && !p.colTag ? ':label?' : '')
+      : '-').join(' ');
+
+    say('');
+    say('=== a tab puts its recording on screen, in its layout ===');
+    tab(A).click();
+    await until(() => XF.nPanes === 2, 5000);
+    check('the split recording’s tab lays out a pane per column',
+          shape() === 'A:zzA A:zzB', shape());
+    check('and the probe control says so', sel.value === 'zzsplit', sel.value);
+    tab(Bs).click();
+    await sleep(200);
+    check('the H3 recording’s tab is one pane of it, no columns',
+          shape() === 'B', shape());
+    check('and the probe control says H3', sel.value === 'h3', sel.value);
+    tab(A).click();
+    await sleep(200);
+    check('and back again: the columns come back',
+          shape() === 'A:zzA A:zzB', shape());
+
+    say('');
+    say('=== one scale for both arrays ===');
+    await until(() => live().every((p) => p && p._win), 60000);
+    const ra = live().map((p) => p._win.robust_auto);
+    say('    each array’s own auto: ' + ra.map((v) => v.toFixed(2)).join(', '),
+        'note');
+    const master = D().getElementById('xfMaster');
+    check('one strip speaks for both', !!master && XF.master >= 0,
+          String(XF.master));
+    const numBox = () => D().querySelector('#xfMaster .scale-num');
+    const shown = numBox() && parseFloat(numBox().value);
+    const want = Math.max.apply(null, ra);
+    check('unpinned, the strip shows the larger of the two',
+          shown && Math.abs(shown - want) / want < 0.01,
+          shown + ' vs ' + want.toFixed(2));
+    const pix = () => live().map((p) => p._canvas ? p._canvas.toDataURL() : '');
+    const before = pix();
+    numBox().value = String(Math.round(want * 3));
+    numBox().dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    await sleep(150);
+    check('typing a scale pins it for the recording', A.ylim === Math.round(want * 3),
+          String(A.ylim));
+    const after = pix();
+    check('and redraws the first array', after[0] && after[0] !== before[0]);
+    check('and the second', after[1] && after[1] !== before[1]);
+    check('the strip still shows it after the rebuild',
+          numBox() && parseFloat(numBox().value) === Math.round(want * 3),
+          numBox() && numBox().value);
+    const pinBtn = () => Array.from(D().querySelectorAll('#xfMaster .scale-ctl .mini'))
+      .find((b) => /pinned|auto/.test(b.textContent));
+    pinBtn().click();
+    await sleep(150);
+    check('unpinning returns it to automatic', A.ylim == null, String(A.ylim));
+
+    say('');
+    say('=== the Ch menu ===');
+    const chBtn = () => D().querySelector('#xfMaster .ctl-menu[data-menu="Ch"]');
+    const pop = () => D().querySelector('.ctl-pop');
+    const presets = () => Array.from(pop().querySelectorAll('.ctl-group .mini'));
+    chBtn().click();
+    await until(() => pop(), 3000);
+    const first = presets().find((b) => b.textContent === '1st half');
+    const second = presets().find((b) => b.textContent === '2nd half');
+    check('it offers the first half and the second half', !!first && !!second);
+    check('each says which channels',
+          first && /^Channels \d+–\d+ \(32\)$/.test(first.title), first && first.title);
+    second.click();
+    await sleep(100);
+    const selNow = Array.from(A.sel).sort((a, b) => a - b);
+    check('the second half is channels 33 to 64 of 64',
+          selNow.length === 32 && selNow[0] === 32 && selNow[31] === 63,
+          selNow.length + ': ' + selNow[0] + '..' + selNow[selNow.length - 1]);
+    await sleep(300);
+    check('the first array, none of it selected, draws nothing of it',
+          !live()[0]._win, String(!!live()[0]._win));
+    chBtn().click();
+    await until(() => pop(), 3000);
+    presets().find((b) => b.textContent === 'All').click();
+    await sleep(100);
+    check('All brings every channel back', A.sel.size === 64, String(A.sel.size));
+
+    chBtn().click();
+    await until(() => pop(), 3000);
+    const rows = () => Array.from(pop().querySelectorAll('.ctl-chan'));
+    const okRow = rows().findIndex((r) => r.querySelector('.badbtn').textContent === 'ok');
+    const number = +rows()[okRow].querySelector('.cc-n').textContent;
+    const hadBad = A.bad.has(number);
+    rows()[okRow].querySelector('.badbtn').click();
+    await sleep(100);
+    check('marking one bad keeps the menu open', !!pop() && pop().isConnected);
+    check('and the menu says so at once',
+          pop() && rows()[okRow].querySelector('.badbtn').textContent === 'bad'
+          && rows()[okRow].classList.contains('marked-bad'),
+          pop() && rows()[okRow].querySelector('.badbtn').textContent);
+    check('the menu is still against its button',
+          pop() && pop().getBoundingClientRect().top > 20,
+          pop() && String(Math.round(pop().getBoundingClientRect().top)));
+    rows()[okRow].querySelector('.badbtn').click();
+    await sleep(100);
+    check('and clearing it says so too',
+          rows()[okRow].querySelector('.badbtn').textContent === 'ok'
+          && A.bad.has(number) === hadBad);
+    const box = rows()[okRow].querySelector('input');
+    box.click();
+    await sleep(100);
+    check('unchecking a channel updates the count',
+          /^63 of 64 drawn$/.test(pop().querySelector('.ctl-pop-title').textContent),
+          pop().querySelector('.ctl-pop-title').textContent);
+    rows()[okRow].querySelector('input').click();
+    await sleep(100);
+    check('and checking it again', A.sel.size === 64, String(A.sel.size));
+    chBtn().click();                       // a click on the button closes it
+    await sleep(100);
+    check('a click on the button still closes it', !pop());
+
+    say('');
+    say('=== a layout button leaves the probe layout cleanly ===');
+    $$('#xfLayoutSeg button').find((b) => b.dataset.panes === '1').click();
+    await sleep(200);
+    check('one pane, and no column left on it', shape() === 'A', shape());
+    check('and the probe control says H3', sel.value === 'h3', sel.value);
+    A.probe = 'zzsplit';
+    tab(A).click();
+    await sleep(200);
+    check('putting the probe back and choosing the tab lays it out again',
+          shape() === 'A:zzA A:zzB', shape());
+
+    say('');
+    say('=== closing ===');
+    tab(A).querySelector('.x').click();
+    await sleep(200);
+    check('closing the split recording leaves one pane of the other',
+          shape() === 'B' && XF.nPanes === 1, shape());
+    check('it is the active one', XF.active === Bs.id);
+    check('and the probe control follows it', sel.value === 'h3', sel.value);
+    check('no zoom left pointing at a pane that is gone', XF.zoomed == null);
+
+    say('');
+    say('=== opening one that is split, into an H3 layout ===');
+    await B.views.xplore.open('demo:long-session');
+    const A2 = await until(() => Object.values(XF.sessions)
+      .find((s) => s.path === 'demo:long-session'));
+    A2.probe = 'zzsplit';
+    tab(A2).click();
+    await sleep(200);
+    const s2 = live().map((p) => p && p.sessionId === A2.id && p.colTag).join(' ');
+    check('it gets its own columns, not one pane beside the other recording',
+          s2 === 'zzA zzB', s2);
+    const twice = await Promise.all([B.views.xplore.open('demo:long-session'),
+                                     B.views.xplore.open('demo:long-session')]);
+    check('opening it again does not make a second tab',
+          XF.order.length === 2 && twice[0] === twice[1], XF.order.length + ' tabs');
+
+    say('');
+    say('=== and everything ===');
+    for (const id of XF.order.slice()) {
+      const s = XF.sessions[id];
+      tab(s).querySelector('.x').click();
+      await sleep(100);
+    }
+    check('closing the last one empties the grid',
+          XF.order.length === 0 && XF.panes.every((p) => !p)
+          && !D().getElementById('xfDrop').classList.contains('hidden'));
+    say('    ' + swallowed.length + ' save(s) answered here, none sent', 'note');
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  } finally {
+    if (realApi) W().api = realApi;
+    try { const i = ev('BARRY.views.xplore.state').probes.findIndex((p) => p.id === 'zzsplit');
+          if (i >= 0) ev('BARRY.views.xplore.state').probes.splice(i, 1); } catch (e) {}
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'xfdual: ' + fails + ' FAILED' : 'xfdual: passed';
+})();
+</script>
+</body></html>

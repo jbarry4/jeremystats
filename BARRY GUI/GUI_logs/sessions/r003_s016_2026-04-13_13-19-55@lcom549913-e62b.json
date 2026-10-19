@@ -1,0 +1,82 @@
+{
+  "_at": {
+    "created": "2026-09-25T16:50:31.660673+00:00",
+    "gid": "2026-09-25T20:25:02.091334+00:00",
+    "group": "2026-09-25T16:50:31.660673+00:00",
+    "key": "2026-09-25T16:50:31.660673+00:00",
+    "label": "2026-09-25T20:25:02.091334+00:00",
+    "loose_key": "2026-09-25T16:50:31.660673+00:00",
+    "mouse": "2026-09-25T16:50:31.660673+00:00",
+    "note": "2026-09-25T16:50:31.660673+00:00",
+    "probe": "2026-09-25T16:50:31.660673+00:00",
+    "probe_source": "2026-09-25T16:50:31.660673+00:00",
+    "project": "2026-09-25T16:50:31.660673+00:00",
+    "project_source": "2026-09-25T16:50:31.660673+00:00",
+    "retired": "2026-09-25T16:50:31.660673+00:00",
+    "schema": "2026-09-25T16:50:31.660673+00:00",
+    "session": "2026-09-25T16:50:31.660673+00:00",
+    "start": "2026-09-25T16:50:31.660673+00:00",
+    "updated": "2026-09-25T20:25:02.091334+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Con 6\\J3_Con_6_FP1\\2026-04-13_13-19-55": [
+        "set",
+        "2026-09-25T18:39:14.752170+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Con 6\\J3_Con_6_FP2\\2026-04-13_15-31-01": [
+        "set",
+        "2026-09-25T18:39:14.752170+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Con 6\\J3_Con_6_SP\\2026-04-13_13-56-29": [
+        "set",
+        "2026-09-25T16:53:15.910084+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T20:25:02.091334+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.23.8",
+    "at": "2026-09-25T12:50:31-04:00",
+    "commit": "cd809b2",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s99b6dcca605f",
+  "group": null,
+  "key": "r003_s016_2026-04-13_13-19-55",
+  "label": "DEWEY r3 s16 Con6 SPC 2026-04-13",
+  "loose_key": "r003_s016",
+  "mouse": 3,
+  "note": "Acquisition wrote 64 CSC files; 33-64 are dead. The montage is the same 32-channel DEWEY map.",
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Con 6\\J3_Con_6_SP\\2026-04-13_13-56-29",
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Con 6\\J3_Con_6_FP1\\2026-04-13_13-19-55",
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Con 6\\J3_Con_6_FP2\\2026-04-13_15-31-01"
+  ],
+  "probe": "dewey32",
+  "probe_source": "manual",
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 16,
+  "start": "2026-04-13T17:19:55+00:00",
+  "updated": {
+    "app_version": "2026.09.23.8",
+    "at": "2026-09-25T16:25:02-04:00",
+    "commit": "cd809b2",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

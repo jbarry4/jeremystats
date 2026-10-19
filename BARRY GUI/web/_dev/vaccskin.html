@@ -1,0 +1,181 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>vaccskin: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:720px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:720px;top:0;right:0;bottom:0;width:calc(100vw - 720px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Is VACC Mode actually orthogonal to the themes?
+
+   The claim the whole CSS layer rests on is that turning the mode on cannot
+   change a single one of the thirty colour tokens a theme defines -- because
+   `--on-accent` and friends are measured ink for one exact accent, and CSS
+   has no contrast function to re-derive them with. That claim is cheap to
+   make in a comment and was worth making machine-checkable, because the way
+   it breaks is somebody adding one plausible line to the mode's block and
+   nothing looking wrong on the theme they happened to have on.
+
+   Two-sided on purpose. The unchanged side alone passes if the layer does
+   nothing at all, which is exactly its state before Phase 1 and would
+   otherwise be indistinguishable from a layer that works. So the changed
+   side asserts the mode is real, and until the `--fire-*` values land it is
+   SUPPOSED to fail: that is the contract being written down before there is
+   anything to break it, not a broken test. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(80);
+  }
+  return false;
+}
+
+/* The thirty a theme is allowed to define. Listed rather than discovered:
+   a discovered list is a list that quietly shrinks when a token is renamed,
+   and this check exists to notice exactly that kind of drift. */
+const THEME_TOKENS = [
+  '--bg', '--bg-2', '--bg-3', '--bg-hover', '--line', '--line-soft',
+  '--text', '--text-2', '--text-3',
+  '--accent', '--accent-soft', '--accent-line', '--on-accent',
+  '--ok', '--ok-soft', '--warn', '--warn-soft', '--err', '--err-soft',
+  '--on-err', '--accent-2', '--accent-2-soft',
+  '--c1', '--c2', '--c3', '--c4', '--c5',
+  '--trace', '--event', '--shadow',
+];
+const FIRE_TOKENS = ['--fire', '--fire-edge', '--fire-glow', '--fire-wash',
+                     '--fire-rule', '--fire-beat'];
+/* The three light themes plus the default light one. Kept in step with the
+   `color-scheme` grouping in app.css by hand, which is the same way that
+   grouping is kept -- if these two ever disagree, one of them is wrong and
+   this check is where it shows up. */
+const LIGHT = ['light', 'parchment', 'horizon', 'jirai-shiro'];
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const D = () => frame.contentDocument;
+  const root = () => D().documentElement;
+  const tok = (n) => getComputedStyle(root()).getPropertyValue(n).trim();
+  const setVacc = (on) => {
+    if (on) root().dataset.vacc = 'on'; else delete root().dataset.vacc;
+  };
+  const themes = ev('THEMES').map((t) => t.id);
+
+  setVacc(false);
+  say('=== the layer exists and is inert ===');
+  check('ten themes to check', themes.length === 10, themes.join(' '));
+  for (const t of FIRE_TOKENS) {
+    check('is declared at :root: ' + t, tok(t) !== '', tok(t) || 'EMPTY');
+  }
+  check('--fire rests at 0', tok('--fire') === '0', tok('--fire'));
+  check('--fire-beat rests at 0s', /^0m?s$/.test(tok('--fire-beat')),
+        tok('--fire-beat'));
+
+  /* ---- the unchanged side: thirty tokens, ten themes, no movement ---- */
+  say('');
+  say('=== no theme token moves when the mode comes on ===');
+  let moved = [];
+  for (const id of themes) {
+    ev("applyTheme('" + id + "', false)");
+    await sleep(140);
+    setVacc(false); await sleep(60);
+    const off = THEME_TOKENS.map(tok);
+    setVacc(true);  await sleep(60);
+    const on = THEME_TOKENS.map(tok);
+    const diff = THEME_TOKENS.filter((t, i) => off[i] !== on[i]);
+    diff.forEach((t) => moved.push(id + ' ' + t));
+    check(id.padEnd(15) + ' 30 tokens identical', diff.length === 0,
+          diff.join(', '));
+    setVacc(false);
+  }
+  check('nothing moved anywhere', moved.length === 0,
+        moved.slice(0, 8).join(' | '));
+
+  /* ---- the changed side: it has to actually do something ---- */
+  say('');
+  say('=== and the mode is not a no-op ===');
+  say('    (expected to FAIL until the --fire-* values land -- Phase 1)',
+      'note');
+  for (const id of themes) {
+    ev("applyTheme('" + id + "', false)");
+    await sleep(140);
+    setVacc(false); await sleep(60);
+    const edgeOff = tok('--fire-edge'), ruleOff = tok('--fire-rule');
+    setVacc(true);  await sleep(60);
+    const edgeOn = tok('--fire-edge'), ruleOn = tok('--fire-rule');
+    check(id.padEnd(15) + ' edge and rule change',
+          edgeOn !== edgeOff && ruleOn !== ruleOff,
+          edgeOff + ' -> ' + edgeOn + ' / ' + ruleOff + ' -> ' + ruleOn);
+    setVacc(false);
+  }
+
+  /* A typo'd token stays the literal string `color-mix(...)` and computes to
+     nothing, which looks exactly like a layer that applied. Ask what it
+     resolved to, not whether it is set. */
+  say('');
+  say('=== color-mix resolved, rather than sitting there as a string ===');
+  for (const id of themes) {
+    ev("applyTheme('" + id + "', false)");
+    await sleep(120);
+    setVacc(true); await sleep(60);
+    const v = tok('--fire-edge');
+    check(id.padEnd(15) + ' --fire-edge is a real color',
+          /^(rgb|rgba|color|#|oklab|oklch)/i.test(v), v || 'EMPTY');
+    setVacc(false);
+  }
+
+  /* Glow adds light, and a light theme has none to spare. This asserts the
+     light/dark split as a fact rather than something anybody eyeballed. */
+  say('');
+  say('=== glow on the dark family only ===');
+  for (const id of themes) {
+    ev("applyTheme('" + id + "', false)");
+    await sleep(120);
+    setVacc(true); await sleep(60);
+    const g = tok('--fire-glow');
+    const clear = g === 'transparent' || /,\s*0\s*\)$/.test(g);
+    const wantClear = LIGHT.indexOf(id) >= 0;
+    check(id.padEnd(15) + (wantClear ? ' no glow (light)' : ' has glow (dark)'),
+          clear === wantClear, g || 'EMPTY');
+    setVacc(false);
+  }
+
+  /* ---- the two attributes genuinely do not touch ---- */
+  say('');
+  say('=== data-vacc and data-theme are independent ===');
+  setVacc(true);
+  for (const id of themes) {
+    ev("applyTheme('" + id + "', false)");
+    await sleep(70);
+    if (root().dataset.vacc !== 'on') {
+      check('applyTheme(' + id + ') preserved data-vacc', false,
+            String(root().dataset.vacc));
+    }
+  }
+  check('applyTheme never clears data-vacc', root().dataset.vacc === 'on',
+        String(root().dataset.vacc));
+  setVacc(false);
+  check('removing the attribute is enough to turn it off',
+        !root().dataset.vacc && tok('--fire') === '0', tok('--fire'));
+
+  ev("applyTheme(themeForThisMachine(), false)");
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'vaccskin: ' + fails + ' FAILED' : 'vaccskin: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'vaccskin CRASH'; });
+</script></body></html>

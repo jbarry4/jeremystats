@@ -1,0 +1,12 @@
+{
+  "name": "dewey-monolith",
+  "private": true,
+  "type": "module",
+  "description": "The DEWEY Monolith, for review. Assembled by BARRY GUI/tools/export_review.py from BARRY GUI/review/site; edit those, not the assembled copy.",
+  "dependencies": {
+    "@vercel/functions": "^3.9.11"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

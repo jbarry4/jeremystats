@@ -1,43 +1,64 @@
 {
   "_at": {
-    "bad_channels": "2026-09-02T23:23:57.360855+00:00",
-    "bad_channels_note": "2026-09-02T23:23:57.360855+00:00",
-    "condition": "2026-09-02T23:23:57.369246+00:00",
+    "bad_channels": "2026-09-04T15:57:01.814880+00:00",
+    "bad_channels_note": "2026-09-04T15:57:01.814880+00:00",
+    "condition": "2026-09-04T15:57:01.814880+00:00",
+    "converted": "2026-09-04T15:57:01.814880+00:00",
     "created": "2026-09-02T23:21:29.092883+00:00",
-    "duration_s": "2026-09-02T23:21:29.092883+00:00",
-    "first_seen_by": "2026-09-02T23:21:29.092883+00:00",
-    "fs": "2026-09-02T23:21:29.092883+00:00",
+    "duration_s": "2026-09-04T15:57:01.814880+00:00",
+    "extraction_note": "2026-09-09T05:59:15.544974+00:00",
+    "first_seen_by": "2026-09-04T15:57:01.814880+00:00",
+    "fissure_channel": "2026-09-09T05:59:15.544974+00:00",
+    "fs": "2026-09-04T15:57:01.814880+00:00",
     "gid": "2026-09-02T23:21:29.092883+00:00",
-    "group": "2026-09-02T23:21:29.092883+00:00",
-    "key": "2026-09-02T23:21:29.092883+00:00",
-    "label": "2026-09-02T23:21:29.092883+00:00",
-    "loose_key": "2026-09-02T23:21:29.092883+00:00",
-    "mouse": "2026-09-02T23:21:29.092883+00:00",
-    "n_channels": "2026-09-02T23:21:29.092883+00:00",
-    "project": "2026-09-02T23:21:29.092883+00:00",
-    "project_source": "2026-09-02T23:21:29.092883+00:00",
-    "retired": "2026-09-03T13:40:38.530985+00:00",
-    "schema": "2026-09-02T23:21:29.092883+00:00",
-    "session": "2026-09-02T23:21:29.092883+00:00",
-    "start": "2026-09-02T23:21:29.092883+00:00",
-    "updated": "2026-09-03T13:40:38.530985+00:00"
+    "group": "2026-09-04T15:57:01.814880+00:00",
+    "hemisphere": "2026-09-09T00:00:54.831202+00:00",
+    "hemisphere_source": "2026-09-09T00:00:54.831202+00:00",
+    "hilus_channel": "2026-09-09T05:59:15.544974+00:00",
+    "key": "2026-09-04T15:57:01.814880+00:00",
+    "label": "2026-09-04T15:57:01.814880+00:00",
+    "loose_key": "2026-09-04T15:57:01.814880+00:00",
+    "mouse": "2026-09-04T15:57:01.814880+00:00",
+    "n_channels": "2026-09-04T15:57:01.814880+00:00",
+    "needs_processing": "2026-09-09T05:59:15.544974+00:00",
+    "project": "2026-09-04T15:57:01.814880+00:00",
+    "project_source": "2026-09-04T15:57:01.814880+00:00",
+    "reference_channels_source": "2026-09-09T05:59:15.544974+00:00",
+    "retired": "2026-09-04T15:57:01.814880+00:00",
+    "ripple_channel": "2026-09-09T05:59:15.544974+00:00",
+    "schema": "2026-09-04T15:57:01.814880+00:00",
+    "session": "2026-09-04T15:57:01.814880+00:00",
+    "start": "2026-09-04T15:57:01.814880+00:00",
+    "updated": "2026-09-09T05:59:15.544974+00:00"
   },
   "_keys": {
     "paths": {
       "D:\\PTEN\\PTEN_DKO\\PTENDKOM41\\M41s6nov26\\2024-11-26_16-16-02": [
         "set",
-        "2026-09-02T23:21:29.092883+00:00"
+        "2026-09-04T15:57:01.814880+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTENDKOM41\\M41s6nov26\\2024-11-26_16-16-02": [
+        "set",
+        "2026-09-04T15:57:01.814880+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\DKO\\M41\\M41_s6_CNO": [
+        "set",
+        "2026-09-04T15:57:01.814880+00:00"
       ]
     },
     "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-04T15:57:01.814880+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-09-02T23:21:29.092883+00:00"
+        "2026-09-04T15:57:01.814880+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-03T13:40:38.530985+00:00",
+    "at": "2026-09-09T05:59:15.544974+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -46,6 +67,7 @@
   ],
   "bad_channels_note": "Bad channels from the Toothy workbook.",
   "condition": "cno",
+  "converted": true,
   "created": {
     "at": "2026-09-02T18:50:19-04:00",
     "machine": "DESKTOP-4H65AI7",
@@ -53,23 +75,40 @@
     "user": "theexaminedexistence@gmail.com"
   },
   "duration_s": 1845.0261333333333,
+  "extraction_note": null,
   "first_seen_by": "scan",
+  "fissure_channel": null,
   "fs": 30000.0,
   "gid": "se4e5efda72ba",
   "group": "PTEN_DKO",
+  "hemisphere": "L",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
+  "hilus_channel": null,
   "key": "m041_s006_2024-11-26_16-16-02",
   "label": "PTEN_DKO m41 s6 2024-11-26",
   "loose_key": "m041_s006",
   "mouse": 41,
   "n_channels": 64,
+  "needs_processing": null,
   "paths": [
-    "D:\\PTEN\\PTEN_DKO\\PTENDKOM41\\M41s6nov26\\2024-11-26_16-16-02"
+    "D:\\PTEN\\PTEN_DKO\\PTENDKOM41\\M41s6nov26\\2024-11-26_16-16-02",
+    "Y:\\ProcessedPtenData\\PTENDKOM41\\M41s6nov26\\2024-11-26_16-16-02",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\DKO\\M41\\M41_s6_CNO"
   ],
   "project": "PTEN",
   "project_source": "guessed",
+  "reference_channels_source": null,
   "retired": false,
+  "ripple_channel": null,
   "schema": 2,
   "seen": {
+    "BarryLab": {
+      "at": "2026-09-04T11:27:01-04:00",
+      "by": "barry",
+      "path": "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\DKO\\M41\\M41_s6_CNO",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-02T18:50:19-04:00",
       "by": "theexaminedexistence@gmail.com",
@@ -81,9 +120,11 @@
   "session": 6,
   "start": "2024-11-26T16:16:02",
   "updated": {
-    "at": "2026-09-03T09:40:38-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "at": "2026-09-09T01:59:15-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Shahriar Tafti"
   }
 }

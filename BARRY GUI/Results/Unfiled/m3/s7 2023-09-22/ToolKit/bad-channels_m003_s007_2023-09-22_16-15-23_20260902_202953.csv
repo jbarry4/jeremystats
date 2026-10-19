@@ -1,0 +1,4 @@
+# BARRY GUI bad-channel export -- session m003_s007_2023-09-22_16-15-23 -- 2 row(s) from 1 session(s) -- taken 2026-09-02T20:29:53
+project,mouse,session,date,label,channel,n_bad,n_channels,marked_by,marked_at,note,path,key
+PTEN,3,7,2023-09-22,PTEN m3 s7 2023-09-22,41,2,,barry,2026-09-02T19:38:00-04:00,,G:\PTEN\M3_s7,m003_s007_2023-09-22_16-15-23
+PTEN,3,7,2023-09-22,PTEN m3 s7 2023-09-22,59,2,,barry,2026-09-02T19:38:00-04:00,,G:\PTEN\M3_s7,m003_s007_2023-09-22_16-15-23

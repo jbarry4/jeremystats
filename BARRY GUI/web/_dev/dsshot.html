@@ -1,0 +1,53 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>dsshot — the caption strip and the DOWNSAMPLED detail, for looking at</title>
+<style>
+ /* No harness chrome: this exists to be screenshotted, so the application
+    fills the frame and nothing of this page is in the picture. */
+ html, body { margin:0; padding:0; background:#0a1310; overflow:hidden; }
+ iframe { display:block; width:100vw; height:100vh; border:0; }
+</style>
+<iframe id="A" src="/"></iframe>
+<script>
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 40000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(200);
+  }
+  return null;
+}
+const q = new URLSearchParams(location.search);
+const PANEL = q.get('panel') || 'traces';
+const OPEN = q.get('open') !== '0';
+
+(async () => {
+  await until(() => W().BARRY && W().BARRY.state);
+  W().eval("setView('xplore')");
+  await sleep(300);
+  await W().eval("BARRY.views.xplore.open('demo:long-session')");
+  await until(() => W().eval(
+    'Object.keys(BARRY.views.xplore.state.sessions).length') > 0);
+  /* A minute of it, so the envelope and the column averaging both engage
+     and the badge has something to say. */
+  W().eval('(function(){var S=BARRY.views.xplore.state;'
+    + 'var s=S.sessions[S.active]; s.t0=100; s.span=60; s.hp=3; s.notch=60;})()');
+  W().eval("BARRY.views.xplore.setPanes([{panel:'" + PANEL + "'}],"
+           + '{col:1,row:1})');
+  await until(() => D().querySelector('.panel-input .ds-chip'), 60000);
+  await sleep(1200);
+  if (OPEN) {
+    const chip = D().querySelector('.panel-input .ds-chip');
+    if (chip) chip.click();
+    await until(() => D().querySelector('.ds-detail'), 8000);
+    await sleep(600);
+  }
+  document.title = 'dsshot: ready';
+})();
+</script>

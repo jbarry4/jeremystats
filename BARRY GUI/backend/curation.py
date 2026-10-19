@@ -30,8 +30,10 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import time
 import uuid
+from datetime import datetime, timezone
 
 from . import shards
 
@@ -42,6 +44,14 @@ SCHEMA = 1
 # and collapsing them loses the only number that matters while curating: how
 # many are left.
 UNSPECIFIED = None
+
+# Names that are a record of where a decision came from rather than of a
+# person who could be asked about it. A decision may honestly say "snapshot
+# import" -- nobody knows which hand dragged those PNGs -- but a set whose
+# owner is "snapshot import" has nobody to talk to, which is the whole point
+# of putting a name on it.
+NOT_A_PERSON = frozenset({"snapshot import", "the import", "unknown",
+                          "another machine", ""})
 
 # Keys the mode itself needs. A category cannot have one of these, however
 # good a mnemonic it is: "sputter" wanted `p`, which is also "previous", so
@@ -63,10 +73,59 @@ KINDS = {
              "color": "#2f9e6e", "good": True},
             {"id": "garbage", "name": "Garbage", "keys": ["2", "g"],
              "color": "#dc2626"},
+            # `flagged` means "this one still needs another look", which is
+            # what the Flagged pass is for. Both of these do, and the second
+            # pass was only picking up the first of them.
             {"id": "flag", "name": "Flag", "keys": ["3", "f"],
-             "color": "#E5A823"},
+             "color": "#E5A823", "flagged": True},
             {"id": "review", "name": "Flag for Deep Review",
-             "keys": ["4", "r"], "color": "#8b5cf6"},
+             "keys": ["4", "r"], "color": "#8b5cf6", "flagged": True},
+            # DS1 and DS2 -- what X-ray writes, and the reason it writes a
+            # LABEL rather than a field of its own.
+            #
+            # `EventBank.add` whitelists what an event is -- start, end,
+            # channel, amplitude, label, label_id, from_t, align_flag -- and
+            # a `ds_type` beside those would be dropped on the way in. Worse,
+            # `SNAP_FIELDS` is start, label and label_id, so a new field
+            # would not survive a version restore either: you could go back
+            # to v4 and silently lose the classification.
+            #
+            # As labels they cost nothing and gain everything already built:
+            # `by_label` counts them, the per-version snapshot carries them,
+            # the bank's CSV export has a `label_name` column, and
+            # Xplorefinder colours them apart with nothing new written. The
+            # IED vocabulary above already has two `good` labels, so this is
+            # the shape rather than an invention.
+            #
+            # APPENDED, never replacing `spike`. Every set on disk was
+            # curated under the old vocabulary and still means what it meant;
+            # only a commit from X-ray moves an event onto one of these.
+            #
+            # `computed`, which is what the absence of keys used to imply
+            # and now states. Checkup shows a button per label and binds a
+            # key to each, and neither is right for these: DS1/DS2 is worked
+            # out from a PCA over every event at once, so a button offering
+            # it one candidate at a time would be offering a call that
+            # cannot be made that way -- and two more keys would change a
+            # tool this work does not otherwise touch. Everything that asks
+            # "is this a real event" reads `good` and is unaffected.
+            # Colours match `dspca.CLASS_COLORS[0:2]`, which the scatter, the
+            # profile and the class rasters all draw from.
+            #
+            # TWO, because there are two (the user, 2026-10-02: "it goes up
+            # to 2"). DS3 to DS5 used to be here because X-ray's panel let
+            # somebody ask for up to five classes; nobody ever committed
+            # one, and every set card showed three empty chips for them.
+            # The panel now asks for two, and `RETIRED` below takes them
+            # out of the vocabulary each older set copied in.
+            #
+            # The colours are `dspca.CLASS_COLORS`, written out rather than
+            # imported: that module pulls in scipy and scikit-learn, and the
+            # curation vocabulary must not depend on either.
+            {"id": "ds1", "name": "Dentate Spike (DS1)",
+             "color": "#1a7f37", "good": True, "computed": True},
+            {"id": "ds2", "name": "Dentate Spike (DS2)",
+             "color": "#7b3fa0", "good": True, "computed": True},
         ],
     },
     "ied": {
@@ -83,10 +142,46 @@ KINDS = {
             {"id": "garbage", "name": "Garbage", "keys": ["3", "g"],
              "color": "#dc2626"},
             {"id": "flag", "name": "Flag", "keys": ["4", "f"],
-             "color": "#E5A823"},
+             "color": "#E5A823", "flagged": True},
+        ],
+    },
+    # The Confluence: Incisor's dentate spikes and Doppler's discharges pooled
+    # into one list (backend/confluence.py), sorted in Panning. Spike or not
+    # -- whether a spike is a dentate spike or an IED is Root Canal's call,
+    # afterwards, in its three-axis space, so it is not asked here.
+    # Not `spike`: the bank already has entries of type `spike` -- unit
+    # spikes, threshold crossings (eventbank.EVENT_TYPES) -- and a filter
+    # preset of that name at 300 Hz. A pooled set is its own kind.
+    "pooled": {
+        "id": "pooled",
+        "name": "Pooled spikes — spike or not",
+        "blurb": "Incisor's and Doppler's events, pooled: a spike, or not.",
+        "labels": [
+            {"id": "spike", "name": "Spike", "keys": ["1", "s"],
+             "color": "#2f9e6e", "good": True},
+            {"id": "garbage", "name": "Garbage", "keys": ["2", "g"],
+             "color": "#dc2626"},
+            {"id": "flag", "name": "Flag", "keys": ["3", "f"],
+             "color": "#E5A823", "flagged": True},
         ],
     },
 }
+
+#: Where a pooled event came from (backend/confluence.py). Carried on the
+#: bank's events and on a curation set's candidates.
+ORIGINS = ("incisor", "doppler", "both")
+
+
+# Labels a set may still carry in the vocabulary it copied in, and that are
+# shown only where a candidate actually holds one. See the DS vocabulary.
+RETIRED = frozenset({"ds3", "ds4", "ds5"})
+
+
+def live_labels(rec):
+    """A set's vocabulary without the retired labels nothing uses."""
+    used = {e.get("label") for e in (rec.get("events") or [])}
+    return [l for l in (rec.get("labels") or [])
+            if l.get("id") not in RETIRED or l.get("id") in used]
 
 
 class CurationError(Exception):
@@ -104,15 +199,202 @@ def vocabulary(kind):
     with an older vocabulary -- which may still carry a reserved key -- are
     cleaned up when they are read, instead of quietly breaking navigation for
     whoever opens them next.
+
+    The built-in ones first, in their order, then every category somebody
+    added to this kind (`Categories`), in the order they were added.
     """
     out = []
     for lab in KINDS[kind]["labels"]:
         out.append(dict(lab, keys=_usable_keys(lab.get("keys"))))
-    return out
+    return out + custom_labels(kind)
+
+
+# --------------------------------------------------------------------------
+# Categories somebody added
+# --------------------------------------------------------------------------
+#
+# Spotter can add a category -- "Polyspike", "Spike-wave" -- and it is then a
+# category of EVERY set of that kind, on every recording: one vocabulary, so
+# a count of polyspikes on one recording means the same as on the next. Two
+# routes carry it to other computers, and either is enough:
+#
+#   the store    GUI_logs/categories/, sharded per machine like everything
+#                else there, which travels with the repository;
+#   the sets     a set that has used a category carries it in its own
+#                `labels`, and curation sets go through the cloud sync --
+#                so a category reaches a colleague the moment a set using it
+#                does, without a new table to migrate.
+#
+# Added, never renamed or removed here: a candidate already labelled with
+# one has to go on meaning what it meant. Keys are the free digits after the
+# built-in four, so the keyboard keeps working the way it always has.
+
+CUSTOM_KEYS = ("5", "6", "7", "8", "9", "0")
+_CURATE = None          # the process's Curation, for the module functions
+
+
+def _slug(name):
+    out = "".join(c if c.isalnum() else "-" for c in str(name).lower())
+    while "--" in out:
+        out = out.replace("--", "-")
+    return out.strip("-")[:24] or "category"
+
+
+def custom_labels(kind):
+    """Every category added to `kind`: the store's, then any a set carries
+    that the store has not got (one that arrived through the cloud sync)."""
+    if _CURATE is None or kind not in KINDS:
+        return []
+    return _CURATE.customs(kind)
+
+
+def _with_customs(labels, kind):
+    """A set's vocabulary with every added category it does not carry yet,
+    so a category made on one recording is offered on all of them."""
+    have = {l.get("id") for l in (labels or [])}
+    return list(labels or []) + [dict(l) for l in custom_labels(kind)
+                                 if l["id"] not in have]
+
+
+class Categories:
+    """The added categories, one record per kind, merged per label id."""
+
+    def __init__(self, logs_dir, store):
+        self.dir = os.path.join(logs_dir, "categories")
+        os.makedirs(self.dir, exist_ok=True)
+        self.book = shards.Book(self.dir, {
+            "labels": shards.BYID,
+            "created": shards.FIRST,
+        }, store)
+        self.store = store
+
+    def for_kind(self, kind):
+        rec = self.book.read(shards.safe_base(kind)) or {}
+        return [dict(l) for l in (rec.get("labels") or [])
+                if isinstance(l, dict) and l.get("id")]
+
+    def add(self, kind, lab):
+        base = shards.safe_base(kind)
+        rec = self.book.read(base) or {}
+        rec.setdefault("kind", kind)
+        rec["labels"] = list(rec.get("labels") or []) + [lab]
+        self.book.write(base, rec)
+        return lab
 
 
 def _now():
     return time.strftime("%Y-%m-%dT%H:%M:%S%z")
+
+
+# How close two times have to be to be the same candidate. A tenth of a
+# millisecond: tight enough that two real candidates are never confused,
+# loose enough to survive a float round trip through JSON. One constant
+# rather than a literal per call site, because `create` matched at three
+# decimals while absorb, restore and the bank matched at four -- so the
+# same two candidates were one candidate in one place and two in another.
+MATCH_DP = 4
+
+
+def _tkey(value):
+    """A start time as a match key, or None if it is not a time at all."""
+    try:
+        return round(float(value), MATCH_DP)
+    except (TypeError, ValueError):
+        return None
+
+
+def resolve_label(labels, value):
+    """A label id from whatever a caller has: an id, or a display name.
+
+    The bank stores a category as its display name, because an entry has
+    to be readable on its own -- so "Garbage" is what comes back out of
+    it. The set works in ids. Matching only on ids meant every decision
+    in a banked set was silently dropped on the way back in:
+    `"Garbage" in {"garbage", ...}` is False, so a fully curated set
+    returned undecided and looked like a fresh import. Both spellings
+    are accepted here, so nowhere else has to know that the bank speaks
+    names and the set speaks ids.
+    """
+    if value is None:
+        return None
+    want = str(value).strip()
+    if not want or want.lower() == "unspecified":
+        return None
+    ids, names = set(), {}
+    for lab in labels or []:
+        lid = lab.get("id")
+        if not lid:
+            continue
+        ids.add(lid)
+        names[str(lid).lower()] = lid
+        if lab.get("name"):
+            names[str(lab["name"]).strip().lower()] = lid
+    if want in ids:
+        return want
+    return names.get(want.lower())
+
+
+def _eid():
+    return "e" + uuid.uuid4().hex[:10]
+
+
+def _when(stamp):
+    """A stamp as something comparable, whatever timezone wrote it.
+
+    These are local times with an offset -- "2026-09-04T13:51:40-0400" -- so
+    comparing them as strings gets the wrong answer between two machines in
+    different timezones, and "the newer decision wins" would quietly mean
+    "the one further east wins". Parsed, with anything unreadable sorting
+    oldest so a decision with a real stamp always beats one without.
+    """
+    if not stamp:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    try:
+        got = datetime.fromisoformat(str(stamp))
+    except ValueError:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    if got.tzinfo is None:
+        got = got.replace(tzinfo=timezone.utc)
+    return got
+
+
+def _own_review(ev):
+    """Make sure the decision already on a candidate is one of its reviews.
+
+    Decisions made before candidates kept a review list -- and any that
+    arrived through an import -- carry only `label`, `by` and `at`. Without
+    backfilling that as a review, absorbing somebody else's call leaves the
+    candidate looking like she is the only person who ever saw it, and "two
+    people agreed" can never be true of anything.
+    """
+    lab = ev.get("label")
+    if not lab:
+        return
+    who = (ev.get("by") or "").strip() or "unknown"
+    for r in (ev.get("reviews") or []):
+        if (r.get("by") or "") == who:
+            return
+    ev["reviews"] = sorted(
+        (ev.get("reviews") or []) + [
+            {"by": who, "label": lab, "at": ev.get("at") or _now()}],
+        key=lambda r: _when(r.get("at")))
+
+
+def _remember_review(ev, who, label, at):
+    """Note that somebody said what this candidate is.
+
+    Several people looking the same candidate over is the normal case -- one
+    person goes through a session and another spot-checks it -- and "two
+    people agreed" is worth more than one person's call. One row per person,
+    holding their latest call, so a reviewer changing their own mind does not
+    look like two reviewers.
+    """
+    who = (who or "").strip() or "unknown"
+    rows = [r for r in (ev.get("reviews") or [])
+            if (r.get("by") or "") != who]
+    rows.append({"by": who, "label": label, "at": at or _now()})
+    rows.sort(key=lambda r: _when(r.get("at")))
+    ev["reviews"] = rows
 
 
 class Curation:
@@ -127,6 +409,80 @@ class Curation:
         self.book.absorb_legacy()
         self.store = store
         os.makedirs(self.dir, exist_ok=True)
+        self.categories = Categories(logs_dir, store)
+        self._custom_memo = {}
+        global _CURATE
+        _CURATE = self
+
+    # ------------------------------------------------------------------
+    # Added categories
+    # ------------------------------------------------------------------
+    def customs(self, kind):
+        """See `custom_labels`. Built-in ids never count, whatever a set
+        holds: those are the vocabulary's own."""
+        # A second's memo: the workbench summarises forty sets at once, and
+        # each asks. Cleared the moment a category is added.
+        now = time.time()
+        hit = self._custom_memo.get(kind)
+        if hit and now - hit[0] < 1.0:
+            return [dict(l) for l in hit[1]]
+        builtin = {l["id"] for l in KINDS[kind]["labels"]} | set(RETIRED)
+        out, seen = [], set()
+        for lab in self.categories.for_kind(kind):
+            if lab["id"] not in builtin and lab["id"] not in seen:
+                seen.add(lab["id"])
+                out.append(dict(lab, keys=_usable_keys(lab.get("keys"))))
+        for rec in self.all():
+            if rec.get("kind") != kind:
+                continue
+            for lab in rec.get("labels") or []:
+                if (isinstance(lab, dict) and lab.get("custom")
+                        and lab.get("id") not in builtin
+                        and lab.get("id") not in seen):
+                    seen.add(lab["id"])
+                    out.append(dict(lab, keys=_usable_keys(lab.get("keys"))))
+        self._custom_memo[kind] = (now, out)
+        return [dict(l) for l in out]
+
+    @shards.atomic
+    def add_category(self, kind, name, color, good=False):
+        """A new category for every set of `kind`. Refuses a name already in
+        use and a colour that is not one."""
+        if kind not in KINDS:
+            raise CurationError("Unknown kind %r." % kind)
+        name = " ".join(str(name or "").split())
+        if not name:
+            raise CurationError("A category needs a name.")
+        if len(name) > 32:
+            raise CurationError("Keep the name to 32 characters or fewer; it "
+                                "goes on a button.")
+        color = str(color or "").strip()
+        if not (len(color) == 7 and color[0] == "#" and all(
+                c in "0123456789abcdefABCDEF" for c in color[1:])):
+            raise CurationError("Pick a colour for it.")
+        vocab = vocabulary(kind)
+        same = next((l for l in vocab if str(l.get("name", "")).strip()
+                     .lower() == name.lower()), None)
+        if same:
+            raise CurationError("There is already a category called %s."
+                                % same.get("name"))
+        taken_ids = {l.get("id") for l in vocab} | set(RETIRED)
+        base = _slug(name)
+        lid, n = base, 2
+        while lid in taken_ids:
+            lid = "%s-%d" % (base, n)
+            n += 1
+        taken_keys = {str(k).lower() for l in vocab for k in (l.get("keys") or [])}
+        key = next((k for k in CUSTOM_KEYS if k not in taken_keys), None)
+        prov = self.store.provenance() if self.store else {"at": _now()}
+        lab = {"id": lid, "name": name, "color": color.lower(),
+               "keys": [key] if key else [], "custom": True,
+               "created": prov}
+        if good:
+            lab["good"] = True
+        out = self.categories.add(kind, lab)
+        self._custom_memo.pop(kind, None)
+        return out
 
     # ------------------------------------------------------------------
     # Files
@@ -153,10 +509,24 @@ class Curation:
             raise CurationError("Unknown kind %r." % kind)
         rec = self._read(gid, kind)
         if rec:
+            # Every added category is offered on every set, whether or not
+            # this one has used it yet (`_with_customs`).
+            rec["labels"] = _with_customs(live_labels(rec), kind)
             # An old set may carry a key the mode has since reserved.
             for lab in rec.get("labels") or []:
                 lab["keys"] = _usable_keys(lab.get("keys"))
         return rec
+
+    def _adopt_custom(self, rec, label):
+        """True if `label` is an added category of this set's kind, and puts
+        it into the set's own vocabulary -- which is what carries it to
+        other computers through the cloud sync."""
+        lab = next((l for l in custom_labels(rec.get("kind"))
+                    if l["id"] == label), None)
+        if lab is None:
+            return False
+        rec["labels"] = list(rec.get("labels") or []) + [dict(lab)]
+        return True
 
     def all(self):
         return self.book.all()
@@ -173,6 +543,14 @@ class Curation:
         done = 0
         for e in evs:
             lab = e.get("label")
+            # The word counts as no decision, not as a decision called
+            # "unspecified". It is not in either vocabulary and should never
+            # be stored -- but a sync did store it, on seven candidates, and
+            # this counter reported them as done: `left` 0, `percent` 100,
+            # on a set nobody had finished. A count that a stray value in
+            # the data can invert is worth making stubborn.
+            if lab == "unspecified":
+                lab = None
             if lab:
                 done += 1
                 by[lab] = by.get(lab, 0) + 1
@@ -195,7 +573,19 @@ class Curation:
             "source": rec.get("source") or {},
             "created": rec.get("created") or {},
             "updated": rec.get("updated") or {},
-            "labels": rec.get("labels") or kind.get("labels") or [],
+            "labels": _with_customs(live_labels(rec) or kind.get("labels")
+                                    or [], rec.get("kind"))
+                      if rec.get("kind") in KINDS
+                      else (live_labels(rec) or kind.get("labels") or []),
+            "archived": bool(rec.get("archived")),
+            # The workbench facts. A set is either something somebody is
+            # working on or it is not, and the list is unreadable without
+            # that distinction once there are forty of them.
+            "open": bool(rec.get("open")),
+            "assignee": rec.get("assignee"),
+            "opened_at": rec.get("opened_at"),
+            "opened_by": rec.get("opened_by"),
+            "closed_at": rec.get("closed_at"),
             "progress": self.progress(rec),
         }
 
@@ -205,6 +595,7 @@ class Curation:
     # ------------------------------------------------------------------
     # Writing
     # ------------------------------------------------------------------
+    @shards.atomic
     def create(self, gid, kind, events, name=None, source=None,
                session_label=None, replace=False):
         """Start a curation set from a list of candidate times.
@@ -221,44 +612,136 @@ class Curation:
                 "A curation set has to belong to a recording. Open the "
                 "recording first so it has a permanent id.")
 
-        clean = []
+        vocab = vocabulary(kind)
+        prov = self.store.provenance() if self.store else {}
+        me = prov.get("user")
+        at_import = _now()
+
+        # The ids this recording already uses for these times.
+        #
+        # A candidate's identity is its time in a recording, not the uuid that
+        # happened to be minted for it. Replacing the list with fresh ids for
+        # the same 416 times looks like a replacement on the machine doing it
+        # and like 416 NEW candidates to every other machine -- events merge
+        # by id, so the two shards hold disjoint id sets for one set of times
+        # and the merge is the union. That is exactly what happened to m33 s8
+        # on 2026-09-08: a set restarted from v0 on one machine while another
+        # held 416 decisions became 832 candidates, half of them undecided
+        # duplicates of the other half.
+        #
+        # So an incoming time that this set already knows keeps the id it
+        # already has, replace or not. Then restarting a set on one machine
+        # and deciding it on another converge instead of doubling.
+        was = self._read(gid, kind) or {}
+        id_at = {}
+        for e in (was.get("events") or []):
+            key = _tkey(e.get("start"))
+            if key is not None and e.get("id"):
+                id_at.setdefault(key, e["id"])
+
+        clean, used = [], set()
         for i, ev in enumerate(events or []):
             try:
                 start = float(ev.get("start") if isinstance(ev, dict) else ev)
             except (TypeError, ValueError):
                 continue
+            keep = id_at.get(_tkey(start))
+            if keep in used:
+                # Two incoming candidates at the same time: only the first
+                # can inherit the id, or they would collapse into one.
+                keep = None
+            if keep:
+                used.add(keep)
             item = {
-                "id": "e" + uuid.uuid4().hex[:10],
+                "id": keep or ("e" + uuid.uuid4().hex[:10]),
                 "start": round(start, 6),
                 "label": UNSPECIFIED,
             }
             if isinstance(ev, dict):
-                for k in ("end", "channel", "amplitude", "note"):
+                # `origin` and `pair_t` for a pooled spike: which detector
+                # found it, and where the other one put it.
+                for k in ("end", "channel", "amplitude", "note", "origin",
+                          "pair_t"):
                     if ev.get(k) is not None:
                         item[k] = ev[k]
-                if ev.get("label") and ev["label"] in self._label_ids(kind):
-                    # An import that already carries a decision keeps it.
-                    item["label"] = ev["label"]
+                # An import that already carries a decision keeps it --
+                # by id or by display name, because a set coming back
+                # from the bank carries names.
+                got = resolve_label(
+                    vocab, ev.get("label") or ev.get("label_id"))
+                if got:
+                    item["label"] = got
+                    # Stamped, because an unstamped decision loses every
+                    # disagreement it is ever in: _when(None) sorts
+                    # oldest, so "the newer decision wins" hands the
+                    # argument to whoever touched it most recently
+                    # regardless of who actually looked at the trace.
+                    item["by"] = (ev.get("by") or (source or {}).get("by")
+                                  or me or "the import")
+                    item["at"] = ev.get("at") or at_import
+                    _remember_review(item, item["by"], got, item["at"])
             clean.append(item)
 
         if not clean:
             raise CurationError("None of those candidates had a usable time.")
         clean.sort(key=lambda e: e["start"])
 
-        existing = self._read(gid, kind)
+        existing = was or None
+        # Kept even when replacing: write() needs the record that was
+        # read to know which candidates have gone. Without it the ids it
+        # no longer holds get no tombstone, and they come back the next
+        # time another machine's shard is merged in -- alongside the new
+        # ids for the same times, so the set doubles.
+        prior_sync = (existing or {}).get("_sync")
         if existing and not replace:
             # Adding to a set in progress: keep the decisions already made,
             # and only take candidates at times not already covered.
-            seen = {round(e["start"], 3) for e in (existing.get("events") or [])}
-            fresh = [e for e in clean if round(e["start"], 3) not in seen]
+            have = {}
+            for e in (existing.get("events") or []):
+                key = _tkey(e.get("start"))
+                if key is not None:
+                    have.setdefault(key, e)
+            fresh = [e for e in clean if _tkey(e["start"]) not in have]
+
+            # What the import actually had to offer, when every time in it
+            # was already here: the labels. Taken where nobody has decided,
+            # reported where somebody has decided otherwise, and never
+            # written over a decision -- that is what absorb is for, and it
+            # asks first.
+            who = me
+            applied, differ = 0, []
+            for e in clean:
+                lab = resolve_label(existing.get("labels") or vocab,
+                                    e.get("label"))
+                if not lab:
+                    continue
+                hit = have.get(_tkey(e["start"]))
+                if hit is None:
+                    continue
+                if not hit.get("label"):
+                    _own_review(hit)
+                    hit["label"] = lab
+                    hit["by"] = e.get("by") or who
+                    hit["at"] = e.get("at") or _now()
+                    _remember_review(hit, hit["by"], lab, hit["at"])
+                    applied += 1
+                elif hit["label"] != lab:
+                    _remember_review(hit, e.get("by") or "the import", lab,
+                                     e.get("at"))
+                    differ.append({"start": hit["start"], "mine": hit["label"],
+                                   "theirs": lab})
+
             existing["events"] = sorted(
                 (existing.get("events") or []) + fresh,
                 key=lambda e: e["start"])
             existing.setdefault("imports", []).append({
-                "at": _now(), "n": len(fresh), "skipped": len(clean) - len(fresh),
+                "at": _now(), "n": len(fresh),
+                "skipped": len(clean) - len(fresh),
+                "labelled": applied, "disagreed": len(differ),
                 "source": source or {},
             })
-            return self._write(existing), len(fresh)
+            return (self._write(existing), len(fresh),
+                    {"labelled": applied, "disagreed": differ})
 
         rec = {
             "schema": SCHEMA,
@@ -266,27 +749,762 @@ class Curation:
             "kind": kind,
             "name": name or (KINDS[kind]["name"] + " candidates"),
             "session_label": session_label,
+            # A set arrives closed. It joins the workbench when somebody
+            # opens it, not merely because it exists.
+            "open": False,
+            "assignee": None,
             # Copied in, so a later change to the vocabulary cannot rewrite
             # what an old set meant.
-            "labels": vocabulary(kind),
+            "labels": vocab,
             "source": source or {},
             "events": clean,
             "created": self.store.provenance() if self.store else {"at": _now()},
-            "imports": [{"at": _now(), "n": len(clean), "skipped": 0,
+            "imports": [{"at": at_import, "n": len(clean), "skipped": 0,
                          "source": source or {}}],
         }
-        return self._write(rec), len(clean)
+        # Whose set it is survives being restarted. Replacing the candidate
+        # list -- reimporting, or starting again from a different banked
+        # version -- is a statement about the data, not about who is
+        # responsible for going through it.
+        if existing:
+            for keep in ("assignee", "assigned_at"):
+                if existing.get(keep) is not None:
+                    rec[keep] = existing[keep]
+        if prior_sync:
+            rec["_sync"] = prior_sync
+        return self._write(rec), len(clean), {"labelled": 0, "disagreed": []}
+
+    HANDOFF_SCHEMA = 1
+
+    def handoff(self, sets):
+        """One file carrying everything needed to move decisions.
+
+        The whole set rather than only the decided candidates, because the
+        candidates nobody has reached yet are what tells the other side how
+        much is left -- and because a set that arrives missing half its
+        candidates looks finished when it is not.
+        """
+        prov = self.store.provenance() if self.store else {}
+        out = []
+        for rec in sets:
+            out.append({
+                "gid": rec.get("gid"),
+                "kind": rec.get("kind"),
+                "name": rec.get("name"),
+                "session_label": rec.get("session_label"),
+                "labels": rec.get("labels"),
+                "source": rec.get("source"),
+                "created": rec.get("created"),
+                "updated": rec.get("updated"),
+                "events": [
+                    {k: v for k, v in e.items() if not k.startswith("_")}
+                    for e in (rec.get("events") or [])
+                ],
+            })
+        return {
+            "schema": self.HANDOFF_SCHEMA,
+            "what": "Jarvis curation handoff",
+            "from": {
+                "who": prov.get("user"),
+                "machine": prov.get("machine") or platform.node(),
+                "at": _now(),
+            },
+            "sets": out,
+        }
+
+    @shards.atomic
+    def absorb(self, bundle, prefer=None):
+        """Take another machine's decisions into the local sets.
+
+        `prefer` of "theirs" or "mine" settles a straight disagreement;
+        the default settles it by which decision was made later, which is
+        what you want when the two machines have simply been worked on at
+        different times.
+        """
+        if not isinstance(bundle, dict) or "sets" not in bundle:
+            raise CurationError(
+                "That is not a curation handoff file -- it has no `sets`. "
+                "Use the file saved by Hand off, not an export CSV.")
+        schema = bundle.get("schema")
+        if schema and int(schema) > self.HANDOFF_SCHEMA:
+            raise CurationError(
+                "That handoff was written by a newer Jarvis (schema %s, this "
+                "one reads %s). Update this copy first rather than importing "
+                "it half-understood." % (schema, self.HANDOFF_SCHEMA))
+
+        who_from = (bundle.get("from") or {}).get("who") or "another machine"
+        report = {"from": bundle.get("from") or {}, "sets": []}
+        for incoming in bundle.get("sets") or []:
+            report["sets"].append(
+                self._absorb_one(incoming, who_from, prefer))
+        return report
+
+    def _absorb_one(self, incoming, who_from, prefer):
+        gid = incoming.get("gid")
+        kind = incoming.get("kind")
+        # Four different things happen to a decision and rolling them into
+        # one count is how "8 taken" comes out of 1 blank filled, 5
+        # disagreements and 2 new candidates.
+        line = {"gid": gid, "kind": kind,
+                "name": incoming.get("name"),
+                "session_label": incoming.get("session_label"),
+                "created_set": False,
+                "added": 0,        # candidates we did not have
+                "taken": 0,        # ours was undecided, so hers now stands
+                "agreed": 0,       # we had both said the same thing
+                "overruled": 0,    # we disagreed and hers is newer
+                "kept": 0,         # we disagreed and ours stands
+                "disagreed": [], "unchanged": 0}
+        if not gid or kind not in KINDS:
+            line["error"] = "That set says it is a %r set, which this Jarvis " \
+                            "does not know about." % (kind,)
+            return line
+
+        theirs = incoming.get("events") or []
+        rec = self._read(gid, kind)
+        if not rec:
+            # Nothing here to merge into: take the set wholesale. Their
+            # decisions come with it, which is the point.
+            rec = {
+                "schema": SCHEMA, "gid": gid, "kind": kind,
+                "name": incoming.get("name")
+                        or (KINDS[kind]["name"] + " candidates"),
+                "session_label": incoming.get("session_label"),
+                "labels": incoming.get("labels") or vocabulary(kind),
+                "source": incoming.get("source") or {},
+                "events": sorted(
+                    [dict(e) for e in theirs],
+                    key=lambda e: e.get("start") or 0),
+                "created": incoming.get("created")
+                           or (self.store.provenance() if self.store
+                               else {"at": _now()}),
+                "imports": [],
+            }
+            for e in rec["events"]:
+                _own_review(e)
+            line["created_set"] = True
+            line["added"] = len(rec["events"])
+            line["taken"] = sum(1 for e in rec["events"] if e.get("label"))
+        else:
+            mine = rec.get("events") or []
+            by_id = {e.get("id"): e for e in mine if e.get("id")}
+            # Falling back to the time, because a set built independently on
+            # the other machine has its own ids for the same candidates.
+            # Four decimals is a tenth of a millisecond -- tight enough that
+            # two real candidates are never confused, loose enough to
+            # survive a float round trip through JSON.
+            by_t = {}
+            for e in mine:
+                try:
+                    by_t.setdefault(round(float(e["start"]), 4), e)
+                except (TypeError, ValueError, KeyError):
+                    continue
+
+            for ev in theirs:
+                hit = by_id.get(ev.get("id"))
+                if hit is None:
+                    try:
+                        hit = by_t.get(round(float(ev["start"]), 4))
+                    except (TypeError, ValueError, KeyError):
+                        hit = None
+                if hit is None:
+                    fresh = dict(ev)
+                    fresh.setdefault("id", _eid())
+                    _own_review(fresh)
+                    mine.append(fresh)
+                    by_id[fresh["id"]] = fresh
+                    line["added"] += 1
+                    continue
+
+                their_label = ev.get("label")
+                if their_label is None:
+                    line["unchanged"] += 1
+                    continue
+                # Ours first, so a candidate two people have looked at can
+                # actually say both of their names.
+                _own_review(hit)
+                _remember_review(hit, ev.get("by") or who_from, their_label,
+                                 ev.get("at"))
+                if not hit.get("label"):
+                    hit["label"] = their_label
+                    hit["by"] = ev.get("by") or who_from
+                    hit["at"] = ev.get("at") or _now()
+                    line["taken"] += 1
+                elif hit["label"] == their_label:
+                    line["agreed"] += 1
+                else:
+                    take = (prefer == "theirs" or
+                            (prefer != "mine"
+                             and _when(ev.get("at")) > _when(hit.get("at"))))
+                    line["disagreed"].append({
+                        "id": hit.get("id"), "start": hit.get("start"),
+                        "mine": hit["label"], "mine_by": hit.get("by"),
+                        "theirs": their_label,
+                        "theirs_by": ev.get("by") or who_from,
+                        "took": "theirs" if take else "mine",
+                    })
+                    if take:
+                        hit["label"] = their_label
+                        hit["by"] = ev.get("by") or who_from
+                        hit["at"] = ev.get("at") or _now()
+                        line["overruled"] += 1
+                    else:
+                        line["kept"] += 1
+
+            rec["events"] = sorted(mine, key=lambda e: e.get("start") or 0)
+
+        rec.setdefault("imports", []).append({
+            "at": _now(), "n": line["added"], "skipped": 0,
+            "source": {"kind": "handoff", "from": who_from,
+                       "taken": line["taken"], "agreed": line["agreed"],
+                       "overruled": line["overruled"],
+                       "kept": line["kept"],
+                       "disagreed": len(line["disagreed"])},
+        })
+        self._write(rec)
+        line["progress"] = self.progress(rec)
+        return line
+
+    def restamp(self, dry_run=False):
+        """Give each decision the merge stamp its own record already implies.
+
+        Returns what it did, per set, so it can be read before it is run.
+        """
+        out = []
+        for base in self.book.bases():
+            path = self.book.mine(base)
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    shard = json.load(fh)
+            except (OSError, ValueError):
+                continue
+            keys = (shard.get("_keys") or {}).get("events") or {}
+            moved = []
+            for ev in shard.get("events") or []:
+                eid, at = ev.get("id"), ev.get("at")
+                if not eid or not at or not ev.get("label"):
+                    continue
+                want = _when(at)
+                if want.year < 2000:
+                    continue
+                stamp = want.astimezone(timezone.utc).isoformat(
+                    timespec="microseconds")
+                entry = keys.get(eid)
+                # Only forward, and only past a stamp that is genuinely
+                # older -- a decision already stamped correctly is left
+                # exactly as it is.
+                if isinstance(entry, list) and len(entry) == 2:
+                    if entry[0] != "set" or entry[1] >= stamp:
+                        continue
+                    keys[eid] = ["set", stamp]
+                else:
+                    keys[eid] = ["set", stamp]
+                moved.append(eid)
+            if not moved:
+                continue
+            out.append({"base": base, "name": shard.get("name"),
+                        "gid": shard.get("gid"), "kind": shard.get("kind"),
+                        "restamped": len(moved)})
+            if dry_run:
+                continue
+            shard.setdefault("_keys", {})["events"] = keys
+            shards.write_json_atomic(path, shard)
+            if self.store:
+                self.store._stage(path)
+        return out
+
+    def retime(self, gid, kind, mapping, target, basis_from, gap_map_sha,
+               dry_run=True, who=None):
+        """Shift every event's time in place, keeping its id and its decision.
+
+        `mapping` takes one time and returns `(new_time, segment)`, or
+        `(None, None)` when there is no answer. An event this cannot place
+        stops the whole operation rather than being left behind at the old
+        time -- a set half on one clock and half on another is worse than
+        one wholly on the wrong clock, because nothing about it looks wrong.
+
+        `dry_run=True` by default, and the dry run returns exactly what the
+        write would do.
+        """
+        rec = self.get(gid, kind)
+        if not rec:
+            raise CurationError("No %s set for %s." % (kind, gid))
+
+        basis = (rec.get("time_basis") or {}).get("kind")
+        if basis == target:
+            raise CurationError(
+                "This set is already on %s." % target)
+        if basis and basis != basis_from:
+            raise CurationError(
+                "This set says it is on %s, not %s." % (basis, basis_from))
+
+        evs = rec.get("events") or []
+        ids_before = [e.get("id") for e in evs]
+        decided_before = sum(1 for e in evs if e.get("label"))
+        labels_before = {}
+        for e in evs:
+            if e.get("label"):
+                labels_before[e["label"]] = labels_before.get(e["label"], 0) + 1
+
+        plan, unplaceable, shifts = [], [], []
+        for e in evs:
+            try:
+                t = float(e.get("start"))
+            except (TypeError, ValueError):
+                unplaceable.append(e)
+                continue
+            new_t, seg = mapping(t)
+            if new_t is None:
+                unplaceable.append(e)
+                continue
+            plan.append((e, round(float(new_t), 6), seg))
+            shifts.append(round((float(new_t) - t) * 1e3, 4))
+
+        line = {
+            "gid": gid, "kind": kind,
+            "name": rec.get("name"),
+            "session_label": rec.get("session_label"),
+            "was": len(evs),
+            "moving": len(plan),
+            "unplaceable": len(unplaceable),
+            "unplaceable_times": [e.get("start") for e in unplaceable[:10]],
+            "decided": decided_before,
+            "by_label": labels_before,
+            "shift_min_ms": min(shifts) if shifts else 0.0,
+            "shift_max_ms": max(shifts) if shifts else 0.0,
+            "from": basis_from, "to": target,
+            "gap_map_sha": gap_map_sha,
+            "dry_run": bool(dry_run),
+            "sample": [
+                {"id": e.get("id"), "was": e.get("start"), "now": t,
+                 "label": e.get("label"),
+                 "shift_ms": round((t - float(e["start"])) * 1e3, 3)}
+                for e, t, _s in plan[:8]
+            ],
+        }
+        if unplaceable:
+            line["error"] = ("%d event(s) have no time on the other clock. "
+                             "Nothing was written -- a set half on one clock "
+                             "is worse than one wholly on the wrong one."
+                             % len(unplaceable))
+            return line
+        if dry_run:
+            return line
+
+        prov = self.store.provenance() if self.store else {}
+        stamp = _now()
+        by = (who or prov.get("user") or "unknown")
+
+        # Read the shard this machine owns, not the merged record. The
+        # merge is a read-time union of every machine's file; writing it
+        # back would claim every other machine's decisions as this one's.
+        path = self.book.mine(self.base(gid, kind))
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                shard = json.load(fh)
+        except (OSError, ValueError):
+            shard = None
+        if not shard:
+            raise CurationError(
+                "This machine holds no shard of that set, so there is "
+                "nothing here to re-time. Run it where the set was curated.")
+
+        want = {}
+        for e, t, _seg in plan:
+            if e.get("id"):
+                want[e["id"]] = t
+
+        keys = (shard.get("_keys") or {}).get("events") or {}
+        touched, missing = 0, 0
+        for ev in shard.get("events") or []:
+            eid = ev.get("id")
+            if not eid or eid not in want:
+                missing += 1
+                continue
+            was = ev.get("start")
+            ev["start"] = want[eid]
+            # `end` rides along so a span does not become a different
+            # length than it was recorded as.
+            if ev.get("end") is not None:
+                try:
+                    ev["end"] = round(float(ev["end"])
+                                      + (want[eid] - float(was)), 6)
+                except (TypeError, ValueError):
+                    pass
+            # What was applied, per event, so a second run compares and
+            # skips instead of shifting again.
+            ev["retimed"] = {"from": was, "shift_ms":
+                             round((want[eid] - float(was)) * 1e3, 4),
+                             "gap_map_sha": gap_map_sha}
+            # And the merge stamp. Without this a colleague's untouched
+            # copy of this id is newer and wins: the correction works here
+            # and silently reverts on the next sync.
+            keys[eid] = ["set", stamp]
+            touched += 1
+
+        shard.setdefault("_keys", {})["events"] = keys
+        shard["events"] = sorted(shard.get("events") or [],
+                                 key=lambda e: e.get("start") or 0)
+        shard["time_basis"] = {
+            "kind": target,
+            "converted_from": basis_from,
+            "gap_map_sha": gap_map_sha,
+            "tool": "jarvis.retime/1",
+            "at": stamp,
+            "by": by,
+        }
+        shard["updated"] = (self.store.provenance() if self.store
+                            else {"at": stamp})
+        shards.write_json_atomic(path, shard)
+        if self.store:
+            self.store._stage(path)
+
+        # Post-conditions, checked against the merged record afterwards --
+        # which is what everyone else will read. Every one of these is a
+        # way the operation could have looked fine and not been.
+        after = self.get(gid, kind) or {}
+        ids_after = [e.get("id") for e in (after.get("events") or [])]
+        line["touched"] = touched
+        line["not_in_my_shard"] = missing
+        line["now"] = len(ids_after)
+        line["ids_held"] = sorted(ids_before) == sorted(ids_after)
+        line["new_ids"] = len(set(ids_after) - set(ids_before))
+        line["lost_ids"] = len(set(ids_before) - set(ids_after))
+        line["decided_after"] = sum(1 for e in (after.get("events") or [])
+                                    if e.get("label"))
+        line["decisions_held"] = line["decided_after"] == decided_before
+        line["tombstones"] = len((after.get("_tombstones")
+                                  or shard.get("_tombstones") or []))
+        line["time_basis"] = shard["time_basis"]
+        return line
+
+    def backfill(self, dry_run=False):
+        """Give a decision that arrived without provenance the provenance
+        its own record implies.
+
+        The sets imported from the snapshot folders carry a label and
+        nothing else -- no who, no when, no review row -- because `create`
+        did not stamp what an import already knew. Two things follow, and
+        both are silent. `_when(None)` sorts oldest, so on any handoff
+        merge an unstamped decision loses every disagreement it is in to
+        whoever touched the set most recently. And with no review row,
+        "two people agreed" can never be true of anything, which is the
+        one thing the review list was added to make sayable.
+
+        The stamp used is the import's own time, from the set's `imports`
+        record, and the name is whoever the import said it was. That is
+        the honest answer: the decision is as old as the import, and it
+        was made by whoever did the sorting.
+        """
+        out = []
+        for rec in self.all():
+            imports = rec.get("imports") or []
+            first = imports[0] if imports else {}
+            src = first.get("source") or {}
+            at = first.get("at") or (rec.get("created") or {}).get("at")
+            who = (src.get("by") or (rec.get("created") or {}).get("user")
+                   or "the import")
+            stamped = reviewed = 0
+            deciders = {}
+            for ev in rec.get("events") or []:
+                lab = ev.get("label")
+                if not lab:
+                    continue
+                if not ev.get("at") and at:
+                    ev["at"] = at
+                    ev.setdefault("by", who)
+                    stamped += 1
+                if not (ev.get("reviews") or []):
+                    _own_review(ev)
+                    reviewed += 1
+                got = (ev.get("by") or "").strip()
+                if got and got.lower() not in NOT_A_PERSON:
+                    deciders[got] = deciders.get(got, 0) + 1
+
+            # And a name on the set itself. Forty sets with no owner
+            # are forty identical rows; the person who actually made
+            # the calls is the honest default, and it is right there
+            # in the decisions.
+            owned = 0
+            if not (rec.get("assignee") or "").strip():
+                pick = None
+                if deciders:
+                    pick = max(sorted(deciders),
+                               key=lambda k: deciders[k])
+                pick = pick or (rec.get("created") or {}).get("user")
+                if pick:
+                    rec["assignee"] = pick
+                    owned = 1
+            if not (stamped or reviewed or owned):
+                continue
+            out.append({"gid": rec.get("gid"), "kind": rec.get("kind"),
+                        "name": rec.get("name"),
+                        "session_label": rec.get("session_label"),
+                        "stamped": stamped, "reviewed": reviewed,
+                        "assigned": rec.get("assignee") if owned else None,
+                        "at": at, "by": who})
+            if not dry_run:
+                self._write(rec)
+        return out
+
+    @shards.atomic
+    def merge_events(self, gid, kind, keep_id, drop_id):
+        """Two candidates that are one event, made one -- Panning's merge.
+
+        Returns (survivor, progress, dropped_id).
+
+        The SURVIVOR is whichever of the two carries Incisor's time -- a
+        dentate-spike detector stamps the spike's own peak -- and otherwise
+        the earlier one, whichever was clicked first. So no candidate's time
+        ever changes: the bank matches versions on time, and a merge that
+        moved the surviving stamp would read in the history as one event
+        lost and an unrelated one gained, on top of the one really removed.
+        `pair_t` keeps the other time. The survivor keeps its decision, or
+        takes the other's when it has none; its origin is the two together.
+        The other candidate is removed, which the shard merge records as a
+        tombstone, so another machine's copy does not bring it back.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        evs = rec.get("events") or []
+        a = next((e for e in evs if e.get("id") == keep_id), None)
+        b = next((e for e in evs if e.get("id") == drop_id), None)
+        if not a or not b or a is b:
+            raise CurationError("Pick two different candidates in this set.")
+        oa, ob = a.get("origin"), b.get("origin")
+
+        def has(o, src):
+            return o == src or o == "both"
+        if has(ob, "incisor") and not has(oa, "incisor"):
+            lead, other = b, a
+        elif has(oa, "incisor") or float(a["start"]) <= float(b["start"]):
+            lead, other = a, b
+        else:
+            lead, other = b, a
+        srcs = set()
+        for o in (oa, ob):
+            if o == "both":
+                srcs |= {"incisor", "doppler"}
+            elif o:
+                srcs.add(o)
+        if not lead.get("label") and other.get("label"):
+            for k in ("label", "by", "at"):
+                if other.get(k) is not None:
+                    lead[k] = other[k]
+        lead["pair_t"] = round(float(other["start"]), 6)
+        if srcs:
+            lead["origin"] = "both" if len(srcs) > 1 else next(iter(srcs))
+        if lead.get("channel") is None and other.get("channel") is not None:
+            lead["channel"] = other["channel"]
+        lead["merged_by"] = (self.store.provenance() if self.store
+                             else {}).get("user")
+        lead["merged_at"] = _now()
+        gone = other.get("id")
+        rec["events"] = [e for e in evs if e.get("id") != gone]
+        self._write(rec)
+        return lead, self.progress(rec), gone
+
+    #: What an undone merge may put back on the survivor, and what the
+    #: candidate it took in may come back with. Whitelisted: these arrive
+    #: from the page, which held them from before the merge.
+    _UNMERGE_KEEP = ("origin", "pair_t", "label", "by", "at", "channel",
+                     "merged_by", "merged_at")
+    _UNMERGE_BACK = ("start", "end", "channel", "amplitude", "origin",
+                     "pair_t", "label", "by", "at", "note")
+
+    @shards.atomic
+    def unmerge(self, gid, kind, keep_id, before, dropped):
+        """Panning's undo of a merge (Z): the survivor as it was, and the
+        candidate it took in, back. Returns (survivor, restored, progress).
+
+        The one that comes back gets a NEW id. Its old id was removed, and
+        the shard merge tombstoned it so another machine's copy would not
+        bring it back; reusing it would be asking every machine to agree
+        that a deleted candidate is not deleted after all. Its time is what
+        identifies it here anyway, and the time is the same.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        evs = rec.get("events") or []
+        a = next((e for e in evs if e.get("id") == keep_id), None)
+        if not a:
+            raise CurationError("That candidate is no longer in this set, so "
+                                "the merge cannot be undone here.")
+        try:
+            start = float((dropped or {}).get("start"))
+        except (TypeError, ValueError):
+            raise CurationError("Say where the other candidate was.")
+        was = before or {}
+        for k in self._UNMERGE_KEEP:
+            if was.get(k) is not None:
+                a[k] = was[k]
+            elif k == "label":
+                a[k] = UNSPECIFIED
+            else:
+                a.pop(k, None)
+        back = {"id": _eid()}
+        for k in self._UNMERGE_BACK:
+            if (dropped or {}).get(k) is not None:
+                back[k] = dropped[k]
+        back["start"] = round(start, 6)
+        back.setdefault("label", UNSPECIFIED)
+        rec["events"] = sorted(evs + [back], key=lambda e: e["start"])
+        self._write(rec)
+        return a, back, self.progress(rec)
+
+    @shards.atomic
+    def set_order(self, gid, kind, how, scores=None):
+        """Remember the order somebody wants to work in.
+
+        Stored, never applied. Re-ordering `events` themselves would change
+        what `index` means in every other window, in every saved view and in
+        the aid window -- and which order you want to work in is a
+        preference about a sitting, not a property of the data.
+
+        `scores` is the slot a model would fill: event id -> a number, where
+        lower means "probably obvious". Nothing here produces one, and
+        nothing here decides anything with one either; the most it can do is
+        change what you are shown first.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No such curation set.")
+        rec["order"] = how
+        if scores:
+            keep = {}
+            for ev in (rec.get("events") or []):
+                eid = ev.get("id")
+                if eid in scores:
+                    try:
+                        keep[eid] = float(scores[eid])
+                    except (TypeError, ValueError):
+                        continue
+            rec["scores"] = keep
+            rec["scored_at"] = _now()
+        self._write(rec)
+        return rec
+
+    @shards.atomic
+    def dedupe(self, gid=None, kind=None, dry_run=False):
+        """Collapse candidates that are two records of one time.
+
+        Written for the fault above: a set restarted on one machine while
+        another held decisions on it ends up with two ids per time, and the
+        BYID merge is their union. Half of them carry the decisions and half
+        are the undecided copies, so the set reads as twice its size and
+        half-finished.
+
+        The one that carries a decision wins; if neither does, the id that
+        sorts first, so two machines running this reach the same answer
+        rather than each keeping a different copy. The loser is removed --
+        which writes a tombstone, so it stays removed after a merge instead
+        of coming back from the other shard.
+        """
+        out = []
+        for rec in self.all():
+            if gid and rec.get("gid") != gid:
+                continue
+            if kind and rec.get("kind") != kind:
+                continue
+            evs = rec.get("events") or []
+            groups = {}
+            for e in evs:
+                key = _tkey(e.get("start"))
+                if key is None:
+                    continue
+                groups.setdefault(key, []).append(e)
+            dups = {k: v for k, v in groups.items() if len(v) > 1}
+            if not dups:
+                continue
+
+            drop, kept_decided = set(), 0
+            for key, rows in dups.items():
+                # A decision beats no decision; then the newest decision;
+                # then the id, so every machine picks the same survivor.
+                rows = sorted(
+                    rows,
+                    key=lambda e: (0 if e.get("label") else 1,
+                                   -_when(e.get("at")).timestamp()
+                                   if e.get("label") else 0,
+                                   str(e.get("id") or "")))
+                if rows[0].get("label"):
+                    kept_decided += 1
+                for e in rows[1:]:
+                    if e.get("id"):
+                        drop.add(e["id"])
+
+            line = {"gid": rec.get("gid"), "kind": rec.get("kind"),
+                    "name": rec.get("name"),
+                    "session_label": rec.get("session_label"),
+                    "was": len(evs), "times": len(groups),
+                    "removed": len(drop), "kept_decided": kept_decided,
+                    # A duplicate that carries a decision of its own is not
+                    # a duplicate this can settle: two people decided two
+                    # records of one candidate and both calls are real.
+                    "both_decided": sum(
+                        1 for rows in dups.values()
+                        if sum(1 for e in rows if e.get("label")) > 1)}
+            out.append(line)
+            if dry_run:
+                continue
+            rec["events"] = [e for e in evs if e.get("id") not in drop]
+            self._write(rec)
+        return out
+
+    def with_decisions(self):
+        """Every set anybody has actually decided something in."""
+        out = []
+        for rec in self.all():
+            if any(e.get("label") for e in (rec.get("events") or [])):
+                out.append(rec)
+        return out
 
     def _label_ids(self, kind):
         return {l["id"] for l in KINDS[kind]["labels"]}
 
+    @shards.atomic
+    def archive(self, gid, kind, on=True):
+        """Put a session out of the way, or bring it back.
+
+        Nothing is removed and nothing stops working: an archived set can
+        still be opened, curated and banked. It is a statement about
+        attention, not about the data, which is exactly why it is offered
+        beside a Delete that cannot be undone.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        if bool(rec.get("archived")) == bool(on):
+            return rec
+        if on:
+            rec["archived"] = True
+            rec["archived_at"] = _now()
+            who = (self.store.provenance() if self.store else {}).get("user")
+            rec["archived_by"] = who
+            # Archiving is the stronger statement, so it implies the weaker
+            # one. Leaving a set both open and archived put it in neither
+            # place -- off the bench because it is archived, off the shelf
+            # because it is open -- and it simply disappeared.
+            if rec.get("open"):
+                rec["open"] = False
+                rec["closed_at"] = rec["archived_at"]
+        else:
+            rec.pop("archived", None)
+            rec.pop("archived_at", None)
+            rec.pop("archived_by", None)
+        return self._write(rec)
+
+    @shards.atomic
     def label(self, gid, kind, event_id, label, note=None):
         """Say what one candidate is. `label` of None puts it back."""
         rec = self._read(gid, kind)
         if not rec:
             raise CurationError("No curation set for that recording.")
         valid = {l["id"] for l in (rec.get("labels") or [])}
-        if label is not None and label not in valid:
+        if label is not None and label not in valid \
+                and not self._adopt_custom(rec, label):
             raise CurationError(
                 "%r is not one of this set's categories (%s)."
                 % (label, ", ".join(sorted(valid))))
@@ -300,25 +1518,45 @@ class Curation:
         if not hit:
             raise CurationError("No candidate %r in this set." % event_id)
 
+        # Whoever decided this before goes on the record first: _own_review
+        # reads the label and the decider off the candidate, and a moment
+        # later both are the new ones. Called after, it credited the
+        # previous person with the new decision.
+        _own_review(hit)
         hit["label"] = label
         if note is not None:
             hit["note"] = note
+        if label is not None:
+            _remember_review(hit, who, label, _now())
         if label is None:
             hit.pop("by", None)
             hit.pop("at", None)
+            # See `label_many`: an undo needs a time of its own or it cannot
+            # be ordered against somebody else's decision on the same
+            # candidate, and it must not be `at`.
+            hit["cleared_at"] = _now()
         else:
             hit["by"] = who
             hit["at"] = _now()
+            hit.pop("cleared_at", None)
         self._write(rec)
         return hit, self.progress(rec)
 
-    def label_many(self, gid, kind, pairs):
-        """Several at once, for a sweep like 'everything left is garbage'."""
+    @shards.atomic
+    def label_many(self, gid, kind, pairs, who=None, at=None):
+        """Several at once, for a sweep like 'everything left is garbage'.
+
+        `who` and `at` are for putting a banked version back, where the
+        decisions being written are somebody else's and were made at
+        some other time. Left out, it is the person at the keyboard
+        now, which is right for a sweep.
+        """
         rec = self._read(gid, kind)
         if not rec:
             raise CurationError("No curation set for that recording.")
         valid = {l["id"] for l in (rec.get("labels") or [])}
-        who = (self.store.provenance() if self.store else {}).get("user")
+        who = (who or "").strip() or \
+            (self.store.provenance() if self.store else {}).get("user")
         index = {e["id"]: e for e in (rec.get("events") or [])}
         n = 0
         for eid, label in (pairs or {}).items():
@@ -326,18 +1564,138 @@ class Curation:
             if not e:
                 continue
             if label is not None and label not in valid:
-                continue
+                if not self._adopt_custom(rec, label):
+                    continue
+                valid.add(label)
+            # The same care `label` takes over one candidate. This is the
+            # back end of the fill-down sweep AND of putting a banked
+            # version back, and without it either one overwrote a
+            # colleague's call leaving no trace that they had ever made
+            # one -- which is the exact case the review list exists for.
+            _own_review(e)
+            stamp = at or _now()
             e["label"] = label
             if label is None:
                 e.pop("by", None)
                 e.pop("at", None)
+                # When it was un-decided, so the undo can be ordered against
+                # somebody else's decision on the same candidate. Not in
+                # `at`: that means "when this was decided", is read that way
+                # by the receipt and the review list, and a stamp there on a
+                # candidate with no label is how a decision nobody made gets
+                # counted.
+                e["cleared_at"] = stamp
             else:
                 e["by"] = who
-                e["at"] = _now()
+                e["at"] = stamp
+                _remember_review(e, who, label, stamp)
             n += 1
         self._write(rec)
         return n, self.progress(rec)
 
+    @shards.atomic
+    def open_set(self, gid, kind, on=True, who=None, unarchive=False,
+                 based_on=None):
+        """Put a set on the workbench, or take it off.
+
+        `based_on` is which banked version this pass was picked up from.
+        Remembered so that banking it afterwards lands in the right place
+        in the history: a pass worked from v1 while v2 and v3 exist is a
+        branch off v1, not a fourth pass on top of them. Left out, it
+        means whatever was newest, which is what every pick-up meant
+        before there was a choice.
+
+        Closing is not archiving and it is not finishing: nothing is
+        hidden, nothing is required first, and the decisions are already
+        saved -- every keystroke wrote through when it was made. It only
+        says whether this is something anybody is working on right now.
+
+        Opening also claims the set, if nobody has claimed it. Forty sets
+        with no owner is a list; forty sets with a name on each is a
+        division of labour.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        who = (who or "").strip() or \
+            (self.store.provenance() if self.store else {}).get("user")
+        if on:
+            rec["open"] = True
+            rec["opened_at"] = _now()
+            rec["opened_by"] = who
+            rec.pop("closed_at", None)
+            # Archived and open must never both be true: the bench is exactly
+            # the open sets and the shelf is exactly the rest, so a set that
+            # is both belongs to neither and disappears. Opening an archived
+            # set therefore has to un-archive it -- but not by implication.
+            # Doing that silently made archiving undoable by accident, which
+            # is the opposite of what filing something away is for. So it is
+            # refused unless the caller has said it means to.
+            if rec.get("archived"):
+                if not unarchive:
+                    raise CurationError(
+                        "That set is archived. Opening it would un-archive "
+                        "it, so say so on purpose rather than by picking it "
+                        "up.")
+                rec.pop("archived", None)
+                rec.pop("archived_at", None)
+                rec.pop("archived_by", None)
+            if not (rec.get("assignee") or "").strip() and who:
+                rec["assignee"] = who
+            if based_on is not None:
+                rec["based_on"] = based_on
+                rec["based_on_at"] = _now()
+        else:
+            rec["open"] = False
+            rec["closed_at"] = _now()
+            # `based_on` stays. Putting a set down does not decide where
+            # the work belongs in the history -- banking does, and that
+            # can happen long after, from the shelf.
+        return self._write(rec)
+
+    @shards.atomic
+    def set_based_on(self, gid, kind, v):
+        """Say which banked version the work now on the bench came from.
+
+        Called when a version is put back into the set: from that moment
+        the decisions on the bench are that version's, plus whatever is
+        done to them next, so that is what the next bank branches from.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        if v is None:
+            rec.pop("based_on", None)
+            rec.pop("based_on_at", None)
+        else:
+            rec["based_on"] = v
+            rec["based_on_at"] = _now()
+        return self._write(rec)
+
+    @shards.atomic
+    def assign(self, gid, kind, who):
+        """Say whose set this is. Empty hands it back to nobody."""
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        rec["assignee"] = (who or "").strip() or None
+        rec["assigned_at"] = _now()
+        return self._write(rec)
+
+    def close_all(self, kind=None):
+        """Take everything off the workbench. Nothing else changes."""
+        out = []
+        for rec in self.all():
+            if not rec.get("open"):
+                continue
+            if kind is not None and rec.get("kind") != kind:
+                continue
+            self.open_set(rec["gid"], rec["kind"], False)
+            out.append({"gid": rec["gid"], "kind": rec["kind"],
+                        "name": rec.get("name")})
+        return out
+
+    @shards.atomic
     def rename(self, gid, kind, name):
         rec = self._read(gid, kind)
         if not rec:
@@ -352,12 +1710,13 @@ class Curation:
     # Out
     # ------------------------------------------------------------------
     def bank_entries(self, rec, only_specified=True):
-        """One Event Bank entry per category.
+        """The set grouped by category.
 
-        Split by category rather than banked as one lump: the reason to curate
-        was to separate them, and a bank entry called "candidates" with a
-        label field buried in each event is not separated in any way anyone
-        can filter on.
+        No longer how banking works -- `bank_one` writes one entry for the
+        set and every event carries its label, because four entries per
+        session whose names differed only in the last word could not show a
+        decision moving between two of them. Kept for the per-category CSV,
+        where a group per file is what is wanted.
         """
         by = {}
         for e in rec.get("events") or []:
@@ -381,6 +1740,52 @@ class Curation:
             })
         out.sort(key=lambda x: -x["n"])
         return out
+
+    def bank_one(self, rec, only_specified=True):
+        """The whole set as one bankable list, every event carrying its label.
+
+        Not split by category. A category is a property of an event, and
+        splitting on it produced four entries per session with near-identical
+        names -- while making it impossible to see a decision move from one
+        category to another, which is what re-curating a set mostly does.
+        """
+        names = {l["id"]: l["name"] for l in (rec.get("labels") or [])}
+        out = []
+        counts = {}
+        for e in rec.get("events") or []:
+            lab = e.get("label")
+            if lab is None and only_specified:
+                continue
+            item = {"start": e["start"]}
+            if e.get("end") is not None:
+                item["end"] = e["end"]
+            if e.get("channel") is not None:
+                item["channel"] = e["channel"]
+            # A pooled spike says where it came from in every version, so
+            # Root Canal can still tell Incisor's from Doppler's after
+            # Panning has banked it (and after a merge made it "both").
+            for k in ("origin", "pair_t"):
+                if e.get(k) is not None:
+                    item[k] = e[k]
+            item["label"] = names.get(lab, lab) if lab else "unspecified"
+            item["label_id"] = lab or "unspecified"
+            if e.get("by"):
+                item["by"] = e["by"]
+            # Who has looked this one over, so a spot-check that agreed is
+            # not indistinguishable from nobody having checked.
+            revs = e.get("reviews") or []
+            if len(revs) > 1:
+                item["reviewers"] = [r.get("by") for r in revs if r.get("by")]
+            out.append(item)
+            key = lab or "unspecified"
+            counts[key] = counts.get(key, 0) + 1
+        out.sort(key=lambda x: x["start"])
+        return {
+            "n": len(out),
+            "events": out,
+            "by_label": counts,
+            "label_names": names,
+        }
 
     def rows(self, rec):
         """Flat rows, for a CSV."""

@@ -1,0 +1,199 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>vaccmorph: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:700px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:700px;top:0;right:0;bottom:0;width:calc(100vw - 700px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* The power-up, and the three ways a flourish like this goes wrong.
+
+   ONE. It outlives itself. A fixed, full-screen element left behind is
+   invisible and sits over the application for the rest of the session.
+   `pointer-events: none` means it would not swallow clicks, but "would do
+   no harm" is not "is not there" -- and the next person to debug a stray
+   overlay would have no reason to suspect a decoration.
+
+   TWO. It animates something expensive. Xplorefinder redraws its canvases
+   every pan frame, so an animated `box-shadow`, `filter`, `width` or
+   `left` forces a repaint of everything behind it: half a second of
+   celebration for half a second of dropped frames in the one view somebody
+   might be dragging at the time. Only `opacity` and `transform` are
+   composited, and this page reads the keyframes to prove it.
+
+   THREE. It fires when nobody asked. `applyVacc` runs at boot, on the
+   cross-window sync and on the preferences reconcile -- so a morph inside
+   it would flare the screen every time the app starts or a second window
+   changes its mind. The toggle plays it; nothing else does. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(60);
+  }
+  return null;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  const W = () => frame.contentWindow;
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              25000);
+
+  /* Off to begin with, whatever this machine's preference is. A harness
+     that assumes its starting state reports inverted results. */
+  ev('applyVacc(false, false)');
+  await sleep(300);
+  check('it starts with the mode off',
+        ev('!!BARRY.state.vacc') === false);
+  check('and with no overlay on screen',
+        !D().getElementById('vaccMorph'));
+
+  say('');
+  say('=== only opacity and transform move ===');
+  /* Read out of the stylesheet rather than off a running animation: the
+     keyframes are the contract, and a frame sampled mid-flight would pass
+     for a property that is animated somewhere else in the sequence. */
+  const props = ev(`(function(){
+    var want = ['vmCharge','vmBloom','vmRing','vmSweep','vmRailLift'];
+    var seen = {}, found = [];
+    for (var i = 0; i < document.styleSheets.length; i++) {
+      var rules;
+      try { rules = document.styleSheets[i].cssRules; } catch (e) { continue; }
+      if (!rules) continue;
+      for (var j = 0; j < rules.length; j++) {
+        var r = rules[j];
+        if (r.type !== 7 /* KEYFRAMES */) continue;
+        if (want.indexOf(r.name) < 0) continue;
+        found.push(r.name);
+        for (var k = 0; k < r.cssRules.length; k++) {
+          var st = r.cssRules[k].style;
+          for (var m = 0; m < st.length; m++) seen[st[m]] = true;
+        }
+      }
+    }
+    return JSON.stringify({ found: found, props: Object.keys(seen) });
+  })()`);
+  const got = JSON.parse(props);
+  say('    keyframes: ' + got.found.join(', '), 'note');
+  say('    properties they touch: ' + got.props.join(', '), 'note');
+  check('the power-up keyframes are defined', got.found.length >= 4,
+        got.found.join(', '));
+  /* The assertion this page exists for. Anything outside this set forces a
+     repaint of the canvases behind it. */
+  const ALLOWED = ['opacity', 'transform'];
+  const bad = got.props.filter((x) => ALLOWED.indexOf(x) < 0);
+  check('they animate nothing but opacity and transform',
+        bad.length === 0, bad.join(', ') || 'none');
+
+  say('');
+  say('=== pressing the toggle plays it ===');
+  const btn = D().getElementById('vaccToggle');
+  check('the toggle is there', !!btn);
+  if (!btn) { document.title = 'vaccmorph: ' + (fails || 1) + ' FAILED'; return; }
+  if (btn.hidden) btn.hidden = false;
+  btn.click();
+  const node = await until(() => D().getElementById('vaccMorph'), 4000);
+  check('an overlay appears', !!node);
+  check('and the mode came on with it', ev('!!BARRY.state.vacc') === true);
+
+  if (node) {
+    const cs = W().getComputedStyle(node);
+    /* Over everything, catching nothing. A full-screen sheet that ate
+       clicks would make the application feel broken for a second, which is
+       a strange price for a flourish. */
+    check('it does not take clicks', cs.pointerEvents === 'none',
+          cs.pointerEvents);
+    check('it is fixed over the page, not in the layout',
+          cs.position === 'fixed', cs.position);
+    /* Centred on the control that was pressed, so the burst comes out of
+       the button rather than the middle of the screen. */
+    const x = node.style.getPropertyValue('--vm-x');
+    const y = node.style.getPropertyValue('--vm-y');
+    check('it starts from the control that was pressed',
+          !!x && !!y, 'x=' + x + ' y=' + y);
+    const r = btn.getBoundingClientRect();
+    const px = parseFloat(x), py = parseFloat(y);
+    check('and that origin really is on the button',
+          Math.abs(px - (r.left + r.width / 2)) < 2
+          && Math.abs(py - (r.top + r.height / 2)) < 2,
+          px.toFixed(0) + ',' + py.toFixed(0) + ' vs '
+          + (r.left + r.width / 2).toFixed(0) + ','
+          + (r.top + r.height / 2).toFixed(0));
+    check('the rail is lit for the duration',
+          (D().getElementById('rail') || {}).classList
+            .contains('vm-lit') === true);
+  }
+
+  say('');
+  say('=== and it gets out of the way ===');
+  const gone = await until(() => !D().getElementById('vaccMorph'), 6000);
+  check('the overlay removes itself', !!gone);
+  check('and takes the rail class with it',
+        !(D().getElementById('rail') || { classList: { contains: () => false } })
+          .classList.contains('vm-lit'));
+  check('the mode is still on afterwards', ev('!!BARRY.state.vacc') === true);
+  /* The look is the steady state and outlives the show. */
+  check('and the fired-up look is still applied',
+        ev('document.documentElement.dataset.vacc') === 'on');
+
+  say('');
+  say('=== turning it OFF is not a celebration ===');
+  D().getElementById('vaccToggle').click();
+  await sleep(500);
+  check('no overlay on the way down', !D().getElementById('vaccMorph'));
+  check('and the mode really went off', ev('!!BARRY.state.vacc') === false);
+
+  say('');
+  say('=== nothing else plays it ===');
+  /* The reason it is not inside `applyVacc`: boot, the cross-window
+     storage listener and the preferences reconcile all call that, and a
+     morph on any of them flares the screen when nobody pressed anything. */
+  ev('applyVacc(true, false)');
+  await sleep(400);
+  check('turning it on in code draws no overlay',
+        !D().getElementById('vaccMorph'));
+  check('but the mode is on', ev('!!BARRY.state.vacc') === true);
+  check('and looks it', ev('document.documentElement.dataset.vacc') === 'on');
+
+  say('');
+  say('=== twice in a row leaves one, not two ===');
+  ev('applyVacc(false, false)');
+  await sleep(200);
+  const b2 = D().getElementById('vaccToggle');
+  b2.click();
+  await sleep(90);
+  ev('vaccMorph(document.getElementById("vaccToggle"))');
+  await sleep(120);
+  check('a second play replaces the first rather than stacking',
+        D().querySelectorAll('#vaccMorph').length <= 1,
+        D().querySelectorAll('#vaccMorph').length + ' overlays');
+  await until(() => !D().getElementById('vaccMorph'), 6000);
+  check('and both are gone at the end',
+        D().querySelectorAll('#vaccMorph').length === 0);
+
+  // Leave the machine as it was found.
+  ev('applyVacc(false, false)');
+
+  say('');
+  say('ran ' + checks + ' checks');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'vaccmorph: ' + fails + ' FAILED'
+                         : 'vaccmorph: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'vaccmorph CRASH'; });
+</script></body></html>

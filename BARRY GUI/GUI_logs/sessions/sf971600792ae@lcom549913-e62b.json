@@ -1,0 +1,76 @@
+{
+  "_at": {
+    "created": "2026-09-21T11:56:53.955093+00:00",
+    "first_seen_by": "2026-09-21T11:56:53.955093+00:00",
+    "gid": "2026-09-21T11:56:53.955093+00:00",
+    "key": "2026-09-24T20:06:51.520351+00:00",
+    "label": "2026-09-21T11:56:53.955093+00:00",
+    "project": "2026-09-21T11:56:53.955093+00:00",
+    "project_source": "2026-09-21T11:56:53.955093+00:00",
+    "retired": "2026-09-24T20:06:51.520351+00:00",
+    "schema": "2026-09-21T11:56:53.955093+00:00",
+    "start": "2026-09-21T11:56:53.955093+00:00",
+    "updated": "2026-09-24T20:06:51.520351+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J4\\Precon1\\J4_Precon1_SPC\\2026-07-22_10-48-48": [
+        "set",
+        "2026-09-21T11:56:53.955093+00:00"
+      ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-21T11:56:53.955093+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-24T20:06:51.520351+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.18.4",
+    "at": "2026-09-21T07:56:53-04:00",
+    "commit": "f693752",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "first_seen_by": "opened",
+  "gid": "sf971600792ae",
+  "key": null,
+  "label": "2026-07-22",
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J4\\Precon1\\J4_Precon1_SPC\\2026-07-22_10-48-48"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 2,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-21T07:56:49-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "E:\\Joe Multisite 2026 data\\J4\\Precon1\\J4_Precon1_SPC\\2026-07-22_10-48-48",
+      "root": null,
+      "scan": null
+    }
+  },
+  "start": "2026-07-22T10:48:48",
+  "updated": {
+    "app_version": "2026.09.23.8",
+    "at": "2026-09-24T16:06:51-04:00",
+    "commit": "cd809b2",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

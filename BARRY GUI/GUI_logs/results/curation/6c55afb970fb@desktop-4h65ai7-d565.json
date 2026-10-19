@@ -1,0 +1,26 @@
+{
+  "_at": {
+    "key": "2026-09-16T13:28:00.690616+00:00",
+    "rel": "2026-09-16T13:28:00.690616+00:00",
+    "starred": "2026-09-16T13:28:00.690616+00:00",
+    "title": "2026-09-16T13:28:00.690616+00:00",
+    "updated": "2026-09-16T13:28:00.690616+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-16T13:28:00.690616+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "key": "kcnt1/m306/s1 2026-02-24/panorama/kcnt1_m306_s1_2026-02-24_csc1_panorama_20260915_171128.png",
+  "rel": "KCNT1/m306/s1 2026-02-24/Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128.png",
+  "starred": false,
+  "title": "KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128",
+  "updated": {
+    "app_version": "2026.09.16.2",
+    "at": "2026-09-16T09:28:00-04:00",
+    "commit": "485fc76",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

@@ -1,0 +1,95 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>incisorshot — Incisor with a finished scan, for looking at</title>
+<style>
+ /* No harness chrome: this exists to be screenshotted, so the application
+    fills the frame and nothing of this page is in the picture. */
+ html, body { margin:0; padding:0; background:#0a1310; overflow:hidden; }
+ iframe { display:block; width:100vw; height:100vh; border:0; }
+</style>
+<iframe id="A" src="/#toolkit"></iframe>
+<script>
+/* Poses the Incisor panel with a real scan on it, so the three channel
+   plots have something to draw. `?n=<k>` scans k channels from the middle
+   third of the probe (default 5); `?path=<folder>` picks the recording
+   rather than taking the cheapest local one. */
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const EV = (s) => { try { return W().eval(s); } catch (e) { return null; } };
+const JEV = (s) => { const r = EV('JSON.stringify(' + s + ')');
+                     try { return r ? JSON.parse(r) : null; }
+                     catch (e) { return null; } };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 60000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(200);
+  }
+  return null;
+}
+const post = async (url, obj) => (await fetch(url, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(obj),
+})).json();
+
+const q = new URLSearchParams(location.search);
+const WANT = Math.max(2, Math.min(12, Number(q.get('n')) || 5));
+
+(async () => {
+  let path = q.get('path');
+  let row = null;
+  const reg = await (await fetch('/api/registry')).json();
+  const list = [];
+  for (const p of (reg.tree || [])) {
+    for (const m of (p.mice || [])) {
+      for (const s of (m.sessions || [])) {
+        const local = (s.here || []).find((x) => !/^\\\\/.test(x));
+        if (local) list.push({ row: s, path: local,
+                               n: Number(s.n_channels) || 1e9 });
+      }
+    }
+  }
+  list.sort((a, b) => a.n - b.n);
+  let est = null;
+  for (const c of list) {
+    if (path && c.path !== path) continue;
+    const e = await post('/api/incisor/estimate', { path: c.path });
+    if (e.ok) { est = e; path = c.path; row = c.row; break; }
+  }
+  if (!est) { document.title = 'incisorshot: nothing reachable'; return; }
+
+  await until(() => EV('typeof BARRY !== "undefined" && !!BARRY.incisor'));
+  const tool = await until(() => Array.from(
+    D().querySelectorAll('#tkBody .tk-tool, #tkBody .tk-step'))
+    .find((b) => /Incisor/.test(b.textContent)), 20000);
+  if (!tool) { document.title = 'incisorshot: no tool'; return; }
+  tool.click();
+  await sleep(400);
+
+  // Across the middle of the probe, where a hilus is.
+  const all = est.channels;
+  const idx = [];
+  for (let k = 0; k < WANT; k += 1) {
+    const f = 0.35 + (0.4 * k) / Math.max(1, WANT - 1);
+    const i = Math.min(all.length - 1, Math.floor(all.length * f));
+    if (idx.indexOf(all[i].index) < 0) idx.push(all[i].index);
+  }
+  EV('BARRY.incisor._state().q.gid = ' + JSON.stringify(row.gid));
+  EV('BARRY.incisor._state().q.path = ' + JSON.stringify(path));
+  EV('BARRY.incisor._state().q.channels = ' + JSON.stringify(idx));
+  EV('(async function(){ await BARRY.incisor._refresh(); '
+     + 'BARRY.incisor.paint(); await BARRY.incisor.scan(); })()');
+  const res = await until(() => JEV('BARRY.incisor._state().res'), 300000);
+  document.title = res ? 'incisorshot: posed' : 'incisorshot: no scan';
+  // The tool pane scrolled to the plots, which is what this is a picture of.
+  await sleep(500);
+  try {
+    const p = D().querySelector('.inc-plots');
+    if (p) p.scrollIntoView({ block: 'center' });
+  } catch (e) { /* the shot is still worth taking */ }
+})();
+</script>

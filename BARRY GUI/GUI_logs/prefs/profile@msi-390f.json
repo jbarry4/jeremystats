@@ -1,0 +1,19 @@
+{
+  "_at": {
+    "device": "2026-09-09T15:06:15.225377+00:00",
+    "email": "2026-09-09T15:27:14.735731+00:00",
+    "initials": "2026-09-09T15:27:14.735731+00:00",
+    "name": "2026-09-09T15:27:14.735731+00:00",
+    "role": "2026-09-09T15:27:14.735731+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-09T15:27:14.735731+00:00",
+    "machine": "msi-390f",
+    "schema": 1
+  },
+  "device": "Bluebarry",
+  "email": "seclouse@uvm.edu",
+  "initials": "SC",
+  "name": "Sylvia Clouse",
+  "role": "Undergraduate"
+}

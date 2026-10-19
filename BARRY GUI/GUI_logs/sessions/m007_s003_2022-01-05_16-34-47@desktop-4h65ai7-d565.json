@@ -1,0 +1,90 @@
+{
+  "_at": {
+    "created": "2026-10-12T13:31:14.761750+00:00",
+    "gid": "2026-10-12T13:31:14.761750+00:00",
+    "group": "2026-10-12T13:31:14.761750+00:00",
+    "key": "2026-10-12T13:31:14.761750+00:00",
+    "label": "2026-10-12T13:31:14.761750+00:00",
+    "loose_key": "2026-10-12T13:31:14.761750+00:00",
+    "mouse": "2026-10-12T13:31:14.761750+00:00",
+    "project": "2026-10-12T13:31:14.761750+00:00",
+    "project_source": "2026-10-12T13:31:14.761750+00:00",
+    "retired": "2026-10-12T13:31:14.761750+00:00",
+    "schema": "2026-10-12T13:31:14.761750+00:00",
+    "session": "2026-10-12T13:31:14.761750+00:00",
+    "start": "2026-10-12T13:31:14.761750+00:00",
+    "updated": "2026-10-12T13:33:05.999969+00:00"
+  },
+  "_keys": {
+    "channel_banks": {
+      "b1": [
+        "set",
+        "2026-10-12T13:31:14.761750+00:00"
+      ],
+      "b2": [
+        "set",
+        "2026-10-12T13:31:14.761750+00:00"
+      ]
+    },
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\M7s3jan5\\2022-01-05_16-34-47": [
+        "set",
+        "2026-10-12T13:33:05.999969+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-12T13:33:05.999969+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "channel_banks": [
+    {
+      "first": 1,
+      "id": "b1",
+      "last": 64,
+      "region": null
+    },
+    {
+      "first": 65,
+      "id": "b2",
+      "last": 128,
+      "region": null
+    }
+  ],
+  "created": {
+    "app_version": "2026.10.09.4",
+    "at": "2026-10-12T09:31:14-04:00",
+    "commit": "2ec65512",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s4cc69cf76001",
+  "group": null,
+  "key": "m007_s003_2022-01-05_16-34-47",
+  "label": "PTEN m7 s3 2022-01-05",
+  "loose_key": "m007_s003",
+  "mouse": 7,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\M7s3jan5\\2022-01-05_16-34-47"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 3,
+  "start": "2022-01-05T21:34:47+00:00",
+  "updated": {
+    "app_version": "2026.10.09.4",
+    "at": "2026-10-12T09:33:05-04:00",
+    "commit": "2ec65512",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

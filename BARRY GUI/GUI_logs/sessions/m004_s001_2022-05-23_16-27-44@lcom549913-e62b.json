@@ -1,0 +1,62 @@
+{
+  "_at": {
+    "created": "2026-09-18T15:46:41.300063+00:00",
+    "gid": "2026-09-18T15:46:41.300063+00:00",
+    "group": "2026-09-18T15:46:41.300063+00:00",
+    "key": "2026-09-18T15:46:41.300063+00:00",
+    "label": "2026-09-18T15:46:41.300063+00:00",
+    "loose_key": "2026-09-18T15:46:41.300063+00:00",
+    "mouse": "2026-09-18T15:46:41.300063+00:00",
+    "project": "2026-09-18T16:15:52.415929+00:00",
+    "project_source": "2026-09-18T15:46:41.300063+00:00",
+    "retired": "2026-09-18T15:46:41.300063+00:00",
+    "schema": "2026-09-18T15:46:41.300063+00:00",
+    "session": "2026-09-18T15:46:41.300063+00:00",
+    "start": "2026-09-18T15:46:41.300063+00:00",
+    "updated": "2026-09-18T16:15:52.415929+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\KCNT1\\urethane\\hom\\KCNTM4_homYH\\KCNTM4s1may23\\2022-05-23_16-27-44": [
+        "set",
+        "2026-09-18T15:51:53.490279+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-18T16:15:52.415929+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-18T11:46:41-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s9fe117a8e938",
+  "group": null,
+  "key": "m004_s001_2022-05-23_16-27-44",
+  "label": "KCNT1 m4 s1 2022-05-23",
+  "loose_key": "m004_s001",
+  "mouse": 4,
+  "paths": [
+    "D:\\KCNT1\\urethane\\hom\\KCNTM4_homYH\\KCNTM4s1may23\\2022-05-23_16-27-44"
+  ],
+  "project": "KCNT1 Urethane",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 1,
+  "start": "2022-05-23T20:27:44+00:00",
+  "updated": {
+    "at": "2026-09-18T12:15:52-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

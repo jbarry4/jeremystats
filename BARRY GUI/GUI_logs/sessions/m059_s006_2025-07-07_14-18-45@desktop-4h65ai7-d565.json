@@ -1,0 +1,92 @@
+{
+  "_at": {
+    "converted": "2026-09-04T15:57:01.885001+00:00",
+    "created": "2026-09-04T15:57:01.885001+00:00",
+    "duration_s": "2026-09-04T15:57:01.885001+00:00",
+    "first_seen_by": "2026-09-04T15:57:01.885001+00:00",
+    "fs": "2026-09-04T15:57:01.885001+00:00",
+    "gid": "2026-09-04T15:57:01.885001+00:00",
+    "group": "2026-09-04T15:57:01.885001+00:00",
+    "has_video": "2026-09-04T15:57:01.885001+00:00",
+    "key": "2026-09-04T15:57:01.885001+00:00",
+    "label": "2026-09-04T15:57:01.885001+00:00",
+    "loose_key": "2026-09-04T15:57:01.885001+00:00",
+    "mouse": "2026-09-04T15:57:01.885001+00:00",
+    "n_channels": "2026-09-04T15:57:01.885001+00:00",
+    "project": "2026-09-04T15:57:01.885001+00:00",
+    "project_source": "2026-09-04T15:57:01.885001+00:00",
+    "retired": "2026-09-08T18:38:46.168888+00:00",
+    "schema": "2026-09-04T15:57:01.885001+00:00",
+    "session": "2026-09-04T15:57:01.885001+00:00",
+    "start": "2026-09-04T15:57:01.885001+00:00",
+    "updated": "2026-09-08T18:38:46.168888+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s6jul7\\2025-07-07_14-18-45": [
+        "set",
+        "2026-09-04T15:57:01.885001+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s6_CNO": [
+        "set",
+        "2026-09-04T15:57:01.885001+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-04T15:57:01.885001+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-08T18:38:46.168888+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "converted": true,
+  "created": {
+    "at": "2026-09-04T11:26:52-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "duration_s": 2061.8069333333333,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s63fe175e9c29",
+  "group": "PTENDKO",
+  "has_video": true,
+  "key": "m059_s006_2025-07-07_14-18-45",
+  "label": "PTENDKO m59 s6 2025-07-07",
+  "loose_key": "m059_s006",
+  "mouse": 59,
+  "n_channels": 64,
+  "paths": [
+    "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s6jul7\\2025-07-07_14-18-45",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s6_CNO"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-04T11:27:05-04:00",
+      "by": "barry",
+      "path": "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s6_CNO",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    }
+  },
+  "session": 6,
+  "start": "2025-07-07T14:18:45",
+  "updated": {
+    "at": "2026-09-08T14:38:46-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "StrawBarry",
+    "os": "Windows",
+    "user": "Rain"
+  }
+}

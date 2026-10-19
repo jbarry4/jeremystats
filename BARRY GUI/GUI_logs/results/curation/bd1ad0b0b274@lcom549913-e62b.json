@@ -1,0 +1,24 @@
+{
+  "_at": {
+    "key": "2026-09-10T22:14:05.667755+00:00",
+    "rel": "2026-09-10T22:14:05.667755+00:00",
+    "starred": "2026-09-10T22:14:05.667755+00:00",
+    "updated": "2026-09-10T22:14:05.667755+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-10T22:14:05.667755+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "key": "rebuild harness_20260910_180227.png",
+  "rel": "rebuild harness_20260910_180227.png",
+  "starred": false,
+  "updated": {
+    "at": "2026-09-10T18:14:05-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

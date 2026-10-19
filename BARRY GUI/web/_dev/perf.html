@@ -1,0 +1,327 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — how long things take</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; }
+  #perf { white-space: pre; font: 11px/1.45 ui-monospace, monospace;
+          color: #9fb4c4; padding: 0 16px 40px; }
+  iframe { position: fixed; right: 0; bottom: 0; width: 1400px; height: 860px;
+           border: 0; opacity: .25; pointer-events: none; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; white-space: pre; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+  table { border-collapse: collapse; margin: 4px 0 10px; }
+  td, th { padding: 1px 12px 1px 0; text-align: right; }
+  td:first-child, th:first-child { text-align: left; }
+  th { color: #7593a2; font-weight: normal; }
+</style>
+<div id="out"></div>
+<pre id="perf"></pre>
+<iframe id="app"></iframe>
+<script>
+/* How long starting up, switching views and opening a tool actually take.
+
+   "It feels lethargic" is a claim about time, so this reads time -- in the
+   real page, in real milliseconds. The previous speed pass (README, Speed)
+   was about DATA: windows, filters, envelopes. This is about everything
+   around it, which nothing has measured before.
+
+   Four things per run:
+
+     boot       navigation start -> first paint -> the rail answering and the
+                boot overlay gone. Every request made on the way, with its
+                size and duration.
+     views      each view, cold (first visit) and warm (second visit):
+                the time to the first frame after the switch, and the time
+                until the page is QUIET -- no new request and no long task
+                for 400 ms -- because a view that paints in 30 ms and then
+                spends four seconds filling in is not a fast view.
+     tools      every ToolKit tool and bundle step, opened the same way.
+     long tasks anything over 50 ms that blocked the main thread, and which
+                phase it landed in.
+
+   REAL TIME, NOT VIRTUAL. The harness runner drives Edge with
+   `--virtual-time-budget`, which fast-forwards timers so a page settles
+   instantly; every duration measured under it would be invented. So this
+   page is driven by `tools/perf_baseline.py` in real time, and when it is
+   done it POSTs what it found to `/_dev/perf-report`, a route that tool
+   registers for itself -- the application has no such route. Opened by hand
+   in an ordinary browser, which is how it is run on a laptop, the POST
+   simply fails and the table on screen is the result.
+
+   Nothing is clicked that writes anything. Tools are opened, not run. */
+const out = document.getElementById('out');
+const perfEl = document.getElementById('perf');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const r1 = (x) => Math.round(x);
+
+const VIEWS = ['pipeline', 'sessions', 'explorer', 'xplore', 'toolkit',
+               'eventbank', 'results', 'storyboard', 'history', 'misc',
+               'errors'];
+const QUIET_MS = 400;
+const MAX_SETTLE_MS = 30000;
+
+const f = document.getElementById('app');
+const W = () => f.contentWindow;
+const D = () => f.contentDocument;
+
+/* How long the main thread was blocked.
+
+   The first version created a PerformanceObserver from THIS page and pointed
+   it at the frame. It recorded nothing at all -- not even while Sessions
+   spent 234 ms repainting four hundred cards -- so every "blocked 0 ms" it
+   printed was the observer not running, not the page being fast. And Safari,
+   which the lab's Macs use, has no long-task API to observe in the first
+   place.
+
+   So: a heartbeat, installed INSIDE the frame with eval (BARRY is a const,
+   and a frame's globals are only reachable that way). It re-arms itself
+   every 16 ms and writes down any gap longer than 70 ms -- a gap is the
+   main thread having been busy with something else. Crude, and exactly what
+   a person feels: the page not answering. Works in every browser. */
+const longs = [];
+let phase = 'boot';
+function watchLongTasks() {
+  W().eval(
+    'window.__perfGaps = [];'
+    + '(function () {'
+    + '  var last = performance.now();'
+    + '  function tick() {'
+    + '    var now = performance.now();'
+    + '    if (now - last > 70) window.__perfGaps.push([last, now - last - 16]);'
+    + '    last = now; setTimeout(tick, 16);'
+    + '  }'
+    + '  tick();'
+    + '})();');
+  return 'heartbeat gaps over 70 ms';
+}
+/* Gaps that began at or after `t0`, attributed to the phase measuring them. */
+function gapsSince(t0) {
+  return (W().__perfGaps || []).filter((g) => g[0] >= t0);
+}
+
+function resources() {
+  return W().performance.getEntriesByType('resource');
+}
+
+/* Wait until nothing new has been requested and no long task has landed
+   for QUIET_MS, and return when the quiet began -- which is when the work
+   finished, not when we noticed. */
+async function settle(t0) {
+  let lastRes = resources().length;
+  let lastLong = (W().__perfGaps || []).length;
+  let lastChange = W().performance.now();
+  while (W().performance.now() - t0 < MAX_SETTLE_MS) {
+    await sleep(50);
+    const nr = resources().length;
+    const nl = (W().__perfGaps || []).length;
+    if (nr !== lastRes || nl !== lastLong) {
+      lastRes = nr; lastLong = nl;
+      lastChange = W().performance.now();
+      /* The end of the newest request is the real moment of change, which
+         may be a little after we saw its entry appear. */
+      const all = resources();
+      const last = all[all.length - 1];
+      if (last && last.responseEnd > lastChange) lastChange = last.responseEnd;
+    }
+    if (W().performance.now() - lastChange >= QUIET_MS) {
+      return { settled: lastChange - t0, timedOut: false };
+    }
+  }
+  return { settled: MAX_SETTLE_MS, timedOut: true };
+}
+
+const frames = (n) => new Promise((r) => {
+  let k = 0;
+  const step = () => { if (++k >= n) r(); else W().requestAnimationFrame(step); };
+  W().requestAnimationFrame(step);
+});
+
+async function measure(label, act) {
+  phase = label;
+  const before = resources().length;
+  const t0 = W().performance.now();
+  act();
+  await frames(2);
+  const painted = W().performance.now() - t0;
+  const s = await settle(t0);
+  const reqs = resources().slice(before);
+  const api = reqs.filter((e) => /\/api\//.test(e.name));
+  const gaps = gapsSince(t0).filter((g) => g[0] <= t0 + s.settled);
+  const blocked = gaps.reduce((a, g) => a + g[1], 0);
+  gaps.forEach((g) => longs.push({ phase: label, start: g[0], dur: g[1] }));
+  return {
+    label, paint: painted, settled: s.settled, timedOut: s.timedOut,
+    requests: reqs.length, api: api.length,
+    bytes: reqs.reduce((a, e) => a + (e.transferSize || e.encodedBodySize || 0), 0),
+    slowest: api.sort((a, b) => b.duration - a.duration).slice(0, 3)
+      .map((e) => ({ url: new URL(e.name).pathname, ms: r1(e.duration),
+                     kb: r1((e.transferSize || e.encodedBodySize || 0) / 1024) })),
+    blocked,
+  };
+}
+
+function table(rows, cols) {
+  const t = document.createElement('table');
+  const hr = document.createElement('tr');
+  cols.forEach(([h]) => { const th = document.createElement('th');
+                          th.textContent = h; hr.appendChild(th); });
+  t.appendChild(hr);
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    cols.forEach(([, fn]) => { const td = document.createElement('td');
+                               td.textContent = fn(r); tr.appendChild(td); });
+    t.appendChild(tr);
+  }
+  out.appendChild(t);
+}
+
+const COLS = [
+  ['', (r) => r.label],
+  ['paint ms', (r) => r1(r.paint)],
+  ['settled ms', (r) => r1(r.settled) + (r.timedOut ? ' (timeout)' : '')],
+  ['requests', (r) => r.requests],
+  ['api', (r) => r.api],
+  ['kB', (r) => r1(r.bytes / 1024)],
+  ['blocked ms', (r) => r1(r.blocked)],
+  ['slowest request', (r) => r.slowest[0]
+     ? r.slowest[0].url + ' ' + r.slowest[0].ms + 'ms' : ''],
+];
+
+(async () => { try {
+  const report = { at: new Date().toISOString(), ua: navigator.userAgent,
+                   boot: null, views: [], warm: [], tools: [] };
+
+  head('boot');
+  f.src = '/?linkhold=0';
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const kind = watchLongTasks();
+  say('note', '  long-task signal: ' + kind);
+
+  /* Interactive: the rail's items exist and the boot overlay has gone. */
+  let interactive = null;
+  const tBoot = performance.now();
+  while (performance.now() - tBoot < 60000) {
+    const d = D();
+    const boot = d && d.getElementById('boot');
+    const ready = typeof W().setView === 'function'
+      && d.querySelector('.nav-item')
+      && (!boot || boot.classList.contains('gone'));
+    if (ready) { interactive = W().performance.now(); break; }
+    await sleep(25);
+  }
+  check('the application becomes interactive', interactive !== null,
+        'not within 60 s');
+  if (interactive === null) { document.title = 'FAIL'; return; }
+  const bootSettle = await settle(0);
+  const nav = W().performance.getEntriesByType('navigation')[0] || {};
+  const paints = W().performance.getEntriesByType('paint');
+  const fcp = (paints.find((p) => p.name === 'first-contentful-paint') || {}).startTime;
+  const res = resources();
+  const byKind = (re) => res.filter((e) => re.test(new URL(e.name).pathname));
+  const sum = (xs) => xs.reduce((a, e) => a + (e.transferSize || e.encodedBodySize || 0), 0);
+  const js = byKind(/\.js$/), css = byKind(/\.css$/), api = byKind(/^\/api\//);
+  report.boot = {
+    domContentLoaded: nav.domContentLoadedEventEnd,
+    load: nav.loadEventEnd,
+    firstContentfulPaint: fcp,
+    interactive,
+    settled: bootSettle.settled,
+    scripts: js.length, scriptKB: sum(js) / 1024,
+    css: css.length, cssKB: sum(css) / 1024,
+    api: api.length, apiKB: sum(api) / 1024,
+    apiSlowest: api.slice().sort((a, b) => b.duration - a.duration).slice(0, 6)
+      .map((e) => ({ url: new URL(e.name).pathname + new URL(e.name).search,
+                     start: r1(e.startTime), ms: r1(e.duration),
+                     kb: r1((e.transferSize || e.encodedBodySize || 0) / 1024) })),
+    /* From the load event on: the heartbeat can only start once the frame
+       exists, so the parsing of the scripts themselves is in
+       `domContentLoaded`, not here. */
+    blocked: gapsSince(0).filter((g) => g[0] <= bootSettle.settled)
+      .reduce((a, g) => a + g[1], 0),
+  };
+  const b = report.boot;
+  say('note', '  DOMContentLoaded      ' + r1(b.domContentLoaded) + ' ms'
+    + '\n  first contentful paint ' + r1(b.firstContentfulPaint || 0) + ' ms'
+    + '\n  interactive            ' + r1(b.interactive) + ' ms'
+    + '\n  settled                ' + r1(b.settled) + ' ms'
+    + (bootSettle.timedOut ? '   (never went quiet)' : '')
+    + '\n  scripts  ' + b.scripts + ' files, ' + r1(b.scriptKB) + ' kB'
+    + '\n  css      ' + b.css + ' files, ' + r1(b.cssKB) + ' kB'
+    + '\n  api      ' + b.api + ' requests, ' + r1(b.apiKB) + ' kB'
+    + '\n  main thread blocked ' + r1(b.blocked) + ' ms in long tasks');
+  say('note', '  slowest boot requests:\n' + b.apiSlowest.map(
+    (e) => '    ' + String(e.ms).padStart(6) + ' ms  ' + String(e.kb).padStart(5)
+           + ' kB  starts ' + String(e.start).padStart(5) + '  ' + e.url).join('\n'));
+
+  head('views, first visit');
+  for (const v of VIEWS) {
+    const m = await measure(v, () => W().setView(v));
+    report.views.push(m);
+  }
+  table(report.views, COLS);
+
+  head('views, second visit');
+  for (const v of VIEWS) {
+    const m = await measure(v, () => W().setView(v));
+    report.warm.push(m);
+  }
+  table(report.warm, COLS);
+
+  head('ToolKit: every tool and bundle step, opened');
+  W().setView('toolkit');
+  await settle(W().performance.now());
+  const names = () => Array.from(D().querySelectorAll('.tk-tool, .tk-step'))
+    .filter((b) => !b.disabled)
+    .map((b) => ((b.querySelector('strong') || {}).textContent || '').trim())
+    .filter(Boolean);
+  const list = Array.from(new Set(names()));
+  for (const name of list) {
+    /* Re-found every time: ToolKit repaints, and a button held across a
+       repaint is a detached node that clicks nothing. */
+    const btn = Array.from(D().querySelectorAll('.tk-tool, .tk-step'))
+      .find((b) => ((b.querySelector('strong') || {}).textContent || '')
+                     .trim() === name);
+    if (!btn) continue;
+    const m = await measure(name, () => btn.click());
+    report.tools.push(m);
+  }
+  table(report.tools, COLS);
+
+  head('what stands out');
+  const worst = report.views.concat(report.tools)
+    .sort((a, b2) => b2.settled - a.settled).slice(0, 5);
+  say('note', worst.map((w) => '  ' + w.label.padEnd(22) + r1(w.settled)
+    + ' ms to settle, ' + w.api + ' api requests'
+    + (w.slowest[0] ? ', slowest ' + w.slowest[0].url + ' '
+       + w.slowest[0].ms + ' ms' : '')).join('\n'));
+
+  report.longTasks = longs.map((l) => ({ phase: l.phase, ms: r1(l.dur) }));
+  perfEl.textContent = JSON.stringify(report, null, 1);
+  try {
+    await fetch('/_dev/perf-report', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(report) });
+  } catch (e) { /* opened by hand: the table above is the result */ }
+
+  check('every view went quiet within ' + (MAX_SETTLE_MS / 1000) + ' s',
+        report.views.every((v) => !v.timedOut),
+        report.views.filter((v) => v.timedOut).map((v) => v.label).join(' '));
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+} catch (e) {
+  say('bad', 'harness threw: ' + e.message);
+  document.title = 'FAIL';
+} })();
+</script>

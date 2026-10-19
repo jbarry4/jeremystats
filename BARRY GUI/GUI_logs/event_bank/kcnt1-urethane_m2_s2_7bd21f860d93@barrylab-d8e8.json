@@ -1,0 +1,199 @@
+{
+  "_at": {
+    "added": "2026-10-09T16:14:49.182284+00:00",
+    "by_label": "2026-10-09T16:14:49.182284+00:00",
+    "curation_label": "2026-10-09T16:14:49.182284+00:00",
+    "duration_s": "2026-10-09T16:14:49.182284+00:00",
+    "events": "2026-10-09T16:14:49.182284+00:00",
+    "gid": "2026-10-09T16:14:49.182284+00:00",
+    "id": "2026-10-09T16:14:49.182284+00:00",
+    "label_names": "2026-10-09T16:14:49.182284+00:00",
+    "mouse": "2026-10-09T16:14:49.182284+00:00",
+    "n": "2026-10-09T16:14:49.182284+00:00",
+    "name": "2026-10-09T16:14:49.182284+00:00",
+    "note": "2026-10-09T16:14:49.182284+00:00",
+    "project": "2026-10-09T16:14:49.182284+00:00",
+    "recording_start": "2026-10-09T16:14:49.182284+00:00",
+    "schema": "2026-10-09T16:14:49.182284+00:00",
+    "session": "2026-10-09T16:14:49.182284+00:00",
+    "session_key": "2026-10-09T16:14:49.182284+00:00",
+    "session_label": "2026-10-09T16:14:49.182284+00:00",
+    "session_loose_key": "2026-10-09T16:14:49.182284+00:00",
+    "session_path": "2026-10-09T16:14:49.182284+00:00",
+    "source": "2026-10-09T16:14:49.182284+00:00",
+    "specified": "2026-10-09T16:14:49.182284+00:00",
+    "type": "2026-10-09T16:14:49.182284+00:00",
+    "type_name": "2026-10-09T16:14:49.182284+00:00",
+    "units": "2026-10-09T16:14:49.182284+00:00",
+    "version": "2026-10-09T16:14:49.182284+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "08f0987f97fd": [
+        "set",
+        "2026-10-09T16:14:49.182284+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-09T16:14:49.182284+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-09T12:14:49-04:00",
+    "by": "spotter harness",
+    "machine": "BarryLab"
+  },
+  "by_label": {
+    "unspecified": 10
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "amplitude": 300,
+      "channel": 2,
+      "start": 184.2307
+    },
+    {
+      "amplitude": 301,
+      "channel": 2,
+      "start": 368.4617
+    },
+    {
+      "amplitude": 302,
+      "channel": 2,
+      "start": 552.6917
+    },
+    {
+      "amplitude": 303,
+      "channel": 2,
+      "start": 736.9227
+    },
+    {
+      "amplitude": 304,
+      "channel": 2,
+      "start": 921.1527
+    },
+    {
+      "amplitude": 305,
+      "channel": 2,
+      "start": 1105.3827
+    },
+    {
+      "amplitude": 306,
+      "channel": 2,
+      "start": 1289.6137
+    },
+    {
+      "amplitude": 307,
+      "channel": 2,
+      "start": 1473.8437
+    },
+    {
+      "amplitude": 308,
+      "channel": 2,
+      "start": 1658.0747
+    },
+    {
+      "amplitude": 309,
+      "channel": 2,
+      "start": 1842.3047
+    }
+  ],
+  "gid": "s45965a6b13d3",
+  "id": "7bd21f860d93",
+  "label_names": {},
+  "mouse": 2,
+  "n": 10,
+  "name": "spotter harness \u2014 delete me",
+  "note": "Made by web/_dev/spotter.html. Deleted on the way out.",
+  "project": "KCNT1 Urethane",
+  "recording_start": null,
+  "schema": 1,
+  "session": 2,
+  "session_key": null,
+  "session_label": "KCNT1 m2 s2 2022-03-18",
+  "session_loose_key": null,
+  "session_path": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S2_03182022\\2022-03-18_15-38-40",
+  "source": {
+    "detector": "LLspikedetector",
+    "file": null,
+    "parameters": {
+      "llw_s": 0.04,
+      "prc": 99.9,
+      "stamp": "peak"
+    },
+    "pipeline": "Doppler (line length)",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ied",
+  "type_name": "IED",
+  "units": "seconds relative to the start of the recording",
+  "version": 0,
+  "versions": [
+    {
+      "at": "2026-10-09T12:14:49-04:00",
+      "by": "spotter harness",
+      "by_label": {
+        "unspecified": 10
+      },
+      "changed": 0,
+      "from_id": null,
+      "from_v": null,
+      "gained": 0,
+      "id": "08f0987f97fd",
+      "imported": true,
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 10,
+      "note": "Imported from Doppler (line length). 10 candidates, none decided yet.",
+      "snap": [
+        [
+          184.2307,
+          null
+        ],
+        [
+          368.4617,
+          null
+        ],
+        [
+          552.6917,
+          null
+        ],
+        [
+          736.9227,
+          null
+        ],
+        [
+          921.1527,
+          null
+        ],
+        [
+          1105.3827,
+          null
+        ],
+        [
+          1289.6137,
+          null
+        ],
+        [
+          1473.8437,
+          null
+        ],
+        [
+          1658.0747,
+          null
+        ],
+        [
+          1842.3047,
+          null
+        ]
+      ],
+      "v": 0
+    }
+  ]
+}

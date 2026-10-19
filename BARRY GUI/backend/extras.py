@@ -11,13 +11,24 @@ import csv
 import io
 import os
 import re
+from datetime import datetime
 import shutil
 import threading
 import time
 
 import numpy as np
 
-from . import csc, ids, nlx
+from . import continuity, csc, ids, nlx, spectrum, vaccio
+
+# `panorama` is imported where it is used, not here.
+#
+# It pulls in `analysis`, which imports matplotlib at module scope -- and
+# `overview` is the strip that appears the moment a recording opens, on every
+# recording, while `panorama` is reached by exactly one function in this file.
+# A module-level import meant that a Python without matplotlib could not draw
+# an amplitude strip, which is what happened the first time a recording was
+# read off the cluster: the analysis environment there has numpy, scipy and
+# fooof, and `extras` would not import at all.
 
 
 # ==========================================================================
@@ -116,8 +127,21 @@ def session_health(path, deep=False):
             out["start_time"] = nlx.header_start_time(hdr)
             size = os.path.getsize(first)
             n_rec = max(0, (size - nlx.HEADER_BYTES) // nlx.RECORD_DTYPE.itemsize)
-            dur = n_rec * nlx.SAMPLES_PER_RECORD / fs if fs else 0.0
+
+            # The recording's own clock, from the first and last record --
+            # two seeks. `n_records * 512 / fs` assumes every record is full
+            # and is a third answer to "how long is it", agreeing with
+            # neither the raw file nor anything Toothy produced.
+            times = None
+            try:
+                times = nlx.record_times(first)
+            except Exception:                            # noqa: BLE001
+                times = None
+            dur = ((times or {}).get("true_duration_s")
+                   or (n_rec * nlx.SAMPLES_PER_RECORD / fs if fs else 0.0))
             out["duration_s"] = dur
+            out["record_duration_s"] = (n_rec * nlx.SAMPLES_PER_RECORD / fs
+                                        if fs else 0.0)
             if not fs:
                 out["checks"].append(_c("warn", "sample rate",
                                         "Header has no SamplingFrequency."))
@@ -148,6 +172,43 @@ def session_health(path, deep=False):
             out["checks"].append(_c("warn", "header",
                                     "Could not read the header: %s" % exc))
 
+    # ---- continuity: one block, or several? ----
+    # Cheetah closes a record early on a hiccup and the next timestamp jumps;
+    # neo calls that a segment break and Toothy concatenates across it, which
+    # closes the gap and labels everything after it too early. Eight of the
+    # twenty-five PTEN recordings are like this and nothing here said so.
+    #
+    # Cheap on a clean folder -- two records per channel decide it -- so it
+    # runs on every health check rather than being a deep-check extra, and
+    # the answer is cached against the reference file's size and mtime.
+    if ncs:
+        try:
+            cont = continuity.check(path, all_channels=bool(deep))
+        except Exception as exc:                         # noqa: BLE001
+            cont = None
+            out["checks"].append(_c("warn", "continuity",
+                                    "Could not check for gaps: %s" % exc))
+        if cont:
+            out["continuity"] = _continuity_summary(cont)
+            out["checks"].extend(continuity.checks(cont))
+            if cont.get("ok") and cont.get("n_segments", 1) > 1:
+                # Two durations that differ by more than a sample is the
+                # whole problem in one line. Only said when it is true: on a
+                # clean recording they are the same number.
+                out["concat_duration_s"] = cont.get("concat_duration_s")
+                # To the millisecond, because _dur rounds to the second and
+                # both of these are 35 m 24 s -- printing the same string
+                # twice and calling it a discrepancy.
+                out["checks"].append(_c(
+                    "warn", "two durations",
+                    "%.3f s on the recording's clock, %.3f s once the gaps "
+                    "are closed -- %s apart. Toothy, the LFP arrays and "
+                    "kilosort are on the second; the raw files, .nev marks "
+                    "and video are on the first."
+                    % (cont["true_duration_s"], cont["concat_duration_s"],
+                       continuity._ms((cont["true_duration_s"]
+                                       - cont["concat_duration_s"]) * 1e3))))
+
     # ---- companions ----
     out["checks"].append(_c(
         "ok" if vids else "warn", "video",
@@ -177,6 +238,51 @@ def session_health(path, deep=False):
             out["checks"].append(_c("warn", "signal probe", str(exc)))
 
     return _grade(out)
+
+
+def _continuity_summary(rep, max_rows=60):
+    """The fields the UI and a --json consumer need, bounded.
+
+    A report goes into every scan result and a handful of pathological files
+    could carry hundreds of segments each; the gap table and segment map are
+    capped here and the full ones stay behind /api/session/continuity.
+    """
+    if not rep or not rep.get("ok"):
+        return {"ok": False, "error": (rep or {}).get("error")}
+    segs = rep.get("segments") or []
+    gaps = rep.get("gaps") or []
+    return {
+        "ok": True,
+        "n_segments": rep.get("n_segments"),
+        "n_gaps": len(gaps),
+        "seconds_lost": rep.get("seconds_lost"),
+        "samples_lost": rep.get("samples_lost"),
+        "seconds_paused": rep.get("seconds_paused"),
+        "n_pauses": rep.get("n_pauses"),
+        "seconds_dropped": rep.get("seconds_dropped"),
+        "n_dropouts": rep.get("n_dropouts"),
+        "max_time_error_ms": rep.get("max_time_error_ms"),
+        "true_duration_s": rep.get("true_duration_s"),
+        "concat_duration_s": rep.get("concat_duration_s"),
+        "record_duration_s": rep.get("record_duration_s"),
+        "clock_drift_s": rep.get("clock_drift_s"),
+        "implied_fs": rep.get("implied_fs"),
+        "n_short_records": rep.get("n_short_records"),
+        "n_short_inside": rep.get("n_short_inside"),
+        "sub_threshold_lost_s": rep.get("sub_threshold_lost_s"),
+        "unused_record_slots": rep.get("unused_record_slots"),
+        "gap_rule": rep.get("gap_rule"),
+        "gap_tolerance_us": rep.get("gap_tolerance_us"),
+        "gap_map_sha": rep.get("gap_map_sha"),
+        "reference": rep.get("reference"),
+        "probed": rep.get("probed"),
+        "mismatches": rep.get("mismatches"),
+        "fast_path": rep.get("fast_path"),
+        "cached": rep.get("cached"),
+        "truncated": len(segs) > max_rows or len(gaps) > max_rows,
+        "segments": segs[:max_rows],
+        "gaps": gaps[:max_rows],
+    }
 
 
 def _deep_signal_checks(folder, ncs):
@@ -325,6 +431,10 @@ def overview(session, channel=None, bins=OVERVIEW_BINS):
     Reads one channel at a coarse stride: a two-hour recording is summarized
     from a few megabytes, because .ncs records are seekable by index.
     """
+    # On the cluster, read on the cluster. A few megabytes of coarse stride
+    # is a few megabytes over a wire, and the answer is 900 numbers.
+    if session.get("source") == "vacc":
+        return vaccio.overview(session, channel=channel, bins=bins)
     chans = session.get("channels") or []
     if not chans:
         return {"ok": False, "error": "No channels."}
@@ -387,6 +497,241 @@ def overview(session, channel=None, bins=OVERVIEW_BINS):
 
 
 # ==========================================================================
+# Band power over the whole recording -- the other thing the strip can show
+#
+# The amplitude profile above answers "how big is the signal here". It cannot
+# answer "is there theta here": a stretch of high-amplitude delta and a
+# stretch of high-amplitude theta draw the same line. So the strip can also
+# show band power through time, which is `FOOOF Playgroun/theta_through_time.py`
+# collapsed to one series.
+#
+# Nothing here computes a spectrogram of its own. `panorama` already reads a
+# channel on the TRUE time axis with NaN in the gaps and already bridges the
+# mains out of a spectrogram, both of which took a while to get right -- so
+# the numbers on this strip and the numbers in the Panorama tool come off the
+# same code and can be compared.
+# ==========================================================================
+# The reference bands. Same numbers as `spectrum.BANDS`, so "theta" on this
+# strip means what "theta" means beside a spectrum.
+BAND_DEFAULT = (4.0, 12.0)
+BAND_TOTAL = (1.0, 100.0)
+BAND_DELTA = (1.0, 4.0)
+
+# What the spectrogram behind the strip is computed with.
+#
+# `sub_s` 2 s gives 0.5 Hz bins, so a 4-12 Hz band is seventeen of them and
+# the band edges can be moved a hertz at a time and mean something. `step_s`
+# is per-call (see `_bandgram`) because a column per second is wasted on a
+# strip whose bins are three seconds wide.
+BG_SUB_S = 2.0
+BG_WIN_S = 4.0
+BG_FMAX = 100.0          # matches BAND_TOTAL's top: the denominator of `rel`
+BG_MAX_COLUMNS = 6000
+
+_BANDGRAM_CACHE = {}
+_BANDGRAM_ORDER = []
+_BANDGRAM_MAX = 3
+
+
+def _bandgram(session, ch, bins):
+    """(freqs, pxx[freq, bin], meta): the whole recording as power per bin.
+
+    The band limits are NOT baked in here, and that is the point. Integrating
+    a band out of this array is microseconds; reading twenty-eight minutes of
+    a 30 kHz channel is most of a minute. Caching the surface rather than the
+    line means moving the theta edges from 4-12 to 5-10 is instant, which is
+    what makes "optimize the range" a thing somebody will actually do rather
+    than a thing they try once.
+
+    About 200 rows x 700 columns of float64 -- under two megabytes, so three
+    of them can sit in memory without anybody noticing.
+    """
+    key = (session.get("path"), ch.get("number"), int(bins),
+           bool(session.get("invert", True)), "v1")
+    hit = _BANDGRAM_CACHE.get(key)
+    if hit is not None:
+        return hit[0], hit[1], dict(hit[2], cached=True)
+
+    t_start = time.time()
+    dur = float(session.get("duration_s") or 0.0)
+    fs = float(session.get("fs") or 0.0) or 30000.0
+    step = dur / bins
+
+    # Never read at full rate: the question stops at 100 Hz, so 250 Hz is
+    # enough and `spectrum.target_rate` is where that margin is decided.
+    want_fs = spectrum.target_rate(BG_FMAX)
+    factor = max(1, int(fs // want_fs)) if want_fs < fs else 1
+    out_fs = fs / factor
+
+    from . import panorama
+
+    # At least two columns per strip bin, so a bin is an average and not one
+    # periodogram -- but never finer than a quarter second, and never more
+    # columns than BG_MAX_COLUMNS however long the recording is.
+    step_s = max(0.25, min(1.0, step / 2.0), dur / BG_MAX_COLUMNS)
+    win_s = max(BG_SUB_S, min(BG_WIN_S, 4.0 * step_s))
+
+    x, gaps = panorama.read_gapped(session, ch, 0.0, dur, factor, out_fs)
+    freqs, times, pxx, n_avg = panorama.spectrogram(
+        x, out_fs, BG_SUB_S, win_s, step_s, 1.0, BG_FMAX)
+
+    # 60 Hz sits inside the `rel` denominator, so leaving it in would make
+    # relative theta fall wherever the mains got worse.
+    mask, at = spectrum.line_bins(freqs, spectrum.LINE_HZ, BG_FMAX)
+    if mask.any():
+        pxx, _removed = panorama._bridge_line(freqs, pxx, mask)
+
+    # Columns onto the strip's own bins, so this line and the amplitude line
+    # are the same x axis pixel for pixel.
+    grid = np.full((freqs.size, bins), np.nan, dtype=np.float64)
+    if times.size:
+        which = np.clip((times / step).astype(int), 0, bins - 1)
+        for i in range(bins):
+            sel = which == i
+            if sel.any():
+                col = pxx[:, sel]
+                if np.isfinite(col).any():
+                    grid[:, i] = np.nanmean(col, axis=1)
+
+    meta = {
+        "fs_used": out_fs, "decimate": factor,
+        "sub_s": BG_SUB_S, "win_s": win_s, "step_s": step_s,
+        "n_avg": int(n_avg), "n_columns": int(times.size),
+        "resolution_hz": round(float(freqs[1] - freqs[0]), 4)
+        if freqs.size > 1 else None,
+        "line_hz": spectrum.LINE_HZ if at else None,
+        "gaps": gaps,
+        "nan_fraction": round(float(np.isnan(x).mean()), 4) if x.size else 0.0,
+        # What the READ cost, not what this request cost. A second request
+        # with different band edges answers off the cache in milliseconds
+        # and still reports this, which is the number worth knowing.
+        "surface_s": round(time.time() - t_start, 2),
+        "cached": False,
+    }
+    out = (freqs, grid, meta)
+    _BANDGRAM_CACHE[key] = out
+    _BANDGRAM_ORDER.append(key)
+    while len(_BANDGRAM_ORDER) > _BANDGRAM_MAX:
+        _BANDGRAM_CACHE.pop(_BANDGRAM_ORDER.pop(0), None)
+    return out
+
+
+def _integrate(freqs, grid, lo, hi):
+    """Integrated power in [lo, hi] for every bin -- uV^2, NaN where no data.
+
+    Trapezoid over the bins rather than a mean, because "how much theta"
+    is a quantity of power and not a density; the two differ by the
+    bandwidth, which is why the band edges have to be reported next to the
+    number for it to mean anything.
+    """
+    sel = (freqs >= lo) & (freqs <= hi)
+    if sel.sum() < 2:
+        return np.full(grid.shape[1], np.nan)
+    return np.trapezoid(grid[sel, :], freqs[sel], axis=0)
+
+
+def _jsonable(v, digits=6):
+    """A float series as JSON, with NaN as null rather than as a number.
+
+    `json` writes bare NaN, which every strict parser rejects and
+    `JSON.parse` in the browser refuses outright -- and a gap is genuinely
+    absent, not zero. Drawing zero there would put a flat stretch on the
+    strip where the recording was paused.
+    """
+    out = []
+    for x in v:
+        f = float(x)
+        out.append(None if not np.isfinite(f)
+                   else float("%.*g" % (digits, f)))
+    return out
+
+
+MEASURES = ("abs", "rel", "ratio")
+MEASURE_WHAT = {
+    "abs": "absolute band power (uV^2)",
+    "rel": "share of 1-100 Hz power",
+    "ratio": "band / delta (1-4 Hz)",
+}
+
+
+def band_profile(session, channel=None, bins=OVERVIEW_BINS,
+                 lo=BAND_DEFAULT[0], hi=BAND_DEFAULT[1], measure="abs"):
+    """Band power through the whole recording, for the overview strip.
+
+    All three measures come back in one payload -- they cost nothing once the
+    surface exists, and they answer different questions. `abs` is the direct
+    one and moves with the aperiodic slope and with electrode impedance;
+    `rel` divides that out and is the one to compare between recordings;
+    `ratio` is the classic hippocampal theta index. Donoghue et al. (2020) is
+    the argument for not offering only the first.
+    """
+    # The expensive one: this reads the channel right through at 250 Hz, so
+    # on a cluster recording it is the one that most needs to happen there.
+    if session.get("source") == "vacc":
+        return vaccio.band_profile(session, channel=channel, bins=bins,
+                                   lo=lo, hi=hi, measure=measure)
+    chans = session.get("channels") or []
+    if not chans:
+        return {"ok": False, "error": "No channels."}
+    idx = channel if channel is not None else len(chans) // 2
+    idx = max(0, min(int(idx), len(chans) - 1))
+    ch = chans[idx]
+
+    dur = float(session.get("duration_s") or 0)
+    if dur <= 0:
+        return {"ok": False, "error": "Unknown duration."}
+    bins = int(max(60, min(int(bins), 2000)))
+
+    lo = max(0.5, float(lo))
+    hi = min(BG_FMAX, float(hi))
+    if hi <= lo:
+        return {"ok": False,
+                "error": "Band high (%g) must be above band low (%g)."
+                         % (hi, lo)}
+    measure = measure if measure in MEASURES else "abs"
+
+    freqs, grid, meta = _bandgram(session, ch, bins)
+    band = _integrate(freqs, grid, lo, hi)
+    total = _integrate(freqs, grid, *BAND_TOTAL)
+    delta = _integrate(freqs, grid, *BAND_DELTA)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rel = np.where(total > 0, band / total, np.nan)
+        ratio = np.where(delta > 0, band / delta, np.nan)
+
+    series = {"abs": band, "rel": rel, "ratio": ratio}
+    good = np.isfinite(series[measure])
+    pick = series[measure][good]
+
+    res = {
+        "ok": True,
+        "kind": "band",
+        "bins": bins,
+        "duration_s": dur,
+        "channel": {"index": idx, "number": ch.get("number"),
+                    "label": ch.get("label")},
+        "band": {"lo": round(lo, 3), "hi": round(hi, 3)},
+        "reference": {"total": list(BAND_TOTAL), "delta": list(BAND_DELTA)},
+        "measure": measure,
+        "measures": list(MEASURES),
+        "what": MEASURE_WHAT[measure],
+        # Everything a screenshot needs to be read back later without the
+        # window that produced it.
+        "label": "%s %g-%g Hz, %s, %s"
+                 % (ch.get("label") or "ch", lo, hi, MEASURE_WHAT[measure],
+                    "%g s bins" % round(dur / bins, 2)),
+        "abs": _jsonable(band),
+        "rel": _jsonable(rel),
+        "ratio": _jsonable(ratio),
+        "n_valid": int(good.sum()),
+        "median": round(float(np.median(pick)), 6) if pick.size else None,
+        "p5": round(float(np.percentile(pick, 5)), 6) if pick.size else None,
+        "p95": round(float(np.percentile(pick, 95)), 6) if pick.size else None,
+    }
+    res.update(meta)
+    return res
+
+
+# ==========================================================================
 # Error grouping
 # ==========================================================================
 _NOISE = [
@@ -407,15 +752,183 @@ def signature(rec):
                          msg.strip()[:180])
 
 
-def group_errors(records):
-    """Fold a flat error list into groups: unresolved first, then newest."""
+# Separates a fault signature from the machine it happened on, in the key
+# of a machine-scoped triage mark. Two at-signs because a hostname can
+# contain one and a signature contains almost anything.
+MARK_SEP = "@@"
+
+
+def mark_key(sig, machine=None):
+    """The key a resolve mark is stored under.
+
+    Without a machine this is the signature itself, unchanged -- which is
+    what every mark written before this existed is keyed on, and why they
+    all still work.
+    """
+    return "%s%s%s" % (sig, MARK_SEP, machine) if machine else sig
+
+
+# "-0400" -> "-04:00", which `fromisoformat` needs.
+_OFFSET_RE = re.compile(r"([+-]\d{2})(\d{2})$")
+
+
+def marked_after(at, mark_at):
+    """Did the mark come at or after the thing it is marking?
+
+    Compared as times. This was `(at or "") <= (mark_at or "")`, a string
+    test that is only right while both stamps carry the same offset -- and
+    an error pulled from the shared table is UTC while a mark written here
+    is local, so an error at "2026-09-10T00:37:57+00:00" read as newer than
+    a mark made three minutes later at "2026-09-09T20:40:45-04:00" and
+    stayed red however many times it was resolved.
+
+    A stamp that cannot be parsed falls back to the string comparison,
+    which is what the old code did with all of them.
+    """
+    if not mark_at:
+        return False
+    if not at:
+        return True
+    a, b = _instant(at), _instant(mark_at)
+    if a is None or b is None:
+        return str(at) <= str(mark_at)
+    return a <= b
+
+
+def _instant(stamp):
+    """An ISO-ish stamp as a comparable moment, or None."""
+    text = str(stamp or "").strip()
+    if not text:
+        return None
+    text = _OFFSET_RE.sub(r"\1:\2", text.replace(" ", "T", 1))
+    try:
+        got = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if got.tzinfo is None:
+        # A stamp with no offset is this machine's wall clock, which is what
+        # wrote it.
+        got = got.astimezone()
+    return got
+
+
+def moment_key(stamp):
+    """A stamp as a number to sort on.
+
+    The lists that use this hold a mix of offsets -- what came from Supabase
+    is UTC, what was written here is local -- so sorting them as text put a
+    row from "2026-09-09T20:41-04:00" below one from "2026-09-10T00:37+00:00"
+    that is four minutes older.
+
+    Unreadable or missing sorts as the epoch, which is where the empty
+    string this replaces already sorted it.
+    """
+    got = _instant(stamp)
+    return got.timestamp() if got is not None else 0.0
+
+
+def host_of(rec):
+    """Which COMPUTER this record came from.
+
+    `shard` first, and that is the whole point. `machine` is
+    `provenance().machine`, which is the `device` field of a profile -- free
+    text somebody types, changed whenever they feel like it, and not unique:
+    measured on this store, one computer had filed errors under five
+    different labels (Bluebarry, DESKTOP-4H65AI7, StrawBarry, Strawbarrry,
+    "Rig 2 (Barry lab)") while two different computers had both filed as
+    "StrawBarry". Grouping by it turned one machine into five rows and two
+    machines into one.
+
+    `shard` is `machine_id()` -- the hostname slug plus four hex of the MAC
+    -- derived rather than typed, and unique per computer by construction.
+
+    Older records have no shard. They fall back to the label, which is the
+    best that can be said about them; `host_named` marks them so a reader
+    knows the difference.
+    """
+    return (rec.get("shard")
+            or rec.get("machine")
+            or (rec.get("context") or {}).get("host") or "unknown")
+
+
+def host_named(rec):
+    """The label this record carried, for display, and whether it is all
+    there is. Returns (label, from_shard)."""
+    label = (rec.get("machine")
+             or (rec.get("context") or {}).get("host") or None)
+    return label, bool(rec.get("shard"))
+
+
+def real_host(machine_id):
+    """The computer's own name out of its shard id.
+
+    The id is the hostname slug, "-", four hex characters. Anything that
+    does not look like that comes back as it came: an unfamiliar id beats a
+    hostname invented by chopping one.
+    """
+    got = str(machine_id or "")
+    if "-" not in got:
+        return got.upper() or None
+    head, tag = got.rsplit("-", 1)
+    if len(tag) == 4 and all(c in "0123456789abcdef" for c in tag.lower()):
+        return head.upper() or None
+    return got.upper() or None
+
+
+def label_for(machine_id, records):
+    """"Bluebarry (DESKTOP-4H65AI7)" -- the newest label, and the real name.
+
+    The newest, because the label changes: this computer has been called
+    four things and the current one is what somebody will recognise. The
+    real hostname in brackets because the label is not unique and the
+    hostname is.
+    """
+    newest, when = None, ""
+    for rec in records or []:
+        if host_of(rec) != machine_id:
+            continue
+        got = rec.get("machine")
+        at = str(rec.get("at") or "")
+        if got and at >= when:
+            newest, when = got, at
+    real = real_host(machine_id)
+    if not newest:
+        return real or str(machine_id)
+    if not real or real.lower() == newest.lower():
+        return newest
+    return "%s (%s)" % (newest, real)
+
+
+def group_errors(records, per_machine=True):
+    """Fold a flat error list into groups: unresolved first, then newest.
+
+    Split per machine by default. The same fault on the rig and on the
+    desktop used to arrive as one group with a count of two, and "happened
+    twice" is a different fact from "happens on both machines" -- the second
+    one tells you it is not something about one computer.
+
+    `signature` on each group stays the identity of the FAULT, not of the
+    fault-on-this-machine: it is what the triage marks are keyed on, and
+    twenty-two of them existed before this change.
+    """
     groups = {}
     for rec in records:
         sig = signature(rec)
-        g = groups.get(sig)
+        host = host_of(rec)
+        key = (sig, host) if per_machine else (sig, None)
+        g = groups.get(key)
         if not g:
-            g = groups[sig] = {
-                "signature": sig, "count": 0, "first": None, "last": None,
+            g = groups[key] = {
+                "signature": sig,
+                # Unique per row of the list, so the client can key on one
+                # thing whichever way the folding went.
+                "key": mark_key(sig, host if per_machine else None),
+                # The identity, and separately what to put on screen.
+                "machine": host if per_machine else None,
+                "machine_label": (label_for(host, records)
+                                  if per_machine else None),
+                "machine_real": real_host(host) if per_machine else None,
+                "count": 0, "first": None, "last": None,
                 "where": rec.get("where"), "message": rec.get("message"),
                 "type": rec.get("type"), "records": [], "resolved": True,
                 "machines": [],
@@ -628,7 +1141,7 @@ def _free_bytes(path):
 # Scratch runner
 # ==========================================================================
 SCRATCH_PREAMBLE = (
-    "# BARRY scratch. The repo and BARRY's own readers are importable, and\n"
+    "# Jarvis scratch. The repo and Jarvis's own readers are importable, and\n"
     "# these names are already bound for you.\n"
     "import os, sys, glob, json, math\n"
     "import numpy as np\n"
@@ -636,7 +1149,7 @@ SCRATCH_PREAMBLE = (
 
 
 def scratch_source(body, repo_root, app_dir):
-    """Wrap a snippet so the repo and BARRY's backend are both importable."""
+    """Wrap a snippet so the repo and Jarvis's backend are both importable."""
     header = ("import sys\n"
               "sys.path.insert(0, %r)\n"
               "sys.path.insert(0, %r)\n"

@@ -1,0 +1,361 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — a bad channel survives leaving and coming back</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 40vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 60vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok { color: #7fe3b0; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "I click it, leave, come back, and it's gone" -- about marking a channel
+   bad in Xplorefinder, from the lane beside the traces or from the Ch
+   menu.
+
+   Each way of marking is followed by each way of leaving: to another view
+   and back with the recording still open, and closing its tab and opening
+   it again. After each, the mark is looked for in three places: the
+   recording's saved record, the window's own state, and on screen.
+
+   A real record is written. Its bad list is read first and put back in a
+   `finally`, and the put-back is read back. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c;
+                        d.textContent = (c === 'ok' ? 'ok    '
+                                         : c === 'bad' ? 'FAIL  ' : '') + m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+const f = document.getElementById('app');
+const win = () => f.contentWindow;
+const doc = () => f.contentDocument;
+const B = () => win().eval('BARRY');
+const XV = () => B().views.xplore;
+const XF = () => XV().state;
+const active = () => XF().sessions[XF().active];
+
+async function savedBad(gid) {
+  const j = await (await fetch('/api/registry/' + gid)).json();
+  return ((j.record || {}).bad_channels || []).map(Number);
+}
+const lane = (label) => [...doc().querySelectorAll('.ch-lane')]
+  .find((l) => (l.querySelector('.nm') || {}).textContent === label);
+
+async function openRec(path) {
+  win().setView('xplore');
+  await XV().open(path);
+  await untilN(() => doc().querySelectorAll('.ch-lane').length > 0, 600);
+  await sleep(400);
+  return active();
+}
+
+const ours = (gid) => { const s = active();
+                        return s && (s.identity || {}).gid === gid ? s : null; };
+
+/* Back the way a person comes back: the Sessions list, its card. */
+async function viaCard(rec) {
+  win().setView('sessions');
+  await untilN(() => {
+    const sub = (doc().querySelector('#sessSub') || {}).textContent || '';
+    return doc().querySelector('#sessTree .sess-card')
+      && !/reading the latest|Reading the catalogue/.test(sub);
+  }, 600);
+  const box = doc().querySelector('#sessSearch');
+  box.value = rec.label;
+  box.dispatchEvent(new Event('input', { bubbles: true }));
+  await sleep(400);
+  const cards = doc().querySelectorAll('#sessTree .sess-card');
+  if (cards.length !== 1) return null;
+  cards[0].click();
+  await untilN(() => ours(rec.gid)
+                     && doc().querySelectorAll('.ch-lane').length > 0, 600);
+  await sleep(400);
+  return ours(rec.gid);
+}
+
+async function leaveAndReturn(how, path, rec) {
+  if (how === 'reload') {
+    win().location.reload();
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    await untilN(() => typeof win().setView === 'function'
+                       && B() && B().views.xplore, 1200);
+    return viaCard(rec);
+  }
+  if (how === 'close') {
+    const id = XF().active;
+    const tab = [...doc().querySelectorAll('.xf-tab')]
+      .find((t) => t.classList.contains('active'));
+    const x = tab && tab.querySelector('.x');
+    if (x) x.click();
+    await untilN(() => !XF().sessions[id], 50);
+  }
+  win().setView('sessions');
+  await sleep(800);
+  return openRec(path);
+}
+
+/* Which recordings the app reopens on its next load. Opening from a card
+   writes it, so the next page in a suite started with this one's tabs. */
+const LAST = 'barry.lastSessions';
+let lastWas;
+
+(async () => { let rec = null, orig = null, ident = null; try {
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const ready = await untilN(() => typeof win().setView === 'function'
+                                   && B() && B().views.xplore, 1200);
+  let why = '';
+  try { why = 'setView ' + typeof win().setView + ', BARRY '
+              + typeof B() + ', xplore ' + typeof B().views.xplore; }
+  catch (e) { why += ' threw ' + e.message; }
+  check('the application loads', ready >= 0, why);
+  try { lastWas = win().localStorage.getItem(LAST); } catch (e) { lastWas = null; }
+
+  /* A recording this machine opens, with a mouse and session (nothing can
+     be saved without one), and the shortest of them. */
+  const reg = await (await fetch('/api/registry')).json();
+  const rows = (reg.tree || []).flatMap((p) => p.mice.flatMap((m) => m.sessions));
+  const asked = new URLSearchParams(location.search).get('gid');
+  rec = rows.filter((r) => (asked ? r.gid === asked : true)
+                           && r.can_open && r.mouse != null && r.session != null
+                           && (r.loadable || []).length
+                           && r.duration_s > 60 && r.n_channels >= 32
+                           && !/harness/i.test(r.loadable[0]))
+    .sort((a, b) => a.duration_s - b.duration_s)[0];
+  check('there is a recording to borrow', !!rec);
+  if (!rec) return;
+  const path = rec.loadable[0];
+  say('note', rec.label + '  ' + path);
+  orig = await savedBad(rec.gid);
+  say('note', 'its bad channels before: ' + JSON.stringify(orig));
+
+  let sess = await openRec(path);
+  check('it opens', !!sess && doc().querySelectorAll('.ch-lane').length > 0,
+        rec.label + ' -- ' + ([...doc().querySelectorAll('.toast')]
+                                .map((t) => t.textContent).join(' | ')
+                              || 'no toast'));
+  ident = sess.identity;
+  const free = sess.info.channels.filter((c) => !orig.includes(c.number)
+                                                && lane(c.label));
+  const chA = free[free.length - 1], chB = free[free.length - 2];
+  check('two unmarked channels on screen to mark', !!(chA && chB));
+  if (!chA || !chB) return;
+
+  for (const [where, ch] of [['the lane beside the traces', chA],
+                             ['the Ch menu', chB]]) {
+    for (const how of ['switch', 'close', 'reload']) {
+      head('mark ' + ch.label + ' from ' + where + ', then '
+           + ({ close: 'close the tab and reopen',
+                reload: 'reload the page and open it from its card',
+                switch: 'go to Sessions and back' })[how]);
+      sess = active();
+      const was = sess.bad.has(ch.number);
+      if (where === 'the Ch menu') {
+        const btn = doc().querySelector('button[data-menu="Ch"]');
+        btn.click();
+        await untilN(() => doc().querySelector('.ctl-pop .ctl-chans'), 30);
+        const row = [...doc().querySelectorAll('.ctl-pop .ctl-chan')]
+          .find((r) => (r.querySelector('.cc-n') || {}).textContent
+                       === String(ch.number));
+        row.querySelector('.badbtn').click();
+        await sleep(200);
+        btn.click();                                   // closes it
+      } else {
+        lane(ch.label).querySelector('.badbtn').click();
+      }
+      const want = !was;
+      await sleep(1500);
+      check('the window took the click',
+            active().bad.has(ch.number) === want);
+      const saved = await savedBad(rec.gid);
+      check('the record says ' + (want ? 'bad' : 'not bad'),
+            saved.includes(ch.number) === want, JSON.stringify(saved));
+
+      sess = await leaveAndReturn(how, path, rec);
+      check('back: the recording is open again', !!sess);
+      if (!sess) continue;
+      check('back: the window says ' + (want ? 'bad' : 'not bad'),
+            sess.bad.has(ch.number) === want, JSON.stringify([...sess.bad]));
+      const l = lane(ch.label);
+      check('back: the lane is drawn ' + (want ? 'bad' : 'ok'),
+            !!l && l.classList.contains('marked-bad') === want,
+            l ? l.className : 'no lane');
+    }
+  }
+  /* Hiding a channel is not marking it bad, but it is the other click on
+     the same row, and it changes the picture just as much. It is a view
+     choice, saved with the view, and should come back the same way. */
+  const chC = free[free.length - 3];
+  for (const how of ['switch', 'close', 'reload']) {
+    if (!chC) break;
+    head('hide ' + chC.label + ' from the lane, then ' + how);
+    sess = active();
+    const l0 = lane(chC.label);
+    if (!l0) { check('the lane is there to click', false); break; }
+    l0.querySelector('input[type=checkbox]').click();
+    await sleep(2500);                       // past the 1.2 s save debounce
+    check('the window hid it', !active().sel.has(chC.index));
+    sess = await leaveAndReturn(how, path, rec);
+    check('back: still hidden', !!sess && !sess.sel.has(chC.index),
+          sess ? sess.sel.size + ' drawn' : 'not open');
+    // Shown again for the next round, from the Ch menu.
+    if (sess && !sess.sel.has(chC.index)) {
+      const btn = doc().querySelector('button[data-menu="Ch"]');
+      btn.click();
+      await untilN(() => doc().querySelector('.ctl-pop .ctl-chans'), 30);
+      const row = [...doc().querySelectorAll('.ctl-pop .ctl-chan')]
+        .find((r) => (r.querySelector('.cc-n') || {}).textContent
+                     === String(chC.number));
+      row.querySelector('input[type=checkbox]').click();
+      btn.click();
+      await sleep(2500);
+    }
+  }
+  /* Two clicks a moment apart. Each used to send the whole list, and the
+     server could take them in either order. */
+  head('two lanes marked back to back, without waiting');
+  sess = active();
+  // Lanes on screen now, not when the page first opened.
+  const onScreen = sess.info.channels.filter(
+    (c) => !sess.bad.has(c.number) && !orig.includes(c.number)
+           && lane(c.label) && c !== chA && c !== chB && c !== chC);
+  check('four more unmarked lanes on screen', onScreen.length >= 4,
+        onScreen.length + ' of ' + doc().querySelectorAll('.ch-lane').length);
+  const [r1, r2, r3, r4] = onScreen;
+  // Both buttons in hand first: the first click redraws the lanes.
+  const b1 = lane(r1.label).querySelector('.badbtn');
+  const b2 = lane(r2.label).querySelector('.badbtn');
+  b1.click();
+  b2.click();
+  await sleep(2500);
+  let saved = await savedBad(rec.gid);
+  check('both are on record', saved.includes(r1.number)
+        && saved.includes(r2.number), JSON.stringify(saved));
+  check('both are drawn bad', active().bad.has(r1.number)
+        && active().bad.has(r2.number), JSON.stringify([...active().bad]));
+
+  /* A channel marked somewhere else -- Doppler, Incisor, Braces all write
+     by path -- while this window has the recording open. */
+  head('a channel marked in another tool while this one is open');
+  await fetch('/api/session/bad-for-path', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, add: [r3.number] }),
+  });
+  win().setView('sessions');
+  await sleep(600);
+  win().setView('xplore');
+  await untilN(() => active() && active().bad.has(r3.number), 60);
+  check('coming back to the trace view shows it',
+        active().bad.has(r3.number), JSON.stringify([...active().bad]));
+  await untilN(() => lane(r4.label), 100);
+  lane(r4.label).querySelector('.badbtn').click();
+  await sleep(1500);
+  saved = await savedBad(rec.gid);
+  check('a click here afterwards keeps it', saved.includes(r3.number)
+        && saved.includes(r4.number), JSON.stringify(saved));
+
+  /* "4, 6, 32-56, 59" typed into the Ch menu. */
+  head('a typed list in the Ch menu');
+  const nums = onScreen.map((c) => c.number).slice(4).sort((a, b) => a - b);
+  const typed = nums[0] + ', ' + nums[1] + '-' + nums[4];
+  const exist = new Set(active().info.channels.map((c) => c.number));
+  const want = [nums[0]];
+  for (let n = nums[1]; n <= nums[4]; n++) if (exist.has(n)) want.push(n);
+  const bulk = async (text, button) => {
+    const btn = doc().querySelector('button[data-menu="Ch"]');
+    btn.click();
+    await untilN(() => doc().querySelector('.ctl-pop .bulk-bad-in'), 30);
+    const box = doc().querySelector('.ctl-pop .bulk-bad-in');
+    box.value = text;
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    const said = (doc().querySelector('.ctl-pop .bulk-bad-say') || {})
+      .textContent || '';
+    if (button) {
+      [...doc().querySelectorAll('.ctl-pop .bulk-bad button')]
+        .find((b) => b.textContent === button).click();
+    } else {
+      box.dispatchEvent(new KeyboardEvent('keydown',
+                                          { key: 'Enter', bubbles: true }));
+    }
+    await sleep(1500);
+    const rows = [...doc().querySelectorAll('.ctl-pop .ctl-chan')];
+    if (doc().querySelector('.ctl-pop')) btn.click();
+    return { said, rows };
+  };
+  let got = await bulk(typed);
+  check('it says back what the list came to before saving',
+        got.said.indexOf(String(want.length)) === 0, got.said);
+  saved = await savedBad(rec.gid);
+  check('Enter marks every one of them on record',
+        want.every((n) => saved.includes(n)),
+        'typed ' + typed + ', record ' + JSON.stringify(saved));
+  check('the menu rows say bad',
+        want.every((n) => got.rows.some((r) =>
+          (r.querySelector('.cc-n') || {}).textContent === String(n)
+          && r.classList.contains('marked-bad'))));
+  sess = await leaveAndReturn('close', path, rec);
+  check('still bad after closing and reopening',
+        !!sess && want.every((n) => sess.bad.has(n)),
+        sess ? JSON.stringify([...sess.bad]) : 'not open');
+  got = await bulk(typed, 'Clear');
+  saved = await savedBad(rec.gid);
+  check('Clear takes them all off the record',
+        want.every((n) => !saved.includes(n)), JSON.stringify(saved));
+  got = await bulk('9999, x');
+  check('a number that is not a channel is reported, not dropped',
+        /not on this recording: 9999/.test(got.said)
+        && /could not read: x/.test(got.said), got.said);
+} catch (e) {
+  say('bad', 'harness threw: ' + e.message);
+} finally {
+  // Close what this page opened, and put back what the app will reopen.
+  try {
+    for (let i = 0; i < 12; i++) {
+      const x = doc().querySelector('.xf-tab .x');
+      if (!x) break;
+      x.click();
+      await sleep(150);
+    }
+  } catch (e) { /* the frame may be gone */ }
+  try {
+    if (lastWas === undefined) { /* never read */ }
+    else if (lastWas === null) win().localStorage.removeItem(LAST);
+    else win().localStorage.setItem(LAST, lastWas);
+  } catch (e) { /* ignore */ }
+  if (rec && orig && ident) {
+    try {
+      await fetch('/api/session/bad', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity: ident, bad_channels: orig }),
+      });
+      const back = await savedBad(rec.gid);
+      check('put back: ' + JSON.stringify(orig),
+            JSON.stringify(back.slice().sort((a, b) => a - b))
+              === JSON.stringify(orig.slice().sort((a, b) => a - b)),
+            JSON.stringify(back));
+    } catch (e) { say('bad', 'restore threw: ' + e.message); }
+  }
+  head(bad === 0 ? 'bad channels stay put' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+  f.src = 'about:blank';
+} })();
+</script>

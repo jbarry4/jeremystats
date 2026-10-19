@@ -199,8 +199,21 @@ async function until(fn, ms) {
   B.views.xplore.state.panes[0].panel = 'scalogram';
   B.views.xplore.state.panes[0].tfChannels = [0];
   B.views.xplore.state.panes[0].tfMode = 'mean';
-  B.views.xplore.state.panes[0].fmin = 2;
-  B.views.xplore.state.panes[0].fmax = 200;
+  /* On the recording, not on the pane.
+
+     The frequency band is LOCKED by default -- one band for every pane of
+     one recording, so two panels can be read against each other -- and
+     `fBand` therefore reads `sess.fdefault` and ignores per-pane values
+     entirely. Setting `pane.fmin` here was setting a field nothing reads,
+     which is why this section reported the default 20-1000 band and no
+     crop. `setBand` is what the controls use, and it always writes the
+     recording's default. */
+  (function () {
+    const S = B.views.xplore.state;
+    const sess = S.sessions[S.order[0]];
+    sess.fdefault = Object.assign({}, sess.fdefault || {},
+                                  { fmin: 2, fmax: 200 });
+  }());
   B.views.xplore.onShow();          // render() + refreshAll(), as the UI does
   await until(() => (B.views.xplore.state.panes[0]._panelData || {}).freqs, 60000);
   await sleep(900);
@@ -223,8 +236,13 @@ async function until(fn, ms) {
     { key: 'Escape', bubbles: true }));
   await sleep(300);
 
-  B.views.xplore.state.panes[0].fviewMin = 4;
-  B.views.xplore.state.panes[0].fviewMax = 12;
+  /* Likewise the display crop: locked, it lives on the recording. */
+  (function () {
+    const S = B.views.xplore.state;
+    const sess = S.sessions[S.order[0]];
+    sess.fdefault = Object.assign({}, sess.fdefault || {},
+                                  { fviewMin: 4, fviewMax: 12 });
+  }());
   B.views.xplore.onShow();
   await until(() => (B.views.xplore.state.panes[0]._panelData || {}).freq_cropped,
               60000);

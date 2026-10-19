@@ -1,0 +1,328 @@
+"""
+vacc_run.py -- what actually runs on a compute node.
+
+    python vacc_run.py <workspace>/runs/<rid>/spec.json
+
+THE WHOLE POINT IS THAT THIS IS NOT A PORT
+
+It imports `backend.incisor` and `backend.panorama` and calls the same
+`run()` the desktop calls. No arithmetic is reimplemented here, and that is
+not laziness -- `incisor.py` exists because Toothy's detection was worth
+writing down once, with each step citing the line it came from, and a second
+copy on the cluster would be a second thing to keep in step with it. Two
+implementations of one measurement is how a lab ends up with two answers and
+no way to tell which is right.
+
+So this file is plumbing: read a spec, open the recording, call run(), write
+the answer down. Everything it does that the desktop does not do is about
+being on the far side of a wire.
+
+PROGRESS IS A SHIM, NOT A JOB
+
+`cfc.Job` is what `run()` expects to report progress to, and the real one
+lives in a Flask process on somebody's desk. `JobShim` is the same three
+methods -- begin, tick, check -- printing a line each instead. The poller on
+the other end translates those back. Stage names are asserted against the
+manifest the spec carries, because `Job.begin` on an unknown stage returns
+silently: a typo here is a job that runs perfectly and shows no progress at
+all, and nothing anywhere says why.
+
+THE ANSWER IS WRITTEN ATOMICALLY, AND IT IS THE NUMBERS
+
+`result.json.part` then `os.replace`. A job killed by scancel or a walltime
+half way through writing must not leave a file the fetcher will happily read
+as an answer.
+
+What crosses the wire is the answer -- about thirty kilobytes -- and not the
+picture. A spectrogram is megabytes and regenerable from the numbers in
+milliseconds, so it stays here. `toolresults.py` makes the same split for the
+same reason, and this is that reason arriving over a network.
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+import time
+import traceback
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+
+
+def emit(obj):
+    """One JSON object per line on stdout, flushed.
+
+    Slurm buffers a job's stdout into a file; without the flush the progress
+    of a two-hour run arrives in one lump when it finishes, which is the same
+    as having none.
+    """
+    sys.stdout.write(json.dumps(obj) + "\n")
+    sys.stdout.flush()
+
+
+class JobShim:
+    """`cfc.Job`'s three methods, as far as a compute node needs them."""
+
+    def __init__(self, stages, members=None):
+        # The vocabulary the other end declared. Anything outside it is a
+        # mistake worth stopping for rather than a line nobody reads.
+        self.stages = set(stages or [])
+        # Member ids the other end will replay (Circuit: one per cue pair).
+        # Empty for every other tool, and then `member` stays silent.
+        self.members = set(members or [])
+        self._at = None
+        self._t0 = time.time()
+
+    def _check_name(self, name):
+        if self.stages and name not in self.stages:
+            raise KeyError(
+                "stage %r was not declared for this run; the poller would "
+                "drop it silently and the run would show no progress" % name)
+
+    def begin(self, name, of=None, unit=None):
+        self._check_name(name)
+        self._at = name
+        emit({"k": "begin", "stage": name, "of": of, "unit": unit,
+              "t": round(time.time() - self._t0, 2)})
+
+    def tick(self, name, done):
+        self._check_name(name)
+        emit({"k": "tick", "stage": name, "done": int(done),
+              "t": round(time.time() - self._t0, 2)})
+
+    def check(self):
+        """Cancellation is scancel here, not a flag.
+
+        There is nothing cooperative to check: the other end cancels by
+        killing this process. Present because `run()` calls it.
+        """
+        return False
+
+    # Panorama hands previews to a real Job. They are pictures, so they do
+    # not travel; accepting and dropping them is the honest no-op.
+    def set_preview(self, *a, **k):
+        return None
+
+    def members_init(self, *a, **k):
+        return None
+
+    def member(self, mid=None, **patch):
+        if mid not in self.members:
+            return None
+        emit(dict({"k": "member", "id": mid,
+                   "t": round(time.time() - self._t0, 2)},
+                  **{k: v for k, v in patch.items()
+                     if not isinstance(v, (list, dict, tuple, set))}))
+        return None
+
+
+def main(argv):
+    if len(argv) < 2:
+        emit({"k": "fatal", "error": "usage: vacc_run.py <spec.json>"})
+        return 2
+    spec_path = argv[1]
+    with open(spec_path, "r", encoding="utf-8") as fh:
+        bundle = json.load(fh)
+
+    rid = bundle.get("rid")
+    tool = bundle.get("tool")
+    spec = bundle.get("spec") or {}
+    out_dir = os.path.dirname(os.path.abspath(spec_path))
+    job = JobShim(bundle.get("stages"), bundle.get("members"))
+
+    emit({"k": "start", "rid": rid, "tool": tool, "pid": os.getpid(),
+          "host": os.uname().nodename if hasattr(os, "uname") else "?"})
+
+    # Where this run writes beside its result -- for a tool whose answer is
+    # a folder rather than a page of numbers (StrataScope's read).
+    bundle["_out_dir"] = out_dir
+    try:
+        from backend import csc
+        result = run_tool(tool, spec, bundle, job, csc)
+    except Exception as exc:                             # noqa: BLE001
+        emit({"k": "fatal", "error": "%s: %s" % (type(exc).__name__, exc),
+              "traceback": traceback.format_exc(limit=12)})
+        return 1
+
+    # Named after the spec that produced it: `spec_7.json` -> `result_7.json`.
+    #
+    # Every task of an array shares one run directory, so a fixed
+    # `result.json` would have twenty-eight tasks writing the same file and
+    # twenty-seven answers lost -- silently, since each write succeeds and
+    # the last one wins. A single run still writes plain `result.json`.
+    base = os.path.basename(spec_path)
+    name = "result.json"
+    if base.startswith("spec_") and base.endswith(".json"):
+        name = "result_" + base[len("spec_"):]
+    final = os.path.join(out_dir, name)
+
+    tmp = final + ".part"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(result, fh)
+    os.replace(tmp, final)
+    emit({"k": "done", "rid": rid, "file": name,
+          "bytes": os.path.getsize(final)})
+    return 0
+
+
+def run_tool(tool, spec, bundle, job, csc):
+    """Open the recording and call the tool's own `run`."""
+    if tool == "drift":
+        # The Arc's Drift. There is no recording: the circuit payloads (without
+        # their per-pair values, which pooling never reads) travel in the spec,
+        # and the node calls the SAME `drift.build` a local run calls, through
+        # `driftrun.run_node`. The answer is filed, pinned and cited on the
+        # machine that asked, so the node never needs the artifact store.
+        from backend import driftrun
+        return driftrun.run_node(spec, job)
+
+    if tool == "sweep":
+        # The Monolith (backend/monolith.py). One rat-day, one kind, some
+        # bands: `sweep.run_node` reads every cue pair or rest epoch the
+        # spec lists -- through coupling's own reader, so the wires are the
+        # circuits' wires -- and writes its arrays beside this run. The
+        # answer that comes back here is only where they are.
+        from backend import sweep
+        return sweep.run_node(spec, job)
+
+    path = spec.get("path")
+    if not path or not os.path.isdir(path):
+        raise IOError("the recording is not readable here: %r" % (path,))
+
+    if tool == "circuit":
+        # The Arc's Circuit. The node runs `coupling.pair_connectivity` over
+        # the cue pairs it was sent -- the SAME call a local run makes,
+        # through the same `circuitrun.compute_pair` -- and returns the pair
+        # results. Nothing else: the payload is built and filed as an
+        # artifact on the machine that asked, so the node never needs the
+        # bank or the artifact store. It reads the channel files directly,
+        # so no session is opened.
+        from backend import circuitrun
+        return circuitrun.run_node(spec, job)
+
+    session = csc.open_session(path, invert=bool(spec.get("invert", True)))
+
+    if tool == "incisor":
+        from backend import incisor
+        # The continuity report travels WITH the spec rather than being
+        # recomputed. It is in the cache key, and a segmentation that came
+        # out even slightly differently here would give the answer a
+        # different name -- a permanent cache miss that nothing reports.
+        #
+        # Except for a recording the desk could not open: then it is made
+        # here, and the answer carries `time_basis.breaks_sha`, from which
+        # the desk computes the same key (`incisor.cache_key(breaks_sha=)`).
+        report = bundle.get("report")
+        if report is None:
+            from backend import continuity
+            report = continuity.check(path)
+        if spec.get("channels") is None:
+            # The channel list only exists here, so the one rule for which
+            # channels a scan reads runs here too -- every channel less the
+            # bad ones, by CSC number. The answer echoes what it chose.
+            pick = incisor.channel_pick(spec.get("channel_pick"))
+            kept, excluded = incisor.resolve_channels(
+                session, spec.get("bad_channels") or [], None, pick)
+            if not kept:
+                raise ValueError(
+                    "Nothing is left to scan in %s: every channel there is "
+                    "marked bad, or there is none."
+                    % incisor.pick_words(pick, [c["number"] for c in
+                                                session.get("channels") or []])
+                    if pick else "Every channel in this recording is marked "
+                                 "bad, so there is nothing to scan.")
+            spec = dict(spec, channels=kept, excluded=excluded)
+        out = incisor.run(session, spec, report, job)
+        out["spec_channels"] = list(spec.get("channels") or [])
+        out["spec_excluded"] = list(spec.get("excluded") or [])
+        return out
+
+    if tool == "braces":
+        # Braces (and Eye, which is Braces' engine pointed at IEDs) for a
+        # recording the desk could not open. The SAME `braces.align` a local
+        # run calls; the stamps, the contacts by CSC number and the settings
+        # came up in the spec, and the proposal goes back to be filed as a
+        # set on the machine that asked.
+        from backend import braces
+        use = braces.channels_by_number(session, spec.get("use_channels"))
+        if not use:
+            raise ValueError("None of the contacts asked for are in the "
+                             "cluster's copy of this recording.")
+        return braces.align(session, use, spec, spec.get("events") or [],
+                            spec.get("stamp_times") or [],
+                            spec.get("align_ids") or [],
+                            spec.get("left_out") or [],
+                            int(spec.get("depth_n") or braces.DEPTH_BAND),
+                            job)
+
+    if tool == "doppler":
+        from backend import doppler
+        # Same reason as Incisor's: the report is in the cache key, so a
+        # segmentation recomputed here rather than carried would give the
+        # answer a different name and miss the cache for ever.
+        report = bundle.get("report")
+        if report is None:
+            from backend import continuity
+            report = continuity.check(path)
+        if spec.get("channels") is None:
+            # A recording the desk could not open: the channel list only
+            # exists here, so the one rule (every channel less the bad ones,
+            # by CSC number) runs here -- the same one Incisor's node runs.
+            from backend import incisor
+            kept, excluded = incisor.resolve_channels(
+                session, spec.get("bad_channels") or [])
+            if not kept:
+                raise ValueError("Every channel in this recording is marked "
+                                 "bad, so there is nothing to read.")
+            # And the channel range, by the desk's own rule: outside it is
+            # not read, and everything else applies inside it.
+            kept, excluded, outside = doppler.restrict(
+                session, kept, excluded, spec.get("channel_range"))
+            spec = dict(spec, channels=kept, excluded=excluded,
+                        out_of_range=outside)
+        out = doppler.run(session, spec, report, job)
+        out["spec_channels"] = list(spec.get("channels") or [])
+        out["spec_excluded"] = list(spec.get("excluded") or [])
+        return out
+
+    if tool == "panorama":
+        from backend import panorama
+        return panorama.run(session, spec, job)
+
+    if tool == "strata":
+        # StrataScope's read, for a recording the desk cannot open. The SAME
+        # `stratasteps.scan` a local read calls, into a folder beside this
+        # run; the desk brings the folder home in one stream and everything
+        # after the read happens there. The segmentation is made here, as
+        # Incisor's is when no report travelled.
+        from backend import stratasteps
+        report = bundle.get("report")
+        if report is None and session.get("source") == "ncs":
+            from backend import continuity
+            report = continuity.check(path)
+            if not report or not report.get("ok"):
+                raise ValueError((report or {}).get("error")
+                                 or "could not segment the recording")
+        stratasteps.configure(bundle["_out_dir"])
+        gid = spec.get("gid") or "vacc"
+        meta = stratasteps.scan(session, report, gid, job=job,
+                                workers=int(spec.get("workers") or 4),
+                                channels=spec.get("channels"),
+                                skip=spec.get("skip") or [])
+        folder = stratasteps._dir(gid)
+        size = sum(os.path.getsize(os.path.join(folder, f))
+                   for f in os.listdir(folder))
+        return {"folder": os.path.relpath(folder, bundle["_out_dir"])
+                .replace(os.sep, "/"),
+                "bytes": int(size),
+                "files": sorted(os.listdir(folder)),
+                "meta": {k: meta.get(k) for k in (
+                    "n_bins", "channels", "skipped", "end_s", "lfp_fs",
+                    "scanned_at")}}
+
+    raise ValueError("no such tool: %r" % (tool,))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

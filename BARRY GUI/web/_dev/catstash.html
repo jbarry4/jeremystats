@@ -1,0 +1,135 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the catalogue draws last time's list while the live one comes</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "It should all load, but it shouldn't wait until everything is there to
+   show me something." The Sessions catalogue, Everything Jarvis Knows and
+   the VACC answer each draw last time's answer from this browser
+   (web/js/stash.js) while the live one comes, and swap it in when it lands.
+
+   The live answer is held back on purpose: the frame's `api` delays
+   /api/registry by 2.5 s after a reload, which is what a first open after an
+   update looks like (the server's cache is stamped with the code version).
+   Nothing is written; the stash is this browser's own. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || d === undefined ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 200, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  const loaded = () => new Promise((r) => f.addEventListener('load', r, { once: true }));
+  await loaded();
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const up = () => untilN(() => typeof W().setView === 'function'
+                                && W().eval('BARRY.stash && BARRY.views.sessions'));
+  check('the application loads, with the stash', !!(await up()));
+  const cards = () => D().querySelectorAll('#sessTree .sess-card').length;
+  const sub = () => ((D().getElementById('sessSub') || {}).textContent || '');
+
+  head('a first open, live, fills the stash');
+  W().setView('sessions');
+  await untilN(() => cards() > 0 && !/as of/.test(sub()), 300, 100);
+  const n0 = cards();
+  const total0 = (await W().eval('BARRY.views.sessions._tryFilter([])')).total;
+  check('the catalogue draws', n0 > 0, n0);
+  // The stash writes 1.5 s after the list is drawn, and IndexedDB finishes
+  // when it finishes: asked until it answers, rather than after a guess.
+  let kept = null;
+  for (let i = 0; i < 40 && !(kept && kept.value); i++) {
+    await sleep(250);
+    kept = await W().eval("BARRY.stash.get('registry', 1000)");
+  }
+  check('and this browser keeps it', !!(kept && kept.value && kept.value.tree),
+        kept ? Object.keys(kept).join(',') + ' / ' + Object.keys(kept.value || {}).slice(0, 6).join(',') : String(kept));
+
+  head('the next open, with the live answer held back 2.5 s');
+  W().location.reload();
+  await loaded();
+  await up();
+  const realApi = W().api;
+  let held = 0;
+  W().api = async (path, opts) => {
+    if (String(path).indexOf('/api/registry') === 0) {
+      held += 1;
+      await new Promise((r) => setTimeout(r, 2500));
+    }
+    return realApi(path, opts);
+  };
+  const t0 = performance.now();
+  W().setView('sessions');
+  const early = await untilN(() => cards() > 0, 60, 25);
+  const tFirst = performance.now() - t0;
+  check('cards are drawn before the live answer', !!early && held >= 1
+        && tFirst < 2000, tFirst.toFixed(0) + ' ms');
+  say('note', '  first card after ' + tFirst.toFixed(0) + ' ms (live held back 2500 ms)');
+  check('as many as last time', cards() === n0, cards() + ' vs ' + n0);
+  check('and the line above them says they are last time’s',
+        /as of .+, reading the latest/.test(sub()), sub());
+  // Scroll down a little, so the swap has something to keep.
+  const tree = D().getElementById('sessTree');
+  let sc = tree; while (sc && !(sc.scrollHeight > sc.clientHeight + 2)) sc = sc.parentElement;
+  if (sc) { sc.scrollTop = Math.floor(sc.scrollHeight * 0.4); await sleep(100); }
+  const was = sc ? sc.scrollTop : 0;
+  await untilN(() => !/as of/.test(sub()), 80, 100);
+  check('the live answer replaces them', !/as of/.test(sub()), sub());
+  const total1 = (await W().eval('BARRY.views.sessions._tryFilter([])')).total;
+  check('with no recording listed twice', total1 === total0, total1 + ' vs ' + total0);
+  check('and the scroll where it was', !sc || Math.abs(sc.scrollTop - was) <= 2,
+        sc ? sc.scrollTop + ' vs ' + was : 'no scroller');
+
+  head('Everything Jarvis Knows');
+  W().location.reload();
+  await loaded();
+  await up();
+  const realApi2 = W().api;
+  W().api = async (path, opts) => {
+    if (String(path).indexOf('/api/registry') === 0) {
+      await new Promise((r) => setTimeout(r, 2500));
+    }
+    return realApi2(path, opts);
+  };
+  W().setView('sessions');
+  W().eval("BARRY.views.sessions.setMode('housekeeping')");
+  const hkEarly = await untilN(() => D().querySelector('#hkBody .hk-stale')
+    && D().querySelectorAll('#hkBody .hk-row, #hkBody tr').length > 0, 60, 25);
+  check('it draws last time’s catalogue at once, marked as such', !!hkEarly);
+  await untilN(() => !D().querySelector('#hkBody .hk-stale'), 80, 100);
+  check('and the live one replaces it', !D().querySelector('#hkBody .hk-stale')
+        && D().querySelectorAll('#hkBody .hk-row, #hkBody tr').length > 0);
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.stack || e));
+}
+  head(bad === 0 ? 'the catalogue shows something at once' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad + ': ' + Array.from(
+    out.querySelectorAll('.bad')).map((d) => d.textContent).join(' | ');
+})();
+</script>

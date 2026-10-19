@@ -1,0 +1,576 @@
+{
+  "_at": {
+    "created": "2026-09-21T17:16:50.377540+00:00",
+    "entry_id": "2026-09-21T17:16:50.377540+00:00",
+    "from_version": "2026-09-21T17:16:50.377540+00:00",
+    "gid": "2026-09-21T17:16:50.377540+00:00",
+    "name": "2026-09-21T17:16:50.377540+00:00",
+    "params": "2026-09-21T17:16:50.377540+00:00",
+    "rows": "2026-09-21T17:16:50.377540+00:00",
+    "schema": "2026-09-21T17:16:50.377540+00:00",
+    "set_id": "2026-09-21T17:16:50.377540+00:00",
+    "summary": "2026-09-21T17:16:50.377540+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-21T17:16:50.377540+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "calls": {},
+  "created": {
+    "at": "2026-09-21T13:16:50-0400",
+    "by": "Rain Younger",
+    "machine": "Strawbarry"
+  },
+  "entry_id": "8f72a5c16d37",
+  "from_version": "1497deb3da66",
+  "gid": "s8fdc9981f949",
+  "name": "Incisor CSC61",
+  "params": {
+    "band": [
+      5.0,
+      100.0
+    ],
+    "cand_dist_ms": 12.0,
+    "cand_height_sd": 0.0,
+    "channels": [
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51
+    ],
+    "csd_smooth": true,
+    "dist_ms": 100.0,
+    "estimator": "mad",
+    "invert": true,
+    "left_out": [
+      59
+    ],
+    "lfp_fs": 1000.0,
+    "line_hz": 60.0,
+    "measure": "csd",
+    "n_channels": 16,
+    "order": 3,
+    "profile": {
+      "35": -0.024927,
+      "36": -0.005546,
+      "37": -0.027899,
+      "38": -0.043608,
+      "39": -0.054494,
+      "40": -0.07604,
+      "41": -0.061346,
+      "42": -0.043254,
+      "43": -0.116867,
+      "44": -0.212343,
+      "45": -0.211002,
+      "46": -0.225612,
+      "47": -0.223279,
+      "48": 0.28155,
+      "49": 0.746934,
+      "50": 0.375603
+    },
+    "screened": {
+      "50": "noisy (59 uV, +4.5 MAD above the rest)",
+      "51": "noisy (62 uV, +5.0 MAD above the rest)",
+      "52": "noisy (65 uV, +5.4 MAD above the rest)",
+      "53": "noisy (67 uV, +5.7 MAD above the rest)",
+      "54": "noisy (69 uV, +5.9 MAD above the rest)",
+      "55": "noisy (70 uV, +6.1 MAD above the rest)",
+      "56": "noisy (71 uV, +6.2 MAD above the rest)",
+      "57": "noisy (72 uV, +6.3 MAD above the rest)",
+      "58": "noisy (73 uV, +6.5 MAD above the rest)",
+      "59": "dead (0.5 uV against a median of 37)",
+      "60": "noisy (77 uV, +6.9 MAD above the rest)",
+      "61": "noisy (76 uV, +6.9 MAD above the rest)",
+      "62": "noisy (74 uV, +6.6 MAD above the rest)",
+      "63": "noisy (71 uV, +6.3 MAD above the rest)",
+      "64": "noisy (68 uV, +5.9 MAD above the rest)"
+    },
+    "smooth_ms": 0.0,
+    "spacing_um": 30.0,
+    "window_ms": 100.0
+  },
+  "rows": [],
+  "schema": 1,
+  "set_id": "brf78f671122",
+  "summary": {
+    "band": [
+      5.0,
+      100.0
+    ],
+    "by_reason": {},
+    "cand_dist_ms": 12.0,
+    "cand_floor_uv": 3790.702,
+    "channels": [
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51
+    ],
+    "depth": {
+      "channels": [
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50
+      ],
+      "from": 33,
+      "of": 64,
+      "profile": [
+        {
+          "index": 1,
+          "number": 2,
+          "score": 1461943.059
+        },
+        {
+          "index": 2,
+          "number": 3,
+          "score": 691109.651
+        },
+        {
+          "index": 3,
+          "number": 4,
+          "score": 571278.979
+        },
+        {
+          "index": 4,
+          "number": 5,
+          "score": 379835.426
+        },
+        {
+          "index": 5,
+          "number": 6,
+          "score": 268051.106
+        },
+        {
+          "index": 6,
+          "number": 7,
+          "score": 284166.412
+        },
+        {
+          "index": 7,
+          "number": 8,
+          "score": 575396.738
+        },
+        {
+          "index": 8,
+          "number": 9,
+          "score": 453419.31
+        },
+        {
+          "index": 9,
+          "number": 10,
+          "score": 886237.857
+        },
+        {
+          "index": 10,
+          "number": 11,
+          "score": 736375.939
+        },
+        {
+          "index": 11,
+          "number": 12,
+          "score": 576671.074
+        },
+        {
+          "index": 12,
+          "number": 13,
+          "score": 516761.315
+        },
+        {
+          "index": 13,
+          "number": 14,
+          "score": 525634.03
+        },
+        {
+          "index": 14,
+          "number": 15,
+          "score": 894885.721
+        },
+        {
+          "index": 15,
+          "number": 16,
+          "score": 1345876.926
+        },
+        {
+          "index": 16,
+          "number": 17,
+          "score": 1337211.192
+        },
+        {
+          "index": 17,
+          "number": 18,
+          "score": 469905.32
+        },
+        {
+          "index": 18,
+          "number": 19,
+          "score": 417672.808
+        },
+        {
+          "index": 19,
+          "number": 20,
+          "score": 341880.463
+        },
+        {
+          "index": 20,
+          "number": 21,
+          "score": 220132.862
+        },
+        {
+          "index": 21,
+          "number": 22,
+          "score": 440205.508
+        },
+        {
+          "index": 22,
+          "number": 23,
+          "score": 3135217.671
+        },
+        {
+          "index": 23,
+          "number": 24,
+          "score": 4077806.972
+        },
+        {
+          "index": 24,
+          "number": 25,
+          "score": 1991222.885
+        },
+        {
+          "index": 25,
+          "number": 26,
+          "score": 2288037.536
+        },
+        {
+          "index": 26,
+          "number": 27,
+          "score": 1496845.674
+        },
+        {
+          "index": 27,
+          "number": 28,
+          "score": 553822.274
+        },
+        {
+          "index": 28,
+          "number": 29,
+          "score": 860354.765
+        },
+        {
+          "index": 29,
+          "number": 30,
+          "score": 732066.176
+        },
+        {
+          "index": 30,
+          "number": 31,
+          "score": 1175143.433
+        },
+        {
+          "index": 31,
+          "number": 32,
+          "score": 2547442.848
+        },
+        {
+          "index": 32,
+          "number": 33,
+          "score": 893546.002
+        },
+        {
+          "index": 33,
+          "number": 34,
+          "score": 11321800.814
+        },
+        {
+          "index": 34,
+          "number": 35,
+          "score": 9433585.935
+        },
+        {
+          "index": 35,
+          "number": 36,
+          "score": 525639.013
+        },
+        {
+          "index": 36,
+          "number": 37,
+          "score": 9323492.918
+        },
+        {
+          "index": 37,
+          "number": 38,
+          "score": 24096946.05
+        },
+        {
+          "index": 38,
+          "number": 39,
+          "score": 35122687.02
+        },
+        {
+          "index": 39,
+          "number": 40,
+          "score": 68607669.768
+        },
+        {
+          "index": 40,
+          "number": 41,
+          "score": 49474173.781
+        },
+        {
+          "index": 41,
+          "number": 42,
+          "score": 25090661.588
+        },
+        {
+          "index": 42,
+          "number": 43,
+          "score": 164965531.476
+        },
+        {
+          "index": 43,
+          "number": 44,
+          "score": 535697094.638
+        },
+        {
+          "index": 44,
+          "number": 45,
+          "score": 519962031.974
+        },
+        {
+          "index": 45,
+          "number": 46,
+          "score": 585311618.679
+        },
+        {
+          "index": 46,
+          "number": 47,
+          "score": 541209583.76
+        },
+        {
+          "index": 47,
+          "number": 48,
+          "score": 989672284.665
+        },
+        {
+          "index": 48,
+          "number": 49,
+          "score": 6494881108.219
+        },
+        {
+          "index": 49,
+          "number": 50,
+          "score": 1625739593.208
+        },
+        {
+          "index": 50,
+          "number": 51,
+          "score": 0.0
+        },
+        {
+          "index": 51,
+          "number": 52,
+          "score": 0.0
+        },
+        {
+          "index": 52,
+          "number": 53,
+          "score": 0.0
+        },
+        {
+          "index": 53,
+          "number": 54,
+          "score": 0.0
+        },
+        {
+          "index": 54,
+          "number": 55,
+          "score": 0.0
+        },
+        {
+          "index": 55,
+          "number": 56,
+          "score": 0.0
+        },
+        {
+          "index": 56,
+          "number": 57,
+          "score": 0.0
+        },
+        {
+          "index": 57,
+          "number": 58,
+          "score": 0.0
+        },
+        {
+          "index": 58,
+          "number": 59,
+          "score": 0.0
+        },
+        {
+          "index": 59,
+          "number": 60,
+          "score": 0.0
+        },
+        {
+          "index": 60,
+          "number": 61,
+          "score": 0.0
+        },
+        {
+          "index": 61,
+          "number": 62,
+          "score": 0.0
+        },
+        {
+          "index": 62,
+          "number": 63,
+          "score": 0.0
+        }
+      ],
+      "screened": {
+        "50": "noisy (59 uV, +4.5 MAD above the rest)",
+        "51": "noisy (62 uV, +5.0 MAD above the rest)",
+        "52": "noisy (65 uV, +5.4 MAD above the rest)",
+        "53": "noisy (67 uV, +5.7 MAD above the rest)",
+        "54": "noisy (69 uV, +5.9 MAD above the rest)",
+        "55": "noisy (70 uV, +6.1 MAD above the rest)",
+        "56": "noisy (71 uV, +6.2 MAD above the rest)",
+        "57": "noisy (72 uV, +6.3 MAD above the rest)",
+        "58": "noisy (73 uV, +6.5 MAD above the rest)",
+        "59": "dead (0.5 uV against a median of 37)",
+        "60": "noisy (77 uV, +6.9 MAD above the rest)",
+        "61": "noisy (76 uV, +6.9 MAD above the rest)",
+        "62": "noisy (74 uV, +6.6 MAD above the rest)",
+        "63": "noisy (71 uV, +6.3 MAD above the rest)",
+        "64": "noisy (68 uV, +5.9 MAD above the rest)"
+      },
+      "weights": {
+        "35": -0.024927,
+        "36": -0.005546,
+        "37": -0.027899,
+        "38": -0.043608,
+        "39": -0.054494,
+        "40": -0.07604,
+        "41": -0.061346,
+        "42": -0.043254,
+        "43": -0.116867,
+        "44": -0.212343,
+        "45": -0.211002,
+        "46": -0.225612,
+        "47": -0.223279,
+        "48": 0.28155,
+        "49": 0.746934,
+        "50": 0.375603
+      }
+    },
+    "dist_ms": 100.0,
+    "edge_frac": 0.8,
+    "estimator": "mad",
+    "greedy_stranded": 0,
+    "hist": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "hist_hi_ms": 100.0,
+    "hist_lo_ms": -100.0,
+    "left_out": [
+      59
+    ],
+    "n": 0,
+    "n_channels": 16,
+    "n_flagged": 0,
+    "n_moved": 0,
+    "n_no_peak": 0,
+    "n_peaks": 1452,
+    "n_same": 0,
+    "n_skipped": 80,
+    "n_windows": 53,
+    "read_s": 80.8,
+    "same_ms": 1.0,
+    "screened": {
+      "50": "noisy (59 uV, +4.5 MAD above the rest)",
+      "51": "noisy (62 uV, +5.0 MAD above the rest)",
+      "52": "noisy (65 uV, +5.4 MAD above the rest)",
+      "53": "noisy (67 uV, +5.7 MAD above the rest)",
+      "54": "noisy (69 uV, +5.9 MAD above the rest)",
+      "55": "noisy (70 uV, +6.1 MAD above the rest)",
+      "56": "noisy (71 uV, +6.2 MAD above the rest)",
+      "57": "noisy (72 uV, +6.3 MAD above the rest)",
+      "58": "noisy (73 uV, +6.5 MAD above the rest)",
+      "59": "dead (0.5 uV against a median of 37)",
+      "60": "noisy (77 uV, +6.9 MAD above the rest)",
+      "61": "noisy (76 uV, +6.9 MAD above the rest)",
+      "62": "noisy (74 uV, +6.6 MAD above the rest)",
+      "63": "noisy (71 uV, +6.3 MAD above the rest)",
+      "64": "noisy (68 uV, +5.9 MAD above the rest)"
+    },
+    "shift_max_ms": 0.0,
+    "shift_median_ms": 0.0,
+    "shift_p95_ms": 0.0,
+    "skipped": {
+      "garbage": 80
+    },
+    "skipped_channels": [],
+    "thr_uv": 0.0,
+    "window_ms": 100.0
+  }
+}

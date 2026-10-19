@@ -1,5 +1,5 @@
 /* ==========================================================================
-   housekeeping.js -- Every recording BARRY has ever met, in one tree.
+   housekeeping.js -- Every recording Jarvis has ever met, in one tree.
 
    The Sessions view answers "what is on this drive". This answers the other
    question: what does the lab have, where has each recording been seen, and
@@ -26,10 +26,51 @@ BARRY.views.housekeeping = (function () {
   let query = '';
   let onlyHere = false;      // hide recordings this machine cannot reach
 
+  /* Two filters that are not yes-or-no, and are not groupings either.
+
+     Grouping by project already existed and is a different thing: it
+     decides what the branches MEAN, and every recording is still in the
+     tree somewhere. Filtering decides which are in it at all, and "PTEN
+     and KCNT1 but not the urethane work" is an ordinary thing to want when
+     the urethane project shares mouse numbers with KCNT1.
+
+     Channels is a comparison rather than a value, because the question
+     people actually have is "which of these are the dual implants", and
+     that is `more than 64`. Asking for exactly 128 gets the ordinary ones
+     and silently misses the six whose CSCn_0001.ncs continuation files put
+     the count at 190 or 192 -- which are precisely the ones worth looking
+     at. */
+  const projOnly = new Set();
+  let chanFilter = { op: '', n: 64 };
+  const CHAN_OPS = [['gt', 'more than'], ['lt', 'fewer than'],
+                    ['eq', 'exactly']];
+
   /* Two views over the same records, and one control that changes what the
      branches mean. Grouping is by project until you say otherwise; every
      label anyone has put on a mouse is also a grouping, which is what makes
      "show me the DKO animals" a dropdown rather than a feature request. */
+  /* Which catalogue this is drawing.
+
+     There are two places that want the same tree: "Everything Jarvis
+     knows", and "Everything VACC knows" -- which is the same catalogue
+     narrowed to the recordings the cluster can actually read. Narrowed, not
+     a different list: the whole point of the VACC view is to find a
+     recording the way you find any other, by project and mouse, rather than
+     by walking the cluster's directories and recognising a folder name.
+
+     One module rather than two, because a second copy of a project/mouse/
+     session tree is a second copy to keep in step. The expansion state and
+     the selection are deliberately shared: it is one catalogue, and a
+     recording you opened in one view is the one you were looking at.
+
+     Only one scope is ever on screen -- the mode switch hides the other --
+     so the ids below cannot collide. */
+  const SCOPES = {
+    jarvis: { host: '#hkBody', detail: 'hkDetail' },
+    vacc: { host: '#vaccCatalogue', detail: 'vaccDetail' },
+  };
+  let scope = 'jarvis';
+
   let view = 'branches';     // 'branches' | 'table'
   let groupBy = 'project';
   let tableOf = 'sessions';  // 'sessions' | 'mice'
@@ -39,7 +80,7 @@ BARRY.views.housekeeping = (function () {
 
   /* Which recordings a scan has actually found since the app started.
 
-     A recording BARRY remembers and a recording BARRY has just laid eyes on
+     A recording Jarvis remembers and a recording Jarvis has just laid eyes on
      are different facts, and the list should not pretend otherwise. So the
      view opens with everything faint -- "this is what I remember" -- and a
      scan brings back whatever it finds. What stays faint after a scan of the
@@ -70,13 +111,31 @@ BARRY.views.housekeeping = (function () {
   }
 
   async function load(backfill) {
+    /* Last time's catalogue first, from this browser (web/js/stash.js), so
+       the view draws at once instead of waiting for the whole answer; the
+       live one replaces it when it lands. Only when nothing is on screen
+       yet, and only if the stash answers before the live read does. */
+    let liveDone = false;
+    const live = api('/api/registry' + (backfill ? '?backfill=1' : ''))
+      .finally(() => { liveDone = true; });
+    if (!data) {
+      const was = await BARRY.stash.get('registry');
+      if (was && was.value && !liveDone) {
+        data = was.value;
+        staleAt = was.at || 0;
+        openNewBranches();
+        render();
+      }
+    }
     try {
-      data = await api('/api/registry' + (backfill ? '?backfill=1' : ''));
+      data = await live;
+      staleAt = null;
+      BARRY.stash.put('registry', data);
     } catch (e) {
       toast('Could not read the registry: ' + e.message, 'err', 8000);
-      data = { tree: [], projects: [], total: 0 };
+      if (staleAt == null) data = { tree: [], projects: [], total: 0 };
     }
-    /* A branch BARRY has not seen before starts open.
+    /* A branch Jarvis has not seen before starts open.
 
        Only doing this on the first load meant a scan that discovered six new
        mice added six collapsed branches -- so the recordings it had just
@@ -87,7 +146,7 @@ BARRY.views.housekeeping = (function () {
     render();
   }
 
-  /* A branch BARRY has not seen before starts open, whichever grouping is
+  /* A branch Jarvis has not seen before starts open, whichever grouping is
      showing. Anything collapsed by hand stays collapsed. */
   function openNewBranches() {
     if (!data) return;
@@ -101,7 +160,14 @@ BARRY.views.housekeeping = (function () {
     }
   }
 
+  // When what is drawn is last time's catalogue (see `load`), from when.
+  let staleAt = null;
+
   async function onShow() {
+    // "Everything Jarvis knows" is this view's own scope. Reset it, or
+    // coming back from the cluster view shows the catalogue still narrowed
+    // to what VACC can read, in the panel that promises everything.
+    scope = 'jarvis';
     render();
     // Backfill on the first look, so records written before the registry
     // existed arrive with a gid rather than appearing over weeks.
@@ -111,7 +177,42 @@ BARRY.views.housekeeping = (function () {
   /* ==================================================================
      The tree
      ================================================================== */
+  /* Can the cluster read this one.
+
+     Two states draw and two do not, and the two that do not are different
+     from each other: `local-only` is an established no, `unknown` is that
+     nobody has asked. Both are excluded here, because this view's whole
+     claim is "VACC can reach these" and a recording nobody has established
+     an answer for is not one of them. That is the same rule the VACC chip
+     on a session card follows -- absent is not negative, and it is not
+     affirmative either. */
+  function onVacc(s) {
+    // One predicate for the whole application -- see `BARRY.vacc.canRead`.
+    // This was a third copy of `state === 'native' || state === 'staged'`,
+    // and a fourth is how a filter and the chip beside it come to disagree
+    // about the same recording.
+    return !!(s.gid && BARRY.vacc && BARRY.vacc.canRead(s));
+  }
+
+  function chanOk(s) {
+    if (!chanFilter.op) return true;
+    const n = Number(s.n_channels);
+    /* A recording nobody has read a header for has no channel count, and a
+       missing number is not a small number -- it is in NEITHER side of the
+       comparison. Reading absence as zero is the mistake `canOpen` in
+       sessions.js carries a comment about, and here it would quietly file
+       164 unread recordings under "fewer than 64". */
+    if (!Number.isFinite(n) || n <= 0) return false;
+    const want = Number(chanFilter.n) || 0;
+    if (chanFilter.op === 'gt') return n > want;
+    if (chanFilter.op === 'lt') return n < want;
+    return n === want;
+  }
+
   function matches(s) {
+    if (scope === 'vacc' && !onVacc(s)) return false;
+    if (projOnly.size && !projOnly.has(s.project || 'Unfiled')) return false;
+    if (!chanOk(s)) return false;
     if (onlyFound && !confirmed.has(s.gid)) return false;
     if (onlyHere && !s.reachable) return false;
     if (!query) return true;
@@ -122,7 +223,7 @@ BARRY.views.housekeeping = (function () {
   }
 
   function render() {
-    const host = $('#hkBody');
+    const host = $(SCOPES[scope].host);
     if (!host) return;
     host.innerHTML = '';
 
@@ -134,9 +235,13 @@ BARRY.views.housekeeping = (function () {
     }
 
     host.appendChild(toolbar());
+    if (staleAt != null) {
+      host.appendChild(el('p', { class: 'hint hk-stale',
+        text: 'As of ' + BARRY.stash.ago(staleAt) + ' — reading the latest…' }));
+    }
     if (!scanned) {
       host.appendChild(el('p', { class: 'hint hk-remembered-note',
-        text: 'Everything below is what BARRY remembers. Scan a drive and '
+        text: 'Everything below is what Jarvis remembers. Scan a drive and '
             + 'whatever it finds will brighten — so what stays faint is '
             + 'what is not where you expected it.' }));
     }
@@ -157,7 +262,7 @@ BARRY.views.housekeeping = (function () {
       class: 'hk-layout' + (view === 'table' ? ' wide' : ''),
     }, [
       left,
-      el('div', { class: 'hk-detail', id: 'hkDetail' }),
+      el('div', { class: 'hk-detail', id: SCOPES[scope].detail }),
     ]));
     renderDetail();
   }
@@ -227,7 +332,7 @@ BARRY.views.housekeeping = (function () {
           })
         : el('span', {
             class: 'hk-sub',
-            title: 'BARRY could not read a mouse number out of the folder '
+            title: 'Jarvis could not read a mouse number out of the folder '
                  + 'name, so there is no animal to hang labels off. Rename '
                  + 'the folder, or set this recording\u2019s label by hand.',
             text: 'nothing to label',
@@ -279,6 +384,116 @@ BARRY.views.housekeeping = (function () {
             + '. Click a column heading to sort, a row to inspect it.' }));
     }
     return wrap;
+  }
+
+  /* Which projects are in the list, plus the lab's own whether or not any
+     are on screen -- so the choice does not appear and disappear as the
+     list is narrowed by something else, which makes a control look broken
+     at exactly the moment somebody is using it. */
+  function projectsAvailable() {
+    const seen = new Set(BARRY.hk.flatten(data).map((s) => s.project
+                                                       || 'Unfiled'));
+    for (const p of (data.known_projects || [])) seen.add(p);
+    for (const p of projOnly) seen.add(p);
+    return Array.from(seen).sort((a, b) => {
+      if (a === 'Unfiled') return 1;
+      if (b === 'Unfiled') return -1;
+      return a.localeCompare(b);
+    });
+  }
+
+  /* A set, not a radio. Grouping already answers "one project at a time";
+     this answers "these two and not that one", which grouping cannot. */
+  function projectPicker() {
+    const names = projectsAvailable();
+    const on = projOnly.size;
+    const btn = el('button', {
+      class: 'btn ghost sm' + (on ? ' on' : ''),
+      /* A stable handle. The LABEL changes to say what is on -- "PTEN"
+         rather than "Project" -- which is the right thing for a person and
+         useless for anything looking the control up by its name. */
+      'data-filter': 'project',
+      title: 'Show only certain projects. Nothing ticked means all of them.',
+      text: on
+        ? (on === 1 ? Array.from(projOnly)[0] : on + ' projects')
+        : 'Project',
+      onclick: (e) => openPopover(e.currentTarget, () => {
+        const box = el('div', { class: 'ctl-pop-body' });
+        const g = el('div', { class: 'ctl-pop-group' }, [
+          el('div', { class: 'ctl-pop-title', text: 'Project' }),
+        ]);
+        const all = BARRY.hk.flatten(data);
+        for (const p of names) {
+          const n = all.filter((s) => (s.project || 'Unfiled') === p).length;
+          g.appendChild(el('label', {
+            class: 'ctl-pop-opt' + (projOnly.has(p) ? ' on' : ''),
+            'data-project': p,
+          }, [
+            el('input', { type: 'checkbox',
+              checked: projOnly.has(p) ? 'checked' : null,
+              onchange: () => {
+                if (projOnly.has(p)) projOnly.delete(p);
+                else projOnly.add(p);
+                render();
+              } }),
+            el('span', { text: p }),
+            el('span', { class: 'ctl-pop-n', text: String(n) }),
+          ]));
+        }
+        box.appendChild(g);
+        if (projOnly.size) {
+          box.appendChild(el('button', {
+            class: 'linkish fb-clear', text: 'All projects',
+            onclick: () => { projOnly.clear(); render(); },
+          }));
+        }
+        return box;
+      }),
+    });
+    return btn;
+  }
+
+  function channelPicker() {
+    const word = (CHAN_OPS.find((o) => o[0] === chanFilter.op) || [])[1];
+    return el('button', {
+      class: 'btn ghost sm' + (chanFilter.op ? ' on' : ''),
+      'data-filter': 'channels',
+      title: 'Narrow by how many channels a recording has. "More than 64" '
+           + 'is the dual-implant recordings.',
+      text: word ? word + ' ' + chanFilter.n + ' ch' : 'Channels',
+      onclick: (e) => openPopover(e.currentTarget, () => {
+        const box = el('div', { class: 'ctl-pop-body' });
+        const g = el('div', { class: 'ctl-pop-group' }, [
+          el('div', { class: 'ctl-pop-title', text: 'Channels' }),
+        ]);
+        const row = el('div', { class: 'ctl-pop-row' });
+        const sel = el('select', {
+          onchange: (e2) => { chanFilter.op = e2.target.value; render(); },
+        }, [el('option', { value: '', text: 'any number of' })].concat(
+          CHAN_OPS.map(([id, w]) => el('option', {
+            value: id, text: w,
+            selected: chanFilter.op === id ? 'selected' : null,
+          }))));
+        row.appendChild(sel);
+        row.appendChild(el('input', {
+          type: 'number', min: '1', max: '1024', step: '1',
+          class: 'ctl-pop-num', value: String(chanFilter.n),
+          disabled: chanFilter.op ? null : 'disabled',
+          onchange: (e2) => {
+            chanFilter.n = Math.max(1, parseInt(e2.target.value, 10) || 1);
+            render();
+          },
+        }));
+        row.appendChild(el('span', { class: 'ctl-pop-unit', text: 'channels' }));
+        g.appendChild(row);
+        g.appendChild(el('p', { class: 'hint',
+          text: 'A recording nobody has read a header for has no channel '
+              + 'count, and a missing number is not a small one — '
+              + 'those are in neither side of the comparison.' }));
+        box.appendChild(g);
+        return box;
+      }),
+    });
   }
 
   function resort(col) {
@@ -367,11 +582,15 @@ BARRY.views.housekeeping = (function () {
       }));
     }
 
+    bar.appendChild(projectPicker());
+    bar.appendChild(channelPicker());
+
     bar.appendChild(el('input', {
       type: 'search', class: 'hk-search',
       placeholder: 'Filter by mouse, project, date, id or path…',
       value: query,
-      oninput: debounceInput((e) => { query = e.target.value; render(); }, 140),
+      oninput: debounceInput(
+        (e) => { query = e.target.value; keepFocus(render); }, 140),
     }));
     bar.appendChild(el('label', { class: 'toggle' + (onlyHere ? ' on' : '') }, [
       el('input', {
@@ -391,14 +610,33 @@ BARRY.views.housekeeping = (function () {
       el('span', { text: 'Only found this session' }),
     ]));
     bar.appendChild(el('div', { class: 'spacer' }));
-    bar.appendChild(el('span', { class: 'stat-chip',
-      text: (data.total || 0) + ' registered' }));
+    /* The count has to describe what this view is showing.
+
+       In the cluster scope it said "587 registered" beside a tree of 109,
+       which is the whole catalogue's number in a panel that promises only
+       what VACC can read -- and reads as "this is showing everything",
+       which was the complaint. */
+    if (scope === 'vacc') {
+      const all = BARRY.hk.flatten(data);
+      const reach = all.filter(onVacc).length;
+      bar.appendChild(el('span', {
+        class: 'stat-chip',
+        title: 'Of ' + all.length + ' recordings Jarvis knows about, this '
+             + 'many are on a share the cluster mounts or already copied '
+             + 'to its scratch. The rest are not hidden by a filter you '
+             + 'can turn off — they are not there.',
+        text: reach + ' on VACC, of ' + all.length,
+      }));
+    } else {
+      bar.appendChild(el('span', { class: 'stat-chip',
+        text: (data.total || 0) + ' registered' }));
+    }
     bar.appendChild(el('span', {
       class: 'stat-chip' + (confirmed.size ? ' good' : ''),
       title: scanned
         ? 'Confirmed by a scan since this window opened'
         : 'Nothing has been scanned yet this session, so everything below is '
-          + 'what BARRY remembers rather than what it has just seen',
+          + 'what Jarvis remembers rather than what it has just seen',
       text: confirmed.size + ' found this session',
     }));
     bar.appendChild(el('button', {
@@ -600,6 +838,15 @@ BARRY.views.housekeeping = (function () {
       el('span', { class: 'hk-paths',
                    text: s.n_paths + ' path' + (s.n_paths === 1 ? '' : 's'),
                    title: (s.paths || []).join('\n') }),
+      /* What kind of recording this is, and whether anybody has agreed.
+         On the row rather than behind a click, because it decides how a
+         CSD is computed -- and because a queue of seventy unconfirmed dual
+         implants is only workable if you can see which they are. */
+      BARRY.hk.probeChip(s, {
+        small: true,
+        onclick: (row, _st, ev) => BARRY.hk.setProbeMenu(
+          ev.currentTarget, row, () => load()),
+      }),
       el('div', { class: 'hk-chips' }, chips),
     ]);
   }
@@ -617,7 +864,7 @@ BARRY.views.housekeeping = (function () {
   }
 
   function renderDetail() {
-    const host = $('#hkDetail');
+    const host = document.getElementById(SCOPES[scope].detail);
     if (!host) return;
     host.innerHTML = '';
     if (mouseSel) { renderMouse(host); return; }
@@ -636,10 +883,26 @@ BARRY.views.housekeeping = (function () {
     ]));
 
     host.appendChild(el('p', { class: 'hint',
-      text: 'That id was minted the first time BARRY met this recording and '
+      text: 'That id was minted the first time Jarvis met this recording and '
           + 'never changes. Everything attached to it — bad channels, layer '
           + 'labels, curated events — follows the recording rather than the '
           + 'folder it happens to sit in.' }));
+
+    /* The built-in example is in the tree but is not a registry record, so
+       every by-gid write answers "No session demo-...". Saying so beats
+       offering controls that fail: a new user's first click here is quite
+       likely to be the example, and what they would learn is that the
+       controls do not work. */
+    const isDemo = /^demo-/.test(String(s.gid || ''));
+    if (isDemo) {
+      host.appendChild(el('p', { class: 'hint hk-demo-note',
+        text: 'This is the built-in example, not a recording on a drive. It '
+            + 'is here so there is something to look at before you scan '
+            + 'anything, and it is not in the registry — so it cannot be '
+            + 'filed under a project, annotated, merged or split. '
+            + 'Everything else on this page is real: open it and it '
+            + 'behaves like a recording.' }));
+    }
 
     // ---- identity -------------------------------------------------------
     host.appendChild(el('div', { class: 'section-label', text: 'Identity' }));
@@ -655,6 +918,9 @@ BARRY.views.housekeeping = (function () {
     ]));
 
     // ---- project --------------------------------------------------------
+    // Not for the example: `patch` would 404 and the picker would sit there
+    // showing a value it had not managed to change.
+    if (!isDemo) {
     host.appendChild(el('div', { class: 'section-label', text: 'Project' }));
     const known = (data.known_projects || []).slice();
     for (const p of (data.projects || [])) {
@@ -679,6 +945,30 @@ BARRY.views.housekeeping = (function () {
           ? 'Set by hand — a later guess will not override it.'
           : 'Guessed from the path. Changing it here makes it permanent.' }),
     ]));
+    /* The flag, spelled out, at the one place it can be answered.
+
+       Both readings get stated because both are true somewhere in this
+       lab's data: `D:\KCNT1\urethane\...` is the project, and
+       `M15_s3_baseline_urethane` is the drug and that recording is PTEN.
+       Whichever way you set it, setting it is the answer -- the picker
+       above writes `manual` and the flag stops asking. */
+    for (const f of (s.project_flags || [])) {
+      host.appendChild(el('div', { class: 'hk-proj-flag' }, [
+        el('span', { class: 'flagchip bad', text: 'worth a look' }),
+        el('div', { style: 'min-width:0' }, [
+          el('span', { class: 'hint',
+            text: 'A path says “' + f.word + '”. That usually means '
+                + f.suggests + ', and this is filed under ' + f.filed
+                + ' — but the same word names an anaesthetic in some PTEN '
+                + 'folders, so it is a hint and not a verdict.' }),
+          el('code', { text: f.path }),
+        ]),
+      ]));
+    }
+    }
+
+    // ---- probe ----------------------------------------------------------
+    if (!isDemo) host.appendChild(probeSection(s));
 
     // ---- paths ----------------------------------------------------------
     host.appendChild(el('div', { class: 'section-label',
@@ -717,7 +1007,7 @@ BARRY.views.housekeeping = (function () {
             class: 'mini', text: 'Open',
             onclick: () => { setView('xplore'); BARRY.views.xplore.open(p); },
           }) : null,
-          el('button', {
+          isDemo ? null : el('button', {
             class: 'mini', text: 'Split off',
             title: 'This path is a different recording that was folded in '
                  + 'here by a loose match. Give it its own record.',
@@ -740,6 +1030,9 @@ BARRY.views.housekeeping = (function () {
         if (p) patch(s.gid, { add_path: p });
       },
     }));
+
+    // ---- the cluster ----------------------------------------------------
+    if (!isDemo) host.appendChild(clusterSection(s));
 
     // ---- what is attached ----------------------------------------------
     host.appendChild(el('div', { class: 'section-label', text: 'Attached' }));
@@ -773,6 +1066,10 @@ BARRY.views.housekeeping = (function () {
     host.appendChild(links);
 
     // ---- notes and edge cases -------------------------------------------
+    // The example takes none of these either: a note, a merge, a split and
+    // a forget are all writes against a registry record, and it is not one.
+    if (isDemo) return;
+
     host.appendChild(el('div', { class: 'section-label', text: 'Note' }));
     host.appendChild(el('textarea', {
       rows: '3', class: 'hk-note', value: s.note || '',
@@ -784,13 +1081,25 @@ BARRY.views.housekeeping = (function () {
     host.appendChild(el('div', { class: 'hk-merge' }, [
       el('button', {
         class: 'btn ghost sm danger', text: 'Forget this recording',
-        title: 'Drop what BARRY remembers about it. The recording itself is '
+        title: 'Drop what Jarvis remembers about it. The recording itself is '
              + 'untouched, and opening or scanning it again starts fresh.',
         onclick: async () => {
-          const ok = window.confirm(
-            'Forget ' + (s.label || s.gid) + '?\n\n'
-            + 'Its bad channels, notes and project go with it. The '
-            + 'recording on disk is untouched.');
+          /* The application's own dialog, not the browser's. This was
+             the last `window.confirm` in the codebase: it looks like a
+             different program, it cannot lay out more than a sentence
+             legibly, and of all the controls to be terse in, the one
+             that destroys a record's history is the wrong choice. */
+          const ok = await BARRY.confirm(
+            'Forget ' + (s.label || s.gid) + '?',
+            'Its bad channels, notes, project and the paths Jarvis has '
+            + 'seen it at go with it, and it stays gone: a tombstone is '
+            + 'written so a colleague\u2019s registry cannot push it back '
+            + 'and the next scan of that drive will not re-register it. '
+            + 'That is the point \u2014 a scratch copy that creeps back on '
+            + 'every scan has not been forgotten.\n\nThe recording on '
+            + 'disk is untouched. Bringing it back is a deliberate act, '
+            + 'not something a scan does for you.',
+            'Forget it');
           if (!ok) return;
           try {
             await apiPost('/api/registry/' + encodeURIComponent(s.gid)
@@ -1008,20 +1317,275 @@ BARRY.views.housekeeping = (function () {
     ]);
   }
 
+  /* ==================================================================
+     Where the cluster has it, and opening it from there
+     ==================================================================
+     Drawn in BOTH scopes, not only in Everything VACC knows. It is one
+     catalogue -- the VACC view is the same tree narrowed -- and a button
+     that exists in one view of a record and not in the other would be a
+     property of which tab you arrived through rather than of the
+     recording.
+
+     Absent draws nothing. `BARRY.vacc.of` returns null for a recording
+     nobody has established an answer for, and that is most of a fresh
+     scan: exact ids are minted when headers are read. Drawing 'the cluster
+     cannot reach this' from a missing answer is the mistake `canOpen` in
+     sessions.js carries a comment about, and it would put the wrong
+     sentence on hundreds of recordings that are sitting on the share VACC
+     mounts. */
+  function clusterSection(s) {
+    const box = el('div', {});
+    const got = (BARRY.vacc && BARRY.vacc.of(s)) || null;
+    if (!got || !got.state || got.state === 'unknown') return box;
+
+    box.appendChild(el('div', { class: 'section-label',
+                                text: 'On the cluster' }));
+    const native = got.state === 'native';
+    // The same table the chip draws from, so this panel and the mark on the
+    // card in Sessions can never come apart about what the state is.
+    const readable = !!BARRY.vacc.words(got.state);
+    if (!readable) {
+      box.appendChild(el('p', { class: 'hint',
+        text: 'VACC cannot reach this one — ' + (got.why || 'no copy of it '
+            + 'on anything it mounts') + '. Nothing is wrong with the '
+            + 'recording; it is on a disk the cluster does not see.' }));
+      return box;
+    }
+
+    /* What the state IS comes from `vacc.js`; what it means for the button
+       underneath is this view's own sentence. That split is the rule: one
+       module owns the fact, each surface owns the consequence of the thing
+       it is offering. Restating the fact here is how the card in Sessions
+       and this panel came to describe scratch in two different words. */
+    box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
+      text: 'VACC has this one ' + BARRY.vacc.words(got.state).note + '. '
+          + (native
+             ? 'Opening it from here reads the same files the rig wrote — '
+               + 'nothing is copied and nothing lands on this computer.'
+             : 'The copy can go without notice, so this can stop working '
+               + 'with nothing having gone wrong — the recording itself '
+               + 'is wherever it always was.') }));
+    if (got.remote) {
+      box.appendChild(el('code', { class: 'hk-remote', text: got.remote }));
+    }
+
+    /* Said before it is spent, the way Panorama says it.
+
+       What this costs is not disk and not a download -- it is a round trip
+       per window, so the first one waits for an ssh handshake and every
+       one after that waits for the network. Somebody who expects a local
+       file's response and gets a third of a second per scrub should know
+       why before they click, not after. */
+    box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+      text: 'Reading it happens on the cluster: each window is computed '
+          + 'there and the drawn line comes back, so what crosses the '
+          + 'network is the line rather than the samples — measured on a '
+          + '64-channel recording at 30 kHz, three megabytes instead of '
+          + 'thirty-nine. The first one takes a few seconds while the link '
+          + 'opens; after that a scrub costs a round trip.' }));
+
+    /* The primary is last, and the hint that qualifies it comes first.
+
+       Primary only when it is the thing to click. A recording that is also
+       on a drive this computer can reach has a faster Open a few inches
+       above, and two buttons that look equally like the answer mean
+       neither is. */
+    const localP = (s.here || [])[0];
+    const acts = el('div', { class: 'tk-actions' }, [
+      localP ? el('span', { class: 'hint quiet',
+        text: 'It is also on a drive this computer can reach, which is '
+            + 'faster — open it from Where it has been seen, above.' }) : null,
+      BARRY.ui.button({
+        kind: localP ? 'ghost' : 'primary',
+        text: 'Open from the cluster',
+        title: 'Open it in Xplorefinder, reading the samples off VACC',
+        // The wait is drawn in this row, because this is the surface the
+        // click happened on -- see BARRY.vacc.open.
+        onclick: () => BARRY.vacc.open(s, { host: acts }),
+      }),
+    ].filter(Boolean));
+    box.appendChild(acts);
+    return box;
+  }
+
+  /* Open it, from wherever it can be read.
+
+     A drive first, always: a local file answers in microseconds and the
+     cluster answers over a network, and preferring the network because it
+     was mentioned more recently would make every open slower for no reason.
+
+     The cluster second, rather than an error. This used to be the error --
+     'none of this recording's paths are reachable from this machine' --
+     which was true, and was the end of it. For a recording VACC reads
+     perfectly well that sentence was a dead end with the answer sitting one
+     function away. */
   function openIt(s) {
-    const p = (s.here || [])[0];
-    if (!p) {
-      toast('None of this recording’s paths are reachable from this '
-            + 'machine.', 'err', 6000);
+    /* The rule itself lives in `BARRY.vacc.reach` now, so every module
+       resolves a recording the way this did first. */
+    const got = BARRY.vacc ? BARRY.vacc.reachFor(s, 'xplore')
+      : { path: (s.here || [])[0] || null, where: 'here', why: '' };
+    if (got.where === 'here') {
+      setView('xplore');
+      BARRY.views.xplore.open(got.path);
       return;
     }
-    setView('xplore');
-    BARRY.views.xplore.open(p);
+    if (got.where === 'vacc') {
+      BARRY.vacc.open(s, {
+        host: document.getElementById(SCOPES[scope].detail),
+      });
+      return;
+    }
+    toast(got.why || ('None of this recording’s paths are reachable from '
+          + 'this machine, and VACC has no copy of it either.'), 'err', 7000);
   }
 
   /* ==================================================================
      Changes
      ================================================================== */
+  /* ==================================================================
+     Which probe went into the animal
+     ==================================================================
+     Here rather than in Xplorefinder, because it is a fact about the
+     recording and not about whoever has it open. It used to live in the
+     Xplorefinder session's view state, which meant it lasted as long as
+     that window and travelled to nobody -- so Incisor, a colleague's
+     machine and the next open could each believe something different about
+     the same animal.
+
+     It is load-bearing. The template decides how the array is divided into
+     lines of contacts, and a CSD is only meaningful down one line. On a
+     dual implant the wrong template runs the second spatial derivative
+     across the gap at channel 64, subtracting cortex from hippocampus. The
+     number that comes out is not a current sink, and nothing about it looks
+     wrong.
+
+     "Nobody has said" is kept distinct from "somebody said H3" -- the same
+     distinction `banks_for` draws by leaving a region blank. A blank that
+     is visibly blank can be filled in; a guess that looks like a fact
+     cannot be found again. */
+  let PROBES = null;
+
+  function probeSection(s) {
+    const box = el('div', {});
+    box.appendChild(el('div', { class: 'section-label', text: 'Probe' }));
+    if (!PROBES) {
+      api('/api/probes').then((d) => {
+        PROBES = d.probes || [];
+        renderDetail();
+      }).catch(() => { PROBES = []; });
+      box.appendChild(el('p', { class: 'hint quiet', text: 'Reading the '
+                                + 'probe templates…' }));
+      return box;
+    }
+    if (!PROBES.length) {
+      box.appendChild(el('p', { class: 'hint quiet',
+        text: 'No probe templates are available from this server.' }));
+      return box;
+    }
+
+    const now = s.probe || '';
+    const guess = s.probe_suggested || 'h3';
+    const nch = s.n_channels || null;
+    const sel = el('select', {
+      onchange: (e) => setProbe(s.gid, e.target.value),
+    });
+    sel.appendChild(el('option', {
+      value: '', selected: now ? null : 'selected',
+      text: 'Nobody has said'
+          + (guess ? '  ·  reads as ' + nameOf(guess) : ''),
+    }));
+    for (const p of PROBES) {
+      /* Every template is offered, including ones the channel count does
+         not support -- a recording whose continuation files inflate the
+         count to 192 is still a dual implant, and refusing the choice
+         because the arithmetic disagrees would make the only recordings
+         that need correcting the only ones that cannot be. The mismatch is
+         said out loud below instead. */
+      sel.appendChild(el('option', {
+        value: p.id, title: p.note || '',
+        selected: now === p.id ? 'selected' : null,
+        text: p.name + (((p.n_groups || p.n_columns) || 1) > 1
+          ? '  ·  ' + (p.n_groups || p.n_columns)
+            + (p.group_kind === 'regions' ? ' regions' : ' columns') : ''),
+      }));
+    }
+
+    box.appendChild(el('div', { class: 'hk-proj' }, [
+      sel,
+      el('span', { class: 'hint',
+        text: now
+          ? (s.probe_source === 'manual'
+             ? 'Set by hand. Every view of this recording reads it — '
+               + 'Xplorefinder lays the panes out by it and Incisor scans '
+               + 'by it.'
+             : 'Carried over from a window where it was set.')
+          : 'Not set. Everything that needs a line of contacts will treat '
+            + 'this as a single array, which is right for most recordings '
+            + 'and wrong for a dual implant.' }),
+    ]));
+
+    const def = PROBES.find((p) => p.id === (now || guess));
+    if (def && (def.columns || []).length) {
+      const rows = el('div', { class: 'hk-probe-cols' });
+      for (const c of def.columns) {
+        const first = c.csc[0], lastN = c.csc[c.csc.length - 1];
+        rows.appendChild(el('div', { class: 'hk-probe-col' }, [
+          el('span', { class: 'pane-col-tag shank-' + (c.shank || 'back'),
+                       text: c.id }),
+          el('span', { text: c.label || c.id }),
+          el('code', { text: 'CSC ' + first + '–' + lastN
+                           + '  ·  ' + c.n + ' contacts' }),
+        ]));
+      }
+      box.appendChild(rows);
+      box.appendChild(el('p', { class: 'hint',
+        text: (now ? 'These are' : 'If that were set it would be')
+            + ' ' + def.columns.length + ' separate lines of contacts, one '
+            + 'pane each in Xplorefinder, and a CSD is computed down each '
+            + 'one on its own.' }));
+    }
+
+    /* The channel count and the template disagreeing is worth saying, and
+       worth saying as a question rather than as an error: the recordings
+       whose CSC files are doubled by a restarted acquisition report 192 or
+       256 and really are dual implants. */
+    const want = def && def.expects_channels;
+    if (now && want && nch && want !== nch) {
+      box.appendChild(el('p', { class: 'warn-line',
+        text: 'This template expects ' + want + ' channels and the '
+            + 'recording reports ' + nch + '. That is worth a look — though '
+            + 'a recording whose channels are split across CSCn.ncs and '
+            + 'CSCn_0001.ncs counts every file, so the number can be high '
+            + 'for a reason that has nothing to do with the probe.' }));
+    }
+    return box;
+  }
+
+  function nameOf(id) {
+    const p = (PROBES || []).find((x) => x.id === id);
+    return p ? p.name : id;
+  }
+
+  async function setProbe(gid, probe) {
+    try {
+      const res = await apiPost(
+        '/api/registry/' + encodeURIComponent(gid) + '/probe', { probe });
+      /* Setting a template with named regions fills in any blank channel
+         bank, because picking "hippocampus + M2" IS saying which bank is
+         which -- and making somebody enter the same fact twice is how the
+         two come to disagree. Said out loud, since it changed something the
+         person did not click on. */
+      const named = (res.channel_banks || [])
+        .filter((b) => (b.said_via || '').indexOf('probe:') === 0);
+      if (named.length) {
+        toast('Also labelled ' + named.map((b) => b.region).join(' and ')
+              + ' from that template.', 'ok', 6000);
+      }
+      await load();
+      BARRY.refreshSync();
+    } catch (e) { toast(e.message, 'err', 7000); }
+  }
+
   async function patch(gid, body) {
     try {
       await apiPost('/api/registry/' + encodeURIComponent(gid) + '/patch', body);
@@ -1076,7 +1640,7 @@ BARRY.views.housekeeping = (function () {
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn ghost', text: 'Cancel', onclick: closeModal }),
         el('button', {
-          class: 'btn primary', text: 'Merge',
+          class: 'btn', text: 'Merge',
           onclick: async () => {
             try {
               await apiPost('/api/registry/merge',
@@ -1096,6 +1660,34 @@ BARRY.views.housekeeping = (function () {
     if (b) b.addEventListener('click', () => load(true));
   }
 
-  return { init, onShow, confirm, reload: () => load(true),
+  /* Open one recording's detail from somewhere else in the app.
+
+     The project picker lives here and nowhere else, so a flag raised on a
+     Sessions card has to be able to point at it. Loads first if this view
+     has never been shown -- `selected` means nothing against no data, and
+     rendering it would show an empty panel for a recording that exists. */
+  async function inspect(gid) {
+    if (!gid) return;
+    if (!data) await load(false);
+    selected = gid;
+    render();
+    const det = document.getElementById(SCOPES[scope].detail);
+    if (det && det.scrollIntoView) det.scrollIntoView({ block: 'nearest' });
+  }
+
+  /* Draw one of the two catalogues.
+
+     Called by the Sessions view when the mode switch moves, because that is
+     what owns the panels. Loads on first use rather than at startup: a
+     cluster view nobody opens should not cost a registry read. */
+  async function catalogue(which) {
+    scope = SCOPES[which] ? which : 'jarvis';
+    if (!data) { await load(false); return; }
+    render();
+  }
+
+  return { init, onShow, confirm, inspect, catalogue,
+           get scope() { return scope; },
+           reload: () => load(true),
            get confirmed() { return Array.from(confirmed); } };
 })();

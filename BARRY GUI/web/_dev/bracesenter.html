@@ -1,0 +1,325 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>bracesenter: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Enter after a drag asks first; a finished set is celebrated (2026-10-14).
+
+   WHAT WENT WRONG: in the review, Enter is "Braces is right" -- it confirms
+   the proposed peak. Somebody who had dragged the green line somewhere on
+   purpose and then pressed Enter lost their spot without a word: the
+   stamp went back to the proposal and the pass moved on.
+
+   In a REAL review of an open proposal whose recording is here: Enter on a
+   stamp nobody moved confirms it, as before. Enter on one moved by hand
+   asks, and says by how many ms the stamp would move; Enter again keeps
+   the hand-placed spot, R takes the recommended one, Esc does nothing.
+   A stamp dropped on top of its neighbour shakes the page and asks ("Are
+   you sure, bud?"): Esc sends the glove to yank it back and nothing is
+   decided, Enter keeps it where it was put. Then the last open stamp of
+   the pass is answered and the celebration comes up -- a tooth, one line
+   of thirty-odd -- and goes by itself.
+
+   IT WRITES NOTHING: every decision is answered here and kept in this page
+   (the proposal on disk is never touched), and preference and session
+   writes are held as in bracesspan.html. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(150);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  await until(() => ev('!!(BARRY.prefs && BARRY.braces)'), 10000, 'the modules');
+  const get = (u) => ev('api(' + JSON.stringify(u) + ')');
+  const BR = 'BARRY.braces';
+  const key = (k) => D().body.dispatchEvent(new (frame.contentWindow.KeyboardEvent)(
+    'keydown', { key: k, bubbles: true, cancelable: true }));
+
+  // Preferences, the recording's session record, and the pop-out: held,
+  // exactly as bracesspan.html holds them.
+  ev('(function(){ var P = BARRY.prefs; window.__beGet = P.get; window.__beMem = {};'
+     + ' P.set = function(k, v) { window.__beMem[k] = v; return v; };'
+     + ' P.get = function(k, d) { if (k in window.__beMem) return window.__beMem[k];'
+     + '   return window.__beGet.apply(P, arguments); }; })()');
+  ev('(function(){ window.open = function() { return null; }; })()');
+  /* Every decision answered here: kept in `__beCalls`, logged in `__beSaid`,
+     and handed back the way the server hands them back. */
+  ev('(function(){ var W = window; W.__beSaid = []; W.__beCalls = {}; var f = W.fetch;'
+     + ' var hold = ["state", "events", "note", "bookmarks", "bad", "bad-for-path"];'
+     + ' var j = function(o) { return Promise.resolve(new Response(JSON.stringify(o),'
+     + '   { status: 200, headers: { "Content-Type": "application/json" } })); };'
+     + ' W.fetch = function(u, o) { var s = String(u).split("?")[0];'
+     + '  if (s.indexOf("/api/braces/set/") >= 0 && /\\/decide$/.test(s)) {'
+     + '    var b = JSON.parse((o && o.body) || "{}");'
+     + '    if (b.calls) { for (var k in b.calls) { if (b.calls[k] === null) delete W.__beCalls[k];'
+     + '      else W.__beCalls[k] = b.calls[k]; } W.__beSaid.push({ undo: Object.keys(b.calls) }); }'
+     + '    else { W.__beCalls[String(b.row)] = { call: b.call, t: b.t == null ? null : b.t };'
+     + '      W.__beSaid.push({ row: b.row, call: b.call, t: b.t }); }'
+     + '    var st = ' + BR + '._state().set || {};'
+     + '    return j({ ok: true, calls: JSON.parse(JSON.stringify(W.__beCalls)),'
+     + '      counts: st.counts || {}, would_move: st.would_move || 0, overlaps: [] }); }'
+     + '  var at = "/api/session/"; var i = s.indexOf(at);'
+     + '  var tail = i >= 0 ? s.slice(i + at.length) : null;'
+     + '  if (tail !== null && hold.indexOf(tail) >= 0 && o && o.method === "POST")'
+     + '    return j({ ok: true, saved: false });'
+     + '  return f.apply(this, arguments); }; })()');
+  const said = () => JSON.parse(ev('JSON.stringify(window.__beSaid)'));
+  const calls = () => JSON.parse(ev('JSON.stringify(window.__beCalls)'));
+  const at = () => (ev(BR + '._view()') || {}).at;
+  const asking = () => ev(BR + '._enterAsk()');
+
+  head('THE CELEBRATION ITSELF');
+  const hype = ev(BR + '._hype()') || [];
+  ok('twenty or more lines to say it with, none twice',
+     hype.length >= 20 && new Set(hype).size === hype.length, hype.length + ' lines');
+  ev(BR + '._party("Lesgooo!", "harness")');
+  await until(() => D().querySelector('.br-party'), 2000, 'the party');
+  ok('a tooth in braces and the line, over everything',
+     !!D().querySelector('.br-party .br-party-tooth svg rect')
+     && D().querySelector('.br-party-line').textContent === 'Lesgooo!');
+  ok('and it does not take a click to go away',
+     await until(() => !D().querySelector('.br-party'), 6000, 'it to go'));
+
+  let entered = false;
+  try {
+    head('AN OPEN PROPOSAL WHOSE RECORDING IS HERE');
+    const sets = await get('/api/braces/sets');
+    const open = (sets.sets || []).filter((s) => !s.committed);
+    for (const s of open.slice(0, 6)) {
+      const one = await get('/api/braces/set/' + encodeURIComponent(s.set_id));
+      if (!((one.set || {}).rows || []).length || one.set.rows.length < 4) continue;
+      await ev(BR + '._open(' + JSON.stringify(s.set_id) + ')');
+      await until(() => (ev(BR + '._state()').set || {}).set, 9000, 'the proposal');
+      const st = ev(BR + '._state()').set || {};
+      if (!st.session_path) continue;
+      // The page's decisions start from the proposal's own, kept here.
+      ev('window.__beCalls = JSON.parse(JSON.stringify(' + BR + '._state().set.set.calls || {}))');
+      say('       entering ' + s.set_id + ', ' + st.set.rows.length + ' stamps', 'dim');
+      if (!(await ev(BR + '._enter()'))) continue;
+      entered = true;
+      break;
+    }
+    if (!entered) {
+      say('       no open proposal with a recording readable here, so the '
+          + 'review is not entered and nothing below is checked', 'dim');
+    } else {
+      await until(() => ev(BR + '._view()') && (ev(BR + '._view()') || {}).spanSet,
+                  60000, 'the review');
+      const rows = () => ev(BR + '._state().set.set.rows');
+      const prop = (n) => { const r = rows()[n]; return r.now == null ? r.was : r.now; };
+      /* The last flagged stamp is left open, in the page only, so the pass
+         is not finished by the checks before the one that finishes it. */
+      const flagged = rows().map((r, i) => (r.flag ? i : -1)).filter((i) => i >= 0);
+      const last = flagged.length ? flagged[flagged.length - 1] : -1;
+      if (last >= 0) {
+        ev('(function(){ delete window.__beCalls["' + last + '"]; '
+           + BR + '._state().set.set.calls = JSON.parse(JSON.stringify(window.__beCalls)); })()');
+      }
+      // A stamp with no hand-placed answer, not the one left open.
+      const n0 = rows().findIndex((r, i) => i !== last
+                                   && ((calls()[String(i)] || {}).call) !== 'move');
+      ev(BR + '._goTo(' + n0 + ')');
+      await until(() => at() === n0, 5000, 'the stamp');
+
+      head('ENTER ON A STAMP NOBODY MOVED: CONFIRMED, AS BEFORE');
+      const k0 = said().length;
+      key('Enter');
+      await until(() => said().length > k0, 5000, 'the answer');
+      ok('no question is asked', !asking() && !D().querySelector('.br-enter-ask'));
+      ok('and it is confirmed', (said()[k0] || {}).row === n0
+         && said()[k0].call === 'confirm', JSON.stringify(said().slice(k0)));
+      // And the pass moves on by itself once the answer is back; let it,
+      // before steering, or the step lands after the steer.
+      await until(() => at() !== n0, 4000, 'the pass to move on');
+      await sleep(300);
+
+      head('ENTER AFTER A DRAG: IT ASKS, AND SAYS HOW FAR');
+      ev(BR + '._goTo(' + n0 + ')');
+      await until(() => at() === n0, 5000, 'back');
+      const mine = Math.round((prop(n0) - 0.0123) * 1e6) / 1e6;
+      await ev(BR + '._decide(' + n0 + ', "move", ' + mine + ')');
+      const k1 = said().length;
+      key('Enter');
+      await until(() => asking(), 3000, 'the question');
+      const a = asking() || {};
+      ok('a question comes up instead of the stamp moving',
+         !!a.row || a.row === 0, JSON.stringify(a));
+      ok('it says Enter moves it back to the recommended spot',
+         /Enter moves it back to the recommended spot/.test(a.text || ''), a.text);
+      ok('and by how much: 12.3 ms, and which way',
+         /12\.3 ms later/.test(a.text || '') && Math.abs((a.ms || 0) - 12.3) < 0.05,
+         (a.ms || 0).toFixed(3) + ' | ' + a.text);
+      ok('nothing was sent while it asks', said().length === k1);
+
+      head('ENTER AGAIN KEEPS YOUR SPOT');
+      key('Enter');
+      await until(() => !asking(), 3000, 'the question to close');
+      await sleep(400);
+      ok('the question goes', !asking() && !D().querySelector('.br-enter-ask'));
+      ok('and your spot stands: nothing confirmed over it',
+         said().length === k1 && (calls()[String(n0)] || {}).call === 'move'
+         && Math.abs(calls()[String(n0)].t - mine) < 1e-6, JSON.stringify(calls()[String(n0)]));
+
+      head('R TAKES THE RECOMMENDED ONE; ESC DOES NOTHING');
+      ev(BR + '._goTo(' + n0 + ')');
+      await until(() => at() === n0, 5000, 'back');
+      key('Enter');
+      await until(() => asking(), 3000, 'the question');
+      key('Escape');
+      await until(() => !asking(), 3000, 'it to close');
+      ok('Esc closes it, nothing sent, still on the stamp',
+         !asking() && said().length === k1 && at() === n0
+         && !!ev(BR + '._view()'), 'at ' + at());
+      key('Enter');
+      await until(() => asking(), 3000, 'the question');
+      key('r');
+      await until(() => said().length > k1, 5000, 'the answer');
+      ok('R confirms the recommended spot', (said()[k1] || {}).row === n0
+         && said()[k1].call === 'confirm' && (calls()[String(n0)] || {}).call === 'confirm',
+         JSON.stringify(said().slice(k1)));
+      // The pass moves on by itself after an answer: let it settle.
+      await until(() => at() !== n0, 4000, 'the pass to move on');
+      await sleep(400);
+
+      head('PUT ON TOP OF ANOTHER ONE: SHAKE, ASK, YOINK');
+      /* A stamp and a neighbour it is not already close to; the drop lands
+         4 ms from where the neighbour's line is. */
+      const vnow = (i) => { const c = calls()[String(i)] || {}; const r = rows()[i];
+        return c.call === 'move' ? c.t : c.call === 'keep' ? r.was
+          : (r.now == null ? r.was : r.now); };
+      let pair = null;
+      for (let i = 0; i < rows().length - 1 && !pair; i++) {
+        if (i === last || i === n0) continue;
+        for (const j of [i + 1, i - 1]) {
+          if (j < 0 || j >= rows().length || (calls()[String(j)] || {}).call === 'garbage') continue;
+          const to = Math.round((vnow(j) + 0.004) * 1e6) / 1e6;
+          const hit = ev(BR + '._crowds(' + i + ', ' + vnow(i) + ', ' + to + ')');
+          if (hit && hit.i === j && Math.abs(vnow(i) - to) * 1000 < 300) { pair = { i, j, to, from: vnow(i) }; break; }
+        }
+      }
+      if (!pair) {
+        say('       no stamp here has a neighbour within reach, so this is not checked', 'dim');
+      } else {
+        ev(BR + '._goTo(' + pair.i + ')');
+        await until(() => at() === pair.i, 5000, 'the stamp');
+        const k2 = said().length;
+        ev(BR + '._drop(' + pair.to + ')');
+        await until(() => ev(BR + '._closeAsk()'), 3000, 'the question');
+        const q = ev(BR + '._closeAsk()') || {};
+        ok('dropped on its neighbour, it asks', /Are you sure, bud\?/.test(q.text || ''), q.text);
+        ok('in so many words',
+           /these 2 (dentate spikes|discharges) were really that close\?/.test(q.text || ''), q.text);
+        ok('naming the neighbour and how close, in ms',
+           q.near && q.near.i === pair.j && /4\.0 ms/.test(q.text)
+           && q.text.indexOf('stamp #' + (pair.j + 1)) >= 0, JSON.stringify(q.near));
+        ok('the page shakes', D().getElementById('app').classList.contains('br-shake'));
+        ok('and nothing is decided while it asks', said().length === k2);
+        key('n');
+        await sleep(200);
+        ok('the other keys are held while it asks', at() === pair.i);
+
+        key('Escape');
+        await until(() => D().querySelector('.br-yoink'), 2000, 'the glove');
+        ok('"Place it somewhere else": the glove comes for it',
+           !!D().querySelector('.br-yoink .br-glove svg'));
+        ok('and says so', /We ain’t doing that\./.test(
+          (D().querySelector('.br-yoink-say') || {}).textContent || ''));
+        await until(() => (D().querySelector('.br-yoink') || {}).classList
+                          && D().querySelector('.br-yoink').classList.contains('say'),
+                    4000, 'the finger');
+        ok('then it stands up and wags its finger: uh, uh, uh',
+           !!D().querySelector('.br-yoink.say .br-glove-wag svg .g-index')
+           && D().querySelectorAll('.br-yoink-say .br-uh span').length === 3
+           && /brWag/.test(frame.contentWindow.getComputedStyle(
+                D().querySelector('.br-glove-wag')).animationName));
+        await until(() => !ev(BR + '._yoinking()'), 5000, 'the yank');
+        const v = ev(BR + '._view()') || {};
+        ok('the stamp is yanked back to where it was, and nothing was sent',
+           !v.pending && said().length === k2,
+           JSON.stringify(v.pending) + ' / ' + said().length);
+        ok('and the glove leaves', await until(() => !D().querySelector('.br-yoink'), 4000, 'it to go'));
+
+        ev(BR + '._drop(' + pair.to + ')');
+        await until(() => ev(BR + '._closeAsk()'), 3000, 'the question again');
+        key('Enter');
+        await until(() => said().length > k2, 5000, 'the decision');
+        ok('"Keep it there" places it where it was put',
+           (said()[k2] || {}).row === pair.i && said()[k2].call === 'move'
+           && Math.abs(said()[k2].t - pair.to) < 1e-6, JSON.stringify(said().slice(k2)));
+        await sleep(400);
+        ev(BR + '._goTo(' + pair.i + ')');
+        await until(() => at() === pair.i, 5000, 'the stamp');
+        const k3 = said().length;
+        ev(BR + '._drop(' + Math.round((pair.to + 0.001) * 1e6) / 1e6 + ')');
+        await until(() => said().length > k3, 4000, 'the nudge');
+        ok('nudged again beside the same neighbour, it does not ask twice',
+           !ev(BR + '._closeAsk()') && (said()[k3] || {}).call === 'move');
+      }
+
+      head('THE LAST OPEN STAMP OF THE PASS: CELEBRATED');
+      if (last < 0) {
+        say('       this proposal flags nothing, so a pass cannot finish', 'dim');
+      } else {
+        // Every other flagged one answered, here in the page only.
+        ev('(function(){ var c = window.__beCalls; ' + JSON.stringify(flagged)
+           + '.forEach(function(i) { if (i !== ' + last + ') c[String(i)] = { call: "keep" }; });'
+           + ' delete c["' + last + '"]; ' + BR + '._state().set.set.calls ='
+           + ' JSON.parse(JSON.stringify(c)); })()');
+        ev(BR + '._goTo(' + last + ')');
+        await until(() => at() === last, 5000, 'the last one');
+        key('Enter');
+        await until(() => D().querySelector('.br-party'), 5000, 'the party');
+        const line = (D().querySelector('.br-party-line') || {}).textContent;
+        ok('answering it brings the celebration up', !!D().querySelector('.br-party'));
+        ok('with one of the lines', hype.indexOf(line) >= 0, line);
+        ok('saying the set is done', /Every flagged stamp has an answer/.test(
+          (D().querySelector('.br-party-sub') || {}).textContent || ''));
+        ok('and it goes by itself', await until(() => !D().querySelector('.br-party'),
+                                                6000, 'it to go'));
+      }
+    }
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+  } finally {
+    try {
+      if (entered || ev(BR + '._view()')) ev(BR + '._exitView()');
+    } catch (e) { /* the frame may be gone */ }
+    await sleep(2000);
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'bracesenter: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

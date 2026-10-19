@@ -21,7 +21,7 @@ written to the debug log instead of failing silently.
 
 Usage:
     python VOS_report_parser.py                        # newest 'VOS Report *.pdf' beside this script
-    python VOS_report_parser.py "VOS Report 072826.pdf"
+    python VOS_report_parser.py "VOS Report 092326.pdf"
     python VOS_report_parser.py report.pdf -o out.csv --debug-dir "Debug/2026-07-28"
 """
 

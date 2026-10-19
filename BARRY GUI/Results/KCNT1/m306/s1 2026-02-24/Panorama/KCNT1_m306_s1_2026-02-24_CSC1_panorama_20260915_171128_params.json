@@ -1,0 +1,112 @@
+{
+ "channel": {
+  "bad": false,
+  "index": 0,
+  "label": "CSC1",
+  "number": 1
+ },
+ "counting": "peak",
+ "fit_engine": {
+  "aperiodic_mode": "fixed",
+  "available": true,
+  "max_n_peaks": 6,
+  "min_peak_height": 0.05,
+  "name": "fooof",
+  "peak_width_limits": [
+   1.0,
+   12.0
+  ],
+  "version": "1.1.1"
+ },
+ "gaps": {
+  "checked": true,
+  "concat_duration_s": 2074.7157,
+  "dropped_s": 0,
+  "n": 0,
+  "n_dropped": 0,
+  "n_paused": 0,
+  "n_segments": 1,
+  "paused_s": 0,
+  "seconds": 0,
+  "true_duration_s": 2074.805728
+ },
+ "label": "KCNT1 m306 s1 2026-02-24 CSC1 panorama",
+ "notes": [
+  "decimating 30,000 to 500 Hz, which is what makes 200 Hz answerable",
+  "2 s transform, so 0.5 Hz bins",
+  "each column averages 7 sub-windows over 8 s",
+  "193 windows, one every 1 s",
+  "bridging 60 Hz and its harmonics, 2 Hz either side"
+ ],
+ "plan": {
+  "bins": 48,
+  "chunks": 7,
+  "cmap": "jet",
+  "decimate": 60,
+  "f_hi": 200.0,
+  "f_lo": 2.0,
+  "fit": {
+   "aperiodic_mode": "fixed",
+   "max_n_peaks": 6,
+   "min_peak_height": 0.05,
+   "peak_width_limits": [
+    1.0,
+    12.0
+   ]
+  },
+  "fs": 30000.0,
+  "fs_used": 500.0,
+  "hist_scale": "log",
+  "line_half_bw": 2.0,
+  "line_hz": 60.0,
+  "megasamples": 0.1,
+  "n_avg": 7,
+  "n_channels": 1,
+  "n_windows": 193,
+  "nperseg": 1000,
+  "resolution_hz": 0.5,
+  "scale": "log10",
+  "span_s": 200.0,
+  "step_s": 1.0,
+  "sub_s": 2.0,
+  "t0": 0.0,
+  "t1": 200.0,
+  "win_s": 8.0
+ },
+ "provenance": {
+  "at": "2026-09-15T17:11:30-04:00",
+  "email": "sakhava1@uvm.edu",
+  "host": "DESKTOP-4H65AI7",
+  "machine": "Bluebarry",
+  "os": "Windows",
+  "user": "Shahriar Tafti"
+ },
+ "spec": {
+  "bins": 48,
+  "channels": [
+   0
+  ],
+  "cmap": "jet",
+  "even_only": false,
+  "f_hi": 200.0,
+  "f_lo": 2.0,
+  "hist_scale": "log",
+  "line_hz": 60.0,
+  "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s1_feb24\\2026-02-24_17-46-28",
+  "scale": "log10",
+  "step_s": 1.0,
+  "sub_s": 2.0,
+  "t0": 0.0,
+  "t1": 200.0,
+  "win_s": 8.0
+ },
+ "summary": {
+  "median_hz": 40.12229435612347,
+  "modal_hz": 41.07050052914291,
+  "n_nopeak": 0,
+  "n_rejected": 0,
+  "n_used": 193,
+  "n_windows": 193
+ },
+ "tool": "panorama"
+}

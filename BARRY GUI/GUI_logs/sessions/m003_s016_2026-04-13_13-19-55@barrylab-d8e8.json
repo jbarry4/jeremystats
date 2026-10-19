@@ -1,0 +1,80 @@
+{
+  "_at": {
+    "created": "2026-09-24T19:29:34.352473+00:00",
+    "gid": "2026-09-24T19:57:04.870711+00:00",
+    "group": "2026-09-24T19:29:34.352473+00:00",
+    "key": "2026-09-24T19:29:34.352473+00:00",
+    "label": "2026-09-25T16:47:53.014974+00:00",
+    "loose_key": "2026-09-24T19:29:34.352473+00:00",
+    "mouse": "2026-09-24T19:29:34.352473+00:00",
+    "note": "2026-09-24T19:57:03.621688+00:00",
+    "probe": "2026-09-24T19:57:03.621688+00:00",
+    "probe_source": "2026-09-24T19:57:03.621688+00:00",
+    "project": "2026-09-24T19:29:34.352473+00:00",
+    "project_source": "2026-09-24T19:29:34.352473+00:00",
+    "retired": "2026-09-24T19:29:34.352473+00:00",
+    "schema": "2026-09-24T19:29:34.352473+00:00",
+    "session": "2026-09-24T19:29:34.352473+00:00",
+    "start": "2026-09-24T19:29:34.352473+00:00",
+    "updated": "2026-09-25T16:47:53.014974+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Con 6\\J3_Con_6_FP1\\2026-04-13_13-19-55": [
+        "set",
+        "2026-09-24T19:30:10.757767+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Con 6\\J3_Con_6_FP2\\2026-04-13_15-31-01": [
+        "set",
+        "2026-09-24T19:30:10.757767+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Con 6\\J3_Con_6_SP\\2026-04-13_13-56-29": [
+        "set",
+        "2026-09-24T19:30:10.757767+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T16:47:53.014974+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-24T15:29:34-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "s9eb4577c4606",
+  "group": null,
+  "key": "m003_s016_2026-04-13_13-19-55",
+  "label": "DEWEY r3 s16 Con6 FP2 2026-04-13",
+  "loose_key": "m003_s016",
+  "mouse": 3,
+  "note": "Acquisition wrote 64 CSC files; 33-64 are dead. The montage is the same 32-channel DEWEY map.",
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Con 6\\J3_Con_6_FP1\\2026-04-13_13-19-55",
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Con 6\\J3_Con_6_SP\\2026-04-13_13-56-29",
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Con 6\\J3_Con_6_FP2\\2026-04-13_15-31-01"
+  ],
+  "probe": "dewey32",
+  "probe_source": "manual",
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 16,
+  "start": "2026-04-13T17:19:55+00:00",
+  "updated": {
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-25T12:47:53-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

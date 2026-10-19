@@ -1,0 +1,14141 @@
+# BARRY GUI — patch notes
+
+Versions are dated, because BARRY ships continuously out of this repo: there
+is no release to number, only the state everybody last pulled. The version in
+the rail is the newest entry below, and the commit beside it is what this
+machine is actually running — if those two disagree with a colleague's, one
+of you has not pulled.
+
+More than one goes out on most days, so the date carries a counter:
+`2026.09.08.1`, then `.2`. Same day, next version. The counter starts at 1
+rather than being left off the first one, so every version reads the same way
+and "is that the first or the only one" is never a question.
+
+This file is the only place the version is written. The app reads it.
+
+---
+
+## 2026.10.15.1 - Braces: put a stamp on top of another one and it asks, bud
+
+Nothing on the server changed: pull and reload the page.
+
+### Added
+
+- **A stamp dropped on top of another one shakes the screen and asks.**
+  In the review, a stamp dragged (or nudged with `[` `]`) to within 20 ms
+  of another stamp gets this:
+
+  > **Are you sure, bud?** You're telling me these 2 dentate spikes were
+  > really that close? **3.2 ms** between stamp #12 and stamp #13. The
+  > detector these came from never puts two closer than 100 ms.
+
+  (On an IED set it says "these 2 discharges".) The line stays where you
+  dropped it while the question is up, and every other key waits.
+  - **Keep it there** (Enter): placed where you put it.
+  - **Place it somewhere else** (Esc): a white cartoon glove comes down,
+    grabs the line and yanks it back to where it was ("YOINK!"). Then it
+    stands up and wags its index finger, three times, under "We ain't
+    doing that", with an "uh" for each wag. Nothing is decided, and you put
+    the stamp down again.
+
+  20 ms is closer than a dentate spike is wide. The detector's own
+  spacing (`dist_ms`, 100 ms) is quoted from the set. A stamp that was
+  already that close to the same neighbour is not asked about again for
+  every nudge. The bench's Enter asks the same way. Where motion is turned
+  down there is no shake, and the stamp just goes back, with a note.
+  Stamps landing on exactly one time are still the overlap flag, which
+  the bank will not write.
+- Xplorefinder can now say where a time is on screen (`clientAtTime`).
+  The glove uses it to land on the line.
+
+### Checked
+
+- `bracesenter.html` now runs this in a real review, with every decision
+  held in the page. 31 checks pass:
+  - dropped 4 ms from its neighbour, it asks, names the neighbour and the
+    4.0 ms, shakes the page, and decides nothing;
+  - other keys are held while it asks;
+  - Esc sends the glove, the stamp goes back, and nothing is sent;
+  - the glove then wags its finger, with three "uh"s;
+  - Enter places it where it was dropped;
+  - a nudge beside the same neighbour does not ask again.
+- Also passing: braces, bracesbad, braceslist, bracesmany, bracesscroll
+  and bracesspan.
+
+## 2026.10.14.8 - The Confluence: Incisor's and Doppler's events, pooled, sorted and teased apart
+
+**Pull and restart Jarvis on every machine.** Pooling, merging and Root
+Canal's pooled sets are new server routes; an old server will say it does
+not have them.
+
+### New
+
+- **The Confluence, a new bundle in the ToolKit.** It sits under The
+  Dentist and The Storm, and a stream runs from both into it. Its four
+  steps:
+  1. **Junction: pool them.** Pick a recording that has both a banked
+     Incisor entry and a banked Doppler entry. The newest version of each
+     goes in, or any other through the version tree. Events closer than
+     5 ms are one event (the window can be changed). Time is what counts,
+     on any channel. Each event pairs with at most one of the other
+     detector's, nearest first. A merged event keeps Incisor's time, and
+     Doppler's is kept beside it. Anything already called Garbage stays
+     out. Press Merge and you see the two files flow together: the events
+     both detectors found fuse into two-tone dots, and the counts run up as
+     they land. The pool is a new bank entry, and the two it came from are
+     not changed. **Many at once** pools every ticked recording from its
+     newest entries in one go.
+  2. **Panning: sort them.** An Xplorefinder mode, like Spotter. The keys
+     are 1 Spike, 2 Garbage and 3 Flag. Every event is drawn in the colour
+     of the detector that found it. One both found is two-tone, with
+     Doppler's own stamp drawn beside the one kept. A strip under the traces
+     lays the window out on two lanes, Incisor's above Doppler's. To merge
+     two events, click one, shift-click the other and press M. Z undoes a
+     merge. You can also step through only the merged events, Incisor's
+     only, or Doppler's only.
+  3. **Lock: line them up.** Eye, pointed at a pooled set.
+  4. **Root Canal: tease them apart.** Root Canal is now in The Confluence
+     too. Opened from there, it offers pooled sets, and colours its
+     three-axis space by origin: Incisor, Doppler, or both (two-tone).
+     Banking names each event by its cluster and takes nothing out, and the
+     version note says how many of each detector's events fell on each
+     side.
+
+### Also in this version
+
+- **Doppler is calmer to use.** Runs you start show their progress and
+  land, and do not show as running and landed at the same time. A landed
+  run opens. The panel no longer reloads itself after you submit, and the
+  Activity feed no longer flicks to "Reading…".
+- **Doppler takes a channel range,** for example CSC1–CSC64 of a
+  128-channel probe, even channels only, bad ones left out. Before it runs,
+  it lists the channels it will read, and the bank note records them.
+- **Odd channels left out of an even-only run are shown as left out,** not
+  as bad.
+- **The stacked spectrogram was upside down.** Its channel labels now
+  match the traces.
+- **Spotter can add a category** that is offered on every recording. You
+  name it and choose its colour, and it arrives in the bar.
+
+## 2026.10.14.7 - Braces: Many sends a real batch, here and on the VACC, and shows it going
+
+**Pull and restart Jarvis on every machine.** The batch runs on the
+server, so the old one keeps the old Many until it is restarted.
+
+### Fixed
+
+- **Many did not send anything from a laptop.** It only offered sets whose
+  recording was on a drive of this computer. On a machine where every
+  recording is on the VACC, every row said "not on a drive this machine can
+  reach", nothing could be ticked, and nothing was sent. A set now runs
+  wherever its recording is: this computer if it has it, the VACC if only
+  the cluster does. This is the same rule the one-set panel and every other
+  tool follow.
+- **Many stopped when you left it.** The page itself walked the list one
+  set at a time, so leaving the view or reloading ended the queue without
+  a word. The batch now runs on the server (below), and the panel finds it
+  again when you come back.
+- **Ticking a set in Many threw the list back to the top.** Each tick
+  rebuilt the whole panel, and the list is a scroll box of its own, so the
+  new one started at the top. Many is now built in parts, like Doppler: a
+  tick changes its row and the counts, and nothing else moves. Ticking a
+  channel in the one-set channel grid is also written in place now.
+- **Doppler's and Incisor's "which recordings" lists also kept their
+  scroll only by luck.** A list rebuilt after "Tick the N shown" or
+  "Clear" came back at the top when the list itself was the part being
+  rebuilt. Fixed for every panel built in parts.
+- **Incisor's and Doppler's batch picker rows had lost their columns**
+  since 2026.10.14.1. The new "Scan: all / first half / …" row reused the
+  picker row's class name and turned every picker row into a wrapping
+  line. It has its own name now.
+
+### Changed
+
+- **Many looks and works like Doppler's.**
+  1. **Which sets.** A search box: mouse, session, project, "vacc" or
+     "here". Each row has the set, what it holds, the version to align, its
+     bad contacts, where it will run (HERE or the VACC mark) and its
+     alignments so far. Buttons: "Tick the N shown", "Only the N not
+     aligned with these settings" and "Clear". Sets that cannot be aligned
+     from here are listed underneath, each with its reason.
+  2. **Alignment, for every set sent.** The one-set panel's settings, plus
+     "read again even where these settings were run" and "send them all to
+     the VACC, even the ones this computer has". The second option runs
+     everything side by side on the cluster rather than one after another
+     here. A line says what will happen before you press "Align N sets":
+     how many run here, how many on the VACC, and how many were already
+     aligned with these settings and only open.
+  3. **The batch.** A bar fills as sets land (green), fail (red) or are
+     being read. Under it is a row per set: waiting, reading ("Reading
+     stretch 15 of 40"), in the cluster's queue (with its Slurm job id),
+     landed (with its counts and its sync mark), or failed (with the
+     reason). A landed row opens its proposal. When the batch ends it is
+     announced. "Tick the N that failed" sends those again, and "Put this
+     batch away" clears the card. Every set it made stays in Alignments.
+
+### Added
+
+- **A Braces batch is one job on the server** (`/api/braces/batch`).
+  - Sets this computer has are aligned here, one after another. The VACC
+    ones go up as one array job and run side by side. Both halves run at
+    the same time.
+  - Each set is asked exactly the question the one-set panel would ask
+    (`_braces_prepare`, shared by both). A set already aligned with these
+    settings opens that alignment instead of being read again.
+  - `/api/braces/inflight` lets the panel find a batch again after a
+    reload, for an hour after it ends. "Stop the batch" cancels it; every
+    set already filed stays filed.
+  - A VACC array still running when Jarvis restarts is picked up and its
+    answers filed, as Incisor's and Doppler's are.
+- **Enter after a drag asks first.** In the review, Enter confirms
+  Braces' recommended peak. If you had dragged the green line somewhere on
+  purpose, Enter used to throw your spot away and move on. Now a box comes
+  up first: "Enter moves it back to the recommended spot". It says how far
+  in ms, and which way, the stamp would move from where you put it.
+  - Enter again: keep your spot and move on.
+  - R: take the recommended spot.
+  - Esc: do nothing.
+  - An Enter pressed the instant the drag ends still counts as a drag.
+- **Finishing a set gets a moment.** It appears when the last flagged
+  stamp of a pass is answered, and again when the set is banked (not twice
+  within a minute). A grinning tooth in braces appears with a burst of
+  brackets and one of 32 lines ("Lesgooo!", "Goated af 🐐", "Ate and left
+  no crumbs", "Rizz level: orthodontist" …), never the same line twice in
+  a row. It is gone in under three seconds, and clicking it clears it at
+  once. Where motion is turned down, it only fades.
+
+### Checked
+
+- `tools/check_braces_batch.py`, all passing, on this machine's real bank
+  with the proposals filed to a temp folder:
+  - a batch here is filed under the one-set run's question;
+  - sent again, it is opened, not read; forced, it is read again;
+  - a set that cannot run fails on its own row and the batch goes on;
+  - the cluster's half, stood in for, becomes array tasks per set and is
+    filed live and again from the run record alone, as after a restart.
+- `--vacc`: one real set (PTEN_DKO m48 s6) went up as an array task, ran
+  on a node and came back filed with its Slurm id, about four minutes end
+  to end.
+- New harnesses, all passing:
+  - `bracesmany.html` (27): sending a batch and its progress;
+  - `bracesscroll.html` (20): ticks keep the scroll;
+  - `bracesenter.html` (18): Enter after a drag, and the celebration, in
+    a real review with every decision held in the page.
+- Also passing: braces, bracesbad, braceslist, bracesspan, incisorpick,
+  incisorsel, vaccbatch, checkupreach, storm, toolkit, uikit and uiparts.
+- `eye.html` and `incisor.html` fail the same way on an untouched copy of
+  the last commit, so those failures were not caused by this change.
+
+## 2026.10.14.6 - StrataScope runs on recordings only the VACC has
+
+### Added
+
+- **StrataScope's steps now work on a recording that is only on the
+  cluster.** The read is the only step that touches the recording, so it
+  is the only step that moves.
+  - A compute node runs the same read a local one does: the first 64
+    channels, with bad ones skipped (`vacc_run.py`, tool `strata`).
+  - The read comes back in one stream: the per-second numbers and the
+    1250 Hz copy. It goes exactly where a local read would have put it.
+  - The Theta Walk guide, the curves, the proposals, ICA and the phase map
+    then run on this computer, as for any other recording.
+  - The read is removed from the cluster workspace once it is home.
+  - The button says "Read the recording on the VACC". The progress line
+    says where the read is: "On the VACC: waiting for a node", "Reading on
+    the VACC", "Bringing the read home from the VACC — 11 of 53 MB".
+- StrataScope now has the ToolKit's VACC mark, with what runs on the
+  cluster and what does not.
+
+Checked on KCNT1 m2 s3, opened as `vacc:s96884739a6ff` and read off
+netfiles. The job was submitted, read 64 channels on a node and brought
+53 MB home, 59 s end to end. Once home the read was current, and the guide,
+the proposals (12 ripples, reference ch 4) and the phase map answered.
+
+## 2026.10.14.5 - Reading off the VACC works on every machine, not only the one it was set up on
+
+**Pull and restart Jarvis on every machine.** The cluster side updates
+itself: its code is pushed with the next read or run.
+
+### Fixed
+
+- **"The cluster's analysis environment does not have numpy … rebuild it
+  … into /usr"** appeared on a colleague's laptop whenever a recording was
+  read off the VACC: Braces' "What it will read", the trace view, and any
+  tool reading over the link. Jobs sent to the cluster would have failed
+  the same way.
+  - **Cause:** everyone signs in to the VACC as the same account
+    (sakhava1), so the environment Jarvis uses there
+    (`/users/s/a/sakhava1/jarvis/env`) existed for them too. But only this
+    desktop's own `.vacc.json` said to `module load miniforge`, and conda's
+    activation needs that module. On every other machine the activation
+    failed, silently (`|| true`), and the shell ran the cluster's system
+    Python: 3.9, with no numpy. The `/usr` in the message was that Python.
+  - **Reproduced** with a laptop's settings (signed in as sakhava1, no
+    workspace or modules of its own), through the live link to the cluster
+    and the code from before this change: the cluster's Python 3.9 at
+    `/usr`, no numpy.
+  - **Fix, part one:** the miniforge module is now lab-wide, in the
+    tracked `vacc.json`.
+  - **Fix, part two:** whichever environment is found now goes first on
+    PATH, so `python` is that one even if conda's activation does not run.
+    With today's code the same settings give the environment's Python
+    3.14.7 and numpy 2.5.3, and they still do with no module at all.
+  - **For a different VACC account:** it is tried first in its own
+    environment, then the lab's (`lab_env` in `vacc.json`). The lab's is
+    readable by the whole group pi-jbarry4.
+- **The message, when no environment is found at all,** now says so and
+  says where it looked. It names the group to be in, and who to ask, or
+  where to build an account's own. An environment that was found but is
+  missing a package is named, rather than `/usr`.
+
+### Checked
+
+- **On the real cluster, through the link**, with the server's own
+  `hello`:
+
+  | Case | Result |
+  |---|---|
+  | This account | its environment: numpy 2.5.3, Python 3.14.7 |
+  | An account with no environment of its own | the lab's, the same numpy |
+  | Neither found | the new message, naming both places it looked |
+
+- `check_vacc_tools.py`, new environment section: the order own then lab,
+  PATH, where it looked, no duplicate for the account that built it, and
+  both messages. Every `test_vacc*.py` and `check_incisor_vacc.py` pass.
+
+## 2026.10.14.4 - Incisor's scans to review say their project, and which scan each is
+
+**Restart Jarvis.**
+
+### Changed
+
+- **Every row in "Look at them, then bank" now shows the project** (and
+  the cohort, where the folders name one) beside the recording's name.
+  "KCNT1 m11 s6" is a different animal in KCNT1 and in KCNT1 Urethane. A
+  recording with no project on record says "project not known".
+- **Under the name, what that scan read and when:**
+  - its channel count, and the channel range it was given;
+  - the bad channels it left out;
+  - any detection setting that differs from Toothy's defaults;
+  - the date it ran.
+
+  So a recording scanned twice is no longer two identical rows. For
+  example, KCNT1 m11 s6 reads as:
+  - "63 channels · CSC 1-64 · CSC59 left out as bad · scanned
+    2026-10-14 11:32";
+  - "128 channels · scanned 2026-09-28 14:16".
+- **The list is ordered by project, then recording, with each
+  recording's newest scan first.**
+
+### Checked
+
+- `vaccbatch.html` passes, across 143 rows:
+  - every row's project matches its review's;
+  - every row says its channels and when it was scanned;
+  - two scans of one recording read differently.
+
+## 2026.10.14.3 - Incisor on many recordings: a channel range for every one sent
+
+**Restart Jarvis.** The cluster picks up the node's side by itself: the
+code is pushed with the next batch.
+
+### Added
+
+- **"Channels: CSC [first] to CSC [last]"** in "Detection, for every
+  recording sent", the same field as Doppler's.
+  - It works by CSC number, for every recording in the batch. A channel
+    outside the range is not read at all.
+  - Each recording's own bad channels are still left out inside it.
+  - A blank box means no limit at that end. "Every channel" clears both.
+  - For 128-channel recordings where only the first probe is wanted, enter
+    1 to 64.
+  - Nothing is marked bad by it.
+- **The cluster applies it by the desk's own rule.** A recording the desk
+  cannot open has its channel list resolved on the node; the range now
+  travels in the spec, and `vacc_run.py` applies it there with the same
+  `incisor.resolve_channels`.
+- **A range is a different question.**
+  - A batch with one does not count a whole-recording scan as already
+    answered.
+  - A batch without one hashes exactly as before, so every recording
+    already scanned is still found.
+- **The cost counts only the range's channels** (less its bad ones): for a
+  128-channel recording at 1 to 64, about half.
+
+### Checked
+
+- `check_incisor_vacc.py`, new batch section, all passing.
+  - The range travels in the spec, and there is none when none is asked
+    for.
+  - A question with no range hashes as it did before; a range is a
+    different question.
+  - The cost is 63 channels at CSC1–64 with CSC3 bad, against 126 for the
+    whole recording, and about half the time.
+  - "CSC 65 to the last" is said in words.
+  - The node, given CSC1–4 with CSC2 and CSC5 bad, reads CSC1, 3 and 4,
+    and echoes what it read for the desk's key.
+- **`vaccbatch.html`** now passes. The range is typed into the two boxes,
+  and the intercepted batch is sent `{mode: ranges, ranges: [[1, 64]]}`.
+- **Fixed in `vaccbatch.html` itself:** "opening one" used to start a real
+  scan.
+  - It opened the first review it could, and its recording (KCNT1 m11 s6)
+    has had CSC59 marked bad since it was scanned. That is a different
+    question, so opening it began reading all 127 channels, was reported
+    as "the stored scan did not come back", and crashed the page before
+    the batch checks.
+  - Now it asks the estimate first and opens only a scan that still
+    answers today's question. Here none of the four tried still does, so
+    it says so and skips.
+  - Recomputed with their own bad channels, those scans' keys are exactly
+    the stored ones (KCNT1 m11 s6 and m13 s3). So the miss is the CSC59
+    mark, not this change.
+
+## 2026.10.14.2 - Braces: every alignment can be found, and a set aligned before is opened, not read again
+
+**Restart Jarvis.**
+
+### Fixed
+
+- **The Alignments list showed only the newest twelve.**
+  - Nothing was ever deleted, and an alignment never had to be banked to
+    be kept. But every one past the twelfth could not be reached, and the
+    only way back to it was to run the set again. On this desktop that hid
+    75 of 87.
+  - Now every one is listed, grouped by the set it aligns. Each set shows
+    its newest alignment, with the earlier ones folded under it.
+  - A search finds a set by name, mouse or session.
+  - "Still to answer" leaves out the accepted ones.
+  - Each line says when and by whom, what it was read with (measure,
+    window, channels) and where it stands.
+- **An alignment belongs to its set.**
+  - A set's own panel now lists every alignment made of it, under "What
+    it will read". Each opens without reading anything.
+  - In "Align many sets", every row of a set already aligned offers "Open
+    the newest of N".
+
+### Added
+
+- **The same question opens the alignment that answered it, as Incisor
+  does.**
+  - Every new alignment records the question it answers: the set, the
+    version and the stamps, the kind, every setting of the read (measure,
+    window, band, mains, smoothing, bad channels, probe), the channels and
+    the depth band. The drive path is not part of the question.
+  - "Line them up" with a question already answered opens that alignment
+    at once, without a job. It says it was aligned before with exactly
+    these settings, and offers "Read it again". Reading again makes a new
+    alignment beside the old one, which is kept.
+  - "Align many sets" does the same per row: "aligned before with these
+    settings, nothing read again". A box reads every set again anyway.
+- **Before today:** alignments made before this release do not record
+  their question, so they are not matched automatically. They are listed,
+  on the set's panel and in the list, and open without reading.
+- **Eye** still reads each of its three measures every time
+  (`force: true`): it is a comparison run whole.
+
+### Checked
+
+- New `braceslist.html` 16, on this machine's real 87 alignments of 52
+  sets.
+  - Every alignment has a row, and the groups and folds are right.
+  - The count, the search finding the oldest one, and "Still to answer".
+  - A set's own panel lists its alignments, and each "many sets" row
+    offers its newest.
+  - "Already answered" (with the run intercepted) opens the named
+    alignment with no job, says so, and "Read it again" asks with
+    `force`.
+- `braces.html` 21, `bracesbad.html` 15.
+- **On a real recording** (PTEN_DKO m44 s5, 189 stamps), into a
+  throwaway alignment store, 11 of 11 passed:
+
+  | Run | What happened | Time |
+  |---|---|---|
+  | First | Read, filing an alignment that records its question | 76.5 s |
+  | Same settings again | Opened that alignment, with no job | 1.2 s |
+  | A different window | Read, as a different question | — |
+  | "Read it again" | A third alignment beside the first, which is kept | — |
+  | Same settings once more | Opened the newest of the two | — |
+
+  The set's list and the whole list held all three, newest first. The
+  real alignments and the bank were unchanged.
+
+## 2026.10.14.1 - Incisor: scan the first half, the second half, the even or odd channels, or a range
+
+**Restart Jarvis.**
+
+### Added
+
+- **Step 2, "Scan every channel", has a row of choices for which channels
+  this scan reads:** All · First half · Second half · Even · Odd ·
+  Range….
+  - Range… takes CSC numbers and ranges, such as `1-64`, `1-32, 65-96` or
+    `CSC5, 9-12`.
+  - The halves are by CSC number over every channel the recording has, so
+    the first half of 128 is CSC1–64 whatever is marked bad.
+  - Channels marked bad stay out inside every choice. A choice never puts
+    one back and never marks one.
+- **Why.** A 128-channel recording is often two probes. The only way to
+  scan one of them was to untick the other 64 channels, which marks them
+  bad for that session in every tool.
+- **What it shows.**
+  - The count at the top is the server's own count, and says what was
+    chosen: "63 of 128 channels will be read: the first half
+    (CSC1–CSC64), less the ones marked bad".
+  - In the channel grid, the channels a choice leaves out are dimmed and
+    stay ticked. Struck through still means bad.
+- **What it changes.**
+  - Changing the choice puts away the scan on screen, as changing a bad
+    channel does: a scan of other channels is not this one's answer.
+  - A new recording starts at All.
+  - Reopening a scan brings back the choice it was made with, which is
+    recorded in its parameters.
+  - A choice with nothing left in it is refused in a sentence, and so is
+    one that is not a choice.
+
+### Checked
+
+- New `incisorpick.html` 32, on KCNT1 m6 s1 (53 channels).
+  - For each choice, the server's count matches one worked out
+    independently, and nothing is marked bad.
+  - Every channel says whether the choice takes it.
+  - The words are right, and the refusals happen.
+  - In the panel: the six choices, the count and words at the top, the
+    grid dimming without striking, and a typed range.
+  - Back to All, no bad-channel write sent, and the record unchanged.
+- `check_incisor_vacc.py`: new rules section.
+  - Each choice, less the bad ones, on six channels with two marked bad.
+  - Only the bad channels inside a choice are listed as left out.
+  - The halves count the bad channels.
+  - The refusals, and the words.
+- `incisorsel.html` 28.
+
+## 2026.10.13.11 - Tab 8: the follow-ups are back on its face, and in the SPSS package
+
+From Shahriar: "We had a bunch of cross coupling and PLI and such planned
+for anything that did change... what happened to those?" They had run all
+along, but the restructure left them three ▸ deep under the hood, and the
+table there had dropped the amplitude cross-correlation's peak. **Restart
+Jarvis** (`backend/joe.py` changed), then press "Work it out again" on tab
+8 once; it takes about 20 s.
+
+### Changed
+
+- **A result that changed shows its follow-ups under its picture**
+  ("Looked at more closely").
+  - The pairs that moved most, with a light for each family of measures:
+    - not volume conduction (PLI, imaginary coherence);
+    - direction (Granger both ways, the amplitude lag);
+    - amplitudes together (the amplitude cross-correlation's peak);
+    - phase–amplitude (PAC between and within).
+  - A light is lit where one of its family's measures changed, and says
+    which with ↑ or ↓. Hover a light for the words.
+  - One line counts them against chance. On the real data:
+    - 1, gamma: 7 pairs, 7 of 70 follow-ups lit, where chance alone would
+      light about 3.5;
+    - 2, gamma: 12 pairs, 14 of 120 lit, against about 6.
+  - The line also says the pairs are leads: none survives on its own once
+    all 44 pairs are allowed for.
+  - Left against right of one structure is in one line.
+  - Every number is behind ▸.
+- **Follow-ups run for Dickson's results only**, since those are the ones
+  shown. The measures don't depend on the coherence method.
+- **The hood's follow-up table shows the amplitude cross-correlation's peak
+  again.** It was computed but not listed. It lights for 4 of the 12
+  pairs in 2, gamma.
+- **The SPSS package has a fourth folder, `4 Follow-ups/`.**
+  - For each result that changed: a .csv with one row per rat, pair and
+    measure (the four values and their difference).
+  - A .sps that runs every follow-up's one-sample t-test, split by pair
+    and measure. Each gives the tab's t and p.
+  - The README explains them, with their counts against chance.
+
+### Checked
+
+- `tools/check_joe.py`: 38 passed.
+  - Follow-ups run only on Dickson's results.
+  - The fourth folder is there.
+  - **Each follow-up t-test from the SPSS rows is the tab's** (10 of them,
+    to the rounding of the .csv).
+- `web/_dev/monolith.html`: 538 passed. The face's follow-up lights are
+  each lit exactly where joe.json has a change, the count line matches,
+  and the hood's table has all 10 measures.
+- `tools/check_review.py`: 54 passed.
+
+## 2026.10.13.10 - The Checkup harness stops erasing real curation sets, and passes
+
+### Fixed (in `web/_dev/curate.html`, a test page; nothing in Jarvis changed)
+
+- **It could erase somebody's curation.**
+  - It took the first reachable recording and "cleaned the slate" by
+    deleting that recording's IED and DS curation sets. That deletion is
+    every machine's copy.
+  - It banked into the real Event Bank and, on the way out, deleted every
+    curated entry for that recording.
+  - The runner's safety net puts back only committed files, at their
+    committed content. On a recording somebody had curated, their work
+    would have gone.
+  - On 2026-10-13 the first reachable recording was KCNT1 m2 s1. It holds
+    only test leftovers ("eye harness", "spotter harness", "curate
+    harness"), so nothing real was lost. Its "eye harness" set was put
+    back as committed.
+- **Now it picks a recording nobody has curated:** reachable, no
+  curation set but its own, and no IED or curated entry in the bank.
+  - It only ever deletes a set named "curate harness", and only removes
+    bank entries this run made.
+  - Both happen in a `finally`, so a run that stops early still cleans
+    up.
+- **Its "known failure on HEAD" was the test itself**, measured by saying
+  in full what was on screen when the check failed.
+  - KCNT1 m2 s2 had leftover IED entries in the bank, so picking the set
+    up asked which banked version to work from. That question is real and
+    meant to be asked; the test never answered it, and "it lands on the
+    bench" failed.
+  - A recording with no IED history is not asked.
+
+### Checked
+
+- `curate.html` 54 ok, 0 fail. It was 7 ok, 2 fail.
+  - It ran on KCNT1 m2 s3, which had nothing curated or banked.
+  - Afterwards the curation sets, the bank and the tombstones were
+    identical to a backup taken before the run, apart from PTEN m33 s4.
+    That set took 7 of Rain's decisions from 15:57–15:58, arriving by
+    sync while she worked.
+
+## 2026.10.13.9 - Checkup: a set whose recording is on the cluster can be looked at
+
+### Fixed
+
+- **"Look again…" / "Carry on…" were greyed out on any machine without
+  the recording on a local drive**, even when Checkup could open it off
+  the cluster.
+  - Isabella hit this with PTEN_DKO m44 s1. Her machine has no copy, and
+    the cluster reads it in place on netfiles.
+  - The card asked "is it on a drive this computer mounts?" and nothing
+    else. Checkup itself opens a recording this computer first, the
+    cluster second.
+  - The buttons now ask the same question the open does, so they cannot
+    disagree with it.
+  - On a machine without the drive, the button now works and says it
+    reads off the cluster, about a second a window.
+  - Where nothing can read the recording, the button stays greyed and its
+    hover gives the real reason: no VACC account on this computer, no
+    read access, or nowhere at all.
+- The shelf's → ("go straight to the recording") and StrataScope's
+  "Continue… / Review…" and "Pick up and open" had the same check. They
+  ask the same question now too.
+
+### Checked
+
+- New `checkupreach.html` 9.
+  - First it confirms the precondition: the cluster reads m44 s1 in
+    place, and this computer has a VACC account.
+  - It then shows the bench as a machine without the drive sees it (the
+    list's answer is changed in the page, nothing on disk):
+    - "Look again…" can be pressed, and says it opens off the cluster;
+    - a set nobody can reach stays greyed, giving the reason in the
+      reach's own words;
+    - the shelf's arrow can be pressed, and says it reads off the cluster.
+- Bite-tested: putting the old drive-only check back fails 3 of the 9
+  checks.
+- `toolkit.html` 53.
+- `curate.html` failed 2 checks at "it lands on the bench", which this
+  change does not touch. It is a known failure on HEAD. The run also
+  erases and rewrites its own "curate harness" set (KCNT1 m2 s1), which
+  was put back as committed afterwards.
+
+## 2026.10.13.8 - Xplorefinder: bad channels stay marked, and a list marks many
+
+### Added
+
+- **Type a list of channels to mark bad.** The Ch menu has a box above the
+  channel list: type `4, 6, 32-56, 59` and press Enter or **Mark bad**.
+  **Clear** takes the mark off every channel in the list instead.
+  - Before anything is saved, the line under the box says what the list
+    comes to ("28 channels: 4, 6, 32–56, 59").
+  - It also names any number that is not a channel on this recording, and
+    anything it could not read.
+
+### Fixed
+
+- **A bad mark is no longer lost when another tool, or another tab, marks
+  a channel on the same recording.**
+  - Each click used to save the whole bad list as the open tab saw it. So
+    a tab opened before a channel was marked in Doppler, Incisor or Braces
+    erased that mark at its next click.
+  - Two clicks close together could also be saved in the wrong order,
+    losing the second one.
+  - A click now saves only the channel it changed, and the lanes then show
+    the list as it is on record.
+  - Doppler and Incisor save their single-channel clicks the same way.
+- **Coming back to Xplorefinder shows marks made elsewhere.** A recording
+  left open while you worked in another view kept the bad list it had
+  when it opened. The list is now read again each time the view comes
+  back.
+- **A mark that could not be saved is taken back off, with a message.**
+  Before, the lane stayed bad on screen and the mark was gone on the next
+  open.
+- **Hiding a channel is saved the moment you leave.** Leaving means
+  switching views, closing the tab or reloading the page. Before, the save
+  waited about a second, and reloading or closing the page in that second
+  lost it.
+
+## 2026.10.13.7 - The reveal sounds dignified
+
+### Changed
+
+- **The reveal's sounds are made for a tribute, not a launch.** The
+  application is named in memory of Dr. Paul Jarvis, and the reveal is how
+  it is shown to his family, so the crackle, zap, boom, chatter and rush of
+  air are gone. In their place, all in A major and all through a soft hall:
+  a quiet open fifth that swells while the ring draws; one bell, struck
+  once, when the spike fires; a music-box note per letter as the name forms,
+  up the scale; and a warm, open A major chord that blooms and fades over
+  about six seconds. Choosing, going back and flying home are soft bell
+  notes and a falling arpeggio; the badge lands on a low bell. In the
+  destinations, each dentate spike found is a quiet wooden note from the
+  pentatonic scale, so a run of them is a melody, and each IED is a low,
+  muted one, never an alarm. The card about Paul opens on a single bell.
+
+- Balanced by measurement rather than by ear: every sound rendered offline
+  from `js/jarvisfx.js` and its loudness read. The swell had been louder
+  than the bell it leads to (peak -9.7 dBFS against -11); it is now a bed at
+  -17, the bell is the loudest moment, the chord sits just under it at -13,
+  and the letters at -26 carry over the bell's tail. The whole reveal peaks
+  at -9.5 dBFS, with nothing clipping.
+
+---
+
+## 2026.10.13.6 - StrataScope: every recording read as an H3; Method B finds fast gamma; Move on every verdict; the evidence window keeps up
+
+### Changed
+
+- **StrataScope reads every recording as an H3: one line of contacts, in
+  the recording's own channel order, and at most the first 64 channels.**
+  - A dual implant (128 channels) is read as its hippocampal array, CSC
+    1-64.
+  - A 128-channel recording filed as H3 is read as its first 64.
+  - An H10-D or a DEWEY montage is no longer refused ("not developed for
+    H10 probes"). It is read as if it were one column.
+  - The labelling pane shows one pane of those channels, whatever the
+    probe template would split it into. The evidence window's live panes
+    show the same channels. Leaving StrataScope gives the pane all its
+    channels back.
+  - Checked on KCNT1 m2 s3 (dual, 128 ch): it reads 64 channels in 11 s,
+    and every step answers.
+- **Method B runs ICA three times: 25-200 Hz, then 90-160 Hz and 55-90 Hz
+  on their own.** Gamma power falls with frequency, so in a single 25-200
+  Hz run slow gamma takes every component. On PTEN M6 s8 all ten components
+  peaked between 32 and 44 Hz, and the fast-gamma card said "ICA found no
+  fast-gamma source at all". The 90-160 Hz run alone finds a 104 Hz source
+  (25% of that band, 0.998 alike in both halves) sinking at ch 35 in MML1,
+  at the theta trough. A 107 Hz source sinks at ch 53 in MML2. Fast gamma
+  now matches in both blades.
+  - A component from a band run is that band's kind, and its share is of
+    its own band ("25% of the 90-160 Hz field").
+  - Saved ICA runs don't have the band runs, so Method B asks to run again.
+    It takes about three times as long (27 s on M6 s8).
+- **Move beside every verdict that names a line.** Method B's "sinks 6 ch
+  below OML1" rows, theta's sink against MML1, and the 2 : 1 proportion's
+  fissure each move that line in the labelling window, the same way the
+  phase map's Move does. The drawer's own Method B explanation has the
+  same button ("Move OML1 | MML1 to above ch 38").
+
+### Fixed
+
+- **Labels painted on the rail now reach the evidence window.** Painting
+  told the live panes but not the steps, and the evidence window follows
+  the steps. Its layer lines stayed where they were until something else
+  made the steps speak. `web/_dev/stratacheck.html` now checks that what
+  is painted arrives.
+
+## 2026.10.13.5 - Tab 8: Dickson only, no RM-ANOVA, numbered comparisons, and an SPSS package that explains itself
+
+From Shahriar: "get rid of the RM-ANOVA and explain why. And then just keep
+the dickson method and get rid of the welch and just say if they were
+similar or not. Prep everything for SPSS to be downloaded, but explain it
+better and structure it better. What is m1 m2? Make the names more
+descriptive and explain how they can recreate the positive results."
+**Restart Jarvis** (`backend/joe.py` changed), then press "Work it out
+again" on tab 8 once, so the new files are written. It takes about 20 s:
+the rat-days are cached.
+
+### Changed
+
+- **No repeated-measures ANOVA.** SPSS's GLM can only use a rat that has
+  every pair on both days. Histology rules regions out for five of the
+  eight rats, so it kept 3 (rats 6, 7 and 10) and rested on 2 degrees of
+  freedom. The mixed model keeps all 8, each with the pairs it has.
+  - The tab says this under "Every test", with each model's own rat count,
+    and behind "▸ the numbers"; the README says it too.
+  - With every rat complete, the mixed model and the RM-ANOVA give the same
+    F. `check_joe.py` still checks that on made-up data.
+- **Dickson only.** Jeremy's mscohere method is the one shown, with one
+  light per band.
+  - Welch, the circuits' way, is still computed, but only said. The sentence
+    over the lights says it, a light says "Welch differs" where it would
+    light differently, and the picked light says "Welch: the same answer"
+    or how it differs.
+  - On the real data Welch agrees on all 14 main lights and differs on one
+    check: 9 Noise vs Click, theta, which Dickson lights and Welch does not.
+- **Numbers and names instead of m1, m2.**
+  1. Baseline (20 s) → both cues
+  2. Baseline (10 s) → cue 1
+  3. Baseline (10 s) → cue 2
+  4. The switch: end of cue 1 → start of cue 2
+  5. Cue 1 → cue 2
+  6. Trials vs FP, 20 s
+  7. Trials vs FP, 10 s
+  8. Power, baseline (20 s) → both cues
+  9. Noise vs Click
+  10. All four sounds
+  11. A/B/C/D
+  12. High vs Low tone
+
+  Each has one line of what it compares. The lights, the cards, the
+  timeline's chips, the file names and the README all use them.
+- **The SPSS package.** `joe_tab8_spss.zip` unzips to `joe_tab8_spss/`:
+  - `README.txt`: what everything is, each comparison by number, what a
+    value is, the test, why there is no RM-ANOVA, how to run one, how to
+    recreate each result that changed, and Welch;
+  - `Results summary.csv`: one row per comparison and band, with its answer
+    in words, F, df and p for both tests, whether Welch agrees, and which
+    .sps to run;
+  - `1 Main comparisons/` and `2 Checks, should show nothing/`: each
+    comparison in each band as a long .csv and a .sps.
+    - The .csv has one row per rat, day (1 or 4), window and pair, with
+      the names beside the codes. A missing value is simply not there, so
+      there is no 999.
+    - The .sps has a CD line to change, reads the .csv, labels every
+      variable and runs the full mixed model (Satterthwaite). Its header
+      comment says what tab 8 found;
+  - `3 Recreate the positive results/`: for each comparison that changed,
+    two files.
+    - A .csv with one row per rat and pair: the four values and their
+      difference, (Precon4 cue − Precon4 baseline) − (Precon1 cue −
+      Precon1 baseline).
+    - A .sps that runs the exact test (the difference by pair, the rat
+      random). Its Intercept F is tab 8's "all pairs together" and its pair
+      F is "pair by pair". It then runs the check anyone can do by hand:
+      each rat's mean difference, then a one-sample t-test.
+
+  On the real data the two results that changed are 1 and 2, both in
+  gamma. Their files should give F = 9.57 and 6.83 (tab 8: p = .017 and
+  .035). The t-tests give t(7) = 2.77 (p = .028) and 2.71 (p = .030).
+  The README and the summary can also be downloaded on their own.
+- **Under the hood, "Files for SPSS"** now shows what is in the zip, folder
+  by folder, and the steps to recreate each result with the F to expect.
+- **The standalone script** still writes both methods, so the Welch
+  comparison is checked too. Its comparison files moved to
+  `export/compare/` and it agrees on all 46.
+
+### Checked
+
+- `tools/check_joe.py`: 37 passed. New checks:
+  - no RM-ANOVA is run;
+  - the by-hand t-test matches the engine;
+  - the zip's layout and names, with no Welch file and no m1;
+  - the long .csv's rows;
+  - the .sps reads every column and runs no GLM;
+  - recreate files exist exactly for the results that changed;
+  - **a recreate file, fitted as its .sps fits it, gives tab 8's two F
+    exactly**;
+  - the README's sections and the summary's rows.
+- `web/_dev/monolith.html`: 537 passed, including:
+  - every light Dickson's, and "Welch differs" exactly where Welch differs;
+  - the sentence's Welch count;
+  - the numbers with no RM-ANOVA column and the reason given;
+  - no method switch;
+  - the zip's tree and the recreate steps with their F.
+- `tools/check_review.py`: 54 passed.
+- On the real data, at desktop and in a 390 px frame.
+
+## 2026.10.13.4 - StrataScope: the phase map in one line each, with Move; IML folded in by default
+
+### Changed
+
+- **The theta phase map says what it means in one line per boundary.**
+  Each row gives a line, where it is now, and where the phase map would put
+  it, for example "Fissure · now above ch 31 · phase map: above ch 26 ·
+  Move". Underneath, a short reason ("fast γ turns from 91° to 175° between
+  ch 25 and ch 26").
+  - The rows are the fissure (where theta phase jumps going down), OML1
+    (should hold the channel slow gamma is most locked on), MML1 (should
+    hold the channel fast gamma is most locked on), and IML1 when IML is
+    its own layer.
+  - When slow and fast gamma are both most locked on the same channel, the
+    card shows a single row: "OML1 | MML1 · the phase map can't tell". It
+    does this rather than suggest two moves that pull the same line in
+    opposite directions. This is common in mice, where both gammas lean to
+    the trough.
+  - The maps are folded under "Show the maps".
+- **Move moves the line in the labelling window.** The evidence window
+  sends the move across, and the labelling window confirms it with "Moved
+  CA1 SLM | OML1 from above ch 31 to above ch 26. It is a proposal until
+  you Accept." Move is greyed when the labelling window has no Step 3 open.
+- **IML is folded into the molecular layer by default** ("part of MML").
+  Papers that don't draw IML keep it in the molecular layer: it is
+  granule-cell dendrites taking the commissural input, not the cell layer.
+  "Its own (IML)" is still one click away, and a sheet that already chose
+  either keeps its choice.
+
+## 2026.10.13.3 - Sessions: good / review / exclude stay put
+
+### Fixed
+
+- **A quality flag no longer disappears when the page is refreshed.**
+  - Pressing good, review or exclude on a recording saved the flag, but the
+    list never read it back. The button lit up from what you had just
+    pressed, and on the next refresh the card showed no flag at all.
+  - The flags set before this were saved and come back now. Nothing has to
+    be pressed again.
+  - Notes had the same problem and are fixed with it: the "note" chip shows
+    on every recording that has one.
+  - "Marked good" and "Hide excluded" now act on every recording in the list.
+    Before, they only saw flags pressed since the page last loaded.
+
+## 2026.10.13.2 - StrataScope: the read skips bad channels
+
+### Changed
+
+- **Reading a recording for StrataScope skips its bad channels.** These are
+  the channels on the recording's bad list. Skipping them saves their share
+  of the time, and the button says how many are skipped ("Read the
+  recording · about 3 min · 3 bad channels skipped"). Its tooltip names
+  them.
+  - A skipped channel keeps its place on the probe, and every picture that
+    needs it (the CSDs, ICA, the phase map) fills it in from its
+    neighbours, as before. A probe with the gap closed up would put every
+    channel below it one contact too high.
+  - Bad channels no longer have a say in which seconds count as valid.
+    Before, a bad channel with a gap in it removed those seconds for every
+    channel.
+  - If a skipped channel is taken off the bad list, the read is out of
+    date. The bar says so ("Ch 11 was skipped as bad when it was read and
+    is not marked bad any more: read it again to include it.") and offers
+    "Read it again". Marking another channel bad needs no new read: the
+    channel was read, and is now left out.
+  - Recordings read before this were read whole and stay current. Read
+    one again to stop its bad channels counting towards valid seconds.
+
+### Fixed
+
+- **A read could forget part of what made a second valid.** Each channel
+  narrows down which samples count as valid, and the read was meant to
+  combine all of them. Channel 1's answer replaced the combined result
+  instead of joining it, so if channel 1 finished after the others, their
+  share was lost.
+- **A reference channel set by hand in Parameters can no longer be a bad
+  channel.** Its row is empty, so StrataScope ignores it and falls back to
+  CA1 SP. The same goes for the middle of an accepted CA1 SP.
+
+## 2026.10.13.1 - Braces: the span you set stays as you move
+
+### Fixed
+
+- **Moving to the next flagged stamp no longer resets the trace view's
+  span.**
+  - Every move used to set it again to eight windows across: 1.6 s at
+    ±200 ms, whatever the view had been zoomed to. A 1 s view became
+    1.6 s at every step.
+  - Now a move centres the stamp and leaves the width alone. Whatever the
+    view shows is the span, kept from one stamp to the next (next, back,
+    or a jump from the list).
+  - It is remembered between reviews too, on this machine only
+    (`braces_span`, kept local the way Checkup's span is).
+  - Eight windows across is now only where the very first review opens.
+- **Restart Jarvis** for the span to stay this machine's own. Until then
+  it still works, but is filed as a shared preference.
+
+### Checked
+
+- New `bracesspan.html` 8. It enters a real review: PTEN m8 s2, 224 stamps.
+  - The first review opens eight windows across.
+  - A 1 s width stays through next, next and back.
+  - It is remembered.
+  - Leaving and entering again opens at 1 s.
+  - Every preference write and every session write the page makes is held,
+    and the aid pop-out is blocked. The one write left is the server's own
+    touch of the session record when a recording opens, as any open does.
+    That file was put back byte for byte after each run.
+- Bite-tested: the old eight-windows-every-move code fails 6 of its 8
+  checks.
+- `braces.html` 21, `bracesbad.html` 15.
+
+## 2026.10.12.9 - Tab 8 for someone who does not read statistics: traffic lights, words, one picture
+
+From Shahriar: "Restructure it for someone who has no idea how stats work
+or what these numbers mean and has the attention span of a fish." His ten
+answers set the shape: the reader is him; traffic lights first; words
+instead of numbers, the numbers one ▸ away; one short scroll; one light per
+band and method, lit when either test passes; Welch and Dickson side by
+side; the checks in their own small table; a click opening the
+before/after picture; everything else under one hood; lab words kept, no
+statistics words on the face. No restart needed: the page only.
+
+### Changed
+
+- **The face of tab 8 is now three things:**
+  - **A sentence and the lights.** For example: "Gamma changed in 2 of the
+    8 comparisons; theta in none. Both ways of computing coherence agree.
+    Each time it is all pairs together; no single pair stands out."
+    - Under it, a row for each comparison: Baseline → both cues, Baseline
+      → cue 1, Baseline → cue 2, the switch, Cue 1 → cue 2, Trials vs FP
+      (20 s and 10 s), and Power.
+    - Four lights in each row: theta and gamma, by Welch and by Dickson.
+      Green means it changed; an empty circle means it did not.
+  - **The picked light's picture.** It opens under the lights. The first
+    lit light is shown at once, and clicking another light swaps the
+    picture without redrawing anything else.
+    - Above the picture, one sentence from joe.json's own means. For
+      example: "From Baseline (20 s) to Cue 1 + Cue 2 (20 s), coherence
+      went down on Precon1 (0.153 → 0.144) and stayed level on Precon4
+      (0.173 → 0.173)."
+    - Then two lines in words. "All pairs together: some evidence of a
+      change." "Pair by pair: none stands out."
+    - The picture itself shows the two days' lines, scaled to the means,
+      with no statistics in its legend.
+    - The F, df and p of every term sit behind "▸ the numbers".
+  - **Checks: these should stay grey.** The four sound checks in a table of
+    their own, with a lit one in amber. The line above it says how many
+    are lit against how many chance alone would light: "1 of 16 lit;
+    chance alone lights about 0.8." Under it, the separate script's
+    agreement in one line.
+- **Under the hood**, in one folded ▸: how we measured (the timeline,
+  mains and its harmonics, the old Minus FP against this), every test's
+  card with its numbers, the follow-ups, the files for SPSS and the script,
+  and the notes from the recordings. Nothing in it changed.
+- The evidence words are fixed: "strong evidence" below p = .01, "some
+  evidence" below p = .05 (uncorrected), and "no evidence" otherwise. A
+  light is lit when either of its two tests is below .05, as before.
+- The ? help for tab 8 is in plain words. There is a new ? for the checks,
+  with its own entry in the Guide.
+
+### Checked
+
+- `web/_dev/monolith.html`: 533 passed. The tab 8 checks now cover:
+  - every light against joe.json (a lit check amber, no Dickson light for
+    power);
+  - no statistics words on the face;
+  - the sentence's counts and whether the two methods agree;
+  - the first lit light's picture at once;
+  - a click giving its own sentence and words with nothing redrawn;
+  - the numbers behind ▸;
+  - the checks' line and picture;
+  - the hood folded, and the picked lights kept when the hood's band
+    changes;
+  - the phone layout.
+- `tools/check_review.py`: 54 passed (the copy opens tab 8 with its
+  picture).
+- On the real data, at desktop and in a 390 px frame.
+
+## 2026.10.12.8 - StrataScope: bouts with handles, a tunable auto painter, three gammas, a theta phase map (beta)
+
+### Fixed
+
+- **"StrataScope could not work out the steps: [WinError 32] ... ripples-....json".**
+  When a vote was clicked in Step 1, the labelling window and the evidence
+  window asked for the same ripples at the same moment. Both wrote the same
+  temporary file, and Windows (and OneDrive) will not replace a file that
+  something has open. Now each result is worked out once while the other
+  window waits for it, each write gets its own temporary file, and a write
+  that still fails is retried and then skipped. It is a cache, so the
+  answer still comes back.
+- **Stop said "Interface error: No such run."** Leaving a recording while
+  it was being read kept the read's progress bar but lost its run, so Stop
+  on the next recording had nothing to stop. Now:
+  - coming back to a recording picks up its read where it is;
+  - a read still going on another recording shows in the step row ("Still
+    reading M6 s8 · 40%"), with its own Stop;
+  - asking to read a recording that is already being read joins that read
+    instead of starting a second one into the same folder;
+  - Stop on a run that has already ended does nothing.
+
+### Added
+
+- **Theta Walk bouts can be resized.** Drag a painted bout's edge; the time
+  shows beside it as you drag.
+- **The auto painter has settings**, beside "Paint them": shortest bout
+  (2 s), join gaps under (1 s), the theta/delta level (empty: picked from
+  the recording), and the channel it reads. Changing one redraws the ghost
+  bouts. The settings are kept with the sheet.
+- **Theta phase x depth gamma maps (beta), in Step 3's evidence.** These
+  follow Schomburg et al. 2014 and Fernández-Ruiz et al. 2021. For every
+  channel, the map shows how strong slow (30-50 Hz), mid (60-80) and fast
+  (100-150) gamma are at each moment of CA1 theta during Theta Walk, two
+  cycles across.
+  - You can show it in the CSD or the LFP, with each depth on its own
+    colour scale (the default) or one scale for the whole map.
+  - White dots follow each channel's preferred phase down the probe. The
+    biggest jump in that phase is marked, along with the step's line
+    nearest to it.
+  - Each map also says which channel is most theta-locked, compared with
+    the layer that gamma is expected in.
+  - A **?** opens a five-part animated explanation of how to read it. In
+    mice the dentate's slow and fast gamma both lean to the theta trough,
+    while CA1 lacunosum-moleculare gamma comes near the peak (Lasztóczi &
+    Klausberger 2017), so the biggest jump is often the fissure itself.
+  - The map is worked out once per walk (half a minute on a 105 s walk)
+    and kept.
+  - On PTEN M6 s8 the jump falls one or two channels from Step 3's
+    fissure line.
+- **Mid gamma.** Fernández-Ruiz et al. 2021 found three gamma inputs in the
+  dentate, each in its own third of the molecular layer: slow 30-50 Hz
+  (lateral entorhinal, OML), fast 100-150 Hz (medial entorhinal, MML) and
+  mid 60-80 Hz (commissural, IML). Method B used to call everything from
+  60 Hz up "fast" and judge it against the MML. A component is now named
+  by its peak (under 55 slow, 55-90 mid, 90 and up fast), and mid is
+  checked against the IML when there is one. Runs already saved are
+  renamed by the new rule when read.
+- **Step 3's evidence: theta's sink in the molecular layer.** The
+  theta-trough CSD with its strongest sink between the fissure and GCL1,
+  marked against MML1. It is a third look at the MML that uses neither the
+  thirds nor gamma.
+- **Step 3's evidence: the SP-fissure-GCL proportion.** From CA1 SP to the
+  fissure, compared with the fissure to GCL1. In mice this is about 2:1
+  (1.5-2.8; Paleologos et al. 2025). Method A's card says whether this
+  recording is in range, and where the fissure would be for 2:1.
+
+### Changed
+
+- **Leaving IML out keeps to the anatomy.** For a few hours Step 3 had a
+  third choice: "none: OML, MML, GCL in thirds", which cut fissure to hilus
+  into three equal parts. It is gone, because no paper divides the blade
+  that way. The molecular layer is three bands of about equal width (the
+  perforant path fills the outer two, the commissural input the inner one),
+  and the granule layer is not one of them. Papers that leave IML out
+  either keep the molecular layer whole (Lasztóczi & Klausberger 2017) or
+  mark only the OML and MML (Tarcsay et al. 2025). "Part of MML" does the
+  same here: the OML line stays at a third and the GCL keeps its own
+  thickness. A sheet that saved "thirds" is now cut as "part of MML".
+- **ICA marks sit on channel edges.** A picked Method B check used to draw
+  a line through the middle of a channel, between two boundaries. Now the
+  channel it sinks on is shaded edge to edge. When that channel is outside
+  the layer, a dashed line marks where the layer would have to start or
+  end to include it, on the same edges as every other line.
+
+## 2026.10.12.7 - The reveal holds, with sound, four ways on, and who Jarvis is
+
+### Added
+
+- **Who is Jarvis?** The application is named in memory of Dr. Paul Jarvis
+  (1987 - 2021), a graduate of UVM's Larner College of Medicine who was
+  training in neurology. A card with his photo says who he was, in a few
+  lines, and links to the fund his family asked gifts in his memory to
+  support: epilepsy research at the Larner College of Medicine
+  (go.uvm.edu/pjarvis). It opens from "Who is Jarvis?" under the name in the
+  reveal, from the same button in the destinations below, from the badge at
+  the top of the rail, and from Ctrl+K.
+
+- **The reveal holds, and says where to go.** It is slower -- about five
+  seconds -- and no longer leaves by itself: the name stays up with four
+  ways on. **Go to home page** flies the badge to the rail and lands on the
+  pipeline, the names on the page decoding back in a wave out of the badge.
+  **Analyze Dentate Spikes**, **Open Monolith** and **Detect IEDs** each open
+  a page with a live picture and the lab's own figures. A click while it
+  builds skips to the choices, never past them; 1-4 choose from the
+  keyboard, Escape is home.
+
+- **Sound.** Made on the spot with Web Audio, so there is no file to load
+  or lose: the crackle of a neuron on an audio monitor firing faster and
+  faster as the ring draws, a zap and a boom when the spike fires, a blip
+  per letter as the name locks in, a warm chord when it lands, and small
+  sounds for choosing, flying home and landing. In the destinations, a
+  "tock" per dentate spike found and a crack per IED. "Sound on/off" in the
+  corner, remembered in this browser.
+
+- **Three destinations that cannot fail.** Each live picture is a
+  simulated signal drawn in the browser -- it reads no recording and asks
+  the server nothing -- and says so on the page:
+  - Dentate spikes: a 14-channel probe swept like a scope, each spike caught
+    and labelled DS1 or DS2, the average spike building up, and its current
+    source density by depth.
+  - The Monolith: twelve regions on the real page's ring, swept from 1 to
+    55 Hz, measure by measure, red for stronger on Precon4 and blue for
+    weaker, with the top result named.
+  - IEDs: six channels, the line-length feature with its threshold, every
+    detection flagged, and the last minute's detections by channel.
+  Under each, the real figures: Root Canal's dentate spike clusters and a
+  CSD from Results/, KCNT1 and m34 recordings, a Panorama, and the
+  Monolith's own circuit, frequency, PAC and rat-by-rat views, prerendered
+  into `web/img/showcase/` (1.4 MB). A figure opens full size on a click.
+  The Monolith tab also opens the full, live Monolith page in a new tab.
+
+- **Replay the reveal** in Ctrl+K, for a rehearsal or for whoever missed it.
+  It hides the name without remembering that, and plays.
+
+- `web/_dev/jarvisname.html`: 96 checks, now including that the reveal
+  holds and keeps holding, that every destination draws, says it is
+  simulated and loads every figure, that Escape goes back, that the card
+  about Paul has his photo and the memorial link, that a click mid-build
+  skips to the choices, that a replay is not remembered, and that every
+  sound plays without throwing.
+
+---
+
+## 2026.10.12.6 - StrataScope: Method B says match or no match, one frequency at a time
+
+### Changed
+
+- **Method B in the evidence window is two cards, not ten.** One for slow
+  gamma (should sink in the OML), one for fast gamma (should sink in the
+  MML). Each has a badge: **Matches**, **Does not match** or **Can't
+  tell**, then one line per blade saying where the gamma sinks. Under the
+  lines is a picture of the source those lines are about, with only the
+  layer it should be in shaded, the hilus in grey and a tick or cross where
+  it dips. The full set of components is still there, folded under
+  "Every component".
+- **"Can't tell" is explained where it shows.** It means no source of that
+  kind came back when ICA was refit on each half of the walking and also
+  dips in that blade's molecular layer, so Method B neither confirms nor
+  contradicts Method A there. The card shows the closest source it did
+  find and why that one doesn't count: "came back only 63% alike (it
+  needs 70%)", or "sinks somewhere else".
+- A mismatch is now red, not orange, so it can't be confused with the fast
+  gamma curve. This applies to the drawer's checks too.
+
+### Fixed
+
+- **A source sinking just above the fissure could be called "in OML1".**
+  The check took the lowest point inside the molecular layer even when
+  that point was only the edge of a sink outside the layer. It now counts
+  only real dips. It also looks one OML-thickness beyond the outer edge, so
+  that sink is reported as "4 ch above OML1" instead of being missed.
+- **A CA1 pyramidal layer moved with a vote now survives a reload.** After
+  Step 1 is accepted, the reference channel is the middle of the sheet's
+  CA1 SP. It used to fall back to Step 1's own pick, which moved the phase
+  curves and lost the ICA saved against the moved channel.
+- `web/_dev/stratastepsshot.html` no longer leaves a demo layer sheet
+  behind when the suite runs it (`?keep=1` holds the step open for a
+  screenshot).
+
+## 2026.10.12.5 - StrataScope: the evidence window scrolls; IML is optional; Step 3 builds on Steps 1 and 2
+
+### Fixed
+
+- **The evidence window could not scroll.** It shares the app's stylesheet,
+  which holds the whole page still, so a step with more pictures than the
+  window is tall had no way to reach the rest. The evidence now scrolls
+  under a header that stays put. `web/_dev/strataaidscroll.html` checks it.
+
+### Added
+
+- **IML is optional in Step 3.** A switch at the top of the step:
+  "Inner molecular layer: its own (IML) / part of MML". Part of MML is the
+  lab's own scheme: the OML line stays at one third and MML runs on to the
+  granule layer, in both blades. Saved with the sheet's parameters.
+
+### Changed
+
+- **Step 3 cuts between what you accepted.** It used to work out its own
+  granule layers again, so accepting it threw away the hilus you had just
+  placed in Step 2. Now the upper blade runs from the fissure accepted in
+  Step 1 to the hilus accepted in Step 2 (or those steps' proposals, until
+  they are accepted), and the step says which. The granule layer takes its
+  thickness against the hilus and the molecular layer above it is cut in
+  thirds. The hilus itself is left exactly as accepted.
+- **The lower blade mirrors the upper one:** from the hilus's bottom edge
+  down the same distance as the fissure is above its top (times "Lower
+  blade" in Parameters), GCL2 against the hilus, then IML2, MML2, OML2. The
+  HippoCompass mouse atlas has the lower blade at about 0.9 of the upper,
+  so the mirror is a start, drawn as a guess. **Below it is THAL** unless
+  the switch says to leave those channels as they are.
+
+## 2026.10.12.4 - Braces: the window, and what it is measured on, in many sets too
+
+### Fixed
+
+- **Align many sets now shows the two settings a run uses**: "Measured on"
+  (CSD or voltage) and "Window ±ms" (how far a stamp may move).
+  - Before, a run of many sets sent whatever the one-set panel held, and
+    nothing showed it. Every bulk run read at ±100 ms (a 200 ms window)
+    unless somebody had changed it in the one-set panel first.
+  - It is one pair of settings for both views: changed in many, it is
+    changed in one too.
+  - The fields lock while a run is going. Each run takes the values as
+    they stood when Align was pressed, for every set in its queue. Each
+    proposal records the window it was read with, as before.
+
+### Checked
+
+- `bracesbad.html` 15. It shows the window and what it is measured on in
+  the many-sets card. A changed window is the setting. A run (intercepted,
+  nothing read) sends that window and that measure. The refused read is
+  shown on its row, and the window is put back as it was found.
+- `braces.html` 21.
+- Bite-tested: a bulk run sending ±100 ms whatever was set turned it red.
+- No Braces set or bank entry changed.
+
+## 2026.10.12.3 - Activate Jarvis: a new mark, and a switch that hides the name until a reveal brings it back
+
+### Changed
+
+- **The launchers are called Activate Jarvis.** `Activate Jarvis.bat`,
+  `Activate Jarvis.command` and `Activate Jarvis.lnk` replace the three
+  "Wake up Jarvis" files; nothing else about starting it has changed. The
+  shortcut now carries a path relative to itself, so a clone anywhere else
+  still finds the `.bat` beside it. A shortcut you made yourself to the old
+  name (on a desktop, or pinned to the taskbar) points at a file that is no
+  longer there: make it again from the new one.
+
+- **A new mark: a power button whose stroke is a dentate spike.** The ring
+  is broken at the top and the spike fires up through the gap, so at 16 px
+  in a tab it reads as "on", and at 256 px on a desktop it is what this
+  application is for, with a dial around it and a glow. It is drawn by one
+  function, `markSvg` in `web/js/jarvis.js`, for the rail, the tab, the
+  reveal and the desktop icon; `tools/make_icons.py` now asks that function
+  for `img/jarvis.svg` rather than keeping a copy, and renders the 16 and
+  32 px icons from a heavier small cut instead of shrinking the large one.
+  In the app it follows the theme: a dark tile and a bright stroke on every
+  theme, the darker of the accent pair as the ground (gold on deep green in
+  UVM Dark, white on green in UVM Light).
+
+### Added
+
+- **Hide the name and logo, everywhere.** The theme picker has a switch,
+  and Ctrl+K has "Hide the name and logo". While it is off, every place the
+  interface says Jarvis says "the workbench" instead (543 of them across the
+  eleven views when last counted, tooltips and dialogs included), the tab is
+  titled Workbench, the badge is a plain tile with a flat line, and the
+  launcher's terminal drops the wordmark and its window title. Nothing had to
+  be changed in the thirty modules that say the name: while it is hidden the
+  page is rewritten as it is drawn, and the originals are kept to be put
+  back. While it is shown -- the default -- none of that runs.
+
+- **Activate, and the reveal.** While the name is hidden, an Activate chip
+  sits at the foot of the rail. Pressing it (or the switch) plays a short
+  reveal: the plain tile powers up, the ring draws round, the spike fires out
+  of the flatline with a shockwave, JARVIS decodes a letter at a time, every
+  "the workbench" on the screen turns back into Jarvis in a wave from the
+  centre, and the mark flies home to the rail. About two and a half seconds.
+  A click or a key skips to the end, reduced motion gets the end at once, and
+  only a person's press plays it: a morning boot, another window, or the
+  preferences catching up show the name quietly. `--jv-pace` on the page's
+  root slows or quickens the whole thing from one number.
+
+- Remembered per computer, like the theme: in this browser, and for this
+  host in the shared preferences, which is where the launcher reads it.
+
+- `web/_dev/jarvisname.html`: 61 checks. That nothing says Jarvis after
+  hiding, after every view has drawn, or in something that arrives later or
+  changes in place; that the reveal puts every mention back and leaves no
+  stand-in and no scrambled letters; that only a press plays it; that the
+  tab icon and `img/jarvis.svg` are exactly what `markSvg` draws; and that
+  every theme gets a dark ground under a bright stroke at 3:1 or better.
+  Writes nothing to the store.
+
+---
+
+## 2026.10.12.2 - Tab 8, Joe's data: the proposal's tests, SPSS files, and a script that does it all again; Spark finds windows after a break in the clock
+
+From the Oct 6 meeting: Joe's dissertation tests only what his proposal
+names (Aim 2: does coherence between regions change across preconditioning,
+in theta and gamma?). The Monolith stays the exploratory map. Tab 8 is the
+planned test: a handful of models chosen before looking, follow-ups only
+where they pass, files Neil and Derek can open in SPSS, and a script with
+nothing from Jarvis in it, so nobody has to trust code they cannot read.
+Every decision is in memory (`joe-tab8-decisions`). **Restart Jarvis**:
+`backend/joe.py` is new, `app.py` has new routes and `spark.py` changed.
+Working tab 8 out needs `statsmodels` (now in `requirements.txt`; run
+Setup). Viewing it needs nothing.
+
+### Added
+
+- **Tab 8 on the Monolith page, and on the review site.**
+  - **The answer first:** a table with a row for each model and a column
+    for each band and method (theta 5-12 Hz, gamma 30-90 Hz; Welch and
+    Dickson). Each cell gives the test of interest's p (Day × level × Pair)
+    with Day × level under it. A cell that opens follow-ups says so. A check
+    that reaches p < .05 says only that, since checks open nothing. Click a
+    cell for its model.
+  - **What is measured,** with three things to play with:
+    - one trial's timeline, where choosing a model lights the two windows
+      it compares;
+    - **mains and its harmonics** (your question 4): 60 Hz and its whole
+      multiples (120, 180 … 480 Hz) as spikes, the notch taking each out,
+      then the bands. Theta is far from all of them. Gamma holds only
+      60 Hz, and its notched 59-61 Hz bins are left out of gamma's average;
+    - **the old Minus FP against this** (question 7): the old way was each
+      day's trials less that day's FP, then the change. This way is the
+      trials' change and FP's change side by side, then their difference.
+      It is the same number, played on joe.json's own means. What is new:
+      the FP is random snippets, and the model asks whether FP itself
+      changed.
+  - **A card per model:** the interaction plot (Precon1 dashed, Precon4
+    solid, Precon2 and 3 faint and never tested; ± SE) with F, df and p in
+    its legend, saved as SVG or PNG. Beside it, every pair's own contrast,
+    sorted, with the ones Holm keeps marked. Behind ▸: every term in both
+    models; which pairs drive it (Holm within that interaction, raw p
+    beside); the follow-ups; and bilateral coherence.
+  - **Take it away:** a zip of one wide .csv and one .sps per model, band
+    and method. Each .csv has one row a rat, 999 for missing. Each .sps
+    declares 999 missing, labels every variable, runs the repeated-measures
+    GLM, restructures to long and runs MIXED (Satterthwaite). Also here:
+    the standalone script and its inputs file, and a button that runs it
+    and says whether every cell agrees.
+  - On a phone, each model's name sits over its four cells and every
+    picture is drawn for the narrow box, so no word in one drops below
+    about 8.5 px.
+- **The models.** Day is always Precon1 vs Precon4. A pair enters a model
+  when at least 4 rats have it at every level on both days: 44 of the 66
+  pairs on the real data.
+  - **First pass:**
+    - Baseline (20 s) vs Cue 1 + Cue 2;
+    - Baseline (10 s) vs Cue 1;
+    - Baseline (10 s) vs Cue 2;
+    - the switch (8-10 s vs 10-12 s);
+    - Cue 1 vs Cue 2;
+    - trials vs FP: the Precon change against the FP change, at 20 s and at
+      10 s;
+    - power in each region.
+  - **Checks, expected null:** Noise vs Click, all four sounds, A/B/C/D,
+    High vs Low tone.
+- **The follow-ups run by themselves**, for a first-pass model whose Day ×
+  level × Pair or Day × level reaches p < .05. They cover the pairs Holm
+  keeps, or the raw p < .05 pairs when Holm keeps none (said as such):
+  - PLI and imaginary coherence;
+  - Granger both ways and the amplitude cross-correlation lag;
+  - PAC between and within regions;
+  - left vs right of each structure.
+- **The statistics.** The mixed model tests each term against the rats' own
+  spread in it, the same split the repeated-measures ANOVA makes. A rat
+  missing a pair keeps its other pairs. With every rat complete, its seven F
+  equal the RM-ANOVA's; `check_joe.py` checks this at two and at four
+  levels. The RM-ANOVA sits beside it with its rat count. On the real data
+  it can keep only 3 of the 8 rats, because each of the others is missing
+  some pair. That is why the mixed model leads. p is uncorrected except the
+  post hocs (Holm).
+- **`tools/joe_standalone.py`:** numpy and scipy only. It reads the .ncs and
+  Events.nev itself, finds the cue pairs, decides the clipping, picks each
+  region's wire, cuts the windows, filters, computes both coherences and
+  writes the same .csv files. It runs with `--jobs 4`, and the output does
+  not depend on the number of jobs (byte-identical).
+- **`tools/check_joe.py`:** made-up recordings written as real Neuralynx
+  files, with planted changes: theta in cue 1, gamma at the switch, an
+  FP-only change, and a clipped wire. Each plant must be found only where
+  it was planted, by both methods. The checks must stay null. The models,
+  the SPSS files and the script are checked too: the script reproduces the
+  engine's 25,344 cells within 1e-9. A clock break in one FP recording is
+  planted too (below). 33 checks.
+
+### Fixed
+
+- **Spark threw away every window after a break in a recording's clock.**
+  When a recording pauses, its timestamps jump. Spark found a window's
+  records by arithmetic from the first record, which is exact only until
+  the first break. After J3 Precon1's FP2 paused for 0.59 s six seconds
+  in, every later window was looked for about 37 records too late. It came
+  back "outside this channel's file, or in a break in its clock" on every
+  channel and was dropped. Spark now walks the guess to the right record
+  by the records' own timestamps (`spark._record_at`): a few single-record
+  reads, and none past the first in a recording with no break. The
+  standalone script found this. It cuts from the timestamps alone, and it
+  disagreed with tab 8 on r3's FP, and only there.
+  - **The same rule serves** the Arc's transition windows, the FP epochs
+    behind Minus FP (`circuitrun`, `sweep`) and the Monolith's named
+    windows. On a recording with an early break, all of them had lost
+    windows the same way. Results made before this change stay as they
+    were until they are made again.
+  - **Spark's four state windows** (pre, cue 1, cue 2, post) still sit on
+    whole records counted from the first. None of tab 8's 96 recordings
+    has a break before its trials, so nothing here depends on that.
+  - **Tab 8's day files are made again** (schema 3), and files from an
+    older schema are now cleared away.
+  - **Checked by** `check_joe.py`'s planted break: with Spark as it was,
+    a window after the break is unmeasured on all six channels; now every
+    snippet after it is measured. `check_arc_transition.py --quick`: 76
+    passed.
+
+### On the real data (8 rats, 16 trials a day)
+
+- 4 of 30 first-pass fits reach p < .05. All four are gamma, Day × Phase:
+  Baseline vs Cue 1 + Cue 2 and Baseline vs Cue 1, by both methods. No
+  model's Day × level × Pair passes, and no single pair survives Holm. The
+  follow-ups ran on the raw p < .05 pairs, and Right ACC is in most of them
+  for Baseline vs Cue 1.
+- 1 of 16 checks reaches p < .05: Noise vs Click, theta, Dickson
+  (p = .039). Chance alone gives about 0.8 of 16.
+- **The standalone script agrees with tab 8 everywhere:** all 46 files,
+  73,856 cells, largest difference 0. It ran on E: in 43 minutes with four
+  jobs. On the first run the FP models differed for r3, which is how the
+  Spark break was found.
+- 27 FP snippets and 2 trials could not be measured, each listed on the
+  tab. 23 of the snippets are r10 Precon3's FP1. That recording pauses for
+  26 minutes partway through, and a snippet drawn inside the pause has no
+  recording under it. Precon3 is drawn, never tested. The other snippets
+  and the two trials have every wire they need clipped or unreadable.
+
+### Checked
+
+- `tools/check_joe.py`: 33 passed.
+- `web/_dev/monolith.html`: 525 passed, including the new tab 8 checks
+  (a check at p < .05, the phone layout and its word sizes).
+- `driftmono.html` 77 and `monolithrank.html` 5 passed.
+- `tools/check_review.py`: 54 passed. It now seeds the harness's made-up
+  tab 8 and checks that the copy opens it: the answer, the plots and the
+  downloads, with nothing to run.
+
+## 2026.10.12.1 - StrataScope: the rail sits on the lanes; a step shows only itself; CA1 SR
+
+### Fixed
+
+- **The rail lined up with nothing once some channels were unticked, or a
+  raster was in the pane.** It listed every channel of the recording and
+  spread them over the pane, so with the even channels ticked each row sat
+  over somebody else's trace, and on a CSD it did not move at all. It now
+  lists exactly the channels the pane draws, in its order, and sits on the
+  lanes the pane drew, measured off that canvas. Measured on the 64-channel
+  demo: 0 px off with every channel, 0 px with the even ones, 0.3 px on a
+  CSD; it was 2 px, 64 rows over 32 lanes, and 84 px. The header says
+  "32 of 64 ch" when not every channel is drawn.
+- The layer bands on the traces were laid over every channel rather than
+  the ticked ones; they now use the lanes the traces drew.
+- **A dragged line moved on the traces but not on a raster** in the same
+  window (a CSD or theta CSD in the pane): only the traces were repainted.
+  Every pane is now, as you drag, without fetching anything again; the
+  same goes for painting labels.
+- **Stratum radiatum had no label.** "CA1" was the lab's placeholder for "in
+  CA1, layer not decided", and the steps were writing it for stratum
+  radiatum. There is now **CA1 SR**. **"CA1", "DG" and "DG2" are gone as
+  labels:** no brush, no key, and labelling with one is refused; fill-down
+  does not carry them either. Channels already labelled with one keep it,
+  greyed and in italics as not decided, until a step relabels them.
+  Imports of "CA1 SR" from Toothy or the feeder sheet now become CA1 SR.
+- **Curves broke off at a bad channel** and started again below it, which
+  read as two curves. They are bridged with a faint dotted stretch, and the
+  bad channel is marked with a cross on the strip.
+- "Needs a look" compared the steps' times as text, to the second, so two
+  steps accepted in the same second could miss it. They are compared as
+  times, stamped to the microsecond.
+
+### Changed
+
+- **A step shows only what it is about.** Channels the step would not
+  write are greyed on the rail, veiled on the traces, the strip and the aid
+  window; boundaries of other layers go thin and grey; brushes for other
+  layers grey out. The strip draws only the curves the step is placed by:
+  the lead full, the votes faint. The others are a click away at the top of
+  the drawer. The aid window shows three or four pictures per step, the
+  rest behind "More evidence".
+- **What Accept would write is drawn before it is written,** hatched in the
+  colour each channel would become, on the traces, the rasters and the aid
+  window's CSDs. Clicking a vote moves the lines and the hatching with it.
+- **Accept asks first.** The drawer lists every change, "Ch 6-9: CA1 -> CA1
+  SR", and writes nothing until Continue.
+- **sure / likely / guess** now show in how a line is drawn: solid,
+  dashed, dotted, everywhere it is drawn. They are still what they were:
+  how sure you are of a line, saved with the sheet and kept in the version
+  at sign-off. They move nothing.
+- The number keys follow the depth order: 1 SO, 2 SP, 3 SR, 4 SLM, 5 OML1
+  ... 9 HIL.
+- **Sign off shows everything:** every layer in colour, every curve on the
+  strip, and in the aid window every picture, Method B included.
+- **Method B explains itself.** A **?** beside it says how it works, in four
+  steps. Each of its checks is a button: picking one draws that ICA
+  component's CSD on the strip, its sink as a solid line on the strip and
+  the traces, and the layer Method A drew as a bracket, and says in a
+  sentence how far apart they are. "No stable sink" now reads "nothing
+  reliable" and says what that means: no component that came back in both
+  halves of the walking sinks in that layer, which is no evidence for the
+  line rather than evidence against it.
+
+## 2026.10.09.6 - StrataScope labels in steps, from evidence it measures
+
+### Added
+
+- **StrataScope's steps.** A row under the title: 0 Theta Walk, 1 CA1,
+  2 Hilus, 3 GCL · IML · MML · OML, 4 Sign off. Free to jump between; a
+  step accepted before an earlier one changed is marked "needs a look".
+  - **Reading a recording once.** The first visit reads every channel
+    (about a tenth of the recording's length here) and keeps, per second,
+    band powers, theta coefficients, a 4-12 Hz spectrum and multiunit
+    power, plus a 1250 Hz copy with the mains notched out. After that
+    every answer is immediate. Kept in `GUI_logs/.cache/strata`, not in git.
+  - **Step 0, Theta Walk.** Paint when the animal was walking on a strip
+    of the whole recording: the 4-12 Hz spectrogram, theta/delta with the
+    finder's threshold, how much of the probe agrees on one theta
+    frequency, and the finder's bouts hatched as a ghost that is never
+    saved unless you paint it. Wheel times from the notes are typed in
+    and can be painted with one click. Still time is everything not
+    painted, less 2 s either side.
+  - **The depth strip** beside the rail, on its lanes: multiunit, ripple,
+    theta power, theta phase and coherence against the CA1 pyramidal
+    channel, slow and mid gamma. Toggle each.
+  - **Steps 1-3 propose dashed lines**, on the strip, the traces and the
+    aid window. Each anchor names its lead measurement and the others'
+    votes, with how many channels they disagree by; click a vote to make
+    it the lead. Drag any dashed line by whole channels, rate it sure,
+    likely or guess, then Accept. Dragging a solid boundary on the strip
+    relabels the channels it passes.
+  - **Step 3** cuts the molecular layer into thirds between the fissure
+    and the granule layer's edge (Method A; GCL half 30 µm mouse, 50 µm
+    rat; the lower blade assumed as thick as the upper), and **Run ICA**
+    checks it against where slow and fast gamma generators sink
+    (Method B), refitted on each half of the walking for stability.
+  - **Step 4** lists the checks (distances against the HippoCompass mouse
+    atlas, blade symmetry, OML/MML order, enough Theta Walk, enough
+    ripples, ICA stability). They warn and never block. Sign off freezes
+    a version that keeps the parameters, every line's confidence, the
+    anchors, the Theta Walk and who signed it. Export JSON beside CSV.
+  - **The aid window** is the four live panes until a step is open, then
+    that step's evidence: ripple- and theta-trough-triggered LFP and CSD,
+    the depth curves, the theta coherence matrix, Method A to scale and
+    Method B's components.
+- **IML1 and IML2** labels, in depth order. The number keys from GCL1 on
+  move along by one.
+- Ripples are found with Toothy's own detector (`get_swr_peaks`: 120-180
+  Hz, 5 SD peaks, 3 SD edges, 25 ms, inst. frequency over 125 Hz), in
+  still time only, and Step 1 can bank them (type ripple) through the bank
+  dialog. Checkup cannot vet ripples yet; it knows dentate spikes and IEDs.
+
+### Not used, on purpose
+
+- **No dentate spikes anywhere in the steps.** These labels are what the
+  DS results get checked against.
+
+### Run this
+
+- `supabase/23_strata_steps.sql`, so the steps' fields sync. Until then
+  they travel by git with the sheet, and the labels sync as before.
+
+### Worth knowing
+
+- H3 contacts are taken as 20 µm apart (HippoCompass). The probe book
+  still says 50 µm because DS PCA reads it; a sheet carries its own
+  spacing.
+- On six of eight hand-labelled PTEN recordings the theta evidence puts
+  the fissure 6-11 channels below where those sheets have it (one agreed
+  within two, one found no theta peak in CA1); the theta maximum, mid
+  gamma and the theta-trough CSD mostly agree with each other there. The proposals start where the evidence is. Which is
+  right is the question the steps exist to answer.
+- Not for H10 probes or the DEWEY montage: the steps read depth down one
+  column.
+
+## 2026.10.09.5 - Holding a key in Checkup no longer floods it; a secret
+
+### Fixed
+
+- **Holding a key down in Checkup.** The keyboard repeats a held key
+  about 30 times a second, and every repeat used to be a decision with its
+  own redraw and its own save. The saves queued on the server. Leaving the
+  set while they were still in flight made each of them report "That did
+  not save: can't access property _progress, set_ is null", although every
+  one had saved: each was reading the set back off a screen that had
+  already moved on. Now:
+  - A held decision key decides once. Each decision is a fresh press.
+  - A held n or p still walks, at most about nine a second, so the screen
+    keeps up.
+  - A held u or Escape acts once.
+  - Each decision keeps hold of its own set, so a save that answers after
+    you have left reports nothing, unless it really failed.
+  - Failures come as one toast ("5 decisions did not save: …"), not one
+    each.
+  - Banking first waits for every decision still saving. A version banked
+    mid-flood used to be missing the last few.
+
+### Added
+
+- **A secret.** A keyhole, too faint to notice, sits at the end of the
+  curation progress bar.
+  - **The PIN:** it asks for a six-digit PIN. A wrong one shakes and
+    clears. Only the PIN's SHA-256 is in the code.
+  - **The reveal:** the right PIN dims the room to a golden sky. Rays
+    turn, sparks rise and a bloom breathes. A golden column with a scrolled
+    capital rises from the floor, and the **All Garbage** button descends
+    onto it under a glowing halo, with rings of light spreading out as it
+    lands.
+  - **The sound:** a choir of "aah"s sings C, F over C, then C with a high
+    G, and bells ring as the button lands. Both are made with Web Audio,
+    so there is no sound file.
+  - **The button:** the first press asks ("Truly? All Garbage"), saying
+    how many existing decisions would change. The second calls every
+    candidate in the set Garbage in one write. One `u` puts every candidate
+    back to what it was, also in one write.
+  - **Closing:** Escape or Close shuts it. While it is open, Checkup's
+    decision keys are not heard.
+- **Why the first build was silent.** Opening the heavens shut any heavens
+  already open, and that stopped the choir it had just started. The choir
+  was also set about 36 dB too quiet, because narrow vowel filters keep
+  only a small share of a saw's energy. Both are fixed. The audio context
+  is now made on the first digit typed, which is the gesture a stricter
+  browser such as Firefox wants. The score is now measured: the harness
+  renders it offline and checks it is louder than −24 dBFS and does not
+  clip.
+
+### Checked
+
+- New `_dev/curhold.html`: 12 ok. It holds keys, leaves mid-save and
+  forces failures, against a real set with every write answered in the
+  page.
+- New `_dev/allgarbage.html`: 23 ok.
+  - the keyhole
+  - wrong and right PINs
+  - the heavens, with the choir playing
+  - the two presses and the single write
+  - `u` restoring every label
+  - loudness
+  - keys muted behind the heavens
+  - Escape leaving curation open
+- New `_dev/agshot.html` poses the reveal for screenshots.
+
+---
+
+## 2026.10.09.4 - Tooth Fairy batch; Avery is gone; Tooth Fairy has an icon
+
+### Added
+
+- **Tooth Fairy batch…** in Checkup's header sweeps several dentate spike
+  sets in one go.
+  - **Choosing:** it lists every DS set with candidates, starting with the
+    sets on the bench that still have something undecided. "Everything
+    undecided" and "None" change the choice in one click. The dialog takes
+    the same tolerance as a single sweep.
+  - **While it runs:** sets are swept one after another, with the scanning
+    screen showing the set being read and every set listed with how it is
+    getting on.
+  - **At the end:** a row for every set, with its DS, Flag for Deep Review,
+    Flag and Garbage counts and how often it agreed with what a person had
+    already decided. A set that could not be swept says why.
+  - **Keeping:** you tick the sets to keep; the ones with something
+    undecided start ticked. Accept puts each kept set's calls on its
+    undecided candidates and banks them, exactly as a single sweep does.
+    Unticked sets are let go and nothing is written to them.
+- **An icon for Tooth Fairy:** a molar with a fairy's wings and a star. It
+  appears in three places:
+  - on Checkup's Tooth Fairy buttons
+  - on the confirm and batch dialogs, where the star twinkles and the
+    wings beat
+  - on the scanning screen's header
+
+  It is drawn in the current colour with the accent for the star, so it
+  follows the theme. The motion stops under reduced-motion.
+
+### Changed
+
+- **Avery, Avery+ and Avery Garbage Dystrophy+ are gone.** Tooth Fairy is
+  the only model a sweep offers, so the dialog no longer asks which one.
+  In Checkup's curation bar, "Avery sweep…" is now **Tooth Fairy…**. AI
+  Beta offers **Make this Tooth Fairy** on any run with the sweep's bars
+  and held-out scores.
+  - The code moved with the name: `toothfairy.py`, `toothfairy.js`,
+    `/api/toothfairy*` and `/api/aibeta/tooth-fairy`, and the harnesses
+    `toothfairy.html`, `toothfairyshot.html` and `toothfairyxwin.html`.
+  - The older models' runs stay in AI Beta's list, and the report calls
+    them steps 1 to 4 rather than by name.
+  - Versions they banked are still recognised as a model's own, so
+    training never learns from them. New ones are banked as **Tooth Fairy
+    (AI)**, tagged `tooth_fairy`.
+- **A sweep is held until it is accepted or let go,** and up to 64 are
+  held where 8 were, so a whole batch waits for its summary.
+
+### Checked
+
+- `tools/check_aibeta.py`: 107 ok. New checks: Tooth Fairy's own versions
+  and the older models' are both left out of training whether tagged or
+  not, and Tooth Fairy is the only sweep model.
+- `_dev/toothfairy.html`: 63 ok. New checks:
+  - the icon and no choice of model
+  - the batch chooser's starting choice and its "how many" primary
+  - the posted sets and tolerance
+  - the per-set progress
+  - the failed set
+  - accept keeping only the ticked sets and letting the rest go
+- `_dev/toothfairyxwin.html`: 8 ok. `_dev/aibeta.html`: 43 ok.
+- A real batch through a live server on PTEN_DKO m56 s8 and PTEN m3 s7
+  took 52 s and was let go, not accepted. A missing set was refused, and
+  a second sweep while one ran was refused. The old `/api/avery` route
+  returns 404.
+
+---
+
+## 2026.10.09.3 - Braces, Eye, Doppler and Spotter work with recordings only on the VACC; the VACC mark explains itself; setting up a new computer
+
+### Added
+
+- **Braces and Eye align a set whose recording is only on the VACC.**
+  - The stamps, the contacts and the settings go to a job on the cluster,
+    which runs the same alignment code. The proposal comes back here for
+    review.
+  - A set whose recording is on this computer is still aligned here.
+  - The plan says "Runs on VACC" before you press Run.
+  - The bench's close-up of each window is drawn on the cluster too.
+  - Tested on KCNT1 m1606 s1 (326 curated spikes), aligned here and on the
+    VACC: all 326 proposals were identical, with the same depth band and
+    the same counts. It took 180 s on the VACC against 325 s here. The
+    bench window matched exactly. Both proposals were then thrown away.
+- **Doppler runs, reviews and batches recordings this computer has no copy
+  of.**
+  - The cluster works out the channels, measures the gaps and refuses a
+    recording that is in pieces, all by the same rules as before.
+  - Snippets and reviews are fetched by run, with no copy needed here.
+  - A batch now includes every recording the cluster can read: 247
+    runnable on the real catalogue, 30 of them not on this computer.
+  - Not tried on the cluster yet: a whole-recording Doppler run is hours,
+    and the estimate shown says so.
+- **Spotter lights the right channels for a Doppler run made elsewhere.**
+  Which channels each discharge reached is now fetched once from the
+  cluster when this computer never had the run's events. Before, it lit
+  the peak channel alone.
+- **The VACC mark on each tool explains itself.** Hover over it to see why
+  the tool is VACC enabled, what is processed on the cluster, and what the
+  tool would be like without VACC. This covers Incisor, Doppler, Braces,
+  Eye, Circuit, Checkup and Spotter.
+- **Setting up a new computer, and two separate finds.**
+  - Everything VACC knows ▸ *Found on VACC* now has **Find everything on
+    VACC** (the cluster's own space, seconds) and **Find everything on
+    netfiles** (the lab share, about two and a half minutes).
+  - A computer that has never searched the share offers **Set up this
+    computer** instead of a card full of zeros.
+  - The first search of the share is never started on its own. After that
+    it is refreshed when the saved list is a day old.
+
+## 2026.10.09.2 - Checkup, Spotter and StrataScope draw their aid windows off the cluster
+
+### Fixed
+
+- **The aid windows now work for a recording only the VACC has.**
+  - Checkup, Spotter and StrataScope opened such a recording off the
+    cluster. The traces worked, but every aid window beside them (CSD,
+    theta, voltage, spectrogram) failed with "cannot find the file
+    'vacc:...'". Incisor's "Show them on the traces" window failed the same
+    way.
+  - These panels are now drawn on the cluster by the same code, and only the
+    finished picture comes back.
+  - Measured on PTEN m7 s7: the first CSD takes 16 s while the cluster
+    loads, and after that a CSD takes 0.6 s, theta 2.5 s, voltage 0.5 s and
+    traces 1.2 s.
+  - Nothing is drawn ahead of time off the cluster, so each window is drawn
+    when you open it.
+- The cluster's analysis environment was missing matplotlib, which
+  `requirements.txt` asks for. It is installed now (3.11.2).
+
+## 2026.10.09.1 - The Monolith, less of a chore: the lab's words, one line each, and things to play with
+
+From Shahriar: "the Monolith is super wordy, and you've kinda created your
+own nomenclature… FP is NOT REST… if you can turn anything to be interactive
+instead of reading… do it." **Restart Jarvis**: `monolith.py` and
+`narrow.py` changed their words.
+
+### Changed
+
+- **The page's words are the lab's** (`monolith-plain-words` in memory):
+  - FP is FP1/FP2, never "rest";
+  - a presentation is a **trial**;
+  - a seat is just **A/B/C/D**;
+  - a lead or point of interest is a **top result**;
+  - a relabelling or signing is a **shuffle**;
+  - an entry is a **stat test**;
+  - Raw and Minus FP have no label of their own.
+
+  This covers every tab, the ? help, the Guide, the tour, the review site,
+  and the backend's own sentences. "Lead" stays only where Granger means one
+  region leading another.
+- **One line, then ▸ More.** Each card says its point in one line. The rest
+  is behind a ▸ that remembers being opened, and most ▸ hold something to
+  play with instead of more words. Words a reader meets without opening
+  anything, on the real build:
+
+  | Tab | 2 | 3 | 6 | 7 |
+  |---|---|---|---|---|
+  | Shown | 819 | 1,142 | 351 | 470 |
+  | With every ▸ open | 1,636 | 1,978 | 1,016 | 1,113 |
+
+- **Tab 1:** one line for what was kept. The tables are bars, with their
+  words on hover. The histology rule and why some stat tests were not run
+  sit behind ▸.
+
+### Added (`web/js/monolith_explain.js`)
+
+Motion is playful: it overshoots, and a result beyond chance lands with a
+burst. Each animation plays once, when it scrolls into view, and is still
+for anyone who asks for reduced motion. On a phone the pictures' words grow,
+so none drops below about 9 px.
+
+- **Tab 4 is "How a number is made":** one stat test played from every
+  trial to its p.
+  - The steps: the trials, each day's mean, (the FP coming off), each rat's
+    change, the changes side by side and weighted, the pooled change, and
+    the t test drawn on its own distribution.
+  - It has Back, Play and Next buttons, and a chip for each step.
+  - Tab 3's ▸ plays it for the line in view, and tab 7 plays it on the
+    first top result.
+- **Shuffles, played:** the rats are shuffled one way after another, each
+  shuffle's count dropping into a histogram, and the real count lands last.
+  - This replaces the still histograms on tabs 6 and 7, and sits behind
+    tab 2's "is that more than chance?".
+  - Splits, signs and the four sounds' random deals are each drawn as the
+    backend made them, in the same order. The real sorting by sound is
+    painted on the rats.
+- **Found against chance, as bars:** tab 2's verdict for Raw and Minus FP
+  (click one to switch), tab 3's for both pairs, AB and CD, and all eight
+  rats the same way.
+- **The Minus FP slider** (tab 1): drag a day's FP and watch Raw stay put
+  while Minus FP moves. It uses the top result's real rat.
+- **The identity sheet, sorted** (tab 6): the rats' four sounds by letter.
+  Then A and C, then the two groups, then each sound gathered from wherever
+  it sat.
+- **PAC to play with** (tab 2): slide how strongly a fast wave follows a
+  slow one, and watch the 18 phase bins lean and the MI grow.
+
+### Checked
+
+- `web/_dev/monolith.html`: 497. New and rewritten checks:
+  - every one-liner;
+  - the bars to scale, and a bar clicked switching Raw and Minus FP;
+  - the slider moving Minus FP but not Raw;
+  - the sheet's chips gathered by sound and split into the groups
+    (measured);
+  - each shuffle's block count and its rank;
+  - the real split painted on its rats;
+  - the player's last step agreeing with its own t;
+  - the PAC toy flat at none and leaning at strong;
+  - every picture redrawn at 390 px with its words grown, none cut or on
+    another.
+
+  The figure-word check now follows groups that are moved, and skips words
+  not drawn.
+- `driftmono` 77, `monolithrank` 5, `tools/check_monolith.py` 249, and
+  `tools/check_review.py` 53. The copy now carries
+  `js/monolith_explain.js`.
+- On the real build, at 1400 px and inside a 390 px frame: tabs 1 to 4, 6
+  and 7 do not scroll sideways. (Headless Edge will not make a window that narrow,
+  so a phone is measured in an iframe.)
+
+## 2026.10.08.2 - The Monolith's tab 7: narrowing down
+
+From Shahriar: how the page's p were made, ways to narrow them down, what
+"correcting" would do, and tests that are more valid. Every other card stays
+uncorrected; this tab shows what correcting would keep. **Restart Jarvis**:
+`monolith.py`, `app.py` and the new `narrow.py`.
+
+### Added
+
+- **Tab 7 · Narrowing down** (`web/js/monolith_narrow.js`, made by
+  `backend/narrow.py`), the answer first.
+  - **How every p was made**, worked through on the first lead's own
+    numbers: DerSimonian–Laird pooling, a Hartung–Knapp t on rats − 1
+    degrees of freedom, one test per entry.
+  - **Is there anything at all?** Every way of flipping the eight rats'
+    signs (128) is pooled exactly as the Monolith pools, keeping every
+    correlation between entries. The real count of p < .05 is set among
+    them, for the whole Monolith and for Cue 2 − Cue 1.
+  - **What correcting does,** for Raw, Minus FP and Cue 2 − Cue 1:
+    - Bonferroni, Holm, Benjamini–Hochberg and Benjamini–Yekutieli;
+    - the permutation max-t (Westfall–Young);
+    - runs of neighbouring 1 Hz bands, weighed against the heaviest run
+      in each relabelling (Maris & Oostenveld);
+    - the exact permutation test, alone and with BH;
+    - the exact sign test.
+
+    Each row says what it controls.
+  - **Ways to narrow it down:**
+    - families chosen before looking (the named bands; the state windows;
+      Cue 1 and Cue 2 × the named bands × four measures), each corrected
+      on its own;
+    - a funnel: p < .05, then both pairs the same way, then both layers,
+      then a surviving run of frequencies, or BH instead;
+    - replication across the pairs, against the same relabelling of both;
+    - the surviving runs of frequencies, listed.
+  - **Every test on each lead:** exact permutation p, sign test, BH q,
+    Holm, max-t, its run of frequencies, AB and CD, the other layer, and
+    what it survives.
+  - **What survives, as a circuit,** under any of the methods.
+  - Help on every card, and a Guide section. A build without it offers
+    "Work it out now"; new builds make it themselves.
+- **Tab 6, group view:** a group that is one rat short at a lead now gets
+  its interval, and the group difference, from three rats, marked "3 rats".
+  With two left it says why there is none. Every one of the 50 real leads
+  now has both.
+- **Tab 6, sound view:** the line in each lead's picture is now the four
+  sounds' mean. Before, it was the lead's own window (a Switch window, say),
+  which can sit far from the four sounds' cue windows. Both views now have
+  a legend over the table.
+
+### On the real build (512b673a2f9d)
+
+- **The whole Monolith, against the 128 relabellings of the rats:**
+
+  | | p < .05 (chance) | Rank of 128 |
+  |---|---|---|
+  | Raw | 15,017 (12,720) | 8: borderline, about 6% do as well |
+  | Minus FP | 17,896 (12,720) | 2: beyond chance |
+  | Core family, Raw (1,408 tests) | 112 (70) | 2: beyond chance |
+  | Core family, Minus FP | 142 (70) | 1: beyond chance |
+  | Cue 2 − Cue 1 | 2,026 (1,817) | 61: an ordinary count |
+
+- **No single entry survives any correction, in any family.** That covers
+  Bonferroni, Holm, BH, BY, the max-t and runs of frequencies, even in the
+  1,408 core tests. In the relabelled data the largest |t| anywhere reaches
+  about 96: a t-test on a few rats strays that far whenever they happen to
+  agree closely.
+- **Replication is the clearest sign of something real.** 2,951 entries
+  pass in both pairs the same way, where independent pairs would give about
+  318. That ranks 4 of 128.
+- **The funnel (Raw):** 254,408 tested; 15,017 at p < .05; 2,925 in both
+  pairs; 1,571 in both layers; 0 in a surviving run of frequencies, and 0
+  by BH.
+- **The 50 Raw leads:** every one has an exact permutation p of .008 and a
+  sign test of .008 (8 of 8 rats), the strongest eight rats can give. None
+  survives BH, Holm or max-t. 17 pass in both pairs.
+
+### Checked
+
+- `web/_dev/monolith.html`: 467. New checks:
+  - the answer both ways, and with nothing surviving;
+  - the worked example;
+  - the relabelling histograms;
+  - the corrections table;
+  - the families, the funnel, replication and runs;
+  - every test on each lead, and its "survives" chips;
+  - the circuit against the array for five methods;
+  - the "Work it out now" button, figure words and 390 px;
+  - tab 6's 3-rat groups and its legends.
+- `tools/check_monolith.py` (section 7, 15 checks): eight made-up rats
+  with three planted changes, each found only where it should be:
+  - one strong entry survives Bonferroni, Holm, BH and max-t, its exact
+    tests at their floor (1/128, 2/256);
+  - a broad change over twelve bands survives only as a run of
+    frequencies;
+  - an AB-only change does not replicate.
+
+  The relabelling pools exactly as the Monolith does (the same t and p),
+  and Holm, BH and BY match by hand. 249 in all.
+- `tools/check_review.py`: 53. The copy carries tab 7, which draws from
+  it.
+
+## 2026.10.08.1 - VACC loaded, everywhere; Incisor's VACC mode needs no copy here
+
+### What changed on the cluster
+
+- **The lab's netfiles share reads from the VACC now.** It is mounted at
+  `/netfiles/bigdata_jbarry` (NFS from `netfiles03.uvm.edu`). Since
+  2026-10-01 the share is grouped to `jarvis_writes`, whose members are
+  sakhava1 and jbarry4. Those two accounts can read it; every other netid is
+  still refused, and Jarvis says who to ask.
+  - Measured 2026-10-07: a compute node reads it too, at 173 MB/s.
+  - Walking the share finds 1,461 recordings in about two and a half
+    minutes.
+- **The group can also write the share. Jarvis never does.** Runs write only
+  under `workspace/runs/<rid>`.
+
+### Added
+
+- **Every recording found on the VACC, in the catalogue.**
+  - Sessions ▸ Everything VACC knows has a new *Found on VACC* card. It walks
+    scratch, the uploads and the netfiles share, and sorts what it finds
+    against the catalogue.
+  - Its button, **Add N recordings found on VACC**, says how many it will
+    add, and adds them in one click.
+  - On the real share: 660 were already known, 353 are new, 37 need a person
+    to say which recording they are, and 411 have folders that name no mouse
+    and session.
+  - A netfiles find is filed by its `\\netfiles03` path. A copy in scratch
+    is filed by identity alone, with no path. No cluster path enters the
+    registry.
+- **VACC loaded.** One mark now goes on every recording the cluster can read
+  with your account. Hover over it to see how the cluster reaches it: read in
+  place, or an uploaded copy. It appears on cards, rows, tabs and pickers.
+- **One way for every module to reach a recording** (`BARRY.vacc.reach`).
+  - The rule is this computer first, then the cluster.
+  - Checkup, Spotter and StrataScope open a recording that is only on the
+    VACC off the cluster.
+  - A tool that needs the files on this computer still lists a VACC-only
+    recording, but disabled, with the reason.
+- **Incisor's VACC mode.**
+  - Pick any recordings the cluster can read, including ones this computer
+    has never had.
+  - Set each recording's channels, and set the detection parameters once for
+    the whole batch.
+  - Submit them as one job array. A batch that reads netfiles runs at most
+    8 tasks at once.
+  - Each answer comes back into the queue. Opening one gives the usual
+    panel: the three plots, the picks, the hilus range, Extract all and the
+    bank. None of it needs a copy of the recording here.
+  - Nothing is ticked for you. The cost is stated before you submit, and
+    nothing is banked by the batch.
+
+### Fixed
+
+- Opening a review no longer re-runs the scan with whatever the parameter
+  fields say. It loads that exact scan by its key.
+- The VACC batch no longer sends the last single run's parameters without
+  showing them.
+- A cluster stage of a single scan no longer reads "Detect and rank the
+  channels" while the scan is waiting in the queue.
+- The inventory now also finds recordings whose channel files are all named
+  `CSC*_0001.ncs`.
+- A VACC scan's time and memory are now worked out from the cluster's own
+  listing of the folder, not from the registry.
+  - The registry can describe a different copy of the recording. PTEN m7 s3
+    is on record as 64 channels and 601 s; on the share it is 128-plus
+    channel files and 2136 s.
+  - In the first real batch, sizing from the record gave a 10-minute
+    walltime that one scan beat by nine seconds, and asked for 96 GB of
+    memory for a job that holds one channel at a time.
+
+### Tried for real
+
+- Array 5656058 scanned two PTEN recordings this computer has no copy of,
+  reading them from netfiles on the compute nodes. Both are in the queue,
+  open by key, and count a hilus range:
+  - m7 s3: hilus CSC34, margin 5%, 535 on the hilus, 593 across ±3
+    channels.
+  - m7 s7: hilus CSC35, margin 0.3%, 1,097 on the hilus, 1,259 across ±3
+    channels. A margin that close means you should look at the plots.
+- With this computer's event cache removed, the full answer comes back off
+  the cluster in 2.2 s.
+
+## 2026.10.07.7 - AI Beta's summary report; X-ray at the real peaks; filters together
+
+### Added
+
+- **What has been tried.** A summary report now sits at the top of AI
+  Beta, with one section per question. Folded, a section shows its answer.
+  Unfolded, it shows the numbers behind it, each cell tinted against the
+  reference row: green is better and red is worse, by that column's own
+  sense of better. The sections are:
+  - Tooth Fairy's lineage
+  - X-ray at the real peaks
+  - filters together
+  - filters one at a time
+  - even channels
+  - the waveform pictures
+  - the waveform measures and the blend
+
+  The report is filed in `GUI_logs/aibeta/reports` with every number in
+  it, so it travels like a run and is never recomputed on read.
+- **X-ray at the real peaks**, a new AI Beta input that is off by default.
+  It takes X-ray's way of looking:
+  - the contacts that move most in the recording's candidate-triggered
+    average
+  - the CSD within them
+  - the depth profile, the CSD wave (the band's mean CSD over ±25 ms) and
+    the sink gap ("delta")
+
+  It is taken at the peak Braces assigned and at each real peak within
+  100 ms of the stamp, up to five, through 10–40 Hz. A peak is real when
+  it stands 3 robust SDs above the recording's level of Braces' own trace
+  and reaches a quarter of the tallest. Across Tooth Fairy's 14,205
+  candidates:
+  - 48% have one real peak
+  - 21% have two
+  - 12% have three or more
+  - 19% have none
+
+  Peaks are found on Braces' 5–100 Hz trace, not the 10–40 Hz one,
+  because that band-pass rings after every spike and turns one event into
+  a train of peaks 25 ms apart.
+
+### Changed
+
+- **Tooth Fairy sees the whole shank's CSD through both 10–40 Hz and
+  5–100 Hz.** It is run `ai20261007-231323-671d`. On the 32 recordings
+  Garbage Dystrophy+ could also be tested on, at the 20% setting:
+  - it flags 10.2% of candidates against Garbage Dystrophy+'s 15.7%
+    (1,026 instead of 1,580)
+  - it cleans 91.5% of the garbage out automatically, against 87.5%
+  - it lets 1.7% of the garbage into DS, against 1.3%
+
+### Measured
+
+Every row below is added to the Tooth Fairy before this release, on its
+data (14,205 candidates, 2,155 garbage). Each score comes from mice the
+model never saw, as flagged at 20% / flagged at 30% of real spikes lost:
+
+| Added | Seed 1 | Seed 2 |
+|---|---|---|
+| nothing (Tooth Fairy before this release) | 12.7% / 4.7% | 12.6% / 4.3% |
+| **whole-shank CSD, 5–100 Hz** | **12.1% / 3.7%** | **11.6% / 2.8%** |
+| whole-shank CSD, 5–50 Hz | 12.1% / 3.9% | |
+| peak-channel trace, 10–40 Hz | 11.6% / 3.9% | 13.0% / 4.6% |
+| thin snapshot, 10–40 Hz | 12.8% / 4.8% | |
+| whole-shank CSD, 1–20, 1–100 Hz or notch only | 13.6–14.3% / 5.0–5.8% | |
+| whole-shank CSD through all six filters | 13.5% / 4.6% | |
+| X-ray at the real peaks | 12.6% / 4.1% | |
+| X-ray instead of the whole-shank CSD | 15.2% / 5.9% | |
+
+A second seed moves a row by about a point. The 5–100 Hz whole-shank CSD
+held up on both seeds, so it was added. The peak-channel trace did not
+hold up, so it was not.
+
+### Checked
+
+- `tools/check_aibeta.py`: 105 ok. New checks: real peaks only, largest
+  first, with ripples not counted; a quiet stretch has none; and X-ray's
+  slots fill for the real peaks and leave the rest empty, each with its
+  time and height.
+- `_dev/aibeta.html`: 43 ok. New checks: the report card draws one
+  section per filed question, folded sections still show their answer,
+  and a section unfolds to its numbers row for row and folds again.
+- `_dev/avery.html`: 44 ok.
+- A real sweep with the new Tooth Fairy on PTEN_DKO m56 s8 finished in
+  27 s.
+
+---
+
+## 2026.10.07.6 - The Sync panel, cleaned up
+
+### Fixed
+
+- **"[WinError 2] The system cannot find the file specified"** on the Sync
+  panel meant this computer's git was not on PATH (GitHub Desktop keeps its
+  own). Jarvis now finds git where Git for Windows and GitHub Desktop
+  install it. When there is none it says *git not found*, and explains that
+  records still travel through the shared database. The same lookup is used
+  for the commit stamped on records and for checking a key file is
+  gitignored.
+- **Seven feedback files were listed as "shared between machines".** They
+  are per-machine overlays (`<id>~<machine>.json`), which cannot conflict.
+  The panel had its own copy of the conflict check, and that copy did not
+  know about overlays; `tools/conflict_check.py` already did. Both now use
+  one check (`backend/conflicts.py`). Files git ignores are no longer
+  counted.
+- **"10 things have not reached the shared database"** were all records
+  that never travel: five demo Event Bank entries, two demo sets and three
+  sheets.
+  - The list now holds only what is waiting to go up.
+  - On a machine with nothing waiting, it says everything is shared.
+  - Records that stay here on purpose are folded under *N kept on this
+    computer on purpose*, grouped and counted. A sheet whose recording the
+    registry does not have is named by its recording, not its id, and the
+    panel says when that recording is registered under a newer id.
+- **One empty layer sheet removed.** It was KCNT1 m22 s4, filed under an
+  id that recording no longer has. It had no labels; the recording's real
+  sheet is on four machines. A tombstone carries the removal to the shared
+  database.
+- **The layout.** The database status, the git commands and the warning
+  shared one scrolling box, with Sync now clipped at its edge and the next
+  heading drawn over its foot. They are now two cards: *The shared
+  database* and *Git*. The git commands appear only when there is a git to
+  run them, and the uncommitted files are folded.
+- **A failed sync is said in words.** A 522 now reads "the shared database
+  did not answer (522)", with what to expect. The raw text is folded below
+  instead of printed whole, in red.
+
+Harness: `_dev/syncpanel.html` (22).
+
+## 2026.10.07.5 - Snapshots through other filters; Tooth Fairy adds the 10-40 Hz CSD
+
+### Added
+
+- **Filtered snapshots**, 18 new AI Beta inputs in the second read, all
+  off by default. There are six filters:
+  - the mains notch alone
+  - 1–20 Hz
+  - 1–100 Hz
+  - 5–50 Hz
+  - 10–40 Hz
+  - 5–100 Hz
+
+  Each filter feeds three snapshots taken at the peak Braces' rule aligned
+  the candidate to:
+  - **whole:** the whole shank's CSD, ±50 ms
+  - **thin:** the voltage 8 contacts either side of the peak channel,
+    ±25 ms
+  - **trace:** the peak channel's voltage, ±50 ms
+
+  Every filter runs over the whole stretch that was read, so a 1 Hz edge
+  has room. A read filters only the bands the run's inputs need, so a
+  sweep with Tooth Fairy filters one band, not six.
+
+### Changed
+
+- **Tooth Fairy now also sees the whole shank's CSD at 10–40 Hz.** It is
+  run `ai20261007-165612-2d1a` on the same data as before.
+
+### Measured
+
+Each snapshot was added on its own to Garbage Dystrophy+ (even channels,
+the same 45 recordings). The table shows the share of candidates flagged
+at 20% of real spikes lost. With no snapshot added it is **17.4%**, so
+lower is better:
+
+| Filter | Whole shank, CSD | Thin, voltage | Peak-channel trace |
+|---|---|---|---|
+| notch only | 18.6% | 18.1% | 18.3% |
+| 1–20 Hz | 19.2% | 18.3% | 19.4% |
+| 1–100 Hz | 18.4% | 19.0% | 18.6% |
+| 5–50 Hz | 16.7% | 19.4% | 18.6% |
+| **10–40 Hz** | **15.8%** | 19.0% | 17.7% |
+| 5–100 Hz | 18.0% | 19.4% | 19.1% |
+
+The whole-shank CSD at 10–40 Hz is the only clear gain. Its neighbour at
+5–50 Hz agrees, and it also has the best AUC (0.928 against 0.925) and the
+fewest flags at 30% lost (6.1% against 7.7%). Everything else flags more
+than adding nothing.
+
+The gain held up on Tooth Fairy's larger dataset, at every tolerance. The
+two runs had the same candidates and the same folds:
+
+| Real spikes allowed to be called Garbage | Tooth Fairy: cleaned, flagged | **with 10–40 Hz CSD: cleaned, flagged** |
+|---|---|---|
+| 5% | 56.2%, 33.0% | **59.0%, 30.7%** |
+| 10% | 77.5%, 25.6% | **78.0%, 23.5%** |
+| 20% | 93.3%, 14.7% | **93.5%, 12.7%** |
+| 30% | 97.9%, 5.5% | **98.0%, 4.7%** |
+
+AUC rose from 0.933 to 0.936.
+
+Two sets a person decided that neither model trained on, swept at 20%:
+- **PTEN m3 s7 (rejected whole):** Tooth Fairy called 68 Garbage and 12
+  Flag, and agreed with all 68 of its calls.
+- **PTEN_DKO m56 s8 (70 DS, 19 Garbage by the person):** all 19 garbage
+  were called Garbage, but so were 21 of the 70 spikes (30%). That is
+  more than the 20% the dialog promises on average, so a lower setting
+  suits this kind of recording.
+
+### Checked
+
+- `tools/check_aibeta.py`: 100 ok. New checks:
+  - six filters and three snapshots, listed with the pictures, off by
+    default
+  - each snapshot scaled to 1, with the notch-only offset removed and
+    5–100 Hz the band already held
+  - nothing taken unless asked for, and only the asked-for filters run
+- A real sweep with the new Tooth Fairy, PTEN_DKO m56 s8: done in 22 s.
+  That sweep found a bug the checks had missed: the alignment step could
+  not see which filters were wanted. It is fixed.
+
+---
+
+## 2026.10.07.4 - Tooth Fairy
+
+### Added
+
+- **Tooth Fairy**, a fifth model in the Avery Sweep and the one the dialog
+  now starts on. It takes everything that has worked best so far:
+  - Garbage Dystrophy+'s inputs and its blend of five sets of boosted
+    trees
+  - even channels only
+  - the tolerance for lost spikes, 20% to start with
+
+  It is retrained on everything curated in Jarvis as of today: 46
+  recordings from 26 mice, 14,205 candidates and 2,155 garbage. Garbage
+  Dystrophy+ had 12,406 candidates and 1,424 garbage.
+
+  Run `ai20261007-150147-2601`. AI Beta offers **Make this Tooth Fairy**
+  on any run with Avery+'s bars.
+- **The sweep is faster on a linear array:** PTEN_DKO m56 s8 took 27 s
+  with Tooth Fairy against 66 s with Garbage Dystrophy+, with the first
+  candidate on screen at 2.8 s. A recording whose probe is laid out in
+  columns, such as the H10-D, has no line of even channels. It is read
+  the way its probe is laid out, and the summary says so.
+
+### Changed
+
+- **Garbage a later version deleted is learned from.** Eleven sets go
+  from DS + Garbage to DS alone before Braces, because the garbage is
+  deleted to make the set Braces aligns. The DS-only version was the
+  answer, so 458 decided garbage were never used. A candidate an earlier
+  settled version called Garbage, and that the answer no longer holds at
+  all, now counts as garbage. A candidate the answer still holds keeps
+  the answer's call.
+- **Avery's own calls are not learned from.** Three sets were finished by
+  a person after an Avery sweep. A candidate that was undecided before the
+  sweep, that Avery called DS or Garbage, and that still holds that call
+  may never have been looked at. Learning from it would be the model
+  learning from itself, so those 75 candidates are left out. The following
+  are all kept:
+  - everything a person had decided before the sweep
+  - everything Avery flagged
+  - every call a person changed
+
+  An Avery version is now recognised by its author as well as its tag,
+  because the curation set's own version from an accept carries only the
+  author.
+
+### Measured
+
+These numbers are scored on the same 32 recordings (10,069 candidates,
+1,042 garbage) whose labels are identical in both datasets. Each model
+used its own bars, as a sweep would, and was scored only on mice it never
+saw:
+
+| | AUC | Garbage cleaned at 20% lost | Flagged at 20% | Flagged at 30% | Garbage let into DS |
+|---|---|---|---|---|---|
+| Garbage Dystrophy+, even channels | 0.928 | 87.5% | 15.7% | 7.4% | 1.3% |
+| **Tooth Fairy** | **0.935** | **91.9%** | **12.4%** | **4.9%** | 1.6% |
+
+Over all of its own data, Tooth Fairy's held-out numbers are:
+
+| Real spikes allowed to be called Garbage | Garbage cleaned | Left for a person | Flagged |
+|---|---|---|---|
+| 5% | 56% | 43% | 33% |
+| 20% | 93% | 6% | 15% |
+| 30% | 98% | 1% | 5.5% |
+
+Garbage let into DS is 1.0% at every setting.
+
+A real sweep agreed with the person on one set it never trained on.
+PTEN m3 s7 is an H10-D recording that a person rejected whole (80
+garbage). Tooth Fairy called it 72 Garbage, 8 Flag and no DS.
+
+### Checked
+
+- `tools/check_aibeta.py`: 98 ok. New checks:
+  - Avery's unchanged calls are left out whether the version was tagged
+    or not, and counted
+  - what a person decided, Avery's flags and changed calls are kept
+  - a set is left out, saying so, when Avery's version is not on this
+    machine
+  - a set Avery never swept is untouched
+  - deleted garbage comes back, while kept candidates keep their call
+  - a probe laid out in columns is read whole
+- `_dev/avery.html`: 44 ok, with four models offered and Tooth Fairy
+  first.
+- `_dev/aibeta.html`: 37 ok.
+
+---
+
+## 2026.10.07.3 - Each sound on its own; Precon2/3's fast transitions; clearer help
+
+From Shahriar's review of tab 6 and the Monolith page. **Restart Jarvis**:
+`monolith.py` and `app.py` changed.
+
+### Added
+
+- **Tab 6: each sound on its own.** For every rat and each of the four
+  sounds, the Precon4 − Precon1 change in the cue window while that sound
+  played. That is the window of its seat, which differs from rat to rat:
+  J3's Noise is its C, J4's its B. Every rat heard all four, so the tests
+  are paired within rat, all eight rats:
+  - each sound's own change;
+  - every pair of sounds (Noise's change less Click's, and so on);
+  - all four at once (repeated-measures ANOVA).
+
+  Each test has its relabelling null: 128 signings of the rats for a pair,
+  and 200 random relabellings of the four sounds within each rat. The tests
+  between sounds are raw only: the same rest comes off every cue window of
+  a rat's day, so it cancels from the difference.
+- **The leads, sound by sound** (the first view). For each lead, every
+  sound's change at the lead's frequency, measure and region pair, a
+  picture of the four, and whether they differ. The group view is still
+  there. Its picture is split in two: the groups beside their numbers, and
+  the difference under its own number. Before, the difference's square sat
+  near zero under the groups and read as an average that was "far off".
+- **The answer first.** Tab 6 opens with whether the physical sound had an
+  effect, worked out from the same rule as its cards. It also gives why,
+  and its limit.
+- **A second `?` in tab 6, in pictures:** the identity sheet drawn, and two
+  made-up outcomes, "the sound mattered" and "it did not".
+- **The fast transitions of a session checked since.** A build now records
+  which rat-days had their fast transitions (13–55 Hz, −1/+2 s) refused as
+  not banked. The Drift card offers to add exactly those. The run route
+  re-reads their exclusions from the bank first: the transitions are now
+  measured, and the state windows come back as they were.
+- **Node power, explained.** A ▸ under the legend in tabs 2 and 3: what it
+  is, how it is worked out (Welch, band mean, log10, then as every edge),
+  and how to read the number (+0.30 is twice the power).
+- **Granger, explained.** In the `?` help: A→B against B→A, which region
+  is A, and what an arrow on an edge means.
+- `monolith.html#tab=<id>` opens a tab, and the tour waits.
+
+### Changed
+
+- **Tab 3** keeps its controls and points of interest right of the
+  circuits, in their own columns, as tab 2 does.
+- **How Minus FP works** starts with an example: one rat's numbers, worked
+  both ways in a small table. Then four short steps.
+
+### Precon2 and Precon3: what had not run
+
+- **Not run:** the fast transitions of every Precon2 and Precon3 recording,
+  all 8 rats, 248 presentations. Their bank entries had never been
+  clipping-checked at −1/+2 s, so the run refused them.
+- **Lost to the data, not to the run:** every other refusal ("no region
+  has a signal in this window", channels invalidated). A rerun would not
+  change them.
+- **Done here:**
+  - Spark's transition check and a re-bank of the 16 recordings, through
+    Jarvis, as `tools/run_precon_drift.py` did for Precon1 and Precon4.
+    Circuit now reads all 16 as measured.
+  - The state-window exclusions came back identical in all 992 places, so
+    the Precon2 and Precon3 results already built stand.
+- **Still to do:**
+  1. Restart Jarvis.
+  2. Fetch the pair run (b744e079cf2f, finished on the cluster).
+  3. On the Drift card, press "Add the fast transitions (13–55 Hz, −1/+2 s)
+     of 16 recordings".
+
+### On the real build (512b673a2f9d)
+
+- **Each sound on its own, Raw:**
+
+  | Comparison | p < .05 against chance | Rank among relabellings |
+  |---|---|---|
+  | All four at once | 1,843 against 1,817 | 16 of 201: at chance |
+  | Noise − High tone | 2,547 against 1,817 | 3 of 128: above chance |
+  | Noise − Low tone | 2,400 against 1,817 | 5 of 128: above chance |
+  | The other four pairs | | 10 to 43 of 128: at chance |
+
+  Noise's own change also passes most often (2,705), so Noise stands a
+  little apart from the two tones.
+- **Tab 6's answer is "possibly, in 2 of 14 comparisons by sound"**, both
+  of them Noise against a tone. Chance alone puts about 0.7 of 14 in the
+  top 5%, and every p is uncorrected.
+- **The leads:** for 6 of the Monolith's 50 Raw leads the four sounds
+  differ at p < .05; chance gives 2.5. For Minus FP it is 1, and for Cue 2
+  − Cue 1 it is 1.
+
+### Checked
+
+- `web/_dev/monolith.html`: 439. New checks:
+  - each sound's card, its rows, ranks, verdict and histogram;
+  - the leads by sound, their picture, and the count against chance;
+  - the split group picture;
+  - the four-sounds circuit;
+  - the answer both ways;
+  - the pictures `?` and its figure words;
+  - node power's ▸ in both tabs, staying open across a redraw;
+  - tab 3's columns (measured);
+  - Minus FP's example table.
+- `web/_dev/driftmono.html`: 77. The fast-transition offer and what it
+  posts.
+- `tools/check_monolith.py` (section 6, 24 checks):
+  - a change planted only while Noise plays, in every rat, is found by
+    Noise's own change, by every pair with Noise in it (with its sign), and
+    by the four together, and by nothing else;
+  - the nulls are complete, and a rat's sound is its seat's window;
+  - the fast addition plans one task per day, every fast band, and nothing
+    else.
+
+## 2026.10.07.2 - AI Beta: the waveform as a picture at the aligned peak
+
+### Added
+
+- **Waveform images**, six new AI Beta inputs in the second read, all off
+  by default. Each is the 5–100 Hz voltage as a picture, taken at the peak
+  Braces' rule aligned the candidate to:
+  - 8 contacts either side of the candidate's own peak channel (400 µm,
+    the same depth on even channels only)
+  - ±3, ±5, ±10, ±15, ±25 or ±50 ms either side of the aligned peak
+  - 17 depths by 13 times whatever the window, scaled so the peak is 1
+  - in a window wider than 13 samples, each column is the mean of its
+    span rather than one point of it
+
+  A read cached before these inputs existed is read again only by a run
+  that asks for them. Every other run still uses it as it is.
+
+### Measured
+
+Garbage Dystrophy+'s blend on Avery+'s inputs, even channels, the same 45
+recordings (12,406 candidates, 1,424 garbage). Each picture was added on
+its own, and every score comes from mice the model never saw:
+
+| Added | AUC | Flagged at 20% lost | Garbage cleaned at 20% | Flagged at 30% lost |
+|---|---|---|---|---|
+| nothing | 0.925 | **17.4%** | 89.2% | **7.7%** |
+| ±3 ms | 0.926 | 18.8% | 89.2% | 9.1% |
+| ±5 ms | 0.926 | 18.0% | 89.5% | 8.3% |
+| ±10 ms | 0.926 | 18.1% | 89.3% | 8.4% |
+| ±15 ms | 0.926 | 19.8% | 88.9% | 10.1% |
+| ±25 ms | **0.928** | 18.6% | 89.6% | 8.9% |
+| ±50 ms | 0.927 | 18.3% | **90.2%** | 8.6% |
+
+**No window leaves less garbage to sift through.** The wide windows rank
+slightly better overall, but every picture flags 0.6 to 2.4 points more
+than the model without one. The flagged share is set by the few most
+spike-like pieces of garbage, so it moves by about that much on its own.
+Garbage Dystrophy+ stays as it is.
+
+### Checked
+
+- `tools/check_aibeta.py`: 81 ok. New checks:
+  - the picture's size, centring, narrow and wide windows, and averaged
+    columns
+  - the same depth on every other contact
+  - edge rows
+  - a read without the pictures, or with an older kind of them, is read
+    again only for a run that wants them
+- `_dev/aibeta.html`: 37 ok.
+
+---
+
+## 2026.10.07.1 - The Monolith's tab 6: physical cue against balanced cue
+
+From Shahriar: show whether the sounds themselves (Click, Noise, High tone,
+Low tone) left a mark on the Monolith, which compares cues by seat (A, B, C,
+D). The hope is that they did not. **Restart Jarvis**: the new page reads
+files only the new code serves.
+
+How it can be tested: the identity sheet has every rat open both its pairs
+with the same kind of sound. J3, J6, J7 and J8 open with Click or Noise
+("noise-first"); J4, J9, J10 and J11 open with a tone ("tone-first"). Every
+ordered pair of sounds is heard by exactly two rats. So each rat's own
+Precon4 − Precon1 change can be sorted by sound instead of by seat, and
+tested the same way.
+
+### Added
+
+- **Tab 6 · Physical vs balanced cue**, verdict first. It opens straight
+  from a link with `monolith.html#tab=phys`.
+  - **The seats:** each rat's group and its four sounds.
+  - **Across the whole Monolith,** one row a comparison, by seat (the
+    Monolith, Cue 2 − Cue 1, AB against CD) and by sound:
+    - tone-first rats against noise-first rats;
+    - the pair Click opens against the pair Noise opens, in the
+      noise-first rats;
+    - the high tone's pair against the low tone's, in the tone-first rats;
+    - Cue 2 − Cue 1 turned round to read tone − noise in all eight.
+
+    Each row gives what was tested, what passed p < .05, chance, and the
+    ratio. It also gives where that sorting ranks among every other
+    sorting of the same rats: 35 splits into two fours, 8 signings of four
+    rats, or 128 signings of eight. The entries move together, so that
+    rank is the fair test, not the 5%. A histogram of each set of
+    relabellings is drawn with the sound's sorting on it.
+  - **The leads, in each group of four:** the Monolith's 50 (Raw and
+    Minus FP) and Cue 2 − Cue 1's 50. Each lead gives:
+    - each group's own change ± SE;
+    - the difference between the groups (Welch's t);
+    - whether both groups go the same way;
+    - the equivalence test at ±½ the lead's own change (90% interval),
+      and beside it the narrowest margin the lead does reach.
+
+    A forest picture draws all of it. Click a lead to open it on the
+    Monolith, on its layer.
+  - **Any comparison as a circuit,** for any window, frequency, measure and
+    layer.
+  - A build without it offers "Compare them now" (a few minutes, here,
+    from the arrays already fetched). New builds make it themselves.
+  - Help (`?`) on every card, and a Guide section.
+- **The review site** copies the tab:
+  - `physical.json` and the raw circuits go in, ahead of Progress's files;
+  - the Minus FP circuits go in while room lasts.
+
+### On the real build (512b673a2f9d, histology v2)
+
+- **Every comparison by sound is an ordinary relabelling of its rats.**
+
+  | Sorted by sound | Raw: p < .05 against chance | Rank among the relabellings |
+  |---|---|---|
+  | Tone-first against noise-first | 2,221 against 2,891 | 5 of 35 |
+  | Click-first pair against Noise-first pair | 5,182 against 4,336 | 4 of 8 (by seat: 7) |
+  | High-first pair against Low-first pair | 6,708 against 6,071 | 2 of 8 (by seat: 6) |
+  | Cue 2 − Cue 1 as tone − noise | 2,149 against 1,817 | 24 of 128 (as it stands: 61) |
+
+  For comparison, the Monolith by seat passes 15,017 against 12,720.
+- **The Monolith's 50 raw leads:**
+  - All 50 go the same way in both groups. The leads were picked for most
+    rats going the same way, so this mostly rules out a lead carried by one
+    group alone.
+  - 3 differ between the groups at p < .05. Chance would give 2.5.
+  - 30 of the 50 can be split four against four; the other 20 lack a rat
+    in one group. None of the 30 is equivalent within ±½. The median is
+    equivalent within ±0.90× its own change, and 18 of the 30 within ±1×.
+  - Minus FP: 2 of 30 within ±½, a median of ±0.71×.
+- **Four rats a group cannot show "the same within ±½".** Most leads reach
+  about ±0.7 to ±0.9 of their own change.
+
+### Checked
+
+- `web/_dev/monolith.html`: 421. New checks:
+  - the seats and the verdict, from `physical.json`;
+  - the rule both ways (a sorting that beats every relabelling is named);
+  - the histograms hold every relabelling;
+  - the leads' counts, the equivalence picture (measured) and the
+    narrowest margins;
+  - a lead opens on the Monolith on its layer, and a Cue 2 − Cue 1 lead on
+    its own tab;
+  - the circuit against the array;
+  - the "Compare them now" button;
+  - 390 px.
+- `tools/check_monolith.py`: 225. Section 6 on eight made-up rats with
+  three planted changes. Each is found by its own comparison and by no
+  other. The nulls are complete.
+- `tools/check_review.py`: 52. The copy holds section 6, and the tab draws
+  from it.
+- Supabase: the review site's questions table is now `22_review_questions.sql`.
+  21 was taken by `21_shard_files.sql`.
+
+## 2026.10.06.13 - The deep dive: the events whose identity does not sit still
+
+Phase 8 of the plan from the meeting with Shahriar (steps 7–10). It is the
+last phase before the Storm. **Restart Jarvis.**
+
+### Added
+
+- **The deep dive**, a card under the identity switches in Pooled, at both
+  levels. It gathers every event that switched identity at that level:
+  - in a pool, single against pool;
+  - in a pool of pools, its own pool (v0) against the pool of pools.
+
+  With a border applied, it also gathers every event the border leaves
+  ambiguous. The card gives the recipe for steps 7–10 until it is opened.
+- **Browse.**
+  - The list shows all events, the switched ones, or the ambiguous ones.
+  - Each row has its session, time, three numbers, its single / pool /
+    pool-of-pools calls, its border class and why it is listed.
+  - ◀ ▶ and a pressed row pick that event's dot. Its traces open as for
+    any dot, and Xplorefinder follows.
+  - "Average these" averages the listed events.
+- **Where they come from.** A table by mouse, mouse type, group, subgroup
+  or condition. Each row gives events, recordings, switched (and each
+  way), and ambiguous, with each rate taken over that row's own events.
+  Group, subgroup and condition come from the session workbook, then the
+  mouse book where the workbook is silent; otherwise "not recorded".
+- **Export** every event as a CSV: one row each, with its session facts,
+  numbers, three calls, border class and why. It is marked UTF-8 so a
+  spreadsheet reads it.
+- **Bank.** One Event Bank entry per recording, named "Switching and
+  ambiguous events (Root Canal)".
+  - Type "Ambiguous DS / IED", never DS or IED, so nothing that reads a
+    recording's DS set or its IED candidates picks it up.
+  - Each stamp keeps the end, channel and amplitude the recording's own
+    set has at that time.
+  - Why each event is listed (its calls, border class and numbers) is kept
+    in the entry's parameters.
+  - Banking again from the same source adds a version to the same entries.
+    A recording whose entry is not on this machine is named and left out.
+
+### Steps 7–10 on the real PTEN reads (throwaway stores, a copy of the bank)
+
+- **The pools.** All CTL (10 sessions) was pooled with every event DS, and
+  the PTEN IED+ mice (5 sessions) at k = 2.
+- **The pool of pools:** 2,634 events. 451 (17.1%) switched against their
+  own pool, all of them DS → IED.
+- **Are the clusters different? Maybe forced.**
+  - SigClust p = 0.24.
+  - Dip p = 1.0: one hump along the DS→IED line.
+  - Stability: adjusted Rand 0.93.
+  - GMM: ΔBIC +810, but its components match the DS / IED call at only
+    0.09.
+- **The border:** 1323 µV, 15.7 dB and 25.4 ms (Youden 0.85).
+  - **None:** 15 solid DS and 49 solid IED.
+  - **1%:** 171 solid DS (amp < 1129 µV, HF < 13.3 dB, hw > 28.9 ms) and
+    284 solid IED (amp ≥ 1516 µV, HF ≥ 18.1 dB, hw ≤ 21.9 ms), 0.95%
+    switched.
+  - **5%:** 370 solid DS and 468 solid IED, 3.8% switched.
+- **The deep dive at 1%:** 2,204 of the 2,634 events, with 2,179
+  ambiguous.
+
+  | Grouping | Value | Switched | Ambiguous |
+  |---|---|---|---|
+  | Subgroup | CTL | 20.8% | 90.4% |
+  | Subgroup | IED+ | 12.0% | 72.0% |
+  | Condition | CNO | 19.7% | — |
+  | Condition | Baseline | 9.5% | — |
+  | Mouse | m60 | 33.9% | — |
+  | Mouse | m2 | 33.6% | — |
+  | Mouse | m22 | 0.7% | — |
+
+- **Banking** made 15 entries and 2,204 events in the copy.
+- **Applied to IED+ alone**, the border gives 48 solid DS, 259 solid IED
+  and 790 ambiguous, and only 1 event lands in the other's solid class.
+- **Wall clock:**
+
+  | Step | Time |
+  |---|---|
+  | Pool save | 0.3–1.8 s |
+  | Pool of pools | 0.5 s |
+  | The tests | 4.5 s |
+  | Border | 1.0 s |
+  | Deep dive | 1.0 s |
+  | Banking 15 entries | 8.7 s |
+
+### Checked
+
+- `tools/check_rootcanal.py`: 446.
+  - **A pool relabelled so its events switch:**
+    - every switched event is listed, as many as the switch table counts;
+    - each row is its dot (same time, same calls) and says why.
+  - **With a border:**
+    - the ambiguous events join the list;
+    - the five summaries each add up to the whole;
+    - the CSV has a row per event.
+  - **Banked into the throwaway bank:**
+    - one entry per recording, typed "other", with why kept per event;
+    - nothing else in the bank changed;
+    - banking again is a new version of the same entry.
+  - **Refusals:** a recording whose entry is not here is named and left
+    out; nothing to bank is said in a sentence.
+  - **At the pool-of-pools level:** exactly the events that switched
+    between v0 and the pool of pools, not those whose single and pool
+    differed. The fixture is relabelled so both kinds exist.
+- `rootcanalpool.html` 234 (the dive intercepted).
+  - The offer and the recipe, what is asked, the count line, the filters
+    and a row's cells.
+  - Stepping, pressing a row, and going back, each picking its dot.
+  - The CSV exactly as the server sent it, with a byte-order mark.
+  - The five groupings, and the condition table.
+  - The bank dialog, what it sends, and the line saying what was banked.
+- `rootcanal.html` 323, `dspca.html` 304, `syncmarks.html` 20,
+  `braces.html` 21, `aibeta.html` 37, `check_shard_files` 20.
+- **Bite tests.** Each of these turned the checks red:
+  - the pool-of-pools switch counted single against pool (it survived
+    the first check, which is why the fixture is now relabelled);
+  - the summary not counting ambiguous events;
+  - banking as type DS;
+  - re-banking making a new entry;
+  - the list not picking the pressed event's dot.
+- The event bank matches its backup from before the runs.
+
+## 2026.10.06.12 - Cue 2 − Cue 1: its own filter and top 50, against the Monolith's
+
+From Shahriar, on the new tab: changing a parameter for Cue 2 − Cue 1 meant
+going to 2 · The Monolith and back. Reload the Monolith page; nothing needs
+restarting.
+
+### Changed
+
+- **Controls and ranking under the circuits.** The Cue 2 − Cue 1 tab now
+  puts its controls and its points of interest straight under its three
+  circuits, side by side. They used to sit below every other card on the
+  page.
+  - Frequency, measure, cue pairs and the slider all change it in place.
+- **Its own filter.** It is kept apart from the Monolith's, so filtering
+  one tab leaves the other as it was.
+  - There is no window to choose.
+  - The direction reads "Cue 2 − Cue 1 grew / shrank by Precon4".
+- **Its own top 50**, ranked over Cue 2 − Cue 1 alone by the Monolith's
+  rule.
+  - It no longer offers ranking within each window.
+- **How it compares with 2 · The Monolith:**
+  - A line at the top says how many of its top 50 are also among the
+    Monolith's top 50. A match is the same region pair and measure, within
+    2 Hz, in any window.
+  - Each lead also shows the Monolith's own Precon4 − Precon1 change in Cue
+    1 and in Cue 2 for the same entry, with p (uncorrected). The contrast is
+    their difference, so it can stand out where neither does.
+  - Each lead also gives its rank in the Monolith's list, or says it is not
+    in its top 50.
+- **Follow a line across the sessions** sits above the circuit, in both
+  tabs.
+- **"(not measured)" goes under a region's name.** Beside it, a name on the
+  left of the circuit ran off the picture.
+
+### Checked
+
+- `web/_dev/monolith.html` 391. New checks:
+  - the controls and ranking sit under the circuits (measured);
+  - its own titles and filter;
+  - the comparison, from the arrays;
+  - both tabs' filters stay apart;
+  - everything goes back to its columns on the Monolith tab;
+  - the panels sit above the circuit (measured).
+
+## 2026.10.06.11 - A DS / IED border in three numbers, with grace
+
+Phase 7 of the plan from the meeting with Shahriar (steps 8–9). **Restart
+Jarvis.**
+
+### Added
+
+- **Draw a border from these identities**, in Pooled at both levels (in the
+  identity-switch card). It draws three cut-offs, one each in µV, dB and
+  ms, against each event's own identity:
+  - in a pool of pools: what its own pool called it (v0);
+  - in a pool: what its single called it.
+
+  The rule:
+  - past all three cut-offs is **solid IED**;
+  - short of all three is **solid DS**;
+  - anything else is **ambiguous**.
+
+  Which way "past" points is read from the data. IEDs are larger, louder
+  in the HF band and *narrower*, so the half-width cut-off is passed by
+  going under it.
+- **Grace** is the identity-switch rate allowed: how many events may land
+  in the other identity's solid class.
+  - Each cut-off widens into a band, the same number of standard
+    deviations on every axis, until the rate is at most the grace. Events
+    in the band are ambiguous.
+  - The preview shows none, 1%, 5% and any grace you add. Each row has
+    solid DS, solid IED, ambiguous, the switch rate and both edges in
+    words.
+  - You pick the grace it applies at; every grace previewed is saved with
+    it.
+- **Saved** as an artifact (`rootcanal_border`), with a required nickname.
+  - It keeps the three numbers, every grace's band and counts, how it was
+    measured, and what it was drawn from.
+  - A border drawn from a saved pool names that pool and cites it.
+  - It syncs like any artifact.
+- **Applied** anywhere: Single, Pooled, or a pool of pools.
+  - The Margins card is now "Margins and borders": pick a border and a
+    grace, then Apply.
+  - Every event is classified by its three numbers alone, with no k-means.
+    The k-means clusters stay underneath, for what is counted against
+    them.
+  - The dots are coloured solid DS / solid IED / ambiguous. Ambiguous is
+    grey and filled; hollow still means not measured.
+  - The card gives the counts, the rule in a sentence, and how many events
+    with an identity land in the other's solid class here.
+  - A border measured another way is refused, saying how, and taken off.
+    So is a grace it was not saved with.
+  - A pool saved while classified by a border keeps each event's class and
+    cites the border, so the border cannot be deleted from under it.
+- How the strict border is chosen: the three cut-offs, from 40 candidates
+  per axis, that maximise Youden's index for solid IED plus Youden's index
+  for solid DS.
+  - Youden's index is the share of each identity put in its own solid
+    class, less the share of the other identity put there.
+  - The first objective, the share put right alone, was won on the real
+    pool by a border that called nearly everything solid IED: 98% of IED
+    events solid IED, no DS solid at all, and half of the DS events called
+    solid IED. Youden's index cannot be won that way.
+
+### Measured on real data
+
+The real pool on this desktop has 19 singles and 3,087 events, drawn
+against each event's single's call. Its border is **1193 µV, 9.6 dB and
+30.8 ms**:
+
+| Grace | Solid DS | Solid IED | Ambiguous | Switched | Band |
+|---|---|---|---|---|---|
+| strict | 116 | 1,089 | 1,882 | 6.5% | — |
+| none | 0 | 212 | 2,875 | 0 | ±1.04 SD |
+| 1% | 16 | 526 | 2,545 | 1.0% | ±0.52 SD |
+| 5% | 84 | 967 | 2,036 | 4.7% | ±0.08 SD |
+
+Solid DS is small because "short of all three" asks a DS event to be small,
+quiet *and* wide, and many are not wide. That is the rule doing what was
+decided. The border meant for step 9 is the one drawn from the pool of
+pools (the controls against the IED mice), which Phase 8's run will draw.
+
+### Checked
+
+- `tools/check_rootcanal.py`: 433.
+  - **The rule, by hand:**
+    - past all three, short of all three, a mix, a missing axis, and no
+      numbers;
+    - the half-width read as narrower for IED.
+  - **On overlapping clouds:**
+    - the strict border falls between them;
+    - both solid classes are populated;
+    - the strict border alone switches some, so a band is needed;
+    - at each grace the rate is within it, and no grace means no switch;
+    - less grace means more ambiguous;
+    - every event is counted once;
+    - the band's edges sit either side of the border;
+    - applied from its saved numbers, it classifies as drawn.
+  - **Refusals:** a grace it was not saved with; too few of one identity;
+    drawing from a single recording.
+  - **Through the routes:**
+    - preview with a custom grace, then save (a nickname required);
+    - the borders list;
+    - applied to the pool it came from, it gives the preview's counts at
+      the grace it was saved for, and no switch at no grace;
+    - applied in Single;
+    - refused under another filter, starting "The border";
+    - a pool saved with it cites it, so it cannot be deleted;
+    - drawn from a saved pool, it names and cites that pool;
+    - drawn from a pool of pools against v0.
+  - **Real pool:** both solid classes are populated.
+- `rootcanalpool.html` 219 (the border runs intercepted).
+  - The offer in the switch card, and what the preview asks.
+  - Each grace's row and edges, 5% picked first, the strict line, adding
+    2%, picking a grace by its row, and the suggested nickname.
+  - What Save sends, and the pool classified at once.
+  - The legend, "border" in the colour list, three colours on the
+    picture, and the card's summary, counts and rule.
+  - Clearing it; a refusal shown in the card and taken off.
+- `rootcanal.html` 323.
+  - "Margins and borders · none applied" on one folded line.
+  - A refusal shown and taken off.
+  - A border applied: the request, "by border", the legend's ambiguous,
+    three colours and the card's counts.
+  - Taken off again.
+- `dspca.html` 304, `syncmarks.html` 20, `braces.html` 21, `aibeta.html`
+  37.
+- **Bite tests.** Each of these turned the checks red:
+  - the grace search ignored (this needed the overlapping clouds: on
+    clean ones the strict border switches nothing, so it survived);
+  - the old share-only objective (only the real pool catches it);
+  - the measurement check off;
+  - the saved grace ignored;
+  - the dialog saving at 5% whatever was picked;
+  - Pooled not taking a refused border off.
+- **The event bank.** It changed during these runs, from your own work and
+  not from this:
+  - Rain Younger's Incisor import of PTEN m3 s2 (16:41);
+  - Avery's sweep versions of m1 s2 (16:50, here) and m3 s2 and m8 s2
+    (BarryLab, 15:30–15:47);
+  - Rain's m5 s2 v4 (BarryLab, 15:23).
+
+  The checks' own before/after test of the bank passed.
+
+## 2026.10.06.10 - Cue 2 − Cue 1 gets its own tab; Progress moves onto the Monolith's circuit
+
+From Shahriar's review of 2026.10.06.7, checked instruction by instruction
+against the meeting notes and the 36 answers. **Restart Jarvis.** Then, in
+Drift → Monolith, Check the VACC and Fetch: the whole-pair run is waiting
+there.
+
+### Added
+
+- **A tab of its own: 3 · Cue 2 − Cue 1.** It holds the agreed comparison:
+  the second cue against the first within each presentation.
+  - Three circuits in a row:
+    - within Precon1;
+    - within Precon4;
+    - the change from Precon1 to Precon4, which is the one that is tested
+      (p uncorrected).
+  - The two within circuits are descriptive, from the session files, on
+    one shared scale. Precon2 and Precon3 sit underneath them.
+  - The cue pairs read "A+C vs B+D (both pairs)", "AB: B − A" and
+    "CD: D − C".
+  - It has its own counts against chance and its own points of interest.
+  - Clicking any of its edges opens that pair down to rats, presentations
+    and signals.
+  - It no longer appears in the Monolith tab's list of windows, which
+    points to the new tab instead.
+  - It has no layer to choose: it is raw only, and the tab says why.
+- **Monolith Progress is a button on the Monolith's circuit** ("Precon4 −
+  Precon1 | Monolith Progress"). Tab 5 is gone.
+  - Its circuits follow the Monolith's own controls on the right.
+  - The panels sit in the same tab, over the circuit they are dragged from.
+  - An edge from either circuit drags onto the panels.
+- **Making Progress's files from the page.** A build without session files
+  says so where the circuits would be and offers "Make them now". That
+  runs a new route here, `POST /api/arc/monolith/sessions`.
+  - It no longer points at "Rebuild under histology v2", which is gone once
+    pressed.
+- **Each presentation is named seat first**, e.g. "AB · A → B (Click → Low
+  tone)", in the ghost, the Progress drill-down and the signals header.
+  The sound is kept in brackets for checking.
+- **What was kept, while a session is not built yet.** A session that is
+  in what goes but not built yet is shown as such ("run and fetch") in the
+  words, the maps and the table, instead of being left out.
+  - The whole pair says "not measured yet" until its run is fetched.
+
+### Fixed
+
+- **The Check the VACC grid** put every chip under Precon1 and had no
+  column for Precon2 or Precon3.
+  - The cause: each cell was itself a flex box, which takes it out of the
+    table.
+  - It now has a column for every session in what goes, in order.
+- **The Check the VACC card stood still after a run was submitted.** It
+  only polled once a poll said "active", and a fresh run has no poll yet.
+  - It now asks at once, then every two minutes until the run is finished.
+  - The poll names which run it is about. A poll from the run before is no
+    longer shown as the new one's.
+- **Additions ran in Temp**, where the very first run was, although
+  Scratch was chosen. They now go where the upload went.
+- **Traces are read from wherever the last check found the recording
+  whole.** They used to come from the run's place, and Precon2/3 live only
+  on Scratch.
+
+### Changed
+
+- **Travis's site has no live link to the VACC.** The VACC's login nodes
+  ran a command the site's key asked for, whatever its authorized_keys
+  line said: their own forced command overrides the key's.
+  - The bridge is removed: `review/vacc` and `api/remote.js`.
+  - Instead, more is copied in when the site is built: the first 25 leads
+    of every comparison and layer, and of the contrast, down to their
+    presentations, plus traces for 10 of them.
+  - Anything else says it opens in Jarvis.
+
+### Checked
+
+- New or extended:
+  - `tools/check_monolith.py` 207:
+    - the sessions route;
+    - where additions run;
+    - traces read from where the check found the recording;
+    - seat names;
+    - sessions not built in the damage report.
+  - `tools/check_ratidentity.py` 7.
+  - `tools/check_review.py` 51.
+  - `web/_dev/monolith.html` 380, with the new tab and Progress on the
+    circuit.
+  - `web/_dev/driftmono.html` 75: four session columns, each chip measured
+    inside its own; a fresh run asked about at once.
+- Unchanged and passing: drift, driftprecon, arcmatrix, arcover, arctrans,
+  circuit, vacccircuit, monolithrank, tour and tournext.
+- Still failing, as before: `arc.html` (33 of 34), `cursearch.html` and
+  `devarchive.html`.
+
+## 2026.10.06.9 - Are these clusters statistically different?
+
+Phase 6 of the plan from the meeting with Shahriar. **Restart Jarvis.**
+
+k-means always finds two clusters when it is asked for two. So the question
+is not whether the two clusters differ: k-means makes them differ, and a
+t-test or MANOVA between them would say "different" of any cloud at all.
+None is offered, and the dialog says why. Each test here asks whether **one**
+cloud would have done as well.
+
+### Added
+
+- **Test the split**: a button in Single (beside the cluster chips), in
+  Pooled and in a pool of pools (beside the GMM). It runs at k = 2 only,
+  since the question is one group or two. Pooled says so at any other k;
+  Single, short of room, hides the button.
+- **Four tests, all offered.** SigClust is marked as recommended. Each
+  test's hover says what it asks, its pro and its con.
+  - **SigClust** (recommended): is the 2-means split better than splitting
+    one Gaussian cloud of the same covariance? Its null is simulated.
+    - Pro: it answers forced-or-genuine directly, in all three dimensions.
+    - Con: its null is Gaussian, so one skewed cloud can beat it too.
+  - **Dip test** (Hartigan): along the line between the two centres, one
+    hump or two? This is a port of R's `diptest`, and its p-value is
+    simulated against the uniform.
+    - Pro: it is shape-free.
+    - Con: it looks in one dimension only.
+  - **Stability**: resample the events, re-cluster, and check whether each
+    event keeps its cluster (adjusted Rand).
+    - Pro: it shows how much of the split is the data and how much is the
+      draw.
+    - Con: a forced split can still be stable.
+  - **GMM ΔBIC + agreement**: Pooled's existing test, read together with
+    its agreement. In Pooled it is the pool's own GMM, not a second fit.
+- **The answer.**
+  - **Verdict:** the recommended test gives it, either "genuine split" or
+    "maybe forced".
+  - **Table:** each test's own answer and how it reads, and how many tests
+    read the split as genuine.
+  - **Size:** a set larger than 2,000 complete events is drawn down to
+    2,000 (seeded, so the same draw each time), and the answer says so.
+  - **Time:** 200 null draws and 50 resamples, about 1.5 to 3 s.
+- **Kept with the picture, by the server.**
+  - The server keeps each answer under the picture's own numbers and
+    clusters. A refit of the same picture brings the answer back; a changed
+    picture does not carry it.
+  - A version saved of a tested picture (single, pool or pool of pools)
+    carries the answer, and its hover says the verdict. An answer sent by
+    a browser is never saved.
+  - A single whose read is elsewhere is tested on its saved numbers.
+
+### Measured on real data
+
+The real pool on this desktop (19 singles, 3,087 events, 12 mice) reads as
+**maybe forced**:
+
+| Test | Result | Reading |
+|---|---|---|
+| SigClust | p = 0.35 | forced |
+| Dip | p = 0.99 | one hump along the DS→IED line |
+| Stability | adjusted Rand 0.86; 6% of events unstable | |
+| GMM | ΔBIC +958 | its two components match the DS/IED call at only 0.13 |
+
+This is what the plan expected from ΔBIC +881 with ARI 0.07: two Gaussians
+fit the cloud's shape, but there is no gap between DS and IED. It is the
+reason for steps 7–10, the controls pool and the border with grace, which
+come next.
+
+### Checked
+
+- `tools/check_rootcanal.py`: 401.
+  - **The dip, against values R's `diptest` gives:**
+    - evenly spaced points: 1/(2n);
+    - two point masses: 0.25;
+    - points in a straight line return (the first port hung on them).
+  - **Clouds with a known answer:**
+    - one Gaussian: maybe forced, with the dip and the GMM agreeing;
+    - two blobs: genuine on all four tests;
+    - one skewed cloud: maybe forced, though the GMM's ΔBIC favours two;
+    - too few events: each test says why it did not run, and there is no
+      verdict;
+    - more than 2,000 events: drawn down, and the answer says so.
+  - **Through the routes:**
+    - refused at k = 3;
+    - kept with a refit of the same picture and not with a changed one;
+    - saved with a version (single and pool) and in its summary, while a
+      browser's answer is not saved;
+    - a single read elsewhere is tested on its numbers;
+    - the pool's own GMM is used;
+    - the pool-of-pools level.
+- `rootcanal.html`: 316. The button sits on the clusters' row, and none at
+  k = 3. Then:
+  - the four tests with SigClust recommended and pros and cons on hover;
+  - what is sent (Single's picture, the tests ticked);
+  - the verdict, the table and the count;
+  - the answer on the picture and in its hover;
+  - showing it again without asking again, and "Run other tests" keeping
+    what was ticked;
+  - a refusal handled;
+  - a changed picture dropping the answer;
+  - a version's hover saying whether its clusters were tested.
+- **The fold.** On the 455 px card the clusters' row has 116 px free and
+  the counts row 65 px. The first label wrapped the row and put the picked
+  event's bar 2 px below the fold, so the labels are short and the hover
+  says the whole question. The bar now sits at 883 px of a 908 px screen.
+  The harness now prints each row's free room.
+- `rootcanalpool.html` 200 (the pool level and the pool-of-pools level,
+  each asking with its own request), `dspca.html` 304, `syncmarks.html` 20.
+- **Bite tests.** Each of these turned the checks red:
+  - the answer not kept;
+  - a browser's answer saved;
+  - the verdict always "genuine";
+  - SigClust's p-value inverted;
+  - the UI asking every level as Single.
+
+  Leaving partial events in survived, because it changes nothing: a partial
+  event's missing axis is already empty, and those events are dropped
+  anyway.
+- The event bank matches its backup from before the runs.
+
+## 2026.10.06.8 - Pools of pools, and a pool where every event is DS
+
+Phase 5 of the plan from the meeting with Shahriar. **Restart Jarvis.**
+
+### Added
+
+- **Every event is DS**: a pool option ("every event is DS (the
+  controls)"). The pool is one cluster, called DS, and it is saved with the
+  pool, so a pool of pools takes its events in as DS. This is step 7's
+  controls pool.
+- **Pool pools.** Pooled now has two levels: "Pool recordings | Pool
+  pools". At the second level:
+  - **Members:** saved pools, each at a version (the latest unless another
+    is picked). Each says its identity (every event DS, or its k) and
+    carries its sync mark.
+  - **v0:** every event keeps what its own pool called it and named it.
+    The identity switch is counted against that (pool ↓ double →), and,
+    on a line beside it, against its single.
+  - **Numbers:** they come from the pools' saved payloads, so it needs no
+    read anywhere. Averages and dot clicks work where a recording's read
+    is here.
+  - **Refused by name:** a session in two of the pools (it would count
+    twice), and pools measured differently.
+  - **The rest:** it saves and reopens like a pool (kind
+    `rootcanal_dpool`, with nicknames per version), has a shelf of its own,
+    and its clusters can be kept as a margin.
+  - **After a save**, it offers to carry its identity down, both boxes
+    ticked:
+    - the pools: a new version of each, its members re-clustered with the
+      pool of pools' clusters;
+    - the singles: a new version of each recording's single.
+
+    Both are named "from pool of pools ‘X’ vN". A recording whose read is
+    elsewhere and is not a saved single is named and left.
+- Propagation to singles is now one helper, shared by pools and pools of
+  pools.
+
+### Measured on real data (throwaway store)
+
+- **The pools:** 4 control sessions with every event DS (313 events) and 4
+  IED+ sessions at k = 2.
+- **The pool of those two pools:** 1,245 events.
+  - 8.9% switch identity against their pool: 111 of the controls' DS
+    events land in the IED cluster, and no IED goes to DS. This is the
+    material for step 9.
+  - Carried down, the IED+ pool's new version calls all 932 of its events
+    as the pool of pools did, and all 8 singles got their versions.
+
+### Checked
+
+- `tools/check_rootcanal.py` 364.
+  - Every event DS: one cluster, all DS, said in params.
+  - The pool of pools: every event, v0 being the POOL's call (the fixture
+    relabels a cluster so the pool's and single's calls differ), the
+    controls going in as DS, and the switch against the singles too.
+  - Refusals of a shared session and of mixed measurements.
+  - Save, reopen, the shelf, averages and a margin.
+  - Carrying down: both pools versioned and calling as the double did,
+    and singles where their read is here.
+- `rootcanalpool.html` 195: every event DS sent; the second level (pools
+  listed, identity chips, versions, the request, the switch panel's two
+  lines); the offer with both boxes and what it sends; back to recordings.
+- `rootcanal.html` 297, `dspca.html` 304, `braces.html` 21,
+  `aibeta.html` 37, `syncmarks.html` 20, `check_shard_files` 20.
+- Bite-tested. Each of these turned the checks red:
+  - the overlap check off;
+  - v0 taken from the single (this needed the relabelled fixture, which
+    is why it is there);
+  - every event DS ignored;
+  - the second level sending to the pool route.
+- During this run the bank changed under it, from your own work, not
+  this: three Incisor imports on this desktop at 13:33, and three curation
+  versions from BarryLab (12:05–12:54) arriving by sync.
+
+## 2026.10.06.7 - The Monolith: A/B/C/D, the whole pair, Cue 2 − Cue 1, Monolith Progress, and a review site
+
+The next phase from the lab meeting of 2026-10-02, as planned and approved
+on 2026-10-06. **Restart Jarvis.** Then, in Drift → Monolith, in this order:
+Rebuild under histology v2, Add the pair window's rest, Upload (it resumes),
+Check, Run Precon2/3 and the pair window, Fetch.
+
+### Added
+
+- **A, B, C and D come from the lab's identity sheet**
+  (`RAT Identity for multisite 2026 - Sheet1.csv`, via
+  `backend/ratidentity.py`). It is checked cell for cell, and against
+  every rat's recorded pairings: all 8 agree.
+  - The cue-pair splits are now: AB and CD pooled, AB only, CD only.
+  - The food/other and sound/tone splits are gone, and with them every
+    "food".
+  - Nothing is read from the conditioning sessions.
+- **The whole pair: cue 1 onset to cue 2 offset, 20 s.**
+  - Every measure and PAC are taken over it.
+  - A wire is used only if it is clean in both cues.
+  - Minus FP stands it against new 20 s rest epochs.
+  - It comes from one VACC addition together with Precon2 and Precon3: 258
+    tasks, about 8 minutes on the real manifest.
+- **Cue 2 − Cue 1**, within each presentation, then Precon4 against
+  Precon1. It is worked out for AB and CD pooled, AB only (B − A) and CD
+  only (D − C).
+  - Raw only, and the page says why: the rest that Minus FP takes away is
+    the same for both cues, so it cancels.
+- **The physical cue check, under a lifted edge.** A grid of rats by A, B,
+  C and D shows each seat's sound and value. A readout says whether a change
+  follows the seat or the sound. Descriptive only.
+- **What was kept**, extended:
+  - Precon2 and Precon3 as sessions of their own, once built.
+  - The whole pair's own losses.
+  - Presentations kept per A, B, C and D.
+  - What histology v2 changed from v1, rat by rat.
+  - A section on how Minus FP works.
+- **Monolith Progress**, the Monolith's fifth tab.
+  - **Circuits:** every edge in every Precon session, as its value, its
+    change from Precon1, or both.
+    - Show all four sessions, or one at a time. Each turns into the next,
+      and Play runs them in order.
+    - Each circuit shows its 10 or 25 strongest lines, or all of them.
+  - **Panels:** one line across the sessions per panel, stacked.
+    - Add a line by dragging an edge or a node onto them, or build one
+      from any measure, frequency, window, layer and cue pairs.
+    - Each panel has its own units, with the mean ± SE and every rat.
+    - A point opens its rats, then a rat's presentations, then a
+      presentation's traces.
+    - CSV and SVG exports.
+  - "Across the four sessions" has a button into it.
+  - Built from per-session files that every build now writes.
+- **A link to one line:** `monolith.html#go=layer,window,band,measure,pair[,split]`
+  opens the Monolith on that line. A first visit's tour waits instead of
+  starting.
+- **A review site for Travis**, not deployed yet (`review/`,
+  `tools/export_review.py`, `tools/check_review.py`).
+  - **The write-up:**
+    - scope;
+    - A/B/C/D;
+    - the windows;
+    - Minus FP;
+    - histology v2;
+    - what was kept;
+    - the counts against chance and the leads.
+  - **The Monolith itself**, read only, from gzipped copies of its files.
+    Any line among the leads opens down to its rats and presentations.
+  - **A password gate:** an HMAC cookie checked on every request.
+  - **An open-questions list in the lab's Supabase** (migration 22, which
+    you run by hand). It starts with five questions.
+  - **Size:** it stays under Vercel Hobby's 100 MB. Progress's files go in
+    while they fit.
+  - **Every p on it is said to be uncorrected.**
+
+### Not done: live signals from the VACC
+
+- The site was meant to ask the VACC over SSH, with a key of its own that
+  could run one read-only command.
+- **Tested, and it does not hold:** the VACC's login nodes run the
+  client's own command whatever the key says. Their sshd forces a command
+  of its own, which overrides the key's, so the key could run a shell.
+- The key was removed at once and the site's private key deleted.
+- The bridge's code stays (`review/vacc`, `api/remote.js`). The site runs on
+  what is copied ahead.
+- `export_review.py key --install` now tries any key it installs, and takes
+  it out again if it can run a shell command.
+
+### Fixed
+
+- In Precon2 and Precon3, the whole pair's Minus FP used the 10 s rest. It
+  now uses its own 20 s rest.
+
+### Checked
+
+- New:
+  - `tools/check_review.py` 81. It runs the gate and the functions under
+    Node with stand-ins, and builds the site from a made-up Monolith with
+    all four sessions. It checks:
+    - every array, byte for byte;
+    - the budget;
+    - the leads asked ahead under the names the page looks for;
+    - the bridge's far end against Jarvis's own answers, and 12 refusals;
+    - the pages in Edge.
+- Updated:
+  - `tools/check_monolith.py` 198, including Progress's session means against
+    a hand count and its files served.
+  - `web/_dev/monolith.html` 360, including 46 for Progress.
+  - `web/_dev/driftmono.html` 67.
+  - `tools/check_sweep_pair.py` 8.
+  - `tools/check_ratidentity.py` 6.
+- Unchanged: drift, driftprecon, arcmatrix, arcover, arctrans, circuit,
+  vacccircuit, monolithrank, tour and tournext pass.
+- Still failing, as before these changes: `arc.html` (Spark ticks 33 of 34),
+  `cursearch.html` and `devarchive.html`.
+
+## 2026.10.06.6 - One measurement for a pool, and a pool's identity back into its singles
+
+Phase 4 of the plan from the meeting with Shahriar. **Restart Jarvis.**
+
+### Added
+
+- **One measurement for the whole pool.** Before a pool is fitted, its
+  saved and banked members are asked how they were measured.
+  - Where they differ from each other or from the settings bar, a dialog
+    lists who was measured how. You choose one for all; the bar's own is
+    the default.
+  - The settings bar takes the choice, so Single and Pooled agree.
+  - Each saved single measured another way, whose read is here, is
+    measured again to the choice as a **new version**, "re-measured to DS
+    filter". The pool takes the new versions.
+  - One whose read is elsewhere is named, with "take it out, or measure it
+    on the machine that read it".
+  - It is asked once per members and measurement, not on every press.
+- **Every saved single's row says the filter it was measured on.** A pool
+  has "How each member was measured", noting which were measured again
+  here. With each version's measurement in its hover, that is the
+  filtering log.
+- **A pool's identity, back into its singles.** After a pool is saved, it
+  offers "Make the new versions" (yes by default). Each member gets a new
+  version of its single, "from pool ‘X’ vN", with every event called and
+  named as the pool called it, at the pool's measurement.
+  - How: the pool's clusters (centres, calls, names) are kept as a margin
+    of their own, "X vN clusters", and applied fixed. Nearest centre on
+    the pool's own scale is exactly how the pool placed each event.
+  - A member whose read is here is refitted from it. A saved single whose
+    read is elsewhere is re-clustered from its saved numbers. Anything
+    else is named.
+  - Each member keeps its own window, search and retries; the pool's
+    identity replaces its own relabels, centres and drawn clusters.
+  - A cluster drawn by hand is not a centre, so its events go to the
+    nearest one, and the offer says so.
+  - **Measured on real reads:** every event of three members, two from
+    their reads and one from its saved numbers with the read moved away,
+    keeps its pooled call and name, 448 of 448.
+- `rootcanal.fit_rows`: the fit, on a saved version's numbers instead of
+  its read, for everything that does not measure.
+
+### Fixed
+
+- **Pressing Pool now shows the waiting line at once.** The new question
+  is asked behind it, and the line clears while the dialog waits for a
+  choice.
+
+### Checked
+
+- `tools/check_rootcanal.py` 349.
+  - `fit_rows` equals `fit`.
+  - Measures: LFP singles asked for DS are said to differ; measured again,
+    they are new versions and agree.
+  - Propagation: one member from its read and one from its numbers, every
+    event as the pool called and named it, and the margin named for the
+    pool, with its names.
+- `rootcanalpool.html` 184.
+  - The filter chip on a row.
+  - The dialog: asked before pooling, the table, the bar's choice as the
+    primary, the others offered, the singles re-measured, the pool taking
+    the new versions, and no asking again.
+  - After a save, the offer (yes is the primary) and its request.
+- `rootcanal.html` 297, `dspca.html` 304, `braces.html` 21,
+  `aibeta.html` 37, `syncmarks.html` 20.
+- Bite-tested. Each of these turned the checks red:
+  - names lost in propagation;
+  - a remeasure that does nothing;
+  - `fit_rows` reading the wrong axis;
+  - a pool that never asks.
+- The bank and the artifact store are unchanged.
+
+## 2026.10.06.5 - Cluster names, the lab's session workbook, and choosing who is in a pool
+
+Phase 3 of the plan from the meeting with Shahriar. **Restart Jarvis.**
+
+### Added
+
+- **Clusters can be named.** Every cluster chip, in Single and in Pooled,
+  has "name". The picker offers the lab's list (DS names and IED names) or
+  a new name typed with its type.
+  - **A name says what a cluster is.** Its type is the cluster's call,
+    over the rule and a relabel, shown as "by its name".
+  - **Where it travels:** onto every event in the cluster, into the saved
+    version, into pools, and into the bank.
+  - **Renaming:** pressing a named chip renames it, and the picker can
+    take the name off.
+  - **On a k change:** names go with the old clusters, as relabels do.
+- **The lab's list of names** is one shared artifact, so everybody picks
+  the same spelling. A new name joins it for everybody.
+  - One name means one thing: a name already on the list as the other
+    type is refused.
+  - Lists made on two machines before syncing read as one.
+- **Banked events keep their cluster's name** in a field of their own,
+  `rc_name`. Their label still says dentate spike, because that is what
+  every reader of a DS set picks its events by.
+- **Name chips in Pooled.** Pressing "DS slow" pools every saved single
+  holding a cluster of that name, and only those clusters' events.
+  Pressing it again pools every event. A pool's own clusters can be named
+  too, and every pooled event says both names (its single's and its
+  pool's).
+- **The lab's session workbook, read as the reference.**
+  `PTEN_KCNT1 Dentate Spike Data .xlsx` is read live and read again when
+  it changes. Jarvis never writes it.
+  - For PTEN it gives each session's condition (Baseline or CNO), group
+    (CTL, PTEN or DKO) and subgroup (IED+, IED−).
+  - For KCNT1 it gives sex and genotypes.
+  - It is keyed on project, mouse and session, never mouse and session
+    alone.
+  - `/api/sessionref` lists it, with every place it disagrees with the
+    mouse book or a session's folder name. There is one today: **PTEN m5
+    s2** is Baseline in the workbook, but one of its folders is named
+    `M5s2cnov16`.
+- **Choosing who is in a pool.**
+  - A search box: every word must match the session, mouse, group,
+    condition or a version's nickname.
+  - Category chips for group, subgroup, condition, project and kind
+    (saved, banked, read here): OR within a category, AND across them.
+  - "Select all shown" and "Unselect all".
+  - New columns for group and condition, each with where it came from on
+    hover.
+  - **A saved single is one row.** Its version is picked from a dropdown,
+    the latest by default, with each version's hover.
+
+### Checked
+
+- `tools/check_rootcanal.py` 341.
+  - Naming: the call follows the name, the events carry it, a named
+    result rebuilds, and bad names are refused.
+  - The lab list: adding, a refused clash, a repeat changing nothing, and
+    two lists merging.
+  - A version lists its names; a pool can take one name only; pool
+    clusters can be named.
+  - A commit with names writes `rc_name` on DS and IED events and leaves
+    the label alone.
+  - The workbook: keyed by project, PTEN m3 s2's facts, read once,
+    disagreements stated, and candidates carrying the facts.
+- `rootcanal.html` 297: naming from the list, typing a new IED name (the
+  list's save intercepted), renaming, and taking a name off.
+- `rootcanalpool.html` 174: the bar, the search, a condition chip, select
+  all and unselect all, versions per row, and a name chip's request.
+- `dspca.html` 304, `braces.html` 21, `aibeta.html` 37,
+  `syncmarks.html` 20, `tools/check_shard_files.py` 20.
+- Bite-tested. Each of these turned the checks red:
+  - a name that does not set its call;
+  - a name filter that is ignored;
+  - a search that matches everything;
+  - DS events banked without their name.
+- The bank and the artifact store are unchanged.
+
+## 2026.10.06.4 - A Single kept as versions that travel; Braces sets and AI Beta runs reach every machine
+
+Phase 2 of the plan from the meeting with Shahriar. **Restart Jarvis on
+every machine.** For Braces and AI Beta to travel, **run
+`supabase/21_shard_files.sql`** in the Supabase SQL editor once. Until
+then they travel by git, as before, and their marks say "this computer".
+
+### Added
+
+- **A Single is kept as versions.** "Save as vN…" sits in the card's row
+  of counts.
+  - A version is every event's three numbers and its call, with the
+    settings that made them, as a version of a `rootcanal_single`
+    artifact.
+  - It is a few KB (1.7 KB gzipped for 20 events, 12.7 KB for 486), so it
+    reaches every machine through the shared database.
+  - Its read never leaves the machine that made it, as before.
+- **Every version has a nickname**: required, pre-filled from what makes
+  it itself (for example "k3 · LFP filter · 500–1000 Hz"), and renameable.
+  - The nickname is kept on the version, at every level of artifact.
+  - A rename travels, and the newer one wins on the other machine.
+- **The version picker** shows each version's nickname. Its hover gives:
+  - **Settings:** k, filter, band, window, search, 3-axes, retries,
+    margin.
+  - **Counts.**
+  - **Who, where and when**, with the Jarvis version.
+  - **Confirmations.**
+
+  The set's sync mark is beside it.
+- **Opening a version.** Where its read is here, it is refitted from it
+  with its settings. Where it is not, the picture is drawn from its
+  numbers alone: the settings are locked, the traces say where the read
+  is, and "Read the set here" is offered.
+- **Leaving a changed picture asks "Save this as vN first?"**, and says
+  what changed. Save is the default.
+- **Bank keeps a version too**, named "banked as vN". A result banked
+  before today can be kept with "Keep the result banked as vN as a
+  version": refitted from its read where it is here, rebuilt from the
+  numbers the bank filed where it is not.
+- **Pools take saved singles as members.** They are offered in Pooled
+  with their nickname, hover and sync mark, at their latest version.
+  - Their numbers come from the version, so a pool of them needs no read
+    on any machine.
+  - Asking for another measurement re-measures them from their reads
+    where they are here, and names them where they are not.
+  - A pool of saved singles is the pool of their reads, event for event.
+- **Braces sets and AI Beta runs reach the other machines** without a git
+  pull, once migration 21 is run.
+  - They travel as their shard files, which is what git carries: each
+    machine sends only its own, only when one changes, at most about
+    800 KB a push.
+  - A pull writes other machines' shards into
+    `GUI_logs/.cache/cloudshards`. The store reads that folder beside its
+    own, and git ignores it, so a pulled file can never block a
+    `git pull`.
+  - AI Beta's trained models stay on the machine that trained them.
+  - The first push from this desktop is 9 Braces sets and 27 runs, about
+    610 KB, once.
+- **Sync marks** on Braces' alignments and on AI Beta's runs, next to the
+  existing ones.
+- **The sync panel lists everything not shared yet**: bank entries,
+  Checkup sets, layer sheets, artifacts, Braces sets and AI Beta runs,
+  each by name, with its state and why.
+
+### Fixed
+
+- Two harness checks were too loose: the "12 px off picks nothing" pick
+  and the amplitude label (Phase 1). Also, `.btn` alone is the primary
+  button; there is no `.primary` class.
+
+### Checked
+
+- `tools/check_rootcanal.py` 320.
+  - Save, confirm, version, rename, open from numbers, and suggest.
+  - Banking keeps a version.
+  - Pooling saved singles matches pooling their reads, and still pools
+    with a read taken away; a new measurement is refused, naming the
+    member.
+  - A version rename merges by the newer stamp.
+  - Import works from the read and from the bank's numbers alone.
+  - The commit checks now have a throwaway artifact store, since banking
+    writes a version.
+- New `tools/check_shard_files.py` 20, against a fake shared database.
+  - A push sends only this machine's own shards, once per change, paced.
+  - A pull writes into the cache folder only, refusing a path out of it,
+    our own shard, a mismatched machine, an unknown store and a damaged
+    file.
+  - A set edited on two machines merges.
+  - The marks are right.
+  - A database without the table: the push goes on without it.
+  - Other Books are unchanged.
+- `rootcanal.html` 288, 19 of them new: the picker and hovers, the sync
+  mark, Save with the suggested nickname and its request, "changed", the
+  nudge (Save is primary), and opening from numbers or from the read.
+  - Every save and lookup is intercepted.
+  - Moving the strip into the row of counts kept the event bar inside the
+    fold (measured: beside Bank it was 912 px down on a 908 screen).
+- `rootcanalpool.html` 161, `dspca.html` 304, `braces.html` 21,
+  `bracesbad.html` 8, `aibeta.html` 37, `syncmarks.html` 20,
+  `badsync.html` 7.
+- Nothing reached the real bank, artifacts, Braces or AI Beta stores.
+
+## 2026.10.06.3 - Root Canal: a missing half-width searched again, no per-event flip, a filter click in 0.1 s
+
+Phase 1 of the plan from the meeting with Shahriar. **Restart Jarvis.**
+
+### Changed
+
+- **No identity switch on a single event.** The DS | IED toggle on the
+  picked event's bar is gone. The bar shows the event's call and its
+  cluster instead.
+  - Identity now comes only from a cluster: the rule, a relabel, a margin
+    or a drawn cluster.
+  - A result banked with flips still rebuilds, and the bar says "flipped
+    by hand in an older result".
+- **The amplitude axis names the filter it was measured on**, for example
+  "max amplitude on LFP 1–100 Hz · µV", in Single and in Pooled.
+  - It always was measured on the filtered trace. On PTEN 841aad39cfff the
+    median is 1383 µV with no filter, 1200 with LFP and 1132 with the DS
+    filter.
+  - A new check fails the day an event's amplitude stops being the peak of
+    its own filtered trace.
+
+### Added
+
+- **Search again, wider.** An event with an amplitude but no half-width
+  never came back to half height inside the search. That is the usual
+  reason "only events on all 3 axes" leaves one out.
+  - The picked event's bar offers "Search again, to ±200 ms".
+  - The card offers "Search the N with no half-width again".
+  - Only those events are re-measured, out to the widest search the stored
+    waveform allows. Everything else keeps its numbers exactly.
+  - Found ones are marked "found by searching again", and the rule says
+    how many were found.
+  - It is a fit setting (`retry`), so a result rebuilds with it.
+  - **On the 19 cached reads here:** 33 of the 34 events with no half-width
+    have one at ±200 ms.
+
+### Fixed
+
+- **A filter click took 5 s.** Measured on the wall clock with the new
+  `tools/rc_perf.py`, on a 486-event read:
+  - **The cause:** k, a relabel and the 3-axes switch were already under
+    0.1 s. Choosing a filter was 5.3 s (DS) or 1.3 s (None), and opening a
+    set 5.5 s, all spent refiltering every contact.
+  - **The per-contact median** ran row by row: 1.7 s of 1.9 s with no
+    filter. It is now taken all at once, with the same numbers to the bit.
+  - **The zero-phase filter** runs on four threads, at most five chunks at
+    a time, so memory stays where it was.
+  - **The other preset filters** are measured in the background once a set
+    has answered, so a later click finds them done.
+  - **Now:** DS 0.08 s, None 0.17 s, opening a set 3.2 s. Every Single press
+    is under 0.2 s; every Pooled press is under 1.1 s on 19 recordings.
+  - All 19 cached reads give bit-identical amplitudes, half-widths, contacts
+    and polarities under every filter, old code against new. Measuring all
+    of them went from 57 s to 22 s.
+
+### Checked
+
+- `tools/check_rootcanal.py` 290 with real data, 285 without.
+  - A retried event is found and marked, its neighbours are untouched, it
+    rebuilds from params, the plain fit is unchanged, and the click panel
+    draws the retry's crossings.
+  - Amplitude is the peak of its own filtered trace on each filter.
+  - The fast median equals `nanmedian`, missing contacts and gaps
+    included. Threaded filtering equals one chunk at a time.
+- `rootcanal.html` 269.
+  - There is no DS/IED toggle; the call chip is shown; old flips still
+    rebuild.
+  - The retry offers, sends, marks and explains.
+  - Two older checks fixed: the amplitude label wraps on the 3D view, and
+    the "12 px off" pick needed a dot with no neighbour under the press.
+- `rootcanalpool.html` 161 and `dspca.html` 304.
+- Bite-tested. Each of these turned the checks red:
+  - a retry that is ignored;
+  - amplitude taken from the unfiltered trace;
+  - a mean in place of the median;
+  - the toggle back on the bar.
+
+## 2026.10.06.2 - Root Canal: a saved pool works on any machine, and Save saves what is shown
+
+**Restart Jarvis**, on every machine that opens pools.
+
+### Fixed
+
+- **A saved pool opened on another machine refused everything.** Pressing
+  k, a relabel, a focus or a margin said "u:… is not a Root Canal result
+  or a cached read on this machine any more".
+  - **The cause:** a Root Canal read is cache. It lives in `GUI_logs/.cache`
+    on the machine that made it, and goes nowhere else. Every press in
+    Pooled refits on the server, and the refit looked for each member's
+    read on this machine.
+  - **The extent:** all 18 saved pools were saved on Strawbarry, and each
+    has members read only there (2 to 26 of them).
+  - **The fix:** a member whose read is not here is now taken from the
+    saved version the pool was opened from. The saved payload already holds
+    every event's amplitude, half-width, HF power and single call. It is
+    checked against the digest the member's pin was saved with: all 351
+    saved members across every version match exactly.
+  - **What works:** k, calls, focus, complete events only, margins, drawn
+    clusters and Save all work on those numbers.
+  - **What still needs the read:** measuring the member another way
+    (filter, window, half-width search, HF band). This is refused, naming
+    every member it would strand and the change asked for, all at once.
+  - **What the panel shows:** those members get a row in "Recordings in
+    the pool" marked "read on Strawbarry", so they can be taken out and
+    put back. A dot from one says where its read is.
+  - **Measured here:** all 18 pools refit in 0.3-3.3 s. Each gives back
+    exactly what was saved, every event's pooled and single call.
+- **Save did not save what was shown.** The dialog sent the members,
+  mouse types and focus alone. The server refits from the request, so a
+  pool was filed with the server's defaults: k = 2, no relabels, no
+  margin, no drawn clusters, all events, each member's own measurement.
+  - "PTEN Baseline All CTL" v2 ("Testing single cluster", 10-06) is k = 2
+    with v1's counts, 645 DS and 632 IED.
+  - Save now sends the same request as the picture.
+- **A pool saved before its measurement was recorded reopens with it.**
+  That is every pool from 10-02: their members were pinned at the LFP
+  filter, 1-100 Hz, 60 Hz mains left in. The shared settings bar now
+  says so. Before, it kept whatever was set, and the first press asked
+  every member to be measured again.
+  - Re-measured today from those pins, the members that are here give
+    identical numbers.
+- Closing a pool now also drops its drawn clusters, relabels, margin and
+  average, so the next pool starts clean.
+
+### Checked
+
+- `tools/check_rootcanal.py` 274.
+  - A pool is saved, then a member's read is taken away, as on another
+    machine.
+  - Without the save, the member is refused by name.
+  - Opened from the save, the pool gives the saved answer event for event,
+    with the pinned digest. Another k gives the same calls as where its
+    read is. Focus and a drawn cluster work.
+  - A new filter is refused, naming the member. Its average says its read
+    is not here.
+  - Saved again, its pin records where its numbers came from.
+  - A pool without its measurement reopens with its members'.
+- `rootcanalpool.html` 161, 14 of them new.
+  - Save carries k, the measurement, calls, margin, complete events and
+    drawn clusters.
+  - A saved pool with a member read elsewhere shows its row, chip, note
+    and mouse type. Untick and re-tick work, and its dot names the
+    machine.
+  - A refit and a save both name the saved version.
+- `rootcanal.html` 257 and `dspca.html` 304.
+- Bite-tested. Each of these turned the checks red:
+  - leaving the saved version out of the request;
+  - a save that sends members only;
+  - no rows for members read elsewhere;
+  - a server that ignores the save;
+  - letting a member read elsewhere be measured another way.
+
+## 2026.10.06.1 - Root Canal: a cluster's average, and clusters drawn by hand
+
+New routes. **Restart Jarvis.**
+
+### Added
+
+- **A cluster's average, in every panel.** Each cluster chip has an "avg"
+  button, in Single and in Pooled. It puts the average of that cluster
+  into the event panel, where a picked dot's four pictures go. "Back to
+  the picked dot" closes it.
+  - **Max-amp trace:** each event on its own max-amp contact, aligned on
+    its stamp, flipped to the cluster's common polarity, with its spread
+    (± SD) as a band. The panel says how many were flipped.
+  - **Spectrum:** against baseline.
+  - **Every contact and the CSD:** the average of the raw snippets,
+    filtered once. That gives the same answer as filtering each one and
+    averaging, to float precision, because both filters are linear. The
+    CSD uses the DS filter, as a dot's does.
+  - **In Pooled:** the trace and spectrum are over every recording. The
+    stack and CSD come from one recording, the one with the most events,
+    and the panel names it. A probe's contacts only line up inside one
+    recording.
+- **The lasso.** Shift-drag on the 3D view, or turn on "Lasso" in its
+  heading and drag, to draw round dots instead of turning the view. The
+  dots drawn round are ringed. A bar offers:
+  - **Average them:** the same average, over exactly those dots.
+  - **Make a DS cluster** or **Make an IED cluster:** those events are
+    held out of k-means (they move no centre and no scale) and become a
+    cluster of their own, after k-means' clusters.
+    - Its chip is marked "drawn". Pressing the chip changes its call, and
+      × undraws it.
+    - The rule says how many events were drawn by hand.
+    - A dot drawn into a second cluster leaves the first.
+  - In Pooled, only the dots on show can be drawn round: a focus that dims
+    the rest keeps those out.
+- Drawn clusters are part of the result. They are carried in the request,
+  saved with a pool, rebuilt from the results bank, and banked as called.
+  A margin cut from a fit leaves them out, since a hand drawing has no
+  centre to carry.
+
+### Measured
+
+- On the wall clock, not in the harness's virtual time:
+  - A cluster's average in Single: 0.7-0.8 s.
+  - The 18-recording pool's IED average: 7.1 s. Each event's contact and
+    polarity are kept with the pool's cached numbers, so nothing is
+    re-measured.
+- On PTEN 46fd29a77cc7 at k = 2:
+  - The IED cluster averages 2001 µV, 13.9 ms and +24.9 dB.
+  - The DS cluster averages 1405 µV, 15.6 ms and +13.5 dB, with 25 events
+    flipped.
+
+### Checked
+
+- `tools/check_rootcanal.py` 262.
+  - The average of one event is that event.
+  - Filtering the average equals averaging the filtered events, with and
+    without the mains taken out.
+  - Drawn events are held out of k-means: its centres are where they
+    would be without them.
+  - A drawn fit rebuilds from its params.
+  - An event in two drawn clusters is refused.
+- `rootcanal.html` 257: a real Shift-drag with pointer events selects
+  exactly the dots inside the path and does not turn the view. Also
+  checked: the average's count, panel and close; and a drawn cluster's
+  request, rule, relabel and undraw.
+- `rootcanalpool.html` 147: the pooled average and where its probe
+  picture came from; a pooled drawn cluster sent as (recording, event)
+  pairs; and undraw.
+- `dspca.html` 304.
+- Bite-tested. Each of these turned the checks red:
+  - dropping the drawn clusters from Single's request;
+  - making the lasso take every dot;
+  - letting drawn events shape k-means;
+  - averaging one event instead of the whole cluster.
+
+## 2026.10.05.4 - Histology v2, channel sanity v2, and the Monolith on it
+
+`Joes multi site histo results.xlsx` was rescored. **Restart Jarvis.**
+
+### Changed
+
+- **Histology v2** (`backend/histo.py`) is the workbook as it is now, cell
+  for cell. `tools/check_histo.py` agrees with it on all 96 cells. v1 is
+  kept beside it as `HISTO_RAW_V1`, for the record.
+  - No "maybe" is left.
+  - These cells are now "y": J3, J6 and J10 right PER, J6 and J9 right DHC,
+    J7 left PER, J8 both DHC, J10 both OFC and both DHC, and J11 left DHC.
+  - J10's left PER is now lateral entorhinal.
+  - No probe aimed at POR is in POR.
+- **The Monolith uses only probes scored "y".** A "maybe" or a probe found
+  somewhere else is left out of it. Coupling still keeps those under their
+  true names.
+- **One new region, Left POR-SUB.** The left POR probes are consistently
+  in subiculum, so in the four rats where histology says so (J4, J6, J7,
+  J10) that channel group is used under the POR channel mapping, as Left
+  POR-SUB. **Right POR-SUB is excluded.**
+- **The Monolith needs four rats to test a region pair, not five** (the
+  lab's choice). With five, every Left POR-SUB pair would have been drawn
+  and never tested.
+  - 44 of the 66 region pairs can be compared.
+  - Left PER has only three rats under v2, so its pairs are still never
+    tested.
+- **The manifest takes the histology in force whenever it is read.** What
+  goes to the cluster and the cue pairs the page reports all follow it.
+  - A build masks whatever the histology leaves out of each rat, in every
+    array, whatever the node measured.
+  - This needs no new VACC run: every region v2 keeps was measured in the
+    existing run.
+- **What was kept was counting sessions that had not been run.** Once
+  Precon2 and Precon3 were added to what goes, every one of their
+  presentations read as lost: 490 presentations, 254 of them "lost". The
+  report now counts only the sessions the build has. On the real data that
+  is 242 presentations: 133 kept, 103 partly, 6 lost.
+
+### Added
+
+- **Channel sanity v2, run over every banked DEWEY recording and saved**
+  (`backend/sanityreport.py`). It is one run record in `GUI_logs/runs/`.
+  - It covers 53 recordings and 810 cue pairs. For each probe it gives the
+    v2 verdict, its raw cell, and whether Coupling and the Monolith use it.
+  - For each region and window it gives the cue pairs with a usable wire,
+    and why the rest have none.
+  - Run 2026-10-05: 37,063 of 52,560 region-windows have a wire.
+  - `POST /api/arc/sanity/run` runs it again, and `GET /api/arc/sanity`
+    reads it.
+- **Every probe-sanity surface says v2.**
+  - Coupling's and Circuit's summaries begin "Histology v2".
+  - Coupling's probe list opens with "Histology v2 · rescored 2026-10-05 ·
+    channel sanity v2 run …".
+  - The Monolith's What was kept and its counts say which histology they
+    were built under, and warn when it was v1.
+- **Rebuild under histology v2**, in Drift → Monolith. It remakes the built
+  Monolith from the answers already fetched (nothing is run or uploaded,
+  about a minute) and files a new artifact version.
+  - On the real data: 254,408 entries tested (was 260,190), and 15,017 at
+    p < .05 in raw (was 17,744).
+
+### Checks
+
+- `tools/check_monolith.py` (186) covers:
+  - every rat's v2 blocking against the workbook;
+  - Left POR-SUB being J4, J6, J7 and J10;
+  - the build's masking;
+  - the names;
+  - the rebuild route.
+- Harnesses: `_dev/monolith.html` (302), `_dev/driftmono.html` (63).
+
+---
+
+## 2026.10.05.3 - AI Beta: even channels only
+
+### Added
+
+- **AI Beta can train on even channels only.** A new **Channels** choice
+  (All | Even only) sits in the setup. Even only keeps CSC 2, 4 … 64, the
+  channels Toothy's LL input and the Avery sweep screen use. On a linear
+  array these are every other contact, so they are read 100 µm apart
+  instead of 50. The second read's windows that count contacts are halved,
+  so they cover the same depth:
+  - "near" and "far" for unit firing and polarity
+  - the laminar-delay span
+  - Braces' 16-row band
+
+  It is refused on probes laid out in columns (the H10-D and the dual
+  array). Even-only reads are cached apart from full ones, and a full read
+  keeps the cache key it always had.
+- **A sweep reads the channels its model was trained on.** A run made with
+  even channels only sweeps a set with even channels only.
+
+### Measured
+
+All three models were retrained on even channels only. Each used the same
+45 recordings (12,406 candidates, 1,424 garbage), inputs, model and bars as
+the run its slot holds. Scores come only from mice each model never saw:
+
+| | AUC, all → even | Flagged at 20% lost, all → even | Flagged at 30% lost, all → even | Garbage cleaned at 20%, all → even |
+|---|---|---|---|---|
+| Avery | 0.912 → 0.916 | 21.2% → 18.6% | 11.5% → 8.8% | 87.3% → 87.2% |
+| Avery+ | 0.921 → 0.924 | 19.8% → 20.1% | 10.1% → 10.4% | 88.8% → 88.8% |
+| Avery Garbage Dystrophy+ | 0.923 → 0.925 | 18.9% → 17.4% | 9.3% → 7.7% | 89.6% → 89.2% |
+
+**Nothing is lost by dropping the odd channels, and two of the three
+models flag a little less.** The gains are at the edge of what seed
+noise moves. Garbage let into DS is 1.1% throughout, because the DS bar
+is fixed. The reads were faster: the physiology read took about 27 min
+on even channels, against about 74 min on all of them.
+
+Sandbox runs, no slot changed:
+- Avery: `ai20261005-120406-1005`
+- Avery+: `ai20261005-120706-5048`
+- Avery Garbage Dystrophy+: `ai20261005-121912-268f`
+
+### Checked
+
+- `tools/check_aibeta.py`: 70 ok. New checks:
+  - the even subset and its bad channels
+  - twice the pitch
+  - refusal on a probe laid out in columns
+  - old cache keys unchanged, and even reads filed apart
+  - the second read's windows at every contact and at every other contact
+- `_dev/aibeta.html`: 37 ok. New checks: the Channels choice starts on
+  All, a run asked for with Even only carries `channels: even`, and All
+  comes back.
+
+---
+
+## 2026.10.05.2 - Root Canal: one set of settings, pools in a second, colours that match
+
+### Changed
+
+- **Single and Pooled take the same settings.** Pooled now shows Single's
+  own controls bar — filter, window, half-width search, HF band, k, and
+  complete events only — and pools with exactly those: every member is
+  measured with them, and a banked member measured another way is
+  re-measured from its read and marked. The settings chip in Pooled names
+  the pool's own measurement (it showed Single's). Reopening a saved pool
+  puts its settings back into the shared bar. Single gains "only events on
+  all 3 axes", Pooled's switch.
+- **A click applies at once.** A filter, k, the mains box or complete
+  events refits the moment it is pressed, in either view; typed numbers
+  still wait for Recompute. Choosing k and waiting for Recompute is what
+  read as the picture not updating.
+
+### Fixed
+
+- **A pool took 30-40 s for every press** — a k change, a relabel, the same
+  pool again — because every member was refitted from its read each time,
+  and the read cache holds only a few of eighteen. A member's numbers
+  depend only on how it is measured, so they are now computed once per
+  measurement and kept, in memory and beside the read on disk. Measured on
+  the wall clock (not under the runner's virtual time): one press of k on
+  the 18-recording pool 1.0-2.1 s; the same pool after a restart 2.5 s,
+  was 34 s; a new measurement still pays once. Single, 0.02-0.37 s a press.
+- **Colours that did not match.** Cluster chips used the categorical
+  palette while the dots and centres were coloured by call, so a chip's
+  colour was on nothing. A chip, its centre and its dots now always share
+  one colour — by call, or by cluster in "by cluster" mode, where past four
+  clusters the shape changes as the colours repeat.
+- **Centres are numbered as the chips are** ("#3 IED"), and a label that
+  would land on another moves aside: at k = 6 four "DS centre" labels sat
+  on one another.
+- Single's request did not carry "complete events only" to the server.
+
+### Checked
+
+- `rootcanal.html` 233, `rootcanalpool.html` 137, `dspca.html` 304. New:
+  clicks applied without Recompute, Pooled asked with exactly Single's
+  settings, its chip naming its own band, swatch = centre = cluster colour
+  in both modes, numbered centres, no overlapping labels at k = 6. With
+  clicks only staged, swatches back on the palette and Pooled not sending
+  the settings, 12 and 9 fail. `check_rootcanal.py` 248.
+
+## 2026.10.05.1 - Artifact payloads stop taking the database down
+
+From 30 September the shared database kept going down (Cloudflare
+520/521/522 on every request). Every outage started with this:
+
+1. A push sent up to two hundred artifact payloads to `artifact_snapshots`
+   in one request. Some payloads are 10 MB of JSON, and the free-tier
+   database has half a gigabyte of memory. The request timed out and the
+   database fell over.
+2. The payloads travel in git as well, so every machine had them and every
+   machine sent the same request again as soon as the database was back.
+3. A push that fails saves nothing, so each retry also re-sent everything
+   since the last good push. This machine's last good push was 2 October;
+   it tried five times this morning, each time ending in that request.
+
+**Run `supabase/20_artifact_payloads.sql` straight after restarting the
+project,** before any Jarvis is back on. It renames `artifact_snapshots`,
+so a Jarvis that hasn't been updated finds the table gone and stops sending
+payloads, with no change on that machine. Then pull and restart Jarvis on
+each machine.
+
+### Changed
+
+- **Payloads go up gzipped, as text, one bounded request at a time,** into
+  the new `artifact_payloads` table. They're numbers and compress 10–18×:
+  this machine's 327 payloads are 290 MB of JSON and 36 MB this way, in 48
+  requests of at most about a megabyte. Only the payloads the cloud hasn't
+  got are read from disk. A pull asks for keys, then fetches each missing
+  payload on its own.
+- **No upsert sends more than about a megabyte in one request,** whatever
+  the table. A single row bigger than that goes alone. A row over 4 MB isn't
+  sent at all; it's kept here and counted.
+
+---
+
+## 2026.10.03.1 - Avery Garbage Dystrophy+, a tolerance for lost spikes, and a sweep screen that starts at once
+
+### Added
+
+- **You choose how many real spikes may be called Garbage.** The Avery
+  Sweep dialog offers 5%, 10%, 15%, 20%, 25% or 30%, with 20% selected at
+  first. Allowing more lost spikes cleans out more garbage automatically
+  and leaves fewer candidates flagged. Next to the choice, the dialog shows
+  what it did on mice the model never saw:
+  - how much garbage was cleaned out
+  - how much garbage was left for a person to look at
+  - how much garbage was let into DS
+  - how many candidates were flagged
+
+  The DS bar does not move: 99% of garbage stays out of DS at every
+  setting. The tolerance is noted on the banked Avery version.
+- **Avery Garbage Dystrophy+**, a third model in the dialog and the one it
+  starts on. It is built so that a person has as little garbage as
+  possible to sift through. It has the same inputs as Avery+, scored by
+  five sets of boosted trees. Each set is balanced on its own draw of the
+  garbage and sees half the inputs at each split, and their scores are
+  averaged. AI Beta can train this blend as **Blend of boosted trees**
+  and offers **Make this Avery Garbage Dystrophy+** on any run trained
+  with Avery+'s bars.
+- **Waveform measures**, a new input in AI Beta that is off by default.
+  It adds 25 numbers worked out from the waveform the model already sees:
+  - when it peaks
+  - its width at half height
+  - rise and decay times and slopes
+  - symmetry, skew and kurtosis
+  - side peaks and zero crossings
+  - how jagged it is and where its power sits in frequency
+  - how quiet either side of it is
+  - the CSD's lag, correlation and width against the trace
+  - sign changes down the depth profile
+
+  They are derived from the cached features, so trying them costs a
+  retrain and no new read.
+
+### Fixed
+
+- **The sweep screen starts in about 5 s instead of about 45 s.** Before
+  the full read starts, the candidates it will scan are read on their own:
+  only the even channels it draws, ±0.25 s, four at a time. On KCNT1 m78
+  s1 with the machine busy, twelve candidates took 9 s where they took
+  35 s. Until the first one arrives, a scan line sweeps the empty scope.
+- **The scanner no longer stops.** It used to run out of candidates while
+  the set was still being read, which looked like a freeze. It now goes
+  round them again until the calls are in. Polls of the job no longer
+  overlap either. Two overlapping polls could each see the job finish and
+  start two finales on one screen.
+- **The verdicts are animated again.** When the calls are in, each scanned
+  candidate's lanes turn the colour of its call, the stamp lands and the
+  scope flashes. The feed is paced to finish with the scans, and the
+  summary appears once both have finished. Skip still jumps straight to it.
+- **Label colours now update in the support panels after a sweep.**
+  Accepting a sweep re-reads the set, and the other windows were only told
+  that the revision had moved, which is not a reason to re-read. So the
+  aid window kept every old colour. The re-read now sends every mark and
+  stamps every later pointer, and a window that sees a stamp it does not
+  hold reads the set again. That stamp matters because the live link keeps
+  only the latest value, so the step straight after the re-read used to
+  replace the marks before the aid window polled. This window's own panes
+  also repaint.
+
+### Measured
+
+Same 45 recordings, 12,406 candidates and 1,424 garbage. All numbers are
+scored only on mice each model never saw, with the DS bar fixed at 99% of
+garbage kept out (1.1% let into DS):
+
+| Real spikes allowed to be called Garbage | Avery+: garbage cleaned | Avery+: flagged | **Garbage Dystrophy+: garbage cleaned** | **Garbage Dystrophy+: flagged** |
+|---|---|---|---|---|
+| 5% | 55.1% | 36.9% | 55.2% | 36.2% |
+| 10% | 70.8% | 30.7% | 71.6% | 29.9% |
+| 15% | 82.0% | 25.0% | 82.5% | 24.2% |
+| 20% | 88.8% | 19.8% | **89.6%** | **18.9%** |
+| 25% | 94.2% | 14.7% | 93.8% | 14.0% |
+| 30% | 96.3% | 10.1% | **96.8%** | **9.3%** |
+
+The tolerance is the big lever. Avery+ shipped at 5%, which flagged 37% of
+candidates. At 20% it flags 19% and leaves a person 9% of the garbage.
+
+The blend is a smaller gain than that table suggests. One set of boosted
+trees on a second seed flagged 22.1% at 20%, not 19.8%. The share flagged
+is set by the few most spike-like pieces of garbage, so it moves about 2
+points between seeds. Averaging five draws steadies it.
+
+Run `ai20261003-192215-2d64`, AUC 0.923, 0.921 for Avery+.
+
+These did not help, each measured the same way:
+- **The waveform measures:** AUC 0.918 alone, and 20.1% flagged against
+  18.9% in the blend.
+- **Them relative to the recording's median:** AUC 0.920.
+- **Garbage weighted three times over:** 24.4% flagged.
+- **Larger, slower trees with the waveform measures:** 20.8% flagged.
+- **Adding a random forest to the blend:** within a point either way.
+
+### Checked
+
+- `tools/check_aibeta.py`: 61 ok. New checks:
+  - the tolerance table: more lost spikes clean more garbage and flag
+    less, at the cost stated, with the DS bar fixed
+  - the blend averages five draws and saves and loads like any model
+  - the waveform measures read a known width, lag, symmetry and noise
+- `_dev/avery.html`: 44 ok. New checks:
+  - all three models are offered, Garbage Dystrophy+ first
+  - the tolerance and its numbers, with 20% selected at first
+  - `ds_loss` is posted
+  - the scanner goes round its early samples while it reads
+  - the verdict lands
+  - the summary waits for the reel and comes on its own, stating the
+    tolerance
+- New `_dev/averyxwin.html`: 8 ok. Window A accepts a faked sweep and
+  window B, the aid window, has to show the new labels, including after a
+  step. It failed before the fix. It writes nothing a person would see.
+- `_dev/aibeta.html`: 33 ok.
+- A real sweep through a live server on PTEN_DKO m56 s8 with Garbage
+  Dystrophy+ at 20%: first candidate on screen at 5.4 s, done in 66 s.
+
+---
+
+## 2026.10.02.13 - Avery+: Braces' alignment, ±15 ms at the peak, and Garbage called Garbage
+
+### Added
+
+- **Avery+**, a second model for the Avery Sweep. When both models are
+  ready, the confirm dialog offers Avery or Avery+, with Avery+ first.
+  - **It aligns every candidate the way Braces does.** That means the
+    mains-free 5–100 Hz CSD averaged over the 16 rows where this
+    recording's candidates are strongest, peaks at least 12 ms apart
+    within 100 ms, largest first, one peak per stamp and never crossing.
+    Braces' own constants are read from Braces.
+  - **How each candidate went through that rule is an input:** whether it
+    found a peak, how far it moved, whether it hit the window edge,
+    whether the move was unusual for the recording, and whether the
+    nearest peak went to another stamp.
+  - **It then re-measures everything that fits in the ±15 ms around the
+    aligned peak:** shape and sharpness, unit firing, polarity, sink and
+    source, laminar delay and likeness.
+  - **Its Garbage bar is set by the real spikes it may cost (5%),** not by
+    how pure its calls are, so most garbage is called Garbage instead of
+    Flag. The DS bar stays where 99% of garbage is under it.
+- **The scanner draws every even channel**, 32 lanes stacked over ±50 ms.
+  The channel the event is biggest on is drawn in the accent colour.
+- **The feed runs through every call.** When scoring finishes, every
+  candidate's call scrolls by in time order while a few more are scanned,
+  then the summary appears. Skip jumps straight to it.
+- **Held-out scores are kept with each run**, so a different set of bars
+  can be tried without training again. AI Beta offers **Make this
+  Avery+** on a run trained with Avery+'s bars.
+
+### Measured
+
+Same 45 recordings (12,406 candidates, 1,424 garbage), same bars, and
+scored only on mice each model never saw:
+
+| | Garbage called Garbage | Real DS called Garbage | Garbage let into DS | Flagged |
+|---|---|---|---|---|
+| Avery's inputs, random forest | 49.7% | 5.0% | 1.05% | 38.8% |
+| Avery+ inputs, random forest | 50.1% | 5.0% | 1.05% | 37.3% |
+| **Avery+ inputs, gradient-boosted trees** | **55.1%** | 5.0% | 1.05% | **37.0%** |
+
+The last row is Avery+ (run ai20261002-205804-9c0c, AUC 0.921 against
+0.912). Moving the DS bar to 99.5% halves the garbage let into DS (0.6%),
+at 41% of candidates flagged instead of 37%.
+
+On two sets it never trained on:
+- **PTEN_DKO m55 s1:** 13 Garbage and 6 Flag. All 13 Garbage calls are
+  what a person called them.
+- **KCNT1 m78 s1:** 84 Garbage, 365 Flag, 2 Flag for Deep Review and no
+  DS. Avery called all of it Flag. Too few KCNT1 recordings were
+  trained on for either model to accept any of its spikes.
+
+### Changed
+
+- **DS goes up to DS2.** DS3–DS5 are gone from the vocabulary, and from
+  the vocabulary every older set copied in unless a candidate holds one
+  (none does). That removes the three empty chips from every Checkup
+  card. X-ray's Classes slider is gone too: there are two kinds of
+  dentate spike.
+
+### Checked
+
+- `tools/check_aibeta.py`: 34 ok.
+- `_dev/avery.html`: 33 ok. New checks: both models offered and their
+  numbers swapped, the sweep posted with the model chosen, and the feed
+  running every call in order. `_dev/aibeta.html`: 33 ok.
+
+## 2026.10.02.12 - Root Canal: k from 1 to 6, named margins, a pooled band, complete events only
+
+### Added
+
+- **k = 1 to 6 clusters**, in Single and Pooled. Clusters are ranked by
+  their centre's HF power, lowest first; the highest is IED by the rule and
+  the rest DS, and at k = 1 everything is DS — no split, the null a split
+  is compared against. Any cluster can be relabelled DS or IED with one
+  press, and the call says whether it came from the rule, a hand or a
+  margin. At k = 2 everything is exactly as it was, sentence included. A
+  "by cluster" colour mode in both views.
+
+- **Named margins**, as a Jarvis artifact (`rootcanal_margin`): a set of k
+  centres in µV, ms and dB, their calls, and the scale they were cut on.
+  Cut from a Single recording, the whole pool, or one group of a pool — a
+  mouse, a mouse type or a recording, re-clustered ON ITS OWN. A label is
+  required; an identical re-save confirms rather than versions.
+
+  Applied to any other Single or Pooled analysis, **read on the source's
+  scale** so the boundary is the same µV, ms and dB everywhere, either
+  **Fixed** (nearest saved centre, nothing moves — one rule across sets)
+  or **Refine** (k-means starts there, each cluster keeping its call). A
+  margin measured on another filter, band, window or search is refused,
+  naming each difference: those would be different numbers under the
+  same axis labels. A pool or banked result that used a margin cites it,
+  so it cannot be deleted from under them.
+
+- **Pooled: its own HF band.** Every member is measured over it from its
+  read — no recording read again. A banked member fitted over another band
+  is re-measured and marked re-banded (its single call is then at the
+  pool's band); one whose read is not here is refused by name.
+
+- **Pooled: complete events only.** Events missing an axis are left out of
+  scaling, clustering, the GMM and the switch tables, and the number left
+  out is said, by recording.
+
+### Measured
+
+- On the real pool (18 PTEN recordings): k = 3 splits it +10.0 / +11.7 /
+  +20.3 dB (1240 / 674 / 847). A margin cut from PTEN m13 alone (755 events)
+  and applied FIXED to the other 16 recordings calls 292 IEDs; their own
+  k-means calls 714, and refined from m13's centres it lands at 762. One
+  mouse's boundary does not carry to the others — the same picture as the
+  pool's: one continuous spread whose cut moves with the sample.
+
+### Changed
+
+- Single and Pooled now share one clustering core (`rootcanal.cluster_core`),
+  so the two views cannot drift apart. The pooled split axis runs from the
+  DS-called events' mean to the IED-called ones'; at k = 2 by k-means that
+  is the old line through the two centres.
+
+### Checked
+
+- `tools/check_rootcanal.py` 248 ok: k 1-6 on known blobs, the ranking, the
+  rule, relabels, refusals, a margin fixed on its source giving its own
+  answer back, a raw boundary crossing where it should on another spread,
+  refine moving and keeping calls, mismatches named, margin routes and
+  versions, a cited margin refusing deletion, the pooled band and
+  complete-only. A shadowed `k` in `fit_pool` (the member loop reused the
+  name) was caught before it shipped.
+- `rootcanal.html` 226 and `rootcanalpool.html` 135, driving every new
+  control, with every save intercepted; with k and the pooled band dropped
+  from the requests, 8 fail in each. `dspca.html` 304.
+
+## 2026.10.02.11 - The Monolith: what was kept first, a trail, PAC within a region, events first, four sessions
+
+The lab meeting's list for the Monolith page, in the order the page is now
+read. **Restart Jarvis** for the new routes.
+
+### Added
+
+- **Four tabs, in order: 1 · What was kept → 2 · The Monolith → 3 · When we
+  averaged → 4 · Events first.** A fresh page opens on what was kept.
+  - **What was kept** says what a presentation is, and splits the losses by
+    cause: clipping (the signal at the rail), probe placement (histology),
+    a bad wire, not measured.
+  - **Which comparisons remain** is new: a region-pair matrix of how many
+    rats have both regions on both sessions. Under five rats a pair is
+    never tested, and it is grey. On the real build, 21 pairs have all 8
+    rats and the Right/Left POR pairs have 3–4.
+  - Excluded wires stay inspectable from any presentation, marked as not
+    used.
+- **The trail over the result.** It reads The Monolith › the pair › each rat
+  › rN › the session › the presentation · signals. Each step says what its
+  numbers are: a pooled change, a rat's change, a session's values, or one
+  presentation. It names the layer each time ("cue windows as measured" or
+  "less its flower-pot rest"). Any step goes back.
+- **Every line drawn, with its p**, in a table under the circuit. The legend
+  now says that **line thickness is the size of the change, not its p**.
+- **Ranking within each window.** Points of interest can be ranked overall,
+  or as the best three of each of the seven windows, so a busy onset cannot
+  take the whole list. The window control now names its two groups, **4
+  states (10 s each)** and **3 transitions**, with no switch hiding three of
+  them. Baseline and After are now **Pre-baseline** and **Post-baseline**.
+- **PAC within a region: the conventional route**, in its own card. Pick a
+  region to see:
+  - its own comodulogram for Precon1 and for Precon4 (each the mean over
+    rats of each rat's mean over its presentations), and the pooled change;
+  - every region at the chosen cell;
+  - a typical presentation of each session (the one nearest the median),
+    which opens its signals.
+
+  Cross-region PAC now has a card of its own, labelled **exploratory —
+  interpretation under validation**. Route: `/api/arc/monolith/pacself`.
+- **Events first** (`backend/monoevents.py`, `js/monolith_events.js`):
+  free-running hippocampal P300-like events. Each cue session's Right DHC
+  wire is read from the originals on this computer (read only).
+  - **Detection:** band-passed 0.5–15 Hz, then robust z over the session.
+    An event is a positive peak of z ≥ 4 that is 150–500 ms wide at half
+    height, at least 500 ms after the last. A peak above z 15, or one
+    within 250 ms of the rail, is an artifact. All of these can be set on
+    the page.
+  - **Timing:** a histogram from 10 s before cue 1 to 30 s after it, and
+    rates per window and between presentations.
+  - **Coordination:** each region's event-locked average, and its 4–12 Hz
+    phase against the hippocampus. Both are compared with twice as many
+    random times in the same session.
+  - It is descriptive: each rat is compared with its own random times, and
+    across rats there are only means and counts.
+  - About 85 s a rat-session; nothing runs until **Find the events** is
+    pressed.
+  - Tried on r3 Precon1: 78 events, 77 of them between presentations, and
+    every region moved with them. That is the pattern a shared reference
+    or movement makes, so the page now warns about it.
+- **Across the four sessions.** Precon2 and Precon3 are measured exactly as
+  the two days are, as an addition. The selected line is shown:
+  - presentation by presentation, a panel per session, each rat its own
+    colour;
+  - as a matrix of rats by sessions, with the mean ± SE.
+
+  **Nothing is tested.** Precon2 and Precon3 never enter the change: the
+  Monolith's files are byte for byte what they were without them
+  (`tools/check_monolith.py`). In Drift → Monolith, the steps are **Add
+  Precon2 and Precon3** (works out what goes, about 4 min), then Upload,
+  Check, **Run Precon2 and Precon3**, Fetch. All 16 rat-sessions are banked.
+  One SPC folder is about 23 GB, and the upload plan states the total
+  before anything is sent.
+
+### Changed
+
+- **The detection band starts at 0.5 Hz, not 1 Hz.** It was measured on a
+  planted 380 ms deflection: a 1 Hz low edge cut its median width from
+  252 to 162 ms and its z from 9.8 to 6.0, so most real P300-like events
+  would fail the 150 ms rule. The 1 Hz edge can still be set on the page.
+- A delta or PAC addition keeps to the sessions the Monolith already has.
+  Whether a rat is ready is still decided by Precon1 and Precon4 alone.
+
+### Checks
+
+- `tools/check_events.py` (22, new) runs on a made-up recording written
+  as real .ncs files:
+  - every planted event is found, and the clipped one is not;
+  - each event is placed in its window;
+  - Right ACC moves with the events and Right OFC, the control, does not;
+  - the routes refuse what they should.
+- `tools/check_monolith.py` (175):
+  - within-region PAC is checked against a hand computation;
+  - the trajectory: who is ready, the addition plan, the build, and the
+    change unchanged;
+  - the new routes.
+- Harnesses: `_dev/monolith.html` (299), `_dev/driftmono.html` (60).
+
+---
+
+## 2026.10.02.10 - A VACC tool offers to send what the cluster has not got
+
+### Added
+
+- **Every VACC tool now offers the upload.** Incisor, Doppler and Circuit
+  name the recordings the cluster has no copy of and offer to send them,
+  through `BARRY.vacc.uploadMissing`, which calls **the same** `upload`
+  pathway Sessions calls: the plan first, the confirming button that says
+  how much it sends, a file already there at the same size skipped, the
+  `.part` rename. A tool writing to the lab's shared space its own way
+  would be a second set of rules about the lab's data.
+
+  Written into the constitution, §6d.
+
+### Fixed
+
+- **Incisor and Doppler dropped them silently.** A recording the cluster
+  could not read was skipped with `continue` and never mentioned, so a VACC
+  batch quietly did not mention most of the catalogue: 97 to run against
+  1,286 left out, none of which appeared. A list that omits what it cannot
+  run reads as though those recordings do not exist. Circuit did name them,
+  and told somebody to "upload it to VACC first" with no way to do it.
+
+- **One recording was listed as both sendable and unreadable.** 104 gids in
+  this registry are held by more than one record -- the same recording
+  written twice, usually once with its paths and once with none -- so a
+  planner walking records emitted the recording twice with opposite
+  answers, and whichever was read last won. The plan now answers per
+  RECORDING, and the answer that wins is the one with something to send: a
+  record with no paths is the emptier description of the same recording,
+  not evidence that the recording is unreachable. 1,380 entries became
+  1,286, and the contradictions went to zero.
+
+  The duplicate gids themselves are a registry fault and are left alone;
+  they are the same ones that made a cloud push fail with "ON CONFLICT DO
+  UPDATE command cannot affect row a second time".
+
+### Changed
+
+- **Naming them must not mean sending the catalogue down the wire.**
+  Listing all 1,286 was about 100 KB of the same sentence and 1,286 nodes
+  built into a panel nobody opens. Forty are explained, the totals are
+  exact, and the gids travel as a bare list -- so the button still offers
+  every one of the 583 it can send while the payload is 37 KB.
+
+- **`can_upload` is decided on the server**, and is not the same question as
+  "is it missing from the cluster": a recording this computer cannot open
+  either has nothing to send, and a button that cannot work is worse than
+  no button. Those still appear, with the reason. A conflict -- two cluster
+  folders claiming one recording -- is also not sendable, because a third
+  copy makes the ambiguity worse.
+
+## 2026.10.02.9 - Avery sweeps a set from Checkup
+
+### Added
+
+- **Avery Sweep, in Checkup's Xplorefinder bar** (dentate spike sets).
+  Avery is AI Beta's model, put to work: a random forest trained on 45
+  recordings with every input except anatomy.
+  - **It asks first.** The dialog states the candidates, how many a person
+    has already decided, the model, what it did on mice it never saw (98.5%
+    of garbage caught, 42.9% of real spikes flagged), and roughly how
+    long the sweep takes.
+  - **A scanning screen while it reads.** Now and then it takes one real
+    candidate, sweeps across its waveform and the shank's CSD, and reads
+    out its amplitude, width, rise, CSD peak, common mode, unit firing and
+    likeness. When the scores are in, a short reel shows real verdicts on a
+    dozen candidates spread through the set, then the summary appears.
+  - **Every candidate gets one of four calls:**
+    - DS: at or above the bar that caught 99% of garbage.
+    - Flag for Deep Review: between the 98% and 99% bars, the closest to
+      the line.
+    - Flag: the rest.
+    - Garbage: below the score where nine in ten held-out candidates
+      were garbage.
+  - **The summary** shows a tile per call, which filters a list of every
+    candidate with Avery's call, its score and any person's call. It says
+    how each call held up on unseen mice, and how often Avery agreed with
+    decisions already made.
+  - **Accept and review** puts Avery's calls on the candidates nobody has
+    decided, never over a person's decision. It banks every call as a
+    version made by "Avery (AI)" and tagged `avery`, and keeps the scores
+    in `GUI_logs/aibeta/sweeps`, so edge cases can be mined later. Then it
+    opens the Flagged pass. **Discard** keeps nothing.
+- **AI Beta: Make this Avery** on any run trained with Avery's bars. The
+  run Avery uses is marked in the Runs list.
+
+### Changed
+
+- **Training never learns from an Avery version**, however settled it
+  looks.
+- **Both reads can read one recording's stretches six at a time**, which
+  makes a sweep about 1.5–2.5 minutes for a few hundred candidates.
+
+### Measured
+
+- **Same numbers as training on sets it was trained on.** Swept again,
+  PTEN m22 s3 and m60 s4 gave every DS-or-Garbage call the settled answer
+  (92 of 92, 289 of 289). That only shows the sweep measures candidates
+  the way training did; it is not a test of accuracy.
+- **KCNT1 m78 s1: all 451 candidates came back Flag** (one Deep Review).
+  Its scores sat just under the DS bar, median 0.86 against 0.96, and
+  only one KCNT1 recording was trained on. Avery needs more KCNT1
+  examples before it is useful there.
+- **On held-out mice, Garbage calls are rare:** 21 of 12,406 candidates,
+  19 of them really garbage. Most garbage lands in Flag, where a person
+  sees it.
+
+### Checked
+
+- `tools/check_aibeta.py`: 34 ok. New: an Avery version is never the
+  answer, the four bars sort high to DS and low to Garbage, the DS bar
+  sits above 99% of garbage, and Garbage calls are at least nine in ten
+  garbage.
+- `_dev/avery.html`: 27 ok, against a faked server. `_dev/aibeta.html`:
+  33 ok.
+- Accept was run end to end on the demo set: it filled only the
+  undecided candidates, kept every person's call, banked one `avery`
+  version, wrote the sweep record and refused a second accept. The demo
+  set and its bank entry were then put back exactly as they were.
+
+## 2026.10.02.8 - The Monolith: what was lost, each half of the cue pairs, delta, and how it was averaged
+
+### Added
+
+- **What was lost.** A new section of the Monolith page, linked from the
+  counts. It covers the whole run, then each rat and each day:
+  - cue pairs kept, partly kept and lost;
+  - rest epochs kept;
+  - a rat × region map per day, showing each region's share of cue-pair
+    windows kept, with histology hatched and the reasons on hover
+    (histology, a bad wire, clipping, not measured);
+  - which entries went untested and why.
+
+  It is read from the wires the cluster actually used.
+  On the real Monolith: 242 cue pairs, of which 133 kept every region, 103
+  lost one somewhere and 6 were lost entirely. All 125 rest epochs were
+  usable.
+- **Wires left out, shown anyway.** In the cue-pair view, every wire of the
+  two regions that was not used in that window is read from the VACC and
+  drawn dashed, with the reason. Clipped stretches are marked in red,
+  measured again by Spark's own detector. On real data, r3 Precon1 p08
+  Baseline shows Right ACC's CSC19/20 at the rail for 2.1% and 2.7% of the
+  window.
+- **The aliasing check** (`tools/check_aliasing.py`). Its result appears in
+  "What was lost". Nothing is aliased:
+  - every recording's hardware low-pass (8 kHz) is below half its 32 kHz
+    rate;
+  - decimating to 1000 Hz lets nothing that folds into 1–55 Hz through
+    above −171 dB, and decimating to 250 Hz nothing above −145 dB;
+  - on 62 real channels the 1–55 Hz spectrum matches a steep reference
+    within 0.0003 dB, once the anti-alias filter's own 0.2 dB passband
+    ripple (a gain that cancels) is taken out;
+  - the control: with no anti-alias filter, the same data would have been
+    up to 9.8 dB too high.
+- **A filter on the points of interest.** Filter by measure or measure
+  family, region or region pair, frequency range (with or without the named
+  bands), window or window type, direction of change, broadband, and which
+  cue pairs. The list is ranked again from every entry by the server's own
+  rule. A new harness, `_dev/monolithrank.html`, proves that on the built
+  Monolith: with no filter, the browser's ranking is the server's top 50
+  exactly, in both layers.
+- **The frequency slider has two knobs.** With the knobs apart, the
+  circuit is drawn over the range between them. A line appears where the
+  pair passes at any, most or every 1 Hz band in the range, its width and
+  colour set by the median change. Its hover lists which bands pass.
+  Clicking it opens the band where it is strongest.
+- **Each half of the cue pairs.** Every rat has a Click pair and a Noise
+  pair, and a High-tone pair and a Low-tone pair, so each half has all
+  eight rats and is pooled exactly as the whole is. A third split is by
+  role: the pair that later gets food (read from each rat's own Con TTLs)
+  and the other.
+  - The page has a Cue pairs control, and so does the
+    points-of-interest filter.
+  - Each half has its own points of interest, counts and drill-down.
+  - The split is built after every fetch, or with one button (30 s on the
+    real data).
+  - Splitting by the exact pairing (Click → Low Tone) is not offered: the
+    cohort is counterbalanced, so each pairing has only two rats.
+- **When we averaged**, a second tab. It follows one line of the circuit
+  from the recording to the circuit in nine steps, with that entry's own
+  numbers: the raw cue pair, the window, the band, the measure, each day's
+  mean (the first averaging), the rat's change, the pooled change with each
+  rat's weight (the second averaging), and the line it becomes.
+- **The delta band (2–4 Hz)**, a fourth named band. It has 1 s lags,
+  1 s Welch pieces and slow transitions, and is sweep-only, so the
+  circuits' three bands are untouched.
+- **PAC at the transitions**, in the slow −3/+3 s windows, which give the
+  2 Hz phase enough cycles. The PAC panel shows them beside the states.
+- **Adding to a built Monolith.** Drift → Monolith offers a small run that
+  measures only what the built Monolith lacks (delta, PAC at the
+  transitions). Fetching it rebuilds the Monolith from both runs; nothing
+  already measured is measured again.
+
+### Changed
+
+- **Minus FP's ? explains the averaging in full**: what each step averages,
+  where the rest is taken off and how its error adds, a worked example, and
+  this entry's own numbers when its drill-down is open.
+- **Clean cue pairs is less cramped.**
+  - The verdict groups channels by what they lose, with runs written as
+    ranges ("CSC1–16, CSC18, CSC19… (25 channels): cue 1 onset, cue 2
+    offset") instead of a wall of one entry per channel.
+  - The bar wraps, and its key hints have a line of their own.
+  - Per-row words are drawn only where a row has room. Otherwise only the
+    channel being edited gets them.
+
+### Checks
+
+- `tools/check_monolith.py` (156):
+  - the damage report;
+  - the split, cross-checked against the scalar drift functions;
+  - an addition merged with the run before it;
+  - the left-out wires.
+- `tools/check_sweep.py` (68), including delta.
+- `tools/check_sweep_real.py` (11), including PAC at the transitions on a
+  real recording.
+- `_dev/monolith.html` (224).
+- `_dev/driftmono.html` (54).
+- `_dev/arctrans.html` (69).
+
+**Restart Jarvis**: backend changes. To get delta and PAC at the
+transitions into your Monolith:
+
+1. Drift → Monolith → **Check VACC status**.
+2. Press **Add the delta band and phase–amplitude coupling at the
+   transitions**.
+3. Check again until it is done, then **Fetch**. The fetch also splits it.
+
+## 2026.10.02.7 - AI Beta: catch the garbage first, and a second read
+
+### Added
+
+- **A garbage-first scorecard on every run.** Each target (catch 100%,
+  99%, 98%, 95% or 90% of the garbage) is set inside the training mice.
+  The scorecard says how much garbage was really caught on the mice held
+  out, and how many real spikes were flagged with it. The Runs list shows
+  "real DS flagged to catch 95%" and "to catch 99%".
+- **A second read: what makes a dentate spike one.** It reads ±1.1 s
+  around each candidate, including the full 30 kHz signal, and offers
+  these as toggles under Physiology:
+  - sink and source;
+  - laminar delay;
+  - unit firing (300–3000 Hz);
+  - ripple (120–250 Hz);
+  - brain state;
+  - likeness to the recording's typical candidate;
+  - saturation;
+  - polarity reversal;
+  - spike shape;
+  - ±500 ms of context.
+
+  Every depth is measured from the candidate's own peak channel, and no
+  layer sheet is used. Movement (from `VT1.nvt`) and event markers (from
+  `Events.nev`) are built but carry nothing here: the tracker lost the
+  animal in every frame, and the event files hold only start and stop
+  markers. The read takes about an hour the first time, six recordings
+  at a time, and is cached.
+- **Runs can be pinned to one dataset** (`pin`: entry → version). The
+  bank changed during the comparison: three sets were finished and one
+  moved to a new version. Without pinning, two runs meant to differ only
+  in their inputs also differed in their data.
+
+### Measured
+
+All rows below use the same 45 recordings: 12,374 candidates, 1,392 of
+them Garbage. Each score is on mice the model never saw.
+
+| Inputs | Model | DS flagged to catch 95% | to catch 99% | AUC |
+|---|---|---|---|---|
+| today's | gradient-boosted trees | 42.8% | 66.1% | 0.900 |
+| + context ±500 ms | gradient-boosted trees | 43.4% | 68.7% | 0.905 |
+| ... + any one new input | gradient-boosted trees | 40.3–42.3% | 59.8–68.3% | 0.904–0.909 |
+| everything | gradient-boosted trees | 35.4% | 54.8% | 0.916 |
+| today's + context | random forest | 32.4% | 47.0% | 0.901 |
+| everything | random forest | **31.0%** | **41.5%** | 0.912 |
+
+- No single new input moves it much: each saves 1–3 points.
+  "Likeness to the typical candidate" and "saturation" help most.
+- Together the new inputs save about 8 points, and switching to a random
+  forest saves about as much again.
+- The bars are set in the training mice, so the garbage actually caught
+  on the held-out mice runs a little under each target: 95.3–97.6% at the
+  95% bar, and 98.6–100% at 99%.
+
+## 2026.10.02.6 - The Monolith shows a newcomer around
+
+### Added
+
+- **A guided tour of the Monolith.** It is written for a lab member who
+  knows the rats, regions and cues but not this analysis. In 14 steps it
+  follows this Monolith's top point of interest, with its real numbers:
+  - the counts against chance;
+  - what a line on the circuit means;
+  - what the view is;
+  - the leads;
+  - the edge lifted out: the pooled change, each rat and the forest plot,
+    one rat's two days, that day's cue pairs;
+  - one cue pair's recording, read from the VACC, and how its number was
+    made.
+
+  Click steps work either way: click the real thing yourself, or press Next
+  and a cursor clicks it. If you open a different rat or day than the one
+  suggested, the tour follows yours. Back sets the page up again for the
+  step before. If the recording has left the VACC, that step says so.
+- **It starts by itself on a first visit,** and this browser remembers that
+  it was shown, so it never starts on its own again. **Take the tour**, at
+  the top right of the page, starts it any time.
+
+### Fixed
+
+The Monolith tour runs on the engine Jarvis's own tours use (`tour.js`).
+Four fixes there help every tour:
+
+- **Next on a click step moved on twice.** The click's own timer advanced a
+  second time 420 ms later, which skipped the step after.
+- **A step that took a moment to set up could paint over the next one.**
+  This happened if Next was pressed while the step was still setting up.
+  Separately, the last step's re-measuring painted the new step's words
+  before its target was ready.
+- **Next could not click an SVG target**, such as an edge or an arc. It now
+  sends a real click event. A target that has already left the page is not
+  clicked.
+- **A target with no height** (a straight line) could not be pointed at.
+  It now gets a ring like anything else.
+
+### Checks
+
+- `_dev/monolith.html` (153). A returning visitor is not shown the tour; a
+  first visit starts it. It walks all 14 steps and measures that each
+  step's ring surrounds its own target. It also checks:
+  - Next performs a click step and moves on exactly one;
+  - a reader's own click moves the tour on;
+  - a different rat is followed;
+  - Back works;
+  - the traces appear, or the "gone" message does;
+  - Finish, Escape and the button all behave;
+  - the box stays on screen at 390 px.
+- Jarvis's tour harnesses pass unchanged: `tour` (54), `tournext` (14) and
+  `loadclean` (9).
+
+## 2026.10.02.5 - A database that is not answering is asked once, not 270 times
+
+### Fixed
+
+- **Jarvis stops asking a database that is not answering.** When
+  Supabase's database is down, Cloudflare holds each request for about
+  twenty seconds and then returns a 522. The sync, the presence beat and
+  the schema probe each kept asking anyway. One sitting made 270 requests,
+  all of them failed, and each held a thread for twenty seconds. That is why
+  the panel read "Syncing…" for minutes.
+
+  Now the first such failure holds every request:
+  - after a 502-504, a Cloudflare 520-524, a timeout or no connection;
+  - for 15 s, doubling up to 5 minutes;
+  - with each held call failing at once, saying when Jarvis will ask again.
+
+  The first answer of any kind clears the hold. Nothing is lost: everything
+  stays here and goes up when the database answers.
+- **"12 file(s) here are shared between machines" was a false alarm.**
+  Those files were artifact version payloads (`artifacts/snap/…`). They are
+  written once and named by their content, so they cannot conflict. They
+  are now treated as write-once, like run records, by both the Sync panel
+  and `tools/conflict_check.py`.
+
+### Added
+
+- **Sync marks on the Checkup shelf** as well as on the bench, beside when
+  each set was last touched.
+
+## 2026.10.02.4 - AI Beta leaves out recordings rejected whole
+
+### Changed
+
+- **A recording where every candidate is Garbage is no longer learned
+  from.** Those twelve recordings held 1,487 candidates, 57% of all the
+  garbage, and they came in pairs from one mouse (m24, m29, m46, m48).
+  That is a call about the animal or the placement, not about any one
+  event. Every candidate in them looks like a dentate spike on its own,
+  so the model caught 104 of them and learned that spike-shaped events
+  can be garbage. They are listed under "not used", with the reason.
+  Whether a recording is usable at all is a different question, and AI
+  Beta does not ask it.
+
+### Measured: the re-run (gradient-boosted trees, default inputs)
+
+The data is now 41 recordings from 23 mice: 10,078 DS and 1,098 Garbage.
+The figures below compare the same 40 mixed recordings, before and after.
+
+| | before | after |
+|---|---|---|
+| Ranking (AUC), pooled | 0.879 | 0.911 |
+| Ranking inside one recording, median of 35 | 0.83 | 0.88 |
+| Garbage caught when asked to keep 98% of DS | 8.7% | 25.8% |
+| ... when asked to keep 95% | 27.1% | 47.5% |
+| ... when asked to keep 90% | 58.7% | 71.7% |
+
+At the 98% bar it kept 98.6% of real DS and flagged 3.8% of candidates.
+It now leans on the shank and CSD measures almost as much as on the
+waveforms: shuffling them drops its ranking by 0.13, against 0.15 for the
+waveforms.
+
+## 2026.10.02.3 - Checkup's AI Beta: a model tested on mice it never saw
+
+### Added
+
+- **AI Beta, inside Checkup.** A **Sets | AI Beta** switch in Checkup's
+  header, remembered per machine. It is a sandbox: it trains a model to
+  sort dentate spike candidates into DS and Garbage from the sets people
+  have finished, tests it on mice it never saw, and says how it did. It
+  writes no label, no curation set and no bank version, and Braces never
+  sees it. Running it on new, undecided sets is a later step.
+
+  - **What it learns from.** For each Event Bank entry, the undecided
+    version (v0) is the candidates, whether they came from a Toothy
+    import or from Incisor. The answer is the last version before Braces
+    that holds only DS and Garbage. That is 53 recordings from 28 mice:
+    10,078 DS and 2,585 Garbage. Two settled versions whose snapshot never
+    reached this machine (PTEN m24 s4 and m21 s6) are taken from the
+    curation set, and only because its counts match the version exactly.
+  - **The clock comes first.** Every feature is read from the raw file at
+    a stamp, so a stamp on the wrong clock is a window on the wrong event.
+    Versions on Toothy's clock are converted with Re-time's arithmetic.
+    What is left (Toothy's linear time axis drifts as well) is measured per
+    recording, never per event, as a running median of how far the
+    nearest CSD peak sits from each stamp. 39 of the 53 needed a nudge,
+    by up to 71 ms.
+  - **Inputs, each a toggle:** Incisor's numbers, shank and CSD measures,
+    waveforms, timing context, recording context (off) and a 5-100 Hz CSD
+    image (off). Each recording is read once and cached. All 53 took
+    about 25 minutes here, six at a time. Changing the inputs later only
+    retrains, which takes about 90 seconds.
+  - **Tested on whole mice**, five ways round. The bar for calling
+    something a DS is set inside the training mice so that it keeps 98% of
+    real spikes. Anything under the bar is a flag for a person and is
+    never thrown away. Classes are balanced.
+  - **The summary:** the headline counts; the three kinds of recording
+    (both labels, rejected whole, no garbage); what each stricter or looser
+    bar would cost; which inputs it leaned on; each held-out group of mice;
+    and each recording. Every run is kept, with the model it trained under
+    `GUI_logs/aibeta/models` and what it learned from.
+
+### Measured: the first run (gradient-boosted trees, default inputs)
+
+- **On mice it never saw, at the 98% bar,** it kept 96.9% of real DS and
+  caught 7.7% of the garbage, flagging 4.0% of candidates.
+- **In recordings with both labels it ranks well:** AUC 0.88 pooled. Inside
+  a single recording, a real spike scores above a piece of garbage 83% of
+  the time (median of 35 recordings).
+- **It cannot see a recording rejected whole.** Twelve recordings, 1,487
+  candidates and 57% of all the garbage were rejected outright. It caught
+  104 of them, because each candidate in them looks like a dentate spike
+  on its own. That rejection is a call about the recording, not about any
+  one event.
+- **The price of keeping spikes.** Asked to keep 90% of DS, it catches 38%
+  of all garbage and 59% of the garbage in mixed recordings, and flags
+  15.8% of candidates.
+- **It leans on the waveforms.** Shuffling them drops its ranking by 0.21.
+  Incisor's numbers add almost nothing on top.
+- **For reference:** a person's first pass matched the settled call 71.6%
+  of the time. Often that was a Toothy-era sort by somebody else.
+- **Tried, and not the default:**
+  - Recording context made it worse: one fold's ranking fell from 0.82 to
+    0.61, and twelve rejected recordings are too few to learn from.
+  - The CSD image ranked better within a recording (0.91) but worse across
+    recordings, and was five times slower.
+  - A random forest caught more garbage at the 98% bar (13%) but less at
+    90%.
+  - Logistic regression was worse throughout.
+
+### Changed
+
+- **Balanced classes by repetition, not by weight**, for the
+  gradient-boosted trees. With scikit-learn 1.9 here, `class_weight`
+  made each fit fifteen times slower (1.3 s against 18.9 s), which turned
+  a 90-second run into six minutes.
+
+### Checked
+
+- `tools/check_aibeta.py`: 28 ok. It checks which version is the answer,
+  the skips and their reasons, one entry per recording, the clock
+  conversion and the running median, counts at a bar, and that no mouse
+  is tested in a fold it trained in.
+- `_dev/aibeta.html`: 31 ok. It never trains: the train request is
+  intercepted, and the count of attempts must be zero.
+- The train route end to end through a live server on six cached
+  recordings: the cost line, the refusal with no inputs, the refusal of a
+  second run while one goes, the job, its result and the run listed. That
+  run was then removed.
+
+## 2026.10.02.2 - Every record says whether it is shared; no Sync button
+
+### Changed
+
+- **The rail's "Sync now" is gone.** The background sync already pushed a
+  change within seconds. What the button mostly did was report the
+  database being briefly away, in a toast, as though the click had failed.
+  The chip in its place says where the shared copy stands:
+  - *All shared*;
+  - *3 sending*;
+  - *3 not sent*;
+  - *Database away*;
+  - *Not shared*.
+
+  Its title gives the reason and the GUI_logs git state the chip used to
+  show. The Sync panel keeps its own Sync now.
+- **The Event Bank pushes a change by itself, however it was made.** The
+  same goes for curation sets, layer sheets and artifacts. A request
+  already asked for a push. A job banking its results in a thread made no
+  request, so its entries waited for the next timed push. That push never
+  came while Jarvis was idle-paused, which is when an overnight batch
+  finishes. Every write to one of these stores now asks for a push, and
+  the push goes even while idle.
+- **A pull that fails no longer holds the push back.** They ran as one
+  step. A database too busy to answer the pull's first select (the 522 on
+  `barry_watermarks`) kept every change made here from going up.
+- **A Cloudflare 520-524 is a brief failure.** Sync retries in 30-180 s
+  rather than in minutes.
+
+### Added
+
+- **A mark on every record that travels**, saying whether it has reached
+  the shared database:
+  - on Event Bank rows;
+  - on Checkup's working sets and StrataScope's sheets (the workbench
+    cards);
+  - on artifacts.
+
+  The states are *shared*, *sending*, *not sent* (with what went wrong, in
+  words), *this computer* (a demo, or a recording the shared table does not
+  have) and *not shared* (this machine is not connected). The marks update
+  in place. They are worked out from this machine's push cursor
+  (`/api/cloud/items`), so they cost no requests at Supabase.
+
+Checks: `tools/check_syncitems.py` (25) and `_dev/syncmarks.html` (20).
+
+## 2026.10.02.1 - The Monolith explains itself, down to the traces
+
+### Added
+
+- **A ? beside everything on the Monolith page.** That covers every View
+  control, every measure, the circuit, the points of interest, the
+  spectrum, PAC, each level of the ghost, and the cue-pair view. Each ? opens
+  beside itself and gives:
+  - what the thing is, in plain words;
+  - what to look for, and what fools it;
+  - one or two papers;
+  - a highlighted line about the entry on screen.
+
+  The measures and the statistics also show two made-up examples side by
+  side, a strong effect and no effect. They are drawn from
+  `web/monolith_guide.json`, which `tools/monolith_guide.py` makes by running
+  signals shaped like the real data (8 rats, about 15 cue pairs a day, 10 s at
+  1 kHz) through the Monolith's own engine. The statistics examples are:
+  - eight rats that agree vs a 5:3 split;
+  - one outlier rat;
+  - minus FP taking away a change shared with rest;
+  - nothing changed, on a circuit, where about 5% still pass.
+- **The Guide** (`monolith-guide.html`): every ? in one page, with
+  contents. Each ? links to its own entry.
+- **Under the ghost, each level's own picture:**
+  - Pooled: each rat's Precon1 and Precon4, joined.
+  - Rats: a forest plot with 95% intervals and the Hartung–Knapp diamond.
+  - A rat: both days' cue pairs as dots, mean ± SE, with rest beside them
+    for minus FP.
+  - A day: its cue pairs as dots.
+
+  A line under the pictures says how many cue pairs gave a value, rat by
+  rat. A dash in the ghost now says why it has no value: which region had no
+  usable wire, or what the node refused.
+- **Click a cue pair to see its traces.** A cue pair can be opened from the
+  ghost or from a dot. Jarvis reads that stretch of the recording from the
+  VACC copy, on the login node, with the same reader the node used. The view
+  shows:
+  - the whole cue pair, 10 s either side, with its windows marked and the
+    analysed one shaded;
+  - the analysed window four ways: raw, band-passed, envelopes, and the
+    phase difference;
+  - every measure as its own picture, the one in view first, with its
+    stored number and the one recomputed here, which must match;
+  - the phase-binned amplitude bars for the chosen PAC cell, each way.
+
+  ← and → step through the cue pairs, and Precon1/Precon4 switches the day.
+  The view saves as SVG, PNG or CSV. A recording that has left the VACC
+  (Temp is purged) is said to be gone. Nothing is read from anywhere else.
+- **Broadband flag.** A pair that passes p < .05 at 60% or more of the
+  tested 1 Hz bands is marked *broadband* in the points of interest, in its
+  hover and under the spectrum. A change that is everywhere is more often
+  a reference or an artifact than a rhythm.
+
+### Fixed
+
+- **Granger arrows read as arrows.** The head was a fixed 9 px marker. On a
+  thick edge it was narrower than the line, and the line ran on under it to
+  the node's centre, so a strong arrow looked like a blunt line ending
+  inside the node. Now:
+  - the line stops where the head begins;
+  - the head is sized to the line, at least 6 px wider than it;
+  - the tip stops just outside the node it points at.
+
+  This applies to the circuit, to the Granger arrows drawn over another
+  measure, and to the PAC circuit.
+
+### Checks
+
+- `tools/check_sweep.py` (63): every curve the pictures are drawn from
+  rebuilds its number: the band means of the spectra, the rose's mean
+  vector, the lag curves' peaks, the segments' PPC and debiased wPLI, and
+  the PAC bars' MI. The same curve read 4 Hz off does not.
+- `tools/check_monolith.py` (123): the cue-pair route, against a stand-in
+  login node that answers the real read script. It reads once, then from
+  memory, and says "differ" beside a made-up stored number and "match" once
+  the engine's number is stored. It covers a missing wire and a recording
+  that is gone.
+- `_dev/monolith.html` (124): the ? popovers and their figures, the
+  broadband flag, the ghost's pictures, and the cue-pair view (stepping,
+  day switch, all three saves, not measured, gone). It also checks the
+  Guide, and that no word in any figure is cut off or sits on another.
+  Every arrow is measured from what was drawn: head width against line
+  width, where the line ends against where the head starts, and the tip
+  against the node's circle.
+
+Restart Jarvis to get the cue-pair route.
+
+## 2026.10.01.6 - Every channel, always: even-only reading is gone
+
+### Removed
+
+- **"Even channels only"** in Xplorefinder's More menu, and everything
+  behind it:
+  - the server's even read;
+  - the measurement that switched it on by itself for a 32-channel probe on
+    64 inputs (`nlx.channel_scheme`);
+  - the remembered choice per recording;
+  - the cross-window sync;
+  - the `?even=` deep link.
+
+  Every recording is read whole. To look at the even channels, use **Even**
+  in the Ch menu. It is a selection, so no channel indices change.
+
+### Changed
+
+- **Incisor's traces window** opens on the even channels with `?sel=even`, a
+  selection, rather than an even read. Any `?sel=` preset works on a deep
+  link, and an old `?even=1` link is read as `?sel=even`.
+- **Rebuilding a figure made from an even-only read** carries its channel
+  picks across by CSC number into the full channel list, and says so in the
+  plan. Those picks counted positions among the even channels only.
+- **Reopening after Invert** keeps the channel selection. It used to be
+  re-derived, because an even-only toggle moved every index.
+- **Caches.** Spectrum, Panorama, Doppler, Incisor and prewarm cache keys
+  still contain `even_only: false`, as a constant, so results cached
+  before this change are still found.
+- **Older clients.** A request or cluster call that still sends `even_only`
+  is ignored, not refused.
+
+Harness `_dev/evensync.html` is deleted, since what it tested no longer
+exists. The harnesses that opened recordings with `evenOnly: false`, or
+toggled even-only, now open them plainly.
+
+## 2026.10.01.5 - A dual array's two panes are one recording
+
+### Fixed
+
+- **The uV scale moves both arrays.** Dragging or typing it redrew only the
+  pane the strip was built from, so a dual implant's second array stayed at
+  the old scale until its next read. With nothing pinned, each array was
+  drawn at its own automatic scale, side by side, and the strip showed one
+  of them. Now one number is used for every pane of a recording: the larger
+  of the arrays' automatic scales, or the pinned one. Pinning, unpinning and
+  a CSD's colour scale reach every pane too.
+- **A tab puts its recording on screen, in its layout.** Clicking a tab
+  only changed which recording the controls applied to. A dual implant's two
+  panes stayed up under an H3 recording's tab, and the probe control said
+  H3 over them. The only fix was to pick H3 and then the probe again. Opening,
+  switching and closing now go through one rule: a probe that splits the
+  array gets a pane per column; anything else leaving that layout gets one
+  pane; otherwise your arrangement is kept.
+- **Closing a tab leaves a working layout.** Closing the recording whose
+  columns were up left empty panes and could leave a zoom pointing at
+  nothing. What is left now goes back on screen in its own layout.
+- **Opening a recording into a probe layout.** It went into one of the
+  columns and left the other showing half of the first recording.
+- **One pane cannot draw another's read.** A pane replaced while its read
+  was in flight still wrote the shared window when the read arrived. That is
+  how an H3 pane could come up showing one column's channels. Reads for a
+  pane that is gone are now dropped, and stopped when the pane is disposed.
+  Changing the layout disposes the old panes, where before it left their
+  listeners and observers running.
+- **Two opens of one recording make one tab,** even while the first open is
+  still in flight.
+- **Marking a channel bad in the Ch menu shows at once.** The button kept
+  saying "ok" until the menu was closed and opened again. Ticking a channel
+  now updates the count at the top as well.
+- **The layout buttons leave no column behind.** A pane could keep its
+  "Array 2" label after leaving the probe layout.
+
+### Added
+
+- **1st half and 2nd half** in the Ch menu, by file order. On a dual implant
+  each is one array. A probe column with none of its channels selected now
+  says so and draws nothing. Before, it fell back to drawing all of its
+  channels.
+
+Harness: `_dev/xfdual.html`, 37 checks. Against the committed code it fails
+6 and then stops.
+
+## 2026.10.01.4 - Root Canal's amplitude filter is a choice of four
+
+### Added
+
+- **No filter | DS | LFP | Custom**, for what amplitude and half-width are
+  measured on. Asked for once it was clear the 1-100 Hz default had been a
+  recommendation, not a measurement.
+
+  | | band | 60 Hz mains |
+  |---|---|---|
+  | No filter | none — the stored 2 kHz snippet | left in |
+  | DS | 5-100 Hz at Toothy's order — Incisor's and X-ray's band | fitted out, as the CSD's is |
+  | LFP | 1-100 Hz, order 4 — the literature's morphology band | left in, as that band is used |
+  | Custom | your corners | a checkbox, on by default |
+
+  **LFP stays the default**, so nothing already fitted moves. A preset is
+  its own numbers: a request saying "ds" with other corners gets 5-100 Hz,
+  and the request itself carries the preset's numbers rather than the
+  corners last typed for Custom. Every chip, panel title, banked method
+  line and figure names the filter in words, and the Xplorefinder
+  pop-out opens on the same filter, notch included.
+
+  A pool refuses members measured on different filters, for the reason it
+  refuses different bands: two measurements under one axis label.
+
+### Measured
+
+- **What the mains was doing to the amplitude axis.** On PTEN m1 s2, the
+  events whose max-amp contact is CSC41 — a contact carrying heavy mains
+  as well as real events — by filter: LFP 23 of 64, no filter 21, DS 3,
+  custom 3-150 Hz with the mains out 5. The mains was choosing the contact
+  the amplitude and half-width were read off, for a third of that
+  recording's events.
+
+### Fixed
+
+- The click panel's cache key now includes the filter. Without it, a new
+  filter showed the old trace.
+
+### Checked
+
+- `tools/check_rootcanal.py` 208 ok: each preset's numbers, presets
+  ignoring stray corners, refusals, no filter returning the snippet
+  untouched, DS taking 60 Hz down by more than 20 dB and keeping 20 Hz,
+  LFP leaving the mains, NaN contacts staying NaN.
+- `rootcanal.html` 204 ok, driving the four buttons to the server's own
+  statement of what it applied, the event re-read on a new filter, Custom
+  remembering its corners, and back on LFP giving the same answer as
+  before. With the filter choice broken, 10 fail. `rootcanalpool.html` 112,
+  `dspca.html` 304.
+
+## 2026.10.01.3 - Root Canal pools recordings, and its CSD loses the mains
+
+### Added
+
+- **Root Canal: Single | Pooled.** Bring processed singles — banked
+  results and unbanked reads, each marked — into one space, pooled in
+  raw units and re-clustered, with every event's own single call kept
+  beside the pooled one. Colour by pooled call, single call, switches,
+  recording, mouse or mouse type; focus a mouse or a type and the rest
+  dims. The question it is built to answer: two clusters, or one
+  ambiguous spectrum?
+
+  - **Identity switches**, drawn and counted: a 2x2 of single against
+    pooled call, the rate, and the rate per recording, mouse and type.
+  - **GMM, one group against two, by BIC** — and, beside it, whether its
+    two groups ARE the DS / IED split (adjusted Rand against the k-means
+    call). Without that the test answers a different question: on the
+    first real pool (18 PTEN recordings, 2761 events) ΔBIC was +881,
+    "very strong support for two groups", while those two groups matched
+    the DS / IED call at adjusted Rand 0.07 and the split axis had one
+    hump and a long tail. Two Gaussians fitted a skewed cloud. The verdict
+    sentence is now worded on the agreement.
+  - **Mouse** is project + mouse number, so PTEN m13 and KCNT1 m13 are two
+    animals. **Mouse type** is the registry's project and cohort, and can
+    be set by hand per mouse in the pool.
+  - **Saved as a Jarvis Artifact** (`rootcanal_pool`), with a required
+    label: pinned members and every dot, so it reopens with nothing read.
+    Changing members makes a version; an identical re-save confirms.
+    Nothing is written back to the Event Bank.
+
+### Fixed
+
+- **Root Canal's CSD carried mains.** It was taken on the fit filter,
+  1-100 Hz, with no notch. Measured on the 18 cached reads: a median 5% of
+  CSD power at 55-65 Hz, and 72-78% on PTEN m1 s2 and m1 s8 — while the
+  voltage traces beside it carried 1-5%, which is why they looked clean.
+  A CSD is a second difference, and mains that differs a little between
+  contacts survives it. On PTEN m1 eleven contacts carry up to 80% mains
+  (CSC1, 8, 9, 12-14, 16-18, 41, 57) and only CSC59 is marked bad.
+
+  The CSD is now on the dentate-spike band, 5-100 Hz, as X-ray's is. And
+  the mains is FITTED OUT, not notched: X-ray notches the continuous
+  recording, where a 2 Hz notch has time to settle, and on a +-250 ms
+  snippet it does not — it took a pure 60 Hz sine down by less than
+  20 dB and left 9-13% on the noisy contacts. A least-squares 60 Hz sine
+  over the snippet's 30 cycles comes out with no ringing and moves a 1 mV
+  spike by under 1%. CSD mains, median over recordings, 5.2% -> 1.7%;
+  PTEN m1 s2 72% -> 2.9%; the worst event of all 82% -> 5%.
+
+- **The batch table is sized to its contents.** At full width on a wide
+  screen it was 2014 px for four short columns.
+
+### Open
+
+- **The fit filter itself is still 1-100 Hz with no mains removal.** It
+  was a recommendation, not a measurement, and on PTEN m1 s2 23 of 64
+  events were measured on CSC41, a mains-heavy contact that carries real
+  events. Moving it to the dentate-spike filter is the user's call.
+- "You can't choose the set" in Many could not be reproduced: in a real
+  browser, at 1600 and 2540 px, ticking sticks, Already read opens and
+  fits the set, and nothing overflows.
+- Two Single failures and an X-ray timeout seen once in a three-harness
+  run did not come back in three runs since.
+
+### Checked
+
+- `tools/check_rootcanal.py`: 196 ok. New: the GMM's agreement wording on
+  two blobs and on one skewed cloud, the CSD's filter, a 60 Hz sine down
+  by more than 20 dB, a spike left alone.
+- `rootcanal.html` 188, `rootcanalpool.html` 112, `dspca.html` 304. The new
+  CSD-title check fails with the old wording.
+
+## 2026.10.01.2 - The Monolith: every measure, 1–55 Hz, on the VACC
+
+### Added
+
+- **The Monolith** (Drift → Monolith). The Precon1 → Precon4 change, measured
+  at every whole hertz from 1 to 55 Hz (a band of ±15% around each, never
+  narrower than ±0.5 Hz, cut at 55 Hz so none reaches the 60 Hz notch), plus
+  theta, beta and low gamma as their own rows. It uses fourteen measures:
+  - coherence and imaginary coherence;
+  - raw and envelope cross-correlation (lag up to two cycles);
+  - amplitude r at zero lag, and orthogonalised envelope r;
+  - PLV, PPC, PLI, wPLI and debiased wPLI;
+  - spectral Granger both ways, and its net.
+
+  It also measures each region's own power and the phase–amplitude coupling
+  between and within regions. The windows are the four 10 s states, plus
+  the three transitions: −3/+3 s for bands up to 12 Hz, and −1/+2 s above.
+  Rats are pooled exactly as the Precon drifts were: raw and minus FP, at
+  least five rats, DerSimonian–Laird with Hartung–Knapp. **Every p is
+  uncorrected, and every page says so**, beside how many entries chance
+  alone would give.
+- **Five steps, one button each**: Upload, Check VACC status, Run VACC job,
+  Fetch, View Monolith Artifact. Only the next step's button is the primary
+  one. Each step works like this:
+  - The upload sends the 48 folders (each rat-day's SPC, FP1 and FP2) as
+    Cheetah recorded them: every CSC* file however it is named, the video
+    (VT*.nvt/.mp4/.smi), Events.nev and Cheetah's logs. Anything processed
+    into the folders afterwards (a .mat, a figure, a CSV, a results folder)
+    stays here. In these 48 folders nothing was processed, so all 2,439
+    files go: 250 GB. It goes six files at a time (measured at about
+    80 MB/s; one stream is about 10). Pressing it again carries on from
+    where it stopped. A manifest made under any other file rule is made
+    again rather than used.
+  - The check lists both places in one call and compares them file by file
+    with the copy here.
+  - The run is one slurm array: 144 tasks, one per rat-day × kind × band
+    chunk, at most 100 at once, on the short partition. Each task runs its
+    own copy of the code.
+  - The fetch happens only when pressed. The answers come home in one
+    stream and are pooled here, then filed as a `monolith` artifact.
+- **The page** (`/monolith.html`) has these parts:
+  - a node-edge circuit;
+  - to its right, the layer flip, state or transition, the window, a slider
+    over every frequency with theta, beta and low gamma to snap to, the
+    measure, the significance slider (stricter to the right), Granger
+    arrows and node power;
+  - the top 10 points of interest, expanding to 50. Each snaps the view to
+    itself. They are ranked by how many rats moved the same way and then by
+    p, with at most three per region pair. An entry within 2 Hz in the same
+    window and measure as one already listed is the same finding, and is
+    listed under it;
+  - a strip showing where in the spectrum things pass;
+  - PAC grids, and a PAC circuit for any cell.
+- **The ghost.** Click an edge and it lifts out of the circuit, turning
+  until its two regions sit level. Click it and it opens into one edge per
+  rat; a rat opens into its two days; a day opens into every cue pair (and,
+  minus FP, every rest epoch). Hovering anything gives its numbers, down to
+  the wires each cue pair was read on. The whole drill-down is one request.
+  That request recomputes the entry with the scalar drift functions, and
+  says whether they agree with the arrays.
+
+### Changed
+
+- **Upload to VACC asks where, every time**: Scratch (Jarvis Data) is
+  chosen to start with, and Temp (`/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp`,
+  purged on a schedule, with its own quota) is the other choice. Each is
+  planned on its own, and the button says which one it is uploading to.
+  Copies in Temp are found by the inventory, like copies in Jarvis Data.
+  Files go six at a time.
+
+- **The room on the cluster is read before anything is sent.** The first
+  real upload to Temp failed on every folder with a bare `[Errno 32] Broken
+  pipe`. What the cluster had actually said was `cat: write error: Disk
+  quota exceeded`. The lab group pi-jbarry4 is at its gpfs3tmp hard limit
+  (1,010 GB of a 1,000 GB quota), almost all of it in `DEWEY GUI Project`.
+  - The upload plan now asks GPFS for the group's quota where the files
+    would go (`vacc.space`). It says how much room is left, and whether this
+    upload fits.
+  - A place that cannot take the upload says so: its button reads "Not
+    enough room in Temp" and is off. This holds in the Monolith tab and in
+    Sessions' Upload to VACC.
+  - If the cluster refuses part way through, its own words are shown.
+  - A quota refusal stops the upload at once, rather than failing every
+    folder after it.
+
+### Checked
+
+- `tools/check_sweep.py` (47): the engine on signals whose answers are
+  known:
+  - The named bands equal `coupling.band_metrics`.
+  - Raw cc in a 1 Hz band equals coupling's own cross-correlation.
+  - Volume conduction fools coherence and PLV, and none of the lag-blind
+    measures.
+  - PPC and debiased wPLI average zero on independent noise. PLV does not.
+  - Granger matches a VAR's closed form in one direction, and is near zero
+    in the other.
+  - PAC is found at its cell and in the right direction.
+- `tools/check_sweep_real.py` (8): one real cue pair through the node code.
+  - The 765 named-band numbers equal the circuits'.
+  - Every region is read on the circuits' wire.
+  - The slow windows' clipping is measured on the node, and no lost wire is
+    read.
+- `tools/check_monolith.py` (108): the pooling is `drift.pool_rats` +
+  `hk_test` entry by entry. What Cheetah recorded goes -- every CSC* file
+  (oddly named ones included), the video, the events, the logs -- and a
+  .mat or a figure put into the folder on disk never reaches the cluster.
+  It also covers the folder and task logic, the
+  submit script, the poll and re-run, a build end to end with a planted
+  change, and every route with the cluster stood in for.
+  CONTROL: with no change at all and real-sized days, 5.5% of entries come
+  out p < .05.
+- `tools/test_vaccupload.py`: the Scratch-or-Temp choice, and parallel
+  streams.
+- Harnesses: `monolith.html` (54) and `driftmono.html` (44) are new;
+  `vaccupload.html` (21) and `driftprecon.html` (89) are updated for the
+  destination choice and the third tab.
+- A harness with the app in a frame now empties the frame when it is done.
+  The app's polling held Edge's virtual time to the wall clock, so
+  `driftprecon.html` timed out at 280 s with every check passed.
+- A run is refused on older code only when the code is the Monolith's own
+  (`monolith.CODE`, checked against what a run really imports). An edit to
+  another tool does not block it.
+
+## 2026.10.01.1 - Upload progress is where the upload was started
+
+### Fixed
+
+- **"Progress is in the VACC panel" pointed at a room with no door.** That
+  panel opens from the command palette and nowhere else -- the rail chip
+  toggles the mode, it does not open anything -- so somebody told to go and
+  look had nowhere to go. The upload is started from Sessions, with the
+  recordings picked there, so the progress now appears there: an **Uploads**
+  section in the cluster pad, above the tab strip, because an upload is
+  about the pad rather than about which way you are looking at the
+  recordings.
+
+- **It did not move.** `pollUploads` updated its map every three seconds and
+  redrew nothing, so even the status panel showed whatever was true when it
+  opened. A progress display that does not progress is worse than none,
+  because it reads as stuck. Watchers are notified once per tick -- three
+  recordings finishing in the same three seconds is one redraw, not three --
+  and the panel redraws itself as well.
+
+### Changed
+
+- **One renderer, two places.** `BARRY.vacc.uploadsBox()` builds a fresh
+  node per call, so the status panel and the Sessions pad can both hold one
+  and say the same words. A second copy of the wording is a second copy to
+  keep in step, and the two would drift on the first change.
+
+- The toast names the place it is actually showing.
+
+## 2026.09.30.3 - Nobody at Jarvis, nothing sent to the cloud
+
+### Changed
+
+- **After ten minutes with nobody using Jarvis, all background syncing
+  stops.** That means no key, click, scroll or mouse movement in any Jarvis
+  window. Nothing is pulled or pushed, there is no heartbeat, no figure
+  sweep, and no polls from the page: the tool feed, the presence list and a
+  curation set's beat all stop. It used to slow down to one check every half
+  hour. Now it makes no requests at all, so a rig left on overnight or a
+  laptop with its lid shut costs nothing.
+- **The first key or mouse movement afterwards catches up at once.** One pull
+  for what colleagues did meanwhile, one push for anything a job wrote while
+  nobody was there, then the usual pace. **Sync now** works throughout.
+- **While somebody is using the page, colleagues' changes arrive within a
+  minute** even when nothing is being written here. Reading counts, not just
+  editing.
+- A curation set whose window has sat untouched for ten minutes stops being
+  reported as held, a few minutes later, so a colleague can take it.
+- The Sync panel says when sync is paused and why.
+
+---
+
+## 2026.09.30.2 - Incisor can extract every channel's spikes, each once
+
+### Added
+
+- **Extract all**, in Incisor's bank step. Which channel is the hilus
+  decides how many dentate spikes there are — CSC34 finds 50, CSC35 55,
+  CSC36 53, each a different fifty-odd — and every channel's list was
+  already in the scan. This pools a RANGE of channels and keeps each
+  spike once, and the count is on screen before anything is banked,
+  recounted in milliseconds from the scan every time the range moves.
+
+  The range defaults to the hilus and three scanned channels either
+  side, and follows the hilus if it moves; "Every scanned channel" is one
+  click. Where several channels saw a spike, its time is taken from the
+  one it was LARGEST on, and that channel is recorded on the event. The
+  set banks through the same dialog and the same record as a single
+  channel, marked as a union, with the range, the merge window and the
+  counts in its parameters.
+
+### Measured rather than assumed
+
+- **When two channels saw the same spike.** On twelve saved scans,
+  131,198 events against the nearest event on the adjacent channel:
+  89.6% within 2 ms, 1.2% anywhere from 2 to 100 ms. So there is a clean
+  gap, and near the hilus any merge window in it gives the same answer
+  — 5 ms and 25 ms differ by about 1%. 25 ms is the default, and a
+  window past the detector's own 100 ms spacing is refused: within one
+  channel two peaks that close cannot both exist, so a wider window
+  could only merge two separate spikes.
+
+- **The range is what matters, and it has no natural width.** On
+  fourteen recordings the union grows steadily as the pool widens: 740
+  on the hilus, 774 at three either side, 1,072 across all sixty. On one
+  recording 201 became 971 across every channel. The far channels are
+  seeing their own events, not dentate spikes the hilus missed — which
+  is why the count, and how many spikes only one channel saw, is shown
+  before banking rather than after.
+
+### Fixed
+
+- **A scan recalled from disk had no events on any channel.** JSON turns
+  every channel key into a string and every reader looked channels up by
+  integer, so after a restart "Bank and vet" said "no candidates on that
+  channel" about a channel the scan had found fifty-two on. Re-keyed once,
+  on recall.
+
+- **`incisor.html` never finished under the runner**, and neither did
+  the new harness: every check passed, but the app frame kept requests in
+  flight, headless Edge only dumps once its virtual clock runs out, and
+  that clock stands still while a request is pending. Both now unload
+  the app when they are done. `incisor.html` is 20 ok for the first time.
+
+### Checked
+
+- `tools/check_incisor_union.py`: 16 checks against all 53 saved scans
+  with rows — the recall fix, and on every scan that the union is the
+  hilus's count plus what it missed, never fewer than the busiest channel
+  nor more than all of them, every time once and in order, each kept time
+  a real detection on the channel it names. It fails against the old
+  integer-only lookup ("0 of 52").
+- `web/_dev/incisorunion.html`: 25 checks through the real panel, the
+  count matched against a recount from each channel's own list, with the
+  bank write intercepted. Removing the count from the panel fails 2.
+
+## 2026.09.30.1 - Bands, rest circuits, within-rat Drift, and clipping restored
+
+### Fixed
+
+- A drift or circuit opened in Results sat in a box capped at 60% of the
+  screen, which scrolled inside the page and cut the circuit off. Only the
+  raw-JSON view keeps a box of its own now. A pooled drift's long member
+  lists (16 circuits a side, once wrongly called "16 recordings") fold shut,
+  and its rest circuits are listed.
+- The Drift viewer's matrix and ring stacked into one column in wide
+  windows: the Precon tab's `.dr-body` rule overrode the viewer's
+  `.cir-body .dr-body` grid. The tab containers are now `.dr-tab`.
+- `check_circuitrun` refused to run once the Precon analysis had filed band
+  circuits on its seed recording. It now refuses only classic circuits, the
+  only kind it files or deletes.
+
+The first real Precon1 → Precon4 run turned up five problems. Each has a
+check in `tools/check_precon_repairs.py`, with a control.
+
+- **Circuit refused all 80 runs.** Spark's re-bank put the transition
+  clipping on every event, but the bank keeps an entry's *first* source and
+  its parameters when the entry is filed again. So the entry still said
+  `transition_measured` had never been looked at.
+  - Now the same pipeline filing again brings its own parameters.
+    Curation, and an adopted import, still leave the source alone.
+  - The Spark stage now reads back what the bank kept, and stops at once if
+    the measurement didn't land.
+  - The 12 recordings that were measured kept their work:
+    `tools/repair_precon_spark.py` gives each entry that run's parameters,
+    only after checking the entry holds exactly what the run filed.
+- **Spark read an FP recording for r10 Precon1 and r10 Precon4.**
+  - The registry files a DEWEY day's FP1, SPC and FP2 under one id, in no
+    reliable order, and Spark, Coupling and Circuit all read the first
+    folder.
+  - They now read the folder the cue pairs came from
+    (`circuitrun.cued_folder`).
+  - Circuits are named after their folder, because 5 of the 16 registry
+    labels name the wrong run or say "m9".
+- **One recording's error stopped the whole Spark stage.** Now it fails that
+  recording and the stage goes on. A reading that isn't the banked pairs is
+  refused rather than re-banked.
+- **The run died writing its progress file while Jarvis was reading it.**
+  Windows won't replace a file another process has open. Writes now wait
+  briefly for the reader. A progress write that fails no longer ends the
+  run, and an unexpected error is recorded and shown ("Stopped by an
+  error", exit 5).
+- **The circuit cache could have reused stale pairs.** It was keyed on the
+  bank version, which a new clipping measurement doesn't change. The pair's
+  clipped wires are now part of the key.
+
+- **Coupling had stopped seeing the clipping on 31 of 35 DEWEY entries.**
+  Another machine pulled them while running code from before the bank
+  knew `clipped`/`excluded`, kept a copy without them, stamped a minute
+  newer than the original; a git merge of that machine's shards then let
+  the stripped copy win field by field. Every Coupling and Circuit result
+  made after that merge (2026-09-28 13:51) correlated clipped wires as if
+  they were clean. This machine's measurements were never lost:
+  `tools/repair_bank_echo.py` re-filed them through the bank (no new
+  versions; backups under `GUI_logs/.cache/`). The machine with the old
+  copies needs to update Jarvis and pull.
+- **Spark and Circuit could read different entries of one recording.** A
+  recording banked twice had Spark re-banking into one and Coupling reading
+  the other. Both now choose with one rule: measured clipping first, then
+  transitions, then the most recent.
+- A Jarvis that saw the artifact tables missing never asked again until an
+  artifact changed; it now asks again after fifteen minutes.
+
+### Added
+
+- **Frequency bands in Coupling and Circuit**: theta 4–12, beta 13–30 and
+  low gamma 30–55 Hz from ONE read of the wires; band-average coherence,
+  the peak searched over about two cycles of each band (±500 / ±150 /
+  ±60 ms), and in band mode raw cross-correlation on the band-passed
+  signal. One circuit per band. `tools/check_bands.py`: without bands the
+  answer is exactly the pre-band one; three bands from one read equal each
+  band alone.
+- **Rest circuits** from each day's FP1 and FP2: as many 10 s epochs as the
+  day's cue pairs, spread evenly, clipping-measured like cue windows.
+- **Food pair and other pair**: each rat's two preconditioning pairs are
+  labelled from its own conditioning TTLs — the pair whose second cue is
+  later followed by food (`backend/cueroles.py`).
+- **Drift, within-rat**: each rat's Precon4 − Precon1, pooled over rats,
+  with Hartung–Knapp t, correction across all windows and methods, and two
+  contrasts — cue windows minus baseline, and food pair minus other pair.
+  The result says all of it in words and lists the members by rat.
+- Results lists new artifacts as they are filed, without a reload.
+- `tools/run_precon_drift.py` runs the Precon1 → Precon4 analysis
+  end to end through Jarvis, cost stated first; `tools/precon_drift_report.py`
+  writes the summary, figures and CSV.
+- Drift has a second tab, **Precon1 → Precon4**, that runs the same analysis
+  from buttons. It works out the cost first by reading only (about ten seconds),
+  and you can run it only from that cost.
+  - While it runs, the tab shows the three stages, the item in flight, the
+    time left and the script's own output.
+  - Stop waits for the item in flight to finish; "Stop now" ends it at once.
+  - Once done, it lists each drift it filed (opened below or in Results) and
+    writes the report.
+  - Jarvis starts the script as a child process whose output goes to a file,
+    never a pipe (`backend/preconrun.py`, `/api/arc/precon/*`).
+  - The run is refused if Jarvis is running older code, or if the plan is
+    not the one on screen.
+  - It survives interruptions:
+    - A refresh changes nothing. A page that loads while it runs says so.
+    - If Jarvis stops or restarts mid-run, the run ends as *interrupted*,
+      not as a list of failures.
+    - The next Jarvis to start (from `start.py` only) waits for any
+      leftover run to end, then carries it on by itself.
+    - Everything filed is kept, and the item in flight is redone from its
+      per-pair cache.
+    - After a computer shutdown the same happens when Jarvis next starts.
+    - A run stopped by hand is not carried on.
+    - Automatic carrying-on gives up after three tries that file nothing.
+    - The tab offers **Carry on now** and **Don't carry it on**.
+- The run log, the runner's state and artifact payloads are now flushed to
+  disk before each rename, so a power cut can't leave them empty. A torn
+  payload file is rewritten instead of blocking its version for good.
+- **The Precon analysis, both cue pairings pooled** (`backend/driftpool.py`,
+  `tools/precon_pooled.py`). This replaces the role-split drifts.
+  - Six drifts, one per band × window type.
+  - Each rat-day is every cue pair of both pairings, blind to type. Each
+    rat's Precon4 − Precon1 change is pooled over rats, precision-weighted
+    (DerSimonian–Laird), with Hartung–Knapp t and BH across each drift. An
+    entry needs at least 5 rats.
+  - Each drift carries a second layer, **minus FP**: that day's FP1 + FP2
+    rest is subtracted before the change.
+  - Two tiers: "survives" is q < .05. "Point of interest" is q < .25 or
+    p < .01, with a simple majority of rats moving the same way.
+  - The old 33 drifts were soft-deleted, and their report was archived to
+    `GUI_logs/.cache/precon_archive_*`.
+  - `docs/dewey-precon-pooled.html` shows the node-edge circuit of any band,
+    window and method, with raw / minus FP, a significance slider (right is
+    stricter), and a top 10 per layer, one entry per region pair.
+  - The Precon tab's Run and Write the report now make these, through
+    `POST /api/arc/drift/pooled/run`.
+  - `tools/check_driftpool.py` checks known answers, pooling blind to type,
+    the FP arithmetic, the 5-rat rule, the tiers, input order, and a null
+    control.
+- **Drift's viewer:** a raw / minus-FP flip on drifts that carry layers.
+  Edges are now drawn by a significance slider that is stricter to the
+  right, or by size. A single circuit's slider says it's strength, not
+  significance.
+- **The Precon change, averaged** (`tools/precon_average.py`). The drifts
+  test each cell on its own; this asks whether each region pair's coupling
+  changed on average.
+  - For each rat, the mean of its Precon4 − Precon1 changes over a set of
+    cells, then those per-rat means tested across rats: t on k − 1 df,
+    Benjamini–Hochberg across region pairs.
+  - The sets: everything; by band, method, state or transition, window and
+    cue pair; rest; and cue sessions minus rest.
+  - It reads only the 15 raw-change drifts, digest-checked. The
+    cue − baseline and food − no-food drifts are made from the same numbers,
+    so they'd be counted twice.
+  - It writes `docs/dewey-precon-average.{html,csv,json}`. The `.html` is a
+    self-contained page with every view, every region pair and every rat.
+  - `tools/check_precon_average.py` checks known answers, recomputes the
+    real run another way, and has a random-sign control.
+
+## 2026.09.29.1 - The cloud asks only when something changed
+
+September's Supabase bill was 192% of the free egress allowance and 1,148%
+of log ingestion. Both count **requests**: each one is about a kilobyte of
+headers and a log line, whatever it carries. The watermark fix of 09-21 made
+pulls cheap; this goes after everything it left behind (constitution §11).
+
+**Every computer needs to pull and restart.** One machine on old code keeps
+re-stamping the roster every minute and every other machine keeps
+downloading it. **Run `supabase/19_request_budget.sql` once** in the SQL
+editor; until then everything still works, with one refused request per
+start and error triage checked every ten minutes.
+
+### Changed
+
+- **A push with nothing new makes no requests.** It used to make five
+  every minute on every machine, idle or not. Three of them were
+  `machines`, `prefs` and the whole roster re-sent stamped "now". The
+  other two read every key in `bank_snapshots` and `bank_entries`, about
+  1.2 GB a month per machine. People and preferences now carry the time
+  they were actually changed. The machine row is a five-minute heartbeat.
+  Snapshot keys the cloud already has are remembered. Measured: a second
+  and third push, zero requests.
+- **The pull backs off unless somebody else's work is arriving.** The pace:
+  - 20 s when a change comes in from another machine;
+  - a minute while somebody works here alone;
+  - up to five minutes when it's quiet;
+  - half an hour when nobody has been looking at the window for ten
+    minutes. The first click brings it straight back.
+
+  Before, every presence beat and every 4 s activity flush counted as work.
+  A machine with a set open pulled and pushed every 20 s all day. The
+  "something arrived" half never fired at all.
+- **Presence beats once a minute, not every 20 s, and not while the window
+  is hidden.** A beat is two requests at most, down from three: its own
+  write reports whether the set was taken. A set left open behind other
+  windows stops showing as held after three minutes, and coming back
+  reclaims it at once. Beats and activity flushes no longer schedule a push.
+- **The tool feed reads the shared table once every 30 s for every tool,**
+  not once every 3 s per open ToolKit. The page asks every 15 s and never
+  while hidden.
+- **The figure list is read when it changed.** It was read in full, every
+  column, every five minutes (~0.8 GB a month per machine). Now it's read
+  once at start and then only when a pull sees `results` move, and then only
+  the new rows.
+- **Refused uploads stop being retried.** Windows calls a `.csv`
+  "application/vnd.ms-excel", which the bucket refuses. On this machine 73
+  files (every CSV and a spreadsheet) were sent and refused every five
+  minutes, about 21,000 refused requests a day. CSVs now go up as
+  `text/csv`. A file the bucket refuses is not tried again until it changes.
+- **Responses come back gzipped** (a roster: 7.8 KB → 1.2 KB), and every
+  request says which computer and version sent it, so Supabase's own logs
+  can tell the machines apart.
+- **Only Jarvis itself syncs in the background.** The harness runner and the
+  tools that import the app used to each run a sync loop against the real
+  database. A second Jarvis on the same computer now leaves syncing to the
+  first.
+
+### Added
+
+- **The Sync panel shows what this computer has cost:** requests to Supabase
+  in the last hour, what came back, and who asked. It also shows the pace
+  the sync is on, and why.
+- **The device list shows which version each computer runs** (after
+  migration 19), so the stale one is visible.
+
+### Fixed
+
+- **Error triage travels again.** `errors` and `error_marks` were left out of
+  the watermark view in migration 17, so no pull asked for them after that.
+
+---
+
+## 2026.09.28.1 - The Arc: Circuit, Drift, and artifacts you can build on
+
+### Added
+
+- **Circuit, step 3 of The Arc.** One recording, one cue pairing, state
+  or transition windows: a connectivity matrix that keeps every cue pair's
+  value behind each cell, with n, mean and SD. Missed, relocated and
+  unscored probes are grey and never computed; a region usable in even one
+  cue pair is kept, with a warning saying how many. Drawn as the matrix
+  (Coupling's crosshair) and as the node/edge ring in the VACC's layout,
+  with a threshold slider, full region names, no star clutter, and SVG/PNG
+  download. Runs on this computer (about a minute a recording) or on the
+  VACC, one recording or many; every cue pair's result is cached, so an
+  identical re-run takes a fraction of a second and confirms the existing
+  version rather than adding one.
+- **Drift, step 4 of The Arc.** Put circuits in a left group and a right
+  group. Each group is pooled with recordings as the unit — DerSimonian–
+  Laird random effects, so a recording with one usable pair counts little
+  but is not dropped — and the difference is tested cell by cell, with
+  Benjamini–Hochberg across each panel. The delta matrix outlines cells by
+  q, the ring draws the cells below a chosen q, and a click shows every
+  recording behind both sides. A group of one recording is labelled as one
+  recording. Circuits of different cue pairings are refused, naming both;
+  treating them as the same cue type is an explicit choice that is recorded
+  on the result.
+- **Jarvis Artifacts, in Results.** Stages now produce objects, not only
+  files: versioned, identified by a content digest, with an automatic name
+  and a **nickname** of your own. Results lists them, shows every version,
+  its provenance and what it was made from, downloads the payload, and
+  draws it with the stage's own viewer. A Drift pins the exact circuit
+  versions it used and cites them, so a cited version cannot be deleted.
+  "Use in Drift" sends a circuit from Results straight into a group.
+  Sync needs `supabase/18_artifacts.sql` run once in the dashboard; until
+  then artifacts stay on the machine that made them.
+- **Transition windows in Spark.** Besides the four 10 s chunks, three
+  windows around the boundaries — cue 1 onset, cue 1 → cue 2, cue 2
+  offset — 1 s before to 2 s after by default, adjustable. One read of the
+  files measures both, shown as two steps; transitions use the same 50 ms
+  rule in time. Clean gets a State / Transition switch, and Coupling and
+  Circuit analyse either.
+
+### Changed
+
+- **A block kept in Clean now counts.** Marking a clipped block green used
+  to be ignored downstream; it is now banked as `kept` and Coupling, its
+  overview and Circuit use that wire. No existing entry's numbers changed.
+- VACC runs survive a Jarvis restart (each run is recorded at submit and
+  re-attached), a flaky poll no longer cancels a healthy cluster job, and a
+  batch has a deadline instead of waiting for ever on a task that never
+  answers. Doppler and Incisor get the last two.
+
+### Fixed
+
+- Every Doppler batch task was sent an empty recording path and would have
+  failed on the node.
+- Moving a result no longer drops its link to the run that made it, and a
+  CSV is no longer offered a figure's Rebuild.
+- Drift's result collapsed to a 34 px column in the ToolKit, the ring's
+  caption one word per line and its download buttons hanging off the left
+  (Results drew it fine). The panel borrowed Spark's `align-items: start`,
+  and the result view has no intrinsic width. Measured, fixed, and now
+  checked in `web/_dev/drift.html`.
+- Two harness suites running at once deleted each other's output, so a
+  long page came back "NO OUTPUT" through the suite while passing on its
+  own. Each run now writes to its own file.
+
+## 2026.09.27.1 - Horizon, and the frequency tools become one job
+
+### Added
+
+- **Horizon, a new ToolKit tool: which frequency was in charge, everywhere
+  on the probe at once.** Time across, the shank down, and the colour of
+  each cell is the frequency that won there.
+
+  Three views already answered part of this and each dropped an axis to fit
+  on a screen:
+
+      analysis `theta`      every channel, all of time, band LOCKED at 4-12
+      analysis `bandpower`  every frequency, all of time, ONE channel
+      Panorama              every frequency, all of time collapsed to a
+                            histogram, one channel
+
+  The band-power panel is the closest, and it refuses more than one channel
+  by hand — `if len(ch_list) != 1: ch_list = ch_list[:1]`. That refusal is
+  what has been lifted. What makes three axes fit in two is collapsing
+  frequency to a single number per cell, the one that won, and spending
+  colour on it.
+
+  Most of the measurement was already there. `panorama.run` has always
+  computed a dominant frequency per window for every channel it was given;
+  it then drew them one at a time, in file order, through a pill pager. So
+  this is mostly layout, ordering and cost — and the numbers come from the
+  functions Panorama already uses, because two spectral engines in one app
+  is only a problem when you cannot tell which you are looking at.
+
+- **The texture of the picture is the finding.** Vertical stripes mean the
+  column agrees: one rhythm, shifting through the session. Horizontal bands
+  mean the layers disagree — either real, or the probe is not all in one
+  structure, and both are worth knowing. Speckle means there is no rhythm
+  and the argmax is measuring noise.
+
+  This is not a new idea, which is the point of citing it: `FOOOF
+  Playgroun/theta_channels.py` is the command-line analysis this replaces,
+  the way `theta_through_time.py` was the one Panorama replaced, and it
+  already argues the whole thing — "theta is globally coherent across the
+  hippocampus, so the theta peak frequency should agree across channels,
+  which means the SPREAD across channels is a free quality check."
+
+  So the spread is measured rather than only looked at. One number per time
+  window — what fraction of the channels named the same frequency, against
+  the column's median rather than its mean, so a handful of wires in white
+  matter reporting the argmax of a slope cannot drag what everything else is
+  compared to — and one number per recording, which is the thing a test can
+  actually be run on.
+
+- **Channel number is not depth, and the tool no longer pretends it is.**
+  On an H3 channel order IS depth order and stacking by CSC number is right.
+  On an H10-D consecutive CSC numbers step ACROSS three interleaved columns,
+  so channels 1, 2 and 3 are three different columns at the same depth; on a
+  dual implant CSC 1-64 is hippocampus and 65-128 is M2. A single stack
+  would draw a depth axis that is not one, and it would look entirely
+  plausible.
+
+  `probes.columns_for` already answered this for CSD, so the row order comes
+  from there and a probe with several columns gets several panes with a rule
+  drawn between them. And because a guess must not read as an answer, the
+  panel says which template applied and whether anybody confirmed it:
+  `probes.state_of`'s *detected* is used — a dual implant drawn as one stack
+  is worse than one drawn as two and marked unconfirmed — and never
+  presented as a fact.
+
+- **Opacity is how clearly the winner won, and it costs nothing.**
+  `peak_margin` has been computed per window since Panorama shipped: 1.0
+  means the peak was the only one, 0.05 means a coin toss with the
+  runner-up. It was already stored, already written to the saved CSV, and
+  already used to flag recordings in the set tree — and never drawn.
+
+  It is the alpha channel now. Channels outside the layers that generate
+  theta wash out; the layer carrying it glows. The laminar structure finds
+  itself, with no threshold anybody has to defend. A cell that is fully
+  transparent still means what it always meant — nothing was read there —
+  so the least confident cell keeps a floor rather than vanishing, because
+  "measured, and it was a toss-up" and "not measured" are different facts.
+
+  `analysis._encode_image` takes an optional `alpha` array for this. It
+  already wrote a per-pixel alpha channel; it only ever wrote 0 or 255.
+
+- **2-14 Hz, with theta bracketed on the bar rather than being the bar.**
+  A hard 4-12 window guarantees every cell reports a theta even where there
+  is none, and pins the winner against an edge when the real peak is
+  outside, with nothing in the picture to say so. Urethane theta sits low
+  and a 4 Hz floor clips it outright. The shoulders are drawn instead.
+
+  The bar steps at 1 Hz rather than running smooth, because with a dozen
+  swatches a reader can NAME the frequency and with a continuous ramp they
+  can only say "warmer" — and 1 Hz is inside what was measured, since a 2 s
+  transform resolves 0.5. The swatches come from the server, computed from
+  the colormap and the colour limits the picture was actually drawn with, so
+  a bar and a map cannot come to disagree about what 8 Hz looks like.
+
+  Not jet by default, for the reason `analysis.py` already gives beside the
+  map it registered on the same argument: a rainbow invents edges in smooth
+  data, and this is a tool for reading whether a band is there. Jet is still
+  on the list — it is the lab standard and every existing figure uses it.
+
+- **The map arrives interlaced.** Every eighth channel first, then every
+  fourth, then the rest, so the whole depth extent is on screen coarsely
+  after an eighth of the work and sharpens from there. Panorama builds its
+  spectrogram left to right as it reads for exactly this reason — "a run
+  that is obviously wrong can be stopped in the first ten seconds instead of
+  at the end of four minutes" — and this is that idea applied to the axis
+  this view adds. A laminar pattern is visible at every-eighth-channel; you
+  decide whether to spend the other fifty-six after seeing it.
+
+- **Everything knowable before a run happens before it.** Pick a recording
+  and the panel says how many channels it has, how many are marked bad, how
+  the depth axis will be split, whether there is a layer sheet to name the
+  bands with, and whether the probe template is confirmed or guessed — the
+  shape the New curation set wizard uses, which asks the same question of a
+  gid the moment one is picked and answers it above the button.
+
+- **Two fidelities, and the result says which produced it.** Reading all 64
+  channels of a 30-minute recording costs about three minutes. Fitting every
+  window of every channel with fooof costs about two hours: 1.4e-3 s per
+  channel-second to read against 6.5e-2 s per window to fit, so the fit
+  dominates by about forty-five times. The whole cost problem is in the fit.
+
+  *Survey* fits the aperiodic component once per channel, on the mean
+  spectrum — which is free, because averaging the spectrogram's columns IS
+  the whole-recording Welch spectrum — and flattens every column by that one
+  curve before taking its argmax. That is `flat_hz`'s definition with the
+  peak decomposition left out. *Full* is `panorama.dominant` per window: the
+  real fit, which can say a window had no peak at all.
+
+  The slope is fitted over 2-100 Hz and the answer read from 2-14, because a
+  1/f fit over under three octaves is mostly fitting whatever theta is
+  doing. The mains is bridged even though 60 Hz is far outside the band the
+  answer comes from — otherwise the interference would reach the answer
+  through the slope rather than through the argmax.
+
+### Changed
+
+- **The frequency tools are a bundle: The Lookout.** Horizon, then Panorama,
+  then Braid — every channel by depth, then one channel end to end, then how
+  the bands couple. The order is a real dependency the way The Dentist's is,
+  and it inverts what the ToolKit used to ask of somebody: Panorama needs a
+  channel named before it can say anything, and until now nothing answered
+  that except somebody's memory of which CSC was in the cell layer last
+  time.
+
+  It is named for its theme and not for one of its own steps, which is why
+  Braid keeps its name. A heading repeating a row underneath it is the same
+  "menu that describes one thing twice" the flat list was fixed to stop
+  being.
+
+- **A bundle now removes its members from the flat list by itself.**
+  GUI-CONSTITUTION.md 6b states this as a rule and says `BUNDLED` does it
+  for you. It did not: the omissions were hand-written, which is why they
+  came with a paragraph explaining that Incisor and Checkup were
+  deliberately missing. Panorama and Braid joining a bundle is exactly the
+  case that could have half-landed. `toolButton` returns nothing for a
+  bundled id now, so the rule is the code.
+
+- **The step chip is derived.** `BARRY.views.toolkit.stepOf(id)` reads the
+  position out of `BUNDLES`, so inserting a step renumbers every header
+  after it — the thing 6b asks for by name, after Root Canal was inserted
+  between Braces and X-ray and X-ray's header had to be edited by hand from
+  4 to 5.
+
+- **Neither Panorama nor Braid had a command-palette entry.** Somebody
+  half-remembering "that thing that draws the whole recording" had no way to
+  reach either from Ctrl+K. All three steps of The Lookout have one now.
+
+### Fixed
+
+- **`step_s` could not be the cost lever, and looked as though it could.**
+  The first version of Horizon asked for a five-second step to get about 360
+  columns out of a 30-minute recording, and fitted 59 columns per channel
+  where it had planned 23.
+
+  `scipy.signal.spectrogram` takes `noverlap`, which can only make the hop
+  SHORTER than `nperseg`. Ask for a five-second step with a two-second
+  transform and `nper - hop` goes negative, the overlap clamps to zero, and
+  the columns come out two seconds apart. Nothing errors, and Panorama never
+  meets it because its step has always been at or under its transform.
+
+  So the hop stays at Panorama's one second — it is also what sets `n_avg`,
+  and changing it would change what a column IS rather than how many there
+  are — and the lever is dropping columns afterwards. One in five, by
+  default. The ones kept are exactly the columns Panorama would have
+  computed at those times.
+
+### Checks
+
+- **A job stage the run ticked and the estimate never read.** The route
+  declared a stage called `horizon rows`; `estimate` asked `cfc.rate_for`
+  for `horizon survey`. Nothing errored — `rate_for` returns 0.0 for a stage
+  it has never heard of — so the fitting half of every estimate was silently
+  zero, and the measurement each run took was filed under a name no estimate
+  would ever read, which meant it could never learn its way out of it
+  either. A 62-channel run quoted 78 seconds and took 168.
+
+  The name comes from `horizon.stage_name` now, so the run and the estimate
+  cannot hold different opinions about it. One stage rather than a read and
+  a fit, because `Job.begin` closes whatever stage is running and this reads,
+  fits and discards one channel before starting the next — the same shape
+  `panorama bulk` has, for the same reason, and a declared read stage that
+  was never ticked drew as a bar stuck at zero that then jumped. Two of
+  them, one per fidelity, because the fit is about forty-five times the read
+  and a single rate averaged over both would be wrong for each. The same
+  run now quotes 167.
+
+- **`tools/check_horizon.py` — is a row of the map the same answer as a
+  Panorama run?** The entire argument for building this on Panorama's engine
+  rather than a second one, so it is measured rather than asserted.
+
+  With the aperiodic fit range pinned to the top of the band the two are
+  **identical** — max difference 5e-06 Hz, which is the fourth decimal
+  Panorama rounds its stored windows to and nothing else. With the default
+  2-100 Hz fit they differ by a **median of 6e-04 Hz and at most 3e-02**,
+  and the cause is established rather than wondered about: the decimation
+  target follows the fit range, so 250 Hz rather than 35, and the signal
+  itself is slightly different. Both are far inside the 0.5 Hz the transform
+  can resolve.
+
+  Survey against full is judged where the winner actually won in **both**
+  routes — a coin toss landing differently twice is not evidence about
+  either — which is the standard `check_panorama.py` settled on for the same
+  reason, and is why both routes carry a margin. On the demo recording they
+  agree to a median of 0.08 Hz; the demo is one clean 8 Hz rhythm, so that
+  number flatters the survey route and the check should be run on a real
+  recording before it is quoted.
+
+- **`web/_dev/horizon.html` — 51 checks.** That The Lookout has three steps
+  in the order they happen; that Panorama and Braid left the flat tool list
+  when they joined it, which is the half that can silently not land; that
+  the step chip is derived; that the picker is labelled Recording with the
+  one placeholder and an empty state that says what to do next; that
+  everything knowable before a run is said before it; and a real
+  four-channel run, checking that theta is bracketed inside a wider band
+  rather than being the whole of it, that the bar's swatches come from the
+  server, and that re-colouring re-renders without re-measuring.
+
+  It reaches the app through the frame's own `eval`. `BARRY` is a const in
+  core.js and not a property of the frame's window, so `W().BARRY` is
+  undefined from a harness and every wait on it times out reading as "the
+  application never loaded".
+
+## 2026.09.25.4 - The Arc: Coupling knows where the probes are
+
+### Added
+
+- **Coupling shows what it will compute before it computes it.** Above the
+  Run button, three folding sections:
+  - **Parameters** — band, coherence read-out frequency, largest lag, mains
+    notch and baseline length, editable, each with its limits and what it
+    is for. The server refuses a bad value with a sentence shown where the
+    fields are; it never clamps, because a matrix made at corners other
+    than the ones on screen is what showing them prevents. The baseline
+    cannot exceed what the clipping was measured over. The analysis rate
+    and the channel rule are shown, fixed, with the reason.
+  - **Probe sanity** — where each of the twelve probes really is, from
+    `Joes multi site histo results.xlsx`, with thumbnails of the slides
+    that name each region. A slide opens full size, zooms about the
+    pointer, drags, double-clicks to fit, and shows the filename's own
+    verdict beside the workbook's.
+  - **Channel sanity** — for each cue pair, a 12 × 4 grid of the one wire
+    each region will be measured on in each window, or why it has none.
+    Steps with the pair the Run button uses.
+- **Histology is enforced.** `backend/histo.py` carries the workbook's 96
+  cells verbatim; `tools/check_histo.py` re-reads the workbook and asserts
+  they agree. A probe somewhere else keeps its slot and is relabelled
+  ("Left subiculum (aimed at Left PER)"); a missed probe is not computed,
+  and neither is a rat with no row (J5) until it is scored.
+- **Histology slides** — 63 photographs derived to 2400 px web copies and
+  thumbnails (66 MB, from 29 GB of TIFF) and put in the `results` bucket
+  under `histology/`, so a machine without the E: drive shows them.
+  `backend/histoimg.py`, `tools/check_histoimg.py`.
+- **The matrix** traces a hovered cell left and up to its two region names;
+  hatches every cell a relocated probe contributes to; blocks the row and
+  column of a region with no usable wire, with the reason on hover; and
+  names all of it in a legend under the grid.
+- **What the clipping really cost** — `docs/dewey-clipping-loss.md` and its
+  figure, rebuilt by `tools/clipping_loss.py`. 18.7% of matrix cells to
+  clipping, 42.8% with histology. The four-wire rhinal regions go dark
+  more often than the two-wire ones: their wires rail together.
+- Harnesses: `arcover.html` (50), `arcmatrix.html` (47), and the Bank's
+  exclusion card in `bank.html`.
+
+### Changed
+
+- **Coupling measures each region on one wire**, the lowest-numbered one
+  that is not bad and did not clip in that window, instead of averaging
+  whatever survived. Every Coupling number changes; re-run anything you
+  have looked at. The CSV names the one wire per region and carries the
+  band, lag and baseline on every row.
+
+### Fixed
+
+- **Coupling would not open any recording** once clipping had been banked
+  per window: `invalid literal for int() with base 10: 'cue1'`. Iterating a
+  per-window dict gives its window names. Two quieter copies of the same
+  fault are fixed with it: the pair summary would have listed four
+  excluded channels called cue1, cue2, post and pre, and the saved CSV
+  wrote `cue1;cue2;post;pre` into its excluded-channels column.
+- A per-window exclusion looked up by plain window names matched on first
+  letters, so clipping was silently ignored by anything asking that way.
+- Arc severity chips: `.flagchip.warn` had no rule of its own and rendered
+  grey, below the default, with the worst grade the only amber one.
+
+## 2026.09.25.3 - The cluster means one thing, said in one place
+
+### Changed
+
+- **Four surfaces were each describing `native` and `staged` in their
+  own words** — the card in Sessions, the detail panel in
+  Housekeeping, the tab in Xplorefinder, and the toast when a
+  recording opens. Two of them said scratch "is purged without
+  notice", one said VACC "may clear it without notice", and the
+  fourth said neither. The one that drifts is the one somebody reads
+  before trusting a trace. There is now one table, `BARRY.vacc.words`,
+  and one chip, `BARRY.vacc.mark`, that every surface draws.
+
+- **The predicate behind it was written out five times in three
+  files** — `state === 'native' || state === 'staged'` in
+  `housekeeping.onVacc`, again in its detail panel, again in the
+  `onvacc` filter, again in `vaccChip`, and once properly in
+  `BARRY.vacc.canRead`. One now, and `canRead` is *defined* as "there
+  are words for it", so the set that opens and the set that gets a
+  mark cannot come apart — not because two lists agree today, but
+  because there is one list.
+
+- The split that keeps it that way: **the module owns the fact, each
+  surface owns the consequence.** "A copy in the cluster's scratch" is
+  what the state is and lives in `vacc.js`; "opening it from here
+  reads the same files the rig wrote" is what that means for the
+  button underneath it, and belongs to the panel offering the button.
+  Restating the fact is the fault; adding a consequence is not.
+
+### Added
+
+- **`GUI-CONSTITUTION.md` §6c — Two views of one thing.** What is
+  shared and by which renderer, as a table, so the next person can
+  see it rather than discover it. The two ways to get one renderer
+  into two places (parameterise the host, as
+  `housekeeping.catalogue(scope)` does; move the nodes, as
+  `parkList` does, and only when the markup cannot be parameterised).
+  The fact/consequence split. That absent is not negative in every
+  view at once. That a count has to describe the list underneath it.
+  And a five-step recipe for adding a fourth view.
+
+  It also states the thing that is *not* expected to be shared: a
+  card change lands in both card views because there is one function,
+  and it does **not** land on a tree row and must not be made to. What
+  crosses between the two shapes is the vocabulary, never the layout.
+
+- Two rows in the enforcement table (§9) and two lines in the
+  "when you add a feature" checklist, so the section is checked rather
+  than merely published.
+
+### Checked
+
+- `web/_dev/vaccopen.html` is 41 checks, up 10: that `words` and
+  `canRead` agree about all four states, that the two affirmative ones
+  do not say the same thing and the other two say nothing, and that
+  **every cluster mark drawn on screen is a word the module actually
+  keeps** — a view that hand-builds its own chip fails that one.
+
+- Read off the cards, where the marks are. The tree rows carry none
+  and should not: in a view where every row is on the cluster, a mark
+  on every row says nothing.
+
+- 628 checks across the 21 Sessions, Housekeeping and VACC harnesses,
+  none failing on this change.
+
+## 2026.09.25.2 - Everything VACC knows gets the cards
+
+### Added
+
+- **The cluster view opens on a shelf of cards.** The same cards
+  Scan a drive draws — the same search box, the same cohort pills,
+  the same filters, the same probe chip, health pill and note —
+  narrowed to the recordings VACC can read. Reading a shelf is how
+  anybody actually looks for a recording; the project/mouse tree is
+  the second view of it, for when the question is about an animal.
+  Three tabs now: **Recordings**, Catalogue, Directories.
+
+- **Clicking a card opens it.** Off a drive if this computer has one,
+  off the cluster if it does not — the same call the catalogue's
+  Open uses. A card with no path here used to say "none of this
+  recording's paths are on this machine" and stop there, which was
+  true and was a dead end with the answer one function away.
+
+### Changed
+
+- **It is ONE list, moved between pads, not a second one.**
+  `.pad` is `flex: 1`, so two visible pads split the height and the
+  cards could not simply be shown beside the cluster panel. The
+  choice was a second `#sessFilters` and a second `#sessTree` under
+  other ids — a second search box, a second filter bar — or the same
+  two nodes, moved. Moved, for the reason `housekeeping.catalogue`
+  gives about the tree: two copies of a list is two copies to keep in
+  step, and they drift. `parkList` hands them back before anything
+  clears the pad, because `innerHTML = ''` on a host holding them
+  would not move them, it would destroy them.
+
+- **The cohort pills count what the view is showing.** They counted
+  the whole catalogue whatever the mode was, so the cluster view
+  offered **"PTEN (381)" above a list of 109** and clicking it
+  narrowed to nothing — a count describing something other than the
+  list beneath it, which is the complaint the scope chip in
+  housekeeping.js already answers in the same words. A cohort with
+  nothing in this view now reads `(0)` and is dimmed rather than
+  removed: a pill that vanishes when you change mode is one you
+  cannot change back with. **This also changes the numbers in Scan a
+  drive**, which had the quieter half of the same fault.
+
+- The mode's own narrowing is one function, `modeAllows`, because the
+  list and the counts above it both read it — the last time a rule
+  like that was written out twice the view said "188 of 185".
+
+- The line above the list says which of the three questions it is
+  answering, and the clause dividing the shared catalogue into
+  "found by this scan / remembered" is left off where it is not about
+  the list underneath: it read **"0 found by this scan, 916
+  remembered" beside a count of 109**.
+
+- An empty cluster view says what fills it — scan a folder under
+  Directories — rather than "nothing matches those filters", which
+  would send somebody looking for a filter to switch off that does
+  not exist.
+
+- No selection checkbox on a recording that is only on the cluster.
+  The selection is keyed on a path on this machine and everything
+  reached from it reads files here, so a checkbox that queued one
+  would queue a row nothing in the queue can act on.
+
+### Checked
+
+- `web/_dev/vacccat.html` is 30 checks, up 8, and it now owns the
+  three-tab contract: that the cards open first, that there is
+  **one** `#sessTree` and **one** `#sessFilters` rather than two,
+  that every card carries the cluster mark, that the cohort counts
+  add up to the list they sit above, and that leaving the cluster
+  view hands the cards back to Scan a drive rather than destroying
+  them.
+
+- The cohort check caught a real fault on its first run: the recount
+  fell back to the catalogue's tally for a cohort with nothing in
+  view, so the pills summed to **860 over a list of 109** — the exact
+  fault the recount was added to fix, put back by the fallback meant
+  to be careful. Zero is the answer, not a missing one.
+
+- `web/_dev/vaccshot.html` poses the view for a screenshot, because a
+  shelf of cards is a thing you have to look at and `--dump-dom` will
+  report a collapsed layout as a passing one.
+
+- `check_classes.py` clean. `ui_baseline.py` diff carries nothing
+  from this change.
+
+## 2026.09.25.1 - A recording on the cluster opens in Xplorefinder
+
+### Added
+
+- **"Everything VACC knows" can now open one.** It could tell you the
+  cluster had a recording and it could run a tool on it. It could
+  not show it to you — the Open buttons all read `here`, which is
+  whether a path is reachable from *this* computer, so a recording
+  VACC reads perfectly well on a share this machine does not mount
+  had no Open anywhere. It has one now, and it opens into the same
+  tabs, the same panes, the same curation and the same bank as a
+  recording on a drive.
+
+- **Nothing is copied down.** `backend/vaccserve.py` runs on the login
+  node with the same backend this desktop has and answers with the
+  payload the viewer draws. Measured on a 64-channel recording at
+  30 kHz: ten seconds of it is **39 MB of raw records and 2.9 MB once
+  enveloped** to the 1400 columns actually drawn — and the envelope is
+  what the browser was going to be sent either way. So
+  `csc.get_window` runs there, filters and all.
+
+- **The same arithmetic, not a second copy of it.** The ops on the
+  cluster side are a lookup table of functions that already exist:
+  `csc.open_session`, `csc.get_window`, `extras.overview`,
+  `extras.band_profile`, `nlx.nev_events`. `vacc_run.py` makes the
+  same argument for a compute node and this is it for a viewer — two
+  implementations of one measurement is how a lab ends up with two
+  answers and no way to tell which is right.
+
+- **One kept ssh process, not one per window.** A handshake per window
+  would be a second of latency on every scrub. The link opens on the
+  first `vacc:` recording, holds the opened session on the far side so
+  the header is read once rather than once per window, and **closes
+  itself after ten minutes idle** — a login node is shared, and a
+  process somebody left running over lunch is somebody else's problem.
+  `/api/vacc/link` says whether one is open and `?close=1` puts it
+  down.
+
+- Cheetah's own `.nev` files come through the same link, resolved
+  against the recording's own clock **on the cluster** — a .nev read
+  against the wrong t0 gives events that land plausibly and in the
+  wrong place.
+
+### Changed
+
+- **A recording is opened by its permanent id, `vacc:<gid>`, never by
+  a cluster path.** Three reasons and all three matter: `resolve_gid`
+  already decides where on the cluster it is and prefers a share VACC
+  mounts over a scratch copy that gets purged without notice;
+  everything attached to a recording is keyed on the gid, so one read
+  off the cluster is the SAME recording somebody opened off `Y:` last
+  week; and a cluster path must never enter the registry as a path.
+
+- **Opening one writes nothing.** `REG.ensure` files every path a
+  recording is opened from, and `/gpfs2/scratch/…` filed as though it
+  were local comes back out of `resolve_path` as `local-only` — the
+  recording would report that the cluster cannot reach it *on the
+  strength of having just been read off the cluster*, quietly, in a
+  shard that travels to everybody. A live read lays eyes on nothing
+  that is on this machine and says so by writing nothing down.
+
+- The cluster mark on an Xplorefinder tab is `.flagchip.vacc`, the
+  chip Sessions already draws — so the rule that green is only ever
+  "reads it in place" and a scratch copy takes the warning colour is
+  in one place rather than two that could disagree.
+
+- `extras.py` imports `panorama` where it uses it rather than at the
+  top. It pulls in `analysis`, which imports matplotlib at module
+  scope, and `overview` is the strip that appears the moment any
+  recording opens. The cluster's environment has numpy, scipy and
+  fooof — so `extras` would not import there at all, and the amplitude
+  strip failed on a module a strip does not use.
+
+- A `ModuleNotFoundError` on the cluster is answered with the package
+  and the fix rather than an import traceback. The band strip still
+  needs matplotlib there and now says so in a sentence.
+
+### Checked
+
+- `web/_dev/vaccopen.html`, 27 checks, and it runs with the cluster
+  **down** — a harness that only passes on VPN is one nobody runs. The
+  checks that need a live link are skipped in their own colour, and
+  the page says how many, because a sweep that proved less than a full
+  one must not read as a clean one.
+
+- Measured end to end against the real cluster, through the real
+  routes, on a 45-minute 64-channel recording in scratch: link up
+  1.4 s, open 1.8 s, a filtered 10 s window 1.3 s, the same window
+  again 0.7 s, a CSD 0.7 s, the amplitude overview 4.6 s, the `.nev`
+  0.03 s. The registry was 913 records before and 913 after.
+
+- `check_classes.py` clean. `ui_baseline.py` diff carries nothing from
+  this change.
+
+## 2026.09.24.8 - The delta panel's Y axis is labelled, in both states
+
+### Fixed
+
+- **The Y axis label was only drawn when the HF pass HAD been run.**
+  Which left the common case — before anybody spends the minutes —
+  as a bare vertical axis with dots spread up it, and that reads as a
+  measurement whether or not one was taken. That is the entire fault
+  the HF pass was added to fix, still present in the state the panel
+  is in most of the time. It is drawn in both states now, and the one
+  that is not a measurement says so: **"no measurement — spread
+  apart to separate the dots"**.
+
+- **It said "500—1000 Hz, dB". It says "500—1000 Hz power - dB re
+  baseline".** Two words, both load-bearing. "power", because an
+  IED’s fast edges raise the whole spectrum and band-passing a sharp
+  transient makes a filter ring convincingly — band power cannot tell
+  either of those from an oscillation, and an axis reading
+  "500—1000 Hz" alone invites exactly that reading. v5 answers the
+  oscillation question with a FOOOF fit on averaged spectra, which is
+  a different panel. "re baseline", because dB against the same
+  contact’s own quiet period is not an absolute, and an unqualified
+  dB gets compared across contacts that have no business being
+  compared.
+
+- Shrunk to fit rather than cut. An axis label with its end missing is
+  worse than a small one, and "dB re baseline" is the half that would
+  go.
+
+- The head hint matched: with no pass it said "one number per event",
+  which is true and says nothing about the vertical. It now says the
+  spread is nothing.
+
+### Checked
+
+- `web/_dev/dspca.html` is 298 checks, up 7.
+
+- Read off the CANVAS, by spying on `fillText`, not off the source. A
+  check that the code contains a string proves the string exists, not
+  that anything draws it — and the fault here was precisely a label
+  that existed and was skipped.
+
+- Both states, the measured one by putting a number in by hand: what
+  is under test is the axis, not the arithmetic, and the arithmetic
+  was checked against a 700 Hz burst (+38.7 dB) and noise against
+  noise (-0.5 dB) before any of it was drawn. The invented number is
+  taken back out, and there is a check that it was.
+
+- The new checks were confirmed to bite: with the label suppressed
+  again the suite goes to 3 failures, not 0.
+
+## 2026.09.24.7 - A solids-only version of every IED set
+
+### Added
+
+- **`tools/clean_ied.py`**, and each imported IED set now carries a
+  version holding only the events somebody confirmed: **170 Solid out
+  of 3,461**, across the ten recordings. Dry run by default, `--write`
+  to bank, `--keep` to choose the labels.
+
+  It is a VERSION, not a second entry and not a deletion. Same id,
+  same lineage, and the bank computes the diff itself, so m28 s2 reads
+  `v2, n=8, lost=1002` and v1 still holds all 1,010. What gets plotted
+  and what the folders actually said are now both answerable, from one
+  entry, without either one having to be reconstructed.
+
+- Seven sets gained a v2. Three — m3 s2, m3 s7, m28 s7 — were
+  already nothing but Solid, because their import came from the
+  solid-only run, and the bank declines to write a version in which
+  nothing moved. So the newest version of every IED set is the clean
+  one either way, which is the property that makes it usable
+  downstream.
+
+### Judgement, stated and one flag away
+
+- **Sputter is dropped, and that is a call rather than a fact.**
+  `curation.KINDS['ied']` counts Sputter as good — a sputtering
+  discharge is still a discharge — but this tree was described as
+  "the Solid folder tells us which ones are the real IED events", so
+  Solid is the default. It costs 44 events, the count prints on every
+  run, and `--keep solid,sputter` keeps them.
+
+- The other 3,291 are 2,760 nobody rendered, 419 Garbage, 68 Flag and
+  those 44. Dropping the unrendered ones from the clean version is
+  right — they are not confirmed IEDs — but they are not rejects
+  either, and v1 is where that distinction survives.
+
+## 2026.09.24.6 - Ten hand-sorted IED recordings come in from the folders
+
+### Added
+
+- **`tools/import_ied.py`**, and 3,461 IED events across ten PTEN
+  recordings are now in the Event Bank with 701 hand-filed verdicts on
+  them — 170 Solid, 44 Sputter, 68 Flag, 419 Garbage. Dry run by
+  default, `--write` to bank, `--replace` to re-import, idempotent on
+  its own pipeline name.
+
+  The tree it reads is a detector's table plus a person dragging
+  rendered pictures into `Solid` / `Sputter` / `Flag` / `Garbage`. The
+  directory listing was the ONLY record of that work. A decision that
+  lives in a folder name is one `robocopy` from being gone, and this
+  was a day of somebody's looking.
+
+### Measured rather than assumed
+
+Four things the files do not say, each of which would have been wrong
+in a way that still looked right:
+
+- **30 kHz.** `onsamp` is a sample index of nothing stated. The last
+  event of m13 s2 is sample 56,101,080 and the registry has the
+  recording at 1871.97 s — 29,968. At 1 kHz it would have been a
+  fifteen-hour session. Checked per folder now; a set landing more
+  than thirty-fold past the end is refused.
+
+- **`Evt010` is 1-based.** Both bases land on SOME event, so this was
+  settled by whether the labels mean anything: 1-based makes the Solid
+  events 1.48x the amplitude of the Garbage ones, 0-based makes it
+  1.04 — no separation, which is what an off-by-one looks like.
+
+- **The stamp is the MIDPOINT of the on/off pair**, which is what the
+  review images are aligned to; their names say so. `end` is kept, so
+  the onset is exactly `2*start - end`.
+
+- **The sort is not always at the top.** In two recordings the
+  categories sit inside `group_05-10 (N)/` and the top-level
+  `Solid`/`Sputter` are copies of two of the four. Taken as the
+  directory holding the most distinct categories, so a render folder
+  that also has a `Solid` cannot win.
+
+### Refused to guess
+
+- **`Garbage/` has sub-folders that OVERLAP.** In m13 s2 the same
+  Evt002 is in `Dentate Spike`, `Flag` and `Garbage` at once, so they
+  are not a partition and cannot be read as verdicts. Only the sort
+  root's own children count; everything under `Garbage/` is garbage
+  either way. Corroborated exactly by the pipeline's own
+  Master_Stats.csv — 13 SOLID, 18 SPUTTER for m13 s2.
+
+- **A picture in two categories: the newer copy wins**, stated rather
+  than left to `sorted()`. m13 s2's Evt035 and Evt040 are in Solid
+  from September and Sputter from six weeks later. Alphabetical order
+  happens to agree there and would not next time.
+
+- **The three folders marked "(Handsorted)" hold two different runs.**
+  Their `ets_converted_events.xlsx` is not the export of their
+  `ets.mat`: shorter (18 of 67; 49 of 172; 11 with no .mat at all),
+  every row exactly 10 samples wide where a real window is 750 to
+  50,000, and the midpoints do not line up — nearest row a median of
+  492 and 269,210 samples away. It is a separate, later, solid-only
+  run, and `Solid/` there holds one blank 289-byte stub per row
+  numbered 1..N against IT. Those stubs read as a hand-sort and are
+  not one. The solid-only list is imported as confirmed IEDs; the
+  other run's Garbage numbering is left where it is rather than
+  merged into times it does not describe.
+
+- **`Hidden/` is a withdrawal, not a verdict.** Nothing under one is
+  labelled. `Take 3/HIDDEN/` holds eleven more recordings set aside
+  the same way — including one named "(Flagship)" — reported and
+  not imported.
+
+- **The 226 to 883 events per recording nobody rendered are
+  unspecified, not rejected.** "The rest are garbage" is true of what
+  was looked at; most of each table never was, and `by_label` says so
+  on every entry.
+
+## 2026.09.24.5 - The delta panel gets a Y axis that means something
+
+### Added
+
+- **High-frequency power, per dentate spike**, and the delta panel’s Y
+  axis is it. That axis was JITTER: a number chosen so two events with
+  the same sink gap could be told apart by eye, meaning nothing, and
+  looking exactly like a measurement. It is now 500—1000 Hz power in dB
+  against the same contact’s own baseline 150 ms earlier, so the panel
+  is a real scatter — gap across, power up.
+
+  The measurement is `ied_ampwidth_gui_v5`’s, at its band and its
+  windows: ±25 ms about the stamp, a ±20 ms baseline 150 ms before it,
+  Welch PSD, the band integrated by trapezoid, and 10*log10 of the
+  ratio. dB against its own baseline rather than an absolute, because
+  impedance varies across a probe and across a day: raw band power on
+  contact 40 is not comparable with contact 12, and a ratio to the same
+  contact’s own quiet period a moment earlier is.
+
+  **IT NEEDS A SECOND READ, and there was no honest way round it.**
+  X-ray reads at 1000 Hz, which is right for everything else it does —
+  a dentate spike is tens of milliseconds and the DS band is 5—100 Hz.
+  The Nyquist of that is 500, so 500—1000 Hz is entirely at or above it
+  AND has already been taken out by the anti-alias filter the decimation
+  applies. A number computed for that band out of the existing cache
+  would not be high-frequency power; it would be whatever survived,
+  scaled to look like an answer. So `dspcahf.py` reads the recording
+  again at 5 kHz, which is v5’s own `HF_Q = 6` on a 30 kHz file.
+
+  Minutes, and cached on the question like every other expensive thing
+  here, so it is minutes once per recording rather than per look. Run
+  from a button that says what it costs, as a job with a progress bar,
+  and stoppable. Until it has been run the axis says so and the dots go
+  back to jitter — an axis of nothing, drawn as though it were
+  something, is the fault this replaces.
+
+  The band is **not a setting**, for the reason v5 gives: it is part of
+  what the measurement IS, and two runs under one name that used
+  different bands are not comparable with nothing in the numbers to say
+  so.
+
+  One thing it is deliberately NOT: evidence of an oscillation. An
+  IED’s fast edges raise the whole spectrum, and band-passing a sharp
+  transient makes a filter ring convincingly; band power cannot tell
+  either of those from a ripple. v5 answers that with a FOOOF fit on
+  averaged spectra, which is a different panel and a different question.
+  This is labelled as power, and only that.
+
+### Checked
+
+- `web/_dev/dspca.html` is 291 checks.
+
+- The arithmetic was checked against signals with known answers before
+  it went anywhere near a recording: a 700 Hz burst against flat noise
+  reads +38.7 dB, and noise against noise reads -0.5 dB.
+
+- **The bundle checks were reading two bundles as one.** The Arc joined
+  The Dentist in the ToolKit, `.tk-step` matches the steps of both, and
+  a check that read them all and compared against four found nine and
+  called it a fault. It scopes to the bundle it is about now; how many
+  bundles the ToolKit offers is not this suite’s business.
+
+- **Two sessions running harnesses in one tree collide.** The runner
+  writes one shared dump file and uses one shared Edge profile, so a
+  concurrent run overwrites the dump being read and the results belong
+  to whichever page finished last — which cost a real failure being
+  mistaken for a phantom one, and then a phantom one being mistaken for
+  real. Worth knowing before trusting a red line while somebody else is
+  running the suite.
+
+- A harness run deleted 49 Event Bank records again; restored. That is
+  three runs in three that have done it.
+
+## 2026.09.25.1 - Clipping is decided block by block, and gain reaches every pane
+
+### Added
+- Clean decides a BLOCK, not a channel. Each row is one channel and each of
+  the four blocks is one window of the cue pair: click a block to keep it or
+  remove it, click the channel name for all four. Every block is clickable,
+  including ones the measurement was happy with -- "this one looks wrong to
+  me" is a decision somebody is entitled to make.
+- The exclusion is banked per window, and Coupling reads it per window. A
+  channel ruined in the baseline keeps its two cues and its after-window.
+  Measured on r4 Precon1 pair 1: excluding by event left 0 of 264
+  region-pair-windows usable; by block it is 66, the whole of cue 1
+  recovered.
+
+### Fixed
+- **Gain only changed the pane whose control you touched.** `sess.gain` was
+  set, which is right and is why every control strip agreed about the
+  number, and then a single `drawPane(index)` redrew one pane. On a
+  one-pane H3 layout that is every pane there is, so the fault was
+  invisible; on a probe layout the other five kept a canvas drawn at the
+  old scale. One function now owns it and redraws every pane of that
+  recording, and `_dev/gain.html` reads the canvas pixels of each pane to
+  prove it -- the value was always correct, so only the picture is
+  evidence.
+
+## 2026.09.24.7 - Clipping is acted on, and Coupling runs off the bank
+
+### Added
+- Coupling, step two of The Arc. It reads the BANK and never a .nev: by the
+  time a pair is filed, somebody has looked at it, the clipping is measured
+  and the channels it is not valid on travel with it. Four windows, 66 region
+  pairs, three methods, about five seconds a pair. Saves as a CSV under
+  Results in the same shape the cluster's `summary_<session>.csv` used, so
+  one script reads both.
+- Mains is notched before correlating, harmonics included. There is MORE
+  power at 60 Hz than at 8 Hz in this data (348 against 271), and un-notched,
+  twelve of 264 region-pair cells put their peak lag on an exact multiple of
+  16.667 ms -- the mains period being reported as brain coupling. On a
+  synthetic pair with a real 30 ms delay, un-notched gives r = -0.94 at
+  +25 ms; notched gives r = +0.68 at -33 ms.
+- The Clean mode is a working surface rather than a status line: every
+  flagged channel as a button, red for dropped and green for kept, the
+  saturated stretches listed and editable, and a sentence naming exactly
+  which channels will be excluded. Arrows and n/p both step, and the arrows
+  are finally advertised.
+
+### Fixed
+- **Measuring clipping did not exclude anything.** The exclusion list only
+  filled if somebody clicked a chip in the pair table, so the default
+  outcome of running a clipping check was that the check was ignored. It
+  now seeds from the measurement, and one function owns the list the bank
+  is handed so it cannot disagree with the list on screen.
+- The clipped-channel count included channels the backend grades clean --
+  which is how a bar announced "56 channel(s) clipped" on a recording whose
+  card listed nine, and would have dropped a channel with three
+  milliseconds against it.
+- Clipping was graded on presence, so a channel that lost three
+  milliseconds out of forty seconds came back "major event loss". A window
+  is lost at half a percent or a 50 ms unbroken run; smaller is reported as
+  touched and not graded. Thresholds measured, not chosen -- see the
+  calibration note in `spark.py`.
+- The CSV export read the summary from the wrong shape and would have
+  written a header and no rows.
+
+## 2026.09.24.6 - Every pulse on a line, clipping per window, and rats are rats
+
+### Added
+- A line view in Spark: every TTL pulse in the recording on one line, with
+  each cue pair drawn as a bar rather than two ticks. The pulses that were
+  DROPPED are drawn too -- mirrors, bounces, codes nobody has named -- because
+  a view that showed only the survivors would be showing its own answer back.
+- Clipping, measured per window. A cue pair is analysed in four windows --
+  ten seconds of baseline, cue 1, cue 2, ten seconds after cue 2 ends -- and
+  each is checked separately so a pair whose baseline saturated still has
+  three good windows in it. Lose one and it is a partial event loss, two or
+  three is major, all four and the event is gone on that channel.
+- Both travel to the bank: `clipped` is what was measured, `excluded` is what
+  somebody decided, and they are kept apart all the way through because a
+  measurement and a judgement are different claims.
+- Two Xplorefinder modes on Spark. Confirm draws every pulse and shades the
+  four analysis windows, so "why were these two paired" is answered by
+  looking. Clean marks the saturated stretches on the channels that
+  saturated -- per row, because "CSC17 was at the rail here" and "the
+  recording was bad here" are different claims and only the first is true.
+- DEWEY's animals are rats, so their keys start `r`: `r009_s002_...`, and the
+  tree says r3 to r11. Every other project keeps `m`.
+
+### Fixed
+- A probe layout could only open six panes, which was an H10-D's column
+  count. The twelve-region DEWEY montage laid out against that cap drew the
+  first six and dropped the rest without a word -- CSC 1 to 20, with no left
+  OFC, no left ACC, neither hippocampus and neither retrosplenial.
+
+## 2026.09.24.5 - Spark reads the cue pairs, and three ways the registry was lying
+
+### Added
+- Spark, step one of The Arc: reads a DEWEY recording's TTL pulses, pairs
+  each cue with the one it opens onto, and files the pairs in the Event Bank.
+  Finding and filing are one step rather than two, because a pair that has
+  been found and not banked is a number on a screen.
+- Which cue pairs with which is READ, not assumed. The pilot animals were run
+  on `High tone -> Low Tone`; J3 is run on `Click -> Low Tone`, and it varies
+  by animal. The rule is structural instead: two different cues about ten
+  seconds apart.
+- The third analysis boundary is read off the rig rather than derived. The
+  line returns to its resting code when a cue ends, so that mark IS the end
+  of cue 2. Measured against the old derived value it agrees to 3 ms.
+- The DEWEY probe can be picked. It groups channels by region where the
+  arrays group by column, and every picker only looked for columns -- which
+  is what "that probe has no column map to lay out" was. All 280 recordings
+  are on it, J3 included.
+- Session cards say `s1 Precon1 SPC`, so three recordings of one session no
+  longer read as three identical s1s.
+
+### Fixed
+- Marking a recording "good" did not flag it -- it minted a new empty record
+  holding nothing but the flag, because the Sessions view sent a write
+  identity with no gid, no key and no loose key. The card showed the flag
+  instantly either way, so it only came undone on a refresh. Five stranded
+  flags were moved back onto their recordings.
+- Three recordings of one session were collapsing into one row. FP1, SPC and
+  FP2 share a mouse and a session by design, and `ids.match` merged anything
+  within six hours -- which is all three, recorded the same afternoon. 93
+  rows were holding 257 recordings. The matcher knows about runs now, and
+  tells a folder name sixteen seconds off its own header from a flower pot
+  run started the next morning.
+- `Registry._patch` left the gid out of the identity it patched with, so
+  patching a record that had no key created another record instead. That is
+  how twelve ids came to exist for two recordings.
+
+## 2026.09.24.4 - DEWEY RATs can be filed, and The Arc has its five steps
+
+### Added
+- DEWEY RATs is a project Jarvis knows. A recording named `J10_Precon1_SPC`
+  now reads as mouse 10, session 13, run SPC -- the animal from the `J<n>`
+  folder, the session banded so the phase is readable off the number
+  (Precon 1-4 are s1-s4, Con 1-6 are s11-s16, Test 1-2 are s21-s22), and the
+  run kept beside it rather than folded in. All 280 recordings on the share
+  parse, across the five different spellings the folders use.
+- A probe template for the DEWEY headstage: 32 channels into twelve
+  bilateral targets, transcribed from `electrode_map.xlsx`. It has regions
+  where the arrays have columns, and no columns at all -- there is no line
+  down these channels for a CSD to run along, and saying so is the point of
+  the template.
+- The Arc, a ToolKit bundle: Spark, Relay, Coupling, Circuit, Drift. Four of
+  the five are not built yet and say so, each with what it will do and what
+  has to happen before it can.
+- `tools/check_ids_dewey.py`, which replays every path in the registry with
+  the new rule switched off and on and proves only DEWEY paths answer
+  differently, and `tools/check_electrode_map.py`, which holds the probe
+  template against the workbook channel for channel.
+
+### Fixed
+- A recording Jarvis could not name minted a fresh permanent id every time
+  it was opened, because with no key there was nothing to match it against.
+  Two DEWEY recordings had collected twelve ids between them that way.
+  Naming them stops it; `tools/refile_dewey.py` cleans up what is already
+  there.
+
+### Known
+- The workbook and the older 64-channel map disagree about left OFC and left
+  ACC -- 21-22 and 23-24 are swapped between them -- and the workbook says
+  its labels were read off handwriting. The workbook is what the template
+  follows, and both regions are flagged until somebody checks the notebook.
+
+## 2026.09.24.3 - Clicking a dot looks at the spike, and Stop stops
+
+### Fixed
+
+- **Clicking a dot on the delta panel moved the boundary instead of
+  showing the spike.** The panel took a plain click as "put the cut
+  here" and reserved shift-click for picking an event, which has the
+  frequencies backwards: looking at a spike is what you do constantly
+  and moving the cut is what you do once, so the click that did the rare
+  thing by default was the click that did the wrong thing.
+
+  The cut has a rail of its own now, a strip above the dots with a grip
+  on it and nothing else to hit. Drag it to move the boundary, and it
+  commits on release rather than on every pointermove — a refit is a
+  second of server, and one per pixel of drag would be minutes.
+  Right-click the rail hands it back to k-means. Everywhere below the
+  rail, a click picks the dot.
+
+- **Stop did nothing until the recording in flight had finished.** Two
+  faults, one on each side of the same button.
+
+  The batch passes `job=None` into the read, deliberately, because the
+  read would otherwise call `begin("ds pca read", of=<its own windows>)`
+  and rescale the bar the queue is counting recordings on. But nothing
+  at all is also nothing to ask "have I been cancelled" — so the only
+  `job.check()` in the whole batch was the one between recordings, and
+  on a long read that is minutes of a button that looks broken.
+  Stopping and counting are two different jobs, so `read` takes a
+  `stop` callable that has no progress attached, and the batch hands it
+  `job.check`.
+
+  And when the cancellation did finally arrive, the queue swallowed it:
+  the loop catches everything so that one unreadable recording cannot
+  end the run, which is right for a set that cannot be read and exactly
+  wrong for Stop. The cancellation was filed as an error against
+  whichever set was in flight and the queue moved on to the next one.
+  `Canceled` now has its own clause above the catch-all, the member is
+  marked `stopped`, and it is re-raised so the job ends canceled.
+
+- **Opening a finished set looked like it stopped the batch.** It never
+  did — the queue card is simply not on screen in one-at-a-time mode,
+  so a poll that only refreshed that card left the count frozen at
+  whatever it said when you left. The mode switch carries the count in
+  that case, and the poll now refreshes whichever of the two is there.
+  Finishing says how it finished, too: a stopped run reports what was
+  read and kept rather than reporting a total.
+
+### Changed
+
+- **Both sinks get a circle on the class profile, not just one.** The
+  gap is a statement about a PAIR, and marking one of them says "here is
+  the sink" — which is the claim the pair exists to replace. The one
+  the ordering rule scored on is filled and the other is open, so the
+  picture still says which number the DS1/DS2 call came off. The bracket
+  labels stagger, because two classes with sinks at similar depths were
+  printing one over the other.
+
+### Checked
+
+- `web/_dev/dspca.html` is 290 checks. The new ones press an actual dot
+  and assert that the spike changes and the boundary does not, that the
+  rail is above every dot, and that the panel keeps a place to report a
+  running batch when the queue card is not on screen.
+
+- **The dot-click checks were confirmed to bite**: with the old handler
+  put back they fail three ways. A regression test nobody has watched
+  fail is not yet a regression test.
+
+- `tools/check_dspca_filing.py` is 28 checks. The new ones cover the
+  cancellation contract the Stop button rests on, which a browser
+  harness cannot reach without a minutes-long read: that `read` can be
+  asked to stop without owning the progress bar, that it asks before
+  each window rather than after, and that cancelling a running job
+  reaches the work and ends the job `canceled` rather than `failed`.
+
+## 2026.09.24.2 - The gap is measured on the signal it should be, and the curve is on the picture
+
+### Fixed
+
+- **The sink gap was measured on the broadband CSD.** It should be the
+  5—100 Hz, mains-out one, and now is.
+
+  The feature vector is broadband because that is Toothy’s method and the
+  method is the thing being ported. The gap is not part of that
+  heritage: it is a question about GEOMETRY — which two contacts the
+  sinks sit on — and it is answered by peak-picking a depth profile.
+  60 Hz sits inside the 5—100 Hz band and it SURVIVES A CSD: it is
+  common-mode, but a second difference of a common-mode line is not zero
+  on a real probe. A mains ripple across depth adds local minima, and
+  `find_peaks` cannot tell one of those from a laminar sink — so on the
+  broadband signal the "two main sinks" could be two crests of the
+  mains.
+
+  This is the same reason the refinement has always been notched
+  whatever the features do. `sur["band"]` is built from the notched
+  trace and then filtered to the DS band, so it is both at once, and the
+  panel says which signal the landmarks were found on rather than
+  leaving it to be assumed.
+
+  **It changes the numbers**, deliberately. Anything banked before today
+  measured its gap on the broadband CSD.
+
+### Added
+
+- **The depth profile, drawn on the raster.** A raster is a field and
+  the eye is bad at reading a trough out of one: "where is the sink" is
+  a question about a curve, and the curve was not drawn anywhere.
+
+  Over the SAME window the features come from — averaging the whole
+  surround instead would smear a 20 ms event into 100 ms of baseline and
+  flatten the thing being looked for. Down the right-hand side, so it
+  does not cover the event. Every candidate sink is ticked on it and the
+  two the gap was measured between are bracketed with the delta.
+
+  A checkbox turns it off, and it is a view rather than a question, so
+  it redraws rather than refits.
+
+- **The delta in the recording window too.** As channel lines, which is
+  the mechanism XploreFinder already has for "a laminar landmark, marked
+  across the panes" — the same one Incisor puts its layer picks on. The
+  two sinks are drawn on the raw recording at the contacts they were
+  found on, so they can be checked against data the tool never touched.
+  Nothing in that window had to learn what a dentate spike class is; it
+  already knows how to draw a line at a contact.
+
+### Changed
+
+- **The centre raster is refetched when the box moves, and it did not
+  use to be.** For a long time the box genuinely did not enter into it:
+  the two panes are a whole-shank average, and moving the box moved a
+  rectangle drawn client-side and nothing else. The depth profile
+  changed that — it is averaged over the feature window and its
+  landmarks are the sinks the gap was measured between, so both move
+  with the box. Leaving it out left a line drawn for a box nobody had
+  any more. One more request per fit; being right costs that.
+
+### Checked
+
+- `web/_dev/dspca.html` is 282 checks. The new ones pin the line to one
+  value per contact over the feature window, the landmarks to inside the
+  band they were measured in, the chosen pair to being among the
+  candidates, the switch to redrawing rather than refitting, and — the
+  point of the fix — that both the line and the fit report the gap as
+  measured on the notched DS band.
+
+- The check that caught the staleness above was itself reading the
+  raster the instant a fit landed, which compares a line drawn for the
+  previous box. It waits on the box the picture was drawn for.
+
+- `ui_baseline.py` shows two lines moving on `button.chip-btn.vacc-live`
+  gaining and losing its `.on` state. That is whether this machine is
+  signed in to the cluster, not a change to any rule, and `vacc.js` is
+  not touched here — so the baseline is left as it is rather than
+  having one machine’s VACC state written into it.
+
+## 2026.09.24.1 - The delta is on the panels, and the cut can be placed by hand
+
+### Added
+
+- **The sink gap is drawn where it is measured.** It was a number in a
+  feature vector and nowhere on screen. Now the two sinks and the bracket
+  between them are marked on the class-average depth profile, on the
+  raster of whichever spike is showing, and as a thin line across the
+  feature matrix — one point per event, in the same column order, so
+  under `delta` the line IS the feature vector and the class blocks below
+  should line up with the steps in it. That is the whole claim of the
+  method, visible rather than asserted.
+
+  Drawn from `feat`, the signal the feature is measured on, and not from
+  the curve beside it, which is the display CSD. The mark on screen has
+  to be the pair the NUMBER came from or the panel shows one thing and
+  the vector holds another.
+
+- **A cut placed by hand, for the one method whose axis has units.**
+  k-means minimises within-cluster variance, which on a lopsided
+  one-dimensional spread puts the boundary where the arithmetic wants it
+  rather than where the gap in the data is. Click the sink-gap panel to
+  move the line; right-click to hand it back. The counts, the profiles
+  and the DS1/DS2 call all recompute from it exactly as they would from
+  k-means, and where k-means WOULD have put it is kept, because "you
+  moved it from 0.31 to 0.44" needs both numbers.
+
+- **The contacts in the box, and which ones are in use.** The recording’s
+  own bad channels come from the shared record — the same list Braces
+  and the ToolKit read — so the panel cannot disagree with them about
+  which wire is bad. Any contact can be taken out here on top of that,
+  and the two are marked differently: "this recording is marked bad" and
+  "I took it out just now" are different facts.
+
+  REPAIRED, NOT DROPPED, and the count says so. A CSD is a second
+  difference over depth; a contact taken out of the middle leaves the
+  rest unevenly spaced, and a second difference over an uneven grid is
+  not a CSD.
+
+  It is a FIT parameter, not a read one: taking a wire out changes the
+  answer and must not throw away the minutes of reading.
+
+- **A chip on each chart saying which method it is of.** On the depth
+  profile, the feature matrix and the space panel. Off the FIT and never
+  off the request: `q.method` changes the instant a radio is clicked
+  while the chart underneath is still the previous answer, so the chip
+  names what is actually drawn and marks itself stale until the recompute
+  lands. A label that renamed a picture before the picture changed would
+  be telling you something untrue about what you are looking at.
+
+### Changed
+
+- **The control strip is in the order the question is asked.** How to
+  split them first, because it decides which of the settings below mean
+  anything — `delta` has no feature vector to normalise, so "what the
+  PCA sees" is not a choice it has, and offering `sign ±1` beside a
+  method with no PCA in it is offering a setting that does nothing. The
+  gap settings are the mirror of that. The box, the class count and the
+  notch apply to all three and sit between. Which one is DS1 comes last:
+  it is not part of computing the split, it names the two groups once
+  they exist.
+
+- **The picker no longer offers what the next step refuses.** Candidates
+  say whether they can actually be read, and a set that cannot is shown
+  disabled with the reason rather than listed and then rejected — which
+  is how "This set is not attached to a recording" came to appear under
+  the name of the recording. Three cheap tiers: no registry id, an id
+  this machine has never seen, a recording not mounted here. Indexed once
+  for the handful of gids that have sets, because `REG.by_gid` re-stats
+  every shard at about 0.7s a call and summarising the whole registry is
+  an `isdir` per path.
+
+### Checked
+
+- `web/_dev/dspca.html` is 270 checks. The new ones cover the class-mean
+  sinks against the box they must lie in and the scale they must produce,
+  the minimum separation, taking a contact out and putting it back (and
+  that the box stays the same size, because it is repaired), the cut
+  placed by hand overriding the fitted one and every event falling on the
+  side of it its class says, and the mode chip naming the fit rather than
+  the request.
+
+- **A heading that starts with the word BAD reports itself as a
+  failure.** The runner counts a line beginning with BAD, FAIL or ERROR
+  as one, so "BAD CHANNELS, AND A CUT PLACED BY HAND" was a phantom
+  failure in an otherwise clean suite. Renamed. A phantom failure is as
+  corrosive as a missed one — it teaches people to ignore the runner.
+
+- Two checks were written when there was only one method and assumed it;
+  one waited on `q.method` and `fit.ok`, which are both true before
+  anything is recomputed, and measured the previous fit. They ask for the
+  method they are about, and wait on the answer.
+
+## 2026.09.23.13 - X-ray gets the draft’s three methods, and banking files the pictures
+
+### Added
+
+- **Three ways of splitting the events, and all three are computed every
+  fit.**
+
+    * **PCA, no gap** — the laminar profile and nothing else. What this
+      tool did before.
+    * **PCA + gap** — the same, with one extra column: how far apart the
+      event’s two sinks are, on a 0—1 scale. One column among many, so
+      it nudges rather than decides. The weight is a knob because the
+      first version of the feature was effectively 9 and took PC1’s
+      correlation with loudness from 0.52 to 0.75.
+    * **delta only, no PCA** — one number per event, and k-means
+      partitions that line directly. No rotation and no variance to be
+      dominated by: what is clustered IS what you meant to cluster on, and
+      the boundary is a threshold you can read off the axis and quote.
+
+  **Delta is the default.** All three run on every fit anyway — a PCA
+  over a few dozen columns is milliseconds, and it is the only way to know
+  whether the gap is carrying the DS1/DS2 split or is along for the ride.
+  The panel says what the two you did not choose made of the same events,
+  and **all three are numbered by one rule**, so DS1 means the shallower
+  class in each and they can be put side by side at all.
+
+- **The sink gap, with the two numbers that shape it.** `(gap - 1) /
+  (span - 2)`, clipped: pure geometry, so two events with the same laminar
+  spacing give the same number whatever the band width and however big the
+  event was. `min_sep` defaults to 5 contacts — 150 µm — because two
+  dips closer than that are one sink seen twice through a spatial filter,
+  not two laminar sinks: a 3-point taper plus a second difference will
+  routinely split one trough into a pair, and without the floor the gap
+  measures the width of that artefact.
+
+- **Banking files the numbers and the pictures, separately.**
+
+    * The **pictures** go to Results as runs, each carrying the session,
+      the settings for reading and a `recipe` for rebuilding. They are
+      rendered in the browser because that is where they were drawn:
+      `dspca.py` is forbidden matplotlib at any depth, so re-rendering
+      them on the server would be a second implementation of every panel
+      and a figure that is not the one anybody looked at.
+    * The **numbers** go to the DSPCA vault, keyed on the question — the
+      recording and a hash of every setting that changes a number — so
+      asking the same thing twice costs nothing and two machines write the
+      same record. The per-event labels are NOT duplicated there: they are
+      the bank version that was just written, and a second copy that could
+      disagree with it is worse than no copy.
+    * The **link** goes both ways. The version carries the whole parameter
+      set plus the result’s hash and the figures it filed; the result
+      carries the entry and the version. Either end finds the other
+      without a search.
+
+  Filed **before** the version is minted, so the version can carry the
+  link: a figure filed afterwards needs the version patched to point at
+  it, and a patch that fails leaves a version claiming pictures nobody can
+  find. A figure filed for a commit that then fails is an orphan in
+  Results, which is untidy and not wrong.
+
+### Changed
+
+- **The space panel is a line under `delta`.** One number per event, so
+  there is no plane and no rotation: the events lie along the axis they
+  were clustered on, jittered vertically only so ties are countable, and
+  the boundary k-means drew is a rule at a value that can be read off.
+  That is the whole argument for the method — a threshold for a methods
+  section, rather than "the first two components of a rotation".
+
+- **The version note names the method.** It said "by PCA" whichever of the
+  three had been used.
+
+### Checked
+
+- `web/_dev/dspca.html` is 238 checks. The new ones verify the gap scale
+  as `(gap - 1) / (span - 2)` against the contact distance it came from,
+  that raising the minimum separation can only ever merge sinks and never
+  invent a wider gap, that all three methods label every event and only as
+  DS1..DSk, that the active one is the answer on screen, and that the
+  delta boundary is the midpoint between adjacent centres — which is
+  exactly where k-means puts it in one dimension.
+
+- `tools/check_dspca_filing.py` is new, and covers the half a browser
+  harness should not: banking writes a version, and a harness that did it
+  every run would mint one on the demo entry forever. It checks the gate
+  that decides what becomes a file in Results (a PNG data URI in,
+  everything else refused — a JPEG called a PNG, base64 of something
+  that is not an image, a bare string with no header), and that **every**
+  setting that changes a number is in the record’s key: thirteen of them,
+  one at a time, plus the three methods as three records rather than one
+  question asked three ways. That key is what params-only reconstruction
+  rests on.
+
+- Two checks in the existing suite were written when there was only one
+  method and quietly assumed it — "one feature per contact" and
+  "widening multiplies the features" are true of the PCA methods and
+  meaningless of `delta`, whose feature vector is one number however wide
+  the box is. They ask for the method they are about now. Two more waited
+  on `q.method` and `fit.ok`, which are both true the instant the call
+  returns and before anything is recomputed, so they measured the previous
+  fit; they wait on the answer.
+
+## 2026.09.23.12 - X-ray shows its working
+
+### Added
+
+- **Under the hood.** Every number between one spike’s CSD patch and the
+  class it was put in, in the order they are computed, with the numbers
+  rather than a description of them.
+
+  Everything else in this tool draws an ANSWER, and a picture cannot be
+  checked. "DS1 is the shallower one" and "this event is DS2" are claims,
+  and the only way to test a claim is to follow the arithmetic that
+  produced it. Eight stages: the patch as CSD values, what the
+  normalisation did to it, the flattening, the component weights laid back
+  out over the patch as a picture, the score as the sum that produced it,
+  the variance nobody clusters on, the distance to each cluster centre,
+  and the renaming.
+
+  Four things in it are not visible anywhere else in the panel:
+
+    * the PCA sees a FLATTENED patch, so feature 37 is (contact 5, sample
+      2) and not a depth or a time — every cell names the index it
+      becomes, which is the whole of tracing a dot on the scatter back to
+      a contact and a millisecond;
+    * the mean is subtracted first, so a loading weights a DEVIATION from
+      the average event rather than a value;
+    * **k-means runs on the two PCA coordinates, not on the features.**
+      Every component past the second is computed and then discarded
+      before anything is clustered, and the scree bars past PC2 are
+      variance the classification never saw. On a set where PC3 carries as
+      much as PC2 that is worth knowing, and nothing said it anywhere;
+    * the class NUMBER comes last, from a landmark depth, and is not what
+      k-means returned — both are shown, so the renumbering can be seen
+      rather than assumed. It is also why DS1 before and after a refit
+      need not hold the same events.
+
+  **Not a neural network, and that was considered.** PCA is a linear
+  rotation: the weights are a matrix that exists, can be printed, and can
+  be reshaped back into a depth-by-time picture of what the component
+  measures. A network would replace a method whose workings can be read
+  with one whose workings cannot, to answer a question that is already
+  answerable — and with tens to hundreds of events there is nothing to
+  train it on. The honest under-the-hood view of a linear method is the
+  linear algebra, shown.
+
+### Checked
+
+- The panel claims to show the arithmetic, so the harness checks it
+  against the arithmetic rather than checking that it rendered.
+  `web/_dev/dspca.html` is 201 checks, and the new ones recompute:
+
+    * each PC score as the sum over features of (value — mean) × weight,
+      against what the transform returned — agreeing to 1e-6;
+    * each listed contribution as exactly its own term, and the list as
+      the largest ones in order;
+    * each cluster distance as the Euclidean distance from this event’s
+      score to that centre, and the nearest as the one it was put in;
+    * the class number as the renumbering of that cluster;
+    * the feature index as the flattening it says it is, cell by cell.
+
+  A panel of numbers that nobody has checked against their source is one
+  more picture to believe, which is the thing it was built to replace.
+
+## 2026.09.23.11 - StrataScope's support panels get the layers, and you can see them
+
+### Fixed
+
+- **The aid window showed no layers at all.** StrataScope puts the CSD, the
+  theta CSD, the voltage raster and the stacked time-frequency view in a
+  second window, because the traces need the whole of the first one. A
+  second window is a separate page: its own session objects, its own
+  modules, none of the labelling mode's state. The overlay is gated on a
+  payload, nothing was putting one there, and so the four panels a boundary
+  is actually read off were the four with no boundaries drawn on them.
+
+  The sheet now goes over the link channel, the way the curation pointer
+  already did -- the labels, the regions, the wash strength and the current
+  selection, coalesced so a drag down the rail is one request in flight
+  rather than sixty-four queued behind a long poll. The aid window adopts it
+  into exactly the state a window has when somebody turns the layer wash on
+  by hand, so there is one painter and one set of rules rather than two.
+
+  The selection travels with it, which is the part that was missing even in
+  principle: "which channels am I about to label" is the question the CSD
+  can answer and the rail cannot, and the aid window has no rail in it.
+
+### Changed
+
+- **The overlay is drawn to be seen on a raster.** It was a 10% wash and a
+  one-pixel coloured hairline. Both were being asked to show up on jet,
+  which is saturated everywhere -- and the region colours were chosen to be
+  told apart from each other, not from a colormap. Where the two agreed the
+  overlay was invisible at any alpha.
+
+  So the answer is carried by ink that does not fade, and the wash is left
+  to be atmosphere:
+
+  - an opaque column of the region colour down the **right** edge of every
+    panel with channel lanes -- right, because the left edge already carries
+    the channel numbers on a raster and the selection tick on the traces;
+  - boundary rules drawn twice, a dark rule first and the region colour on
+    top of it, so the line is findable anywhere on the picture and still
+    says which boundary it is: 5-6 pixels of ink where there was 1;
+  - the region's name against that column wherever the run is tall enough
+    to hold one, because a colour with nothing to decode it is not an answer
+    in a window with no rail;
+  - the selection tick widened and made opaque, and the wash strengths
+    raised by about half.
+
+  Measured rather than eyeballed: `web/_dev/strataglow.html` draws the real
+  painter over a synthetic raster as saturated as jet and reports the
+  difference -- how far the wash moves a pixel, how many pixels thick each
+  boundary rule comes out, and whether the spine and the names are there --
+  for each of the four panel shapes the server really sends, and then drives
+  the real aid-window URL to check the sheet arrives and paints. 40 checks;
+  17 of them fail against the code this replaces.
+
+---
+
+## 2026.09.23.10 - The first sign-in sent a broken script, and setup now finishes the job
+
+### Fixed
+
+- **The very first sign-in failed with `bash: -c: line 16: ` ; }'`.** The
+  remote command is assembled by formatting a shell block into
+  `printf ... | { ... ; }`, and the block already ends with a newline -- so
+  the appended `" ; }"` landed a bare semicolon at the start of its own
+  line, and a semicolon with no command before it is a syntax error.
+
+  The bad news is where it sat: the failure came AFTER authenticating. The
+  password, the key generation and the connection had all worked. The only
+  thing wrong was the shape of the text being sent, which is the one part
+  nothing was checking.
+
+  So it is checked now. `install_script()` is split out of `install_key()`
+  and `tools/test_vaccsignin.py` runs the result through `bash -n` -- both
+  the current form, which must parse, and the exact form that failed, which
+  must still not. The checker is calibrated against a known-good and a
+  known-bad script first, because `bash -n -c <string>` returns 1 on this
+  platform whatever it is given and would have made the test pass
+  vacuously.
+
+### Changed
+
+- **Setup asks for the password and installs the key**, rather than
+  recording a NetID and leaving the real work to the app.
+
+  It asks in the right order, which is what makes it bearable: keys already
+  on the machine are tried against the account FIRST, and on a shared rig
+  that is the ordinary case -- one person sets the cluster up and everybody
+  after them is asked for nothing but their NetID. Measured on this machine,
+  an existing key is found in 1.5 s and a wrong NetID is ruled out in 0.3 s.
+
+  `getpass` rather than `input`, so it is not echoed into the scrollback of
+  a window that stays open all day, and a console that cannot suppress the
+  echo is told to use the app instead of having somebody's password printed
+  across it. The password is held for one `ssh` invocation and dropped.
+
+  The key is proved with a key-only connection before the config is written.
+  Recording "signed in" on the strength of a password that has now been
+  discarded is how a machine ends up configured and unable to connect, with
+  nothing left to retry.
+
+  Skipping stays a first-class answer at every step, and a launcher with no
+  terminal -- a double-clicked window -- asks nothing at all.
+
+## 2026.09.23.9 - A version number is not a version name
+
+### Fixed
+
+- **The same history read differently in different panels.** X-ray’s picker
+  listed v0 to v4; the bank’s own history strip, for the same entry, listed
+  v0, v1, v2, v3, v3 — five versions, four names, one of them twice, and no
+  way to tell which was which. Another entry showed ten pills reading v0, v1,
+  v2, v3, v3, v4, v4, v5, v5, v6, with two different people’s v5 under it.
+
+  `v` is what a machine minted and it is NOT unique: two machines mint
+  independently and the union keeps both, which is the right outcome and
+  the reason `versions.label_rows` exists — it walks the lineage in
+  creation order and hands back a name that is. Half the application was
+  showing the number anyway.
+
+  There is one namer now. `named_versions` in `app.py` wraps `label_rows`,
+  every endpoint that serialises versions goes through it or builds the
+  name alongside the row, and the twelve places in the browser that wrote
+  `'v' + v.v` read `v.name` with the number as a fallback. The curation
+  list is sorted by the name’s key rather than the raw number too: two
+  versions numbered 3 sorted against each other arbitrarily, so the
+  history could list them in a different order on two machines.
+
+- **Clicking the second of two versions with the same number opened the
+  first.** The history strip keyed its selection on `v.v`. It keys on the
+  name, which is the thing that is unique.
+
+- **"This set does not say which recording it came from" — under the name
+  of the recording.** Three different failures shared one sentence, and
+  the one it described was the rarest. It now says which of them it is: no
+  registry id at all (a label is a name and not a locator), an id the
+  registry here has never heard of, or a recording the registry knows with
+  no folder recorded anywhere. Each names the set and the id it is talking
+  about.
+
+### Added
+
+- **Every version says whether it is shared.** A version history that does
+  not say this is the same history on a machine that has pushed and one
+  that has not, and the difference is whether a colleague can see any of
+  it. `/api/bank/sync` already answered it per version; the history strip
+  now shows it: **shared**, **shared, no snapshot** (the pass is readable
+  and cannot be restored, which is the one people get caught by), **this
+  computer only**, or **not checked**.
+
+  Unverified says so rather than guessing, because "probably shared" is
+  not a thing to tell somebody about their only copy of a day’s work. The
+  database is asked when somebody presses, not on every render: egress
+  there is counted in requests, and the instant answer from the local push
+  cursor is honest about being a cursor.
+
+- **A set that has finished reading can be opened while the rest run.**
+  The X-ray batch was a plain table, so the answer to "this one is done,
+  let me look at it" was to wait for the whole queue — on a cohort, the
+  difference between a coffee and an afternoon. Done rows are buttons now,
+  the batch keeps running when you take one, and the mode switch keeps
+  reporting it so nothing reads as having cancelled it. The sets already
+  read are listed the same way, which is how last week’s reading becomes
+  reachable at all.
+
+- **The feature matrix is drawn without interpolation.** It is one pixel
+  per event across and one per feature down — about 37 by 48 — shown
+  five hundred wide, and canvas smooths by default. Soft was the small
+  half of it: a column is ONE EVENT and a row is ONE FEATURE, so there is
+  nothing between two of them to interpolate, and smoothing is precisely
+  the operation that blends the single odd column this panel exists to
+  show into the ones beside it.
+
+### Changed
+
+- **The compare dialog is built the way `.modal.big` wants.** Reported as
+  "no scrolling, half of it cut off", and it was: the body was missing
+  `mb`, which is the element that scrolls, so `.modal.big > *` gave it
+  `overflow: hidden` and everything past the fold was unreachable. The
+  header stacked its title, subtitle and close button because
+  `.modal.big > *` also makes every child a flex column and `.mh` never
+  sets it back — scoped here rather than fixed in the shared rule, which
+  belongs to dialogs this work has nothing to do with. The crosstab is as
+  wide as its numbers again instead of stretching its two columns to the
+  far edge.
+
+- **`DSPCA-UI-HANDOFF.md`, most of it.** The dead `.dp-lab` rule is gone,
+  and the four inline `margin-top:0` undos beside `.section-label` in this
+  file with it. `.dp-intro` is left alone until `stepHeader` lands, as
+  asked.
+
+  **On the collision:** the other session and I both fixed the
+  `.section-label` margin at the same time. Their `* + .section-label`
+  landed and mine is removed — it is the better rule and they measured
+  why, first-in-parent labels still reading 22px under a scoped
+  `:first-child` in every container nobody had named. My `.dp-controls`
+  override stays, as they asked, merged into the one rule that was already
+  there instead of sitting above it as a second — which was the same
+  two-rules-for-one-thing fault, committed by me, in the pass that exists
+  to remove it.
+
+### Checked
+
+- `web/_dev/dspca.html` is 174 checks, and the bank suite (`bank`,
+  `bankdupes`, `bankimport`, `banklayers`, `bankscroll`, `bankback`) is
+  clean alongside it, which is what covers the version renaming.
+
+- **The harnesses really do delete real records.** The handoff warns about
+  it; measured here, a run of the bank suite removed 33 files from
+  `GUI_logs/event_bank/`, of which 30 were real KCNT1 entries and no
+  tombstone recorded any of them. Restored both times. Check
+  `git status` after a run — it is not an occasional thing.
+
+- **A stale Edge profile makes `ui_baseline.py` capture nothing**, which
+  it correctly refuses to call a clean baseline. Deleting
+  `%TEMP%\jarvis-uibaseline-profile` fixes it.
+
+## 2026.09.23.8 - X-ray: comparing two answers, and the recording beside the panel
+
+### Added
+
+- **Recompute & compare.** A fit is a question with eight parts, and
+  changing one of them replaced the answer with no record of what it
+  replaced. So the honest question — "did moving the band change
+  anything, or did it just move the picture?" — could only be answered by
+  remembering, and people were screenshotting the panel before dragging.
+
+  The button keeps the answer that is on screen, computes the new one, and
+  puts them side by side with the thing neither picture shows on its own:
+  WHICH EVENTS CHANGED IDENTITY. Both fits are over the same read and the
+  same list of events, so before-class against after-class is an exact
+  crosstab rather than an estimate, and the count off its diagonal is the
+  answer. Under it, both mean-CSD strips, both feature matrices and each
+  rule’s chosen landmark, and a way back to the old answer.
+
+  It states one thing the pictures cannot: a class NUMBER is not a class.
+  Classes are renumbered by depth on every fit, so DS1 before and DS1
+  after both mean "the shallower one" and need not hold the same events.
+  That is exactly what the crosstab is for.
+
+- **The recording opens in a window of its own.** `Open in Xplorefinder`
+  called `setView('xplore')`, which replaced the panel: the box, the
+  classes and the PCA were gone, and the way back was to find X-ray in the
+  ToolKit again and wait for the fit. Checking one spike against the raw
+  recording is something you do WHILE reading the panel.
+
+  It opens a second window now, the way Incisor opens its traces and Braid
+  its panels, and it FOLLOWS: every spike the panel steps to is pushed
+  into it as curation marks — the same `sess.curationMarks` Checkup
+  publishes — so it draws every dentate spike in the set coloured by its
+  class with the one being looked at marked. Nothing in the other window
+  had to learn what X-ray is; it already knows how to draw a curated set.
+  `window.barryDspca` is the way back in, for the same reason
+  `barryXplore` exists.
+
+- **One set at a time, or many.** The same switch Braces has, for the same
+  reason: picking a set and reading it is a thing you do while thinking,
+  and paying the reading for a cohort is a thing you set off and come back
+  to. It replaces a `Read a batch...` card that sat above the panel in
+  both modes, so the queue and the workbench were on screen together, each
+  taking room from the other, and neither was what you had come to do.
+
+### Changed
+
+- **Each class’s mean CSD is scaled to itself.** It was one scale across
+  all of them, deliberately: two heatmaps side by side with independent
+  scales say nothing about which event is larger. But the shared scale has
+  the opposite cost and it is the one that bites — a class with a
+  quarter of the amplitude is drawn as a wash of green, and the SHAPE,
+  which is the whole question, is not visible at all. Each panel now
+  carries its own peak, so the comparison is a number to read rather than
+  a colour to eyeball. That is the more honest way round: the pictures
+  never supported that comparison as well as they appeared to, because
+  the classes rarely share a peak contact.
+
+- **The spike you are looking at is marked on every panel.** The PCA rang
+  its dot already; the depth profile now brings its class forward and
+  dims the others, and its class mean is outlined. One function answers
+  "which class is on screen", so the three cannot disagree.
+
+- **The control strip is compact.** Eight groups of one or two controls,
+  each with a heading above it, at full-width rows and loose gaps: about
+  700px of column for perhaps 300px of control, most of it air between a
+  heading and the single radio under it. Tokens throughout, and the
+  chosen rule’s sentence is clamped to two lines — it was four, and it
+  set the height of the whole row, so picking a rule with a long
+  explanation moved everything below it down.
+
+### Fixed
+
+- **A fit landing late undid a box you had just dragged.** `refit` wrote
+  the server’s box back into the form when it returned, which is right for
+  the first fit — the server picks the band and the next drag has to
+  start from somewhere — and wrong for every other one. A fit is about a
+  second over seven hundred events, a box can be dragged in that second,
+  and the answer arriving then wrote the OLD box over the new one. From
+  the outside the drag simply undid itself a moment after you let go, and
+  the recompute that followed asked for the box you had just been moved
+  off.
+
+  It only writes back if the form still holds the box the request asked
+  for, and a superseded fit is dropped rather than drawn. Found by the
+  harness: the panel was showing CSC8—12 and the request that went out
+  said CSC7—9.
+
+- **"Recompute & compare" also matches "Recompute".** Which is how the
+  harness found the one above: a check looking for the recompute button
+  by its text clicked the new one beside it, opened the comparison modal
+  and left a stale comparison behind for a later section to read as its
+  own. The comparison is cleared when a new one starts, so nothing can
+  read the previous answer while this one is still computing.
+
+### Checked
+
+- `web/_dev/dspca.html` is 163 checks. The new ones drive the mode switch,
+  the comparison and the crosstab against what the fit actually put in
+  each class, the per-class colour scales, and the bridge the second
+  window drives this one through.
+
+- Two checks in it were themselves wrong and said so loudly: one compared
+  a feature matrix drawn for an earlier box against the current fit and
+  called the difference a fault, and one dragged to a contact the demo
+  probe does not have, so the server handed back the band it already had
+  and the comparison had nothing to compare. Both now establish the
+  precondition instead of assuming it.
+
+## 2026.09.23.7 - X-ray: sign-only features, the feature matrix, and the selector everything else uses
+
+### Added
+
+- **Sign-only features.** Min-max is Toothy, and it removes SCALE exactly
+  — in principle. In practice the scale is set by two samples, the single
+  min and the single max, so a quiet event riding the same background
+  noise normalizes to a NOISIER shape, and that is an amplitude effect
+  that survives the normalization. Measured on M2ctls3jan23: under min-max
+  the two classes differ in amplitude by 3.07x and PC1 correlates 0.52
+  with log amplitude. The clusters were substantially loud against quiet.
+
+  So there are three now, in the order they throw information away:
+  `min-max (Toothy)`, `sign ±1`, and `sign + deadband`. Sign keeps source
+  or sink per contact and nothing else — the laminar pattern with the
+  magnitudes gone, which on that recording drops the ratio to 1.12x. The
+  deadband stops a contact where the CSD is essentially zero getting as
+  much vote as the one at the sink.
+
+  Read the answer with the amplitude question in mind: if the classes stop
+  separating once the magnitudes go, they were separating on magnitude.
+  It is a parameter of the FIT, not of the read, so switching it does not
+  invalidate the cached read — the box stays draggable.
+
+- **The feature matrix, as a panel.** One column per event, sorted by
+  class, ruled and named DS1/DS2 between the groups.
+
+  Not decoration. Every other picture in the tool is an average, and an
+  average is exactly where one bad column hides: on this one a dead
+  contact is a solid stripe running the width of the sheet, which is how
+  the first version of this analysis was caught classifying one wire
+  rather than one kind of event. It is also the only panel that shows
+  what the PCA actually sees — the rasters are the band-limited,
+  mains-out CSD because that is what is legible, and this is whatever the
+  feature mode returned.
+
+### Changed
+
+- **The depth profile and the class CSDs show the whole shank.** They were
+  cropped to the contacts the features come from, which made the picture
+  agree with the measurement and useless for the question people bring to
+  it: is the band in the right place? A panel that only ever shows the
+  inside of the box cannot answer that. Both now run down the whole probe
+  with the band left bright and everything outside dimmed, and the box
+  ruled on all four sides.
+
+  The MEASUREMENT is unchanged and still comes from the band — every
+  ordering rule is scored on it, and widening what is measured would
+  change the answer rather than the picture. One consequence needed
+  fixing with it: the landmark dot was placed by its row index into the
+  selected band, and the same index means a different contact on a
+  full-shank curve. It goes by contact number now.
+
+- **The selector is the one every other tool uses.** It was two
+  `<select>`s: one listing every curated set in the lab, which is a list
+  you scroll rather than one you search, and one beside it for the
+  version that looked exactly the same. Now a recording you type the name
+  of, the banked entries on it as radios, and the versions of the chosen
+  one as radios — Braces' pattern, reused rather than re-answered.
+
+  With a row for **as they are now**, which had no way of being shown
+  before. `from_version` null means the server reads the set as it
+  currently stands, and that is what a set nobody has banked a version of
+  has and what the plan falls back to. With no row for it, every radio
+  sat unchecked and the list read as a set with no versions at all.
+
+- **The CSD screen checkbox is gone.** It offered a heuristic that looks
+  for contacts a CSD cannot be run down, repairs them and goes round
+  again up to five times. Off by default, and on a probe worth analysing
+  it finds nothing — so from the panel it was a control that appeared to
+  do nothing, which is worse than not having one. The screen is still in
+  `backend/dspca.py` and still reachable as `screen` on the API.
+
+### Fixed
+
+- **The controls followed the GUI constitution, which said none of this.**
+  X-ray used `.btn.small` on eleven buttons and `.primary` on four. Neither
+  matches any rule — `small` resolves on its own, so those buttons were
+  quietly full size beside the eighty-four that use `.btn.sm`, and
+  `.primary` does nothing at all because `.btn` is already the filled
+  style. It also rendered `<div class="spinner">`, which the constitution
+  cites this tool by name for: there is no such rule, so the loading card
+  showed an empty div. All three are the house controls now and
+  `check_classes.py` reports no naked elements.
+
+- **A picture could be left drawn at a size it was not shown at.** Two
+  causes, both found by measuring rather than by looking.
+
+  `drawAll` drew the stretching panels before the fixed-height ones. The
+  fixed ones are given an explicit height, which changes how much of the
+  column is left for the others — so the profile and the scatter were
+  measuring a share that was about to change, and nothing told them to
+  try again, because what ended up wrong was the backing store and not
+  the box. Fixed-height first now, then stretching, then one more pass if
+  anything is still mismatched.
+
+  And the resize handler DROPPED notifications while a check was pending
+  rather than coalescing them. A resize arrives as a burst; if the
+  pending check ran a moment before the layout settled it found nothing
+  wrong, and the notifications that would have caught it a frame later
+  had already been thrown away. It re-arms now, so the check happens
+  after the last notification.
+
+  Underneath both: the notification is not guaranteed at all. Measured
+  over four runs of the same harness page, squeezing the log moved every
+  panel and produced no resize notification inside the frame on two of
+  them. So the invariant — no picture drawn at a size it is not shown at
+  — is also checked on a slow tick while the panel is on screen, which
+  stops itself as soon as the panel is gone.
+
+### Checked
+
+- `web/_dev/dspca.html` is 129 checks, from 79. The new ones cover the
+  selector, the full-shank panels against the band they name, the feature
+  matrix groups against what the fit put in each class, and the feature
+  mode reaching the picture.
+
+- **The harness was swallowing throws.** A throw ended the suite in
+  silence: everything after it did not run, and what the runner printed
+  was a smaller number of passing checks and no failures, which reads as
+  a shorter suite rather than a broken one. It hid a real breakage for a
+  whole run — `registryRows` is a function and the new selector called it
+  as an array, and the suite reported "11 ok, 0 fail". There is a catch
+  that reports it as a failure now.
+
+- **And cutting itself in half.** Edge's `--virtual-time-budget` was
+  150000, and virtual time runs far faster than wall time: every `until`
+  that waits spends its whole timeout out of that budget in a fraction of
+  a second. The longest suite ran past it, stopped with no tally line,
+  and was counted as the checks it had managed — passing. The wall
+  timeout is what catches a stuck page; the budget only has to be large
+  enough not to cut a healthy one in half.
+
+## 2026.09.23.6 - The catalogue opens in under two seconds, and the board is a board
+
+### Fixed
+
+- **`/api/registry` took 8.6 seconds, and almost all of it was waiting.**
+  Reported as "loading times surged" and "event banks taking forever", and
+  measured before anything was changed with a new `tools/load_cost.py`.
+
+  `_opens()` -- the check that asks whether a folder will actually open,
+  rather than merely exist -- costs **71 ms a path** on this lab's drives,
+  and there are **417** reachable ones. Done one after another that is
+  about thirty seconds of a cold read, spent entirely on `listdir`. The
+  cache was never the problem: warm, the same sixty paths take 0.003 s.
+
+  It is I/O, so it parallelises. Sixteen threads fill the cache before the
+  tree is built, and every `summary()` then hits it.
+
+  | | before | after |
+  |---|---|---|
+  | `/api/registry` | 8.63 s | **1.58 s** |
+  | whole boot, in series | 11.25 s | **1.90 s** |
+  | `tree()` cold | 13.9 s | 3.6 s |
+  | `tree()` hot | -- | 0.55 s |
+
+  Worth recording what it was NOT: the 1.3 MB payload. `probes.state_of`
+  over all 766 records is 0.001 s and `project_flags` is 0.004 s -- together
+  0.0% of `summary()`. The instinct on a slow large response is to blame its
+  size, and it would have been the wrong search.
+
+- **The board was a grid.** Repeating gradients can only tile, so two sets
+  of evenly spaced parallel lines is the most they can express. A circuit
+  board is the opposite: traces leave a pad, run, turn at 45 degrees rather
+  than square, and stop -- different lengths, bundling into buses and
+  fanning out, mostly empty in between.
+
+  It is drawn now, as an inline SVG. Inline rather than a data URI is what
+  keeps the theming: a data URI cannot read a CSS variable, but an inline
+  `<svg>` inherits `currentColor`, so the traces are still gold on UVM Dark,
+  green on Phosphor and pink on Jirai -- and switching theme costs no
+  redraw.
+
+- **Every corner came out square.** The chamfer -- the 45-degree cut that is
+  the strongest visual signature of a board -- was bounded by
+  `Math.min(...)` over both components of each segment, and on an
+  axis-aligned segment one component is always zero. So every cut computed
+  to exactly 0 and the traces met at right angles, which is the one thing
+  they must not do. 0 of 20 traces had a 45-degree corner; now 20 of 20.
+
+### Changed
+
+- **The board is built on idle and never on the way in.** The DOM goes up
+  empty and the artwork arrives on `requestIdleCallback`, so the single
+  paint cannot land during boot, when every view is rendering, or during the
+  power-up, when the compositor is already busy. Nobody sees the difference:
+  the traces sit at 7% opacity and the power-up is covering the screen.
+
+  Bounded at about 230 elements on a large monitor -- every path is painted
+  twice, once faint and once inside the lit patch, and the harness holds the
+  ceiling. After that it costs nothing: no animation, no repaint, no layout.
+  Following the pointer is two composited transform writes a frame, so the
+  page underneath is never repainted.
+
+## 2026.09.23.5 - X-ray stops fighting the panel it lives in
+
+### Fixed
+
+- **The activity feed cycled "Reading…" for the whole of a read.** From a
+  348-window read: the Activity panel under X-ray filling with rows, going
+  blank, saying "Reading…", filling again, over and over until the read
+  finished.
+
+  The feed is the ToolKit's and it is mounted INTO the tool's own host,
+  `#tkResult`. X-ray's panel is redrawn by `render()`, which begins
+  `box.innerHTML = ''` — so every redraw destroyed the feed, the ToolKit's
+  watcher saw `.tf` missing and mounted a fresh one, and a fresh feed says
+  "Reading…" and fetches. The read poll calls that every 700 ms, so the
+  rows never had time to land before the next tick took them away, and it
+  was a request each time round.
+
+  This is the fault Braces had in 2026.09.16, arriving again in a tool
+  written after it was fixed. The ToolKit side coalesces remounts and
+  cannot do more than that, because a wiped feed does have to come back.
+  So both halves are fixed here:
+
+    * the read poll swaps the progress card where it stands instead of
+      rebuilding the panel around it, and
+    * `render()` lifts the feed out and puts it back — the same element,
+      so its rows, its poller and its listener all survive, and the
+      ToolKit never sees it missing at all.
+
+- **"Read from" could not be used after switching sets.** The version
+  picker went empty and the panel said "This set has no version 5", with
+  nothing to click that would put it right; the only way out was to pick a
+  different set and come back.
+
+  Two faults, one on each side. The panel fires a plan request per set and
+  the answers are not guaranteed back in the order they went out, so
+  switching sets while one was in flight left the PREVIOUS set's plan on
+  screen — and the picker is built from it. Choosing from that list then
+  asked this set for a version another set has. The plan requests are
+  numbered now, and a late answer to an old question is dropped.
+
+  And the server refused the impossible version before it built the list
+  of real ones, which is what made it a dead end rather than a mistake.
+  It answers now: the set's actual versions, the events as they are, and
+  a line saying which version was asked for and is not here.
+
+  A third, quieter one behind both: the picker's options carry a version's
+  ref and it was comparing them against a version's NAME, so the moment
+  anybody used it nothing was marked selected — the box showed the first
+  version while the panel held the one they chose.
+
+- **The PCA was blurry, and it got blurrier the bigger the monitor.** The
+  dots were vertical ellipses, which says it exactly: the scatter is
+  `flex: 1 1 auto` in a column its row stretches, so it was SHOWN at
+  whatever height the row had and DRAWN into a bitmap 268 css-pixels tall.
+  The browser scaled the difference. Canvases their box stretches are
+  measured now instead of being told their height — and measured by the
+  content box, because a 1px border made every one of them two pixels too
+  big for the box it went in.
+
+  With it, the thing that made it come back: the canvases were redrawn
+  when the WINDOW changed size, which misses every other reason the panel
+  changes shape — the rail collapsing, the top row going from two columns
+  to one. Measured in the harness: squeezing the log from 820px to 150px
+  left the scatter shown at 539x704 and drawn at 453x227.
+
+  A `ResizeObserver` catches those, but on the HOST it was flaky — passing
+  one run and failing the next with the panel drawn at exactly its old
+  size. `#tkResult` is the ToolKit's element, not ours, and an observer
+  left holding it after the ToolKit replaces it is holding a detached node
+  that never reports anything again. It watches the canvases instead,
+  which every draw rebuilds and every draw re-observes; and what it
+  actually checks is whether any picture is being SHOWN at a size it was
+  not DRAWN at. Asking the condition rather than trusting the
+  notification means a missed one is corrected by the next thing that
+  asks, and the observation a watcher delivers when it starts costs a
+  measurement rather than a redraw — so watching the canvases cannot make
+  them redraw each other forever.
+
+- **A band of empty page under "drag a box".** The two columns of the top
+  row were `align-items: start`, so the shorter one stopped and the
+  difference was blank — on a tall monitor, most of a screen of nothing.
+  Both boxes fill the row now and the slack goes into the two pictures
+  that can use it: the CSD you drag the box on, and the depth profile.
+
+### Changed
+
+- **A dragged box waits to be recomputed.** A fit over seven hundred
+  spikes is about a second of server — the feature matrix, the PCA, the
+  k-means, and then the mean CSD of every class over every event in the
+  set. Refitting on every release meant that the few goes it takes to get
+  a window right cost a few seconds of the panel rebuilding under the
+  pointer, three requests each time.
+
+  The rectangle moves at once, as it always did, and a bar says the box
+  has moved and what the answer below is still computed from. `Recompute`,
+  or Enter, runs it. `Put it back` returns to the box the answer belongs
+  to.
+
+  Only the drag. `1 sample`, `auto depth`, the column, the rule, the class
+  count and the two checkboxes are single deliberate clicks that each mean
+  one fit, and making those wait for a second click would be ceremony.
+
+- **The panel says what it is computing.** A second with nothing on screen
+  reads as a hang, and what fixes that is not a spinner but naming the
+  stage: "Fitting 712 spikes — features, PCA, classes and the class
+  means", then "Averaging the CSD of each class". It is swapped in place
+  rather than rendered, because rebuilding the panel to announce that it
+  is busy would be the most expensive possible way to say so — and it
+  would take the activity feed with it.
+
+### Checked
+
+- `web/_dev/dspca.html` grew from 79 checks to 106. The new ones drive the
+  real panel: a progress card ticking fourteen times without the feed
+  being torn down (node identity, not "a feed exists" — a remount leaves
+  one of those behind too, which is why this was invisible), a drag that
+  defers and a button that applies it, and every canvas measured against
+  the box it is drawn in, at the harness width and again with the log
+  squeezed so the two-column layout is exercised.
+
+## 2026.09.23.4 - The interface gets wiring
+
+### Added
+
+- **A surge that crosses the interface on the way on.** A wave leaves the
+  button and lights each part as it reaches it -- rail items, the view
+  head, the pane strip, the cards, the buttons. The propagation is real
+  rather than staged: every target is delayed by its own distance from the
+  button divided by a speed, so the order is whatever the layout actually
+  is and stays right when the window is resized or the rail is collapsed.
+  Measured on a full window: 40 halos, 26 ms to 337 ms.
+
+  Drawn in an overlay at each element's rectangle rather than by styling
+  the elements. Flashing a live button would animate its background -- a
+  repaint, per element, per frame -- and would fight whatever that
+  component already does with its own pseudo-elements. Capped at forty,
+  because a long scrolled page holds hundreds of cards and a hundred halos
+  is a hundred layers for the compositor to hold for a second.
+
+- **Circuit traces that stay, and light up under the pointer.** Faint runs
+  across the chrome while the mode is on, brighter where the cursor is,
+  with a ring where it clicks.
+
+  Built from gradients rather than an SVG, for one reason that matters: a
+  data URI cannot read a CSS variable, so its colour would be written down
+  once and be wrong in nine themes out of ten. The traces take `--accent`,
+  so they are gold on UVM Dark, green on Phosphor and pink on Jirai.
+
+  The lit patch carries the same pattern with `background-attachment:
+  fixed`, so the pattern stays registered to the viewport while the sprite
+  moves across it. Without that the runs would slide with the cursor and
+  read as a texture being dragged rather than as wiring being lit.
+
+### The two rules this had to obey
+
+- **It moves by `transform` and nothing else.** Written with `left`/`top`
+  it would relayout the layer and repaint everything underneath at pointer
+  rate -- in an application whose main view redraws canvases on every pan
+  frame. Pointer events are coalesced to one write per frame, because a
+  pointer reports at up to 1000 Hz and the screen redraws at 60.
+
+- **Nothing animates at rest.** `vaccquiet.html` walks every element and
+  both pseudo-elements and asserts no animation is running while no job is
+  live, because a permanent luminance lift in peripheral vision is how a
+  feature gets switched off and never switched back on. So the circuit
+  layer has no `animation` at all: it moves because a pointer moved it,
+  which stops when the pointer does. The click ripple is an animation and
+  removes itself; so does the surge.
+
+  Reduced motion keeps the traces and loses the movement -- the faint grid
+  is contrast, not motion. Pop-out panes opt out of all of it, as they
+  already do of the fired-up look.
+
+## 2026.09.23.3 - VACC Mode powers up
+
+### Added
+
+- **Turning VACC Mode on plays a power-up.** The fired-up look was a state;
+  this is the moment of change, in three beats: a charge that gathers toward
+  the button, a burst of rings and a sweep across the screen, then the rail
+  coming up last so the chrome looks like it is switching on rather than
+  like it was already lit. About a second, and it takes its colour from
+  `--accent`, so every theme powers up in its own: gold on UVM Dark, green
+  on Phosphor, pink on Jirai.
+
+  **It animates `opacity` and `transform` and nothing else**, which is a
+  correctness constraint rather than a preference. Xplorefinder redraws its
+  canvases every pan frame, so an animated `box-shadow`, `filter`, `width`
+  or `left` forces a repaint of everything behind it -- half a second of
+  celebration costing half a second of dropped frames in the one view
+  somebody might be dragging at the time. `vaccmorph.html` reads the
+  keyframes out of the stylesheet and asserts it, rather than sampling a
+  frame mid-flight, because the keyframes are the contract.
+
+  **The toggle plays it, and nothing else does.** `applyVacc` also runs at
+  boot, on the cross-window sync and on the preferences reconcile -- a morph
+  inside it would flare the screen every time the app starts or a second
+  window changes its mind. Turning the mode OFF plays nothing: leaving is
+  not an event.
+
+  **It removes itself two ways.** `animationend` normally, and a timer
+  regardless, because `animationend` does not fire in a background tab and a
+  fixed full-screen element left behind is invisible and sits over the
+  application for the rest of the session. `pointer-events: none` means it
+  would not swallow clicks even then, but "would do no harm" is not the same
+  as "is not there".
+
+  Reduced motion gets the state and not the show, and the pop-out windows
+  that already opt out of the fired-up look opt out of arriving at it too --
+  a pane popped out on its own exists to be looked at closely.
+
+## 2026.09.23.2 - The cluster account belongs on the profile
+
+### Changed
+
+- **The VACC account now lives on the profile**, under the name, the email
+  and the role. It is the same kind of fact as all of them: who this
+  computer is. The name says who it credits work to; the netid says who it
+  runs work *as*. Somebody setting a machine up should meet both once, in
+  one place, rather than discovering the second later behind a chip they had
+  no reason to press.
+
+- **Turning VACC Mode on for the first time opens the profile**, rather than
+  a sign-in box with no context around it. The prompt is then sitting in the
+  page that already answers "who is this computer", which is the question it
+  belongs to. Pop-out windows carry `BARRY` but not every view, so those
+  fall back to the standalone panel rather than being unable to offer
+  sign-in at all.
+
+- **Signed in and live are drawn as two things, because they are two
+  questions.** The account name says whether this computer has an account;
+  the dot says whether the cluster answered just now -- green for live,
+  hollow amber for signed in and silent, grey for neither.
+
+  A rig with no network is signed in and not live, and collapsing those into
+  one indicator would send somebody to re-enter a password that was never
+  the problem.
+
+- **The section is hidden while the form is showing somebody else.** It
+  describes the computer rather than the person being edited, and leaving it
+  on screen while filling in a colleague's details would read as though
+  their cluster account were being changed. Same rule, and the same reason,
+  as the device name.
+
+## 2026.09.23.1 - Signing in to VACC without knowing what SSH is
+
+### Changed
+
+- **Turning VACC Mode on now asks which account, there and then.** Signing
+  in used to be four steps nobody would guess: press VACC, notice the chip,
+  open the panel, find the button. The people who use this rig are
+  undergraduates who rotate through, and the SSH part is the least
+  transferable thing in the building -- so the moment somebody says they
+  want the cluster is the moment to ask.
+
+  Asked once per page load, not every time. Somebody who signed out on
+  purpose and is toggling the mode for the look gets asked once and then
+  left alone; restarting Jarvis offers again, which is right when the next
+  person at the keyboard is a different person.
+
+- **A password is only asked for when one is genuinely needed.** Jarvis now
+  tries the keys already on the machine against the account first -- about a
+  second each, and there are rarely more than two. On a rig where one person
+  set the cluster up and the rest of the lab takes turns, nobody after the
+  first is ever asked for anything but their netid.
+
+  That is a small security feature and not only a convenience: being asked
+  for a password by software that does not need one is how people learn to
+  type passwords into things that should not have them.
+
+  When no key works, the answer is a statement about what happens next --
+  "No key on this computer works for jbarry4 yet, so a password is needed
+  once to install one" -- naming the account, rather than a failure to walk
+  away from.
+
+- **The key picker is gone.** It offered the keys already on the machine and
+  asked a question nobody in this lab can answer: the undergraduates do not
+  know what an `id_ed25519` is, and the right answer was always "whichever
+  one works". The server tries them; the only question left is the one
+  everybody can answer, which is which account.
+
+- **The Duo wording is gone**, since VACC does not ask for it on an SSH
+  password login. The handling stays in the askpass helper as insurance --
+  it costs nothing and answers a factor prompt with a push if one ever
+  appears -- but the form no longer promises a push that will not arrive.
+
+### Added
+
+- **Sign out, and switch account.** The panel says who is signed in, which
+  on a shared rig is the line people actually need: four undergraduates take
+  turns and the one thing that is never obvious is whose account the last
+  job went to.
+
+  Signing out forgets the netid and the key path on this machine and
+  **nothing else**. It does not delete the key and does not touch the
+  cluster's `authorized_keys`, for two reasons: the key may be the one that
+  person uses from their own terminal, and removing the far-side entry needs
+  a working connection -- so a sign-out would fail exactly when somebody is
+  signing out because the connection is broken. Signing back in, as anyone,
+  then costs no password.
+
+### Fixed
+
+- **The sign-in panel reported the wrong key.** It always showed
+  `id_ed25519_jarvis_vacc` -- where Jarvis's own key *would* go -- even when
+  the machine was signed in with somebody's existing `id_ed25519`. Two
+  different questions sharing one answer, and the file it named may not even
+  exist. It now reports the key in use, with the other available separately.
+
+## 2026.09.22.5 - The pictures get the screen
+
+### Changed
+
+- **Two rows, not three columns.** Three equal columns gave each graph a
+  third of the width and left the bottom two thirds of the middle one empty:
+  on a wide monitor the rasters were letterboxes. The graphs now run across
+  the top at full height, and everything you set runs along the bottom with
+  the PCA beside it. The scatter belongs down there because it is the only
+  picture without a depth axis — nothing lines up with it and no guide
+  crosses it.
+
+- **A guide is a mark at a depth, not a line over the data.** Four solid
+  rules edge to edge is four opaque bars across the thing you are reading —
+  and the sink you are placing them against is exactly what they cover. Each
+  one is now a short tack at either edge, which is also what you take hold
+  of, with a faint dotted hairline between them so the eye can carry the
+  depth across a wide plot. Dragging one makes it solid for as long as the
+  drag lasts. Labels step down out of each other's way rather than printing
+  on top.
+
+- **Guides have their own colours.** Handed out from a palette that avoids
+  the DS1 green and DS2 purple — a guide in either reads as a finding about
+  one of them rather than the landmark both are measured against — and each
+  row's chip is the picker. The first version gave every guide one
+  near-black, which was invisible on the dark theme and made two of them
+  indistinguishable on every theme; guides written then are migrated on
+  read.
+
+### Fixed
+
+- **A commit that changed nothing announced a version anyway.**
+  `EventBank.add` mints a version only when something moved, which is right
+  — pressing Commit twice on the same answer should not put two identical
+  versions in the history — but the report claimed one either way. It now
+  says so plainly, and names the version that still holds those types.
+
+- **The preview and the confirmation named different versions.** One showed
+  the lineage name and the other the stored number, which differ as soon as
+  a number has been skipped — this bank holds an entry whose versions run
+  0,1,3,4,5. Both read the same function now.
+
+- **Committing three classes wrote a label nothing knew.** The panel offers
+  up to five and the ordering generalises, but the vocabulary stopped at
+  `ds2` — so a `ds3` was not counted by `_n_good` and the set read as though
+  two of its spikes had gone. `ds1`–`ds5` now, in the class colours.
+
+---
+
+## 2026.09.22.4 - Guides, and a panel that says what it is asking
+
+### Added
+
+- **Guides — named depth lines, drawn on every panel that has a depth.**
+  A sink at CSC30 means nothing until somebody has said where the hilus is,
+  and the whole job in X-ray is comparing one depth against another across
+  five pictures at once. So a guide is a line at one contact with a name on
+  it, and it is drawn on the voltage traces, the CSD raster, the
+  class-average profiles and the class-mean rasters alike.
+
+  **Drag it on any of them and it moves on all of them**, because there is
+  one of it. Each panel records how it maps a contact to a y as it draws,
+  and the drag inverts whichever mapping the pointer is over — so a line can
+  be taken hold of on whichever picture it is most legible against, which on
+  a jet colormap is not always the same one.
+
+  They belong to the **recording**, not to the panel, which is what lets
+  **Xplorefinder draw the same lines**: they are published through
+  `setChannelLines`, the mechanism Incisor already uses, so moving one there
+  writes back here and the next open has it in its new place.
+
+- **They are not StrataScope layers, and the difference is the point.**
+  StrataScope answers "which anatomical layer is each contact in" and stores
+  a region per contact — a claim about the whole shank, made once. A guide
+  is the other thing people do with a depth axis: put a line down, call it
+  something, and check every panel against it. It moves while somebody is
+  deciding. Forcing that through a per-contact region assignment would mean
+  relabelling four contacts to move a line by one. A recording can carry
+  both; neither is derived from the other, and StrataScope's boundaries are
+  now a checkbox rather than always drawn — once there are real guides,
+  sixty-four contacts' worth of region changes underneath them is more line
+  than data.
+
+### Changed
+
+- **The panel says what it is asking.** A status strip over the three
+  columns carries the box, the feature count, the class count, the rule, the
+  filtering and how many events landed in each class. All of it was settable
+  in the left column and none of it was readable there without
+  reconstructing the question from its parts — and a screenshot of the panel
+  now has the question in it, which is most of why anybody screenshots one.
+
+- **Less documentation on screen, more of it one hover away.** The panel
+  explained itself in a paragraph at the top and a two-line sentence under
+  each of four ordering rules. In a 230px column that is most of the column,
+  and none of it is the state. The sentences are `title` attributes now, and
+  the rule in force is the only one that still explains itself inline.
+
+- **Checkup is "clean them" rather than "call them"** in The Dentist's rail.
+
+---
+
+## 2026.09.22.3 - X-ray, and the fourth step of The Dentist
+
+### Added
+
+- **X-ray — telling DS1 from DS2.** Incisor finds the dentate spikes,
+  Checkup says which are real, Braces puts each stamp on its own peak, and
+  the bundle stopped there. This is the step that says which KIND each one
+  is, and it is the port of the workbench the method was developed in
+  (`FOOOF Playgroun/ds_pca_gui.py`, a matplotlib program that read a
+  hand-downloaded CSV and kept its state in sidecar JSON beside it).
+
+  The features are the CSD over a block of **depth and time** around each
+  stamp. Toothy uses one instant — its features are a column, and the only
+  choice anybody makes is which contacts — so pulled to one sample at the
+  stamp this is Toothy exactly, and widening the box is a visible departure
+  that can tell a biphasic event from a monophasic one of the same
+  amplitude. Two components of that, clustered, are DS1 and DS2.
+
+  The panel is three columns: the controls, two panes showing the voltage
+  and the CSD at 5–100 Hz with the mains out, and the answer. The box is
+  dragged on the raster itself and everything downstream of it is
+  milliseconds, so it is live rather than behind a recompute button.
+
+- **Four rules for which class is DS1, and a panel that shows its working.**
+  tortlab's CSDbC (the main sink above the main source), Toothy's plain
+  argmin, the most prominent source peak, and — new here — **anatomy**,
+  which measures each class's sink against the hilus StrataScope has
+  labelled. The first three all really ask "which class is shallower", which
+  is a question about the probe rather than about the brain; the fourth
+  survives a shank inserted the other way up. A rule stated in three words
+  reads as a fact about anatomy and is not one, so the panel names the
+  contact each rule landed on and says when a profile has more than one
+  sink.
+
+- **DS1 and DS2 as labels, not as a field.** `EventBank.add` whitelists what
+  an event is, and `SNAP_FIELDS` is narrower still, so a `ds_type` of its
+  own would have been dropped on the way in and would not have survived a
+  version restore even if it were not. As two more `good` labels in the DS
+  vocabulary they inherit everything already built: `by_label` counts them,
+  the per-version snapshot carries them, the bank's CSV export has a
+  `label_name` column, and Xplorefinder colours them apart with nothing new
+  written. The IED vocabulary already had two good labels, so this is the
+  shape rather than an invention. Appended, never replacing `spike`, and
+  with no keyboard keys — this is a computed call, not one somebody makes a
+  candidate at a time in Checkup.
+
+- **A commit that is provably a relabelling.** Curation identity in this
+  codebase IS the timestamp, so the difference between this and an operation
+  needing the care a re-time needs is that no stamp moves — asserted before
+  the write and again on what came back, rather than assumed. The preview is
+  the first thing the panel calls and the thing it shows, and it says in as
+  many words what is not happening: nothing re-detected, nothing dropped,
+  every rejection left exactly as it was.
+
+- **`tools/check_dspca.py`.** The port is the point, so the port is what is
+  checked: it runs `backend/dspca.py` and the standalone workbench side by
+  side on the `.npz` caches that workbench already wrote, and refuses to let
+  them disagree. 278 checks over two recordings, three box shapes, three
+  rules, two class counts, the notch switch, the hand flip and the CSD
+  screen — PCA coordinates to 1e-9 and every DS1/DS2 call identical.
+
+- **`web/_dev/dspca.html`.** 51 checks driving the real panel, on the demo
+  recording — so it needs no drive mounted and cannot touch a real set.
+
+### Fixed
+
+- **`EventBank.add` dropped the alignment record.** `aligned` is a fact
+  about the STAMPS, and every way of banking over an entry other than Braces
+  changes labels rather than times — re-curating a set, retyping it. Dropped
+  on each of those, an aligned set came back looking as though step three
+  had never run, and the only way to find out otherwise was to read the
+  version notes. It is now carried from the entry that was already there
+  unless the caller supplies its own.
+
+- **Checkup assumed every label had a keyboard key.** The category bar read
+  `lab.keys.join(...)` and `lab.keys[0]` with nothing guarding either, so the
+  first label added to a vocabulary without keys would have raised a
+  TypeError on every render — taking out the whole bar rather than its own
+  button. Read defensively now, and a label marked `computed` is skipped
+  there entirely: DS1/DS2 is worked out from a PCA over every event in the
+  set at once, so a button offering it for the one candidate on screen would
+  be offering a call that cannot be made that way. They still appear
+  everywhere a label is read — the counts, the version history, the marks on
+  the trace.
+
+- **A progress stage that was not in `cfc.STAGES` reported nothing at all.**
+  `Job.__init__` builds its stages by filtering that list, so a name not in
+  it produces an empty `stages` array — a run that is working and looks
+  stuck. X-ray's read is registered there now, under its own name, because
+  `_learn` divides seconds by units without knowing what a unit is and two
+  tools sharing a stage name teach each other the wrong rate. Its bulk
+  queue has a third name for the same reason, and a sharper one: the
+  queue counts recordings while each read inside it counts windows, so
+  sharing would have had every member reset the bar to its own scale.
+
+- **`tools/run_harnesses.py` had one developer's own path written into it.**
+  `ROOT` was an absolute path under another machine's home directory, so the
+  suite could not be run anywhere else. Derived from `__file__` now. The
+  failure was at least loud — a FileNotFoundError on the listdir — which is
+  more than can be said for the version of this that would have reported
+  "0 ok, 0 fail".
+
+- **The standalone workbench crashed on an ordinary drag.** With the tortlab
+  rule, a class whose main source is the topmost contact of the box has no
+  contact above it, so `tort_main_sink` returns no source — and `recompute`
+  tried to iterate it. A narrow box near the top of the shank is a normal
+  thing to drag, and the `TypeError` came out inside the selector callback,
+  which reads as the window having frozen.
+
+### Changed
+
+- **`scikit-learn` is a dependency.** The house pattern is a dependency-free
+  reimplementation — `backend/specparam.py` rebuilds FOOOF for exactly that
+  reason — and it is the wrong call here: Toothy classifies with sklearn's
+  own `PCA` and `KMeans`, parity with Toothy is the thing being ported, and
+  a hand-rolled k-means would be a second answer to the same question with
+  nothing to check it against. Guarded at the import, so a machine that has
+  not run Setup since this landed loses one tool rather than the whole
+  server.
+
+- **The contact pitch comes from the probe.** The standalone version
+  defaulted to 30 µm, which is the H10-D's within-column pitch, because it
+  was only ever pointed at one recording. The CSD divides by that, so on a
+  linear array every number it drew was out by the ratio. Read from the
+  recording's own probe now, the same three-step answer Incisor's scan uses
+  — and where nobody has confirmed a probe, the panel says so rather than
+  quietly assuming one.
+
+- **A CSD is refused across probe columns.** An H10-D is two shanks of three
+  interleaved columns, so consecutive CSC numbers are not neighbours and a
+  box of CSC26–41 spans all six. The second difference across that is not a
+  small error; it is a sink that is not there, with a contact number on it
+  and nothing on screen to say it is arithmetic between contacts 200 µm
+  apart in the wrong direction. The box has to lie inside one column, and
+  the refusal names the columns it could have used.
+
+---
+
+## 2026.09.22.2 - Two stamps on one time is a flag, not a dead end
+
+### Added
+
+- **An `overlapping` pass in the review.** Two stamps sent to the same time
+  are one event written twice rather than two events, and the bank has
+  always refused to write it. What it said was "2 stamp(s) would land on a
+  time another stamp already holds" — true, and useless: the times were the
+  bank's, and what the person reading it had was a list of twelve hundred
+  rows.
+
+  It is now a flag like any other, except that it is worked out from the
+  decisions rather than measured when the set is made — nothing can know it
+  until somebody has moved something, and it stops being true the moment
+  they move it back. So it is raised by a decision and cleared by one, and
+  every route out of it works: move one of the pair off, leave one where it
+  was, or decide one was never an event.
+
+  It has a pill in the table, a colour of its own in the stamp list, and it
+  is included in the bench's pass, so stepping through the flags walks onto
+  it rather than past it. The bar names the stamp it collides with, which is
+  the thing that cannot be seen on the trace — the pair are a tenth of a
+  millisecond apart and drawn on top of each other. Banking a set that has
+  one refuses as it always did, and now puts you on the first of them.
+
+---
+
+## 2026.09.22.1 - A hand-moved stamp can cross its neighbour
+
+### Fixed
+
+- **An alignment could not be banked if a reviewer had moved a stamp past
+  its neighbour.** The last check before the write sorted the outgoing
+  stamps, compared that against the order they were built in, and refused
+  the whole write if the two disagreed: "The alignment reordered the
+  events, which the no-crossing rule makes impossible -- so something
+  upstream is wrong." Nothing upstream was wrong.
+
+  The no-crossing rule holds over the peaks `braces.assign` hands out
+  itself. It says nothing about the two things that come after it. A
+  reviewer dragging a stamp onto the peak it plainly belongs on is bound by
+  nothing but the window -- the bench allows the drag anywhere within
+  ±100 ms of where the stamp sits -- and a stamp left where it was, by a
+  `keep` or by having no peak in reach, does not move aside for a
+  neighbour that does. Both are legitimate alignments, and both arrived at
+  the bank as a refusal.
+
+  Two of them in `M8s9feb8`, a set of 1213 stamps with an afternoon of
+  review on it: one stamp hand-placed at 722.538 s, 10 ms ahead of the
+  neighbour that aligned to 722.549 s, and another moved to 1780.893 s,
+  14 ms past the one that landed on 1780.879 s. Everything else about the
+  set was right, and none of it could be banked.
+
+  The write now sorts by where each stamp ends up -- the order every other
+  write to this bank keeps, and the order a version reads back in -- rather
+  than refusing. Nothing is lost by the sort: `from_t` travels on the event,
+  so a stamp that changed places still says where it came from. The report
+  and the version record both carry `resorted`, the number of stamps that
+  changed place, so a version whose set was reordered says so.
+
+  Two stamps landing on ONE time is still refused. That is a duplicate
+  rather than an alignment, and it is a different fact about the set.
+
+---
+
+## 2026.09.21.9 - Leaving the trace view cannot strand you in it
+
+### Fixed
+
+- **"Back to the proposal" did nothing, and the proposal could not be
+  banked.** `exitView` set `view` to null and then read `view.list` four
+  lines later. That throws, and everything after the throw never ran —
+  including the line that brings the panel back. So the button appeared to
+  do nothing, the trace view kept the keyboard, and the proposal, with the
+  button that banks it, was unreachable. From a colleague's log:
+
+      client.error  detail=exitView@...  message=TypeError: can't access
+      braces.enter  set=br52367e4cc2 step=opening   (15:42)
+      braces.enter  set=br52367e4cc2 step=opening   (15:45)
+      braces.enter  set=br52367e4cc2 step=opening   (15:46)
+
+  Somebody entering, failing to leave, reloading, entering again.
+
+  It arrived when the list of stamps became a modal: the line used to
+  remove a docked element by id, which is safe after `view` is gone, and
+  became a read of `view`, which is not. The list is closed while `view`
+  still exists now — and the parts that MUST happen, the key handler, the
+  mode and the view, are in a `finally`, so a throw anywhere in the
+  teardown can never again leave somebody in a mode with no way out. A
+  half-tidied view is untidy; a panel nobody can get back to is somebody's
+  afternoon.
+
+- **A refused commit came back as "Request failed (200)".** The reason a
+  write is refused — "this exact alignment is already version 4 of this
+  set", "two stamps would land on a time another stamp already holds" —
+  lives in the report, and the response carried `ok: false` with nothing at
+  the top level. The client reads `data.error` and falls back to the status
+  code, so a carefully written sentence arrived as a number. Both places
+  now: the panel reads the report, the transport reads the top.
+
+## 2026.09.21.8 - Braces can call one garbage, reluctantly
+
+### Added
+
+- **A garbage button, which asks twice and is not pleased about it.** `g`, or
+  the red button beside "Leave it". A stamp marked this way is not moved and
+  not written: an aligned version holds the spikes and nothing else, so a
+  rejected one simply is not in it, and every earlier version still has it
+  exactly as it was.
+
+  Braces reads labels and does not write them — which candidates are real is
+  curation's question, answered a step earlier, and a tool that quietly
+  re-decides it makes the curation set stop being the record of what anybody
+  decided. That reasoning is why this asks rather than just doing it. But
+  somebody looking at a stamp on the recording, with the CSD under it, sees
+  what they missed at a smaller size, and sending them back to Checkup for
+  one obvious mistake is how obvious mistakes stay in.
+
+  So it asks, by name, and then agrees to it grudgingly:
+
+      "A curated set, Jeremy. Curated. By a person. Recently. And yet.
+       Are you quite sure? Quite quite sure?"
+
+      "I shall add it to the list of things that were definitely going to
+       be handled in Checkup. It is out."
+
+  Five openings and six replies, picked at random, because one fixed
+  sentence read four hundred times stops being read at all — which is the
+  failure mode of every confirmation dialog ever written.
+
+  It is red on BOTH halves of the mark, because drawing its new position in
+  the colour of an accepted move would be a lie: it is not going there. It
+  has its own chip in the list of stamps, and pressing `g` again takes it
+  back without arguing, since putting something back needs no persuading.
+
+  Counted apart from the candidates curation had already rejected, in the
+  preview and in the version's record.
+
+### Fixed
+
+- **Clearing a decision the obvious way answered "ok" and did nothing.**
+  `{"row": 3, "call": null}` — which is what anybody would write, and what
+  the route's own single-row shape invites — fell past the branch that
+  builds a decision, because that branch only ran when the call was NOT
+  null. Nothing was decided and the reply said it worked. The panel was
+  unaffected: it has always sent the map form, `{"calls": {"3": null}}`,
+  precisely because of this. Both work now, and the end-to-end check tries
+  both spellings, because a route that reports success for a request it
+  ignored is how a check of mine came to pass while testing nothing.
+
+- **The end-to-end suite failed whenever a colleague banked something.** Its
+  last check counted versions before and after and called any increase "the
+  suite wrote to your bank". This lab syncs every twenty seconds: two
+  versions banked on another machine arrived mid-run and were reported as
+  this one writing. It compares WHICH versions exist now, fails only if one
+  appeared stamped with this machine, and says plainly when the others
+  arrived from elsewhere — which is the sync working, not a fault. "I threw this one out just now" and
+  "this was thrown out last week" are different facts and the history should
+  keep them that way.
+
+## 2026.09.21.7 - A push no longer loses what changed while it was reading
+
+### Fixed
+
+- **The incremental push had a window in which an edit was lost for ever.**
+  The cursor was stamped AFTER the read rather than before it:
+
+      since   = last_push
+      rows    = collect(...)      # half a minute on this store
+      started = now()             # <- cursor taken here
+
+  Anything edited while `collect` is running is then lost permanently. The
+  row is not in the batch, because collect had already passed it; and the
+  cursor moves past its timestamp, so no later push considers it either.
+  Nothing knows it was missed, so nothing retries — the local side reports
+  it as sent and the database keeps the old value indefinitely.
+
+  Measured, not theorised. Renaming ten bank entries while a push was
+  running sent five. The other five were written during the read and stayed
+  behind the cursor through every cycle after it: days-old names in the
+  database against local edits from a minute earlier.
+
+      cloud  Incisor CSC61   updated 2026-09-17T14:52:23Z
+      local  Incisor CSC61_PTEN m3 s7 2023-09-22   touched 2026-09-21T18:15:26Z
+
+  The cursor is taken first now. A row edited during the read is merely
+  re-sent next time, which the database drops as a no-op: sending something
+  twice is free, sending it never is not. The five that were already
+  stranded were recovered with a full push.
+
+- **Every stamp already on its peak came back as an error.** "Nothing moved,
+  so there is no new version to write" is what a set that is finished says,
+  and it was shown as a red failure — which reads as something having gone
+  wrong with a proposal that is simply right. It is an outcome now, said
+  calmly, and the button says "Nothing to bank" and is disabled BEFORE it is
+  pressed. A set where nothing moved but rejected candidates would be
+  dropped still counts as a change, because the version then holds the
+  spikes and nothing else.
+
+- **Movement did not reach the support panels.** A drag publishes the moved
+  marks every 120 ms, and the set is the same size while it happens — so
+  the shortcut for "same set, new position" ran instead of the branch that
+  adopts marks, applied the index and the focus, and kept the old positions.
+  The other windows followed the stamp being decided and drew every line
+  where it used to be. A pointer that brought its own marks is complete and
+  current, so it is now adopted before any shortcut can decide nothing has
+  changed.
+
+### Changed
+
+- **Neighbouring stamps are ticks again, in Checkup's proportions.** A
+  neighbour rises 18% of the pane from the bottom, 38% where the pane is
+  short enough that 18% would be a few pixels; the pair being decided runs
+  the full height, wider and opaque; an answered neighbour is quieter and an
+  untouched one quieter still and dashed. The same numbers curation uses, so
+  stepping between the two is one picture in different colours.
+
+  They were removed a few versions ago for a reason worth keeping straight:
+  a mark's size depends on a flag that travels between windows, and while
+  that flag was going astray every mark drew as a neighbour, which made a
+  panel look EMPTY rather than slightly wrong. Size can carry the focus
+  again because the focus now arrives — as a number on every pointer, and
+  with marks adopted unconditionally.
+
+- **Sets with nothing to align are no longer offered by Braces.** Nine of
+  the forty-eight were fully curated sets in which every candidate had been
+  rejected, one of them 738 of them. They were listed and greyed; the place
+  to see "this one is finished and it is all garbage" is the Event Bank,
+  which holds every entry. A list of things to align holds things to align.
+
+- **Every `Incisor CSC##` entry now carries its session.** Incisor names a
+  set after the channel it scanned, which is the one fact it is sure of and
+  the one fact that identifies nothing: ten entries were named exactly that
+  and six of the names were shared. Two different recordings both called
+  "Incisor CSC42" are indistinguishable in any list that shows a name, which
+  is every list.
+
+      Incisor CSC42   ->   Incisor CSC42_PTEN m47 s1 2024-12-04
+
+  `tools/name_incisor_sets.py`, which says what it would do and needs
+  `--apply` to do it. Three of the ten turned out to be the same recording
+  banked two or three times — same group id, same event count — which is
+  not a naming collision and cannot be fixed by renaming. They get a short
+  piece of their own id so they can be told apart, and the tool lists them
+  for somebody to decide about: deleting a banked entry is not a thing a
+  script should choose to do.
+
+## 2026.09.21.6 - A set with nothing in it says so, and the batch keeps up
+
+### Added
+
+- **Every banked entry can say whether it has reached the database.**
+  `/api/bank/sync`, and it is three questions rather than one flag, because
+  an entry and its snapshots travel separately: an entry can be missing
+  entirely, present but missing a version this machine has, or holding a
+  version whose snapshot never went up — which is the case where somebody
+  else can see the version in the history and cannot read the stamps back.
+
+  Without asking the database it answers from the local push cursor, which
+  is instant and works offline: anything changed since the last successful
+  push is waiting. `?verify=1` asks what is actually up there, which is the
+  only way to catch a push that reported success and did not land. First run
+  on this bank: **90 synced, 10 missing a version, 1 absent, 1 local by
+  design** — the demo recording, which never syncs and is named rather than
+  flagged, because crying wolf about the one thing working as intended is
+  how a status page gets ignored.
+
+- **Bad contacts are visible and editable from the bulk table.** A bulk run
+  uses whatever each recording has marked, and there was no way to see that
+  from here, let alone change it. Each row says how many and which, and
+  saves through the same route Incisor uses so a contact marked here and one
+  marked in the trace view land on one record. They are interpolated rather
+  than dropped — a second difference over an uneven grid is not a CSD — so
+  the row says "not believed", not "missing".
+
+- **A second button for the sets that have never been aligned.** "Everything
+  ready" ticks a set that has been aligned as readily as one that has not,
+  so a second pass over a bank re-reads the lot.
+
+### Fixed
+
+- **A set with no dentate spikes in it was offered, run, and filed empty.**
+  `n` counts CANDIDATES. A set can be fully curated and hold no events at
+  all — somebody went through it and rejected every one — and **nine of the
+  forty-eight sets in this bank are exactly that**, one of them 738
+  candidates every one of which is garbage. Running one read the recording
+  for a minute and produced a proposal with no rows in it, which somebody
+  then has to work out is empty on purpose.
+
+  The run refuses it and says why. Both pickers grey it out, will not let it
+  be ticked, and leave it out of the select-all buttons and the "can be read
+  here" count. It is shown rather than hidden: "this one is finished and
+  every candidate was rejected" is a real answer, and a row that silently is
+  not there reads as a set that does not exist. Both views now show "N
+  spikes of M" rather than the candidate count alone, which is the number
+  that decides whether there is anything to do.
+
+- **A finished batch row did not show it had finished.** A tick rewrote the
+  status text and nothing else — right while a read is going, wrong the
+  moment it lands, because the Open button is part of the row and only
+  appeared at the next full render, which is when the whole queue ends. A
+  set that landed four minutes ago looked exactly like one still being read.
+  The finished row is rebuilt, and only that row, so the table keeps its
+  scroll position.
+
+- **The bulk table moved under the pointer while it worked.** Every tick
+  replaced the whole card, four times a second, for the minute each read
+  takes — throwing away the scroll position, the focus and any version list
+  somebody had open, which is exactly when they are trying to read it. A
+  tick writes one cell now.
+
+- **The progress bar counted something and did not say what.** "Reading
+  window 43 of 62" under a sentence that began "It is the whole recording".
+  Braces has not read a whole recording since the windowed pass landed, and
+  62 counts STRETCHES — stamps closer than a second are read as one, which
+  is why this is minutes of an hour. Each stage says what it is doing, names
+  its unit, and states the number it is not: how many stamps the set holds.
+
+- **"Averaged over 16 channels, leaving out CSC59."** Neither half was true.
+  The 16 are DEPTHS, not contacts: a CSD depth is a difference between
+  contacts, so 18 contacts give 16 depths and there is no answer to "which
+  16 channels" because they are not channels. And CSC59 was interpolated
+  from its neighbours, not left out — dropping it would leave the rest
+  unevenly spaced — and it is not even inside the band this was measured on.
+
+- **The bank dialog said two different things in one sentence.** "This
+  becomes version 4, branching off version 3": branching off v3 is v3.1, and
+  v4 is what continuing it looks like. It also named the version by the ref
+  it had been handed rather than by a name anybody would recognise, and
+  still claimed "Nothing is deleted" after an aligned version started
+  holding the spikes and not the rejected candidates. It says which version
+  it is reading, whether that continues or branches, and what it is leaving
+  out.
+
+- **The bank dialog was laid out against the wrong box.** It built a modal
+  and handed it to the thing that puts a dialog inside `#bigModalBox` —
+  which is already a modal — so a 620px bordered panel sat at the left edge
+  of a 1240px one. It uses the header/body/footer convention every other
+  dialog in the app uses.
+
+## 2026.09.21.5 - The bad contacts were always there; the table was reading an empty cache
+
+### Fixed
+
+- **"none bad", against the whole cohort.** The bulk table in Braces showed
+  `none bad` on every row — all 46 sets whose recordings have contacts
+  marked, including m33 s8 at CSC8/41/59 and M13_HF4s2aug1 at CSC55/59. The
+  channels were in the store the whole time. The column was reading an empty
+  list and drawing it as an answer.
+
+  `registryRows` is a getter over ToolKit's sixty-second registry cache, not
+  a read of the registry. Curation, StrataScope and Braid each warm that
+  cache on their way in, so Braces worked whenever somebody had been through
+  one of those first — and only then. Reached the way the bundle reaches it,
+  ToolKit then step 3, nobody had, so the getter returned `[]` and every
+  consumer of it answered from nothing.
+
+  Two columns were wrong in the same direction, and both read as facts about
+  the recordings rather than about the cache. The other one is the count on
+  the bar: with no rows to judge against, `reachable` says yes to everything,
+  so a list where 368 of 588 are mounted reported every set as readable.
+
+  Braces now reads the registry itself when nobody has yet, and the columns
+  that depend on it fill in when it lands. Not awaited — the read takes
+  seconds on a network share and nothing on the first paint needs it, so the
+  panel draws at once, as before.
+
+- **A contact marked from the bulk table went on saying what it said
+  before.** The save wrote to the store and then called ToolKit's `refresh`,
+  which re-runs whichever tool is on screen — this one — so the table was
+  repainted out of the same cache the edit had just made wrong, and the chip
+  kept the old count for up to a minute. It forces a re-read now, which is
+  what the cache's force flag is for.
+
+- **Four rows of the bad-channel workbook had never landed correctly.** m5 s2
+  and m5 s7 held each other's lists — s2 carried the CSC8 that belongs to s7.
+  m21 s2 was missing CSC8. And m24 s4 listed CSC24, which is not a contact
+  anybody marked: it is the mouse number, read out of the wrong column by
+  whatever imported it. All four now match the sheet; the other 58 already
+  did.
+
+### Added
+
+- **`tools/import_bad_channels.py`**, so the sheet can be applied again
+  without anybody doing it by hand. Dry run by default, `--apply` to write,
+  and it reports each change as a difference — `+CSC8`, `-CSC24` — rather
+  than as two lists to compare by eye.
+
+  It resolves a row to a recording rather than to a mouse and session pair.
+  The numbering restarts per project here, so PTEN m13 s2 and KCNT1 m13 s2
+  are two recordings with one loose key and nine of the 62 rows collide that
+  way; matching on the pair alone writes a PTEN workbook into a KCNT1
+  record. Retired records are not candidates, the PTEN cohort wins a tie, and
+  anything still ambiguous is skipped and named.
+
+  It writes nothing for a session the sheet does not mention. Sixty-two rows
+  are not a statement about the other 526 recordings Jarvis knows, and
+  reading them as one would clear every channel anybody has marked by hand in
+  the trace view.
+
+- **`web/_dev/bracesbad.html`**, which goes straight to Braces from a cold
+  start — the route is the test, because entering through any other tool
+  warms the cache and hides the bug. It computes what each chip should say
+  from the registry and the bank rather than hardcoding counts, so it means
+  something on a machine other than the one it was written on. Seven checks;
+  three of them fail on the code as it was.
+
+## 2026.09.21.4 - The read says what it is counting, and the list is the one you already know
+
+### Fixed
+
+- **The progress bar counted something, and did not say what.** "Reading
+  window 43 of 62", under a sentence reading "Every ticked channel is read
+  once — it is the whole recording, so it takes about as long as an Incisor
+  scan."
+
+  Both halves were wrong. The sentence was from the design before the
+  windowed pass: Braces has not read a whole recording in weeks, it reads the
+  stretches the stamps can reach, which is minutes of an hour. And 62 counts
+  STRETCHES, not spikes — stamps closer together than a second are read as
+  one, which is the whole reason this is fast — so somebody watching a set
+  they know holds 1213 sees 62 and reasonably concludes the tool has lost
+  most of them.
+
+  The unit is named now, each stage says what it is doing rather than sharing
+  one stale sentence, and the count it is NOT is written beside it: the
+  number of stamps in the set. The depth pass says out loud that it works
+  from a sample, because where the sink is is a fact about the probe rather
+  than about any one spike. The bulk rows use the same words as the bar
+  instead of the code's own stage names.
+
+### Changed
+
+- **The list of stamps is Checkup's list.** Same dialog, same bar, same
+  chips, same rows — the classes are shared rather than copied, so the two
+  look identical because they are the same markup, and a person who has been
+  through a curation set already knows how to read this one. It replaces a
+  panel of Braces' own with its own layout, which was one more thing to learn
+  for no reason.
+
+  What differs is only what a row can be sorted and filtered by, because an
+  alignment's categories are not a curation's: not which label, but whether
+  it moves, whether it was flagged, and whether anybody has answered. Sort by
+  time or by how far a stamp moves — furthest first, which is the order a
+  second look wants to happen in — and the same gap markers where the stamps
+  thin out.
+
+## 2026.09.21.3 - A version says which version it came from, and a restore puts every decision back
+
+### Fixed
+
+- **"I read v4, saved, and it says v7."** A version recorded where it came
+  from in `from_v`, and what the panels send is a **ref** — a per-version id,
+  because the number is not unique and a ref is the only thing that names one
+  version and only one. The labeller then looked that ref up among the
+  version *numbers*, found nothing, and treated the new version as a **root**.
+  A root gets the next trunk number, so a version branched off v4 was named
+  as though it had begun a fresh line. That is the jump.
+
+  Versions now record `from_id` — the parent's id, exact — alongside the
+  number, and the labeller prefers it. A history gains precision as new
+  versions are written into it, with nothing rewritten. On an entry whose
+  history runs v0 to v6:
+
+      reading the newest  ->  writes v7
+      reading v4          ->  writes v4.1, leaving v5 and v6 alone
+      reading v6          ->  writes v7
+
+  **And the name the panel promises is the name you get.** It was predicting
+  the successor of the newest version whatever you had picked up, so reading
+  an older one promised a number that branching would never produce. It now
+  branches from what is actually being read.
+
+  Two smaller things fell out of the same work. The default parent — what a
+  run reads when nobody said otherwise — resolved by number, so on a history
+  where two versions share one it could name a version in the middle as the
+  thing it had continued from; it resolves by lineage now. And children were
+  counted per parent *number* rather than per parent, so one parent's
+  branches were counted against another's and a line branched where it should
+  have continued.
+
+- **A restored version put back fewer decisions than it held.** This is the
+  "64 good spikes, and then the set says 63".
+
+  Putting a banked version back onto the bench matches its stamps to the
+  bench's candidates by time, rounded to a tenth of a millisecond, through a
+  **dict** — which holds one value per key. Where two candidates share a
+  rounded time the second replaced the first, one of them could never be
+  matched, and its banked decision was dropped without a word. The comment
+  beside it said a tenth of a millisecond is "tight enough that two real
+  candidates are never confused". The data disagrees: one curation set on
+  this machine holds **324 events across 167 distinct instants**, so a dict
+  keyed on time could match at most 167 of them and 157 decisions had nowhere
+  to land.
+
+  Matched to a list per instant now, consumed in order, so N candidates at
+  one instant take the N decisions banked at that instant. How many landed on
+  a shared instant is reported rather than absorbed — a set with these in it
+  is worth deduping, and the bank already has a `dedupe` for exactly that.
+
+### Changed
+
+- **A banked alignment holds the spikes and nothing else.** A curated set is
+  a detector's candidate list plus a verdict on each one, and Braces only
+  ever moves the ones somebody kept — moving a rejected stamp would assert a
+  position for something that is not an event. So the rejected ones were
+  being carried into the aligned version unchanged, which makes the version
+  an analysis reads a mixture of events and things that were thrown out.
+
+  They are left out now, counted by label, and named in the preview before
+  anything is written. Nothing is lost: a version is a new row in a history
+  and every earlier one still holds the whole candidate list with its
+  verdicts, which is where "what did the detector find, and what did we
+  reject" is answered.
+
+  The preview's own arithmetic was wrong with them gone, and said so out
+  loud: "28 move, 16 stay" counted the sixteen rejected stamps as staying
+  where they are, in a version that will not contain them. It counts what it
+  will write, and the end-to-end check now asserts that what is written plus
+  what is dropped is what the set started with.
+
+## 2026.09.21.2 - Jarvis opens in a second, and stops putting you where you did not ask to be
+
+### Changed
+
+- **Opening Jarvis no longer waits for the catalogue.** Measured on this
+  machine, a boot spent four and a half seconds on `/api/sync/status` and
+  another four and a half on `/api/vacc/knows`, both at once, before the
+  interface could be used for anything. Both now answer in hundredths of a
+  second, out of a small local cache of what they said last time, and the
+  real answers are recomputed behind the page.
+
+  Last boot's answer is almost always this boot's answer — the catalogue
+  does not change while the computer is off — so the recompute usually
+  finds nothing and the page does nothing. When it does find a difference
+  the page is told, and only then does it re-read.
+
+  The cache is per machine and local. It sits in `GUI_logs/.cache/warm`
+  beside `index.json`, git ignores it, nothing uploads it, and deleting it
+  costs exactly one slow boot. It cannot be anything else: two computers
+  have different recordings on different drives, so one machine's answer is
+  not merely useless on another, it is wrong there.
+
+  **It is switched on by "Wake up Jarvis" and by nothing else**, and it
+  stops answering the moment there is a real answer to give — or the moment
+  somebody clicks anything, because a person who has started working is a
+  person owed the truth. A server started by the harness suite, by
+  `vacc_run`, or by a script reads the store live exactly as it always has.
+  `tools/test_warmcache.py` checks each of those rules, and
+  `web/_dev/warmboot.html` checks a real page load against a real store.
+
+  **The first boot after a pull is slow again**, on purpose. The cache is
+  stamped with the changelog version and the commit, and an update that
+  changes the shape of a payload must never hand the new interface last
+  week's shape. It costs exactly one boot.
+
+  One thing it does not fix: `rebuild_index` holds the store's write lock
+  for the whole of its eight seconds, so a write can still queue behind it.
+  That was always true — it used to happen on the `/api/sync/status`
+  request thread, where it was hidden behind the boot overlay. Now that the
+  page is live while it runs, the recompute waits five seconds before
+  starting so that the boot's own preference write is not caught by it;
+  measured, that write went from 7.5 s to 0.02 s. Actually shortening the
+  hold means changing how the store locks, which is a separate job.
+
+- **Nothing loading at startup moves you any more.** Reopening the
+  recording you last had open finished with `setView('xplore')`: a quarter
+  of a second after the interface appeared, whatever you were looking at
+  was replaced by a voltage trace that then took several seconds to draw —
+  and a click you had already started landed there instead of where you
+  aimed it.
+
+  The recording still reopens. It reopens **underneath** whatever is on
+  screen, which is what `?csc=` has done for months, and says so once,
+  quietly, so finding it in XploreFinder later is not a surprise. If you
+  have walked over to XploreFinder yourself in the meantime, it draws
+  there, because then it is what you are waiting for.
+
+  It also waits two seconds rather than 250 ms. Nothing is waiting on it,
+  and reading a whole recording's headers into the middle of the page
+  fetching its own catalogue made both slower.
+
+- **Three views that read the catalogue once per row now read it once.**
+  Found while measuring the first minute rather than the first paint,
+  because "it takes a minute" is about walking into views and not about the
+  splash screen. All three are the same mistake in three places: work that
+  costs the same whether you do it once or seven hundred times, done inside
+  the loop.
+
+  | | before | after |
+  |---|---|---|
+  | `/api/layers` (ToolKit list) | 9.9 s | 0.5 s |
+  | `/api/toolkit/bad-channels` | 6.8 s | 0.15 s |
+  | `/api/toolkit/scopes` | 4.5 s | 0.15 s |
+  | `/api/sessions` | 4.1 s | 0.1 s |
+
+  `/api/layers` asked the registry for the recording behind each of
+  seventy-two sheets, and `REG.by_gid` re-stats all 1510 session shards on
+  every call to check nothing has moved — so it did that seventy-two times
+  for one list. It builds the index once now, which is what `/api/registry`
+  already does and says so in a comment.
+
+  The other three went through `STORE.all_sessions()`, which re-reads and
+  re-merges every shard on every call; `REG.all()` is the identical read
+  cached against the shard directory's signature. Checked rather than
+  assumed: both return the same 687 records byte for byte, and the three
+  routes' output is identical either way.
+
+  These were slow on **every** call, not only the first, so this is a fix
+  rather than something the warm start was hiding.
+
+- **A background refresh cannot scroll a list you are reading.** The rule
+  for anything arriving after the interface is up: if the view is not on
+  screen, mark it stale and let the next visit re-read it; if it is, redraw
+  in place and put the scroll back. `BARRY.keepScroll` finds the element
+  that is actually scrolling rather than being told which one it is — the
+  Sessions list does not scroll, the pad two levels above it does, and code
+  that saved `#sessTree.scrollTop` was saving a number that is always zero
+  while reading exactly as though it worked.
+
+## 2026.09.21.1 - The curve Braces measured, the whole set at a glance, and a version number that was not one
+
+### Added
+
+- **The curve the rule took its maximum from, drawn on the recording.** On
+  by default, with a toggle in the Braces bar. Mean |CSD| over the band with
+  the mains out — the actual trace the decision was made on — drawn into
+  the bottom of every pane, behind the marks, scaled to its own peak. The
+  green line is that curve's largest peak inside the window, so the answer
+  and the working are on the same picture. It travels with the marks rather
+  than being fetched per pane, which is what lets the pop-out aid windows
+  draw it: they are separate pages with no proposal in them, and it is why
+  it appears on the raster panels as well as the traces.
+
+  **Remembered between sessions**, because it is a way of working rather
+  than a property of a set: somebody who wants to see what the rule looked
+  at wants it on every stamp of every alignment.
+
+  **Read and drawn over the reach exactly.** A stamp may move within the
+  window and nowhere else, so a sample outside it is not a candidate and
+  cannot be the answer — three windows' worth of curve was two thirds of a
+  picture no decision could be taken from, and read as though the rule had
+  considered it and passed it over.
+
+- **The window a stamp may move in is shaded on every pane.** It was drawn
+  at five per cent, which over a CSD raster reads as a rendering artefact
+  rather than as a region — and the raster panels are exactly where somebody
+  is deciding whether the new line sits on the sink, so it is where knowing
+  what was within reach matters most. A visible wash now, with both edges as
+  solid rules and a bracket top and bottom, which is what makes it one region
+  rather than two lines that happen to be there.
+
+- **The whole set as a list, on the recording.** `l`, or the toggle in the
+  bar. One row per stamp — where it was, how far it moves, why it was
+  flagged, what you decided — docked to the right of the traces rather than
+  over them, because the point is to read it while looking at the recording.
+  Click a row to go to that stamp; the one you are on scrolls itself into
+  view.
+
+  Stepping is fine for going through a set once. It cannot answer "which are
+  still flagged", "what did I decide forty stamps ago", or "take me back to
+  the one that moved eighty milliseconds" — those are questions about the
+  set, and a pair of arrow keys is the wrong instrument for all three.
+
+- **Alignments on the overview strip, in their own scheme.** The strip was
+  drawing them with the CURATION scheme: one mark per candidate, coloured by
+  its label, and "the one you are on" found by position in the list. None of
+  that is true of an alignment — there are two marks per stamp that mean
+  different things, the colour comes from the decision, and the index is a
+  row number, so the strip was lighting up whichever mark happened to sit at
+  that position in a list twice as long. It hands the canvas to Braces now,
+  the way the panes do. At forty pixels there is no room for a dash pattern,
+  so the halves separate by height instead: where it goes on the top half,
+  where it was on the bottom, and the one being decided full height.
+
+- **Braces can align many sets in one go.** A switch at the top of the
+  panel: one set at a time, or many at once. The many-at-once table lists
+  every curated set with its recording, its stamp count and which version it
+  would read from, and one button ticks every set whose recording can be
+  read from this machine, each at its newest version. Any version can be
+  changed before it starts.
+
+  It runs them one after another and leaves a proposal for each. **Nothing
+  is banked** — every set still has to be reviewed, which is the whole
+  point of the flags; bulk is for the part a computer should do unattended.
+  Sequential deliberately: each read is most of a minute of disk on a
+  network share, and four at once on one spindle is slower than four in a
+  row as well as being four times the memory. The queue says which one it is
+  on, can be stopped between entries, and a failure is named on its row and
+  kept rather than swallowed.
+
+  **"Newest" means the newest version that can actually be read here**, and
+  that is three different things from what it looks like. Not the largest
+  stored number, which is not unique — a history running 0,1,2,3,4,3,4 has
+  a largest of 4 and a newest of 6, and picking the largest is the "slightly
+  earlier version for some reason" that started this. Not the last row in
+  the list, because creation order is lineage order only until something
+  branches. And not simply the newest, because a version can arrive as a row
+  without its snapshot — a name, a count and no times — which is **14 of
+  the 49 sets in this bank**, where the newest is v3 and the newest readable
+  is v2. Those rows say so on the table rather than quietly running one
+  version back.
+
+- **The toolkit's session scope is typed, not scrolled.** The last
+  `<select>` of recordings in the toolkit. It is the same control every
+  other recording pick uses now — type a mouse, a session, a project or a
+  date — and each row carries the dot that says whether the recording is on
+  a drive this machine can reach, lit or dark. A dropdown of every session
+  anybody has ever marked a channel on is a list you read three times to
+  find the one you meant, and it could not say which of them you could
+  actually open.
+
+  The scope list and the registry are two different lists: one is "sessions
+  something has been recorded about", the other is "sessions this machine
+  has opened". They are joined on the session key, so a scope row the
+  registry knows gains its date, its project and its reachability — and one
+  it does not still appears, with a dark dot, because it is a real session
+  with real marks against it and hiding it would hide the answer to the
+  question being asked.
+
+- **Braces asks which recording first, then which banked entry.** The same
+  two questions the curation wizard asks, in the same order, with the same
+  two controls — the recording picker and a radio list. It had a search box
+  of its own that matched set names and session names at once, which works
+  but asks somebody to hold both in their head and hands back a flat list of
+  forty-six where the useful grouping is obvious.
+
+  Only recordings something is curated against are offered. The registry
+  holds every recording this machine has ever opened and Braces can do
+  nothing with the ones that have no curated dentate spikes, so offering all
+  of them means most picks land on "nothing here" — which reads as the tool
+  being broken rather than as the recording being the wrong one. Picking a
+  recording with nothing banked against it now gets a sentence saying what to
+  run first, instead of an empty list.
+
+### Fixed
+
+- **The version chooser looked like it was defaulting two versions back.**
+  Its first row — the selected one — read "v4 · 73 stamps, as they stand"
+  above a list ending in v6.
+
+  It was not choosing an old version: "as they stand" is the entry's current
+  events, which is the newest state there is. The NUMBER on it was wrong.
+  `current_version` was the maximum of the stored version numbers, and those
+  are not unique — this entry's history is numbered 0, 1, 2, 3, 4, 3, 4,
+  because two machines each minted a 3 and a 4 and the union kept both, which
+  is correct and is what the per-version id exists for. The lineage walks
+  them to 0…6, so the tip is 6 and the maximum is 4.
+
+  Every mention of a version outside the list itself was showing that number:
+  the chooser's first row, the search results, the "still on v4" line, the
+  "Bank it as v5" button and the confirmation. All of them show the lineage
+  name now, and the first row says which name a commit would write —
+  checked against what a commit actually produces rather than assumed.
+
+- **The support panels stopped keeping up after the first stamp.** The
+  marks were drawn at tick size, the window a stamp may move in was not
+  shaded, and the curve did not appear — until you moved something, at
+  which point all three came good at once.
+
+  One cause for all of it. `publishCuration` keeps only the latest pointer
+  while one is in flight, because only the latest is the truth — so any
+  burst, which is every step, arrives at the other window several revisions
+  on. The receiving side treated a jump of more than one as "more changed
+  than we were told about" and fell through to re-reading the set from
+  `/api/curation/<gid>/braces`: not a curation set, no route that serves
+  one, a request that fails and a catch that returns false. The pointer was
+  dropped in silence. A drag changes the marks, so the publisher sends them,
+  and a pointer carrying marks takes a different branch — which is exactly
+  why moving something fixed it and nothing else did.
+
+  A pointer for a set already held is now applied whatever the revision
+  jump: everything it carries is absolute, so a jump loses nothing. An
+  alignment never falls through to the fetch, because there is nothing there
+  to fetch. And the marks are re-sent in full if they have not been for a
+  second and a half, so a window opened between two of them fills within
+  that rather than waiting for somebody to move a stamp.
+
+- **The curve did not appear until it was toggled off and on.** It was
+  asked for before the view moved to the stamp it was going to, so the
+  samples that came back were the previous stamp's — and they are clipped
+  to the reach around the new one, which they do not overlap, so nothing was
+  drawn. Entering the view is the worst case: the curve is fetched at row 0
+  and the view then lands on the first flagged row, which is rarely row 0.
+  Toggling asked again from a settled position, which is why that was the
+  one thing that worked.
+
+- **The curve stopped appearing in the support panels after the first
+  stamp.** It arrives on a pointer of its own: stepping publishes
+  immediately — new focus, new index, no curve, because the read has not
+  come back yet — and the curve follows a moment later on a pointer whose
+  index, time and focus are all identical to the one before it. The guard
+  that stops a window repainting when nothing has changed asked about those
+  three fields and threw the curve away. Every early return there is now
+  built from the same list of fields the code below it applies, which is the
+  only arrangement where adding a field cannot quietly reintroduce this.
+
+- **The overview strip was not repainted by a redraw at all.** It draws the
+  whole set, so anything that changes which marks exist changes it —
+  switching between "all of them" and "needing a decision" being the obvious
+  one — and it kept showing the previous answer until something else
+  happened to repaint it, which in practice meant moving to another stamp.
+  Redrawing a pane without the strip under it is a half redraw with a name
+  that does not say so.
+
+- **The window and the curve were too faint to see on a CSD raster.** A wash
+  at eleven per cent and a one-pixel line do not survive a red-and-blue
+  image at full saturation — and the raster panels are exactly where
+  somebody is deciding whether the new line sits on the sink, so they are
+  the panels both of these exist for. The reach is close to twice as opaque
+  with solid edges; the curve is a heavier bright line inside a wide dark
+  outline, the same trick the marks and the gridlines use, because it has to
+  read over white, over saturated blue and over saturated red in one panel.
+
+- **No mark is drawn small any more.** Short ticks for the stamps not being
+  decided made the focused pair easy to find and everything else easy to
+  miss — and worse, they made a mark's visibility depend on a flag that
+  travels between windows, so a pointer going astray left a panel that
+  looked empty rather than one that looked slightly wrong. Every stamp is
+  full height; the focused pair is twice the width, fully opaque and haloed,
+  which tells them apart more clearly than height did. The window a stamp
+  may move in also travels as a time of its own now, rather than being
+  looked up from whichever mark claims the focus.
+
+## 2026.09.18.4 - Braces takes the mains out, screens the probe, and aligns to the peak of the curve
+
+### Changed
+
+- **The mains comes out before anything else.** The dentate-spike band is
+  5–100 Hz and sixty hertz is inside it. A current source density is a second
+  spatial *difference*, which does nothing whatever to reject a signal common
+  to every contact but not quite equal on them — so the mains was surviving
+  into exactly the measure this tool aligns on. Measured on M1ptens2oct2 over
+  a clean thirty seconds: the 60 Hz line in the CSD sits **5,950 times** above
+  the power either side of it. The trace peaks were being picked from was, to
+  a first approximation, a sine wave with a dentate spike riding on it.
+
+  And one mains period is 16.7 ms while the candidate spacing was 12 — just
+  under it — so the peak finder was resolving individual **mains cycles** as
+  candidates and snapping stamps onto them. The corrections were quantised to
+  the mains period and were not about the event.
+
+  Notched at 60 Hz, two hertz wide, zero-phase — zero-phase because the whole
+  output of this tool is a *time*, and a filter with phase would shift the
+  thing being timed by an amount that varies with frequency, which is
+  indistinguishable from the jitter it exists to remove. Taken out per
+  channel, before the bandpass and long before the derivative: notching after
+  the difference is too late, because by then a line that was everywhere has
+  been turned into something that looks local.
+
+- **The probe is screened, and a bad contact is interpolated rather than
+  dropped.** A CSD does not merely include a dead wire, it *amplifies* it: a
+  dead contact between two live ones is the largest deflection anywhere on the
+  shank, and anything choosing a depth or a peak by magnitude chooses that.
+  **CSC59 is dead in all three recordings tested** — M1ptens2oct2, m26s2jun28
+  and M8s9feb8, three different mice — at around half a microvolt against
+  medians of 43 to 68. It had never been screened, and the depth pass had duly
+  been returning bands centred on it.
+
+  Interpolated from its neighbours rather than removed, and the difference is
+  not cosmetic: taking a contact out of the middle does not leave a shorter
+  probe, it leaves an unevenly spaced one, and a second difference over an
+  uneven grid has a step in it exactly where the missing wire was. That now
+  applies to contacts *you* untick as well. Whatever was repaired is named on
+  the panel and kept on the set.
+
+- **The trace is the mean of |CSD| across the contacts, and a stamp goes to
+  the largest peak of it in the window.** Not the nearest. With no floor a
+  window holds every local maximum of the curve, so "nearest" means the
+  nearest wiggle — measured on M1ptens2oct2, that moved nothing further than
+  10 ms and scored 0.628 where the same candidates taken largest-first scored
+  0.718. There is no height floor at all: a candidate is a local maximum
+  whatever its size, so nothing is left unplaced for being small.
+
+  **The assignment stays**, and only its objective changed: the same dynamic
+  program over the same runs, minimising unmatched stamps first and then total
+  *height given up* instead of total distance moved. Two stamps in a burst
+  still cannot be handed the same instant. The edge case is untouched, because
+  it comes from the first term — a stamp between two peaks and another after
+  it that can only reach the later one means the first must take the earlier,
+  or one of them goes unmatched and the count is worse.
+
+- **How it scores.** The test is the event-triggered average of the signed CSD
+  on the sink contact: the deflections add where the stamps agree and cancel
+  where they do not, so the peak of the average over the mean single-trial
+  peak is a direct read-out of alignment. On M1ptens2oct2's 64 curated spikes,
+  one denominator and one contact for every condition:
+
+      as curated                        0.599
+      the reference implementation      0.712   (41 of 64 placed)
+      this                              0.718   (64 of 64 placed)
+
+  And on a second recording, m26s2jun28's 28 spikes, where the stamps were
+  further out to begin with: **0.380 as curated, 0.690 after**. The median
+  move there is −11.5 ms, which is large enough to be worth distrusting
+  — the coherence is what says it is the rule finding the event rather
+  than dragging the set off it.
+
+  The average also narrows from 11.0 ms to 10.0 ms, and carries 0.4% of its
+  power at 60 Hz — which is what says the number is an event getting sharper
+  rather than the mains failure mode, where an ensemble slides between cycles
+  and produces a beautiful 60 Hz average that measures nothing.
+
+- **Both the mains frequency and the smoothing are settings.** Rectifying per
+  contact and pooling after makes each half-cycle of a biphasic deflection its
+  own positive lobe, so one event can arrive as two or three humps — |sin| has
+  twice the frequency of sin, which is arithmetic rather than a property of
+  the recording. A moving average about as long as one half-cycle merges them
+  into a single hump whose maximum is a usable time. It is off by default,
+  because broadening a peak makes it easier to find and harder to place.
+
+### Fixed
+
+- **The record said a floor applied when none does.** An alignment set carried
+  `cand_height_sd: 4.5` whatever rule it was made under, and the parameters
+  are the only record of how its numbers were made. Zero now means no floor,
+  which is the rule — a set made with one and a set made without are not
+  comparable, and nothing else on the set would show the difference.
+
+- **The depth bars were labelled in microvolts** and have not been microvolts
+  since they started being scored on the event-triggered template. Shown as a
+  percentage of the strongest contact, which is what they are.
+
+## 2026.09.21.12 - The cluster matcher was fed two different things
+
+### Fixed
+
+- **Incisor's VACC list showed `'str' object has no attribute 'get'` where
+  the recordings should have been.** `_cluster_match` takes two lookups and
+  decides which known recording a cluster folder is. It was built twice, in
+  two places, and the two drifted: `/api/vacc/scan` filed the whole record in
+  both maps, and `_vacc_staged` filed the record in `by_loose` and the bare
+  **gid string** in `by_key`.
+
+  So the moment a cluster folder matched a recording *exactly*, the matcher
+  handed back a string and the caller's `rec.get("gid")` raised. Exact is 37
+  of the 39 matches on the real cluster — it is what the feature is for —
+  which is why this failed every time rather than occasionally.
+
+  The irony is that `_cluster_match` exists to keep the matching rule in one
+  place so the two callers cannot disagree, and it did that. What drifted was
+  what they fed it. So `_match_index()` now builds the pair, once, and both
+  maps hold the record: the loose branch needs the candidate's start date and
+  project before it will accept a match, and every caller asks for a gid.
+
+  `/api/incisor/batch/plan` answers again: 38 runnable, 1 blocked.
+
+## 2026.09.21.11 - What kind of recording this is, on the row; and the sync stops shouting
+
+### Fixed
+
+- **A dual-array recording now opens IN the dual layout.** The control said
+  "Dual array" from the moment it opened and the panes were a single array
+  until somebody switched to something else and back. The label was right,
+  the layout was wrong, and the two disagreed with no way to tell which one
+  the CSD had actually used — which is the worst available failure, because
+  everything still looks fine. The layout is applied on open, and again when
+  the probe table arrives, since it is fetched after the page is and a
+  recording reopened at startup can be on screen before it.
+
+- **The cluster catalogue's count described the wrong thing.** It said "587
+  registered" beside a tree of 109, which is the whole catalogue's number in
+  a panel that only ever shows what VACC can read. It now says "109 on VACC,
+  of 587", and says in the tooltip that the rest are not hidden by a filter
+  you can turn off — they are not there.
+
+### Added
+
+- **A chip on every row saying what kind of recording it is** — H3, H10,
+  HIP/M2 — on the drive scan, in Everything Jarvis knows and in Everything
+  VACC knows. Three states that are not degrees of confidence, so they are
+  not three shades of one colour:
+
+  **confirmed** (green, filled) somebody said so. **detected** (hollow,
+  warning-coloured) the channel count supports a guess and nobody has
+  agreed — the guess is *used*, because a dual implant drawn as one array is
+  worse than one drawn as two and marked unconfirmed, but it never draws as
+  a fact. **unknown** (a question mark) no count, or a count that supports
+  nothing.
+
+  Seventy of the seventy-one dual implants here are currently detected and
+  unconfirmed. Clicking a chip offers "Confirm — HIP/M2" as a single button,
+  because agreeing is the common case by a wide margin and making somebody
+  pick from a list seventy times is how a queue stops getting worked.
+
+  Drawn from `probes.state_of` and nowhere else. Three surfaces working the
+  state out themselves from `probe` and `n_channels` would eventually
+  disagree about what green means.
+
+- **Supabase carries the probe.** Migration 17 adds `probe`, `probe_source`
+  and `channel_banks` to `sessions`, and they sync both ways — confirming a
+  dual implant on the rig has to reach the desktop, or two machines compute
+  different CSDs from the same recording and neither looks wrong.
+  `probe_source` is only ever `manual` or absent: a guess is never written,
+  because once filed it is indistinguishable from an answer.
+
+### Changed
+
+- **The sync was spending 6.5 GB of egress a month on the word "nothing".**
+  Measured rather than guessed, with `tools/cloud_egress.py`: a pull asked
+  each of twenty-one tables "anything newer than X", and on a quiet cycle
+  every single answer was an empty list. The rows came to **7 KB** a cycle.
+  The **requests** came to 21 a cycle, at a cycle every 20 seconds —
+  **90,720 a day per machine**, and their HTTP overhead is essentially all
+  of the 6.5 GB. The bytes were never the problem.
+
+  Two changes, and either one helps on its own:
+
+  *One question instead of twenty-one.* Migration 17 adds a
+  `barry_watermarks` view — one row per table carrying its newest
+  `updated_at` — so a quiet cycle is a single small request and a busy one
+  fetches only the tables that actually moved. It falls back to asking
+  everything when the view is not there, which is what every clone looks
+  like until somebody runs the migration: a sync that refuses to work until
+  a migration has been applied everywhere is a sync that stops working for
+  whoever did not apply it.
+
+  *Backing off while idle.* A pull every 20 seconds is right when two people
+  are editing the same set. It is not right for the eight hours the rig sits
+  on the Sessions view with nobody in the room, and it was doing it anyway.
+  The interval now doubles each time a pull brings back nothing, up to about
+  five minutes, and drops straight back to 20 seconds the moment anything
+  arrives or anybody writes.
+
+  Together, an idle machine goes from 90,720 requests a day to about 270.
+
+## 2026.09.21.10 - Two probes in two places, the cluster gets the catalogue, and signing in
+
+### Added
+
+- **A dual-array probe template: hippocampus on CSC 1-64, M2 on 65-128.**
+  The KCNT1 recordings are 128 channels because there are two implants in
+  the animal, not one probe with twice as many contacts. That distinction
+  is arithmetic, not bookkeeping: a CSD down the channel order steps across
+  the gap at channel 64 and computes a second spatial derivative between
+  two contacts that are millimetres and one brain region apart. It produces
+  a number, the number is meaningless, and nothing about it looks wrong.
+
+  So the dual implant is described the way the H10-D already is — as
+  independent lines of contacts, one pane each, a CSD down each on its own.
+  The split is the same 64/64 `sessreg.banks_for` writes down, and it has
+  to stay that way: the banks are where a person records which region is
+  which, and a template that disagreed with them would put the M2 label on
+  the hippocampal trace.
+
+- **Which probe a recording was made with is now a fact about the
+  recording.** It lived in the Xplorefinder session's view state, so it
+  lasted as long as that window and travelled to nobody — Incisor, a
+  colleague's machine and the next open could each believe something
+  different about the same animal. It is assigned in Housekeeping, beside
+  the project, and everything reads it from one place.
+
+  "Nobody has said" is kept distinct from "somebody said H3", and a
+  128-channel recording is *read as* a dual implant without that being
+  written down as a decision. A blank that is visibly blank can be filled
+  in; a guess that looks like a fact cannot be found again — the same
+  argument `banks_for` makes about leaving a region blank.
+
+  Choosing a template with named regions fills in any blank channel bank,
+  because picking "hippocampus + M2" **is** saying which bank is which, and
+  making somebody enter the same fact twice is how the two come to
+  disagree. It only ever fills a blank.
+
+- **"Everything VACC knows" has the catalogue, not just the directories.**
+  The same project → mouse → session tree as "Everything Jarvis knows",
+  narrowed to the recordings the cluster can read — 109 of them here.
+  Finding a recording by which animal it came from is how anybody thinks
+  about it; recognising a folder name on a cluster is not.
+
+  One renderer, not two, because a second copy of that tree is a second
+  copy to keep in step. The directory walk is still there beside it, under
+  its own tab, because it is how a recording gets connected to its copy on
+  the cluster in the first place.
+
+- **Filter by project, and by channel count.** In Everything Jarvis knows,
+  where grouping by project already existed and is a different thing:
+  grouping decides what the branches mean and every recording is still in
+  the tree. Project is a set rather than one at a time — "PTEN and KCNT1
+  but not the urethane work" is ordinary when the urethane project shares
+  mouse numbers with KCNT1.
+
+  Channels is a comparison rather than a value, because the question people
+  have is "which of these are the dual implants", and that is **more than
+  64**. Asking for exactly 128 gets the ordinary ones and misses the six
+  whose `CSCn_0001.ncs` continuation files put the count at 190 or 192 —
+  precisely the ones worth looking at. A recording nobody has read a header
+  for has no channel count and is in **neither** side: 164 of them here,
+  and a missing number landing in "fewer than 64" would be absence read as
+  zero.
+
+- **A guided VACC sign-in, from a NetID and one password.** The NetID is
+  the whole question — `<netid>@login.vacc.uvm.edu` is the account and the
+  home and scratch directories follow from it. Turn VACC Mode on with
+  nothing set up and it offers to sign in.
+
+  The password is needed exactly once, to install an SSH key, and then the
+  key logs in. That is not only convenience: the status chip polls, and
+  password login at UVM means Duo, so a second factor every ten seconds for
+  six hours is not a thing anybody would leave on. Duo is answered with a
+  push during the install; the person approves it on their phone.
+
+  Somebody who already uses the cluster from a terminal has a key that
+  works, and is offered it instead of being asked for a password to make a
+  second one.
+
+  **What happens to the password:** it goes over localhost into the
+  environment of exactly one `ssh` process and is dropped when that process
+  exits. It is never written to disk, never on a command line, never
+  logged, and `_scrub` removes it from anything ssh echoes back. The
+  askpass helper answers a password prompt with the password, a Duo prompt
+  with a push, and **any prompt it does not recognise with nothing** —
+  sending a credential to an unrecognised question is how a credential ends
+  up somewhere it was not meant to go.
+
+  The config is written only after the key has been proved by connecting
+  again with the key **alone**. Writing it after the install would record
+  "signed in" on the strength of a password that is now gone.
+
+- **`start.py` asks for a NetID on a new machine**, beside the sync key and
+  for the same reason. Deliberately no password there: a console that may
+  be a double-clicked window is the wrong place for one, and the Duo push
+  that follows needs somebody watching.
+
+### Changed
+
+- **A probe layout is however many columns the template has**, not six. An
+  H10-D has six and a dual implant has two, and the reason for one pane
+  each is identical in both cases.
+
+- **The probe picker is built from the server.** It was two hand-written
+  `<option>` tags, so adding a template gave every part of the app the new
+  geometry except the one control anybody uses to pick it.
+
+- **Each probe reports its own contact pitch** — 30 µm within an H10-D
+  column, 50 µm on the linear arrays. The listing said 30 for all of them,
+  which was right for exactly one. Nothing read it, so nothing was wrong;
+  it would have been the moment anything did.
+
+### Fixed
+
+- **`tools/check_js.py` caught two shadowed `const` bindings** that would
+  have shipped: one took the whole Sessions module down, the other made a
+  harness page run none of its checks. There is no build step here, so
+  neither produced an error anywhere.
+
+- **The housekeeping harness restores `project_source`, not just the
+  project.** Driving the picker and putting only the value back left a real
+  recording reading "set by hand" with nobody having set it by hand — and a
+  manual project is immune to the re-filer and raises no filing flag, so
+  every run quietly immunised whichever recording was first in the tree.
+
+## 2026.09.18.3 - A running scan says what it is finding
+
+### Changed
+
+- **The scan line was a spinner, two counters and a path.** The counters are
+  the least informative part of it: "31 sessions · 75 folders" reads exactly
+  the same whether the scan is walking the tree you meant or one directory
+  too high, and a scan of a lab drive runs for minutes before anything else
+  tells you. It now answers the three questions somebody watching it
+  actually has.
+
+  *Is it moving* — the rate, in folders a second, beside the elapsed time.
+
+  *Is this the data I meant* — what it has found so far, broken down: the
+  projects with counts, the number of distinct animals, and the channel
+  counts. The channel count is the one that earns its place, because PTEN is
+  64 and KCNT1 is 128, so the number alone says which drive is being walked.
+
+  *Where has it got to* — the path, but relative to the folder you chose,
+  because the first thirty characters of the absolute one are repeating your
+  own answer back at you. Plus the last recording it found, so the line has
+  something that visibly moves and is not a counter.
+
+- **Two ways a channel count can be wrong are now told apart**, because they
+  mean opposite things. Below a multiple of 32: files are missing, since the
+  rig records in banks of 32. Above 128: files are *doubled* — a
+  `CSCn_0001.ncs` beside every `CSCn.ncs`, which is what Cheetah writes when
+  acquisition restarts mid-session, and the loader reads only the first of
+  each pair. A real scan of `D:\KCNT1\urethane` finds 55 recordings at 128
+  channels and then one at 53, three at 192, one at 190 and one at 256 —
+  which is a sentence worth reading while the scan is still running.
+
+- **A finished scan says how much of it was news.** The server already
+  counted how many of the recordings it registered had never been seen on
+  any machine; it was in the payload and only ever used to decide whether to
+  re-render.
+
+- **Progress is reported on the clock, not every 25 folders.** A folder
+  count is a different interval on every drive — seconds apart on a network
+  share, hundreds of times a second on a local one. A quarter of a second is
+  the same interval everywhere, and finding a recording gets a shorter leash
+  than walking past a folder, because it is the event somebody is watching
+  for.
+
+### Fixed
+
+- **The path is no longer clipped.** It was one `nowrap` line with an
+  ellipsis, which cut off the *end* — and the end is the recording folder,
+  the only part of it worth reading. It wraps now.
+
+- **`project_source` could be set to "manual" by a test.**
+  `web/_dev/housekeeping.html` drives the project picker and put the value
+  back afterwards but not the source, so a real recording was left reading
+  "set by hand" with nobody having set it by hand. That is not cosmetic: a
+  manual project is immune to the re-filer and raises no filing flag, so
+  every run of that page quietly immunised whichever recording happened to
+  be first in the tree. `set_project` takes a source now, and only a restore
+  passes one.
+
+- **Two scan harnesses were sharing one fixture.** Both register what they
+  find and both forget it afterwards, and forgetting is permanent by design
+  — so whichever ran first tombstoned the three recordings and the second
+  could never register them. Each gets its own fixture, with its own animals
+  as well as its own folder, since a recording is identified by mouse and
+  start time rather than by the folder above it.
+
+- **A harness whose own script does not parse is now a failure.** There is
+  no build step here, so a syntax error is not a red line in a terminal — it
+  is one module quietly never assigning itself, or one page running none of
+  its checks and reporting "0 ok, 0 fail", which reads exactly like a page
+  that has no checks by design. Both happened today. `tools/check_js.py`
+  parses every module and every inline harness script in about a second, and
+  the runner now fails a page whose title never moved off "running".
+
+## 2026.09.18.2 - A path that disagrees with its project now says so
+
+### Added
+
+- **A recording whose own path names a different project raises a flag.**
+  Not a re-file — a question, put where somebody can answer it.
+
+  The word this exists for is "urethane", and it is worth writing down why
+  it cannot be a rule. It appears in this lab's data in two different
+  roles. In `D:\KCNT1\urethane\wt\...` it names a project: KCNT1 Urethane
+  is a separate body of work from KCNT1, with its own mice and its own
+  session numbers that happen to collide. In
+  `...\CTL\rejects\M15_s3_baseline_urethane` it names the anaesthetic, and
+  that recording is PTEN. A pass that reads the word and re-files on it
+  moves the second pair out of the project they belong to, and does it
+  silently.
+
+  So the chip says what the path says and what the record says, and leaves
+  the decision. Setting the project by hand is what clears it, because
+  `project_source = manual` is already how this codebase records that
+  somebody decided — including deciding to leave it exactly where it is.
+
+  Eighteen of 571 recordings raise it today: sixteen filed KCNT1 whose
+  paths read KCNT1 Urethane, and the two PTEN recordings where the word is
+  the drug.
+
+- **Clicking the chip opens the project picker on that recording.** The
+  picker lives in Housekeeping and nowhere else, so a flag raised on a
+  Sessions card now has somewhere to point; the flag is restated in full
+  beside it. A `Project worth a look` filter finds them all at once.
+
+### Fixed
+
+- **`fromRegistry` was dropping the field on the way to the card**, which
+  is precisely the failure its own comment warns about: a translation that
+  quietly loses a field makes a filter that matches nothing, and that reads
+  as "none of them qualify" rather than as a bug. The flag is also copied
+  onto rows a scan already placed — otherwise the chip appeared on the
+  recordings nobody had scanned and vanished from the ones somebody just
+  had.
+
+- **A fixture path glued onto a real recording is now detached, not
+  ignored.** `scanreg.html` tidies up after itself by forgetting records
+  whose paths are all under its temp folder, guarded additionally on the
+  `m9xx` keys it mints. But a fixture whose timestamps collide with a real
+  recording re-identifies to *that* recording, and the fake path is
+  unioned onto it — so one sat in the registry as `m001_s002`, attached to
+  a real PTEN recording with seven genuine paths, failing the tidy check
+  every run. Forgetting the record would have taken the PTEN recording
+  with it. It now detaches the fixture paths and leaves the recording.
+
+- **`chan64.html` was picking a 128-channel recording.** Its filter said
+  `>= 64`, which was the same thing until the KCNT1 recordings were
+  scanned. Every assertion then measured 128 channels against a page whose
+  whole subject is that sixty-four fit, and the failure read as a layout
+  regression rather than as the wrong recording.
+
+- **`toolicons.html` demanded an icon from a bundle step.** Steps inside
+  The Dentist are numbered, not marked — the bundle carries the mark, and
+  numbering them is the point because they are meant to be done in order.
+  The page was widened to `.tk-tool, .tk-step` when Incisor and Checkup
+  moved into the bundle; it now asks each shape for what that shape has.
+
+- **The audit's verdicts are no longer assumed to be `empty`.**
+  `scancheck.html` held that every flagged recording was an empty folder,
+  which was true while the only flagged things were fixture leftovers. The
+  128-channel KCNT1 recordings are flagged `suspect` — their channels are
+  split across `CSCn.ncs` and `CSCn_0001.ncs` because acquisition
+  restarted, and only the first part loads. That is a real recording with a
+  real problem, and calling it empty would be the audit lying.
+
+## 2026.09.18.1 - Braces aligns to the event's own peak, not the biggest one nearby
+
+### Fixed
+
+- **A stamp could be taken off its own spike by a bigger one beside it.** The
+  candidate peaks were found with the detector's `dist_ms`, which is 100 ms,
+  and the window a stamp may move in is also 100 ms. Two consequences, and
+  the second is the one that showed on the screen. The list could hold only
+  one peak per hundred milliseconds, so two events closer than that were one
+  candidate between them. And with a single candidate in reach, "the nearest
+  peak" and "the biggest deflection in the window" became the same choice —
+  so a stamp whose neighbour was bigger was moved onto the neighbour, tens of
+  milliseconds from the sink anybody could see under it.
+
+  Measured on M8s9feb8's 1213 curated spikes: for 27% of stamps the biggest
+  thing in the window is not that stamp's own peak. The old rule landed on
+  the window maximum 97% of the time, and on the stamp's own peak 76%.
+
+  **A candidate is now a local maximum that clears the detector's own
+  floor** — the same 4.5 SD threshold that decided the stamp existed — with
+  12 ms between candidates rather than 100. The floor is the substantive
+  half. Finer spacing alone was measured first and is worse than what it
+  replaced: with every wiggle in the list, "nearest" means the nearest
+  wiggle, and a tenth of the stamps landed on something under half the height
+  of the real deflection beside them. A floor with no spacing to speak of is
+  a list of events; that is what the assignment was built to choose between.
+
+  Lands within 5 ms of the stamp's own peak for 96% of stamps, against 76%.
+  Largest move 97 ms against 89, which is the rule reaching further when it
+  has a reason to rather than being forced. Flags fall from 99 to 56, and 39
+  of those are `no peak in reach` — stamps with nothing over the floor within
+  a hundred milliseconds, now left alone and asked about instead of moved
+  somewhere confident and wrong.
+
+  The reading needs one correction to the entry below this one. The CSD was
+  recorded there as scattering wider than the voltage — a p95 of 27 ms
+  against 17. That was the coarse candidate list, not the measure: with a
+  proper one the two agree closely, and CSD stays the default on the
+  rationale it was chosen for rather than on that number.
+
+- **The marks stopped moving in the support panels.** Stepping from one stamp
+  to the next redrew the main view and left the aid windows showing the set
+  as it was when they opened. Which stamp is in focus lives on the marks
+  themselves — the painter reads it off each one — and the signature deciding
+  whether to send them again summed only the times, which do not change when
+  the focus does. So the other windows kept the first copy they were given,
+  in which nothing was focused: every mark there drew short and faint, for
+  ever.
+
+- **Short marks hung from the top of the panel.** On an image panel the top
+  row is the shallowest channel, so a tick dangling from it read as belonging
+  to that channel rather than to the time under it. They rise from the bottom
+  axis now, and are a little taller.
+
+- **The end-to-end check could not fail.** It gated everything it does on
+  the plan naming a channel, which was right when somebody picked one by
+  hand and has been dead since the sweep replaced that. With the gate
+  permanently shut it skipped the run, the proposal, the flag review and the
+  commit preview — four fifths of the suite — and printed "all checks
+  passed" underneath. It runs the whole thing now, on the smallest curated
+  set that holds at least twenty spikes: small enough to be worth running,
+  real enough that the sections have something to check. It still never
+  writes to the bank.
+
+- **A voltage run was filed as a CSD one.** The measure was written into an
+  alignment set's parameters as the literal `csd` rather than the one asked
+  for, so a set made with the voltage said otherwise afterwards — and those
+  parameters are the only record of how its numbers were made. It records
+  what it was asked for now, along with both peak spacings and the candidate
+  floor, which are what the numbers actually turn on.
+
+## 2026.09.17.18 - Braces measures the CSD, and the overview can be dragged taller
+
+### Changed
+
+- **The magnitude is taken of the CSD, not of the voltage.** A voltage
+  raster at any one site is mostly what is happening somewhere else: the
+  field spreads, so a sink two hundred microns away shows up almost as
+  strongly as one on the contact. The current source density is the second
+  spatial derivative across depth, which is exactly the part that cannot be
+  volume-conducted — a dentate spike is a current sink, and this is where the
+  current actually went.
+
+  Each channel is filtered 5–100 Hz first, then the derivative is taken
+  across depth, then rectified, then averaged over the band. `csc.compute_csd`
+  is the same function the CSD panel draws from: one derivative in this
+  codebase, not two that could disagree about a sign.
+
+  **Smoothed across depth before differencing**, which is not optional. A
+  second difference amplifies whatever differs most between neighbours, and
+  on a real probe that is usually one noisy contact rather than any current.
+  Measured on M8s9feb8: the bare derivative put CSC27 at 46,000 between
+  neighbours at 14,000 — a spike one contact wide, which no current sink can
+  be, and which would have dragged the depth band onto a bad wire.
+
+  **And it is a setting, because the data does not yet say it is better.** On
+  M8s9feb8's 1213 curated spikes both measures find the same systematic
+  offset — a median of −4.5 ms against the voltage's −5.9 — and the CSD
+  scatters wider around it: a p95 of 27 ms against 17, a largest move of 89
+  against 43, and 99 stamps unlike their neighbours against 1. Whether that
+  spread is the CSD seeing variation the voltage smears over, or a derivative
+  amplifying noise as derivatives do, is a question about this lab's
+  recordings and not about the code. CSD is the default; the voltage is one
+  button away, on the same set, so the comparison can be made rather than
+  argued.
+
+- **The overview strip can be dragged taller.** Forty pixels is enough to see
+  where you are in a recording and not enough to read anything in it — which
+  matters the moment something is drawing marks down there, because a whole
+  recording of them in forty pixels is a smear. Drag the line above it,
+  double-click to put it back. Remembered in the preferences, and it is the
+  same strip in every pane of every view, so DS curation and StrataScope get
+  it too.
+
+- **Braces draws the window a stamp was allowed to move in.** The rule made
+  visible. Two lines ninety milliseconds apart mean nothing without it —
+  there is no way to tell whether the far one was even a candidate.
+
+### Fixed
+
+- **A `?csc=` in the address no longer takes over the view.** It sent the app
+  straight to XploreFinder, so reopening a window that still carried one — a
+  restored tab, a shortcut, yesterday's pop-out link — put somebody in a
+  trace view they had not asked for while a recording they had not asked for
+  loaded underneath them. The recording still opens; it opens in the
+  background, and says so once. The view is whatever the address actually
+  says: the hash where there is one, which is how the aid windows ask for the
+  trace view, and the pipeline where there is not.
+
+- **Two rows highlighted at once in the version chooser.** It matched the
+  selected version by NUMBER, and the number is not unique — two machines
+  curating one entry both mint the next one and the union keeps both, which
+  is what the per-version id exists for. On an entry holding two v1s that is
+  two rows lit and one radio filled, which reads as the dialog having lost
+  track of what you picked. Matched on the version itself now, which needs no
+  id to be present — and the histories that predate ids are exactly the ones
+  most likely to collide.
+
+## 2026.09.17.17 - The boot screen waits for the app to stop moving
+
+### Fixed
+
+- **Clicking during start-up got you taken somewhere you had not asked to
+  go.** The overlay came down one frame after the first view was shown —
+  while the recording open, the job list and the sync check were all still in
+  flight. So the interface was live and clickable with three things still to
+  land on it, and a click during that window was overruled a moment later by
+  whichever of them finished. That is the "it keeps snapping me all over the
+  place and back to XploreFinder after I have already clicked".
+
+  It now waits for the things that MOVE THE PAGE — which on a normal start
+  is the recording open — and comes down when they land.
+
+  Capped at a second and a half, and the cap is the point. An overlay that
+  waits on a slow drive is one somebody sits behind wondering whether the
+  app has hung, and the thing being prevented is a click landing in the
+  wrong place, which stops being likely the moment somebody has had time to
+  read the screen. A registry read that fills a list behind a skeleton is
+  not held for at all: that is a wait belonging to the view that wants it.
+
+### Changed
+
+- **The boot screen is a recording.** It was a pulsing rounded square, which
+  is the boot screen of anything. It is now a scope: a trace across the
+  window with dentate spikes going past, a recording head sweeping left to
+  right, and the line drawn bright behind it. The waveform is real path data
+  in the same shape as the mark in the rail and on the favicon, not a spinner
+  wearing a costume.
+
+  Two things it does that the first attempt did not. The trace is already on
+  the screen, dim, before the head reaches it — otherwise the scope is empty
+  for the first third of every sweep, and on a boot that takes half a second
+  that is all anybody ever sees. And the drawing uses `pathLength="1000"` on
+  the path, so the dash lengths are thousandths of the path rather than user
+  units somebody has to measure by hand and keep in step with the `d`.
+
+  Still says which step it is on, still says so out loud when a step has
+  genuinely been slow, and still holds completely still for anybody who has
+  asked for less motion.
+
+## 2026.09.17.16 - The set list is a list, and entering a mode is one movement
+
+### Fixed
+
+- **`wireTimeGrab is not defined`, on every pane.** The drag hook went in as
+  two call sites and a function, in a script that checked its last assertion
+  *after* replacing the text and *before* writing the file — so the assertion
+  failed, the function was never written, and a follow-up added only the
+  calls. `node --check` cannot see that: an undefined identifier is perfectly
+  good syntax and only fails when the line runs, which for a handler wired
+  inside a pane is minutes after the page loads.
+
+  The function exists now. Its `mousemove` and `mouseup` are on the window
+  rather than the pane, because a drag that leaves the plot is still the same
+  drag and one that ends outside it still ends.
+
+- **The set list was a stack of grey slabs with the names floating in the
+  middle.** It borrowed `.bm-row`, which was written for a `<label>` wrapping
+  a radio button. On a `<button>` that inherits the browser's own grey face
+  and centred text, and neither is anything the class says. Its own row now:
+  the name, the session under it, the size and version on the right, all left
+  aligned, on a quiet ground that only lifts under the pointer.
+
+### Changed
+
+- **Entering a mode is one movement instead of five.** Opening Braces swaps
+  the view, opens the recording, drops a banner in at the top, rebuilds the
+  panes into a new layout and jumps the window to the first stamp — five
+  reflows in a row, which reads as the interface being thrown at you.
+
+  The workspace now dims and lifts a few pixels while all five happen and
+  settles once, and the banner slides down rather than appearing. At the
+  interface's own `--ease-dur`, which the rail, the log dock and the radio
+  already move at: a mode arriving at a speed nothing else uses would be its
+  own kind of jarring. StrataScope and Checkup get the banner and the settle
+  too, being the same arrival.
+
+  It undims on every way out of the arrival, including the two that fail —
+  a workspace left invisible because the recording would not open is a worse
+  bug than the one this fixes.
+
+  Nothing moves for anybody who has asked for less motion.
+
+## 2026.09.17.15 - Braces marks say which one you are on, and stamps can be dragged
+
+### Changed
+
+- **The marks are drawn by Braces, not by the curation painter.** That one
+  draws every mark the same way, which is right for curation — one mark per
+  candidate, coloured by the decision — and wrong here, where each stamp is
+  TWO marks meaning different things and the pair being decided has to stand
+  out from the forty others on screen.
+
+  The rules, which are the whole of it:
+
+  | | |
+  |---|---|
+  | the one in focus | full height |
+  | everything else | a short tick from the top |
+  | where it goes | solid, green |
+  | where it was | dashed, and the colour says what was decided |
+
+  A dashed line is faint while nobody has said anything, amber while it is
+  flagged and waiting, and green once it has been confirmed. So a screen of
+  them reads as a pass in progress rather than as a field of identical
+  ticks.
+
+  The focused pair also gets a hairline between the two ends with the
+  distance on it. That number is the decision, and reading it off two lines
+  and a time axis is arithmetic nobody should have to do.
+
+  The same painter draws on the overview strip, so the one being decided is
+  findable in the whole recording and not only in the window.
+
+- **"Confirm" and "Keep it" now say what happens to the stamp.** They named
+  what the button did rather than where the stamp ended up — and "keep it"
+  reads as *keep the new one* at least as readily as *keep the old one*.
+  They are **Move it → 27.800** and **Leave it · stays at 27.894**, with the
+  first reading **It is right · already on the peak** where there is nothing
+  to move.
+
+### Added
+
+- **Undo, on the row and on the pass.** A decision made by pressing one key
+  has to be undoable by pressing one key, or people stop pressing the key.
+  `u` forgets the one in view; *Undo every decision* clears the pass after
+  asking. Both go through the same route as a decision — an explicit null on
+  the row — so this window, the aid window and the server all learn about it
+  the way they learned about the decision.
+
+- **A stamp can be dragged onto its peak.** `xplore` gained a hook for a
+  mode to claim pointer drags on a pane and be told the time under the
+  pointer — wired on the same host, and torn down with the same list, as
+  bookmark placement, because it is the same geometry question and a mode
+  answering it itself would be a second copy of `timeAtPointer` to drift
+  from the first.
+
+  Three rules. The line follows the pointer immediately and locally, because
+  a line that lags the mouse is worse than no line. The other windows follow
+  on a throttle, because the marks are the payload and twelve hundred stamps
+  is twenty-four hundred of them — at sixty moves a second that is a
+  megabyte of publishing for a gesture lasting half of one. And nothing is
+  decided until the button comes up: a drag still happening is not an
+  answer.
+
+  Only the stamp being decided can be grabbed, and only from within a window
+  of it. Taking whichever mark is nearest the pointer would let a twitch
+  move a stamp three screens away with nothing on screen to say which.
+
+## 2026.09.17.14 - Braces stops shadowing the function that changes the view
+
+### Fixed
+
+- **The main window never left the ToolKit panel, because Braces had its own
+  `setView`.** The function that draws the proposal was called `setView`, and
+  a local function of that name shadows core's `setView(name)` for the whole
+  module. So every `setView('xplore')` in this file called the proposal
+  renderer, got a DOM node back, threw the argument away, and left the app
+  exactly where it was.
+
+  Everything downstream ran perfectly — the recording opened, the aid window
+  popped out with its four panels, the marks were published and kept — all
+  of it underneath a page that was still showing the summary. Which is
+  precisely what "it opens the support panels but the main window does not
+  change" looks like from the outside.
+
+  Renamed to `proposalView`, for what it draws.
+
+- **The reason column was drawn as ovals.** `.why` is already a class: the
+  little round help button, fifteen pixels square with a 50% radius and
+  italic text. A 50% radius on a wide table cell is an oval, and the italics
+  came along with it. The column is `.br-why` now — renamed rather than
+  fought, because the round one was there first and belongs to somebody
+  else.
+
+### Changed
+
+- **The set is chosen by typing.** It was a dropdown of forty-six, whose
+  names are "Incisor CSC42", "m33s8" and "DS candidates (ETS)" — a list you
+  read three times to find the one you meant. The box matches on the set's
+  name and on the session it belongs to, which are the two things somebody
+  actually knows when they come looking, word by word and in any order: both
+  `pten m22` and `m22 pten` find it.
+
+- **Entering the view records every step.** This mode has now failed in five
+  different places, and each time the report was that nothing happened —
+  which is the one report nothing can be done with. Opening, opened, laid
+  out, ready, and any failure with its reason, all go to the activity log,
+  and a throw while drawing says so on screen and leaves the mode cleanly
+  instead of half-open.
+
+## 2026.09.17.13 - The Braces view keeps the marks it publishes
+
+### Fixed
+
+- **The trace view never changed, because the live sync deleted the marks a
+  second after they were drawn.** `xplore` keeps every window in step by
+  reading the curation channel and calling `adoptCuration` on each session —
+  and `adoptCuration`, handed nothing, DELETES `curationMarks`. The window
+  running a curation is skipped, and it is identified by `sess.curation`.
+
+  Braces set the marks and never claimed them. So the marks went up, the
+  next sync came round, found nothing on the channel for this recording, and
+  took them straight back down. Everything about the mode was working except
+  that it was arguing with the sync and losing.
+
+  It claims the session now, the same way Checkup has since it was written,
+  and hands it back on the way out.
+
+- **The aid window had no way to receive them.** `adoptCuration` re-reads the
+  set from `/api/curation/<gid>/<kind>` — right for curation, impossible for
+  anything else, because Braces marks are not a curation set and no route
+  would serve them.
+
+  A pointer may now carry its own marks, and one that does is adopted as it
+  stands. That costs the fetch nothing, and it means the overlay is usable
+  by any mode with something to show rather than only by the one with a set
+  behind it. So the before-and-after lines are on the CSD, the theta, the
+  voltage and the spectrogram too, not only on the traces.
+
+  The marks travel only when they have actually changed. Stepping through
+  twelve hundred stamps would otherwise publish twenty-four hundred marks on
+  every arrow key; the receiving side already knows how to follow a pointer
+  without them so long as the count still matches, and a float sum of the
+  times tells a stamp moving from a cursor moving.
+
+## 2026.09.17.12 - The Braces view opens its aid panels
+
+### Fixed
+
+- **The Braces view opened the traces and nothing else.** Checkup puts the
+  traces in the window and the CSD, theta, voltage and stacked spectrogram
+  in a second one; this mode set the traces pane and stopped there, so the
+  four panels that make an alignment decidable never appeared.
+
+  They open now, and for a stronger reason than in Checkup: deciding whether
+  a stamp is on the right deflection means seeing the CSD and the theta
+  beside it, because a dentate spike has a shape across depth and one trace
+  does not show it. The aid window reads the same `sess.curationMarks` this
+  mode publishes, so the old and new positions are drawn on all four panels
+  too.
+
+  Its own window NAME, not Checkup's. `window.open` reuses a window by name,
+  so two modes sharing one means entering either steals the other's panels.
+
+- **A blocked pop-up left the mode looking like it had done nothing.** The
+  traces opened, four panels did not, and there was no way to tell that from
+  broken. The aids now fall back into the main window as a four-pane layout,
+  with a line saying why and how to get the roomier one back. Cramped is
+  something somebody can work with; absent is not.
+
+## 2026.09.17.11 - The Braces view
+
+### Added
+
+- **Braces opens on the recording, as a mode.** The last version set some
+  marks and appended a bar, which is why nothing about it behaved like the
+  view it was meant to resemble. It is a mode now, the way Checkup and
+  StrataScope are: `setMode` frames the workspace in the mode's colour,
+  names it across the top, and gives the app one way out that runs the same
+  teardown however somebody leaves — and a mode with no entry in that
+  registry gets no banner and no Leave button, which is most of what was
+  wrong.
+
+  What it shows that Checkup does not is **every stamp twice**: where it
+  was, muted, and where it is going, in the accent. A whole run of them
+  reads at a glance, and the one being decided has its own colour rather
+  than only being the one in the middle — panning away should not lose your
+  place. Said in the banner too, because a viewer who does not know each
+  stamp is drawn twice is looking at twice as many dentate spikes as the
+  recording has.
+
+  It publishes into `sess.curationMarks`, which every pane, the overview
+  strip and the pop-out aid window already read, so the marks appear
+  everywhere without a second drawing path.
+
+- **Two passes, and the one that matters is the default.** *Needing a
+  decision* shows only the stamps Braces would not vouch for; *All of them*
+  shows the set. It opens on the first, because that is the pass with work
+  in it, and falls back to the second when there is nothing waiting — the
+  same rule Checkup uses for the same reason, that opening on an empty
+  screen reads as broken.
+
+- **Stamps can be moved from the trace.** `[` and `]` move the one you are
+  on by a millisecond — one sample at the rate everything here is measured
+  at — with five-millisecond steps on the bar beside them. The marks
+  repaint as it goes, so the line being moved is the line being watched, and
+  `0` puts it back to the proposal. Confirm with Enter, keep it where it was
+  with `k`, and either sends you on to the next one still waiting.
+
+### Fixed
+
+- **Undoing a decision never reached the server.** The route reads `call`
+  only when it is not null, so a null was dropped and the row kept whatever
+  it had. Clearing one now goes through `calls`, where an explicit null is
+  the documented way to drop a row — which `bracesset.decide` has honoured
+  since it was written and nothing was using.
+
+## 2026.09.17.10 - Braces reads where the spikes are, not the whole recording
+
+### Changed
+
+- **It reads the windows, not the hour.** Alignment asks, of each stamp,
+  where the event is within a hundred milliseconds of it. Reading every
+  channel end to end to answer that is reading an hour to use four minutes
+  of it. The windows are worked out from the stamps, merged where they
+  overlap so a burst is one read rather than five, and only those are read.
+
+- **It reads the channels that can see the event.** A dentate spike is
+  depth-specific: large across the hilus, small or absent at the top of the
+  shank. Averaging all sixty-four buries it under channels that never saw
+  it, and costs four times the reading to do so.
+
+  So a short pass over a sample of the stamps measures the depth profile,
+  and the average is then taken over the sixteen contiguous channels with
+  the most signal. Contiguous on purpose — the channels a dentate spike is
+  big on are the ones at that depth, and taking the top sixteen by score
+  would be free to pick a scatter of electrodes from three depths that
+  happened to be noisy, which is not a measurement of anything.
+
+  On M8s9feb8 the profile runs from 134 µV at CSC1 up to 1481 µV at CSC41
+  and back down to 112 µV at CSC62, and the band it picks is CSC33–48. That
+  shape is now drawn in the panel, because it is the one picture that says
+  whether the measurement is being made in the right place: a profile that
+  does not rise to a peak and fall away means the set is not what it says it
+  is, and no count in that panel says so.
+
+  Together: **160 seconds to 70**, and the answer barely moves — median
+  −5.9 ms against −5.6, p95 16.9 against 16.5. The largest move comes DOWN,
+  59.7 ms to 42.9, which is what a cleaner measurement should do.
+
+- **The progress says which pass and how far through.** Two stages now, both
+  counted: *Finding the depth — channel 23 of 63*, then *Reading window 137
+  of 206*, with an ETA that is right to a few seconds.
+
+### Added
+
+- **Browse them on the recording.** The bench is a magnifier on one
+  alignment; this is the other thing somebody wants — the recording itself,
+  with every stamp drawn where it was and where it is going, so a run of
+  them can be read in context rather than one at a time through a keyhole.
+
+  It publishes into `sess.curationMarks`, the shape every pane, the overview
+  strip and the pop-out aid window already read, so the marks appear
+  everywhere without a second drawing path. Each moved stamp goes in twice,
+  muted where it was and in the accent where it goes. `n` and `p` step, `f`
+  jumps to the next one needing a decision, and the two decisions can be
+  made from the bar without leaving the trace.
+
+### Fixed
+
+- **Thirty-six stamps were flagged as weak peaks that were nothing of the
+  kind.** The noise floor was `np.std` over the samples that had been read —
+  and every one of those windows is there BECAUSE it contains an event, so
+  the events were most of the variance and the floor came out high. The
+  whole-recording read raised that flag on none of them.
+
+  It is a median absolute deviation now, scaled the way
+  `incisor.threshold_for(estimator="mad")` scales it: a statistic about the
+  middle of a distribution rather than its tails, which is what a floor
+  wants to be and is why that function offers the option at all.
+
+## 2026.09.17.9 - Braces knows which channels are bad, and says how far along it is
+
+### Fixed
+
+- **Every channel came up ticked, on recordings with bad channels on
+  record.** `csc.open_session` writes `"bad": False` on every channel it
+  builds — which channels are bad is not in the `.ncs` files, it is a
+  decision somebody made about the recording, and it lives in the session
+  record keyed on identity. `_incisor_spec` has looked it up separately since
+  it was written; Braces read the flag that is always false.
+
+  So the list said 64 of 64 and the average quietly included the wire
+  somebody had thrown away. One place now, called by the plan, the run and
+  the bench, so the ticks on screen are the ticks the read honours. On this
+  archive that is CSC59 on almost every recording, and 8, 41 and 59 on
+  m33s8.
+
+- **"Reading the channel…" for three minutes, with a bar that never moved.**
+  Two faults on top of each other.
+
+  A job's stages come from a fixed list in `cfc.STAGES`, and anything not on
+  it is dropped silently — no stage, no progress, no error. The comment above
+  that line warns about exactly this. `ds profile` was not on the list, so
+  the job had no stage to be at. It is now, with its own name rather than
+  Incisor's: it counts channels read whole where `ds read` counts seconds of
+  recording, and `_learn` divides seconds by units without knowing which, so
+  sharing a name would have rewritten Incisor's read rate by the length of
+  the recording every time somebody aligned a set. It sits before the two
+  Incisor stages because a job keeps its stages in that list's order, and
+  listed the other way round the job reports its steps backwards.
+
+  The panel then read `job.step` and `job.frac`, neither of which a job
+  snapshot has. It carries `stages`, each with how many units it has and how
+  many are done, plus an ETA. So the line now says **Reading channel 21 of
+  63** and **about 2 minutes left**, and the bar moves.
+
+### Changed
+
+- **A proposal opens with what it would do, not with six panels of
+  statistics.** The counts, the histogram and the table each answer a
+  different question and all three are worth having, but none of them
+  answers the first one: is this worth banking. There is now a sentence
+  above them — *1055 stamps would move, by −5.6 ms typically, 59.7 ms at
+  most. 4 need a decision first — look at those below, then bank it.* — and
+  it says outright that nothing has been written and which version the set
+  is still on.
+
+  The button at the bottom names the version it would become rather than
+  saying "Accept", so the order of the thing is legible without having
+  pressed anything: see what it would do, look at the ones it is unsure of,
+  then bank it.
+
+## 2026.09.17.8 - Braces measures the probe, not a channel
+
+### Changed
+
+- **There is no channel setting, because the question was never about a
+  channel.** A dentate spike is a population event: it appears across most of
+  the shank at the same instant, largest near the hilus and smaller either
+  side. Picking one electrode and finding its peak answers *when was it
+  biggest here*, which is a question about that wire as much as about the
+  event — and measured on M8s9feb8, the best and second-best channels scored
+  within **0.3%** of each other. Another way of saying that the pick was
+  close to arbitrary.
+
+  Braces now averages the DS-band magnitude across every ticked channel into
+  **one trace**, and each stamp goes to the highest point of that inside its
+  window. One noisy wire cannot carry it and a dead one cannot sink it. The
+  magnitude is what makes the average mean anything, incidentally: a signed
+  sum across a probe cancels, because the deflection reverses across the
+  layer.
+
+  Accumulated channel by channel rather than stacked — sixty-four channels of
+  an hour at 1 kHz is 230 million floats held at once, and one accumulator
+  plus one channel is two arrays.
+
+  It agrees with the old measurement where it should. On M8s9feb8's 1213
+  spikes the single-channel run gave a median of −5.6 ms and a p95 of 16.4;
+  the profile over all 64 gives −5.6 and 16.5. Two different measurements of
+  the same offset landing on the same number is the best evidence either of
+  them is right.
+
+- **Bad channels are ticked off, not thrown out.** Every channel is listed
+  before the run with the ones this recording has marked bad already
+  unticked. Hiding them would make an average look like it was over the whole
+  probe when it was over fifty-six of sixty-four; unticking says the same
+  thing, is visible, and is one click to undo. Which channels went in, and
+  which were left out, is recorded on the proposal and on the version.
+
+- **The bench draws the profile.** It used to draw one channel's trace, which
+  is a line that peaks a few milliseconds from where the decision was
+  actually made — the exact disagreement this tool exists to remove, shown to
+  the person being asked to adjudicate it. It now draws the summed profile
+  over the same channels, read on the server, because six hundred
+  milliseconds of sixty-four channels is a short read on that side and
+  sixty-four requests on this one.
+
+### Added
+
+- **A move unlike the others is flagged.** The existing *near the edge* rule
+  is about the window: it catches a stamp that went nearly as far as it was
+  allowed to. That says nothing about a set whose jitter is small. On
+  M8s9feb8 the median move is 5.6 ms and the largest is 59.7, and at a
+  ±100 ms window not one of those trips an 80 ms edge — so the stamp that
+  went sixty was confirmed silently along with the twelve hundred that went
+  five.
+
+  Unusual is now measured against the set's own spread, robustly: six median
+  absolute deviations, scaled the way `incisor.threshold_for(estimator="mad")`
+  does it, with a floor so that a set whose moves all agree to the
+  millisecond does not find every one of them remarkable.
+
+  On that recording it asks about four of 1213. Two of them are neighbours
+  200 ms apart moving in opposite directions, +39.3 ms and −59.7 ms, which is
+  a burst where the assignment had real work to do and a person should see
+  it.
+
+  It also matters more than it did. Averaging drops the noise floor without
+  dropping the peaks, so nearly every peak in the profile clears the 4.5 SD
+  that *weak peak* is measured against — which left the whole set arriving
+  with no flags at all. A review pass that never asks anything is not a
+  review pass.
+
+## 2026.09.17.7 - Braces picks its own channel, and stops asking for a number two versions share
+
+### Changed
+
+- **Braces finds the channel itself.** It used to ask, and on this archive
+  that meant asking every time: forty-one of the forty-five curated sets were
+  banked before Incisor existed and record no channel anywhere. Falling back
+  to the recording's hilus channel only moved the problem, because most of
+  them have no hilus channel on record either.
+
+  It now reads every channel, filters 5-100 Hz, takes the magnitude, and at
+  each stamp looks at the largest value inside the window that stamp is
+  allowed to move in. The channel with the highest median across the set
+  wins.
+
+  **Measured at the stamps, not over the recording.** A channel's overall
+  magnitude is a fact about how noisy it is; what decides where a dentate
+  spike should be measured is how big the dentate spikes are on it, and the
+  set already says when those happened. Averaging over the whole trace would
+  hand the answer to whichever wire hums loudest.
+
+  **Ranked on the median, not the mean.** One artifact inside one stamp's
+  window is enough to carry a mean on a set of eighty, and the question is
+  where the typical event looks biggest. The margin travels with the answer
+  the way Incisor's channel pick does — a win of thirty per cent and a win of
+  two are different facts about a probe, and only the second is worth a
+  second look.
+
+  A channel can still be typed in, and then it is used and said so. Which of
+  the two happened is recorded on the proposal and on the version, because a
+  channel chosen by sweep and a channel chosen by hand must not be
+  indistinguishable afterwards.
+
+  On M8s9feb8's 1213 spikes it picks CSC40, with CSC41 and CSC39 a fraction
+  behind — a smooth gradient down the shank, which is what a real answer
+  looks like. The margin over the runner-up is **0.3%**, and the panel says
+  so: adjacent sites see the same spikes at almost the same size, so the
+  choice between those two is a coin toss. It is worth knowing rather than
+  worth worrying about — the alignment lands in the same place either way,
+  a median of −5.6 ms on both.
+
+  **Swept once, not once per run.** Reading sixty-four channels is 208
+  seconds, and which channel a recording's dentate spikes are biggest on
+  does not change between two runs over the same band. Every proposal already
+  records the sweep that produced it, so the cheapest store is the one
+  already there: a previous proposal on the same recording, asked the same
+  question. No new book, nothing to go stale against a recording, and it is
+  visible to anybody who opens that proposal rather than hidden in a cache.
+
+- **The alignment floor is gone.** It was a knob that could only be wrong.
+  Peaks are found with a spacing rule, which already makes each one the
+  largest thing within a hundred milliseconds of itself — so every peak found
+  is a candidate a stamp could sensibly move to, and a height requirement on
+  top of that could only remove the right answer for a real event whose peak
+  on this channel happens to be small. Which is the case alignment exists to
+  handle.
+
+  The detector's own threshold is still computed, because "this peak is
+  smaller than the detector would have called an event" is worth saying on a
+  row and is what the *weak peak* flag means. It is a remark, not a gate, and
+  the bench draws it as a line so it stops being an assertion.
+
+### Fixed
+
+- **The version chooser listed v3 twice and v4 twice, and picking one was a
+  coin toss.** Both halves of that were real.
+
+  The duplicates are real data and are correct: two machines curating one
+  entry both mint the next number, the union keeps both, and the per-version
+  id is what tells them apart — `versions.py` has said so since it was
+  written, and this bank holds a history numbered 0,1,2,3,4,3,4. What was
+  wrong is that Braces listed them by number, so two rows were the same
+  sentence twice, and then sent that number back to be resolved by taking
+  whichever came first in the file. Asking to read "v3" could read one
+  person's pass while naming the other's.
+
+  The list is now named through the lineage labeller the curation version
+  chooser already uses, which walks `from_v` and gives the second line its
+  own name — v3.1 rather than a second v3. And the id, not the number, is
+  what travels back — except where there is no id to send. Versions minted
+  before ids existed have none, and this archive still holds plenty: three
+  of the eight on M8s9feb8. Those fall back to their number, which is the
+  only handle they have -- except that the stored number is the one thing
+  that is NOT unique, so that fallback reproduced the fault it was meant to
+  cure: the chooser showed **v6**, sent back **4**, and the bank replied
+  about a version numbered 4 that nobody had seen. The two halves of one row
+  disagreed about which version it was.
+
+  An id-less version is keyed on what it contains instead: its number, its
+  time, who made it, its note and its size. Derived rather than minted, so
+  nothing has to be written into the archive to make old versions
+  addressable; content-based rather than positional, so a shard arriving
+  between choosing and running cannot shift it. Checked against every
+  version of M8s9feb8: all eight now resolve to the one the chooser names.
+
+  Asking the bank for a version by a number only one version has still
+  works; asking by a number two versions share is refused, and the refusal
+  hands back the keys to choose between rather than being a dead end.
+
+- **Picking which version to read is a list, not a dropbox.** A dropdown
+  shows one line at a time, and the thing being chosen between is which pass
+  of curation to work from -- which is a question about who did what, when,
+  and what picking it would do, none of which fits on the one line a `select`
+  gives you.
+
+  It is drawn with the same parts the curation version chooser uses: the
+  radio, the version chip, what is in it, what picking it would do, and who
+  and when. Not the same function -- that one is built around a curation
+  history with a bench to restore onto, and reshaping this into that contract
+  would mean inventing fields to satisfy an adapter. The look is the part
+  worth sharing, and it was already styled down to the disabled rows and the
+  wrap at narrow widths.
+
+  Versions that cannot be a starting point are listed rather than hidden,
+  greyed, with the reason on them. Their counts and their notes are still
+  worth reading, and a version that silently is not in the list reads as a
+  version that does not exist.
+
+- **The sweep reads every channel and says how each one scored.** It used to
+  drop the ones marked bad before it started, which produces a ranking
+  somebody reads as complete. They are listed now and arrive unticked, so
+  leaving one out is visible and putting it back is one click -- and the
+  result carries the whole table rather than only the winner, because the
+  shape of that column is the answer: a gradient down the shank is a probe
+  working, and a flat table is a set measured against the wrong thing. No
+  single number says either.
+
+- **Braces threw on every set with no channel on record.** `Cannot read
+  properties of null (reading 'number')`, seven times in one sitting.
+  Teaching the panel that a channel might be missing left one row still
+  reading it as though it never could be. Moot now that the channel is swept,
+  and fixed anyway: a value that can be absent has to be absent everywhere it
+  is read.
+
+## 2026.09.17.6 - The curation list stops asking the same question forty-eight times
+
+### Fixed
+
+- **Opening Event curation took four and a half seconds.** Measured, not
+  guessed: `/api/curation` came back in 4537 ms on this archive, and it now
+  takes about 400.
+
+  `REG.by_gid` is not a scan — it keeps an index, and it has since the last
+  time this was slow. What it does on every call is re-check the session
+  shards' signature, to know the index it is holding is still good. That
+  check is 77 ms here. The curation list called it once per set, which at
+  forty-eight sets is forty-eight freshness checks of a list that cannot
+  change halfway through being built.
+
+  The index is now built once for the request, exactly as the bank
+  summaries already were three lines above it and for the same reason. The
+  freshness check is worth its cost once and nothing at all per row.
+
+  Nothing else changed: the same forty-eight sets come back with the same
+  session records and the same histories.
+
+- **Braces threw on every set that does not record a channel.** Which is
+  forty-one of the forty-five curated ones — `Cannot read properties of null
+  (reading 'number')`, seven times in one sitting. Making a missing channel
+  a question rather than a refusal left the panel still reading the answer
+  as though it were always there. The row now says "not recorded — pick one
+  below", the reason is printed under it, and **Line them up** stays
+  disabled until there is a channel to aim at, rather than offering to start
+  a read it cannot point anywhere.
+
+- **Braces asked for its tool feed fifteen times in thirty seconds.** The
+  panel rebuilt itself on every tick of the job poll — four times a second
+  while a read was running — and rebuilding empties the panel host, which
+  takes ToolKit's tool feed with it. The feed's own observer then mounted a
+  fresh one, and a fresh mount is a request.
+
+  Two halves, both fixed. The read now repaints only the progress bar, since
+  nothing else on that panel changes while it runs. And ToolKit's observer
+  coalesces: a panel that rebuilds does not fire once, and every firing that
+  landed while the feed was absent used to mount another.
+
+### Changed
+
+- **A banked set can be named when it is banked, and renamed with the
+  session already in it.** The names in this bank are "Incisor CSC61",
+  "m33s8", "dupes seed" and "DS candidates (ETS)". Every one of them made
+  sense to whoever typed it while they were looking at the recording, and
+  none of them says which animal, which session or which day — so the Event
+  Bank is a list of forty-five things you have to open to tell apart.
+
+  Incisor now asks what to call a set at the moment of banking, with the
+  session already filled in, rather than assembling "Incisor CSC61" silently.
+  The Edit dialog — which could always rename an entry — gets the same
+  suggestion on a button beside the field, and says so more loudly when the
+  current name carries nothing about which recording it belongs to.
+
+  Offered, never imposed. A name somebody chose on purpose is not a mistake
+  to be corrected, so nothing is renamed without a press, and the rule lives
+  in one place because two callers need it and a second copy would drift.
+
+### Removed
+
+- **The Dentist's step counts.** The rail was reporting how many DS sets are
+  banked, how many decided and how many aligned. It was a number nobody
+  asked of a rail, and the route behind it went with it rather than being
+  left as something nothing calls.
+
+## 2026.09.17.5 - Curation remembers where you were
+
+### Added
+
+- **Leaving a curation set and coming back lands you where you left off.**
+  The decisions always survived; the place never did. Coming back to 430
+  candidates with no idea whether you had reached 134 or 208 means
+  re-reviewing the overlap to be safe, and that is the real cost of
+  switching tabs to look something up — paid in minutes, every time.
+
+  Kept per recording and per kind, in the same synced preferences file
+  `span` already lives in, whose own header has said "where was I" since it
+  was written. It is remembered **by candidate, not by index**: a set can
+  gain or lose candidates between sittings — a re-import, a dedupe, a
+  snapshot folder absorbed — and an index would then point at a different
+  spike with perfect confidence. The candidate's id is what survives that,
+  with its time as the fallback for a set rebuilt from a snapshot, which
+  does not carry ids.
+
+  The pass is restored before the position, because landing on candidate 208
+  while the Undecided pass is showing would put you on a candidate that pass
+  does not contain, and n/p would then walk away from it. A remembered pass
+  with nothing left in it is dropped rather than restored — that is what
+  happens when somebody finishes the undecided pass and comes back, and
+  opening on an empty screen is the fault this sits next to.
+
+  It says so on the way in: *Back where you left off: 208 of 430*. Landing
+  in the middle of a set with no explanation reads as a bug, and the point
+  is to be able to trust it. Where the candidate itself has gone, it says
+  that too, and lands on the next one along rather than at the top.
+
+  Written on the way out as well as on every jump. Preference writes are
+  coalesced by a third of a second, and leaving is exactly the moment
+  somebody is about to do something else.
+
+### Changed
+
+- **The loading line at the top of the window is twice as tall.** It was a
+  two-pixel hairline, which was doing its job and being missed — nobody is
+  watching the top of the window while they wait, so it is only ever seen
+  out of the corner of an eye, and two pixels is not enough to catch one.
+  Four now, over a faint track so the sweep reads as one object travelling
+  rather than a glow appearing and vanishing at the edges, with a soft
+  shadow that lifts it off the pale header on the light themes.
+
+  Still fixed, still a fixed height. That was the constraint — it has to be
+  able to appear during a mutation without shifting the list somebody is
+  reading — and the thinness was never the point.
+
+  It also now stays put rather than disappearing for anyone who has asked
+  for less motion: it stops sweeping and holds. An indicator that vanishes
+  under a motion preference is the one case where that setting costs
+  information rather than saving annoyance.
+
+## 2026.09.17.4 - The Dentist, and stamps that sit on their own peak
+
+### Added
+
+- **Bundles, and the first one.** The ToolKit rail was a flat list of nine
+  tools with nothing to do with each other, three of which are one job done
+  in three sittings. **The Dentist** groups them: Incisor finds the dentate
+  spikes, **Checkup** says which ones are real, **Braces** puts every stamp
+  on the peak it belongs to. The steps are numbered because the order is a
+  real dependency rather than a suggestion — Checkup has nothing to show
+  until Incisor has banked candidates, and Braces has nothing to move until
+  Checkup has said which stamps are spikes.
+
+  Grouping them is the small half. Each step reads its own state, so the rail
+  says where the lab is — *56 DS sets banked, 45 of 56 decided, 0 of 45
+  aligned* — rather than listing three tools that happen to be related.
+
+  Checkup is a name on a door, not a second engine. `curation.py` is
+  deliberately one engine with a vocabulary per kind, because deciding
+  *dentate spike or garbage* and deciding *solid or sputter* are the same job
+  once you stop looking at the biology; the flat tool list keeps **Event
+  curation** for anyone arriving to do IEDs. One engine, one set of keys, one
+  version history, two doors.
+
+- **Braces.** A set's stamps are only as good as the trace they were measured
+  against. A set detected on CSC38 and read back against CSC41 is a few
+  milliseconds out, because adjacent sites on a shank see the same spike at
+  slightly different times; one that came through Toothy was measured on a
+  1 kHz grid over a nominal rate; one imported from a snapshot folder has
+  whatever time was in the file name. None of that is wrong enough to notice
+  one event at a time, and all of it is wrong enough to smear an average
+  across a thousand.
+
+  Braces reads one channel, band-passes it 5–100 Hz, takes the magnitude, and
+  puts each stamp on its own peak within ±100 ms. Measured on M8s9feb8's 1213
+  curated spikes against CSC41: 4161 peaks found in three seconds, a median
+  shift of −5.6 ms, and nothing further out than 18.9 ms. The shift histogram
+  is one tight lobe left of zero, which is what a systematic offset looks
+  like and is the thing this tool exists to remove.
+
+  **Magnitude, not the signed trace.** Incisor runs `find_peaks` on the
+  signed trace, which is why polarity is a correctness question there and not
+  a preference. A stamp that arrived from Toothy, from a snapshot folder, or
+  from somebody's hand may sit on a trough. `|x|` finds the event under
+  either convention, and is the one measure that does not care which tool
+  produced the stamp.
+
+  **A lower floor than detection.** Detection asks *is anything here*;
+  alignment asks *where is the thing we already know is here*. Making each
+  peak clear 4.5 SD a second time would strand the real events whose peak on
+  this channel is a little smaller — and this channel is often not the one
+  detection ran on. The floor is half the set's own detection threshold, so
+  it travels with the parameters the set was made with rather than being a
+  new number nobody chose.
+
+- **One peak per stamp, and no crossing.** Nearest-peak-wins is wrong, and
+  wrong in a way that quietly loses events. Take two stamps and two peaks
+  where the first stamp sits between the peaks nearer the later one, and the
+  second can only reach the later one: nearest-peak-wins gives that peak to
+  the first stamp and the second — a real, curated dentate spike — is left
+  with nothing. The right answer moves the first stamp *further*, onto the
+  earlier peak, so the second can have the later one.
+
+  So the objective is not "move as little as possible". It is, in order:
+  match as many stamps as possible, then move them the least in total,
+  subject to a stamp taking at most one peak, a peak being taken by at most
+  one stamp, and the assignment never crossing. Solved per *run* — the
+  contiguous group of stamps and peaks that can reach one another — which on
+  real data is one stamp and one or two peaks and is settled by inspection.
+
+  The two constraints are not decoration. Without **one peak per stamp**, two
+  stamps snap onto the same peak and the set acquires two events at an
+  identical time, which the bank's duplicate machinery would then make
+  somebody resolve by hand at 0.1 ms. Without **no crossing**, two events
+  swap places and their curation calls follow them — a Garbage and a Dentate
+  Spike trading identities. Events in a recording do not reorder, so neither
+  may this. Both are checked again immediately before the write.
+
+- **Only the stamps somebody called a dentate spike.** A curated set is not a
+  list of events; it is a list of candidates, most of which are events and
+  some of which were looked at and rejected. Garbage and unsettled Flags are
+  kept out of the run **entirely**, not filtered out of the answer
+  afterwards: one peak per stamp means a Garbage stamp sitting nearer a peak
+  would take it, and the real spike beside it would be stranded or pushed
+  onto the wrong one. What was left alone is counted and named on the
+  proposal rather than quietly dropped.
+
+- **Most of them arrive confirmed.** Four situations Braces will not vouch
+  for, each pre-flagged with its reason: *no peak in reach* (the stamp does
+  not move), *near the edge* (further than 80% of the window, where the peak
+  it found is about as likely to be the next spike as this one), *not the
+  nearest peak* (the run overrode nearest-peak-wins so a neighbour could have
+  one — the only flag that reports a decision the tool actually made), and
+  *weak peak* (cleared the alignment floor but not the detection threshold).
+  Everything else confirms on arrival, and anything can still be flagged by
+  hand.
+
+- **A proposal is not a version.** Running Braces writes nothing to the bank.
+  What comes out is an alignment set — the measurement, plus every decision
+  made about it — kept in `GUI_logs/braces/` so that reviewing twenty-six
+  flags does not have to happen in one sitting. The decisions are a `MAPLWW`
+  field, so two people reviewing different flags on one proposal merge row by
+  row. Accepting it previews exactly what the write would do first, the way
+  re-timing already does, because a timestamp rewrite that cannot be read
+  before it happens should not be offered at all.
+
+  **A flag nobody resolved does not move.** Not moved quietly on the grounds
+  that the proposal was probably right — the flag exists because the tool
+  would not vouch for it, and accepting it by default would make the flag
+  decorative. The count of them sits beside the button.
+
+### Changed
+
+- **The event bank can tell a stamp that moved from one that was deleted.**
+  A banked event's only identity was its time. That held until something
+  moved one, and Braces does exactly that — so an aligned set would have
+  arrived as every event vanishing and an unrelated one appearing, and the
+  history would have read *1198 lost, 1198 gained* about a pass in which
+  nothing was decided differently at all.
+
+  A stamp Braces moved now carries `from_t`, the time it used to have, and
+  the diff matches in two passes: every event still where it was claims its
+  own slot first, and only the leftovers are matched on where they came from.
+  The order is not a style choice — one pass, whichever key it preferred,
+  could hand a moved event the slot belonging to an event that had not moved.
+  Versions gained a `shifted` count, written only when something did.
+
+  `from_t` also had to be added to the whitelist `add()` builds each event
+  from. It was being dropped on the way in, which is the same fault seen from
+  the other end: the field exists to make the next diff possible, and a diff
+  that cannot see it is blind again.
+
+### Fixed
+
+- **A registry row has no `path`.** It has `here` — the folders *this*
+  machine can actually reach, which is not the same list as `paths`, because
+  a recording seen on the rig and on a laptop has two and only one of them
+  opens here. Asking for `path` returns nothing for every recording in the
+  archive, so the first version of Braces reported that not one of the 45
+  curated sets could be aligned. `curate.js` has taken `here[0]` since the
+  workbench was written; this now does too, and a recording that is known but
+  not plugged in gets a different sentence from one that was never recorded
+  against a session at all.
+
+- **Forty-one of the forty-five curated sets say nothing about which channel
+  they were detected on.** They were banked before Incisor existed. That was
+  a hard refusal, so the tool worked on nothing anybody actually has; it now
+  falls back to the recording's own hilus channel, and where there is not one
+  either it *asks* rather than refusing — the panel has the box, so a missing
+  channel is a prompt, not a failure. Which of the four ways the channel was
+  arrived at is always said out loud beside it, because a channel chosen by
+  rule and one chosen by hand must not be indistinguishable.
+
+- **Older entries store `label` without `label_id`.** Their `by_label` reads
+  `{"Dentate Spike": 10}` rather than `{"spike": 10}`, so matching the
+  dentate-spike category by id alone silently skipped every real stamp in
+  them — which would have looked like a set with nothing to align rather than
+  like a bug. Matched by id *and* by display name, and by whatever the entry
+  itself calls them.
+
+## 2026.09.17.3 - The band line says which channel it came from, and can carry ten
+
+### Added
+
+- **Choose the channels the band line is read from - up to ten.** It read
+  whichever channel happened to come first in the selection, which answers "is
+  there theta in this recording" and not the question people actually bring to
+  this strip: which channel has it, and how do they compare down the probe.
+  The Strip panel now lists the channels it is reading as chips, each with the
+  colour its line is drawn in, and offers the rest in a dropdown. A chip takes
+  its channel off again; the last one stays, because an empty strip still
+  labelled Band power is a blank picture with no way to tell why.
+
+  Ten is the cap. They share one 40 px band, so past ten they are stacked
+  hair-widths.
+
+- **Every line on one scale.** The reason to put two channels on one strip is
+  to compare them, so the scale is computed across all of them together. A
+  per-line scale would draw a weak channel and a strong one at the same height
+  - the picture saying they match while the numbers say one is ten times the
+  other.
+
+- **Name each line on the strip.** Optional, because names cost room on a strip
+  this short, but five unlabelled coloured lines is a picture nobody can put in
+  a figure. The channel is written at the end of its own line rather than in a
+  legend box: on a 40 px strip a legend would be most of the picture, and a
+  label sitting on its own line needs no key to read.
+
+  Colours come from a fixed ten-step ramp rather than the theme's categorical
+  one, which guarantees four and wraps after that - and two channels drawn the
+  same colour on one axis is worse than drawing them in no colour at all,
+  because you cannot tell there are two. A single line keeps the accent colour
+  it has always had, so turning a second channel off puts the strip back
+  exactly as it was.
+
+
+## 2026.09.17.2 - The Strip panel answers the button you press
+
+### Fixed
+
+- **Band power looked like a dead button.** Pressing it on the overview
+  strip's panel left the highlight sitting on Average magnitude, and the band
+  boxes, the presets and the measure switch never appeared - so the one
+  control the choice exists to reach was unreachable, and the panel read as
+  broken. It was not: the strip redrew, the reading happened, and the menu
+  button relabelled itself to "4-12 Hz power" the whole time. The only thing
+  that did not change was the panel being looked at while pressing it.
+
+  A segmented control paints its highlight from the value it was built with.
+  The Marks switch gets away with that because it closes itself on the way
+  out, so it is rebuilt on the next open; this panel deliberately stays open,
+  because picking Band power is the step *before* choosing the band, and so
+  nothing ever rebuilt it. Open panels can now rebuild in place from their own
+  builder - not by rebuilding the control strip, which would detach the very
+  button the panel belongs to. The same fault was in the band presets and the
+  measure switch, and the "reading the recording" note that never cleared when
+  the read landed; all four are the same fix.
+
+  Typing is left alone: the band boxes commit on change, so a rebuild arriving
+  mid-number would throw the number away, and a read finishing is exactly what
+  would land there.
+
+## 2026.09.17.1 - Layers on any panel, and only where they mean something
+
+### Added
+
+- **Which layer a panel is showing, on the panels that have no channel
+  lanes.** The layer look reaches every pane through the More menu, but a
+  single-channel spectrogram, scalogram or band-power map is one channel seen
+  against frequency: there are no channel rows to band, so those panels
+  answered the question with nothing at all, which reads as "layers do not
+  work here". They now carry a chip naming the region that channel is in, in
+  that region's own colour. It works from whichever sheet the window has - the
+  read-only look's, or StrataScope's while the labelling mode is open - so the
+  same panel says the same thing whichever door you came in by. A channel the
+  sheet has no label for gets no chip, rather than a chip naming nothing.
+
+### Fixed
+
+- **The read-only layer look painted channel bands down a frequency axis.**
+  It kept its own copy of the overlay, and the copy had its own fallback: when
+  a panel reported no channel rows it laid the sheet's channels evenly down the
+  plot anyway. On a band-power map and on a single-channel spectrogram that is
+  64 layer bands across an axis measured in hertz - measured, not inferred. The
+  labelling mode's own overlay had been taught this rule; the copy never was,
+  which is how a copy nobody can see is a copy ends up.
+
+### Changed
+
+- **One layer painter instead of two.** The copy existed because three things
+  were private to the labelling module: the wash vocabulary, the current
+  strength, and any way to paint at a strength of your own. All three are now
+  shared, so the read-only look calls the same painter the labelling mode does.
+  Everything about which lane is which channel, and whether the lanes are
+  channels at all, has one answer instead of two that could drift - and the
+  four strengths are read from one list rather than copied into a second that
+  had to be kept in step by hand.
+
+- **The layer selection stays with the mode doing the selecting.** Leaving
+  StrataScope does not empty the set of picked-out channels - it never had to,
+  because nothing else could reach the overlay. Now that something can, a
+  selection left behind on the way out would have come back as an accent wash
+  in a view whose whole promise is that it changes nothing.
+
+## 2026.09.16.5 - Band power on the strip, a version to work from, and layers you can just look at
+
+### Added
+
+- **Theta power across the whole recording, on the overview strip.** The strip
+  has always drawn average magnitude, which answers "is there signal here" and
+  not much else. It can now draw the power in a band you choose instead, with
+  the edges settable and presets for the usual ones, as absolute power, as a
+  fraction of the 1-100 Hz total, or against a delta reference. This is the
+  line `theta_through_time.py` draws, on the true time axis, with the 60 Hz
+  line bridged out of the total and a gap in the recording coming through as a
+  hole rather than as zero power. What is cached is the spectrogram surface
+  rather than the line, so moving a band edge is an integral over numbers
+  already in memory, not another read of the disk.
+
+- **Which banked version a curation sitting carries on from.** A set is one row
+  per recording per kind, but the bank behind it keeps every pass anybody ever
+  banked - seven of them on one real entry. Picking a set up said nothing about
+  which of those the sitting continued, so banking always landed on top of
+  whatever was newest, which silently buries the work that came after whenever
+  somebody goes back to an earlier pass on purpose. Both doors now ask, and
+  every row says what pressing it will do before it is pressed: `continues from
+  v4 as v5`, or `branches off v1 as v1.1, leaving what came after it alone`.
+  Switching while a set is on the bench puts the current version down and picks
+  the chosen one up, says how many decisions that will change first, and clears
+  the undo history - replaying a decision across a switch would put a call
+  nobody made into a pass they did not make it in. Versions banked without a
+  snapshot cannot be worked from, so they are shown greyed with the reason
+  rather than offered and then refused.
+
+- **Layer bands in XploreFinder, read-only.** The layers a recording has been
+  given in StrataScope can now be shown in the ordinary viewer, from the
+  per-pane More menu, at three strengths and with a colour key of the regions
+  actually in the sheet. It is a look, not an edit: no rail, no keyboard, no
+  mode, and the only request it makes is a GET. The bands are painted into the
+  pane canvas underneath the marks and the traces, so they sit behind
+  everything else rather than covering it, and nothing can swallow a click.
+
+### Fixed
+
+- **The layer overlay no longer paints channels onto a frequency axis.** The
+  overlay was extended from the traces onto every image panel, which is right
+  for the panels whose rows are channels - the CSD, a stacked time-frequency
+  view - and wrong for the ones whose vertical axis is frequency. A
+  single-channel spectrogram or scalogram has no channel rows to report, and
+  the band-power map has none either, so the overlay fell through to its
+  every-channel default and laid the layer colours evenly down a frequency
+  axis: the hilus band sitting across 40-60 Hz as though it meant something.
+  Sixty-one bands and four boundary rules, in the right place for a picture
+  that was not there. It now draws only where a lane is genuinely a channel,
+  which is worse-looking and correct.
+
+- **A window that was handed the layers can now draw them.** `sess.strata` has
+  carried the labels and the regions since it was written, put there for the
+  reason the curation marks are published the same way: a pop-out page has its
+  own session objects and none of the labelling module's private state. But the
+  overlay checked for that private state before doing anything, so any window
+  not doing the labelling stopped at the first line and the payload was never
+  once drawn from. The comment beside it has described the intended behaviour
+  all along; it is now true.
+
+- **The DS span no longer freezes at one second.** Moving through detected
+  events re-derived the window width from a preference that was not being
+  written, so a span set by hand was thrown away at the next jump and every
+  recording came back at 1.00 s. The manual zoom is now adopted and kept.
+
+- **The bank import harness tested the wrong recording.** It typed the mouse
+  rather than the whole session label, so the picker offered the first session
+  that animal ever had instead of the one with the banked entry, and then
+  clicked an option class the picker does not render - so nothing was selected
+  at all and the wizard kept its default. The "already exists" check downstream
+  then failed on a recording that genuinely has no set, reporting a fault in
+  the interface that was really a fault in the harness. It now types the label,
+  clicks what the picker actually draws, and asserts its own starting state
+  first.
+
+## 2026.09.16.4 - Incisor draws the channel it is choosing between
+
+### Added
+
+- **Toothy's three channel plots, in the Incisor panel.** DS count, DS
+  amplitude and DS height above surround, drawn from the scan that is on
+  screen - the same three `ephys.py:1144 plot_channel_events` puts beside
+  Toothy's own channel picker, in the same cubehelix palette, so a plot
+  people have been reading for years looks like itself here. The hilus
+  estimate is an argmax over normalised count x normalised amplitude; these
+  are the picture that argmax came out of, which is what says whether the
+  pick was obvious or a coin toss.
+
+- **Click a plot to put the hilus on that channel.** All three share one
+  axis and any of them takes the click. The chosen channel is banded behind
+  the data in all three at once, and hovering reads out that channel's
+  count, mean amplitude and mean height.
+
+- **"Most spikes" as its own answer.** The scan's pick weighs how big the
+  events are as well as how many, which is usually the right trade and
+  sometimes is not - a hilus site next to a quiet one can come second on
+  amplitude while carrying nearly every spike in the recording. Measured on
+  PTEN m1 s2: the scan picks CSC41 at 27 events and 601 microvolt mean,
+  while CSC42 carries 79. The button names the channel and its count, and
+  the panel says in words when the two part company. It is offered, never
+  applied: "the most events are here" and "the hilus is here" are different
+  claims and the second is the one being banked.
+
+- **Channels that were not read are drawn as grey columns rather than left
+  out.** A gap you can see is how "CSC59 is excluded" reads off the plot
+  instead of off a sentence above it, and an absent channel and a channel
+  with no events are different facts that a bar of height nothing conflates.
+
+### Changed
+
+- **The amplitude axis is scaled to the amplitudes.** Pinning it to zero
+  spent the lower two thirds of the panel on the range below the detection
+  threshold, which is empty by construction. The count axis still starts at
+  zero, because a bar chart that does not lies about its ratios, and it
+  labels whole numbers whole - there is no such thing as 73.0 dentate
+  spikes.
+
+- **The colour ramp is oriented to the background, not copied blind.**
+  Seaborn's walk from light to dark puts the busiest channel at the darkest
+  point, which is right on Toothy's white figure and invisible on a dark
+  theme - measured on screen, the tall bars came out near-black on a
+  near-black ground. "A lot" is now always the end that stands out. On the
+  light themes it is Toothy's ramp exactly.
+
+- **The plots are drawn synchronously as well as on the next frame.**
+  `requestAnimationFrame` does not fire in a background tab, and a panel
+  whose plots are blank until you look at it twice is worse than one that
+  costs a layout flush. Found by a harness: after a repick the canvases were
+  still at the HTML default 300x150 with nothing on them.
+
+### Fixed
+
+- **A scan carries the shape statistics the plots need.** Each channel now
+  reports the mean half-prominence height with its standard error - Toothy's
+  `width_height`, taken the same way its `.agg('sem')` takes it - and a
+  sample of at most four hundred amplitudes, strided so it spans the
+  recording rather than its first minutes. The sample exists because all of
+  them is not affordable: sixty-four channels of every event is the payload
+  that arrives as a 200 with a body that will not parse. The count beside it
+  is exact and is never taken from the sample.
+
+---
+
+## 2026.09.16.3 - The cluster, and what it can already read
+
+### Added
+
+- **VACC Mode.** A switch in the rail foot that turns the interface up and
+  turns the cluster on, because they are the same thing: the interface is
+  fired up *because* the cluster is live. `data-vacc` is a second attribute
+  on the root, orthogonal to `data-theme`, and it adds six `--fire-*` tokens
+  and touches none of the thirty a theme defines.
+
+  That restraint is not tidiness. `--accent-soft` and `--on-accent` are
+  hand-written per theme rather than derived, and `--on-accent` is *measured
+  ink* for one exact accent -- #14231b on the gold, #ffffff on the light
+  themes. CSS has no contrast function, so mixing a hotter accent here would
+  produce text nobody has checked can be read on it. `vaccskin.html` reads
+  all thirty tokens in all ten themes with the mode off and on and asserts
+  every one is byte-identical, so the claim is checked rather than promised.
+
+  Ten themes, three blocks. Everything is mixed from the theme's own accent,
+  so a theme added later is covered the day it is added -- and the light
+  family gets weight and edge instead of glow, because a bloom on parchment's
+  #faf6ef is a coffee stain and on jirai-shiro it is a greetings card.
+
+  One thing pulses, and only while a job is actually being polled: `opacity`
+  on one pseudo-element, never a shadow or a filter, because xplore repaints
+  its canvases every pan frame and an animated shadow above them drags the
+  whole stack with it. A permanently glowing workbench is one people quietly
+  stop using, and it would also be a lie.
+
+- **What VACC knows.** Every recording now says whether the cluster can
+  already read it, and **357 of 582 can** -- 61%, with no transfer of any
+  kind. The lab keeps most of its recordings on `bigdata_jbarry`, which VACC
+  mounts at `/netfiles/bigdata_jbarry`, so what looked like a file-transfer
+  problem is mostly a path-mapping one.
+
+  Asked of the RECORDING, not of the path in front of you, and that is the
+  whole design. 2544 recorded paths begin with `Y:`, and `net use` on this
+  computer reports no mappings at all -- those paths were written by a
+  different machine. But a recording carries every path it has ever been
+  opened from on any machine, unioned, so the UNC spelling a colleague
+  recorded answers for the drive letter this one cannot expand. Mapping by
+  drive letter alone would have found 117 of the 582; going through the
+  registry finds 357.
+
+  Four states, and the fourth earns its place: `unknown` draws nothing.
+  Exact ids are only minted when headers are read, so most of a fresh scan
+  has no gid, and reading a missing answer as "the cluster cannot reach
+  this" would have put an upload badge on four hundred recordings already
+  sitting on the share. `canOpen` in sessions.js carries a comment about the
+  identical mistake. A staged copy takes the warning colour rather than the
+  green one, because scratch is purged without notice and green would read
+  as a guarantee.
+
+### Fixed
+
+- **A run on the cluster would have corrupted every estimate on this
+  computer.** `_learn` folded each measurement into the volume-blind key as
+  well as the per-volume one -- right for a second disk, wrong for a second
+  machine -- and `_PER_VOLUME` covers only the four reading stages, so
+  `ds detect`, `panorama windows`, `panorama pool` and the rest collapsed to
+  the bare name whatever ran them.
+
+  Measured: one cluster run drags this machine's `ds detect` rate from 0.15
+  to 0.108, a 28% shift, and at 0.7/0.3 it takes about ten local runs to wash
+  back out. It runs both ways -- the cluster's ETA would have quoted the
+  desktop. Nothing had happened yet, which is the only reason this is a note
+  rather than a repair.
+
+  Fixed in `_key`, deliberately not by adding stages to `_PER_VOLUME`:
+  `_stage_stamp` hashes that set, so widening it would have dropped every
+  affected rate on every machine in the lab at the next start.
+  `tools/test_rates.py` asserts the membership so the wrong fix fails loudly.
+
+- **Queue wait is not a rate.** It is seconds at three in the morning and
+  hours before a deadline, and a running mean over the two describes
+  neither -- while `eta` would have added it to the total from t=0, making
+  the bar wrong from the first paint rather than settling. `vacc queue` is in
+  a new `_NOLEARN`; slurm answers the question properly with `squeue --start`.
+
+### Changed
+
+- `applyTheme`'s three repaint calls are now `repaintThemedSurfaces()`. Which
+  surfaces read a token once and keep the answer is not obvious, the list has
+  been wrong before, and there are now two things that change tokens.
+
+- **The cluster is not an empty machine waiting to be filled.**
+  `/gpfs2/scratch/sakhava1` already holds 1.3 TB and **120 recordings** across
+  four projects -- KCNT1 Urethane, IED, DEWEY/HOF and Wheel -- all 64-channel,
+  all put there before any of this existed. Thirty-three of them are
+  recordings the registry already knows, matched by `ids.identify` run on the
+  remote path: the same code that identifies a local folder, from the path
+  string alone, so nothing about identity is reimplemented for the cluster and
+  the two cannot drift. Another eighty-four are real recordings Jarvis has
+  never been shown, and they are reported rather than dropped.
+
+  So while the netfiles share is unreadable, there are still thirty-three
+  recordings that can be run on the cluster today with no transfer at all.
+  A listing of scratch is never written down: it is a filesystem that gets
+  purged without notice, and a durable record of it would be a claim with an
+  expiry date. Asked, cached five minutes, and re-asked on a button.
+
+- **Incisor now runs on the cluster, and gets the same answer.** Measured on
+  `s0a9e96cf1739`, a recording that exists both on scratch and on this
+  machine's D: drive: four channels, **691 dentate spikes, and not one of
+  them stamped at a different microsecond**. The channel picks agree, the
+  per-channel counts agree, and `abs_us` -- the one identity that does not
+  depend on which tool made the number -- is identical throughout. Eleven
+  seconds here, thirty-two on the cluster including the queue.
+
+  It is the same arithmetic because it is the same code. `vacc_run.py`
+  imports `backend.incisor` and calls the `run()` the desktop calls; the
+  backend is tarred over ssh and unpacked into a workspace keyed by content
+  hash, so an unchanged tree skips the upload. The continuity report travels
+  with the spec rather than being recomputed, because it is inside the cache
+  key and a segmentation that came out even slightly differently there would
+  file the answer under a name no local run ever looks for.
+
+  The environment was built to match: miniforge 26.7.2-py3.14 against this
+  machine's 3.14.4, numpy 2.5.3 against 2.4.6, scipy 1.18.1 against 1.18.0,
+  and fooof 1.1.1 against 1.1.1 -- exact where it matters most, since fooof
+  is the fitter. `env_check` records all of it.
+
+- **Incisor, over every recording the cluster can reach, as one job array.**
+  `Scan all on VACC` in the ToolKit panel: one `sbatch --array`, every
+  recording a task, `%N` capping how many run at once. Twenty-eight
+  recordings, sixteen of them new, **nine and a half minutes at four at a
+  time and nothing failed**. The other twelve were already answered and were
+  skipped in milliseconds -- the vault is keyed on the recording and the
+  settings, so a batch that dies halfway resumes and a colleague running the
+  other half is not doing yours.
+
+  The first version of this was serial: submit, wait, submit the next. It
+  took forty minutes to do about ninety seconds of work at a time, on a
+  machine with thousands of cores, and `poll_states` had taken a LIST of job
+  ids since the day it was written. The lab's own `.sbat` files have used
+  `#SBATCH --array` with a `dirs=()` for years.
+
+- **A queue of finished scans, and nothing banked without being looked at.**
+  Each row carries the pick, how far it beat the runner-up, and whether it
+  has been banked. Opening one points the panel at that recording and
+  re-runs it, which comes straight back out of the vault -- so the three
+  plots, the hilus pick and the Bank button are the ordinary ones on the
+  ordinary path, and behave the same whether the numbers were computed here
+  or on a compute node.
+
+  **Twenty-seven of thirty-one picks came back within ten percent of the
+  runner-up.** The hilus estimate is an argmax over normalised count times
+  normalised amplitude, and on this data it is very nearly a coin toss
+  almost every time -- which is the whole argument for the plots being on
+  screen beside it, and for a person pressing the button.
+
+### Three wrong recordings, caught before anything was banked
+
+All three would have analysed one recording's data under another's name,
+and none of them would have looked wrong on screen.
+
+- `m22 s3` exists in PTEN recorded 2024-07-15 and in KCNT1 recorded
+  2023-06-02. The loose key -- mouse and session -- is
+  character-for-character identical, and the first version took whichever
+  came last out of the listing. It offered to run the PTEN scan against the
+  KCNT1 data. Exact keys now beat loose ones outright.
+- `m13 s3` and `m2 s2` had no exact match at all, so the loose one won by
+  default: PTEN 2023-08-01 matched to KCNT1 2022-08-15, a year apart. A
+  loose match must now agree on the day, which is the only thing left that
+  distinguishes them.
+- And one genuine duplicate -- the same recording sitting in two folders on
+  the cluster -- is refused rather than guessed at, because nothing here can
+  tell which was meant.
+
+Twenty-eight matches remain and every one of them has a label date that
+agrees with its folder date. `mouse+session is not an identity` was already
+written down in this lab; numbering restarts per project.
+
+### The parity check lied three times before it worked
+
+Written down because each lie was a confident pass, and because the shape of
+them is the same shape every time: a check that cannot say how much it
+checked can quietly check nothing.
+
+- Four channels were picked without looking and all four were silent. Zero
+  events here, zero there, reported as agreement. It now scans for channels
+  that have events and **fails** if none do.
+- The local result keys `_rows` by int; the one off the cluster arrives
+  through JSON, which has no integer keys. Indexing the remote with an int
+  found nothing, `zip` yielded no pairs, and a loop that compared NOTHING
+  reported a maximum difference of exactly zero.
+- The event's time field is `start`, not `t`. Asking for `t` got `None` from
+  both sides, and `None == None`.
+
+`tools/check_vacc_parity.py` now prints how many events it compared and
+asserts that the number equals how many there were.
+
+### What the real cluster taught, once there was a key on it
+
+Four things, and three of them would have been invisible from here.
+
+- **The share is mounted and the account cannot read it.**
+  `/netfiles/bigdata_jbarry` is exactly where the path map says, and 357
+  recordings resolve onto it. It is also `drwxrws--- jbarry4 root`, and every
+  lab member's primary group is `pi-jbarry4`. So the only account that can
+  read the lab's own share is the PI's, and the group it is shared to is one
+  nobody is in. Nothing in this feature can run until that is changed.
+
+  Which is why "VACC mounts this" and "you can read it" are now two separate
+  facts on the status payload rather than one. A path map is a lab-wide fact
+  and stays one; whether the person sitting here can open what it points at
+  has a different answer per account, and answering the first while being
+  asked the second sends somebody to debug a job that was never going to be
+  able to open its input.
+
+- **`quota -s` never returns on the login node.** Measured: whoami 1 ms,
+  squeue and sinfo 6 ms, quota a flat 5003 ms, which is the `timeout 5`
+  expiring every single time for an answer that never arrives. It was in the
+  probe, so the probe took 61 s. Moved behind a button; the probe is now
+  0.4 s, which is 150x, from deleting one line.
+
+- **sacct does not print the id you asked about.** `sbatch --parsable` hands
+  back a raw numeric id; for anything in an array sacct prints the
+  array-and-task form beside it -- measured, `sacct -j 999999` answers
+  `999467_3|999999|COMPLETED`. Keying on what it prints loses the job, and
+  the poller then fails a run that finished an hour and forty-nine minutes
+  ago as vanished. Keyed on `JobIDRaw` now, with the printed form kept for
+  anything shown to a person.
+
+- **And one that was ours.** `subprocess.Popen(text=True)` translates
+  newlines on Windows, so every script sent to the cluster arrived with CRLF.
+  bash read the last line of a one-line script as `fi\r` and reported a
+  syntax error, and a `$(whoami)` inside a `printf` picked the stray CR up and
+  returned `sakhava1\r` -- which produced a malformed answer from a cluster
+  that was replying perfectly, and read exactly like the login node doing
+  something strange to command substitution. The pipes are binary now and the
+  encoding is done by hand. A comment blaming the cluster has been corrected.
+
+  Worth recording next to it: the first round-trip figure written into this
+  feature was eleven seconds, and every poll interval was set from it. It came
+  from a shell loop whose `date +%s` had one-second resolution and whose own
+  `timeout` and subshells dominated the measurement. Six consecutive calls
+  measured properly: 389, 395, 417, 417, 433, 441 ms. The harness was being
+  measured, not the cluster.
+
+### Checks
+
+- `vaccskin.html` (53), `vaccmode.html` (21), `vaccquiet.html` (23) and
+  `vaccknows.html` (18). `vaccskin` is two-sided on purpose: the unchanged
+  side alone passes if the layer does nothing, which is exactly its state
+  before the tokens land, so the changed side asserts the mode is real and
+  that `color-mix` actually *resolved* -- a typo'd token stays a literal
+  string and looks like it applied.
+- `vaccquiet` walks every element for a running animation with the mode on
+  and no job live, and measures body text and every `on-` pair against 7:1
+  and 4.5:1 in all ten themes with the mode on.
+- `tools/test_rates.py`, `tools/test_vaccpaths.py`, `tools/vacc_check.py` and
+  `tools/test_vaccrun.py` -- the last two drive the whole cluster state
+  machine against a stubbed login node, because every interesting thing about
+  a remote job is a failure and none of them can be produced on demand
+  against a real one. Timeout, out of memory, a dead node, a cancel arriving
+  before the job id does, and the window where a finished job is in neither
+  `squeue` nor `sacct` and a naive poller calls it vanished.
+
+---
+
+## 2026.09.16.2 - Rooms, and a result that says what it is of
+
+### Added
+
+- **The catalogue has rooms.** Four hundred results in one grid ordered by
+  when they happened answers exactly one question -- "what did I just do" --
+  and it is the only question that stops mattering. Group by animal, by tool,
+  by day or by run. Headings are sticky and double as "select everything in
+  here", because taking the eleven figures from one session is the thing you
+  came to a room to do.
+
+  Anything the grouping does not apply to goes in one room at the end rather
+  than each getting a heading of its own. A lab-wide bad-channel export
+  genuinely belongs to no animal, and forty headings reading "unknown mouse"
+  is the pile again with chrome on it.
+
+- **Search one field instead of any text anywhere.** `mouse:306` used to match
+  a figure of m3060, a figure whose notes said "306 windows", and a file saved
+  at 13:06.
+
+      panorama m306            both, as text, as before
+      tool:panorama mouse:306  the tool and the animal, exactly
+      project:PTEN on:2023-08  every PTEN recording made that month
+
+  Mouse and session are anchored, because `mouse:306` matching m3060 is a
+  wrong answer that looks like a right one. Everything else stays a substring
+  on purpose. An unrecognised prefix is searched as plain text, since a
+  Windows path is full of colons and typing one should look for it.
+
+- **A result knows which animal it is about.** Project, mouse, session and the
+  recording's own id come off the run record, which knew all along; the
+  catalogue was dropping them. A file with no run record -- a colleague's
+  commit, or a tool that predates run records -- has them read off its name,
+  because every naming convention the lab uses puts the animal in the name and
+  those are exactly the files somebody is hunting for.
+
+- **What a tool has already worked out is kept.** Incisor's scan lived in a
+  dictionary in memory holding eight entries, which is why "those candidates
+  are no longer cached, run the scan again" is a sentence this app has had to
+  say -- a scan is minutes of reading, and being told to redo it because
+  somebody restarted Jarvis is not a cache miss, it is lost work.
+
+  It now keeps its answers the way Panorama keeps its: the numbers durably,
+  keyed on the recording and on the settings that change them, and the bulky
+  per-channel event lists as cache that regenerates. A colleague's scan
+  answers your question without being re-run.
+
+### Fixed
+
+- **A figure rebuild could report success and leave the window wrong.** The
+  verify step checks what the earlier steps restored and puts back whatever
+  has moved since -- channels, bad channels, event marks. The window, the
+  filters and the gain were only put back when the whole session object had
+  been replaced, so anything that moved the window on the session *already on
+  screen* left that check believing the three of them matched the recipe. It
+  then said so, out loud, in the sentence that exists to be trusted.
+
+  Which is the exact failure the step was written to catch, in the one shape
+  it was not looking for. Intermittent, because it needs a late write to land
+  inside the pause the step already takes -- so it appeared when something
+  else had been using the recording first and never when a rebuild was run on
+  its own.
+
+- **A page of thirty figures was forty-five megabytes.** The grid used each
+  figure as its own thumbnail, and the browser decoded every one at full
+  resolution to draw it at 150 pixels. Measured here: 20.1 MB of originals
+  against 0.25 MB of thumbnails, for the same grid.
+
+- **The Run button on a result opens that run.** It used to go to History and
+  reload it, landing you at the top of a list of every run the lab has ever
+  done -- having just clicked something that displayed the id of the one you
+  wanted.
+
+- **A result's provenance is followable.** It was a list ending in a single
+  unbroken line of JSON. The recording now opens, the animal is a search for
+  the animal, the run opens the run, and the settings are a table -- which is
+  what a rebuild reads back, and what tells two figures of the same recording
+  apart.
+
+## 2026.09.16.1 - Results is a folder of results again, and buttons answer
+
+### Fixed
+
+- **Results had 197 files in it and about a dozen were results.** The rest was
+  what running the tests leaves behind: forty-five "rebuild harness" PNGs,
+  forty-nine debug reports, thirty "arrow harness" exports of which
+  twenty-three were byte-identical to each other. All of it committed, to a
+  repository whose history is already 1.5 GB.
+
+  Saving now takes a *lane*. **Exhibit** is a result -- somebody made it on
+  purpose, it is evidence, and it is committed so a colleague sees it beside
+  the log entry that produced it. **Scratch** is a by-product: still written,
+  still findable under `Results/_scratch`, skipped by the catalogue and
+  ignored by git. The backlog was swept the same way. **Eighty-one files where
+  there were two hundred and five.**
+
+  The lane is declared by whoever saves, never guessed from the filename. The
+  harness pages drive the real interface from inside an iframe, so their
+  requests carry the app's own Referer and are indistinguishable from a
+  person's; saying so outright is the only honest signal there is. Debug
+  reports are always scratch.
+
+- **Clicking a button now registers.** Delete a banked entry, assign a set,
+  flag a recording: the dialog shut, the list carried on showing what you had
+  just changed, and a beat later it snapped. It was never the sync -- that
+  runs on a background thread and blocks nothing. It was that the answer the
+  server had already sent was thrown away in favour of re-reading the whole
+  store, that the re-read was expensive, and that nothing was on screen while
+  it happened.
+
+  A confirmation dialog holds itself open until the work is actually done,
+  rather than closing on the press and leaving the screen empty -- that alone
+  covers twenty-three destructive actions. A list you caused to reload dims
+  instead of silently lying. Anything slow raises a hairline at the top of the
+  window, after a moment's grace so the usual fast case never flickers. And
+  the writes people make most -- the session quality chips, archiving a
+  curation set, banking a delete -- now move on the click and put themselves
+  back if the save fails.
+
+- **The event bank was doing its work three times a request.** `/api/bank`
+  returns the tree and the summaries, the tree builds the summaries again, and
+  building them took every record apart and reassembled it. Cached: a warm
+  read went from **206 ms to 0.18 ms**. Looking an entry up was a scan of the
+  whole bank, called once per id inside loops that walk a selection; indexed,
+  forty lookups went from **20.8 ms to 0.03 ms**.
+
+- **Labelling a selection in StrataScope was one request per channel** --
+  thirty-two channels, thirty-two round trips in series, each rewriting the
+  whole sheet. The route had accepted the whole map all along. Painting also
+  rebuilt all sixty-four rows every time one was coloured, which during a drag
+  meant destroying the row under the cursor.
+
+- **Incisor's "Bank them" and Panorama's "Make the set"** both did their first
+  second of work before showing any sign of having been pressed.
+
+### Changed
+
+- **What a tool has already worked out is kept, and it is kept in one place.**
+  `panoramaset.py` worked out the shape of this first: a record per
+  *(recording, question)*, where the question is a short hash of the settings
+  that change the numbers. Ask the same thing twice and the second time is
+  free; a bulk run that dies halfway resumes; two people running halves of one
+  set are not each doing the other's. The numbers are durable and committed;
+  the picture is cache and regenerable.
+
+  That is not a Panorama idea, so it now lives in `toolresults.py` where any
+  tool can use it. Panorama passes the field list it always used, so every
+  record already on disk keeps its name -- checked against the real records
+  and four hundred generated parameter sets.
+
+## 2026.09.15.6 - Incisor says what it read
+
+### Added
+
+- **Bad channels are removed from processing, and Incisor says so.** They
+  used to be read like any other, which meant a dead channel could win the
+  hilus, theta or ripple pick against the live ones. Now they are never read,
+  and step 2 says which ones were left out and names them - or says outright
+  that none are marked, because "nothing was removed" and "nothing was
+  checked" look identical when a panel only speaks up about the first.
+
+- **And says which probe configuration it was read as.** H3 or H10-D, every
+  channel or even-only, inverted or not, with the measurement behind the
+  even-only decision quoted. None of it changes when a dentate spike
+  happened; all of it changes which channels there were to find one on.
+
+- **Channels can be added and removed without leaving the panel.** A grid of
+  every channel in step 2, ticked for read and unticked for bad. The tick
+  writes through to the session record - the same one the trace view reads -
+  so a channel marked in either place is marked in both. Changing it throws
+  the scan away on purpose: every candidate time came out of reading a
+  particular set of channels, and a result left sitting under a selection it
+  no longer matches is the kind of thing that gets banked by mistake.
+
+### Changed
+
+- **The three landmarks are listed theta, ripple, hilus.** Down the probe -
+  fissure, pyramidal layer, hilus - rather than in the order the code
+  computes them, so reading the panel reads the same way as reading the
+  traces beside it.
+
+- **The traces window opens on a CSD of the even channels over five
+  seconds.** A laminar landmark is a boundary, and a boundary reads off a CSD
+  where it is a matter of opinion on sixty-four stacked traces. All three are
+  starting points and all three can be changed in the window; a pick on a
+  channel that view is not showing is marked at its own depth and labelled
+  hidden. `?even=1` and `?even=0` now work on any deep link; leaving it off
+  still lets the recording answer for itself.
+
+- **Step 3 says what changing the channel does and does not do.** The hilus,
+  theta and ripple picks are computed FROM the detection and never feed back
+  into it: every channel was detected on separately and carries its own
+  candidates, and every time is that candidate's own sample index put through
+  the .ncs record timestamps. So switching a channel swaps which set you are
+  looking at, instantly and with nothing read again, and moves no event by a
+  microsecond. The answer is now in the panel, and `time_basis` carries
+  `depends_on_channel: false` for anything reading the payload. What does
+  move the picks is the selection in step 2, which is why that is where the
+  channels are changed.
+
+- **Channel lines repaint on the rasters, not only on the traces.** They were
+  already drawn there - a landmark is easiest to read against the CSD bands -
+  but only the traces panes were repainted when one moved, so a dragged line
+  sat at its old position on a CSD until something else redrew it.
+
+---
+
+## 2026.09.15.5 - Panorama says what each control does
+
+### Fixed
+
+- **Clicking log or linear bins no longer takes the Holistic view with it.**
+  Reported, and the cause was worse than the symptom: the bin scale and the
+  bin count were part of the cache key, so changing either missed the cache,
+  which meant the result on screen really had become invalid and getting it
+  back meant another three-minute run of identical arithmetic. The control
+  cleared the panel because there was nothing left to show.
+
+  Neither is true now. A histogram is a count of the per-window dominant
+  frequencies, and those are already computed - so re-binning is arithmetic
+  on a few thousand floats. The spectrogram matrices are kept beside the
+  cached result, so re-colouring is a re-render. The bin count, log or linear
+  bins, the colormap and log power all change what is shown, leave the
+  numbers alone, and start no job. A setting that really does change the
+  measurement - the frequency range, the window lengths - still clears the
+  result, because it should.
+
+- **`/api/panorama/recolor` actually re-colours.** It returned the stored
+  picture, so choosing a different colormap handed back the one already on
+  screen.
+
+### Added
+
+- **Every control in Panorama explains itself.** A small `i` beside each one
+  opens a note under it - what the window length and the FFT length are each
+  doing, why the frequency range changes how sharp a question the dominant
+  frequency is, what the two counting rules actually count, and why the bins
+  are log-spaced by default. Under the control rather than as a tooltip, so
+  it can be read without holding the mouse still.
+
+- **How clearly the dominant peak won.** A window whose runner-up came within
+  a fifth of the winner is a coin toss between two broad bumps, and the
+  frequency that came out of it is not a finding. Measured at 84% of windows
+  on a real recording over 2-100 Hz and 0% on a synthetic one with a single
+  clean rhythm - so it is a property of asking a wide range of a 1/f
+  spectrum, not a fault in any recording. Said in the convergence panel,
+  where somebody is about to read a group difference off the curve.
+
+## 2026.09.15.4 - Panorama converges
+
+### Added
+
+- **The convergence view.** Every recording in a set, pooled into one curve
+  per group - PTEN against littermate, or by any attribute the colony sheet
+  carries. The individual recordings are drawn faintly behind each mean,
+  because a group mean over six recordings where one is bimodal looks exactly
+  like six mildly broad ones and only the individual lines say which.
+
+- **Two defaults that are arguments, not conveniences.** Each recording gets
+  **one vote**, not one vote per window: the sampling unit is the recording,
+  and windows inside one are not independent, so pooled counts have an
+  apparent n of tens of thousands and a real n of however many animals there
+  were. And the denominator is the windows that **have** a peak, not all of
+  them: a genotype that abolishes a rhythm has to show up as an absence
+  rather than as a slightly shorter curve. Both can be switched, and the
+  panel says which it used.
+
+- **The no-peak fraction is plotted in its own right**, beside a strip plot of
+  one number per recording. The pooled curve is the exploratory object; the
+  strip plot is the claim, and the thing a test can actually be run on. They
+  are drawn together so nobody reads a group difference off a curve whose n
+  is six without seeing the six.
+
+- **Custom groupings**, seeded from what the colony sheet already says so
+  nothing is retyped. A recording's whole membership is written at once, so
+  moving one between arms on one machine cannot leave it in both after a
+  merge - and a recording in two arms of the same axis is refused by name
+  rather than counted twice.
+
+- **Saving a convergence** writes the figure, one row per recording, and every
+  histogram long-form, with the set id and the question's hash in the
+  filename.
+
+- **How clearly the dominant peak won is now recorded.** A window whose
+  runner-up was within a fifth of the winner is a coin toss, and the
+  frequency that came out of it is not a finding. Recordings where that
+  happened often are flagged in the tree.
+
+### Checks
+
+- **`tools/check_panorama.py` compares the GUI with the command line.** On a
+  real recording at matched settings, the aperiodic exponent agrees to a
+  median of 0.002 and R-squared to 0.0002 - the two fit the same spectra.
+
+  They disagree about the dominant frequency in 9.4% of windows, and the
+  reason is now established rather than assumed: it is not the chunk size
+  (31% of disagreements near a chunk edge against 23% of all windows) and not
+  the recording's gap (1 of 160). In those windows the other's answer is a
+  peak in this one's fit too, at a median 0.947 of the winner's power, and
+  only 5 of the 160 are below 12 Hz. Theta - the rhythm anybody is asking
+  about - is essentially never in dispute. The two agree about the spectrum
+  and disagree about an argmax over numbers equal to three significant
+  figures, so the check judges the dominant frequency where the winning peak
+  actually won.
+
+## 2026.09.15.3 - Panorama over a set
+
+### Added
+
+- **Panorama runs over many recordings at once.** A *set* is a question and
+  the recordings to ask it of: pick them from the registry, say which channel
+  by anatomy, and it works through them one at a time. The tree shows where
+  each one got to while it runs - reading, fitting, done - with its
+  dominant-frequency histogram drawn as a sparkline the moment it finishes, so
+  the cohort takes shape while the run is still going. Click a row for that
+  recording's spectrogram, histogram and spectrum.
+
+- **The channel comes from the layer sheet, or from you.** CSC14 is a
+  different depth in every animal, so a set names an anatomical region and
+  each recording's channel is read from its StrataScope sheet. Any row can be
+  overridden by hand, and overridden rows say so - a channel chosen by hand is
+  evidence about that recording, a channel chosen by rule is evidence about
+  the rule. A recording with no sheet is left needing one rather than analysed
+  on whatever channel happened to be first, which would silently compare the
+  hilus in one animal with stratum radiatum in the next.
+
+- **Stopping costs nothing.** Every answer is filed the moment it lands, keyed
+  on the recording and the question rather than on the set. So Stop is a
+  pause, a restart mid-run loses only the recording that was in flight, and
+  adding a recording to a second set that asks the same thing is free. Running
+  a finished set again says there is nothing to do instead of spending an hour
+  proving it.
+
+- **Everything knowable before a run happens before it.** A recording with no
+  channel chosen, or no folder this machine can read, is shown as blocked with
+  the reason on its row - rather than waiting its turn behind thirty others
+  and then failing. Found by the harness: the registry holds a second,
+  pathless copy of each demo recording, and both took their turn before
+  failing.
+
+- **The question is frozen when the set is made.** Changing the frequency
+  range makes a new set rather than quietly mixing two answers in one
+  histogram. Two recordings measured over different ranges cannot be pooled
+  and nothing in the file would have said so.
+
+- **Sets survive a colleague.** Two people can run different halves of one set
+  from different machines and both halves keep - the per-recording state
+  merges key by key, the way layer sheets do. A recording whose job died with
+  a restarted process reads as *interrupted*, not as still running.
+
+### Changed
+
+- **Bulk gets a job stage of its own, counted in seconds of recording.** It
+  cannot reuse the single-recording stages: `Job.begin` closes whatever stage
+  is running, so a stage opens once per run, and bulk has to read, fit and
+  discard one recording before the next starts. Folding the fitting into
+  `spectrum read` instead would have taught the Spectrum view that reading
+  costs what fitting costs. Seconds rather than recordings so the estimate
+  holds for a set mixing twenty- and forty-minute sessions.
+
+- **The end of a spectrogram says why it is blank.** `open_session` reports a
+  duration from the records and `segment_ncs` reports when acquisition
+  actually stopped; on `M8s9feb8` they are 78 ms apart, so the last samples
+  correctly have no data. The panel now says so instead of ending in an
+  unexplained transparent sliver.
+
+## 2026.09.15.2 - Panorama
+
+### Added
+
+- **Panorama, a new ToolKit tool: the whole recording at once.** The Spectrum
+  view answers "how much power, at which frequency" with time collapsed, and
+  XploreFinder's spectrogram panel answers "what changed, when" for a window
+  you are looking at. Neither answers the question asked of a recording
+  before any other: across the whole session, which frequency was in charge,
+  and how often?
+
+  Three steps, and they stay on screen together because the answer is the
+  three of them side by side:
+
+  1. **Holistic** - the spectrogram end to end, in Jet by default with every
+     other colormap offered, beside a histogram of the dominant frequency by
+     occurrence. 2-200 Hz and log-spaced bins by default; the range, the time
+     range, the bin count and linear bins are all settable.
+  2. **Power spectrum** - the whole-recording PSD over the same range, with
+     the step size it achieved and how many segments it averaged stated on
+     the card rather than left to be worked out.
+  3. **Save** - a figure, the spectrum, the histogram and the per-window
+     table as CSV, and a JSON of every setting that produced them, into
+     `Results/Panorama`.
+
+  This is the analysis that has been living in `FOOOF Playgroun/` as a
+  command-line script. It worked, and it could only be run by somebody at a
+  terminal, on one session at a time, into a matplotlib window that nothing
+  kept.
+
+- **Step 2 costs nothing.** Averaging the spectrogram's columns *is* the
+  whole-recording Welch spectrum - same segments, same window, same average -
+  so the power spectrum comes off the same read and arrives with step 1. The
+  per-window fits come off the same columns again. One read, three answers,
+  rather than reading a thirty-minute recording twice to get the same
+  numbers.
+
+- **A waiting screen worth watching.** Long runs show both stages with their
+  counts and the learned estimate of what is left, and the spectrogram
+  **builds up left to right as the recording is read** - the real data
+  arriving, not an animation. A run that is obviously wrong can be stopped in
+  the first ten seconds instead of at the end of four minutes. The picture
+  rides on its own route rather than in the job poll, so it costs the tools
+  that have no preview nothing.
+
+- **Both definitions of "dominant frequency", switchable without re-running.**
+  The tallest peak the fit actually found - which can be *none*, and a window
+  with no rhythm is counted as such and reported rather than quietly dropped -
+  and the highest bin left once the aperiodic slope is removed, which always
+  returns a number and is labelled for what that means. Both come out of the
+  one fit, so the toggle is free.
+
+### Fixed
+
+- **Acquisition gaps no longer shift the spectrogram's time axis.** Reading a
+  long channel chunk by chunk and concatenating is right for a spectrum,
+  which does not care what order its samples came in, and wrong for a
+  spectrogram, whose x-axis *is* time: every column after a gap was drawn
+  earlier than it happened, by as much as the gap. Eight of twenty-five PTEN
+  recordings have gaps. Panorama lays the signal out on the recording's own
+  clock with holes where nothing was written; windows overlapping one are
+  drawn transparent and take no part in the spectrum, the fits or the
+  histogram, and the panel says how many there were and how much time is
+  missing.
+
+- **Adding a job stage no longer costs every other tool its measured
+  timings.** `.cfc_rates.json` was stamped with a hash of the whole stage
+  table and the entire file was dropped when that changed - so a new tool's
+  stages silently reset the comodulogram's, the spectrum's and Incisor's
+  learned rates, and every estimate in the app was wrong for one run of each.
+  Stamped per stage now: only a stage whose own meaning changed loses its
+  number. Existing files are recognised and kept rather than discarded.
+
+## 2026.09.15.1 — One event, written twice
+
+### Added
+
+- **Collapsing duplicate times in a banked set.** Some dentate spikes in the
+  bank sit on exactly the same timestamp as another: `m34s8jun10` holds 185
+  events on 162 distinct times. They arrive when a set is imported twice, or
+  restarted on one machine while another still holds decisions on it, and
+  nothing this lab records fires twice inside a tenth of a millisecond — so
+  two rows that close are one event written twice.
+
+  Open an entry and the panel says so before anybody asks: a chip at the top
+  next to the event count, a strip above the events, and the rows themselves
+  marked in the list. "Duplicate times…" opens the collapse.
+
+  It is not housekeeping, which is why it does not run on its own. Fourteen
+  of `m34s8jun10`'s twenty-three doubles carry two *different* calls — one
+  copy says Dentate Spike and the other says Garbage — so collapsing them
+  throws a real decision away. The dialog names every contested time with
+  both calls, makes you pick which copy to keep, and will not run until you
+  have: keeping the first leaves 52 dentate spikes and keeping the last
+  leaves 42, and no sort order should be choosing between those. An
+  undecided copy losing to a decided one is not a conflict and is not
+  offered as one; nor is a double where both copies agree.
+
+  The preview is the server's own dry run, so what it shows is what the
+  write would do, produced by the code that would do it. It lands as a new
+  version with the old one kept whole — including its snapshot, so deleting
+  the new version puts every removed row back. No decision is changed by it;
+  rows go, and the calls on the rows that stay are the ones that were
+  already there. It also says when the curation set the entry was banked
+  from still has doubles of its own, because re-banking from one that does
+  would put them straight back.
+
+---
+
+## 2026.09.14.1 — Hello, and where the gaps actually are
+
+### Added
+
+- **The launcher says Jarvis.** Everything else was renamed months ago; the
+  first thing the terminal printed was still BARRY GUI. It is now the name in
+  block capitals, with a greeting that knows what time it is.
+
+  Two things it has to survive. `Wake up Jarvis.bat` runs cmd.exe, which on an
+  older machine is codepage 437 and cannot encode a single block character —
+  so the wordmark is tested against the real console encoding first and a
+  pure-ASCII one takes over when it will not fit. And ANSI colour works in
+  Windows' console only once virtual-terminal processing is switched on, so it
+  is switched on deliberately and dropped rather than printed as escape codes
+  when that fails.
+
+- **A bar showing where the gaps are.** Seven rows of record numbers said how
+  much and how far and nothing about *where* — and where is the useful shape,
+  because every gap on `M8s9feb8` falls inside 110 seconds of an otherwise
+  clean 35-minute recording.
+
+  Positions are to scale. Widths are not, and the panel says so: 122.5 ms in
+  2124 s is a fifth of a pixel, so each marker has a floor width. Because four
+  of the seven then share that pixel, a second bar draws just the stretch the
+  gaps are in — and only when the gaps actually cluster, since on a recording
+  where they are spread out it would be the same picture twice. Hovering a
+  marker gives its size, its record, and the shift from there on.
+
+- **The correction is explained, and offered.** The panel said correcting the
+  times was "a separate, explicit step" and stopped, which reads like
+  something nobody has built. It is built. The panel now says what it does —
+  times move onto the recording's own clock, every label and id survives,
+  nothing is re-detected, it lands as a new version with the old one kept, and
+  kilosort units for the same session still need the same conversion — and
+  offers a preview.
+
+  The preview is the server's own dry run, so what it shows is what the write
+  would do, produced by the code that would do it: how many events move, the
+  shift per stretch, before and after for the first few, how many decisions
+  are affected, and the events sitting within 125 ms of a stitch that may be
+  filter ringing rather than real spikes. Applying is a second, deliberate
+  button inside it, and nothing on the way there writes anything.
+
+### Fixed
+
+- **The gap heading could read "0 gap(s)" above a table of seven.** The count
+  came from `n_gaps`, which the capped health summary carries and the full
+  report does not — and the full report is exactly what `Check every channel`
+  swaps in. It now counts whichever of the two actually arrived.
+
+- **A check name was ellipsised** at 130 px, turning "mixed sample rates" into
+  "mixed sample ra…". It wraps.
+
+### Checks
+
+- `web/_dev/continuity.html` — 45 checks now, including that the panel counts
+  the gaps it was handed (fed the full report, which is the shape that was
+  broken), that every gap is marked, that a marker sits where its timestamp
+  says to within 0.05% of the bar's width, and that the correction box
+  explains itself and offers a preview.
+- `web/_dev/gapbar.html` — a shot-taker for the panel and the preview.
+
+---
+
+## 2026.09.11.1 — Gaps in the recording, and the scale on a dB panel
+
+### Added
+
+- **A re-timing action, behind a preview.** Once a recording is known to have
+  gaps, the banked event set on it can be moved from Toothy's concatenated
+  clock to the recording's own. Arithmetic on existing events: nothing is
+  re-detected, the raw `.ncs` files are not touched, `DATA.hdf5` is not
+  rewritten, and no gap is interpolated across — the samples were never
+  recorded, and a gap is missing data rather than bad data.
+
+  **Which way, and why.** To the Neuralynx clock, because Jarvis is a
+  raw-backed application: its viewer, `.nvt` tracking, `.nev` marks and video
+  are all on that clock. The cost is stated in the preview rather than left to
+  be discovered — kilosort unit times for the same session are still in
+  concatenated time and need the same conversion before unit/DS comparisons
+  mean anything.
+
+  **The basis is established, not assumed.** All seven affected sets say
+  `pipeline: 'ETS dentate-spike export'`, and whether that is concat-era
+  output is exactly the thing the plan says never to guess at. Measured
+  instead: every one of the 1224 banked times for M8s9feb8 sits within 1.5 ms
+  of a Toothy `ALL_DS` time, *including* the 314 after the first gap — which
+  would be 96–122 ms away on any other clock. A set hand-curated against the
+  raw viewer is recognised as already correct and refused; a pipeline nothing
+  records is refused with a reason, because a correction applied on a guess
+  introduces the error it is meant to remove.
+
+  **Curation identity is the timestamp**, which is why this is not a loop
+  adding 0.122 to every `start`. A candidate's identity in a set is its time
+  at `MATCH_DP = 4` — 0.1 ms — and the correction is a thousand times that.
+  Pushing re-timed events through `create()` would mint a fresh id for every
+  one, orphan every decision, and on the next merge from a machine that had
+  not re-timed produce two ids per time whose union is a set of twice the
+  size, half of it undecided duplicates. That is what happened to m33 s8 on
+  2026-09-08: 416 decisions became 832 candidates.
+
+  So the edit is in place and keyed by event id; the per-event merge stamp is
+  bumped, without which a colleague's untouched copy is newer and silently
+  reverts the correction on the next sync; and every post-condition is
+  asserted rather than assumed — ids preserved, count unchanged, order held,
+  decisions intact, no tombstone written. `tools/test_retime.py` covers all of
+  it, including a merge from an un-retimed machine, which is the failure that
+  only appears after a sync.
+
+  Never auto-applied. `/api/session/retime` previews by default and `apply`
+  has to be asked for; running it twice refuses on the `time_basis` stamp,
+  where absence means **unknown** rather than correct. Reversal is "restore the
+  previous version", not a second arithmetic pass.
+
+- **The session health report says whether a recording is continuous.**
+  Cheetah closes a record early when acquisition hiccups, and the next
+  record's timestamp jumps. neo and spikeinterface call that a segment break,
+  so the file reaches Toothy as a multi-segment recording and Toothy
+  concatenates it — which closes the gaps and relabels every sample after one
+  with a time earlier than its true one, by the cumulative duration of all
+  preceding gaps. The error is a step, constant inside each segment, and
+  nothing downstream recorded that it happened.
+
+  `M8_Pten\M8s9feb8` is 8 segments, 7 gaps, 0.1225 s never written, and
+  121.9 ms of error by the end. A dentate spike is 10–20 ms wide, so seeking
+  to a banked DS time in the raw file after 1762.5 s lands six to twelve event
+  widths from the event. Before 1762.5 s the two agree exactly, which is why
+  it passes a casual spot-check.
+
+  The check is a faithful port of neo's `NcsSectionsFactory._buildNcsSections`
+  — including spikeinterface's non-strict 4267 µs tolerance, so the
+  segmentation reported is the one Toothy actually saw, not a stricter rule
+  that would count clock jitter as a break and find thousands. Verified
+  against spikeinterface's own answer on every affected recording in the PTEN
+  archive: same segment counts, same gap tables, same figures to six decimal
+  places.
+
+  It runs on every health check rather than being a deep-check extra, because
+  neo's fast path decides a continuous file from two records. Seventeen of
+  the twenty-nine PTEN recordings take it and cost two seeks; the answer is
+  cached against the reference file's size and mtime.
+
+- **Details behind the continuity row** — the gap table, the segment map, and
+  the three durations this recording can be said to have. Plain language in
+  the row, numbers in the expansion, because "121.9 ms" is a claim and the gap
+  table is the evidence for it. `Check every channel` parses all 64 rather
+  than the four-channel spot-check, which is the answer to trust before acting
+  on one.
+
+- **`tools/scan_continuity.py`** — the same check across a whole tree, for
+  "how much of the archive is affected" rather than "is this session all
+  right". On D:\PTEN\PTEN: **7 of 29 recordings have gaps**, and the other
+  22 are genuinely single-segment, which is the check discriminating rather
+  than always firing.
+
+- **`/api/session/continuity`** carries the full segment map. The health
+  report holds a capped version — sixty segments and sixty gaps — so a
+  sixty-session scan cannot return a hundred thousand rows.
+
+### Fixed
+
+- **Pinning the colour scale on a dB panel replaced the picture with a red
+  rectangle.** Reported: "when you click on Auto to pin the theta power
+  raster it breaks things, the colors look off."
+
+  Three faults stacked. Only one of the five image panels ever reported
+  `clim_auto`; the band-power raster, the spectrogram and the comodulogram
+  never did, so the client fell back to the literal placeholder `[-1, 1]`.
+  Band power in dB re 1 µV² runs about [-3, 27], so pinning clipped 30 dB of
+  data into 2 dB and everything above 1 dB saturated at the top of jet.
+
+  Underneath that, pinning rebuilt the range as `[-magnitude, +magnitude]`.
+  Symmetry is right for voltage, CSD and theta — signed quantities where zero
+  is the middle — and wrong for every one-sided scale: forcing [-3, 27] to
+  [-27, 27] throws away most of the map whatever the placeholder does. Each
+  panel now says what its auto limits are **and** whether its scale diverges,
+  and pinning pins the picture that is on screen.
+
+  And underneath *that*: the control strip is built when the pane appears and
+  `fetchImagePanel` never rebuilt it, so the button closed over
+  `auto === undefined` from before the first panel arrived and kept it for the
+  life of the pane. It cannot simply rebuild on every fetch — that replaces
+  the slider under a dragging pointer — so the button reads the live scale at
+  the moment it is clicked, and the strip refreshes only when the text on it
+  would change and no drag is settling.
+
+  On a one-sided panel the slider now sets the dynamic range, anchored at the
+  top, which is the only number on a dB axis anyone wants to move.
+
+- **The event bank never reached Supabase.** The table existed with **0 rows**
+  while this machine held 158 snapshots. Three faults, all from the morning
+  the table was added:
+
+  Each row's `updated_at` is the version's own creation time — deliberately,
+  so a pushed snapshot is never re-sent — which also means every snapshot
+  created before the feature shipped is older than `last_push` and was skipped
+  permanently. The table is append-only and small, so it now asks the database
+  which `(entry_id, v)` pairs exist and sends the difference. No clock
+  involved, right on the first push and the thousandth.
+
+  `collect()` never called the builder. It was written and wired into the push
+  order and the conflict map, and the one line that gathers it was missing.
+
+  And a foreign-key rejection aborted the **entire push**. `bank_snapshots`
+  sits sixth in the order, so one snapshot whose entry had not landed yet
+  returned `23503` and stopped `curation_sets`, `layer_sheets`, `results` and
+  everything after it from being sent — which is why a v3 curated here never
+  appeared anywhere else. The builder now sends only snapshots whose entry the
+  database already has; the entry goes up from an earlier table in the same
+  push and its snapshots follow a minute later. 130 snapshots up, and the
+  later tables moving again.
+
+- **The viewer was on a time basis of its own.** `read_ncs_range` seeked with
+  `floor(t / block)`, which assumes every record is full and that no timestamp
+  ever jumps. Measured on M8s9feb8: a window labelled t=2000 held data from
+  1999.923 — **77 ms early** — and the axis was 70 ms wrong by the end of the
+  file. Re-timing events while the viewer's own axis is wrong just moves the
+  error around, so this went first.
+
+  The seek is a binary search over the record timestamps now: seventeen
+  twenty-byte reads find the right record in a file of any size, exactly, and
+  on a continuous file it lands on precisely the record the arithmetic would
+  have picked. A window that crosses a gap reports it rather than pretending
+  to a uniform axis.
+
+- **The reported duration was a third number again.** `session_health` gave
+  `n_records × 512 / fs` — 2124.544 s on M8s9feb8, against 2124.3445 s
+  concatenated and 2124.4661 s on the recording's own clock, and agreeing with
+  neither the raw files nor anything Toothy produced. It is now the true
+  duration, read from the first and last record, with the concatenated one
+  beside it whenever the two differ. On a clean recording all three collapse
+  to the same number, which is exactly why this went unnoticed.
+
+- **Two counters were both called "gaps" and disagreed.** `read_ncs` counts
+  inter-record intervals off by more than half a block — 9 on M8s9feb8, where
+  neo sees 7 breaks. It also counts ordinary clock jitter, so it is now
+  `irregular_intervals`, which is what it counts. "Gaps" means neo's rule,
+  which is the one that decides whether Toothy sees one segment or eight.
+
+- **"2309 samples went missing" was the wrong number and the wrong idea.** A
+  synthetic test caught it: a record closed early at 200 of 512 samples, with
+  the next timestamp following 200 samples later, lost nothing — and the check
+  announced 312 missing samples. `n_records × 512 − samples` counts unused
+  buffer slots, not loss.
+
+  Nor is the obvious alternative any better: summing every sub-tolerance
+  residual gives 290 ms on M8s9feb8 and 299 ms on a recording with **no gaps
+  at all**, because `int(1e6 / fs × nvalid)` truncates and a microsecond per
+  record over 124,485 records is 124 ms of pure arithmetic. Measured: the
+  median residual on a full record is exactly 1 µs.
+
+  What is measurable is the residual at the records Cheetah actually closed
+  early. M8s9feb8 loses 7.6 ms that way; a clean recording with three short
+  records loses 2.9 ms. Across the archive that is 2 of 22 clean recordings
+  rather than all 22.
+
+- **A check name was truncated.** `.check-name` ellipsised at 130 px, turning
+  "mixed sample rates" into "mixed sample ra…" — hiding the word that matters.
+  It wraps now.
+
+### Checks
+
+- `tools/test_continuity.py` — the segmentation against files it writes
+  itself, so the right answer is known before the code runs: a continuous
+  file, a 50 ms gap, a 2 ms hiccup below the tolerance, short records with and
+  without lost time, a slow clock that must not read as loss, and a channel
+  that disagrees with the others.
+- `web/_dev/continuity.html` — 23 checks against the real recording, including
+  that a clean session does **not** get the warning.
+- `tools/test_retime.py` — 37 checks on the re-timing: a preview that
+  writes nothing, an apply that keeps every id and decision, a second run
+  that refuses, and a merge from an un-retimed machine that neither reverts
+  the times nor doubles the candidate list.
+- `web/_dev/climpin.html` — 11 checks that pinning a dB panel keeps the
+  picture and that pinning a signed one is still symmetric. It reproduced the
+  reported bug before the fix and fails again if either half is reverted.
+
+---
+
+## 2026.09.10.1 — Braid, and the name on the door
+
+### Fixed
+
+- **A profile set on one computer became everybody's.** Reported, and worse
+  than it looked. `Profile` and `Device` both say they are per-machine, and
+  both are half right: each machine WRITES its own shard, and both were
+  READING `book.read()`, which merges every machine's shard field by field,
+  last write wins. So the moment another computer typed a name, its name was
+  newer than yours and won everywhere — and the computer's nickname went the
+  same way.
+
+  Attribution comes from that record, so this was not a display quirk: it
+  credited work to whoever had most recently typed a name somewhere else.
+  And because a save read the merged record before writing it back, the
+  mixture got persisted — this machine's own file now holds one person's
+  name with another's email, written two days apart.
+
+  Both now read `read_mine`, which is this machine's shard and nothing else.
+  A machine that has never set a profile reads as unset rather than as
+  somebody else, which is the correct answer and the point: it will ask,
+  once, instead of quietly crediting the wrong person.
+
+- **The feed was not live, and the timestamps were fine.** Measured against
+  the clock, the newest rows were genuinely 21 minutes old and correctly in
+  UTC. Three delays were stacking: the client queues actions for four
+  seconds, the push reaches Supabase on the sync cycle, and the feed polled
+  every nine. Since it read only the shared table, your own work was
+  invisible until a push happened.
+
+  `activity.log` now notifies listeners the moment an action is logged —
+  before the queue, before any request — so your own actions appear with no
+  latency at all, marked "not shared yet" until the push carries them. The
+  feed endpoint merges this machine's log with the shared table so a reload
+  agrees with what the live append showed, and the poll is three seconds for
+  everybody else's work.
+
+- **A feed could go quiet while you were working.** It asked for rows newer
+  than the newest one it held — and that stamp comes from whichever machine
+  wrote it. The eleven machines in these logs do not share a clock, so one
+  running a minute ahead put the watermark a minute into the future and
+  every row this computer wrote until then was "older than since" and never
+  arrived. The watermark is set back two minutes and duplicates are dropped
+  by id.
+
+- **Braid had no way out.** DS curation and StrataScope both end their bar
+  with `Leave`; Braid had nothing, so a mode that takes over the panes, the
+  keyboard and a second window gave no way to hand them back. Same button,
+  same place, and `cfcbar.html` now checks for it.
+
+- **"Draw at full rate" did nothing on a raster.** Reported, and the server
+  proved it: at full rate a raster went from 1800 columns to 20000 and
+  stayed averaged, so the picture was identical. A picture is as wide as the
+  pane it is drawn in. That step is marked not-reversible now, the cap is no
+  longer raised, and the panel states the limit — one column is 33 ms — with
+  no switch offered, because a switch that cannot move is worse than none.
+
+- **There was no way back from full rate.** The badge became a `<span>` once
+  full rate was on, so the one thing it had to be able to say — "and here is
+  how to undo me" — it could not. It is a button in both states.
+
+- **A full-rate render now says what the wait is for.** "Every sample at
+  30 kHz · exact filters, no shortcut · 64 channels", instead of "reading
+  channels" whatever was being asked.
+
+- **The rasters were downsampling without saying so.** Reported from the
+  application: the badge showed on the voltage traces and not on the voltage
+  raster or the CSD. True, and my omission — the recorder was wired into
+  band power's call and not into the other two, so the panels people spend
+  the most time in were the two that said nothing. A CSD of a 60 s window is
+  1.8 M samples averaged into 1800 columns, which is **33 ms a column** when
+  a dentate spike is a few milliseconds wide. It says that now, and offers
+  to raise the cap.
+
+- **The DOWNSAMPLED badge could not be clicked.** It lives in the caption
+  strip over the plot, and that strip is `pointer-events: none` — so the
+  answer to "how do I turn this off" was that you could not. Three faults in
+  one small element, all mine: the strip swallowed the click, `nowrap` +
+  `overflow: hidden` clipped the badge off the end of a long line, and the
+  detail panel was appended *inside* that one-line strip, where it could
+  never be seen. The text is now the part that ellipsises, the badge is the
+  part that survives, and the panel opens in the caption's own frame.
+
+- **Sixty-four channel labels sat on top of each other.** The lane is a
+  fixed 18 px, or 12 px when compact. The grid slot it sits in is the plot
+  height over the channel count — 7.8 px for 64 channels in a 500 px pane —
+  so every lane overlapped its neighbours by two pixels top and bottom, and
+  the gutter read as a grey smear. The height and font now follow the
+  measured pitch, and below about 10 px the names thin out one row in `n`
+  while every row keeps its controls, which is the stride a crowded axis
+  already gets in `compose.py`.
+
+  `chan64.html` checks that all sixty-four lanes have a hittable
+  bad-channel button and never checked that two lanes were in the same
+  place, which is why the suite was quiet about it. `downsampled.html` now
+  measures it: no lane may overlap the next, and the caption may not
+  intersect any of them. It reports 64 lanes at a 10 px pitch with 10 px
+  height, and a caption starting 4 px clear of the widest label.
+
+- **The caption ran into the channel labels.** It sat at `left: 0`, and so
+  do the labels. The indent is measured now rather than guessed — the widest
+  DOM lane on a trace pane, and the widest label the grid canvas actually
+  drew on a raster, since those are painted rather than built. A pane
+  showing `CSC28-CSC29` gets a wider indent than one showing `CSC2`. Its
+  backdrop is opaque too: at 9 px over a trace, a translucent wash mixes the
+  text with the signal and the line reads as neither.
+
+- **The leftover-clearing added yesterday broke `bank.html`'s own count.**
+  It clears the entries earlier runs left behind, and that clearing landed
+  between the point where the harness counted the bank and the point where it
+  compared — so every leftover deleted counted against the entry about to
+  be banked, and the check read "77 -> 74". Counted from where banking
+  actually starts now, and it passes three runs back to back, which is the
+  case that broke it.
+
+- **The comodulogram window snapped to a voltage trace a moment after it
+  opened.** It is opened as `/?role=comod#comod` and names no recording,
+  because it reads the window and the channel from its opener. The boot-time
+  "reopen what was last open" guard says it skips a window "launched with its
+  own target (a pop-out, or a deep link)" — but it tested only for
+  `?csc=`, which pane pop-outs pass and this one cannot. So it fell through:
+  the window drew its form, and 250 ms later `restoreLast()` reopened the
+  last recording and finished with `setView('xplore')`. The three toasts were
+  the only clue — "Reopening…", "view restored", "Loaded 2 events from
+  Events.nev". The guard now excludes any window carrying a `role`, which is
+  what "a pop-out" means here; every pop-out sets one.
+
+- **The Comodulogram button spent its first seconds under a stack of
+  toasts.** `cfcscope.js` removed the `--bottom-bar` variable on exit and
+  never set it, so nothing reserved the height its bar occupies — and
+  toasts are pinned bottom-right above exactly that spot, three of them on
+  entering the mode. StrataScope sets the same variable and says why:
+  "without this one covers Export CSV whenever anything is saved."
+
+- **A typo in a band field asked the server for 60 GiB.** `0.05` typed where
+  `5` was meant is a 180000-tap filter, and `firls` designs one by solving a
+  least-squares system the size of the order — reported to the browser as
+  numpy's complaint about an array shape. There is now a 1 GiB design budget
+  in `cfc.eegfilt_taps`, so it covers the comodulogram as well as the panel,
+  and it refuses in a sentence naming the number to change. A 4 Hz band
+  (2250 taps) and 1 Hz delta (9000) design exactly as before.
+
+- **`badsync` was measuring the opposite of what it says.** It assumed the
+  channel it tests starts unmarked, so once a mark was left behind its first
+  click cleared instead of marked and all five of its remaining checks
+  reported backwards — which is how a harness passes five runs and then
+  reports five failures pointing at the wrong thing. It now clears the
+  channel first if it finds it marked, and says so. Its checks also asked
+  whether the joined list "1,4,14" *contains* "4", which is true of 14 and
+  40.
+
+### Added
+
+- **Archived computers stop filling the error feed.** Archiving a machine
+  already existed and took it off the device pickers and nothing else, so
+  eleven machines' faults — three of them retired — were still in the list.
+  Matched on the id rather than the friendly name, because this lab has four
+  names in its logs for three computers. Hidden, not dropped: the count is
+  on screen with a way to show them, since "no errors from the rig" and "the
+  rig is archived" read the same and mean opposite things.
+
+- **Export open errors.** One text file of every unresolved fault with the
+  activity either side of each occurrence, on one clock — because a
+  traceback says what broke and the twelve actions before it say why. For
+  working through a dozen at once, or for handing to somebody else. Bounded
+  at sixty groups, three occurrences each, twelve actions either side: past
+  that it stops being readable.
+
+- **Every tool has a live activity feed, read from Supabase.** Each mode
+  already wrote to the activity log and those rows already went up. What was
+  missing was anybody being able to read them back **per tool**, so "is
+  somebody else curating this?", "what did that import actually do?" and
+  "why does this look different from yesterday?" were questions you answered
+  by asking a person.
+
+  It is for reproducibility first and debugging second. The feed is the
+  record of what was done to a recording, by whom, on which machine, in what
+  order — including the actions from the *other* machine that this one only
+  learned about through the sync, which are exactly the ones nobody can
+  reconstruct from memory.
+
+  It is under all six tools: bad channels, event curation, StrataScope,
+  Braid, Kilosort and Import sorted snapshots. **And under any tool added
+  later, with no registration step**, twice over: a tool id the server has
+  never heard of falls back to its own name as the action prefix, and the
+  ToolKit mounts the feed by watching the panel host rather than by each
+  tool remembering to ask. `toolfeed.TOOLS` exists only for the tools whose
+  actions are not named after them — curation also writes `bank.*`, Kilosort
+  writes `phy.*`, and bad channels were `channels.*` long before there was a
+  page for them.
+
+  The header says **which source it is reading**, because "nobody else is
+  working on this" and "I could not reach the shared table" look identical
+  on screen and are not the same fact. Polling asks only for what is newer
+  than the newest row it holds, so a feed left open all afternoon costs
+  twenty rows and then nothing.
+
+- **Banked versions travel through Supabase, snapshots and all.** Migration
+  11 sent the version history up without them and said why: 110 versions are
+  44 kB of metadata and 0.5 MB with their snapshots. So a colleague's v7 was
+  *visible* and not restorable — you could see who made it and how many
+  events it held, and you needed a git pull to have it.
+
+  `bank_snapshots` (migration **14**) closes that, and the shape is what
+  makes it safe: keyed `(entry_id, v)`, append-only. A version's snapshot is
+  written once and never changes, so two machines writing the same key write
+  the same bytes — there is no last-writer, no clock to compare, and none of
+  the timestamp-comparison class of bug that has been wrong in eleven places
+  in this codebase. `updated_at` is the version's own creation time, so the
+  incremental push sends each snapshot exactly once and then stops forever.
+
+  Nothing replaces the JSON shard. It is still written and still travels
+  with the repository, so a snapshot now has two independent copies instead
+  of one. `absorb_snapshot` only ever FILLS one in: if this machine already
+  has that version, the two are compared by a digest over a canonical form,
+  and a disagreement is **reported rather than resolved** — there is no
+  correct side to pick, and a version that disagrees with itself is a fault
+  to look at. Conflicts ride out with the sync result.
+
+  `tools/test_banksnap.py` proves it in seventeen checks, including that a
+  machine's own work survives a pull, that a payload whose digest does not
+  match its content is refused, and that float noise (315.275 against
+  315.27500000000003) is one snapshot rather than two.
+
+  **Run `supabase/14_bank_snapshots.sql` before expecting it to work.**
+
+- **The comodulogram's parameters are editable again.** Tort's grid is still
+  what it opens with and still says where it comes from; `Edit…` reveals the
+  eight fields. Once the grid is no longer Tort's the form says so plainly,
+  because the whole reason to default to the reference is that a map on it
+  is comparable with a map from the paper. One click puts it back.
+
+- **Every panel now says DOWNSAMPLED when it is, and offers not to be.** A
+  panel that ran on every tenth sample cannot be told from one that ran on
+  all of them by looking at it, and the difference decides what the picture
+  is allowed to mean. So each one states what it did, in the line that
+  already says what it ran on:
+
+  ```
+  ran on  01:40-02:40 (60 s) · 1 ch · >3 Hz +60Hz notch   [DOWNSAMPLED]
+  ```
+
+  Clicking it says exactly what happened — 30 kHz → 3 kHz, ÷10,
+  anti-aliased, nothing above 1.5 kHz in the answer; or 1,800,000 samples
+  drawn as 1,400 min/max columns, extremes exact and shape inside a column
+  not — and offers **Draw at full rate**, per pane.
+
+  The badge is red for a step that is **not** anti-aliased, which is a
+  different claim and must not look like the same one. Only the scalogram
+  does that: it takes a plain stride over 200 000 samples, so energy between
+  1.5 and 15 kHz folds into the picture. It now says so in those words.
+
+  Full rate is refused rather than attempted when it would be absurd, with
+  the number and the window that would fit: "Every sample of 60 s at 30 kHz
+  is 1,800,000 points per channel, past the 400,000 this will send without
+  an envelope. About 13 s would fit." Which surfaced something worth
+  knowing — **band power cannot run at full rate at 30 kHz at all**, because
+  eegfilt's order scales with the sample rate and designing a 4 Hz filter
+  there means a 22500-tap least-squares system. The decimation is not an
+  optimisation; it is what makes the analysis possible.
+
+  The spectrogram correctly wears no badge: it runs on every sample.
+
+- **An explainer behind the bandwidth line, opened by the (i) beside it.**
+  The band-power panel prints "Really 1.14–3.42 Hz wide, not 0.5. The bands
+  overlap — this is a smooth read of where the rhythm sits, not 17
+  separate measurements." The line is true and short, and short is what makes
+  it repeatable — but it is a fact about filter length that takes a chapter
+  to earn, and anyone meeting it for the first time had nowhere to go. There
+  is now an (i) in that sentence, and it opens the chapter.
+
+  Twelve chapters, from "a recording is a voltage over time" to "what not to
+  claim": frequency, filtering, amplitude and phase, band-resolved theta, the
+  bandwidth and what overlap costs, coupling, the modulation index, the
+  comodulogram, surrogates, the controls mapped one by one, and the ways the
+  arithmetic produces a number that means nothing.
+
+  Nothing in it is a picture. One synthetic recording is built from sliders at
+  the top and carried through every chapter — spectrum, filter, envelope,
+  phase, band raster, comodulogram, surrogate histogram — so moving the
+  coupling slider in chapter 7 changes chapter 9's map for the same reason it
+  changes a real one. The comodulogram there is 195 live modulation indices,
+  recomputed as you drag. A guide made of screenshots cannot be interrogated.
+
+  Chapter 6 is where the (i) lands. It draws every row of the panel as the
+  width it actually covers, and prints what the overlap costs: at three
+  cycles the seventeen rows carry about 3.5 independent numbers. Drag the
+  filter length to 24 and the bands narrow to 0.17–0.50 Hz and all seventeen
+  rows become independent — and the filter now holds six seconds of
+  recording, so chapter 5's drifting rhythm loses its slope. That trade is
+  the whole reason the line exists.
+
+- **CFCScope, in the Toolkit.** A third mode beside DS curation and
+  StrataScope, and the first that decides nothing: it opens a recording in
+  Xplorefinder, puts band-resolved theta power in a second window, and
+  puts a comodulogram of the window on screen one keystroke away. No sets,
+  no bench, no decisions — the banner says so and `web/_dev/cfc.html`
+  checks it, by reading the activity log for writes after entering and
+  leaving.
+
+  The MATLAB beta run in `Reviving CFC/Revival Pipeline` answers "does this
+  channel have phase–amplitude coupling", offline, in minutes. What it
+  cannot answer is "does *this* window", which is the question somebody
+  scrolling has. The arithmetic here is a copy of that pipeline's own
+  Python port (`05_explainer/cfc_core.py`), and `tools/cfc_check.py`
+  re-runs the explainer's assertions against the copy so it cannot drift:
+  the modulation index matches `ModIndex_v2.m` to 1e-12.
+
+- **A theta power panel that says which theta.** The existing `theta` panel
+  bandpasses 4–12 Hz in one go, which answers how much and cannot answer
+  which. This one is seventeen narrow bands in 0.5 Hz steps, each the mean
+  squared envelope of its own analytic signal — the `ThetaPower.m`
+  definition, from the same filter bank the coupling measure uses, so the
+  two panels can never be quietly talking about different bands. A marginal
+  curve down the right names the loudest band in the window.
+
+  It also prints the thing a band axis never admits: `eegfilt` sets its
+  order from the *lower* cutoff, so a band comes out about 0.30 × that
+  wide however narrow you asked. The 0.5 Hz theta bands are really
+  1.1–3.4 Hz and they overlap; a nominal 10 Hz band at 200 Hz is nearly
+  60 Hz of spectrum. Measured from the filter's own frequency response and
+  shown in the panel, because seventeen overlapping rows presented as
+  seventeen measurements is the trap this panel was built to avoid.
+
+- **A comodulogram you can afford to ask for.** Its own window, so two maps
+  can be compared, which is most of what one is for. Measured on this
+  machine, a 60 s window over the `params.m` grid: 3.3 s for the filter
+  banks, 0.3 s for the 629 modulation indices, and 16 s or 32 s more for 50
+  or 100 surrogates. So the null is off by default and the form says what
+  turning it on will cost before you commit.
+
+  It reports the permutation p, not z. The beta measured the surrogate null
+  to be centred but over-dispersed — SD 1.4, and it does not shrink as
+  surrogates are added — so a nominal |z| > 3 behaves like 2.2. The map
+  outlines cells at p ≤ 0.05 and says how many chance alone would have
+  given, because "31 cells significant" means nothing until you know that
+  31 is what an empty map looks like.
+
+- **A loading display that is not a spinner.** Seven named stages, each
+  counting in its own unit — bands, cells, surrogates — with the overall
+  bar weighted by what each stage actually costs rather than by stage
+  count. On a 100-surrogate run the surrogates are seven eighths of the
+  work, so seven equal steps would sit at 71% with nearly everything left
+  to do. The estimate waits until it has three ticks to estimate from, and
+  the per-stage rates are remembered per machine, so the second run's
+  estimate is right on the rig as well as on a laptop. Cancel lands in
+  0.11 s, measured.
+
+### Changed
+
+- **Jarvis, not Javits.** I misheard the name. Mechanical this time and
+  safe in a way the last rename was not: "Javits" was nowhere an identifier,
+  a folder, or a string written into anybody's data, so a straight
+  replacement was correct everywhere it appeared — which is exactly what was
+  not true of the name before it.
+
+- **The rail badge wears the mark.** It was a gradient square with a `B` in
+  it: the wrong initial, and a letter in a box is what an application uses
+  when it has no mark. It has one, so it uses it — inline, taking its two
+  colours from the live theme, so the badge in the rail and the icon in the
+  tab are the same mark in the same light rather than one being a picture of
+  the other.
+
+- **The application is called Jarvis.** The launchers are **Wake up
+  Jarvis** (`.bat` and `.command`), moved with `git mv` so their history
+  follows them, and everything that names them was updated in the same pass
+  — the README, `setup.py`'s closing line, `start.py`'s docstring, and the
+  mac script's own chmod hint.
+
+  Four things deliberately keep the old name, because they are not the
+  product's name:
+
+  - `const BARRY` and its 1713 references. That is an address, not a name.
+  - `pipeline: 'BARRY threshold detector'`, which is **written into banked
+    entries as provenance**. Renaming it would give one detector two names
+    and make last week's entries disagree with today's about which tool made
+    them. Provenance is history.
+  - `"BARRY GUI"` in `registry.py`'s skip list — a **folder name**, and the
+    string by which a drive scan knows not to descend into the application's
+    own directory.
+  - the folder itself, and every path containing it.
+
+  Renaming the first of those was how I broke eighteen harnesses on the way
+  here: they reach the global by name, as a string — `ev('BARRY')` — and a
+  regex cannot tell a name from an address. The application booted fine
+  throughout; the tests were asking for a global that no longer existed.
+
+- **CFCScope is now Braid.** Phase-amplitude coupling is two rhythms
+  plaited together, and "CFCScope" was an acronym wearing a telescope. The
+  module, the file and the `BARRY.cfc` handle keep their names for the same
+  reason as above.
+
+- **A new mark.** The old favicon was a five-spike train in a rounded
+  square, which said "oscilloscope" rather than anything about this
+  application. The new one is a single continuous stroke: flat, a sharp
+  spike up, down through the baseline, and the descent becomes the stem of a
+  J. So it reads as a dentate spike at 256 px and as an initial at 16.
+
+  `tools/make_icons.py` renders that same SVG in the browser and packs six
+  sizes into `web/img/jarvis.ico`, so the tab, the shortcut and the dock
+  cannot drift apart. A `.bat` cannot carry an icon, so there is a
+  **`Wake up Jarvis.lnk`** beside it that can.
+
+- **Samples are anti-aliased before the filter bank.** `read_csc.m`
+  decimates with `Samples(1:10:end)` and no low-pass, so content above the
+  new Nyquist folds into the 20–200 Hz amplitude axis — a caveat the beta's
+  README flags as a real risk needing a decision. CFCScope uses
+  `scipy.signal.decimate`, which filters first. Its numbers are therefore
+  better than the legacy pipeline's and **not** bit-comparable with
+  `newFCSE` output; every panel and every caption says which was used.
+
+- **A sequential colormap, offered and defaulted to for coupling maps.**
+  `jet` remains the default everywhere else, because it is what the
+  existing figures use. It is the wrong choice for a comodulogram
+  specifically: `fig11_colour_lies.py` in the explainer shows the same
+  no-coupling recording three ways, and a rainbow autoscaled to its own
+  range invents a story the numbers do not support. The map always prints
+  its own maximum, and Lock scale holds the scale across every map in the
+  window so two of them can actually be compared.
+
+---
+
+## 2026.09.09.2 — one probe, one panel
+
+### Fixed
+
+- **`conflict_check` called four conflict-proof files conflicts.** The tool
+  that proves no file in `GUI_logs` can produce a git conflict flagged the
+  feedback triage overlays — and the reason those exist is the very rule it
+  enforces: triaging a report somebody else filed used to edit *their*
+  shard, so it writes `<id>~<this machine>.json` instead. The machine name
+  is in the name, just after `~` rather than `@`, because an overlay must
+  not be read as a shard of the base report. The tool tested the spelling,
+  not the rule. A feedback screenshot was flagged too; it is an attachment,
+  written once by the machine that filed the report.
+
+  `test_twomachines.py` had its own copy of the classification, which is
+  exactly why the two drifted apart — it now asks `conflict_check.classify`,
+  so there is one answer to “can this file conflict”. The sigil is a named
+  constant in `feedback.py` instead of a `"~"` in two files that have to
+  agree. All four `tools/test_*.py` pass, and the check reports 1259
+  per-machine files and nothing shared.
+
+
+- **A bad channel you had cleared came back by itself.** Bad channels travel
+  between windows on their own “facts” channel, which is published whatever
+  the link mode — a channel is broken or it is not, and that does not depend
+  on whether the second window happens to be following the first. But the
+  time/view channel carried the list as well, and that one is only published
+  while the windows are linked:
+
+  ```
+  mark CSC4 bad while linked   ->  facts: [4]   time: [4]
+  unlink, or close the other window
+  clear CSC4                   ->  facts: []    time: [4]   <- stranded
+  any window applies that view update -> CSC4 is bad again
+  ```
+
+  Measured on this machine, with the store and the facts channel both
+  clear, the view channel still said `bad: [4]` — so every window that
+  opened that recording came up with CSC4 marked, and the next save wrote
+  it back to the store. That is how a mark somebody had deliberately
+  cleared returns, and it is the reason `badsync` kept finding a leftover
+  mark before every run however cleanly the previous one had finished.
+
+  The view channel no longer carries a bad list or applies one. A view
+  update can be minutes old and says nothing about whether a channel is
+  broken. There is a harness for it (`badstale.html`) that marks a channel,
+  clears it, then publishes exactly the stale view update the old code
+  left behind — it fails on the old code and passes on the new.
+
+- **`badsync` was measuring the opposite of what it says.** It assumed the
+  channel it tests starts unmarked, so once a mark was left behind its first
+  click cleared instead of marked and all five of its remaining checks
+  reported backwards. It now clears the channel first if it finds it marked,
+  and says so. Its checks also asked whether the joined list “1,4,14”
+  *contains* “4”, which is true of 14 and 40 — a recording with CSC14
+  marked would have passed the whole harness without CSC4 being touched.
+  Membership is now asked of the set.
+
+
+- **Five lists were ordered by comparing timestamps as text.** Having fixed
+  six comparisons, I went through every remaining one in the application.
+  What was left was ordering — the deck list and the report list “newest
+  first”, the notes on a report oldest first, the curation shelf's “recent”
+  order — plus one more decision, in the fold of the old shared sidecar
+  file, which kept the older copy of a result's curation whenever the two
+  stamps were written in different offsets.
+
+  Every one of those lists holds both offsets at once, so “newest first”
+  could put a row from 20:41 local below one from 00:37 UTC that is four
+  minutes older. Eleven places in one day, from one habit.
+
+  There is now a `tools/test_times.py` that covers the comparison, the sort
+  key and the feedback merge — fifteen checks. Two of them fail if the
+  string comparisons are put back, which is the only reason to trust the
+  other thirteen.
+
+
+- **Feedback could show the wrong state, and the wrong copy of a report.**
+  Having found the same fault four times, I went looking for the rest of it.
+  Six more comparisons of a timestamp as text: four in feedback and two in
+  the activity fold.
+
+  Feedback decided three things this way — which machine's copy of a report
+  is the original, which overlay holds the newest state, and whether an
+  incoming state is newer than the one held here. A report acknowledged on
+  one machine this evening could lose to one marked on another this
+  afternoon, because the second stamp read as larger. All three now compare
+  moments.
+
+- **“Last active” could name a time that was not the latest one.** The
+  per-person, per-machine and per-session folds keep the most recent stamp
+  by taking a maximum over text. Activity written here carries this
+  machine's offset and activity pulled from the shared table is UTC, so the
+  maximum was over two different scales and the answer could be an older
+  row.
+
+
+- **An error you had just resolved stayed red.** Whether an error counts as
+  handled was a string comparison of when it happened against when somebody
+  marked it:
+
+  ```
+  error at 2026-09-10T00:37:57+00:00    (UTC, from the shared table)
+  mark  at 2026-09-09T20:40:45-04:00    (local, written here)
+  ```
+
+  The same afternoon — the mark is three minutes *after* the error — but as
+  text “2026-09-10” sorts after “2026-09-09”, so the error read as newer
+  than the mark that resolved it, and stayed unresolved however many times
+  it was resolved. The “came back since” count beside it had the same test.
+
+  This is the fourth place today the same fault has turned up: the
+  incremental push dropping every edit made during a working day, the error
+  triage letting an older remote mark overwrite a newer local one, the
+  curation decisions, and this. Comparing two timestamps as text is only
+  right while they share an offset, and in this application they do not —
+  anything that came down from Supabase is UTC and anything written here
+  carries this machine's.
+
+- **The error-context panel could put the failure in the wrong place.** The
+  panel lists what was happening either side of an error, and marks the
+  error's own position in the sequence — decided by the same string test, so
+  with a UTC row beside a local one the marker could land at the top of a
+  list it belongs in the middle of. Showing which side of the failure each
+  action is on is the only thing that list is for.
+
+
+- **A channel could not be marked bad on any raster pane.** The side channel
+  rail carried two things — which channels are drawn, and a bad/ok toggle on
+  each — and when it was collapsed into the pane's `Ch` menu, only the first
+  came across. On a traces pane the lanes on the plot still have their own
+  toggle; on voltage, CSD and theta there are no lanes, so there was no way
+  to mark a channel bad at all — and a raster is exactly where a dead
+  channel is obvious. The toggle is back, in the menu the selection now
+  lives in.
+
+  Sixty lines of the removed rail were still in the file, unreachable, which
+  is why a harness went on looking for its markup and reporting the absence
+  as a fault.
+
+- **Every figure rebuild was restoring into a session nobody was looking
+  at.** `figrebuild` binds the session once, at its open step, and the
+  recording can be re-opened after that — so every later step wrote to an
+  object no longer in `XF.sessions`, and the “Check it matches the recipe”
+  step confirmed a state that was not on screen. Which is worse than not
+  checking: it reports success about the wrong thing.
+
+  Measured: the steps reported “6 of 32 channels selected; CSC 8 marked
+  bad” and “2 marks put back”, and the recording on screen had all 32
+  channels, no bad channels and the file's own 12 marks. The check now takes
+  the session that is actually active, repairs that one, and restores the
+  window and the filters too when the two had diverged.
+
+
+- **Two recordings with the same mouse and session numbers could become
+  one, on a scan.** `ids.match` returned a “strong” match on `loose_key` —
+  mouse plus session — whenever exactly one stored record had it, with no
+  check on when either was recorded. `upsert_session` then patched *that*
+  record and appended the new path to it.
+
+  In this lab the numbering restarts per project, so PTEN m1 s1 and KCNT1
+  m1 s1 are one loose key and two recordings. Found the hard way: a scan
+  fixture with folders named m1s1, m1s2 and m2s1 — the most ordinary
+  numbering there is — took over three real records within minutes,
+
+  ```
+  m001_s001_2026-01-02  ->  m001_s001_2023-10-02_16-49-04
+  m001_s002_2026-01-02  ->  m001_s002_2023-10-02_16-58-03
+  m002_s001_2026-01-03  ->  m002_s001_2024-01-23_14-48-16
+  ```
+
+  and rewrote their paths to the fixture's folders. (Those three records
+  were restored from git, un-tombstoned and verified by key; the fixture
+  now takes its mouse numbers and dates from the clock.)
+
+  A loose match has to agree about *when* now, within six hours — enough
+  slack for one side having read the start from a Neuralynx header and the
+  other from a folder name, nowhere near enough for years. A folder whose
+  name says mouse and session but not when still matches, because that is
+  the case this tier exists for and refusing it would lose the match that
+  makes bad channels follow a recording between machines.
+
+- **Sixty lines of a channel rail that was removed on purpose.** The side
+  column of channel rows down every raster pane went when the selection was
+  consolidated into one control — it moved and changed shape depending on
+  the panel. `paneChannels()` stayed behind, unreachable, for long enough
+  that `chan64.html` went on looking for its markup and reporting the
+  absence as a fault. Both are dealt with: the function is gone and the
+  harness checks the `Ch` menu that replaced it.
+
+
+- **A rebuilt figure quietly reverted to the recording's current state.**
+  Every step of the rebuild reported success — “Restore the channel
+  selection: 6 selected, 1 marked bad”, “Put the event marks back: 2 marks”
+  — and the figure came back with the recording's channels, no bad channels
+  and its own twelve marks. Watched half a second at a time:
+
+  ```
+  t+0.0s  sel 6,  bad [8], 2 marks,  src "figure rebuild"   <- the rebuild
+  t+0.5s  sel 6,  bad [8], 12 marks, src "nev"              <- an import lands
+  t+1.0s  no session                                        <- closed
+  t+1.5s  sel 32, bad [],  12 marks, src "nev"              <- reopened
+  ```
+
+  Two stale writes, both landing after the work they overwrote.
+  `autoImportNev` asked “does this recording have events yet” *before* its
+  round trip and assigned when it came back, so anything that put events
+  there while it waited was replaced — a rebuild's marks, an import, a
+  detector's output. It asks again after the wait now, which is where the
+  question had to be.
+
+  And the session can be closed and reopened a second later, which resets
+  the selection and the bad channels to the file's own. So the plan ends
+  with a step that reads back what it restored, puts back whatever moved,
+  and says which fields it had to put back. A rebuild is a provenance
+  feature: “the figure you exported, drawn again” is either true or the
+  feature is decoration, and the only way to know is to look.
+
+- **Forgetting a recording is permanent, and two places promised otherwise.**
+  The Forget dialog and the route's own docstring both said “opening or
+  scanning it again starts a fresh record”. It does not: forget erases the
+  record and writes a tombstone keyed on its permanent id, so a colleague's
+  registry cannot push it back and the next scan does not re-register it.
+  The scan finds the folder, reports it catalogued, and nothing appears.
+
+  That behaviour is right — a scratch copy that creeps back on every scan
+  has not been forgotten — so the words changed rather than the code.
+  Bringing one back is a deliberate act, not something a scan does for you.
+
+
+- **The ToolKit jumped between modules on its own.** Reported with a request
+  log, which is what made it findable: `/api/registry` at 8.5-9.3 s four
+  times in thirty seconds, `/api/layers` at 4.2-4.6 s, `/api/presence` every
+  ten. Three causes.
+
+  *A slow answer landing after you had clicked elsewhere.* The bad-channel
+  loader has guarded against this all along and its comment says why —
+  “rendering its answer then replaces the pane you just opened — which is
+  the ‘it snaps back to another tool’” — but the guard was never applied
+  to the two slow tools. Click StrataScope while Curation is still loading
+  and Curation painted over it. The renders now refuse to paint a tool that
+  is not the one on screen, in one place rather than at each call site.
+
+  *The presence poll repainted Curation every ten seconds*, whatever you
+  were looking at, for as long as the ToolKit was open. A jump to another
+  module with nothing you did to explain it.
+
+  *And the speed, which is what made the races easy to hit.* Profiled: the
+  session records were read and merged three times per request — once
+  directly, once inside `projects()`, once inside `tree()` — and the
+  attachment counts read the figure catalogue and the deck list **once per
+  recording**, five hundred times over, for 6,060 directory listings in one
+  request. It was O(n²) in recordings, which is why it got worse as the lab
+  collected data rather than being slow from the start.
+
+  Records are cached against the shard directory's signature (a write, by
+  this machine or by a pull, invalidates it — the index `by_gid` has used
+  for the same reason), and the attachment counts are indexed once per view
+  with the answers verified identical on every row. Measured: registry
+  **8.5 s → 4.5 cold, 2.0 warm**, layers 4.6 → 2.5, curation 3.9 → 1.7, and
+  four tool switches now cost at most one registry read instead of four.
+
+  Two harnesses that had been crashing — `bankback` and `strip2` — pass
+  again: they were timing out on those reads, not broken.
+
+- **A spectrogram in a figure was one channel of the one on screen.** The
+  builder offered a single `Channel` dropdown while the viewer has had
+  multi-channel time-frequency panels for a while, and the seeding dropped
+  the channel list, the mode, the analysed band, the display crop and the
+  STFT variant. The filters and the window came through because they live
+  on the layout, which is exactly why this looked half-right.
+
+  It seeds from `panelSpec` now — the request the pane itself sends, which
+  the prewarmer already mirrors so the server's cache key matches. Emulating
+  what is on screen rather than re-deriving the same fields a second way is
+  what stops a figure drifting from the screen it was made from.
+
+
+- **A session record with no permanent id, and the hole that made it.** The
+  housekeeping check said “every one has a gid: 1 without”, and it was:
+  `Y:\ProcessedPtenData\PTEN_CFCs\VACC\CFC\Other`, created 2026-09-04 on
+  BarryLab, no gid, no key, no channels.
+
+  A record with no id cannot be reached by anything — every by-gid route
+  answers 404, nothing can be attached to it, and it files itself under the
+  shared `unknown` shard whose own comment records having eaten three real
+  recordings. Two layers disagreed about whose job the id was:
+  `Registry.ensure` and `_durable_patch` both mint one, but
+  `Store.upsert_session` would *create* a record without one — and three
+  routes write through the store directly (a note, a bad-channel list, a
+  saved view state). Add a note to a folder that is not a recording and you
+  get exactly this.
+
+  The id is minted at the choke point now, which also makes the `unknown`
+  filename unreachable. The existing row was repaired rather than deleted
+  — given an id and a note saying where the id came from — so it can be
+  corrected or forgotten like any other record. 515 records before and
+  after, none without an id.
+
+- **The built-in example offered four controls that could not work.** The
+  demo project is in the tree so that a machine with nothing mounted is not
+  an empty application, but a demo recording is deliberately not a registry
+  record — so filing it under a project, annotating it, merging it and
+  splitting it all answer “No session demo-ds-tutorial”. Housekeeping
+  offered all four anyway, and a new user’s first click in Everything
+  BARRY knows is quite likely to be the example. It now says what it is,
+  and the writes are not offered. Everything that reads — the id, the
+  paths, the links to what is attached — stays, because that is the point
+  of having an example.
+
+- **The figure footer ran off the page on the journal-column preset.** Two
+  causes. `_ranges` collapsed only *consecutive* runs, so every-other-
+  channel — which is what “even only” gives you — printed as thirty-two
+  numbers and was cut by the paper edge; it says `CSC 1-63/2` now, the same
+  rule the grid cells and the column heads use. And the packer laid whole
+  phrases onto lines and never split one, so a phrase longer than the line
+  overflowed; it wraps at its own separators instead. Nothing is cut,
+  because a provenance strip that is approximate is worse than none.
+
+  The layout also reserved three lines for it and a 3.5in page needs five,
+  fitting only because the space under the tick labels happened to be free.
+  The footer is measured before the grid is laid out now: letter 3 lines at
+  5% of the page, slide 3 lines, 3.5in column 5 lines and the plot shrinks
+  to make room.
+
+- **`CSC59 (bad)` ran off the left edge.** The margin reserved a flat four
+  characters’ worth whatever the labels said, and a bad channel is
+  exactly the row somebody goes looking for. Measured from the labels that
+  will actually be drawn, capped so one pathological name cannot eat the
+  plot.
+
+- **The last native browser dialog is gone.** `window.confirm` survived on
+  “Forget this recording” — the one control that destroys a record’s
+  history, and the one with no room to say so. It uses the application’s
+  own dialog now, and says the part the old text left out: a fresh record
+  gets a NEW permanent id, so anything still attached to the old one will
+  not find its way back.
+
+
+
+- **The incremental sync was comparing timestamps as text, across offsets.**
+  Found while checking that picking up a layer sheet reached the shared
+  table. It did not: the payload was right, the columns existed, nothing
+  errored.
+
+  ```
+  batch = [r for r in batch if str(r["updated_at"]) > since]
+  ```
+
+  `since` is UTC — `2026-09-09T18:55:06+00:00`. A record written 45 seconds
+  later carries `2026-09-09T14:55:51-04:00`, because `cloud.ts` validated the
+  stamp and handed it back as BARRY wrote it. As text, `"14:55" < "18:55"`,
+  so a row written *after* the last push looked older than it and was
+  dropped.
+
+  Vermont is UTC-4, so this hit **every record whose local hour was before
+  20:00** — which is every record written during a working day. Those edits
+  travelled only when something forced a full push. It is very likely the
+  mechanism under "I made updates to Sylvia and Shahriar and Rain's profiles
+  that are not showing up in a different computer"; the missing `role` and
+  `initials` fields were real and this was underneath them.
+
+  `ts()` normalises to UTC now — a timestamptz column stores an instant, so
+  the offset was never information the database kept, only something the
+  sender could get wrong — and the filter parses both sides. A stamp that
+  cannot be parsed is sent rather than dropped: a needless upsert costs one
+  round trip the database discards, and a dropped one loses somebody's work.
+
+  The same fault was on the way IN, in the error triage: a signature you
+  marked handled here carried a local stamp and the incoming row carried
+  UTC, so as text your afternoon mark sorted before a colleague's morning
+  one and the pull undid your triage. Both sides compare times now.
+
+- **A sync could replace real curation decisions with "undecided", and the
+  progress bar would not have noticed.** Found because `curate.html` failed on
+  `left`, and the server's own numbers were impossible:
+
+  ```
+  {"by_label": {"garbage":1,"solid":1,"sputter":1,"unspecified":7},
+   "left": 0, "percent": 100, "specified": 10, "total": 10}
+  ```
+
+  Ten specified, seven of them unspecified. Three faults in a line:
+
+  * `curation_events.label` is `NOT NULL`, so the shared table has no way to
+    write "nobody has decided" and the push sends the word `unspecified`
+    instead. That is the schema's encoding and it is fine.
+  * `_apply_curation` then wrote that word back as a *local* label, because
+    "different from what we have" was the whole test.
+  * `progress` counts any non-empty label as a decision, so those became
+    decisions: `left` 0, `percent` 100, on a set nobody had finished.
+
+  Measured on a real set afterwards: 162 cloud rows carrying the word against
+  162 locally decided events. The old applier would have overwritten **every
+  one of those decisions with "unspecified"** — and `specified` would still
+  have read 162, so nothing on screen would have shown that a day of
+  judgements had been replaced by a placeholder.
+
+  Now: the word is normalised to "no decision" on the way in, `progress`
+  refuses to count it, and an incoming decision only wins if it is newer
+  (below). Applying all 324 rows for that set changes nothing.
+
+- **A pull could undo today's curation with a decision from last January.**
+  `_apply_curation` compared no timestamps at all — last pull won — so two
+  people working one set undid each other silently. Measured before the fix:
+
+  ```
+  event e99e3dd4290 | local: spike, decided 2026-09-09T11:27:37-0400
+  applied: 1        | label now: garbage, at 2025-01-01T00:00:00+00:00
+  ```
+
+  The rule now: a decision beats no decision, and past that the newer one
+  wins, compared as times. An incoming row with no stamp cannot overturn a
+  decision that has one — on the push side an unreadable stamp means "send it
+  and let the database sort it out", which is cheap, and on the pull side it
+  would mean "overwrite somebody's judgement on no evidence", which is not.
+
+- **A repair to the shared table needs a stamp or it is silently discarded.**
+  Worth writing down: `barry_keep_newest` returns the OLD row for any update
+  whose `updated_at` is not newer, so a `PATCH` that fixes a value and leaves
+  the stamp alone comes back HTTP 204 and changes nothing.
+
+- **A full push died on duplicate keys, which is the push you reach for when
+  things are not travelling.** `ON CONFLICT DO UPDATE command cannot affect
+  row a second time` from `errors`: two shards holding the same failure
+  produce two rows with one id, and Postgres will not guess which you meant.
+  Batches are collapsed to one row per conflict key — the later one, because
+  the builders read in order — including the implicit primary key, which is
+  where it bit: `errors` is keyed on `id` and is not in the `ON_CONFLICT`
+  map.
+
+  With both fixed, a full push is 44,316 rows across 19 tables in 69 s, and
+  an incremental one carries a sheet picked up a minute ago in 79 rows.
+
+- **The two session views were two doors to one answer.** "Scan a drive" and
+  "Everything BARRY knows" were both seeded from the whole registry, so both
+  showed all 476 recordings. Three separate faults:
+
+  * sightings were keyed on `provenance().machine` — the *typed* label — so
+    this computer's were filed under `Bluebarry`, `DESKTOP-4H65AI7` and
+    `Strawbarrry`, and asking "has this machine met it" by id matched **none
+    of 476**. New sightings are keyed on the machine id, which is derived;
+    the label rides along for reading; and "have I met this" matches the id
+    or any name this computer has answered to, because rewriting years of
+    other machines' sightings is how two people's computers got merged the
+    last time.
+  * `setMode` toggled the two panels *under* the list and never re-drew the
+    list, so both modes rendered the same 188 cards.
+  * `#sessSub` had two authors — prose from the mode switch, counts from the
+    tree — so it read `188 of 185` in one mode and prose in the other. One
+    author now, and the count and the filter share a predicate so they
+    cannot disagree again.
+
+  Scan a drive: **185 on this computer, read from the registry on this
+  disk**. Everything BARRY knows: the shared catalogue, kept in step through
+  Supabase.
+
+- **The figure builder printed six copies of one H3 where an H10 was
+  wanted.** `buildInitialLayout` copied each pane into a panel and dropped
+  `channels` — the per-pane override that *is* the column — so six panels
+  each fell back to the whole selection.
+
+  It is one panel now. The cell subdivides itself: the back shank's three
+  columns in physical order, a gap, the front shank's three, each headed
+  with its window and channel run (`W1 centre / CSC 1-31/3 +32`), sharing
+  one depth axis and **one colour scale computed across all six before any
+  is drawn**. Six independently auto-scaled CSDs is the bug already fixed
+  once in the viewer, and a figure is where that mistake gets printed.
+
+- **My own harness runner was under-reporting.** It counted one spelling of
+  a passing check, so `figgrid.html` — 54 checks, every one passing — came
+  back as a single check, indistinguishable from a screenshot-taker. Part of
+  why the suite looked dead in places.
+
+### Changed
+
+- **The housekeeping view opens in about a second.** It was nine, then two,
+  now 1.3. What was left after the figure index was three more stores read
+  once per recording — measured over the real 526:
+
+  ```
+  the event bank      950 ms   (66 entries, rescanned 526 times)
+  curation sets       585 ms
+  layer sets          153 ms
+  ```
+
+  Read in bulk instead they are 330 ms for all three, once. The bank count
+  survives the change exactly because the matching is an elif-chain: every
+  entry lands in one tier, so the count is the size of a union rather than
+  a sum. Checked by running both paths over all 526 recordings and
+  comparing field for field — 502 banked entries, 4075 layer labels and
+  9222 curated events, and every recording agrees.
+
+  Opening a single recording still reads the three stores directly, because
+  reading every store to answer about one is slower than the thing it
+  replaces. That route is 83 ms.
+
+
+- **The suite went from 1,746 checks with 60 failures to 1,935 with none**,
+  and almost all of the movement was the suite learning to tell a fault from
+  this machine. What the seventeen failing harnesses were really saying:
+
+  * **Three crashed on each other.** `bankback` and `strip2` both opened a
+    menu whose popover was already open — left by the harness before them —
+    so the click closed it instead, and the next line dereferenced null:
+    “Cannot read properties of undefined (reading 'click')”. A menu that
+    toggles is correct; a test that assumes it starts closed is not. They
+    dismiss anything open first, wait for their own popover rather than
+    sleeping at it, and check each control before clicking it — so a missing
+    one is a named failure instead of a crash forty lines later.
+
+  * **Five asked for data this machine does not have**: a defective
+    recording to audit, an external drive of sorted snapshots, a missing
+    pip-installable package, a recording with event marks, a collection with
+    something in it. Each now says what is missing and keeps every assertion
+    for when it is there.
+
+  * **Four measured the built-in example** — organising it, checking its
+    path shape, exporting a figure from it — and it is deliberately not a
+    registry record and not a folder.
+
+  * **Three asserted behaviour that was deliberately removed**: nine filter
+    pills, a side channel rail, and switching probe forcing CSD.
+
+  * **`cloudkey`** wanted a button reading “Sync now” and found “Syncing…”,
+    because a sync another harness started was still in flight.
+
+  * **`scanreg` had never once been able to pass** — it reads its root from
+    `?root=` and the runner never passed one, so for its whole life it
+    scanned a folder named “null”.
+
+  Two of the seventeen were real faults in the application, and both are
+  above: a channel could not be marked bad on any raster pane, and every
+  figure rebuild restored into a session nobody was looking at.
+
+
+- **The harness suite tells the truth about this machine.** Seventeen
+  harnesses were failing at the last full run and most were not reporting
+  faults at all:
+
+  * `check` asserted a frequency band set on the *pane*, when the band is
+    locked to the recording by default — 43/6 to 49/0.
+  * `housekeeping` and `pathprobe` organised and measured the built-in
+    example, which is deliberately not a registry record — 29/10 to 42/0
+    and 10/2 to 13/0.
+  * `probehz` asserted that switching probe *forces* CSD, which was removed
+    on purpose because it silently turned a voltage raster into a CSD. It
+    now picks CSD and checks it survives the switch — and so proves six
+    CSDs of one H10 really render.
+  * `lineage` assigned “garbage” to a candidate that was already garbage,
+    so nothing moved and the bank correctly wrote no version.
+  * `scanreg` had never once been able to pass: it reads its root from
+    `?root=` and the runner never passed one, so it scanned a folder called
+    “null”. It gets a fixture now — three folders with Neuralynx-shaped
+    headers, a fresh identity per run, because forgetting is permanent and a
+    reused fixture can never be registered again — 16/8 to 26/0.
+  * `scancheck`, `snapimport` and `kilosort` required this machine to have
+    a defective recording, an external drive attached, and a missing
+    pip-installable package. All three now say what is missing and keep
+    every assertion for when it is there.
+
+  And the runner itself was under-reporting: it counted one spelling of a
+  passing check, so `figgrid` — 54 checks, every one passing — came back as
+  a single check, and it printed counts without names for a third of the
+  suite, which is why triage needed a re-run per harness.
+
+
+- **StrataScope has event curation's workbench.** It had a flat list of
+  every sheet that exists, in one order, with a Delete on each that fired on
+  the first click and erased every label on that recording without a word.
+
+  Now: the open sheets are the bench, everything else is the shelf, and
+  picking one up claims it if nobody has. Opening a recording in StrataScope
+  puts it on the bench, the way curating does. **Close** is the only removal
+  — it takes the work set off the bench and changes no label, no version and
+  no snapshot — with **File away** for "I am done thinking about this at
+  all". Picking up an archived sheet is refused unless you say you mean to
+  un-archive it, so filing something away cannot be undone by accident. A
+  work set can be named by clicking its title, because a second pass after a
+  probe map was corrected is not the same work as the first.
+
+  The bench travels: `assignee`, `is_open` and `archived` sync, so it can
+  answer "is anybody already labelling this recording" rather than only
+  "what am I working on". Migration 13.
+
+  Delete is gone from the cards. It had grown a three-paragraph confirmation
+  explaining everything it would *not* destroy, which is the tell that the
+  button should not be there.
+
+- **The figure footer says what the figure is of, and stops cutting itself
+  off.** It was two fixed lines at a fixed size with everything past a
+  character count replaced by an ellipsis — so the answer to "which
+  channels" would have been the first half of the answer. It packs now: the
+  facts are laid into as many lines as they need at a size that fits the
+  page, and nothing is dropped. On a letter page that is three lines in the
+  height the old two occupied.
+
+  What was missing and is now there: the probe, the hemisphere, the filter,
+  which channels (as runs — `CSC 1-10/3` — not sixty-four numbers), which
+  are marked bad, the contact spacing, the gain, and whether the scale was
+  pinned or worked out from the data. That last one matters more than it
+  looks: a printed CSD with an auto scale cannot be compared with another
+  printed CSD, and nothing on the page used to say which it was.
+
+- **The scan's own two settings are behind one button**, like the filters
+  beside them. "Read headers" and "Depth" were a checkbox and a number box
+  sharing a line with the recent-roots list. The button names what is not
+  standard rather than counting it — `depth 3` explains a scan that found
+  nothing, where a badge reading `1` does not.
+
+### Added
+
+- **A channel list for time-frequency panels**, with **Stack** (a band per
+  channel) or **Mean** (one averaged map) once more than one is picked, and
+  a **Match the viewer** button that takes the channels, the mode, the band
+  and the display crop back from the pane on screen.
+
+
+- **A panel spans by having its edge dragged.** Grips on a panel's right
+  edge, bottom edge and corner; the cells it would take light up as you go.
+  An edge owns one axis, so dragging the bottom edge sideways cannot
+  secretly widen the panel. Shift-click still works.
+
+  Measured while checking it: dragging the bottom edge did nothing at all,
+  because the row below was scrolled past the bottom of the dialog and the
+  pointer resolved to the backdrop. A drag now resolves to the nearest cell,
+  which also covers the gaps between cells and overshooting the grid.
+
+- **A panel comes out by being dragged out.** Moving, adding and spanning
+  were all drags; removal was a small x in a list. There is a bin under the
+  grid now.
+
+- **Which window is which, in channel numbers.** Every grid cell and panel
+  row carries the channels its panel draws — `CSC 1-10/3` — so six columns
+  of one probe are told apart at a glance instead of by index.
+
+- **Which columns of the probe, and in what order.** Collapsing the six
+  panes into one panel answered “make it a single 1x1 for the entire 6
+  pane view” and took the other half of the request with it —
+  “remove certain windows and arrange certain windows in certain
+  order”. The panel editor now shows a chip per column in the order they
+  will be drawn, each with its channel run: click one to drop it, drag one
+  onto another to reorder, click a faint one to bring it back. The last
+  column cannot be dropped, because a panel drawing nothing is not a
+  picture of anything.
+
+  Not cosmetic. A shank that broke mid-experiment is three columns of noise
+  beside three of data sharing one colour scale, so dropping it makes the
+  other three readable and not merely tidier. One column left draws as a
+  single full-width raster with its head suppressed, since the panel title
+  already says which column it is.
+
+---
+
+## 2026.09.09.1 — the computer is not the person
+
+### Changed
+
+- **What a computer is called is now the computer's own record.** It used to
+  be a field in the profile, next to your name and your email, and that was
+  wrong in a way that took measuring to see: every path that saved a profile
+  could rename the machine, and that name is stamped on every error, action
+  and run.
+
+  Measured across 216 errors before the fix: **one computer had filed under
+  five different labels** — Bluebarry, DESKTOP-4H65AI7, StrawBarry,
+  Strawbarrry and "Rig 2 (Barry lab)" — while **two different computers had
+  both been set to "Strawbarrry"**. So one machine looked like five and two
+  machines looked like one.
+
+  It lives in `device.py` now, in its own shard, and switching who this
+  machine credits work to cannot touch it. The old value is adopted once at
+  start-up, because a machine that has already been named should not revert
+  to its hostname and fork its own history.
+
+- **Errors group by the computer, not by what somebody typed.** `shard` —
+  the hostname slug plus a hash of the MAC — has been on every error record
+  all along and is unique by construction. Grouping on it collects this
+  machine's 188 errors into one row instead of five. The label is still what
+  is shown, with the real hostname in brackets: **Bluebarry
+  (DESKTOP-4H65AI7)**, **StrawBarry (LCOM549913)**, **Strawbarry
+  (BARRYLAB)** — the last two being different computers whose friendly names
+  differ by the case of one letter.
+
+- **DEVICE is a button.** It opens a panel that names this computer, archives
+  the ones that have gone, lists the names in the log that no machine answers
+  to, and warns when two computers answer to the same label. The rename box
+  lives there and only there.
+
+- **Editing a profile cannot go wrong the way it did.** Save used to decide
+  what to do by comparing the name in the form with the name being edited, so
+  changing a name at all fell through to the branch that set THIS COMPUTER's
+  identity to the person being edited and then added their new name to the
+  roster beside the old row. Proven by putting the old line back: editing a
+  probe person set the machine's profile from "Shahriar Tafti" to "zz edit
+  probe renamed".
+
+  The mode is explicit now and on screen. A rename is refused with the
+  reason — the name is stamped on every decision, banked set and layer sheet
+  — and offers the two real options. **Add somebody…** is its own button, so
+  creating is never a side effect of editing.
+
+- **Three jirai kei themes**: Jirai Kei (black, baby pink), Jirai Shiro
+  (off-white, deep rose) and Jirai Yami (plum, lavender, sick mint). The
+  first pass had errors 1.04:1 and 1.32:1 from their own accents — a failed
+  run rendered as decoration — so the error colours were pushed apart to
+  1.62:1 and 1.97:1 and `--ok` is mint in all three.
+
+### Fixed
+
+- **Event versions travel through Supabase instead of waiting for a git
+  pull.** Three separate reasons they did not:
+
+  * the version history was never sent — no `versions` column, nothing in
+    the payload
+  * `updated_at` was `added.at`, the moment the entry was *created*, so an
+    edited entry never looked new to the incremental push and stopped
+    travelling the moment it existed
+  * `_apply_bank` skipped any row whose id it already had, so a version that
+    did come down was thrown away on arrival
+
+  The snapshots stay behind, and that is measured rather than preferred: the
+  110 versions here are 44 KB of metadata and 0.5 MB of snapshots. The
+  metadata is what makes a version *appear*; the snapshot is what lets one be
+  *restored*. So metadata goes live over Supabase and snapshots stay in the
+  JSON, which is the redundancy copy.
+
+- **A merged-away name stays away.** Merging Rain into Rain Younger would not
+  stick: deleting the row locally worked, deleting it from the shared table
+  worked for a few seconds, and then the other machine — running, and still
+  holding the old direction — pushed its copy back.
+
+  Two things were wrong. There was no way to say "this name is retired", so
+  `forget` now writes a tombstone, which is the mechanism this codebase
+  already uses to make a deletion travel. And the two records had aliases
+  pointing at *each other*, so whichever the roster compiled first won.
+
+  Getting the tombstone rule right took three attempts, and the two failures
+  are worth recording: "retire whenever asked" and "retire whenever a row was
+  removed" both retired a live colleague, because `forget` is called on names
+  the data carries and such a name can still have a hand-added row. The rule
+  is now: recompile the roster and retire the name only if it has actually
+  gone. Verified stable across a minute of live pulls with the other machine
+  pushing: one entry, Rain Younger, 3,028 records, active.
+
+### Added
+
+- **A sync button you can reach.** There was one, three clicks in. The rail
+  chip now syncs on click and reports the phase while it runs.
+
+- **The JSON shards, viewable.** Supabase is the primary route; the JSON in
+  GUI_logs is the redundancy — what survives an unreachable database, what
+  holds the snapshots too large to send, and what a fresh clone arrives with.
+  A backup nobody can inspect is a backup nobody trusts, so it has a section
+  beside the error log: 1,084 files across 12 folders, whose each is, when it
+  was written, and the contents of any one of them. Read-only.
+
+- **Archiving, for people and for computers.** Removal is refused for
+  anything the data carries, correctly, which left nowhere to put somebody
+  who has left the lab. Archiving takes them off the pickers and changes no
+  count anywhere.
+
+- **One camera is one pane.** An H10-D is six probe columns, so H10 mode
+  gives each one a pane — right for traces, voltage, CSD and theta, nonsense
+  for video, which produced six panes of which one played. Both the way in
+  and the panel switch now collapse to one.
+
+- **One colour scale across an H10.** The master strip's tooltip said it set
+  every pane at once and the scale did not: six shanks of one recording came
+  up at [-2.71e+4], [-2.04e+4] and [-2.16e+4] while the control read
+  "pinned", and a CSD is read by colour.
+
+---
+
+## 2026.09.08.17 — numbers you can quote
+
+Six things, and one thread running through all of them: every one of these
+produces a number somebody would say out loud — "587 in twenty-nine
+minutes", "213 actions since I last looked", "five qualify" — and a number
+you quote is a number that has to be right.
+
+### Added
+
+- **A session receipt.** What a sitting came to, in a card: how many
+  decided, over how long, at what pace, split by label. On the way out of a
+  set when there was a sitting worth reporting, and from the **Receipt**
+  button on the workbench whenever the question arrives later.
+
+  It exists for two unrelated reasons. It is pleasant to see the afternoon
+  add up. And the pace is the only thing anywhere in BARRY that says
+  something about the *deciding* rather than about the data — a set decided
+  at twenty a minute and a set decided at four are not the same evidence,
+  and nothing in the interface used to show which one you had.
+
+- **A hall of garbage** — the candidates nobody had to think about:
+  rejected, decided in under two and a half seconds, never flagged, never
+  revisited. It is a teaching set, because the fastest way to explain what
+  garbage looks like is forty examples that nobody hesitated over, and it is
+  a sanity check on the detector, since a detector producing mostly obvious
+  garbage is saying something about its threshold. **look** opens the
+  recording at that moment rather than entering curation: looking at an
+  example is not deciding it, and entering the set would take it off
+  whoever has it.
+
+- **"Since you last looked."** A card at the top of History: how many
+  actions, by whom, on which recordings, and how many errors — since the
+  last time you pressed **Mark as seen** on this machine. It leaves your own
+  actions out, because a digest of what you did yourself is a diary, and the
+  question is what everybody else has been doing.
+
+  Reading it does not clear it. The first read is usually the one where you
+  get interrupted, and a digest that clears itself on render cannot be read
+  twice.
+
+- **The dataset, and the slot a model would write into.**
+  `/api/curation/dataset?format=csv` is all 9,265 human decisions as rows —
+  which recording, when in it, what it was called, by whom, how long they
+  took and whether anybody revisited it. The last two columns are the
+  interesting ones: hesitation is the signal.
+
+  And `POST /api/curation/<gid>/<kind>/order` sets the order candidates are
+  visited in — `hardest` puts the ones somebody hesitated over first, which
+  is worth having on its own for a review pass.
+
+  This is deliberately where it stops. No classifier. The moment a model
+  exists somebody will be tempted to let it decide, and the whole value of
+  this store is that a person did: every decision in it has a name and a
+  time against it. The useful thing a model can do here is change the
+  *order*, so the hard cases get looked at while people are still fresh.
+
+### Changed
+
+- **A fault on two machines is now two rows.** The same traceback on the rig
+  and on the desktop used to arrive as one group with a count of two — and
+  "happened twice" is a different fact from "happens on both machines", the
+  second of which tells you it is not something about one computer.
+  Resolving is scoped the same way: **Resolved** on the rig now says fixed
+  on the rig. `?fold=fault` folds them back to one row per fault, because
+  "is this the same bug in both places" is also a real question.
+
+  The fault's own signature is unchanged. Twenty-two triage marks were
+  keyed on it before this, and they all still apply.
+
+- **Errors and the Debug trace have a device picker.** Errors filters to one
+  machine's groups. Debug swaps this machine's request trail for the chosen
+  machine's feed — its actions and its errors, interleaved, because the
+  useful shape is "these four things happened and then it broke". The
+  request trail itself stays local and should: nobody debugs by reading
+  somebody else's HTTP log.
+
+- **The Sync button says where it has got to.** It used to read "Syncing…"
+  for three or four seconds, which is indistinguishable from hung. Both
+  halves now name the table they are on and how far through they are — the
+  pull especially, which is the slow half at fifteen round trips and used to
+  report the single word "pulling" for all of them.
+
+  The bar's denominator is an estimate, and it stretches rather than
+  overrunning: counting exactly would mean walking every table first, which
+  is most of the work the bar is meant to be reporting on.
+
+- **Four names became two.** `theexaminedexistence@gmail.com`, `Shahriar`
+  and `Shahriar Tafti` were one person; `Rain` and `Rain Younger` were
+  another. 423 decisions, 430 reviews, 38 assignments and 118 bank fields
+  now carry the name their author actually goes by.
+
+  Seven bank entries were left alone on purpose. `added.by` is immutable
+  across the shard merge — provenance is not an editable field — so those
+  fold at read time instead, through aliases stored on the roster. The
+  activity and error logs were not touched at all: they record what each
+  machine believed at the time, which is the point of a log.
+
+### Fixed
+
+- **The StrataScope layer buttons got their colours back.** A
+  `border-color:` shorthand on the armed-brush style was overriding the
+  `border-left: 3px solid var(--cat)` that carries each layer's colour, so
+  all fifteen went grey the moment anything was selected. It is a
+  `box-shadow` ring now, which cannot touch the border.
+
+### The sync was quietly broken, and this is what it took to find out
+
+All four of these were found by checking whether the two SQL files from
+earlier had been run. 06 had; 07 had not; and the consequences went a long
+way past "one field does not sync".
+
+- **One un-run migration was stopping the whole lab's sync.** `sessions`
+  carries six columns that `supabase/07_reference_channels.sql` adds, so
+  every upsert of a changed recording came back
+
+  ```
+  HTTP 400 PGRST204  Could not find the 'extraction_note' column
+                     of 'sessions' in the schema cache
+  ```
+
+  and because `sessions` is first in the push order, that exception aborted
+  the push before it reached any other table. Curation, layers, the bank,
+  the error triage: none of it went up, from the moment a recording changed.
+
+  It hid because it was intermittent in the worst possible way. A push with
+  no session changes in it skips the table and succeeds, so the sync looked
+  fine most of the time. The repair push sent **26,327 rows**.
+
+  A column the database has not got is now dropped on the way up and the
+  rest of the push carries on — and because that means nothing visibly
+  breaks, the sync panel says which file to run, and
+  `GET /api/sync/pending-migrations` asks the schema directly rather than
+  waiting to be refused. It distinguishes a column some migration accounts
+  for from one nothing does; the second is the more worrying case, since it
+  means a machine is sending a field no migration explains.
+
+- **The roster merge was being undone on every pull.** Rain Younger folded
+  into Rain and Shahriar's three spellings into one — on this machine, until
+  the next sync. `aliases` was a local-only field: the shared `people` table
+  has no such column, so the cloud still held the old names and
+  `_apply_people` wrote them back every cycle. The merge looked like it had
+  failed when what had happened is that it had been reverted.
+
+  Aliases travel now (`supabase/08_people_aliases.sql`), unioned rather than
+  last-write-wins, because two people merging different spellings on
+  different machines are both right and neither should erase the other. And
+  a pull no longer re-creates a name this machine has been told is somebody
+  else.
+
+- **The guard against the push/pull write loop had never once fired.**
+  `_apply_people` skips a row that says nothing new, because writing an
+  unchanged record restamps it and a restamped record is pushed back up as
+  an edit — which is how the same eleven people came down and went up again
+  forever, between every pair of machines. The skip read
+  `for p in (self.people.roster() or [])`, and `roster()` returns a *dict*:
+  the loop walked its keys, `"people".get(...)` raised, the bare `except`
+  below set `have = {}`, and it moved on. Measured before the fix: 11 of 11
+  unchanged rows written. After: 0, twice in a row.
+
+  This is the fourth time this loop has been found in this file, and the
+  first time the fix for it was itself broken.
+
+- **The digest was reporting 8 where the answer was 2,018.** It asked for
+  the newest 2,000 rows and *then* discarded this machine's — and PostgREST
+  caps a response at 1,000, so on a busy machine the entire budget went on
+  rows that were thrown away. The exclusion is in the query now and the
+  headline comes from a counted request rather than from `len(rows)`.
+
+  Where the breakdown cannot cover the whole total, the card says so rather
+  than printing two numbers that do not add up. `/api/activity/who` had the
+  same shape of problem and now reports what it counted.
+
+  Worth noting for anyone reading the code: `provenance().machine` is
+  `"Bluebarry"` where `machines.hostname` is `"desktop-4h65ai7-d565"` — the
+  same computer under two names. A check comparing the wrong one passes
+  vacuously, which one of the new harness checks was doing.
+
+- **"Is there anything from the rig at all" could not be answered by the
+  route that exists to answer it.** `/api/activity/who` tallied the two
+  thousand newest rows -- capped to a thousand -- so on an evening when this
+  machine had written the last thousand, it reported **one person and one
+  machine**. The true answer was five of each.
+
+  Both sets are small and known, so they are counted over the whole log now:
+  the machines from every source that knows a machine name, the people from
+  the roster with each of their aliases counted alongside their surviving
+  name. That last part matters — `ilike`, not `eq`, because aliases are
+  stored lower-cased and the log holds the name as it was typed, so a
+  case-sensitive match counted nothing and reported "Rain" and "Rain
+  Younger" as two people all over again.
+
+  The machine list came from the `machines` table alone, which holds the
+  three computers that have registered a heartbeat — while the log also
+  carries `DESKTOP-4H65AI7` (6,847 rows), `BarryLab` (305) and `Blackbarry`
+  (1). It attributed 3,802 of 10,955 rows and said nothing about the rest.
+  Now: 10,954 of 10,955, with the remainder reported rather than buried, and
+  `Rain` at 2,103 — which is 2,095 plus the 8 that were filed under the
+  other spelling.
+
+  The action-kind breakdown is still read off the recent page, because there
+  is no bounded list of action names to iterate and "the shape of the recent
+  work" is a fair thing to read off recent work. The route says which of its
+  numbers are which.
+
+**Still needs somebody with the SQL editor open:** run
+`supabase/07_reference_channels.sql` and `supabase/08_people_aliases.sql`.
+Until then the fissure, ripple and hilus channels for 62 recordings, and the
+roster merge, exist on this machine only. The sync panel will stop mentioning
+them once they are in.
+
+### The test suite could not be run, which is why so much of this was found late
+
+There are 92 harnesses in `web/_dev` and no way to run them together, so they
+were run by hand, a few at a time, whenever something specific was being
+changed. `tools/run_harnesses.py` runs all of them and tallies the result.
+
+Writing it took three attempts, and each failure is worth knowing about
+because each one made the suite look healthier than it was:
+
+- The harnesses report in three different shapes — a `#out` div of plain
+  lines, a `#log` `<pre>` of `<span class="good">ok …`, and a couple that put
+  the verdict in the document title. The first runner understood one of them
+  and reported **"0 ok, 0 fail"** for two thirds of the suite, which reads
+  exactly like a clean run.
+
+- Fifteen harnesses take `?session=<path>` and call `xplore.open()` on it
+  without checking. Run without one, `open(null)` renders nothing and every
+  geometry assertion fails against an empty pane — so thirteen harnesses
+  looked broken and the cause was one missing argument. `master.html` went
+  from five failures and a crash to **12 ok, 0 fail** once it had one.
+
+  This is worth saying plainly: those failures were read as a possible
+  regression in the xplore control strip, and the strip is fine. It renders
+  `Filter`, `Ch 64/64`, `Marks` and `More` exactly as it should.
+
+- But not to all of them. `bank.html` is 47 ok / 0 fail bare and *crashes*
+  with a session; `strata.html` skips cleanly bare and throws on the demo
+  recording, which has no layer sheet. So the argument is passed per
+  harness, and the runner names the two exceptions and why.
+
+- And it never set `--window-size`, so every layout harness was measuring
+  an 800x600 window. `stratacheck.html` reported six failures — rows 1px
+  tall, 0 of 64 rows clickable, 22 buttons off screen — and passes at
+  1600x1000. `typing.html` reported 47 clipped entry names and passes.
+  `chrome.html` went from two failed divider drags to 26 ok. A layout
+  harness run in a 423px window is measuring the window.
+
+One more of the same kind, in a harness rather than the runner:
+`chrome2.html` measured the rail mid-transition. Under
+`--virtual-time-budget` the timer clock fast-forwards and the animation
+clock does not, so a transition sits at its start value for ever — the rail
+animates its width through `@property --rail`, and every reading came back
+190px however many times the burger was clicked. Settled with
+`Animation.finish()`, as `motion.html` already knew to do: **190 → 54
+(`rail-icons`) → 0 (`rail-away`)**, with `#main` growing 787 → 923 → 977 to
+fill the window. The collapse works exactly as specified.
+
+The suite now runs 936 checks passing against 763 before, with 12 harnesses
+still failing rather than 22 — and almost all of that movement was fixing
+the instrument, not the app. It is worth being blunt about that: for most of
+this the harness output was read as evidence about BARRY when it was
+evidence about the runner, and two alarming conclusions drawn from it — that
+this machine's log was stranded from the cloud, and that the xplore control
+strip had stopped rendering — were both wrong.
+
+What is left is concentrated in the session scanner (`scanreg`,
+`housekeeping`), a set of harnesses that need a specific recording rather
+than the demo (`chan64` wants 64 channels, `kilosort` a sortable recording,
+`lineage` an entry with versions, `spancentre` live candidates), and
+`bankback`/`strip2`, which crash on a pane control before their first check.
+`pathprobe` is the interesting one: it asserts every registry path is a
+complete path, and the demo sessions carry pseudo-paths like
+`demo:ds-tutorial` that are not. None of these are in anything this release
+touched, and none of them has been confirmed as a defect rather than as
+drift — that is the next session's work, and it starts from a runner that
+can be trusted.
+
+`uiprobe.html` is fixed too, and had never worked: it read `win().BARRY`, and
+`BARRY` is a top-level `const` in core.js — a binding in that script's scope,
+never a property of `window` — so it printed "MISSING" on a perfectly healthy
+frame and then threw calling a method off undefined. `win().eval(...)` runs
+inside the scope that can see it.
+
+### A note on honesty
+
+The receipt's first version reported **421.7 decisions a minute** for a set
+that had been filled down fourteen at a time. It was not wrong about the
+arithmetic — 738 decisions across 105 seconds really does divide out at
+seven a second — it was wrong about what a timestamp means.
+
+7,655 of the 9,265 decisions in this store were stamped in bulk: a snapshot
+import stamped 1,224 of them at one instant, and fill-down stamps a
+column at a time. So a decision now counts towards a pace only if it has a
+timestamp to itself, and the rest are counted and named as what they are.
+The receipt says "1,224 of them share a single timestamp — an import or a
+fill-down stamped the set all at once, so nobody sat and decided them one by
+one", and quotes no rate. The hall of garbage leads with the same caveat
+before its list, because somebody who reads "5 qualify" and stops has been
+misled about nine thousand decisions.
+
+A card that says nothing is fine. A card that says seven a second is not.
+
+Sixty-one checks in `web/_dev/digest.html` cover this, most of them
+refusals — that the pace is absent where it cannot be known, and that the
+bulk share is said out loud rather than averaged in. The phase sequence a
+sync reports moved out to `tools/check_sync_progress.py`, on the real clock:
+the browser harnesses run under `--virtual-time-budget`, where the page's
+timers fast-forward while the server carries on at the real clock, and every
+attempt to watch a real sync from in there either outran it or lost the lock
+to the background pass.
+
+---
+
+## 2026.09.08.16 — the history the lab shares
+
+### Changed
+
+- **History can show the whole lab, not just this machine.** The log was
+  never the problem — ninety-five distinct actions, and `session.open`
+  already carried the path, the channel count, the sample rate and what was
+  restored. What could not be answered was "who loaded that recording last,
+  and what did they do to it", because the view read this machine's own day
+  files and nothing else, so the answer was available only if it happened to
+  be you.
+
+  A switch between **This machine** and **Everyone**, a filter by kind of
+  work (session, curation, bank, layers, figure, run…), and the rows now
+  carry who did it and what it was done to — the recording's label, or the
+  file, rather than making you open each one to find out.
+
+  The kind filter matches a prefix, so "curation" reaches
+  `curation.enter`, `curation.bank` and `curation.collision` alike. The
+  useful question is about a kind of work, not one verb.
+
+- **`/api/activity/who`** answers the shape rather than the list: who has
+  done how much, from which machine, last seen when. Currently 756 actions
+  from Shahriar Tafti on Bluebarry, 236 from Rain on StrawBarry, 8 from Rain
+  Younger — which is the sort of thing a list of a thousand rows makes you
+  work out for yourself.
+
+- **The activity log is out of git.** Eight tracked files, several thousand
+  lines a week, one per machine per day — and committing them was the only
+  way one person's history reached another, so the repository carried a
+  growing pile of keystroke records and "who loaded this last" was *still*
+  unanswerable until somebody remembered to push. It goes through Supabase
+  now. The files stay on disk as the offline buffer: BARRY records what
+  happened whether or not there is a network, which is exactly when it
+  matters. They are cache, not transport.
+
+The log itself stays push-only, and the reason is unchanged: it is an
+append-only record of what happened on one machine, and pulling somebody
+else's into this machine's day file would be writing their actions into a
+file that says it is mine. The combined history is a query, and now there is
+one.
+
+### A note on honesty
+
+When the shared log is asked for and cannot be read, the answer says so —
+`scope` reports what was actually served and `wanted` echoes what was asked,
+and the view prints the reason above the list. An unlabelled list of your own
+actions is indistinguishable from "nobody else did anything", and somebody
+would believe it.
+
+---
+
+## 2026.09.08.15 — the reference channels
+
+### Added
+
+- **Ripple, fissure and hilus channels on 62 recordings**, from the Toothy
+  workbook (`tools/import_toothy.py`). These are the landmarks every CSD is
+  read against — which channel sits at the fissure is a fact about where the
+  probe ended up — and BARRY had nowhere to put them, so the answer lived in
+  a spreadsheet and was true for whoever had it open.
+
+  Corroborated rather than trusted: the hilus channel the workbook names is
+  labelled HIL in the StrataScope sheet in **57 of 57** cases, and those
+  sheets came from a different spreadsheet imported separately. Two
+  independent sources agreeing is the best evidence either could have.
+
+- **The extraction note, where it was not clean.** 53 read "Success: Clean
+  extraction" and are not shown; the nine that do not are on the card —
+  five bad-channel hits on the ripple, three with no CA1 SP channel at all,
+  one bad channel at the hilus. That last group changes how the recording
+  should be read, and it was only ever visible in a spreadsheet. Three
+  sessions are flagged as still needing processing.
+
+Needs `supabase/07_reference_channels.sql`.
+
+### Not imported, and why
+
+Four of the workbook's six sheets are deliberately left alone. The reasoning
+is in the tool's docstring, and `--reconcile` reports the differences without
+writing anything.
+
+- **DS#, Garbage#, Flag#, Deep Rev.** BARRY holds the decisions these count,
+  one per candidate, with who made each and when. Of the 40 sessions where
+  both exist, 22 agree exactly and 18 do not — and m24 s4 reads spike 4 /
+  garbage 734 in the workbook against spike 738 / garbage 0 here, which looks
+  like two columns swapped in that row. Importing a count that disagrees with
+  the decisions it summarises would give the lab two answers to "how many
+  dentate spikes", one of which cannot be shown event by event.
+- **Channel side and location.** Already imported from the feeder sheet.
+  3,898 of 3,948 agree; the 50 that do not are in four sessions and are
+  systematic rather than scattered — for m11 s10 the workbook says CA1 for
+  channels 8–17 where the sheet says CA1 SP. Two spreadsheets disagreeing
+  about a layer boundary is a question for whoever drew it, not something to
+  settle by picking the file read last.
+- **Manual Vs Auto** and **Data Summary** are results — a comparison of the
+  detector against manual picks, and per-mouse counts with percent change.
+  Putting either in the session record would file a conclusion where
+  measurements go.
+
+### Fixed while surveying
+
+The first pass compared the workbook's DS# against a curation label id of
+`ds` and reported BARRY holding zero dentate spikes everywhere. The label is
+`spike`. A survey that reports a false conflict is worse than one that
+reports nothing, because somebody acts on it — so the comparison now names
+the label ids explicitly, and the channel parse reads the digits out of
+`CSC12.ncs` rather than failing silently and finding nothing to compare.
+
+---
+
+## 2026.09.08.14 — what was happening, and which devices
+
+### Added
+
+- **Click an error to see the five minutes before it.** The card carried a
+  message, a traceback and a timestamp — everything except the part that
+  makes a bug fixable. BARRY already writes every filter change, colormap
+  pick and raster switch into the activity log; the two were simply never
+  lined up, so an error was a message and the answer to "what were you
+  doing" was a message to whoever hit it.
+
+  Five minutes before, and one after — before is where the cause is, and
+  that minute after is how you tell "and then it recovered" from "and then
+  everything broke". The error is drawn **in** the sequence rather than
+  beside it, because a list of actions with no indication which side of the
+  failure each one is on is not much of a list. Other errors in the same
+  window are listed too: one fault often arrives as six and the first is the
+  one worth reading.
+
+  It reads another machine's activity from the cloud, which is the case the
+  shared copy exists for — the log itself stays push-only, because copying
+  somebody else's actions into this machine's day file would be writing
+  their history into a file that says it is mine. If the cloud cannot be
+  reached it says so, because "nothing was happening" and "I could not find
+  out what was happening" look identical in an empty list.
+
+- **A devices table**, in the debug view: every machine that syncs here,
+  whether it still is, and what it has been sending. `machines.last_seen`
+  has been a heartbeat all along and nothing read it, so "is the rig still
+  sending its logs" was a question you answered by walking down the
+  corridor.
+
+  Online and sending are separate columns on purpose. A machine can be
+  reachable and have stopped logging, and that is the more interesting
+  failure of the two — one of the three here is online with three errors and
+  no actions at all.
+
+The debug trace itself stays per-process and in memory. It is what *this*
+browser and *this* server did, and shipping raw request trails between
+machines would be a great deal of volume for very little: nobody debugs by
+reading somebody else's HTTP log. What is worth knowing across machines is
+whether each one is still reporting, which is what the table answers.
+
+### Fixed
+
+- The context window compared ISO strings, and the local log writes local
+  time with its offset while the cloud copy writes UTC — so lexicographic
+  comparison silently dropped every cloud row, which read as "the other
+  machine logged nothing" rather than as a bug. Everything compares moments
+  now, including the harness that caught it.
+
+---
+
+## 2026.09.08.13 — layer sheets in the Event Bank
+
+### Added
+
+- **StrataScope sheets are in the Event Bank**, on a switch beside Events.
+  They are the other output somebody cites in a paper, and they were only
+  reachable through the ToolKit — so "where is the recorded output for m11
+  s10" had two answers depending which output you meant.
+
+  Not as bank entries, though. A bank entry is a set of event *times*, and
+  every invariant in the bank is about times: the snapshots are
+  `[[start, label], …]`, the counts are event counts, the import path expects
+  a time column. A layer sheet is channel → region and has no times at all.
+  Forcing it in would mean either lying in the times field or making all of
+  those invariants optional, and an entry that is only half an entry is worse
+  than a second list. One view, two shapes, neither pretending to be the
+  other.
+
+- **The same version workflow as a banked DS set.** Snapshot a pass and it is
+  frozen as the next version, with a note about what the pass was; every
+  version exports as CSV, read from its snapshot so it cannot disagree with
+  the history panel. A row per channel including the unlabelled ones — a CSV
+  that silently omits them cannot be told from one where they were never
+  offered.
+
+- A sheet is shown as **runs** rather than one row per channel: a probe passes
+  through a layer for a stretch, so where the boundaries fall is the fact
+  worth reading and "CA1" eight times over is not.
+
+### Fixed
+
+- **62 of the 67 layer sheets had no channel list**, so they displayed and
+  exported as empty despite holding sixty-odd labels each — every reader
+  walks that list, and my feeder import never wrote one. The importer now
+  does, the readers fall back to the labelled channels when it is missing,
+  and the existing sheets have been backfilled. A sheet is never invisible
+  just because nobody said how wide it was.
+
+---
+
+## 2026.09.08.12 — labelling layers by pointing at them
+
+### Changed
+
+- **StrataScope: click a channel, then name it.** The rail put a dropdown on
+  every row, and at 64 channels a row is six pixels tall — so labelling asked
+  the mouse to be right twice, once to hit the row and once to work a menu
+  covering the thing being labelled. Reported as "I can't click on individual
+  channels to select anything", which is what a six-pixel target feels like.
+
+  Click selects, shift-click takes a range, drag extends, ctrl-click adds
+  one. Then a layer button — or its number — names everything selected, and
+  `0` unlabels. Precision is needed once, and the second half can be a
+  keystroke. The selection survives being labelled, because finding one
+  channel wrong in a run of twelve is the common case and re-picking the run
+  to fix it is not an answer. Escape drops the selection before it drops the
+  mode.
+
+  The brush stays for anyone used to it: with a layer armed and nothing
+  selected, dragging still paints.
+
+### Fixed
+
+- **The layer overlay drew on nothing but the traces**, which is the one view
+  people do not label against — the CSD is where a boundary is visible, and
+  the four-way view showed no layers at all. It draws on image panels now,
+  aligned to the rows the panel reports rather than to the sheet's own
+  channel order: CSD drops the first and last channel, and laying the sheet
+  over those rows would put every band one off, which is worse than nothing
+  because it looks right.
+- **And it could stop drawing entirely.** The overlay was gated on a flag set
+  on the session object — but entering StrataScope reopens the recording, and
+  a reopen can hand back a different object from the one the flag was set on.
+  It now also accepts "this is the recording under the sheet", which the
+  module already knows.
+
+### Added
+
+- **An overlay strength control** beside Fill down and Clear: Off, Faint,
+  Clear, Solid. The bands show where a boundary fell, and past a point they
+  are in the way of the data that decides where it should have fallen. The
+  selection is drawn whatever the setting — turning the layers down is not a
+  reason to stop showing what you are pointing at.
+- **Session filters: Layers labelled, Layers to do, On this machine.** 387
+  recordings here, 64 labelled, 323 to do, 188 reachable.
+
+  Both filters were wrong on the first pass and the harness caught both: the
+  registry rows are translated into cards, and the translation dropped `has`
+  and `here` — so the layers filter matched nothing at all, and "on this
+  machine" fell back to "has a path", which matched 382 of 387. A filter that
+  matches everything is as broken as one that matches nothing and much harder
+  to notice.
+
+---
+
+## 2026.09.08.11 — removing a name, and the colony sheet
+
+### Added
+
+- **A profile can be removed.** The button was missing; the backend and its
+  route had been there all along. Only names nothing else carries can go —
+  the roster is compiled from the profiles, the decisions, the bank and the
+  assignments, so a name with work behind it is there because the data says
+  so, and a button that appeared to delete it would be lying about what
+  BARRY holds. Those are marked and say how many records hold them.
+
+  The trap, which the harness now guards: the roster counts the hand-added
+  entry itself, so testing that count directly refuses **every** hand-added
+  name — precisely the set that can go, and precisely what a leftover test
+  entry is. Three are removable here; four are held.
+
+- **Mouse details from the colony Google Sheet** (`tools/import_colony.py`).
+  Cage, sex, genotype across all three loci, date of birth, role, alive or
+  perfused, and what was implanted where and when — for the 19 mice BARRY
+  has recordings for. The mouse book has had slots for these all along and
+  nothing to put in them, so every one of those questions was answered by
+  opening the spreadsheet.
+
+  Mouse facts only, deliberately: the sheet also carries session numbers,
+  and recordings are the one thing BARRY should learn from the recordings
+  themselves. A session that exists because a spreadsheet says so is a
+  session nobody can open.
+
+  Read-only, one direction, via the published CSV — no key to store and
+  nothing that stops working when a token expires. It writes only what
+  differs, so a re-run is a clean no-op: the property the roster sync and
+  the layer sync both turned out to lack. Of the sheet's 241 mice the 199
+  with no recordings here are skipped unless `--all` is passed.
+
+  The implant column is the useful surprise — which probe, which hemisphere,
+  what date — and is the only independent check on the hemisphere a
+  recording claims.
+
+---
+
+## 2026.09.08.10 — "keep, greyed out" is gone
+
+### Removed
+
+**The greyed-out channel mode.** It sounded like a display option and was
+really two features in one coat: to draw an unchecked channel the request has
+to ask for it, and once that data is in the response every derived number is
+computed over channels somebody explicitly excluded. It produced a CSD colour
+scale twice as wide as it should have been and a trace amplitude that moved
+when you unchecked something — both invisible unless you went looking, both
+the kind of thing that reaches a figure.
+
+Each was fixable and each was fixed. The trouble is the list did not
+obviously end: every future panel and every future statistic would have had
+to remember that some of its rows were not really selected. A feature that
+adds a caveat to everything downstream costs more than it gives — and what it
+gave, seeing what you are leaving out, is already in the channel list beside
+the plot.
+
+Unchecking means what it always meant: not read, not drawn, not in any sum.
+`rows[].dim` stays in the panel response, always false, so a stale tab that
+still sends `dim_channels` is ignored rather than answered with a traceback.
+
+Marks visibility (show / faded / hidden) stays. A bookmark has never been in
+anybody's arithmetic.
+
+### Fixed
+
+- **Collapsing the menu made the rail taller and gave it a scrollbar**, worst
+  on exactly the screens with least room. Two causes, both mine: labels
+  collapsed with `max-width: 0` kept their full height — the environment
+  block stayed three lines tall while being zero pixels wide — and the icons
+  rule's `padding` shorthand silently overrode the compaction in
+  `@media (max-height: 700px)`, adding six pixels to each of eleven items.
+  Collapsing now never costs more room than it saves, checked at four window
+  heights.
+
+---
+
+## 2026.09.08.9 — what the spreadsheets knew
+
+Three facts lived in two Excel files and nowhere else, which meant they were
+true only for whoever had the file open. `tools/import_feeder.py` brings them
+in; it reports and writes nothing unless given `--apply`, because the first
+version of any importer is wrong in a way you only see in the diff.
+
+### Added
+
+- **Hemisphere, on 64 recordings** — 36 left, 28 right, from the feeder
+  sheet's `side` column. Shown on the session card, because pooling a left
+  and a right CA1 recording without noticing is a mistake that survives into
+  a figure. Two-way through Supabase, and it records where the value came
+  from so a wrong one can be traced rather than argued about.
+- **Layer sheets for 64 recordings, with a v0/v1 history** — 4,076 channels
+  labelled from the sheet's `location` column. v0 is the empty sheet and v1
+  is the import, mirroring the event bank: a layer sheet is evidence, and
+  evidence with no history cannot be cited. v0 looks pointless until you need
+  to answer "was this channel ever unlabelled", which is exactly the question
+  that comes up when a migration turns out to have been wrong.
+- Two layer regions the vocabulary lacked: **THAL** (twelve deep channels of
+  m2s3 — thalamus, and emphatically not "out of brain", which was the only
+  other place it could have gone) and **DG2** (m30's lower blade with no
+  sublayer given). Appended, so every id already written keeps its meaning.
+
+### Not applied, on purpose
+
+**The bad-channel column would only have removed things.** Against what BARRY
+already holds from the Toothy workbook it adds nothing: all eleven differences
+are channels BARRY calls bad and the sheet does not — 13 flags in total,
+including m24 s4 dropping 24 and 25.
+
+Un-flagging is not a neutral edit. A channel marked bad is left out of what
+people look at and of what they compute, so clearing the mark puts whatever
+was wrong with it back into the analysis, quietly, in recordings somebody may
+already have drawn conclusions from. The importer reports it and writes
+nothing; `--bad-mode union` adds without ever removing, and `--bad-mode
+replace` treats the sheet as authoritative. Which of those is right is a
+judgement about the data, not about the code.
+
+### Fixed while there
+
+- The layer applier rewrote every label on every pull, restamping sheets that
+  had not changed and pushing them straight back up — the same write loop the
+  roster was stuck in. It now writes only what differs.
+
+Needs `supabase/06_hemisphere.sql`.
+
+---
+
+## 2026.09.08.8 — a greyed channel is not in the equation
+
+### Fixed
+
+- **"Keep, greyed out" was letting the greyed channels set the colour
+  scale.** Measured on m11 s10 with sixteen channels checked: the CSD came
+  back at ±73,833 with the rest removed and ±143,792 with them greyed — the
+  same sixteen channels, drawn through a colour map twice as wide, because a
+  display setting had been changed. A setting that alters the picture you are
+  reading is not a display setting; it is a second analysis wearing a
+  disguise. The scale now comes from the channels you actually chose, and so
+  does the value the "auto" button resets to.
+- **The traces had it too, by the same route.** Every trace is scaled by
+  `robust_max`, which the server computes over every channel the request
+  asked for — and in this mode that is all of them, so unchecking a quiet
+  channel while a loud one stayed greyed rescaled everything on screen. The
+  greyed ones no longer get a say in the axis.
+
+The rule, now asserted: **an unchecked channel in "keep, greyed out" is a
+reference image and influences no number.** The testable form is exact — the
+rows you kept come out identical whether the unchecked ones are removed or
+greyed — and the harness checks the colour scale, the reset value, and the
+row identities against each other rather than against a remembered constant.
+
+Also checked, because they were asked about and neither was obvious: the
+spectrogram is unaffected either way (it has one channel and frequency down
+the rows, so `dim_channels` means nothing to it — the risk was that it
+failed on a field it did not understand, and it does not), and the mode
+remains a fact about the recording rather than the pane, so every pane
+showing it agrees.
+
+---
+
+## 2026.09.08.7 — who is curating what, right now
+
+### Added
+
+- **The curation workbench shows who is in a set at this moment**, on which
+  machine, and how far they have got — updating every ten seconds while you
+  are looking at it. This is a different fact from the name already on the
+  card: "assigned to Rain" is still true next week, "Rain has it open" will
+  not be true after lunch, and only the second one should stop you starting.
+- **Opening a set somebody is actively in asks first**, and says what they
+  have done so far. Advisory, with the override in the dialog: the ask was to
+  prevent doing it *accidentally*, and a hard block would also stop the
+  deliberate case — somebody left a set open on a rig and went home — which
+  is common enough that blocking it would just teach people to ignore the
+  warning.
+- Taking a set **marks the other session rather than deleting it**, so their
+  window finds out on its next heartbeat and says so. The alternative is
+  silently carrying on writing decisions into a set you no longer hold, which
+  is the quiet version of the collision this exists to prevent.
+- The curation window announces a colleague arriving in the set you are in,
+  once per machine rather than every twenty seconds.
+
+Presence lives only in Supabase — no local shard, nothing in `GUI_logs`.
+A presence row that survives a restart is a lie, and a file claiming somebody
+is curating a set three days after they stopped is worse than no file. If the
+cloud is unreachable the answer is "nobody is reported present", which is
+exactly the truth available, and nothing about curating stops working.
+
+It **expires rather than unlocks**: a session is present while it keeps saying
+so, and a set is held while somebody is present in it. A lock you have to give
+back is one that strands the set when a machine crashes, and the only thing
+worse than two people in a set is nobody able to get into it.
+
+Needs `supabase/05_presence.sql`.
+
+---
+
+## 2026.09.08.6 — syncing, and three things I broke
+
+### Fixed
+
+- **Sync was slow in a way that looked like broken.** Pull and push ran as
+  one round trip every two minutes, and on failure backed off by doubling to
+  a thirty-minute ceiling — so a single gateway timeout, which the code
+  itself calls brief, took syncing offline for half an hour. They run on
+  their own clocks now: a pull every 20 seconds, and a push within a few
+  seconds of any local write rather than on a timer, which is what makes
+  your work appear on someone else's screen while they are looking at it.
+  The backoff asks what kind of failure it was — a timeout is worth retrying
+  in half a minute, a missing table is not — and a clock that is ahead no
+  longer stands sync down until BARRY is restarted.
+- **Every pull re-applied the whole roster, and pushed it straight back.**
+  `_apply_people` rewrote each incoming row unconditionally; rewriting
+  restamps, and a restamped row looks like an edit. Two machines passed the
+  same seven people back and forth forever. It writes only when something
+  actually differs.
+- **Hiding the menu hid the entire interface.** `#main` never declared a grid
+  column — it landed in column 2 by elimination, because the rail held
+  column 1. The moment the rail's hidden state stopped using `display: none`,
+  the workspace auto-placed into the column the rail had vacated, which in
+  that state is 0px wide. Both are placed explicitly now.
+- **The collapsed rail's icons sat off-centre**, because the labels collapse
+  to zero width rather than `display: none` so they can animate — and a
+  zero-width flex item still gets its gap.
+- **"Keep, greyed out" never reached the traces.** The dimming was built into
+  the raster path, where the server draws the rows; the traces come back as
+  an envelope and are drawn by the canvas, which had not been told about the
+  mode. So it did the first half of its job — ask for all 64 channels — and
+  none of the second, which is exactly "it puts in all 64 channels and
+  prevents me from graying out anything". The harness missed it because it
+  checked the server's PNG, and the traces never go near it.
+
+### Added
+
+- **Export CSV, per version, in the event bank.** The entry-level export gives
+  the events as they stand now; a version is what they were at that pass,
+  which is the thing a result should cite. Read straight from the version's
+  snapshot, so it cannot disagree with the history panel.
+- Mode changes are recorded with the stack that caused them, for the
+  "curation snaps to StrataScope and back" glitch — nothing in the code
+  accounts for it, so the next occurrence will name whatever called it
+  instead of leaving nothing behind.
+
+---
+
+## 2026.09.08.5 — waiting, and moving
+
+### Added
+
+- **A connecting overlay, instead of a black screen.** The page loads
+  twenty-eight scripts and then fetches the catalogue, your preferences and
+  the registry before the first view has anything to draw — and until all of
+  that landed there was a dark rectangle, correctly themed and
+  indistinguishable from a crash. The overlay is in the markup above the
+  stylesheet, so it paints on the browser's first pass rather than after
+  `app.css` arrives, and it names the step it is on. If a step outlasts four
+  seconds it says which request it is waiting for, because "connecting" with
+  no subject is also what a hung program says. Three separate things remove
+  it, including a hard timeout: an overlay that can outlive a failure is
+  worse than the black screen it replaced.
+- **Skeleton loaders**, in the sessions tree, the event bank and Results.
+  Placed by the measured request times rather than sprinkled about — a
+  skeleton in front of an 80ms fetch is a flicker. Reading the catalogue
+  takes about five seconds here, and for all of it that view was an empty
+  box, which reads as "no sessions": a wrong answer rather than a slow one.
+  They only appear when there is nothing on screen yet, so refreshing a list
+  never blanks it, and they are cleared in a `finally` so a failed read
+  cannot leave the bones behind.
+- **The Menu button shows which of its three positions it is in.** It cycles
+  full → icons → hidden, and the only thing that ever said so was a tooltip
+  that changed after you had already clicked, so the second click — the one
+  that hides the bar completely — was a surprise every time. Three pips on
+  the button, a tooltip naming the whole cycle rather than the next step, and
+  a one-line hint that retires itself once you have been round once.
+- **The collapses move.** The rail, the log dock, the radio, tree sections,
+  modals and popovers, all on one duration so they read as the same
+  interface. Motion is dropped entirely for anyone whose system asks for
+  less of it — but the skeletons keep their shape, because asking for less
+  motion is not asking for less information.
+
+### Changed
+
+- The radio's third station is no longer Asian lofi. It is now ten hours of
+  a mouse eating M&Ms, which in a program whose every other window is a
+  mouse seems only right.
+
+### Notes for later
+
+Three ways of animating a collapse were tried before one worked, and the
+failures are worth remembering, because each looked correct:
+
+- Transitioning **`grid-template-columns`** seemed ideal — one property
+  governing the rail and the workspace together. Measured, it did something
+  far worse than jumping: the rail stayed at 190px in *every* state. The
+  transition was not decorating the collapse, it was preventing it. It now
+  animates `--rail`, registered with `@property` so a length is being
+  interpolated; if that animation cannot run the value still changes, so the
+  worst case is an instant collapse rather than none.
+- Dropping `display: none` from the hidden state was necessary, and left an
+  invisible 838px rail auto-placed into the workspace column. Pinning it to
+  `grid-column: 1` got that to 20px, and no combination of `min-width: 0` and
+  `width: 0` got it below: a grid item will not shrink past its own content.
+  It slides out and *then* leaves the layout.
+- The same 15px floor caught the radio dock, where `display: none` is not
+  available — it holds the player, and nothing that risks detaching a
+  playing iframe is acceptable. That one measures its own height instead.
+
+---
+
+## 2026.09.08.4 — the Marks list, and marks really meaning all of them
+
+### Fixed
+
+- **Deleting a bookmark stacked another Marks dialog on the open one.** The
+  close X then peeled them off one at a time, each revealing a list that
+  still held the bookmark just deleted — so closing the list looked like it
+  was undoing the delete. The dialog already knew how to redraw its list in
+  place; deleting was reopening the whole thing instead. Third place this
+  same fault has turned up, after the figure builder and the event import,
+  so the guard that stops a redraw ever stacking is on this one too.
+- **A delete took three seconds to show anything, so it got pressed four
+  times.** Four requests went out for one bookmark, each queued behind the
+  last and slower than it — 2.7s, then 3.5s, 4.8s, 6.6s. The row now goes at
+  the click and comes back if the server refuses, and a repeat while one is
+  already in flight sends nothing.
+- **Fading and hiding marks now reaches the dentate-spike marks.** They were
+  deliberately exempt, on the reasoning that while you are deciding
+  candidates the candidates are the job rather than an annotation over it.
+  That was the wrong call: a setting that quietly spares the one kind you
+  were looking at is worse than one that does nothing. The pane header still
+  says the marks are faded or hidden, so it is never a mystery.
+- **The radio would not play — "Error 153".** It was carrying
+  `referrerpolicy="no-referrer"`, a `sandbox`, and an `origin` parameter, all
+  added as privacy hardening. YouTube's embed validates the page it is
+  embedded in from the referrer, so suppressing the referrer suppressed the
+  thing it checks. None of the three bought anything real: a cross-origin
+  iframe cannot touch the page whatever the sandbox says, and the referrer it
+  sends is `127.0.0.1`. The dock also now has a way out to YouTube, because
+  an embed failure is a bare number and "153" is not something anybody
+  should have to look up.
+- Two of the four radio stations were the same stream under different names,
+  and one labelled Jazz was playing lofi. Three stations now, each named
+  after what it actually plays.
+
+---
+
+## 2026.09.08.3 — display options, sync, and a radio
+
+### The More tab
+
+- **Unchecked channels: remove, or keep them greyed out.** Unchecking used
+  to drop a channel from the request, so it was never read and never drawn —
+  right when you want it gone, wrong when you want to see what you are
+  leaving out. The greyed-out option reaches the rasters as well as the
+  traces, because the row is really in the image: the client asks for every
+  channel and names the unselected ones, and the renderer draws those at
+  reduced alpha, the same mechanism a bad channel already used.
+- **Marks — bookmarks, events, spikes — can be faded or hidden.** With a
+  standing notice in the pane header while they are, because a mark you
+  cannot see is indistinguishable from a mark that is not there, and that is
+  how somebody concludes a recording has no events in it. Nothing is deleted
+  and the counts do not change.
+
+Both are facts about the recording rather than the pane, so both ride the
+same broadcast as invert and even-only — every pane and every window showing
+it agrees — and both are saved with the session.
+
+### Syncing
+
+- **Errors travel by Supabase, not by git.** They were append-only JSONL per
+  machine per day, committed to the repo, and that commit was the only way
+  one machine's errors reached another — so a colleague's crash was invisible
+  until somebody remembered to commit and somebody else remembered to pull.
+  The files stay on disk as the offline buffer; they are cache now, not
+  transport, and the directory is gitignored.
+- **Feedback, the roster and error triage come back down.** They were pushed
+  and never pulled, which is half a sync and the half that looks like it is
+  working. A report filed on the rig reached Supabase and stopped there.
+- A pulled error is filed under the machine that had it, so nothing claims
+  somebody else's crash happened here. The raw log stays push-only in the
+  other direction for the same reason.
+
+### Added
+
+- **A radio.** Docked bottom-right, collapsible to a bar, and it keeps
+  playing while you work — which is the whole point, so minimising hides the
+  player rather than removing it. Four stations.
+
+  It is the only part of BARRY that reaches the internet. It is off until
+  you turn it on, it asks once per machine and says exactly what will be
+  loaded and what will not be sent, and nothing is fetched until you agree —
+  a closed radio is not a connection.
+- Ctrl+Z in curation, alongside `u`. "Even up the panes" is now labelled a
+  reset rather than an undo, which is why Ctrl+Z was expected to reach it.
+
+---
+
+## 2026.09.08.2 — undo in the figure builder
+
+### One control strip for many panes
+
+A six-pane probe layout carried six copies of the control strip, each
+squeezed into a third of the width — and every one of them set the same
+things. The window, the filter, the gain, the colour limits and the channel
+set all belong to the recording, not to the pane.
+
+So when every occupied pane is a view of the same recording in the same kind
+of panel, there is now one strip above the grid, full width, and each pane
+keeps only what is its own: which recording, which probe column, and its own
+window read-out.
+
+Two panes showing two different recordings still get a strip each — `t0`
+means a different thing in each of them, so one strip could not speak for
+both.
+
+### Fixed
+
+- **The figure builder's close button behaved like a back button.** Its
+  redraw went through the modal stack, so every panel change and every grid
+  click pushed another copy of the builder behind it — closing needed one
+  press per change you had made. A redraw now replaces rather than stacks.
+  `eventimport` had the same fault and is fixed with it.
+- The column `+` sat in the header row, which put it above the row handles —
+  floating in the top corner beside nothing. It is a full-height button on
+  the right edge now, where another column would go.
+- The builder sized its grid to the pane count rather than to the panels it
+  actually had, so a four-pane layout with one pane filled opened as a 1×2
+  grid holding one panel.
+
+### Added
+
+- **Undo in the figure builder**, on a button and on Ctrl+Z, with redo on
+  Ctrl+Shift+Z. Hooked in one place — the layout is compared to the last
+  snapshot whenever it is redrawn — so dragging a panel, adding a column,
+  removing a row and editing a title are all undoable without any of them
+  having to know about it. Ctrl+Z inside a text box still means the text.
+
+---
+
+## 2026.09.08.1 — the curation workbench
+
+### Event curation is a workbench, not a table
+
+The list of forty-two sets read as a database: everything at equal weight,
+controls that were all query controls, and every row carrying the same five
+buttons down to Delete. Nothing said whose work any of it was.
+
+- **The bench** holds the sets you have open, with an owner and when it was
+  last picked up. Two verbs on the face of a card — carry on, or put it down
+  — and everything administrative folded behind **More**.
+- **The shelf** is everything put down, behind a fold. That is the only part
+  that is a lookup, and the only part with a search field.
+- **Putting a set down costs nothing and requires nothing.** Every decision
+  was written the moment it was made; banking is publishing a result, not
+  saving work.
+- Every set has a **person** on it, taken from whoever actually made the
+  decisions.
+
+### New curation set
+
+Importing candidate times into Event curation is gone. Candidates live in the
+Event Bank — with the detector that found them and their version history —
+and curation now reads a version out of it: pick a recording, pick its banked
+entry, pick which version to work from.
+
+Version 0 is the detector's list with nothing decided. A later version
+carries the decisions as they stood then, so you can carry on from where
+somebody left off or go back to it.
+
+The old importer implied a recording could have several named sets. It cannot
+— one per kind — so a second import of the same times added nothing and threw
+away the name that had been typed, silently.
+
+### Fixed — things that were losing work
+
+- **A banked set came back undecided.** The bank stores a category as its
+  display name ("Garbage") and the set only recognised ids ("garbage"), so
+  every decision was dropped on the way back in. One session's 416 decisions
+  were lost this way and have been restored from the bank.
+- **Re-banking erased the detector.** `source` was rebuilt from the caller on
+  every bank after the first, so "ETS dentate-spike export" became "BARRY
+  curation". Repaired on the entries it had already hit.
+- **Restarting a set doubled it.** Replacing the candidate list minted fresh
+  ids for the same times, which reads as a replacement on one machine and as
+  new candidates on every other — the merge was their union. A candidate now
+  keeps the id its time already has, and a set that had doubled has been
+  collapsed with every decision intact.
+- **Clearing a field did not stay cleared.** Removing one wrote a tombstone
+  that the next unrelated write to the same record dropped, so another
+  machine's older value came back. Un-archiving was the visible case; it
+  affected any field cleared by removal.
+- **8,845 decisions had no author or timestamp**, which meant they lost every
+  disagreement on a handoff merge automatically. All of them now say who and
+  when, and carry a review row.
+- **Bulk labelling kept no review trail**, so a sweep or a restore overwrote
+  a colleague's call leaving no trace they had made one.
+- **Banking a half-curated set** deleted the candidates nobody had reached
+  yet. Version zero now keeps the detector's full list.
+- **Feedback never left the machine it was filed on**, and triaging a report
+  filed elsewhere wrote into that machine's file — a guaranteed conflict.
+  Triage is now an overlay of your own and merges.
+
+### Versions
+
+An import is **v0**, always: it is the thing curation gets done *to*, not a
+round of curation. The first real pass is v1. A set whose sorting happened
+before BARRY existed gets a blank v0 and its decisions as v1.
+
+### Archiving
+
+Archiving files a set away and touches nothing else — every candidate and
+every decision stays exactly as it is. **Delete is gone** from the view; it
+erased every machine's copy of a set and sat at the same weight as Export
+CSV. Opening an archived set asks first, so archiving cannot be undone as a
+side effect of looking at something.
+
+### Fixed — the interface
+
+- **Curating fast no longer outruns the server.** Each keystroke was firing
+  two window-sync posts and a fresh render of all four aid panels; the queue
+  reached twenty-five seconds and the decision writes looked broken when they
+  were only behind it. The aids now wait for you to stop moving, and a
+  superseded panel request is cancelled rather than merely ignored.
+- **Banking survives leaving the mode.** Reading the previous versions is a
+  round trip, and leaving curation while it was in flight threw an error into
+  the console and banked nothing.
+- The bank dialog shows the real history and the version it is actually about
+  to write.
+- Switching probe keeps the panel you were looking at instead of forcing a
+  CSD, and changing a panel type in a six-column layout changes all six.
+- The Event Bank list keeps its place when you pick an entry.
+- The Errors count updates without opening Errors, and sits beside the word
+  rather than after the shortcut key.
+- The workbench is current when you come back to it.
+- Picking up and putting down happen on the click, not after the round trip.
+
+### The figure builder
+
+Rows, columns and the page size were number boxes beside a picture of the
+grid. The picture is the thing worth manipulating.
+
+- **The grid is built on the grid.** A `+` on an edge adds a row or a
+  column; an `x` on each one removes it. Rows, Cols, Width and Height are
+  shown rather than typed — the page size follows the preset, and a second
+  way to set it is a second thing that can disagree.
+- **Panels are dragged in.** A palette of kinds below the grid, dropped into
+  the cell they should occupy. Dragging a filled cell moves that panel. The
+  dropdown put a panel in the first free cell, so you found out where it had
+  gone afterwards and moved it.
+- **It opens on what is actually in view.** It claimed to seed from the panes
+  on screen and then discarded the arrangement: four at most, the first alone
+  on the top row and the rest beneath it. A six-pane probe view arrived as
+  four panels in the wrong places.
+- Removing a column takes the panels that were only in it, shrinks the ones
+  that spanned it and shifts the rest left, rather than decrementing a number
+  and letting a clamp sort it out.
+- **The rebuild dialog docks into a corner** while it works, and stops
+  swallowing clicks. It narrates a recording opening and a window moving,
+  behind a backdrop that covered exactly that.
+
+### Added
+
+- **Bookmarks carry a colour**, chosen when the bookmark is placed and
+  changeable from the Marks list. Eight bookmarks in one accent were eight
+  identical flags.
+- **Profiles** offer the people already on record: click a name to credit
+  this machine's work to them, or the pencil to fill in their details without
+  becoming them.
+- Assigning a curation set picks from that same roster instead of a text box,
+  which is how one person becomes three.
+- These patch notes, and the version in the rail.

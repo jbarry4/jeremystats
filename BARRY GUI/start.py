@@ -1,8 +1,8 @@
 """
-BARRY GUI -- launcher.
+Jarvis -- launcher.
 
-Windows: double-click "Start BARRY GUI.bat"
-macOS:   double-click "Start BARRY GUI.command"
+Windows: double-click "Activate Jarvis.bat" (or its .lnk, which has the icon)
+macOS:   double-click "Activate Jarvis.command"
 Either:  python start.py
 
 Starts the local server and opens your browser. Nothing is installed and
@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import socket
+import getpass
 import sys
 import threading
 import time
@@ -22,12 +23,142 @@ import webbrowser
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-BANNER = r"""
-  ___   _   ___ _____   __  ___ _   _ ___
- | _ ) /_\ | _ \ _ \ \ / / / __| | | |_ _|
- | _ \/ _ \|   /   /\ V / | (_ | |_| || |
- |___/_/ \_\_|_\_|_\ |_|   \___|\___/|___|
-"""
+# The wordmark, in blocks. Looks like something worth opening; costs nothing
+# but a few lines of text.
+BLOCK = """\
+     \u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2557   \u2588\u2588\u2557\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557
+     \u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u2588\u2588\u2551   \u2588\u2588\u2551\u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2550\u2550\u255d
+     \u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2554\u255d\u2588\u2588\u2551   \u2588\u2588\u2551\u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557
+\u2588\u2588   \u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u255a\u2588\u2588\u2557 \u2588\u2588\u2554\u255d\u2588\u2588\u2551\u255a\u2550\u2550\u2550\u2550\u2588\u2588\u2551
+\u255a\u2588\u2588\u2588\u2588\u2588\u2554\u255d\u2588\u2588\u2551  \u2588\u2588\u2551\u2588\u2588\u2551  \u2588\u2588\u2551 \u255a\u2588\u2588\u2588\u2588\u2554\u255d \u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2551
+ \u255a\u2550\u2550\u2550\u2550\u255d \u255a\u2550\u255d  \u255a\u2550\u255d\u255a\u2550\u255d  \u255a\u2550\u255d  \u255a\u2550\u2550\u2550\u255d  \u255a\u2550\u255d\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u255d"""
+
+# The same word for a console that cannot encode a block. cmd.exe on an older
+# machine is codepage 437, where every character above is unprintable -- and
+# an exception from the banner would stop the launcher before it started.
+PLAIN = r"""
+     _   _    ______     _____ ____
+    | | / \  |  _ \ \   / /_ _/ ___|
+ _  | |/ _ \ | |_) \ \ / / | |\___ \
+| |_| / ___ \|  _ < \ V /  | | ___) |
+ \___/_/   \_\_| \_\ \_/  |___|____/"""
+
+
+def _fits(text):
+    """Can this console actually encode that?
+
+    Asked rather than assumed. `sys.stdout.encoding` is utf-8 on a modern
+    Windows console and cp437 on an old one, and the difference is an
+    exception on the first line of main().
+    """
+    enc = getattr(sys.stdout, "encoding", None) or "ascii"
+    try:
+        text.encode(enc)
+        return True
+    except (UnicodeEncodeError, LookupError, AttributeError):
+        return False
+
+
+def _colour():
+    """Turn on ANSI if this console will take it, and say whether it did.
+
+    Windows 10 understands the escape codes but only once virtual-terminal
+    processing is enabled; a console that never got it prints them as
+    literal garbage, which is worse than plain text.
+    """
+    if not (sys.stdout and getattr(sys.stdout, "isatty", lambda: False)()):
+        return False
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.GetStdHandle(-11)
+        mode = ctypes.c_ulong()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False
+        return bool(kernel32.SetConsoleMode(handle, mode.value | 0x0004))
+    except Exception:                              # noqa: BLE001
+        return False
+
+
+def _greeting():
+    """What time it is, said the way a person would."""
+    hour = time.localtime().tm_hour
+    if hour < 5:
+        return "Still up?"
+    if hour < 12:
+        return "Good morning."
+    if hour < 18:
+        return "Good afternoon."
+    return "Good evening."
+
+
+def _name_hidden():
+    """Has this machine been told to keep the name out of sight?
+
+    The switch is in the interface (web/js/jarvis.js) and is stored the way
+    the theme is: a map keyed by hostname in the shared preferences, merged
+    per key, newest stamp wins. Read straight off the shard files rather
+    than through the store, because the banner is printed before the
+    dependencies are checked and must not import anything that needs them.
+    Any trouble reading is "not hidden", which is the default.
+    """
+    import glob
+    import json
+    import platform
+    host = platform.node()
+    newest, hidden = "", False
+    pattern = os.path.join(HERE, "GUI_logs", "prefs", "workbench@*.json")
+    for path in glob.glob(pattern):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                shard = json.load(fh)
+            op, at = ((shard.get("_keys") or {}).get("jarvis") or {}).get(host)[:2]
+        except (OSError, ValueError, AttributeError, TypeError):
+            continue
+        if at and at > newest:
+            newest = at
+            hidden = (op == "set"
+                      and (shard.get("jarvis") or {}).get(host) is False)
+    return hidden
+
+
+def _console_title(text):
+    """Retitle the console window; the .bat names it before Python starts."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetConsoleTitleW(text)
+    except Exception:                              # noqa: BLE001
+        pass
+
+
+def banner():
+    """The thing the window opens with."""
+    art = BLOCK if _fits(BLOCK) else PLAIN
+    tint = _colour()
+    cyan, dim, bold, off = (("\033[38;5;45m", "\033[38;5;245m",
+                             "\033[1m", "\033[0m")
+                            if tint else ("", "", "", ""))
+    # Hidden on this machine: no wordmark, and the window is not called
+    # Jarvis either. The interface has the switch that brings both back.
+    hidden = _name_hidden()
+    if hidden:
+        _console_title("Workbench")
+    lines = [""]
+    lines.append("  " + dim + "Hello. " + off + bold + _greeting() + off)
+    lines.append("")
+    if not hidden:
+        for row in art.strip("\n").splitlines():
+            lines.append("  " + cyan + row + off)
+        lines.append("")
+    lines.append("  " + dim
+                 + "a workbench for the recordings on this machine" + off)
+    return "\n".join(lines)
 
 REQUIRED = [("flask", "flask"), ("numpy", "numpy"),
             ("scipy", "scipy"), ("matplotlib", "matplotlib")]
@@ -85,7 +216,7 @@ def ask_for_key(logs_dir):
     window they are already looking at, rather than in a README they will
     read afterwards.
 
-    Skipping is a first-class answer. BARRY writes locally first and works
+    Skipping is a first-class answer. Jarvis writes locally first and works
     completely without the network; the sync is an addition, never a
     prerequisite, and starting up must never depend on someone having a
     password to hand.
@@ -99,7 +230,7 @@ def ask_for_key(logs_dir):
         print("  !! cloud.json in the repo contains a key. That file is")
         print("     tracked by git, so the key should be treated as public:")
         print("     rotate it in the Supabase dashboard, then paste the new")
-        print("     one below. BARRY is ignoring the one in the file.")
+        print("     one below. Jarvis is ignoring the one in the file.")
 
     if not cfg.get("needs_key"):
         if cfg.get("enabled"):
@@ -116,7 +247,7 @@ def ask_for_key(logs_dir):
     print("  It is stored in GUI_logs/.cloud.json, which git ignores, and")
     print("  never goes into the repo.")
     print()
-    print("  Press Enter to skip -- BARRY works fine without it, and you")
+    print("  Press Enter to skip -- Jarvis works fine without it, and you")
     print("  can add it later from the Sync panel.")
     print()
 
@@ -145,7 +276,7 @@ def ask_for_key(logs_dir):
         if not ping["reachable"]:
             print("  Could not reach the project: %s"
                   % (ping.get("error") or "")[:160])
-            print("  Saved anyway; BARRY will keep trying in the background.")
+            print("  Saved anyway; Jarvis will keep trying in the background.")
             return
         if not ping["schema"]:
             print("  Connected, but the tables are not there yet. Run the SQL")
@@ -160,13 +291,162 @@ def ask_for_key(logs_dir):
     print("  Skipping for now. Add it later from the Sync panel.")
 
 
+def ask_for_netid(logs_dir):
+    """First start on a new machine: get onto the cluster, here, once.
+
+    A NetID is the whole question anybody can be expected to answer.
+    `<netid>@login.vacc.uvm.edu` is the account, `/gpfs1/home/<n>/<e>/<netid>`
+    is the home directory and `/gpfs2/scratch/<netid>` is the scratch space --
+    all derived. So this asks for the NetID, and for a password only if it
+    turns out one is needed.
+
+    THE ORDER MATTERS. Keys already on this machine are tried against the
+    account FIRST, and on a shared rig that is the ordinary case: one person
+    sets the cluster up and everybody after them is asked for nothing but
+    their NetID. Being asked for a password by software that does not need
+    one is how people learn to type passwords into things that should not
+    have them, so not asking is a small security property and not only a
+    convenience.
+
+    `getpass` rather than `input`, so it is not echoed and does not land in
+    the scrollback of a window that stays open all day. It is held for one
+    `ssh` invocation and dropped -- never written to disk, never logged,
+    never on a command line.
+
+    Skipping is a first-class answer throughout. Jarvis runs entirely
+    without a cluster, and start-up must never depend on somebody having a
+    credential to hand.
+    """
+    from backend import vacc
+
+    cfg = vacc.load_config(logs_dir)
+    if cfg.get("configured"):
+        print("  VACC    : %s@%s" % (cfg.get("netid"), cfg.get("host")))
+        return
+    if not vacc.have_ssh():
+        # Nothing here can work without it, and saying so once is better
+        # than every later button failing differently.
+        print("  VACC    : no ssh client on this machine, so the cluster is "
+              "out of reach")
+        return
+
+    print()
+    print("  Jarvis can run Incisor and Panorama on the VACC, if you have")
+    print("  an account. All it needs is your NetID -- the part of your UVM")
+    print("  email before the @.")
+    print()
+    print("  It is stored in GUI_logs/.vacc.json, which git ignores.")
+    print("  Press Enter to skip; you can set this up later from your")
+    print("  profile inside the app.")
+    print()
+
+    if not sys.stdin or not sys.stdin.isatty():
+        print("  (not a terminal, so skipping the question)")
+        return
+
+    try:
+        netid = input("  UVM NetID: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return
+    if not netid:
+        print("  Skipped. Turn VACC Mode on later and it will offer to set "
+              "this up.")
+        return
+    if not vacc.NETID_RE.match(netid):
+        print("  That does not look like a NetID (letters and digits, no")
+        print("  spaces, no @). Skipping -- the app can set it up later.")
+        return
+
+    # A key this machine already has, that this account already accepts.
+    print("  Checking the keys already on this computer...")
+    try:
+        already = vacc.working_key(netid)
+    except Exception as exc:                           # noqa: BLE001
+        print("  (could not reach the cluster: %s)" % str(exc)[:90])
+        already = None
+
+    if already:
+        vacc.save_config(logs_dir, netid=netid, key_path=already)
+        print("  Signed in as %s. An existing key works, so no password was"
+              % netid)
+        print("  needed.")
+        return
+
+    print()
+    print("  No key on this computer works for %s yet, so a password is" % netid)
+    print("  needed ONCE to install one. After that the key signs in and")
+    print("  this is never asked again.")
+    print()
+    print("  It is used for that one connection and then dropped: not")
+    print("  written to disk, not logged, and sent nowhere but the cluster.")
+    print("  Press Enter to skip.")
+    print()
+
+    try:
+        password = getpass.getpass("  UVM password (not shown): ")
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return
+    except Exception:                                  # noqa: BLE001
+        # Some consoles cannot suppress the echo. Better to send somebody to
+        # the app than to print their password across the window.
+        print("  This console cannot hide a password. Set it up from your")
+        print("  profile inside the app instead.")
+        return
+    if not password:
+        print("  Skipped. Set it up later from your profile in the app.")
+        return
+
+    print("  Installing a key...")
+    try:
+        vacc.install_key(netid, password)
+    except Exception as exc:                           # noqa: BLE001
+        print("  That did not work: %s" % str(exc)[:160])
+        print("  Nothing was saved. You can try again from your profile in")
+        print("  the app.")
+        return
+    finally:
+        # Gone from this frame either way, and never anywhere else.
+        password = None
+
+    # Prove the key before writing it down. Recording "signed in" on the
+    # strength of a password that has now been discarded is how a machine
+    # ends up configured and unable to connect, with nothing left to retry.
+    key_path = vacc.key_paths()[0]
+    try:
+        who = vacc._ssh(dict(vacc.load_config(logs_dir),
+                             netid=netid, key_path=key_path),
+                        "whoami", timeout=30).strip()
+    except Exception as exc:                           # noqa: BLE001
+        print("  The key was installed but would not sign in: %s"
+              % str(exc)[:120])
+        print("  Nothing was saved.")
+        return
+    if who and who != netid:
+        print("  The cluster says that account is %r rather than %r."
+              % (who, netid))
+        print("  Nothing was saved -- check the NetID.")
+        return
+
+    vacc.save_config(logs_dir, netid=netid, key_path=key_path, enabled=True)
+    print("  Signed in as %s. The key is installed, so this will not ask"
+          % netid)
+    print("  again -- on this computer, for anybody.")
+
+
 def main():
-    print(BANNER)
+    print(banner())
     if not check_deps():
         pause()
         return 1
 
-    from backend.app import app, refresh_catalog, REPO_ROOT, LOGS_DIR
+    # This is the app, so it syncs. Tools and the harness import the same
+    # module for its routes and do not set this, so they no longer run a
+    # background sync loop of their own (backend/app.py, _cloud_loop).
+    os.environ.setdefault("Jarvis_CLOUD_SYNC", "on")
+    from backend.app import (app, refresh_catalog, warm_start,
+                             REPO_ROOT, LOGS_DIR)
     from backend import runner, sysinfo, video
 
     sysdesc = sysinfo.describe()
@@ -188,6 +468,14 @@ def main():
     except Exception as exc:                       # noqa: BLE001
         print("  (could not check the sync settings: %s)" % exc)
 
+    # Same moment, same reason: the cluster needs a NetID and nothing else,
+    # and a machine that has never been told one cannot offer to run
+    # anything on it. Never fatal -- Jarvis runs entirely without a cluster.
+    try:
+        ask_for_netid(LOGS_DIR)
+    except Exception as exc:                       # noqa: BLE001
+        print("  (could not check the VACC settings: %s)" % exc)
+
     stale = runner.sweep_temp_files(REPO_ROOT)
     if stale:
         print("  Cleaned : %d leftover temp script(s)" % stale)
@@ -204,6 +492,30 @@ def main():
     print("  Stop    : Ctrl+C in this window\n")
 
     threading.Timer(0.9, lambda: webbrowser.open(url)).start()
+
+    # The warm start, and this is the only place it is switched on.
+    #
+    # It hands the interface last boot's answer to the three roll-ups that
+    # take five seconds each from cold, then recomputes all three behind the
+    # page and tells it which -- if any -- actually changed. See
+    # backend/warmcache.py for what bounds it; the short version is that the
+    # window shuts as soon as the real answers are in hand or as soon as
+    # somebody clicks something, whichever comes first.
+    #
+    # Only here, so a server started by the harness suite or by a script
+    # reads the store live exactly as it always did.
+    if os.environ.get("JARVIS_WARM", "1") != "0":
+        warm_start()
+
+    # The Precon1 -> Precon4 analysis carries on by itself if Jarvis or the
+    # computer stopped while it ran (backend/preconrun.py). Only here, for
+    # the same reason as the warm start: a harness server or a script that
+    # imports the app must never start an hour of work.
+    try:
+        from backend.app import resume_precon
+        resume_precon(port)
+    except Exception as exc:                       # noqa: BLE001
+        print("  (could not check for an interrupted analysis: %s)" % exc)
 
     # Threaded so a long-running job's log stream never blocks the UI.
     try:

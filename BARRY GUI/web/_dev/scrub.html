@@ -1,0 +1,205 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>scrub: running</title>
+<style>body{font:12px/1.6 ui-monospace,Consolas,monospace;background:#0a1310;
+color:#dfeae4;margin:0;display:flex}#log{width:760px;padding:12px;overflow:auto;
+height:100vh;white-space:pre}iframe{flex:1;height:100vh;border:0}
+.good{color:#7FE3B0}.bad{color:#FF8A7A}.note{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* What one second of dragging a trace actually costs.
+
+   Nothing else in web/_dev measures the draw path. The geometry harnesses
+   prove the picture ends up in the right place; none of them notices that
+   getting it there reallocated the bitmap sixty times, asked the stylesheet
+   for the same eight colours a hundred and eighty times, and rebuilt the
+   control strip once per mouse move.
+
+   So this counts, over a synthetic pan:
+
+     canvas bitmap writes   reallocating clears the canvas and resets the 2D
+                            context. It is right when the pane has actually
+                            changed size and pure waste on every other frame.
+     getComputedStyle       palette() reads eight CSS variables per draw, and
+                            they only move when the theme does.
+     .pane-ctl replacements the control strip being rebuilt mid-drag -- forty
+                            elements, a scrollLeft read and a replaceWith,
+                            per sample.
+     drawPane calls         one per pane per frame is the ceiling worth
+                            having; more than that is frames thrown away.
+
+   The budgets below are deliberately loose. This is a regression alarm, not
+   a benchmark: it should stay quiet on a slow machine and shout if any of
+   these goes back to being per-sample. */
+const L = document.getElementById('log');
+const say = (s, c) => { L.innerHTML += (c ? '<span class="' + c + '">' + s
+                                           + '</span>' : s) + '\n'; };
+const head = (s) => say('\n' + s);
+let ok = 0, bad = 0;
+function ck(what, good, detail) {
+  if (good) { ok++; say('ok    ' + what, 'good'); }
+  else { bad++; say('FAIL  ' + what + (detail ? '   [' + detail + ']' : ''), 'bad'); }
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const okBoot = await until(
+    () => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  if (!okBoot) { say('the app never booted', 'bad'); done(); return; }
+
+  const W = frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const B = ev('BARRY');
+  const setView = ev('setView');
+
+  const sess = new URLSearchParams(location.search).get('session');
+  setView('xplore');
+  await B.views.xplore.open(sess);
+  const drew = await until(
+    () => D().querySelector('.pane-canvas-host canvas'), 25000);
+  ck('a trace pane is on screen to drag', drew, 'no canvas');
+  if (!drew) { done(); return; }
+  await sleep(900);
+
+  const canvas = D().querySelector('.pane-canvas-host canvas');
+
+  /* ---- instruments ----------------------------------------------------
+     Wrapped inside the iframe, on the iframe's own prototypes, so this
+     counts what the app does rather than what this page does. */
+  let gcs = 0, rects = 0, bitmaps = 0, draws = 0, strips = 0;
+
+  const origGCS = W.getComputedStyle;
+  W.getComputedStyle = function () { gcs++; return origGCS.apply(W, arguments); };
+
+  const EP = W.Element.prototype;
+  const origRect = EP.getBoundingClientRect;
+  EP.getBoundingClientRect = function () {
+    rects++; return origRect.apply(this, arguments);
+  };
+
+  /* A bitmap write is the expensive half of sizing a canvas: it reallocates
+     and clears. Counted by watching the property itself. */
+  const HC = W.HTMLCanvasElement.prototype;
+  for (const prop of ['width', 'height']) {
+    const d = Object.getOwnPropertyDescriptor(HC, prop);
+    Object.defineProperty(HC, prop, {
+      configurable: true, enumerable: d.enumerable,
+      get() { return d.get.call(this); },
+      set(v) { if (d.get.call(this) !== v) bitmaps++; return d.set.call(this, v); },
+    });
+  }
+
+  /* The control strip being swapped out. replaceWith is what refreshControls
+     uses; anything with .pane-ctl on it is the strip. */
+  const origReplace = EP.replaceWith;
+  EP.replaceWith = function () {
+    try { if (this.classList && this.classList.contains('pane-ctl')) strips++; }
+    catch (e) { /* not an element we care about */ }
+    return origReplace.apply(this, arguments);
+  };
+
+  const XP = ev('window.barryXplore');
+  if (XP && XP._onDraw) XP._onDraw(() => { draws++; });
+
+  /* ---- the pan --------------------------------------------------------
+     Sixty moves, which is about a second of dragging. Dispatched on the
+     canvas; the handlers live on window, which is how a drag survives the
+     pointer leaving the pane. */
+  const r = canvas.getBoundingClientRect();
+  const y = r.top + r.height / 2;
+  const x0 = r.left + r.width * 0.55;
+
+  const fire = (type, cx, cy, target) => {
+    const e = new W.MouseEvent(type, {
+      bubbles: true, cancelable: true, clientX: cx, clientY: cy, button: 0,
+    });
+    (target || canvas).dispatchEvent(e);
+  };
+
+  await sleep(200);
+  gcs = 0; rects = 0; bitmaps = 0; draws = 0; strips = 0;
+  const t0 = performance.now();
+
+  fire('mousedown', x0, y);
+  for (let i = 0; i < 60; i++) {
+    fire('mousemove', x0 - i * 2, y, W);
+    await new Promise((rr) => W.requestAnimationFrame(rr));
+  }
+  fire('mouseup', x0 - 120, y, W);
+  const ms = Math.round(performance.now() - t0);
+  await sleep(500);
+
+  head('One second of dragging a trace (60 moves)');
+  say('note', '');
+  say('  took ' + ms + ' ms of wall clock', 'note');
+  say('  canvas bitmap writes   ' + bitmaps, 'note');
+  say('  getComputedStyle       ' + gcs, 'note');
+  say('  getBoundingClientRect  ' + rects, 'note');
+  say('  .pane-ctl replacements ' + strips, 'note');
+
+  /* The pane does not change size during a pan, so every bitmap write in
+     that window is a reallocation of a canvas that was already the right
+     size. A handful is fine -- a settle can legitimately resize once. */
+  ck('the canvas is not reallocated on every frame', bitmaps <= 8,
+     bitmaps + ' bitmap writes over 60 moves');
+
+  /* palette() is called from three draw functions. Cached, a whole drag
+     should need none at all; uncached it was three per draw. */
+  ck('the theme is not re-read on every frame', gcs <= 20,
+     gcs + ' getComputedStyle calls over 60 moves');
+
+  /* The next two are KNOWN OUTSTANDING, and are reported rather than
+     asserted on purpose.
+
+     `setWindow` calls `refreshControls` on every sample of a drag, which
+     rebuilds the pane head and the whole forty-element control strip to show
+     two numbers ticking over, and the rect reads mostly follow from that.
+     Everything on the strip except the Start/Span boxes and the event
+     counter is independent of the window, so the fix is to write those three
+     values during the drag and let the structural rebuild settle afterwards.
+
+     That was written, and it regressed check.html ("it reads pinned once
+     pinned", "unpinning returns it to auto") and display.html ("only the
+     checked channels are requested") -- the scale control and the channel
+     list read their state off a strip that had not been rebuilt yet. So it
+     was reverted, and the numbers are left here in the open instead of a
+     red line that means "not done yet" rather than "broken".
+
+     Whoever picks this up: the fix is right, the sequencing is what needs
+     care. Make those two harnesses pass before trusting the numbers below. */
+  say('');
+  say('  KNOWN OUTSTANDING -- the drag still rebuilds the control strip:', 'note');
+  say('    rect reads         ' + rects + '   (about 76 once the strip stops '
+      + 'being rebuilt)', 'note');
+  say('    strip rebuilds     ' + strips + '   (one per mouse move; should be '
+      + '1 for the whole drag)', 'note');
+  say('    see check.html and display.html -- they are what the first '
+      + 'attempt broke', 'note');
+
+  head('And the picture still moved');
+  const after = ev('BARRY.views.xplore.state.panes[0]._win');
+  ck('the pane has a window after the drag', !!after, 'no window on the pane');
+
+  done();
+
+  function done() {
+    say('');
+    say(ok + ' ok, ' + bad + ' fail');
+    document.title = 'scrub: ' + ok + ' pass, ' + bad + ' fail';
+  }
+})().catch((e) => {
+  say('THREW ' + (e && e.message), 'bad');
+  document.title = 'scrub: CRASH';
+});
+</script>
+</body></html>

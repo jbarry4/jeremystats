@@ -1,0 +1,2747 @@
+{
+ "band": "theta",
+ "cells": {
+  "rest": {
+   "amp_cc": {
+    "Left OFC|Left ACC": {
+     "mean": 0.289067625,
+     "n": 8,
+     "of": 8,
+     "sd": 0.1029280485817121,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.429019
+      },
+      {
+       "pair_id": 2,
+       "v": 0.315985
+      },
+      {
+       "pair_id": 3,
+       "v": 0.254997
+      },
+      {
+       "pair_id": 4,
+       "v": 0.236256
+      },
+      {
+       "pair_id": 5,
+       "v": 0.124759
+      },
+      {
+       "pair_id": 6,
+       "v": 0.352595
+      },
+      {
+       "pair_id": 7,
+       "v": 0.396029
+      },
+      {
+       "pair_id": 8,
+       "v": 0.202901
+      }
+     ],
+     "warn": null
+    },
+    "Left RSC|Left ACC": {
+     "mean": 0.024683124999999997,
+     "n": 8,
+     "of": 8,
+     "sd": 0.2130913567412796,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.138233
+      },
+      {
+       "pair_id": 2,
+       "v": 0.253209
+      },
+      {
+       "pair_id": 3,
+       "v": -0.133978
+      },
+      {
+       "pair_id": 4,
+       "v": 0.254791
+      },
+      {
+       "pair_id": 5,
+       "v": 0.241114
+      },
+      {
+       "pair_id": 6,
+       "v": -0.248344
+      },
+      {
+       "pair_id": 7,
+       "v": -0.15035
+      },
+      {
+       "pair_id": 8,
+       "v": 0.119256
+      }
+     ],
+     "warn": null
+    },
+    "Left RSC|Left OFC": {
+     "mean": -0.093906875,
+     "n": 8,
+     "of": 8,
+     "sd": 0.18951734617514002,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.188197
+      },
+      {
+       "pair_id": 2,
+       "v": 0.277505
+      },
+      {
+       "pair_id": 3,
+       "v": -0.157673
+      },
+      {
+       "pair_id": 4,
+       "v": -0.19511
+      },
+      {
+       "pair_id": 5,
+       "v": -0.140848
+      },
+      {
+       "pair_id": 6,
+       "v": -0.308094
+      },
+      {
+       "pair_id": 7,
+       "v": -0.14411
+      },
+      {
+       "pair_id": 8,
+       "v": 0.105272
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Left ACC": {
+     "mean": 0.087077125,
+     "n": 8,
+     "of": 8,
+     "sd": 0.2222981546671288,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.248603
+      },
+      {
+       "pair_id": 2,
+       "v": -0.287285
+      },
+      {
+       "pair_id": 3,
+       "v": 0.222836
+      },
+      {
+       "pair_id": 4,
+       "v": 0.189069
+      },
+      {
+       "pair_id": 5,
+       "v": 0.275733
+      },
+      {
+       "pair_id": 6,
+       "v": 0.206514
+      },
+      {
+       "pair_id": 7,
+       "v": 0.190595
+      },
+      {
+       "pair_id": 8,
+       "v": 0.147758
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Left OFC": {
+     "mean": 0.052492374999999994,
+     "n": 8,
+     "of": 8,
+     "sd": 0.17298490571140057,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.218845
+      },
+      {
+       "pair_id": 2,
+       "v": 0.172905
+      },
+      {
+       "pair_id": 3,
+       "v": 0.211542
+      },
+      {
+       "pair_id": 4,
+       "v": 0.147911
+      },
+      {
+       "pair_id": 5,
+       "v": -0.155807
+      },
+      {
+       "pair_id": 6,
+       "v": 0.169975
+      },
+      {
+       "pair_id": 7,
+       "v": -0.07567
+      },
+      {
+       "pair_id": 8,
+       "v": 0.167928
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Left RSC": {
+     "mean": 0.060672125,
+     "n": 8,
+     "of": 8,
+     "sd": 0.18925015443921797,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.214998
+      },
+      {
+       "pair_id": 2,
+       "v": 0.209164
+      },
+      {
+       "pair_id": 3,
+       "v": -0.158339
+      },
+      {
+       "pair_id": 4,
+       "v": -0.103166
+      },
+      {
+       "pair_id": 5,
+       "v": 0.171556
+      },
+      {
+       "pair_id": 6,
+       "v": -0.229157
+      },
+      {
+       "pair_id": 7,
+       "v": 0.180071
+      },
+      {
+       "pair_id": 8,
+       "v": 0.20025
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Right OFC": {
+     "mean": -0.014995874999999995,
+     "n": 8,
+     "of": 8,
+     "sd": 0.16466038283122325,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.145362
+      },
+      {
+       "pair_id": 2,
+       "v": -0.130881
+      },
+      {
+       "pair_id": 3,
+       "v": -0.128616
+      },
+      {
+       "pair_id": 4,
+       "v": 0.127337
+      },
+      {
+       "pair_id": 5,
+       "v": 0.202238
+      },
+      {
+       "pair_id": 6,
+       "v": 0.214594
+      },
+      {
+       "pair_id": 7,
+       "v": -0.131929
+      },
+      {
+       "pair_id": 8,
+       "v": -0.127348
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Right RSC": {
+     "mean": 0.0617895,
+     "n": 8,
+     "of": 8,
+     "sd": 0.22541528592926308,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.264693
+      },
+      {
+       "pair_id": 2,
+       "v": 0.253822
+      },
+      {
+       "pair_id": 3,
+       "v": -0.187641
+      },
+      {
+       "pair_id": 4,
+       "v": -0.164462
+      },
+      {
+       "pair_id": 5,
+       "v": 0.201357
+      },
+      {
+       "pair_id": 6,
+       "v": 0.186462
+      },
+      {
+       "pair_id": 7,
+       "v": 0.279282
+      },
+      {
+       "pair_id": 8,
+       "v": 0.190189
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.05081100000000001,
+     "n": 8,
+     "of": 8,
+     "sd": 0.208490896389815,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.228615
+      },
+      {
+       "pair_id": 2,
+       "v": -0.202063
+      },
+      {
+       "pair_id": 3,
+       "v": 0.15437
+      },
+      {
+       "pair_id": 4,
+       "v": -0.170257
+      },
+      {
+       "pair_id": 5,
+       "v": 0.206715
+      },
+      {
+       "pair_id": 6,
+       "v": 0.183983
+      },
+      {
+       "pair_id": 7,
+       "v": -0.223742
+      },
+      {
+       "pair_id": 8,
+       "v": 0.228867
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left OFC": {
+     "mean": 0.15533787500000001,
+     "n": 8,
+     "of": 8,
+     "sd": 0.11685453683770079,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.272585
+      },
+      {
+       "pair_id": 2,
+       "v": -0.103457
+      },
+      {
+       "pair_id": 3,
+       "v": 0.156322
+      },
+      {
+       "pair_id": 4,
+       "v": 0.261726
+      },
+      {
+       "pair_id": 5,
+       "v": 0.192901
+      },
+      {
+       "pair_id": 6,
+       "v": 0.119915
+      },
+      {
+       "pair_id": 7,
+       "v": 0.184863
+      },
+      {
+       "pair_id": 8,
+       "v": 0.157848
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left RSC": {
+     "mean": 0.060991875,
+     "n": 8,
+     "of": 8,
+     "sd": 0.2105614151557942,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.169986
+      },
+      {
+       "pair_id": 2,
+       "v": -0.213307
+      },
+      {
+       "pair_id": 3,
+       "v": 0.205985
+      },
+      {
+       "pair_id": 4,
+       "v": 0.135373
+      },
+      {
+       "pair_id": 5,
+       "v": -0.141401
+      },
+      {
+       "pair_id": 6,
+       "v": 0.100395
+      },
+      {
+       "pair_id": 7,
+       "v": -0.156789
+      },
+      {
+       "pair_id": 8,
+       "v": 0.387693
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Right RSC": {
+     "mean": -0.059841624999999996,
+     "n": 8,
+     "of": 8,
+     "sd": 0.23408135564367816,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.340545
+      },
+      {
+       "pair_id": 2,
+       "v": -0.208698
+      },
+      {
+       "pair_id": 3,
+       "v": 0.230611
+      },
+      {
+       "pair_id": 4,
+       "v": -0.176076
+      },
+      {
+       "pair_id": 5,
+       "v": -0.213181
+      },
+      {
+       "pair_id": 6,
+       "v": 0.152363
+      },
+      {
+       "pair_id": 7,
+       "v": -0.181703
+      },
+      {
+       "pair_id": 8,
+       "v": 0.258496
+      }
+     ],
+     "warn": null
+    },
+    "Right RSC|Left ACC": {
+     "mean": 0.007837875,
+     "n": 8,
+     "of": 8,
+     "sd": 0.2224811613619952,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.194073
+      },
+      {
+       "pair_id": 2,
+       "v": -0.2407
+      },
+      {
+       "pair_id": 3,
+       "v": -0.139131
+      },
+      {
+       "pair_id": 4,
+       "v": -0.240964
+      },
+      {
+       "pair_id": 5,
+       "v": 0.09957
+      },
+      {
+       "pair_id": 6,
+       "v": 0.276426
+      },
+      {
+       "pair_id": 7,
+       "v": -0.144775
+      },
+      {
+       "pair_id": 8,
+       "v": 0.258204
+      }
+     ],
+     "warn": null
+    },
+    "Right RSC|Left OFC": {
+     "mean": 0.029868250000000002,
+     "n": 8,
+     "of": 8,
+     "sd": 0.21190172179827002,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.18242
+      },
+      {
+       "pair_id": 2,
+       "v": 0.233675
+      },
+      {
+       "pair_id": 3,
+       "v": -0.168817
+      },
+      {
+       "pair_id": 4,
+       "v": -0.137996
+      },
+      {
+       "pair_id": 5,
+       "v": 0.264998
+      },
+      {
+       "pair_id": 6,
+       "v": 0.206074
+      },
+      {
+       "pair_id": 7,
+       "v": -0.179419
+      },
+      {
+       "pair_id": 8,
+       "v": 0.202851
+      }
+     ],
+     "warn": null
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.086347625,
+     "n": 8,
+     "of": 8,
+     "sd": 0.380522890919451,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.332708
+      },
+      {
+       "pair_id": 2,
+       "v": 0.833725
+      },
+      {
+       "pair_id": 3,
+       "v": 0.197357
+      },
+      {
+       "pair_id": 4,
+       "v": 0.232364
+      },
+      {
+       "pair_id": 5,
+       "v": 0.129181
+      },
+      {
+       "pair_id": 6,
+       "v": -0.328104
+      },
+      {
+       "pair_id": 7,
+       "v": -0.177543
+      },
+      {
+       "pair_id": 8,
+       "v": 0.136509
+      }
+     ],
+     "warn": null
+    }
+   },
+   "coherence": {
+    "Left OFC|Left ACC": {
+     "mean": 0.251134125,
+     "n": 8,
+     "of": 8,
+     "sd": 0.0734606092433946,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.204789
+      },
+      {
+       "pair_id": 2,
+       "v": 0.287038
+      },
+      {
+       "pair_id": 3,
+       "v": 0.193436
+      },
+      {
+       "pair_id": 4,
+       "v": 0.280119
+      },
+      {
+       "pair_id": 5,
+       "v": 0.148269
+      },
+      {
+       "pair_id": 6,
+       "v": 0.262392
+      },
+      {
+       "pair_id": 7,
+       "v": 0.390379
+      },
+      {
+       "pair_id": 8,
+       "v": 0.242651
+      }
+     ],
+     "warn": null
+    },
+    "Left RSC|Left ACC": {
+     "mean": 0.093143375,
+     "n": 8,
+     "of": 8,
+     "sd": 0.11593783399235681,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.048444
+      },
+      {
+       "pair_id": 2,
+       "v": 0.377801
+      },
+      {
+       "pair_id": 3,
+       "v": 0.02477
+      },
+      {
+       "pair_id": 4,
+       "v": 0.046017
+      },
+      {
+       "pair_id": 5,
+       "v": 0.04778
+      },
+      {
+       "pair_id": 6,
+       "v": 0.069944
+      },
+      {
+       "pair_id": 7,
+       "v": 0.067322
+      },
+      {
+       "pair_id": 8,
+       "v": 0.063069
+      }
+     ],
+     "warn": null
+    },
+    "Left RSC|Left OFC": {
+     "mean": 0.066057125,
+     "n": 8,
+     "of": 8,
+     "sd": 0.030055630361227065,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.060129
+      },
+      {
+       "pair_id": 2,
+       "v": 0.129986
+      },
+      {
+       "pair_id": 3,
+       "v": 0.055845
+      },
+      {
+       "pair_id": 4,
+       "v": 0.040857
+      },
+      {
+       "pair_id": 5,
+       "v": 0.059153
+      },
+      {
+       "pair_id": 6,
+       "v": 0.037764
+      },
+      {
+       "pair_id": 7,
+       "v": 0.088707
+      },
+      {
+       "pair_id": 8,
+       "v": 0.056016
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Left ACC": {
+     "mean": 0.095460375,
+     "n": 8,
+     "of": 8,
+     "sd": 0.043284547417352076,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.081739
+      },
+      {
+       "pair_id": 2,
+       "v": 0.072749
+      },
+      {
+       "pair_id": 3,
+       "v": 0.044754
+      },
+      {
+       "pair_id": 4,
+       "v": 0.102805
+      },
+      {
+       "pair_id": 5,
+       "v": 0.173607
+      },
+      {
+       "pair_id": 6,
+       "v": 0.072338
+      },
+      {
+       "pair_id": 7,
+       "v": 0.145511
+      },
+      {
+       "pair_id": 8,
+       "v": 0.07018
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Left OFC": {
+     "mean": 0.086070625,
+     "n": 8,
+     "of": 8,
+     "sd": 0.03342944507867065,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.130769
+      },
+      {
+       "pair_id": 2,
+       "v": 0.046431
+      },
+      {
+       "pair_id": 3,
+       "v": 0.044085
+      },
+      {
+       "pair_id": 4,
+       "v": 0.107833
+      },
+      {
+       "pair_id": 5,
+       "v": 0.069273
+      },
+      {
+       "pair_id": 6,
+       "v": 0.069074
+      },
+      {
+       "pair_id": 7,
+       "v": 0.121675
+      },
+      {
+       "pair_id": 8,
+       "v": 0.099425
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Left RSC": {
+     "mean": 0.04437025,
+     "n": 8,
+     "of": 8,
+     "sd": 0.008996130402249943,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.030179
+      },
+      {
+       "pair_id": 2,
+       "v": 0.038189
+      },
+      {
+       "pair_id": 3,
+       "v": 0.043527
+      },
+      {
+       "pair_id": 4,
+       "v": 0.040193
+      },
+      {
+       "pair_id": 5,
+       "v": 0.054099
+      },
+      {
+       "pair_id": 6,
+       "v": 0.040595
+      },
+      {
+       "pair_id": 7,
+       "v": 0.056425
+      },
+      {
+       "pair_id": 8,
+       "v": 0.051755
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Right OFC": {
+     "mean": 0.06078275,
+     "n": 8,
+     "of": 8,
+     "sd": 0.032817691186092214,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.070308
+      },
+      {
+       "pair_id": 2,
+       "v": 0.040339
+      },
+      {
+       "pair_id": 3,
+       "v": 0.032491
+      },
+      {
+       "pair_id": 4,
+       "v": 0.114432
+      },
+      {
+       "pair_id": 5,
+       "v": 0.022151
+      },
+      {
+       "pair_id": 6,
+       "v": 0.036605
+      },
+      {
+       "pair_id": 7,
+       "v": 0.077728
+      },
+      {
+       "pair_id": 8,
+       "v": 0.092208
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Right RSC": {
+     "mean": 0.060856125,
+     "n": 8,
+     "of": 8,
+     "sd": 0.023429814385201603,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.036193
+      },
+      {
+       "pair_id": 2,
+       "v": 0.05396
+      },
+      {
+       "pair_id": 3,
+       "v": 0.036392
+      },
+      {
+       "pair_id": 4,
+       "v": 0.04951
+      },
+      {
+       "pair_id": 5,
+       "v": 0.055216
+      },
+      {
+       "pair_id": 6,
+       "v": 0.076956
+      },
+      {
+       "pair_id": 7,
+       "v": 0.105883
+      },
+      {
+       "pair_id": 8,
+       "v": 0.072739
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.070291375,
+     "n": 8,
+     "of": 8,
+     "sd": 0.031488605126923065,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.109273
+      },
+      {
+       "pair_id": 2,
+       "v": 0.054548
+      },
+      {
+       "pair_id": 3,
+       "v": 0.022709
+      },
+      {
+       "pair_id": 4,
+       "v": 0.061287
+      },
+      {
+       "pair_id": 5,
+       "v": 0.038809
+      },
+      {
+       "pair_id": 6,
+       "v": 0.078588
+      },
+      {
+       "pair_id": 7,
+       "v": 0.107781
+      },
+      {
+       "pair_id": 8,
+       "v": 0.089336
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left OFC": {
+     "mean": 0.0804515,
+     "n": 8,
+     "of": 8,
+     "sd": 0.026867426523580554,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.082397
+      },
+      {
+       "pair_id": 2,
+       "v": 0.040405
+      },
+      {
+       "pair_id": 3,
+       "v": 0.061534
+      },
+      {
+       "pair_id": 4,
+       "v": 0.116473
+      },
+      {
+       "pair_id": 5,
+       "v": 0.050416
+      },
+      {
+       "pair_id": 6,
+       "v": 0.095485
+      },
+      {
+       "pair_id": 7,
+       "v": 0.095807
+      },
+      {
+       "pair_id": 8,
+       "v": 0.101095
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left RSC": {
+     "mean": 0.056510625,
+     "n": 8,
+     "of": 8,
+     "sd": 0.025888915487617476,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.037312
+      },
+      {
+       "pair_id": 2,
+       "v": 0.06274
+      },
+      {
+       "pair_id": 3,
+       "v": 0.089325
+      },
+      {
+       "pair_id": 4,
+       "v": 0.033629
+      },
+      {
+       "pair_id": 5,
+       "v": 0.03295
+      },
+      {
+       "pair_id": 6,
+       "v": 0.061468
+      },
+      {
+       "pair_id": 7,
+       "v": 0.097909
+      },
+      {
+       "pair_id": 8,
+       "v": 0.036752
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Right RSC": {
+     "mean": 0.060966375,
+     "n": 8,
+     "of": 8,
+     "sd": 0.019196341570633418,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.071935
+      },
+      {
+       "pair_id": 2,
+       "v": 0.067632
+      },
+      {
+       "pair_id": 3,
+       "v": 0.04504
+      },
+      {
+       "pair_id": 4,
+       "v": 0.049863
+      },
+      {
+       "pair_id": 5,
+       "v": 0.083183
+      },
+      {
+       "pair_id": 6,
+       "v": 0.081263
+      },
+      {
+       "pair_id": 7,
+       "v": 0.061494
+      },
+      {
+       "pair_id": 8,
+       "v": 0.027321
+      }
+     ],
+     "warn": null
+    },
+    "Right RSC|Left ACC": {
+     "mean": 0.276208625,
+     "n": 8,
+     "of": 8,
+     "sd": 0.059760653017892976,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.271942
+      },
+      {
+       "pair_id": 2,
+       "v": 0.368144
+      },
+      {
+       "pair_id": 3,
+       "v": 0.27679
+      },
+      {
+       "pair_id": 4,
+       "v": 0.265239
+      },
+      {
+       "pair_id": 5,
+       "v": 0.18914
+      },
+      {
+       "pair_id": 6,
+       "v": 0.206781
+      },
+      {
+       "pair_id": 7,
+       "v": 0.336669
+      },
+      {
+       "pair_id": 8,
+       "v": 0.294964
+      }
+     ],
+     "warn": null
+    },
+    "Right RSC|Left OFC": {
+     "mean": 0.13746175,
+     "n": 8,
+     "of": 8,
+     "sd": 0.05811107816378167,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.127466
+      },
+      {
+       "pair_id": 2,
+       "v": 0.126608
+      },
+      {
+       "pair_id": 3,
+       "v": 0.095944
+      },
+      {
+       "pair_id": 4,
+       "v": 0.102889
+      },
+      {
+       "pair_id": 5,
+       "v": 0.150498
+      },
+      {
+       "pair_id": 6,
+       "v": 0.12586
+      },
+      {
+       "pair_id": 7,
+       "v": 0.273635
+      },
+      {
+       "pair_id": 8,
+       "v": 0.096794
+      }
+     ],
+     "warn": null
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.147937125,
+     "n": 8,
+     "of": 8,
+     "sd": 0.2660963942937315,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.025445
+      },
+      {
+       "pair_id": 2,
+       "v": 0.803027
+      },
+      {
+       "pair_id": 3,
+       "v": 0.031873
+      },
+      {
+       "pair_id": 4,
+       "v": 0.058037
+      },
+      {
+       "pair_id": 5,
+       "v": 0.023959
+      },
+      {
+       "pair_id": 6,
+       "v": 0.056255
+      },
+      {
+       "pair_id": 7,
+       "v": 0.095395
+      },
+      {
+       "pair_id": 8,
+       "v": 0.089506
+      }
+     ],
+     "warn": null
+    }
+   },
+   "raw_cc": {
+    "Left OFC|Left ACC": {
+     "mean": 0.498267,
+     "n": 8,
+     "of": 8,
+     "sd": 0.08596875130617437,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.421496
+      },
+      {
+       "pair_id": 2,
+       "v": 0.583061
+      },
+      {
+       "pair_id": 3,
+       "v": 0.449524
+      },
+      {
+       "pair_id": 4,
+       "v": 0.520611
+      },
+      {
+       "pair_id": 5,
+       "v": 0.378791
+      },
+      {
+       "pair_id": 6,
+       "v": 0.53494
+      },
+      {
+       "pair_id": 7,
+       "v": 0.635567
+      },
+      {
+       "pair_id": 8,
+       "v": 0.462146
+      }
+     ],
+     "warn": null
+    },
+    "Left RSC|Left ACC": {
+     "mean": 0.1708145,
+     "n": 8,
+     "of": 8,
+     "sd": 0.2585458799058413,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.179394
+      },
+      {
+       "pair_id": 2,
+       "v": 0.618082
+      },
+      {
+       "pair_id": 3,
+       "v": -0.15472
+      },
+      {
+       "pair_id": 4,
+       "v": 0.254659
+      },
+      {
+       "pair_id": 5,
+       "v": 0.276227
+      },
+      {
+       "pair_id": 6,
+       "v": 0.1858
+      },
+      {
+       "pair_id": 7,
+       "v": -0.205625
+      },
+      {
+       "pair_id": 8,
+       "v": 0.212699
+      }
+     ],
+     "warn": null
+    },
+    "Left RSC|Left OFC": {
+     "mean": 0.018552375,
+     "n": 8,
+     "of": 8,
+     "sd": 0.23805497840081127,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.187899
+      },
+      {
+       "pair_id": 2,
+       "v": 0.346004
+      },
+      {
+       "pair_id": 3,
+       "v": -0.246752
+      },
+      {
+       "pair_id": 4,
+       "v": 0.242557
+      },
+      {
+       "pair_id": 5,
+       "v": -0.166091
+      },
+      {
+       "pair_id": 6,
+       "v": 0.157378
+      },
+      {
+       "pair_id": 7,
+       "v": -0.224622
+      },
+      {
+       "pair_id": 8,
+       "v": -0.147954
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Left ACC": {
+     "mean": 0.146545875,
+     "n": 8,
+     "of": 8,
+     "sd": 0.22507231663968266,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.162538
+      },
+      {
+       "pair_id": 2,
+       "v": 0.242112
+      },
+      {
+       "pair_id": 3,
+       "v": 0.158378
+      },
+      {
+       "pair_id": 4,
+       "v": -0.16524
+      },
+      {
+       "pair_id": 5,
+       "v": 0.34426
+      },
+      {
+       "pair_id": 6,
+       "v": -0.225027
+      },
+      {
+       "pair_id": 7,
+       "v": 0.378133
+      },
+      {
+       "pair_id": 8,
+       "v": 0.277213
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Left OFC": {
+     "mean": 0.045723125,
+     "n": 8,
+     "of": 8,
+     "sd": 0.2713820896324366,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.310698
+      },
+      {
+       "pair_id": 2,
+       "v": -0.2478
+      },
+      {
+       "pair_id": 3,
+       "v": 0.16271
+      },
+      {
+       "pair_id": 4,
+       "v": 0.260829
+      },
+      {
+       "pair_id": 5,
+       "v": 0.235746
+      },
+      {
+       "pair_id": 6,
+       "v": -0.273937
+      },
+      {
+       "pair_id": 7,
+       "v": -0.311231
+      },
+      {
+       "pair_id": 8,
+       "v": 0.22877
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Left RSC": {
+     "mean": -0.048762875000000004,
+     "n": 8,
+     "of": 8,
+     "sd": 0.19465650592880454,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.202624
+      },
+      {
+       "pair_id": 2,
+       "v": 0.147924
+      },
+      {
+       "pair_id": 3,
+       "v": -0.193775
+      },
+      {
+       "pair_id": 4,
+       "v": 0.234722
+      },
+      {
+       "pair_id": 5,
+       "v": -0.189293
+      },
+      {
+       "pair_id": 6,
+       "v": 0.164347
+      },
+      {
+       "pair_id": 7,
+       "v": -0.220953
+      },
+      {
+       "pair_id": 8,
+       "v": -0.130451
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Right OFC": {
+     "mean": -0.06383737499999999,
+     "n": 8,
+     "of": 8,
+     "sd": 0.2324923277418833,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.231791
+      },
+      {
+       "pair_id": 2,
+       "v": -0.168604
+      },
+      {
+       "pair_id": 3,
+       "v": -0.186021
+      },
+      {
+       "pair_id": 4,
+       "v": -0.28823
+      },
+      {
+       "pair_id": 5,
+       "v": 0.228273
+      },
+      {
+       "pair_id": 6,
+       "v": 0.179236
+      },
+      {
+       "pair_id": 7,
+       "v": -0.272732
+      },
+      {
+       "pair_id": 8,
+       "v": 0.22917
+      }
+     ],
+     "warn": null
+    },
+    "Right ACC|Right RSC": {
+     "mean": 0.116830125,
+     "n": 8,
+     "of": 8,
+     "sd": 0.1986673736758702,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.161863
+      },
+      {
+       "pair_id": 2,
+       "v": 0.214209
+      },
+      {
+       "pair_id": 3,
+       "v": 0.115209
+      },
+      {
+       "pair_id": 4,
+       "v": 0.213834
+      },
+      {
+       "pair_id": 5,
+       "v": -0.223023
+      },
+      {
+       "pair_id": 6,
+       "v": 0.236751
+      },
+      {
+       "pair_id": 7,
+       "v": 0.308869
+      },
+      {
+       "pair_id": 8,
+       "v": 0.230655
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.150482,
+     "n": 8,
+     "of": 8,
+     "sd": 0.22105744780292488,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.236909
+      },
+      {
+       "pair_id": 2,
+       "v": 0.287114
+      },
+      {
+       "pair_id": 3,
+       "v": 0.170315
+      },
+      {
+       "pair_id": 4,
+       "v": 0.257279
+      },
+      {
+       "pair_id": 5,
+       "v": 0.352096
+      },
+      {
+       "pair_id": 6,
+       "v": -0.181511
+      },
+      {
+       "pair_id": 7,
+       "v": -0.21335
+      },
+      {
+       "pair_id": 8,
+       "v": 0.295004
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left OFC": {
+     "mean": 0.002215624999999999,
+     "n": 8,
+     "of": 8,
+     "sd": 0.24847099116737234,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.156053
+      },
+      {
+       "pair_id": 2,
+       "v": 0.195958
+      },
+      {
+       "pair_id": 3,
+       "v": 0.218718
+      },
+      {
+       "pair_id": 4,
+       "v": -0.275124
+      },
+      {
+       "pair_id": 5,
+       "v": 0.267175
+      },
+      {
+       "pair_id": 6,
+       "v": -0.230278
+      },
+      {
+       "pair_id": 7,
+       "v": 0.245147
+      },
+      {
+       "pair_id": 8,
+       "v": -0.247818
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left RSC": {
+     "mean": -0.05806675,
+     "n": 8,
+     "of": 8,
+     "sd": 0.21806217375113784,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.19178
+      },
+      {
+       "pair_id": 2,
+       "v": -0.251669
+      },
+      {
+       "pair_id": 3,
+       "v": 0.2499
+      },
+      {
+       "pair_id": 4,
+       "v": -0.169563
+      },
+      {
+       "pair_id": 5,
+       "v": 0.181022
+      },
+      {
+       "pair_id": 6,
+       "v": 0.175515
+      },
+      {
+       "pair_id": 7,
+       "v": -0.235127
+      },
+      {
+       "pair_id": 8,
+       "v": -0.222832
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Right RSC": {
+     "mean": -0.063611375,
+     "n": 8,
+     "of": 8,
+     "sd": 0.23629195406405765,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.203476
+      },
+      {
+       "pair_id": 2,
+       "v": 0.25691
+      },
+      {
+       "pair_id": 3,
+       "v": -0.145398
+      },
+      {
+       "pair_id": 4,
+       "v": -0.211313
+      },
+      {
+       "pair_id": 5,
+       "v": -0.333506
+      },
+      {
+       "pair_id": 6,
+       "v": 0.209549
+      },
+      {
+       "pair_id": 7,
+       "v": -0.254766
+      },
+      {
+       "pair_id": 8,
+       "v": 0.173109
+      }
+     ],
+     "warn": null
+    },
+    "Right RSC|Left ACC": {
+     "mean": 0.1706025,
+     "n": 8,
+     "of": 8,
+     "sd": 0.5561090744169322,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": 0.614872
+      },
+      {
+       "pair_id": 2,
+       "v": 0.612904
+      },
+      {
+       "pair_id": 3,
+       "v": -0.547978
+      },
+      {
+       "pair_id": 4,
+       "v": 0.547527
+      },
+      {
+       "pair_id": 5,
+       "v": -0.426733
+      },
+      {
+       "pair_id": 6,
+       "v": -0.517393
+      },
+      {
+       "pair_id": 7,
+       "v": 0.6083
+      },
+      {
+       "pair_id": 8,
+       "v": 0.473321
+      }
+     ],
+     "warn": null
+    },
+    "Right RSC|Left OFC": {
+     "mean": 0.24437725,
+     "n": 8,
+     "of": 8,
+     "sd": 0.23773078257663646,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.301508
+      },
+      {
+       "pair_id": 2,
+       "v": 0.350607
+      },
+      {
+       "pair_id": 3,
+       "v": 0.189576
+      },
+      {
+       "pair_id": 4,
+       "v": 0.294382
+      },
+      {
+       "pair_id": 5,
+       "v": 0.334481
+      },
+      {
+       "pair_id": 6,
+       "v": 0.302877
+      },
+      {
+       "pair_id": 7,
+       "v": 0.50528
+      },
+      {
+       "pair_id": 8,
+       "v": 0.279323
+      }
+     ],
+     "warn": null
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.127452125,
+     "n": 8,
+     "of": 8,
+     "sd": 0.37634968203043656,
+     "values": [
+      {
+       "pair_id": 1,
+       "v": -0.120461
+      },
+      {
+       "pair_id": 2,
+       "v": 0.920198
+      },
+      {
+       "pair_id": 3,
+       "v": -0.152562
+      },
+      {
+       "pair_id": 4,
+       "v": -0.230436
+      },
+      {
+       "pair_id": 5,
+       "v": -0.109366
+      },
+      {
+       "pair_id": 6,
+       "v": 0.222117
+      },
+      {
+       "pair_id": 7,
+       "v": 0.279456
+      },
+      {
+       "pair_id": 8,
+       "v": 0.210671
+      }
+     ],
+     "warn": null
+    }
+   }
+  }
+ },
+ "computed_on": {
+  "at": "2026-09-30T13:37:04-04:00",
+  "cached": 0,
+  "computed": 8,
+  "kind": "local",
+  "machine": "Bluebarry"
+ },
+ "cue_label": "FP1 + FP2, no cue",
+ "cue_type": "none",
+ "grey": [
+  "Right DHC",
+  "Right PER",
+  "Right POR",
+  "Left POR",
+  "Left PER",
+  "Left DHC"
+ ],
+ "kind": "rest",
+ "methods": [
+  "coherence",
+  "raw_cc",
+  "amp_cc"
+ ],
+ "n_pairs": 8,
+ "pairs": [
+  {
+   "label": "FP1 @ 41.7 s",
+   "pair_id": 1
+  },
+  {
+   "label": "FP1 @ 115.1 s",
+   "pair_id": 2
+  },
+  {
+   "label": "FP1 @ 188.4 s",
+   "pair_id": 3
+  },
+  {
+   "label": "FP1 @ 261.8 s",
+   "pair_id": 4
+  },
+  {
+   "label": "FP2 @ 40.5 s",
+   "pair_id": 5
+  },
+  {
+   "label": "FP2 @ 111.4 s",
+   "pair_id": 6
+  },
+  {
+   "label": "FP2 @ 182.3 s",
+   "pair_id": 7
+  },
+  {
+   "label": "FP2 @ 253.2 s",
+   "pair_id": 8
+  }
+ ],
+ "params": {
+  "after_s": null,
+  "analysis_fs": 1000.0,
+  "band": "theta",
+  "before_s": null,
+  "channel_rule": "lowest-numbered usable wire",
+  "coherence_mode": "band",
+  "high": 12.0,
+  "kind": "rest",
+  "low": 4.0,
+  "max_lag_ms": 500.0,
+  "notch_hz": 60.0,
+  "pad_s": 10.0,
+  "raw_cc_filtered": true,
+  "summary_hz": null
+ },
+ "region_order": [
+  "Right ACC",
+  "Right OFC",
+  "Right DHC",
+  "Right RSC",
+  "Right PER",
+  "Right POR",
+  "Left POR",
+  "Left PER",
+  "Left RSC",
+  "Left DHC",
+  "Left OFC",
+  "Left ACC"
+ ],
+ "region_usable": {
+  "rest": {
+   "Left ACC": {
+    "of": 8,
+    "usable": 8
+   },
+   "Left DHC": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Left OFC": {
+    "of": 8,
+    "usable": 8
+   },
+   "Left PER": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Left POR": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Left RSC": {
+    "of": 8,
+    "usable": 8
+   },
+   "Right ACC": {
+    "of": 8,
+    "usable": 8
+   },
+   "Right DHC": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right OFC": {
+    "of": 8,
+    "usable": 8
+   },
+   "Right PER": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right POR": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right RSC": {
+    "of": 8,
+    "usable": 8
+   }
+  }
+ },
+ "regions": [
+  {
+   "histology": "intended",
+   "label": "Right ACC",
+   "region": "Right ACC",
+   "slot": "R_ACC",
+   "status": "ok",
+   "why": "Histology puts this probe in Right ACC, which is where it was aimed."
+  },
+  {
+   "histology": "uncertain",
+   "label": "Right OFC",
+   "region": "Right OFC",
+   "slot": "R_OFC",
+   "status": "ok",
+   "why": "Histology scored Right OFC as “maybe”. Probably right, but it was written down without confidence, so anything computed from it carries that."
+  },
+  {
+   "histology": "relocated",
+   "label": "Right white matter tracts (aimed at Right DHC)",
+   "region": "Right DHC",
+   "slot": "R_DHC",
+   "status": "grey",
+   "why": "Histology puts this probe in Right white matter tracts, not Right DHC. The signal is real; the label is not the one on the map, and it is drawn under its own name. A circuit leaves relocated probes out entirely, so this region is grey even though Coupling computes it."
+  },
+  {
+   "histology": "intended",
+   "label": "Right RSC",
+   "region": "Right RSC",
+   "slot": "R_RSC",
+   "status": "ok",
+   "why": "Histology puts this probe in Right RSC, which is where it was aimed."
+  },
+  {
+   "histology": "relocated",
+   "label": "Right subiculum (aimed at Right PER)",
+   "region": "Right PER",
+   "slot": "R_PER",
+   "status": "grey",
+   "why": "Histology puts this probe in Right subiculum, not Right PER. The signal is real; the label is not the one on the map, and it is drawn under its own name. A circuit leaves relocated probes out entirely, so this region is grey even though Coupling computes it."
+  },
+  {
+   "histology": "relocated",
+   "label": "Right subiculum (aimed at Right POR)",
+   "region": "Right POR",
+   "slot": "R_POR",
+   "status": "grey",
+   "why": "Histology puts this probe in Right subiculum, not Right POR. The signal is real; the label is not the one on the map, and it is drawn under its own name. A circuit leaves relocated probes out entirely, so this region is grey even though Coupling computes it."
+  },
+  {
+   "histology": "relocated",
+   "label": "Left subiculum (aimed at Left POR)",
+   "region": "Left POR",
+   "slot": "L_POR",
+   "status": "grey",
+   "why": "Histology puts this probe in Left subiculum, not Left POR. The signal is real; the label is not the one on the map, and it is drawn under its own name. A circuit leaves relocated probes out entirely, so this region is grey even though Coupling computes it."
+  },
+  {
+   "histology": "relocated",
+   "label": "Left subiculum (aimed at Left PER)",
+   "region": "Left PER",
+   "slot": "L_PER",
+   "status": "grey",
+   "why": "Histology puts this probe in Left subiculum, not Left PER. The signal is real; the label is not the one on the map, and it is drawn under its own name. A circuit leaves relocated probes out entirely, so this region is grey even though Coupling computes it."
+  },
+  {
+   "histology": "intended",
+   "label": "Left RSC",
+   "region": "Left RSC",
+   "slot": "L_RSC",
+   "status": "ok",
+   "why": "Histology puts this probe in Left RSC, which is where it was aimed."
+  },
+  {
+   "histology": "relocated",
+   "label": "Left parietal association cortex (aimed at Left DHC)",
+   "region": "Left DHC",
+   "slot": "L_DHC",
+   "status": "grey",
+   "why": "Histology puts this probe in Left parietal association cortex, not Left DHC. The signal is real; the label is not the one on the map, and it is drawn under its own name. A circuit leaves relocated probes out entirely, so this region is grey even though Coupling computes it."
+  },
+  {
+   "histology": "uncertain",
+   "label": "Left OFC",
+   "region": "Left OFC",
+   "slot": "L_OFC",
+   "status": "ok",
+   "why": "Histology scored Left OFC as “maybe”. Probably right, but it was written down without confidence, so anything computed from it carries that."
+  },
+  {
+   "histology": "intended",
+   "label": "Left ACC",
+   "region": "Left ACC",
+   "slot": "L_ACC",
+   "status": "ok",
+   "why": "Histology puts this probe in Left ACC, which is where it was aimed."
+  }
+ ],
+ "schema": "arc.circuit/1",
+ "source": {
+  "bank_entry": "501bdb304196",
+  "bank_version": 1,
+  "clipping": {
+   "rest01": {
+    "detail": {
+     "14": {
+      "frac": 0.14234,
+      "lost": true,
+      "ms": 1423.406,
+      "n": 45549,
+      "n_spans": 228,
+      "run_ms": 110.5
+     },
+     "19": {
+      "frac": 0.30599,
+      "lost": true,
+      "ms": 3059.906,
+      "n": 97917,
+      "n_spans": 302,
+      "run_ms": 241.844
+     },
+     "31": {
+      "frac": 0.00865,
+      "lost": true,
+      "ms": 86.531,
+      "n": 2769,
+      "n_spans": 12,
+      "run_ms": 39.125
+     },
+     "32": {
+      "frac": 0.02076,
+      "lost": true,
+      "ms": 207.594,
+      "n": 6643,
+      "n_spans": 12,
+      "run_ms": 152.406
+     },
+     "4": {
+      "frac": 0.00135,
+      "lost": false,
+      "ms": 13.5,
+      "n": 432,
+      "n_spans": 2,
+      "run_ms": 9.625
+     }
+    },
+    "gid": "s30fc50501d2a",
+    "lost": [
+     14,
+     19,
+     31,
+     32
+    ],
+    "measured": true,
+    "pair_id": 1,
+    "run": "FP1",
+    "skipped_bad": [],
+    "t0": 41.688,
+    "t1": 51.688,
+    "touched": [
+     4
+    ],
+    "unmeasured": {},
+    "why": null
+   },
+   "rest02": {
+    "detail": {
+     "1": {
+      "frac": 0.01559,
+      "lost": true,
+      "ms": 155.875,
+      "n": 4988,
+      "n_spans": 20,
+      "run_ms": 61.0
+     },
+     "10": {
+      "frac": 0.01474,
+      "lost": true,
+      "ms": 147.406,
+      "n": 4717,
+      "n_spans": 6,
+      "run_ms": 110.719
+     },
+     "14": {
+      "frac": 0.31001,
+      "lost": true,
+      "ms": 3100.062,
+      "n": 99202,
+      "n_spans": 274,
+      "run_ms": 177.344
+     },
+     "19": {
+      "frac": 0.07247,
+      "lost": true,
+      "ms": 724.688,
+      "n": 23190,
+      "n_spans": 117,
+      "run_ms": 71.594
+     },
+     "2": {
+      "frac": 0.01197,
+      "lost": true,
+      "ms": 119.719,
+      "n": 3831,
+      "n_spans": 12,
+      "run_ms": 59.594
+     },
+     "27": {
+      "frac": 0.04071,
+      "lost": true,
+      "ms": 407.062,
+      "n": 13026,
+      "n_spans": 17,
+      "run_ms": 104.188
+     },
+     "3": {
+      "frac": 0.00799,
+      "lost": true,
+      "ms": 79.938,
+      "n": 2558,
+      "n_spans": 8,
+      "run_ms": 53.406
+     },
+     "31": {
+      "frac": 0.00345,
+      "lost": false,
+      "ms": 34.531,
+      "n": 1105,
+      "n_spans": 15,
+      "run_ms": 12.219
+     },
+     "32": {
+      "frac": 0.0099,
+      "lost": true,
+      "ms": 99.0,
+      "n": 3168,
+      "n_spans": 11,
+      "run_ms": 45.688
+     },
+     "4": {
+      "frac": 0.01112,
+      "lost": true,
+      "ms": 111.188,
+      "n": 3558,
+      "n_spans": 28,
+      "run_ms": 11.562
+     },
+     "5": {
+      "frac": 7e-05,
+      "lost": false,
+      "ms": 0.656,
+      "n": 21,
+      "n_spans": 1,
+      "run_ms": 0.656
+     },
+     "6": {
+      "frac": 0.00679,
+      "lost": true,
+      "ms": 67.938,
+      "n": 2174,
+      "n_spans": 8,
+      "run_ms": 40.25
+     },
+     "7": {
+      "frac": 0.01443,
+      "lost": true,
+      "ms": 144.344,
+      "n": 4619,
+      "n_spans": 14,
+      "run_ms": 71.469
+     },
+     "8": {
+      "frac": 0.0255,
+      "lost": true,
+      "ms": 255.0,
+      "n": 8160,
+      "n_spans": 26,
+      "run_ms": 83.062
+     },
+     "9": {
+      "frac": 0.03443,
+      "lost": true,
+      "ms": 344.344,
+      "n": 11019,
+      "n_spans": 22,
+      "run_ms": 181.312
+     }
+    },
+    "gid": "s30fc50501d2a",
+    "lost": [
+     1,
+     2,
+     3,
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     14,
+     19,
+     27,
+     32
+    ],
+    "measured": true,
+    "pair_id": 2,
+    "run": "FP1",
+    "skipped_bad": [],
+    "t0": 115.064,
+    "t1": 125.064,
+    "touched": [
+     5,
+     31
+    ],
+    "unmeasured": {},
+    "why": null
+   },
+   "rest03": {
+    "detail": {
+     "14": {
+      "frac": 0.00792,
+      "lost": true,
+      "ms": 79.219,
+      "n": 2535,
+      "n_spans": 28,
+      "run_ms": 6.156
+     },
+     "19": {
+      "frac": 0.00752,
+      "lost": true,
+      "ms": 75.156,
+      "n": 2405,
+      "n_spans": 44,
+      "run_ms": 12.062
+     },
+     "27": {
+      "frac": 0.00137,
+      "lost": false,
+      "ms": 13.656,
+      "n": 437,
+      "n_spans": 2,
+      "run_ms": 9.656
+     },
+     "31": {
+      "frac": 0.00108,
+      "lost": false,
+      "ms": 10.75,
+      "n": 344,
+      "n_spans": 8,
+      "run_ms": 1.906
+     },
+     "32": {
+      "frac": 0.00336,
+      "lost": false,
+      "ms": 33.625,
+      "n": 1076,
+      "n_spans": 10,
+      "run_ms": 12.125
+     },
+     "4": {
+      "frac": 0.00063,
+      "lost": false,
+      "ms": 6.25,
+      "n": 200,
+      "n_spans": 3,
+      "run_ms": 3.031
+     }
+    },
+    "gid": "s30fc50501d2a",
+    "lost": [
+     14,
+     19
+    ],
+    "measured": true,
+    "pair_id": 3,
+    "run": "FP1",
+    "skipped_bad": [],
+    "t0": 188.44,
+    "t1": 198.44,
+    "touched": [
+     4,
+     27,
+     31,
+     32
+    ],
+    "unmeasured": {},
+    "why": null
+   },
+   "rest04": {
+    "detail": {
+     "14": {
+      "frac": 0.16403,
+      "lost": true,
+      "ms": 1640.312,
+      "n": 52490,
+      "n_spans": 152,
+      "run_ms": 131.031
+     },
+     "27": {
+      "frac": 0.00092,
+      "lost": false,
+      "ms": 9.219,
+      "n": 295,
+      "n_spans": 4,
+      "run_ms": 7.031
+     },
+     "31": {
+      "frac": 0.00046,
+      "lost": false,
+      "ms": 4.625,
+      "n": 148,
+      "n_spans": 2,
+      "run_ms": 3.062
+     },
+     "32": {
+      "frac": 0.00015,
+      "lost": false,
+      "ms": 1.531,
+      "n": 49,
+      "n_spans": 1,
+      "run_ms": 1.531
+     },
+     "4": {
+      "frac": 0.00163,
+      "lost": false,
+      "ms": 16.281,
+      "n": 521,
+      "n_spans": 5,
+      "run_ms": 5.906
+     }
+    },
+    "gid": "s30fc50501d2a",
+    "lost": [
+     14
+    ],
+    "measured": true,
+    "pair_id": 4,
+    "run": "FP1",
+    "skipped_bad": [],
+    "t0": 261.816,
+    "t1": 271.816,
+    "touched": [
+     4,
+     27,
+     31,
+     32
+    ],
+    "unmeasured": {},
+    "why": null
+   },
+   "rest05": {
+    "detail": {
+     "14": {
+      "frac": 0.20626,
+      "lost": true,
+      "ms": 2062.594,
+      "n": 66003,
+      "n_spans": 530,
+      "run_ms": 11.406
+     },
+     "19": {
+      "frac": 0.03067,
+      "lost": true,
+      "ms": 306.719,
+      "n": 9815,
+      "n_spans": 16,
+      "run_ms": 67.594
+     },
+     "30": {
+      "frac": 0.00259,
+      "lost": false,
+      "ms": 25.906,
+      "n": 829,
+      "n_spans": 1,
+      "run_ms": 25.906
+     },
+     "31": {
+      "frac": 0.008,
+      "lost": true,
+      "ms": 80.031,
+      "n": 2561,
+      "n_spans": 9,
+      "run_ms": 37.844
+     },
+     "4": {
+      "frac": 0.00199,
+      "lost": false,
+      "ms": 19.875,
+      "n": 636,
+      "n_spans": 6,
+      "run_ms": 5.594
+     }
+    },
+    "gid": "sff70e7a6d04c",
+    "lost": [
+     14,
+     19,
+     31
+    ],
+    "measured": true,
+    "pair_id": 5,
+    "run": "FP2",
+    "skipped_bad": [],
+    "t0": 40.464,
+    "t1": 50.464,
+    "touched": [
+     4,
+     30
+    ],
+    "unmeasured": {},
+    "why": null
+   },
+   "rest06": {
+    "detail": {
+     "14": {
+      "frac": 0.15732,
+      "lost": true,
+      "ms": 1573.219,
+      "n": 50343,
+      "n_spans": 407,
+      "run_ms": 13.312
+     },
+     "19": {
+      "frac": 0.06054,
+      "lost": true,
+      "ms": 605.438,
+      "n": 19374,
+      "n_spans": 24,
+      "run_ms": 103.906
+     },
+     "27": {
+      "frac": 0.00235,
+      "lost": false,
+      "ms": 23.531,
+      "n": 753,
+      "n_spans": 2,
+      "run_ms": 22.969
+     },
+     "30": {
+      "frac": 0.01085,
+      "lost": true,
+      "ms": 108.469,
+      "n": 3471,
+      "n_spans": 5,
+      "run_ms": 52.594
+     },
+     "31": {
+      "frac": 0.01074,
+      "lost": true,
+      "ms": 107.438,
+      "n": 3438,
+      "n_spans": 22,
+      "run_ms": 21.906
+     },
+     "4": {
+      "frac": 0.00081,
+      "lost": false,
+      "ms": 8.062,
+      "n": 258,
+      "n_spans": 2,
+      "run_ms": 4.219
+     }
+    },
+    "gid": "sff70e7a6d04c",
+    "lost": [
+     14,
+     19,
+     30,
+     31
+    ],
+    "measured": true,
+    "pair_id": 6,
+    "run": "FP2",
+    "skipped_bad": [],
+    "t0": 111.392,
+    "t1": 121.392,
+    "touched": [
+     4,
+     27
+    ],
+    "unmeasured": {},
+    "why": null
+   },
+   "rest07": {
+    "detail": {
+     "14": {
+      "frac": 0.1987,
+      "lost": true,
+      "ms": 1987.031,
+      "n": 63585,
+      "n_spans": 355,
+      "run_ms": 145.25
+     },
+     "19": {
+      "frac": 0.00841,
+      "lost": true,
+      "ms": 84.062,
+      "n": 2690,
+      "n_spans": 2,
+      "run_ms": 72.781
+     },
+     "2": {
+      "frac": 6e-05,
+      "lost": false,
+      "ms": 0.562,
+      "n": 18,
+      "n_spans": 1,
+      "run_ms": 0.562
+     },
+     "27": {
+      "frac": 0.00038,
+      "lost": false,
+      "ms": 3.781,
+      "n": 121,
+      "n_spans": 2,
+      "run_ms": 2.156
+     },
+     "31": {
+      "frac": 0.0022,
+      "lost": false,
+      "ms": 22.0,
+      "n": 704,
+      "n_spans": 9,
+      "run_ms": 8.094
+     },
+     "4": {
+      "frac": 0.00406,
+      "lost": false,
+      "ms": 40.562,
+      "n": 1298,
+      "n_spans": 11,
+      "run_ms": 8.719
+     }
+    },
+    "gid": "sff70e7a6d04c",
+    "lost": [
+     14,
+     19
+    ],
+    "measured": true,
+    "pair_id": 7,
+    "run": "FP2",
+    "skipped_bad": [],
+    "t0": 182.32,
+    "t1": 192.32,
+    "touched": [
+     2,
+     4,
+     27,
+     31
+    ],
+    "unmeasured": {},
+    "why": null
+   },
+   "rest08": {
+    "detail": {
+     "14": {
+      "frac": 0.01158,
+      "lost": true,
+      "ms": 115.844,
+      "n": 3707,
+      "n_spans": 33,
+      "run_ms": 8.969
+     },
+     "19": {
+      "frac": 0.14274,
+      "lost": true,
+      "ms": 1427.438,
+      "n": 45678,
+      "n_spans": 57,
+      "run_ms": 214.531
+     },
+     "30": {
+      "frac": 0.00076,
+      "lost": false,
+      "ms": 7.594,
+      "n": 243,
+      "n_spans": 3,
+      "run_ms": 4.531
+     },
+     "31": {
+      "frac": 0.00075,
+      "lost": false,
+      "ms": 7.531,
+      "n": 241,
+      "n_spans": 1,
+      "run_ms": 7.531
+     },
+     "4": {
+      "frac": 0.00618,
+      "lost": true,
+      "ms": 61.844,
+      "n": 1979,
+      "n_spans": 17,
+      "run_ms": 7.094
+     }
+    },
+    "gid": "sff70e7a6d04c",
+    "lost": [
+     4,
+     14,
+     19
+    ],
+    "measured": true,
+    "pair_id": 8,
+    "run": "FP2",
+    "skipped_bad": [],
+    "t0": 253.248,
+    "t1": 263.248,
+    "touched": [
+     30,
+     31
+    ],
+    "unmeasured": {},
+    "why": null
+   }
+  },
+  "fp": [
+   {
+    "bad_channels": [],
+    "duration_s": 313.504,
+    "gid": "s30fc50501d2a",
+    "label": "DEWEY r10 s4 Precon4 FP1 2026-08-15",
+    "n_epochs": 4,
+    "run": "FP1",
+    "start": "2026-08-15T13:45:39"
+   },
+   {
+    "bad_channels": [],
+    "duration_s": 303.712,
+    "gid": "sff70e7a6d04c",
+    "label": "DEWEY r10 s4 Precon4 FP2 2026-08-15",
+    "n_epochs": 4,
+    "run": "FP2",
+    "start": "2026-08-15T15:39:20"
+   }
+  ],
+  "gid": "s5e2c6d208fc7",
+  "session_label": "DEWEY r10 s4 Precon4 SPC 2026-08-15"
+ },
+ "windows": [
+  "rest"
+ ]
+}

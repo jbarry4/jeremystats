@@ -1,0 +1,1859 @@
+# The GUI constitution
+
+How this interface is built, so the next feature looks like it belongs in it.
+
+Most of what follows is not new. The application already does these things —
+they were written down in code comments, or in one module and not the next,
+which is why an audit found the same control drawn several slightly different
+ways under several names. This is the same set of beliefs, in one place, where
+somebody can read it *before* writing the next tool rather than after.
+
+Every rule cites the code that proves it. Where a rule exists because
+something broke, the counter-example is named — those are the useful half.
+
+> **Status.** All in force as rules. §6 covers the shared compositions that
+> exist today; **§6b is the one to read before building a new tool, bundle or
+> Xplorefinder mode**; **§6d** (running — here or on VACC, one or many) and
+> **§6e** (choosing a recording, versions, banking) are the workflow every
+> tool shares. **§10** is speed; **§11** is what the cloud costs and how to
+> spend it -- read it before adding anything that reads or writes Supabase.
+> **§12** is feel -- what makes a panel stop reloading, how results arrive,
+> and the plan for the UI overhaul; Doppler is its reference.
+> Where a section names a shared component that is still being built, it
+> says so in italics and names the tool to copy until it lands.
+
+---
+
+## 1. Layout — where things go
+
+### The shell
+
+Three regions, and nothing else is top-level:
+
+| region | token | notes |
+|---|---|---|
+| the rail | `--rail` | three states — `full`, `icons`, `away` (`RAIL_STATES`, [core.js](js/core.js)) |
+| the view column | — | one view visible at a time |
+| the log dock | `--log-h` | collapsible, shared by every view |
+
+### Inside a view
+
+```
+<section class="view">
+  <header class="view-head">      title + .sub, then .head-actions
+  <div class="pad">               the scrolling body
+    <div class="card">            content lives in cards
+      <div class="section-label"> a section inside a card opens with one
+```
+
+`.view-head` wraps rather than overflows — the Storyboard header carries a
+title field and five buttons, which used to run clean off the right edge on a
+narrow window with Save unreachable.
+
+### The rail is full
+
+Eleven views, eleven shortcuts: `1`–`9`, `T`, `0`. There is no twelfth slot,
+and adding one is not the way to ship a feature. **A new feature is a ToolKit
+tool** — see §5.
+
+---
+
+## 2. Buttons
+
+### Placement
+
+Actions are **right-aligned**: `justify-content: flex-end` on both
+`.head-actions` and `.modal-actions`.
+
+The order in a modal footer, and the reference implementation is
+[eventbank.js:469](js/eventbank.js):
+
+```
+[ navigational ]  [ .spacer ]  [ Cancel · btn ghost ]  [ Primary · btn ]
+```
+
+**The primary is last.** In a view header the same order holds without the
+spacer: secondary actions first, the one primary at the end. Checkup and
+StrataScope both already do this.
+
+### One primary per surface
+
+If two things look equally like the thing to click, neither is. Destructive
+actions take `.danger` and never occupy the primary slot.
+
+### Which control
+
+| use | when |
+|---|---|
+| `.btn` | the one primary action on the surface |
+| `.btn.ghost` | a secondary action at full size |
+| `.btn.sm` / `.btn.ghost.sm` | in a header, a toolbar, or a dense row |
+| `.mini` | an action *inside* a list row |
+| `.pill` | a filter — one of a set, toggling what is shown |
+| `.seg` | an exclusive choice between two or three modes |
+| `.toggle` | a checkbox that needs a label beside it |
+| `.chip-btn` | a status that is also a button (the rail's cluster chip) |
+| `.close-x` | dismissing a panel or a modal |
+
+There is **no `.btn.small`** and **no `.primary`**. Both are spellings people
+reached for that no rule has ever matched: `.btn.small` left eleven buttons
+full-size beside the eighty-four that used `.btn.sm` and shrank, and
+`.primary` does nothing at all because `.btn` is already the filled style. The
+pair `btn ghost` / `btn primary` reads as symmetric and is not.
+
+---
+
+## 3. Size and space
+
+Geometry and type are tokenised in `:root`, beside the colour tokens. **Use a
+token.** If the value you want is not there, you almost certainly want one
+that is.
+
+| scale | tokens |
+|---|---|
+| type | `--fs-9` `--fs-95` `--fs-10` `--fs-105` `--fs-11` `--fs-115` `--fs-12` `--fs-125` `--fs-13` `--fs-135`, then `--fs-15` `--fs-17` `--fs-20` |
+| corners | `--r-2` `--r-3` `--r-4` `--r-5` `--r-6` `--radius-sm` (7px) `--r-8` `--radius` (10px) `--r-pill` (999px) |
+| space | `--sp-2` `--sp-4` `--sp-6` `--sp-8` `--sp-10` `--sp-12` `--sp-16` `--sp-20` `--sp-24` |
+
+Tokens are named for their **value**, not a role: `--fs-115` is 11.5px and
+nothing else. That is deliberate. Naming them semantically would have meant
+deciding what each size *means* while also moving 700 declarations, which is
+how a refactor becomes a redesign nobody asked for.
+
+**The half steps are real.** 9.5, 10.5, 11.5 and 12.5 carry 298 declarations —
+41% of the type in the application. They are not drift and they are not being
+rounded away.
+
+**Space is even numbers only.** The odd gaps in the file are drift, not
+decisions; a scale that admits both 5 and 6 is not a scale.
+
+### Geometry that is a measurement, not a style
+
+Some numbers are load-bearing alignment and `_dev/align.html` asserts
+sub-pixel agreement against them. **Do not tidy these:**
+
+- `.pane-grid { gap: 1px }` — the hairline between the six probe panes
+- `.ch-overlay .ch-lane.compact { height:12px; font-size:9px }` — the 9px
+  *makes* the 12px lane
+- `.ch-overlay .ch-lane.micro`, `.strata-rows.tight`, `.strata-rows.packed`
+- the `max-width` transitions on `.nav-item span` — animation machinery
+
+They are marked in `app.css`. If you change one, `align.html` is the check.
+
+---
+
+## 4. Theme
+
+Ten themes, from UVM Dark through Phosphor to the three Jirai variants
+(`THEMES`, [core.js](js/core.js)).
+
+### Never write a literal colour
+
+Every colour comes from a token. 57 literals remain outside the theme blocks
+and the worst of them duplicate tokens that already exist — `#154734` *is*
+`--uvm-green`, `#ffb81c` and `#E5A823` are the gold. A literal is a surface
+that will be wrong in nine themes out of ten.
+
+- **Semantic tokens mean something**: `--ok` `--warn` `--err` `--accent`, and
+  their `-soft` grounds. Use them for meaning, not for looks.
+- **`BARRY.hues()`** is for things that only need telling *apart* — session
+  tabs, chart bands. It comes from the theme's own `--c1`…`--c5`, so it is
+  pink in Horizon and gold in UVM Dark, and it is guaranteed internally
+  distinct in a way the semantic tokens are not.
+- **Reading a token from script**: `BARRY.token('--accent')`. Anything that
+  caches one must repaint on a theme change — see `repaintThemedSurfaces()`.
+
+### Motion
+
+When something moves, and how, is §12's vocabulary.
+
+Every animated surface needs a `prefers-reduced-motion` block. There are
+twelve, and the house pattern is to **name the component and stop its
+animation**, not a blanket `* { animation: none }` — reduced motion should
+keep the contrast and lose the movement, not flatten the page.
+
+### Fire mode
+
+Opt-in **per surface**. The six that opt in are enumerated in `app.css` under
+*"the six surfaces that opt in"*. A new surface joins that list deliberately
+or not at all; the mode is not a filter over everything.
+
+### The name and the mark
+
+The name can be switched off (`js/jarvis.js`), and while it is, the page is
+rewritten as it is drawn: every text node, `title`, `placeholder`,
+`aria-label` and `alt` saying **Jarvis** becomes "the workbench", and
+`alert`/`confirm`/`prompt` are wrapped. So write the name in a string the
+ordinary way — no flag to check. Three things it cannot reach:
+
+- **Text painted onto a canvas.** Do not paint the name; put it in the DOM.
+- **Lower case.** `jarvis` is left alone on purpose, because it is a file or
+  a key (`jarvis.ico`, scope `'jarvis'`). The name in prose is capitalised.
+- **Text that must keep it** (the reveal's own lettering): mark the element
+  `data-jarvis-keep`.
+
+Never draw the mark yourself. `BARRY.jarvis.markSvg(colours, detail)` draws
+it for every surface, and `tools/make_icons.py` writes the static files from
+the same function.
+
+---
+
+## 5. Waiting, empty, and wrong
+
+### Waiting
+
+| use | when |
+|---|---|
+| `loader(label, sub)` | one wait, no distinct stages |
+| `stepLoader(label, steps)` | a wait with **named stages that each take real time** |
+| `BARRY.skeleton.into(host, kind, n)` | a list that is about to fill — it shows the *shape* of what is coming |
+
+Use a skeleton and a loader together where both apply: the bones say what is
+coming, the loader says what is happening. Sessions does this — the registry
+read is about six seconds, and the wait states the size of the job.
+
+**Never a bespoke spinner.** X-ray renders `<div class="spinner">` and there
+is no such rule, so its loading card shows an empty div.
+
+**Do not name stages that do not take time.** A `stepLoader` whose second and
+third dots light for zero milliseconds is a progress bar lying about where the
+time goes. If there is one slow stage, use `loader`.
+
+Say the size of the job where you can, and say when something is taking longer
+than it should. Both are more useful than a spinner.
+
+### Empty
+
+`.empty-state` — and it says **what to do next**, not merely that there is
+nothing here.
+
+### Wrong
+
+- `toast(msg, 'ok' | 'warn' | 'err')` — three kinds, no fourth.
+- Client errors go through `reportClientError(where, message, detail)` so the
+  Errors view sees them. A `catch` that only does `console.log` is a fault
+  nobody will hear about.
+
+---
+
+## 6. Compositions
+
+A control can measure identically to its neighbour and still look like it
+belongs to a different application, because what differs is one level up.
+These are the shapes that answer that, in `web/js/ui.js`.
+
+### `stepHeader({ title, step, blurb })`
+
+Every tool's header. Mixed-case title, an optional step chip, then the blurb.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ X-ray  (step 4 of The Dentist)  Which kind of dentate…   │
+└──────────────────────────────────────────────────────────┘
+   strong        .step-n              p.hint
+```
+
+**The worked example.** Braces and X-ray are adjacent steps of one bundle and
+had nothing in common:
+
+| | Braces (before) | X-ray (before) |
+|---|---|---|
+| header | `.card.br-intro` › `.section-label` + `p.hint` | `.dp-intro` › `strong` + `.dp-step` + `.hint` |
+| title | ALL CAPS, boxed in a card | mixed case, unboxed |
+| step | text, inside the title | a chip of its own |
+
+Across the app there were thirteen bespoke tool headers using **four
+alignments, seven gaps, three title elements and three subtitle classes**.
+
+X-ray's shape won, because it was already closest to the two headers that
+*were* shared — `.tk-head` and `.view-head` are both a mixed-case title with a
+subtitle beside it, and neither is boxed. The step is a chip because a title
+should say what the tool is; "step 4 of The Dentist" is a different fact
+about it.
+
+Do not add a fourteenth. If a tool needs something the header cannot express,
+change `stepHeader` so every tool gets it.
+
+### `field({ label, control, hint, inline })`
+
+One labelled control. `.section-label` above, the control, the hint under it.
+`inline: true` puts the label beside a control too short to deserve a line.
+
+Six primitives did this: `.section-label`, `.field label`, `.dp-lab`,
+`.ctl > label`, `.mini-field`, `.vacc-field` — and `.wiz-grid .field label`
+un-uppercasing some of them. `.section-label` won on merit and on usage.
+
+### `workbenchCard({ title, chips, count, owner, when, progress, tally, actions })`
+
+A thing you have open, on a bench, until you put it down. Checkup and
+StrataScope both build one.
+
+**The owner is always stated, including when there is not one.** "Nobody has
+this" is what a bench exists to say. StrataScope used to omit it entirely
+when unassigned, so an unclaimed sheet looked identical to one whose owner you
+simply had not read.
+
+**What is deliberately not unified.** A curation set can be handed to
+somebody; a sheet cannot — there is no assign path for one. So a set's owner
+is a `button.cur-who` and a sheet's is `span.cur-who.static`: same words, same
+place, no hover, no pointer. A control that looks pressable and is not would
+be a worse lie than the inconsistency it replaced.
+
+That is the general rule when two surfaces differ: **unify the shape, keep the
+difference that is about what the thing can do.**
+
+### Still to come
+
+`analysisRun`. Comod, Incisor, Panorama and Spectrum share three dead
+`.comod-*` classes, which is its own evidence they were copy-pasted from one
+another. Until it lands, follow §1 and copy the nearest well-behaved
+neighbour.
+
+---
+
+## 6b. Building a tool, a bundle, or an Xplorefinder mode
+
+Sections 1–6 are about how a control looks. This one is about the machinery a
+new tool has to join, and the parts of it that are easy to get wrong in ways
+nothing catches until somebody's decisions are gone.
+
+### The three shapes a new thing can take
+
+| shape | example | what it is |
+|---|---|---|
+| **a tool** | Panorama, Kilosort | a panel in ToolKit. Owns the result area, reads a recording, may write to Results |
+| **a bundle** | The Dentist | an ordered set of tools that are steps of one job |
+| **an Xplorefinder mode** | Checkup, StrataScope | takes over the panes, the keyboard and the aid window to work *on* a recording |
+
+Start with a tool. A bundle is what you make once several tools turn out to
+be steps of one job, and a mode is only justified when the work needs the
+traces on screen.
+
+### A tool
+
+```js
+toolButton('panorama', 'Panorama', 'The whole recording at once: …')
+```
+
+- Register it in ToolKit, **not the rail** (§1 — eleven slots, all taken).
+- The blurb says what the tool *does*, not what it is called.
+- Dispatch a `q.tool === 'yours'` branch to your paint function.
+- If it can run on the cluster, add its id to `VACC_TOOLS` — and only then.
+  A tool marked as offloadable that is not is worse than no mark.
+- Give it a row in `VACC_INFO` (toolkit.js) when it is VACC enabled in any
+  way — runs there, or reads over the link. The mark's hover says, in three
+  parts, **why it is VACC enabled**, **what is processed on the cluster**,
+  and **what it would be like without VACC**. One table, so the mark on a
+  bundle step and on the flat list say the same thing (`vaccWords(id)`;
+  `_dev/vaccreach.html` checks every row has all three).
+
+### A bundle
+
+```js
+const DENTIST = [
+  ['incisor', 'Incisor', 'find them'],
+  ['curate',  'Checkup', 'clean them'],
+  ['braces',  'Braces',  'line them up'],
+  ['dspca',   'X-ray',   'tell them apart'],
+];
+```
+
+Each step is `[id, name, what it does in three words]`, in the order you do
+them. Register the bundle in `BUNDLES` with an `id`, a `name` and the `icon`
+of the tool whose glyph stands for the whole thing.
+
+**A bundle must remove its members from the flat tool list below it.** This is
+the rule with the longest comment in `toolkit.js` and it is worth reading:
+a bundle that does not is "a menu that describes one thing twice and makes
+the reader work out that it is one thing." `BUNDLED` does this for you, so
+the only thing a new bundle has to do is be in `BUNDLES`.
+
+Every step gets a `stepHeader` with its `step` set (§6). The header is where
+somebody arriving at step 3 learns there are four.
+
+**The step number is derived, never typed.** Each tool used to write its own
+"step 4 of The Dentist". When Root Canal was inserted between Braces and
+X-ray, X-ray's header had to be edited by hand from 4 to 5 — it was, this
+time. Use `stepOf(toolId)`, which reads the position out of `BUNDLES`, so
+inserting a step renumbers every header after it. Every bundle step uses it
+now -- Incisor, Checkup, Braces, Root Canal, X-ray, Doppler, Panorama and
+Braid -- and `_dev/stepof.html` fails any header that types its own.
+
+**A step that is not built yet is shown and disabled, with the reason on it.**
+Leaving it out says the step does not exist. Somebody arriving at Coupling
+needs to know both that it is the third of four and that the two before it
+come first.
+
+**A tool may be a step of two bundles, and is still one tool.** Root Canal is
+step 4 of The Dentist (take the IEDs out of a dentate-spike set) and step 4 of
+The Confluence (tease a pooled set apart). It is listed in both arrays and
+written once. The step it was opened from is remembered (`q.via`, set by the
+bundle step that was clicked), so `stepOf` numbers it in that bundle, only that
+bundle's card is lit, and the tool can ask `toolkit.via()` which job it is
+doing -- Root Canal offers pooled sets in one and dentate-spike sets in the
+other. A door that names no bundle keeps the one in use, else the first.
+
+**Bundles that feed one another can say so.** The Dentist and The Storm both
+run into The Confluence, and the rail draws it: the three cards sit in one
+group (`.tk-flow`) with two strands in the gutter beside them, flowing gently,
+still under reduced motion, offset by the clock so a re-render does not
+restart them. Words stay out of the stream -- a harness finds a bundle by its
+name, and a stream carrying "The Dentist" would be found as one.
+
+**Which detector found an event has one pair of colours: `--o-incisor` and
+`--o-doppler`,** taken from the categorical palette so every theme has its
+own. The stream, Junction, Panning and Root Canal all use them, and an event
+both found is drawn two-tone -- half each -- everywhere, never a third colour.
+
+#### Bundles fold
+
+A bundle is a heading with a list under it, and **every bundle folds**. Three
+bundles of three and four steps is eleven rows before the flat list even
+starts, and somebody working in one of them has no use for the other seven.
+
+`bundleCard` already does this; a new bundle gets it by being in `BUNDLES`.
+What matters is the four rules it follows, because they are what make folding
+safe rather than merely possible:
+
+1. **The head is a `button`.** It was a `div`, which nothing can tab to and
+   nothing can announce. Full width, left-aligned, `aria-expanded` — the
+   target is the whole row, not the chevron.
+2. **Open by default; only folds are remembered.** Stored as the *folded*
+   ids in `barry.tkFolded`, so a bundle added later arrives open and is seen
+   rather than arriving folded and never being found.
+3. **Folding never costs you your place.** A folded bundle holding the tool
+   you are in keeps its accent border, and its head names *that step* in
+   place of the count. "Where am I" stays answered by a menu you have tidied.
+4. **The fold is a preference, so it persists.** Same reason the rail
+   remembers its width. A fold you have to redo every morning is not a
+   preference.
+5. **It animates, and says so to reduced motion.** The steps ease their
+   height and opacity closed rather than vanishing, because a list that
+   snaps shut reads as something having broken. Under
+   `prefers-reduced-motion` it snaps (§4). The rail re-renders on every
+   change, so a CSS transition has nothing to run on: `foldBundle`
+   (toolkit.js) animates the steps either side of the render, and ends on
+   a timer as well as on `onfinish` — a background or headless tab may
+   never report the end, and a fold waiting on it refuses every click
+   after. `_dev/bundlefold.html` checks all three.
+
+The same shape applies to anything else that is a heading over a list — the
+Explorer's tree sections and the Errors view's groups already work this way,
+with the same `.caret` and the same `.open` class on the parent. Copy that,
+not a new one.
+
+### An Xplorefinder mode
+
+A mode is entered with a gid and takes the whole interface:
+
+```js
+BARRY.yours.enter(gid)   →  true/false
+BARRY.yours.exit()
+BARRY.yours.active       //  a GETTER. Calling it throws.
+BARRY.yours.rebind(sess) //  a reopen replaces the session object
+BARRY.yours.state        //  what a pop-out or a deep link needs
+```
+
+**One mode at a time — and no mode is responsible for that on its own.**
+Every mode takes over the panes, the keyboard and the aid window. Entering one
+on top of another leaves two toolbars stacked, two sets of key handlers
+fighting over the same presses, and an aid window belonging to whichever got
+there first.
+
+This section used to say each mode should exit the others itself, and show
+Checkup being exited by name. That held while there were two modes. There are
+five now — Checkup, StrataScope, Spotter, Braid and The Arc — and a check
+found that **none of them exits all the others**:
+
+| entering | exits |
+|---|---|
+| Checkup | StrataScope only |
+| StrataScope | Checkup only |
+| Spotter | Checkup, StrataScope |
+| Braid | Checkup, StrataScope |
+
+So entering Checkup with Spotter open leaves both live. Five modes that each
+list the other four is twenty pairs kept in step by hand, and the sixth mode
+breaks them all again. The rule is therefore a registry, not a habit:
+
+```js
+BARRY.modes.register('yours', BARRY.yours);   // once, at load (end of file)
+BARRY.modes.leaveAllBut('yours');             // first thing in your enter()
+```
+
+`BARRY.modes` (core.js) is the registry. `leaveAllBut` leaves every other
+active mode, never the caller, and one mode throwing on its way out does not
+stop the rest. Checkup, StrataScope, Spotter, Braid and the Arc's review are
+registered; `_dev/onemode.html` checks all of that. Never list the other
+modes by name -- each mode used to, none listed them all, and entering
+Checkup with Spotter open left both live.
+
+**Resolve the recording, do not assume a path.** Registry rows carry `here`,
+a list of paths reachable from *this* machine — not `path`. Never read
+`here[0]` yourself: ask `BARRY.vacc.reachFor(row, toolId)` (vacc.js). It is
+the one rule — this computer first, the cluster second — and it returns
+`{ path, where: 'here' | 'vacc' | null, why }`, where `path` is a drive path
+or `vacc:<gid>`. Say `why` plainly when there is no path.
+
+What a tool can do with a recording that is VACC loaded and not on this
+computer is the tool's own fact, declared in `READS` beside `VACC_TOOLS`
+(toolkit.js), never guessed:
+
+| reads | means | tools today |
+|---|---|---|
+| `cluster` | runs there, no copy here needed | Incisor, Doppler (the node resolves the channels and measures the gaps), Braces and Eye (the stamps go up with the job; only when this computer has no copy) |
+| `link` | views it through the live link: windows, every panel (CSD, theta, voltage, spectrogram -- drawn on the cluster by `analysis.render_panel`, only the picture crosses), overview, band, .nev. Nothing is prewarmed off the cluster | Xplorefinder, Checkup, Spotter, StrataScope |
+| `here` | needs the files on this computer — the default | everything not yet checked |
+
+A picker uses `BARRY.vacc.usableFor(toolId)` as `ui.pickRecording`'s
+`usable`, so a VACC-loaded recording a tool cannot use is shown and disabled
+with the reason rather than offered and then failing. `_dev/vaccreach.html`
+fails a module that reads `here[0]` on its own. Before reach existed, every
+tool did, and Checkup refused a recording ("none of its paths are
+reachable") right after Incisor had banked it off the cluster.
+
+**`rebind` exists because reopening a recording replaces the session object.**
+A mode holding the old one keeps painting into a detached tree.
+
+### Bad channels
+
+Read `README.md § Session identity` before touching these.
+
+- **Stored by CSC channel number, never by row index.** An index shifts the
+  moment a channel file goes missing.
+- **Every channel is read.** There is no even-channels-only read any more,
+  and none is to be added back: picking the even channels is a selection,
+  made in the `Ch` menu, not a second way of opening a recording. A read
+  that is sometimes half the files makes every index into it mean two
+  things.
+- Identity is **mouse + session + the recording start time from the Neuralynx
+  header** — not the path, which differs per machine. Matching is tiered:
+  exact, then strong (mouse+session, unambiguous), then weak (nearest start).
+- Mouse + session alone is **not unique**. `M5s2bnov16` and `M5s2cnov16` are
+  both mouse 5 session 2.
+- In a CSD panel a bad channel is **interpolated from its neighbours, not
+  blanked** — a second spatial derivative would lose three rows to one bad
+  channel.
+
+**A harness that touches bad channels must put them back.** The first version
+of `incisorsel.html` established a known starting point by clearing them. It
+reported twenty-six passing checks and had deleted a real one. Read them,
+work, restore in a `finally`.
+
+### Banking
+
+An entry is evidence, and evidence that cannot say where it came from is not
+evidence. The bank refuses one that cannot state **who**, **when** and **what
+produced it** — script, detector or file. There is no default and no guess.
+
+- Times are **seconds from the start of that recording**, so they only mean
+  anything against it.
+- Match on the **registry gid**. Matching banked data by an identity string
+  returns zero, silently.
+- **Version numbers are not unique.** Two machines curating the same entry
+  both mint the next number, and the union keeps both — a real entry is
+  numbered `0,1,2,3,4,3,4`. The per-version **`id`** is the identity. Asking
+  by an ambiguous number is refused rather than answered, "because there is no
+  defensible way to pick and a wrong answer here reads events that somebody
+  else decided."
+- A snapshot's digest is canonicalised — times to the microsecond, labels as
+  text — so `315.275` and `315.27500000000003` are one snapshot, not two. That
+  digest is what makes "both copies agree" a check instead of an assumption.
+
+**If your tool moves an event in time, it must carry `from_t`.** Time was the
+only identity a banked event had. Without the time it used to have, a moved
+stamp arrives as one event vanishing and an unrelated one appearing — a
+history reading "1198 lost, 1198 gained" about a pass in which nothing was
+decided differently at all.
+
+### Sets, benches and shelves
+
+A set is work somebody has open. The view is a **workbench, not a table**:
+
+- The **bench** holds what is open; the **shelf** holds everything else.
+- Putting a set down costs nothing and saves nothing, because every decision
+  was written the moment it was made. Say so in the button's title.
+- A set carries an **owner**, and the card states it even when there is not
+  one (§6).
+- Use `ui.workbenchCard`. Do not build a third one.
+
+**Storage: no two machines ever write the same file.** Every editable record
+is split by machine — `sessions/m1s2@z390-4f1a.json` — so git sees unrelated
+files and a conflict is impossible rather than rare. The merge happens on
+read, in code, because only code knows that two `paths` lists should be
+unioned while two `note` strings should not. **Never write another machine's
+shard.**
+
+### Presence
+
+If two people could be in the same set, use presence — and understand what it
+is not.
+
+- It lives **only in Supabase**. No local shard, nothing in `GUI_logs`,
+  because a presence row that survives a restart is a lie.
+- It **expires rather than unlocks** (TTL 150s against a shorter client beat).
+  A lock somebody has to give back strands the set when a machine crashes, and
+  the one thing worse than two people in a set is nobody able to get into it.
+- The holding is **advisory**. The point is to stop two people colliding
+  *accidentally*; a hard block would also stop the deliberate case, which is
+  legitimate and common — somebody left a set open on a rig and went home.
+- If the cloud is unreachable the answer is "nobody is reported present",
+  which is exactly the truth available.
+
+### Cost, before it is spent
+
+Supabase egress is counted in **requests, not bytes**. Ask once per entry and
+hold it; do not ask per render. State the cost and the step size before
+anything long runs — Panorama does this and it is the pattern to copy.
+Anything that reads or writes the cloud follows **§11**.
+
+### Before you call it done
+
+- [ ] A ToolKit entry, and removed from the flat list if it is in a bundle
+- [ ] `enter` / `exit` / `active` / `rebind` / `state` if it is a mode
+- [ ] `onHide` if it starts a poll or a beat
+- [ ] Bad channels by CSC number; restored by any harness that touches them
+- [ ] Banked entries state who, when and what produced them
+- [ ] `from_t` on anything that moves an event
+- [ ] Writes only this machine's shard
+- [ ] Every cloud request it adds is in §11's budget, with its rate said
+- [ ] A `_dev/` harness, listed in `_dev/README.md`
+
+## 6c. Two views of one thing
+
+Three views in Sessions show the same recordings: **Scan a drive**,
+**Everything Jarvis knows** and **Everything VACC knows**. They are not three
+lists. They are one catalogue asked three questions — what has this computer
+met, what has the lab met, what can the cluster read — and the cluster view
+answers its question in *both* of the other two's shapes.
+
+That only stays true if nobody writes a second copy of anything. This section
+is what "nobody" means in practice.
+
+### One renderer per shape, chosen by scope
+
+| the thing | the one renderer | drawn by |
+|---|---|---|
+| a recording as a **card** | `sessionCard` — sessions.js | Scan a drive · VACC ▸ Recordings |
+| a recording as a **row** | `sessionRow` — housekeeping.js | Everything Jarvis knows · VACC ▸ Catalogue |
+| the project → mouse **tree** | `housekeeping.catalogue(scope)` | both catalogues |
+| the **probe** chip | `BARRY.hk.probeChip` | card, row, drive scan |
+| the **cluster** mark | `BARRY.vacc.mark` | card, Xplorefinder tab |
+
+So a change to a session card lands in the drive view and the cluster view at
+once, because there is one function. **A card change does not land on a tree
+row, and must not be made to.** A card carries a duration, a sample rate and
+four quality buttons; a row carries attachment counts in a dense line. They
+are different shapes answering different questions, and forcing one to follow
+the other is how a view ends up with furniture nobody asked for.
+
+What crosses between them is the **vocabulary** — the chips — never the
+layout.
+
+### Getting one renderer into two places
+
+Two techniques, both in the tree already. Prefer the first.
+
+**Parameterise the host.** `housekeeping.catalogue(scope)` keeps a `SCOPES`
+table of `{ host, detail }` ids and draws into whichever it is handed. This is
+the default answer and needs no comment beyond the table.
+
+**Move the nodes.** `parkList()` / `listInto()` in sessions.js move the one
+`#sessFilters` and the one `#sessTree` between pads, because that markup is
+fixed in `index.html` and `.pad` is `flex: 1` — two visible pads split the
+height, so the list cannot simply be shown in both. Moving a node keeps its
+listeners, so the search box being typed into is the one wired at boot, with
+the one `query` behind it.
+
+Only when the markup cannot be parameterised, and then:
+
+- Park the nodes **before** anything clears the pad they are in.
+  `innerHTML = ''` on a host holding them does not move them, it destroys
+  them, and the symptom is a view that silently has no list.
+- Anything that positions itself relative to them must reposition on every
+  render, not only when it is built — the pick bar was inserted once and
+  stayed behind in the pad the cards had left.
+
+### One module owns the fact; each surface owns the consequence
+
+`native` and `staged` mean something, and four surfaces say so: the card in
+Sessions, the detail panel in Housekeeping, the tab in Xplorefinder, and the
+toast when a recording opens. Each of them wrote its own sentence, and the
+predicate behind them — `state === 'native' || state === 'staged'` — was
+written out five times in three files.
+
+The split that fixes it:
+
+- **The fact** lives in the module that owns the subject. `BARRY.vacc.words`
+  is a table of what each state *is*; `BARRY.vacc.mark` is the chip; and
+  `canRead` is defined as *"there are words for it"*, so the set that opens
+  and the set that gets a mark cannot come apart.
+- **The consequence** belongs to the surface, because it is about the thing
+  that surface is offering. "Opening it from here reads the same files the
+  rig wrote" is the detail panel's sentence and belongs nowhere else.
+
+Restating the fact is the fault. Adding a consequence is not.
+
+The same rule made `probeChip` shared: three places drew it, and three copies
+of "is this confirmed" would have ended up disagreeing about what green
+means.
+
+### VACC loaded: one word, and how a recording gets it
+
+A recording the cluster can read **with this account, now** carries one
+mark, **VACC loaded** (`BARRY.vacc.words` — the user's word, 2026-10-08).
+How it is there is the title, not a second word: *read in place* on a share
+VACC mounts (`native`), or *an uploaded copy* in scratch that can be purged
+(`staged`). Two different words read as two different promises; to somebody
+choosing a recording they are one fact.
+
+- **Per account.** `/api/vacc/knows` carries `readable` on a native
+  recording from the status probe's verdict on its share — false only when
+  the share was asked and refused. `canRead` and `mark` both read it, so a
+  share this netid is refused gets neither an Open nor a mark, and its
+  detail says who to ask (the `jarvis_writes` group; Shahriar).
+- **Found by looking, including on netfiles.** Every mapped share this
+  account can read is walked like scratch (`vacc.places`), its listing kept
+  on disk for a day because the walk takes minutes (`INV_TTL_NATIVE_S`). A
+  folder found there is `native`, never `staged`, and beats a scratch copy
+  of the same recording instead of conflicting with it.
+- **Two finds, and a first look that is asked for.** The card has **Find
+  everything on VACC** (the cluster's own space: scratch, the uploads,
+  temp, scanned places — seconds) and **Find everything on netfiles** (the
+  lab's share — minutes), because they are two different costs. Each
+  computer keeps its own listing of the share, so a new computer starts
+  with none, and its first look is **Set up this computer** on the card,
+  never a walk started behind somebody's back. After that the share is
+  looked through again when its listing is a day old.
+- **Added on purpose.** Sessions ▸ Everything VACC knows ▸ *Found on VACC*
+  sorts every find against the catalogue (`backend/vaccfind.py`) and offers
+  **Add N recordings found on VACC** — one click that says how many, refused
+  if the list changed since it was shown (`digest`). A netfiles find is
+  registered by its **UNC spelling** (`vacc.unc_for`), which is a real lab
+  path, not a cluster path; a scratch find by identity alone, with no path.
+  No sighting is filed for this computer, so *Scan a drive* does not count
+  them as met here. A folder that names no mouse and session is never
+  minted, and one that half-matches a known recording on the same day is
+  left to a person.
+
+### Absent is not negative, in every view at once
+
+The cluster has four states and only two are affirmative. `BARRY.vacc.of`
+returns **null** for a recording nobody has established an answer for — which
+is most of a fresh scan, because exact ids are minted when headers are read.
+Every view has to read that the same way: **no mark, no Open, and no
+refusal either.** A view that reads a missing answer as "the cluster cannot
+reach this" is claiming something nobody checked.
+
+This has been got wrong twice in this codebase — `canOpen` in sessions.js,
+where a missing field read as "not on this machine" hid every recording that
+was certainly openable, and the first VACC chips. Both have comments; read
+them before writing a fifth reader of a four-state field.
+
+### A count has to describe the list underneath it
+
+Whatever narrows a view narrows the numbers above it. The cohort pills
+counted the whole catalogue whatever the mode was, so the cluster view
+offered **"PTEN (381)" above a list of 109** — and the fix has to be one
+predicate, not two that agree today: `modeAllows` is read by the filter and
+by the counts, for the same reason `inLocal` was extracted after the view
+said "188 of 185".
+
+Zero is an answer. A cohort with nothing in this view reads `(0)` and is
+dimmed, not dropped — a pill that vanishes when you change mode is one you
+cannot change back with.
+
+### Adding a fourth view
+
+1. It is a **question about the same catalogue**, so it is a mode on the
+   existing switch — not a rail slot (§1) and not a new list.
+2. Write the narrowing as one predicate and give it to the list *and* the
+   counts.
+3. Draw the existing card, the existing row and the existing chips. If you
+   need a new chip, put it in the module that owns what it means and let the
+   other views draw it too.
+4. Say in the line above the list which of the questions it is answering, and
+   leave out the clauses that are about a different one.
+5. An empty view says what fills it (§5) — for the cluster view that is
+   "scan a folder under Directories", not "nothing matches those filters",
+   which sends somebody looking for a filter that does not exist.
+
+---
+
+## 6d. Running a tool — here or on the cluster, one or many
+
+Every tool does the same job in the same order: **pick what to run on, set
+the parameters, run it, get the result back, keep it.** Until now each tool
+drew that differently — Braces and X-ray with a *One set at a time | Many
+sets at once* switch, Incisor with tabs that made "VACC" mean "many at once",
+Doppler with two ghost buttons and no primary. This section is the one shape.
+
+*`BARRY.ui.runBar` exists (ui.js, checked by `_dev/uiparts.html`); tools
+move onto it one at a time. The VACC health panel and upload exist (below).
+Until a tool has moved, Braces is the reference for everything local and
+this section is the spec.*
+
+### Four modes, on two independent axes
+
+| | one | many |
+|---|---|---|
+| **this computer** | local run | local batch |
+| **VACC** | VACC run | VACC batch |
+
+*Where it runs* and *how many* are separate questions and never fused into
+one control. A tool **declares** which of the four it supports, and the
+interface offers only those:
+
+```js
+modes: { local: ['one', 'many'], vacc: ['one', 'many'] }   // Incisor
+modes: { vacc: ['one', 'many'] }                           // Doppler
+modes: { local: ['one'], vacc: ['one'] }                   // Drift
+```
+
+Which a tool gets is decided by the work, not by what is easy to build:
+
+- **Simple and quick** → local run only (Spotter, Kilosort, StrataScope).
+- **Repetitive** → local run and local batch (Checkup, Braces, Root Canal,
+  X-ray, Eye).
+- **Heavy and done often** → VACC run and VACC batch, and no local mode at
+  all where running it here would only teach people to wait (Doppler).
+- **Heavy and done once** → VACC run (Drift), with a local run as well
+  where the work is small enough to be worth doing here.
+
+Circuit and Drift were decided by the user (2026-09-27) rather than by the
+rule above: one recording's circuit is about a minute here, so Circuit runs
+here and on the VACC, one or many; Drift combines numbers already computed,
+so it runs here in seconds and can run on the VACC, never as a batch.
+
+Braces and Eye were given the cluster by the user (2026-10-09) for one
+reason: a set whose recording only the cluster has. There the job runs
+on the VACC, by the same `braces.align`; a set whose recording is here is
+still aligned here. There is no choice to make between the two, so the run
+bar does not offer one (an axis with one option is hidden); the plan says
+"Runs on VACC" before the button is pressed. Spotter and Checkup read such
+a recording over the link and run nothing there.
+
+| tool | here · one | here · many | VACC · one | VACC · many |
+|---|---|---|---|---|
+| Incisor | ✓ | ✓ | ✓ | ✓ |
+| Circuit | ✓ | ✓ | ✓ | ✓ |
+| Checkup, Root Canal, X-ray | ✓ | ✓ | | |
+| Braces, Eye | ✓ | ✓ | ✓ | |
+| Doppler | | | ✓ | ✓ |
+| Panorama | ✓ | ✓ | ✓ | |
+| Spotter, Kilosort, StrataScope | ✓ | | | |
+| Drift | ✓ | | ✓ | |
+
+Panorama's local batch was missing from the first draft of this table. It
+already had one — *Many at once*, a set and where each recording got to — so
+the table was wrong, not the tool.
+
+**Incisor on the VACC needs no copy here** (2026-10-08). A recording only
+the cluster can read — most of the netfiles share, from a desk without `Y:`
+— is prepared from the registry alone; the compute node resolves the channel
+list by the one rule (`incisor.resolve_channels`) and measures the gaps, and
+the answer's key is computed when it lands, from the `breaks_sha` it carries
+(`backend/incisorvacc.py`). A review opens that scan by `(gid, key)`
+(`/api/incisor/result`), and `/events` and `/union` answer by it, so the
+hilus range and the bank work with nothing open here. When this machine has
+the summary and not the events, they are fetched once from the run directory
+in the workspace (`computed_on.workspace` / `.file`). VACC mode ticks nothing
+for you, shows the parameters once for the batch, states the cost, and caps a
+netfiles batch at 8 tasks at once.
+
+**On the run bar so far:** Incisor, Doppler, Braces, X-ray, Root Canal and
+Panorama. **Cells in the table not built yet**, which the bar therefore does
+not offer: Incisor here · many, and Panorama on the VACC. A tool gains one
+by building it and adding it to its `modes`, not by drawing a new switch.
+The Arc's tools (Circuit, Drift, Spark) adopt the bar once their builders
+are done.
+
+A tool that gains a mode changes its declaration, not its layout.
+
+### The run bar
+
+One component, `BARRY.ui.runBar`, at the top of the tool under its
+`stepHeader`:
+
+```
+ Where    [ This computer | VACC ]        (hidden if only one)
+ How many [ One | Many ]                  (hidden if only one)
+```
+
+- An axis with a single option is **hidden**, not shown disabled. A choice
+  that cannot be made is not a choice.
+- VACC is offered only while VACC Mode is on and an account is signed in —
+  and never as the *only* way to reach a tool that can also run here.
+- The **primary action is last and names what it will do**: *Run on this
+  recording*, *Read 12 sets*, *Submit 40 to VACC*. Never "Go", never "Run
+  the batch" as a ghost button (§2).
+- **Say the cost before it is spent**: how long, how many, on which
+  partition. Panorama already does this and it is the pattern.
+
+### Parameters
+
+- In the tool's own panel, below the run bar, as `ui.field`s — never in a
+  popover somebody has to find.
+- Every parameter has a **default that is stated**, and the result records
+  the parameters it was made with, verbatim. A result whose parameters are
+  lost cannot be defended.
+- One set of parameters applies to a whole batch. A batch that silently used
+  different settings per recording is not a batch.
+
+### Waiting
+
+§5 applies, plus:
+
+- **Local run** — `loader` or `stepLoader` in the result area.
+- **Batch** — one row per recording with its own state (*queued · reading ·
+  done · failed · skipped*), a bar that never goes backwards, and a **Stop**
+  that stops. A batch skips what is already done and says so; re-running a
+  finished batch does nothing.
+- **VACC** — the job's own state (*uploading · submitting · queued ·
+  running · fetching · done*), with the Slurm job id visible. Queued is not
+  an error and is never drawn like one.
+
+### Results
+
+- A run leaves a **result**; a batch leaves **one proposal per recording**.
+  **Nothing is banked by a batch.** Each proposal is reviewed and banked
+  through the bank dialog (§6e) — the review is the point of the tool, and a
+  batch that skipped it would bank work nobody looked at.
+- A result is cached per tool and per recording (`GUI_logs/<tool>/results`)
+  and **re-opens instead of re-running**. Say when a shown result is cached,
+  and offer to re-run.
+- A VACC result is pulled back and stamped `computed_on: {kind: 'vacc',
+  netid, slurm_id}`, so a result says where it was made.
+
+### VACC
+
+**One account runs the lab's jobs.** Others sign in with their own netid to
+reach the shared space.
+
+- **Data lives in `Jarvis Data`**, under `/gpfs2/scratch/sakhava1`. It is
+  **processing space**: critical data is kept elsewhere, and scratch may be
+  purged. The local copy is only ever read and stays the source of truth.
+  The path, the owner and the OnDemand link are lab facts in the tracked
+  `vacc.json` (`shared`), not code.
+- **Mirrored as `<project>/<mouse folder>/…/<recording>/`, every folder from
+  the mouse's down.** Not `<project>/<mouse>/<recording>` alone: the session
+  number is often in a folder between them
+  (`M1_Pten/M1ptens1oct2/2023-10-02_16-49-04`), and a copy without it
+  identified as a different recording and would never have been found.
+  `vaccupload.destination` refuses a destination that does not identify as
+  the same recording — 948 of the 1,040 registered have one; the rest have
+  folders that name no mouse and session, and a cluster copy of those could
+  not be matched back anyway.
+- **Uploading**: pick recordings in Sessions, *Upload to VACC…*. The plan
+  comes first — what each would send, what is already there, where, and why
+  one cannot go — and the upload is started only by the button that says how
+  much it sends; the route refuses without `confirm`. A file already there
+  at the same size is skipped, so re-uploading is cheap and resumes. A file
+  arrives as `.part` and is renamed only when whole, so a cut connection
+  never leaves something that looks complete. One ssh per file, streamed in
+  chunks, never held in memory. Progress is in the cluster pad in
+  Sessions and in the VACC panel — one renderer, `uploadsBox`.
+- **Uploading is also offered where the work is.** A tool that runs on the
+  cluster has to say what it cannot run, and a recording the cluster simply
+  has no copy of is not a refusal — it is a missing step. So every VACC tool
+  names those recordings and offers to send them, through
+  `BARRY.vacc.uploadMissing(blocked, after)`, which calls **the same**
+  `upload` pathway Sessions calls: the plan first, the confirming button, the
+  skip-what-is-there, the `.part` rename. A tool that wrote to the shared
+  space its own way would be a second set of rules about the lab's data.
+
+  Three things that rule decides, and each of them was wrong somewhere
+  before it existed:
+
+  - **Name them, never drop them.** Incisor and Doppler omitted every
+    recording the cluster had not got, so a VACC batch quietly did not
+    mention most of the catalogue, and the list read as though those
+    recordings did not exist.
+  - **Only offer what can be sent.** `can_upload` is decided on the server
+    (`_vacc_missing`) and is *not* the same as "the cluster has not got it":
+    a recording this computer cannot open either has nothing to send, and a
+    button that cannot work is worse than no button. Those still appear,
+    with the reason.
+  - **Re-plan afterwards.** The offer is given the tool's own re-plan as
+    `after`, so a recording that has just gone up stops being counted as
+    blocked. Called when the upload is *started*, not finished: the rows
+    then move as the job moves.
+
+- **An upload is found by identity.** `Jarvis Data` is one of the places the
+  inventory walks (`vacc.places`), so an uploaded recording is known to be on
+  VACC the way any other is: by looking.
+- **Say "uploaded", not "staged".** "Staged" implied Jarvis had copied
+  something when it had not. `staged` stays the internal name.
+- **A cluster path never enters the registry.** A recording on the cluster is
+  known by its identity, the same way it is on a second machine. A scan of a
+  cluster folder remembers the FOLDER as a place to look (this machine's
+  `.vacc.json`, `places`), and never writes a path; registering a recording
+  from its cluster copy is refused, because `REG.ingest` records the path.
+  (Cluster paths written by the old scan are still in the registry; they are
+  left as they are.)
+- **Access is checked, and a refusal is specific.** The routine probe tests
+  whether this account can open the shared space and write into
+  `Jarvis Data` (or create it). When it cannot, the panel says *what* was
+  refused, links the folder in OnDemand, and says **ask Shahriar**
+  (`vacc.shared_words`). Never a bare "permission denied". The netfiles share
+  (`/netfiles/bigdata_jbarry`, nfs from `netfiles03.uvm.edu`) is grouped to
+  `jarvis_writes` since 2026-10-01 — sakhava1 and jbarry4 — so a refusal
+  there now means this netid is not in that group, and says to ask Shahriar.
+  The group can WRITE the share, and it is the lab's primary data: Jarvis
+  never writes there. Every run writes only under `workspace/runs/<rid>`.
+- **Jobs outlive the window.** The probe — still one connection — runs
+  `squeue --me` (falling back to `-u $USER`) and the last day's `sacct`
+  failures. Every batch Incisor, Doppler and Circuit submit writes a run
+  record (`GUI_logs/vacc_runs`, machine-local), and a restart re-attaches to
+  each open one and files its answers (`_resume_vacc_batches`, Circuit's
+  own). The panel lists every job the account has, marked *Jarvis here*
+  (with the tool), *Jarvis, not followed here* or *not Jarvis*, and the runs
+  waited on that the cluster no longer lists. A job with no record — one the
+  person started by hand, or another machine's — is shown, not adopted: only
+  the process that knows how to file an answer can take it. Drift's runs do
+  not write records yet.
+- **An account is claimed when one is set.** `#SBATCH --account=` goes into
+  both builders' scripts (`vacc.sbatch_account`); it was saved and never
+  sent.
+
+---
+
+## 6e. Choosing, keeping and naming
+
+### Choosing a recording
+
+Braces is the reference (`braces.js`), and `ui.pickRecording` is its rules
+made shared. It exists; `ui.openOn(rows, usable, value)` is what to open
+on, set by the caller before it builds, so the picker never calls back into
+a render still in progress.
+
+- The label is **Recording**. Not "1. Which recording", not "Session".
+- One placeholder: *Which recording? Type a mouse, session or date…*
+- **Usable first, everything on request.** List the recordings this tool can
+  do something with; a *show all recordings* toggle lists the rest. Picking a
+  recording and being told "nothing here" reads as the tool being broken, not
+  as the recording being the wrong one.
+- **Open on something workable** — whatever is already chosen, else the first
+  usable one. Never on nothing.
+- **Changing the recording resets everything downstream** — the entry, the
+  channels, the version. A panel still describing the last recording's set is
+  describing something no longer on offer.
+- A second choice under it (*Which banked entry*) is a list, not a select,
+  and an entry that cannot be used is **shown and disabled with the reason**,
+  not left out.
+
+The same rows feed the batch picker, so *one* and *many* choose from the same
+list.
+
+### Versions: the model
+
+`backend/versions.py` is the rule, and it is a good one.
+
+- **Picking up a version starts a new one from it.** The tip continues the
+  line: v3 → **v4**. Anything with work after it branches: v1, with v2 and
+  v3 after it → **v1.1**. Applied again it keeps working: v1.1 → v1.2, and
+  v1.1 once v1.2 exists → v1.1.1.
+- Going back is not a mistake to prevent; destroying what came after is.
+  v1.1 is *visibly a second line*, with v2 and v3 untouched beside it.
+- **v0 is always the detector's list** — the thing curation is done *to*.
+- `"1.10"` sorts after `"1.9"`. Compare through `versions.key`, never as text.
+- The stored `v` is a plain integer (the sync key); the **name** — `v4.1` —
+  is *derived* from lineage (`from_v` / `from_id`). Never store a name, never
+  display `v` in place of it.
+- The **id is the identity**, not the number. Two machines both mint the next
+  number, so numbers repeat.
+
+**Render every version through one `versionLabel(v)`.** About thirty places
+built `'v' + (name || v)` by hand, which is how one version comes to read as
+two different numbers in two panels. The bank's versions are all rendered
+through it now. Worse than untidy: the Event Bank's summaries carry the
+derived `label` and no `name`, so every `'v' + (v.name != null ? v.name : v.v)`
+there was showing the raw stored number. A person's own name for a version
+is its `title`, never its label. (The Arc's artifact versions are a
+different thing, numbered per artifact, and keep their own.)
+
+**A version is edited and deleted by its id.** The route takes a ref — the
+id the page holds, stored or derived — and a number only where it names one
+version (`EventBank._version_ref`); a number two machines both minted is
+refused with "say which by its id". By number, deleting one v3 deleted both,
+and an edit landed on whichever came first. Editing a version updates its
+pre-id copy too, or the two stop matching and the copy returns as a second
+version on read.
+
+**What the data showed, and how it is repaired.** Of 948 stored versions,
+155 had no id, and 42 numbers were duplicated in a way no id could resolve —
+each one pass recorded twice, the same person in the same minute, one copy
+from before ids existed. They sit in several machines' files, and a machine
+may only write its own. So the repair is **on read, never a rewrite**: a twin
+collapses into its id-bearing copy **only when the snapshots match exactly**
+(`snap_sha`), and an id-less version gets an id every machine derives the
+same way. No file changes, so nothing can be lost. Done: `versions.repair`,
+applied as the bank is read, and `tools/check_versions.py`, which proves
+every event survives.
+
+### Versions: choosing one
+
+**One control for every version choice: `ui.versionTree`.** The data is a
+tree, and six different controls showed it as a list — Braces' select,
+X-ray's *Read from*, Checkup's *Pick it up from*, the Event Bank's chips and
+rows, Root Canal's radios, Eye's own formatter — which is why a branch name
+like v4.1 looked arbitrary. **All of them use it now** — every one is in
+the register below. The rows may wrap on a narrow panel, so the graph is drawn
+from where the rows actually are and redrawn on resize.
+
+Its options, so a caller never draws its own row: `idOf` (what the tool
+chooses by — Braces' `ref`), `lead` (a first row that is a choice but not a
+version: *as they are now*), `line` (what picking it does: *continues from v4
+as v5*), `notes` (the note, or a function — Checkup puts the mix of labels
+there), `unit` (*stamps*), `state` (*the detector*, *on the bench*,
+*Root Canal's own output*), `disabled` (the reason, shown on the row) and
+`readonly` (a history to read). `tree.choose(ref)` sets the choice without
+calling back; `choose(null)` clears it, for a picker with several trees.
+
+### Every version picker
+
+The register. **A new version picker is `ui.versionTree` and gets a row
+here** in the same change; one that is not the tree says why in the last
+column. Spotter, Eye, Checkup's *New curation set* and the Sessions
+correction were found still different after the first sweep: Spotter always
+started a set from v0, Eye never offered a choice, and the other two chose
+by stored number. The register is how the next one is not missed.
+
+| where | chooses | control | by | code | checked by |
+|---|---|---|---|---|---|
+| Checkup — *Pick it up from* (shelf) and *Switch to another version* (bench) | the version a curation set carries on from | tree, one per entry (`BARRY.pickVersion`) | the version itself | `curate.js` `BARRY.vers.chooser`; called from `toolkit.js` `pickUpSet` and the bench's Version chip, and `curate.js` | `curversion.html`, `vtreetools.html` |
+| Checkup — *New curation set* | the version a new set starts from | tree | id | `toolkit.js` `newCurationSet` | `vtreetools.html` |
+| Spotter — starting a set from a Doppler run | the version the set starts from | tree, in a dialog when more than one can be built from; else the newest | id | `spotter.js` `chooseVersion` | `vtreetools.html` |
+| Braces — *Read the stamps from* | the version read | tree, *now* first | ref | `braces.js` `planCard` | `vtreetools.html` |
+| X-ray — *Read the stamps from* | the version read | tree, *as they are now* first | ref | `dspca.js` | `dspca.html` |
+| Root Canal — *Read the stamps from* | the version read, its default marked | tree | ref | `rootcanal.js` | `rootcanal.html` |
+| Eye — *Read the stamps from* | the version read | tree, *now* first; only when there is a choice | ref | `eye.js` `versionCard` | `vtreetools.html` |
+| Event Bank — lineage strip | the version opened | tree | name | `eventbank.js` `detail` | `lineage.html` |
+| Sessions — *Correct it again, from an earlier version* | the version a correction reads | tree, every version, the corrected ones disabled with why | id | `sessions.js` `pickVersion` | `vtreetools.html` |
+| Checkup — bank dialog's history | nothing (a history to read) | tree, `readonly`, notes | — | `curate.js` `bankParts` | `benchbank.html` |
+| Braces — *Many at once*, per row | the version each entry in the batch reads | `<select>` | ref | `braces.js` bulk rows | — *a row in a table of many entries: the tree is for choosing one, a table for comparing many* |
+| Event Bank — *compare with*, inside an open version | the version the open one is diffed against | `<select>` | name | `eventbank.js` `versionDetail` | `lineage.html` — *a second choice inside one already made; the tree is the choice of which version to open* |
+| Drift — each artifact's version, in its member row | the artifact version a drift pins | `<select>` | version id | `drift.js` `pickRow` | — *The Arc's; its builders move it with the rest of the Arc, and it is a row in a list of many* |
+
+Every picker above sends the version by **id or ref**, never by the stored
+number alone, and every route it reaches resolves a ref:
+`/api/bank/<id>/version/<v>` (`EventBank._version_ref`),
+`/api/curation/from-bank` (the same), `/api/session/retime` (`version_at`),
+and the tools that read a version by `ref`.
+
+The Event Bank's strip had never opened a version: the chip stored the
+version's name and the two places that read it compared the stored number,
+so the choice was cleared on every repaint. Keyed by name throughout now
+(`_dev/lineage.html` opens one and reads the diff).
+
+Vertical lanes, like a git graph: the trunk down the left, each branch in a
+lane to its right, one row per version.
+
+```
+  o  v6    Rain     2d   1,204   newest
+  |
+  o  v5    Rain     3d   1,198
+  |  o  v3.2  Jeremy   1d   1,187
+  |  |
+  |  o  v3.1  Jeremy   5d   1,190
+  | /
+  o  v3    Rain    12d   1,211   aligned
+  |
+  o  v0    Incisor  import  1,306
+```
+
+Every row: **name, who, when, count, state** (*newest · aligned · archived ·
+not on this machine*). A version that cannot be read here is shown and
+disabled, with the reason — never dropped from the tree.
+
+### Banking: one dialog, every time
+
+There are two acts, and they are different on purpose:
+
+| | a new **entry** | a new **version** |
+|---|---|---|
+| from | Incisor, Doppler — a detector's output | Checkup, Braces, Root Canal, X-ray — work done *to* an entry |
+| asks for | a **name**, pre-filled from `bankName.suggest`, never empty | a **note** — the entry already has a name, shown read-only |
+| states | where it will be filed | **continues v5 → v6**, or **branches from v3 → v3.1** |
+
+Both go through **one** `ui.bankDialog`, in the same place, every time.
+It exists, on `BARRY.confirm`: `onBank` is awaited inside the dialog, so a
+refusal is shown there rather than after it has closed. It used to be a
+dialog in Incisor, a name field in Doppler, a note-only dialog in Root
+Canal, and a "Who is banking these?" prompt in Checkup and on the bench
+card. **All five use it now** (checked by `_dev/incbank.html`,
+`_dev/benchbank.html`, `_dev/rootcanal.html`); Braces and X-ray are next.
+
+The sentence is the bank's own rule, not a guess at it:
+`ui.versionNext(rows, row)` asks `BARRY.vers.nextFor`, which appends the
+new version to the history and names it the way `versions.label_rows` does.
+A shortcut on the names alone gets real histories wrong -- on one whose
+versions never recorded their parent, picking up v1 continues the trunk at
+v5, not v1.1. `BARRY.vers.labelRows` is the page's **only** copy of
+`label_rows`; `_dev/uiparts.html` names every version in the bank with it
+and compares against the server. Change one, change both.
+
+**Say which version, by ref, and the bank resolves it.** A caller may send
+`based_on` as an id, a derived id or a number; `versions.parent_ref`
+resolves it and the new version records both `from_v` and `from_id`. Before
+that, an id written into `from_v` matched no number and the version was
+named as a new root -- one stored version was, and is now read correctly,
+on read only.
+
+- **Who** comes from the profile. Never ask it in a prompt.
+- **Nothing banks silently.** Banking is the one act that is evidence, so it
+  always shows what is about to be written and where.
+- A batch banks nothing (§6d). Its proposals come through this dialog one at
+  a time.
+
+## 7. Breaking a rule
+
+Contextual overrides are allowed. The difference between a good one and a bad
+one is whether the next person can tell why it is there.
+
+**A good one** — `.tk-pills .pill` overrides the standard pill's padding,
+and says so:
+
+> *Each pill carries a name and a subtitle, so it stacks rather than sitting
+> on one baseline like the plain pills elsewhere.*
+
+The audit flagged it, the comment answered it, and it stayed. `.ctl-seg .mini`
+(radius 0, because the minis are joined into one group) is the same kind.
+
+**A bad one** — `.fb-actions`, declared twice for two unrelated features. The
+pipeline's folder bar and the feedback panel both claimed the `fb-` prefix
+with different spacing; the later rule won, so the folder bar had been quietly
+wearing the feedback panel's 10px gap instead of its own 6px. Nothing failed.
+It simply was not what it said.
+
+**So:**
+
+1. Scope an override to a parent (`.tk-pills .pill`), never redefine the base.
+2. Say why, in a comment, on the rule.
+3. Pick a prefix that names **one** feature, and check nothing else owns it.
+4. If two features want the same name, one of them is not a feature name —
+   `.fb-stats` turned out to be "a row of stat chips" used by seven modules,
+   and is now `.chip-row`.
+
+---
+
+## 8. Lexicon
+
+Half of what reads as inconsistency is wording. One verb per gesture, one noun
+per object.
+
+| say | not | for |
+|---|---|---|
+| **Search…** | Filter…, Find in…, Jump to… | the box above a list. One verb, whatever the list |
+| **close** | put down | finishing with something on a bench |
+| **set** | sheet | a unit of curation work |
+| **Clear the bench** | Close all | closing everything open at once |
+| **recording** | session, file | one `.ncs` folder — *session* is the number in its name |
+| **banked** | saved, stored | written to the Event Bank |
+| **this computer** | local, here | the machine in front of you — 25 strings say it this way and none says "local" |
+| **the cluster** | remote, the server | the VACC as a place work runs |
+| **VACC** | the cluster | where it is the proper noun — *VACC account*, *VACC mounts*, a path |
+| **uploaded** | staged | a recording Jarvis has copied to `Jarvis Data`. "Staged" implied a copy that had never been made |
+| **VACC loaded** | on VACC, VACC can read it, Uploaded to VACC (as a mark) | the mark on a recording the cluster can read with this account now, whether in place on netfiles or as an uploaded copy; *how* goes in the title. "Uploaded" stays the word for the act |
+| **Recording** | Session, 1. Which recording | the label over the recording picker, in every tool |
+| **v4.1** | 4.1, version 4.1, v7 | a version, always by its derived name through `versionLabel` — never the stored integer |
+
+Placeholders describe what you can type, not what the box is:
+*"Type a mouse, session or date…"*, not *"Search sessions"*.
+
+Button labels are the verb of the thing they do — **Read a batch**, **File
+away**, **Line them up** — not OK, Submit or Go.
+
+---
+
+## 9. How this is enforced
+
+Rules that can be checked by a machine are, so this document is enforced
+rather than merely published.
+
+| check | what it catches |
+|---|---|
+| `python tools/check_classes.py` | a class the markup applies that no rule matches — and it separates the ones something *selects* on, since removing those is a behaviour change |
+| `python tools/ui_baseline.py` | every control's measured shape, every composition's structure, container gaps, grid column counts and overflow, at three widths and one short window. A change that was meant to change nothing must produce an empty diff |
+| `python tools/harness_run.py` | the ~60 behaviour harnesses in `_dev/` |
+| `_dev/vaccopen.html` | that the cluster's meaning is single-sourced (§6c): that `words` and `canRead` cannot come apart, and that every mark drawn on screen is a word the module actually keeps — a view that built its own chip fails here |
+| `_dev/vacccat.html` | that two views of one list are one list (§6c): one `#sessTree` and one `#sessFilters`, not two, and that leaving a view hands them back rather than destroying them |
+| `_dev/vaccreach.html` | that every module reaches a recording through `BARRY.vacc.reach` (§6b): none reads `here[0]` on its own, and a VACC-loaded recording a tool cannot use is disabled with the reason |
+| `_dev/uiaudit.html` | the same measurements live, plus the claims that need two classes on a real element — which is how `.btn.small` is caught, since `small` resolves on its own and the pair matches nothing |
+
+Run all of them from **PowerShell**, never bash: under bash Edge's
+`--dump-dom` writes nothing on this machine, so every harness reports zero
+checks and the whole suite reads as a clean sweep.
+
+### When you add a feature
+
+- [ ] It is a ToolKit tool, not a rail slot (§1)
+- [ ] One primary action, last, right-aligned (§2)
+- [ ] Sizes and spacing from the tokens (§3)
+- [ ] No literal colours; a `prefers-reduced-motion` block if it animates (§4)
+- [ ] `loader` / `stepLoader` / skeleton, never a bespoke spinner (§5)
+- [ ] An `.empty-state` that says what to do next (§5)
+- [ ] Errors through `reportClientError` (§5)
+- [ ] A Ctrl+K palette entry; a deep-link param if it has shareable state
+- [ ] `onHide` if it starts a poll or a heartbeat
+- [ ] If two views show it, **one** renderer and **one** predicate (§6c) —
+      and the counts above the list read the same predicate as the list
+- [ ] A fact about the subject lives in the subject's module; only the
+      consequence for this surface is written here (§6c)
+- [ ] `check_classes.py` clean; `ui_baseline.py` diff is only what you meant
+- [ ] A `_dev/` harness, listed in `_dev/README.md`
+- [ ] It feels like Doppler, not like a page reloading (§12)
+
+---
+
+## 10. Speed — starting, switching, opening
+
+The data is fast; README § Speed is how. This section is about everything
+around it — start-up, switching views, opening a tool — which is what people
+mean when they call the app lethargic, and which nothing had measured until
+`tools/perf_baseline.py`.
+
+There is no lite mode. Every rule below makes the app faster on every
+machine, so it is fine on a laptop over a VPN and better on a lab computer.
+
+### Measure it, in real time
+
+```
+python tools/perf_baseline.py            compare against the stored run
+python tools/perf_baseline.py --save     store this run as the baseline
+```
+
+It drives `_dev/perf.html` on the **wall clock**. The harness runner cannot do
+this: it uses `--virtual-time-budget`, which fast-forwards timers, so any
+duration taken under it is invented. Open `_dev/perf.html` by hand on a laptop
+and the table on screen is the result.
+
+Before speeding anything up, measure it; after, measure it again. **A change
+that does not move its number is not kept.** A number counts as worse only
+when it is both 30% and 100 ms worse — timings are noisy in a way shapes are
+not.
+
+### Start-up: import what you use, when you use it
+
+Measured on the lab machine, about **3 of the 3.6 seconds** before the server
+serves are Python importing tools nobody has opened:
+
+| module | cost | for |
+|---|---|---|
+| `backend.analysis` | 1.3 s | panel rendering |
+| `backend.cfc` | 1.1 s | Braid |
+| `backend.dspca` | 0.6 s — sklearn alone 0.5 s | X-ray |
+| `backend.compose` | 0.3 s | figure export |
+
+On a laptop, where antivirus scans every compiled library the first time it
+loads, that is several times worse.
+
+- **A heavy dependency is imported inside the route or function that needs
+  it**, never at the top of `app.py` or of a module `app.py` imports. numpy is
+  cheap; scipy, matplotlib, sklearn, pandas and h5py are not.
+- Guard it the way `dspca.py` guards sklearn: a machine that lacks it loses
+  that one tool, not the whole server.
+
+*(Being moved; `app.py` is shared with other in-flight work.)*
+
+### Nothing at boot that is not on screen
+
+1.3 MB of JSON arrives before the first screen settles — `/api/notes` alone
+is 443 kB and `/api/sync/status` 405 kB, and neither is needed to draw it.
+
+- Boot asks for what the first screen shows. Everything else is fetched when
+  the view that needs it opens.
+- A list endpoint sends what the list draws. The full record comes when a row
+  is opened.
+
+### Reachability is a cached fact
+
+Every registry read used to call `isdir` on all 1,846 known paths one after
+another, then `getmtime` on the reachable ones again — two network round trips
+per netfiles path, every read.
+
+- **One `os.stat` answers both questions**, cached for 30 s
+  (`sessreg.is_here`). A drive plugged in shows up within the TTL.
+- **Ask in parallel**, never one path after another.
+- **A drive or share that is not there is asked once**, not once per path it
+  holds — with one real path tried before a share is called dead, so a share
+  that will not list its top cannot hide its recordings.
+
+Measured: every read after the first went from ~0.5 s to ~0.11 s on the lab
+LAN. The cost removed is round trips, so over a VPN the gain is larger still.
+
+**Unmapped drive letters are not the problem**, and it is worth knowing why:
+Windows fails them instantly. The cost was per-path latency on a share that
+*was* there.
+
+### A view pays for itself, and only itself
+
+A view's time is often spent on requests that belong to a different view —
+ToolKit's bad-channels poll turning up while the Event Bank is open, `/api/
+devices` (1 s) during Pipeline, `/api/toolfeed/bad` during Results.
+
+- **Every poller stops when its view is hidden** — that is what a view's
+  `onHide` is for (§6b checklist) — and when the window is in the
+  background (`document.hidden`).
+- **A cloud round trip is never on the path to drawing a view.** Presence,
+  devices and sync fill in after the view is up; the view does not wait for
+  them.
+
+### A list draws at once, then fills in
+
+"It should all load, but it shouldn't wait until everything is there to
+show me something." Measured on the Sessions catalogue, 2026-09-30: the
+first card took **24.7 s**, Everything Jarvis Knows **20 s** more, and
+drawing all 519 cards took 56 ms -- every second of the wait was answers,
+not drawing. So:
+
+- **Last time's answer first.** A view whose answer is large keeps it in
+  this browser (`BARRY.stash`, web/js/stash.js, IndexedDB) and draws it
+  while the live one comes, marked *as of 4 min ago, reading the latest…*,
+  then swaps the live one in row for row with the scroll kept. The first
+  card now appears after **72–120 ms** however long the live read takes.
+  The Sessions catalogue, Everything Jarvis Knows and the VACC answer do
+  this. The stash is never waited on (it gives up after 400 ms), never the
+  truth, and every failure is "nothing stashed". The server's warm cache
+  does the same at boot, but it is stamped with the code version, so the
+  first open after every update builds live -- the stash covers that.
+- **Nothing slow on the answer's path.** The 20 s was one Supabase call
+  (`_my_names`, a `select machines`) inside every registry answer; it is a
+  remembered fact now, refreshed in the background. The health summary
+  scanned its folder once per record (432 scans, 1.7 s) and now once
+  (0.012 s); it was also asked twice at boot and is now shared while in
+  flight. A request at boot that takes seconds slows every other one the
+  page makes at the same moment, so it is a cost to all of them.
+- **Large JSON is compressed.** Answers over 64 kB are gzipped for a
+  browser that asks (backend/gzipjson.py): the catalogue goes 2.2 MB →
+  101 kB, which is the difference on a laptop over the VPN.
+- **Drawing is not the cost, so it is not chunked.** All of a list is
+  built at once (30–60 ms for 519 cards) and the rows off screen are not
+  laid out (`content-visibility`, sessions.js), which is what "load as you
+  scroll" would buy. Search and filters run over the whole list in memory,
+  so a search finds what is not on screen yet. Chunk a list only when a
+  measurement says building it is the wait.
+
+### One request per question
+
+Results and Misc make **61–66 requests per visit**, one per thumbnail.
+
+- A list that needs *n* small things asks for them in one request, or asks
+  only for the ones scrolled into view.
+- Long lists draw the rows that are visible, not all of them. Sessions spends
+  about 230 ms repainting 400+ cards it could not show at once anyway.
+- A change repaints the row that changed, not the whole view.
+
+### What is still to be measured
+
+Two suspects cannot be tested on the lab machine, and are written here so
+they are not forgotten:
+
+- **GPU effects.** Six `backdrop-filter` and four `blur()` rules, and eleven
+  infinite animations, are near-free on a lab GPU and paid on every repaint on
+  a laptop's integrated one. Headless Edge draws without a GPU, so only a run
+  of `_dev/perf.html` on a real laptop can say. Until then: **no new
+  `backdrop-filter`**, and an infinite animation pauses when it is off screen.
+- **The VPN.** Every number above was taken on the lab LAN. The laptop run on
+  and off the VPN sets the budgets; they are not guessed.
+
+### When you add something
+
+- [ ] Heavy imports inside the function that uses them
+- [ ] Nothing fetched at boot that the first screen does not draw
+- [ ] Pollers stop in `onHide` and in a background window
+- [ ] No cloud call on the path to drawing the view (§11)
+- [ ] One request per question; long lists draw what is visible
+- [ ] No new `backdrop-filter`
+- [ ] `perf_baseline.py` before and after, and the number moved
+
+---
+
+## 11. The cloud — what Supabase costs, and how to spend it
+
+The project runs on Supabase's free tier, and in September 2026 it went 130%
+over the 5 GB monthly egress allowance. This section is the rule for anything
+that talks to it, and the map of where the requests go today, so the
+overhaul that limits usage starts from what is true rather than from the
+biggest-looking table.
+
+### The unit is the request
+
+Measured 2026-09-21 (`tools/cloud_egress.py`, `tools/cloud_weight.py`): a
+full pull of every table is 14 MB; a real incremental pull is **7 KB of rows
+and 21 requests**. 6.5 GB a month divided by the request count is about
+**2.4 KB per request** — response headers and TLS, not rows. A request that
+answers "nothing changed" costs the same as one that answers with a row.
+
+So **count requests before looking at row sizes.** `tool_results` rows are
+106 KB and `curation_reviews` has 19,000 rows, and neither mattered.
+
+### One door
+
+Every request goes through `backend/cloud.py` (`Cloud._call`). The page never
+talks to Supabase; it talks to a route, and the route may. That is what makes
+the cost countable, and it stays that way:
+
+- **No Supabase client, key or URL in `web/`.**
+- **No direct `urllib`/`requests` to Supabase outside `cloud.py`.** A new
+  table read is a `cloud.select` in a backend module, where it can be seen.
+
+### Where the requests go today
+
+After the overhaul of 2026-09-29 (CHANGELOG 2026.09.29.1), one machine.
+**Measured** where it says so, by counting `Cloud._call` (`cloud.meter`)
+over a fixed window; the rest from intervals.
+
+| path | trigger | ≈ requests / hour | held back by |
+|---|---|---|---|
+| push | `_cloud_loop`: every 60 s, and ~6 s after a write of shared data | **0 when nothing changed (measured)**; one upsert per table that did | rows stamped when they changed; `machines` a 5-minute heartbeat; pushed snapshot keys remembered in the sync state |
+| pull: `barry_watermarks`, then only tables that moved | `_cloud_loop` | 20 s only while another machine's changes arrive; 60 s while somebody works or reads here; up to 320 s quiet; **none** after 10 min with nobody here — **17 requests in 230 s measured**, most of them other machines' old-code roster | watermark view; `_cloud_pace` |
+| `pull_files` | files step, every 300 s | 0 unless a pull saw `results` move; then the new rows only | `results_moved`, `_files_through` |
+| `upload_results` | files step, every 300 s | 0 unless a figure changed; a refused file is not retried until it changes | `uploaded` / `upload_refused` in the sync state |
+| tool feed `GET /api/toolfeed/<tool>` | every 15 s, ToolKit visible | ≤ 120 (one shared read per 30 s for every tool), 0 hidden | `toolfeed._shared` |
+| presence beat `POST /api/presence/beat` | every 60 s, Checkup or Spotter open and visible | ≤ 120 (2 per beat), 0 hidden; no push | `upsert_returning`; `Presence.READ_TTL_S` |
+| presence poll `GET /api/presence` | every 30 s, any ToolKit tool visible | ≤ 120, shared with beats | `Presence.READ_TTL_S` (10 s) |
+| page reads: digest, devices, errors, activity, ping | a view opening, a click | small | TTL caches on a few |
+
+Background sync runs only in the process `start.py` starts
+(`Jarvis_CLOUD_SYNC=on`), and only one per computer (`_cloud_loop_lock`).
+The harness runner and the tools that import `backend.app` do not sync.
+
+**Nobody here, nothing sent.** After `IDLE_AFTER` (10 min) with no key,
+click, scroll or mouse movement in any Jarvis page, the loop asks the
+cloud nothing -- no pull, push, heartbeat or figure sweep -- and every
+poller in the page skips its tick (`BARRY.idle.away()`). The page
+reports input to its own server (`POST /api/cloud/active`, at most once a
+minute, never to Supabase); the first input after the pause catches up at
+once through `BARRY.idle.onWake`. A new cloud-backed poller checks
+`BARRY.idle.away()`, not only `document.hidden`, and registers `onWake`.
+
+### Known leaks
+
+Found reading the code, 2026-09-29. Each is a counter-example for the rules
+below.
+
+1. ~~**Every write schedules a push.**~~ Fixed 2026-09-29:
+   `_note_local_write` separates "somebody is looking", "somebody did
+   something" and "there is shared data to push". Presence, activity, error
+   reports and preferences ride the next scheduled push
+   (`_NOT_SHARED_WRITES`); only another machine's change resets the pull to
+   its floor.
+2. ~~**The roster re-stamps itself.**~~ Fixed: `rows_people` sends a row when
+   what it says changed, stamped with `edited_at`; a name compiled from the
+   records is only ever inserted.
+3. ~~**A push is never empty.**~~ Fixed, measured: a quiet push makes no
+   request.
+4. ~~**A presence beat costs three.**~~ Fixed: the write returns the row
+   (`upsert_returning`), which answers "was it taken"; one cached read
+   answers "who else".
+5. ~~**The tool feed polls every 3 s.**~~ Fixed: one shared read per 30 s.
+6. ~~**`select` always appends `select=*`.**~~ Fixed: a caller's `select=`
+   is kept, and `columns=` states it. (PostgREST honoured the first, so the
+   key reads were right all along; measured 2026-09-27.)
+7. ~~**`pull_files` reads the whole `results` table.**~~ Fixed.
+8. **`/api/activity/who` is N+1**: one `count` per person spelling and per
+   machine. Nothing in `web/` calls it today; nothing should until it is one
+   query.
+9. ~~**The meter measures the wrong thing.**~~ `cloud.meter` counts every
+   request at the door, by caller and table; `/api/cloud/status` serves it
+   and the Sync panel shows it. `tools/cloud_egress.py` still models the old
+   pull only.
+10. ~~**Refused uploads, retried for ever.**~~ Fixed: Windows' `mimetypes`
+    calls a `.csv` `application/vnd.ms-excel`, which the bucket refuses, so
+    73 files were sent and refused every five minutes — ~21,000 requests a
+    day from one machine. Types are stated (`cloudsync.BUCKET_TYPES`), and
+    a 4xx is remembered against the file's signature.
+11. ~~**Every importer of `backend.app` was a sync client.**~~ Fixed: see
+    above. The harness pushed its test writes into the lab's database,
+    which is how `harness@test` reached the shared roster.
+12. ~~**Two hundred 10 MB payloads in one request.**~~ Fixed 2026-10-05.
+    This is the one that took the database DOWN rather than costing too
+    much: a push sent artifact payloads as plain JSON into
+    `artifact_snapshots`, up to `BATCH` of them in one POST, into a free-tier
+    instance with 0.5 GB of memory. Every machine had the same payloads
+    (they travel in git), so every machine retried the same request each
+    time the database came back. A failed push saves no cursor, so each
+    retry also re-sent everything since the last good one. Now
+    `cloud.upsert` caps a request at `MAX_BODY` bytes and refuses rows over
+    `MAX_ROW`, and payloads travel gzipped in `artifact_payloads.gz`, fetched
+    by key one at a time (migration 20).
+
+**Rule 12, from leak 12: size a request by bytes, not rows.** A table whose
+rows can be large (payloads, snapshots, tool results) goes through the
+byte budget like every other table, and a blob is compressed before it
+goes. A request the database cannot finish is not one it should ever be
+sent twice. Test with the real data, not a three-row fixture: the fixture
+was a few kilobytes and passed for a week.
+
+**Open: the pull cursor is a client stamp.** `last_pull` is the newest
+`updated_at` seen, and `updated_at` is written by the machine that made the
+edit. An edit pushed after another machine's newer one can land behind a
+colleague's cursor and be skipped. Honest roster stamps make this rarer —
+the `now()` stamps were dragging every cursor forward — but a
+server-assigned stamp is the real fix.
+
+### The rules
+
+1. **Ask whether anything changed before asking what.** One request to a
+   watermark (`barry_watermarks`: one row per table, its newest
+   `updated_at`) and then only the tables that moved. A new synced table
+   joins the view in the same migration that creates it.
+2. **Never stamp a row that did not change.** `updated_at` is what every
+   other machine's pull keys on; bumping it on an unchanged row makes every
+   machine download it, forever (leak 2). A heartbeat that must say "still
+   here" lives in its own small table, not on the rows everybody reads.
+3. **A push carries only what changed.** Upsert rows newer than the last
+   push; send nothing, and make no request, when there are none. A read
+   needed to build a push is cached against a signature (`rows_artifacts`
+   does this — copy it).
+4. **Only shared data schedules a push.** Presence, activity, error reports
+   and preferences are not a reason to push *now*; they ride the next
+   scheduled push. New routes that write must say which they are.
+5. **A cloud-backed poller states its rate and stops when unseen.** Every
+   `setInterval` whose route touches the cloud: a comment with its
+   requests per hour; stops in `onHide`; skips when `document.hidden`;
+   an interval no shorter than the thing it watches can change. Other
+   machines' work arrives through the sync, so polling faster than the pull
+   buys nothing (the tool feed's own comment says so; its 3 s is still too
+   often for what it asks).
+6. **One request per question, never one per row.** No `count` in a loop, no
+   `select` per entry. If the question needs a join, it is a view or an RPC
+   in a migration, not N calls.
+7. **Ask for the columns you need, and check what was sent.** A key-only read
+   says `select=` once; until leak 6 is settled, verify the URL `cloud.py`
+   builds rather than trusting the query string you passed.
+8. **Answer your own write without reading back.** A beat that has just
+   upserted its row knows what it wrote; re-reading the table to find it is
+   two requests spent on information already in hand (leak 4).
+9. **Slow facts are cached, with the TTL said.** Machines, the archived list,
+   the storage listing: `_archived_machines` (60 s), `_SCHEMA_SEEN`
+   (process), histoimg's listing (300 s). A new read of something that
+   changes a few times a day gets a TTL, not a request per page view.
+10. **Back off when quiet, and on failure.** The loop's idle growth
+    (20 s → 320 s) and failure backoff (30–900 s) are the pattern; a new
+    loop copies them rather than ticking at a fixed rate. A backoff that any
+    local click resets is not a backoff (leak 1).
+11. **The cloud being away is a state, not an error.** No retry storm: a
+    failed call waits its backoff and the page says "not reachable", as
+    presence already does ("nobody is reported present").
+    `cloud._call` enforces it for every caller: after a 502-504 or a
+    Cloudflare 520-524, a timeout or no connection, nothing is asked for 15 s,
+    doubling to 5 min, and the call raises `CloudAway` without a request. The
+    first answer of any kind clears it. Measured before: 270 requests in one
+    sitting, all failing, each holding a thread for twenty seconds.
+12. **There is no sync button.** A change to a shared record asks for a
+    push itself, however it was made (`shards.ON_CHANGE`, wired in
+    `backend/syncitems.py`). That includes a request, or a job banking its
+    results in a thread, even while the loop is idle-paused. A pull that
+    fails does not hold the push back. The Sync panel keeps its "Sync now"
+    for diagnosis; the rail does not have one.
+13. **Say per record whether it has gone up.** A list of things people
+    make carries `BARRY.syncState.mark(kind, id)`: Event Bank rows,
+    workbench cards (`workbenchCard({ sync })`) and artifacts. The states
+    are *shared*, *sending*, *not sent* (the last sync failed, with why),
+    *this computer* (never travels, with why) and *not shared* (this machine
+    is not connected). The answer is `/api/cloud/items`, worked out from the
+    push cursor, so it costs nothing at Supabase. A new kind of shared
+    record adds its kind to `Sync.item_states` and a mark to its list.
+
+### Measuring it
+
+- **`cloud.meter(window_s)`** — every request this process made, by caller
+  (`module.function`, worked out from the stack, so a new call site is
+  counted without anybody labelling it) and by table, with the bytes that
+  came back. `GET /api/cloud/status?window=3600` serves it; the Sync panel
+  shows the hour; `python tools/cloud_meter.py` prints it from the running
+  app. This is the number a change that claims to cut requests quotes.
+- **Supabase's own logs** — every request carries
+  `User-Agent: Jarvis/<version>+<commit> <machine>`, so the dashboard's
+  Logs Explorer can group by computer and by version. A machine still on old
+  code is the one whose user agent is old, or absent.
+- `tools/cloud_weight.py --rows N` — rows × average size per table: the cost
+  of a full pull.
+- `tools/cloud_egress.py` — the old pull path only (no watermark); a ceiling,
+  not a total.
+
+### When you add something that talks to the cloud
+
+- [ ] Through `cloud.py`, from a backend route; nothing in `web/`
+- [ ] Its requests per hour written beside it, and added to the table above
+- [ ] Reads behind a watermark or a TTL; no read on the path to drawing a view
+- [ ] Never re-stamps unchanged rows; pushes nothing when nothing changed
+- [ ] Writes that are not shared data do not schedule a push
+- [ ] Pollers stop in `onHide` and when the window is hidden
+- [ ] One request per question; the columns it needs, checked in the URL
+- [ ] Backs off when quiet and on failure; says "not reachable" when away
+
+---
+
+## 12. Feel: continuity, arrival, and the overhaul to come
+
+The sections above make the interface *consistent*. This one is about whether
+it feels alive or janky, which is what people actually say about it. It was
+written on 2026-10-13, after Doppler was rebuilt in response to "old school
+and janky, keeps reloading, and I can't open a run that has landed". The
+rules below are in force for new work. The plan at the end is for bringing
+everything else up to them.
+
+**The reference implementation is Doppler:** [doppler.js](js/doppler.js) and
+`BARRY.ui.sections` in [ui.js](js/ui.js). Copy them, not the tools that
+predate this section.
+
+### Nothing on screen is rebuilt that has not changed
+
+**The counter-example.** Doppler's `paint()` emptied `#tkResult` and rebuilt
+all of it on every call, and its batch poll called it every 1.5 s. Each tick
+rebuilt the 666-row picker, the settings and the landed list. The scroll
+jumped, an open `<details>` snapped shut, the search box lost its cursor, and
+the canvases flashed blank. Nobody calls that a re-render. They say "the UI
+keeps reloading". 116 `host.innerHTML = ''` remain across 38 files.
+
+**The rule.** A panel is a list of parts, passed to
+`BARRY.ui.sections(host, [{ key, sig, build, update }])`:
+
+- **`sig`** names everything the part shows. The same sig keeps the node,
+  along with its scroll, focus, open `<details>` and canvas, and `build()`
+  is not called.
+- **A card whose insides change for different reasons** reconciles them with
+  a nested `sections` call from `update`. Doppler's plan card keeps its
+  channels, settings and run line apart, so a run starting does not rebuild
+  the settings somebody has open.
+- **Numbers that tick every second** change in place from `update`. They do
+  not cost a rebuild.
+- **What a rebuild carries over**, by marking it:
+  - an input's focus and caret: `data-fk`
+  - a `<details>`'s open state: `data-keep`
+  - a list's scroll: `data-keep-scroll`
+
+### Work in flight lives on the server, and a view finds it again
+
+**The counter-example.** Doppler kept the job it had started in a variable.
+Leaving the view or reloading lost it. A job the server had dropped, after a
+restart, was polled forever, and the panel showed "running" right beside the
+same run already landed. The user's words: "it worked only after I reloaded
+everything".
+
+**The rule.**
+
+- Every long job is registered server-side when it starts (`_doppler_track`,
+  served by `/api/doppler/inflight`).
+- The view asks for that list each time it is shown (`attach`), and follows
+  every run with **one** timer.
+- A job the server no longer knows is let go of with a sentence, not polled.
+- A run is in exactly one place: out on the cluster, or landed. Never both.
+
+### Opening a result reads it
+
+**The counter-example.** The landed list opened a run by posting the same
+question to `/api/doppler/scan` and hoping for a cache hit. When it missed (a
+run filed with channels left out, or a recording opened by another path), it
+quietly submitted a new cluster job and threw away the answer. From the Many
+view it set the result and then painted a view with no report in it, so the
+click did nothing.
+
+**The rule.**
+
+- Open by id (recording and key) through a route that cannot start work
+  (`/api/doppler/run`).
+- Switch to the view that shows the result, scroll it into view, and mark it
+  open in the list.
+- The settings on screen become the settings it was made with.
+
+### Arrival: the motion vocabulary
+
+Motion marks a **moment**: something arrived, or something is happening. It
+never plays on a poll, and never on a redraw of something already on screen.
+A rebuilt part does not re-enter, and a hover redraw does not replay a
+reveal.
+
+| moment | what moves | how long | where |
+|---|---|---|---|
+| a part appears | rises 8px and fades in, 60ms after the part above it | 420 ms | `.ui-enter`, applied by `sections` |
+| a result lands | the card's edge lights and spreads once; the count runs up to its value; the picture draws itself in (the waveform left to right, the bars rising, a sweep crossing the raster) | 1.9 s at most | `.dop-report.landing`, `BARRY.ui.countUp`, `drawPlots(true)` |
+| waiting | a picture of the work instead of a spinner: Doppler's radar, slow and dim while queued, quicker once a node has the job | loops | `.dop-radar` |
+| a state changes | colour and position transition; nothing jumps | `--ease-dur`, `--ease-out` | `.dop-run`, `.dop-run-bar` |
+| new since you looked | a soft pulse on a dot until it is opened | 2.4 s loop | `.dop-run.fresh` |
+
+- **End every animation on a timer too.** Under the harness runner's virtual
+  time, `animationend` never fires and a canvas reveal stops at frame one.
+  `sections` takes `.ui-enter` off again on a timer, and `drawPlots` draws
+  its last frame on one.
+- **Under reduced motion, show the final state at once.** No rise, no sweep,
+  no count; the states (colours, marks, the open run) stay. Name each
+  component in a `prefers-reduced-motion` block (§4); see the end of the
+  Doppler block in `app.css`.
+- **The final text is in the DOM.** A count runs up on screen, but a harness
+  (or a screen reader) that reads the panel when it lands reads the real
+  number.
+
+### Sound
+
+There is one instrument, [jarvisfx.js](js/jarvisfx.js) (the reveal's own),
+and one mute switch.
+
+- A tool may play **one** sound, for an arrival the person was waiting for.
+  Doppler plays a soft low bell when a run lands.
+- No sound for anything the person did themselves (a click, opening a run).
+- Never a loop, and never an alarm.
+
+### Charts say what they show without colliding
+
+**The counter-examples**, all three from Doppler on 2026-10-13:
+
+- The unit and the top value shared 40 pixels and printed over each other
+  ("events" + "273" read as "evens273").
+- The raster's "bad" was drawn between two rows, so it belonged to neither.
+- The odd channels, read only for the common reference, were labelled "bad".
+
+**The rules.**
+
+- The unit gets its own line above the plot, and each corner label has a
+  corner to itself.
+- A label on a row sits **on** that row, on a patch of the ground colour,
+  never in the gap between rows.
+- A missing row says why it is missing. A channel that has no row at all is
+  explained in a sentence under the chart.
+
+### The overhaul to come
+
+What it would take to bring every tool up to this section, in order:
+
+1. **Sections everywhere.** Every ToolKit panel whose `paint()` empties its
+   host moves onto `BARRY.ui.sections`, starting with Incisor, Root Canal,
+   Eye, Braces, Panorama and Horizon. These are the panels a poll repaints.
+   A tool whose paint is called once can wait.
+2. **One registry of work in flight.** `cfc.Job` carries its `tool` and its
+   members, one `/api/jobs?tool=` replaces `_DOPPLER_INFLIGHT`, and one
+   `BARRY.ui.flights(tool)` follows the runs. Every tool's run card finds
+   its runs again on show.
+3. **One runs list.** A composition (`BARRY.ui.runsList`) for every tool that
+   files results in a vault (Incisor, Doppler, Root Canal): out on the
+   cluster and landed, the new marks, opening by id.
+4. **A waiting picture per bundle,** in the house style. Doppler's radar is
+   the first. The stage rows stay underneath it, because they are the truth.
+5. **Reports arrive.** The big numbers first, a count that runs up, plots
+   that draw themselves in, the card's edge lighting once.
+6. **Canvas text through one helper** that reserves room and refuses
+   overlaps, plus a harness that measures the text boxes on every chart and
+   fails on any two that intersect.
+7. **A harness for feel** (`_dev/uifeel.html`, to write). For each tool it
+   checks three things:
+   - a repaint with nothing changed keeps every node, as `storm.html` checks
+     for Doppler today;
+   - every animated class has a reduced-motion stop;
+   - every reveal reaches its last frame under virtual time.
+
+### When you add or rebuild a surface
+
+- [ ] Parts with signatures through `sections`; no `innerHTML = ''` on
+      anything a poll repaints
+- [ ] Focus, open `<details>` and scroll survive a rebuild (`data-fk`,
+      `data-keep`, `data-keep-scroll`)
+- [ ] Long work is registered on the server and found again on show; a lost
+      job is let go of with a sentence
+- [ ] A run is in flight or landed, never shown as both
+- [ ] Opening a result reads it by id; nothing that opens can start work
+- [ ] Motion only for a moment; reduced-motion block; ends on a timer too
+- [ ] At most one sound, through `jarvisfx`, for an arrival
+- [ ] No label overlaps another, on canvas or off

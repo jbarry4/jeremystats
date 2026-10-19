@@ -21,7 +21,38 @@ BARRY.views.eventbank = (function () {
   let projectFilter = '';
   let selected = null;        // the entry id shown in the detail pane
 
-  async function load() {
+  /* Which kind of banked thing the view is showing.
+
+     Layer sheets are the other output somebody cites, and they were only
+     reachable from the ToolKit -- so "where is the recorded output for m11
+     s10" had two answers depending on which output you meant. They are not
+     bank entries, because a bank entry is a set of event TIMES and a layer
+     sheet has none; they are the same view over a different list. */
+  let kind = 'events';        // 'events' | 'layers'
+  let sheets = [];            // layer sheets, when kind === 'layers'
+  let sheetSel = null;        // the gid shown in the detail pane
+  let sheetOne = null;        // that sheet, with its snapshots
+
+  /* `mine` means the person looking at this list is the reason it is being
+     re-read -- they deleted an entry, edited one, restored a version.
+
+     That case needs saying out loud and used to say nothing. The bank is
+     seven megabytes of shards across a hundred and fifty files, every write
+     drops the cache, and so a delete was: click, a second of a list still
+     showing the row you just removed, then a snap. Bones were suppressed
+     because the list was not empty, which is right for a background refresh
+     and exactly wrong for this. */
+  async function load(mine) {
+    const host = $('#bankBody');
+    const bones = entries.length
+      ? (mine ? BARRY.skeleton.stale(host) : null)
+      : BARRY.skeleton.into(host, 'row', 7);
+    /* Both lists, in parallel. The switch between them has to be instant --
+       it is a switch, not a navigation -- and the sheets are a single small
+       read. */
+    const alsoSheets = api('/api/layers')
+      .then((r) => { sheets = (r && r.sheets) || []; })
+      .catch(() => { sheets = []; });
     try {
       const res = await api('/api/bank');
       tree = res.tree || [];
@@ -31,6 +62,10 @@ BARRY.views.eventbank = (function () {
     } catch (e) {
       toast('Could not read the event bank: ' + e.message, 'err');
       tree = []; entries = [];
+    } finally {
+      try { await alsoSheets; } catch (e) { /* the events still render */ }
+      // In a finally, so a failed read does not leave the bones behind.
+      if (bones) bones();
     }
     render();
   }
@@ -61,7 +96,14 @@ BARRY.views.eventbank = (function () {
 
     const list = visible();
     const sub = $('#bankSub');
-    if (sub) {
+    if (sub && kind === 'layers') {
+      const done = sheets.filter((x) => (x.progress || {}).labelled).length;
+      sub.textContent = sheets.length
+        ? sheets.length + ' layer sheet(s)  ·  ' + done + ' with labels  ·  '
+          + sheets.reduce((n, x) => n + ((x.progress || {}).labelled || 0), 0)
+          + ' channels labelled'
+        : 'No layer sheets yet.';
+    } else if (sub) {
       sub.textContent = entries.length
         ? list.length + ' of ' + entries.length + ' entr(ies)  ·  '
           + tree.length + ' project(s)  ·  '
@@ -70,6 +112,8 @@ BARRY.views.eventbank = (function () {
     }
 
     host.appendChild(toolbar());
+
+    if (kind === 'layers') { renderLayers(host); return; }
 
     if (!entries.length) {
       host.appendChild(el('div', { class: 'empty-state' }, [
@@ -93,18 +137,31 @@ BARRY.views.eventbank = (function () {
   function toolbar() {
     const bar = el('div', { class: 'res-toolbar' });
 
-    bar.appendChild(el('div', { class: 'search-wrap inline' }, [
-      el('svg', { viewBox: '0 0 20 20', class: 'search-icon',
-        html: '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/>' }),
-      el('input', {
-        type: 'search', value: query,
-        placeholder: 'Search project, mouse, session, type, pipeline, who…',
-        oninput: debounceInput((e) => { query = e.target.value; render(); }, 140),
+    /* Which kind of banked output. A switch rather than two views: the
+       question "what has been recorded for this session" should have one
+       place to ask it, even though the two answers have different shapes. */
+    bar.appendChild(el('span', { class: 'ctl-seg bank-kind' }, [
+      el('button', {
+        class: 'mini' + (kind === 'events' ? ' on' : ''),
+        text: 'Events', title: 'Banked event sets — times and labels',
+        onclick: () => { kind = 'events'; render(); },
+      }),
+      el('button', {
+        class: 'mini' + (kind === 'layers' ? ' on' : ''),
+        text: 'Layers',
+        title: 'StrataScope sheets — which layer each channel sits in',
+        onclick: () => { kind = 'layers'; render(); },
       }),
     ]));
 
+    bar.appendChild(BARRY.ui.searchField({
+      value: query,
+      placeholder: 'Search project, mouse, session, type, pipeline, who…',
+      oninput: (e) => { query = e.target.value; keepFocus(render); },
+    }));
+
     const projects = Array.from(new Set(entries.map((e) => e.project || 'Unfiled')));
-    if (projects.length > 1) {
+    if (kind === 'events' && projects.length > 1) {
       bar.appendChild(el('select', {
         title: 'Filter by project',
         onchange: (e) => { projectFilter = e.target.value; render(); },
@@ -115,7 +172,7 @@ BARRY.views.eventbank = (function () {
     }
 
     const used = Array.from(new Set(entries.map((e) => e.type)));
-    if (used.length > 1) {
+    if (kind === 'events' && used.length > 1) {
       bar.appendChild(el('select', {
         title: 'Filter by event type',
         onchange: (e) => { typeFilter = e.target.value; render(); },
@@ -129,6 +186,306 @@ BARRY.views.eventbank = (function () {
     bar.appendChild(el('div', { style: 'flex:1' }));
     bar.appendChild(el('span', { class: 'hint', text: meta.root || '' }));
     return bar;
+  }
+
+  /* ==================================================================
+     Layer sheets
+     ================================================================== */
+  function renderLayers(host) {
+    const q = query.trim().toLowerCase();
+    const list = sheets.filter(function (x) {
+      if (!q) return true;
+      const sess = x.session || {};
+      return [x.session_label, x.gid, sess.project,
+              'm' + sess.mouse, 's' + sess.session]
+        .join(' ').toLowerCase().indexOf(q) >= 0;
+    });
+
+    if (!sheets.length) {
+      host.appendChild(el('div', { class: 'empty-state' }, [
+        el('svg', { viewBox: '0 0 24 24',
+          html: '<rect x="3" y="4" width="18" height="16" rx="2"/>'
+              + '<path d="M3 9h18M3 14h18"/>' }),
+        el('p', { text: 'No layer sheets yet. Open a recording in the '
+                      + 'ToolKit under StrataScope and label which layer '
+                      + 'each channel sits in — the sheet is filed here.' }),
+      ]));
+      return;
+    }
+
+    host.appendChild(el('div', { class: 'bank-split' }, [
+      layerList(list),
+      layerDetail(),
+    ]));
+  }
+
+  function layerList(list) {
+    const box = el('div', { class: 'bank-tree' });
+    /* Grouped the way the events side groups: project, then mouse. The
+       sheets arrive sorted by how much is labelled, which is a useful order
+       for seeing what is left and the wrong one for finding a given
+       recording. */
+    const byProject = new Map();
+    list.forEach(function (x) {
+      const proj = (x.session || {}).project || 'Unfiled';
+      if (!byProject.has(proj)) byProject.set(proj, []);
+      byProject.get(proj).push(x);
+    });
+    Array.from(byProject.keys()).sort().forEach(function (proj) {
+      const rows = byProject.get(proj).slice().sort(function (a, b) {
+        const am = (a.session || {}).mouse || 0;
+        const bm = (b.session || {}).mouse || 0;
+        if (am !== bm) return am - bm;
+        return ((a.session || {}).session || 0) - ((b.session || {}).session || 0);
+      });
+      box.appendChild(el('div', { class: 'grp-head' }, [
+        el('span', { text: proj }),
+        el('span', { class: 'count', text: rows.length + ' sheet(s)' }),
+      ]));
+      rows.forEach(function (x) { box.appendChild(sheetRow(x)); });
+    });
+    return box;
+  }
+
+  function sheetRow(x) {
+    const pr = x.progress || {};
+    const done = pr.total && pr.left === 0;
+    const nv = x.n_versions || (x.versions || []).length;
+    return el('div', {
+      class: 'bank-row' + (sheetSel === x.gid ? ' on' : ''),
+      // So the selection can be moved without rebuilding the list, which
+      // is what used to scroll it back to the top.
+      'data-gid': x.gid,
+      onclick: function () { selectSheet(x.gid); },
+    }, [
+      el('div', { class: 'bank-row-top' }, [
+        el('strong', { text: x.session_label || x.gid }),
+        el('span', { class: 'hk-chip', text: 'layers' }),
+        el('div', { style: 'flex:1' }),
+        el('span', { class: 'bank-n',
+          text: (pr.labelled || 0) + ' / ' + (pr.total || 0)
+              + (done ? '  ✓' : '') }),
+      ]),
+      el('div', { class: 'bank-row-sub' }, [
+        /* How many passes there have been. This is the whole reason the
+           sheets are here rather than only in the ToolKit: a sheet with a
+           history is a thing that can be cited. */
+        el('span', { text: nv
+          ? nv + ' version' + (nv === 1 ? '' : 's')
+          : 'no history yet' }),
+        el('span', { text: '  ·  ' }),
+        el('span', { text: ((x.updated || {}).by) || 'unknown' }),
+      ]),
+      el('div', { class: 'cur-prog small' }, [
+        el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
+      ]),
+    ]);
+  }
+
+  /* Move the selection without rebuilding the list.
+
+     Calling `render()` here rebuilt the whole split, so the scroller was a
+     brand new element and the browser started it at the top -- with
+     sixty-seven sheets, clicking the one you had scrolled down to threw you
+     back to the beginning. And it happened twice, once before the fetch and
+     once after it.
+
+     The events side has had this fix for a while and there is a note on
+     `selectEntry` explaining it; this is the same thing for the sheets. */
+  function paintSheetSelection(gid) {
+    for (const row of document.querySelectorAll('#bankBody .bank-row')) {
+      if (row.hasAttribute('data-gid')) row.classList.remove('on');
+    }
+    /* By its own gid rather than by position: the rows are grouped by
+       project and then by mouse, so the nth row is not the nth sheet. */
+    const row = document.querySelector(
+      '#bankBody .bank-row[data-gid="' + String(gid).replace(/"/g, '') + '"]');
+    if (row) row.classList.add('on');
+  }
+
+  function repaintSheet() {
+    const box = document.querySelector('.bank-detail');
+    if (!box || !box.parentNode) { render(); return false; }
+    box.parentNode.replaceChild(layerDetail(), box);
+    return true;
+  }
+
+  async function selectSheet(gid) {
+    sheetSel = gid;
+    sheetOne = null;
+    paintSheetSelection(gid);
+    if (!repaintSheet()) return;      // no split on screen yet; render did it
+    try {
+      /* The single-sheet read, because it is the only one carrying the
+         snapshots -- the list leaves them out, and without them the history
+         can say how many versions there are but not what any of them held. */
+      const got = await api('/api/layers/' + encodeURIComponent(gid));
+      sheetOne = got.sheet || null;
+    } catch (e) {
+      toast('Could not read that sheet: ' + e.message, 'err');
+    }
+    /* Still the sheet somebody is looking at? A second click while the
+       first read was in flight would otherwise paint the older answer over
+       the newer one. */
+    if (sheetSel === gid) repaintSheet();
+  }
+
+  function layerDetail() {
+    const box = el('div', { class: 'bank-detail' });
+    if (!sheetSel) {
+      box.appendChild(el('div', { class: 'hint',
+        text: 'Pick a sheet to see its history and export it.' }));
+      return box;
+    }
+    const x = sheets.filter(function (s2) { return s2.gid === sheetSel; })[0] || {};
+    const pr = x.progress || {};
+
+    box.appendChild(el('div', { class: 'mh' }, [
+      el('h3', { text: x.session_label || sheetSel }),
+      el('span', { class: 'sub',
+                   text: (pr.labelled || 0) + ' of ' + (pr.total || 0)
+                       + ' channels' }),
+      el('div', { class: 'spacer' }),
+      el('button', {
+        class: 'btn ghost sm', text: 'Open in StrataScope',
+        title: 'Label or correct this sheet',
+        onclick: function () { BARRY.strata.enter(sheetSel); },
+      }),
+    ]));
+
+    /* What it says now, as a run per layer rather than a row per channel:
+       sixty-four rows reading "CA1" is the same fact eight times over, and
+       where the boundaries fall is the thing worth seeing. */
+    box.appendChild(el('div', { class: 'section-label', text: 'As it stands' }));
+    box.appendChild(runsOf(x));
+
+    box.appendChild(el('div', { class: 'sec-head' }, [
+      el('div', { class: 'section-label', text: 'History' }),
+      el('div', { style: 'flex:1' }),
+      /* The same act as banking a curated set: a pass is finished, and what
+         it said should still be readable after somebody starts the next. */
+      el('button', {
+        class: 'btn ghost sm', text: 'Snapshot this pass…',
+        title: 'Freeze the sheet as it stands as the next version',
+        onclick: function () { snapshotSheet(x); },
+      }),
+    ]));
+
+    const vs = (sheetOne && sheetOne.versions) || x.versions || [];
+    if (!vs.length) {
+      box.appendChild(el('div', { class: 'hint',
+        text: sheetOne
+          ? 'No versions yet. Snapshot the pass to make one.'
+          : 'Reading…' }));
+      return box;
+    }
+    vs.slice().reverse().forEach(function (v) {
+      const n = v.n != null ? v.n : Object.keys(v.snap || {}).length;
+      box.appendChild(el('div', { class: 'ver-row' }, [
+        el('div', { class: 'ver-top' }, [
+          el('span', { class: 'ver-n', text: BARRY.ui.versionLabel(v) }),
+          el('span', { class: 'ver-when', title: BARRY.whenRaw(v.at),
+            text: BARRY.when(v.at, 'minute') }),
+          el('span', { class: 'ver-who', text: v.by || 'unknown' }),
+          el('span', { class: 'ver-count', text: n + ' labelled' }),
+          el('span', { class: 'ver-ops' }, [
+            el('button', {
+              class: 'linkish', text: 'CSV',
+              title: 'Export this version as a CSV, as it was at this pass',
+              onclick: function () {
+                BARRY.download(
+                  '/api/layers/' + encodeURIComponent(sheetSel)
+                    + '/version-export', { v: v.v },
+                  'layers-' + String(x.session_label || sheetSel)
+                    .replace(/[^A-Za-z0-9.-]+/g, '_') + '-v' + v.v + '.csv');
+              },
+            }),
+          ]),
+        ]),
+        v.note ? el('div', { class: 'ver-note', text: v.note }) : null,
+      ].filter(Boolean)));
+    });
+    return box;
+  }
+
+  /* Contiguous stretches of the same layer, which is how a probe actually
+     passes through them. */
+  function runsOf(x) {
+    const runs = [];
+    const labels = x.labels || {};
+    const names = {};
+    (x.regions || []).forEach(function (r) { names[r.id] = r; });
+    (x.channels || []).forEach(function (ch) {
+      const id = labels[String(ch)] || null;
+      const last = runs[runs.length - 1];
+      if (last && last.id === id) last.to = ch;
+      else runs.push({ id: id, from: ch, to: ch });
+    });
+    const box = el('div', { class: 'layer-runs' });
+    runs.forEach(function (r) {
+      const reg = names[r.id];
+      box.appendChild(el('div', {
+        class: 'layer-run' + (reg ? '' : ' none'),
+        style: reg ? '--cat:' + reg.color : '',
+      }, [
+        el('span', { class: 'layer-run-ch',
+          text: r.from === r.to ? String(r.from) : r.from + '–' + r.to }),
+        el('span', { class: 'layer-run-name',
+          text: reg ? reg.name : 'unlabelled',
+          title: (reg && reg.note) ? reg.note : '' }),
+        el('span', { class: 'layer-run-n', text: (r.to - r.from + 1) + ' ch' }),
+      ]));
+    });
+    return box;
+  }
+
+  /* Freezing a pass. Its own modal rather than a generic prompt, matching
+     editVersion above -- the note is the thing that makes a version worth
+     having, and a one-line box says so better than a browser prompt. */
+  function snapshotSheet(x) {
+    const pr = x.progress || {};
+    const wrap = el('div', { class: 'modal ver-edit' });
+    const note = el('textarea', {
+      class: 'ver-note-input', rows: '3',
+      placeholder: 'e.g. checked against the CSD, moved the GCL up two',
+    });
+    wrap.appendChild(el('div', { class: 'mh' }, [
+      el('h2', { text: 'Snapshot this layer sheet' }),
+      el('p', { class: 'sub', text: x.session_label || x.gid }),
+    ]));
+    wrap.appendChild(el('p', { class: 'confirm-msg',
+      text: 'It freezes the ' + (pr.labelled || 0) + ' label'
+          + ((pr.labelled === 1) ? '' : 's')
+          + ' as they stand as the next version, so a later correction does '
+          + 'not overwrite what this pass said. Nothing on the sheet '
+          + 'changes.' }));
+    wrap.appendChild(el('div', { class: 'section-label', text: 'What this pass was' }));
+    wrap.appendChild(note);
+    wrap.appendChild(el('div', { class: 'mf' }, [
+      el('div', { style: 'flex:1' }),
+      el('button', { class: 'btn ghost', text: 'Cancel', onclick: closeModal }),
+      el('button', {
+        class: 'btn', text: 'Snapshot',
+        onclick: async function () {
+          closeModal();
+          try {
+            const res = await apiPost('/api/layers/'
+              + encodeURIComponent(x.gid) + '/snapshot',
+              { note: (note.value || '').trim() || null });
+            sheetOne = res.sheet || sheetOne;
+            // The list carries the version count, so re-read it too.
+            const got = await api('/api/layers');
+            sheets = (got && got.sheets) || sheets;
+            render();
+            const made = ((sheetOne || {}).versions || []).slice(-1)[0] || {};
+            toast('Snapshotted as v' + made.v, 'ok');
+          } catch (e) {
+            toast('Could not snapshot: ' + e.message, 'err');
+          }
+        },
+      }),
+    ]));
+    showModal(wrap, { replace: true });
   }
 
   /* ---------- left: project / mouse / session ---------- */
@@ -178,18 +535,658 @@ BARRY.views.eventbank = (function () {
     const src = e.source || {};
     return el('div', {
       class: 'bank-row' + (selected === e.id ? ' active' : ''),
+      // So a selection can find its own row without rebuilding the list.
+      'data-id': e.id,
       title: 'Banked by ' + added.by + ' on ' + (added.at || '').slice(0, 16),
-      onclick: () => { selected = e.id; render(); },
+      onclick: () => selectEntry(e.id),
     }, [
       el('span', { class: 'bank-type', text: typeName(e.type) }),
       el('span', { class: 'bank-name', text: e.name }),
       el('span', { class: 'bank-n', text: e.n + '' }),
       el('span', { class: 'bank-src', text: baseName(src.pipeline || ''),
                    title: src.pipeline || '' }),
-    ]);
+      /* Whether it has reached the shared database. The bank pushes a
+         change by itself within seconds (backend/syncitems.py); this says
+         when it has. Per version is in the entry's own panel. */
+      BARRY.syncState ? BARRY.syncState.mark('bank', e.id) : null,
+    ].filter(Boolean));
   }
 
   /* ---------- right: one entry in full ---------- */
+  /* How the decisions have moved, version by version.
+
+     A re-curation is mostly a decision changing category -- fifty flags
+     resolved into spikes, a handful of spikes turning out to be noise -- and
+     that movement is the difference between two versions' counts. Shown as
+     the difference rather than only the totals, because "-6 flag, +6 spike"
+     is the sentence somebody is looking for and two columns of totals make
+     you do the subtraction yourself. */
+  /* WHICH VERSIONS HAVE REACHED THE SHARED TABLE.
+
+     A version history that does not say this is the same history on a
+     machine that has pushed and one that has not, and the difference is
+     whether a colleague can see any of it. `/api/bank/sync` already
+     answers it per version -- `in_cloud` for the metadata and
+     `snap_in_cloud` for the snapshot that makes it restorable.
+
+     Asked once per entry and held, not asked per render: `?verify=1` is
+     two round trips to Supabase, and egress there is counted in REQUESTS
+     rather than bytes. Without it the answer is the local push cursor,
+     which is instant and honest about being a cursor. */
+  const verKey = (v) => String(v.name != null ? v.name : v.v);
+
+  const syncOf = {};            // entry id -> { by_name, state, checked }
+  let syncBusy = null;
+
+  async function loadSync(entryId, verify) {
+    if (!entryId) return null;
+    const key = entryId + (verify ? '!v' : '');
+    if (syncOf[key]) return syncOf[key];
+    if (syncBusy === key) return null;
+    syncBusy = key;
+    try {
+      const got = await api('/api/bank/sync?id=' + encodeURIComponent(entryId)
+                            + (verify ? '&verify=1' : ''));
+      const row = ((got || {}).entries || [])[0] || null;
+      const byName = {};
+      for (const v of ((row || {}).versions || [])) {
+        byName[String(v.name != null ? v.name : v.v)] = v;
+      }
+      syncOf[key] = { row, byName, verified: !!verify };
+      return syncOf[key];
+    } catch (err) {
+      reportClientError('eventbank.sync', err.message, String(err && err.stack));
+      return null;
+    } finally {
+      syncBusy = null;
+    }
+  }
+
+  /* One version's standing, as a chip.
+
+     Three states and they are different things. `in_cloud` false means
+     nobody else can see this pass at all. A version that is up but whose
+     SNAPSHOT is not can be read about and not restored, which is the one
+     people get caught by. And unverified is unverified: it says so rather
+     than guessing, because "probably shared" is not a thing to tell
+     somebody about their only copy of a day's work. */
+  function syncChip(entryId, v) {
+    const name = String(v.name != null ? v.name : v.v);
+    const have = syncOf[entryId + '!v'] || syncOf[entryId];
+    const row = have && have.byName[name];
+    if (!have || !row || row.in_cloud == null) {
+      return el('span', {
+        class: 'pill sm ver-sync unknown', text: 'not checked',
+        title: 'Whether this version has reached the shared table has not '
+             + 'been looked up. Press “Check the database”.',
+      });
+    }
+    if (!row.in_cloud) {
+      return el('span', {
+        class: 'pill sm ver-sync local', text: 'this computer only',
+        title: 'This version is not in the shared table, so nobody else can '
+             + 'see it. It goes up on the next sync.',
+      });
+    }
+    if (row.snap_here && row.snap_in_cloud === false) {
+      return el('span', {
+        class: 'pill sm ver-sync partial', text: 'shared, no snapshot',
+        title: 'The record of this pass is shared, but the snapshot that '
+             + 'lets it be restored is not — a colleague can read what it '
+             + 'said and cannot put it back.',
+      });
+    }
+    return el('span', {
+      class: 'pill sm ver-sync shared', text: 'shared',
+      title: 'In the shared table, snapshot and all.',
+    });
+  }
+
+  function versionHistory(box, e) {
+    const vs = (e.versions || []).slice();
+    if (!vs.length) return;
+    /* Which version is open, if any. Held outside so it survives the
+       repaint that opening one causes. By NAME (verKey), as the strip sets
+       it: compared against the stored number here, a name never matched,
+       so the choice was cleared on every repaint and no version ever
+       opened. */
+    if (openVersion && !vs.some((v) => verKey(v) === openVersion)) {
+      openVersion = null;
+    }
+    const names = e.label_names || {};
+    const nameOf = (k) => names[k] || (k === 'unspecified' ? 'undecided' : k);
+
+    const hidden = vs.filter((v) => v.archived);
+    const shown = showArchived ? vs : vs.filter((v) => !v.archived);
+
+    box.appendChild(el('div', { class: 'section-label ver-head' }, [
+      el('span', { text: 'History  \u00b7  ' + shown.length + ' version'
+                       + (shown.length === 1 ? '' : 's') }),
+      hidden.length
+        ? el('button', {
+            class: 'linkish',
+            text: showArchived
+              ? 'hide ' + hidden.length + ' archived'
+              : hidden.length + ' archived \u2014 show',
+            onclick: () => { showArchived = !showArchived; repaint(); },
+          })
+        : null,
+    ].filter(Boolean)));
+
+    /* The lineage: every version at a glance, and a way into any of them.
+       Reading a history means moving around in it. */
+    /* Asked for, not assumed. The cheap answer comes from the local push
+       cursor on open; the database is only asked when somebody presses,
+       because that is two round trips and egress here is counted in
+       requests. */
+    const haveSync = syncOf[e.id + '!v'] || syncOf[e.id];
+    const syncBar = el('div', { class: 'ver-syncbar' }, [
+      el('span', { class: 'hint', text: haveSync
+        ? (haveSync.verified
+           ? 'Checked against the shared table.'
+           : 'From this machine\u2019s push cursor, not the database itself.')
+        : 'Not checked against the shared table.' }),
+      el('span', { class: 'spacer' }),
+      el('button', {
+        class: 'btn ghost sm',
+        text: haveSync && haveSync.verified ? 'Check again'
+                                            : 'Check the database',
+        title: 'Asks Supabase which of these versions it actually holds.',
+        onclick: async () => {
+          delete syncOf[e.id + '!v'];
+          await loadSync(e.id, true);
+          const host = box.parentNode;
+          const fresh = detail();
+          if (host) host.replaceChild(fresh, box);
+        },
+      }),
+    ]);
+    if (!haveSync) {
+      // The instant one, so the strip is never blank while nobody has
+      // pressed anything.
+      loadSync(e.id, false).then((got) => {
+        if (!got) return;
+        const host = box.parentNode;
+        if (!host || !host.contains(box)) return;
+        const fresh = detail();
+        host.replaceChild(fresh, box);
+      });
+    }
+
+    /* The lineage, as the version tree (constitution §6e): which version to
+       open, drawn as the tree it is -- a branch sits beside the version it
+       came from instead of in a row of chips that read as a sequence.
+       Keyed on the NAME, not the number: two versions can share a number,
+       and keyed on the number, clicking the second one opened the first.
+       Picking the open one again closes it, as the chip did. Every version
+       here can be opened -- its counts and note are on record even without
+       a snapshot -- so none is disabled. */
+    const strip = el('div', { class: 'ver-strip' }, [BARRY.ui.versionTree({
+      versions: shown,
+      idOf: verKey,
+      value: openVersion,
+      disabled: () => null,
+      onpick: (v) => {
+        openVersion = openVersion === verKey(v) ? null : verKey(v);
+        const host = box.parentNode;
+        // Repaint just the entry, so the list on the left does not
+        // scroll back to the top.
+        const fresh = detail();
+        if (host) host.replaceChild(fresh, box);
+      },
+    })]);
+    box.appendChild(strip);
+    box.appendChild(syncBar);
+
+    const list = el('div', { class: 'ver-list' });
+    for (let i = shown.length - 1; i >= 0; i--) {
+      const v = shown[i], was = i > 0 ? shown[i - 1] : null;
+      const counts = v.by_label || {};
+      const wasCounts = (was && was.by_label) || {};
+      const keys = Array.from(new Set(
+        Object.keys(counts).concat(Object.keys(wasCounts))));
+      keys.sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
+
+      const shifts = [];
+      for (const k of keys) {
+        const d = (counts[k] || 0) - (wasCounts[k] || 0);
+        if (was && d !== 0) {
+          shifts.push(el('span', {
+            class: 'ver-shift ' + (d > 0 ? 'up' : 'down'),
+            text: (d > 0 ? '+' : '\u2212') + Math.abs(d) + ' ' + nameOf(k),
+          }));
+        }
+      }
+      const dn = was ? (v.n || 0) - (was.n || 0) : 0;
+      if (was && dn !== 0) {
+        shifts.push(el('span', {
+          class: 'ver-shift ' + (dn > 0 ? 'up' : 'down'),
+          text: (dn > 0 ? '+' : '\u2212') + Math.abs(dn) + ' in total',
+        }));
+      }
+
+      list.appendChild(el('div', {
+        class: 'ver-row' + (i === shown.length - 1 ? ' latest' : '')
+             + (v.archived ? ' archived' : ''),
+      }, [
+        el('div', { class: 'ver-top' }, [
+          el('span', { class: 'ver-n', text: BARRY.ui.versionLabel(v) }),
+          el('span', { class: 'ver-when', title: BARRY.whenRaw(v.at),
+                       text: BARRY.when(v.at, 'minute') }),
+          el('span', { class: 'ver-who', text: v.by || 'unknown' }),
+          el('span', { class: 'ver-count', text: (v.n || 0) + ' events' }),
+          i === shown.length - 1 && !v.archived
+            ? el('span', { class: 'pill sm', text: 'current' }) : null,
+          syncChip(e.id, v),
+          v.archived ? el('span', { class: 'pill sm', text: 'archived' })
+                     : null,
+          el('span', { class: 'ver-ops' }, [
+            /* Per version, not per entry.
+
+               The entry already exported "the events as they stand now". A
+               version is what they were at that pass, which is the thing a
+               result cites: 416 candidates as somebody left them at v1 is a
+               different set of numbers from 416 candidates today, and a
+               figure made from one should not be described by the other. */
+            el('button', {
+              class: 'linkish', text: 'CSV',
+              title: 'Export this version’s ' + (v.n || 0)
+                   + ' events as a CSV, as they were at this pass',
+              onclick: () => BARRY.download(
+                '/api/bank/version-export', { id: e.id, v: v.v },
+                'event-bank-'
+                  + String(e.name || e.id).replace(/[^A-Za-z0-9.-]+/g, '_')
+                  + '-v' + v.v + '.csv'),
+            }),
+            el('button', { class: 'linkish', text: 'Edit',
+                           title: 'Change this version\u2019s note or give '
+                                + 'it a name',
+                           onclick: () => editVersion(e, v) }),
+            el('button', {
+              class: 'linkish',
+              text: v.archived ? 'Unarchive' : 'Archive',
+              title: v.archived
+                ? 'Show it in the history again'
+                : 'Fold it away. Nothing is lost and it can come back.',
+              onclick: () => versionOp(e, v,
+                                       v.archived ? 'unarchive' : 'archive'),
+            }),
+            el('button', { class: 'linkish danger', text: 'Delete',
+                           title: 'Remove this version from the history',
+                           onclick: () => deleteVersion(e, v) }),
+          ]),
+        ].filter(Boolean)),
+        v.title ? el('div', { class: 'ver-title', text: v.title }) : null,
+        v.note
+          ? el('div', { class: 'ver-note', text: v.note })
+          : el('div', { class: 'ver-note none', text: 'no note' }),
+        (v.edits || []).length
+          ? el('div', { class: 'ver-edited',
+              title: BARRY.whenRaw(v.edits[v.edits.length - 1].at),
+              text: 'note edited '
+                  + BARRY.when(v.edits[v.edits.length - 1].at, 'minute')
+                  + ' by ' + (v.edits[v.edits.length - 1].by || 'someone') })
+          : null,
+        el('div', { class: 'ver-mix' }, keys.filter((k) => counts[k]).map(
+          (k) => el('span', { class: 'ver-chip',
+                              text: nameOf(k) + ' ' + counts[k] }))),
+        /* Which decisions changed, and to what. The totals cannot show
+           this: two calls going one way and two coming back leaves every
+           count identical while four decisions moved. */
+        (was && v.moves && Object.keys(v.moves).length)
+          ? el('div', { class: 'ver-shifts' },
+               [el('span', { class: 'ver-since',
+                             text: 'since v' + was.v + ':' })].concat(
+                 Object.keys(v.moves)
+                   .sort((a, b) => v.moves[b] - v.moves[a])
+                   .map((k) => el('span', { class: 'ver-move',
+                                            text: k + '  ×' + v.moves[k] }))
+               ).concat(v.gained ? [el('span', { class: 'ver-shift up',
+                          text: '+' + v.gained + ' new' })] : [])
+                .concat(v.lost ? [el('span', { class: 'ver-shift down',
+                          text: '−' + v.lost + ' gone' })] : []))
+          : null,
+        (was && shifts.length)
+          ? el('div', { class: 'ver-shifts' },
+               [el('span', { class: 'ver-since', text: 'totals:' })]
+                 .concat(shifts))
+          : null,
+        (was && !shifts.length && !(v.moves
+                                    && Object.keys(v.moves).length))
+          ? el('div', { class: 'ver-shifts' }, [
+              el('span', { class: 'ver-since none',
+                           text: 'nothing moved since v' + was.v })])
+          : null,
+        /* Opening a version: what it held, and how it differs from
+           whichever other version you pick -- not only the one before it,
+           because "what has changed since the first pass" is the question
+           three versions later. */
+        openVersion === verKey(v) ? versionDetail(e, vs, v) : null,
+        (v.confirmed || []).length
+          ? el('div', { class: 'ver-conf',
+              text: 'banked again with no change '
+                  + v.confirmed.length + ' time'
+                  + (v.confirmed.length === 1 ? '' : 's')
+                  + ' \u2014 last by ' + (v.confirmed[
+                      v.confirmed.length - 1].by || 'someone') })
+          : null,
+      ].filter(Boolean)));
+    }
+    box.appendChild(list);
+  }
+
+  /* The version being looked at, if the reader has opened one. */
+  let openVersion = null;
+  /* Archived versions fold away rather than disappearing: a pass somebody
+     would rather not look at is not the same as one that never happened. */
+  let showArchived = false;
+
+  /* Repaint just the entry, so the list on the left keeps its place. */
+  /* Pick an entry without rebuilding the list.
+
+     The row's click used to call render(), which empties #bankBody and
+     builds it again -- including `.bank-tree`, the element that scrolls. So
+     clicking anything below the fold jumped the list back to the top, and
+     the entry you had just chosen was off screen. Only two things actually
+     change when a selection moves: which row is marked, and what the detail
+     pane shows. */
+  function selectEntry(id) {
+    selected = id;
+    for (const row of document.querySelectorAll('#bankBody .bank-row')) {
+      row.classList.remove('active');
+    }
+    const box = document.querySelector('.bank-detail');
+    if (!box || !box.parentNode) { render(); return; }
+    /* By its own id. Not by position in the visible list -- the rows are
+       grouped project / mouse / session, so the nth row is not the nth
+       entry and marking by index highlighted the wrong one. */
+    const row = document.querySelector(
+      '#bankBody .bank-row[data-id="' + String(id).replace(/"/g, '') + '"]');
+    if (row) row.classList.add('active');
+    box.parentNode.replaceChild(detail(), box);
+  }
+
+  function repaint() {
+    const box = document.querySelector('.bank-detail');
+    if (!box || !box.parentNode) { render(); return; }
+    box.parentNode.replaceChild(detail(), box);
+  }
+
+  /* Whether a recording counts as patched is computed from the banked
+     sets, so anything done to one here makes the session list's cached
+     answer wrong. Through `BARRY.views.sessions` because that is a real
+     property; the module's own `BARRY` binding is not reachable from
+     another module's closure. */
+  function healthChanged() {
+    try {
+      const v = BARRY.views && BARRY.views.sessions;
+      if (v && v.refreshHealth) v.refreshHealth();
+    } catch (err) { /* the session list is not loaded; nothing to update */ }
+  }
+
+  async function versionOp(e, v, action, body) {
+    try {
+      const res = await apiPost(
+        /* By id: the stored number is not unique, and the bank refuses a
+           number two machines both minted rather than guessing. */
+        '/api/bank/' + encodeURIComponent(e.id) + '/version/'
+          + encodeURIComponent(v.id != null ? v.id : v.v),
+        Object.assign({ action: action }, body || {}));
+      /* In place rather than refetching everything, so the panel does not
+         jump -- but the route answers without the snapshots, and dropping
+         them would break the comparison until the next reload. */
+      const snaps = {};
+      (e.versions || []).forEach((x) => {
+        if (x.snap) snaps[x.v] = x.snap;
+      });
+      e.versions = (res.versions || []).map(
+        (x) => (snaps[x.v] ? Object.assign({}, x, { snap: snaps[x.v] }) : x));
+      repaint();
+      return res;
+    } catch (err) { toast(err.message, 'err', 9000); return null; }
+  }
+
+  async function deleteVersion(e, v) {
+    const isCurrent = v.v === Math.max.apply(
+      null, (e.versions || []).map((x) => x.v || 0));
+    /* A correction is not an ordinary version. It moved every time in the
+       set, so deleting it moves them back -- and the wording below used to
+       promise the opposite, which is the worst thing a confirmation can do.
+       The times going back is also what makes the recording show an
+       unresolved segment issue again, and that is worth saying before the
+       button rather than leaving it to be found in a filter. */
+    const undoes = !!v.retimed && isCurrent;
+    const body = undoes
+      ? el('div', {}, [
+          el('p', { text: 'This version is the timing correction. Deleting '
+              + 'it puts all ' + (e.n || 0) + ' event time(s) back onto the '
+              + 'clock they were on before it ran.' }),
+          el('ul', { class: 'fix-steps' }, [
+            el('li', { text: 'Every time moves back by the amount this '
+                + 'correction moved it. The labels and the decisions are '
+                + 'untouched.' }),
+            el('li', { text: 'The set stops claiming to be on the '
+                + 'recording\u2019s own clock, so this recording goes back '
+                + 'to showing an unresolved segment issue and reappears in '
+                + 'the unpatched filter.' }),
+            el('li', { text: 'If no earlier version on this machine carries '
+                + 'a snapshot, nothing is deleted at all \u2014 a set whose '
+                + 'correction is gone but whose times are still shifted is '
+                + 'worse than either state.' }),
+          ]),
+          el('p', { class: 'hint quiet',
+            text: 'Archive it instead if you only want it out of the way; '
+                + 'that changes nothing about the events.' }),
+        ])
+      : 'It goes from the history for good. The entry keeps its '
+        + (e.n || 0) + ' events exactly as they are'
+        + (isCurrent
+            ? ' \u2014 and since this is the version that describes them, '
+              + 'nothing left in the history will explain what the entry '
+              + 'currently holds.'
+            : '.')
+        + ' Archive it instead if you only want it out of the way.';
+
+    const go = await BARRY.confirm(
+      undoes ? 'Undo the correction at ' + BARRY.ui.versionLabel(v) + '?'
+             : 'Delete version ' + BARRY.ui.versionLabel(v).slice(1) + '?',
+      body, undoes ? 'Undo and delete ' + BARRY.ui.versionLabel(v)
+                   : 'Delete ' + BARRY.ui.versionLabel(v), true);
+    if (!go) return;
+    const res = await versionOp(e, v, 'delete');
+    if (!res) return;
+    const undo = res.undo;
+    if (undo) {
+      healthChanged();
+      toast(BARRY.ui.versionLabel(v) + ' deleted and the correction undone. '
+            + undo.n + ' time(s) restored from v' + undo.restored_from
+            + '; this recording is an unresolved segment issue again.',
+            'ok', 11000);
+    } else {
+      toast('Version ' + BARRY.ui.versionLabel(v).slice(1) + ' deleted.', 'ok');
+    }
+  }
+
+  function editVersion(e, v) {
+    const wrap = el('div', { class: 'modal ver-edit' });
+    wrap.appendChild(el('div', { class: 'mh' }, [
+      el('h2', { text: 'Version ' + v.v }),
+      el('p', { class: 'sub', title: BARRY.whenRaw(v.at),
+                text: BARRY.when(v.at, 'minute')
+                    + '  \u00b7  ' + (v.by || 'unknown')
+                    + '  \u00b7  ' + (v.n || 0) + ' events' }),
+    ]));
+    const title = el('input', {
+      type: 'text', value: v.title || '',
+      placeholder: 'A name for this pass (optional)',
+    });
+    const note = el('textarea', {
+      class: 'ver-note-input', rows: '4', value: v.note || '',
+      placeholder: 'What changed in this pass?',
+    });
+    wrap.appendChild(el('div', { class: 'section-label', text: 'Name' }));
+    wrap.appendChild(title);
+    wrap.appendChild(el('div', { class: 'section-label', text: 'Note' }));
+    wrap.appendChild(note);
+    wrap.appendChild(el('p', { class: 'hint',
+      text: 'The counts are not editable \u2014 they are what was banked. '
+          + 'An edited note records that it was edited.' }));
+    wrap.appendChild(el('div', { class: 'mf' }, [
+      el('div', { style: 'flex:1' }),
+      el('button', { class: 'btn ghost', text: 'Cancel',
+                     onclick: closeModal }),
+      el('button', {
+        class: 'btn', text: 'Save',
+        onclick: async () => {
+          closeModal();
+          const res = await versionOp(e, v, 'edit',
+                                      { note: note.value, title: title.value });
+          if (res) {
+            toast(res.changed.length
+              ? 'Version ' + v.v + ' updated.'
+              : 'Nothing changed.', 'ok');
+          }
+        },
+      }),
+    ]));
+    showModal(wrap);
+    setTimeout(() => { try { note.focus(); } catch (err) {} }, 30);
+  }
+
+  async function restoreVersion(e, v) {
+    const names = e.label_names || {};
+    const mix = Object.keys(v.by_label || {})
+      .sort((a, b) => v.by_label[b] - v.by_label[a])
+      .map((k) => (names[k] || k) + ' ' + v.by_label[k]).join(', ');
+    const name = BARRY.ui.versionLabel(v);
+    const go = await BARRY.confirm(
+      'Put ' + name + ' back?',
+      'The live curation set becomes what it was at ' + name
+      + ': ' + mix + '. Nothing is deleted \u2014 whatever is there now '
+      + 'stays in the history, and coming back to it is the same one '
+      + 'click.',
+      'Put ' + name + ' back', false);
+    if (!go) return;
+    try {
+      const res = await apiPost(
+        '/api/curation/' + encodeURIComponent(e.gid) + '/'
+        + encodeURIComponent(e.type) + '/restore',
+        // By id: the stored number repeats; the route resolves a ref.
+        { entry: e.id, version: v.id != null ? v.id : v.v });
+      toast(res.changed
+        ? 'Put ' + name + ' back: ' + res.changed
+          + ' decision(s) changed, ' + res.unchanged + ' already matched.'
+        : 'The set already matches ' + name + '.', 'ok', 8000);
+      load(true);
+    } catch (err) { toast(err.message, 'err', 9000); }
+  }
+
+  /* One version, opened: its contents and a comparison with another. */
+  function versionDetail(e, vs, v) {
+    const names = e.label_names || {};
+    const nameOf = (k) => names[k] || (k === 'unspecified' ? 'undecided' : k);
+    const host = el('div', { class: 'ver-open' });
+
+    if (!v.snap) {
+      host.appendChild(el('p', { class: 'hint',
+        text: 'This version is old enough that the candidate-by-candidate '
+            + 'snapshot has been dropped \u2014 its counts and its note are '
+            + 'kept, but it can no longer be compared candidate by '
+            + 'candidate.' }));
+      return host;
+    }
+
+    // Every other version -- by identity: by number, a version sharing the
+    // open one's number was dropped from what it could be compared with.
+    const others = vs.filter((o) => o !== v && o.snap);
+    if (!others.length) {
+      host.appendChild(el('p', { class: 'hint',
+        text: 'Nothing else to compare it against yet.' }));
+      return host;
+    }
+    /* Default to the version before, which is the usual question. */
+    let against = others.filter((o) => o.v < v.v).pop() || others[0];
+
+    const rows = el('div', { class: 'ver-diff' });
+    const paint = () => {
+      rows.innerHTML = '';
+      const was = new Map((against.snap || []).map((p) => [
+        Math.round(p[0] * 1e4), p[1]]));
+      const out = [];
+      for (const p of v.snap) {
+        const key = Math.round(p[0] * 1e4);
+        if (!was.has(key)) {
+          out.push({ t: p[0], from: null, to: p[1] });
+          continue;
+        }
+        const before = was.get(key);
+        was.delete(key);
+        if (before !== p[1]) out.push({ t: p[0], from: before, to: p[1] });
+      }
+      for (const [key, lab] of was) {
+        out.push({ t: key / 1e4, from: lab, to: null });
+      }
+      out.sort((a, b) => a.t - b.t);
+
+      rows.appendChild(el('div', { class: 'hint',
+        text: out.length
+          ? out.length + ' candidate' + (out.length === 1 ? '' : 's')
+            + ' differ between v' + against.v + ' and v' + v.v
+          : 'Nothing differs between v' + against.v + ' and v' + v.v + '.' }));
+      const clock = (t) => {
+        const m = Math.floor(t / 60), s = t - m * 60;
+        return m + ':' + (s < 10 ? '0' : '') + s.toFixed(3);
+      };
+      for (const d of out.slice(0, 400)) {
+        rows.appendChild(el('div', { class: 'vd-row' }, [
+          el('span', { class: 'vd-t', text: clock(d.t) }),
+          el('span', { class: 'vd-from',
+                       text: d.from === null ? 'not in v' + against.v
+                                             : nameOf(d.from) }),
+          el('span', { class: 'vd-arrow', text: '\u2192' }),
+          el('span', { class: 'vd-to',
+                       text: d.to === null ? 'gone' : nameOf(d.to) }),
+        ]));
+      }
+      if (out.length > 400) {
+        rows.appendChild(el('div', { class: 'hint',
+          text: 'and ' + (out.length - 400) + ' more. Export the CSV for '
+              + 'the full list.' }));
+      }
+    };
+
+    host.appendChild(el('div', { class: 'ver-open-bar' }, [
+      el('strong', { text: BARRY.ui.versionLabel(v) }),
+      /* A history you can read but not act on is half a history. */
+      el('button', {
+        class: 'btn ghost sm', text: 'Put this version back',
+        title: 'Write these labels onto the live curation set. Nothing in '
+             + 'the history is removed \u2014 the version you are on now '
+             + 'stays, and going back to it is the same one click.',
+        onclick: () => restoreVersion(e, v),
+      }),
+      el('span', { class: 'hint', text: 'compared with' }),
+      /* By name, as the strip is: the stored number repeats when two
+         machines both mint it, and keyed on it this compared against
+         whichever came first. */
+      el('select', {
+        onchange: (ev) => {
+          against = others.find((o) => verKey(o) === ev.target.value)
+                 || against;
+          paint();
+        },
+      }, others.map((o) => el('option', {
+        value: verKey(o),
+        text: BARRY.ui.versionLabel(o) + '  ' + (o.by || '') + '  '
+            + BARRY.when(o.at, 'minute'),
+        selected: verKey(o) === verKey(against) ? 'selected' : null,
+      }))),
+    ]));
+    host.appendChild(rows);
+    paint();
+    return host;
+  }
+
   function detail() {
     const box = el('div', { class: 'bank-detail' });
     const e = entries.find((x) => x.id === selected);
@@ -245,18 +1242,27 @@ BARRY.views.eventbank = (function () {
       add('Parameters', src.parameters);
     }
     add('Added by', added.by);
-    add('Added at', (added.at || '').replace('T', ' '));
+    add('Added at', BARRY.when(added.at, 'second')
+                    + (added.at ? '   (' + added.at + ')' : ''));
     add('On machine', added.machine);
+    /* Not "v3 of 2": numbers are never reused, so once a version has been
+       deleted the highest number and the count are different things and
+       saying "of" makes one of them look wrong. */
+    add('Version', e.version
+        ? (BARRY.ui.versionLabel(e.version_name != null ? e.version_name : e.version) + '  ·  ' + (e.versions || []).length
+           + ' in the history')
+        : null);
     add('Times are', e.units);
     add('Session path', e.session_path);
     add('Entry id', e.id);
     box.appendChild(kv);
+    versionHistory(box, e);
 
     if ((e.history || []).length) {
       box.appendChild(el('div', { class: 'section-label', text: 'Edited' }));
       box.appendChild(el('div', { class: 'source-box' }, [
         el('pre', { text: e.history.map((h) =>
-          (h.at || '').replace('T', ' ') + '  ' + (h.by || '')
+          BARRY.when(h.at, 'second') + '  ' + (h.by || '')
           + '  ' + (h.changed || []).join(', ')).join('\n') }),
       ]));
     }
@@ -267,6 +1273,13 @@ BARRY.views.eventbank = (function () {
       el('button', { class: 'btn ghost sm', text: 'Export CSV',
         onclick: () => BARRY.download('/api/bank/export', { ids: [e.id] },
                                       'event-bank-' + e.id + '.csv') }),
+      /* Always offered, not only when the strip below has found doubles:
+         the events have not loaded yet when this is built, and an action
+         that appears a moment later is one nobody learns is there. */
+      el('button', { class: 'btn ghost sm', text: 'Duplicate times…',
+        title: 'Find events that sit on the same time and collapse them '
+             + 'into a new version',
+        onclick: () => dedupeDialog(e) }),
       el('button', { class: 'btn ghost sm danger', text: 'Delete entry',
         onclick: () => removeEntry(e) }),
     ]));
@@ -280,14 +1293,63 @@ BARRY.views.eventbank = (function () {
     let full;
     try { full = await api('/api/bank/' + encodeURIComponent(id)); }
     catch (err) { return; }
+    /* The listing leaves the per-version snapshots out because they are
+       large; this is the fetch that has them, so the history gets them
+       here rather than making a second request for the same record. */
+    const whole = (full && full.entry) || full;
+    const row = entries.find((x) => x.id === id);
+    if (row && whole && whole.versions) row.versions = whole.versions;
     const host = $('#bankEvents');
     if (!host || selected !== id) return;
     const evs = (full.entry || {}).events || [];
     host.innerHTML = '';
+    /* Counted over the whole set, not the 300 rows on show: a set whose
+       doubles all sit past row 300 has exactly the same problem. */
+    const scan = dupScan(evs);
+    const shared = new Set();
+    const seen = new Set();
+    evs.forEach((ev) => {
+      const t = Number(ev.start);
+      if (!isFinite(t)) return;
+      const k = t.toFixed(DUP_DP);
+      if (seen.has(k)) shared.add(k);
+      seen.add(k);
+    });
+    const strip = dupStrip(whole || row || {}, scan);
+    if (strip) host.appendChild(strip);
+    /* What this entry is not valid on, and who said so. Built from the
+       events that have just arrived rather than from the listing, because
+       the listing carries counts and these lists live on the events
+       themselves. Returns null for everything that has no windows, which
+       is most of the bank. */
+    const excl = exclusionSummary(whole || row || {}, evs);
+    if (excl) host.appendChild(exclusionCard(excl));
+    /* And at the top, where somebody who never scrolls to the events will
+       still meet it. The events are not loaded when the header is built, so
+       this goes in when they arrive rather than being drawn with it. */
+    const tags = $('.bank-detail .detail-tags');
+    if (tags && scan.groups && !$('.detail-tags .tag.blocked')) {
+      tags.appendChild(el('button', {
+        class: 'tag blocked',
+        title: 'Jump to them',
+        text: scan.groups + ' duplicate time'
+            + (scan.groups === 1 ? '' : 's'),
+        onclick: () => strip.scrollIntoView({ block: 'center',
+                                              behavior: 'smooth' }),
+      }));
+    }
+    const isDup = (ev) => {
+      const t = Number(ev.start);
+      return isFinite(t) && shared.has(t.toFixed(DUP_DP));
+    };
     const table = el('table', { class: 'preview-table' }, [
       el('thead', {}, [el('tr', {}, ['#', 'start', 'end', 'channel', 'amplitude']
         .map((h) => el('th', { text: h })))]),
-      el('tbody', {}, evs.slice(0, 300).map((ev, i) => el('tr', {}, [
+      el('tbody', {}, evs.slice(0, 300).map((ev, i) => el('tr', {
+        class: isDup(ev) ? 'dup' : null,
+        title: isDup(ev) ? 'Another event in this set claims this time'
+                         : null,
+      }, [
         el('td', { text: String(i + 1) }),
         el('td', { text: fmtTime(ev.start) }),
         el('td', { text: ev.end != null ? fmtTime(ev.end) : '' }),
@@ -305,6 +1367,399 @@ BARRY.views.eventbank = (function () {
   }
 
   /* ======================================================================
+     What an entry excludes, and why
+
+     Step one of The Arc banks one event per cue pair, and each of those
+     events carries the channels it is not valid on. Two lists, kept apart:
+     `clipped` is MEASURED -- the amplifier sat at its rail somewhere in
+     that window -- and `excluded` is DECIDED -- somebody looked and said
+     not this one. backend/eventbank.py whitelists them separately and says
+     why: a measurement and a judgement are different claims. They are
+     counted separately here for the same reason. The union is what the
+     coupling step actually drops (`coupling.excluded_for`), and it is
+     still two facts, not one number.
+
+     THE UNIT IS A BLOCK: one event, in one window, on one channel. Not a
+     channel. A channel that lost the baseline of one pair out of twelve
+     and a channel that is at the rail through all four windows of all
+     twelve are both "an excluded channel", and reading those as the same
+     thing is the mistake this panel exists to replace -- one loses 1 block
+     of 48 and the other loses 48. So the counts say blocks, and the bar
+     beside each row is there to stop the two ever looking alike.
+
+     All of it is computed here from the events the detail pane already
+     fetched. No route was added: the server has already sent every number
+     this needs, and a second read of the same record would be a request
+     spent on arithmetic.
+     ====================================================================== */
+
+  /* The four windows a cue pair is analysed in, in the order they happen:
+     ten seconds of baseline, cue 1, cue 2, ten seconds after cue 2 ends.
+     The same tuple as spark.CLIP_WINDOWS, in the same order arc.js draws
+     them, so a window named `cue1` here is the one that was measured. */
+  const EXCL_WINDOWS = ['pre', 'cue1', 'cue2', 'post'];
+
+  /* The two the coupling is computed in. Losing a baseline costs the
+     comparison; losing a cue costs the measurement itself. That is the
+     whole reason the windows are shown at all rather than folded into a
+     per-channel total -- eight blocks gone from `post` and eight gone from
+     `cue1` are the same number and not the same loss. */
+  const EXCL_CUE = { cue1: true, cue2: true };
+
+  /* How many channel rows open before the rest are asked for. */
+  const EXCL_ROWS = 16;
+
+  /* One event's channels, per window.
+
+     Two shapes arrive and they mean different things. A DICT is per window
+     -- a channel can be ruined in the baseline and perfectly good in both
+     cues, which is why the bank stopped flattening these. A LIST is an
+     older entry, banked before the windows were kept apart, and it means
+     "not valid for this event at all". Spread over every window here,
+     which is exactly how `coupling.excluded_for` reads one, so the panel
+     and the analysis cannot come to different totals for one entry. */
+  function exclPerWindow(got, names) {
+    const out = {};
+    if (!got) return out;
+    const nums = (list) => (list || []).map(Number)
+      .filter((c) => isFinite(c));
+    if (Array.isArray(got)) {
+      const flat = nums(got);
+      if (flat.length) names.forEach((w) => { out[w] = flat; });
+      return out;
+    }
+    Object.keys(got).forEach((w) => {
+      const here = nums(got[w]);
+      if (here.length) out[w] = here;
+    });
+    return out;
+  }
+
+  /* Everything the card below says, worked out once.
+
+     Returns null when there is nothing to say, and that is the common
+     case: most of the bank is dentate spikes, which have no cue pair, no
+     windows and no clipping measurement. An extra card on ninety entries
+     explaining that they have no windows is a card people learn to scroll
+     past, and then miss on the twelve that do. */
+  function exclusionSummary(e, evs) {
+    const events = evs || [];
+    if (!events.length) return null;
+    const params = (e.source || {}).parameters || {};
+    /* Spark's own entries qualify even with nothing excluded, because
+       "nothing was found" and "nobody looked" are different answers and
+       `clip_measured` is the only field that tells them apart. Anything
+       else has to actually carry a list. */
+    const fromSpark = String((e.source || {}).pipeline || '')
+      .indexOf('The Arc · Spark') === 0;
+
+    /* Which windows this entry speaks, read off the events rather than
+       assumed. An entry carrying three is not one that lost nothing in a
+       fourth it never had. */
+    const seen = {};
+    let anyFlat = false, anyPerWindow = false, anyList = false;
+    events.forEach((ev) => {
+      ['clipped', 'excluded'].forEach((key) => {
+        const got = ev[key];
+        if (!got) return;
+        if (Array.isArray(got)) {
+          if (got.length) { anyFlat = true; anyList = true; }
+          return;
+        }
+        Object.keys(got).forEach((w) => {
+          if ((got[w] || []).length) {
+            seen[w] = true; anyPerWindow = true; anyList = true;
+          }
+        });
+      });
+    });
+    if (!anyList && !fromSpark) return null;
+
+    /* Canonical order first, then anything else this entry happens to
+       name. A flat list brings all four back, because that is what it
+       means. */
+    let windows = EXCL_WINDOWS.filter((w) => seen[w] || anyFlat)
+      .concat(Object.keys(seen).filter(
+        (w) => EXCL_WINDOWS.indexOf(w) < 0).sort());
+    if (!windows.length) windows = EXCL_WINDOWS.slice();
+
+    const chan = {};                 // csc -> one row of the channel table
+    const win = {};                  // window name -> one row of the other
+    windows.forEach((w) => {
+      win[w] = { name: w, blocks: 0, chans: {}, events: 0, cue: !!EXCL_CUE[w] };
+    });
+    let affected = 0, blocks = 0, keptBlocks = 0;
+    const rowOf = (c) => chan[c] || (chan[c] = {
+      channel: c, lost: 0, measured: 0, decided: 0, both: 0, kept: 0,
+      events: 0 });
+
+    events.forEach((ev) => {
+      const meas = exclPerWindow(ev.clipped, windows);
+      const said = exclPerWindow(ev.excluded, windows);
+      /* The third list: blocks somebody put BACK in against the
+         measurement. They are subtracted from the loss exactly as
+         `coupling.excluded_for` subtracts them -- (clipped + excluded) -
+         kept -- and shown as their own category, because "the amplifier
+         touched its rail here and a person said it does not matter" is a
+         claim that has to stay visible, not vanish into "clean". */
+      const held = exclPerWindow(ev.kept, windows);
+      const here = {};
+      windows.forEach((w) => {
+        const isM = {}, isD = {}, isK = {};
+        (meas[w] || []).forEach((c) => { isM[c] = true; });
+        (said[w] || []).forEach((c) => { isD[c] = true; });
+        (held[w] || []).forEach((c) => { isK[c] = true; });
+        Object.keys(isK).forEach((key) => {
+          if (!isM[key] && !isD[key]) return;
+          rowOf(Number(key)).kept += 1;
+          keptBlocks += 1;
+          if (win[w]) win[w].kept = (win[w].kept || 0) + 1;
+        });
+        const all = Object.keys(isM).concat(
+          Object.keys(isD).filter((c) => !isM[c]))
+          .filter((c) => !isK[c]);
+        if (!all.length) return;
+        win[w].blocks += all.length;
+        win[w].events += 1;
+        all.forEach((key) => {
+          const c = Number(key);
+          win[w].chans[c] = true;
+          here[c] = true;
+          const row = rowOf(c);
+          row.lost += 1;
+          if (isM[c]) row.measured += 1;
+          if (isD[c]) row.decided += 1;
+          /* Counted, and kept out of the other two, because a block that
+             was measured AND decided would otherwise read as two blocks
+             once somebody adds the columns up. */
+          if (isM[c] && isD[c]) row.both += 1;
+          blocks += 1;
+        });
+      });
+      const mine = Object.keys(here);
+      if (mine.length) affected += 1;
+      mine.forEach((c) => { chan[c].events += 1; });
+    });
+
+    const rows = Object.keys(chan).map((k) => chan[k]);
+    /* Worst first, and on ties the lower CSC number, so the order is the
+       same every time the panel is opened. `clip_summary` sorts its own
+       rows the same way for the same reason. */
+    rows.sort((a, b) => (b.lost - a.lost) || (b.kept - a.kept)
+                        || (a.channel - b.channel));
+
+    return {
+      events: events.length,
+      affected: affected,
+      clean: events.length - affected,
+      blocks: blocks,
+      /* Blocks kept against the measurement: NOT lost, and not counted in
+         `blocks` or in any channel's `lost`. */
+      kept: keptBlocks,
+      /* Per channel this is exact: every event has every window, whether
+         or not anything was lost in it. There is deliberately no total
+         across the whole entry -- that would need the number of channels
+         on the probe, which a banked entry does not carry, and a
+         denominator worked out from the channels that happen to appear
+         would be a guess dressed as a measurement. */
+      possible: events.length * windows.length,
+      windows: windows,
+      channels: rows,
+      byWindow: windows.map((w) => ({
+        name: win[w].name, blocks: win[w].blocks, cue: win[w].cue,
+        kept: win[w].kept || 0,
+        channels: Object.keys(win[w].chans).length, events: win[w].events,
+      })),
+      perWindow: anyPerWindow,
+      flat: anyFlat,
+      /* Absent is not negative. `clip_measured` false means the clipping
+         check was never run before this was banked, so an empty measured
+         column is nobody having looked -- not a clean amplifier. */
+      knowsMeasured: params.clip_measured !== undefined,
+      measured: params.clip_measured === true,
+      fraction: params.clip_fraction,
+      minRun: params.clip_min_run,
+    };
+  }
+
+  /* A bar wide enough to see for one block out of sixty-four.
+     1/64 is 1.6%, so a 1.5% floor makes a single lost block visible
+     without inflating anything above it. */
+  function exclWidth(n, d) {
+    if (!(d > 0) || !(n > 0)) return 0;
+    return Math.round(Math.max(1.5, (n / d) * 100) * 10) / 10;
+  }
+
+  const exclPlural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+
+  /* Where each block came from, per channel: the measurement, the person,
+     or both. Two chips rather than one total, because merging them is the
+     thing this panel is not allowed to do. */
+  function exclWhy(c) {
+    const kids = [];
+    if (c.measured) {
+      kids.push(el('span', { class: 'excl-meas',
+        title: 'Measured: the amplifier was at its rail in '
+             + exclPlural(c.measured, 'block') + '.',
+        text: 'measured ' + c.measured }));
+    }
+    if (c.decided) {
+      kids.push(el('span', { class: 'excl-dec',
+        title: 'Decided: somebody looked at '
+             + exclPlural(c.decided, 'block') + ' and said not this one.',
+        text: 'decided ' + c.decided }));
+    }
+    if (c.both) {
+      kids.push(el('span', { class: 'excl-both',
+        title: 'Blocks that are on both lists. They are one block, not '
+             + 'two, so the two counts beside this overlap by '
+             + c.both + '.',
+        text: c.both + ' of them both' }));
+    }
+    if (c.kept) {
+      kids.push(el('span', { class: 'excl-kept',
+        title: 'Kept against the measurement: the amplifier touched its '
+             + 'rail in ' + exclPlural(c.kept, 'block') + ' and somebody '
+             + 'looked and put ' + (c.kept === 1 ? 'it' : 'them') + ' back '
+             + 'in. Not counted as lost; the analysis uses them.',
+        text: 'kept ' + c.kept + ' against the measurement' }));
+    }
+    return el('span', { class: 'excl-why' }, kids);
+  }
+
+  /* How the measurement was made, so the numbers can be defended. */
+  function exclParams(s) {
+    const lines = [];
+    if (s.knowsMeasured && !s.measured) {
+      lines.push('Clipping was never measured before this was banked, so '
+               + 'nothing here is a claim that the amplifier stayed off its '
+               + 'rail — only that nobody looked. Run "Check for '
+               + 'clipping" in Spark and bank it again to find out.');
+    } else if (s.fraction != null) {
+      lines.push('Measured: a window counted as lost where the amplifier '
+               + 'sat within '
+               + (Math.round((1 - s.fraction) * 1000) / 10)
+               + '% of its rail for ' + s.minRun + ' samples or more '
+               + '(clip_fraction ' + s.fraction + ', clip_min_run '
+               + s.minRun + ').');
+    }
+    if (s.flat) {
+      lines.push('Some of these lists name channels and not windows — '
+               + 'this entry predates the windows being kept apart. Those '
+               + 'count against all ' + s.windows.length
+               + ' windows, which is what they meant and how the coupling '
+               + 'step reads them.');
+    }
+    if (!lines.length) return null;
+    return el('ul', { class: 'fix-steps excl-why-list' },
+              lines.map((t) => el('li', { text: t })));
+  }
+
+  function exclusionCard(s) {
+    const box = el('div', { class: 'excl-sum' });
+
+    box.appendChild(el('div', { class: 'excl-head' }, [
+      el('strong', { text: s.affected + ' of '
+                         + exclPlural(s.events, 'event')
+                         + ' lose at least one block  ·  ' + s.clean
+                         + ' completely clean' }),
+      /* The unit, named where the numbers are rather than left for
+         somebody to infer. "31 channels excluded" is the sentence this is
+         instead of, and it is the one that cannot be acted on: it is
+         equally true of a channel that lost one baseline and of a channel
+         that is gone entirely. Spark's own mode bar was caught saying
+         exactly that -- "56 channel(s) clipped" over a clipping card
+         listing nine (see `flaggedOf`, arc.js) -- so a count of channels
+         is not a claim this panel makes anywhere. */
+      el('span', { text: s.blocks
+        ? exclPlural(s.blocks, 'block') + ' lost across '
+          + exclPlural(s.channels.length, 'channel')
+          + '.  A block is one event, in one window, on one channel — '
+          + s.windows.length + ' windows × ' + s.events
+          + ' events, so ' + s.possible + ' blocks per channel.'
+        : 'No channel is excluded from any window of any event here.' }),
+      s.kept
+        ? el('span', { class: 'excl-kept-say',
+            text: exclPlural(s.kept, 'block') + ' kept against the '
+                  + 'measurement — the amplifier touched its rail there and '
+                  + 'somebody put ' + (s.kept === 1 ? 'it' : 'them')
+                  + ' back in. Not counted as lost.' })
+        : null,
+    ].filter(Boolean)));
+
+    const why = exclParams(s);
+    if (why) box.appendChild(why);
+
+    if (!s.blocks && !s.kept) return box;
+
+    /* By window first, because it is the shorter answer and the one that
+       changes what the loss costs. */
+    box.appendChild(el('div', { class: 'section-label', text: 'By window' }));
+    box.appendChild(el('p', { class: 'excl-note',
+      text: 'cue1 and cue2 are the windows the coupling is computed in; '
+          + 'pre and post are the ten seconds of baseline either side. The '
+          + 'bars compare the windows with each other — how many '
+          + 'channels a recording has is not banked, so there is no honest '
+          + 'denominator for a whole window.' }));
+    const worst = s.byWindow.reduce((n, w) => Math.max(n, w.blocks), 0);
+    box.appendChild(el('div', { class: 'excl-wins' }, s.byWindow.map((w) =>
+      el('div', { class: 'excl-win' + (w.cue ? ' cue' : '') }, [
+        el('span', { class: 'excl-w-name', text: w.name }),
+        el('span', { class: 'excl-bar' }, [
+          el('i', { style: 'width:' + exclWidth(w.blocks, worst) + '%' }),
+        ]),
+        el('span', { class: 'excl-n', text: exclPlural(w.blocks, 'block') }),
+        el('span', { class: 'excl-in',
+          text: exclPlural(w.channels, 'channel') + '  ·  in '
+              + w.events + ' of ' + s.events + ' events'
+              + (w.kept ? '  ·  ' + w.kept + ' kept against the measurement'
+                        : '') }),
+      ]))));
+
+    box.appendChild(el('div', { class: 'section-label',
+                                text: 'By channel  ·  worst first' }));
+    const rows = el('div', { class: 'excl-chans' });
+    const more = el('button', { class: 'linkish' });
+    /* Held on the closure rather than on the module: the whole detail pane
+       is rebuilt whenever a selection or a version moves, and a module-level
+       flag would arrive at the next entry still open. */
+    let all = false;
+    const paint = () => {
+      rows.innerHTML = '';
+      const show = all ? s.channels : s.channels.slice(0, EXCL_ROWS);
+      show.forEach((c) => {
+        rows.appendChild(el('div', { class: 'excl-chan' }, [
+          el('strong', { class: 'excl-ch-name', text: 'CSC' + c.channel }),
+          el('span', {
+            /* Everything gone, on every window of every event, is the one
+               state worth a colour of its own -- it is the channel that
+               contributes nothing at all rather than one with a hole in
+               it. Same distinction spark.loss_grade draws as "event
+               lost". */
+            class: 'excl-bar' + (c.lost >= s.possible ? ' gone' : ''),
+          }, [
+            el('i', { style: 'width:' + exclWidth(c.lost, s.possible) + '%' }),
+          ]),
+          el('span', { class: 'excl-n',
+            text: c.lost + ' of ' + s.possible + ' blocks' }),
+          exclWhy(c),
+          el('span', { class: 'excl-in',
+            text: 'in ' + c.events + ' of ' + s.events + ' events' }),
+        ]));
+      });
+      more.textContent = all
+        ? 'show the worst ' + EXCL_ROWS + ' only'
+        : (s.channels.length - EXCL_ROWS) + ' more — show all '
+          + s.channels.length;
+    };
+    more.onclick = () => { all = !all; paint(); };
+    paint();
+    box.appendChild(rows);
+    if (s.channels.length > EXCL_ROWS) box.appendChild(more);
+    return box;
+  }
+
+  /* ======================================================================
      Loading an entry onto a recording
 
      Banked times are seconds from the start of that recording, so they only
@@ -318,6 +1773,12 @@ BARRY.views.eventbank = (function () {
 
     const matchOf = (sess) => {
       const id = sess.identity || {};
+      /* The permanent id first, the way the server matches. Checking
+         session_key first meant a recording whose header start had
+         moved by a second -- the exact case the gid exists to solve
+         -- was reported as merely "same session", and the dialog then
+         refused to preselect the one recording it was certain of. */
+      if (e.gid && id.gid && id.gid === e.gid) return 'exact';
       if (e.session_key && id.key === e.session_key) return 'exact';
       if (e.mouse != null && id.mouse === e.mouse
           && e.session != null && id.session === e.session) return 'same session';
@@ -490,6 +1951,40 @@ BARRY.views.eventbank = (function () {
       selected: e.type === t.id ? 'selected' : null,
     })));
 
+    /* The name, with the session offered beside it.
+
+       Most of the names in this bank were typed while somebody was looking
+       at the recording, when "CSC61" was obviously enough. In a list of
+       forty-five it is not. The suggestion is one press rather than
+       something that happens on its own: a name somebody chose on purpose
+       is not a mistake to be corrected. */
+    function nameField(rec) {
+      const input = el('input', { type: 'text',
+                                  value: rec.name == null ? '' : String(rec.name) });
+      f.name = input;
+      const want = BARRY.bankName.suggest(rec, typeName(rec.type));
+      const loose = BARRY.bankName.vague(rec.name, rec);
+      const use = el('button', {
+        class: 'btn ghost sm' + (loose ? ' hot' : ''),
+        text: 'Use the session name',
+        title: want,
+        onclick: () => {
+          input.value = BARRY.bankName.suggest(rec, typeName(typeSel.value));
+          input.focus();
+        },
+      });
+      return el('div', { class: 'field' }, [
+        el('label', { text: 'Name' }),
+        el('div', { class: 'bank-name-row' }, [input, use]),
+        el('span', { class: 'hint',
+          text: loose
+            ? 'This name does not say which recording it belongs to, so it '
+              + 'cannot be told apart in a list. The session name is '
+              + '“' + want + '”.'
+            : 'Suggested: “' + want + '”' }),
+      ]);
+    }
+
     showModal(el('div', {}, [
       el('div', { class: 'mh' }, [
         el('h3', { text: 'Edit entry' }),
@@ -499,7 +1994,7 @@ BARRY.views.eventbank = (function () {
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
       ]),
       el('div', { class: 'mb' }, [
-        field('name', 'Name', e.name),
+        nameField(e),
         field('project', 'Project', e.project),
         field('mouse', 'Mouse', e.mouse),
         field('session', 'Session', e.session),
@@ -527,7 +2022,7 @@ BARRY.views.eventbank = (function () {
                 note: f.note.value.trim(),
               });
               closeModal();
-              await load();
+              await load(true);
               BARRY.refreshSync();
             } catch (err) { toast(err.message, 'err'); }
           },
@@ -536,20 +2031,329 @@ BARRY.views.eventbank = (function () {
     ]));
   }
 
+  /* The dialog now holds itself open until the delete has actually happened,
+     which is the difference between this and what it used to be.
+
+     Before: the box closed on the click, and then four things happened in a
+     row -- the delete, a re-read of the whole bank, a sync status check, and
+     a health recount -- with the row still on screen throughout and the toast
+     arriving last of all. The one sentence confirming it had worked was the
+     last thing to appear, well after the person had already decided nothing
+     had.
+
+     Now the box stays up while the delete goes through, and the two reads
+     that only refresh things elsewhere no longer hold the confirmation
+     hostage: they run after, on their own time. */
   async function removeEntry(e) {
-    const ok = await BARRY.confirm(
+    await BARRY.confirm(
       'Delete "' + e.name + '"?',
       'Removes ' + e.n + ' banked event(s) and the record of where they came '
       + 'from. The recording itself is untouched.',
-      'Delete it', true);
-    if (!ok) return;
-    try {
-      await apiPost('/api/bank/' + e.id + '/delete');
-      selected = null;
-      await load();
-      BARRY.refreshSync();
-      toast('Removed from the bank', 'ok');
-    } catch (err) { toast(err.message, 'err'); }
+      'Delete it', true,
+      async () => {
+        await apiPost('/api/bank/' + e.id + '/delete');
+        selected = null;
+        toast('Removed from the bank', 'ok');
+        // Not awaited: neither changes this list, and the person is waiting
+        // on the row going away, not on a sync chip.
+        load(true);
+        BARRY.refreshSync();
+        // Removing a banked set changes whether its recording counts as
+        // patched -- that is computed from the sets, and there is one fewer.
+        healthChanged();
+      });
+  }
+
+  /* ======================================================================
+     Duplicate times
+
+     Two rows at one time are two records of one event, never two events:
+     nothing this lab records fires twice inside a tenth of a millisecond.
+     They arrive when a set is imported twice, or restarted on one machine
+     while another still holds decisions on it -- and because the two copies
+     were then decided separately, a good many of them disagree about what
+     the event was. Collapsing them therefore throws a real call away, so
+     this shows every contested time and makes the choice explicit rather
+     than sorting its way out of one.
+     ====================================================================== */
+
+  /* 0.1 ms, the same key the server matches on. Kept in step by hand: if
+     one of the two ever moves and the other does not, the panel offers a
+     collapse the server then says there is nothing to collapse for. */
+  const DUP_DP = 4;
+
+  function dupScan(evs) {
+    const at = new Map();
+    (evs || []).forEach((ev) => {
+      const t = Number(ev.start);
+      if (!isFinite(t)) return;
+      const k = t.toFixed(DUP_DP);
+      if (!at.has(k)) at.set(k, []);
+      at.get(k).push(ev);
+    });
+    let groups = 0, extra = 0, conflicts = 0;
+    at.forEach((rows) => {
+      if (rows.length < 2) return;
+      groups += 1;
+      extra += rows.length - 1;
+      const calls = new Set(rows.map((r) => r.label_id || r.label)
+                                .filter(Boolean));
+      if (calls.size > 1) conflicts += 1;
+    });
+    return { times: at.size, groups: groups, extra: extra,
+             conflicts: conflicts };
+  }
+
+  /* The strip above the events table. Shown only when there is something to
+     say, because a line reading "no duplicates" on every one of ninety
+     entries teaches people to stop reading the strip. */
+  function dupStrip(e, scan) {
+    if (!scan.groups) return null;
+    return el('div', { class: 'dup-strip' }, [
+      el('div', { class: 'dup-say' }, [
+        el('strong', { text: scan.groups + ' time'
+                           + (scan.groups === 1 ? '' : 's')
+                           + ' in this set hold more than one event' }),
+        el('span', { text: scan.extra + ' extra row'
+                         + (scan.extra === 1 ? '' : 's')
+                         + ' · ' + (e.n || 0) + ' events on '
+                         + scan.times + ' distinct times'
+                         + (scan.conflicts
+                             ? ' · ' + scan.conflicts
+                               + ' of them disagree about the call'
+                             : ' · the copies all agree') }),
+      ]),
+      el('div', { class: 'spacer' }),
+      el('button', { class: 'btn sm', text: 'Collapse them…',
+                     onclick: () => dedupeDialog(e) }),
+    ]);
+  }
+
+  async function dedupeDialog(e) {
+    /* What the collapse would do, asked of the server rather than worked
+       out here: the panel and the write must not be able to disagree about
+       which copy survives. */
+    let policy = null;
+    let note = '';
+    let busy = false;
+
+    const preview = async () => {
+      try {
+        return await apiPost(
+          '/api/bank/' + encodeURIComponent(e.id) + '/dedupe',
+          { dry_run: true, conflicts: policy });
+      } catch (err) { toast(err.message, 'err', 9000); return null; }
+    };
+
+    let rep = await preview();
+    if (!rep) return;
+    if (!rep.groups) {
+      toast('No two events in this set share a time to '
+            + rep.dp + ' decimal places.', 'ok', 6000);
+      return;
+    }
+
+    const names = e.label_names || {};
+    const nameOf = (k) => names[k] || (k === 'unspecified' ? 'undecided' : k);
+    const mixOf = (counts) => Object.keys(counts || {})
+      .sort((a, b) => counts[b] - counts[a])
+      .map((k) => el('span', { class: 'ver-chip',
+                               text: nameOf(k) + ' ' + counts[k] }));
+
+    const draw = (replace) => {
+      const needsPick = rep.conflicts > 0 && !policy;
+      /* Which copy each contested time would end up keeping, matched back
+         from the rows the server returned. */
+      const keptAt = {};
+      (rep.rows || []).forEach((r) => { keptAt[r.t] = r; });
+
+      const body = el('div', { class: 'mb' }, [
+        el('p', { class: 'dup-lede',
+          text: rep.was + ' events sit on ' + rep.times + ' distinct times. '
+              + rep.groups + ' of those times hold more than one record'
+              + (rep.undecided_dropped
+                  ? ', and ' + rep.undecided_dropped
+                    + (rep.undecided_dropped === 1
+                        ? ' of the extra rows carries'
+                        : ' of the extra rows carry')
+                    + ' no decision at all'
+                  : '')
+              + '. Collapsing them leaves ' + rep.now + ' events.' }),
+        el('p', { class: 'hint quiet',
+          text: 'Two rows count as one time when they match to '
+              + rep.dp + ' decimal places — 0.1 ms, inside a single '
+              + 'sample, so they are one event written twice.'
+              + (rep.near_pairs
+                  ? '  ' + rep.near_pairs + ' further pair'
+                    + (rep.near_pairs === 1 ? ' is' : 's are')
+                    + ' within ' + rep.near_ms + ' ms of each other without '
+                    + 'matching; those are left alone, because nothing here '
+                    + 'can tell a jittered double from a real burst.'
+                  : '') }),
+      ]);
+
+      if (rep.conflicts) {
+        body.appendChild(el('div', { class: 'section-label',
+          text: rep.conflicts + ' of them disagree about the call' }));
+        body.appendChild(el('p', { class: 'hint',
+          text: 'Two people decided two records of one candidate and both '
+              + 'calls are real, so there is no rule that settles this. '
+              + 'Pick which copy to keep and the other goes.' }));
+        const pick = el('div', { class: 'dup-pick' });
+        [['first', 'Keep the first copy',
+          'The one that appears earlier in the set.'],
+         ['last', 'Keep the last copy',
+          'The one that appears later — usually the newer import.']]
+          .forEach(([id, label, sub]) => {
+            const input = el('input', { type: 'radio', name: 'dupPolicy',
+                                        value: id });
+            input.checked = policy === id;
+            input.onchange = async () => {
+              policy = id;
+              rep = (await preview()) || rep;
+              draw(true);
+            };
+            pick.appendChild(el('label', { class: 'dup-opt'
+                                                + (policy === id ? ' on' : '') },
+              [input, el('span', {}, [
+                el('strong', { text: label }),
+                el('span', { class: 'hint', text: sub }),
+              ])]));
+          });
+        body.appendChild(pick);
+
+        const table = el('table', { class: 'preview-table' }, [
+          el('thead', {}, [el('tr', {}, ['time', 'first', 'last', 'kept']
+            .map((h) => el('th', { text: h })))]),
+          el('tbody', {}, (rep.conflict_rows || []).map((row) => {
+            const kept = keptAt[row.t];
+            const calls = row.copies.map((c) => c.label || 'undecided');
+            return el('tr', {}, [
+              el('td', { text: fmtTime(row.t) }),
+              el('td', { text: calls[0] }),
+              el('td', { text: calls[calls.length - 1] }),
+              el('td', { class: 'dup-kept',
+                         text: needsPick ? '—'
+                                         : (kept && kept.kept_label) || '' }),
+            ]);
+          })),
+        ]);
+        body.appendChild(el('div', { class: 'preview-wrap' }, [table]));
+        if (rep.rows_capped) {
+          body.appendChild(el('div', { class: 'hint',
+            text: 'Showing the first ' + (rep.conflict_rows || []).length
+                + ' contested times.' }));
+        }
+      }
+
+      body.appendChild(el('div', { class: 'section-label',
+                                   text: 'What the set would hold' }));
+      body.appendChild(el('div', { class: 'dup-mixes' }, [
+        el('div', {}, [el('span', { class: 'ver-since', text: 'now:' })]
+          .concat(mixOf(rep.by_label_was))),
+        el('div', {}, [el('span', { class: 'ver-since',
+                                    text: 'after:' })]
+          .concat(needsPick
+            ? [el('span', { class: 'ver-since none',
+                            text: 'pick a copy to see this' })]
+            : mixOf(rep.by_label_now))),
+      ]));
+
+      const says = [
+        'It lands as v' + rep.next_version + '. Nothing is deleted: v'
+          + rep.current_version + ' keeps all ' + rep.was + ' events and its '
+          + 'snapshot, so deleting v' + rep.next_version + ' afterwards puts '
+          + 'them back.',
+        'No decision is changed. Rows go; the calls on the rows that stay '
+          + 'are the ones that were already there.',
+      ];
+      if (rep.drops_fields && rep.drops_fields.length) {
+        says.push('The copies being removed carry '
+                  + rep.drops_fields.join(', ') + ' and the rows kept in '
+                  + 'their place do not, so that goes with them.');
+      }
+      if (rep.source_set_dupes) {
+        /* Named rather than acted on. Collapsing the set is a different
+           operation on somebody else's open workbench, and doing it as a
+           side effect of tidying a bank entry is not this dialog's to do.
+           But finding out afterwards that the doubles came back is how
+           somebody comes to run this twice. */
+        says.push('The curation set this was banked from ('
+                  + (rep.source_set_name || 'the set')
+                  + ') still holds ' + rep.source_set_dupes
+                  + ' duplicate time(s) of its own, so re-banking from it '
+                  + 'would put these straight back. That set has a collapse '
+                  + 'of its own at POST /api/curation/dedupe; there is no '
+                  + 'button for it yet.');
+      }
+      body.appendChild(el('div', { class: 'section-label',
+                                   text: 'What this does' }));
+      body.appendChild(el('ul', { class: 'fix-steps' },
+        says.map((s) => el('li', { text: s }))));
+
+      const noteBox = el('textarea', {
+        class: 'ver-note-input', rows: '2', value: note,
+        placeholder: 'Why this set had doubles, if you know (optional)',
+      });
+      noteBox.oninput = () => { note = noteBox.value; };
+      body.appendChild(el('div', { class: 'section-label',
+                                   text: 'Note for v' + rep.next_version }));
+      body.appendChild(noteBox);
+
+      const go = el('button', {
+        class: 'btn danger',
+        text: 'Collapse ' + rep.groups + ' time'
+            + (rep.groups === 1 ? '' : 's') + ' → v' + rep.next_version,
+        onclick: async () => {
+          if (busy) return;
+          busy = true;
+          go.disabled = true;
+          try {
+            const res = await apiPost(
+              '/api/bank/' + encodeURIComponent(e.id) + '/dedupe',
+              { dry_run: false, conflicts: policy, note: note });
+            if (res.error) { toast(res.error, 'err', 9000); return; }
+            closeModal();
+            toast(BARRY.ui.versionLabel(res.version_name != null ? res.version_name : res.version) + ': ' + res.removed
+                  + ' duplicate row(s) removed, ' + res.now + ' events left'
+                  + (res.conflicts
+                      ? ' — ' + res.conflicts + ' contested time(s) '
+                        + 'settled on the ' + policy + ' copy.'
+                      : '.'), 'ok', 10000);
+            await load(true);
+          } catch (err) {
+            toast(err.message, 'err', 9000);
+          } finally { busy = false; go.disabled = false; }
+        },
+      });
+      if (needsPick) go.disabled = true;
+
+      showModal(el('div', {}, [
+        el('div', { class: 'mh' }, [
+          el('h3', { text: 'Duplicate times' }),
+          el('span', { class: 'sub',
+            text: e.name + '  ·  ' + (e.session_label || '')
+                + '  ·  v' + rep.current_version }),
+          el('div', { class: 'spacer' }),
+          el('button', { class: 'close-x', onclick: closeModal,
+            html: '<svg viewBox="0 0 20 20">'
+                + '<path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+        ]),
+        body,
+        el('div', { class: 'mf' }, [
+          needsPick
+            ? el('span', { class: 'hint',
+                text: 'Pick which copy to keep before this can run.' })
+            : null,
+          el('div', { class: 'spacer' }),
+          el('button', { class: 'btn ghost', text: 'Cancel',
+                         onclick: closeModal }),
+          go,
+        ].filter(Boolean)),
+      ]), { replace: !!replace });
+    };
+
+    draw(false);
   }
 
   function init() {
@@ -565,6 +2369,10 @@ BARRY.views.eventbank = (function () {
     init,
     onShow: load,
     reload: load,
+    /* For web/_dev/banklayers.html: which sheet the detail pane is showing.
+       The harness needs it to ask the server for the same version the panel
+       is offering, rather than assuming which sheet it landed on. */
+    _sheetSel: () => sheetSel,
     types: () => types,
     /* Used by Xplorefinder's "Bank…" dialog so it offers the same list. */
     typeList: () => types,

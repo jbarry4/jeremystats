@@ -1,0 +1,341 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>thetacsd — the Theta view is a CSD, with a smoothing control</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1500px; height:900px; border:1px solid #333; background:#fff; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">Asked for: "the Theta view is unfortunately the theta voltage
+raster view... we want it to be a theta CSD view with an option to adjust the
+smoothing", modelled on Xplorefinder's Csdview (CSDPP2's second difference,
+interp2, symmetric colour range).
+
+What a voltage raster and a CSD differ by, measurably: the second spatial
+derivative loses the outermost channel at each end, so a CSD of n channels has
+n-2 rows where a voltage raster has n. That is the check that cannot pass by
+accident. The rest is the smoothing: it must be reachable from the pane's own
+Panel menu, it must change the picture, and turning it to 0 must give the raw
+derivative back.</p>
+<div id="out"></div>
+<iframe id="A" src="/"></iframe>
+<script>
+let bad = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, tries = 3000) {
+  for (let i = 0; i < tries; i++) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(100);
+  }
+  return null;
+}
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const ev = (src) => W().eval(src);
+const J = (src) => { const s = ev('JSON.stringify(' + src + ')');
+                     return s ? JSON.parse(s) : null; };
+
+const S = 'BARRY.views.xplore.state';
+const SESS = '(function(){var S=' + S + ';return S.sessions[S.active];})()';
+
+/* The panel payload WITHOUT its image: the data URI is hundreds of kilobytes
+   and JSON.stringify of the whole thing is the slowest part of the harness.
+   The image is compared by length and by a cheap digest instead. */
+const PD = '(function(){var p=' + S + '.panes[0],d=p&&p._panelData;'
+         + 'if(!d)return null;var im=d.image||"",h=0;'
+         + 'for(var i=0;i<im.length;i++){h=(h*31+im.charCodeAt(i))|0;}'
+         + 'return {panel:d.panel,units:d.units,smooth:d.smooth,'
+         + 'smooth_max:d.smooth_max,rows:(d.rows||[]).length,shape:d.shape,'
+         + 'clim:d.clim,upsample:d.upsample,imgLen:im.length,imgHash:h};})()';
+
+const panelData = () => J(PD);
+
+async function awaitPanel(want) {
+  return await until(() => {
+    const d = panelData();
+    if (!d || d.panel !== 'theta') return null;
+    return (want == null || Math.abs(d.smooth - want) < 1e-6) ? d : null;
+  }, 900);
+}
+
+const menuBtn = (name) =>
+  D().querySelector('.ctl-menu[data-menu="' + name + '"]');
+const menuVal = (name) => {
+  const b = menuBtn(name);
+  const v = b && b.querySelector('.ctl-menu-value');
+  return v ? v.textContent.trim() : null;
+};
+const pop = () => D().querySelector('.ctl-pop');
+async function openPop(name) {
+  if (pop()) { menuBtn(name).click(); await sleep(150); }
+  const b = menuBtn(name);
+  if (!b) return null;
+  b.click();
+  return await until(() => pop(), 60);
+}
+async function closePop() {
+  if (!pop()) return;
+  D().body.click();
+  await until(() => !pop(), 60);
+}
+const popBtn = (text) => Array.from(
+  (pop() || D()).querySelectorAll('button')).find(
+    (b) => b.textContent.trim() === text);
+const popText = () => (pop() ? pop().textContent : '');
+
+/* The app's own default, read back rather than written down twice. */
+const THETA_STD = 1;
+
+const thrown = [];
+
+(async () => {
+try {
+  W().addEventListener('error', (e) => thrown.push(String(e.message)));
+
+  /* ---------- 0. preconditions ----------
+     The pane has to be a theta pane on a recording that is actually open
+     before any of this means anything. A harness that assumes the starting
+     state reports the inverse of what is true. */
+  await until(() => ev('typeof BARRY !== "undefined" && !!BARRY.views'
+                       + ' && !!BARRY.views.xplore'), 900);
+  /* Only if nothing is open. The runner passes ?session=, and opening a
+     second recording on top of it would leave the pane pointing at one
+     session and the assertions reading another. */
+  const DEMO = 'demo:ds-tutorial';
+  if (!J(SESS)) {
+    try { await ev('BARRY.views.xplore.open(' + JSON.stringify(DEMO) + ')'); }
+    catch (e) { /* reported by the check below */ }
+  }
+  const sess = await until(() => {
+    const s = J(SESS);
+    return (s && s.info && s.info.channels && s.info.channels.length) ? s : null;
+  }, 900);
+  ck('a recording is open', !!sess, 'no session');
+  if (!sess) throw new Error('nothing open — the rest cannot mean anything');
+  const nCh = sess.info.channels.length;
+  say('note', '  ' + sess.path + '  ' + nCh + ' ch  '
+            + Math.round(sess.info.fs) + ' Hz');
+
+  /* ---------- 1. what the panel is called ---------- */
+  const defs = J('BARRY.views.xplore.state.panelDefs');
+  const theta = (defs || []).find((p) => p.id === 'theta');
+  ck('the panel registry has a theta panel', !!theta, 'none');
+  ck('and it is called a CSD, not a raster',
+     !!theta && /csd/i.test(theta.name) && !/raster/i.test(theta.name),
+     theta ? theta.name : '-');
+  say('note', '  name: ' + (theta ? theta.name : '-'));
+
+  /* ---------- 2. a voltage raster first, for the row count to differ from ---- */
+  await ev('BARRY.views.xplore.setPanes([{panel:"voltage"}],'
+           + '{col:0.5,row:0.5})');
+  const volt = await until(() => {
+    const d = panelData();
+    return (d && d.panel === 'voltage') ? d : null;
+  }, 900);
+  ck('the voltage raster draws every selected channel',
+     !!volt && volt.rows === nCh, volt ? volt.rows + ' of ' + nCh : 'no panel');
+
+  /* ---------- 3. the theta pane ---------- */
+  await ev('BARRY.views.xplore.setPanes([{panel:"theta"}],{col:0.5,row:0.5})');
+  const d1 = await awaitPanel(null);
+  ck('the theta pane renders', !!d1, 'no panel data');
+  if (!d1) throw new Error('no theta panel — the rest cannot be measured');
+  say('note', '  units=' + d1.units + '  rows=' + d1.rows + '  shape='
+            + JSON.stringify(d1.shape) + '  smooth=' + d1.smooth
+            + '  clim=[' + d1.clim.map((v) => v.toPrecision(4)).join(', ') + ']');
+
+  /* THE check. A second spatial derivative has no answer at the ends of the
+     probe, so it loses one channel at each. A band-passed voltage raster
+     would still have all of them, which is what this view used to be. */
+  ck('it lost a channel at each end — it is a second spatial derivative',
+     d1.rows === nCh - 2, d1.rows + ' rows of ' + nCh + ' channels');
+  ck('and it says so in its units — current density, over the theta band',
+     /uA\/mm3/.test(d1.units) && /4-12 Hz/.test(d1.units), d1.units);
+  ck('the colour range is symmetric about zero, as Csdview sets it',
+     Math.abs(d1.clim[0] + d1.clim[1]) < Math.abs(d1.clim[1]) * 1e-6,
+     JSON.stringify(d1.clim));
+  ck('it is interpolated up before drawing, as interp2 does',
+     d1.upsample >= 2, String(d1.upsample));
+
+  /* ---------- 4. the smoothing control ---------- */
+  ck('the strip says what the smoothing is set to',
+     /σ/.test(String(menuVal('Panel'))), String(menuVal('Panel')));
+  say('note', '  Panel button reads: ' + menuVal('Panel'));
+
+  let p = await openPop('Panel');
+  ck('the pane’s Panel menu opens', !!p, 'no popover');
+  ck('and it offers smoothing across channels',
+     /smoothing across channels/i.test(popText()), popText().slice(0, 120));
+  ck('with the probe geometry the derivative needs',
+     /spacing/i.test(popText()), 'no spacing control');
+  const none = popBtn('None');
+  const std = popBtn('Standard');
+  const heavy = popBtn('Heavy');
+  ck('three places to land on', !!none && !!std && !!heavy,
+     [!!none, !!std, !!heavy].join(','));
+  ck('and the one in force is marked',
+     !!std && /\bon\b/.test(std.className), std ? std.className : '-');
+
+  /* ---------- 5. it changes the picture ---------- */
+  const at1 = d1;
+  heavy.click();
+  const at25 = await awaitPanel(2.5);
+  ck('turning it up is accepted', !!at25, 'never reached 2.5');
+  ck('and redraws a different picture',
+     !!at25 && at25.imgHash !== at1.imgHash,
+     'identical image at sigma 1 and 2.5');
+
+  p = await openPop('Panel');
+  popBtn('None').click();
+  const at0 = await awaitPanel(0);
+  ck('turning it off is accepted', !!at0, 'never reached 0');
+  ck('and that is a third, different picture',
+     !!at0 && at0.imgHash !== at1.imgHash && at0.imgHash !== at25.imgHash,
+     'off matches one of the smoothed ones');
+
+  /* Smoothing averages the extremes down, so the auto colour range must
+     shrink as it goes up. If the server were ignoring the setting the three
+     scales would be identical. */
+  const lim = (x) => x.clim[1];
+  ck('more smoothing, a smaller colour range — it is really averaging',
+     !!at0 && !!at25 && lim(at0) > lim(at1) && lim(at1) > lim(at25),
+     [lim(at0), lim(at1), lim(at25)].map((v) => v.toPrecision(4)).join(' > '));
+
+  ck('with none of it, the strip stops claiming a sigma',
+     !/σ/.test(String(menuVal('Panel'))), String(menuVal('Panel')));
+  say('note', '  Panel button reads: ' + menuVal('Panel'));
+
+  /* ---------- 6. an arbitrary value, not just the three buttons ---------- */
+  p = await openPop('Panel');
+  const num = Array.from(pop().querySelectorAll('input[type=number]'))
+    .find((i) => {
+      const lab = i.parentNode && i.parentNode.querySelector('label');
+      return lab && /σ/.test(lab.textContent);
+    });
+  ck('the sigma is typeable, not only clickable', !!num, 'no sigma field');
+  if (num) {
+    num.value = '1.75';
+    num.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    const at175 = await awaitPanel(1.75);
+    ck('and a typed sigma is what gets drawn', !!at175, 'never reached 1.75');
+  }
+
+  /* ---------- 7. the clamp ---------- */
+  p = await openPop('Panel');
+  const num2 = Array.from(pop().querySelectorAll('input[type=number]'))
+    .find((i) => {
+      const lab = i.parentNode && i.parentNode.querySelector('label');
+      return lab && /σ/.test(lab.textContent);
+    });
+  if (num2) {
+    num2.value = '999';
+    num2.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    const big = await until(() => {
+      const x = panelData();
+      return (x && x.panel === 'theta' && x.smooth > 2) ? x : null;
+    }, 900);
+    ck('an absurd sigma is clamped rather than obeyed',
+       !!big && big.smooth <= big.smooth_max,
+       big ? big.smooth + ' vs max ' + big.smooth_max : 'no panel');
+    say('note', '  clamped to ' + (big ? big.smooth : '-')
+              + ' (max ' + (big ? big.smooth_max : '-') + ')');
+  }
+  await closePop();
+
+  /* ---------- 8. the band is this panel's, not the strip's ----------
+     Asked for: "have it always filter to 4-12 Hz... locked to that specific
+     panel regardless of any other filters set in other panels".
+
+     The test that cannot pass by accident is a high-pass ABOVE the theta
+     band. If the strip's corners reached this panel they would compose with
+     its own band-pass into an empty one, and the picture would go flat --
+     so a picture that is unchanged by a 300 Hz high-pass is a picture that
+     never saw it. */
+  p = await openPop('Panel');
+  popBtn('Standard').click();
+  const before = await awaitPanel(THETA_STD);
+  ck('back to the standard smoothing to compare against', !!before,
+     'never settled');
+  await closePop();
+
+  await ev('(function(){var S=' + S + ',s=S.sessions[S.active];'
+         + 's.hp=300;s.lp=500;s.notch=60;'
+         + 'BARRY.views.xplore.setPanes([{panel:"theta"}],'
+         + '{col:0.5,row:0.5});})()');
+  const after = await until(() => {
+    const d = panelData();
+    return (d && d.panel === 'theta' && d.imgHash === (before || {}).imgHash)
+      ? d : (d && d.panel === 'theta' ? d : null);
+  }, 900);
+  ck('a 300–500 Hz filter on the strip leaves the theta CSD alone',
+     !!after && !!before && after.imgHash === before.imgHash,
+     'the picture changed — the strip reached it');
+  ck('and the colour range did not move either',
+     !!after && !!before && after.clim[1] === before.clim[1],
+     after && before ? after.clim[1] + ' vs ' + before.clim[1] : '-');
+
+  const inp = J('(function(){var d=' + S + '.panes[0]._panelData;'
+              + 'return d?{input:d.input,band:d.band_locked}:null;})()');
+  ck('the line under the picture says 4–12, not what the strip says',
+     !!inp && /4-12 Hz/.test(String(inp.input))
+     && !/300/.test(String(inp.input)), inp ? inp.input : '-');
+  say('note', '  ' + (inp ? inp.input : '-'));
+  ck('and the panel declares which band it locked',
+     !!inp && String(inp.band) === '4,12', inp ? String(inp.band) : '-');
+
+  ck('the strip’s Filter button says the panel is locked',
+     /locked/i.test(String(menuVal('Filter'))), String(menuVal('Filter')));
+  say('note', '  Filter button reads: ' + menuVal('Filter'));
+
+  p = await openPop('Filter');
+  ck('and opening it explains that before the corners, not after',
+     /band-passes 4–12 Hz itself/.test(popText()),
+     popText().slice(0, 140));
+  ck('while saying the corners still govern the other panes',
+     /every other pane/i.test(popText()), 'no such sentence');
+  await closePop();
+
+  /* Put it back, so the refusal below fails for the reason it claims. */
+  await ev('(function(){var S=' + S + ',s=S.sessions[S.active];'
+         + 's.hp=0;s.lp=0;s.notch=0;})()');
+
+  /* ---------- 9. too few channels is a sentence, not a crash ---------- */
+  /* setPanes, not a bare refresh: refreshAll is internal, and setPanes is
+     the exported call that goes through it. */
+  await ev('(function(){var S=' + S + ',s=S.sessions[S.active];'
+         + 's.sel=new Set([0,1]);'
+         + 'BARRY.views.xplore.setPanes([{panel:"theta"}],'
+         + '{col:0.5,row:0.5});})()');
+  const err = await until(() => {
+    const n = D().querySelector('.pane-readout');
+    const t = n ? n.textContent.trim() : '';
+    return /derivative/i.test(t) ? t : null;
+  }, 300);
+  ck('two channels is refused in words, naming the reason',
+     !!err && /second spatial derivative/i.test(err),
+     err || 'no message shown');
+  say('note', '  ' + (err || '(no message)'));
+
+  ck('nothing threw while drawing any of it', thrown.length === 0,
+     thrown.join(' | '));
+
+} catch (e) {
+  say('bad', 'threw: ' + (e && e.stack ? e.stack : e));
+}
+  say('note', 'done');
+  document.title = 'DONE ok=' + (out.querySelectorAll('.ok').length)
+                 + ' fail=' + bad;
+})();
+</script>

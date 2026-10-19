@@ -12,9 +12,73 @@ const BARRY = {
     jobSeq: 0,          // last log line seen for that job
     poll: null,
     theme: 'dark',
+    vacc: false,        // VACC Mode -- the look, not the capability
   },
   views: {},
 };
+
+/* ==========================================================================
+   Is anybody here?
+   After ten minutes with no key, click, scroll or mouse movement, every
+   cloud-backed poll in the page stops (the tool feed, the presence poll, a
+   curation set's beat) and the server stops syncing altogether
+   (backend/app.py IDLE_AFTER). The first input afterwards restarts both at
+   once -- the pollers through onWake, the server through the beacon.
+
+   The beacon (POST /api/cloud/active) goes to this computer's own server,
+   never to Supabase, at most once a minute while somebody is using the page.
+   ========================================================================== */
+BARRY.idle = (function () {
+  const AFTER_MS = 10 * 60 * 1000;   // matches IDLE_AFTER in app.py
+  const TELL_MS = 60 * 1000;
+  let last = Date.now();
+  let told = 0;
+  const wake = [];
+
+  function isIdle() { return Date.now() - last >= AFTER_MS; }
+
+  function tell() {
+    told = Date.now();
+    try {
+      fetch('/api/cloud/active', { method: 'POST' }).catch(() => {});
+    } catch (e) { /* the server will fall back to counting requests */ }
+  }
+
+  function resume() {
+    for (const f of wake) {
+      try { f(); } catch (e) { /* one module's resume is not the others' */ }
+    }
+  }
+
+  function note(back) {
+    const was = isIdle();
+    last = Date.now();
+    if (was || last - told >= TELL_MS) tell();
+    if (was || back) resume();
+  }
+
+  ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart']
+    .forEach((ev) => document.addEventListener(
+      ev, () => note(false), { passive: true, capture: true }));
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) note(true);
+  });
+  tell();                              // a page just opened is somebody
+
+  return {
+    isIdle,
+    /* Should a cloud-backed poll skip this tick? Hidden, or nobody here. */
+    away() { return document.hidden || isIdle(); },
+    /* fn runs when somebody comes back -- to a hidden window, or after being
+       idle -- so a stopped poll can catch up at once. One path for both, so
+       a poll does not fire twice when both happen together. */
+    onWake(fn) { if (typeof fn === 'function') wake.push(fn); },
+    AFTER_MS,
+    /* For web/_dev/idle.html: pretend the last input was `ms` ago, so the
+       ten-minute rule can be checked without waiting ten minutes. */
+    _backdate(ms) { last = Date.now() - ms; },
+  };
+}());
 
 /* ==========================================================================
    Uncaught front-end errors
@@ -25,13 +89,15 @@ const BARRY = {
 function reportClientError(where, message, detail) {
   const text = String(message || 'Unknown error');
   try {
+    // Whatever else is wrong, do not leave the boot overlay covering it.
+    if (BARRY.boot) BARRY.boot.clear();
     const box = document.getElementById('bootError');
     if (box) {
       box.classList.remove('hidden');
       box.textContent = 'Interface error in ' + where + ': ' + text;
     }
     // Mirrored into the title so it is visible even in a headless capture.
-    document.title = 'BARRY GUI — error: ' + text.slice(0, 120);
+    document.title = 'Jarvis — error: ' + text.slice(0, 120);
   } catch (e) { /* ignore */ }
 
   try { toast('Interface error: ' + text, 'err', 12000); } catch (e) { /* early */ }
@@ -152,7 +218,7 @@ BARRY.hues = function hues(n) {
 /* ==========================================================================
    Picking one recording out of hundreds.
 
-   A <select> was fine when BARRY knew about six recordings. Scanning a drive
+   A <select> was fine when Jarvis knew about six recordings. Scanning a drive
    registers every one it walks past, so the list is now in the hundreds and a
    dropdown is the wrong control entirely -- you cannot type at it, you cannot
    see the project or whether the drive is mounted, and finding m59 s11 means
@@ -381,7 +447,84 @@ BARRY.debug = (function () {
 })();
 
 /* ---------- API ---------- */
+/* The one place that knows a request is outstanding.
+ *
+ * Every view used to answer "is anything happening?" for itself, or more
+ * often not at all -- a mutation would fire, the list would sit there showing
+ * the state before it, and a second later it would snap. api() is the single
+ * chokepoint every one of those goes through, so a counter here covers the
+ * lot, including the call sites nobody has got round to fixing properly.
+ *
+ * Two rules keep it from becoming wallpaper:
+ *
+ *   The pollers never raise it. The job dock ticks every 500ms, sync progress
+ *   every 300ms, presence every 20s. Counting those means the bar is simply
+ *   always on, which tells you nothing.
+ *
+ *   It waits 150ms before showing. Borrowed from BARRY.boot, which says it
+ *   better: complaining immediately teaches people to expect a wait that
+ *   usually is not there. Most requests here finish well inside that and the
+ *   bar never appears at all.
+ */
+const QUIET_PATHS = [
+  '/api/job/', '/api/sync/progress', '/api/sync/status', '/api/presence',
+  '/api/link', '/api/activity', '/api/debug/trace', '/api/cfc/job/',
+  '/api/panorama/estimate', '/api/cfc/estimate', '/api/spectrum/estimate',
+  '/api/discover/', '/api/toolfeed', '/api/errors/client',
+  // The warm-start watch, which ticks for the first fifteen seconds of a
+  // session. It is waiting on work that is deliberately out of the way, and
+  // a progress bar over it would put the wait back on screen.
+  '/api/warm/state',
+];
+
+const BUSY = (function () {
+  let live = 0;
+  let show = null;
+  let bar = null;
+
+  function node() {
+    if (!bar) {
+      bar = el('div', { class: 'net-bar', 'aria-hidden': 'true' });
+      document.body.appendChild(bar);
+    }
+    return bar;
+  }
+  function paint() {
+    if (live > 0) node().classList.add('on');
+    else if (bar) bar.classList.remove('on');
+  }
+  return {
+    start(path) {
+      if (QUIET_PATHS.some((p) => path.startsWith(p))) return false;
+      live += 1;
+      if (live === 1 && !show) show = setTimeout(() => { show = null; paint(); }, 150);
+      return true;
+    },
+    stop(counted) {
+      if (!counted) return;
+      live = Math.max(0, live - 1);
+      if (live === 0) {
+        if (show) { clearTimeout(show); show = null; }
+        paint();
+      }
+    },
+  };
+}());
+
+/* A wrapper rather than a `finally` threaded through the body: the real api()
+   below has five ways out, four of them throws, and counting down on each one
+   is exactly the kind of bookkeeping that gets a new exit path added past it
+   later and leaves the bar stuck on. */
 async function api(path, opts) {
+  const counted = BUSY.start(path.split('?')[0]);
+  try {
+    return await apiCall(path, opts);
+  } finally {
+    BUSY.stop(counted);
+  }
+}
+
+async function apiCall(path, opts) {
   const t0 = performance.now();
   const method = (opts && opts.method) || 'GET';
   const record = (status, error) => BARRY.debug.request({
@@ -400,19 +543,37 @@ async function api(path, opts) {
     throw new Error('Could not reach the server: ' + e.message);
   }
 
-  /* A 404 on an /api/ route means the route is not there -- which almost
-     always means the server is running older code than the page that just
-     asked for it. That happens whenever BARRY is left running while the repo
-     is updated, and the only symptom is a feature quietly doing nothing.
-     Say it once, plainly, rather than letting it look like a bug. */
-  if (res.status === 404 && path.startsWith('/api/')) {
-    staleServer(path);
-  }
+  /* 404 or 405 on an /api/ route means the route is not there -- which
+     almost always means the server is running older code than the page that
+     just asked for it. That happens whenever Jarvis is left running while the
+     repo is updated, and the only symptom is a feature quietly doing
+     nothing.
+
+     405 counts as well as 404: a route that only exists for POST answers 405
+     when the server has an older version of it, and a route the server has
+     never heard of answers 404 to a GET and 405 to a POST depending on what
+     else is registered. Treating only 404 as stale is why a failed bug
+     report said "non-JSON response (405)" and nothing else. */
+  /* A route that is not registered, as against one that ran and said no.
+     Both answer 404, and the difference is whether anything answered: a
+     route that ran returns a JSON body with an error in it, and Flask's own
+     404 page does not. Deciding before reading the body told somebody to
+     restart Jarvis because a bank entry could not be found. */
+  const maybeMissing = (res.status === 404 || res.status === 405)
+                       && path.startsWith('/api/');
 
   let data;
+  let missing = false;
   try { data = await res.json(); }
   catch (e) {
     record(res.status, 'non-JSON response');
+    missing = maybeMissing;
+    if (missing) {
+      staleServer(path);
+      throw new Error('This Jarvis is running older code than the files on '
+                      + 'disk, so it has no ' + path.split('?')[0]
+                      + '. Restart it and try again.');
+    }
     throw new Error('Server returned a non-JSON response (' + res.status + ').');
   }
   if (!res.ok || data.ok === false) {
@@ -421,24 +582,112 @@ async function api(path, opts) {
     throw new Error(msg);
   }
   record(res.status);
+  /* A payload that says it came out of the warm cache. Noticed here, in the
+     one place every request already passes through, so nothing has to
+     remember to check: a view that asks for a warmed endpoint gets the
+     watch for free, and one that does not is unaffected. */
+  if (data && data.warm && BARRY.warm) BARRY.warm.saw(data.warm);
   return data;
 }
 
-const apiPost = (path, body) =>
-  api(path, { method: 'POST', body: JSON.stringify(body || {}) });
+/* `opts` so a caller can pass an AbortSignal. A speculative request that
+   has been superseded should stop occupying a connection, not just have its
+   answer thrown away. */
+const apiPost = (path, body, opts) =>
+  api(path, Object.assign(
+    { method: 'POST', body: JSON.stringify(body || {}) }, opts || {}));
 
-/* Told once per session, not once per request: a stale server produces a
-   burst of these, and twenty identical toasts is worse than none. */
-let staleTold = false;
+/* Once per route, not once per session.
+
+   It used to be one warning for the whole session, so an early miss on one
+   route silenced every later one -- including the one that mattered, when
+   somebody tried to file a bug report and the report route was the missing
+   one. Twenty identical toasts is still worse than none, hence per route
+   rather than per request. */
+const staleSeen = new Set();
 function staleServer(path) {
-  BARRY.debug.note('warn', 'stale server: no route ' + path);
-  if (staleTold) return;
-  staleTold = true;
-  toast('This page asked the server for ' + path.split('?')[0]
-        + ' and it does not have it — BARRY is running older code than '
+  const route = path.split('?')[0];
+  BARRY.debug.note('warn', 'stale server: no route ' + route);
+  if (staleSeen.has(route)) return;
+  staleSeen.add(route);
+  toast('This page asked the server for ' + route
+        + ' and it does not have it \u2014 Jarvis is running older code than '
         + 'the files on disk. Restart it (close the window and run '
-        + '"Start BARRY GUI" again) to pick up the new version.',
+        + '"Start Jarvis" again) to pick up the new version.',
         'err', 20000);
+  showStaleBanner();
+}
+
+/* Jarvis is running code older than what is on disk.
+
+   Distinct from the 404 case below: nothing is missing, so nothing fails
+   loudly. The old code simply does the old thing, which is worse -- you
+   change a decision, press Bank, and the entry you get is the one from
+   before, with no error anywhere to say why. */
+let codeStaleShown = false;
+
+function showCodeStaleBanner(files, startedAt) {
+  if (codeStaleShown) return;
+  codeStaleShown = true;
+  const started = fmtWhen(startedAt, 'minute');
+  const bar = el('div', { class: 'stale-banner', id: 'codeStaleBanner' }, [
+    el('strong', { text: 'Restart Jarvis \u2014 it is running older code' }),
+    el('span', { text: files.length + ' file(s) have been changed since this '
+                     + 'server started' + (started ? ' at ' + started : '')
+                     + '. Nothing will error; it will just keep doing the '
+                     + 'old thing \u2014 so a fix you are expecting may '
+                     + 'appear not to work.' }),
+    el('div', { class: 'spacer', style: 'flex:1' }),
+    el('button', {
+      class: 'btn sm', text: 'Which files?',
+      onclick: () => toast('Changed since start: ' + files.join(', '),
+                           'err', 25000),
+    }),
+    el('button', {
+      class: 'btn ghost sm', text: 'Dismiss',
+      title: 'The problem does not go away, but the banner will',
+      onclick: () => bar.remove(),
+    }),
+  ]);
+  const app = document.getElementById('app') || document.body;
+  app.insertBefore(bar, app.firstChild);
+}
+
+/* A banner, not just a toast.
+
+   A toast goes away; a stale server does not. Everything added since it
+   started will fail, some of it silently, so this stays on screen until
+   Jarvis is restarted -- which is the only thing that fixes it. */
+function showStaleBanner() {
+  if (document.getElementById('staleBanner')) {
+    const n = document.getElementById('staleCount');
+    if (n) n.textContent = String(staleSeen.size);
+    return;
+  }
+  const bar = el('div', { class: 'stale-banner', id: 'staleBanner' }, [
+    el('strong', { text: 'Jarvis is running older code than the files on disk' }),
+    el('span', {}, [
+      document.createTextNode('  '),
+      el('span', { id: 'staleCount', text: String(staleSeen.size) }),
+      document.createTextNode(' feature(s) this page expects are missing from '
+                              + 'the running server. Restart Jarvis to pick '
+                              + 'them up \u2014 until then some things will '
+                              + 'fail, and saving may not work.'),
+    ]),
+    el('div', { class: 'spacer', style: 'flex:1' }),
+    el('button', {
+      class: 'btn sm', text: 'Which ones?',
+      onclick: () => toast('Missing: ' + Array.from(staleSeen).join(', '),
+                           'err', 25000),
+    }),
+    el('button', {
+      class: 'btn ghost sm', text: 'Dismiss',
+      title: 'The problem does not go away, but the banner will',
+      onclick: () => bar.remove(),
+    }),
+  ]);
+  const app = document.getElementById('app') || document.body;
+  app.insertBefore(bar, app.firstChild);
 }
 
 /* ---------- loading state ----------
@@ -500,24 +749,108 @@ function loader(label, sub) {
 }
 
 /* ---------- toasts ---------- */
+/* Re-render without throwing the typist out of the box.
+
+   A panel that rebuilds itself on input destroys the input being typed
+   into. The replacement looks identical and carries the same value, but it
+   is a different element and it does not have focus, so the next keystroke
+   is lost -- which from the outside is "it kicks me out of the text box".
+
+   The honest fix is for a panel to repaint only its list. Where that has
+   not been done, this finds the input's replacement by the things that
+   identify it and hands focus and the caret back. Cheap, and it also
+   covers whatever search box gets added next. */
+function keepFocus(render) {
+  const was = document.activeElement;
+  const tag = was && was.tagName;
+  if (tag !== 'INPUT' && tag !== 'TEXTAREA') return render();
+  const mark = {
+    tag: tag.toLowerCase(), id: was.id || '',
+    type: was.type || '', ph: was.placeholder || '',
+    cls: was.className || '', value: was.value,
+    start: was.selectionStart, end: was.selectionEnd,
+  };
+  const out = render();
+  let now = mark.id ? document.getElementById(mark.id) : null;
+  if (!now) {
+    for (const n of document.querySelectorAll(mark.tag)) {
+      if ((n.placeholder || '') === mark.ph
+          && (n.className || '') === mark.cls
+          && (n.type || '') === mark.type) { now = n; break; }
+    }
+  }
+  if (now && now !== was) {
+    try {
+      now.focus({ preventScroll: true });
+      // Only if the text is still what it was -- putting a stale caret
+      // position into different text is worse than leaving it at the end.
+      if (now.value === mark.value && mark.start != null) {
+        now.setSelectionRange(mark.start, mark.end);
+      }
+    } catch (e) { /* a type that has no selection; focus is the part that
+                     matters */ }
+  }
+  return out;
+}
+
+/* Returns a handle, so a message can be corrected rather than repeated.
+ *
+ * Nearly every call here is fire-and-forget and stays that way. But "Saving…"
+ * followed by "Saved" was impossible to say: with no handle, the second one
+ * is a second toast, and the first sits there for its full three seconds
+ * underneath it claiming the work is still going. So the app either said
+ * nothing during the wait or lied afterwards, and mostly chose nothing.
+ *
+ * `ms: 0` means "stay until I say otherwise", which is what a pending message
+ * wants -- the work decides when it is over, not a timer.
+ */
 function toast(msg, kind, ms) {
   const node = el('div', { class: 'toast' + (kind ? ' ' + kind : ''), text: msg });
   $('#toasts').appendChild(node);
-  setTimeout(() => {
+
+  let timer = null;
+  let gone = false;
+
+  const close = () => {
+    if (gone) return;
+    gone = true;
+    if (timer) clearTimeout(timer);
     node.style.opacity = '0';
     node.style.transition = 'opacity .2s';
     setTimeout(() => node.remove(), 220);
-  }, ms || (kind === 'err' ? 6000 : 3200));
+  };
+
+  const arm = (hold, k) => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    if (hold === 0) return;                 // held open on purpose
+    timer = setTimeout(close, hold || (k === 'err' ? 6000 : 3200));
+  };
+  arm(ms, kind);
+
+  return {
+    update(text, nextKind, nextMs) {
+      if (gone) return this;
+      node.textContent = text;
+      node.className = 'toast' + (nextKind ? ' ' + nextKind : '');
+      arm(nextMs === undefined ? null : nextMs, nextKind);
+      return this;
+    },
+    close,
+  };
 }
 
 /* ---------- path prompt modal ---------- */
-function askPath(title, placeholder) {
+function askPath(title, placeholder, value) {
   return new Promise((resolve) => {
     const back = $('#pathModal');
     const input = $('#pathModalInput');
     $('#pathModalTitle').textContent = title || 'Paste a path';
     input.placeholder = placeholder || '';
-    input.value = '';
+    // Prefilled when the caller knows the answer -- "who is banking these"
+    // is already in the profile, and retyping it every time is how a field
+    // ends up with three spellings of the same person in it.
+    input.value = value || '';
     back.classList.remove('hidden');
     setTimeout(() => input.focus(), 30);
 
@@ -705,24 +1038,23 @@ BARRY.sync = { git: null, root: null, index: null };
 
 BARRY.refreshSync = async function refreshSync() {
   let data;
-  try { data = await api('/api/sync/status'); } catch (e) { return; }
+  try { data = await api('/api/sync/status?head=1'); } catch (e) { return; }
   BARRY.sync = data;
-  const git = data.git || {};
-  const btn = $('#syncBtn');
-  const label = $('#syncLabel');
-  if (!git.ok) {
-    label.textContent = 'Logs';
-    btn.classList.remove('dirty');
-    btn.title = 'GUI_logs at ' + (data.root || '');
-  } else if (git.dirty) {
-    label.textContent = git.dirty + ' to commit';
-    btn.classList.add('dirty');
-    btn.title = git.dirty + ' uncommitted file(s) in GUI_logs — click for details';
-  } else {
-    label.textContent = 'Logs synced';
-    btn.classList.remove('dirty');
-    btn.title = 'GUI_logs has no uncommitted changes';
+  /* Source files written since this server started. The 404-based check
+     cannot see this case: the route is still there, it just does something
+     older than what the page expects. Banking was the example -- it wrote
+     a second entry instead of a new version, and nothing failed. */
+  if ((data.code_changed || []).length) {
+    showCodeStaleBanner(data.code_changed, data.started_at);
   }
+  /* The error count comes back in the same call, so paint it here rather
+     than only at boot and only again when the Errors view is opened. An
+     error recorded while you are somewhere else is exactly the case the
+     badge exists for, and it was the one case it missed. */
+  BARRY.setErrorCount(((data.index || {}).counts || {}).errors || 0);
+  /* The chip says where the shared database stands (syncstate.js); the
+     git state of GUI_logs, which it used to say alone, is in its title. */
+  if (BARRY.syncState) BARRY.syncState.paintRail();
 };
 
 /* Whether anything in the logs could ever conflict on a pull.
@@ -739,7 +1071,7 @@ BARRY.refreshSync = async function refreshSync() {
 /* The one thing a clone cannot carry.
 
    The repo says which project to sync to; the key deliberately is not in it,
-   so each machine has to be told once. BARRY asks on startup in the terminal
+   so each machine has to be told once. Jarvis asks on startup in the terminal
    and here, because whichever one somebody is looking at should be enough. */
 function askForKey(c) {
   const input = el('input', {
@@ -780,10 +1112,36 @@ function askForKey(c) {
     ]),
     msg,
     el('p', { class: 'hint',
-      text: 'Kept in GUI_logs/.cloud.json, which git ignores. BARRY works '
+      text: 'Kept in GUI_logs/.cloud.json, which git ignores. Jarvis works '
           + 'perfectly well without it \u2014 the sync is an addition, not a '
           + 'requirement.' }),
   ]);
+}
+
+
+/* 20 -> "20 s", 320 -> "5 min", 1800 -> "30 min". */
+function cloudPace(s) {
+  if (s < 90) return Math.round(s) + ' s';
+  return Math.round(s / 60) + ' min';
+}
+
+
+/* What this computer has asked Supabase for, from the server's own count
+   (cloud.meter) -- the free tier is priced in requests, so this is the
+   number that matters, and the one nothing showed. */
+function cloudBudget(c) {
+  const r = c.requests || {};
+  if (r.requests == null) return null;
+  const kb = Math.round((r.bytes || 0) / 1024);
+  const top = (r.by_caller || []).slice(0, 3)
+    .map((x) => x.key.replace(/^[^.]*\./, '') + ' ' + x.n).join(', ');
+  const hrs = (r.covers_s || 0) < (r.window_s || 3600) * 0.9
+    ? ' since Jarvis started' : ' in the last hour';
+  return el('div', { class: 'hint cloud-budget',
+    text: r.requests + ' request' + (r.requests === 1 ? '' : 's')
+        + ' to Supabase' + hrs + ' (' + kb + ' KB back)'
+        + (top ? ' — ' + top : '')
+        + (r.failed ? '; ' + r.failed + ' failed' : '') });
 }
 
 
@@ -797,7 +1155,7 @@ function cloudNote() {
       box.appendChild(el('div', { class: 'cloud-err',
         text: 'cloud.json in the repo contains a key. That file is tracked '
             + 'by git, so treat the key as public: rotate it in the Supabase '
-            + 'dashboard and paste the new one below. BARRY is ignoring the '
+            + 'dashboard and paste the new one below. Jarvis is ignoring the '
             + 'one in the file.' }));
     }
     if (c.needs_key) { box.appendChild(askForKey(c)); return; }
@@ -810,20 +1168,74 @@ function cloudNote() {
     }
     const last = c.last || {};
     const when = last.at ? new Date(last.at).toLocaleTimeString() : 'not yet';
+    /* A schema a migration behind. Worth saying loudly and worth saying
+       here: a column the database has not got is dropped on the way up so
+       that the rest of the sync survives, and the cost of that kindness is
+       that the field silently never travels. */
+    api('/api/sync/pending-migrations').then((m) => {
+      if (!m || !m.run || !m.run.length) return;
+      const cols = Object.keys(m.pending || {}).map(
+        (t) => t + ': ' + m.pending[t].join(', '));
+      box.insertBefore(el('div', { class: 'cloud-err mig-pending' }, [
+        el('strong', { text: 'The shared database is behind this copy of '
+                           + 'BARRY. ' }),
+        el('span', { text: 'Run ' }),
+        el('code', { text: m.run.join(' and ') }),
+        el('span', { text: ' from supabase/ in the SQL editor. Until then '
+                         + 'these fields are dropped on the way up and stay '
+                         + 'on this machine only — everything else syncs '
+                         + 'normally.' }),
+        el('div', { class: 'mig-cols', text: cols.join('   ·   ') }),
+        m.unaccounted && m.unaccounted.length
+          ? el('div', { class: 'mig-cols',
+              text: 'No migration accounts for: '
+                  + m.unaccounted.join(', ') + '. That is worth looking at.' })
+          : null,
+      ].filter(Boolean)), box.firstChild);
+    }).catch(() => { /* an older server has no such route */ });
     box.appendChild(el('div', { class: 'cloud-line' }, [
       el('span', { class: 'dot' + (last.ok === false ? ' bad'
                                    : (last.ok ? ' ok' : '')) }),
       el('strong', { text: c.project || 'Supabase' }),
+      /* The pace it is actually on, and why -- it changes with who is
+         working (see _cloud_loop) -- rather than the configured floor. */
       el('span', { class: 'hint',
-        text: c.auto ? 'syncing every ' + c.interval + 's' : 'automatic sync '
-            + 'is off' }),
+        text: !c.auto ? 'automatic sync is off'
+          : (c.pull_interval_s
+            ? 'checking every ' + cloudPace(c.pull_interval_s)
+              + (c.pace ? ' — ' + c.pace : '')
+            : (c.pace || 'syncing')) }),
       el('div', { class: 'spacer' }),
       el('button', {
         class: 'btn ghost sm', text: last.running ? 'Syncing…' : 'Sync now',
         disabled: last.running ? 'disabled' : null,
         onclick: async (e) => {
           e.target.disabled = true;
-          e.target.textContent = 'Syncing…';
+          /* Say where it has got to, rather than nothing for four seconds.
+
+             A full sync is three or four seconds and the registry read
+             alone is five, and the button used to sit there saying
+             "Syncing…" for all of it -- which is indistinguishable from
+             hung. The server has always known which table it was on; the
+             button simply never asked. */
+          const label = e.target;
+          let stop = false;
+          const watch = async () => {
+            while (!stop) {
+              try {
+                const p = await api('/api/sync/progress');
+                const st = (p && p.step) || {};
+                if (st.running) {
+                  const pct = st.of ? Math.round(100 * st.done / st.of) : null;
+                  label.textContent = (st.phase || 'syncing')
+                    + (st.table ? ' ' + st.table : '')
+                    + (pct != null ? '  ' + pct + '%' : '');
+                }
+              } catch (err) { /* the sync itself is what matters */ }
+              await new Promise((r) => setTimeout(r, 350));
+            }
+          };
+          watch();
           try {
             const r = await apiPost('/api/cloud/sync', {});
             const l = r.last || {};
@@ -832,6 +1244,7 @@ function cloudNote() {
                   + (l.downloaded ? ', downloaded ' + l.downloaded + ' file(s)'
                      : '') + '.', l.ok === false ? 'err' : 'ok', 7000);
           } catch (err) { toast(err.message, 'err', 8000); }
+          stop = true;
           showSync();
         },
       }),
@@ -843,21 +1256,47 @@ function cloudNote() {
           + (last.pulled ? '  ·  brought back ' + last.pulled : '')
           + (last.downloaded ? '  ·  ' + last.downloaded + ' file(s) down'
              : '') }));
-    if (last.error) {
-      box.appendChild(el('pre', { class: 'cloud-err', text: last.error }));
-    }
+    const budget = cloudBudget(c);
+    if (budget) box.appendChild(budget);
+    if (last.error) box.appendChild(cloudErrorNote(last));
     box.appendChild(el('p', { class: 'hint',
-      text: 'BARRY writes here first and syncs in the background, so none of '
+      text: 'Jarvis writes here first and syncs in the background, so none of '
           + 'this is in the way if the network is down.' }));
   }).catch(() => {
     box.innerHTML = '';
     box.appendChild(el('p', { class: 'hint',
-      text: 'This BARRY does not have the Supabase sync — restart it to '
+      text: 'This Jarvis does not have the Supabase sync — restart it to '
           + 'pick up the new version.' }));
   });
   return box;
 }
 
+
+/* The last sync's failure, as a sentence and then, folded, as it came.
+
+   The raw text is PostgREST's or Cloudflare's: a 522 is three lines of JSON
+   that all mean "the database did not answer", and it was printed whole in
+   red as though something here had broken. */
+function cloudErrorNote(last) {
+  const err = String(last.error || '');
+  const code = (err.match(/\bHTTP (\d{3})\b/) || err.match(/\b(5\d\d)\b/)
+                || [])[1];
+  const away = /^5(0[234]|2[0-4])$/.test(code || '')
+    || /timed out|Timeout|cannot reach|not answering/i.test(err);
+  const when = last.at ? new Date(last.at).toLocaleTimeString() : '';
+  const say = away
+    ? 'The shared database did not answer' + (code ? ' (' + code + ')' : '')
+      + (when ? ' at ' + when : '') + '. Jarvis waits and asks again by '
+      + 'itself; everything made here is kept and goes up when it answers.'
+    : 'The last sync failed' + (when ? ' at ' + when : '') + '.';
+  return el('div', { class: 'cloud-err-box' }, [
+    el('p', { class: away ? 'hint warn-text' : 'cloud-err', text: say }),
+    el('details', { class: 'cloud-err-raw' }, [
+      el('summary', { text: 'What it said' }),
+      el('pre', { text: err }),
+    ]),
+  ]);
+}
 
 function conflictNote(c) {
   if (!c) return null;
@@ -877,9 +1316,12 @@ function conflictNote(c) {
     });
   }
   return el('div', { class: 'sync-warn' }, [
-    el('p', { text: c.shared.length + ' file(s) here are shared between '
-                  + 'machines, so two people editing the same thing would '
-                  + 'collide on a pull:' }),
+    el('p', { text: (c.n_shared || c.shared.length) + ' file(s) here are '
+                  + 'shared between machines, so two people editing the same '
+                  + 'thing would collide on a pull'
+                  + ((c.n_shared || 0) > c.shared.length
+                     ? ' (the first ' + c.shared.length + ' are listed)' : '')
+                  + ':' }),
     el('pre', { text: c.shared.join('\n') }),
     el('p', { class: 'hint',
       text: 'Route whatever writes them through a shards.Book, or add them '
@@ -888,6 +1330,164 @@ function conflictNote(c) {
   ]);
 }
 
+
+
+/* NOT SHARED YET (2026-10-06): everything made on this machine that has not
+   reached the shared database -- bank entries, curation sets, layer sheets,
+   artifacts (Root Canal singles, pools, margins...), Braces sets and AI
+   Beta runs -- each by its name. Filled after the panel opens, from the
+   same push cursor the marks use, so asking costs nothing at the database.
+
+   Two lists, because they are two different things. What is WAITING will
+   go up by itself and is worth seeing by name. What is kept here ON
+   PURPOSE -- demo records, a sheet whose recording the registry no longer
+   has -- never will, and listing it as "not shared yet" made a clean
+   machine read as ten things behind (2026-10-07: five identical demo bank
+   rows, two demo sets, three sheets). That half is folded, grouped, and
+   says why. */
+const UNSHARED_KIND = {
+  bank: ['Event Bank entry', 'Event Bank entries'],
+  curation: ['Checkup set', 'Checkup sets'],
+  layers: ['layer sheet', 'layer sheets'],
+  artifacts: ['artifact', 'artifacts'],
+  braces: ['Braces set', 'Braces sets'],
+  aibeta: ['AI Beta run', 'AI Beta runs'],
+};
+
+function unsharedNoun(kind, n) {
+  const w = UNSHARED_KIND[kind] || [kind, kind];
+  return n + ' ' + (n === 1 ? w[0] : w[1]);
+}
+
+function unsharedSection() {
+  const box = el('div', { class: 'sync-unshared' }, [
+    el('p', { class: 'hint', text: 'Looking for anything not shared yet\u2026' }),
+  ]);
+  api('/api/cloud/unshared').then((got) => {
+    box.innerHTML = '';
+    if (!got.on) {
+      box.appendChild(el('p', { class: 'hint',
+        text: 'This computer is not connected to the shared database, so '
+            + 'nothing made here leaves it except by git.' }));
+      return;
+    }
+    const rows = got.rows || [];
+    const pending = rows.filter((r) => r.state !== 'local');
+    const kept = rows.filter((r) => r.state === 'local');
+    if (!pending.length) {
+      box.appendChild(el('p', { class: 'hint sync-ok',
+        text: 'Everything made here is in the shared database.' }));
+    } else {
+      const sd = BARRY.syncState && BARRY.syncState.data;
+      const failing = sd && sd.last && sd.last.ok === false;
+      box.appendChild(el('h4', { text: 'Not shared yet' }));
+      box.appendChild(el('p', { class: 'hint',
+        text: pending.length + ' thing' + (pending.length === 1 ? '' : 's')
+          + ' made here ' + (pending.length === 1 ? 'has' : 'have')
+          + ' not reached the shared database. '
+          + (failing ? 'The last sync did not get through, so '
+                       + (pending.length === 1 ? 'it waits' : 'they wait')
+                       + ' for the database to answer.'
+                     : (pending.length === 1 ? 'It goes' : 'They go')
+                       + ' up by itself within a minute.') }));
+      const STATE = { waiting: 'sending', unknown: 'not checked yet' };
+      box.appendChild(el('table', { class: 'sync-unshared-tbl' }, [
+        el('thead', {}, [el('tr', {}, ['What', 'Name', 'State']
+          .map((t) => el('th', { text: t })))]),
+        el('tbody', {}, pending.map((r) => el('tr', {}, [
+          el('td', { text: (UNSHARED_KIND[r.kind] || [r.kind])[0] }),
+          el('td', { text: r.name || r.id, title: r.id }),
+          el('td', { text: STATE[r.state] || r.state }),
+        ]))),
+      ]));
+    }
+    if (kept.length) box.appendChild(keptHere(kept));
+  }).catch((e) => {
+    box.innerHTML = '';
+    box.appendChild(el('p', { class: 'hint',
+      text: 'Could not ask what is not shared yet: ' + e.message }));
+  });
+  return box;
+}
+
+/* What never leaves this computer, folded and grouped by why. */
+function keptHere(rows) {
+  const groups = {};
+  for (const r of rows) (groups[r.why || 'other'] = groups[r.why || 'other']
+                         || []).push(r);
+  const counted = (list) => {
+    const n = {};
+    for (const r of list) n[r.kind] = (n[r.kind] || 0) + 1;
+    return Object.keys(n).map((k) => unsharedNoun(k, n[k])).join(', ');
+  };
+  const parts = [];
+  if (groups.demo) {
+    parts.push(el('p', {}, [
+      el('strong', { text: 'Demo and harness records' }),
+      el('span', { text: ', which are never shared, on purpose: '
+                         + counted(groups.demo) + '.' }),
+    ]));
+  }
+  if (groups['no recording']) {
+    parts.push(el('p', {}, [
+      el('strong', { text: 'Recordings the registry does not have' }),
+      el('span', { text: ' \u2014 the shared database files everything '
+                         + 'under its recording, so these have nowhere to '
+                         + 'go:' }),
+    ]));
+    parts.push(el('ul', {}, groups['no recording'].map((r) => {
+      const what = (UNSHARED_KIND[r.kind] || [r.kind])[0];
+      const n = r.n_labels != null ? r.n_labels + ' label'
+                                     + (r.n_labels === 1 ? '' : 's')
+              : r.n_events != null ? r.n_events + ' event'
+                                     + (r.n_events === 1 ? '' : 's') : null;
+      return el('li', { title: r.id }, [
+        el('span', { text: what + ' \u00b7 ' + (r.name || r.id)
+                           + (n ? ' (' + n + ')' : '') }),
+        el('span', { class: 'hint',
+          text: r.now_gid
+            ? ' \u2014 the recording is in the registry under a newer id ('
+              + r.now_gid + '); this is filed under its old one, ' + r.id
+              + '.'
+            : ' \u2014 no recording with this id (' + r.id + ') or this '
+              + 'name is registered.' }),
+      ]);
+    })));
+  }
+  for (const why of Object.keys(groups)) {
+    if (why === 'demo' || why === 'no recording') continue;
+    const WHY = { 'no table': 'the shared database has no table for these '
+                              + 'yet (supabase/21_shard_files.sql)' };
+    parts.push(el('p', {}, [
+      el('strong', { text: counted(groups[why]) }),
+      el('span', { text: ' \u2014 ' + (WHY[why] || why) + '.' }),
+    ]));
+  }
+  return el('details', { class: 'sync-local' }, [
+    el('summary', { text: rows.length + ' kept on this computer on purpose' }),
+  ].concat(parts));
+}
+
+/* GUI_logs' git state on the panel's top row. "[WinError 2] The system
+   cannot find the file specified" was what a computer with no git on PATH
+   showed here; the server now looks where Git for Windows and GitHub
+   Desktop put theirs, and says so in words when there is none. */
+function gitChip(git) {
+  if (git.ok) {
+    return el('span', { class: 'stat-chip ' + (git.dirty ? 'warn' : 'good'),
+                        text: git.dirty ? git.dirty + ' uncommitted' : 'clean' });
+  }
+  const err = String(git.error || '');
+  const missing = git.missing || /WinError 2|cannot find the file|No such file/i
+    .test(err);
+  return el('span', {
+    class: 'stat-chip' + (missing ? '' : ' warn'),
+    text: missing ? 'git not found' : 'git: not a repository',
+    title: missing ? (git.missing ? err : 'Jarvis cannot find git on this '
+                      + 'computer. Records still reach the other computers '
+                      + 'through the shared database.') : err,
+  });
+}
 
 function showSync() {
   const d = BARRY.sync || {};
@@ -904,28 +1504,39 @@ function showSync() {
                      onclick: closeModal }),
     ]),
     el('div', { class: 'mb' }, [
-      el('div', { class: 'fb-stats' }, [
+      el('div', { class: 'chip-row' }, [
         el('span', { class: 'stat-chip', text: (counts.runs || 0) + ' runs' }),
         el('span', { class: 'stat-chip', text: (counts.sessions || 0) + ' sessions' }),
         el('span', { class: 'stat-chip', text: (counts.errors || 0) + ' errors' }),
-        git.ok
-          ? el('span', { class: 'stat-chip ' + (git.dirty ? 'warn' : 'good'),
-                         text: git.dirty ? git.dirty + ' uncommitted' : 'clean' })
-          : el('span', { class: 'stat-chip warn', text: git.error || 'not a git repo' }),
+        gitChip(git),
       ]),
-      el('div', { class: 'section-label', text: 'How syncing works' }),
-      el('p', { style: 'font-size:12.5px;line-height:1.7;color:var(--text-2)' , text:
-        'BARRY writes every run, bad-channel mark, preset and error into GUI_logs as '
-        + 'plain JSON — one file per run and per session, so git merges them without '
-        + 'conflict. It never commits or pushes on its own.' }),
-      el('div', { class: 'source-box' }, [
+      /* Two ways a record leaves this computer, one section each. They
+         were one scrolling box -- the database's status, the git
+         commands and a conflict warning together, with the button
+         clipped at its edge and the next heading drawn over its foot. */
+      el('div', { class: 'section-label', text: 'The shared database' }),
+      el('div', { class: 'sync-section' }, [
         cloudNote(),
-        conflictNote(d.conflicts),
-        el('pre', { text: 'git add "BARRY GUI/GUI_logs"\ngit commit -m "session logs"\ngit push\n\n'
-                          + '# to pick up everyone else\'s work:\ngit pull' }),
+        unsharedSection(),
       ]),
-      files.length ? el('div', { class: 'section-label', text: 'Uncommitted files' }) : null,
-      files.length ? el('div', { class: 'source-box' }, [el('pre', { text: files.join('\n') })]) : null,
+      el('div', { class: 'section-label', text: 'Git' }),
+      el('div', { class: 'sync-section sync-git' }, [
+        el('p', { class: 'hint',
+          text: 'GUI_logs is also a folder in the repository: every run, '
+              + 'bad-channel mark, preset and error is a JSON file, one per '
+              + 'machine, so git merges them without conflict. Jarvis never '
+              + 'commits or pushes on its own.' }),
+        conflictNote(d.conflicts),
+        git.ok
+          ? el('pre', { text: 'git add "BARRY GUI/GUI_logs"\ngit commit -m "session logs"\ngit push\n\n'
+                              + '# to pick up everyone else\'s work:\ngit pull' })
+          : null,
+        files.length ? el('details', { class: 'sync-files' }, [
+          el('summary', { text: files.length + ' uncommitted file'
+                                + (files.length === 1 ? '' : 's') }),
+          el('pre', { text: files.join('\n') }),
+        ]) : null,
+      ].filter(Boolean)),
     ]),
     el('div', { class: 'mf' }, [
       el('button', { class: 'btn ghost sm', text: 'Open folder',
@@ -942,9 +1553,129 @@ function showSync() {
   ]));
 }
 
+/* ==========================================================================
+   The version, and the patch notes behind it.
+
+   Read from CHANGELOG.md by the server, which is the only place the version
+   is written. Two sources of one fact drift, and the one that drifts is
+   always the one nobody thought to update.
+   ========================================================================== */
+BARRY.notes = (function () {
+  let data = null;
+
+  /* Two sizes of one answer. Boot asks only for what the chip shows --
+     `head=1` is about a hundred bytes -- because the full notes are 450 kB
+     and were arriving before the first screen had settled, to paint a chip.
+     `open` asks for the rest when somebody actually wants to read them. */
+  async function load(full) {
+    try {
+      data = await api(full ? '/api/notes' : '/api/notes?head=1');
+    } catch (e) {
+      data = null;
+    }
+    paint();
+    return data;
+  }
+
+  function paint() {
+    const chip = document.getElementById('verChip');
+    if (!chip) return;
+    const v = data && data.version;
+    chip.classList.toggle('hidden', !v);
+    if (!v) return;
+    chip.textContent = 'v' + v;
+    const run = (data && data.running) || null;
+    /* The commit as well as the version, because "we are both on 2026.09.08"
+       and "we are both on 65ece68" are different claims, and the second is
+       the one that settles an argument about why something behaves
+       differently for one of you. */
+    chip.title = 'Jarvis ' + v
+      + (run ? '  ·  ' + run.commit + (run.dirty ? ' + local changes' : '')
+             + (run.branch ? '  ·  ' + run.branch : '')
+             : '')
+      + '\nClick for the patch notes';
+    chip.classList.toggle('dirty', !!(run && run.dirty));
+  }
+
+  function open() {
+    // A failed read comes back `ok: false` with no entries, and has to reach
+    // the error toast below rather than doing nothing.
+    if (!data || (data.ok && !data.entries)) {
+      load(true).then((d) => { if (d && (d.entries || !d.ok)) open(); });
+      return;
+    }
+    if (!data.ok) {
+      toast(data.error || 'There are no patch notes to show.', 'err', 8000);
+      return;
+    }
+
+    const body = el('div', { class: 'mb notes-body' });
+    if (data.preamble) {
+      body.appendChild(el('p', { class: 'hint notes-pre',
+                                 text: data.preamble }));
+    }
+    const run = data.running;
+    if (run) {
+      body.appendChild(el('p', { class: 'confirm-sub' + (run.dirty ? ' warn' : ''),
+        text: 'This machine is running ' + run.commit
+            + (run.branch ? ' on ' + run.branch : '')
+            + (run.at ? ', committed ' + fmtWhen(run.at, 'minute')
+                      : '')
+            + (run.dirty
+                ? ' — with uncommitted changes, so it may not match what the '
+                  + 'notes describe.'
+                : '.') }));
+    }
+
+    for (const e of (data.entries || [])) {
+      body.appendChild(el('div', { class: 'notes-rel' }, [
+        el('div', { class: 'notes-rel-head' }, [
+          el('span', { class: 'notes-ver', text: e.version }),
+          e.title ? el('span', { class: 'notes-title', text: e.title }) : null,
+        ].filter(Boolean)),
+      ].concat((e.sections || []).map((sec) =>
+        el('div', { class: 'notes-sec' }, [
+          sec.name ? el('h4', { text: sec.name }) : null,
+        ].concat(
+          (sec.prose || []).map((t) => el('p', { text: t })),
+          sec.items && sec.items.length
+            ? [el('ul', {}, sec.items.map((t) => el('li', { text: t })))]
+            : []
+        ).filter(Boolean))
+      ))));
+    }
+
+    showModal(el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'What changed' }),
+        el('span', { class: 'sub', text: 'Jarvis ' + (data.version || '') }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      body,
+      el('div', { class: 'mf' }, [
+        el('span', { class: 'hint',
+          text: 'These live in CHANGELOG.md beside the app.' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn', text: 'Close', onclick: closeModal }),
+      ]),
+    ]));
+  }
+
+  function wire() {
+    const chip = document.getElementById('verChip');
+    if (chip) chip.addEventListener('click', open);
+    load();
+  }
+
+  return { load, open, wire, get: () => data };
+})();
+
 BARRY.setErrorCount = function setErrorCount(n) {
   const b = $('#errBadge');
   if (!b) return;
+  n = Number(n) || 0;
   b.textContent = String(n);
   b.classList.toggle('hidden', !n);
 };
@@ -954,7 +1685,7 @@ BARRY.setErrorCount = function setErrorCount(n) {
    ========================================================================== */
 const VIEWS = ['pipeline', 'explorer', 'xplore', 'sessions', 'history',
                'errors', 'results', 'storyboard', 'misc', 'eventbank',
-               'toolkit'];
+               'toolkit', 'comod', 'spectrum'];
 
 /* ==========================================================================
    The rail: full, icons, away
@@ -972,22 +1703,89 @@ function railState() {
   } catch (e) { return 'full'; }
 }
 
+/* What the whole cycle is, said in one place.
+
+   The tooltip used to name only the next step, which meant the click that
+   hides the bar entirely announced itself after the fact. Now the button
+   carries where you are and where you are going. */
+const RAIL_SAYS = {
+  full:  { next: 'Shrink the menu to icons',
+           cycle: 'Menu · full → icons → hidden' },
+  icons: { next: 'Hide the menu completely',
+           cycle: 'Icons · full → icons → hidden' },
+  away:  { next: 'Bring the menu back',
+           cycle: 'Hidden · click to go back to the full menu' },
+};
+
 function setRail(state, remember) {
   const app = document.getElementById('app');
   if (!app) return;
   const s = RAIL_STATES.includes(state) ? state : 'full';
   app.classList.toggle('rail-icons', s === 'icons');
   app.classList.toggle('rail-away', s === 'away');
+
   const btn = document.getElementById('railToggle');
   if (btn) {
-    btn.title = s === 'full' ? 'Collapse the menu to icons'
-      : s === 'icons' ? 'Hide the menu' : 'Show the menu';
+    const says = RAIL_SAYS[s] || RAIL_SAYS.full;
+    btn.title = says.next + '\n' + says.cycle;
+    // Which of the three positions, on the button itself.
+    const at = RAIL_STATES.indexOf(s);
+    btn.querySelectorAll('.rail-pips i').forEach((pip, i) => {
+      pip.classList.toggle('on', i === at);
+      pip.classList.toggle('past', i < at);
+    });
   }
+
   if (remember !== false) {
     try { localStorage.setItem('barry.rail', s); } catch (e) { /* ignore */ }
   }
-  // Every canvas in the workspace just changed width.
+  railHint();
+
+  /* Coming back into view: out of `display: none` first, or there is
+     nothing on screen for the slide to move. */
+  if (s !== 'away') app.classList.remove('rail-gone');
+
+  /* Every canvas in the workspace just changed width -- but the grid is
+     mid-transition, so measuring now gives the width it is leaving. Once
+     immediately, so anything cheap keeps up with the movement, and again
+     when the movement is over, which is the size that will actually be on
+     screen. */
   window.dispatchEvent(new Event('resize'));
+  clearTimeout(setRail._settle);
+  setRail._settle = setTimeout(() => {
+    /* Now that it has finished sliding out, take it out of the layout.
+
+       Checked against the current state rather than the `s` this call was
+       made with, because two quick clicks would otherwise have the first
+       one's timer hide a rail the second one brought back.
+
+       On a timer and not `transitionend`: that event does not arrive if the
+       transition is interrupted, cancelled, or never runs, and a rail stuck
+       half-out because an event went missing is worse than one that does
+       not animate. */
+    app.classList.toggle('rail-gone', railState() === 'away');
+    window.dispatchEvent(new Event('resize'));
+  }, 340);
+
+  /* And if it is already away at load, there is no movement to wait for. */
+  if (remember === false && s === 'away') app.classList.add('rail-gone');
+}
+
+/* The hint under the button, while it is still news.
+
+   Gone for good once somebody has reached the hidden state, because at that
+   point they have found the thing it was pointing at. */
+function railHint() {
+  const box = document.getElementById('railHint');
+  if (!box) return;
+  let seen = false;
+  try { seen = localStorage.getItem('barry.railSeen') === '1'; }
+  catch (e) { seen = false; }
+  if (railState() === 'away' && !seen) {
+    try { localStorage.setItem('barry.railSeen', '1'); } catch (e) { /* ok */ }
+    seen = true;
+  }
+  box.classList.toggle('hidden', seen || railState() !== 'full');
 }
 
 function cycleRail() {
@@ -1030,10 +1828,61 @@ const MODES = {
     what: 'Labelling layers · drag on the rail to set a boundary '
         + '· the aids are in the second window',
   },
+  cfc: {
+    name: 'Braid',
+    /* The banner is the promise. The other two modes take a set off
+       somebody, move a bench, write decisions; this one reads. Saying so
+       where it cannot be missed is cheaper than anyone having to wonder,
+       and it is the only reason this mode has a `what` worth the room. */
+    what: 'Looking only · nothing here is saved · C for a '
+        + 'comodulogram of the window',
+  },
+  braces: {
+    name: 'Braces',
+    /* Worth a `what` where curation's is not: this mode draws each stamp
+       TWICE, and a viewer who does not know that is looking at twice as
+       many dentate spikes as the recording has. */
+    what: 'Every stamp drawn where it was and where it goes '
+        + '\u00b7 n / p to step \u00b7 [ and ] to move it a millisecond',
+  },
+  arcconfirm: {
+    name: 'Confirm cue pairs',
+    /* Worth a `what`: the drawing shows pulses that were DROPPED as well
+       as the ones that were kept, and somebody who did not know that would
+       count the dashed ones and think the pairing had missed them. */
+    what: 'Every pulse drawn, dropped ones dashed · the four analysis '
+        + 'windows shaded · n / p to step',
+  },
+  arcclean: {
+    name: 'Clean cue pairs',
+    what: 'Saturated stretches marked on the channels that saturated '
+        + '· nothing here is saved until you file the pairs',
+  },
+  coupling: {
+    name: 'Coupling',
+    /* Worth a `what` for the same reason Braid's is: this mode computes and
+       shows, and writes nothing. A saved connectivity matrix is Circuit's
+       job, one step later, and somebody who thought this one was banking
+       would go looking afterwards for numbers that were never kept. */
+    what: 'Looking only · nothing here is saved · pick two '
+        + 'regions and a boundary',
+  },
+  panning: {
+    name: 'Panning',
+    /* Worth a `what`: merging is the one thing here that is not on a
+       button you can see until you need it, and two events a few
+       milliseconds apart look like one line on the traces. */
+    what: 'Each event in the colour of the detector that found it '
+        + '· shift-click a second one on the strip, M to merge '
+        + '· Z undoes',
+  },
   curate: {
     name: 'DS curation',
-    what: 'Judging candidates · Y keeps, N rejects, ←/→ move '
-        + '· the aids are in the second window',
+    /* No `what`. It said "Y keeps, N rejects", and neither key does
+       anything: a set carries its own vocabulary and its own keys, which
+       the mode's own bar shows next to each category. A banner that
+       misstates the controls is worse than no banner, and the bar below it
+       was already saying the true version. */
   },
 };
 
@@ -1042,9 +1891,48 @@ let modeLeaveFn = null;
 /* Turn a mode on or off. `leave` is what the Leave button calls; without one
    the button is hidden, because a way out that does nothing is worse than
    none. */
+/* What mode we are in, so a change can be told from a repeat. */
+let modeNow = null;
+
 function setMode(kind, leave) {
   const app = document.getElementById('app');
   if (!app) return;
+
+  /* Every real change, with what asked for it.
+
+     Reported as "sometimes when on event curation it snaps to stratascope
+     and snaps back", which nothing in the code accounts for: `setMode` is
+     the only thing that writes the banner, and the only route to
+     `setMode('strata')` is `strata.enter()`, which is called from two click
+     handlers and nowhere else.
+
+     So rather than guess at it, this records the transition and the stack
+     that caused it. A glitch that happens sometimes and leaves no trace is
+     one nobody can fix; the next time it happens the debug report will name
+     whatever called this. */
+  if (kind !== modeNow) {
+    try {
+      const from = modeNow, to = kind;
+      modeNow = kind;
+      const stack = (new Error().stack || '').split('\n').slice(2, 5)
+        .map((s) => s.trim().replace(/^at\s+/, '')).join(' < ');
+      /* How long since the last click or keypress.
+
+         A mode change is meant to be something a person does, so one that
+         happens seconds after the last input is worth being able to see
+         afterwards. Not an error -- entering StrataScope waits on a
+         session opening and that legitimately takes seconds -- but the
+         difference between "the user did this" and "something did this"
+         is exactly what was missing when StrataScope was reported to snap
+         into curation on its own. */
+      BARRY.activity.log('mode.change', {
+        from: from, to: to, via: stack,
+        since_gesture_ms: _lastGesture ? (Date.now() - _lastGesture) : null,
+      });
+      noticeBounce(from, to, stack);
+    } catch (e) { modeNow = kind; }
+  }
+
   for (const k of Object.keys(MODES)) app.classList.toggle('mode-' + k, k === kind);
   modeLeaveFn = kind ? (leave || null) : null;
   const m = MODES[kind];
@@ -1052,7 +1940,11 @@ function setMode(kind, leave) {
   const what = document.getElementById('modeWhat');
   const out = document.getElementById('modeLeave');
   if (name) name.textContent = m ? m.name : '';
-  if (what) what.textContent = m ? m.what : '';
+  if (what) {
+    what.textContent = (m && m.what) || '';
+    // Not merely empty: an empty span still takes its margins.
+    what.hidden = !(m && m.what);
+  }
   if (out) out.style.display = (m && modeLeaveFn) ? '' : 'none';
   // Every canvas just changed height by the banner's worth.
   window.dispatchEvent(new Event('resize'));
@@ -1067,8 +1959,813 @@ function wireMode() {
 }
 
 
+/* ==========================================================================
+   Profile -- who the work is credited to
+   ==========================================================================
+   Everything Jarvis writes down carries a name: curation decisions, banked
+   event sets, layer sheets, exported figures, runs. That name used to come
+   from `git config user.name`, falling back to the Windows account -- so on
+   a shared rig every decision was credited to a computer, and two people on
+   one machine were indistinguishable.
+
+   Set once here and the server tags everything from it. Nothing else has to
+   ask, which is why there is no "who is curating?" prompt.
+   ========================================================================== */
+BARRY.profile = (function () {
+  let prof = null;
+  /* What this lab actually is. Free text is how one lab ends up with
+     "undergrad", "Undergraduate" and "Undergraduate Student" as three
+     different roles, and a roster that groups by role then reports three
+     people where there is one kind of person.
+
+     A value already on record that is not in this list is kept and offered
+     -- see `roleField`. The list is a suggestion about the future, not a
+     verdict on what somebody already typed. */
+  const ROLES = [
+    'PI',
+    'Graduate Student',
+    'Undergraduate Student',
+    'Medical Student',
+    'Medical Resident',
+  ];
+
+  async function load() {
+    try {
+      const res = await api('/api/profile');
+      prof = res.profile || null;
+      paintChip();
+    } catch (e) { /* an older server has no route; the chip stays as it is */ }
+    return prof;
+  }
+
+  function get() { return prof; }
+
+  /* The name to put in a "who did this" field, for the few places that ask
+     out loud (banking, for one). Empty when unset, so the caller can decide
+     whether to insist. */
+  function who() {
+    const e = (prof && prof.effective) || {};
+    return e.user || '';
+  }
+
+  function paintChip() {
+    const chip = document.getElementById('whoChip');
+    if (!chip) return;
+    const name = who();
+    const nameEl = chip.querySelector('.who-name');
+    const dot = chip.querySelector('.who-dot');
+    if (name) {
+      nameEl.textContent = name;
+      chip.title = 'Credited to ' + name
+                 + ((prof.effective || {}).device
+                     ? '  on ' + prof.effective.device : '')
+                 + '  \u2014 click to change';
+      chip.classList.remove('unset');
+      if (dot) dot.classList.remove('warn');
+    } else {
+      nameEl.textContent = 'Set who you are';
+      chip.title = 'Curation, figures and runs are being credited to this '
+                 + 'machine rather than to a person. Click to fix that.';
+      chip.classList.add('unset');
+      if (dot) dot.classList.add('warn');
+    }
+  }
+
+  /* Everyone Jarvis has come into contact with. Cached for the dialog's
+     lifetime; a fresh copy each time it is opened. */
+  let roster = null;
+
+  async function people() {
+    try {
+      roster = await api('/api/people');
+    } catch (e) {
+      roster = { people: [], me: null };
+    }
+    return roster;
+  }
+
+  async function open() {
+    const cur = prof || {};
+    /* Asked now, not remembered.
+
+       This line used to be built from whatever `/api/profile` last
+       reported, so renaming the computer under Errors -> Device left the
+       dialog claiming the old name until the page was refreshed. It is one
+       request and it is the only thing here that another view can change. */
+    try {
+      const got = await api('/api/device');
+      if (got && got.device) cur.device_name = got.device.name;
+    } catch (e) { /* the note falls back to the hostname */ }
+    const f = {};
+    /* `mine` marks a field that is about this COMPUTER rather than about a
+       person, so it can be taken off screen when the form is about somebody
+       else. Only `device` is one, and it matters: that field is what
+       `provenance().machine` reads, and it stamps every error and activity
+       row. Leaving it editable while filling in a colleague's details is
+       how one computer ends up filing under five names. */
+    const mineOnly = [];
+
+    const field = (key, label, placeholder, hint, mine) => {
+      f[key] = el('input', {
+        type: 'text', value: cur[key] || '', placeholder: placeholder || '',
+      });
+      const box = el('div', { class: 'field' }, [
+        el('label', { text: label }),
+        f[key],
+        hint ? el('span', { class: 'hint', text: hint }) : null,
+      ]);
+      if (mine) mineOnly.push(box);
+      return box;
+    };
+    /* Nothing is machine-only in this form any more -- the one field that
+       was has moved out entirely. The mechanism stays: the next field that
+       is about the computer rather than the person must not be editable
+       while somebody else's details are in the form. */
+
+    /* Who is already here. A row fills the form; the pencil opens that
+       person for editing without making them the person at this keyboard,
+       because filling in a colleague's role is a different act from
+       becoming them. */
+    const known = el('div', { class: 'prof-known' });
+    /* Which of three jobs Save is doing.
+
+         null      set who THIS COMPUTER credits work to
+         a name    edit that person's roster entry, and nothing else
+         'new'     put somebody new on the roster
+
+       Held explicitly rather than worked out from whether the name in the
+       form still matches. That comparison is what let editing somebody
+       fall through to the profile branch and rewrite this machine's
+       identity. */
+    let editing = null;
+    let creating = false;
+
+    const fill = (d, asMe) => {
+      for (const k of ['name', 'email', 'initials']) {
+        if (f[k]) f[k].value = (d && d[k]) || '';
+      }
+      /* The role is a select, and assigning a value it has no option for
+         silently leaves it blank -- which would then be saved as "no role"
+         over somebody's actual one. So the option is made first. */
+      if (f.role) {
+        const want = ((d && d.role) || '').trim();
+        if (want && !Array.from(f.role.options)
+              .some((o) => o.value.toLowerCase() === want.toLowerCase())) {
+          f.role.appendChild(el('option', {
+            value: want, text: want + '  (as recorded)' }));
+        }
+        f.role.value = want;
+      }
+      editing = asMe ? null : (d && d.name) || null;
+      creating = false;
+      paintMode();
+      paintKnown();
+    };
+
+    /* Start a new one. Clears the form rather than inheriting whoever was
+       in it -- a create that arrives pre-filled with somebody else's email
+       is how two people end up sharing one. */
+    const startNew = () => {
+      for (const k of ['name', 'email', 'role', 'initials']) {
+        if (f[k]) f[k].value = '';
+      }
+      editing = null;
+      creating = true;
+      paintMode();
+      paintKnown();
+      if (f.name) f.name.focus();
+    };
+
+    /* The role, as a list, without overwriting anything.
+
+       `cur.role` may be something nobody would pick today -- "Undergraduate"
+       is on this roster and is not in ROLES. A plain select would have
+       silently changed it to the first option the moment the form was
+       opened, so the current value is added as its own option and said to
+       be an old one. */
+    const roleField = () => {
+      const now = (cur.role || '').trim();
+      const known = ROLES.some((r) => r.toLowerCase() === now.toLowerCase());
+      const opts = ROLES.slice();
+      if (now && !known) opts.unshift(now);
+      f.role = el('select', { class: 'prof-role' },
+        [el('option', { value: '', text: '\u2014 not set \u2014' })]
+          .concat(opts.map((r) => el('option', {
+            value: r,
+            text: r + (now && !known && r === now ? '  (as recorded)' : ''),
+            selected: r.toLowerCase() === now.toLowerCase()
+              ? 'selected' : null,
+          }))));
+      return el('div', { class: 'field' }, [
+        el('label', { text: 'Role' }),
+        f.role,
+        now && !known
+          ? el('span', { class: 'hint',
+              text: '"' + now + '" is what is on record for them. Leaving it '
+                  + 'alone keeps it; picking another changes it.' })
+          : null,
+      ].filter(Boolean));
+    };
+
+    /* ==================================================================
+       The cluster account
+       ==================================================================
+       Same kind of fact as the fields above: who this computer is. The
+       name and email say who it credits work to; the netid says who it
+       runs work AS. Somebody setting a machine up should meet both once,
+       in one place, rather than finding the second later behind a chip
+       they had no reason to press.
+
+       Deliberately outside `mineOnly`'s hide-when-editing rule in one
+       respect: it describes the COMPUTER, not the person in the form, so
+       editing somebody else's details must not make it look as though
+       their cluster account is being changed. It is hidden in those modes
+       for exactly that reason.
+
+       Live is drawn separately from signed in, because they are different
+       questions and only one of them is about the person. Signed in means
+       there is an account here; live means the cluster answered. A rig
+       with no network is signed in and not live, and saying "not signed
+       in" for that would send somebody to re-enter a password that was
+       never the problem. */
+    const vaccBox = el('div', { class: 'prof-vacc' });
+    mineOnly.push(vaccBox);
+
+    const paintVaccBox = (st) => {
+      vaccBox.innerHTML = '';
+      vaccBox.appendChild(el('div', { class: 'section-label',
+                                      text: 'VACC account' }));
+
+      if (!BARRY.vacc) {
+        vaccBox.appendChild(el('p', { class: 'hint quiet',
+          text: 'The cluster module is not loaded in this window.' }));
+        return;
+      }
+      if (st === undefined) {
+        vaccBox.appendChild(el('p', { class: 'hint quiet',
+                                      text: 'Asking\u2026' }));
+        return;
+      }
+      if (st && st.have_ssh === false) {
+        /* Nothing below can work, so nothing below is offered. The same
+           rule the sign-in panel follows: a missing capability is stated
+           once rather than discovered by every button failing. */
+        vaccBox.appendChild(el('p', { class: 'warn-line',
+          text: 'There is no ssh client on this computer, so it cannot '
+              + 'reach the cluster at all. On Windows it is "OpenSSH '
+              + 'Client" under Settings \u203a Optional features.' }));
+        return;
+      }
+
+      const d = (BARRY.vacc.last) || {};
+      const signedIn = !!(st && st.configured);
+      const live = !!d.available;
+
+      vaccBox.appendChild(el('p', { class: 'prof-vacc-state' }, [
+        el('span', { class: 'vacc-dot ' + (signedIn ? (live ? 'live' : 'idle')
+                                                    : 'off') }),
+        el('strong', { text: signedIn ? (st.netid || '?') : 'Not signed in' }),
+        el('span', { class: 'hint', text: signedIn
+          ? (live ? '\u00b7 the cluster answered just now'
+                  : '\u00b7 ' + (d.why || 'not reachable from here right now'))
+          : '\u00b7 this computer cannot run anything on VACC yet' }),
+      ]));
+
+      vaccBox.appendChild(el('p', { class: 'hint', style: 'max-width:62ch',
+        text: signedIn
+          ? 'Jobs from this computer run as ' + (st.netid || '?')
+            + ' and their output lands in that account\u2019s space. '
+            + 'Switching asks for a password only if this computer has '
+            + 'never connected to the other account.'
+          : 'All it needs is your UVM NetID \u2014 the part of your email '
+            + 'before the @. A password is asked for once, only if none of '
+            + 'the keys already on this computer work for that account.' }));
+
+      const acts = el('div', { class: 'vacc-actions' });
+      acts.appendChild(el('button', {
+        class: signedIn ? 'btn ghost sm' : 'btn',
+        text: signedIn ? 'Switch account\u2026' : 'Set up VACC\u2026',
+        onclick: () => {
+          /* Closes this first. The sign-in panel is a modal and
+             `showModal` stacks, so opening it over the profile would put
+             the profile back underneath afterwards -- which reads as the
+             form reopening itself. */
+          closeModal();
+          BARRY.vacc.showSignIn();
+        },
+      }));
+      if (signedIn) {
+        acts.appendChild(el('button', {
+          class: 'btn ghost sm', text: 'Sign out',
+          title: 'Forget this account on this computer. The key is left '
+               + 'alone, here and on the cluster \u2014 signing back in, as '
+               + 'anyone, asks for no password.',
+          onclick: async () => {
+            await BARRY.vacc.signOut();
+            loadVaccState();
+          },
+        }));
+      }
+      vaccBox.appendChild(acts);
+    };
+
+    const loadVaccState = () => {
+      paintVaccBox(undefined);
+      if (!BARRY.vacc) { paintVaccBox(null); return; }
+      api('/api/vacc/signin/state')
+        .then((st) => {
+          paintVaccBox(st);
+          /* The status is a separate question from the account, and it is
+             what makes the dot mean anything. Asked after, so the box is
+             on screen while the cluster is being reached. */
+          if (st && st.configured) {
+            BARRY.vacc.status().then(() => paintVaccBox(st)).catch(() => {});
+          }
+        })
+        .catch(() => paintVaccBox(null));
+    };
+    loadVaccState();
+
+    const vaccSection = () => vaccBox;
+
+    const modeLine = el('p', { class: 'prof-mode' });
+
+    const paintMode = () => {
+      /* Off screen when the form is not about this computer. */
+      for (const box of mineOnly) box.hidden = !!(editing || creating);
+      modeLine.className = 'prof-mode'
+        + (editing ? ' editing' : (creating ? ' creating' : ''));
+      modeLine.textContent = editing
+        ? 'Editing ' + editing + '. Save writes to the roster only \u2014 '
+          + 'it does not change who this computer credits work to.'
+        : (creating
+          ? 'Adding somebody new to the roster. Save puts them on it; it '
+            + 'does not change who this computer credits work to.'
+          : 'This is who this computer credits work to. Save applies it to '
+            + 'everything Jarvis records here from now on.');
+    };
+
+    /* Remove, and then say what actually happened.
+
+       `forget` takes off the hand-added entry; whether the name then
+       disappears depends on whether anything else in the store still
+       carries it. Rather than predict that, this asks the server and
+       compares the roster it gets back — so the message is a report and
+       never a guess. */
+    /* What holds a name here, apart from somebody having typed it.
+
+       `total` counts the hand-added entry itself, so testing it directly
+       would refuse to remove every hand-added name — which is precisely the
+       set that CAN go, and precisely what a leftover test entry is. What
+       matters is whether anything else carries it: a decision, a banked
+       set, an assignment, a profile. */
+    const HAND = 'added by hand';
+    const heldBy = (person) => {
+      let n = 0;
+      const what = [];
+      for (const [where, count] of Object.entries(person.counts || {})) {
+        if (where === HAND) continue;
+        n += count;
+        what.push(where);
+      }
+      return { n, what };
+    };
+
+    const removePerson = async (person) => {
+      const held = heldBy(person);
+      if (held.n) {
+        await BARRY.confirm(
+          person.name + ' cannot be removed',
+          person.name + ' is on ' + held.n + ' record'
+          + (held.n === 1 ? '' : 's')
+          + ' — ' + held.what.join(', ')
+          + '.\n\nThe roster is compiled from the work itself, not from a '
+          + 'list anybody keeps, so this name is here because the data says '
+          + 'so. Taking it off could not un-say it, and a button that looked '
+          + 'like it had would be lying about what Jarvis holds.',
+          null);
+        return;
+      }
+      const ok = await BARRY.confirm(
+        'Remove ' + person.name + ' from the roster?',
+        'They have no decisions, no banked sets and no layer sheets, so '
+        + 'nothing is lost. They can be added again at any time.',
+        'Remove');
+      if (!ok) return;
+      try {
+        const res = await apiPost('/api/people/forget', { name: person.name });
+        roster = res;
+        paintKnown();
+        const still = (res.people || []).some((x) => x.name === person.name);
+        toast(still
+          ? person.name + ' is still listed: something in the store carries '
+            + 'the name, so the roster reports it.'
+          : person.name + ' removed from the roster.',
+          still ? null : 'ok', still ? 8000 : 4000);
+      } catch (e) {
+        toast('Could not remove ' + person.name + ': ' + e.message, 'err');
+      }
+    };
+
+    /* Off the pickers, without pretending to be off the record.
+
+       This is the one that works on a name the data carries -- which is the
+       case that matters, because somebody who has left the lab has two
+       thousand decisions behind them and removal is refused for exactly
+       that reason. Nothing is deleted, no count moves, and their name stays
+       on every record it is on. */
+    const archivePerson = async (person, yes) => {
+      const held = heldBy(person);
+      if (yes) {
+        const ok = await BARRY.confirm(
+          'Archive ' + person.name + '?',
+          (held.n
+            ? person.name + ' stays on ' + held.n + ' record'
+              + (held.n === 1 ? '' : 's') + ' — ' + held.what.join(', ')
+              + ', all still counted for them. '
+            : '')
+          + 'Archiving only stops them being offered as an owner for new '
+          + 'work. Nothing is deleted, no number changes, and it can be '
+          + 'undone at any time.'
+          + '\n\nIt applies everywhere, not just on this computer — being '
+          + 'offered work is a lab-wide question.',
+          'Archive');
+        if (!ok) return;
+      }
+      try {
+        const res = await apiPost('/api/people/archive',
+                                  { name: person.name, archived: !!yes });
+        roster = res;
+        paintKnown();
+        toast(yes ? person.name + ' archived — still on every record, no '
+                    + 'longer offered for new work.'
+                  : person.name + ' is back on the roster.', 'ok', 5000);
+      } catch (e) {
+        toast('Could not archive ' + person.name + ': ' + e.message, 'err');
+      }
+    };
+
+    let showArchived = false;
+
+    const paintKnown = () => {
+      known.innerHTML = '';
+      const all = (roster && roster.people) || [];
+      const rows = all.filter((x) => !x.archived);
+      const away = all.filter((x) => x.archived);
+      if (!rows.length && !away.length) {
+        known.appendChild(el('span', { class: 'hint',
+          text: 'Nobody else on record yet.' }));
+        return;
+      }
+      const chip = (p) => {
+        const mine = (f.name && f.name.value.trim()) === p.name;
+        return el('span', {
+          class: 'prof-chip' + (mine ? ' on' : '')
+                 + (p.archived ? ' archived' : ''),
+        }, [
+          el('button', {
+            class: 'prof-chip-name',
+            title: 'Use ' + p.name + ' as who this machine credits work to',
+            text: p.name + (p.role ? '  \u00b7  ' + p.role : ''),
+            onclick: async () => {
+              let d = p;
+              try {
+                const got = await api('/api/people/'
+                                      + encodeURIComponent(p.name));
+                d = Object.assign({}, p, got.person || {});
+              } catch (e) { /* the chip already has enough */ }
+              fill(d, true);
+            },
+          }),
+          el('button', {
+            class: 'prof-chip-edit', title: 'Edit ' + p.name + '\u2019s details',
+            text: '\u270e',
+            onclick: async () => {
+              let d = p;
+              try {
+                const got = await api('/api/people/'
+                                      + encodeURIComponent(p.name));
+                d = Object.assign({}, p, got.person || {});
+              } catch (e) { /* fall back to the chip */ }
+              fill(d, false);
+              toast('Editing ' + p.name + '. Saving writes their details to '
+                    + 'the roster \u2014 it does not change who this machine '
+                    + 'credits work to.', null, 7000);
+            },
+          }),
+          /* Taking a name off.
+
+             The roster is not a list somebody maintains -- it is compiled
+             from the profiles, the curation decisions and the bank. A name
+             with work behind it therefore cannot be removed: it is stamped
+             on those records whether the roster lists it or not, and a
+             button that appeared to delete it would be lying about what
+             Jarvis holds. Only the hand-added ones can go, which is exactly
+             what a leftover test entry is.
+
+             The count is in the tooltip rather than the button being
+             hidden: an affordance that is silently absent teaches nothing,
+             and "why can I remove that one and not this one" is the
+             question this has to answer. */
+          /* And the one that always works. Beside the × on purpose: the
+             × is refused for anybody the data carries, and the answer to
+             "then how do I get them out of my pickers" should not be
+             somewhere else. */
+          el('button', {
+            class: 'prof-chip-arch' + (p.archived ? ' on' : ''),
+            title: p.archived
+              ? p.name + ' is archived — not offered for new work. '
+                + 'Click to put them back.'
+              : 'Archive ' + p.name + ': off the pickers, still on every '
+                + 'record they are on. Reversible.',
+            text: p.archived ? '\u21ba' : '\u25f4',
+            onclick: () => archivePerson(p, !p.archived),
+          }),
+          el('button', {
+            class: 'prof-chip-del' + (heldBy(p).n ? ' held' : ''),
+            title: heldBy(p).n
+              ? p.name + ' is on ' + heldBy(p).n + ' record'
+                + (heldBy(p).n === 1 ? '' : 's')
+                + ' (' + heldBy(p).what.join(', ') + '). '
+                + 'Names the data carries cannot be removed — archive them '
+                + 'instead, which takes them off the pickers and leaves the '
+                + 'records alone.'
+              : 'Remove ' + p.name + ' from the roster',
+            text: '\u00d7',
+            onclick: () => removePerson(p),
+          }),
+        ]);
+      };
+
+      for (const p of rows) known.appendChild(chip(p));
+
+      /* The archived, folded away. Counted in the heading rather than
+         hidden without trace: "where did that name go" is the question a
+         silent filter creates. */
+      if (away.length) {
+        known.appendChild(el('button', {
+          class: 'prof-arch-toggle' + (showArchived ? ' on' : ''),
+          text: (showArchived ? '\u25be  ' : '\u25b8  ')
+                + away.length + ' archived',
+          title: 'Archived people are still on every record they are on, '
+               + 'and still counted. They are only kept out of the pickers.',
+          onclick: () => { showArchived = !showArchived; paintKnown(); },
+        }));
+        if (showArchived) {
+          for (const p of away) known.appendChild(chip(p));
+        }
+      }
+    };
+
+    const body = el('div', { class: 'prof-form' }, [
+      modeLine,
+      el('p', { class: 'confirm-msg',
+        text: 'Everything Jarvis records is credited to this: curation '
+            + 'decisions, banked events, layer sheets, exported figures and '
+            + 'every run. Set it once.' }),
+      el('div', { class: 'section-label', text: 'People already here' }),
+      known,
+      el('p', { class: 'hint',
+        text: 'Click a name to credit this machine\u2019s work to them, or '
+            + 'the pencil to fill in their details without becoming them.' }),
+      field('name', 'Your name', 'e.g. Rain Alvarez',
+            'What appears under a figure and against every decision.'),
+      field('email', 'Email', 'you@uvm.edu',
+            'So a decision can be asked about later.'),
+      /* The machine's name is not a field here any more. It belongs to
+         the computer, and while it sat in this form every path that saved
+         a profile could rename the machine -- which is how one computer
+         came to file errors under five names. It lives under Device, in
+         Errors. */
+      el('p', { class: 'hint prof-device-note' }, [
+        el('span', { text: 'This computer is called ' }),
+        el('strong', { text: (cur.device_name || cur.machine || 'unnamed') }),
+        el('span', { text: '. That belongs to the computer rather than to '
+                         + 'you, so it is set under ' }),
+        el('button', {
+          class: 'linkish', text: 'Errors \u2192 Device',
+          onclick: () => {
+            closeModal();
+            setView('errors');
+          },
+        }),
+        el('span', { text: ' and switching profiles leaves it alone.' }),
+      ]),
+      roleField(),
+      field('initials', 'Initials', 'e.g. RA',
+            'Used where there is no room for a full name.'),
+      /* The cluster account, here rather than in a panel of its own.
+
+         It is the same kind of fact as everything above it: who this
+         computer is. The name and email say who it credits work to; the
+         netid says who it runs work as. Somebody setting up a machine
+         should meet both in one place and once, rather than discovering
+         the second one later behind a chip they had no reason to click. */
+      vaccSection(),
+    ]);
+
+    const save = el('button', {
+      class: 'btn', text: 'Save',
+      onclick: async () => {
+        save.disabled = 'disabled';
+        try {
+          const patch = {};
+          for (const k of Object.keys(f)) patch[k] = f[k].value;
+          /* Belt and braces. The field is hidden in these modes, and a
+             hidden input still submits its value -- so the value is
+             dropped here too rather than trusted not to arrive. */
+          if (editing || creating) delete patch.device;
+
+          /* Editing somebody writes to the roster and nowhere else.
+
+             Decided by the mode, not by whether the name still matches.
+             It used to fall through to the profile branch the moment the
+             name differed at all -- which set THIS MACHINE's identity to
+             the person being edited, and then added their new name to the
+             roster beside the old row rather than in place of it. One
+             duplicate, and a computer credited to somebody who was not
+             sitting at it. */
+          /* Somebody new. The roster and nothing else -- adding a
+             colleague is not a statement about which computer this is. */
+          if (creating) {
+            const typed = (patch.name || '').trim();
+            if (!typed) {
+              toast('A person needs a name.', 'err', 4000);
+              save.disabled = null;
+              return;
+            }
+            const clash = ((roster && roster.people) || [])
+              .concat((roster && roster.not_people) || [])
+              .find((x) => (x.name || '').toLowerCase() === typed.toLowerCase());
+            if (clash) {
+              /* Not refused -- editing them is a reasonable thing to have
+                 meant. But it must not silently create a second row, which
+                 is what the old path did. */
+              save.disabled = null;
+              const go = await BARRY.confirm(
+                clash.name + ' is already on the roster',
+                'Jarvis can update their details instead of adding a second '
+                + clash.name + '. Two entries with the same name cannot be '
+                + 'told apart on any record.',
+                'Update ' + clash.name);
+              if (!go) return;
+            }
+            await apiPost('/api/people/add', {
+              name: clash ? clash.name : typed, email: patch.email,
+              role: patch.role, initials: patch.initials,
+            });
+            roster = null;
+            closeModal();
+            toast(clash ? 'Updated ' + clash.name + '.'
+                        : typed + ' added to the roster.', 'ok', 6000);
+            BARRY.activity.log(clash ? 'people.edit' : 'people.add',
+                               { name: clash ? clash.name : typed });
+            return;
+          }
+
+          if (editing) {
+            const typed = (patch.name || '').trim();
+
+            /* A rename, which is not a thing that can be done. `name` is
+               the key every decision, banked set and layer sheet is
+               stamped with, so changing it here would leave all of them
+               pointing at a person the roster no longer lists. Said
+               plainly, with the two real options offered. */
+            if (typed && typed !== editing) {
+              save.disabled = null;
+              const asNew = await BARRY.confirm(
+                'Rename ' + editing + ' to ' + typed + '?',
+                editing + ' is the name stamped on their decisions, their '
+                + 'banked sets and their layer sheets. Renaming the roster '
+                + 'entry cannot rename those, so they would be left '
+                + 'crediting somebody the roster no longer lists.'
+                + '\n\nJarvis can add ' + typed + ' as a separate person '
+                + 'instead, leaving ' + editing + ' exactly as they are. If '
+                + 'they really are the same person, archive one and add the '
+                + 'other as an alias — that folds the old name without '
+                + 'rewriting anything.',
+                'Add ' + typed + ' as a new person');
+              if (!asNew) return;
+              await apiPost('/api/people/add', {
+                name: typed, email: patch.email,
+                role: patch.role, initials: patch.initials,
+              });
+              roster = null;
+              closeModal();
+              toast(typed + ' added. ' + editing + ' is unchanged.',
+                    'ok', 6000);
+              BARRY.activity.log('people.add', { name: typed,
+                                                 from_edit: editing });
+              return;
+            }
+
+            await apiPost('/api/people/add', {
+              name: editing, email: patch.email,
+              role: patch.role, initials: patch.initials,
+            });
+            roster = null;
+            closeModal();
+            toast('Saved ' + editing + '’s details. Who this machine '
+                  + 'credits work to is unchanged — still '
+                  + (who() || 'unset') + '.', 'ok', 7000);
+            BARRY.activity.log('people.edit', { name: editing });
+            return;
+          }
+
+          const res = await apiPost('/api/profile', patch);
+          prof = res.profile || prof;
+          /* And onto the roster, so a role or an email typed here is there
+             for everybody -- the picker and the assignee list both read it. */
+          if ((patch.name || '').trim()) {
+            apiPost('/api/people/add', {
+              name: patch.name, email: patch.email,
+              role: patch.role, initials: patch.initials,
+            }).catch(() => { /* the profile is saved; this is the mirror */ });
+          }
+          paintChip();
+          closeModal();
+          toast(who()
+            ? 'Everything new will be credited to ' + who() + '.'
+            : 'Saved.', 'ok', 6000);
+          BARRY.activity.log('profile.save', { set: !!who() });
+        } catch (e) {
+          toast(e.message, 'err', 9000);
+          save.disabled = null;
+        }
+      },
+    });
+
+    showModal(el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Profile' }),
+        el('span', { class: 'sub', text: 'who this work is credited to' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      el('div', { class: 'mb' }, [body]),
+      el('div', { class: 'mf' }, [
+        /* On the left, away from Save: adding somebody is a different job
+           from saving the form, and putting them together is how one gets
+           pressed for the other. */
+        el('button', {
+          class: 'btn ghost', text: 'Add somebody\u2026',
+          title: 'Put a new person on the roster. Does not change who this '
+               + 'computer credits work to.',
+          onclick: startNew,
+        }),
+        editing || creating ? el('button', {
+          class: 'btn ghost', text: 'Back to me',
+          title: 'Put your own details back in the form',
+          onclick: () => fill(prof, true),
+        }) : null,
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn ghost', text: 'Cancel',
+                       onclick: closeModal }),
+        save,
+      ].filter(Boolean)),
+    ]));
+    paintMode();
+    setTimeout(() => { try { f.name.focus(); } catch (e) {} }, 0);
+    /* After the modal is up, so the chips land in a box that exists. */
+    people().then(paintKnown);
+  }
+
+  function wire() {
+    const chip = document.getElementById('whoChip');
+    if (chip) chip.addEventListener('click', open);
+    load();
+  }
+
+  return { load, get, who, open, wire, paintChip };
+})();
+
+
 function setView(name) {
   if (!VIEWS.includes(name)) name = 'pipeline';
+
+  /* Tell the view being left that it is being left.
+
+     Nothing did, so anything a view started ran for the rest of the
+     session: ToolKit's presence beat and its mounted tool feed were both
+     still polling from whatever other view you were looking at. Views that
+     hold something on purpose do NOT have one of these -- Xplorefinder's
+     link poll carries facts a popped-out window still needs, and curation's
+     heartbeat is a claim on a set that another machine takes the moment it
+     lapses.
+
+     Wrapped, because a view failing on its way out must not strand you on
+     the one you are leaving. */
+  const from = BARRY.state.view;
+  if (from && from !== name) {
+    const prev = BARRY.views[from];
+    if (prev && prev.onHide) {
+      try { prev.onHide(); } catch (err) {
+        reportClientError('onHide:' + from, err.message, err.stack);
+      }
+    }
+  }
+
   BARRY.state.view = name;
   $$('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.view === name));
   $$('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + name));
@@ -1077,6 +2774,180 @@ function setView(name) {
   }
   const v = BARRY.views[name];
   if (v && v.onShow) v.onShow();
+}
+
+/* A mode change that undoes itself, filed as an error.
+
+   The activity log already records every transition with the stack that
+   caused it, and that is the right place for the ordinary ones -- but it has
+   thousands of rows and hundreds of mode changes, so the one that matters
+   is unfindable. This watches for the shape of the reported fault instead:
+   into a mode and back out within three seconds, with nothing in between
+   that a person did.
+
+   `lastGesture` is the test that makes it worth reporting. Somebody who
+   clicks StrataScope, looks, and clicks away has done exactly the same
+   transitions -- what they have not done is do it with no input at all. */
+let _lastMode = { at: 0, from: null, to: null, via: '' };
+let _lastGesture = 0;
+
+document.addEventListener('pointerdown', () => { _lastGesture = Date.now(); },
+                          true);
+document.addEventListener('keydown', () => { _lastGesture = Date.now(); },
+                          true);
+
+function noticeBounce(from, to, via) {
+  const now = Date.now();
+  const prev = _lastMode;
+  _lastMode = { at: now, from: from, to: to, via: via };
+  if (!prev.at) return;
+
+  const gap = now - prev.at;
+  /* Reversed: A -> B then B -> A. Either direction counts; the report was
+     "snaps to StrataScope and snaps back", and the same fault entering
+     curation would be the same bug. */
+  const reversed = prev.to === from && prev.from === to;
+  /* Ten seconds, not three. "Snaps to event curation and snaps back, and
+     back again" describes something happening over seconds; a bounce with a
+     four-second leg was outside the window and went unrecorded, which is
+     the likeliest reason this watcher has caught nothing but my own
+     harness. */
+  if (!reversed || gap > 10000) return;
+  /* A person doing it deliberately is not a fault. Anything within a
+     second of a click or a key is theirs. */
+  if (now - _lastGesture < 1000) return;
+
+  try {
+    apiPost('/api/errors/client', {
+      where: 'mode.bounce',
+      message: 'The mode changed to ' + (prev.to || 'none') + ' and back to '
+             + (to || 'none') + ' in ' + gap + 'ms with no click or '
+             + 'keypress. Nothing in the code accounts for this; both '
+             + 'stacks are below.',
+      context: {
+        gap_ms: gap,
+        first: { from: prev.from, to: prev.to, via: prev.via },
+        second: { from: from, to: to, via: via },
+        ms_since_input: now - _lastGesture,
+        view: BARRY.state && BARRY.state.view,
+        /* What else was happening. Without this the report says a mode
+           changed twice and nothing about the load, the sync or the pane
+           rebuild that might have done it -- and by the time anybody looks,
+           the page has been reloaded. */
+        just_before: (BARRY.activity && BARRY.activity.recent
+          ? BARRY.activity.recent().slice(-8) : null),
+      },
+    }).catch(() => { /* it is a report about a glitch, not a transaction */ });
+  } catch (e) { /* never let the watcher break the thing it watches */ }
+}
+
+/* ==========================================================================
+   One clock on screen
+
+   The stores keep two. A local shard stamp carries this machine's offset
+   ("2026-09-08T14:17:31-0400"); a row pulled from Supabase is in UTC
+   ("2026-09-09T04:03:12.146+00:00"). Slicing the string -- which is what
+   every timestamp on screen used to do -- prints whichever digits are in it
+   and discards the offset, so cloud rows read four hours off all summer and
+   a list mixing the two looked out of order.
+
+   Parsed and shown in the reader's own time instead. `whenRaw` is for the
+   tooltip: the mix of clocks was impossible to see, and anybody who wonders
+   should be able to check what was actually written down.
+   ========================================================================== */
+function _pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+/* `form`:
+     'stamp'   09-08 14:17          compact, for log rows
+     'minute'  2026-09-08 14:17     the default
+     'second'  2026-09-08 14:17:31
+     'time'    14:17:31             when the date is already established
+   An unparseable value comes back unchanged -- an odd-looking string beats
+   "Invalid Date" where a time should be. */
+function fmtWhen(iso, form) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  const Y = d.getFullYear();
+  const M = _pad2(d.getMonth() + 1);
+  const D = _pad2(d.getDate());
+  const h = _pad2(d.getHours());
+  const m = _pad2(d.getMinutes());
+  const sec = _pad2(d.getSeconds());
+  if (form === 'stamp') return M + '-' + D + ' ' + h + ':' + m;
+  if (form === 'second') {
+    return Y + '-' + M + '-' + D + ' ' + h + ':' + m + ':' + sec;
+  }
+  if (form === 'time') return h + ':' + m + ':' + sec;
+  return Y + '-' + M + '-' + D + ' ' + h + ':' + m;
+}
+
+/* What was actually written down. Names the clock, because that is the part
+   nobody could see. */
+function whenRaw(iso) {
+  if (!iso) return '';
+  const raw = String(iso);
+  const utc = /(\+00:?00|Z)$/.test(raw);
+  return 'Shown in your time. Recorded as ' + raw + (utc ? ' (UTC)' : '');
+}
+
+BARRY.when = fmtWhen;
+BARRY.whenRaw = whenRaw;
+
+/* ==========================================================================
+   A popover hung off a button
+
+   xplore.js has its own copy of this, entangled with pane state, and it is
+   staying there -- but anything else that needs a grouped set of controls
+   should not grow a tenth variation. Fixed-positioned and parented to
+   <body> on purpose: a popover inside a scroller gets clipped by it and
+   slides away from its own button.
+   ========================================================================== */
+let _openPop = null;
+
+function closePopover() {
+  if (!_openPop) return;
+  const { node, button, away, esc } = _openPop;
+  document.removeEventListener('mousedown', away, true);
+  document.removeEventListener('keydown', esc, true);
+  window.removeEventListener('resize', closePopover);
+  if (node && node.parentNode) node.parentNode.removeChild(node);
+  if (button) button.classList.remove('active');
+  _openPop = null;
+}
+
+/* `build` is called on open, not on wiring, so the popover shows the state
+   as it is now rather than as it was when the button was drawn. */
+function openPopover(button, build) {
+  const wasMine = _openPop && _openPop.button === button;
+  closePopover();
+  if (wasMine) return;                    // a second click closes it
+
+  const node = el('div', { class: 'ctl-pop' }, [build(closePopover)]);
+  document.body.appendChild(node);
+  button.classList.add('active');
+
+  const r = button.getBoundingClientRect();
+  const w = node.offsetWidth;
+  node.style.left = Math.max(8, Math.min(
+    r.left, window.innerWidth - w - 8)) + 'px';
+  const h = node.offsetHeight;
+  node.style.top = (r.bottom + 6 + h > window.innerHeight && r.top > h + 12)
+    ? (r.top - h - 6) + 'px'
+    : (r.bottom + 6) + 'px';
+
+  const away = (ev) => {
+    if (!node.contains(ev.target) && !button.contains(ev.target)) {
+      closePopover();
+    }
+  };
+  const esc = (ev) => { if (ev.key === 'Escape') closePopover(); };
+  _openPop = { node, button, away, esc };
+  setTimeout(() => {
+    document.addEventListener('mousedown', away, true);
+    document.addEventListener('keydown', esc, true);
+    window.addEventListener('resize', closePopover);
+  }, 0);
 }
 
 /* ==========================================================================
@@ -1094,6 +2965,15 @@ const THEMES = [
   { id: 'horizon', name: 'Horizon',     swatch: ['#5bcefa', '#f5a9b8', '#ffffff'] },
   { id: 'horizon-night', name: 'Horizon Night',
     swatch: ['#0b1220', '#5bcefa', '#f5a9b8'] },
+  /* Jirai kei: black, baby pink, white lace. Three variants because that
+     is how the palette is actually worn -- the dark one, the white one,
+     and the yami-kawaii one. */
+  { id: 'jirai', name: 'Jirai Kei',
+    swatch: ['#0c0710', '#ff9ec7', '#fbeaf3'] },
+  { id: 'jirai-shiro', name: 'Jirai Shiro',
+    swatch: ['#fffafc', '#f2d5e2', '#b03a68'] },
+  { id: 'jirai-yami', name: 'Jirai Yami',
+    swatch: ['#120d1c', '#c9a7ff', '#9ff2d0'] },
 ];
 
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
@@ -1119,9 +2999,23 @@ function applyTheme(theme, remember) {
       BARRY.prefs.set('themes', all);
     }
   }
+  repaintThemedSurfaces();
+}
+
+/* Everything that reads a CSS token once and keeps the answer.
+
+   A canvas paints from `BARRY.token()` at draw time and then holds those
+   colors until something asks it to draw again, so changing the tokens under
+   it leaves the last palette on screen -- the trace stays green on a pink
+   interface until you happen to pan. Which surfaces those are is not
+   obvious and the list has been wrong before, so it lives in one function
+   and every path that changes a token calls it. `applyTheme` is one such
+   path; VACC Mode is about to be the second. */
+function repaintThemedSurfaces() {
   paintFavicon();
-  // The canvas paints from CSS tokens, so it has to be repainted by hand.
   if (BARRY.views.xplore && BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
+  // The explainer's figures, if it happens to be open.
+  if (BARRY.cfcGuide && BARRY.cfcGuide.repaint) BARRY.cfcGuide.repaint();
 }
 
 /* The tab icon is the same trace mark as the brand, drawn in the theme's own
@@ -1147,24 +3041,236 @@ function offerTour() {
 }
 
 function paintFavicon() {
-  const cs = getComputedStyle(document.documentElement);
-  const tok = (n, f) => (cs.getPropertyValue(n) || f).trim();
-  const bg = tok('--accent', '#154734');
-  const ink = tok('--on-accent', '#FFB81C');
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
-    + '<rect width="32" height="32" rx="7" fill="' + bg + '"/>'
-    + '<path d="M4 18h3l3-9 4 15 4-12 3 7 2-3h5" fill="none" stroke="' + ink
-    + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
-    + '</svg>';
-  let link = document.querySelector('link[rel="icon"]');
-  if (!link) {
-    link = document.createElement('link');
-    link.rel = 'icon';
-    document.head.appendChild(link);
-  }
-  link.type = 'image/svg+xml';
-  link.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+  /* The tab icon and the rail badge are one mark in one light, and both are
+     drawn by js/jarvis.js -- which also knows whether the name is hidden on
+     this machine, when the tab gets the plain tile instead. Kept as a name
+     here because every path that changes a token already calls it. */
+  if (BARRY.jarvis) BARRY.jarvis.paint();
 }
+
+/* ==========================================================================
+   VACC Mode
+
+   A second attribute on the root, orthogonal to the theme: `data-theme` says
+   which palette, `data-vacc` says how hard it is running. The CSS layer adds
+   six `--fire-*` tokens and touches none of the thirty a theme defines, which
+   `web/_dev/vaccskin.html` asserts token by token across all ten.
+
+   It is a display preference and nothing else. It never gates a control --
+   turning the glow off because your eyes hurt must not take away the Cancel
+   button for a job still running on a shared cluster. What the cluster can
+   do is `/api/vacc/status`; this is only what it looks like while it does it.
+   ========================================================================== */
+/* The power-up.
+
+   Played when somebody TURNS IT ON, and only then. Deliberately not inside
+   `applyVacc`: that is also called at boot, by the cross-window sync, and
+   by the preferences reconcile, and a morph on any of those means the
+   screen flares every time the app starts or a second window changes its
+   mind. The toggle knows a person pressed it; nothing else does.
+
+   Three beats -- charge, burst, settle -- over about a second. Everything
+   animates opacity and transform only; see the note in app.css for why
+   that is a correctness constraint here rather than a preference.
+
+   Cleans itself up two ways. `animationend` is the normal one, but it does
+   not fire in a background tab, so a timer removes the node regardless: a
+   fixed, full-screen element left behind would be invisible and would sit
+   over the application for the rest of the session. `pointer-events: none`
+   means it would not swallow clicks even then, but "would not do harm" is
+   not the same as "is not there".
+*/
+function vaccMorph(fromEl) {
+  try {
+    if (window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+    if (document.body.classList.contains('solo-window')
+        || document.body.classList.contains('aid-window')) {
+      return;
+    }
+    // Only one at a time: a double click should not stack two of these.
+    const old = document.getElementById('vaccMorph');
+    if (old) old.remove();
+
+    /* Centred on whatever was pressed, so the burst comes out of the
+       control rather than out of the middle of the screen. Falls back to
+       the rail foot, which is where the toggle lives. */
+    const src = fromEl || document.getElementById('vaccToggle');
+    let x = 28, y = window.innerHeight - 60;
+    if (src && src.getBoundingClientRect) {
+      const r = src.getBoundingClientRect();
+      if (r.width || r.height) {
+        x = r.left + r.width / 2;
+        y = r.top + r.height / 2;
+      }
+    }
+
+    const node = el('div', { id: 'vaccMorph' }, [
+      el('div', { class: 'vm-charge' }),
+      el('div', { class: 'vm-sweep' }),
+      el('div', { class: 'vm-bloom' }),
+      el('div', { class: 'vm-ring' }),
+      el('div', { class: 'vm-ring two' }),
+    ]);
+    node.style.setProperty('--vm-x', x + 'px');
+    node.style.setProperty('--vm-y', y + 'px');
+    document.body.appendChild(node);
+
+    /* The rail comes up last, so the chrome looks like it is powering on
+       rather than like it was already lit. One class, removed with the
+       overlay. */
+    const rail = document.getElementById('rail');
+    if (rail) rail.classList.add('vm-lit');
+
+    /* And the surge across the interface, from the same origin. A separate
+       module because it is a different job -- the morph is the flash, this
+       is the wave that reaches each part in turn -- and because they fail
+       independently: a surge that throws must not stop the flash, and
+       neither must stop the mode coming on. */
+    if (BARRY.vaccfx && BARRY.vaccfx.surge) {
+      try { BARRY.vaccfx.surge({ x: x, y: y }); } catch (e2) { /* decoration */ }
+    }
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      node.remove();
+      if (rail) rail.classList.remove('vm-lit');
+    };
+    node.addEventListener('animationend', (e) => {
+      // The last beat, not the first to finish.
+      if (e.target && e.target.classList.contains('two')) finish();
+    });
+    setTimeout(finish, 1600);
+  } catch (e) {
+    /* A decoration must never be able to stop the mode from turning on.
+       If anything here throws, the cluster still comes on and the only
+       thing lost is the flourish. */
+    try {
+      const n = document.getElementById('vaccMorph');
+      if (n) n.remove();
+      const r = document.getElementById('rail');
+      if (r) r.classList.remove('vm-lit');
+    } catch (e2) { /* nothing left to do */ }
+  }
+}
+
+function applyVacc(on, remember) {
+  on = !!on;
+  BARRY.state.vacc = on;
+  if (on) document.documentElement.dataset.vacc = 'on';
+  else delete document.documentElement.dataset.vacc;
+
+  const label = $('#vaccToggle span');
+  if (label) label.textContent = on ? 'VACC on' : 'VACC';
+  const btn = $('#vaccToggle');
+  if (btn) btn.classList.toggle('on', on);
+
+  if (remember !== false) {
+    // Same split as the theme, for the same reason: localStorage so the
+    // first paint is already right with nothing fetched, and a map keyed by
+    // hostname so the rig and the laptop disagree without overwriting each
+    // other. See PREFS_SPEC in store.py -- the key is merged per host.
+    try { localStorage.setItem('barry.vacc', on ? '1' : ''); } catch (e) { /* private */ }
+    const host = ((BARRY.state.catalog || {}).system || {}).hostname;
+    if (host) {
+      const all = Object.assign({}, BARRY.prefs.get('vacc', {}) || {});
+      all[host] = on;
+      BARRY.prefs.set('vacc', all);
+    }
+  }
+  /* The wiring follows the mode, not the gesture.
+
+     Unlike the power-up, this one DOES belong on every path into
+     `applyVacc`: at boot, on the cross-window sync and on the preferences
+     reconcile, because it is part of what the mode looks like rather than
+     a celebration of arriving at it. A window that came up with the mode
+     already on should already be wired. */
+  if (BARRY.vaccfx && BARRY.vaccfx.circuit) {
+    try { BARRY.vaccfx.circuit(on); } catch (e) { /* decoration */ }
+  }
+
+  // Same three surfaces as a theme change: the tokens moved, and anything
+  // holding a color it read earlier is now holding the wrong one.
+  repaintThemedSurfaces();
+
+  /* And anything whose CONTENT depends on the mode, which a theme change
+     never had to care about.
+
+     VACC Mode does not only recolour: it adds the mark on a ToolKit tool
+     and the second button in Incisor's action row. Those are drawn when
+     their view last painted, so without this the switch appeared to do
+     nothing until you navigated away and came back -- the rail chip lit up
+     and the panel it was talking about did not.
+
+     Guarded on the catalog, because `applyVacc` runs during boot -- before
+     any view has been initialised, and before prefs have loaded. Asking a
+     view to redraw at that point renders it out of an empty module and
+     leaves it half-built: three harnesses that had nothing to do with VACC
+     started reporting a spectrum panel with no preset buttons and no number
+     inputs in it. Nothing to repaint yet is the normal state on the way up,
+     and the first real paint happens moments later anyway. */
+  if (BARRY.state.catalog) {
+    try {
+      const tk = BARRY.views.toolkit;
+      if (tk && typeof tk.render === 'function'
+          && BARRY.state.view === 'toolkit') {
+        tk.render();
+      }
+      if (BARRY.incisor && typeof BARRY.incisor.paint === 'function') {
+        BARRY.incisor.paint();
+      }
+    } catch (e) { /* a repaint must never take the switch down with it */ }
+  }
+}
+
+/* Other windows of the same app, told without being polled.
+
+   A pop-out gets `?vacc=` when it opens and then knows nothing more, so
+   turning the mode off in the main window left every open pane still lit.
+   `localStorage` already carries the value for the no-flash first paint,
+   and the `storage` event fires in every OTHER window of this origin when
+   it changes -- so the sync costs one listener and no traffic.
+
+   `remember: false` on the way back in, or two windows would write the same
+   preference to the shared store in a loop. */
+window.addEventListener('storage', (e) => {
+  if (e.key !== 'barry.vacc') return;
+  const on = e.newValue === '1';
+  if (on !== BARRY.state.vacc) applyVacc(on, false);
+});
+
+function vaccForThisMachine() {
+  const host = ((BARRY.state.catalog || {}).system || {}).hostname;
+  const byHost = BARRY.prefs.get('vacc', {}) || {};
+  if (host && Object.prototype.hasOwnProperty.call(byHost, host)) return !!byHost[host];
+  try {
+    return localStorage.getItem('barry.vacc') === '1';
+  } catch (e) { /* private mode */ }
+  return false;
+}
+
+/* Whether a VACC job is being polled right now. The pulse is the only
+   animated thing the mode adds and it runs off this, so that the interface
+   is lit because the cluster is working rather than because somebody once
+   flipped a switch. Reference-counted: two jobs at once must not have the
+   first one to finish stop the pulse for the second. */
+BARRY.vaccBusy = (function () {
+  let n = 0;
+  const paint = () => {
+    if (n > 0) document.documentElement.dataset.vaccBusy = '1';
+    else delete document.documentElement.dataset.vaccBusy;
+  };
+  return {
+    start() { n += 1; paint(); },
+    stop() { n = Math.max(0, n - 1); paint(); },
+    reset() { n = 0; paint(); },
+    get count() { return n; },
+  };
+})();
 
 function themeForThisMachine() {
   const host = ((BARRY.state.catalog || {}).system || {}).hostname;
@@ -1177,16 +3283,32 @@ function themeForThisMachine() {
   return null;
 }
 
+/* Closing the theme picker, whichever way it is closed.
+
+   There are three ways out -- picking a theme, clicking away, and clicking
+   the button again -- and only the middle one used to unbind the document
+   listener that watches for the click-away. So opening the picker and
+   choosing a theme left a `mousedown` handler on `document` holding a
+   removed node, every time, for the life of the page. Ten visits to the
+   theme menu, ten handlers, all still running on every click anywhere.
+
+   Hoisted out of showThemePicker so the "already open, close it" path at
+   the top can reach the listener belonging to the popup it is removing. */
+let themePopShut = null;
+
+function closeThemePicker() {
+  if (themePopShut) { const f = themePopShut; themePopShut = null; f(); }
+}
+
 function showThemePicker() {
-  const existing = $('#themePop');
-  if (existing) { existing.remove(); return; }
+  if ($('#themePop')) { closeThemePicker(); return; }
 
   const pop = el('div', { class: 'theme-pop', id: 'themePop' },
     THEMES.map((t) => el('button', {
       class: 'theme-opt' + (BARRY.state.theme === t.id ? ' on' : ''),
       onclick: () => {
         applyTheme(t.id);
-        pop.remove();
+        closeThemePicker();
         BARRY.activity.log('theme.change', { theme: t.id });
       },
     }, [
@@ -1194,20 +3316,29 @@ function showThemePicker() {
          t.swatch.map((c) => el('i', { style: 'background:' + c }))),
       el('span', { text: t.name }),
     ])).concat([
+      // The name and the mark, off or back on with the reveal. Here because
+      // it is how this screen looks, remembered the same way a theme is.
+      BARRY.jarvis ? BARRY.jarvis.pickerRow(closeThemePicker) : null,
       el('div', { class: 'theme-note',
                   text: 'Remembered for this computer only.' }),
     ]));
 
   $('#themeToggle').parentNode.appendChild(pop);
   // Close on the next click anywhere else.
+  const away = (e) => {
+    if (!pop.contains(e.target) && !e.target.closest('#themeToggle')) {
+      closeThemePicker();
+    }
+  };
+  themePopShut = () => {
+    pop.remove();
+    document.removeEventListener('mousedown', away);
+  };
+  // Still on the next tick: the click that opened this is the one that
+  // would otherwise close it again straight away.
   setTimeout(() => {
-    const away = (e) => {
-      if (!pop.contains(e.target) && !e.target.closest('#themeToggle')) {
-        pop.remove();
-        document.removeEventListener('mousedown', away);
-      }
-    };
-    document.addEventListener('mousedown', away);
+    // Unless it has already been shut in the meantime.
+    if (themePopShut) document.addEventListener('mousedown', away);
   }, 0);
 }
 
@@ -1215,25 +3346,347 @@ window.addEventListener('beforeunload', () => {
   try { BARRY.prefs.flush(); } catch (e) { /* nothing to do about it now */ }
 });
 
+/* ==========================================================================
+   The boot overlay
+   ==========================================================================
+   The markup is in index.html, above the stylesheet, so it paints on the
+   browser's first pass -- the gap it covers includes app.css and twenty-eight
+   scripts arriving, which is why it cannot be built by one of them.
+
+   What it adds here is honesty about time. "Connecting" with no subject is
+   also what a hung app says, so this names the step, and if a step outlasts
+   four seconds it names the request it is waiting for. On this machine
+   /api/registry answers in about five.
+   ========================================================================== */
+BARRY.boot = (function () {
+  const SLOW_MS = 4000;
+  let slowTimer = null;
+  let done = false;
+
+  function say(what, waitingFor) {
+    if (done) return;
+    const line = document.getElementById('bootWhat');
+    if (line) line.textContent = what;
+    const slow = document.getElementById('bootSlow');
+    if (slowTimer) { clearTimeout(slowTimer); slowTimer = null; }
+    if (slow) { slow.classList.remove('on'); }
+    if (!waitingFor || !slow) return;
+    /* Only after it has actually been slow. Saying "this can take a moment"
+       immediately teaches people to expect a wait that usually is not
+       there. */
+    slowTimer = setTimeout(() => {
+      if (done) return;
+      slow.textContent = 'Still waiting on ' + waitingFor
+        + '. It is reading the catalogue from disk, not the network.';
+      slow.classList.add('on');
+    }, SLOW_MS);
+  }
+
+  /* Taking it away is idempotent and irreversible: several things race to
+     call it -- init finishing, the error handler, and a timeout -- and
+     whichever gets there first is right. */
+  function clear() {
+    if (done) return;
+    done = true;
+    if (slowTimer) { clearTimeout(slowTimer); slowTimer = null; }
+    const box = document.getElementById('boot');
+    if (!box) return;
+    box.classList.add('gone');
+    // Out of the document once the fade is over, so it cannot take clicks.
+    setTimeout(() => { if (box.parentNode) box.parentNode.removeChild(box); },
+               420);
+  }
+
+  /* A hard limit, whatever happens.
+
+     An overlay that can outlive a failure is worse than the black screen it
+     replaced: the black screen at least lets you see the app behind it. If
+     init throws before it reaches its own clear(), this still fires. */
+  setTimeout(clear, 15000);
+
+  return { say, clear };
+})();
+
+/* ==========================================================================
+   The warm start, from this side
+   ==========================================================================
+   Three roll-ups take about five seconds each from cold, and the server now
+   answers the first request for each out of last boot's cache so the
+   interface is usable immediately. This is the half that keeps that honest:
+   it waits for the real answer and puts it on screen.
+
+   TWO RULES, AND THEY ARE THE WHOLE POINT
+
+   **Nothing moves.** A refresh that lands eight seconds in must not change
+   the view, scroll anything, open anything, take focus, or blank a list
+   somebody has started reading. That is the complaint this work came from:
+   things loading at startup used to snap you somewhere. A background
+   refresh that does the same thing is the same bug wearing a hat.
+
+   **Most of the time it does nothing at all.** The catalogue does not change
+   while the computer is off, so on an ordinary boot all three recomputed
+   answers are identical to the cached ones. The server compares them and
+   says so, and then there is no refetch, no re-render, and no reason for
+   anybody to know any of this happened. The only boots that repaint are the
+   ones where the page really was showing something out of date.
+   ========================================================================== */
+BARRY.warm = (function () {
+  const handlers = new Map();   // name -> what to do when it really changed
+  const shown = new Set();      // names this page was handed off the cache
+  let timer = null;
+  let stopped = false;
+
+  /* What to do when this endpoint's real answer turns out to differ.
+     Registered by whoever draws it; a name nobody is watching simply goes
+     unrefreshed, which is the right answer for a payload that nothing on
+     screen is currently made of. */
+  function onFresh(name, fn) { handlers.set(name, fn); }
+
+  function saw(mark) {
+    if (!mark || !mark.name || stopped) return;
+    if (mark.served !== 'cache') { shown.delete(mark.name); return; }
+    shown.add(mark.name);
+    schedule(700);
+  }
+
+  function schedule(ms) {
+    if (timer || stopped || !shown.size) return;
+    timer = setTimeout(tick, ms);
+  }
+
+  async function tick() {
+    timer = null;
+    if (stopped || !shown.size) return;
+    let st;
+    try {
+      st = await api('/api/warm/state');
+    } catch (e) {
+      /* An older server that has no such route, or one that has gone away.
+         Either way there is nothing to wait for, and a poller that keeps
+         trying for ever is worse than a page showing the cached answer. */
+      stopped = true;
+      return;
+    }
+    const fresh = st.fresh || {};
+    for (const name of Array.from(shown)) {
+      if (!(name in fresh)) continue;      // not recomputed yet; keep waiting
+      shown.delete(name);
+      if (!fresh[name]) continue;          // recomputed, and identical
+      const fn = handlers.get(name);
+      if (!fn) continue;
+      try {
+        await fn();
+      } catch (err) {
+        reportClientError('warm:' + name, err.message, err.stack);
+      }
+    }
+    if (!shown.size) return;
+    if (st.warming) { schedule(900); return; }
+    /* The prime is over and these names never appeared, which means their
+       rebuild threw. The next request that wants one will compute it live
+       and say so; there is nothing useful to do here, and polling a
+       finished prime is just noise. */
+    stopped = true;
+  }
+
+  /* Whether what is on screen for this name is still the cached answer.
+     Lets a view choose between re-reading now and simply marking itself
+     stale for the next time somebody opens it. */
+  function pending(name) { return shown.has(name); }
+
+  return { saw, onFresh, pending,
+           get watching() { return Array.from(shown); } };
+})();
+
+/* ==========================================================================
+   Skeletons
+   ==========================================================================
+   A skeleton is a promise about the shape of what is arriving. Through one
+   helper rather than per view, so two lists cannot promise differently for
+   the same kind of row -- and so "loading" never means an empty box that
+   reads as "nothing here", which is the failure it exists to prevent.
+
+   `rows` is a count, `kind` picks the shape. Deliberately no text: a
+   skeleton that says "Loading…" is doing the same job twice, and the word
+   is what stays behind when a render forgets to replace it.
+   ========================================================================== */
+BARRY.skeleton = (function () {
+  const SHAPES = {
+    // A session card: title, a line of meta, a row of pills.
+    card: () => [
+      el('div', { class: 'sk-line', style: 'width:38%;height:13px' }),
+      el('div', { class: 'sk-line', style: 'width:62%' }),
+      el('div', { class: 'sk-pills' }, [
+        el('div', { class: 'sk-pill' }),
+        el('div', { class: 'sk-pill', style: 'width:54px' }),
+        el('div', { class: 'sk-pill', style: 'width:38px' }),
+      ]),
+    ],
+    // A list row: one line, a shorter second one.
+    row: () => [
+      el('div', { class: 'sk-line', style: 'width:44%' }),
+      el('div', { class: 'sk-line', style: 'width:70%;height:8px' }),
+    ],
+    // A group heading with a count.
+    head: () => [
+      el('div', { class: 'sk-line', style: 'width:24%;height:11px' }),
+    ],
+  };
+
+  function block(kind, rows) {
+    const shape = SHAPES[kind] || SHAPES.row;
+    const host = el('div', {
+      class: 'sk-wrap', 'aria-hidden': 'true',
+      // Announced to a screen reader once, rather than as N meaningless rows.
+      'data-sk': kind,
+    });
+    const n = Math.max(1, rows || 3);
+    for (let i = 0; i < n; i++) {
+      /* Widths vary a little down the list. A column of identical bars reads
+         as a loading graphic; uneven ones read as text that has not arrived,
+         which is what is actually true. */
+      const w = 0.86 + ((i % 3) * 0.05);
+      host.appendChild(el('div', {
+        class: 'sk-item',
+        style: 'width:' + (w * 100).toFixed(0) + '%;'
+             + 'animation-delay:' + (i * 90) + 'ms',
+      }, shape()));
+    }
+    return host;
+  }
+
+  /* Put a skeleton into a host, and hand back the way to take it out. The
+     caller gets a function rather than having to remember the host, so a
+     failed load cannot leave the bones on screen. */
+  function into(host, kind, rows) {
+    if (!host) return () => {};
+    const b = block(kind, rows);
+    host.innerHTML = '';
+    host.appendChild(b);
+    return () => { if (b.parentNode === host) host.removeChild(b); };
+  }
+
+  /* For a list that is already on screen, when the person who is looking at
+     it just caused it to be re-read.
+
+     `into` is no use here: it empties the host, and blanking a list somebody
+     is reading to tell them it is being re-read is worse than saying nothing.
+     That is exactly why the three views that use it gate it on the list being
+     empty -- and why deleting a bank entry, which re-reads seven megabytes of
+     shards, showed nothing at all and then snapped to the new list.
+
+     So: leave the rows where they are, dim them, and stop them taking clicks
+     until the answer lands. Same teardown contract as `into`. */
+  function stale(host) {
+    if (!host) return () => {};
+    host.classList.add('is-stale');
+    return () => host.classList.remove('is-stale');
+  }
+
+  return { block, into, stale };
+})();
+
+/* Hold the scroll where it is across a redraw.
+
+   Written because getting this wrong is invisible. A background refresh in
+   the Sessions view saved and restored `#sessTree.scrollTop`, which is
+   always 0 -- the element that actually scrolls is `#sessScanPad`, two
+   levels up. The code read as though it preserved the scroll, the list
+   still jumped to the top, and only a harness that scrolled for real and
+   checked the number afterwards showed it: `tree.scrollTop = 120` left it
+   at 0, because that element has never scrolled in its life.
+
+   So nobody names the element. Hand it the thing being redrawn and it
+   walks up to whatever is doing the scrolling, remembers that, and hands
+   back the way to put it back. Also takes the page in case the layout
+   changes and the window becomes the scroller. */
+BARRY.keepScroll = function keepScroll(node) {
+  const marks = [];
+  let n = node;
+  for (let i = 0; n && i < 8; i++) {
+    if (n.scrollHeight > n.clientHeight + 2) marks.push([n, n.scrollTop]);
+    n = n.parentElement;
+  }
+  const page = document.scrollingElement;
+  const pageTop = page ? page.scrollTop : 0;
+  return function restore() {
+    for (const [el, top] of marks) el.scrollTop = top;
+    if (page) page.scrollTop = pageTop;
+  };
+};
+
 BARRY.init = async function init() {
   // Applied before anything is fetched, so the first paint is already right.
   // A ?theme= in the URL wins but is not remembered -- it is for a link, not
   // a preference.
-  const urlTheme = new URLSearchParams(location.search).get('theme');
+  const q0 = new URLSearchParams(location.search);
+  const urlTheme = q0.get('theme');
   let saved = null;
   try { saved = localStorage.getItem('barry.theme'); } catch (e) { /* ignore */ }
   applyTheme(urlTheme || saved || 'dark', !urlTheme);
 
+  // VACC Mode reads the same way and for the same reason -- before anything
+  // is fetched, so the first paint is already right. `?vacc=` wins and is not
+  // remembered: it is how a pop-out inherits the window it came from, which
+  // is a link rather than a preference.
+  const urlVacc = q0.get('vacc');
+  let savedVacc = false;
+  try { savedVacc = localStorage.getItem('barry.vacc') === '1'; } catch (e) { /* ignore */ }
+  applyVacc(urlVacc === null ? savedVacc : urlVacc === 'on' || urlVacc === '1',
+            urlVacc === null);
+
+  BARRY.boot.say('wiring up the interface');
+
+  // Clicking the section you are already in is "where am I", not "do it
+  // again" -- but every view's onShow is an unconditional reload, so it was
+  // four requests on Errors and two on Results for a stray click.
+  //
+  // The guard belongs here and not inside setView: setView is called 171
+  // times across web/_dev, and several harnesses deliberately set the same
+  // view twice. This is the path a person actually takes.
   $$('.nav-item').forEach((b) =>
-    b.addEventListener('click', () => setView(b.dataset.view)));
+    b.addEventListener('click', () => {
+      if (BARRY.state.view === b.dataset.view) return;
+      setView(b.dataset.view);
+    }));
 
   // The rail's own collapse, and the handle that brings it back.
   wireRail();
   wireMode();
+  BARRY.profile.wire();
+  BARRY.notes.wire();
+  BARRY.radio.wire();
 
   $('#themeToggle').addEventListener('click', showThemePicker);
+  if (BARRY.jarvis) BARRY.jarvis.wire();
+
+  const vaccBtn = $('#vaccToggle');
+  if (vaccBtn) {
+    vaccBtn.addEventListener('click', () => {
+      const on = !BARRY.state.vacc;
+      applyVacc(on);
+      BARRY.activity.log('vacc.mode', { on: BARRY.state.vacc });
+      /* Turning it on with nobody signed in asks, there and then.
+
+         Signing in used to be four steps nobody would guess: press VACC,
+         notice the chip, open the panel, find the button. Undergraduates
+         rotate through this rig and the SSH part is the least transferable
+         thing in the building -- so the moment somebody says they want the
+         cluster is the moment to ask which account, rather than leaving
+         them to discover that the mode they just switched on does nothing.
+
+         Only on the way ON, and only when there is no account here. A
+         person who signed out on purpose and is toggling the look gets
+         asked once, not every time. */
+      if (on) vaccMorph(vaccBtn);
+      if (on && BARRY.vacc && BARRY.vacc.offerSignIn) {
+        BARRY.vacc.offerSignIn();
+      }
+    });
+  }
 
   $('#syncBtn').addEventListener('click', showSync);
+  if (BARRY.syncState) BARRY.syncState.refresh();
 
   $('#logToggle').addEventListener('click', () =>
     $('#logDock').classList.toggle('collapsed'));
@@ -1274,10 +3727,23 @@ BARRY.init = async function init() {
                   // that was added last rather than renumbering the ten that
                   // people have already learned.
                   't': 'toolkit', 'T': 'toolkit' };
-    if (map[e.key]) setView(map[e.key]);
+    // Same as the rail: pressing 6 while already on Errors should not
+    // reload it.
+    if (map[e.key] && BARRY.state.view !== map[e.key]) setView(map[e.key]);
   });
 
   // Load the catalog, then hand off to each view.
+  //
+  // Both at once. These two are independent -- the catalog is what is in the
+  // repo, preferences are what this person likes -- and they were awaited one
+  // after the other, so a five-second index read was five seconds during
+  // which the preferences request had not been sent yet. Started together,
+  // the boot costs the slower of the two rather than their sum.
+  //
+  // The reconciliation below still needs both, and still waits for both; what
+  // changes is only when the second one is asked for.
+  BARRY.boot.say('reading the repository index', '/api/catalog');
+  const prefsReady = BARRY.prefs.load();
   try {
     const cat = await api('/api/catalog');
     BARRY.state.catalog = cat;
@@ -1301,8 +3767,10 @@ BARRY.init = async function init() {
   }
 
   // Preferences gate the views (favourites, smart collections, last
-  // session), so they must be in hand before any view renders.
-  await BARRY.prefs.load();
+  // session), so they must be in hand before any view renders. Started
+  // above, alongside the catalog; this is where it is collected.
+  BARRY.boot.say('loading your preferences', '/api/prefs');
+  await prefsReady;
 
   // Preferences and the catalog are both in hand now, so the per-machine
   // choice can be honored -- it may differ from what localStorage had.
@@ -1310,10 +3778,28 @@ BARRY.init = async function init() {
   if (mine && mine !== BARRY.state.theme) applyTheme(mine);
   else applyTheme(BARRY.state.theme, true);   // records it for this machine
 
+  // Same reconciliation for VACC Mode, and skipped entirely when the URL
+  // asked for a particular state -- a pop-out must keep what it was handed
+  // rather than adopting this machine's preference a second later.
+  if (new URLSearchParams(location.search).get('vacc') === null) {
+    const mineVacc = vaccForThisMachine();
+    if (mineVacc !== BARRY.state.vacc) applyVacc(mineVacc);
+  }
+  // And whether the name is hidden here: the same per-host map, which may
+  // know better than this browser's localStorage. Quietly -- the reveal is
+  // for a person pressing the switch, not for a morning boot.
+  if (BARRY.jarvis) BARRY.jarvis.reconcile();
+
   BARRY.activity.init();
+  // Asked once, here, rather than on a timer: a permanent poller for a
+  // cluster nobody is using is what the tool feed's stop() discipline
+  // exists to prevent. It also decides whether the rail chip appears.
+  if (BARRY.vacc) BARRY.vacc.init();
   // Housekeeping lives inside the Sessions view rather than owning a rail
-  // slot, so it is wired here rather than by the view loop.
-  if (BARRY.views.housekeeping) BARRY.views.housekeeping.init();
+  // slot -- but it is still registered as BARRY.views.housekeeping, so the
+  // loop below was already calling its init(). Calling it here as well bound
+  // #hkRefresh twice, and every click on Refresh then ran two registry reads
+  // and two full renders. The loop covers it.
   if (BARRY.tour) {
     BARRY.tour.init();
     offerTour();
@@ -1333,18 +3819,65 @@ BARRY.init = async function init() {
   const cscPath = params.get('csc');
   const pipeFolder = params.get('folder');
 
+  /* If the first of these came out of the warm cache and the real answer
+     turns out to differ, run it again. `refreshSync` writes a chip, a
+     tooltip and the error badge and nothing else, so doing it twice is
+     invisible unless something actually changed -- which is the whole
+     contract the warm start is asking every refresher to keep. */
+  BARRY.warm.onFresh('sync_status', () => BARRY.refreshSync());
+
   // One call gives both the sync state and the error count for the badge.
   BARRY.refreshSync().then(() => {
     const n = ((BARRY.sync.index || {}).counts || {}).errors || 0;
     BARRY.setErrorCount(n);
   });
 
-  setView(location.hash.slice(1) || (cscPath ? 'xplore' : 'pipeline'));
+  /* A window opened for one thing should not offer to navigate away from
+     it. Same idea as `aid-window` for the panel pop-outs: the app is the
+     whole app, it just has no rail here. */
+  if (params.get('role') === 'comod' || params.get('role') === 'spectrum') {
+    document.body.classList.add('solo-window');
+  }
+  /* Where to land.
+
+     NOT "wherever a recording is being opened". A `?csc=` in the address
+     used to send the app straight to XploreFinder, so reopening a window
+     that still carried one -- a restored tab, a shortcut, yesterday's
+     pop-out link -- put somebody in the trace view they had not asked for
+     while a recording they had not asked for loaded underneath them.
+
+     The recording still opens. It opens in the BACKGROUND, and the view is
+     whatever the address actually says: the hash where there is one, which
+     is how the aid windows and Incisor's traces window say they want the
+     trace view, and the pipeline where there is not. */
+  setView(location.hash.slice(1) || 'pipeline');
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
   LOG.refreshJobList();
 
+  /* Everything still in flight that MOVES THE PAGE. The overlay stays up
+     until these land.
+
+     It used to come down a frame after the first view was shown, while the
+     recording open, the job list and the sync check were all still running
+     -- so the interface was live and clickable with three things still to
+     land on it. Clicking during that got you taken somewhere you had not
+     asked to go, which is what "it snaps me back to XploreFinder after I
+     have already clicked" was.
+
+     Only the page-moving ones. A registry read that fills a list behind a
+     skeleton is a wait that belongs in the view that wants it, and holding
+     the whole app for it would trade one annoyance for a slower one. */
+  const settling = [];
+
   if (cscPath && BARRY.views.xplore) {
-    BARRY.views.xplore.open(cscPath).then((sess) => {
+    /* `?sel=even` (or odd, first, second, good) opens on that channel
+       preset. Every channel is read either way; this is the Ch menu's
+       button, pressed on arrival. Incisor's traces window asks for even,
+       because a CSD wants one line of contacts. An old link's `?even=1`
+       is read as `?sel=even`. */
+    const selArg = params.get('sel')
+      || (/^(1|true)$/.test(params.get('even') || '') ? 'even' : null);
+    settling.push(BARRY.views.xplore.open(cscPath).then((sess) => {
       if (!sess) return;
       const t0 = parseFloat(params.get('t0'));
       const span = parseFloat(params.get('span'));
@@ -1360,14 +3893,93 @@ BARRY.init = async function init() {
       if (panel && BARRY.views.xplore.state.panes[0]) {
         BARRY.views.xplore.state.panes[0].panel = panel;
       }
+      if (selArg && BARRY.views.xplore.select) {
+        BARRY.views.xplore.select(selArg, sess);
+      }
       BARRY.views.xplore.onShow();
+      /* Loaded behind whatever is on screen. Said once, quietly: a
+         recording that appeared in a view nobody was looking at is a
+         surprise the next time somebody goes there, and a line that names
+         it is cheaper than the surprise. */
+      if (BARRY.state.view !== 'xplore') {
+        toast('Opened ' + (sess.info && sess.info.name ? sess.info.name
+                                                       : 'a recording')
+              + ' in XploreFinder, in the background.', null, 6000);
+      }
       // ?figure=1 opens the builder straight onto this session.
       if (params.get('figure')) {
         setTimeout(() => BARRY.figure.open(BARRY.views.xplore.state, sess), 400);
       }
-    });
+    }));
   }
   if (pipeFolder && BARRY.views.pipeline.setFolder) {
     BARRY.views.pipeline.setFolder(pipeFolder);
   }
+
+  /* Down when the last of them lands, or after a second and a half,
+     whichever comes first.
+
+     The cap is the point. An overlay that waits for a slow drive is an
+     overlay somebody sits behind wondering whether the app has hung -- and
+     the thing being prevented is a click landing in the wrong place, which
+     stops being likely the moment somebody has had time to read the screen.
+     `boot.clear` is idempotent, so both paths racing is fine. */
+  BARRY.boot.say('opening the workspace');
+  Promise.race([
+    Promise.allSettled(settling),
+    new Promise((r) => setTimeout(r, 1500)),
+  ]).then(() => requestAnimationFrame(() => BARRY.boot.clear()));
 };
+
+/* ==========================================================================
+   Xplorefinder modes: one at a time, kept by a registry rather than a habit.
+
+   A mode -- Checkup, StrataScope, Spotter, Braid, the Arc's review -- takes
+   over the panes, the keyboard and the aid window. Two at once leaves two
+   toolbars stacked, two sets of key handlers fighting over the same presses,
+   and an aid window belonging to whichever got there first.
+
+   Each mode used to exit the others itself, by name, and none of them named
+   them all: Checkup left StrataScope and nothing else, StrataScope left
+   Checkup and nothing else, so entering Checkup with Spotter open left both
+   running. Five modes that each list the other four is twenty pairs kept in
+   step by hand, and the sixth breaks them all again.
+
+   So a mode registers once, at load, and its `enter` calls `leaveAllBut`
+   with its own name. Nobody has to know who else exists.
+   ========================================================================== */
+BARRY.modes = (function () {
+  const known = {};
+
+  function register(name, api) {
+    if (name && api) known[name] = api;
+  }
+
+  /* `active` is a getter on every mode, not a method -- calling it throws.
+     Read it inside a try: a mode that half-loaded must not stop another
+     from being entered. */
+  function isOn(api) {
+    try { return !!(api && api.active); } catch (e) { return false; }
+  }
+
+  function leaveAllBut(name) {
+    for (const other of Object.keys(known)) {
+      if (other === name) continue;
+      const api = known[other];
+      if (!isOn(api)) continue;
+      try {
+        api.exit();
+      } catch (err) {
+        // A mode that fails on its way out must not strand you outside the
+        // one you are entering.
+        reportClientError('modes.leave:' + other, err.message, err.stack);
+      }
+    }
+  }
+
+  function active() {
+    return Object.keys(known).filter((n) => isOn(known[n]));
+  }
+
+  return { register, leaveAllBut, active, names: () => Object.keys(known) };
+})();

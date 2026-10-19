@@ -14,11 +14,13 @@
     "n_channels": "2026-09-02T23:51:19.981661+00:00",
     "project": "2026-09-02T23:51:19.981661+00:00",
     "project_source": "2026-09-02T23:51:19.981661+00:00",
-    "retired": "2026-09-03T13:41:17.592594+00:00",
+    "retired": "2026-09-09T06:43:04.226607+00:00",
+    "retired_at": "2026-09-09T06:43:17.300887+00:00",
+    "retired_reason": "2026-09-09T06:04:55.989899+00:00",
     "schema": "2026-09-02T23:51:19.981661+00:00",
     "session": "2026-09-02T23:51:19.981661+00:00",
     "start": "2026-09-02T23:51:19.981661+00:00",
-    "updated": "2026-09-03T13:41:17.592594+00:00"
+    "updated": "2026-09-09T06:43:17.300887+00:00"
   },
   "_keys": {
     "paths": {
@@ -44,6 +46,10 @@
         "set",
         "2026-09-02T23:51:19.981661+00:00"
       ],
+      "Bluebarry": [
+        "set",
+        "2026-09-09T06:43:14.347514+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-02T23:51:19.981661+00:00"
@@ -51,7 +57,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-03T13:41:17.592594+00:00",
+    "at": "2026-09-09T06:43:17.300887+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -80,7 +86,9 @@
   ],
   "project": "KCNT1",
   "project_source": "guessed",
-  "retired": false,
+  "retired": true,
+  "retired_at": "2026-09-09T06:43:15.914853+00:00",
+  "retired_reason": "no data in the folder",
   "schema": 2,
   "seen": {
     "BarryLab": {
@@ -89,6 +97,13 @@
       "path": "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1m576_s5_72326\\2026-07-23_16-57-00",
       "root": "Y:/Jeremy3/KCNT1/Summer'26",
       "scan": "scan_ff32bceba3"
+    },
+    "Bluebarry": {
+      "at": "2026-09-09T02:43:14-04:00",
+      "by": "Shahriar Tafti",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1m576_s5_72326\\2026-07-23_16-41-05",
+      "root": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1m576_s5_72326\\2026-07-23_16-41-05",
+      "scan": "accepted"
     },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-02T18:50:54-04:00",
@@ -101,9 +116,11 @@
   "session": 5,
   "start": "2026-07-23T16:41:05",
   "updated": {
-    "at": "2026-09-03T09:41:17-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "at": "2026-09-09T02:43:17-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Shahriar Tafti"
   }
 }

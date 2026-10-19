@@ -1,0 +1,216 @@
+{
+  "_at": {
+    "added": "2026-09-25T21:10:31.349259+00:00",
+    "by_label": "2026-09-25T21:10:31.349259+00:00",
+    "curation_label": "2026-09-25T21:10:31.349259+00:00",
+    "duration_s": "2026-09-25T21:10:31.349259+00:00",
+    "events": "2026-09-25T21:10:31.349259+00:00",
+    "gid": "2026-09-25T21:10:31.349259+00:00",
+    "id": "2026-09-25T21:10:31.349259+00:00",
+    "label_names": "2026-09-25T21:10:31.349259+00:00",
+    "mouse": "2026-09-25T21:10:31.349259+00:00",
+    "n": "2026-09-25T21:10:31.349259+00:00",
+    "name": "2026-09-25T21:10:31.349259+00:00",
+    "note": "2026-09-25T21:10:31.349259+00:00",
+    "project": "2026-09-25T21:10:31.349259+00:00",
+    "recording_start": "2026-09-25T21:10:31.349259+00:00",
+    "schema": "2026-09-25T21:10:31.349259+00:00",
+    "session": "2026-09-25T21:10:31.349259+00:00",
+    "session_key": "2026-09-25T21:10:31.349259+00:00",
+    "session_label": "2026-09-25T21:10:31.349259+00:00",
+    "session_loose_key": "2026-09-25T21:10:31.349259+00:00",
+    "session_path": "2026-09-25T21:10:31.349259+00:00",
+    "source": "2026-09-25T21:10:31.349259+00:00",
+    "specified": "2026-09-25T21:10:31.349259+00:00",
+    "type": "2026-09-25T21:10:31.349259+00:00",
+    "type_name": "2026-09-25T21:10:31.349259+00:00",
+    "units": "2026-09-25T21:10:31.349259+00:00",
+    "version": "2026-09-25T21:10:31.349259+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "3f6bff621294": [
+        "set",
+        "2026-09-25T21:10:31.349259+00:00"
+      ],
+      "v0-808b985f": [
+        "set",
+        "2026-09-25T21:10:31.349259+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T21:10:31.349259+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-25T17:10:31-04:00",
+    "by": "eye harness",
+    "machine": "LCOM549913"
+  },
+  "by_label": {
+    "Garbage": 1,
+    "Solid": 5
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "channel": 2,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 10.0005
+    },
+    {
+      "channel": 2,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 13.0005
+    },
+    {
+      "channel": 2,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 16.0005
+    },
+    {
+      "channel": 2,
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 19.0005
+    },
+    {
+      "channel": 2,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 22.0005
+    },
+    {
+      "channel": 2,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 25.0005
+    }
+  ],
+  "gid": "s6b2088ae883b",
+  "id": "15f0c22e7d2c",
+  "label_names": {},
+  "mouse": 2,
+  "n": 6,
+  "name": "eye harness \u2014 delete me",
+  "note": "Made by web/_dev/eye.html. Deleted on the way out.",
+  "project": "KCNT1 Urethane",
+  "recording_start": null,
+  "schema": 1,
+  "session": 1,
+  "session_key": null,
+  "session_label": "KCNT1 m2 s1 2022-03-18",
+  "session_loose_key": null,
+  "session_path": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43",
+  "source": {
+    "detector": "LLspikedetector",
+    "file": null,
+    "parameters": {},
+    "pipeline": "Doppler (line length)",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ied",
+  "type_name": "IED",
+  "units": "seconds relative to the start of the recording",
+  "version": 1,
+  "versions": [
+    {
+      "at": "2026-09-25T17:10:31-04:00",
+      "by": "eye harness",
+      "by_label": {
+        "unspecified": 6
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-808b985f",
+      "imported": true,
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {},
+      "n": 6,
+      "note": "Imported from Doppler (line length). 6 candidates, none decided yet.",
+      "snap": [
+        [
+          10.0005,
+          null
+        ],
+        [
+          13.0005,
+          null
+        ],
+        [
+          16.0005,
+          null
+        ],
+        [
+          19.0005,
+          null
+        ],
+        [
+          22.0005,
+          null
+        ],
+        [
+          25.0005,
+          null
+        ]
+      ],
+      "synthesized": true,
+      "v": 0
+    },
+    {
+      "at": "2026-09-25T17:10:31-04:00",
+      "by": "eye harness",
+      "by_label": {
+        "Garbage": 1,
+        "Solid": 5
+      },
+      "changed": 6,
+      "from_v": 0,
+      "gained": 0,
+      "id": "3f6bff621294",
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {
+        "undecided \u2192 garbage": 1,
+        "undecided \u2192 solid": 5
+      },
+      "n": 6,
+      "note": "",
+      "snap": [
+        [
+          10.0005,
+          "solid"
+        ],
+        [
+          13.0005,
+          "solid"
+        ],
+        [
+          16.0005,
+          "solid"
+        ],
+        [
+          19.0005,
+          "garbage"
+        ],
+        [
+          22.0005,
+          "solid"
+        ],
+        [
+          25.0005,
+          "solid"
+        ]
+      ],
+      "v": 1
+    }
+  ]
+}

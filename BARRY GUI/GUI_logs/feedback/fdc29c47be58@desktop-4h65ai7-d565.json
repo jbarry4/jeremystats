@@ -1,0 +1,2497 @@
+{
+ "id": "fdc29c47be58",
+ "kind": "bug",
+ "title": "d",
+ "detail": "No rizz",
+ "context": {
+  "view": "errors",
+  "recording": "PTEN m33 s8 2024-06-14",
+  "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+  "panels": [
+   "traces"
+  ],
+  "window": {
+   "t0": 1859.229,
+   "span": 1
+  },
+  "screen": "1745x835",
+  "agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+ },
+ "wants": "Shahriar",
+ "state": "done",
+ "at": "2026-09-04T16:45:48-0400",
+ "by": "Shahriar",
+ "machine": "DESKTOP-4H65AI7",
+ "shard": "desktop-4h65ai7-d565",
+ "screenshots": [],
+ "recent": {
+  "window_s": 600,
+  "actions": [
+   {
+    "id": "81fcca5d53",
+    "at": "2026-09-04T20:45:24.709Z",
+    "action": "curation.leave",
+    "detail": {
+     "gid": "demo-ds-tutorial",
+     "kind": "ds",
+     "left": 3
+    },
+    "session": {
+     "key": "demo_ds-tutorial",
+     "loose_key": "demo_ds-tutorial",
+     "label": "DEMO m1 s1 (dentate spikes)",
+     "mouse": 1,
+     "session": 1,
+     "path": "demo:ds-tutorial"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "75bf5b58b1",
+    "at": "2026-09-04T20:45:23.729Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 41,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "demo_ds-tutorial",
+     "loose_key": "demo_ds-tutorial",
+     "label": "DEMO m1 s1 (dentate spikes)",
+     "mouse": 1,
+     "session": 1,
+     "path": "demo:ds-tutorial"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "62b4718020",
+    "at": "2026-09-04T20:45:21.849Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 41,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "demo_ds-tutorial",
+     "loose_key": "demo_ds-tutorial",
+     "label": "DEMO m1 s1 (dentate spikes)",
+     "mouse": 1,
+     "session": 1,
+     "path": "demo:ds-tutorial"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "ceec44ce39",
+    "at": "2026-09-04T20:45:18.639Z",
+    "action": "session.open",
+    "detail": {
+     "path": "demo:ds-tutorial",
+     "channels": 32,
+     "fs": 30000,
+     "duration_s": 120,
+     "restored": [
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "demo_ds-tutorial",
+     "loose_key": "demo_ds-tutorial",
+     "label": "DEMO m1 s1 (dentate spikes)",
+     "mouse": 1,
+     "session": 1,
+     "path": "demo:ds-tutorial"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "6fd6d619e5",
+    "at": "2026-09-04T20:45:18.639Z",
+    "action": "curation.enter",
+    "detail": {
+     "gid": "demo-ds-tutorial",
+     "kind": "ds",
+     "n": 24,
+     "left": 4
+    },
+    "session": {
+     "key": "demo_ds-tutorial",
+     "loose_key": "demo_ds-tutorial",
+     "label": "DEMO m1 s1 (dentate spikes)",
+     "mouse": 1,
+     "session": 1,
+     "path": "demo:ds-tutorial"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "3440344b9b",
+    "at": "2026-09-04T20:44:53.324Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "083a5beea8",
+    "at": "2026-09-04T20:37:42.849Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1859.229,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "095bd2ba64",
+    "at": "2026-09-04T20:37:42.016Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1832.209,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "e0d0c090f1",
+    "at": "2026-09-04T20:37:37.991Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 860.474,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "d7bfb0b3ae",
+    "at": "2026-09-04T20:37:33.965Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 580.588,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "9ab8e3e39e",
+    "at": "2026-09-04T20:37:29.941Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 81.815,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "e57128338c",
+    "at": "2026-09-04T20:37:25.926Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 1.671,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "fad8d968f5",
+    "at": "2026-09-04T20:37:19.145Z",
+    "action": "curation.review",
+    "detail": {
+     "mode": "all",
+     "n": 416
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "da12dab460",
+    "at": "2026-09-04T20:37:13.399Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "9edd86671b",
+    "at": "2026-09-04T20:37:13.389Z",
+    "action": "session.open",
+    "detail": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1863.0485333333334,
+     "restored": [
+      "3 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "b4967ae4e5",
+    "at": "2026-09-04T20:37:12.524Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "e05b248484",
+    "at": "2026-09-04T20:37:11.931Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "dfa0b6191c",
+    "at": "2026-09-04T20:37:11.921Z",
+    "action": "curation.enter",
+    "detail": {
+     "gid": "s0a1cd99454b9",
+     "kind": "ds",
+     "n": 416,
+     "left": 0
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "aea1767ae6",
+    "at": "2026-09-04T20:37:11.914Z",
+    "action": "window.change",
+    "detail": {
+     "t0": 458.532,
+     "span": 1,
+     "scope": "session"
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "feca69e871",
+    "at": "2026-09-04T20:37:11.823Z",
+    "action": "session.open",
+    "detail": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1863.0485333333334,
+     "restored": [
+      "3 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "loose_key": "m033_s008",
+     "label": "PTEN m33 s8 2024-06-14",
+     "mouse": 33,
+     "session": 8,
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "0056a99ac5",
+    "at": "2026-09-04T20:36:04.332Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m1609_s001_2026-07-15_11-57-58",
+     "loose_key": "m1609_s001",
+     "label": "KCNT1 m1609 s1 2026-07-15",
+     "mouse": 1609,
+     "session": 1,
+     "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58"
+    },
+    "view": "xplore",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "e55ccebef2",
+    "at": "2026-09-04T20:36:04.247Z",
+    "action": "session.open",
+    "detail": {
+     "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1802.3253333333334,
+     "restored": [
+      "1 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m1609_s001_2026-07-15_11-57-58",
+     "loose_key": "m1609_s001",
+     "label": "KCNT1 m1609 s1 2026-07-15",
+     "mouse": 1609,
+     "session": 1,
+     "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58"
+    },
+    "view": "pipeline",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "9cda378f1e",
+    "at": "2026-09-04T20:36:03.447Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "6539a412fe",
+    "at": "2026-09-04T16:45:31-04:00",
+    "action": "bank.version.archive",
+    "detail": {
+     "entry": "bf189dac80e1",
+     "version": 1,
+     "changed": [
+      "archived"
+     ]
+    },
+    "session": {},
+    "view": null,
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "9f47555af6",
+    "at": "2026-09-04T16:45:31-04:00",
+    "action": "bank.version.unarchive",
+    "detail": {
+     "entry": "bf189dac80e1",
+     "version": 1,
+     "changed": [
+      "unarchived"
+     ]
+    },
+    "session": {},
+    "view": null,
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "346bac53fe",
+    "at": "2026-09-04T16:45:00-04:00",
+    "action": "bank.version.edit",
+    "detail": {
+     "entry": "bf189dac80e1",
+     "version": 2,
+     "changed": [
+      "note",
+      "title"
+     ]
+    },
+    "session": {},
+    "view": null,
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "9eaf62327c",
+    "at": "2026-09-04T16:45:00-04:00",
+    "action": "bank.version.archive",
+    "detail": {
+     "entry": "bf189dac80e1",
+     "version": 1,
+     "changed": [
+      "archived"
+     ]
+    },
+    "session": {},
+    "view": null,
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "b009f266f0",
+    "at": "2026-09-04T16:45:00-04:00",
+    "action": "bank.version.unarchive",
+    "detail": {
+     "entry": "bf189dac80e1",
+     "version": 1,
+     "changed": [
+      "unarchived"
+     ]
+    },
+    "session": {},
+    "view": null,
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "6555b21c84",
+    "at": "2026-09-04T16:45:00-04:00",
+    "action": "bank.version.delete",
+    "detail": {
+     "entry": "bf189dac80e1",
+     "version": 2,
+     "changed": [
+      "deleted"
+     ]
+    },
+    "session": {},
+    "view": null,
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "d5a204e96a",
+    "at": "2026-09-04T16:44:59-04:00",
+    "action": "curation.bank",
+    "detail": {
+     "gid": "demo-ds-tutorial",
+     "kind": "ds",
+     "entry": "bf189dac80e1",
+     "version": 3,
+     "note": "third pass",
+     "by_label": {
+      "spike": 9,
+      "garbage": 10,
+      "flag": 2
+     },
+     "folded": 0,
+     "n": 21
+    },
+    "session": {
+     "key": "demo_ds-tutorial",
+     "label": "DEMO m1 s1 (dentate spikes)"
+    },
+    "view": null,
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "8128db2cfd",
+    "at": "2026-09-04T16:44:57-04:00",
+    "action": "curation.bank",
+    "detail": {
+     "gid": "demo-ds-tutorial",
+     "kind": "ds",
+     "entry": "bf189dac80e1",
+     "version": 2,
+     "note": "second pass",
+     "by_label": {
+      "spike": 11,
+      "garbage": 8,
+      "flag": 2
+     },
+     "folded": 0,
+     "n": 21
+    },
+    "session": {
+     "key": "demo_ds-tutorial",
+     "label": "DEMO m1 s1 (dentate spikes)"
+    },
+    "view": null,
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "1d5d4039c6",
+    "at": "2026-09-04T16:44:56-04:00",
+    "action": "curation.bank",
+    "detail": {
+     "gid": "demo-ds-tutorial",
+     "kind": "ds",
+     "entry": "bf189dac80e1",
+     "version": 1,
+     "note": "first pass",
+     "by_label": {
+      "spike": 11,
+      "garbage": 6,
+      "flag": 3
+     },
+     "folded": 0,
+     "n": 20
+    },
+    "session": {
+     "key": "demo_ds-tutorial",
+     "label": "DEMO m1 s1 (dentate spikes)"
+    },
+    "view": null,
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   },
+   {
+    "id": "e5b43ba195",
+    "at": "2026-09-04T16:38:08-04:00",
+    "action": "curation.bank",
+    "detail": {
+     "gid": "s0a1cd99454b9",
+     "kind": "ds",
+     "entry": "c3427e0cba12",
+     "version": 3,
+     "note": "ALL GARBAGE 2",
+     "by_label": {
+      "garbage": 416
+     },
+     "folded": 0,
+     "n": 416
+    },
+    "session": {
+     "key": "m033_s008_2024-06-14_14-16-58",
+     "label": "PTEN m33 s8 2024-06-14"
+    },
+    "view": null,
+    "user": "Shahriar",
+    "machine": "DESKTOP-4H65AI7",
+    "shard": "desktop-4h65ai7-d565",
+    "os": "Windows"
+   }
+  ],
+  "errors": [],
+  "requests": [
+   {
+    "at": "16:37:50",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 425.3,
+    "body": {
+     "event": "ef1e0cdd6d4",
+     "label": "garbage"
+    },
+    "n": 439
+   },
+   {
+    "at": "16:37:50",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 412.3,
+    "body": {
+     "event": "eae1819289a",
+     "label": "garbage"
+    },
+    "n": 440
+   },
+   {
+    "at": "16:37:50",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 405.6,
+    "body": {
+     "event": "e50bf8d04ca",
+     "label": "garbage"
+    },
+    "n": 441
+   },
+   {
+    "at": "16:37:50",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 363.4,
+    "body": {
+     "event": "ef573d624bb",
+     "label": "garbage"
+    },
+    "n": 442
+   },
+   {
+    "at": "16:37:50",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 301.1,
+    "body": {
+     "event": "e6b9a888f82",
+     "label": "garbage"
+    },
+    "n": 443
+   },
+   {
+    "at": "16:37:50",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 296.0,
+    "body": {
+     "event": "e3c76405340",
+     "label": "garbage"
+    },
+    "n": 444
+   },
+   {
+    "at": "16:37:50",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 305.0,
+    "body": {
+     "event": "edf021957ca",
+     "label": "garbage"
+    },
+    "n": 445
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 300.4,
+    "body": {
+     "event": "eea0b6bdcf6",
+     "label": "garbage"
+    },
+    "n": 446
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 306.0,
+    "body": {
+     "event": "ec71b5c31fe",
+     "label": "garbage"
+    },
+    "n": 447
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 307.4,
+    "body": {
+     "event": "e00ed358645",
+     "label": "garbage"
+    },
+    "n": 448
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 303.0,
+    "body": {
+     "event": "e68fcbe3c0c",
+     "label": "garbage"
+    },
+    "n": 449
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 295.9,
+    "body": {
+     "event": "ea71128a6f5",
+     "label": "garbage"
+    },
+    "n": 450
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 287.8,
+    "body": {
+     "event": "eb9afd5a18d",
+     "label": "garbage"
+    },
+    "n": 451
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 278.3,
+    "body": {
+     "event": "e2c809a8694",
+     "label": "garbage"
+    },
+    "n": 452
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 275.3,
+    "body": {
+     "event": "e5fbe8b9138",
+     "label": "garbage"
+    },
+    "n": 453
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 290.0,
+    "body": {
+     "event": "eb0c67202ae",
+     "label": "garbage"
+    },
+    "n": 454
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 283.4,
+    "body": {
+     "event": "e1ceaeafe93",
+     "label": "garbage"
+    },
+    "n": 455
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 291.0,
+    "body": {
+     "event": "e2fd1ad5155",
+     "label": "garbage"
+    },
+    "n": 456
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 291.0,
+    "body": {
+     "event": "e069f65dd22",
+     "label": "garbage"
+    },
+    "n": 457
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 292.0,
+    "body": {
+     "event": "eeebd1d59bb",
+     "label": "garbage"
+    },
+    "n": 458
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 288.2,
+    "body": {
+     "event": "e2f9dc04f2b",
+     "label": "garbage"
+    },
+    "n": 459
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 307.8,
+    "body": {
+     "event": "e0fb31eb3d0",
+     "label": "garbage"
+    },
+    "n": 460
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 300.4,
+    "body": {
+     "event": "e4e0e5b5729",
+     "label": "garbage"
+    },
+    "n": 461
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 301.3,
+    "body": {
+     "event": "e698081b440",
+     "label": "garbage"
+    },
+    "n": 462
+   },
+   {
+    "at": "16:37:51",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 300.0,
+    "body": {
+     "event": "ea2306d655a",
+     "label": "garbage"
+    },
+    "n": 463
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 294.4,
+    "body": {
+     "event": "e2283281bd7",
+     "label": "garbage"
+    },
+    "n": 464
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 267.7,
+    "body": {
+     "event": "e8d976aebdc",
+     "label": "garbage"
+    },
+    "n": 465
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 283.7,
+    "body": {
+     "event": "e5dd070eb63",
+     "label": "garbage"
+    },
+    "n": 466
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 267.5,
+    "body": {
+     "event": "e68cc8d8f2a",
+     "label": "garbage"
+    },
+    "n": 467
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 269.7,
+    "body": {
+     "event": "e7da23dbc35",
+     "label": "garbage"
+    },
+    "n": 468
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 271.2,
+    "body": {
+     "event": "eb5fe5847f8",
+     "label": "garbage"
+    },
+    "n": 469
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 241.3,
+    "body": {
+     "event": "ef012e42c9f",
+     "label": "garbage"
+    },
+    "n": 470
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 247.0,
+    "body": {
+     "event": "ec0487e3d0d",
+     "label": "garbage"
+    },
+    "n": 471
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 249.2,
+    "body": {
+     "event": "e718293ea66",
+     "label": "garbage"
+    },
+    "n": 472
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 236.1,
+    "body": {
+     "event": "e8654d2e57a",
+     "label": "garbage"
+    },
+    "n": 473
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 254.4,
+    "body": {
+     "event": "e8f3cadd7a0",
+     "label": "garbage"
+    },
+    "n": 474
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 285.3,
+    "body": {
+     "event": "e7762c966f9",
+     "label": "garbage"
+    },
+    "n": 475
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 291.0,
+    "body": {
+     "event": "ea83db5baf6",
+     "label": "garbage"
+    },
+    "n": 476
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 291.7,
+    "body": {
+     "event": "e28c66682cb",
+     "label": "garbage"
+    },
+    "n": 477
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 294.1,
+    "body": {
+     "event": "e4bf99a475e",
+     "label": "garbage"
+    },
+    "n": 478
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 293.5,
+    "body": {
+     "event": "eb0826a40ca",
+     "label": "garbage"
+    },
+    "n": 479
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 294.3,
+    "body": {
+     "event": "e87462a5c01",
+     "label": "garbage"
+    },
+    "n": 480
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 294.3,
+    "body": {
+     "event": "eae9c29ca9d",
+     "label": "garbage"
+    },
+    "n": 481
+   },
+   {
+    "at": "16:37:52",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 300.1,
+    "body": {
+     "event": "e715aa8efbf",
+     "label": "garbage"
+    },
+    "n": 482
+   },
+   {
+    "at": "16:37:53",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 291.8,
+    "body": {
+     "event": "ea3a14bdc21",
+     "label": "garbage"
+    },
+    "n": 483
+   },
+   {
+    "at": "16:37:53",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 304.3,
+    "body": {
+     "event": "e548b13dd11",
+     "label": "garbage"
+    },
+    "n": 484
+   },
+   {
+    "at": "16:37:53",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 325.4,
+    "body": {
+     "event": "eb95bb2d65f",
+     "label": "garbage"
+    },
+    "n": 485
+   },
+   {
+    "at": "16:37:53",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 423.5,
+    "body": {
+     "event": "ebb76b934f3",
+     "label": "garbage"
+    },
+    "n": 486
+   },
+   {
+    "at": "16:37:53",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 486.7,
+    "body": {
+     "event": "e212e9864e9",
+     "label": "garbage"
+    },
+    "n": 487
+   },
+   {
+    "at": "16:37:53",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 513.3,
+    "body": {
+     "event": "eafa512a307",
+     "label": "garbage"
+    },
+    "n": 488
+   },
+   {
+    "at": "16:37:53",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 526.4,
+    "body": {
+     "event": "e48486778fd",
+     "label": "garbage"
+    },
+    "n": 489
+   },
+   {
+    "at": "16:37:53",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 536.8,
+    "body": {
+     "event": "e257676e516",
+     "label": "garbage"
+    },
+    "n": 490
+   },
+   {
+    "at": "16:37:53",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 464.7,
+    "body": {
+     "event": "eeb4c77a14f",
+     "label": "garbage"
+    },
+    "n": 491
+   },
+   {
+    "at": "16:37:53",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 411.8,
+    "body": {
+     "event": "e8f10ba5fd0",
+     "label": "garbage"
+    },
+    "n": 492
+   },
+   {
+    "at": "16:37:53",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 451.5,
+    "body": {
+     "event": "e4f69ccc63d",
+     "label": "garbage"
+    },
+    "n": 493
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 264.2,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "px": 1485,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 494
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 489.3,
+    "body": {
+     "event": "ee88069606f",
+     "label": "garbage"
+    },
+    "n": 495
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 560.5,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 496
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 555.5,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 497
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 499.7,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 498
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 413.1,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 499
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 346.4,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 500
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 342.6,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 501
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 310.3,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 502
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 288.3,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 503
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 288.6,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 504
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 285.5,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 505
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 288.9,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 506
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 284.2,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 507
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 288.9,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 508
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 305.2,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 509
+   },
+   {
+    "at": "16:37:54",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 344.4,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 510
+   },
+   {
+    "at": "16:37:55",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 360.1,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 511
+   },
+   {
+    "at": "16:37:55",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 373.7,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 512
+   },
+   {
+    "at": "16:37:55",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 369.2,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 513
+   },
+   {
+    "at": "16:37:55",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/label",
+    "status": 200,
+    "ms": 373.5,
+    "body": {
+     "event": "ef8fb5fe3c6",
+     "label": "garbage"
+    },
+    "n": 514
+   },
+   {
+    "at": "16:37:55",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 170.3,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "voltage",
+     "t0": 454.71,
+     "t1": 455.71,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 515
+   },
+   {
+    "at": "16:37:55",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 278.7,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 454.71,
+     "t1": 455.71,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 516
+   },
+   {
+    "at": "16:37:55",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 300.7,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "theta",
+     "t0": 454.71,
+     "t1": 455.71,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 517
+   },
+   {
+    "at": "16:37:56",
+    "method": "POST",
+    "path": "/api/session/state",
+    "status": 200,
+    "ms": 1517.8,
+    "body": {
+     "identity": "{confidence, gid, group, key, label, loose_key, mouse, mouse_folder}",
+     "state": "{channels, clim, even_only, fdefault, flock, gain, hp, invert}"
+    },
+    "n": 518
+   },
+   {
+    "at": "16:37:56",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1304.5,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "spectrogram",
+     "t0": 454.71,
+     "t1": 455.71,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000,
+     "_edge_s": 0.05631666666666667,
+     "_db_mult": 30.0,
+     "_legacy_stft": true
+    },
+    "n": 519
+   },
+   {
+    "at": "16:37:56",
+    "method": "GET",
+    "path": "/api/curation/s0a1cd99454b9/ds",
+    "status": 200,
+    "ms": 1246.1,
+    "n": 520
+   },
+   {
+    "at": "16:37:56",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.1,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 521
+   },
+   {
+    "at": "16:37:56",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.6,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "theta",
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 522
+   },
+   {
+    "at": "16:37:56",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.7,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "voltage",
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 523
+   },
+   {
+    "at": "16:37:56",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 2.5,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "spectrogram",
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 524
+   },
+   {
+    "at": "16:38:00",
+    "method": "GET",
+    "path": "/api/curation/s0a1cd99454b9/ds/banked",
+    "status": 200,
+    "ms": 0.7,
+    "n": 525
+   },
+   {
+    "at": "16:38:08",
+    "method": "POST",
+    "path": "/api/curation/s0a1cd99454b9/ds/bank",
+    "status": 200,
+    "ms": 586.5,
+    "body": {
+     "added_by": "Shahriar",
+     "note": "ALL GARBAGE 2"
+    },
+    "n": 526
+   },
+   {
+    "at": "16:38:09",
+    "method": "GET",
+    "path": "/api/sync/status",
+    "status": 200,
+    "ms": 626.3,
+    "n": 527
+   },
+   {
+    "at": "16:38:13",
+    "method": "GET",
+    "path": "/api/bank",
+    "status": 200,
+    "ms": 6.9,
+    "n": 528
+   },
+   {
+    "at": "16:38:18",
+    "method": "GET",
+    "path": "/api/bank/a28cf9b10de0",
+    "status": 200,
+    "ms": 0.9,
+    "n": 529
+   },
+   {
+    "at": "16:38:19",
+    "method": "GET",
+    "path": "/api/bank/c3427e0cba12",
+    "status": 200,
+    "ms": 2.0,
+    "n": 530
+   },
+   {
+    "at": "16:38:25",
+    "method": "GET",
+    "path": "/api/bank/c3427e0cba12",
+    "status": 200,
+    "ms": 1.9,
+    "n": 531
+   },
+   {
+    "at": "16:38:26",
+    "method": "GET",
+    "path": "/api/bank/c3427e0cba12",
+    "status": 200,
+    "ms": 2.1,
+    "n": 532
+   },
+   {
+    "at": "16:38:27",
+    "method": "GET",
+    "path": "/api/bank/c3427e0cba12",
+    "status": 200,
+    "ms": 2.0,
+    "n": 533
+   },
+   {
+    "at": "16:38:27",
+    "method": "GET",
+    "path": "/api/bank/c3427e0cba12",
+    "status": 200,
+    "ms": 1.7,
+    "n": 534
+   },
+   {
+    "at": "16:38:28",
+    "method": "GET",
+    "path": "/api/bank/c3427e0cba12",
+    "status": 200,
+    "ms": 7.4,
+    "n": 535
+   },
+   {
+    "at": "16:38:48",
+    "method": "GET",
+    "path": "/api/bank/c3427e0cba12",
+    "status": 200,
+    "ms": 2.0,
+    "n": 536
+   },
+   {
+    "at": "16:39:04",
+    "method": "GET",
+    "path": "/api/bank/dbb5be193d7a",
+    "status": 200,
+    "ms": 1.2,
+    "n": 537
+   },
+   {
+    "at": "16:39:11",
+    "method": "GET",
+    "path": "/api/bank/c3427e0cba12",
+    "status": 200,
+    "ms": 2.0,
+    "n": 538
+   },
+   {
+    "at": "16:39:17",
+    "method": "GET",
+    "path": "/api/bank/c3427e0cba12",
+    "status": 200,
+    "ms": 2.1,
+    "n": 539
+   },
+   {
+    "at": "16:41:22",
+    "method": "POST",
+    "path": "/api/csc/window",
+    "status": 200,
+    "ms": 136.6,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "px": 1485,
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "mode": "voltage",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "ylim": null
+    },
+    "n": 540
+   },
+   {
+    "at": "16:44:19",
+    "method": "POST",
+    "path": "/api/pipeline/check",
+    "status": 200,
+    "ms": 264.1,
+    "body": {
+     "folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+     "track": "session"
+    },
+    "n": 541
+   },
+   {
+    "at": "16:44:22",
+    "method": "GET",
+    "path": "/api/script",
+    "status": 200,
+    "ms": 12.9,
+    "query": "source=1&rel=IED%2F03_IED_Detection%2FAnalyze_MatFile_Start.m",
+    "n": 542
+   },
+   {
+    "at": "16:44:22",
+    "method": "GET",
+    "path": "/api/presets/layouts",
+    "status": 200,
+    "ms": 0.4,
+    "n": 543
+   },
+   {
+    "at": "16:44:23",
+    "method": "POST",
+    "path": "/api/prefs",
+    "status": 200,
+    "ms": 9.7,
+    "body": {
+     "patch": "{recent_scripts}"
+    },
+    "n": 544
+   },
+   {
+    "at": "16:44:28",
+    "method": "POST",
+    "path": "/api/pipeline/check",
+    "status": 200,
+    "ms": 246.0,
+    "body": {
+     "folder": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10",
+     "track": "session"
+    },
+    "n": 545
+   },
+   {
+    "at": "16:44:58",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.8,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 546
+   },
+   {
+    "at": "16:44:58",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.5,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "theta",
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 547
+   },
+   {
+    "at": "16:44:58",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.7,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "voltage",
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 548
+   },
+   {
+    "at": "16:44:58",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 3.5,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "spectrogram",
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 549
+   },
+   {
+    "at": "16:44:59",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 1.0,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "csd",
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 550
+   },
+   {
+    "at": "16:44:59",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.3,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "theta",
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 551
+   },
+   {
+    "at": "16:44:59",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 0.4,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "voltage",
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null
+    },
+    "n": 552
+   },
+   {
+    "at": "16:44:59",
+    "method": "POST",
+    "path": "/api/panel",
+    "status": 200,
+    "ms": 2.8,
+    "body": {
+     "path": "D:\\PTEN\\PTEN\\m33_ptenblind\\m33s8jun14\\2024-06-14_14-16-58",
+     "even_only": false,
+     "invert": true,
+     "panel": "spectrogram",
+     "t0": 1859.229,
+     "t1": 1860.229,
+     "channels": "[30 items]",
+     "highpass": 0,
+     "lowpass": 0,
+     "notch": 0,
+     "cmap": "jet",
+     "spacing_um": 50,
+     "bad_channels": [
+      8,
+      41,
+      59
+     ],
+     "max_cols": 1800,
+     "clim": null,
+     "tf_channels": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+     ],
+     "tf_mode": "stack",
+     "fmin": 20,
+     "fmax": 1000
+    },
+    "n": 553
+   },
+   {
+    "at": "16:45:31",
+    "method": "GET",
+    "path": "/api/history",
+    "status": 200,
+    "ms": 1.3,
+    "query": "limit=400",
+    "n": 554
+   },
+   {
+    "at": "16:45:32",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 3.0,
+    "n": 555
+   },
+   {
+    "at": "16:45:32",
+    "method": "GET",
+    "path": "/api/errors",
+    "status": 200,
+    "ms": 6.6,
+    "query": "limit=300",
+    "n": 556
+   },
+   {
+    "at": "16:45:32",
+    "method": "GET",
+    "path": "/api/errors/grouped",
+    "status": 200,
+    "ms": 13.0,
+    "query": "limit=600",
+    "n": 557
+   },
+   {
+    "at": "16:45:34",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 0.9,
+    "n": 558
+   }
+  ]
+ },
+ "notes": []
+}

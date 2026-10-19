@@ -1,0 +1,2868 @@
+{
+  "_at": {
+    "created": "2026-09-21T19:01:12.353700+00:00",
+    "entry_id": "2026-09-21T19:01:12.353700+00:00",
+    "from_version": "2026-09-21T19:01:12.353700+00:00",
+    "gid": "2026-09-21T19:01:12.353700+00:00",
+    "name": "2026-09-21T19:01:12.353700+00:00",
+    "params": "2026-09-21T19:01:12.353700+00:00",
+    "rows": "2026-09-21T19:01:12.353700+00:00",
+    "schema": "2026-09-21T19:01:12.353700+00:00",
+    "set_id": "2026-09-21T19:01:12.353700+00:00",
+    "summary": "2026-09-21T19:01:12.353700+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-21T19:01:12.353700+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "calls": {},
+  "created": {
+    "at": "2026-09-21T15:01:12-0400",
+    "by": "Rain Younger",
+    "machine": "Strawbarry"
+  },
+  "entry_id": "03adeaf1032e",
+  "from_version": "5b8d2e682e30",
+  "gid": "s1563f9c932bc",
+  "name": "m28s7jun18",
+  "params": {
+    "band": [
+      5.0,
+      100.0
+    ],
+    "cand_dist_ms": 12.0,
+    "cand_height_sd": 0.0,
+    "channels": [
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50
+    ],
+    "csd_smooth": true,
+    "dist_ms": 100.0,
+    "estimator": "mad",
+    "invert": true,
+    "left_out": [
+      8,
+      41,
+      59
+    ],
+    "lfp_fs": 1000.0,
+    "line_hz": 60.0,
+    "measure": "csd",
+    "n_channels": 16,
+    "order": 3,
+    "profile": {
+      "34": 0.209289,
+      "35": 0.108336,
+      "36": 0.163921,
+      "37": 0.236219,
+      "38": 0.198894,
+      "39": 0.146216,
+      "40": 0.110267,
+      "41": 0.138975,
+      "42": 0.130944,
+      "43": 0.212437,
+      "44": 0.305799,
+      "45": -0.119622,
+      "46": -0.481419,
+      "47": -0.407696,
+      "48": -0.335094,
+      "49": -0.298353
+    },
+    "screened": {
+      "41": "not ticked",
+      "59": "dead (0.5 uV against a median of 118)",
+      "8": "not ticked"
+    },
+    "smooth_ms": 0.0,
+    "spacing_um": 30.0,
+    "window_ms": 100.0
+  },
+  "rows": [
+    {
+      "flag": null,
+      "i": 0,
+      "moved": false,
+      "now": 3.060461,
+      "peak": 5,
+      "peak_uv": 88891.146,
+      "same": true,
+      "shift_ms": -0.539,
+      "was": 3.061
+    },
+    {
+      "flag": null,
+      "i": 1,
+      "moved": true,
+      "now": 13.666389,
+      "peak": 14,
+      "peak_uv": 114284.289,
+      "same": false,
+      "shift_ms": 7.389,
+      "was": 13.659
+    },
+    {
+      "flag": null,
+      "i": 2,
+      "moved": true,
+      "now": 20.056133,
+      "peak": 22,
+      "peak_uv": 183556.141,
+      "same": false,
+      "shift_ms": 1.133,
+      "was": 20.055
+    },
+    {
+      "flag": null,
+      "i": 3,
+      "moved": true,
+      "now": 43.063662,
+      "peak": 32,
+      "peak_uv": 105363.131,
+      "same": false,
+      "shift_ms": 19.662,
+      "was": 43.044
+    },
+    {
+      "flag": "outlier",
+      "i": 4,
+      "moved": true,
+      "now": 50.701418,
+      "peak": 45,
+      "peak_uv": 44294.205,
+      "same": false,
+      "shift_ms": 53.418,
+      "was": 50.648
+    },
+    {
+      "flag": null,
+      "i": 5,
+      "moved": true,
+      "now": 71.626803,
+      "peak": 53,
+      "peak_uv": 107070.416,
+      "same": false,
+      "shift_ms": -2.197,
+      "was": 71.629
+    },
+    {
+      "flag": null,
+      "i": 6,
+      "moved": true,
+      "now": 80.986121,
+      "peak": 63,
+      "peak_uv": 40942.672,
+      "same": false,
+      "shift_ms": 15.121,
+      "was": 80.971
+    },
+    {
+      "flag": null,
+      "i": 7,
+      "moved": true,
+      "now": 84.958113,
+      "peak": 71,
+      "peak_uv": 121725.579,
+      "same": false,
+      "shift_ms": 1.113,
+      "was": 84.957
+    },
+    {
+      "flag": null,
+      "i": 8,
+      "moved": true,
+      "now": 99.293326,
+      "peak": 80,
+      "peak_uv": 52024.238,
+      "same": false,
+      "shift_ms": 4.326,
+      "was": 99.289
+    },
+    {
+      "flag": null,
+      "i": 9,
+      "moved": false,
+      "now": 111.075642,
+      "peak": 88,
+      "peak_uv": 144022.545,
+      "same": true,
+      "shift_ms": 0.642,
+      "was": 111.075
+    },
+    {
+      "flag": null,
+      "i": 10,
+      "moved": true,
+      "now": 115.275223,
+      "peak": 95,
+      "peak_uv": 55977.853,
+      "same": false,
+      "shift_ms": -50.777,
+      "was": 115.326
+    },
+    {
+      "flag": null,
+      "i": 11,
+      "moved": false,
+      "now": 127.525882,
+      "peak": 110,
+      "peak_uv": 20461.171,
+      "same": true,
+      "shift_ms": 0.882,
+      "was": 127.525
+    },
+    {
+      "flag": null,
+      "i": 12,
+      "moved": true,
+      "now": 128.805927,
+      "peak": 176,
+      "peak_uv": 86786.016,
+      "same": false,
+      "shift_ms": -2.073,
+      "was": 128.808
+    },
+    {
+      "flag": null,
+      "i": 13,
+      "moved": true,
+      "now": 138.44803,
+      "peak": 186,
+      "peak_uv": 76206.532,
+      "same": false,
+      "shift_ms": -2.97,
+      "was": 138.451
+    },
+    {
+      "flag": null,
+      "i": 14,
+      "moved": true,
+      "now": 185.584145,
+      "peak": 196,
+      "peak_uv": 100467.19,
+      "same": false,
+      "shift_ms": -1.855,
+      "was": 185.586
+    },
+    {
+      "flag": null,
+      "i": 15,
+      "moved": false,
+      "now": 213.853977,
+      "peak": 204,
+      "peak_uv": 147723.952,
+      "same": true,
+      "shift_ms": -0.023,
+      "was": 213.854
+    },
+    {
+      "flag": null,
+      "i": 16,
+      "moved": true,
+      "now": 215.63575,
+      "peak": 301,
+      "peak_uv": 65374.171,
+      "same": false,
+      "shift_ms": -3.25,
+      "was": 215.639
+    },
+    {
+      "flag": null,
+      "i": 17,
+      "moved": true,
+      "now": 222.271052,
+      "peak": 310,
+      "peak_uv": 91809.322,
+      "same": false,
+      "shift_ms": -3.948,
+      "was": 222.275
+    },
+    {
+      "flag": "outlier",
+      "i": 18,
+      "moved": true,
+      "now": 229.181136,
+      "peak": 320,
+      "peak_uv": 74644.934,
+      "same": false,
+      "shift_ms": 53.136,
+      "was": 229.128
+    },
+    {
+      "flag": null,
+      "i": 19,
+      "moved": false,
+      "now": 234.979452,
+      "peak": 326,
+      "peak_uv": 61236.949,
+      "same": true,
+      "shift_ms": -0.548,
+      "was": 234.98
+    },
+    {
+      "flag": null,
+      "i": 20,
+      "moved": false,
+      "now": 236.565103,
+      "peak": 412,
+      "peak_uv": 17524.554,
+      "same": true,
+      "shift_ms": 0.103,
+      "was": 236.565
+    },
+    {
+      "flag": null,
+      "i": 21,
+      "moved": true,
+      "now": 240.238514,
+      "peak": 421,
+      "peak_uv": 130833.304,
+      "same": false,
+      "shift_ms": -2.486,
+      "was": 240.241
+    },
+    {
+      "flag": null,
+      "i": 22,
+      "moved": true,
+      "now": 241.088514,
+      "peak": 460,
+      "peak_uv": 73750.308,
+      "same": false,
+      "shift_ms": -4.486,
+      "was": 241.093
+    },
+    {
+      "flag": null,
+      "i": 23,
+      "moved": true,
+      "now": 241.522838,
+      "peak": 479,
+      "peak_uv": 44148.924,
+      "same": false,
+      "shift_ms": -3.162,
+      "was": 241.526
+    },
+    {
+      "flag": null,
+      "i": 24,
+      "moved": true,
+      "now": 242.759089,
+      "peak": 540,
+      "peak_uv": 84876.759,
+      "same": false,
+      "shift_ms": -2.911,
+      "was": 242.762
+    },
+    {
+      "flag": null,
+      "i": 25,
+      "moved": true,
+      "now": 243.121395,
+      "peak": 555,
+      "peak_uv": 107889.949,
+      "same": false,
+      "shift_ms": -1.605,
+      "was": 243.123
+    },
+    {
+      "flag": null,
+      "i": 26,
+      "moved": true,
+      "now": 261.65552,
+      "peak": 562,
+      "peak_uv": 69083.376,
+      "same": false,
+      "shift_ms": -6.48,
+      "was": 261.662
+    },
+    {
+      "flag": null,
+      "i": 27,
+      "moved": true,
+      "now": 279.24623,
+      "peak": 569,
+      "peak_uv": 21730.175,
+      "same": false,
+      "shift_ms": -43.77,
+      "was": 279.29
+    },
+    {
+      "flag": null,
+      "i": 28,
+      "moved": true,
+      "now": 285.98209,
+      "peak": 582,
+      "peak_uv": 96589.786,
+      "same": false,
+      "shift_ms": -1.91,
+      "was": 285.984
+    },
+    {
+      "flag": null,
+      "i": 29,
+      "moved": true,
+      "now": 293.42087,
+      "peak": 592,
+      "peak_uv": 72657.107,
+      "same": false,
+      "shift_ms": -3.13,
+      "was": 293.424
+    },
+    {
+      "flag": null,
+      "i": 30,
+      "moved": true,
+      "now": 295.81688,
+      "peak": 600,
+      "peak_uv": 178669.419,
+      "same": false,
+      "shift_ms": -1.12,
+      "was": 295.818
+    },
+    {
+      "flag": null,
+      "i": 31,
+      "moved": true,
+      "now": 306.05401,
+      "peak": 610,
+      "peak_uv": 61367.63,
+      "same": false,
+      "shift_ms": -3.99,
+      "was": 306.058
+    },
+    {
+      "flag": null,
+      "i": 32,
+      "moved": true,
+      "now": 311.69378,
+      "peak": 619,
+      "peak_uv": 85805.235,
+      "same": false,
+      "shift_ms": -4.22,
+      "was": 311.698
+    },
+    {
+      "flag": null,
+      "i": 33,
+      "moved": true,
+      "now": 326.872898,
+      "peak": 628,
+      "peak_uv": 167188.024,
+      "same": false,
+      "shift_ms": -3.102,
+      "was": 326.876
+    },
+    {
+      "flag": null,
+      "i": 34,
+      "moved": true,
+      "now": 329.810079,
+      "peak": 638,
+      "peak_uv": 36113.316,
+      "same": false,
+      "shift_ms": -2.921,
+      "was": 329.813
+    },
+    {
+      "flag": null,
+      "i": 35,
+      "moved": true,
+      "now": 334.852943,
+      "peak": 647,
+      "peak_uv": 123681.071,
+      "same": false,
+      "shift_ms": -2.057,
+      "was": 334.855
+    },
+    {
+      "flag": null,
+      "i": 36,
+      "moved": true,
+      "now": 363.401227,
+      "peak": 657,
+      "peak_uv": 83014.804,
+      "same": false,
+      "shift_ms": -5.773,
+      "was": 363.407
+    },
+    {
+      "flag": null,
+      "i": 37,
+      "moved": true,
+      "now": 363.55143,
+      "peak": 664,
+      "peak_uv": 139692.725,
+      "same": false,
+      "shift_ms": -26.57,
+      "was": 363.578
+    },
+    {
+      "flag": null,
+      "i": 38,
+      "moved": true,
+      "now": 375.508968,
+      "peak": 672,
+      "peak_uv": 143195.338,
+      "same": false,
+      "shift_ms": -2.032,
+      "was": 375.511
+    },
+    {
+      "flag": null,
+      "i": 39,
+      "moved": true,
+      "now": 377.813132,
+      "peak": 681,
+      "peak_uv": 75475.302,
+      "same": false,
+      "shift_ms": -4.868,
+      "was": 377.818
+    },
+    {
+      "flag": null,
+      "i": 40,
+      "moved": false,
+      "now": 378.719182,
+      "peak": 727,
+      "peak_uv": 64354.197,
+      "same": true,
+      "shift_ms": -0.818,
+      "was": 378.72
+    },
+    {
+      "flag": null,
+      "i": 41,
+      "moved": true,
+      "now": 391.603122,
+      "peak": 736,
+      "peak_uv": 90975.847,
+      "same": false,
+      "shift_ms": -3.878,
+      "was": 391.607
+    },
+    {
+      "flag": null,
+      "i": 42,
+      "moved": true,
+      "now": 409.556864,
+      "peak": 746,
+      "peak_uv": 48243.327,
+      "same": false,
+      "shift_ms": -4.136,
+      "was": 409.561
+    },
+    {
+      "flag": null,
+      "i": 43,
+      "moved": true,
+      "now": 426.819866,
+      "peak": 755,
+      "peak_uv": 70524.924,
+      "same": false,
+      "shift_ms": -3.134,
+      "was": 426.823
+    },
+    {
+      "flag": null,
+      "i": 44,
+      "moved": true,
+      "now": 441.959454,
+      "peak": 765,
+      "peak_uv": 80532.406,
+      "same": false,
+      "shift_ms": -3.546,
+      "was": 441.963
+    },
+    {
+      "flag": null,
+      "i": 45,
+      "moved": true,
+      "now": 455.10163,
+      "peak": 776,
+      "peak_uv": 74760.337,
+      "same": false,
+      "shift_ms": 16.63,
+      "was": 455.085
+    },
+    {
+      "flag": null,
+      "i": 46,
+      "moved": true,
+      "now": 464.178026,
+      "peak": 784,
+      "peak_uv": 237480.496,
+      "same": false,
+      "shift_ms": -2.974,
+      "was": 464.181
+    },
+    {
+      "flag": null,
+      "i": 47,
+      "moved": true,
+      "now": 464.643948,
+      "peak": 811,
+      "peak_uv": 52777.955,
+      "same": false,
+      "shift_ms": -6.052,
+      "was": 464.65
+    },
+    {
+      "flag": null,
+      "i": 48,
+      "moved": true,
+      "now": 467.216092,
+      "peak": 820,
+      "peak_uv": 43519.103,
+      "same": false,
+      "shift_ms": -2.908,
+      "was": 467.219
+    },
+    {
+      "flag": null,
+      "i": 50,
+      "moved": true,
+      "now": 479.706288,
+      "peak": 897,
+      "peak_uv": 70382.206,
+      "same": false,
+      "shift_ms": -5.712,
+      "was": 479.712
+    },
+    {
+      "flag": null,
+      "i": 51,
+      "moved": true,
+      "now": 482.131432,
+      "peak": 905,
+      "peak_uv": 104171.844,
+      "same": false,
+      "shift_ms": -3.568,
+      "was": 482.135
+    },
+    {
+      "flag": "outlier",
+      "i": 52,
+      "moved": true,
+      "now": 495.189502,
+      "peak": 911,
+      "peak_uv": 45463.26,
+      "same": false,
+      "shift_ms": -60.498,
+      "was": 495.25
+    },
+    {
+      "flag": null,
+      "i": 53,
+      "moved": true,
+      "now": 514.090795,
+      "peak": 922,
+      "peak_uv": 54375.381,
+      "same": false,
+      "shift_ms": -13.205,
+      "was": 514.104
+    },
+    {
+      "flag": null,
+      "i": 54,
+      "moved": true,
+      "now": 520.927864,
+      "peak": 933,
+      "peak_uv": 79027.507,
+      "same": false,
+      "shift_ms": -12.136,
+      "was": 520.94
+    },
+    {
+      "flag": "outlier",
+      "i": 55,
+      "moved": true,
+      "now": 526.464687,
+      "peak": 946,
+      "peak_uv": 58747.328,
+      "same": false,
+      "shift_ms": 51.687,
+      "was": 526.413
+    },
+    {
+      "flag": null,
+      "i": 56,
+      "moved": true,
+      "now": 530.06525,
+      "peak": 952,
+      "peak_uv": 18314.776,
+      "same": false,
+      "shift_ms": -9.75,
+      "was": 530.075
+    },
+    {
+      "flag": null,
+      "i": 57,
+      "moved": true,
+      "now": 538.060402,
+      "peak": 963,
+      "peak_uv": 63966.234,
+      "same": false,
+      "shift_ms": -12.598,
+      "was": 538.073
+    },
+    {
+      "flag": null,
+      "i": 58,
+      "moved": true,
+      "now": 542.462201,
+      "peak": 974,
+      "peak_uv": 140498.84,
+      "same": false,
+      "shift_ms": -10.799,
+      "was": 542.473
+    },
+    {
+      "flag": "outlier",
+      "i": 59,
+      "moved": true,
+      "now": 553.190518,
+      "peak": 988,
+      "peak_uv": 51266.098,
+      "same": false,
+      "shift_ms": 51.518,
+      "was": 553.139
+    },
+    {
+      "flag": null,
+      "i": 60,
+      "moved": true,
+      "now": 559.926203,
+      "peak": 996,
+      "peak_uv": 88176.605,
+      "same": false,
+      "shift_ms": -12.797,
+      "was": 559.939
+    },
+    {
+      "flag": null,
+      "i": 61,
+      "moved": true,
+      "now": 562.723047,
+      "peak": 1004,
+      "peak_uv": 95232.304,
+      "same": false,
+      "shift_ms": -11.953,
+      "was": 562.735
+    },
+    {
+      "flag": null,
+      "i": 62,
+      "moved": true,
+      "now": 577.683681,
+      "peak": 1014,
+      "peak_uv": 92769.694,
+      "same": false,
+      "shift_ms": -11.319,
+      "was": 577.695
+    },
+    {
+      "flag": null,
+      "i": 63,
+      "moved": true,
+      "now": 615.213484,
+      "peak": 1026,
+      "peak_uv": 42707.491,
+      "same": false,
+      "shift_ms": 11.484,
+      "was": 615.202
+    },
+    {
+      "flag": null,
+      "i": 64,
+      "moved": true,
+      "now": 624.581939,
+      "peak": 1032,
+      "peak_uv": 103546.086,
+      "same": false,
+      "shift_ms": -13.061,
+      "was": 624.595
+    },
+    {
+      "flag": null,
+      "i": 65,
+      "moved": true,
+      "now": 643.906859,
+      "peak": 1040,
+      "peak_uv": 87857.931,
+      "same": false,
+      "shift_ms": -12.141,
+      "was": 643.919
+    },
+    {
+      "flag": null,
+      "i": 66,
+      "moved": true,
+      "now": 690.241038,
+      "peak": 1047,
+      "peak_uv": 104296.442,
+      "same": false,
+      "shift_ms": 2.038,
+      "was": 690.239
+    },
+    {
+      "flag": null,
+      "i": 67,
+      "moved": true,
+      "now": 699.401748,
+      "peak": 1054,
+      "peak_uv": 51919.486,
+      "same": false,
+      "shift_ms": -15.252,
+      "was": 699.417
+    },
+    {
+      "flag": "outlier",
+      "i": 68,
+      "moved": true,
+      "now": 711.941166,
+      "peak": 1061,
+      "peak_uv": 70999.364,
+      "same": false,
+      "shift_ms": -71.834,
+      "was": 712.013
+    },
+    {
+      "flag": null,
+      "i": 69,
+      "moved": true,
+      "now": 737.605287,
+      "peak": 1073,
+      "peak_uv": 140399.171,
+      "same": false,
+      "shift_ms": -10.713,
+      "was": 737.616
+    },
+    {
+      "flag": null,
+      "i": 70,
+      "moved": true,
+      "now": 738.697641,
+      "peak": 1130,
+      "peak_uv": 11046.517,
+      "same": false,
+      "shift_ms": -11.359,
+      "was": 738.709
+    },
+    {
+      "flag": null,
+      "i": 71,
+      "moved": true,
+      "now": 748.062462,
+      "peak": 1141,
+      "peak_uv": 77682.429,
+      "same": false,
+      "shift_ms": -5.538,
+      "was": 748.068
+    },
+    {
+      "flag": null,
+      "i": 72,
+      "moved": true,
+      "now": 748.371336,
+      "peak": 1154,
+      "peak_uv": 154795.239,
+      "same": false,
+      "shift_ms": -11.664,
+      "was": 748.383
+    },
+    {
+      "flag": "outlier",
+      "i": 73,
+      "moved": true,
+      "now": 753.573099,
+      "peak": 1168,
+      "peak_uv": 61139.365,
+      "same": false,
+      "shift_ms": 69.099,
+      "was": 753.504
+    },
+    {
+      "flag": null,
+      "i": 74,
+      "moved": true,
+      "now": 760.274153,
+      "peak": 1173,
+      "peak_uv": 87147.552,
+      "same": false,
+      "shift_ms": -13.847,
+      "was": 760.288
+    },
+    {
+      "flag": null,
+      "i": 75,
+      "moved": true,
+      "now": 775.538083,
+      "peak": 1184,
+      "peak_uv": 96534.334,
+      "same": false,
+      "shift_ms": -12.917,
+      "was": 775.551
+    },
+    {
+      "flag": null,
+      "i": 76,
+      "moved": true,
+      "now": 787.111586,
+      "peak": 1194,
+      "peak_uv": 72760.129,
+      "same": false,
+      "shift_ms": -15.414,
+      "was": 787.127
+    },
+    {
+      "flag": null,
+      "i": 77,
+      "moved": true,
+      "now": 790.513891,
+      "peak": 1202,
+      "peak_uv": 104310.854,
+      "same": false,
+      "shift_ms": -14.109,
+      "was": 790.528
+    },
+    {
+      "flag": null,
+      "i": 78,
+      "moved": true,
+      "now": 800.614619,
+      "peak": 1215,
+      "peak_uv": 77135.839,
+      "same": false,
+      "shift_ms": -14.381,
+      "was": 800.629
+    },
+    {
+      "flag": null,
+      "i": 79,
+      "moved": true,
+      "now": 806.655958,
+      "peak": 1226,
+      "peak_uv": 84005.365,
+      "same": false,
+      "shift_ms": -16.042,
+      "was": 806.672
+    },
+    {
+      "flag": null,
+      "i": 80,
+      "moved": true,
+      "now": 823.752701,
+      "peak": 1237,
+      "peak_uv": 87363.957,
+      "same": false,
+      "shift_ms": -14.299,
+      "was": 823.767
+    },
+    {
+      "flag": null,
+      "i": 81,
+      "moved": true,
+      "now": 866.252316,
+      "peak": 1246,
+      "peak_uv": 157925.167,
+      "same": false,
+      "shift_ms": -9.684,
+      "was": 866.262
+    },
+    {
+      "flag": null,
+      "i": 82,
+      "moved": true,
+      "now": 873.098552,
+      "peak": 1256,
+      "peak_uv": 80546.616,
+      "same": false,
+      "shift_ms": -13.448,
+      "was": 873.112
+    },
+    {
+      "flag": null,
+      "i": 84,
+      "moved": true,
+      "now": 891.15103,
+      "peak": 1283,
+      "peak_uv": 94898.094,
+      "same": false,
+      "shift_ms": -13.97,
+      "was": 891.165
+    },
+    {
+      "flag": null,
+      "i": 86,
+      "moved": true,
+      "now": 899.484062,
+      "peak": 1302,
+      "peak_uv": 64211.599,
+      "same": false,
+      "shift_ms": -11.938,
+      "was": 899.496
+    },
+    {
+      "flag": null,
+      "i": 87,
+      "moved": true,
+      "now": 905.643577,
+      "peak": 1312,
+      "peak_uv": 81587.856,
+      "same": false,
+      "shift_ms": -15.423,
+      "was": 905.659
+    },
+    {
+      "flag": null,
+      "i": 88,
+      "moved": true,
+      "now": 910.88367,
+      "peak": 1323,
+      "peak_uv": 86519.485,
+      "same": false,
+      "shift_ms": -14.33,
+      "was": 910.898
+    },
+    {
+      "flag": "contested",
+      "i": 89,
+      "moved": true,
+      "now": 936.859947,
+      "peak": 1330,
+      "peak_uv": 71828.928,
+      "same": false,
+      "shift_ms": -97.053,
+      "was": 936.957
+    },
+    {
+      "flag": "edge",
+      "i": 90,
+      "moved": true,
+      "now": 936.98071,
+      "peak": 1336,
+      "peak_uv": 108716.353,
+      "same": false,
+      "shift_ms": -83.29,
+      "was": 937.064
+    },
+    {
+      "flag": null,
+      "i": 91,
+      "moved": true,
+      "now": 937.184977,
+      "peak": 1345,
+      "peak_uv": 86749.357,
+      "same": false,
+      "shift_ms": -13.023,
+      "was": 937.198
+    },
+    {
+      "flag": null,
+      "i": 92,
+      "moved": true,
+      "now": 946.153135,
+      "peak": 1356,
+      "peak_uv": 107506.196,
+      "same": false,
+      "shift_ms": -14.865,
+      "was": 946.168
+    },
+    {
+      "flag": "edge",
+      "i": 93,
+      "moved": true,
+      "now": 948.416654,
+      "peak": 1361,
+      "peak_uv": 48553.446,
+      "same": false,
+      "shift_ms": -92.346,
+      "was": 948.509
+    },
+    {
+      "flag": "outlier",
+      "i": 95,
+      "moved": true,
+      "now": 957.549251,
+      "peak": 1431,
+      "peak_uv": 35712.232,
+      "same": false,
+      "shift_ms": 69.251,
+      "was": 957.48
+    },
+    {
+      "flag": null,
+      "i": 96,
+      "moved": true,
+      "now": 963.976541,
+      "peak": 1436,
+      "peak_uv": 85959.307,
+      "same": false,
+      "shift_ms": -14.459,
+      "was": 963.991
+    },
+    {
+      "flag": null,
+      "i": 97,
+      "moved": true,
+      "now": 966.589259,
+      "peak": 1447,
+      "peak_uv": 27190.427,
+      "same": false,
+      "shift_ms": -13.741,
+      "was": 966.603
+    },
+    {
+      "flag": "outlier",
+      "i": 98,
+      "moved": true,
+      "now": 967.492095,
+      "peak": 1494,
+      "peak_uv": 76440.651,
+      "same": false,
+      "shift_ms": 67.095,
+      "was": 967.425
+    },
+    {
+      "flag": null,
+      "i": 99,
+      "moved": true,
+      "now": 972.23897,
+      "peak": 1498,
+      "peak_uv": 158472.221,
+      "same": false,
+      "shift_ms": -13.03,
+      "was": 972.252
+    },
+    {
+      "flag": null,
+      "i": 100,
+      "moved": true,
+      "now": 974.449439,
+      "peak": 1505,
+      "peak_uv": 38069.181,
+      "same": false,
+      "shift_ms": -14.561,
+      "was": 974.464
+    },
+    {
+      "flag": null,
+      "i": 101,
+      "moved": true,
+      "now": 974.706186,
+      "peak": 1519,
+      "peak_uv": 85353.53,
+      "same": false,
+      "shift_ms": -14.814,
+      "was": 974.721
+    },
+    {
+      "flag": null,
+      "i": 102,
+      "moved": true,
+      "now": 976.652188,
+      "peak": 1610,
+      "peak_uv": 116329.785,
+      "same": false,
+      "shift_ms": -11.812,
+      "was": 976.664
+    },
+    {
+      "flag": null,
+      "i": 103,
+      "moved": true,
+      "now": 976.873854,
+      "peak": 1620,
+      "peak_uv": 65401.223,
+      "same": false,
+      "shift_ms": -10.146,
+      "was": 976.884
+    },
+    {
+      "flag": null,
+      "i": 104,
+      "moved": true,
+      "now": 977.93977,
+      "peak": 1677,
+      "peak_uv": 34940.754,
+      "same": false,
+      "shift_ms": -21.23,
+      "was": 977.961
+    },
+    {
+      "flag": null,
+      "i": 105,
+      "moved": true,
+      "now": 978.14317,
+      "peak": 1689,
+      "peak_uv": 112741.511,
+      "same": false,
+      "shift_ms": -12.83,
+      "was": 978.156
+    },
+    {
+      "flag": null,
+      "i": 106,
+      "moved": true,
+      "now": 992.602683,
+      "peak": 1698,
+      "peak_uv": 83040.513,
+      "same": false,
+      "shift_ms": -16.317,
+      "was": 992.619
+    },
+    {
+      "flag": "outlier",
+      "i": 107,
+      "moved": true,
+      "now": 993.102816,
+      "peak": 1724,
+      "peak_uv": 51970.628,
+      "same": false,
+      "shift_ms": 62.816,
+      "was": 993.04
+    },
+    {
+      "flag": null,
+      "i": 108,
+      "moved": true,
+      "now": 1012.640085,
+      "peak": 1729,
+      "peak_uv": 92056.077,
+      "same": false,
+      "shift_ms": -14.915,
+      "was": 1012.655
+    },
+    {
+      "flag": null,
+      "i": 109,
+      "moved": true,
+      "now": 1014.054679,
+      "peak": 1805,
+      "peak_uv": 54021.697,
+      "same": false,
+      "shift_ms": -13.321,
+      "was": 1014.068
+    },
+    {
+      "flag": null,
+      "i": 110,
+      "moved": true,
+      "now": 1015.715871,
+      "peak": 1888,
+      "peak_uv": 61977.718,
+      "same": false,
+      "shift_ms": -10.129,
+      "was": 1015.726
+    },
+    {
+      "flag": null,
+      "i": 111,
+      "moved": true,
+      "now": 1030.845862,
+      "peak": 1897,
+      "peak_uv": 66904.39,
+      "same": false,
+      "shift_ms": -18.138,
+      "was": 1030.864
+    },
+    {
+      "flag": null,
+      "i": 113,
+      "moved": true,
+      "now": 1032.722609,
+      "peak": 1995,
+      "peak_uv": 103985.77,
+      "same": false,
+      "shift_ms": -11.391,
+      "was": 1032.734
+    },
+    {
+      "flag": null,
+      "i": 114,
+      "moved": true,
+      "now": 1038.096476,
+      "peak": 2006,
+      "peak_uv": 29993.004,
+      "same": false,
+      "shift_ms": -12.524,
+      "was": 1038.109
+    },
+    {
+      "flag": null,
+      "i": 115,
+      "moved": true,
+      "now": 1041.031928,
+      "peak": 2015,
+      "peak_uv": 113804.785,
+      "same": false,
+      "shift_ms": -12.072,
+      "was": 1041.044
+    },
+    {
+      "flag": null,
+      "i": 116,
+      "moved": true,
+      "now": 1066.335963,
+      "peak": 2023,
+      "peak_uv": 92333.331,
+      "same": false,
+      "shift_ms": -14.037,
+      "was": 1066.35
+    },
+    {
+      "flag": null,
+      "i": 117,
+      "moved": true,
+      "now": 1070.12117,
+      "peak": 2033,
+      "peak_uv": 42242.653,
+      "same": false,
+      "shift_ms": -16.83,
+      "was": 1070.138
+    },
+    {
+      "flag": null,
+      "i": 118,
+      "moved": true,
+      "now": 1073.325267,
+      "peak": 2043,
+      "peak_uv": 143589.049,
+      "same": false,
+      "shift_ms": -12.733,
+      "was": 1073.338
+    },
+    {
+      "flag": null,
+      "i": 119,
+      "moved": true,
+      "now": 1077.219483,
+      "peak": 2054,
+      "peak_uv": 56731.545,
+      "same": false,
+      "shift_ms": 6.483,
+      "was": 1077.213
+    },
+    {
+      "flag": "outlier",
+      "i": 120,
+      "moved": true,
+      "now": 1083.594609,
+      "peak": 2060,
+      "peak_uv": 60210.69,
+      "same": false,
+      "shift_ms": -61.391,
+      "was": 1083.656
+    },
+    {
+      "flag": null,
+      "i": 121,
+      "moved": true,
+      "now": 1085.283192,
+      "peak": 2146,
+      "peak_uv": 64834.674,
+      "same": false,
+      "shift_ms": -13.808,
+      "was": 1085.297
+    },
+    {
+      "flag": null,
+      "i": 122,
+      "moved": true,
+      "now": 1105.512674,
+      "peak": 2156,
+      "peak_uv": 75264.914,
+      "same": false,
+      "shift_ms": -16.326,
+      "was": 1105.529
+    },
+    {
+      "flag": null,
+      "i": 123,
+      "moved": true,
+      "now": 1107.821638,
+      "peak": 2166,
+      "peak_uv": 113633.918,
+      "same": false,
+      "shift_ms": 23.638,
+      "was": 1107.798
+    },
+    {
+      "flag": null,
+      "i": 124,
+      "moved": true,
+      "now": 1116.357649,
+      "peak": 2173,
+      "peak_uv": 117090.442,
+      "same": false,
+      "shift_ms": -14.351,
+      "was": 1116.372
+    },
+    {
+      "flag": null,
+      "i": 125,
+      "moved": true,
+      "now": 1116.653732,
+      "peak": 2188,
+      "peak_uv": 105862.63,
+      "same": false,
+      "shift_ms": -14.268,
+      "was": 1116.668
+    },
+    {
+      "flag": null,
+      "i": 126,
+      "moved": true,
+      "now": 1118.792689,
+      "peak": 2293,
+      "peak_uv": 88432.888,
+      "same": false,
+      "shift_ms": -16.311,
+      "was": 1118.809
+    },
+    {
+      "flag": null,
+      "i": 127,
+      "moved": true,
+      "now": 1119.51162,
+      "peak": 2331,
+      "peak_uv": 61699.555,
+      "same": false,
+      "shift_ms": -17.38,
+      "was": 1119.529
+    },
+    {
+      "flag": null,
+      "i": 128,
+      "moved": true,
+      "now": 1121.93432,
+      "peak": 2341,
+      "peak_uv": 52368.196,
+      "same": false,
+      "shift_ms": -16.68,
+      "was": 1121.951
+    },
+    {
+      "flag": null,
+      "i": 129,
+      "moved": true,
+      "now": 1122.369171,
+      "peak": 2364,
+      "peak_uv": 48045.488,
+      "same": false,
+      "shift_ms": 27.171,
+      "was": 1122.342
+    },
+    {
+      "flag": null,
+      "i": 130,
+      "moved": true,
+      "now": 1123.009708,
+      "peak": 2394,
+      "peak_uv": 61687.36,
+      "same": false,
+      "shift_ms": -17.292,
+      "was": 1123.027
+    },
+    {
+      "flag": null,
+      "i": 131,
+      "moved": true,
+      "now": 1125.855826,
+      "peak": 2401,
+      "peak_uv": 89358.254,
+      "same": false,
+      "shift_ms": -16.174,
+      "was": 1125.872
+    },
+    {
+      "flag": null,
+      "i": 132,
+      "moved": true,
+      "now": 1138.885465,
+      "peak": 2409,
+      "peak_uv": 137834.671,
+      "same": false,
+      "shift_ms": -14.535,
+      "was": 1138.9
+    },
+    {
+      "flag": null,
+      "i": 134,
+      "moved": true,
+      "now": 1142.482599,
+      "peak": 2589,
+      "peak_uv": 112734.326,
+      "same": false,
+      "shift_ms": -15.401,
+      "was": 1142.498
+    },
+    {
+      "flag": null,
+      "i": 135,
+      "moved": true,
+      "now": 1142.61335,
+      "peak": 2594,
+      "peak_uv": 60566.033,
+      "same": false,
+      "shift_ms": 14.35,
+      "was": 1142.599
+    },
+    {
+      "flag": "outlier",
+      "i": 136,
+      "moved": true,
+      "now": 1164.103941,
+      "peak": 2606,
+      "peak_uv": 23157.398,
+      "same": false,
+      "shift_ms": 65.941,
+      "was": 1164.038
+    },
+    {
+      "flag": "outlier",
+      "i": 137,
+      "moved": true,
+      "now": 1166.079538,
+      "peak": 2704,
+      "peak_uv": 33478.285,
+      "same": false,
+      "shift_ms": 64.538,
+      "was": 1166.015
+    },
+    {
+      "flag": null,
+      "i": 139,
+      "moved": true,
+      "now": 1189.293287,
+      "peak": 2719,
+      "peak_uv": 71538.235,
+      "same": false,
+      "shift_ms": -15.713,
+      "was": 1189.309
+    },
+    {
+      "flag": "outlier",
+      "i": 140,
+      "moved": true,
+      "now": 1200.51233,
+      "peak": 2734,
+      "peak_uv": 48358.08,
+      "same": false,
+      "shift_ms": 71.33,
+      "was": 1200.441
+    },
+    {
+      "flag": null,
+      "i": 141,
+      "moved": true,
+      "now": 1202.297457,
+      "peak": 2823,
+      "peak_uv": 124419.824,
+      "same": false,
+      "shift_ms": -16.543,
+      "was": 1202.314
+    },
+    {
+      "flag": null,
+      "i": 142,
+      "moved": true,
+      "now": 1216.742435,
+      "peak": 2833,
+      "peak_uv": 92383.648,
+      "same": false,
+      "shift_ms": -16.565,
+      "was": 1216.759
+    },
+    {
+      "flag": "outlier",
+      "i": 143,
+      "moved": true,
+      "now": 1218.03289,
+      "peak": 2896,
+      "peak_uv": 47483.509,
+      "same": false,
+      "shift_ms": 54.89,
+      "was": 1217.978
+    },
+    {
+      "flag": null,
+      "i": 144,
+      "moved": true,
+      "now": 1218.843194,
+      "peak": 2937,
+      "peak_uv": 103265.459,
+      "same": false,
+      "shift_ms": -16.806,
+      "was": 1218.86
+    },
+    {
+      "flag": null,
+      "i": 145,
+      "moved": true,
+      "now": 1232.396416,
+      "peak": 2945,
+      "peak_uv": 116080.588,
+      "same": false,
+      "shift_ms": -17.584,
+      "was": 1232.414
+    },
+    {
+      "flag": null,
+      "i": 146,
+      "moved": true,
+      "now": 1234.546201,
+      "peak": 3060,
+      "peak_uv": 109330.261,
+      "same": false,
+      "shift_ms": -15.799,
+      "was": 1234.562
+    },
+    {
+      "flag": null,
+      "i": 147,
+      "moved": true,
+      "now": 1237.506972,
+      "peak": 3069,
+      "peak_uv": 82236.989,
+      "same": false,
+      "shift_ms": -17.028,
+      "was": 1237.524
+    },
+    {
+      "flag": null,
+      "i": 148,
+      "moved": true,
+      "now": 1239.320386,
+      "peak": 3161,
+      "peak_uv": 72348.172,
+      "same": false,
+      "shift_ms": -17.614,
+      "was": 1239.338
+    },
+    {
+      "flag": null,
+      "i": 149,
+      "moved": true,
+      "now": 1244.26505,
+      "peak": 3171,
+      "peak_uv": 103114.921,
+      "same": false,
+      "shift_ms": -18.95,
+      "was": 1244.284
+    },
+    {
+      "flag": "outlier",
+      "i": 150,
+      "moved": true,
+      "now": 1260.858748,
+      "peak": 3185,
+      "peak_uv": 82912.25,
+      "same": false,
+      "shift_ms": 49.748,
+      "was": 1260.809
+    },
+    {
+      "flag": null,
+      "i": 151,
+      "moved": true,
+      "now": 1272.385884,
+      "peak": 3192,
+      "peak_uv": 39703.281,
+      "same": false,
+      "shift_ms": -18.116,
+      "was": 1272.404
+    },
+    {
+      "flag": null,
+      "i": 152,
+      "moved": true,
+      "now": 1282.715983,
+      "peak": 3203,
+      "peak_uv": 79820.381,
+      "same": false,
+      "shift_ms": -19.017,
+      "was": 1282.735
+    },
+    {
+      "flag": null,
+      "i": 153,
+      "moved": true,
+      "now": 1284.025437,
+      "peak": 3273,
+      "peak_uv": 124629.006,
+      "same": false,
+      "shift_ms": -14.563,
+      "was": 1284.04
+    },
+    {
+      "flag": null,
+      "i": 154,
+      "moved": true,
+      "now": 1287.670466,
+      "peak": 3281,
+      "peak_uv": 174200.319,
+      "same": false,
+      "shift_ms": -14.534,
+      "was": 1287.685
+    },
+    {
+      "flag": null,
+      "i": 155,
+      "moved": true,
+      "now": 1288.811376,
+      "peak": 3339,
+      "peak_uv": 90075.436,
+      "same": false,
+      "shift_ms": -18.624,
+      "was": 1288.83
+    },
+    {
+      "flag": null,
+      "i": 156,
+      "moved": true,
+      "now": 1289.400095,
+      "peak": 3369,
+      "peak_uv": 79537.858,
+      "same": false,
+      "shift_ms": -18.905,
+      "was": 1289.419
+    },
+    {
+      "flag": null,
+      "i": 157,
+      "moved": true,
+      "now": 1298.599006,
+      "peak": 3380,
+      "peak_uv": 42898.478,
+      "same": false,
+      "shift_ms": -18.994,
+      "was": 1298.618
+    },
+    {
+      "flag": null,
+      "i": 158,
+      "moved": true,
+      "now": 1300.817832,
+      "peak": 3390,
+      "peak_uv": 99560.81,
+      "same": false,
+      "shift_ms": -15.168,
+      "was": 1300.833
+    },
+    {
+      "flag": null,
+      "i": 159,
+      "moved": true,
+      "now": 1306.749958,
+      "peak": 3399,
+      "peak_uv": 153276.422,
+      "same": false,
+      "shift_ms": -16.042,
+      "was": 1306.766
+    },
+    {
+      "flag": null,
+      "i": 160,
+      "moved": true,
+      "now": 1312.493601,
+      "peak": 3406,
+      "peak_uv": 78762.85,
+      "same": false,
+      "shift_ms": -18.399,
+      "was": 1312.512
+    },
+    {
+      "flag": "edge",
+      "i": 161,
+      "moved": true,
+      "now": 1332.397417,
+      "peak": 3413,
+      "peak_uv": 37553.877,
+      "same": false,
+      "shift_ms": -98.583,
+      "was": 1332.496
+    },
+    {
+      "flag": null,
+      "i": 162,
+      "moved": true,
+      "now": 1334.335081,
+      "peak": 3517,
+      "peak_uv": 139789.281,
+      "same": false,
+      "shift_ms": -10.919,
+      "was": 1334.346
+    },
+    {
+      "flag": null,
+      "i": 163,
+      "moved": true,
+      "now": 1338.99698,
+      "peak": 3526,
+      "peak_uv": 118307.723,
+      "same": false,
+      "shift_ms": -16.02,
+      "was": 1339.013
+    },
+    {
+      "flag": null,
+      "i": 164,
+      "moved": true,
+      "now": 1341.338353,
+      "peak": 3537,
+      "peak_uv": 77502.584,
+      "same": false,
+      "shift_ms": -13.647,
+      "was": 1341.352
+    },
+    {
+      "flag": null,
+      "i": 165,
+      "moved": true,
+      "now": 1342.751962,
+      "peak": 3611,
+      "peak_uv": 27762.637,
+      "same": false,
+      "shift_ms": -16.038,
+      "was": 1342.768
+    },
+    {
+      "flag": null,
+      "i": 166,
+      "moved": true,
+      "now": 1355.16859,
+      "peak": 3622,
+      "peak_uv": 60679.241,
+      "same": false,
+      "shift_ms": -16.41,
+      "was": 1355.185
+    },
+    {
+      "flag": null,
+      "i": 167,
+      "moved": true,
+      "now": 1375.399682,
+      "peak": 3631,
+      "peak_uv": 95012.155,
+      "same": false,
+      "shift_ms": -17.318,
+      "was": 1375.417
+    },
+    {
+      "flag": null,
+      "i": 168,
+      "moved": true,
+      "now": 1383.538834,
+      "peak": 3640,
+      "peak_uv": 111638.252,
+      "same": false,
+      "shift_ms": -17.166,
+      "was": 1383.556
+    },
+    {
+      "flag": null,
+      "i": 169,
+      "moved": true,
+      "now": 1389.282187,
+      "peak": 3650,
+      "peak_uv": 119157.789,
+      "same": false,
+      "shift_ms": -16.813,
+      "was": 1389.299
+    },
+    {
+      "flag": null,
+      "i": 170,
+      "moved": true,
+      "now": 1391.415607,
+      "peak": 3764,
+      "peak_uv": 95401.997,
+      "same": false,
+      "shift_ms": -17.393,
+      "was": 1391.433
+    },
+    {
+      "flag": null,
+      "i": 171,
+      "moved": true,
+      "now": 1407.236159,
+      "peak": 3773,
+      "peak_uv": 84347.239,
+      "same": false,
+      "shift_ms": -18.841,
+      "was": 1407.255
+    },
+    {
+      "flag": null,
+      "i": 172,
+      "moved": true,
+      "now": 1408.93697,
+      "peak": 3865,
+      "peak_uv": 91577.434,
+      "same": false,
+      "shift_ms": -19.03,
+      "was": 1408.956
+    },
+    {
+      "flag": null,
+      "i": 173,
+      "moved": true,
+      "now": 1410.044876,
+      "peak": 3922,
+      "peak_uv": 104734.995,
+      "same": false,
+      "shift_ms": -16.124,
+      "was": 1410.061
+    },
+    {
+      "flag": null,
+      "i": 174,
+      "moved": true,
+      "now": 1410.572255,
+      "peak": 3951,
+      "peak_uv": 116691.638,
+      "same": false,
+      "shift_ms": -15.745,
+      "was": 1410.588
+    },
+    {
+      "flag": null,
+      "i": 175,
+      "moved": true,
+      "now": 1416.339124,
+      "peak": 3961,
+      "peak_uv": 60330.398,
+      "same": false,
+      "shift_ms": -21.876,
+      "was": 1416.361
+    },
+    {
+      "flag": null,
+      "i": 176,
+      "moved": true,
+      "now": 1442.613838,
+      "peak": 3973,
+      "peak_uv": 67001.334,
+      "same": false,
+      "shift_ms": -19.162,
+      "was": 1442.633
+    },
+    {
+      "flag": "outlier",
+      "i": 177,
+      "moved": true,
+      "now": 1445.604414,
+      "peak": 3982,
+      "peak_uv": 62618.452,
+      "same": false,
+      "shift_ms": -61.586,
+      "was": 1445.666
+    },
+    {
+      "flag": null,
+      "i": 178,
+      "moved": true,
+      "now": 1450.593346,
+      "peak": 3993,
+      "peak_uv": 16084.795,
+      "same": false,
+      "shift_ms": -16.654,
+      "was": 1450.61
+    },
+    {
+      "flag": null,
+      "i": 179,
+      "moved": true,
+      "now": 1454.051062,
+      "peak": 4002,
+      "peak_uv": 110346.139,
+      "same": false,
+      "shift_ms": -19.938,
+      "was": 1454.071
+    },
+    {
+      "flag": null,
+      "i": 180,
+      "moved": true,
+      "now": 1455.078898,
+      "peak": 4054,
+      "peak_uv": 50347.253,
+      "same": false,
+      "shift_ms": -20.102,
+      "was": 1455.099
+    },
+    {
+      "flag": null,
+      "i": 181,
+      "moved": true,
+      "now": 1456.600658,
+      "peak": 4132,
+      "peak_uv": 60709.974,
+      "same": false,
+      "shift_ms": -20.342,
+      "was": 1456.621
+    },
+    {
+      "flag": null,
+      "i": 182,
+      "moved": true,
+      "now": 1458.482203,
+      "peak": 4230,
+      "peak_uv": 75245.012,
+      "same": false,
+      "shift_ms": 21.203,
+      "was": 1458.461
+    },
+    {
+      "flag": null,
+      "i": 183,
+      "moved": false,
+      "now": 1458.894138,
+      "peak": 4252,
+      "peak_uv": 79195.586,
+      "same": true,
+      "shift_ms": 0.138,
+      "was": 1458.894
+    },
+    {
+      "flag": null,
+      "i": 184,
+      "moved": true,
+      "now": 1462.96574,
+      "peak": 4259,
+      "peak_uv": 83187.392,
+      "same": false,
+      "shift_ms": -20.26,
+      "was": 1462.986
+    },
+    {
+      "flag": "outlier",
+      "i": 185,
+      "moved": true,
+      "now": 1465.395332,
+      "peak": 4273,
+      "peak_uv": 21320.21,
+      "same": false,
+      "shift_ms": 33.332,
+      "was": 1465.362
+    },
+    {
+      "flag": null,
+      "i": 186,
+      "moved": true,
+      "now": 1477.657844,
+      "peak": 4281,
+      "peak_uv": 46106.803,
+      "same": false,
+      "shift_ms": -17.156,
+      "was": 1477.675
+    },
+    {
+      "flag": null,
+      "i": 187,
+      "moved": true,
+      "now": 1479.510082,
+      "peak": 4370,
+      "peak_uv": 38692.804,
+      "same": false,
+      "shift_ms": 2.082,
+      "was": 1479.508
+    },
+    {
+      "flag": null,
+      "i": 188,
+      "moved": true,
+      "now": 1480.908267,
+      "peak": 4442,
+      "peak_uv": 40632.969,
+      "same": false,
+      "shift_ms": 6.267,
+      "was": 1480.902
+    },
+    {
+      "flag": null,
+      "i": 189,
+      "moved": true,
+      "now": 1481.467867,
+      "peak": 4470,
+      "peak_uv": 150284.608,
+      "same": false,
+      "shift_ms": -16.133,
+      "was": 1481.484
+    },
+    {
+      "flag": null,
+      "i": 190,
+      "moved": true,
+      "now": 1483.36179,
+      "peak": 4562,
+      "peak_uv": 32263.677,
+      "same": false,
+      "shift_ms": 16.79,
+      "was": 1483.345
+    },
+    {
+      "flag": null,
+      "i": 191,
+      "moved": true,
+      "now": 1484.822057,
+      "peak": 4641,
+      "peak_uv": 40337.665,
+      "same": false,
+      "shift_ms": -18.943,
+      "was": 1484.841
+    },
+    {
+      "flag": null,
+      "i": 192,
+      "moved": true,
+      "now": 1486.40594,
+      "peak": 4723,
+      "peak_uv": 115152.236,
+      "same": false,
+      "shift_ms": -18.06,
+      "was": 1486.424
+    },
+    {
+      "flag": null,
+      "i": 193,
+      "moved": true,
+      "now": 1494.381786,
+      "peak": 4733,
+      "peak_uv": 62389.068,
+      "same": false,
+      "shift_ms": -20.214,
+      "was": 1494.402
+    },
+    {
+      "flag": null,
+      "i": 194,
+      "moved": true,
+      "now": 1696.711545,
+      "peak": 4743,
+      "peak_uv": 56812.359,
+      "same": false,
+      "shift_ms": -17.455,
+      "was": 1696.729
+    },
+    {
+      "flag": null,
+      "i": 195,
+      "moved": true,
+      "now": 1726.579696,
+      "peak": 4753,
+      "peak_uv": 80374.267,
+      "same": false,
+      "shift_ms": -17.304,
+      "was": 1726.597
+    },
+    {
+      "flag": null,
+      "i": 196,
+      "moved": true,
+      "now": 1766.017302,
+      "peak": 4763,
+      "peak_uv": 101396.33,
+      "same": false,
+      "shift_ms": -22.698,
+      "was": 1766.04
+    },
+    {
+      "flag": null,
+      "i": 197,
+      "moved": true,
+      "now": 1856.450794,
+      "peak": 4772,
+      "peak_uv": 80985.932,
+      "same": false,
+      "shift_ms": -22.206,
+      "was": 1856.473
+    },
+    {
+      "flag": null,
+      "i": 198,
+      "moved": true,
+      "now": 1881.250629,
+      "peak": 4780,
+      "peak_uv": 122775.52,
+      "same": false,
+      "shift_ms": -17.371,
+      "was": 1881.268
+    },
+    {
+      "flag": null,
+      "i": 199,
+      "moved": true,
+      "now": 1893.104532,
+      "peak": 4788,
+      "peak_uv": 120564.338,
+      "same": false,
+      "shift_ms": -20.468,
+      "was": 1893.125
+    },
+    {
+      "flag": null,
+      "i": 200,
+      "moved": true,
+      "now": 1909.218275,
+      "peak": 4793,
+      "peak_uv": 136984.043,
+      "same": false,
+      "shift_ms": -17.725,
+      "was": 1909.236
+    },
+    {
+      "flag": null,
+      "i": 201,
+      "moved": true,
+      "now": 1910.08841,
+      "peak": 4837,
+      "peak_uv": 129728.681,
+      "same": false,
+      "shift_ms": -28.59,
+      "was": 1910.117
+    },
+    {
+      "flag": null,
+      "i": 202,
+      "moved": true,
+      "now": 1932.295439,
+      "peak": 4849,
+      "peak_uv": 130262.883,
+      "same": false,
+      "shift_ms": -22.561,
+      "was": 1932.318
+    },
+    {
+      "flag": null,
+      "i": 203,
+      "moved": true,
+      "now": 1937.15098,
+      "peak": 4858,
+      "peak_uv": 71799.212,
+      "same": false,
+      "shift_ms": -22.02,
+      "was": 1937.173
+    },
+    {
+      "flag": null,
+      "i": 204,
+      "moved": true,
+      "now": 1938.633499,
+      "peak": 4933,
+      "peak_uv": 62650.64,
+      "same": false,
+      "shift_ms": -26.501,
+      "was": 1938.66
+    },
+    {
+      "flag": null,
+      "i": 205,
+      "moved": true,
+      "now": 1943.010905,
+      "peak": 4944,
+      "peak_uv": 76450.827,
+      "same": false,
+      "shift_ms": -21.095,
+      "was": 1943.032
+    },
+    {
+      "flag": "outlier",
+      "i": 206,
+      "moved": true,
+      "now": 2031.986313,
+      "peak": 4957,
+      "peak_uv": 40705.465,
+      "same": false,
+      "shift_ms": 32.313,
+      "was": 2031.954
+    },
+    {
+      "flag": "outlier",
+      "i": 207,
+      "moved": true,
+      "now": 2140.178773,
+      "peak": 4964,
+      "peak_uv": 84863.254,
+      "same": false,
+      "shift_ms": -59.227,
+      "was": 2140.238
+    },
+    {
+      "flag": null,
+      "i": 208,
+      "moved": true,
+      "now": 2149.086169,
+      "peak": 4975,
+      "peak_uv": 208344.96,
+      "same": false,
+      "shift_ms": -18.831,
+      "was": 2149.105
+    },
+    {
+      "flag": null,
+      "i": 209,
+      "moved": true,
+      "now": 2163.901367,
+      "peak": 4984,
+      "peak_uv": 88230.748,
+      "same": false,
+      "shift_ms": -21.633,
+      "was": 2163.923
+    },
+    {
+      "flag": null,
+      "i": 210,
+      "moved": true,
+      "now": 2174.378506,
+      "peak": 4991,
+      "peak_uv": 31249.598,
+      "same": false,
+      "shift_ms": -55.494,
+      "was": 2174.434
+    },
+    {
+      "flag": null,
+      "i": 211,
+      "moved": true,
+      "now": 2176.493559,
+      "peak": 5102,
+      "peak_uv": 71787.487,
+      "same": false,
+      "shift_ms": -24.441,
+      "was": 2176.518
+    },
+    {
+      "flag": null,
+      "i": 213,
+      "moved": true,
+      "now": 2180.044584,
+      "peak": 5118,
+      "peak_uv": 45316.771,
+      "same": false,
+      "shift_ms": -25.416,
+      "was": 2180.07
+    },
+    {
+      "flag": null,
+      "i": 214,
+      "moved": true,
+      "now": 2180.485815,
+      "peak": 5143,
+      "peak_uv": 43414.56,
+      "same": false,
+      "shift_ms": -22.185,
+      "was": 2180.508
+    },
+    {
+      "flag": null,
+      "i": 215,
+      "moved": true,
+      "now": 2181.531381,
+      "peak": 5198,
+      "peak_uv": 32661.32,
+      "same": false,
+      "shift_ms": -25.619,
+      "was": 2181.557
+    },
+    {
+      "flag": null,
+      "i": 216,
+      "moved": true,
+      "now": 2185.905817,
+      "peak": 5208,
+      "peak_uv": 40817.838,
+      "same": false,
+      "shift_ms": -22.183,
+      "was": 2185.928
+    },
+    {
+      "flag": null,
+      "i": 217,
+      "moved": true,
+      "now": 2186.743128,
+      "peak": 5250,
+      "peak_uv": 78805.545,
+      "same": false,
+      "shift_ms": -24.872,
+      "was": 2186.768
+    },
+    {
+      "flag": null,
+      "i": 218,
+      "moved": true,
+      "now": 2187.419446,
+      "peak": 5285,
+      "peak_uv": 61953.515,
+      "same": false,
+      "shift_ms": -23.554,
+      "was": 2187.443
+    }
+  ],
+  "schema": 1,
+  "set_id": "br677201c9ab",
+  "summary": {
+    "band": [
+      5.0,
+      100.0
+    ],
+    "by_reason": {
+      "contested": 1,
+      "edge": 3,
+      "outlier": 20
+    },
+    "cand_dist_ms": 12.0,
+    "cand_floor_uv": 25785.56,
+    "channels": [
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50
+    ],
+    "depth": {
+      "channels": [
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49
+      ],
+      "from": 32,
+      "of": 64,
+      "profile": [
+        {
+          "index": 1,
+          "number": 2,
+          "score": 199450496.929
+        },
+        {
+          "index": 2,
+          "number": 3,
+          "score": 113059089.281
+        },
+        {
+          "index": 3,
+          "number": 4,
+          "score": 189604599.366
+        },
+        {
+          "index": 4,
+          "number": 5,
+          "score": 5654910.167
+        },
+        {
+          "index": 5,
+          "number": 6,
+          "score": 68023780.004
+        },
+        {
+          "index": 6,
+          "number": 7,
+          "score": 16281671.032
+        },
+        {
+          "index": 7,
+          "number": 8,
+          "score": 116944484.56
+        },
+        {
+          "index": 8,
+          "number": 9,
+          "score": 363965750.006
+        },
+        {
+          "index": 9,
+          "number": 10,
+          "score": 19003709.683
+        },
+        {
+          "index": 10,
+          "number": 11,
+          "score": 58301011.656
+        },
+        {
+          "index": 11,
+          "number": 12,
+          "score": 70859754.504
+        },
+        {
+          "index": 12,
+          "number": 13,
+          "score": 61937665.552
+        },
+        {
+          "index": 13,
+          "number": 14,
+          "score": 60656708.554
+        },
+        {
+          "index": 14,
+          "number": 15,
+          "score": 52094621.214
+        },
+        {
+          "index": 15,
+          "number": 16,
+          "score": 7326776.255
+        },
+        {
+          "index": 16,
+          "number": 17,
+          "score": 183522845.546
+        },
+        {
+          "index": 17,
+          "number": 18,
+          "score": 711576947.879
+        },
+        {
+          "index": 18,
+          "number": 19,
+          "score": 1933485408.348
+        },
+        {
+          "index": 19,
+          "number": 20,
+          "score": 4692599264.543
+        },
+        {
+          "index": 20,
+          "number": 21,
+          "score": 10085364279.383
+        },
+        {
+          "index": 21,
+          "number": 22,
+          "score": 20316817235.09
+        },
+        {
+          "index": 22,
+          "number": 23,
+          "score": 17803989516.449
+        },
+        {
+          "index": 23,
+          "number": 24,
+          "score": 9363376571.81
+        },
+        {
+          "index": 24,
+          "number": 25,
+          "score": 37886475454.602
+        },
+        {
+          "index": 25,
+          "number": 26,
+          "score": 81500639131.106
+        },
+        {
+          "index": 26,
+          "number": 27,
+          "score": 84884652790.213
+        },
+        {
+          "index": 27,
+          "number": 28,
+          "score": 54285924580.757
+        },
+        {
+          "index": 28,
+          "number": 29,
+          "score": 29627756279.816
+        },
+        {
+          "index": 29,
+          "number": 30,
+          "score": 14411951406.835
+        },
+        {
+          "index": 30,
+          "number": 31,
+          "score": 2742239976.406
+        },
+        {
+          "index": 31,
+          "number": 32,
+          "score": 21242980872.64
+        },
+        {
+          "index": 32,
+          "number": 33,
+          "score": 42371259700.638
+        },
+        {
+          "index": 33,
+          "number": 34,
+          "score": 24767451491.822
+        },
+        {
+          "index": 34,
+          "number": 35,
+          "score": 10058531913.023
+        },
+        {
+          "index": 35,
+          "number": 36,
+          "score": 14945471309.652
+        },
+        {
+          "index": 36,
+          "number": 37,
+          "score": 22107051701.189
+        },
+        {
+          "index": 37,
+          "number": 38,
+          "score": 14511187021.33
+        },
+        {
+          "index": 38,
+          "number": 39,
+          "score": 9547505440.309
+        },
+        {
+          "index": 39,
+          "number": 40,
+          "score": 14785880360.264
+        },
+        {
+          "index": 40,
+          "number": 41,
+          "score": 10247900037.035
+        },
+        {
+          "index": 41,
+          "number": 42,
+          "score": 7913569577.541
+        },
+        {
+          "index": 42,
+          "number": 43,
+          "score": 21002556006.677
+        },
+        {
+          "index": 43,
+          "number": 44,
+          "score": 47982190030.858
+        },
+        {
+          "index": 44,
+          "number": 45,
+          "score": 11772099155.085
+        },
+        {
+          "index": 45,
+          "number": 46,
+          "score": 121713600327.952
+        },
+        {
+          "index": 46,
+          "number": 47,
+          "score": 92398204037.905
+        },
+        {
+          "index": 47,
+          "number": 48,
+          "score": 68707409111.852
+        },
+        {
+          "index": 48,
+          "number": 49,
+          "score": 56263720455.866
+        },
+        {
+          "index": 49,
+          "number": 50,
+          "score": 21235917013.199
+        },
+        {
+          "index": 50,
+          "number": 51,
+          "score": 5513504012.096
+        },
+        {
+          "index": 51,
+          "number": 52,
+          "score": 15112423473.043
+        },
+        {
+          "index": 52,
+          "number": 53,
+          "score": 11861797710.384
+        },
+        {
+          "index": 53,
+          "number": 54,
+          "score": 6309419484.094
+        },
+        {
+          "index": 54,
+          "number": 55,
+          "score": 1787854493.332
+        },
+        {
+          "index": 55,
+          "number": 56,
+          "score": 834986922.578
+        },
+        {
+          "index": 56,
+          "number": 57,
+          "score": 830013265.297
+        },
+        {
+          "index": 57,
+          "number": 58,
+          "score": 416913072.423
+        },
+        {
+          "index": 58,
+          "number": 59,
+          "score": 73283817.614
+        },
+        {
+          "index": 59,
+          "number": 60,
+          "score": 224820362.321
+        },
+        {
+          "index": 60,
+          "number": 61,
+          "score": 519159828.294
+        },
+        {
+          "index": 61,
+          "number": 62,
+          "score": 172281288.36
+        },
+        {
+          "index": 62,
+          "number": 63,
+          "score": 48071164.995
+        }
+      ],
+      "screened": {
+        "59": "dead (0.5 uV against a median of 118)"
+      },
+      "weights": {
+        "34": 0.209289,
+        "35": 0.108336,
+        "36": 0.163921,
+        "37": 0.236219,
+        "38": 0.198894,
+        "39": 0.146216,
+        "40": 0.110267,
+        "41": 0.138975,
+        "42": 0.130944,
+        "43": 0.212437,
+        "44": 0.305799,
+        "45": -0.119622,
+        "46": -0.481419,
+        "47": -0.407696,
+        "48": -0.335094,
+        "49": -0.298353
+      }
+    },
+    "dist_ms": 100.0,
+    "edge_frac": 0.8,
+    "estimator": "mad",
+    "greedy_stranded": 0,
+    "hist": [
+      3,
+      1,
+      1,
+      3,
+      3,
+      1,
+      0,
+      23,
+      101,
+      35,
+      8,
+      6,
+      3,
+      2,
+      1,
+      5,
+      6,
+      1,
+      0,
+      0
+    ],
+    "hist_hi_ms": 100.0,
+    "hist_lo_ms": -100.0,
+    "left_out": [
+      8,
+      41,
+      59
+    ],
+    "n": 211,
+    "n_channels": 16,
+    "n_flagged": 24,
+    "n_moved": 203,
+    "n_no_peak": 0,
+    "n_peaks": 5291,
+    "n_same": 8,
+    "n_skipped": 8,
+    "n_windows": 149,
+    "read_s": 254.4,
+    "same_ms": 1.0,
+    "screened": {
+      "41": "not ticked",
+      "59": "dead (0.5 uV against a median of 118)",
+      "8": "not ticked"
+    },
+    "shift_max_ms": 98.583,
+    "shift_median_ms": -14.268,
+    "shift_p95_ms": 62.816,
+    "skipped": {
+      "garbage": 8
+    },
+    "skipped_channels": [],
+    "thr_uv": 0.0,
+    "window_ms": 100.0
+  }
+}

@@ -1,0 +1,6398 @@
+{
+ "band": "gamma_low",
+ "cells": {
+  "cue1": {
+   "amp_cc": {
+    "Left DHC|Left ACC": {
+     "mean": 0.0831535,
+     "n": 2,
+     "of": 8,
+     "sd": 0.06213276575608075,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.127088
+      },
+      {
+       "pair_id": 14,
+       "v": 0.039219
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left DHC|Left OFC": {
+     "mean": 0.10574549999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0369625927729644,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.131882
+      },
+      {
+       "pair_id": 14,
+       "v": 0.079609
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left OFC|Left ACC": {
+     "mean": 0.578426,
+     "n": 2,
+     "of": 8,
+     "sd": 0.10303960015450375,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.505566
+      },
+      {
+       "pair_id": 14,
+       "v": 0.651286
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left ACC": {
+     "mean": 0.050808,
+     "n": 3,
+     "of": 8,
+     "sd": 0.16702239581265743,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.209214
+      },
+      {
+       "pair_id": 13,
+       "v": 0.066879
+      },
+      {
+       "pair_id": 14,
+       "v": -0.123669
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Left PER|Left DHC": {
+     "mean": 0.1443805,
+     "n": 2,
+     "of": 8,
+     "sd": 0.05226155509071654,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.107426
+      },
+      {
+       "pair_id": 14,
+       "v": 0.181335
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left OFC": {
+     "mean": -0.0946895,
+     "n": 2,
+     "of": 8,
+     "sd": 0.030021632608837244,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.115918
+      },
+      {
+       "pair_id": 14,
+       "v": -0.073461
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left RSC": {
+     "mean": 0.039397499999999995,
+     "n": 2,
+     "of": 8,
+     "sd": 0.13364530296460103,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.133899
+      },
+      {
+       "pair_id": 14,
+       "v": -0.055104
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left ACC": {
+     "mean": 0.118371,
+     "n": 2,
+     "of": 8,
+     "sd": 0.04172778537138055,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.147877
+      },
+      {
+       "pair_id": 14,
+       "v": 0.088865
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left DHC": {
+     "mean": 0.18593150000000003,
+     "n": 2,
+     "of": 8,
+     "sd": 0.14880425813967826,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.291152
+      },
+      {
+       "pair_id": 14,
+       "v": 0.080711
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left OFC": {
+     "mean": 0.08514,
+     "n": 2,
+     "of": 8,
+     "sd": 0.006962173367562752,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.080217
+      },
+      {
+       "pair_id": 14,
+       "v": 0.090063
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left ACC": {
+     "mean": -0.007419666666666668,
+     "n": 3,
+     "of": 8,
+     "sd": 0.08562875025558492,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.086295
+      },
+      {
+       "pair_id": 13,
+       "v": -0.08158
+      },
+      {
+       "pair_id": 14,
+       "v": -0.026974
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right ACC|Left DHC": {
+     "mean": -0.0018335000000000018,
+     "n": 2,
+     "of": 8,
+     "sd": 0.08927718087226993,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.061295
+      },
+      {
+       "pair_id": 14,
+       "v": -0.064962
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left OFC": {
+     "mean": -0.0626315,
+     "n": 2,
+     "of": 8,
+     "sd": 0.04006254890168622,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.09096
+      },
+      {
+       "pair_id": 14,
+       "v": -0.034303
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left PER": {
+     "mean": -0.0027779999999999936,
+     "n": 3,
+     "of": 8,
+     "sd": 0.12811430529413959,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.143386
+      },
+      {
+       "pair_id": 13,
+       "v": -0.056103
+      },
+      {
+       "pair_id": 14,
+       "v": -0.095617
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right ACC|Left RSC": {
+     "mean": 0.0145705,
+     "n": 2,
+     "of": 8,
+     "sd": 0.10935052817659364,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.091893
+      },
+      {
+       "pair_id": 14,
+       "v": -0.062752
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right OFC": {
+     "mean": 0.003363,
+     "n": 3,
+     "of": 8,
+     "sd": 0.12325695728436589,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.143065
+      },
+      {
+       "pair_id": 13,
+       "v": -0.090042
+      },
+      {
+       "pair_id": 14,
+       "v": -0.042934
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right ACC|Right RSC": {
+     "mean": 0.10595550000000001,
+     "n": 4,
+     "of": 8,
+     "sd": 0.1252538082894089,
+     "values": [
+      {
+       "pair_id": 6,
+       "v": 0.209188
+      },
+      {
+       "pair_id": 8,
+       "v": -0.066695
+      },
+      {
+       "pair_id": 13,
+       "v": 0.094888
+      },
+      {
+       "pair_id": 14,
+       "v": 0.186441
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.09365933333333333,
+     "n": 3,
+     "of": 8,
+     "sd": 0.19489725071517386,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.276899
+      },
+      {
+       "pair_id": 13,
+       "v": 0.115187
+      },
+      {
+       "pair_id": 14,
+       "v": -0.111108
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right OFC|Left DHC": {
+     "mean": 0.107518,
+     "n": 2,
+     "of": 8,
+     "sd": 0.03659419013996621,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.081642
+      },
+      {
+       "pair_id": 14,
+       "v": 0.133394
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left OFC": {
+     "mean": 0.121841,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0034450242379408602,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.119405
+      },
+      {
+       "pair_id": 14,
+       "v": 0.124277
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left PER": {
+     "mean": 0.07517566666666667,
+     "n": 3,
+     "of": 8,
+     "sd": 0.12816116288616194,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.176904
+      },
+      {
+       "pair_id": 13,
+       "v": 0.117391
+      },
+      {
+       "pair_id": 14,
+       "v": -0.068768
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right OFC|Left RSC": {
+     "mean": -0.0710185,
+     "n": 2,
+     "of": 8,
+     "sd": 0.023226336441634535,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.054595
+      },
+      {
+       "pair_id": 14,
+       "v": -0.087442
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Right RSC": {
+     "mean": 0.091873,
+     "n": 3,
+     "of": 8,
+     "sd": 0.03470142955268558,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.117845
+      },
+      {
+       "pair_id": 13,
+       "v": 0.105312
+      },
+      {
+       "pair_id": 14,
+       "v": 0.052462
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right RSC|Left ACC": {
+     "mean": 0.07797533333333333,
+     "n": 3,
+     "of": 8,
+     "sd": 0.12664218454501378,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.177301
+      },
+      {
+       "pair_id": 13,
+       "v": 0.121259
+      },
+      {
+       "pair_id": 14,
+       "v": -0.064634
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right RSC|Left DHC": {
+     "mean": 0.1975725,
+     "n": 2,
+     "of": 8,
+     "sd": 0.09874816909948257,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.127747
+      },
+      {
+       "pair_id": 14,
+       "v": 0.267398
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left OFC": {
+     "mean": 0.1035695,
+     "n": 2,
+     "of": 8,
+     "sd": 0.047480099036333094,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.137143
+      },
+      {
+       "pair_id": 14,
+       "v": 0.069996
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left PER": {
+     "mean": 0.05982066666666667,
+     "n": 3,
+     "of": 8,
+     "sd": 0.1392677033785412,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.212739
+      },
+      {
+       "pair_id": 13,
+       "v": -0.059737
+      },
+      {
+       "pair_id": 14,
+       "v": 0.02646
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.125385,
+     "n": 2,
+     "of": 8,
+     "sd": 0.00402768022563859,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.122537
+      },
+      {
+       "pair_id": 14,
+       "v": 0.128233
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    }
+   },
+   "coherence": {
+    "Left DHC|Left ACC": {
+     "mean": 0.047393500000000005,
+     "n": 2,
+     "of": 8,
+     "sd": 9.545941546018616e-05,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.047326
+      },
+      {
+       "pair_id": 14,
+       "v": 0.047461
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left DHC|Left OFC": {
+     "mean": 0.063067,
+     "n": 2,
+     "of": 8,
+     "sd": 0.02599183106285512,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.081446
+      },
+      {
+       "pair_id": 14,
+       "v": 0.044688
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left OFC|Left ACC": {
+     "mean": 0.5364665,
+     "n": 2,
+     "of": 8,
+     "sd": 0.003288753639298683,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.538792
+      },
+      {
+       "pair_id": 14,
+       "v": 0.534141
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left ACC": {
+     "mean": 0.106122,
+     "n": 3,
+     "of": 8,
+     "sd": 0.023251566162303994,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.116369
+      },
+      {
+       "pair_id": 13,
+       "v": 0.12249
+      },
+      {
+       "pair_id": 14,
+       "v": 0.079507
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Left PER|Left DHC": {
+     "mean": 0.099224,
+     "n": 2,
+     "of": 8,
+     "sd": 0.03952868328189039,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.127175
+      },
+      {
+       "pair_id": 14,
+       "v": 0.071273
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left OFC": {
+     "mean": 0.0720365,
+     "n": 2,
+     "of": 8,
+     "sd": 0.007612004499473182,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.066654
+      },
+      {
+       "pair_id": 14,
+       "v": 0.077419
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left RSC": {
+     "mean": 0.10769300000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.050203167250682516,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.143192
+      },
+      {
+       "pair_id": 14,
+       "v": 0.072194
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left ACC": {
+     "mean": 0.0502535,
+     "n": 2,
+     "of": 8,
+     "sd": 0.00937270038462769,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.056881
+      },
+      {
+       "pair_id": 14,
+       "v": 0.043626
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left DHC": {
+     "mean": 0.216322,
+     "n": 2,
+     "of": 8,
+     "sd": 0.18578664990251587,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.347693
+      },
+      {
+       "pair_id": 14,
+       "v": 0.084951
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left OFC": {
+     "mean": 0.044941499999999995,
+     "n": 2,
+     "of": 8,
+     "sd": 0.006108695482670585,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.049261
+      },
+      {
+       "pair_id": 14,
+       "v": 0.040622
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left ACC": {
+     "mean": 0.06126033333333333,
+     "n": 3,
+     "of": 8,
+     "sd": 0.013175039898737813,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.04782
+      },
+      {
+       "pair_id": 13,
+       "v": 0.061808
+      },
+      {
+       "pair_id": 14,
+       "v": 0.074153
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right ACC|Left DHC": {
+     "mean": 0.052959,
+     "n": 2,
+     "of": 8,
+     "sd": 0.01101106679663692,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.045173
+      },
+      {
+       "pair_id": 14,
+       "v": 0.060745
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left OFC": {
+     "mean": 0.0490925,
+     "n": 2,
+     "of": 8,
+     "sd": 0.005127231270383656,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.045467
+      },
+      {
+       "pair_id": 14,
+       "v": 0.052718
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left PER": {
+     "mean": 0.064755,
+     "n": 3,
+     "of": 8,
+     "sd": 0.0033794447768827375,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.066668
+      },
+      {
+       "pair_id": 13,
+       "v": 0.066744
+      },
+      {
+       "pair_id": 14,
+       "v": 0.060853
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right ACC|Left RSC": {
+     "mean": 0.067509,
+     "n": 2,
+     "of": 8,
+     "sd": 0.008471139238614837,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.073499
+      },
+      {
+       "pair_id": 14,
+       "v": 0.061519
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right OFC": {
+     "mean": 0.05333466666666667,
+     "n": 3,
+     "of": 8,
+     "sd": 0.011906337402128889,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.058172
+      },
+      {
+       "pair_id": 13,
+       "v": 0.039771
+      },
+      {
+       "pair_id": 14,
+       "v": 0.062061
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right ACC|Right RSC": {
+     "mean": 0.07329225,
+     "n": 4,
+     "of": 8,
+     "sd": 0.016054306221384963,
+     "values": [
+      {
+       "pair_id": 6,
+       "v": 0.096606
+      },
+      {
+       "pair_id": 8,
+       "v": 0.070842
+      },
+      {
+       "pair_id": 13,
+       "v": 0.061122
+      },
+      {
+       "pair_id": 14,
+       "v": 0.064599
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.125636,
+     "n": 3,
+     "of": 8,
+     "sd": 0.07986824022726431,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.213873
+      },
+      {
+       "pair_id": 13,
+       "v": 0.104747
+      },
+      {
+       "pair_id": 14,
+       "v": 0.058288
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right OFC|Left DHC": {
+     "mean": 0.060622499999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.004316886899143867,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.063675
+      },
+      {
+       "pair_id": 14,
+       "v": 0.05757
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left OFC": {
+     "mean": 0.06491,
+     "n": 2,
+     "of": 8,
+     "sd": 0.014962379489907343,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.07549
+      },
+      {
+       "pair_id": 14,
+       "v": 0.05433
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left PER": {
+     "mean": 0.060930000000000005,
+     "n": 3,
+     "of": 8,
+     "sd": 0.004507159083058864,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.064429
+      },
+      {
+       "pair_id": 13,
+       "v": 0.062517
+      },
+      {
+       "pair_id": 14,
+       "v": 0.055844
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right OFC|Left RSC": {
+     "mean": 0.058204500000000006,
+     "n": 2,
+     "of": 8,
+     "sd": 0.020482762130630723,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.072688
+      },
+      {
+       "pair_id": 14,
+       "v": 0.043721
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Right RSC": {
+     "mean": 0.052826333333333336,
+     "n": 3,
+     "of": 8,
+     "sd": 0.012428864563319266,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.039242
+      },
+      {
+       "pair_id": 13,
+       "v": 0.055609
+      },
+      {
+       "pair_id": 14,
+       "v": 0.063628
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right RSC|Left ACC": {
+     "mean": 0.07133266666666667,
+     "n": 3,
+     "of": 8,
+     "sd": 0.00043592927560939505,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.071355
+      },
+      {
+       "pair_id": 13,
+       "v": 0.071757
+      },
+      {
+       "pair_id": 14,
+       "v": 0.070886
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right RSC|Left DHC": {
+     "mean": 0.137233,
+     "n": 2,
+     "of": 8,
+     "sd": 0.047957396113634025,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.171144
+      },
+      {
+       "pair_id": 14,
+       "v": 0.103322
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left OFC": {
+     "mean": 0.055465,
+     "n": 2,
+     "of": 8,
+     "sd": 0.015099558205457539,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.044788
+      },
+      {
+       "pair_id": 14,
+       "v": 0.066142
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left PER": {
+     "mean": 0.12812300000000001,
+     "n": 3,
+     "of": 8,
+     "sd": 0.06225085889367311,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.193286
+      },
+      {
+       "pair_id": 13,
+       "v": 0.121819
+      },
+      {
+       "pair_id": 14,
+       "v": 0.069264
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.0895155,
+     "n": 2,
+     "of": 8,
+     "sd": 0.04289239023999478,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.119845
+      },
+      {
+       "pair_id": 14,
+       "v": 0.059186
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    }
+   },
+   "raw_cc": {
+    "Left DHC|Left ACC": {
+     "mean": -0.002605999999999997,
+     "n": 2,
+     "of": 8,
+     "sd": 0.13734559275055025,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.094512
+      },
+      {
+       "pair_id": 14,
+       "v": -0.099724
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left DHC|Left OFC": {
+     "mean": 0.022125,
+     "n": 2,
+     "of": 8,
+     "sd": 0.20205010586980646,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.164996
+      },
+      {
+       "pair_id": 14,
+       "v": -0.120746
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left OFC|Left ACC": {
+     "mean": 0.723464,
+     "n": 2,
+     "of": 8,
+     "sd": 0.02363009441369201,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.706755
+      },
+      {
+       "pair_id": 14,
+       "v": 0.740173
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left ACC": {
+     "mean": -0.05021699999999999,
+     "n": 3,
+     "of": 8,
+     "sd": 0.25032586550135005,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.229533
+      },
+      {
+       "pair_id": 13,
+       "v": -0.253084
+      },
+      {
+       "pair_id": 14,
+       "v": -0.1271
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Left PER|Left DHC": {
+     "mean": -0.05512399999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.2762454062061485,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.250459
+      },
+      {
+       "pair_id": 14,
+       "v": 0.140211
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left OFC": {
+     "mean": -0.0238555,
+     "n": 2,
+     "of": 8,
+     "sd": 0.15125650445683322,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.083099
+      },
+      {
+       "pair_id": 14,
+       "v": -0.13081
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left RSC": {
+     "mean": -0.209664,
+     "n": 2,
+     "of": 8,
+     "sd": 0.10689333211197037,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.285249
+      },
+      {
+       "pair_id": 14,
+       "v": -0.134079
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left ACC": {
+     "mean": -0.030059500000000003,
+     "n": 2,
+     "of": 8,
+     "sd": 0.17643233429419905,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.154816
+      },
+      {
+       "pair_id": 14,
+       "v": 0.094697
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left DHC": {
+     "mean": 0.34085499999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.2996704396532965,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.552754
+      },
+      {
+       "pair_id": 14,
+       "v": 0.128956
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left OFC": {
+     "mean": -0.074967,
+     "n": 2,
+     "of": 8,
+     "sd": 0.03298935976947719,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.05164
+      },
+      {
+       "pair_id": 14,
+       "v": -0.098294
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left ACC": {
+     "mean": 0.13930466666666666,
+     "n": 3,
+     "of": 8,
+     "sd": 0.025174915795953188,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.159596
+      },
+      {
+       "pair_id": 13,
+       "v": 0.111132
+      },
+      {
+       "pair_id": 14,
+       "v": 0.147186
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right ACC|Left DHC": {
+     "mean": -0.0834785,
+     "n": 2,
+     "of": 8,
+     "sd": 0.049515152352587986,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.048466
+      },
+      {
+       "pair_id": 14,
+       "v": -0.118491
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left OFC": {
+     "mean": 0.105068,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0381611387670756,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.078084
+      },
+      {
+       "pair_id": 14,
+       "v": 0.132052
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left PER": {
+     "mean": 0.033937333333333326,
+     "n": 3,
+     "of": 8,
+     "sd": 0.12770098732716725,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.14239
+      },
+      {
+       "pair_id": 13,
+       "v": 0.066233
+      },
+      {
+       "pair_id": 14,
+       "v": -0.106811
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right ACC|Left RSC": {
+     "mean": -0.10436399999999998,
+     "n": 2,
+     "of": 8,
+     "sd": 0.03901956639943606,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.076773
+      },
+      {
+       "pair_id": 14,
+       "v": -0.131955
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right OFC": {
+     "mean": -0.06759133333333334,
+     "n": 3,
+     "of": 8,
+     "sd": 0.10502787015517992,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": -0.104398
+      },
+      {
+       "pair_id": 13,
+       "v": 0.050886
+      },
+      {
+       "pair_id": 14,
+       "v": -0.149262
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right ACC|Right RSC": {
+     "mean": 0.06045475,
+     "n": 4,
+     "of": 8,
+     "sd": 0.1419432253223685,
+     "values": [
+      {
+       "pair_id": 6,
+       "v": 0.202721
+      },
+      {
+       "pair_id": 8,
+       "v": -0.134255
+      },
+      {
+       "pair_id": 13,
+       "v": 0.108088
+      },
+      {
+       "pair_id": 14,
+       "v": 0.065265
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.25012266666666666,
+     "n": 3,
+     "of": 8,
+     "sd": 0.12836631394697495,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.39139
+      },
+      {
+       "pair_id": 13,
+       "v": 0.218355
+      },
+      {
+       "pair_id": 14,
+       "v": 0.140623
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right OFC|Left DHC": {
+     "mean": -0.1002695,
+     "n": 2,
+     "of": 8,
+     "sd": 0.024701361187189658,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.082803
+      },
+      {
+       "pair_id": 14,
+       "v": -0.117736
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left OFC": {
+     "mean": 0.03544200000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.15571481271221438,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.074665
+      },
+      {
+       "pair_id": 14,
+       "v": 0.145549
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left PER": {
+     "mean": -0.04974433333333333,
+     "n": 3,
+     "of": 8,
+     "sd": 0.1628564017450138,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": -0.143227
+      },
+      {
+       "pair_id": 13,
+       "v": -0.144311
+      },
+      {
+       "pair_id": 14,
+       "v": 0.138305
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right OFC|Left RSC": {
+     "mean": 0.029222000000000005,
+     "n": 2,
+     "of": 8,
+     "sd": 0.12368570395158854,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.116681
+      },
+      {
+       "pair_id": 14,
+       "v": -0.058237
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Right RSC": {
+     "mean": 0.069284,
+     "n": 3,
+     "of": 8,
+     "sd": 0.02155645794187904,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.070701
+      },
+      {
+       "pair_id": 13,
+       "v": 0.090097
+      },
+      {
+       "pair_id": 14,
+       "v": 0.047054
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right RSC|Left ACC": {
+     "mean": 0.146656,
+     "n": 3,
+     "of": 8,
+     "sd": 0.0032146668567675893,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.15035
+      },
+      {
+       "pair_id": 13,
+       "v": 0.145125
+      },
+      {
+       "pair_id": 14,
+       "v": 0.144493
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right RSC|Left DHC": {
+     "mean": 0.30664199999999997,
+     "n": 2,
+     "of": 8,
+     "sd": 0.028148506745474092,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.326546
+      },
+      {
+       "pair_id": 14,
+       "v": 0.286738
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left OFC": {
+     "mean": -0.014044500000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.11913264338752834,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.070195
+      },
+      {
+       "pair_id": 14,
+       "v": -0.098284
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left PER": {
+     "mean": 0.08761833333333335,
+     "n": 3,
+     "of": 8,
+     "sd": 0.28130735532213397,
+     "values": [
+      {
+       "pair_id": 8,
+       "v": 0.30214
+      },
+      {
+       "pair_id": 13,
+       "v": -0.230875
+      },
+      {
+       "pair_id": 14,
+       "v": 0.19159
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.1691215,
+     "n": 2,
+     "of": 8,
+     "sd": 0.08580952921733111,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.229798
+      },
+      {
+       "pair_id": 14,
+       "v": 0.108445
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    }
+   }
+  },
+  "cue2": {
+   "amp_cc": {
+    "Left DHC|Left ACC": {
+     "mean": -0.010999999999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.12174964558469975,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.07509
+      },
+      {
+       "pair_id": 14,
+       "v": -0.09709
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left DHC|Left OFC": {
+     "mean": -0.055681499999999995,
+     "n": 2,
+     "of": 8,
+     "sd": 0.04015023014255335,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.027291
+      },
+      {
+       "pair_id": 14,
+       "v": -0.084072
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left OFC|Left ACC": {
+     "mean": 0.550789,
+     "n": 2,
+     "of": 8,
+     "sd": 0.1172906302225374,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.467852
+      },
+      {
+       "pair_id": 14,
+       "v": 0.633726
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left ACC": {
+     "mean": -0.013417499999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.12328618862021812,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.073759
+      },
+      {
+       "pair_id": 14,
+       "v": -0.100594
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left DHC": {
+     "mean": 0.08586250000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.02426154076929163,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.103018
+      },
+      {
+       "pair_id": 14,
+       "v": 0.068707
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left OFC": {
+     "mean": 0.024491999999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.08914636611775041,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.087528
+      },
+      {
+       "pair_id": 14,
+       "v": -0.038544
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left RSC": {
+     "mean": 0.133143,
+     "n": 2,
+     "of": 8,
+     "sd": 0.023673935034125602,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.116403
+      },
+      {
+       "pair_id": 14,
+       "v": 0.149883
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left ACC": {
+     "mean": 0.134033,
+     "n": 2,
+     "of": 8,
+     "sd": 0.06925403814941046,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.183003
+      },
+      {
+       "pair_id": 14,
+       "v": 0.085063
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left DHC": {
+     "mean": 0.1611205,
+     "n": 2,
+     "of": 8,
+     "sd": 0.08137172705860433,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.218659
+      },
+      {
+       "pair_id": 14,
+       "v": 0.103582
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left OFC": {
+     "mean": 0.092669,
+     "n": 2,
+     "of": 8,
+     "sd": 0.018360734680289887,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.079686
+      },
+      {
+       "pair_id": 14,
+       "v": 0.105652
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left ACC": {
+     "mean": -0.090618,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0206729738547699,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.105236
+      },
+      {
+       "pair_id": 14,
+       "v": -0.076
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left DHC": {
+     "mean": -0.006766000000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.14084718553098602,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.092828
+      },
+      {
+       "pair_id": 14,
+       "v": -0.10636
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left OFC": {
+     "mean": 0.004515500000000002,
+     "n": 2,
+     "of": 8,
+     "sd": 0.06955314431785238,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.053697
+      },
+      {
+       "pair_id": 14,
+       "v": -0.044666
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left PER": {
+     "mean": 0.0787085,
+     "n": 2,
+     "of": 8,
+     "sd": 0.027524131457686358,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.098171
+      },
+      {
+       "pair_id": 14,
+       "v": 0.059246
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left RSC": {
+     "mean": -0.0892295,
+     "n": 2,
+     "of": 8,
+     "sd": 0.04281036585337714,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.119501
+      },
+      {
+       "pair_id": 14,
+       "v": -0.058958
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right OFC": {
+     "mean": 0.0873955,
+     "n": 2,
+     "of": 8,
+     "sd": 0.051571418872278466,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.050929
+      },
+      {
+       "pair_id": 14,
+       "v": 0.123862
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right RSC": {
+     "mean": -0.060990600000000006,
+     "n": 5,
+     "of": 8,
+     "sd": 0.07307911893831233,
+     "values": [
+      {
+       "pair_id": 6,
+       "v": -0.106978
+      },
+      {
+       "pair_id": 8,
+       "v": -0.099382
+      },
+      {
+       "pair_id": 11,
+       "v": -0.091226
+      },
+      {
+       "pair_id": 13,
+       "v": 0.068049
+      },
+      {
+       "pair_id": 14,
+       "v": -0.075416
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.076472,
+     "n": 2,
+     "of": 8,
+     "sd": 0.029954457464624527,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.097653
+      },
+      {
+       "pair_id": 14,
+       "v": 0.055291
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left DHC": {
+     "mean": -0.07552350000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.025449480161685033,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.093519
+      },
+      {
+       "pair_id": 14,
+       "v": -0.057528
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left OFC": {
+     "mean": 0.019679500000000003,
+     "n": 2,
+     "of": 8,
+     "sd": 0.08656471925963834,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.041531
+      },
+      {
+       "pair_id": 14,
+       "v": 0.08089
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left PER": {
+     "mean": 0.10917299999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.01716148157939751,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.097038
+      },
+      {
+       "pair_id": 14,
+       "v": 0.121308
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left RSC": {
+     "mean": 0.104465,
+     "n": 2,
+     "of": 8,
+     "sd": 0.047257360400259345,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.071049
+      },
+      {
+       "pair_id": 14,
+       "v": 0.137881
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Right RSC": {
+     "mean": 0.0947235,
+     "n": 2,
+     "of": 8,
+     "sd": 0.021779595967326846,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.079323
+      },
+      {
+       "pair_id": 14,
+       "v": 0.110124
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left ACC": {
+     "mean": 0.10498299999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.007030055618556651,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.109954
+      },
+      {
+       "pair_id": 14,
+       "v": 0.100012
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left DHC": {
+     "mean": 0.0622345,
+     "n": 2,
+     "of": 8,
+     "sd": 0.15740267659890667,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.049066
+      },
+      {
+       "pair_id": 14,
+       "v": 0.173535
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left OFC": {
+     "mean": 0.08871699999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.002190616808115927,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.090266
+      },
+      {
+       "pair_id": 14,
+       "v": 0.087168
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left PER": {
+     "mean": 0.018898999999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.08926516005698976,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.082019
+      },
+      {
+       "pair_id": 14,
+       "v": -0.044221
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.09882450000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.028273664645744108,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.118817
+      },
+      {
+       "pair_id": 14,
+       "v": 0.078832
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    }
+   },
+   "coherence": {
+    "Left DHC|Left ACC": {
+     "mean": 0.0642785,
+     "n": 2,
+     "of": 8,
+     "sd": 0.009337345045568362,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.057676
+      },
+      {
+       "pair_id": 14,
+       "v": 0.070881
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left DHC|Left OFC": {
+     "mean": 0.0675895,
+     "n": 2,
+     "of": 8,
+     "sd": 0.01673368197677965,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.055757
+      },
+      {
+       "pair_id": 14,
+       "v": 0.079422
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left OFC|Left ACC": {
+     "mean": 0.5484195000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.06875269944154917,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.499804
+      },
+      {
+       "pair_id": 14,
+       "v": 0.597035
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left ACC": {
+     "mean": 0.0619325,
+     "n": 2,
+     "of": 8,
+     "sd": 0.017698175626318098,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.074447
+      },
+      {
+       "pair_id": 14,
+       "v": 0.049418
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left DHC": {
+     "mean": 0.061306,
+     "n": 2,
+     "of": 8,
+     "sd": 0.003978182750955511,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.064119
+      },
+      {
+       "pair_id": 14,
+       "v": 0.058493
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left OFC": {
+     "mean": 0.06529650000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.007819893893142029,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.070826
+      },
+      {
+       "pair_id": 14,
+       "v": 0.059767
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left RSC": {
+     "mean": 0.059921,
+     "n": 2,
+     "of": 8,
+     "sd": 0.013980915277620411,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.069807
+      },
+      {
+       "pair_id": 14,
+       "v": 0.050035
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left ACC": {
+     "mean": 0.0596285,
+     "n": 2,
+     "of": 8,
+     "sd": 0.019823738610564863,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.045611
+      },
+      {
+       "pair_id": 14,
+       "v": 0.073646
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left DHC": {
+     "mean": 0.132722,
+     "n": 2,
+     "of": 8,
+     "sd": 0.11759610035200999,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.215875
+      },
+      {
+       "pair_id": 14,
+       "v": 0.049569
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left OFC": {
+     "mean": 0.0585465,
+     "n": 2,
+     "of": 8,
+     "sd": 0.008304969145036005,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.052674
+      },
+      {
+       "pair_id": 14,
+       "v": 0.064419
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left ACC": {
+     "mean": 0.0681135,
+     "n": 2,
+     "of": 8,
+     "sd": 0.010219814308489178,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.07534
+      },
+      {
+       "pair_id": 14,
+       "v": 0.060887
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left DHC": {
+     "mean": 0.06769549999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0026452864684188802,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.065825
+      },
+      {
+       "pair_id": 14,
+       "v": 0.069566
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left OFC": {
+     "mean": 0.057569,
+     "n": 2,
+     "of": 8,
+     "sd": 0.00687732055382036,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.062432
+      },
+      {
+       "pair_id": 14,
+       "v": 0.052706
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left PER": {
+     "mean": 0.0530195,
+     "n": 2,
+     "of": 8,
+     "sd": 0.007337647068372807,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.047831
+      },
+      {
+       "pair_id": 14,
+       "v": 0.058208
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left RSC": {
+     "mean": 0.051015500000000005,
+     "n": 2,
+     "of": 8,
+     "sd": 0.013251888186217088,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.060386
+      },
+      {
+       "pair_id": 14,
+       "v": 0.041645
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right OFC": {
+     "mean": 0.0636205,
+     "n": 2,
+     "of": 8,
+     "sd": 0.002465681345997494,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.065364
+      },
+      {
+       "pair_id": 14,
+       "v": 0.061877
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right RSC": {
+     "mean": 0.07669139999999999,
+     "n": 5,
+     "of": 8,
+     "sd": 0.025477538966705557,
+     "values": [
+      {
+       "pair_id": 6,
+       "v": 0.098936
+      },
+      {
+       "pair_id": 8,
+       "v": 0.08232
+      },
+      {
+       "pair_id": 11,
+       "v": 0.102146
+      },
+      {
+       "pair_id": 13,
+       "v": 0.049865
+      },
+      {
+       "pair_id": 14,
+       "v": 0.05019
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.10125400000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.02768040205632859,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.120827
+      },
+      {
+       "pair_id": 14,
+       "v": 0.081681
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left DHC": {
+     "mean": 0.0467395,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0013328962825366454,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.045797
+      },
+      {
+       "pair_id": 14,
+       "v": 0.047682
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left OFC": {
+     "mean": 0.0593395,
+     "n": 2,
+     "of": 8,
+     "sd": 0.005848480187193935,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.055204
+      },
+      {
+       "pair_id": 14,
+       "v": 0.063475
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left PER": {
+     "mean": 0.0595285,
+     "n": 2,
+     "of": 8,
+     "sd": 0.007406943532929089,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.064766
+      },
+      {
+       "pair_id": 14,
+       "v": 0.054291
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left RSC": {
+     "mean": 0.059519,
+     "n": 2,
+     "of": 8,
+     "sd": 0.014492860587199473,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.069767
+      },
+      {
+       "pair_id": 14,
+       "v": 0.049271
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Right RSC": {
+     "mean": 0.0433425,
+     "n": 2,
+     "of": 8,
+     "sd": 0.002911158618145013,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.045401
+      },
+      {
+       "pair_id": 14,
+       "v": 0.041284
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left ACC": {
+     "mean": 0.067659,
+     "n": 2,
+     "of": 8,
+     "sd": 0.018579937782457718,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.080797
+      },
+      {
+       "pair_id": 14,
+       "v": 0.054521
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left DHC": {
+     "mean": 0.1441735,
+     "n": 2,
+     "of": 8,
+     "sd": 0.014401643812426411,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.13399
+      },
+      {
+       "pair_id": 14,
+       "v": 0.154357
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left OFC": {
+     "mean": 0.0705205,
+     "n": 2,
+     "of": 8,
+     "sd": 0.01199465232926741,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.079002
+      },
+      {
+       "pair_id": 14,
+       "v": 0.062039
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left PER": {
+     "mean": 0.09087100000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.00507844090248179,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.08728
+      },
+      {
+       "pair_id": 14,
+       "v": 0.094462
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.05007350000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.018289316895390054,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.063006
+      },
+      {
+       "pair_id": 14,
+       "v": 0.037141
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    }
+   },
+   "raw_cc": {
+    "Left DHC|Left ACC": {
+     "mean": 0.1261995,
+     "n": 2,
+     "of": 8,
+     "sd": 0.001047225142937284,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.125459
+      },
+      {
+       "pair_id": 14,
+       "v": 0.12694
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left DHC|Left OFC": {
+     "mean": 0.16147299999999998,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0057035232970506855,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.15744
+      },
+      {
+       "pair_id": 14,
+       "v": 0.165506
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left OFC|Left ACC": {
+     "mean": 0.7349205000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.049206853795990664,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.700126
+      },
+      {
+       "pair_id": 14,
+       "v": 0.769715
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left ACC": {
+     "mean": 0.0320535,
+     "n": 2,
+     "of": 8,
+     "sd": 0.17681982881028924,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.157084
+      },
+      {
+       "pair_id": 14,
+       "v": -0.092977
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left DHC": {
+     "mean": 0.0277545,
+     "n": 2,
+     "of": 8,
+     "sd": 0.12834765895995143,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.11851
+      },
+      {
+       "pair_id": 14,
+       "v": -0.063001
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left OFC": {
+     "mean": -0.005489000000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.1818169524329346,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.123075
+      },
+      {
+       "pair_id": 14,
+       "v": -0.134053
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left RSC": {
+     "mean": 0.04886449999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.16727388726427087,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.167145
+      },
+      {
+       "pair_id": 14,
+       "v": -0.069416
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left ACC": {
+     "mean": -0.015785,
+     "n": 2,
+     "of": 8,
+     "sd": 0.10403662071597672,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.05778
+      },
+      {
+       "pair_id": 14,
+       "v": -0.08935
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left DHC": {
+     "mean": 0.1438375,
+     "n": 2,
+     "of": 8,
+     "sd": 0.3980919254198709,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.425331
+      },
+      {
+       "pair_id": 14,
+       "v": -0.137656
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left OFC": {
+     "mean": 0.088621,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0041860721446243575,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.091581
+      },
+      {
+       "pair_id": 14,
+       "v": 0.085661
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left ACC": {
+     "mean": 0.099148,
+     "n": 2,
+     "of": 8,
+     "sd": 0.020971372916430617,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.084319
+      },
+      {
+       "pair_id": 14,
+       "v": 0.113977
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left DHC": {
+     "mean": 0.00841,
+     "n": 2,
+     "of": 8,
+     "sd": 0.16071547186876564,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.122053
+      },
+      {
+       "pair_id": 14,
+       "v": -0.105233
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left OFC": {
+     "mean": 0.0005509999999999959,
+     "n": 2,
+     "of": 8,
+     "sd": 0.10873605238374252,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.077439
+      },
+      {
+       "pair_id": 14,
+       "v": -0.076337
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left PER": {
+     "mean": -0.11810300000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.02009031786707219,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.103897
+      },
+      {
+       "pair_id": 14,
+       "v": -0.132309
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left RSC": {
+     "mean": 0.0647225,
+     "n": 2,
+     "of": 8,
+     "sd": 0.04997760018748399,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.100062
+      },
+      {
+       "pair_id": 14,
+       "v": 0.029383
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right OFC": {
+     "mean": 0.009108999999999992,
+     "n": 2,
+     "of": 8,
+     "sd": 0.18695903294572314,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.123091
+      },
+      {
+       "pair_id": 14,
+       "v": 0.141309
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right RSC": {
+     "mean": -0.021608199999999998,
+     "n": 5,
+     "of": 8,
+     "sd": 0.1969010951218911,
+     "values": [
+      {
+       "pair_id": 6,
+       "v": -0.199232
+      },
+      {
+       "pair_id": 8,
+       "v": -0.187221
+      },
+      {
+       "pair_id": 11,
+       "v": 0.266992
+      },
+      {
+       "pair_id": 13,
+       "v": -0.069522
+      },
+      {
+       "pair_id": 14,
+       "v": 0.080942
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.2137415,
+     "n": 2,
+     "of": 8,
+     "sd": 0.010682262143385161,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.221295
+      },
+      {
+       "pair_id": 14,
+       "v": 0.206188
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left DHC": {
+     "mean": -0.110267,
+     "n": 2,
+     "of": 8,
+     "sd": 0.035802230545037284,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.084951
+      },
+      {
+       "pair_id": 14,
+       "v": -0.135583
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left OFC": {
+     "mean": 0.1277165,
+     "n": 2,
+     "of": 8,
+     "sd": 0.04878117551371634,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.093223
+      },
+      {
+       "pair_id": 14,
+       "v": 0.16221
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left PER": {
+     "mean": 0.006580499999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.13916497849854323,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.104985
+      },
+      {
+       "pair_id": 14,
+       "v": -0.091824
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left RSC": {
+     "mean": 0.0905935,
+     "n": 2,
+     "of": 8,
+     "sd": 0.005193699307815195,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.094266
+      },
+      {
+       "pair_id": 14,
+       "v": 0.086921
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Right RSC": {
+     "mean": 0.08560899999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.021319269452774403,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.100684
+      },
+      {
+       "pair_id": 14,
+       "v": 0.070534
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left ACC": {
+     "mean": -0.11639,
+     "n": 2,
+     "of": 8,
+     "sd": 0.035277557313396844,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.141335
+      },
+      {
+       "pair_id": 14,
+       "v": -0.091445
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left DHC": {
+     "mean": -0.003406499999999979,
+     "n": 2,
+     "of": 8,
+     "sd": 0.448782996349572,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.313931
+      },
+      {
+       "pair_id": 14,
+       "v": -0.320744
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left OFC": {
+     "mean": -0.091395,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0061334442200121145,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.087058
+      },
+      {
+       "pair_id": 14,
+       "v": -0.095732
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left PER": {
+     "mean": 0.145277,
+     "n": 2,
+     "of": 8,
+     "sd": 0.03028396922465746,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.123863
+      },
+      {
+       "pair_id": 14,
+       "v": 0.166691
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.108543,
+     "n": 2,
+     "of": 8,
+     "sd": 0.02356221216269814,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.125204
+      },
+      {
+       "pair_id": 14,
+       "v": 0.091882
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    }
+   }
+  },
+  "post": {
+   "amp_cc": {
+    "Left DHC|Left ACC": {
+     "mean": 0.105475,
+     "n": 2,
+     "of": 8,
+     "sd": 0.010040916292848968,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.098375
+      },
+      {
+       "pair_id": 14,
+       "v": 0.112575
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left DHC|Left OFC": {
+     "mean": 0.1555355,
+     "n": 2,
+     "of": 8,
+     "sd": 0.028881776477564527,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.175958
+      },
+      {
+       "pair_id": 14,
+       "v": 0.135113
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left OFC|Left ACC": {
+     "mean": 0.666195,
+     "n": 2,
+     "of": 8,
+     "sd": 0.06805337083495566,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.618074
+      },
+      {
+       "pair_id": 14,
+       "v": 0.714316
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left ACC": {
+     "mean": 0.092351,
+     "n": 2,
+     "of": 8,
+     "sd": 0.06547950215143668,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.138652
+      },
+      {
+       "pair_id": 14,
+       "v": 0.04605
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left DHC": {
+     "mean": 0.16544350000000002,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0009029753595752215,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.164805
+      },
+      {
+       "pair_id": 14,
+       "v": 0.166082
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left OFC": {
+     "mean": 0.080096,
+     "n": 2,
+     "of": 8,
+     "sd": 0.009715647173503164,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.086966
+      },
+      {
+       "pair_id": 14,
+       "v": 0.073226
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left RSC": {
+     "mean": 0.09204999999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.013074404384139258,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.101295
+      },
+      {
+       "pair_id": 14,
+       "v": 0.082805
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left ACC": {
+     "mean": -0.006468999999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.09056482232081063,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.070508
+      },
+      {
+       "pair_id": 14,
+       "v": 0.05757
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left DHC": {
+     "mean": 0.12871100000000002,
+     "n": 2,
+     "of": 8,
+     "sd": 0.11145699927774838,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.207523
+      },
+      {
+       "pair_id": 14,
+       "v": 0.049899
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left OFC": {
+     "mean": 0.024828,
+     "n": 2,
+     "of": 8,
+     "sd": 0.09166225204521215,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.089643
+      },
+      {
+       "pair_id": 14,
+       "v": -0.039987
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left ACC": {
+     "mean": -0.0720425,
+     "n": 2,
+     "of": 8,
+     "sd": 0.005786254790449515,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.076134
+      },
+      {
+       "pair_id": 14,
+       "v": -0.067951
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left DHC": {
+     "mean": 0.007949499999999998,
+     "n": 2,
+     "of": 8,
+     "sd": 0.09794206736892988,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.061306
+      },
+      {
+       "pair_id": 14,
+       "v": 0.077205
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left OFC": {
+     "mean": -0.0633955,
+     "n": 2,
+     "of": 8,
+     "sd": 0.016077486883838532,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.074764
+      },
+      {
+       "pair_id": 14,
+       "v": -0.052027
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left PER": {
+     "mean": -0.09749550000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.025678582758789474,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.079338
+      },
+      {
+       "pair_id": 14,
+       "v": -0.115653
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left RSC": {
+     "mean": -0.15081299999999997,
+     "n": 2,
+     "of": 8,
+     "sd": 0.02109582370991946,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.135896
+      },
+      {
+       "pair_id": 14,
+       "v": -0.16573
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right OFC": {
+     "mean": -0.013618999999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.08403398408977168,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.07304
+      },
+      {
+       "pair_id": 14,
+       "v": 0.045802
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right RSC": {
+     "mean": -0.08305866666666667,
+     "n": 3,
+     "of": 8,
+     "sd": 0.017193859146024584,
+     "values": [
+      {
+       "pair_id": 5,
+       "v": -0.100687
+      },
+      {
+       "pair_id": 13,
+       "v": -0.066335
+      },
+      {
+       "pair_id": 14,
+       "v": -0.082154
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.011053500000000008,
+     "n": 2,
+     "of": 8,
+     "sd": 0.19742916305475236,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.150657
+      },
+      {
+       "pair_id": 14,
+       "v": -0.12855
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left DHC": {
+     "mean": 0.001798000000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.08948294894559522,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.065072
+      },
+      {
+       "pair_id": 14,
+       "v": -0.061476
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left OFC": {
+     "mean": 0.056529,
+     "n": 2,
+     "of": 8,
+     "sd": 0.2456022267366483,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.230196
+      },
+      {
+       "pair_id": 14,
+       "v": -0.117138
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left PER": {
+     "mean": 0.133557,
+     "n": 2,
+     "of": 8,
+     "sd": 0.05501573600343814,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.172459
+      },
+      {
+       "pair_id": 14,
+       "v": 0.094655
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left RSC": {
+     "mean": -0.059297,
+     "n": 2,
+     "of": 8,
+     "sd": 0.02127684304590322,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.044252
+      },
+      {
+       "pair_id": 14,
+       "v": -0.074342
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Right RSC": {
+     "mean": 0.0184815,
+     "n": 2,
+     "of": 8,
+     "sd": 0.07638945267836393,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.035534
+      },
+      {
+       "pair_id": 14,
+       "v": 0.072497
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left ACC": {
+     "mean": 0.037042000000000005,
+     "n": 2,
+     "of": 8,
+     "sd": 0.12184864053406588,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.123202
+      },
+      {
+       "pair_id": 14,
+       "v": -0.049118
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left DHC": {
+     "mean": 0.200687,
+     "n": 2,
+     "of": 8,
+     "sd": 0.022442155021298635,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.216556
+      },
+      {
+       "pair_id": 14,
+       "v": 0.184818
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left OFC": {
+     "mean": 0.023248500000000002,
+     "n": 2,
+     "of": 8,
+     "sd": 0.08204772114141866,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.081265
+      },
+      {
+       "pair_id": 14,
+       "v": -0.034768
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left PER": {
+     "mean": -0.001915,
+     "n": 2,
+     "of": 8,
+     "sd": 0.15474183378130169,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.107504
+      },
+      {
+       "pair_id": 14,
+       "v": -0.111334
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.24214799999999997,
+     "n": 2,
+     "of": 8,
+     "sd": 0.1376524770935852,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.339483
+      },
+      {
+       "pair_id": 14,
+       "v": 0.144813
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    }
+   },
+   "coherence": {
+    "Left DHC|Left ACC": {
+     "mean": 0.07216349999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.03227447481369759,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.094985
+      },
+      {
+       "pair_id": 14,
+       "v": 0.049342
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left DHC|Left OFC": {
+     "mean": 0.069707,
+     "n": 2,
+     "of": 8,
+     "sd": 0.010716910375663321,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.062129
+      },
+      {
+       "pair_id": 14,
+       "v": 0.077285
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left OFC|Left ACC": {
+     "mean": 0.601723,
+     "n": 2,
+     "of": 8,
+     "sd": 0.06077865627010857,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.558746
+      },
+      {
+       "pair_id": 14,
+       "v": 0.6447
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left ACC": {
+     "mean": 0.0565045,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0029521708114538347,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.058592
+      },
+      {
+       "pair_id": 14,
+       "v": 0.054417
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left DHC": {
+     "mean": 0.0793265,
+     "n": 2,
+     "of": 8,
+     "sd": 0.031821926473738195,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.101828
+      },
+      {
+       "pair_id": 14,
+       "v": 0.056825
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left OFC": {
+     "mean": 0.056320499999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0013753226894078316,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.057293
+      },
+      {
+       "pair_id": 14,
+       "v": 0.055348
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left RSC": {
+     "mean": 0.069853,
+     "n": 2,
+     "of": 8,
+     "sd": 0.028858441953785383,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.090259
+      },
+      {
+       "pair_id": 14,
+       "v": 0.049447
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left ACC": {
+     "mean": 0.065205,
+     "n": 2,
+     "of": 8,
+     "sd": 0.011685646665888888,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.073468
+      },
+      {
+       "pair_id": 14,
+       "v": 0.056942
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left DHC": {
+     "mean": 0.1779435,
+     "n": 2,
+     "of": 8,
+     "sd": 0.08447592582801328,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.237677
+      },
+      {
+       "pair_id": 14,
+       "v": 0.11821
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left OFC": {
+     "mean": 0.047938,
+     "n": 2,
+     "of": 8,
+     "sd": 0.004761657064510214,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.044571
+      },
+      {
+       "pair_id": 14,
+       "v": 0.051305
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left ACC": {
+     "mean": 0.06247949999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0113851262838846,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.054429
+      },
+      {
+       "pair_id": 14,
+       "v": 0.07053
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left DHC": {
+     "mean": 0.0593025,
+     "n": 2,
+     "of": 8,
+     "sd": 0.02454296926820388,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.041948
+      },
+      {
+       "pair_id": 14,
+       "v": 0.076657
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left OFC": {
+     "mean": 0.06439700000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.016829141392239833,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.052497
+      },
+      {
+       "pair_id": 14,
+       "v": 0.076297
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left PER": {
+     "mean": 0.0686905,
+     "n": 2,
+     "of": 8,
+     "sd": 0.004551646350497806,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.065472
+      },
+      {
+       "pair_id": 14,
+       "v": 0.071909
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left RSC": {
+     "mean": 0.051772,
+     "n": 2,
+     "of": 8,
+     "sd": 0.008886918025952532,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.045488
+      },
+      {
+       "pair_id": 14,
+       "v": 0.058056
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right OFC": {
+     "mean": 0.060184,
+     "n": 2,
+     "of": 8,
+     "sd": 0.016228100628231264,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.048709
+      },
+      {
+       "pair_id": 14,
+       "v": 0.071659
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right RSC": {
+     "mean": 0.054724666666666665,
+     "n": 3,
+     "of": 8,
+     "sd": 0.010030446267905196,
+     "values": [
+      {
+       "pair_id": 5,
+       "v": 0.051463
+      },
+      {
+       "pair_id": 13,
+       "v": 0.046731
+      },
+      {
+       "pair_id": 14,
+       "v": 0.06598
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.075954,
+     "n": 2,
+     "of": 8,
+     "sd": 6.646803743153324e-05,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.076001
+      },
+      {
+       "pair_id": 14,
+       "v": 0.075907
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left DHC": {
+     "mean": 0.039405499999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.006364668137460116,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.034905
+      },
+      {
+       "pair_id": 14,
+       "v": 0.043906
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left OFC": {
+     "mean": 0.050433,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0015400785694243,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.051522
+      },
+      {
+       "pair_id": 14,
+       "v": 0.049344
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left PER": {
+     "mean": 0.0673685,
+     "n": 2,
+     "of": 8,
+     "sd": 0.029291898410652734,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.088081
+      },
+      {
+       "pair_id": 14,
+       "v": 0.046656
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left RSC": {
+     "mean": 0.055401,
+     "n": 2,
+     "of": 8,
+     "sd": 0.006993286065934952,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.060346
+      },
+      {
+       "pair_id": 14,
+       "v": 0.050456
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Right RSC": {
+     "mean": 0.050278500000000004,
+     "n": 2,
+     "of": 8,
+     "sd": 0.010803884509749255,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.057918
+      },
+      {
+       "pair_id": 14,
+       "v": 0.042639
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left ACC": {
+     "mean": 0.06749849999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.004271632065147937,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.070519
+      },
+      {
+       "pair_id": 14,
+       "v": 0.064478
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left DHC": {
+     "mean": 0.1290895,
+     "n": 2,
+     "of": 8,
+     "sd": 0.022301440771842512,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.144859
+      },
+      {
+       "pair_id": 14,
+       "v": 0.11332
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left OFC": {
+     "mean": 0.0572575,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0022945615049503503,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.05888
+      },
+      {
+       "pair_id": 14,
+       "v": 0.055635
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left PER": {
+     "mean": 0.06554,
+     "n": 2,
+     "of": 8,
+     "sd": 0.01474459060130189,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.075966
+      },
+      {
+       "pair_id": 14,
+       "v": 0.055114
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.093168,
+     "n": 2,
+     "of": 8,
+     "sd": 0.05041247085791373,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.128815
+      },
+      {
+       "pair_id": 14,
+       "v": 0.057521
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    }
+   },
+   "raw_cc": {
+    "Left DHC|Left ACC": {
+     "mean": -0.031249500000000006,
+     "n": 2,
+     "of": 8,
+     "sd": 0.17157592492100981,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.152572
+      },
+      {
+       "pair_id": 14,
+       "v": 0.090073
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left DHC|Left OFC": {
+     "mean": -0.020477499999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.19263356486474523,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.115735
+      },
+      {
+       "pair_id": 14,
+       "v": -0.15669
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left OFC|Left ACC": {
+     "mean": 0.7615765,
+     "n": 2,
+     "of": 8,
+     "sd": 0.042755211524444586,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.731344
+      },
+      {
+       "pair_id": 14,
+       "v": 0.791809
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left ACC": {
+     "mean": -0.1159375,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0031925871170572556,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.11368
+      },
+      {
+       "pair_id": 14,
+       "v": -0.118195
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left DHC": {
+     "mean": 0.015162499999999995,
+     "n": 2,
+     "of": 8,
+     "sd": 0.18499822584149286,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.145976
+      },
+      {
+       "pair_id": 14,
+       "v": -0.115651
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left OFC": {
+     "mean": -0.0226685,
+     "n": 2,
+     "of": 8,
+     "sd": 0.14955520554129836,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.12842
+      },
+      {
+       "pair_id": 14,
+       "v": 0.083083
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left RSC": {
+     "mean": 0.15439750000000002,
+     "n": 2,
+     "of": 8,
+     "sd": 0.09942274896873453,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.2247
+      },
+      {
+       "pair_id": 14,
+       "v": 0.084095
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left ACC": {
+     "mean": 0.0415475,
+     "n": 2,
+     "of": 8,
+     "sd": 0.1820835316894419,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.1703
+      },
+      {
+       "pair_id": 14,
+       "v": -0.087205
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left DHC": {
+     "mean": 0.312751,
+     "n": 2,
+     "of": 8,
+     "sd": 0.18096135322769885,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.44071
+      },
+      {
+       "pair_id": 14,
+       "v": 0.184792
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left OFC": {
+     "mean": 0.001862499999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.11530295306062201,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.079669
+      },
+      {
+       "pair_id": 14,
+       "v": 0.083394
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left ACC": {
+     "mean": -0.142841,
+     "n": 2,
+     "of": 8,
+     "sd": 0.07642834355132917,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.088798
+      },
+      {
+       "pair_id": 14,
+       "v": -0.196884
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left DHC": {
+     "mean": -0.0676695,
+     "n": 2,
+     "of": 8,
+     "sd": 0.1292584124941197,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.02373
+      },
+      {
+       "pair_id": 14,
+       "v": -0.159069
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left OFC": {
+     "mean": 0.067079,
+     "n": 2,
+     "of": 8,
+     "sd": 0.1802825307177598,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.0604
+      },
+      {
+       "pair_id": 14,
+       "v": 0.194558
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left PER": {
+     "mean": 0.017487500000000003,
+     "n": 2,
+     "of": 8,
+     "sd": 0.17233960024469128,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.13935
+      },
+      {
+       "pair_id": 14,
+       "v": -0.104375
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left RSC": {
+     "mean": 0.033068,
+     "n": 2,
+     "of": 8,
+     "sd": 0.12552983843692306,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.055695
+      },
+      {
+       "pair_id": 14,
+       "v": 0.121831
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right OFC": {
+     "mean": -0.0926875,
+     "n": 2,
+     "of": 8,
+     "sd": 0.038956633895910454,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.065141
+      },
+      {
+       "pair_id": 14,
+       "v": -0.120234
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right RSC": {
+     "mean": 0.05116300000000001,
+     "n": 3,
+     "of": 8,
+     "sd": 0.09702145154036813,
+     "values": [
+      {
+       "pair_id": 5,
+       "v": 0.135448
+      },
+      {
+       "pair_id": 13,
+       "v": 0.072936
+      },
+      {
+       "pair_id": 14,
+       "v": -0.054895
+      }
+     ],
+     "warn": "usable in 3 of 8 pairs"
+    },
+    "Right OFC|Left ACC": {
+     "mean": -0.006101499999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.27196670307318876,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.186208
+      },
+      {
+       "pair_id": 14,
+       "v": -0.198411
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left DHC": {
+     "mean": 0.1094785,
+     "n": 2,
+     "of": 8,
+     "sd": 0.03368020309469644,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.133294
+      },
+      {
+       "pair_id": 14,
+       "v": 0.085663
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left OFC": {
+     "mean": -0.119352,
+     "n": 2,
+     "of": 8,
+     "sd": 0.08492918127475386,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.179406
+      },
+      {
+       "pair_id": 14,
+       "v": -0.059298
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left PER": {
+     "mean": -0.060827000000000006,
+     "n": 2,
+     "of": 8,
+     "sd": 0.1700011981193074,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.181036
+      },
+      {
+       "pair_id": 14,
+       "v": 0.059382
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left RSC": {
+     "mean": -0.013434000000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.11173984199022298,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.065578
+      },
+      {
+       "pair_id": 14,
+       "v": -0.092446
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Right RSC": {
+     "mean": 0.119242,
+     "n": 2,
+     "of": 8,
+     "sd": 0.03087652470729179,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.141075
+      },
+      {
+       "pair_id": 14,
+       "v": 0.097409
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left ACC": {
+     "mean": 0.132069,
+     "n": 2,
+     "of": 8,
+     "sd": 0.028762275431544,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.152407
+      },
+      {
+       "pair_id": 14,
+       "v": 0.111731
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left DHC": {
+     "mean": 0.03179,
+     "n": 2,
+     "of": 8,
+     "sd": 0.38724278607612567,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.305612
+      },
+      {
+       "pair_id": 14,
+       "v": -0.242032
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left OFC": {
+     "mean": -0.0025695000000000023,
+     "n": 2,
+     "of": 8,
+     "sd": 0.13492375202498633,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.092836
+      },
+      {
+       "pair_id": 14,
+       "v": -0.097975
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left PER": {
+     "mean": 0.1169615,
+     "n": 2,
+     "of": 8,
+     "sd": 0.013469677074822531,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.107437
+      },
+      {
+       "pair_id": 14,
+       "v": 0.126486
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.1705905,
+     "n": 2,
+     "of": 8,
+     "sd": 0.16107256079326487,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.284486
+      },
+      {
+       "pair_id": 14,
+       "v": 0.056695
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    }
+   }
+  },
+  "pre": {
+   "amp_cc": {
+    "Left DHC|Left ACC": {
+     "mean": 0.11160700000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.022135270678263694,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.127259
+      },
+      {
+       "pair_id": 14,
+       "v": 0.095955
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left DHC|Left OFC": {
+     "mean": 0.072692,
+     "n": 2,
+     "of": 8,
+     "sd": 0.007001771347309199,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.067741
+      },
+      {
+       "pair_id": 14,
+       "v": 0.077643
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left OFC|Left ACC": {
+     "mean": 0.648811,
+     "n": 2,
+     "of": 8,
+     "sd": 0.02250862305873016,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.632895
+      },
+      {
+       "pair_id": 14,
+       "v": 0.664727
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left ACC": {
+     "mean": 0.010166500000000002,
+     "n": 2,
+     "of": 8,
+     "sd": 0.14165540858188225,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.110332
+      },
+      {
+       "pair_id": 14,
+       "v": -0.089999
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left DHC": {
+     "mean": 0.11942049999999998,
+     "n": 2,
+     "of": 8,
+     "sd": 0.04983193619055956,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.084184
+      },
+      {
+       "pair_id": 14,
+       "v": 0.154657
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left OFC": {
+     "mean": 0.036379499999999995,
+     "n": 2,
+     "of": 8,
+     "sd": 0.16578330616952963,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.153606
+      },
+      {
+       "pair_id": 14,
+       "v": -0.080847
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left RSC": {
+     "mean": -0.014762999999999998,
+     "n": 2,
+     "of": 8,
+     "sd": 0.14955308422095479,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.090987
+      },
+      {
+       "pair_id": 14,
+       "v": -0.120513
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left ACC": {
+     "mean": 0.1283515,
+     "n": 2,
+     "of": 8,
+     "sd": 0.013947681258904655,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.118489
+      },
+      {
+       "pair_id": 14,
+       "v": 0.138214
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left DHC": {
+     "mean": 0.11624300000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.3197381301033707,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.342332
+      },
+      {
+       "pair_id": 14,
+       "v": -0.109846
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left OFC": {
+     "mean": 0.02772,
+     "n": 2,
+     "of": 8,
+     "sd": 0.10813784004685872,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.048745
+      },
+      {
+       "pair_id": 14,
+       "v": 0.104185
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left ACC": {
+     "mean": 0.046815999999999997,
+     "n": 2,
+     "of": 8,
+     "sd": 0.14269980529769477,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.054088
+      },
+      {
+       "pair_id": 14,
+       "v": 0.14772
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left DHC": {
+     "mean": 0.007772499999999998,
+     "n": 2,
+     "of": 8,
+     "sd": 0.061617992019376934,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.035798
+      },
+      {
+       "pair_id": 14,
+       "v": 0.051343
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left OFC": {
+     "mean": 0.086547,
+     "n": 2,
+     "of": 8,
+     "sd": 0.009356436928660393,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.079931
+      },
+      {
+       "pair_id": 14,
+       "v": 0.093163
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left PER": {
+     "mean": 0.1391255,
+     "n": 2,
+     "of": 8,
+     "sd": 0.026757627706880133,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.158046
+      },
+      {
+       "pair_id": 14,
+       "v": 0.120205
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left RSC": {
+     "mean": 0.091516,
+     "n": 2,
+     "of": 8,
+     "sd": 0.024745908914404417,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.074018
+      },
+      {
+       "pair_id": 14,
+       "v": 0.109014
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right OFC": {
+     "mean": -0.062319,
+     "n": 2,
+     "of": 8,
+     "sd": 0.03963192087194362,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.034295
+      },
+      {
+       "pair_id": 14,
+       "v": -0.090343
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right RSC": {
+     "mean": -0.02155375,
+     "n": 4,
+     "of": 8,
+     "sd": 0.12028732443992869,
+     "values": [
+      {
+       "pair_id": 6,
+       "v": 0.096751
+      },
+      {
+       "pair_id": 8,
+       "v": -0.109551
+      },
+      {
+       "pair_id": 13,
+       "v": 0.066269
+      },
+      {
+       "pair_id": 14,
+       "v": -0.139684
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.1249535,
+     "n": 2,
+     "of": 8,
+     "sd": 0.04166485286785494,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.095492
+      },
+      {
+       "pair_id": 14,
+       "v": 0.154415
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left DHC": {
+     "mean": 0.1243055,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0275538299424962,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.104822
+      },
+      {
+       "pair_id": 14,
+       "v": 0.143789
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left OFC": {
+     "mean": 0.015007,
+     "n": 2,
+     "of": 8,
+     "sd": 0.1213692221364214,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.100828
+      },
+      {
+       "pair_id": 14,
+       "v": -0.070814
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left PER": {
+     "mean": 0.07777,
+     "n": 2,
+     "of": 8,
+     "sd": 0.012439422494633753,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.068974
+      },
+      {
+       "pair_id": 14,
+       "v": 0.086566
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left RSC": {
+     "mean": -0.00020699999999999885,
+     "n": 2,
+     "of": 8,
+     "sd": 0.17710479284310746,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.125439
+      },
+      {
+       "pair_id": 14,
+       "v": 0.125025
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Right RSC": {
+     "mean": -0.0088815,
+     "n": 2,
+     "of": 8,
+     "sd": 0.16520772124964378,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.125701
+      },
+      {
+       "pair_id": 14,
+       "v": 0.107938
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left ACC": {
+     "mean": 0.0320775,
+     "n": 2,
+     "of": 8,
+     "sd": 0.09234178166193244,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.097373
+      },
+      {
+       "pair_id": 14,
+       "v": -0.033218
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left DHC": {
+     "mean": 0.20118750000000002,
+     "n": 2,
+     "of": 8,
+     "sd": 0.037871932093570294,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.227967
+      },
+      {
+       "pair_id": 14,
+       "v": 0.174408
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left OFC": {
+     "mean": 0.09329100000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0028934809486153516,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.095337
+      },
+      {
+       "pair_id": 14,
+       "v": 0.091245
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left PER": {
+     "mean": 0.1199585,
+     "n": 2,
+     "of": 8,
+     "sd": 0.049833350404121936,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.084721
+      },
+      {
+       "pair_id": 14,
+       "v": 0.155196
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.12457749999999998,
+     "n": 2,
+     "of": 8,
+     "sd": 0.26725737191048626,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.313557
+      },
+      {
+       "pair_id": 14,
+       "v": -0.064402
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    }
+   },
+   "coherence": {
+    "Left DHC|Left ACC": {
+     "mean": 0.0500995,
+     "n": 2,
+     "of": 8,
+     "sd": 0.00840962094865161,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.044153
+      },
+      {
+       "pair_id": 14,
+       "v": 0.056046
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left DHC|Left OFC": {
+     "mean": 0.0446025,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0029564134521409533,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.046693
+      },
+      {
+       "pair_id": 14,
+       "v": 0.042512
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left OFC|Left ACC": {
+     "mean": 0.5964695,
+     "n": 2,
+     "of": 8,
+     "sd": 0.027241288745211686,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.577207
+      },
+      {
+       "pair_id": 14,
+       "v": 0.615732
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left ACC": {
+     "mean": 0.0777745,
+     "n": 2,
+     "of": 8,
+     "sd": 0.011201278520776094,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.069854
+      },
+      {
+       "pair_id": 14,
+       "v": 0.085695
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left DHC": {
+     "mean": 0.0703245,
+     "n": 2,
+     "of": 8,
+     "sd": 0.018208706722334784,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.0832
+      },
+      {
+       "pair_id": 14,
+       "v": 0.057449
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left OFC": {
+     "mean": 0.0665505,
+     "n": 2,
+     "of": 8,
+     "sd": 0.007626146635096912,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.071943
+      },
+      {
+       "pair_id": 14,
+       "v": 0.061158
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left RSC": {
+     "mean": 0.0810815,
+     "n": 2,
+     "of": 8,
+     "sd": 0.04824518857357696,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.115196
+      },
+      {
+       "pair_id": 14,
+       "v": 0.046967
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left ACC": {
+     "mean": 0.059145500000000004,
+     "n": 2,
+     "of": 8,
+     "sd": 0.004216477736215385,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.062127
+      },
+      {
+       "pair_id": 14,
+       "v": 0.056164
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left DHC": {
+     "mean": 0.1887705,
+     "n": 2,
+     "of": 8,
+     "sd": 0.2082563820882808,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.33603
+      },
+      {
+       "pair_id": 14,
+       "v": 0.041511
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left OFC": {
+     "mean": 0.047037499999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.00177695934112179,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.048294
+      },
+      {
+       "pair_id": 14,
+       "v": 0.045781
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left ACC": {
+     "mean": 0.0450165,
+     "n": 2,
+     "of": 8,
+     "sd": 0.005052277951577881,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.048589
+      },
+      {
+       "pair_id": 14,
+       "v": 0.041444
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left DHC": {
+     "mean": 0.056212,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0016532156544141479,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.055043
+      },
+      {
+       "pair_id": 14,
+       "v": 0.057381
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left OFC": {
+     "mean": 0.0544385,
+     "n": 2,
+     "of": 8,
+     "sd": 0.009272291221699197,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.060995
+      },
+      {
+       "pair_id": 14,
+       "v": 0.047882
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left PER": {
+     "mean": 0.0631165,
+     "n": 2,
+     "of": 8,
+     "sd": 0.005982830475619381,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.058886
+      },
+      {
+       "pair_id": 14,
+       "v": 0.067347
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left RSC": {
+     "mean": 0.0721355,
+     "n": 2,
+     "of": 8,
+     "sd": 0.014260222456189102,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.062052
+      },
+      {
+       "pair_id": 14,
+       "v": 0.082219
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right OFC": {
+     "mean": 0.0526735,
+     "n": 2,
+     "of": 8,
+     "sd": 0.01648336617623961,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.041018
+      },
+      {
+       "pair_id": 14,
+       "v": 0.064329
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right RSC": {
+     "mean": 0.0693395,
+     "n": 4,
+     "of": 8,
+     "sd": 0.018915121120415802,
+     "values": [
+      {
+       "pair_id": 6,
+       "v": 0.092082
+      },
+      {
+       "pair_id": 8,
+       "v": 0.075051
+      },
+      {
+       "pair_id": 13,
+       "v": 0.047409
+      },
+      {
+       "pair_id": 14,
+       "v": 0.062816
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.070581,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0020364675298172622,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.072021
+      },
+      {
+       "pair_id": 14,
+       "v": 0.069141
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left DHC": {
+     "mean": 0.059063500000000005,
+     "n": 2,
+     "of": 8,
+     "sd": 0.014848535298136309,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.069563
+      },
+      {
+       "pair_id": 14,
+       "v": 0.048564
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left OFC": {
+     "mean": 0.0540605,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0017260476528763616,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.055281
+      },
+      {
+       "pair_id": 14,
+       "v": 0.05284
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left PER": {
+     "mean": 0.041369500000000003,
+     "n": 2,
+     "of": 8,
+     "sd": 0.01213041683125522,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.032792
+      },
+      {
+       "pair_id": 14,
+       "v": 0.049947
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left RSC": {
+     "mean": 0.060296,
+     "n": 2,
+     "of": 8,
+     "sd": 0.006020307135022266,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.056039
+      },
+      {
+       "pair_id": 14,
+       "v": 0.064553
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Right RSC": {
+     "mean": 0.037983,
+     "n": 2,
+     "of": 8,
+     "sd": 0.00032809754647055746,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.037751
+      },
+      {
+       "pair_id": 14,
+       "v": 0.038215
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left ACC": {
+     "mean": 0.06783,
+     "n": 2,
+     "of": 8,
+     "sd": 0.016219615346857022,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.056361
+      },
+      {
+       "pair_id": 14,
+       "v": 0.079299
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left DHC": {
+     "mean": 0.11601600000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.027321191811485828,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.135335
+      },
+      {
+       "pair_id": 14,
+       "v": 0.096697
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left OFC": {
+     "mean": 0.046214000000000005,
+     "n": 2,
+     "of": 8,
+     "sd": 0.00567523902580323,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.042201
+      },
+      {
+       "pair_id": 14,
+       "v": 0.050227
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left PER": {
+     "mean": 0.057964499999999995,
+     "n": 2,
+     "of": 8,
+     "sd": 0.018826718049091824,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.071277
+      },
+      {
+       "pair_id": 14,
+       "v": 0.044652
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.118833,
+     "n": 2,
+     "of": 8,
+     "sd": 0.06849319125285373,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.167265
+      },
+      {
+       "pair_id": 14,
+       "v": 0.070401
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    }
+   },
+   "raw_cc": {
+    "Left DHC|Left ACC": {
+     "mean": 0.103707,
+     "n": 2,
+     "of": 8,
+     "sd": 0.012602057054306642,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.112618
+      },
+      {
+       "pair_id": 14,
+       "v": 0.094796
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left DHC|Left OFC": {
+     "mean": -0.0998005,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0020442457044103123,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.101246
+      },
+      {
+       "pair_id": 14,
+       "v": -0.098355
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left OFC|Left ACC": {
+     "mean": 0.7666715,
+     "n": 2,
+     "of": 8,
+     "sd": 0.02089571249084366,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.751896
+      },
+      {
+       "pair_id": 14,
+       "v": 0.781447
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left ACC": {
+     "mean": 0.1351435,
+     "n": 2,
+     "of": 8,
+     "sd": 0.009751709619343676,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.128248
+      },
+      {
+       "pair_id": 14,
+       "v": 0.142039
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left DHC": {
+     "mean": -0.036523999999999994,
+     "n": 2,
+     "of": 8,
+     "sd": 0.18127672285210805,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.164706
+      },
+      {
+       "pair_id": 14,
+       "v": 0.091658
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left OFC": {
+     "mean": -0.037548,
+     "n": 2,
+     "of": 8,
+     "sd": 0.18704812840015264,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.169811
+      },
+      {
+       "pair_id": 14,
+       "v": 0.094715
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left PER|Left RSC": {
+     "mean": 0.095821,
+     "n": 2,
+     "of": 8,
+     "sd": 0.20823163335093925,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.243063
+      },
+      {
+       "pair_id": 14,
+       "v": -0.051421
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left ACC": {
+     "mean": 0.1083625,
+     "n": 2,
+     "of": 8,
+     "sd": 0.061031093390992115,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.151518
+      },
+      {
+       "pair_id": 14,
+       "v": 0.065207
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left DHC": {
+     "mean": 0.3353675,
+     "n": 2,
+     "of": 8,
+     "sd": 0.3052417339822653,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.551206
+      },
+      {
+       "pair_id": 14,
+       "v": 0.119529
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Left RSC|Left OFC": {
+     "mean": -0.0748535,
+     "n": 2,
+     "of": 8,
+     "sd": 0.01944048673516175,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.0886
+      },
+      {
+       "pair_id": 14,
+       "v": -0.061107
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left ACC": {
+     "mean": -0.06744,
+     "n": 2,
+     "of": 8,
+     "sd": 0.011859594934060776,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.075826
+      },
+      {
+       "pair_id": 14,
+       "v": -0.059054
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left DHC": {
+     "mean": 0.006405500000000008,
+     "n": 2,
+     "of": 8,
+     "sd": 0.17150097160220407,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.114864
+      },
+      {
+       "pair_id": 14,
+       "v": 0.127675
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left OFC": {
+     "mean": -0.011774499999999997,
+     "n": 2,
+     "of": 8,
+     "sd": 0.1010688935553368,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.083241
+      },
+      {
+       "pair_id": 14,
+       "v": 0.059692
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left PER": {
+     "mean": 0.0977435,
+     "n": 2,
+     "of": 8,
+     "sd": 0.004000103061172296,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.100572
+      },
+      {
+       "pair_id": 14,
+       "v": 0.094915
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Left RSC": {
+     "mean": -0.126112,
+     "n": 2,
+     "of": 8,
+     "sd": 0.004426488450227788,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.129242
+      },
+      {
+       "pair_id": 14,
+       "v": -0.122982
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right OFC": {
+     "mean": 0.0205805,
+     "n": 2,
+     "of": 8,
+     "sd": 0.14249545143793188,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.080179
+      },
+      {
+       "pair_id": 14,
+       "v": 0.12134
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right ACC|Right RSC": {
+     "mean": 0.10412,
+     "n": 4,
+     "of": 8,
+     "sd": 0.15903615934958523,
+     "values": [
+      {
+       "pair_id": 6,
+       "v": 0.254096
+      },
+      {
+       "pair_id": 8,
+       "v": 0.189531
+      },
+      {
+       "pair_id": 13,
+       "v": 0.082307
+      },
+      {
+       "pair_id": 14,
+       "v": -0.109454
+      }
+     ],
+     "warn": null
+    },
+    "Right OFC|Left ACC": {
+     "mean": 0.155924,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0297409112167062,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.176954
+      },
+      {
+       "pair_id": 14,
+       "v": 0.134894
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left DHC": {
+     "mean": -0.102322,
+     "n": 2,
+     "of": 8,
+     "sd": 0.013941317297873968,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.11218
+      },
+      {
+       "pair_id": 14,
+       "v": -0.092464
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left OFC": {
+     "mean": -0.08146500000000001,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0032328922035849,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.083751
+      },
+      {
+       "pair_id": 14,
+       "v": -0.079179
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left PER": {
+     "mean": -0.056140499999999996,
+     "n": 2,
+     "of": 8,
+     "sd": 0.0010740952006223652,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.055381
+      },
+      {
+       "pair_id": 14,
+       "v": -0.0569
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Left RSC": {
+     "mean": -0.11183499999999999,
+     "n": 2,
+     "of": 8,
+     "sd": 0.03863348609690821,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.084517
+      },
+      {
+       "pair_id": 14,
+       "v": -0.139153
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right OFC|Right RSC": {
+     "mean": -0.053789,
+     "n": 2,
+     "of": 8,
+     "sd": 0.012725093634233107,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.044791
+      },
+      {
+       "pair_id": 14,
+       "v": -0.062787
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left ACC": {
+     "mean": -0.108368,
+     "n": 2,
+     "of": 8,
+     "sd": 0.017229363830391416,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.096185
+      },
+      {
+       "pair_id": 14,
+       "v": -0.120551
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left DHC": {
+     "mean": 0.0372555,
+     "n": 2,
+     "of": 8,
+     "sd": 0.3481772577359124,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.283454
+      },
+      {
+       "pair_id": 14,
+       "v": -0.208943
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left OFC": {
+     "mean": 0.002196499999999997,
+     "n": 2,
+     "of": 8,
+     "sd": 0.1278187430876239,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": -0.088185
+      },
+      {
+       "pair_id": 14,
+       "v": 0.092578
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left PER": {
+     "mean": -0.0026834999999999984,
+     "n": 2,
+     "of": 8,
+     "sd": 0.15773218835893962,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.10885
+      },
+      {
+       "pair_id": 14,
+       "v": -0.114217
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    },
+    "Right RSC|Left RSC": {
+     "mean": 0.116559,
+     "n": 2,
+     "of": 8,
+     "sd": 0.27917141406669843,
+     "values": [
+      {
+       "pair_id": 13,
+       "v": 0.313963
+      },
+      {
+       "pair_id": 14,
+       "v": -0.080845
+      }
+     ],
+     "warn": "usable in 2 of 8 pairs"
+    }
+   }
+  }
+ },
+ "computed_on": {
+  "at": "2026-09-30T13:10:49-04:00",
+  "cached": 0,
+  "computed": 8,
+  "kind": "local",
+  "machine": "Bluebarry"
+ },
+ "cue_label": "Click → Low Tone",
+ "cue_role": "no_food",
+ "cue_type": "Click_LowTone",
+ "grey": [
+  "Right DHC",
+  "Right PER",
+  "Right POR",
+  "Left POR"
+ ],
+ "kind": "state",
+ "methods": [
+  "coherence",
+  "raw_cc",
+  "amp_cc"
+ ],
+ "n_pairs": 8,
+ "pairs": [
+  {
+   "label": "Click → Low Tone",
+   "opener_t": 313.341953,
+   "pair_id": 1
+  },
+  {
+   "label": "Click → Low Tone",
+   "opener_t": 1335.386515,
+   "pair_id": 3
+  },
+  {
+   "label": "Click → Low Tone",
+   "opener_t": 1923.76339,
+   "pair_id": 5
+  },
+  {
+   "label": "Click → Low Tone",
+   "opener_t": 2275.601546,
+   "pair_id": 6
+  },
+  {
+   "label": "Click → Low Tone",
+   "opener_t": 2914.428171,
+   "pair_id": 8
+  },
+  {
+   "label": "Click → Low Tone",
+   "opener_t": 3884.763078,
+   "pair_id": 11
+  },
+  {
+   "label": "Click → Low Tone",
+   "opener_t": 4567.859484,
+   "pair_id": 13
+  },
+  {
+   "label": "Click → Low Tone",
+   "opener_t": 4856.387984,
+   "pair_id": 14
+  }
+ ],
+ "params": {
+  "after_s": null,
+  "analysis_fs": 1000.0,
+  "band": "gamma_low",
+  "before_s": null,
+  "channel_rule": "lowest-numbered usable wire",
+  "coherence_mode": "band",
+  "high": 55.0,
+  "kind": "state",
+  "low": 30.0,
+  "max_lag_ms": 60.0,
+  "notch_hz": 60.0,
+  "pad_s": 10.0,
+  "raw_cc_filtered": true,
+  "summary_hz": null
+ },
+ "region_order": [
+  "Right ACC",
+  "Right OFC",
+  "Right DHC",
+  "Right RSC",
+  "Right PER",
+  "Right POR",
+  "Left POR",
+  "Left PER",
+  "Left RSC",
+  "Left DHC",
+  "Left OFC",
+  "Left ACC"
+ ],
+ "region_usable": {
+  "cue1": {
+   "Left ACC": {
+    "of": 8,
+    "usable": 3
+   },
+   "Left DHC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left OFC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left PER": {
+    "of": 8,
+    "usable": 3
+   },
+   "Left POR": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Left RSC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Right ACC": {
+    "of": 8,
+    "usable": 6
+   },
+   "Right DHC": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right OFC": {
+    "of": 8,
+    "usable": 3
+   },
+   "Right PER": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right POR": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right RSC": {
+    "of": 8,
+    "usable": 5
+   }
+  },
+  "cue2": {
+   "Left ACC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left DHC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left OFC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left PER": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left POR": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Left RSC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Right ACC": {
+    "of": 8,
+    "usable": 8
+   },
+   "Right DHC": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right OFC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Right PER": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right POR": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right RSC": {
+    "of": 8,
+    "usable": 5
+   }
+  },
+  "post": {
+   "Left ACC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left DHC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left OFC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left PER": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left POR": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Left RSC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Right ACC": {
+    "of": 8,
+    "usable": 8
+   },
+   "Right DHC": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right OFC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Right PER": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right POR": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right RSC": {
+    "of": 8,
+    "usable": 3
+   }
+  },
+  "pre": {
+   "Left ACC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left DHC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left OFC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left PER": {
+    "of": 8,
+    "usable": 2
+   },
+   "Left POR": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Left RSC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Right ACC": {
+    "of": 8,
+    "usable": 7
+   },
+   "Right DHC": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right OFC": {
+    "of": 8,
+    "usable": 2
+   },
+   "Right PER": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right POR": {
+    "grey": true,
+    "of": 8,
+    "usable": 0
+   },
+   "Right RSC": {
+    "of": 8,
+    "usable": 4
+   }
+  }
+ },
+ "regions": [
+  {
+   "histology": "intended",
+   "label": "Right ACC",
+   "region": "Right ACC",
+   "slot": "R_ACC",
+   "status": "ok",
+   "why": "Histology puts this probe in Right ACC, which is where it was aimed."
+  },
+  {
+   "histology": "intended",
+   "label": "Right OFC",
+   "region": "Right OFC",
+   "slot": "R_OFC",
+   "status": "ok",
+   "why": "Histology puts this probe in Right OFC, which is where it was aimed."
+  },
+  {
+   "histology": "relocated",
+   "label": "Right white matter tracts (aimed at Right DHC)",
+   "region": "Right DHC",
+   "slot": "R_DHC",
+   "status": "grey",
+   "why": "Histology puts this probe in Right white matter tracts, not Right DHC. The signal is real; the label is not the one on the map, and it is drawn under its own name. A circuit leaves relocated probes out entirely, so this region is grey even though Coupling computes it."
+  },
+  {
+   "histology": "intended",
+   "label": "Right RSC",
+   "region": "Right RSC",
+   "slot": "R_RSC",
+   "status": "ok",
+   "why": "Histology puts this probe in Right RSC, which is where it was aimed."
+  },
+  {
+   "histology": "relocated",
+   "label": "Right entorhinal cortex (aimed at Right PER)",
+   "region": "Right PER",
+   "slot": "R_PER",
+   "status": "grey",
+   "why": "Histology puts this probe in Right entorhinal cortex, not Right PER. The signal is real; the label is not the one on the map, and it is drawn under its own name. A circuit leaves relocated probes out entirely, so this region is grey even though Coupling computes it."
+  },
+  {
+   "histology": "relocated",
+   "label": "Right subiculum (aimed at Right POR)",
+   "region": "Right POR",
+   "slot": "R_POR",
+   "status": "grey",
+   "why": "Histology puts this probe in Right subiculum, not Right POR. The signal is real; the label is not the one on the map, and it is drawn under its own name. A circuit leaves relocated probes out entirely, so this region is grey even though Coupling computes it."
+  },
+  {
+   "histology": "relocated",
+   "label": "Left subiculum (aimed at Left POR)",
+   "region": "Left POR",
+   "slot": "L_POR",
+   "status": "grey",
+   "why": "Histology puts this probe in Left subiculum, not Left POR. The signal is real; the label is not the one on the map, and it is drawn under its own name. A circuit leaves relocated probes out entirely, so this region is grey even though Coupling computes it."
+  },
+  {
+   "histology": "intended",
+   "label": "Left PER",
+   "region": "Left PER",
+   "slot": "L_PER",
+   "status": "ok",
+   "why": "Histology puts this probe in Left PER, which is where it was aimed."
+  },
+  {
+   "histology": "intended",
+   "label": "Left RSC",
+   "region": "Left RSC",
+   "slot": "L_RSC",
+   "status": "ok",
+   "why": "Histology puts this probe in Left RSC, which is where it was aimed."
+  },
+  {
+   "histology": "intended",
+   "label": "Left DHC",
+   "region": "Left DHC",
+   "slot": "L_DHC",
+   "status": "ok",
+   "why": "Histology puts this probe in Left DHC, which is where it was aimed."
+  },
+  {
+   "histology": "intended",
+   "label": "Left OFC",
+   "region": "Left OFC",
+   "slot": "L_OFC",
+   "status": "ok",
+   "why": "Histology puts this probe in Left OFC, which is where it was aimed."
+  },
+  {
+   "histology": "intended",
+   "label": "Left ACC",
+   "region": "Left ACC",
+   "slot": "L_ACC",
+   "status": "ok",
+   "why": "Histology puts this probe in Left ACC, which is where it was aimed."
+  }
+ ],
+ "role_source": {
+  "followed": {
+   "High tone": 78,
+   "Low Tone": 0
+  },
+  "food_cue": "High tone",
+  "food_pair": "Noise_HighTone",
+  "presented": {
+   "High tone": 82,
+   "Low Tone": 71
+  },
+  "rat": 6,
+  "read_by": "backend/cueroles.py",
+  "rule": "a cue presentation is followed when a Pellet Delivery TTL lands within 15 s after its onset; mirrors and debounced repeats are dropped as Spark drops them",
+  "sessions": [
+   "sdb7947ab026b",
+   "s43a8d4dcf350",
+   "sd30da315fb5e"
+  ],
+  "window_s": 15.0
+ },
+ "schema": "arc.circuit/1",
+ "source": {
+  "bank_entry": "43df172979f6",
+  "bank_version": 1,
+  "gid": "sce947d33ceb8",
+  "session_label": "DEWEY r6 s1 Precon1 SPC 2026-07-22"
+ },
+ "windows": [
+  "pre",
+  "cue1",
+  "cue2",
+  "post"
+ ]
+}

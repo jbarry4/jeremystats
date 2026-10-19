@@ -1,0 +1,175 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>climpin — pinning a dB panel must keep the picture, not replace it</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1500px; height:900px; border:1px solid #333; background:#fff; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">Reported: clicking Auto to pin the theta power raster "breaks
+things, the colors look off" — a panel of flat dark red with three blue
+cores. Band power in dB re 1 uV^2 runs about [-3, 27]; the client had no
+clim_auto for it, fell back to the literal placeholder [-1, 1], and pinned
+30 dB of data into 2 dB. Everything above 1 dB saturated.</p>
+<div id="out"></div>
+<iframe id="A" src="/"></iframe>
+<script>
+let bad = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 60000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(200);
+  }
+  return null;
+}
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const ev = (src) => W().eval(src);
+
+/* The pin button is the one in the control strip that is not "edit…". */
+const pinBtn = () => Array.from(D().querySelectorAll('.scale-ctl .mini'))
+  .find((b) => !/^edit/.test(b.textContent.trim()));
+
+async function openPanel(panel) {
+  ev("BARRY.views.xplore.setPanes([{panel:'" + panel + "'}],{col:1,row:1})");
+  await until(() => {
+    const p = ev('BARRY.views.xplore.state.panes[0]');
+    return p && p._panelData && p._panelData.clim;
+  }, 90000);
+  await sleep(700);
+}
+
+(async () => { try {
+  await until(() => W().BARRY && W().BARRY.state);
+  ev("setView('xplore')");
+  await sleep(300);
+  await ev("BARRY.views.xplore.open('demo:long-session')");
+  await until(() => ev(
+    'Object.keys(BARRY.views.xplore.state.sessions).length') > 0);
+  ev('(function(){var S=BARRY.views.xplore.state;'
+     + 'var s=S.sessions[S.active]; s.t0=100; s.span=20;})()');
+
+  /* ---------- the reported panel ---------- */
+  await openPanel('bandpower');
+  const data = ev('JSON.stringify(BARRY.views.xplore.state.panes[0]._panelData'
+                  + ' && {clim: BARRY.views.xplore.state.panes[0]._panelData.clim,'
+                  + ' auto: BARRY.views.xplore.state.panes[0]._panelData.clim_auto,'
+                  + ' sym: BARRY.views.xplore.state.panes[0]._panelData.clim_symmetric,'
+                  + ' units: BARRY.views.xplore.state.panes[0]._panelData.units})');
+  const d = JSON.parse(data || '{}');
+  say('note', '  band power: clim=' + JSON.stringify(d.clim)
+            + '  auto=' + JSON.stringify(d.auto)
+            + '  symmetric=' + d.sym);
+
+  ck('band power reports its auto scale',
+     Array.isArray(d.auto) && d.auto.length === 2, JSON.stringify(d.auto));
+  ck('and says it is one-sided', d.sym === false, String(d.sym));
+  ck('auto is the scale it drew with',
+     d.auto && d.clim && Math.abs(d.auto[0] - d.clim[0]) < 1e-9
+     && Math.abs(d.auto[1] - d.clim[1]) < 1e-9,
+     JSON.stringify(d.clim) + ' vs ' + JSON.stringify(d.auto));
+  ck('a dB range is not symmetric about zero',
+     d.auto && Math.abs(d.auto[0] + d.auto[1]) > 1e-6,
+     JSON.stringify(d.auto));
+
+  const btn = pinBtn();
+  ck('the scale control is on screen', !!btn, 'no .scale-ctl .mini');
+  if (btn) {
+    ck('it starts on auto', /auto/.test(btn.textContent), btn.textContent);
+    btn.click();
+    await sleep(900);
+
+    const pinned = JSON.parse(ev(
+      'JSON.stringify(BARRY.views.xplore.state.panes[0].clim'
+      + ' || BARRY.views.xplore.state.sessions['
+      + 'BARRY.views.xplore.state.active].clim || null)') || 'null');
+    say('note', '  pinned to ' + JSON.stringify(pinned));
+
+    ck('pinning produced a scale', Array.isArray(pinned) && pinned.length === 2,
+       JSON.stringify(pinned));
+    /* The bug, exactly: the placeholder. */
+    ck('NOT the [-1, 1] placeholder',
+       !(pinned && Math.abs(pinned[0] + 1) < 1e-9
+         && Math.abs(pinned[1] - 1) < 1e-9),
+       JSON.stringify(pinned));
+    /* And not the symmetric rebuild either, which would have thrown away
+       the bottom of the map even once clim_auto existed. */
+    ck('and not forced symmetric about zero',
+       pinned && Math.abs(pinned[0] + pinned[1]) > 1e-6, JSON.stringify(pinned));
+    ck('it pinned the picture that was on screen',
+       pinned && Math.abs(pinned[0] - d.clim[0]) < 1e-4
+       && Math.abs(pinned[1] - d.clim[1]) < 1e-4,
+       JSON.stringify(pinned) + ' vs ' + JSON.stringify(d.clim));
+
+    /* Nothing should have clipped: the data range and the scale still agree
+       to within the percentile clip they were built from. */
+    await until(() => {
+      const p = ev('BARRY.views.xplore.state.panes[0]');
+      return p && p._panelData && p._panelData.image;
+    }, 60000);
+    const after = JSON.parse(ev(
+      'JSON.stringify(BARRY.views.xplore.state.panes[0]._panelData.clim)'));
+    ck('the redrawn panel kept that scale',
+       Math.abs(after[0] - pinned[0]) < 1e-4
+       && Math.abs(after[1] - pinned[1]) < 1e-4,
+       JSON.stringify(after) + ' vs ' + JSON.stringify(pinned));
+
+    /* Back to auto, so the harness leaves no pinned scale behind for the
+       next one to inherit. */
+    const back = pinBtn();
+    if (back) { back.click(); await sleep(600); }
+  }
+
+  /* ---------- a signed panel must be unchanged ---------- */
+  /* Voltage is signed and zero IS the middle of it, so its scale is still
+     symmetric and pinning it still gives [-m, +m]. The fix must not have
+     made every panel one-sided. */
+  await openPanel('raster');
+  const rd = JSON.parse(ev(
+    'JSON.stringify({clim: BARRY.views.xplore.state.panes[0]._panelData.clim,'
+    + ' sym: BARRY.views.xplore.state.panes[0]._panelData.clim_symmetric})'));
+  say('note', '  voltage raster: clim=' + JSON.stringify(rd.clim)
+            + '  symmetric=' + rd.sym);
+  ck('a voltage raster is still symmetric', rd.sym === true, String(rd.sym));
+  ck('and its auto scale still straddles zero',
+     Math.abs(rd.clim[0] + rd.clim[1]) < 1e-6, JSON.stringify(rd.clim));
+
+  const b2 = pinBtn();
+  if (b2) {
+    b2.click();
+    await sleep(900);
+    const p2 = JSON.parse(ev(
+      'JSON.stringify(BARRY.views.xplore.state.panes[0].clim'
+      + ' || BARRY.views.xplore.state.sessions['
+      + 'BARRY.views.xplore.state.active].clim || null)') || 'null');
+    ck('pinning it is still symmetric',
+       p2 && Math.abs(p2[0] + p2[1]) < 1e-6, JSON.stringify(p2));
+    ck('and equals what it was showing',
+       p2 && Math.abs(p2[1] - rd.clim[1]) < 1e-4,
+       JSON.stringify(p2) + ' vs ' + JSON.stringify(rd.clim));
+    const back2 = pinBtn();
+    if (back2) { back2.click(); await sleep(500); }
+  }
+
+} catch (e) {
+  say('bad', 'threw: ' + (e && e.message ? e.message : e));
+}
+  say('note', 'done');
+  document.title = 'DONE ok=' + (out.querySelectorAll('.ok').length)
+                 + ' fail=' + bad;
+})();
+</script>

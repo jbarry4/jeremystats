@@ -1,0 +1,63 @@
+{
+  "format": "png",
+  "id": "e8b76c65b569",
+  "kind": "panorama",
+  "label": "Panorama -- PTEN m1 s2 2023-10-02 CSC1 panorama",
+  "output": {
+    "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/Panorama/PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116.png",
+    "path": "C:\\Users\\ipiatek\\OneDrive - UVM Larner College of Medicine\\Desktop\\Actual Repo\\jeremystats\\BARRY GUI\\Results\\Panorama\\PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116.png",
+    "rel": "Panorama/PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116.png"
+  },
+  "outputs": [
+    {
+      "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/Panorama/PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116.png",
+      "path": "C:\\Users\\ipiatek\\OneDrive - UVM Larner College of Medicine\\Desktop\\Actual Repo\\jeremystats\\BARRY GUI\\Results\\Chicken!\\PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116.png",
+      "rel": "Chicken!/PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116.png"
+    },
+    {
+      "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/Panorama/PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116_psd.csv",
+      "path": "C:\\Users\\ipiatek\\OneDrive - UVM Larner College of Medicine\\Desktop\\Actual Repo\\jeremystats\\BARRY GUI\\Results\\Chicken!\\PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116_psd.csv",
+      "rel": "Chicken!/PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116_psd.csv"
+    },
+    {
+      "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/Panorama/PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116_histogram.csv",
+      "path": "C:\\Users\\ipiatek\\OneDrive - UVM Larner College of Medicine\\Desktop\\Actual Repo\\jeremystats\\BARRY GUI\\Results\\Chicken!\\PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116_histogram.csv",
+      "rel": "Chicken!/PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116_histogram.csv"
+    },
+    {
+      "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/Panorama/PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116_windows.csv",
+      "path": "C:\\Users\\ipiatek\\OneDrive - UVM Larner College of Medicine\\Desktop\\Actual Repo\\jeremystats\\BARRY GUI\\Results\\Chicken!\\PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116_windows.csv",
+      "rel": "Chicken!/PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116_windows.csv"
+    },
+    {
+      "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/Panorama/PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116_params.json",
+      "path": "C:\\Users\\ipiatek\\OneDrive - UVM Larner College of Medicine\\Desktop\\Actual Repo\\jeremystats\\BARRY GUI\\Results\\Panorama\\PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116_params.json",
+      "rel": "Panorama/PTEN_m1_s2_2023-10-02_CSC1_panorama_20260918_142116_params.json"
+    }
+  ],
+  "parameters": {
+    "bins": 48,
+    "channel": "CSC1",
+    "counting": "peak",
+    "f_hi": 75.0,
+    "f_lo": 2.0,
+    "step_s": 1.0,
+    "sub_s": 2.0,
+    "t0": 0.0,
+    "t1": 1709.8581333333334,
+    "win_s": 8.0
+  },
+  "provenance": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T14:21:17-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "schema": 1,
+  "script": "Panorama",
+  "status": "done"
+}

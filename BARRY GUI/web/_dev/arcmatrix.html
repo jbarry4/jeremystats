@@ -1,0 +1,412 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — The Arc: the matrix</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The connectivity matrix, and the three things drawn on it that are not
+   the numbers.
+
+   A 12x12 of four-letter abbreviations is a surface where every fault is
+   silent. A cell eight rows from its label and eleven columns from the
+   other is read by counting squares, and a misread is invisible. On top of
+   that, two of the marks here are claims about the brain rather than about
+   the data -- this probe is not in the region the map says, and this
+   region has no wire left to measure it with -- and both of them are worse
+   than useless if they are drawn on the wrong cell.
+
+   So these checks are about geometry and provenance, not about
+   correlation. What they assert:
+
+     the trail    lighting a cell lights exactly the cells between it and
+                  its two headers, and NOTHING below or to the right. The
+                  count is computed from the coordinates rather than read
+                  off the DOM, because a check that counts what it finds
+                  agrees with itself by construction.
+     blocked      a pair with no usable wire is marked differently from a
+                  pair nobody asked about, and carries the reason for the
+                  side that is blocked.
+     relocated    a probe the histology found somewhere else is flagged on
+                  the axis AND on every cell it contributes to, and the
+                  axis shows the region it is actually in.
+     degrading    a run with no config -- one made before any of this
+                  existed -- still draws its numbers.
+
+   The run is handed in rather than computed. A real one is four windows of
+   thirty-two channels through three methods, about three minutes, to
+   assert something entirely about how a grid is drawn. The CONFIG is
+   hand-built here too, and that is the one thing worth being uneasy about:
+   it mirrors the shape `coupling.analysis_config` produces, and if that
+   shape changes these checks keep passing against the old one.
+   `tools/check_histo.py` and the Python smoke tests cover the other side.
+*/
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+/* Five regions, not twelve: the geometry is the same and every count
+   below can be worked out in your head, which is the point of a check. */
+const REGIONS = ['Left POR', 'Left PER', 'Right PER', 'Left OFC', 'Left ACC'];
+const N = REGIONS.length;
+
+/* Left PER is relocated -- the histology found subiculum.
+   Left OFC is blocked in cue1 -- both its wires clipped.
+   The rest are where they should be. */
+function config() {
+  const rec = (slot, region, label, hist, chan, why) => ({
+    slot: slot, region: region, label: label, histology: hist,
+    channels: [1, 2], blocked: chan == null ? ['cue1'] : [],
+    windows: {
+      pre: { channel: 1, blocked: null, rejected: {}, why: 'pre is fine' },
+      cue1: { channel: chan, blocked: chan == null ? 'clipped' : null,
+              rejected: {}, why: why },
+      cue2: { channel: 1, blocked: null, rejected: {}, why: 'cue2 is fine' },
+      post: { channel: 1, blocked: null, rejected: {}, why: 'post is fine' },
+    },
+  });
+  return {
+    schema: 'arc.coupling.config/1',
+    channel_sanity: [
+      rec('L_POR', 'Left POR', 'Left POR', 'intended', 1,
+          'Left POR is measured on CSC 1.'),
+      rec('L_PER', 'Left PER', 'Left subiculum (aimed at Left PER)',
+          'relocated', 5, 'Left subiculum is measured on CSC 5.'),
+      rec('R_PER', 'Right PER', 'Right PER', 'intended', 9,
+          'Right PER is measured on CSC 9.'),
+      rec('L_OFC', 'Left OFC', 'Left OFC', 'intended', null,
+          'Left OFC is blocked here: CSC 21, 22 are clipped in this '
+          + 'window.'),
+      rec('L_ACC', 'Left ACC', 'Left ACC', 'uncertain', 23,
+          'Left ACC is measured on CSC 23.'),
+    ],
+    blocked: {
+      pre: { n: 0, of: 10, regions: [] },
+      cue1: { n: 4, of: 10, regions: ['Left OFC'] },
+      cue2: { n: 0, of: 10, regions: [] },
+      post: { n: 0, of: 10, regions: [] },
+    },
+  };
+}
+
+function run(withConfig) {
+  const pairs = [];
+  for (let i = 0; i < N; i++) {
+    for (let j = i + 1; j < N; j++) {
+      pairs.push({
+        a: REGIONS[i], b: REGIONS[j],
+        amp_cc: { value: 0.5, what: 'peak |r|', x: 0, x_unit: 'ms' },
+      });
+    }
+  }
+  const w = { window: 'cue1', pairs: pairs, n_pairs: pairs.length,
+              n_refused: 0 };
+  const r = { region_order: REGIONS.slice(), windows: [w] };
+  if (withConfig) r.sanity = config();
+  return r;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  const errs = [];
+  win().addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  win().addEventListener('unhandledrejection',
+                         (e) => errs.push('rejected: ' + e.reason));
+  await untilN(() => typeof win().setView === 'function');
+  await sleep(700);
+  const ev = (src) => win().eval(src);
+  const val = (expr) => ev('(' + expr + ')');
+
+  /* ---------------------------------------------------------------- */
+  head('getting the panel on screen');
+  ev('setView("toolkit")');
+  await sleep(300);
+  check('the Coupling step opens',
+        val('BARRY.views.toolkit.pick("coupling")') === true);
+  await untilN(() => doc().querySelector('#cpMain'));
+  check('its host is there', !!doc().querySelector('#cpMain'));
+  /* The panel loads its recording list on open and REPAINTS the host when
+     it lands. Handing a run in before that means the grid is drawn, then
+     replaced by "Pick a recording", and every check below grades a
+     detached grid: the classes are still on the nodes and events still
+     fire on them, so geometry passes on something nobody can see. That
+     is exactly what the first run of this file did. Wait for the panel's
+     own resting state -- the empty-state it paints once the list is in --
+     before touching the host. */
+  await untilN(() => doc().querySelector('#cpPick .arc-row, #cpPick p')
+                  && doc().querySelector('#cpMain .empty-state'), 300);
+  check('the panel has finished its own load first',
+        !!doc().querySelector('#cpMain .empty-state'));
+
+  /* And the ToolKit has finished ITS load. `toolkit.onShow` renders, then
+     awaits the session list and renders again -- which rebuilds this panel
+     and its #cpMain from nothing, at a moment that varies run to run.
+     Waiting for any one load is not enough when there are two, so wait for
+     the host to stop being REPLACED: the same node for a second and a half.
+     A repaint that clears the host keeps the node; one that rebuilds the
+     panel does not, and it is the second kind that strands a grid. */
+  let host = doc().querySelector('#cpMain');
+  let steady = 0;
+  for (let i = 0; i < 100 && steady < 15; i++) {
+    await sleep(100);
+    const now = doc().querySelector('#cpMain');
+    steady = (now && now === host) ? steady + 1 : 0;
+    host = now;
+  }
+  check('the panel has stopped being rebuilt under us', steady >= 15,
+        'still being replaced after 10 s');
+  check('the matrix has a way in for this harness',
+        val('typeof window.barryArc.matrix._show') === 'function');
+
+  win().__run = run(true);
+  const shown = val('window.barryArc.matrix._show(window.__run, '
+                    + '{ window: "cue1", method: "amp_cc" })');
+  check('a run can be handed in', shown === true);
+  await untilN(() => doc().querySelector('.arc-mx'));
+  let grid = doc().querySelector('.arc-mx');
+  check('the grid draws', !!grid);
+  if (!grid) throw new Error('no grid, nothing below can be checked');
+
+  /* Draw it again and hand back the LIVE grid. The panel repaints its host
+     on its own schedule -- the recording list landing, the ToolKit
+     refreshing -- and with no recording picked a repaint means "Pick a
+     recording", so a grid captured once goes stale partway through. The
+     first version of this file held one reference throughout and every
+     geometry check passed on a detached grid: classes still on the nodes,
+     events still firing on them, nothing on the screen. So each section
+     starts from a fresh draw and ends by asserting it is still attached. */
+  const fresh = async (r) => {
+    val('window.barryArc.matrix._show(' + (r || 'window.__run')
+        + ', { window: "cue1", method: "amp_cc" })');
+    await untilN(() => doc().querySelector('.arc-mx'), 50, 40);
+    grid = doc().querySelector('.arc-mx');
+    cells = Array.from(grid.querySelectorAll('.arc-mx-cell'));
+    colHeads = Array.from(grid.querySelectorAll('.arc-mx-head.col'));
+    rowHeads = Array.from(grid.querySelectorAll('.arc-mx-head.row'));
+    return grid;
+  };
+
+  /* ---------------------------------------------------------------- */
+  head('the shape of it');
+  /* One corner, N column heads, then N rows of (one head + N cells). */
+  check('it is (N+1) squared nodes',
+        grid.children.length === (N + 1) * (N + 1),
+        grid.children.length + ' vs ' + (N + 1) * (N + 1));
+  let cells = Array.from(grid.querySelectorAll('.arc-mx-cell'));
+  check('N squared cells', cells.length === N * N,
+        cells.length + ' vs ' + N * N);
+  check('every cell knows its own coordinates',
+        cells.every((c) => c.dataset.r !== undefined
+                        && c.dataset.c !== undefined));
+  let colHeads = Array.from(grid.querySelectorAll('.arc-mx-head.col'));
+  let rowHeads = Array.from(grid.querySelectorAll('.arc-mx-head.row'));
+  check('N column heads and N row heads',
+        colHeads.length === N && rowHeads.length === N,
+        colHeads.length + ' / ' + rowHeads.length);
+
+  /* ---------------------------------------------------------------- */
+  head('following a cell back to its two names');
+  await fresh();
+  const at = (r, c) => cells.find((n) => Number(n.dataset.r) === r
+                                      && Number(n.dataset.c) === c);
+  const hover = async (node) => {
+    node.dispatchEvent(new (win().MouseEvent)('mouseover',
+                                              { bubbles: true }));
+    await sleep(60);
+  };
+  const litCells = () => Array.from(grid.querySelectorAll('.arc-mx-cell.lit'));
+  const litHeads = () => Array.from(
+    grid.querySelectorAll('.arc-mx-head.lit-head'));
+
+  /* Bottom-right-ish, so a trail that ran the wrong way would be a
+     different length rather than the same one by symmetry. */
+  await hover(at(3, 1));
+  /* Left along the row is c+1 cells, up the column is r+1, and the cell
+     under the pointer is in both. Worked out from the coordinates, not
+     counted off the page. */
+  check('the trail is exactly as long as the two runs that make it',
+        litCells().length === (3 + 1) + (1 + 1) - 1,
+        litCells().length + ' vs ' + ((3 + 1) + (1 + 1) - 1));
+  check('nothing below or to the right is lit',
+        litCells().every((n) => (Number(n.dataset.r) === 3
+                                 && Number(n.dataset.c) <= 1)
+                             || (Number(n.dataset.c) === 1
+                                 && Number(n.dataset.r) <= 3)));
+  check('the cell under the pointer is part of it',
+        at(3, 1).classList.contains('lit'));
+  check('both headers light, and only those two',
+        litHeads().length === 2, litHeads().length + ' lit');
+  check('they are the right two',
+        litHeads().some((n) => n.classList.contains('row')
+                            && Number(n.dataset.r) === 3)
+        && litHeads().some((n) => n.classList.contains('col')
+                                && Number(n.dataset.c) === 1));
+
+  /* The top-left cell is its own trail and nothing else -- the degenerate
+     case, where an off-by-one in either direction shows up as 2 or 0. */
+  await hover(at(0, 0));
+  check('the corner cell lights only itself', litCells().length === 1,
+        litCells().length + ' lit');
+
+  await hover(at(N - 1, N - 1));
+  check('the far corner lights a full row and a full column',
+        litCells().length === N + N - 1,
+        litCells().length + ' vs ' + (N + N - 1));
+
+  grid.dispatchEvent(new (win().MouseEvent)('mouseleave', { bubbles: false }));
+  await sleep(60);
+  check('leaving the grid puts it all out',
+        litCells().length === 0 && litHeads().length === 0,
+        litCells().length + ' cells, ' + litHeads().length + ' heads');
+
+  /* ---------------------------------------------------------------- */
+  check('  ...and all of that was on the screen (the trail)', grid.isConnected);
+
+  head('a region with no wire left');
+  await fresh();
+  /* Left OFC is index 3 and is blocked in cue1. Its row and its column
+     are blocked -- 2N-1 cells, less the one on the diagonal, which is
+     drawn as `self` and is not a pair at all. */
+  const blocked = cells.filter((n) => n.classList.contains('blocked'));
+  check('the blocked region blocks its whole row and column',
+        blocked.length === (N - 1) * 2,
+        blocked.length + ' vs ' + (N - 1) * 2);
+  check('every one of them is in that row or that column',
+        blocked.every((n) => Number(n.dataset.r) === 3
+                          || Number(n.dataset.c) === 3));
+  check('a blocked cell is not drawn as "not computed"',
+        blocked.every((n) => !n.classList.contains('none')),
+        'blocked and none are different claims');
+  check('and it carries the reason, naming the channels',
+        blocked.every((n) => /CSC 21, 22 are clipped/.test(n.title || '')),
+        (blocked[0] || {}).title || '');
+  check('the blocked axis label says so too',
+        rowHeads[3].classList.contains('blocked')
+        && colHeads[3].classList.contains('blocked'));
+
+  /* ---------------------------------------------------------------- */
+  check('  ...and all of that was on the screen (blocked)', grid.isConnected);
+
+  head('a probe that is not where the map says');
+  await fresh();
+  /* Left PER is index 1 and the histology found subiculum. */
+  check('its axis label is flagged',
+        rowHeads[1].classList.contains('moved')
+        && colHeads[1].classList.contains('moved'));
+  check('and shows the region it is actually in, not the intended one',
+        /sub/i.test(rowHeads[1].title || ''),
+        rowHeads[1].title || '');
+  check('the intended region is still said, so the flag can be checked',
+        /aimed at Left PER/.test(rowHeads[1].title || '')
+        || /Left PER/.test(rowHeads[1].title || ''));
+  const moved = cells.filter((n) => n.classList.contains('moved'));
+  /* Every computable cell in that row or column. Left OFC's are blocked
+     instead, and the diagonal is `self`, so both come out. */
+  check('every cell it contributes to is flagged as well',
+        moved.length === (N - 1) * 2 - 2,
+        moved.length + ' vs ' + ((N - 1) * 2 - 2));
+  check('they are all in its row or column',
+        moved.every((n) => Number(n.dataset.r) === 1
+                        || Number(n.dataset.c) === 1));
+  check('a flagged cell still shows its number',
+        moved.every((n) => (n.textContent || '').trim().length > 0));
+  check('the uncertain one is marked, but not as moved',
+        rowHeads[4].classList.contains('unsure')
+        && !rowHeads[4].classList.contains('moved'));
+
+  /* ---------------------------------------------------------------- */
+  check('  ...and all of that was on the screen (relocated)', grid.isConnected);
+
+  head('the legend');
+  await fresh();
+  const keys = Array.from(doc().querySelectorAll('.arc-mx-key'));
+  check('there is one', keys.length > 0, keys.length + ' entries');
+  const keyText = keys.map((k) => k.textContent).join(' | ');
+  check('it names the regions rather than only counting them',
+        /Left OFC/.test(keyText), keyText);
+  check('it says how many pairs are blocked, out of how many',
+        /4 of 10/.test(keyText), keyText);
+  check('it accounts for the relocated probe',
+        /not where the probe was aimed/.test(keyText), keyText);
+  const movedKey = keys.find((k) => k.classList.contains('moved'));
+  check('and names it on hover',
+        !!movedKey && /sub/i.test(movedKey.title || ''),
+        (movedKey || {}).title || '');
+
+  /* ---------------------------------------------------------------- */
+  check('  ...and all of that was on the screen (legend)', grid.isConnected);
+
+  head('a run from before any of this existed');
+  /* The config is new. Every analysis saved before it has none, and those
+     numbers are still true -- the matrix must draw them and simply not
+     claim anything it cannot support. */
+  win().__plain = run(false);
+  val('window.barryArc.matrix._show(window.__plain, '
+      + '{ window: "cue1", method: "amp_cc" })');
+  await sleep(200);
+  const g2 = doc().querySelector('.arc-mx');
+  check('it still draws', !!g2);
+  const c2 = Array.from(doc().querySelectorAll('.arc-mx-cell'));
+  check('with all its numbers', c2.filter(
+    (n) => (n.textContent || '').trim()).length === N * N - N,
+    c2.filter((n) => (n.textContent || '').trim()).length);
+  check('nothing is flagged as moved',
+        c2.every((n) => !n.classList.contains('moved')));
+  check('nothing is claimed to be blocked',
+        c2.every((n) => !n.classList.contains('blocked')));
+  check('and no legend invents a clean bill of health',
+        doc().querySelectorAll('.arc-mx-key').length === 0);
+  /* The trail is geometry and owes nothing to the config, so it must
+     still work without one. */
+  const g2cells = c2.filter((n) => n.dataset.r !== undefined);
+  const corner = g2cells.find((n) => n.dataset.r === '2'
+                                  && n.dataset.c === '1');
+  await hover(corner);
+  check('the trail still works without a config',
+        doc().querySelectorAll('.arc-mx-cell.lit').length === 3 + 2 - 1,
+        doc().querySelectorAll('.arc-mx-cell.lit').length);
+
+  /* ---------------------------------------------------------------- */
+  head('nothing broke on the way');
+  check('no uncaught errors', errs.length === 0, errs.join(' | '));
+
+  say('note', '');
+  say('note', (out.querySelectorAll('.ok').length) + ' passed, '
+              + bad + ' failed');
+  document.title = 'arcmatrix: ' + out.querySelectorAll('.ok').length
+                 + ' pass ' + bad + ' fail';
+} catch (e) {
+  say('bad', 'CRASH ' + (e && e.message));
+  say('note', String((e && e.stack) || ''));
+  document.title = 'arcmatrix CRASH';
+} })();
+</script>

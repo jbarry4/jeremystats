@@ -1,80 +1,233 @@
 {
   "_at": {
-    "created": "2026-09-03T21:07:03.081193+00:00",
+    "archived": "2026-09-18T16:15:08.046307+00:00",
+    "archived_at": "2026-09-18T16:15:08.046307+00:00",
+    "archived_by": "2026-09-18T16:15:08.046307+00:00",
+    "assignee": "2026-09-09T02:02:26.216505+00:00",
+    "based_on": "2026-09-18T16:15:08.046307+00:00",
+    "based_on_at": "2026-09-18T16:15:08.046307+00:00",
+    "closed_at": "2026-09-21T15:18:57.713966+00:00",
+    "created": "2026-09-09T21:20:01.443029+00:00",
     "gid": "2026-09-03T21:07:03.081193+00:00",
-    "imports": "2026-09-03T21:07:03.081193+00:00",
+    "imports": "2026-09-21T15:06:47.051994+00:00",
     "kind": "2026-09-03T21:07:03.081193+00:00",
-    "labels": "2026-09-03T21:07:03.081193+00:00",
-    "name": "2026-09-03T21:07:03.081193+00:00",
+    "labels": "2026-09-08T19:03:11.347561+00:00",
+    "name": "2026-09-08T19:03:11.347561+00:00",
+    "open": "2026-09-21T15:18:57.713966+00:00",
+    "opened_at": "2026-09-21T15:18:29.633782+00:00",
+    "opened_by": "2026-09-21T15:18:29.633782+00:00",
     "schema": "2026-09-03T21:07:03.081193+00:00",
     "session_label": "2026-09-03T21:07:03.081193+00:00",
-    "source": "2026-09-03T21:07:03.081193+00:00",
-    "updated": "2026-09-03T21:07:03.081193+00:00"
+    "source": "2026-09-21T15:06:47.051994+00:00",
+    "updated": "2026-09-21T18:16:37.683402+00:00"
   },
   "_keys": {
     "events": {
-      "e6168265b0a": [
+      "e01b856f1bf": [
+        "gone",
+        "2026-09-08T19:03:11.427415+00:00"
+      ],
+      "e04ca22b5ab": [
         "set",
-        "2026-09-03T21:07:03.081193+00:00"
+        "2026-09-21T18:16:37.683402+00:00"
+      ],
+      "e1ce30caef2": [
+        "gone",
+        "2026-09-08T19:32:35.137741+00:00"
+      ],
+      "e2f769771da": [
+        "gone",
+        "2026-09-08T19:04:45.792910+00:00"
+      ],
+      "e3304b93f55": [
+        "gone",
+        "2026-09-08T19:04:45.792910+00:00"
+      ],
+      "e33e000abb6": [
+        "gone",
+        "2026-09-08T19:32:35.075191+00:00"
+      ],
+      "e45e131b801": [
+        "gone",
+        "2026-09-08T19:32:35.075191+00:00"
+      ],
+      "e5a21c87853": [
+        "set",
+        "2026-09-21T18:16:37.683402+00:00"
+      ],
+      "e6168265b0a": [
+        "gone",
+        "2026-09-08T19:03:11.347561+00:00"
+      ],
+      "e6384bf65ef": [
+        "gone",
+        "2026-09-08T19:04:45.736653+00:00"
+      ],
+      "e7064e9786e": [
+        "gone",
+        "2026-09-08T19:03:11.427415+00:00"
       ],
       "e735ef43b7d": [
+        "gone",
+        "2026-09-08T19:03:11.347561+00:00"
+      ],
+      "e79debfe90f": [
+        "gone",
+        "2026-09-08T19:03:11.427415+00:00"
+      ],
+      "e85b6aa17eb": [
         "set",
-        "2026-09-03T21:07:03.081193+00:00"
+        "2026-09-21T18:16:37.683402+00:00"
+      ],
+      "e95214f27c3": [
+        "gone",
+        "2026-09-08T19:32:35.075191+00:00"
+      ],
+      "e9f8f466729": [
+        "gone",
+        "2026-09-08T19:04:45.736653+00:00"
+      ],
+      "ea0efd5f513": [
+        "gone",
+        "2026-09-08T19:32:35.137741+00:00"
+      ],
+      "eaaae193e3e": [
+        "gone",
+        "2026-09-08T19:04:45.736653+00:00"
+      ],
+      "eb6a9368fb8": [
+        "set",
+        "2026-09-21T18:16:37.683402+00:00"
+      ],
+      "eb7d474682a": [
+        "gone",
+        "2026-09-08T19:32:35.075191+00:00"
+      ],
+      "ebe3c087f58": [
+        "gone",
+        "2026-09-08T19:04:45.736653+00:00"
       ],
       "ec72d16e29b": [
-        "set",
-        "2026-09-03T21:07:03.081193+00:00"
+        "gone",
+        "2026-09-08T19:03:11.347561+00:00"
+      ],
+      "ed766a4aa44": [
+        "gone",
+        "2026-09-08T19:03:11.427415+00:00"
+      ],
+      "ed9affad6c2": [
+        "gone",
+        "2026-09-08T19:04:45.792910+00:00"
+      ],
+      "ee4f58b4acf": [
+        "gone",
+        "2026-09-08T19:04:45.792910+00:00"
+      ],
+      "eec2fb98533": [
+        "gone",
+        "2026-09-08T19:32:35.137741+00:00"
       ],
       "ef3b27952de": [
-        "set",
-        "2026-09-03T21:07:03.081193+00:00"
+        "gone",
+        "2026-09-08T19:03:11.347561+00:00"
+      ],
+      "efe56a49418": [
+        "gone",
+        "2026-09-08T19:32:35.137741+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-03T21:07:03.081193+00:00",
+    "at": "2026-09-21T18:16:37.683402+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
+  "archived": null,
+  "archived_at": null,
+  "archived_by": null,
+  "assignee": "Shahriar Tafti",
+  "based_on": null,
+  "based_on_at": null,
+  "closed_at": "2026-09-21T11:18:57-0400",
   "created": {
-    "at": "2026-09-03T17:07:03-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "at": "2026-09-09T17:20:01-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Shahriar Tafti"
   },
   "events": [
     {
-      "id": "ef3b27952de",
+      "at": "2026-09-21T18:14:54+00:00",
+      "by": "Rain Younger",
+      "id": "e5a21c87853",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-21T11:06:47-0400",
+          "by": "Isabella Piatek",
+          "label": "review"
+        }
+      ],
       "start": 531.35
     },
     {
-      "id": "ec72d16e29b",
+      "at": "2026-09-21T18:15:14+00:00",
+      "by": "Rain Younger",
+      "id": "e04ca22b5ab",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-21T11:06:47-0400",
+          "by": "Isabella Piatek",
+          "label": "review"
+        }
+      ],
       "start": 547.079
     },
     {
-      "id": "e735ef43b7d",
+      "at": "2026-09-21T18:15:16+00:00",
+      "by": "Rain Younger",
+      "id": "e85b6aa17eb",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-21T11:06:47-0400",
+          "by": "Isabella Piatek",
+          "label": "review"
+        }
+      ],
       "start": 625.815
     },
     {
-      "id": "e6168265b0a",
+      "at": "2026-09-21T18:15:18+00:00",
+      "by": "Rain Younger",
+      "id": "eb6a9368fb8",
       "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-21T11:06:47-0400",
+          "by": "Isabella Piatek",
+          "label": "review"
+        }
+      ],
       "start": 1548.814
     }
   ],
   "gid": "s72df5edc7210",
   "imports": [
     {
-      "at": "2026-09-03T17:07:03-0400",
+      "at": "2026-09-21T11:06:47-0400",
       "n": 4,
       "skipped": 0,
       "source": {
         "bank_entry": "340307eba315",
-        "by": "snapshot import",
-        "folder": "M11_HF2_s10jul25",
-        "kind": "snapshot folders"
+        "by": "Isabella Piatek",
+        "entry_name": "DS candidates (ETS)",
+        "kind": "bank version",
+        "pipeline": "ETS dentate-spike export",
+        "version": 3
       }
     }
   ],
@@ -101,6 +254,7 @@
     },
     {
       "color": "#E5A823",
+      "flagged": true,
       "id": "flag",
       "keys": [
         "3",
@@ -110,6 +264,7 @@
     },
     {
       "color": "#8b5cf6",
+      "flagged": true,
       "id": "review",
       "keys": [
         "4",
@@ -118,19 +273,28 @@
       "name": "Flag for Deep Review"
     }
   ],
-  "name": "M11_HF2_s10jul25",
+  "name": "DS candidates (ETS)",
+  "open": false,
+  "opened_at": "2026-09-21T11:18:29-0400",
+  "opened_by": "Shahriar Tafti",
   "schema": 1,
   "session_label": "PTEN m11 s10 2023-07-25",
   "source": {
     "bank_entry": "340307eba315",
-    "by": "snapshot import",
-    "folder": "M11_HF2_s10jul25",
-    "kind": "snapshot folders"
+    "by": "Isabella Piatek",
+    "entry_name": "DS candidates (ETS)",
+    "kind": "bank version",
+    "pipeline": "ETS dentate-spike export",
+    "version": 3
   },
   "updated": {
-    "at": "2026-09-03T17:07:03-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "app_version": "2026.09.21.6",
+    "at": "2026-09-21T14:16:37-04:00",
+    "commit": "8a96003",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Shahriar Tafti"
   }
 }

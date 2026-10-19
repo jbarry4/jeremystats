@@ -1,0 +1,62 @@
+{
+  "_at": {
+    "created": "2026-09-16T16:49:49.597086+00:00",
+    "gid": "2026-09-16T16:49:49.597086+00:00",
+    "group": "2026-09-16T16:49:49.597086+00:00",
+    "key": "2026-09-16T16:49:49.597086+00:00",
+    "label": "2026-09-16T16:49:49.597086+00:00",
+    "loose_key": "2026-09-16T16:49:49.597086+00:00",
+    "mouse": "2026-09-16T16:49:49.597086+00:00",
+    "project": "2026-09-16T16:49:49.597086+00:00",
+    "project_source": "2026-09-16T16:49:49.597086+00:00",
+    "retired": "2026-09-16T16:49:49.597086+00:00",
+    "schema": "2026-09-16T16:49:49.597086+00:00",
+    "session": "2026-09-16T16:49:49.597086+00:00",
+    "start": "2026-09-16T16:49:49.597086+00:00",
+    "updated": "2026-09-16T16:50:30.759719+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260916_124810\\FAKEPROJ\\fake_m902\\m902s1_2026-09-16\\2026-09-16_12-48-58": [
+        "set",
+        "2026-09-16T16:50:30.759719+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-16T16:50:30.759719+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-16T12:49:49-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s47a8b0b56e1c",
+  "group": null,
+  "key": "m902_s001_2026-09-16_12-48-58",
+  "label": "m902 s1 2026-09-16",
+  "loose_key": "m902_s001",
+  "mouse": 902,
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260916_124810\\FAKEPROJ\\fake_m902\\m902s1_2026-09-16\\2026-09-16_12-48-58"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 1,
+  "start": "2026-09-16T16:48:58+00:00",
+  "updated": {
+    "at": "2026-09-16T12:50:30-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

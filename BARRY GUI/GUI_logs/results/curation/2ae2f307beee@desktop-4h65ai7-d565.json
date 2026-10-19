@@ -1,0 +1,26 @@
+{
+  "_at": {
+    "key": "2026-09-08T19:01:23.277996+00:00",
+    "rel": "2026-09-08T19:01:23.277996+00:00",
+    "starred": "2026-09-08T19:01:23.277996+00:00",
+    "title": "2026-09-08T19:01:23.277996+00:00",
+    "updated": "2026-09-08T19:01:23.277996+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-08T19:01:23.277996+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "key": "toolkit/bad-channels_all_20260908_140613.csv",
+  "rel": "ToolKit/bad-channels_all_20260908_140613.csv",
+  "starred": false,
+  "title": "bad-channels_all_20260908_140613",
+  "updated": {
+    "at": "2026-09-08T15:01:23-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "StrawBarry",
+    "os": "Windows",
+    "user": "Rain"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "_at": {},
+  "_keys": {
+    "presets": {
+      "ets_mat": [
+        "set",
+        "2026-09-24T19:32:39.930955+00:00"
+      ],
+      "toothy_ds": [
+        "set",
+        "2026-09-24T19:32:39.930955+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-24T19:32:39.930955+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "presets": [
+    {
+      "builtin": true,
+      "columns": {
+        "end": 1,
+        "start": 0
+      },
+      "id": "ets_mat",
+      "kind": "mat",
+      "name": "LLspikedetector ets.mat",
+      "note": "ets = [onset offset] in samples; ech gives channel participation",
+      "units": "samples"
+    },
+    {
+      "builtin": true,
+      "columns": {
+        "channel": "ch",
+        "start": "idx"
+      },
+      "filter": {
+        "is_valid": 1
+      },
+      "id": "toothy_ds",
+      "kind": "csv",
+      "name": "Toothy DS_DF",
+      "note": "Toothy dentate-spike table; idx is a sample index",
+      "units": "samples"
+    }
+  ]
+}

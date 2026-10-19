@@ -1,0 +1,68 @@
+{
+  "_at": {
+    "gid": "2026-09-14T16:22:57.864540+00:00",
+    "label": "2026-09-14T16:22:57.864540+00:00",
+    "path": "2026-09-14T16:22:57.864540+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "99fa1222152b": [
+        "set",
+        "2026-09-14T16:40:23.013142+00:00"
+      ],
+      "9b053d420df1": [
+        "set",
+        "2026-09-14T16:22:57.864540+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T16:40:23.013142+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:22:57.864082+00:00",
+      "by": "Shahriar Tafti",
+      "concat_duration_s": 2474.3242333333333,
+      "gap_map_sha": "01920d4e270c4d08",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "9b053d420df1",
+      "level": "warn",
+      "machine": "Bluebarry",
+      "max_time_error_ms": 114.81466666668894,
+      "mismatches": 0,
+      "n_gaps": 9,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 10,
+      "seconds_lost": 0.058271,
+      "sub_threshold_lost_s": 0.058825,
+      "true_duration_s": 2474.428438
+    },
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:39:26.787647+00:00",
+      "by": "Rain Younger",
+      "concat_duration_s": 2474.32423333333,
+      "gap_map_sha": "01920d4e270c4d08",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "99fa1222152b",
+      "level": "warn",
+      "machine": "Strawbarry",
+      "max_time_error_ms": 114.814666666689,
+      "mismatches": 0,
+      "n_gaps": 9,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 10,
+      "seconds_lost": 0.058271,
+      "true_duration_s": 2474.428438
+    }
+  ],
+  "gid": "se942a3f42a33",
+  "label": "PTEN m59 s11 2025-07-09",
+  "path": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s11jul8\\2025-07-09_12-19-54"
+}

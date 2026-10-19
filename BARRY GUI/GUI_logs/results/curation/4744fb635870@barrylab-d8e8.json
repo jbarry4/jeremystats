@@ -1,0 +1,25 @@
+{
+  "_at": {
+    "key": "2026-09-09T23:19:50.928725+00:00",
+    "rel": "2026-09-09T23:19:50.928725+00:00",
+    "starred": "2026-09-10T20:15:11.875519+00:00",
+    "updated": "2026-09-10T20:15:11.875519+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-10T20:15:11.875519+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "key": "toolkit/bad-channels_all_20260909_190000.csv",
+  "rel": "ToolKit/bad-channels_all_20260909_190000.csv",
+  "starred": false,
+  "tags": [],
+  "updated": {
+    "at": "2026-09-10T16:15:11-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

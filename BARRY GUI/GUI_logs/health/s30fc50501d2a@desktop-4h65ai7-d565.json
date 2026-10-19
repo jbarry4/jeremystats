@@ -1,0 +1,93 @@
+{
+  "_at": {
+    "gid": "2026-09-24T19:33:45.369828+00:00",
+    "label": "2026-09-24T19:33:46.133726+00:00",
+    "path": "2026-09-24T19:33:46.133726+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "2173508f7228": [
+        "set",
+        "2026-09-24T19:33:45.369828+00:00"
+      ],
+      "5decbeb34913": [
+        "set",
+        "2026-09-24T19:33:46.133726+00:00"
+      ],
+      "792464a758cd": [
+        "set",
+        "2026-09-24T19:33:45.744585+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-24T19:33:46.133726+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-09-24T19:33:45.360098+00:00",
+      "by": "Shahriar Tafti",
+      "concat_duration_s": 313.504,
+      "gap_map_sha": "4949eef0dc8d2e79",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "2173508f7228",
+      "level": "ok",
+      "machine": "Bluebarry",
+      "max_time_error_ms": 0.0,
+      "mismatches": 0,
+      "n_gaps": 0,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 1,
+      "seconds_lost": 0.0,
+      "sub_threshold_lost_s": 0.0,
+      "true_duration_s": 313.504
+    },
+    {
+      "all_channels": false,
+      "at": "2026-09-24T19:33:45.735885+00:00",
+      "by": "Shahriar Tafti",
+      "concat_duration_s": 5433.632,
+      "gap_map_sha": "4f02048b213358e9",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "792464a758cd",
+      "level": "ok",
+      "machine": "Bluebarry",
+      "max_time_error_ms": 0.0,
+      "mismatches": 0,
+      "n_gaps": 0,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 1,
+      "seconds_lost": 0.0,
+      "sub_threshold_lost_s": 0.0,
+      "true_duration_s": 5433.632
+    },
+    {
+      "all_channels": false,
+      "at": "2026-09-24T19:33:46.126481+00:00",
+      "by": "Shahriar Tafti",
+      "concat_duration_s": 303.712,
+      "gap_map_sha": "baea7928d96ec2d8",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "5decbeb34913",
+      "level": "ok",
+      "machine": "Bluebarry",
+      "max_time_error_ms": 0.0,
+      "mismatches": 0,
+      "n_gaps": 0,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 1,
+      "seconds_lost": 0.0,
+      "sub_threshold_lost_s": 0.0,
+      "true_duration_s": 303.712
+    }
+  ],
+  "gid": "s30fc50501d2a",
+  "label": "DEWEY m10 s4 Precon4 FP2 2026-08-15",
+  "path": "E:\\Joe Multisite 2026 data\\J10\\J10_Precon4\\J10_Precon4_FP2\\2026-08-15_15-39-20"
+}

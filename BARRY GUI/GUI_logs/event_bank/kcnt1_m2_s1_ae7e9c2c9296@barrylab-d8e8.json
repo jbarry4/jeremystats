@@ -1,0 +1,194 @@
+{
+  "_at": {
+    "added": "2026-09-21T16:48:04.009718+00:00",
+    "by_label": "2026-09-21T16:48:04.009718+00:00",
+    "curation_label": "2026-09-21T16:48:04.009718+00:00",
+    "duration_s": "2026-09-21T16:48:04.009718+00:00",
+    "events": "2026-09-21T16:48:04.009718+00:00",
+    "gid": "2026-09-21T16:48:04.009718+00:00",
+    "id": "2026-09-21T16:48:04.009718+00:00",
+    "label_names": "2026-09-21T16:48:04.009718+00:00",
+    "mouse": "2026-09-21T16:48:04.009718+00:00",
+    "n": "2026-09-21T16:48:04.009718+00:00",
+    "name": "2026-09-21T16:48:04.009718+00:00",
+    "note": "2026-09-21T16:48:04.009718+00:00",
+    "project": "2026-09-21T16:48:04.009718+00:00",
+    "recording_start": "2026-09-21T16:48:04.009718+00:00",
+    "schema": "2026-09-21T16:48:04.009718+00:00",
+    "session": "2026-09-21T16:48:04.009718+00:00",
+    "session_key": "2026-09-21T16:48:04.009718+00:00",
+    "session_label": "2026-09-21T16:48:04.009718+00:00",
+    "session_loose_key": "2026-09-21T16:48:04.009718+00:00",
+    "session_path": "2026-09-21T16:48:04.009718+00:00",
+    "source": "2026-09-21T16:48:04.009718+00:00",
+    "specified": "2026-09-21T16:48:04.009718+00:00",
+    "type": "2026-09-21T16:48:04.009718+00:00",
+    "type_name": "2026-09-21T16:48:04.009718+00:00",
+    "units": "2026-09-21T16:48:04.009718+00:00",
+    "version": "2026-09-21T16:48:04.009718+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "b5d18711f0ab": [
+        "set",
+        "2026-09-21T16:48:04.009718+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-21T16:48:04.009718+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-21T12:48:04-04:00",
+    "by": "spikeflow@harness",
+    "machine": "BarryLab"
+  },
+  "by_label": {
+    "unspecified": 10
+  },
+  "curation_label": null,
+  "duration_s": 925.627733333333,
+  "events": [
+    {
+      "amplitude": -104.00614929199219,
+      "channel": 63,
+      "start": 111.408822
+    },
+    {
+      "amplitude": -101.07128143310547,
+      "channel": 3,
+      "start": 111.876256
+    },
+    {
+      "amplitude": -108.85762023925781,
+      "channel": 63,
+      "start": 112.821122
+    },
+    {
+      "amplitude": -102.77389526367188,
+      "channel": 63,
+      "start": 117.823389
+    },
+    {
+      "amplitude": -129.47154235839844,
+      "channel": 63,
+      "start": 118.609922
+    },
+    {
+      "amplitude": -115.80201721191406,
+      "channel": 63,
+      "start": 119.608656
+    },
+    {
+      "amplitude": -103.82208251953125,
+      "channel": 64,
+      "start": 120.106122
+    },
+    {
+      "amplitude": -123.51276397705078,
+      "channel": 64,
+      "start": 120.126222
+    },
+    {
+      "amplitude": -135.55734252929688,
+      "channel": 63,
+      "start": 120.979889
+    },
+    {
+      "amplitude": -129.41990661621094,
+      "channel": 63,
+      "start": 123.228089
+    }
+  ],
+  "gid": null,
+  "id": "ae7e9c2c9296",
+  "label_names": {},
+  "mouse": 2,
+  "n": 10,
+  "name": "flow harness uv",
+  "note": "",
+  "project": "KCNT1",
+  "recording_start": "2022-03-18T19:22:43+00:00",
+  "schema": 1,
+  "session": 1,
+  "session_key": "m002_s001_2022-03-18_15-22-43",
+  "session_label": "KCNT1 m2 s1 2022-03-18",
+  "session_loose_key": null,
+  "session_path": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43",
+  "source": {
+    "detector": null,
+    "file": "spikes: flow harness uv",
+    "parameters": {},
+    "pipeline": "harness: amplitude detector",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "other",
+  "type_name": "Other",
+  "units": "seconds relative to the start of the recording",
+  "version": 0,
+  "versions": [
+    {
+      "at": "2026-09-21T12:48:04-04:00",
+      "by": "spikeflow@harness",
+      "by_label": {
+        "unspecified": 10
+      },
+      "changed": 0,
+      "from_v": null,
+      "gained": 0,
+      "id": "b5d18711f0ab",
+      "imported": true,
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 10,
+      "note": "Imported from harness: amplitude detector. 10 candidates, none decided yet.",
+      "snap": [
+        [
+          111.408822,
+          null
+        ],
+        [
+          111.876256,
+          null
+        ],
+        [
+          112.821122,
+          null
+        ],
+        [
+          117.823389,
+          null
+        ],
+        [
+          118.609922,
+          null
+        ],
+        [
+          119.608656,
+          null
+        ],
+        [
+          120.106122,
+          null
+        ],
+        [
+          120.126222,
+          null
+        ],
+        [
+          120.979889,
+          null
+        ],
+        [
+          123.228089,
+          null
+        ]
+      ],
+      "v": 0
+    }
+  ]
+}

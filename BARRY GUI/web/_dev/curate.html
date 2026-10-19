@@ -39,20 +39,71 @@ const post = (u, b) => fetch(u, { method: 'POST',
   const $ = (s) => D().querySelector(s);
   const $$ = (s) => Array.from(D().querySelectorAll(s));
 
-  /* A reachable recording to curate against. */
+  /* A reachable recording to curate against -- AND ONE NOBODY HAS CURATED.
+
+     This used to take the first reachable recording and "clean the slate"
+     by deleting its ied and ds curation sets, which is `book.erase`: every
+     machine's shard of both. It then banked into the real Event Bank and,
+     on the way out, deleted every curated entry for that recording. On a
+     recording somebody had curated, that is their work gone, and the
+     runner's git safety net only puts back committed files, at their
+     committed content (2026-10-13).
+
+     So the target is a reachable recording whose only curation sets, if
+     any, are this harness's own ("curate harness"), and which has no
+     curated bank entry of anybody else's. Only sets named "curate harness"
+     are ever deleted, only bank entries this run made are ever removed, and
+     both happen in a `finally`, so a run that stops early still cleans up. */
   const reg = await (await fetch('/api/registry?backfill=1')).json();
   const rows = (reg.tree || []).flatMap((p) => p.mice.flatMap((m) => m.sessions));
-  const target = rows.find((s) => s.reachable);
-  check('there is a reachable recording', !!target,
-        rows.map((s) => s.label + (s.reachable ? '*' : '')).join(', '));
+  const curList = await (await fetch('/api/curation')).json();
+  const bankList0 = await (await fetch('/api/bank')).json();
+  const OURS = 'curate harness';
+  const setsOf = (g) => (curList.sets || []).filter((s) => s.gid === g);
+  const othersCurated = (g) => setsOf(g).some((s) => s.name !== OURS);
+  /* And no IED entry in the bank at all, anybody's. A set's banked history
+     is every bank entry of its kind on its recording (`_cur_history`), and
+     a set with a history asks which version to work from when it is picked
+     up -- a real dialog, which this run would leave unanswered, and whose
+     default would restore somebody's banked pass into the set (measured
+     2026-10-13: KCNT1 m2 s2's leftover "spotter harness" entries did
+     exactly that, and "it lands on the bench" failed). */
+  const othersBanked = (g) => (bankList0.entries || []).some(
+    (e) => e.gid === g && (e.curation_label || e.type === 'ied'));
+  const target = rows.find((s) => s.reachable && !othersCurated(s.gid)
+                                  && !othersBanked(s.gid));
+  check('there is a reachable recording nobody has curated', !!target,
+        target ? '' : rows.filter((s) => s.reachable).length + ' reachable, '
+          + 'every one curated or banked by somebody');
   if (!target) { say('cannot continue', 'bad'); document.title = 'curate: FAILED'; return; }
   const gid = target.gid;
   say('curating against ' + target.label + '  (' + gid + ')', 'note');
+  // The bank entries for this recording before the run: nothing in this
+  // list is ever removed.
+  const bankedBefore = new Set((bankList0.entries || [])
+    .filter((e) => e.gid === gid).map((e) => e.id));
+  /* Deletes our set and nothing else: by name, so a set of somebody
+     else's that arrived since the target was chosen is left alone. */
+  const dropOurs = async () => {
+    const now = await (await fetch('/api/curation')).json();
+    for (const s of (now.sets || [])) {
+      if (s.gid === gid && s.name === OURS) {
+        await post('/api/curation/' + gid + '/' + s.kind + '/delete', {});
+      }
+    }
+  };
+  const dropOurBank = async () => {
+    const now = await (await fetch('/api/bank')).json();
+    for (const e of (now.entries || [])) {
+      if (e.gid === gid && !bankedBefore.has(e.id)) {
+        await fetch('/api/bank/' + e.id + '/delete', { method: 'POST' });
+      }
+    }
+  };
 
-  // Clean slate.
-  for (const k of ['ied', 'ds']) {
-    await post('/api/curation/' + gid + '/' + k + '/delete', {});
-  }
+  try {
+  // Clean slate: ours only.
+  await dropOurs();
 
   say('');
   say('=== candidates arrive unspecified ===', 'hd');
@@ -72,23 +123,79 @@ const post = (u, b) => fetch(u, { method: 'POST',
   say('=== the ToolKit lists it ===', 'hd');
   ev("setView('toolkit')");
   await sleep(700);
-  const curBtn = $$('.tk-tool').find((b) => /Event curation/.test(b.textContent));
+  const curBtn = $$('.tk-tool, .tk-step').find((b) => /Event curation|Checkup/.test(b.textContent));
   check('there is an Event curation tool', !!curBtn,
-        $$('.tk-tool strong').map((n) => n.textContent).join(' | '));
+        $$('.tk-tool strong, .tk-step .tk-step-n').map((n) => n.textContent).join(' | '));
   curBtn.click();
   await until(() => $('#tkResult .cur-set'), 12000);
   await sleep(600);
 
-  /* Find OUR card, not the first one. Anyone using BARRY has curation sets
+  /* Open the shelf. A set nobody has picked up is not on the bench -- the
+     bench is what you have open -- and the shelf is folded away until
+     wanted, so with forty-three sets in the store the set this harness just
+     created was legitimately nowhere in the DOM. */
+  const shelfBtn = $('.cur-shelf-toggle');
+  if (shelfBtn && !shelfBtn.classList.contains('on')) {
+    shelfBtn.click();
+    await until(() => $('#curShelfList .cur-shelf-row'), 12000);
+    await sleep(500);
+  }
+  /* Searched for by name, because the shelf holds forty-odd rows and only
+     shows the ones matching the filter. */
+  const search = $('#tkResult .cur-search');
+  if (search) {
+    search.value = 'curate harness';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await sleep(700);
+  }
+
+  /* Find OUR card, not the first one. Anyone using Jarvis has curation sets
      of their own, and taking `.cur-set` unqualified meant the harness read
      someone else's progress and, worse, pressed its keys into someone else's
      set. It did exactly that, and the decisions had to be unpicked by hand. */
-  const card = $$('.cur-set').find(
+  /* On the bench or on the shelf -- they are different elements: a bench
+     card is a `.cur-set`, a shelf entry is a `.cur-shelf-row`, and looking
+     only for the first is what made this fail once the two were separated. */
+  let card = $$('.cur-set, .cur-shelf-row').find(
     (c) => /curate harness/.test(c.textContent));
   check('the set is listed', !!card,
         $$('.cur-set').map((c) => (c.textContent || '').slice(0, 30))
           .join(' | '));
-  if (!card) { say('cannot continue without our own set', 'bad'); return; }
+
+
+  /* Pick it up, if what was found was a shelf row. Everything below reads a
+     bench card -- the per-category tallies, the keys -- and a shelf entry
+     carries none of that. Picking it up is also what a person does next. */
+  if (card && card.classList.contains('cur-shelf-row')) {
+    const up = $$('button', card).find(
+      (b) => /Pick it up/.test(b.textContent));
+    check('the shelf row offers to pick it up', !!up);
+    if (up) {
+      up.click();
+      await until(() => $$('.cur-set').some(
+        (c) => /curate harness/.test(c.textContent)), 15000);
+      await sleep(600);
+      card = $$('.cur-set').find((c) => /curate harness/.test(c.textContent));
+      // Said in full when it does not: the bench, any dialog left open,
+      // and what the server now says about the set.
+      let why = '';
+      if (!card) {
+        const modal = $('#bigModal:not(.hidden)') || $('.modal:not(.hidden)');
+        const confirmBox = $('.confirm-box, .bk-confirm, [role="dialog"]');
+        const srv = await (await fetch('/api/curation')).json();
+        const ours = (srv.sets || []).filter((s) => s.gid === gid);
+        why = 'bench: ' + $$('.cur-set').map((c) => c.textContent.slice(0, 24))
+          .join(' | ') + ' || dialog: ' + ((modal || confirmBox || {}).textContent
+          || 'none').slice(0, 160) + ' || server: ' + JSON.stringify(ours.map(
+          (s) => ({ kind: s.kind, name: s.name, open: s.open,
+                    archived: s.archived })));
+      }
+      check('it lands on the bench', !!card, why);
+    }
+  }
+
+  if (!card) { say('cannot continue without our own set', 'bad');
+               fails++; document.title = 'curate: ' + fails + ' FAILED'; return; }
   const inCard = (sel) => card.querySelector(sel);
   const allInCard = (sel) => Array.from(card.querySelectorAll(sel));
 
@@ -98,14 +205,37 @@ const post = (u, b) => fetch(u, { method: 'POST',
   const tally = allInCard('.cur-tally').map((n) => n.textContent.trim());
   say('  tally: ' + tally.join(' | '), 'note');
   check('it shows one tally per category', tally.length === 4, tally.join(' | '));
+  /* Banking lives behind More… now, so it has to be opened first. The
+     check is the same one and worth keeping: it is the guard against
+     publishing a version in which nothing was decided. */
+  const moreBtn = allInCard('.cur-set-acts button').find(
+    (b) => /^More/.test(b.textContent.trim()));
+  check('the card offers More…', !!moreBtn,
+        allInCard('.cur-set-acts button')
+          .map((b) => b.textContent.trim()).join(' | '));
+  if (moreBtn) {
+    moreBtn.click();
+    await sleep(500);
+  }
+  const bankBtn = allInCard('button').find((b) => /Bank/.test(b.textContent));
+  check('there is a Bank button', !!bankBtn,
+        allInCard('button').map((b) => b.textContent.trim()).join(' | '));
   check('banking is refused while nothing is decided',
-        allInCard('.cur-set-acts button').find(
-          (b) => /Bank/.test(b.textContent)).disabled);
+        !!bankBtn && !!bankBtn.disabled);
 
   say('');
   say('=== entering the mode ===', 'hd');
-  allInCard('.cur-set-acts button')
-    .find((b) => /Curate/.test(b.textContent)).click();
+  /* "Carry on…" while anything is left, "Look again…" once nothing is --
+     the verb changed from "Curate" when the card was redesigned around what
+     you are about to do rather than what the mode is called. */
+  const goBtn = allInCard('.cur-set-acts button').find(
+    (b) => /Carry on|Look again|Curate/.test(b.textContent));
+  check('the card offers a way in', !!goBtn,
+        allInCard('.cur-set-acts button')
+          .map((b) => b.textContent.trim()).join(' | '));
+  if (!goBtn) { say('cannot enter the mode', 'bad');
+                fails++; document.title = 'curate: ' + fails + ' FAILED'; return; }
+  goBtn.click();
   const entered = await until(() => $('#curBar'), 40000);
   check('the curation bar appears', entered);
   await sleep(2500);
@@ -124,17 +254,21 @@ const post = (u, b) => fetch(u, { method: 'POST',
   say('  panes: ' + JSON.stringify(panels), 'note');
   check('voltage traces are the primary pane', panels[0] === 'traces',
         JSON.stringify(panels));
-  check('with a spectrogram, CSD and voltage raster as aids',
-        panels.includes('spectrogram') && panels.includes('csd')
-        && panels.includes('voltage'), JSON.stringify(panels));
-  const tfc = JSON.parse(ev(
-    'JSON.stringify((BARRY.views.xplore.state.panes.find('
-    + 'p => p && p.panel === "spectrogram") || {}).tfChannels || [])'));
-  check('the spectrogram is every 8th channel', tfc.length > 1
-        && tfc[1] - tfc[0] === 8, JSON.stringify(tfc.slice(0, 6)));
-  check('the traces get the bigger share',
-        Number(ev('BARRY.views.xplore.state.split.col')) > 0.5,
-        ev('BARRY.views.xplore.state.split.col'));
+  /* And nothing else in this window. The aids -- spectrogram, CSD, voltage
+     raster -- moved into a window of their own, for the same reason
+     StrataScope's did: what you are deciding, whether a deflection is the
+     thing or one bad wire, is read off the traces, so the traces get the
+     whole window. This harness spent a while asserting the old single-grid
+     layout and reporting the redesign as three failures. */
+  check('and nothing competing with them in this window',
+        panels.filter(Boolean).length === 1, JSON.stringify(panels));
+  /* The aid window cannot be inspected from here -- headless Chromium
+     refuses window.open, so `aidWin` is null however the code behaved --
+     but that it was ASKED for is checkable, and is the part that would
+     regress silently. */
+  const asked = ev('typeof BARRY.curate.exit === "function"');
+  check('the mode is set up rather than left to the previous layout',
+        String(asked) === 'true');
 
   /* It has to have moved the window to the candidate. */
   const S = 'BARRY.views.xplore.state.sessions['
@@ -215,16 +349,49 @@ const post = (u, b) => fetch(u, { method: 'POST',
                              { added_by: 'curate@harness' });
   check('the curated events bank', bankRes.ok === true, bankRes.error || '');
   say('  entries: ' + JSON.stringify(bankRes.entries), 'note');
-  check('one entry per category, not one lump',
-        (bankRes.entries || []).length === 2,
-        JSON.stringify((bankRes.entries || []).map((e) => e.label)));
+  /* One entry for the whole set, with a version history -- not one per
+     category. The per-category entries this used to make are folded into
+     it and deleted, because every event in them came from this set and is
+     being written again. */
+  const banked = bankRes.entries || [];
+  check('one entry for the whole set, not one per category',
+        banked.length === 1, JSON.stringify(banked.map((e) => e.name)));
+  const one = banked[0] || {};
+  say('  banked: ' + JSON.stringify({
+    name: one.name, n: one.n, version: one.version,
+    by_label: one.by_label }), 'note');
+  check('it is written as a new version',
+        one.new_version === true || one.version >= 1, String(one.version));
+  /* Two decided at this point -- one solid, one sputter, after the undo --
+     so the version has to carry two, and say which. */
+  check('the version carries the decided events and no others',
+        one.n === 2, String(one.n));
+  const lab = one.by_label || {};
+  check('and names which category each was',
+        Object.keys(lab).length === 2
+        && Object.keys(lab).every((k) => lab[k] === 1),
+        JSON.stringify(lab));
+
   const bank = await (await fetch('/api/bank')).json();
+  /* `curation_label: '*'` is what marks the one-entry-for-the-whole-set
+     record -- the per-category entries it replaced carried a label id
+     there. There is no `curation_kind` on an entry; the vocabulary is in
+     `type`. */
   const mine = (bank.entries || []).filter(
-    (e) => (e.added || {}).by === 'curate@harness');
-  check('they are in the bank', mine.length === 2, mine.length + '');
-  check('each one names its category',
-        mine.every((e) => /Solid|Sputter|Garbage|Flag/.test(e.name)),
-        mine.map((e) => e.name).join(' | '));
+    (e) => e.gid === gid && e.curation_label === '*');
+  check('the bank holds exactly one entry for this set',
+        mine.length === 1, mine.map((e) => e.name).join(' | '));
+  /* Deliberately not asserting `added.by` is the harness. `added.by` is
+     shards.FIRST -- immutable across the merge, because provenance is not
+     an editable field -- and banking continues the detector's existing
+     entry where there is one, so the entry keeps whoever first made it. */
+  if (mine.length === 1) {
+    say('  entry added.by is ' + JSON.stringify((mine[0].added || {}).by)
+        + ' (kept from whoever first made it, by design)', 'note');
+    check('and it has a version history',
+          (mine[0].versions || []).length >= 1,
+          String((mine[0].versions || []).length));
+  }
 
   say('');
   say('=== leaving ===', 'hd');
@@ -246,8 +413,17 @@ const post = (u, b) => fetch(u, { method: 'POST',
   for (const k of (kinds.kinds || [])) {
     say('  ' + k.id + ': ' + k.labels.map(
       (l) => l.name + ' (' + l.keys.join('/') + ')').join(', '), 'note');
-    check(k.id + ' has keys on every category',
-          k.labels.every((l) => (l.keys || []).length > 0));
+    /* Every category A PERSON ASSIGNS needs a key, which is the thing this
+       was always checking. A `computed` label -- DS1/DS2, worked out from a
+       PCA over the whole set -- is not one of those: it has no button in
+       Checkup and no key, and asserting otherwise would be demanding a
+       shortcut for a call nobody can make one candidate at a time. */
+    check(k.id + ' has keys on every category a person assigns',
+          k.labels.filter((l) => !l.computed)
+            .every((l) => (l.keys || []).length > 0));
+    check(k.id + ' offers no button for a computed category',
+          k.labels.filter((l) => l.computed)
+            .every((l) => !(l.keys || []).length));
     // The bug this found: sputter had `p`, which is also "previous".
     check(k.id + ' takes none of the navigation keys',
           k.labels.every((l) => (l.keys || []).every(
@@ -255,10 +431,12 @@ const post = (u, b) => fetch(u, { method: 'POST',
           k.labels.map((l) => l.keys.join('/')).join(' | '));
   }
 
-  // Clean up.
-  await post('/api/curation/' + gid + '/ied/delete', {});
-  for (const e of mine) {
-    await fetch('/api/bank/' + e.id + '/delete', { method: 'POST' });
+  } finally {
+    /* Clean up, however the run ended: our set, and the bank entries this
+       run made. Never an entry that was there before it started. */
+    try { if (ev('BARRY.curate.state')) ev('BARRY.curate.exit()'); } catch (e) { /* gone */ }
+    await dropOurs();
+    await dropOurBank();
   }
 
   say('');

@@ -1,0 +1,141 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the VACC health panel</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The VACC panel says how the account is (constitution §6d): the lab's
+   shared space -- and, when this account is refused, what was refused, the
+   OnDemand link and "ask Shahriar" -- and every job the account has, marked
+   by whether Jarvis here is following it, with the day's failures.
+
+   The status is stood in for: the frame's `api` answers /api/vacc/status
+   from here, so nothing connects to the cluster. It is put back, and the
+   real status read again, at the end. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || d === undefined ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 200, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const ready = await untilN(() => typeof W().setView === 'function'
+                                   && W().eval('BARRY.vacc && BARRY.vacc.showVacc'));
+  check('the application loads', !!ready);
+  if (!ready) { document.title = 'FAIL'; return; }
+  const B = W().eval('BARRY');
+  const LINK = 'https://ondemand.vacc.uvm.edu/pun/sys/dashboard/files/fs//gpfs2/scratch/sakhava1';
+  const status = (shared) => ({
+    ok: true, configured: true, available: true, netid: 'zztester',
+    host: 'login.vacc.uvm.edu', partition: 'general',
+    workspace: '/users/z/z/zztester/jarvis', scratch: '/gpfs2/scratch/zztester/jarvis',
+    queued: 1, running: 2, roots: {}, denied_roots: [],
+    shared: Object.assign({ root: '/gpfs2/scratch/sakhava1', data: 'Jarvis Data',
+                            owner: 'Shahriar', ondemand: LINK }, shared),
+    jobs: [
+      { id: '555000_[0-3]', name: '0123456789ab', state: 'PENDING', elapsed: '0:00',
+        reason: '(Priority)', followed: true, tool: 'doppler', jarvis: true },
+      { id: '555001', name: 'abcdef012345', state: 'RUNNING', elapsed: '1:02:03',
+        reason: 'node07', followed: false, jarvis: true },
+      { id: '9', name: 'myjob.sh', state: 'RUNNING', elapsed: '0:05',
+        reason: 'node02', followed: false, jarvis: false },
+    ],
+    failures: [{ id: '500', name: 'fedcba987654', state: 'TIMEOUT', end: '' }],
+    waiting: [{ rid: 'aaaaaaaaaaaa', tool: 'incisor', id: '444000' }],
+    resumed: 1,
+  });
+  let answer = null;
+  const realApi = W().api;
+  W().api = async (path, opts) => (String(path).indexOf('/api/vacc/status') === 0 && answer
+    ? answer : realApi(path, opts));
+  const md = () => D().getElementById('bigModalBox');
+  const txt = (n) => (n ? n.textContent : '').replace(/\s+/g, ' ').trim();
+  try {
+    head('refused');
+    answer = status({ state: 'denied', data_state: 'unknown',
+      why: 'This account (zztester) cannot open the lab’s shared VACC space, '
+         + '/gpfs2/scratch/sakhava1. Ask Shahriar to add you to it.' });
+    await W().eval('BARRY.vacc.status()');
+    B.vacc.showVacc();
+    await sleep(150);
+    const box = md().querySelector('.vacc-shared');
+    check('the panel has the shared space', !!box);
+    check('it says it is refused to this account', /Refused to this account/.test(txt(box)));
+    check('what was refused, and who to ask',
+          /\/gpfs2\/scratch\/sakhava1/.test(txt(box)) && /Ask Shahriar/.test(txt(box)));
+    const a = box && box.querySelector('a');
+    check('with the folder in OnDemand, opening somewhere else',
+          a && a.href === LINK && a.target === '_blank', a && a.href);
+
+    head('the jobs');
+    const rows = Array.from(md().querySelectorAll('.vacc-jobs tbody tr'));
+    check('every job the account has', rows.length === 3, rows.length);
+    check('one Jarvis is following, with its tool',
+          /Jarvis here · doppler/.test(txt(rows[0])) && rows[0].classList.contains('on'));
+    check('one that is Jarvis’s but not followed here',
+          /Jarvis, not followed here/.test(txt(rows[1])));
+    check('and the person’s own', /not Jarvis/.test(txt(rows[2])));
+    const health = txt(md().querySelector('.vacc-health'));
+    check('the run waited on that the cluster no longer lists',
+          /waiting on 1 run/.test(health) && /incisor 444000/.test(health), health);
+    check('the batch picked up after a restart', /Picked up 1 batch/.test(health));
+    check('and what ended badly', /500 timeout/.test(health), health);
+    const cut = Array.from(md().querySelectorAll('.vacc-v, .vacc-k, .vacc-jobs td'))
+      .filter((n) => n.scrollWidth > n.clientWidth + 1);
+    check('nothing in the panel is cut short', cut.length === 0,
+          cut.map((n) => n.textContent).join(' | '));
+
+    head('open, and uploads can go there');
+    W().eval('closeModal()');
+    answer = status({ state: 'ok', data_state: 'creatable', why: '' });
+    await W().eval('BARRY.vacc.status()');
+    B.vacc.showVacc();
+    await sleep(150);
+    const box2 = md().querySelector('.vacc-shared');
+    check('open to this account', /Open to this account/.test(txt(box2)));
+    check('and Jarvis Data is made by the first upload',
+          /first upload creates it/.test(txt(box2)));
+    check('with no complaint', !box2.querySelector('.warn-line'));
+  } finally {
+    answer = null;
+    W().api = realApi;
+    try { W().eval('closeModal()'); } catch (e) { /* closed */ }
+    try { await W().eval('BARRY.vacc.status()'); } catch (e) { /* offline */ }
+  }
+
+  head(bad === 0 ? 'the VACC panel says how the account is' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad + ': ' + Array.from(
+    out.querySelectorAll('.bad')).map((d) => d.textContent).join(' | ');
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.stack || e));
+  document.title = 'FAIL threw: ' + e.message;
+} })();
+</script>

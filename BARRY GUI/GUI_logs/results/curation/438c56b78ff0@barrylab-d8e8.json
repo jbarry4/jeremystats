@@ -1,0 +1,26 @@
+{
+  "_at": {
+    "key": "2026-10-13T16:34:54.158283+00:00",
+    "rel": "2026-10-13T16:34:54.158283+00:00",
+    "starred": "2026-10-13T16:34:54.158283+00:00",
+    "updated": "2026-10-13T16:34:54.158283+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-13T16:34:54.158283+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "key": "layers/layers_s9a8f6138b49e_20261013_123030.csv",
+  "rel": "Layers/layers_s9a8f6138b49e_20261013_123030.csv",
+  "starred": false,
+  "updated": {
+    "app_version": "2026.10.12.5",
+    "at": "2026-10-13T12:34:54-04:00",
+    "commit": "071b8c13",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

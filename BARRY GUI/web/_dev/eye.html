@@ -1,0 +1,406 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>eye: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Eye: step 3 of The Storm, which is Braces' engine pointed at IEDs.
+
+   IT RUNS THE REAL ENGINE, on a set of its own. A throwaway curated IED
+   entry is banked on the first reachable recording -- five stamps called
+   Solid and one called Garbage, a few seconds apart -- and the panel is
+   driven through all three measures exactly as a person would: pick the
+   set, press the button, wait. What comes back is then checked against the
+   set the run filed: slope was actually measured as slope (the spec used to
+   turn anything that was not "voltage" into CSD), a moved stamp carries a
+   shift, no two stamps cross, the garbage one got no row, and a dry-run
+   commit would write `from_t` on every stamp it moves.
+
+   NOTHING IS COMMITTED. The dry run is the default and the only one asked
+   for; the entry and every alignment set made against it are deleted in a
+   `finally`, whatever happened above. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const head = (t) => { say(''); say('=== ' + t + ' ===', 'hd'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (await fn()) return true; } catch (e) {}
+    await sleep(120);
+  }
+  return false;
+}
+const post = (u, b) => fetch(u, { method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(b || {}) }).then((r) => r.json());
+const getj = (u) => fetch(u).then((r) => r.json());
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  // MUST be eval: core.js declares BARRY with `const`, a lexical global
+  // that is not a property of `window`.
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              30000);
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+
+  let entryId = null;
+  const NAME = 'eye harness — delete me', WHO = 'eye harness';
+
+  /* Our own litter first. The `finally` below cannot run if the page is
+     killed -- the suite's wall timeout does exactly that to a page still
+     waiting on a run -- and an entry left behind is then listed as a real
+     IED set on every later run. Only entries this page made are touched:
+     matched on the name AND on who banked it. */
+  async function sweep(keep) {
+    const sets = await getj('/api/braces/sets');
+    const bank = await getj('/api/bank');
+    const all = bank.entries || bank || [];
+    let n = 0;
+    for (const e of (Array.isArray(all) ? all : [])) {
+      if (e.name !== NAME || ((e.added || {}).by) !== WHO) continue;
+      if (keep && e.id === keep) continue;
+      for (const s of (sets.sets || []).filter((x) => x.entry_id === e.id)) {
+        await post('/api/braces/set/' + encodeURIComponent(s.set_id) + '/delete');
+      }
+      const d = await post('/api/bank/' + encodeURIComponent(e.id) + '/delete');
+      if (d.ok) n++;
+    }
+    return n;
+  }
+  try {
+    const n = await sweep(null);
+    if (n) say('  note  swept ' + n + ' entr' + (n === 1 ? 'y' : 'ies')
+               + ' an earlier, killed run of this page left behind', 'note');
+  } catch (e) { say('  note  could not sweep: ' + e.message, 'note'); }
+
+  try {
+
+  /* ---------------------------------------------------------------- */
+  head('the panel');
+
+  ev("setView('toolkit')");
+  await until(() => $('.tk-tool, .tk-step'));
+  ev('BARRY.eye._reset()');
+  ev("BARRY.views.toolkit.pick('eye')");
+  const painted = await until(() => {
+    const h = $('#tkResult .step-head strong');
+    return h && h.textContent.trim() === 'Eye';
+  }, 15000);
+  check('picking eye paints its header', painted,
+        ($('#tkResult .step-head strong') || {}).textContent);
+  const n = $('#tkResult .step-head .step-n');
+  check('it says "step 3 of The Storm"',
+        !!n && /step 3 of The Storm/.test(n.textContent),
+        n ? n.textContent : 'no .step-n');
+
+  /* Whichever is true on this machine, and which one is established from
+     the route rather than assumed: a machine with no confirmed IED set must
+     say so, one with some must list them. */
+  const c0 = await getj('/api/braces/candidates?type=ied');
+  check('the candidate list answers for IEDs', !!c0.ok, c0.error || '');
+  const n0 = (c0.sets || []).length;
+  /* The picker hides harness leftovers and opens on Doppler's own runs,
+     so "every one" means every real set once "Everything" is chosen --
+     and the hidden ones are counted in the line under the list rather
+     than vanishing. */
+  const real = (c0.sets || []).filter((s) => !/harness/i.test(
+    ((s.added || {}).by || '') + ' ' + (s.name || '')));
+  ev('BARRY.eye._state().origin = "all"; BARRY.eye.paint()');
+  const drawn = await until(() => $('#tkResult .empty-state')
+                                  || $('#tkResult .eye-set'), 15000);
+  await until(() => $$('#tkResult .eye-set').length === real.length
+                    || $('#tkResult .empty-state'), 4000);
+  if (!real.length) {
+    check('no real IED sets: the empty state says what fills it', drawn
+          && !!$('#tkResult .empty-state'));
+  } else {
+    check(real.length + ' real IED set(s): "Everything" shows every one',
+          drawn && $$('#tkResult .eye-set').length === real.length,
+          $$('#tkResult .eye-set').length + ' drawn');
+    check('each is filed under the recording it is on',
+          $$('#tkResult .eye-group-head').length >= 1);
+    check('and says where it came from',
+          $$('#tkResult .eye-set').every((b) =>
+            /Doppler|imported/.test(b.textContent)));
+  }
+  if ((c0.sets || []).length > real.length) {
+    check('harness leftovers are hidden and counted',
+          /left behind by test harnesses/.test($('#tkResult').textContent));
+  }
+  check('everything offered is an IED set, not a dentate-spike one',
+        (c0.sets || []).every((s) => s.n_good > 0));
+
+  /* ---------------------------------------------------------------- */
+  head('the three measures');
+
+  const ms = await getj('/api/braces/measures');
+  const mids = (ms.measures || []).map((m) => m.id).join(',');
+  check('csd, voltage and slope', mids === 'csd,voltage,slope', mids);
+  check('each has a name and says what it means',
+        (ms.measures || []).every((m) => (m.name || '').length > 2
+                                         && (m.why || '').length > 40));
+
+  /* ---------------------------------------------------------------- */
+  head('a set of our own');
+
+  const reg = await getj('/api/registry?backfill=1');
+  const rows = (reg.tree || []).flatMap((p) => p.mice.flatMap((m) => m.sessions));
+  const target = rows.find((s) => s.reachable && (s.here || []).length);
+  if (!target) {
+    say('  note  no reachable recording on this machine; the engine is not '
+        + 'exercised', 'note');
+    throw new Error('skip');
+  }
+  say('  note  ' + (target.label || target.gid) + '  ' + target.here[0], 'note');
+
+  /* Five Solid, one Garbage, three seconds apart and well inside the
+     recording. The half-millisecond offset keeps them off any time a
+     detector could have produced, so nothing real is matched by accident. */
+  const dur = Math.max(30, Number(target.duration_s) || 60);
+  const base = Math.min(10, dur * 0.1);
+  const evts = [];
+  for (let i = 0; i < 6; i++) {
+    const garbage = i === 3;
+    evts.push({ start: Math.round((base + 3 * i) * 1000) / 1000 + 0.0005,
+                channel: 2,
+                label_id: garbage ? 'garbage' : 'solid',
+                label: garbage ? 'Garbage' : 'Solid' });
+  }
+  const added = await post('/api/bank/add', {
+    gid: target.gid, project: target.project, mouse: target.mouse,
+    session: target.session, session_label: target.label,
+    session_path: target.here[0],
+    type: 'ied', type_name: 'IED', curated: true,
+    name: NAME,
+    note: 'Made by web/_dev/eye.html. Deleted on the way out.',
+    events: evts,
+    label_names: { solid: 'Solid', sputter: 'Sputter',
+                   garbage: 'Garbage', flag: 'Flag' },
+    pipeline: 'Doppler (line length)', detector: 'LLspikedetector',
+    time_basis: 'recording', added_by: WHO,
+  });
+  entryId = (added.entry || {}).id || null;
+  check('a throwaway curated IED entry was banked', !!entryId,
+        JSON.stringify(added).slice(0, 200));
+  if (!entryId) throw new Error('no fixture');
+
+  const c1 = await getj('/api/braces/candidates?type=ied');
+  const mine = (c1.sets || []).find((s) => s.id === entryId);
+  check('it is offered for alignment', !!mine);
+  check('with the five Solid ones counted, not the Garbage',
+        mine && mine.n_good === 5, mine ? String(mine.n_good) : '');
+  const dsC = await getj('/api/braces/candidates');
+  check('and it is NOT offered as a dentate-spike set',
+        !(dsC.sets || []).some((s) => s.id === entryId));
+
+  /* ---------------------------------------------------------------- */
+  head('driving the panel through all three');
+
+  ev('BARRY.eye._reset()');
+  // Ours is a harness set, which the picker hides; this is the one switch
+  // that shows them, and nothing in the panel turns it on.
+  ev('BARRY.eye._state().showTests = true; '
+     + 'BARRY.eye._state().origin = "all"; BARRY.eye.paint()');
+  const listed = await until(() => $$('#tkResult .eye-set').length > 0, 15000);
+  check('the list now shows sets', listed);
+  const radio = await (async () => {
+    for (const lab of $$('#tkResult .eye-set')) {
+      if (/eye harness/.test(lab.textContent)) return lab;
+    }
+    return null;
+  })();
+  check('ours is in the list', !!radio);
+  if (!radio) throw new Error('not listed');
+  radio.click();
+  const settings = await until(() => $$('#tkResult .tk-actions .btn')
+    .some((b) => /Line them up/.test(b.textContent)), 8000);
+  check('picking it offers the run', settings);
+  /* By ref, not by number: the number is not unique in this bank. */
+  const wantRef = (((mine || {}).versions || []).find((v) => v.newest && v.usable)
+                   || {}).ref;
+  const gotRef = ev('BARRY.eye._state().from_version');
+  check('it will read from the newest usable version, by ref',
+        gotRef === (wantRef == null ? null : wantRef),
+        JSON.stringify([gotRef, wantRef]));
+  $$('#tkResult .tk-actions .btn')
+    .find((b) => /Line them up/.test(b.textContent)).click();
+
+  /* WAITED ON BY REQUESTS, NOT BY THE CLOCK. The suite runs under Edge's
+     virtual time, where a sleep costs no real time at all: an `until` of
+     200 seconds ran out while the second of three runs was still reading,
+     a few real seconds in. A pending fetch pauses virtual time, so each
+     turn of this loop is one real round trip to the server plus a few
+     virtual milliseconds -- enough for the panel's own 800 ms poll to come
+     round about once a second of real time, and bounded by count so a run
+     that never ends is still reported rather than hung on. The runner's
+     own wall timeout is the backstop. */
+  const allDone = () => {
+    const st = JSON.parse(ev('JSON.stringify(Object.values(BARRY.eye._runs())'
+                             + '.map(function(x){return x.status;}))') || '[]');
+    return st.length === 3 && st.every((s) => s !== 'running');
+  };
+  /* The clock is `/api/link?wait=`, the link long poll, which the server
+     holds open for half a second of REAL time when nothing is published.
+     Two earlier clocks both failed: a trivial request as fast as it would
+     answer made thousands a minute and ran the page into "Failed to fetch";
+     a heavy one (every alignment set) took so long per turn that the
+     panel's 800 ms poll came round once a minute of real time and the page
+     hit the suite's wall timeout. Half a second held, plus 400 virtual ms,
+     keeps virtual and real time roughly in step. A dropped request is a
+     missed tick, not a verdict. Bounded at ~4 minutes. */
+  let finished = false, dropped = 0, ver = 0;
+  try { ver = (await getj('/api/link')).version || 0; } catch (e) {}
+  for (let i = 0; i < 480 && !finished; i++) {
+    try {
+      const j = await getj('/api/link?wait=0.5&since=' + ver);
+      if (j && typeof j.version === 'number') ver = j.version;
+    } catch (e) { dropped++; }
+    await sleep(400);
+    finished = allDone();
+  }
+  if (dropped) say('  note  ' + dropped + ' clock request(s) dropped', 'note');
+  check('all three runs finished', finished);
+  const runs = JSON.parse(ev('JSON.stringify(BARRY.eye._runs())') || '{}');
+  for (const id of ['csd', 'voltage', 'slope']) {
+    const r = runs[id] || {};
+    check(id + ' completed', r.status === 'done', r.error || r.status);
+  }
+  const slope = (runs.slope || {}).proposal || null;
+
+  if (slope) {
+    await sleep(500);
+    for (const id of ['csd', 'voltage', 'slope']) {
+      if (!(runs[id] || {}).proposal) continue;
+      const cv = D().getElementById('eyeHist_' + id);
+      let ink = 0;
+      if (cv && cv.width) {
+        const px = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+        for (let i = 3; i < px.length; i += 4) if (px[i] > 8) ink++;
+      }
+      check(id + ' histogram is drawn', ink > 30, String(ink));
+    }
+    /* The counts on the cards are the summary's, under the names
+       `braces.summarize` gives them. The first version read `matched` and
+       `median_shift_ms`, got undefined, and drew "0 of 0 matched". */
+    const s = slope.summary || {};
+    const cards = $$('#tkResult .eye-one').map((x) => x.textContent);
+    const slopeCard = cards.find((t) => /slope/i.test(t)) || '';
+    check('the slope card says how many of the five matched',
+          new RegExp((s.n - s.n_no_peak) + ' of ' + s.n + ' matched')
+            .test(slopeCard), slopeCard.slice(0, 120));
+    check('a measure has been offered as the one to keep',
+          ['csd', 'voltage', 'slope'].indexOf(ev('BARRY.eye._state().measure')) >= 0,
+          String(ev('BARRY.eye._state().measure')));
+    check('and the commit card is up', /Commit the moves/.test(
+      $('#tkResult').textContent));
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('what slope actually did');
+
+  if (slope && slope.set_id) {
+    check('the run was filed as slope, not quietly as CSD',
+          (slope.params || {}).measure === 'slope',
+          String((slope.params || {}).measure));
+    check('the three runs are three different sets',
+          new Set(['csd', 'voltage', 'slope'].map(
+            (id) => (((runs[id] || {}).proposal) || {}).set_id)).size === 3);
+    const one = await getj('/api/braces/set/' + encodeURIComponent(slope.set_id));
+    const rws = (one.set || {}).rows || [];
+    check('one row per Solid stamp; the Garbage one got none',
+          rws.length === 5, String(rws.length));
+    const moved = rws.filter((r) => r.moved);
+    check('every moved row carries a shift',
+          moved.every((r) => typeof r.shift_ms === 'number'
+                             && Math.abs(r.shift_ms) > 0),
+          moved.length + ' moved');
+    check('and every shift is inside the window',
+          moved.every((r) => Math.abs(r.shift_ms)
+                             <= ((slope.summary || {}).window_ms || 100) + 1e-6));
+    const byWas = rws.slice().sort((a, b) => a.was - b.was);
+    let crossed = 0;
+    for (let i = 1; i < byWas.length; i++) {
+      if (!(byWas[i].now > byWas[i - 1].now)) crossed++;
+    }
+    check('no two stamps cross or land on one another', crossed === 0,
+          byWas.map((r) => r.was.toFixed(3) + '->' + r.now.toFixed(3)).join(' '));
+
+    const before = await getj('/api/bank/' + encodeURIComponent(entryId));
+    const vBefore = ((before.entry || before).versions || []).length;
+    const dry = await post('/api/braces/set/' + encodeURIComponent(slope.set_id)
+                           + '/commit', { apply: false });
+    const rep = dry.report || {};
+    check('a dry-run commit answers', !!dry.ok || !!rep.nothing_to_do,
+          dry.error || '');
+    check('and says it is a dry run', rep.dry_run === true);
+    if (moved.length && !rep.nothing_to_do) {
+      const mv = rep.moves || [];
+      check('every stamp it would move carries from_t',
+            mv.length === rep.moved
+            && mv.every((m) => typeof m[0] === 'number' && m[0] !== m[1]),
+            JSON.stringify(mv.slice(0, 3)));
+      const wasSet = new Set(moved.map((r) => r.was.toFixed(6)));
+      check('and from_t is where the stamp was',
+            mv.every((m) => wasSet.has(Number(m[0]).toFixed(6))));
+      check('the Garbage stamp is left out of the version, and said so',
+            (rep.n_dropped || 0) === 1, String(rep.n_dropped));
+    } else {
+      say('  note  slope moved nothing here; the from_t check is vacuous',
+          'note');
+    }
+    const after = await getj('/api/bank/' + encodeURIComponent(entryId));
+    check('a dry run wrote no version',
+          ((after.entry || after).versions || []).length === vBefore);
+  }
+
+  } catch (e) {
+    if (e.message !== 'skip') {
+      say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+      fails++;
+    }
+  } finally {
+    /* Every alignment made against our entry, then the entry. Found from
+       the server rather than from what the panel remembers, so a run that
+       crashed half way still leaves nothing behind. */
+    try { ev('BARRY.eye._reset()'); } catch (e) {}
+    if (entryId) {
+      try {
+        const sets = await getj('/api/braces/sets');
+        for (const s of (sets.sets || []).filter((x) => x.entry_id === entryId)) {
+          const d = await post('/api/braces/set/'
+                               + encodeURIComponent(s.set_id) + '/delete');
+          if (d.ok === false) { say('  FAIL set ' + s.set_id + ': ' + d.error, 'bad'); fails++; }
+        }
+        const d = await post('/api/bank/' + encodeURIComponent(entryId) + '/delete');
+        check('the throwaway entry is gone', d.ok === true);
+      } catch (e) {
+        say('  FAIL cleanup: ' + e.message, 'bad');
+        fails++;
+      }
+    }
+  }
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'eye: ' + fails + ' FAILED' : 'eye: passed';
+})().catch((e) => {
+  say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+  document.title = 'eye CRASH';
+});
+</script></body></html>

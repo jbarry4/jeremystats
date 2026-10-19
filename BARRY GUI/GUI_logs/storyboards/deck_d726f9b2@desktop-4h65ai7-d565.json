@@ -1,19 +1,19 @@
 {
   "_at": {
-    "created": "2026-09-03T13:42:19.586708+00:00",
-    "id": "2026-09-03T13:42:19.586708+00:00",
-    "schema": "2026-09-03T13:42:19.586708+00:00",
-    "slides": "2026-09-03T13:42:19.586708+00:00",
-    "title": "2026-09-03T13:42:19.586708+00:00",
-    "updated": "2026-09-03T13:42:19.586708+00:00"
+    "created": "2026-09-02T23:21:29.424359+00:00",
+    "id": "2026-09-14T16:20:02.152950+00:00",
+    "schema": "2026-09-14T16:20:02.152950+00:00",
+    "slides": "2026-09-16T13:26:00.188608+00:00",
+    "title": "2026-09-14T16:20:02.152950+00:00",
+    "updated": "2026-09-14T16:20:02.152950+00:00"
   },
   "_shard": {
-    "at": "2026-09-03T13:42:19.586708+00:00",
+    "at": "2026-09-16T13:26:00.188608+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "created": {
-    "at": "2026-09-03T09:42:19-04:00",
+    "at": "2026-09-02T15:32:24-04:00",
     "machine": "DESKTOP-4H65AI7",
     "os": "Windows",
     "user": "theexaminedexistence@gmail.com"
@@ -27,10 +27,10 @@
         {
           "caption": "",
           "h": 0.72,
-          "id": "iu16sjew",
+          "id": "7c359762fc55",
           "name": "PTEN m7 s2 2023-08-22_20260902_150342.png",
-          "rel": "PTEN m7 s2 2023-08-22/PTEN m7 s2 2023-08-22_20260902_150342.png",
-          "result_id": "b9e3f6742569",
+          "rel": "PTEN/m7/s2 2023-08-22/Figures/PTEN m7 s2 2023-08-22_20260902_150342.png",
+          "result_id": "36c623803b9d",
           "type": "result",
           "w": 0.84,
           "x": 0.08,
@@ -48,10 +48,10 @@
         {
           "caption": "",
           "h": 0.72,
-          "id": "icw2xpl5",
+          "id": "e206ad2e48a8",
           "name": "PTEN m7 s2 2023-08-22_20260902_152927.png",
-          "rel": "PTEN m7 s2 2023-08-22/PTEN m7 s2 2023-08-22_20260902_152927.png",
-          "result_id": "2f2ebc626616",
+          "rel": "PTEN/m7/s2 2023-08-22/Figures/PTEN m7 s2 2023-08-22_20260902_152927.png",
+          "result_id": "4bf34a4654a8",
           "rot": 0.1,
           "type": "result",
           "w": 0.84,
@@ -112,10 +112,10 @@
         {
           "caption": "",
           "h": 0.72,
-          "id": "ip0bxw0x",
+          "id": "7c359762fc55",
           "name": "PTEN m7 s2 2023-08-22_20260902_150342.png",
-          "rel": "PTEN m7 s2 2023-08-22/PTEN m7 s2 2023-08-22_20260902_150342.png",
-          "result_id": "b9e3f6742569",
+          "rel": "PTEN/m7/s2 2023-08-22/Figures/PTEN m7 s2 2023-08-22_20260902_150342.png",
+          "result_id": "36c623803b9d",
           "type": "result",
           "w": 0.84,
           "x": 0.08,
@@ -152,9 +152,11 @@
   ],
   "title": "Test story",
   "updated": {
-    "at": "2026-09-03T09:42:19-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "at": "2026-09-14T12:20:02-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Isabella Piatek"
   }
 }

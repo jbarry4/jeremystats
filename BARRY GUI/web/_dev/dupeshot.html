@@ -1,0 +1,81 @@
+<!doctype html><meta charset="utf-8"><title>duplicate times</title>
+<iframe id="app" src="/" style="position:fixed;inset:0;width:100vw;height:100vh;border:0"></iframe>
+<script>
+/* The duplicate-times dialog, open on the choice it will not make on its
+   own. `?shot=strip` instead shows the entry with the warning strip above
+   its events, which is the state somebody meets before they ask for any of
+   this. Seeds its own entry and removes it again, so neither shot depends
+   on the one real set in the archive that has doubles in it. */
+(async () => {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const D = () => f.contentDocument;
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const post = async (p, b) => (await fetch(p, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(b || {}),
+  })).json();
+  for (let i = 0; i < 250 && typeof W.BARRY !== 'object'; i++) await sleep(120);
+
+  for (const e of (await (await fetch('/api/bank')).json()).entries) {
+    if (e.project === 'HARNESS' && e.name === 'dupes shot') {
+      await post('/api/bank/' + e.id + '/delete', {});
+    }
+  }
+  await post('/api/bank/add', {
+    project: 'HARNESS', mouse: 99, session: 1,
+    session_label: 'PTEN m34 s8 2026-06-10', type: 'ds', name: 'dupes shot',
+    pipeline: 'harness: duplicate times', added_by: 'harness@test',
+    curated: true,
+    label_names: { spike: 'Dentate Spike', garbage: 'Garbage', flag: 'Flag' },
+    events: [
+      { start: 15.839, label_id: 'spike', label: 'Dentate Spike' },
+      { start: 19.32, label_id: 'spike', label: 'Dentate Spike' },
+      { start: 21.437, label_id: 'spike', label: 'Dentate Spike' },
+      { start: 21.437, label_id: 'garbage', label: 'Garbage' },
+      { start: 31.64, label_id: 'spike', label: 'Dentate Spike' },
+      { start: 31.64, label_id: 'flag', label: 'Flag' },
+      { start: 41.813, label_id: 'spike', label: 'Dentate Spike' },
+      { start: 71.561, label_id: 'spike', label: 'Dentate Spike' },
+      { start: 71.561, label_id: 'garbage', label: 'Garbage' },
+      { start: 73.552, label_id: 'spike', label: 'Dentate Spike' },
+      { start: 73.552, label_id: 'spike', label: 'Dentate Spike' },
+      { start: 84.242, label_id: 'garbage', label: 'Garbage' },
+      { start: 91.026 },
+      { start: 91.026, label_id: 'spike', label: 'Dentate Spike' },
+      { start: 93.998, label_id: 'spike', label: 'Dentate Spike' },
+    ],
+  });
+
+  W.eval("setView('eventbank')");
+  for (let i = 0; i < 200 && !D().querySelector('#bankBody .bank-tree'); i++) {
+    await sleep(120);
+  }
+  const row = $$('.bank-row').find(
+    (r) => r.textContent.indexOf('dupes shot') >= 0);
+  if (row) row.click();
+  for (let i = 0; i < 200 && !D().querySelector('#bankEvents .preview-table');
+       i++) await sleep(120);
+  await sleep(500);
+
+  const want = new URLSearchParams(location.search).get('shot');
+  if (want !== 'strip') {
+    const go = $$('.dup-strip .btn').find((b) => /Collapse/.test(b.textContent));
+    if (go) go.click();
+    for (let i = 0; i < 200 && !D().querySelector('#bigModal .dup-pick'); i++) {
+      await sleep(120);
+    }
+    await sleep(500);
+    /* The armed state: a copy picked, so the survivors are named, the
+       resulting mix is filled in and the button will run. */
+    if (want === 'picked') {
+      const radios = $$('#bigModal .dup-opt input');
+      if (radios[1]) radios[1].click();
+      await sleep(1200);
+    }
+  }
+  document.title = 'shot';
+})();
+</script>

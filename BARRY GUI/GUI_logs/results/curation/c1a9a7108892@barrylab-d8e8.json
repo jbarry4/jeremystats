@@ -1,0 +1,27 @@
+{
+  "_at": {
+    "key": "2026-09-14T14:01:31.573315+00:00",
+    "rel": "2026-09-14T14:01:31.573315+00:00",
+    "starred": "2026-09-14T14:01:31.573315+00:00",
+    "title": "2026-09-14T16:17:36.067541+00:00",
+    "updated": "2026-09-14T16:17:36.067541+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-14T16:17:36.067541+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "key": "storyboards/arrow harness_24.png",
+  "rel": "Storyboards/arrow harness_24.png",
+  "starred": false,
+  "tags": [],
+  "title": "arrow harness",
+  "updated": {
+    "at": "2026-09-14T12:17:36-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

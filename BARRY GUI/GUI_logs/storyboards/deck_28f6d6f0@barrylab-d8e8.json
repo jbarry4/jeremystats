@@ -1,0 +1,65 @@
+{
+  "_at": {
+    "created": "2026-09-28T17:11:44.844261+00:00",
+    "id": "2026-09-28T17:11:44.844261+00:00",
+    "schema": "2026-09-28T17:11:44.844261+00:00",
+    "slides": "2026-09-28T17:11:44.844261+00:00",
+    "title": "2026-09-28T17:11:44.844261+00:00",
+    "updated": "2026-09-28T17:11:44.844261+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-28T17:11:44.844261+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-28T13:11:44-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "id": "deck_28f6d6f0",
+  "schema": 1,
+  "slides": [
+    {
+      "id": "z1",
+      "items": [
+        {
+          "color": "#c0392b",
+          "h": 0.3,
+          "id": "a",
+          "shape": "rect",
+          "type": "shape",
+          "w": 0.3,
+          "width": 3,
+          "x": 0.1,
+          "y": 0.1,
+          "z": 3
+        }
+      ],
+      "notes": "first note",
+      "show_notes": true,
+      "title": "One"
+    },
+    {
+      "id": "z2",
+      "items": [],
+      "notes": "",
+      "show_notes": true,
+      "title": "Two"
+    }
+  ],
+  "title": "tour harness",
+  "updated": {
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-28T13:11:44-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

@@ -1,0 +1,133 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — one Xplorefinder mode at a time</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 56vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 44vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Entering a mode must leave every other one.
+
+   Each mode used to exit the others by name, and none named them all --
+   entering Checkup with Spotter open left both live: two toolbars, two sets
+   of key handlers. BARRY.modes (core.js) is the registry that replaced the
+   lists. This checks that every mode is in it, that `leaveAllBut` leaves
+   every OTHER active mode and never the caller, that one mode throwing on
+   its way out does not stop the rest, and -- with a real mode on a real
+   recording -- that StrataScope is left when another mode takes over.
+
+   Stand-in modes are registered for the mechanism and neutered afterwards.
+   StrataScope is entered on a reachable recording and exited again;
+   entering it writes nothing. (`modes.html` is a different harness: it
+   checks what the Strata and DS modes put on screen.) */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 200, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const ready = await untilN(() => typeof W().setView === 'function');
+  check('the application loads', !!ready, 'no setView after 20s');
+  if (!ready) { document.title = 'FAIL'; return; }
+  const E = (js) => W().eval(js);
+
+  head('every mode is registered');
+  const names = E('BARRY.modes.names()');
+  for (const n of ['curate', 'strata', 'spotter', 'cfc', 'arcmode']) {
+    check(n + ' is in the registry', names.includes(n), names.join(' '));
+  }
+  check('nothing is active at the start', E('BARRY.modes.active()').length === 0,
+        E('BARRY.modes.active()').join(' '));
+
+  head('leaveAllBut, with stand-ins');
+  /* Each stand-in keeps its switch in a closure and is held by the registry
+     by reference, so flipping it through the kept object is flipping the
+     registered one. testB throws on its way out, on purpose. */
+  E(`window.__m = { exits: [], reg: {} };
+     ['testA', 'testB', 'testC'].forEach(function (n) {
+       var on = false;
+       var api = {
+         get active() { return on; },
+         exit: function () {
+           window.__m.exits.push(n); on = false;
+           if (n === 'testB') throw new Error('testB fails on its way out');
+         },
+         on: function () { on = true; },
+       };
+       window.__m.reg[n] = api;
+       BARRY.modes.register(n, api);
+     });
+     ['testA', 'testB', 'testC'].forEach(function (n) { window.__m.reg[n].on(); });`);
+  E(`BARRY.modes.leaveAllBut('testC')`);
+  const exits = E('window.__m.exits.slice()');
+  check('every other active mode was left',
+        exits.includes('testA') && exits.includes('testB'), exits.join(' '));
+  check('the one being entered was not', !exits.includes('testC'), exits.join(' '));
+  check('a mode that threw on the way out did not stop the others',
+        exits.includes('testA'), exits.join(' '));
+  const left = E('BARRY.modes.active()').filter((n) => /^test/.test(n));
+  check('only the caller is still active',
+        JSON.stringify(left) === JSON.stringify(['testC']), left.join(' '));
+  E(`window.__m.reg.testC.exit();
+     ['testA', 'testB', 'testC'].forEach(function (n) {
+       BARRY.modes.register(n, { get active() { return false; },
+                                 exit: function () {} });
+     });`);
+
+  head('a real mode is left when another takes over');
+  const gid = E(`(function () {
+    var rows = (BARRY.views.toolkit && BARRY.views.toolkit.registryRows)
+      ? BARRY.views.toolkit.registryRows() : [];
+    var r = rows.find(function (x) { return x.reachable; });
+    return r ? r.gid : null; })()`);
+  if (!gid) {
+    say('note', '  skipped: no reachable recording on this machine to enter');
+  } else {
+    W().setView('xplore');
+    await sleep(400);
+    E(`BARRY.strata.enter(${JSON.stringify(gid)})`);
+    const on = await untilN(() => E('BARRY.strata.active'), 150, 100);
+    check('StrataScope entered', !!on, 'not active after 15 s');
+    if (on) {
+      E(`BARRY.modes.leaveAllBut('curate')`);
+      await sleep(400);
+      check('and was left when another mode took over', !E('BARRY.strata.active'),
+            'StrataScope still active');
+      check('nothing is left running', E('BARRY.modes.active()').length === 0,
+            E('BARRY.modes.active()').join(' '));
+    }
+  }
+
+  head(bad === 0 ? 'one mode at a time' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+} catch (e) {
+  say('bad', 'harness threw: ' + e.message);
+  document.title = 'FAIL';
+} })();
+</script>

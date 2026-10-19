@@ -1,0 +1,1582 @@
+{
+ "at": "2026-09-30T10:26:41-04:00",
+ "bands": [
+  {
+   "id": "theta",
+   "say": "theta"
+  },
+  {
+   "id": "beta",
+   "say": "beta"
+  },
+  {
+   "id": "gamma_low",
+   "say": "low gamma"
+  }
+ ],
+ "circuits": [
+  {
+   "cue_role": "food",
+   "cue_type": "Click_LowTone",
+   "day": "Precon1",
+   "gid": "sec4bed944ba0",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 3,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Noise_HighTone",
+   "day": "Precon1",
+   "gid": "sec4bed944ba0",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 3,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Click_LowTone",
+   "day": "Precon4",
+   "gid": "s7f9b97e294b8",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 3,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Noise_HighTone",
+   "day": "Precon4",
+   "gid": "s7f9b97e294b8",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 3,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "HighTone_Noise",
+   "day": "Precon1",
+   "gid": "s989ca3b5b2d6",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 4,
+   "seconds": 45.0,
+   "units_todo": 6
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "LowTone_Click",
+   "day": "Precon1",
+   "gid": "s989ca3b5b2d6",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 4,
+   "seconds": 45.0,
+   "units_todo": 6
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "HighTone_Noise",
+   "day": "Precon4",
+   "gid": "s09af032023a9",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 4,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "LowTone_Click",
+   "day": "Precon4",
+   "gid": "s09af032023a9",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 4,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Click_LowTone",
+   "day": "Precon1",
+   "gid": "sce947d33ceb8",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 6,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Noise_HighTone",
+   "day": "Precon1",
+   "gid": "sce947d33ceb8",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 6,
+   "seconds": 52.5,
+   "units_todo": 7
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Click_LowTone",
+   "day": "Precon4",
+   "gid": "sc905a9b9e371",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 6,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Noise_HighTone",
+   "day": "Precon4",
+   "gid": "sc905a9b9e371",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 6,
+   "seconds": 52.5,
+   "units_todo": 7
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Click_HighTone",
+   "day": "Precon1",
+   "gid": "s360e48254222",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 7,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Noise_LowTone",
+   "day": "Precon1",
+   "gid": "s360e48254222",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 7,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Click_HighTone",
+   "day": "Precon4",
+   "gid": "sc710262dff13",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 7,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Noise_LowTone",
+   "day": "Precon4",
+   "gid": "sc710262dff13",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 7,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Click_HighTone",
+   "day": "Precon1",
+   "gid": "s234fc080573e",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 8,
+   "seconds": 45.0,
+   "units_todo": 6
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Noise_LowTone",
+   "day": "Precon1",
+   "gid": "s234fc080573e",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 8,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Click_HighTone",
+   "day": "Precon4",
+   "gid": "sdf092805b0cb",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 8,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Noise_LowTone",
+   "day": "Precon4",
+   "gid": "sdf092805b0cb",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 8,
+   "seconds": 45.0,
+   "units_todo": 6
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "HighTone_Click",
+   "day": "Precon1",
+   "gid": "sb3ad74706f07",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 9,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "LowTone_Noise",
+   "day": "Precon1",
+   "gid": "sb3ad74706f07",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 9,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "HighTone_Click",
+   "day": "Precon4",
+   "gid": "s4af2a78d7ab7",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 9,
+   "seconds": 52.5,
+   "units_todo": 7
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "LowTone_Noise",
+   "day": "Precon4",
+   "gid": "s4af2a78d7ab7",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 9,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "LowTone_Noise",
+   "day": "Precon1",
+   "gid": "s0c6efa477a94",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 10,
+   "seconds": 45.0,
+   "units_todo": 6
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "HighTone_Click",
+   "day": "Precon1",
+   "gid": "s0c6efa477a94",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 10,
+   "seconds": 52.5,
+   "units_todo": 7
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "HighTone_Click",
+   "day": "Precon4",
+   "gid": "s5e2c6d208fc7",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 10,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "LowTone_Noise",
+   "day": "Precon4",
+   "gid": "s5e2c6d208fc7",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 10,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "HighTone_Noise",
+   "day": "Precon1",
+   "gid": "s3fcdbcc678da",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 11,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "LowTone_Click",
+   "day": "Precon1",
+   "gid": "s3fcdbcc678da",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 11,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "HighTone_Noise",
+   "day": "Precon4",
+   "gid": "sbd33a50b7fec",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 11,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "LowTone_Click",
+   "day": "Precon4",
+   "gid": "sbd33a50b7fec",
+   "kind": "state",
+   "plan": "planned",
+   "rat": 11,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Click_LowTone",
+   "day": "Precon1",
+   "gid": "sec4bed944ba0",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 3,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Noise_HighTone",
+   "day": "Precon1",
+   "gid": "sec4bed944ba0",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 3,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Click_LowTone",
+   "day": "Precon4",
+   "gid": "s7f9b97e294b8",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 3,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Noise_HighTone",
+   "day": "Precon4",
+   "gid": "s7f9b97e294b8",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 3,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "HighTone_Noise",
+   "day": "Precon1",
+   "gid": "s989ca3b5b2d6",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 4,
+   "seconds": 45.0,
+   "units_todo": 6
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "LowTone_Click",
+   "day": "Precon1",
+   "gid": "s989ca3b5b2d6",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 4,
+   "seconds": 45.0,
+   "units_todo": 6
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "HighTone_Noise",
+   "day": "Precon4",
+   "gid": "s09af032023a9",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 4,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "LowTone_Click",
+   "day": "Precon4",
+   "gid": "s09af032023a9",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 4,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Click_LowTone",
+   "day": "Precon1",
+   "gid": "sce947d33ceb8",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 6,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Noise_HighTone",
+   "day": "Precon1",
+   "gid": "sce947d33ceb8",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 6,
+   "seconds": 52.5,
+   "units_todo": 7
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Click_LowTone",
+   "day": "Precon4",
+   "gid": "sc905a9b9e371",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 6,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Noise_HighTone",
+   "day": "Precon4",
+   "gid": "sc905a9b9e371",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 6,
+   "seconds": 52.5,
+   "units_todo": 7
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Click_HighTone",
+   "day": "Precon1",
+   "gid": "s360e48254222",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 7,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Noise_LowTone",
+   "day": "Precon1",
+   "gid": "s360e48254222",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 7,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Click_HighTone",
+   "day": "Precon4",
+   "gid": "sc710262dff13",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 7,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Noise_LowTone",
+   "day": "Precon4",
+   "gid": "sc710262dff13",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 7,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Click_HighTone",
+   "day": "Precon1",
+   "gid": "s234fc080573e",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 8,
+   "seconds": 45.0,
+   "units_todo": 6
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Noise_LowTone",
+   "day": "Precon1",
+   "gid": "s234fc080573e",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 8,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "Click_HighTone",
+   "day": "Precon4",
+   "gid": "sdf092805b0cb",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 8,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "Noise_LowTone",
+   "day": "Precon4",
+   "gid": "sdf092805b0cb",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 8,
+   "seconds": 45.0,
+   "units_todo": 6
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "HighTone_Click",
+   "day": "Precon1",
+   "gid": "sb3ad74706f07",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 9,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "LowTone_Noise",
+   "day": "Precon1",
+   "gid": "sb3ad74706f07",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 9,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "HighTone_Click",
+   "day": "Precon4",
+   "gid": "s4af2a78d7ab7",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 9,
+   "seconds": 52.5,
+   "units_todo": 7
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "LowTone_Noise",
+   "day": "Precon4",
+   "gid": "s4af2a78d7ab7",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 9,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "LowTone_Noise",
+   "day": "Precon1",
+   "gid": "s0c6efa477a94",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 10,
+   "seconds": 45.0,
+   "units_todo": 6
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "HighTone_Click",
+   "day": "Precon1",
+   "gid": "s0c6efa477a94",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 10,
+   "seconds": 52.5,
+   "units_todo": 7
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "HighTone_Click",
+   "day": "Precon4",
+   "gid": "s5e2c6d208fc7",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 10,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "LowTone_Noise",
+   "day": "Precon4",
+   "gid": "s5e2c6d208fc7",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 10,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "HighTone_Noise",
+   "day": "Precon1",
+   "gid": "s3fcdbcc678da",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 11,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "LowTone_Click",
+   "day": "Precon1",
+   "gid": "s3fcdbcc678da",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 11,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "no_food",
+   "cue_type": "HighTone_Noise",
+   "day": "Precon4",
+   "gid": "sbd33a50b7fec",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 11,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": "food",
+   "cue_type": "LowTone_Click",
+   "day": "Precon4",
+   "gid": "sbd33a50b7fec",
+   "kind": "transition",
+   "plan": "estimated (This recording's transition windows have never been checked for clipping: its cue pairs were filed before Spark measured them. Run the clipp)",
+   "rat": 11,
+   "seconds": 60.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon1",
+   "gid": "sec4bed944ba0",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 3,
+   "seconds": 20.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon4",
+   "gid": "s7f9b97e294b8",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 3,
+   "seconds": 20.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon1",
+   "gid": "s989ca3b5b2d6",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 4,
+   "seconds": 15.0,
+   "units_todo": 6
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon4",
+   "gid": "s09af032023a9",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 4,
+   "seconds": 20.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon1",
+   "gid": "sce947d33ceb8",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 6,
+   "seconds": 20.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon4",
+   "gid": "sc905a9b9e371",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 6,
+   "seconds": 20.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon1",
+   "gid": "s360e48254222",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 7,
+   "seconds": 20.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon4",
+   "gid": "sc710262dff13",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 7,
+   "seconds": 20.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon1",
+   "gid": "s234fc080573e",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 8,
+   "seconds": 20.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon4",
+   "gid": "sdf092805b0cb",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 8,
+   "seconds": 20.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon1",
+   "gid": "sb3ad74706f07",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 9,
+   "seconds": 20.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon4",
+   "gid": "s4af2a78d7ab7",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 9,
+   "seconds": 20.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon1",
+   "gid": "s0c6efa477a94",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 10,
+   "seconds": 17.5,
+   "units_todo": 7
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon4",
+   "gid": "s5e2c6d208fc7",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 10,
+   "seconds": 20.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon1",
+   "gid": "s3fcdbcc678da",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 11,
+   "seconds": 20.0,
+   "units_todo": 8
+  },
+  {
+   "cue_role": null,
+   "cue_type": "none",
+   "day": "Precon4",
+   "gid": "sbd33a50b7fec",
+   "kind": "rest",
+   "plan": "planned",
+   "rat": 11,
+   "seconds": 20.0,
+   "units_todo": 8
+  }
+ ],
+ "cost": {
+  "circuit_s": 3942.5,
+  "drift_s": 99.0,
+  "lines": [
+   "Spark: 16 recording(s) to check and re-bank (about 7 min, estimated at 25 s each), 0 already done, 0 blocked.",
+   "  hand decisions on the entries to re-bank: 0 event(s) (carried if any)",
+   "Circuits: 80 run(s) x 3 band(s) = 240 circuit artifact(s); about 66 min here, one after another.",
+   "  state       32 run(s),  242 cue pairs to compute, about 30 min",
+   "  transition  32 run(s),  242 cue pairs to compute, about 30 min",
+   "  rest        16 run(s),  125 epochs to compute, about 5 min",
+   "  80 of the 80 runs are ESTIMATED (7.5 s per cue pair, 2.5 s per rest epoch, all three bands in one read): their recordings are re-banked first, so no cached pair survives",
+   "Drifts: 33 (matched by rat, Hartung-Knapp, BH per band across windows and methods); about 2 min.",
+   "Total: about 74 min."
+  ],
+  "pairs_todo": 609,
+  "spark_s": 400.0,
+  "total_s": 4441.5
+ },
+ "days": [
+  "Precon1",
+  "Precon4"
+ ],
+ "drift": {
+  "bh_scope": "artifact",
+  "design": "matched",
+  "test": "hk"
+ },
+ "drifts": [
+  {
+   "band": "theta",
+   "contrast": null,
+   "key": "theta|state|food|raw",
+   "kind": "state",
+   "nickname": "Precon1→4 · theta · state · food pair",
+   "role": "food"
+  },
+  {
+   "band": "theta",
+   "contrast": "baseline",
+   "key": "theta|state|food|baseline",
+   "kind": "state",
+   "nickname": "Precon1→4 · theta · state · food pair · cue − baseline",
+   "role": "food"
+  },
+  {
+   "band": "theta",
+   "contrast": null,
+   "key": "theta|state|no_food|raw",
+   "kind": "state",
+   "nickname": "Precon1→4 · theta · state · no-food pair",
+   "role": "no_food"
+  },
+  {
+   "band": "theta",
+   "contrast": "baseline",
+   "key": "theta|state|no_food|baseline",
+   "kind": "state",
+   "nickname": "Precon1→4 · theta · state · no-food pair · cue − baseline",
+   "role": "no_food"
+  },
+  {
+   "band": "theta",
+   "contrast": "roles",
+   "key": "theta|state|-|roles",
+   "kind": "state",
+   "nickname": "Precon1→4 · theta · state · food − no-food (sanity)",
+   "role": null
+  },
+  {
+   "band": "theta",
+   "contrast": null,
+   "key": "theta|transition|food|raw",
+   "kind": "transition",
+   "nickname": "Precon1→4 · theta · transition · food pair",
+   "role": "food"
+  },
+  {
+   "band": "theta",
+   "contrast": "baseline",
+   "key": "theta|transition|food|baseline",
+   "kind": "transition",
+   "nickname": "Precon1→4 · theta · transition · food pair · cue − baseline",
+   "role": "food"
+  },
+  {
+   "band": "theta",
+   "contrast": null,
+   "key": "theta|transition|no_food|raw",
+   "kind": "transition",
+   "nickname": "Precon1→4 · theta · transition · no-food pair",
+   "role": "no_food"
+  },
+  {
+   "band": "theta",
+   "contrast": "baseline",
+   "key": "theta|transition|no_food|baseline",
+   "kind": "transition",
+   "nickname": "Precon1→4 · theta · transition · no-food pair · cue − baseline",
+   "role": "no_food"
+  },
+  {
+   "band": "theta",
+   "contrast": "roles",
+   "key": "theta|transition|-|roles",
+   "kind": "transition",
+   "nickname": "Precon1→4 · theta · transition · food − no-food (sanity)",
+   "role": null
+  },
+  {
+   "band": "theta",
+   "contrast": null,
+   "key": "theta|rest|-|raw",
+   "kind": "rest",
+   "nickname": "Precon1→4 · theta · rest (FP1+FP2)",
+   "role": null
+  },
+  {
+   "band": "beta",
+   "contrast": null,
+   "key": "beta|state|food|raw",
+   "kind": "state",
+   "nickname": "Precon1→4 · beta · state · food pair",
+   "role": "food"
+  },
+  {
+   "band": "beta",
+   "contrast": "baseline",
+   "key": "beta|state|food|baseline",
+   "kind": "state",
+   "nickname": "Precon1→4 · beta · state · food pair · cue − baseline",
+   "role": "food"
+  },
+  {
+   "band": "beta",
+   "contrast": null,
+   "key": "beta|state|no_food|raw",
+   "kind": "state",
+   "nickname": "Precon1→4 · beta · state · no-food pair",
+   "role": "no_food"
+  },
+  {
+   "band": "beta",
+   "contrast": "baseline",
+   "key": "beta|state|no_food|baseline",
+   "kind": "state",
+   "nickname": "Precon1→4 · beta · state · no-food pair · cue − baseline",
+   "role": "no_food"
+  },
+  {
+   "band": "beta",
+   "contrast": "roles",
+   "key": "beta|state|-|roles",
+   "kind": "state",
+   "nickname": "Precon1→4 · beta · state · food − no-food (sanity)",
+   "role": null
+  },
+  {
+   "band": "beta",
+   "contrast": null,
+   "key": "beta|transition|food|raw",
+   "kind": "transition",
+   "nickname": "Precon1→4 · beta · transition · food pair",
+   "role": "food"
+  },
+  {
+   "band": "beta",
+   "contrast": "baseline",
+   "key": "beta|transition|food|baseline",
+   "kind": "transition",
+   "nickname": "Precon1→4 · beta · transition · food pair · cue − baseline",
+   "role": "food"
+  },
+  {
+   "band": "beta",
+   "contrast": null,
+   "key": "beta|transition|no_food|raw",
+   "kind": "transition",
+   "nickname": "Precon1→4 · beta · transition · no-food pair",
+   "role": "no_food"
+  },
+  {
+   "band": "beta",
+   "contrast": "baseline",
+   "key": "beta|transition|no_food|baseline",
+   "kind": "transition",
+   "nickname": "Precon1→4 · beta · transition · no-food pair · cue − baseline",
+   "role": "no_food"
+  },
+  {
+   "band": "beta",
+   "contrast": "roles",
+   "key": "beta|transition|-|roles",
+   "kind": "transition",
+   "nickname": "Precon1→4 · beta · transition · food − no-food (sanity)",
+   "role": null
+  },
+  {
+   "band": "beta",
+   "contrast": null,
+   "key": "beta|rest|-|raw",
+   "kind": "rest",
+   "nickname": "Precon1→4 · beta · rest (FP1+FP2)",
+   "role": null
+  },
+  {
+   "band": "gamma_low",
+   "contrast": null,
+   "key": "gamma_low|state|food|raw",
+   "kind": "state",
+   "nickname": "Precon1→4 · low gamma · state · food pair",
+   "role": "food"
+  },
+  {
+   "band": "gamma_low",
+   "contrast": "baseline",
+   "key": "gamma_low|state|food|baseline",
+   "kind": "state",
+   "nickname": "Precon1→4 · low gamma · state · food pair · cue − baseline",
+   "role": "food"
+  },
+  {
+   "band": "gamma_low",
+   "contrast": null,
+   "key": "gamma_low|state|no_food|raw",
+   "kind": "state",
+   "nickname": "Precon1→4 · low gamma · state · no-food pair",
+   "role": "no_food"
+  },
+  {
+   "band": "gamma_low",
+   "contrast": "baseline",
+   "key": "gamma_low|state|no_food|baseline",
+   "kind": "state",
+   "nickname": "Precon1→4 · low gamma · state · no-food pair · cue − baseline",
+   "role": "no_food"
+  },
+  {
+   "band": "gamma_low",
+   "contrast": "roles",
+   "key": "gamma_low|state|-|roles",
+   "kind": "state",
+   "nickname": "Precon1→4 · low gamma · state · food − no-food (sanity)",
+   "role": null
+  },
+  {
+   "band": "gamma_low",
+   "contrast": null,
+   "key": "gamma_low|transition|food|raw",
+   "kind": "transition",
+   "nickname": "Precon1→4 · low gamma · transition · food pair",
+   "role": "food"
+  },
+  {
+   "band": "gamma_low",
+   "contrast": "baseline",
+   "key": "gamma_low|transition|food|baseline",
+   "kind": "transition",
+   "nickname": "Precon1→4 · low gamma · transition · food pair · cue − baseline",
+   "role": "food"
+  },
+  {
+   "band": "gamma_low",
+   "contrast": null,
+   "key": "gamma_low|transition|no_food|raw",
+   "kind": "transition",
+   "nickname": "Precon1→4 · low gamma · transition · no-food pair",
+   "role": "no_food"
+  },
+  {
+   "band": "gamma_low",
+   "contrast": "baseline",
+   "key": "gamma_low|transition|no_food|baseline",
+   "kind": "transition",
+   "nickname": "Precon1→4 · low gamma · transition · no-food pair · cue − baseline",
+   "role": "no_food"
+  },
+  {
+   "band": "gamma_low",
+   "contrast": "roles",
+   "key": "gamma_low|transition|-|roles",
+   "kind": "transition",
+   "nickname": "Precon1→4 · low gamma · transition · food − no-food (sanity)",
+   "role": null
+  },
+  {
+   "band": "gamma_low",
+   "contrast": null,
+   "key": "gamma_low|rest|-|raw",
+   "kind": "rest",
+   "nickname": "Precon1→4 · low gamma · rest (FP1+FP2)",
+   "role": null
+  }
+ ],
+ "dry_run": true,
+ "excluded": {
+  "r5": "no Precon4 recording, and no histology row"
+ },
+ "n_circuit_artifacts": 240,
+ "question": "How does inter-regional coupling change from Precon1 to Precon4 in DEWEY rats r3, r4, r6-r11?",
+ "rats": [
+  3,
+  4,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11
+ ],
+ "recordings": [
+  {
+   "day": "Precon1",
+   "gid": "sec4bed944ba0",
+   "label": "DEWEY r3 s1 Precon1 FP1 2026-04-04",
+   "rat": 3
+  },
+  {
+   "day": "Precon4",
+   "gid": "s7f9b97e294b8",
+   "label": "DEWEY r3 s4 Precon4 SPC 2026-04-07",
+   "rat": 3
+  },
+  {
+   "day": "Precon1",
+   "gid": "s989ca3b5b2d6",
+   "label": "DEWEY r4 s1 Precon1 FP1 2026-07-22",
+   "rat": 4
+  },
+  {
+   "day": "Precon4",
+   "gid": "s09af032023a9",
+   "label": "DEWEY r4 s4 Precon4 SPC 2026-07-25",
+   "rat": 4
+  },
+  {
+   "day": "Precon1",
+   "gid": "sce947d33ceb8",
+   "label": "DEWEY r6 s1 Precon1 SPC 2026-07-22",
+   "rat": 6
+  },
+  {
+   "day": "Precon4",
+   "gid": "sc905a9b9e371",
+   "label": "DEWEY r6 s4 Precon4 SPC 2026-07-25",
+   "rat": 6
+  },
+  {
+   "day": "Precon1",
+   "gid": "s360e48254222",
+   "label": "DEWEY r7 s1 Precon1 SPC 2026-07-23",
+   "rat": 7
+  },
+  {
+   "day": "Precon4",
+   "gid": "sc710262dff13",
+   "label": "DEWEY r7 s4 Precon4 SPC 2026-07-26",
+   "rat": 7
+  },
+  {
+   "day": "Precon1",
+   "gid": "s234fc080573e",
+   "label": "DEWEY r8 s1 Precon1 SPC 2026-08-12",
+   "rat": 8
+  },
+  {
+   "day": "Precon4",
+   "gid": "sdf092805b0cb",
+   "label": "DEWEY r8 s4 Precon4 SPC 2026-08-15",
+   "rat": 8
+  },
+  {
+   "day": "Precon1",
+   "gid": "sb3ad74706f07",
+   "label": "DEWEY m9 s1 Precon1 SPC 2026-08-12",
+   "rat": 9
+  },
+  {
+   "day": "Precon4",
+   "gid": "s4af2a78d7ab7",
+   "label": "DEWEY r9 s4 Precon4 SPC 2026-08-15",
+   "rat": 9
+  },
+  {
+   "day": "Precon1",
+   "gid": "s0c6efa477a94",
+   "label": "DEWEY r10 s1 Precon1 FP1 2026-08-12",
+   "rat": 10
+  },
+  {
+   "day": "Precon4",
+   "gid": "s5e2c6d208fc7",
+   "label": "DEWEY r10 s4 Precon4 SPC 2026-08-15",
+   "rat": 10
+  },
+  {
+   "day": "Precon1",
+   "gid": "s3fcdbcc678da",
+   "label": "DEWEY r11 s1 Precon1 SPC 2026-08-13",
+   "rat": 11
+  },
+  {
+   "day": "Precon4",
+   "gid": "sbd33a50b7fec",
+   "label": "DEWEY m11 s4 Precon4 SPC 2026-08-16",
+   "rat": 11
+  }
+ ],
+ "requests": 98,
+ "roles": [
+  {
+   "followed": {
+    "High tone": 0,
+    "Low Tone": 153
+   },
+   "food_cue": "Low Tone",
+   "food_pair": "Click_LowTone",
+   "no_food_pairs": [
+    "Noise_HighTone"
+   ],
+   "presented": {
+    "High tone": 144,
+    "Low Tone": 153
+   },
+   "rat": 3
+  },
+  {
+   "followed": {
+    "Click": 0,
+    "Noise": 85
+   },
+   "food_cue": "Noise",
+   "food_pair": "HighTone_Noise",
+   "no_food_pairs": [
+    "LowTone_Click"
+   ],
+   "presented": {
+    "Click": 72,
+    "Noise": 119
+   },
+   "rat": 4
+  },
+  {
+   "followed": {
+    "High tone": 78,
+    "Low Tone": 0
+   },
+   "food_cue": "High tone",
+   "food_pair": "Noise_HighTone",
+   "no_food_pairs": [
+    "Click_LowTone"
+   ],
+   "presented": {
+    "High tone": 82,
+    "Low Tone": 71
+   },
+   "rat": 6
+  },
+  {
+   "followed": {
+    "High tone": 0,
+    "Low Tone": 91
+   },
+   "food_cue": "Low Tone",
+   "food_pair": "Noise_LowTone",
+   "no_food_pairs": [
+    "Click_HighTone"
+   ],
+   "presented": {
+    "High tone": 89,
+    "Low Tone": 91
+   },
+   "rat": 7
+  },
+  {
+   "followed": {
+    "High tone": 53,
+    "Low Tone": 0
+   },
+   "food_cue": "High tone",
+   "food_pair": "Click_HighTone",
+   "no_food_pairs": [
+    "Noise_LowTone"
+   ],
+   "presented": {
+    "High tone": 53,
+    "Low Tone": 53
+   },
+   "rat": 8
+  },
+  {
+   "followed": {
+    "Click": 76,
+    "Noise": 0
+   },
+   "food_cue": "Click",
+   "food_pair": "HighTone_Click",
+   "no_food_pairs": [
+    "LowTone_Noise"
+   ],
+   "presented": {
+    "Click": 87,
+    "Noise": 103
+   },
+   "rat": 9
+  },
+  {
+   "followed": {
+    "Click": 0,
+    "Noise": 174
+   },
+   "food_cue": "Noise",
+   "food_pair": "LowTone_Noise",
+   "no_food_pairs": [
+    "HighTone_Click"
+   ],
+   "presented": {
+    "Click": 127,
+    "Noise": 188
+   },
+   "rat": 10
+  },
+  {
+   "followed": {
+    "Click": 206,
+    "Noise": 0
+   },
+   "food_cue": "Click",
+   "food_pair": "LowTone_Click",
+   "no_food_pairs": [
+    "HighTone_Noise"
+   ],
+   "presented": {
+    "Click": 213,
+    "Noise": 145
+   },
+   "rat": 11
+  }
+ ],
+ "schema": "arc.precon-drift.plan/1",
+ "server": {
+  "base": "http://127.0.0.1:57856",
+  "code_changed": [],
+  "started_at": "2026-09-30T10:26:27-0400"
+ },
+ "spark": [
+  {
+   "day": "Precon1",
+   "gid": "sec4bed944ba0",
+   "hand": 0,
+   "rat": 3,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon4",
+   "gid": "s7f9b97e294b8",
+   "hand": 0,
+   "rat": 3,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon1",
+   "gid": "s989ca3b5b2d6",
+   "hand": 0,
+   "rat": 4,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon4",
+   "gid": "s09af032023a9",
+   "hand": 0,
+   "rat": 4,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon1",
+   "gid": "sce947d33ceb8",
+   "hand": 0,
+   "rat": 6,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon4",
+   "gid": "sc905a9b9e371",
+   "hand": 0,
+   "rat": 6,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon1",
+   "gid": "s360e48254222",
+   "hand": 0,
+   "rat": 7,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon4",
+   "gid": "sc710262dff13",
+   "hand": 0,
+   "rat": 7,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon1",
+   "gid": "s234fc080573e",
+   "hand": 0,
+   "rat": 8,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon4",
+   "gid": "sdf092805b0cb",
+   "hand": 0,
+   "rat": 8,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon1",
+   "gid": "sb3ad74706f07",
+   "hand": 0,
+   "rat": 9,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon4",
+   "gid": "s4af2a78d7ab7",
+   "hand": 0,
+   "rat": 9,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon1",
+   "gid": "s0c6efa477a94",
+   "hand": 0,
+   "rat": 10,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon4",
+   "gid": "s5e2c6d208fc7",
+   "hand": 0,
+   "rat": 10,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon1",
+   "gid": "s3fcdbcc678da",
+   "hand": 0,
+   "rat": 11,
+   "state": "todo",
+   "why": null
+  },
+  {
+   "day": "Precon4",
+   "gid": "sbd33a50b7fec",
+   "hand": 0,
+   "rat": 11,
+   "state": "todo",
+   "why": null
+  }
+ ],
+ "stages": [
+  "spark",
+  "circuits",
+  "drifts"
+ ],
+ "transition": {
+  "after_s": 2.0,
+  "before_s": 1.0
+ }
+}

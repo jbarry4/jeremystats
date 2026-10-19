@@ -9,7 +9,8 @@ Panel kinds
     traces        stacked waveforms (vector, drawn by the browser)
     voltage       voltage raster, channels x time   (imagesc + jet)
     csd           current source density raster      (myCSDPP2 + jet)
-    theta         theta-band raster, optional voltage contour overlay
+    theta         theta-band CSD raster, with adjustable spatial smoothing
+    bandpower     power per narrow band across theta, which theta not how much
     spectrogram   single-channel STFT
     scalogram     single-channel continuous wavelet transform
 
@@ -34,9 +35,13 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 
-import matplotlib.colors as mcolors
+# pyplot and the classes below load on first use, not at start-up;
+# see lazyimp.py. `use("Agg")` stays eager: it must run before pyplot
+# is imported by anything.
+from . import lazyimp  # noqa: E402
+mcolors = lazyimp.module("matplotlib.colors")
 
-from . import csc
+from . import cfc, csc
 
 # Colormaps offered in the UI. `jet` leads because it is what every existing
 # figure in the repo uses; the perceptually-uniform maps follow for new work.
@@ -55,7 +60,25 @@ COLORMAPS = [
     {"id": "gray", "name": "Grayscale", "note": "print safe"},
     {"id": "bone", "name": "Bone", "note": "cool grayscale"},
 ]
+COLORMAPS.append(
+    {"id": "seqblue", "name": "Sequential blue",
+     "note": "single hue, light = near zero; the CFC explainer's map"})
 COLORMAP_IDS = {c["id"] for c in COLORMAPS}
+
+# From Reviving CFC/05_explainer/style.py. It exists because fig11 of that
+# explainer shows the same no-coupling recording three ways and only the one
+# on a sequential map reads as "there is nothing here". A rainbow invents
+# edges in smooth data, and a comodulogram is smooth data.
+_SEQ_BLUE = [
+    "#fcfcfb", "#cde2fb", "#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec",
+    "#5598e7", "#3987e5", "#2a78d6", "#256abf", "#1c5cab", "#184f95",
+    "#104281", "#0d366b"]
+try:
+    matplotlib.colormaps.register(
+        mcolors.LinearSegmentedColormap.from_list("seqblue", _SEQ_BLUE),
+        name="seqblue")
+except (ValueError, AttributeError):
+    pass        # already registered, or a matplotlib too old to be asked
 
 PANELS = [
     {"id": "traces", "name": "Voltage traces", "kind": "vector",
@@ -64,8 +87,13 @@ PANELS = [
      "note": "Channels x time heatmap, as VoltageRaster.m"},
     {"id": "csd", "name": "CSD raster", "kind": "image",
      "note": "Current source density, as myCSDPP2.m"},
-    {"id": "theta", "name": "Theta raster", "kind": "image",
-     "note": "Theta-band (4-12 Hz) raster with optional voltage contours"},
+    {"id": "theta", "name": "Theta CSD", "kind": "image",
+     "note": "Current source density of the theta band (4-12 Hz), as "
+             "xplorefinder's Csdview draws it, with adjustable smoothing"},
+    {"id": "bandpower", "name": "Theta power (band-resolved)", "kind": "image",
+     "single_channel": True,
+     "note": "Power per narrow band across 4-12 Hz -- which theta, not just "
+             "how much"},
     {"id": "spectrogram", "name": "Spectrogram", "kind": "image",
      "single_channel": True, "note": "Short-time Fourier transform of one channel"},
     {"id": "scalogram", "name": "Scalogram", "kind": "image",
@@ -80,8 +108,13 @@ class PanelError(Exception):
 # --------------------------------------------------------------------------
 # Shared data access
 # --------------------------------------------------------------------------
-def _stack(session, spec, channels=None):
-    """Read a [nCh x nSamp] microvolt block for the window, filters applied."""
+def _stack(session, spec, channels=None, band=None):
+    """Read a [nCh x nSamp] microvolt block for the window, filters applied.
+
+    `band` is for a panel that fixes its own (lo, hi) and ignores the
+    session's corners entirely. It also unlocks the decimate-before-filter
+    shortcut, which is only sound when a low-pass is guaranteed -- see below.
+    """
     all_ch = session["channels"]
     idx = channels if channels is not None else spec.get("channels")
     sel = [all_ch[i] for i in idx if 0 <= i < len(all_ch)] if idx else all_ch
@@ -93,15 +126,48 @@ def _stack(session, spec, channels=None):
     if t1 <= t0:
         raise PanelError("The time window is empty (t1 must be after t0).")
 
-    hp = float(spec.get("highpass", 0) or 0)
-    lp = float(spec.get("lowpass", 0) or 0)
-    notch = float(spec.get("notch", 0) or 0)
+    if band:
+        # A panel that fixed its own band (see `_panel_raster`, theta). The
+        # session's corners never ran, so they are not read here either.
+        hp, lp, notch = float(band[0]), float(band[1]), 0.0
+    else:
+        hp = float(spec.get("highpass", 0) or 0)
+        lp = float(spec.get("lowpass", 0) or 0)
+        notch = float(spec.get("notch", 0) or 0)
 
     rows, actual_t0, fs = [], t0, session["fs"]
+    frep = {}
+    # Read at the recording's rate and filter there.
+    #
+    # `csc._prep_for_filter` would decimate first -- a 12 Hz low-pass is
+    # exactly the guarantee that shortcut is built on, and it takes this
+    # panel from 1.6 s to 0.45 s. It is NOT taken, and the reason is worth
+    # writing down so nobody re-adds it as an obvious win: measured on
+    # demo:long-session, the decimated read moves this panel's automatic
+    # colour range by a factor of two. The band-passed traces agree to 1.3%
+    # either way -- it is the second spatial derivative that pulls the
+    # difference out, because a derivative across channels is precisely a
+    # measurement of what neighbouring channels do NOT share.
+    #
+    # Which of the two is the better estimate is a real question and not one
+    # to settle inside a speed-up. Until it is settled, this panel reads the
+    # way the CSD panel beside it reads, so the two can be compared.
     for ch in sel:
         seg, seg_t0, seg_fs = csc._read_channel_window(session, ch, t0, t1)
         actual_t0, fs = seg_t0, seg_fs
-        rows.append(csc.apply_filters(seg, seg_fs, hp, lp, notch))
+        rows.append(csc.apply_filters(seg, seg_fs, hp, lp, notch,
+                                      exact=_full_rate(spec), report=frep))
+    # The coarse-subtraction shortcut, if the filters took it. This is the
+    # one that reaches the spike detector and the comodulogram, so it is
+    # reported even though it changes the trace by a fraction of a
+    # microvolt.
+    if frep.get("coarse_filters"):
+        _note(spec, "filter shortcut",
+              "the band removed by the "
+              + ", ".join(frep["coarse_filters"])
+              + " was measured on a decimated copy and subtracted, rather "
+                "than filtering every sample",
+              extra={"filters": frep["coarse_filters"]})
 
     width = max((r.size for r in rows), default=0)
     if width == 0:
@@ -119,6 +185,16 @@ def _bad_mask(sel, bad_numbers):
     """Which selected rows are marked bad, by CSC channel number."""
     bad = set(int(b) for b in (bad_numbers or []))
     return np.array([ch["number"] in bad for ch in sel], dtype=bool)
+
+
+def _dim_mask(sel, dim_numbers):
+    """Unused. Kept only so an old client asking for `dim_channels` is
+    ignored rather than answered with a traceback."""
+    dim = set(int(d) for d in (dim_numbers or []))
+    if not dim:
+        return None
+    got = np.array([ch["number"] in dim for ch in sel], dtype=bool)
+    return got if got.any() else None
 
 
 def _drop_bad(stack, sel, bad_numbers, mode="nan"):
@@ -161,20 +237,35 @@ def get_cmap(cmap_id):
         return matplotlib.colormaps["viridis"]
 
 
-def _encode_image(matrix, cmap_id, clim, upsample=1):
+def _encode_image(matrix, cmap_id, clim, upsample=1, alpha=None, floor=0.0):
     """Color-map a 2-D array straight to a base64 PNG data URI.
 
     Encoding the array itself rather than a matplotlib figure keeps the image
     pixel-exact and small: axes, ticks and labels are drawn by the browser (or
     by the exporter), never baked into the data.
+
+    `alpha` is an optional array the same shape as `matrix`, in 0..1, which
+    becomes the per-pixel opacity instead of the flat 255. It exists because
+    a value and the confidence in that value are two facts about one cell,
+    and a panel that draws only the first says a coin toss and a certainty
+    in the same colour. Horizon drives it from how far the winning peak beat
+    its runner-up. `floor` keeps the least confident cell faintly visible
+    rather than gone, so an absence of colour still reads as "measured, and
+    it was a toss-up" rather than as "nothing was read here" -- which is what
+    a fully transparent cell already means, and that meaning is taken.
     """
     lo, hi = clim
     if not np.isfinite(lo) or not np.isfinite(hi) or hi <= lo:
         lo, hi = -1.0, 1.0
 
     m = np.asarray(matrix, dtype=np.float64)
+    a = None if alpha is None else np.asarray(alpha, dtype=np.float64)
     if upsample and upsample > 1:
         m = _interp2(m, upsample)
+        # The opacity rides the same upsample, or it would no longer line up
+        # with the colour it is meant to be qualifying.
+        if a is not None:
+            a = _interp2(a, upsample)
 
     norm = mcolors.Normalize(vmin=lo, vmax=hi, clip=True)
     with warnings.catch_warnings():
@@ -182,7 +273,14 @@ def _encode_image(matrix, cmap_id, clim, upsample=1):
         rgba = get_cmap(cmap_id)(norm(m), bytes=True)
     # NaN (bad or missing channels) becomes transparent rather than a color
     # that could be mistaken for data.
-    rgba[..., 3] = np.where(np.isfinite(m), 255, 0).astype(np.uint8)
+    have = np.isfinite(m)
+    if a is None:
+        rgba[..., 3] = np.where(have, 255, 0).astype(np.uint8)
+    else:
+        f = float(min(max(floor, 0.0), 1.0))
+        op = np.clip(np.nan_to_num(a, nan=0.0), 0.0, 1.0)
+        op = f + (1.0 - f) * op
+        rgba[..., 3] = np.where(have, np.round(op * 255.0), 0).astype(np.uint8)
 
     from matplotlib.image import imsave
     buf = io.BytesIO()
@@ -234,10 +332,109 @@ def _robust_clim(m, pct=99.5, symmetric=True, dyn_range=None):
     return (lo, hi)
 
 
-def _decimate_cols(m, max_cols=2000):
-    """Cap raster width; a raster wider than the screen buys nothing."""
+# The theta band, as the panel band-passes it. Same numbers as
+# `spectrum.BANDS` and `store`'s theta preset, so the panel and the spectrum
+# beside it are never quietly talking about different rhythms.
+THETA_BAND = (4.0, 12.0)
+
+# How far the CSD's spatial smoothing is allowed to reach. Past a few
+# channels the second derivative has been averaged back into the field it
+# was meant to remove, so this is a guard rail rather than a preference.
+SMOOTH_MAX_SIGMA = 4.0
+
+
+def _smooth_channels(m, sigma):
+    """Gaussian smoothing DOWN the channel axis. `sigma` is in channels.
+
+    A CSD is a second difference, and a second difference amplifies whatever
+    is uncorrelated between neighbours -- a little noise on one contact comes
+    out as a stripe across the whole picture. So every CSD tool in this
+    lineage smooths across channels before drawing: icsd's `filter_csd`,
+    which Toothy calls through `get_csd_obj`, convolves each time column with
+    a normalised Gaussian window, `f_order=(3, 1)` by default -- three taps,
+    sigma one channel. Sigma is the knob here because it is the half of that
+    pair that says how far the smoothing reaches; the window length follows
+    from it rather than being a second number that can disagree with it.
+
+    One deliberate difference from icsd. Its 'same' convolution pads with
+    zeros, so the top and bottom rows are smoothed towards nothing and come
+    out fainter than they are -- an attenuation that looks exactly like a
+    real fall-off in current at the ends of the probe. Here the window is
+    renormalised by the weight that actually landed on data, so an edge row
+    is the average of the rows that exist. The same arithmetic carries NaN
+    rows (a bad channel left blank) without bleeding them into neighbours.
+    """
+    sigma = float(sigma or 0.0)
+    if sigma <= 0 or m.shape[0] < 2:
+        return m
+    sigma = min(sigma, SMOOTH_MAX_SIGMA)
+
+    n = m.shape[0]
+    half = min(max(1, int(np.ceil(3.0 * sigma))), n - 1)
+    offs = np.arange(-half, half + 1)
+    win = np.exp(-0.5 * (offs / sigma) ** 2).astype(np.float32)
+
+    good = np.isfinite(m)
+    data = np.where(good, m, 0.0).astype(np.float32)
+
+    num = np.zeros_like(data)
+    # When nothing is missing, the weight a row collects depends only on how
+    # near the end of the probe it is -- one column of it, not a whole
+    # array. That is the usual case and worth not allocating for.
+    all_good = bool(good.all())
+    den = (np.zeros(n, dtype=np.float32) if all_good
+           else np.zeros_like(data))
+    ones = np.ones(n, dtype=np.float32)
+
+    for w, off in zip(win, offs):
+        # out[i] gathers in[i + off], for the i where both ends exist.
+        dst0, dst1 = max(0, -off), min(n, n - off)
+        if dst0 >= dst1:
+            continue
+        src0, src1 = dst0 + off, dst1 + off
+        num[dst0:dst1] += w * data[src0:src1]
+        if all_good:
+            den[dst0:dst1] += w * ones[src0:src1]
+        else:
+            den[dst0:dst1] += w * good[src0:src1]
+
+    if all_good:
+        return num / den[:, None]
+    out = np.divide(num, den, out=np.full_like(num, np.nan), where=den > 0)
+    # A blank stays blank. Without this the smoothing quietly fills a bad
+    # channel in from its neighbours, which is a decision `bad_mode` already
+    # owns -- and a channel somebody marked bad would come back looking like
+    # data because they turned a smoothing knob.
+    out[~good] = np.nan
+    return out
+
+
+def _decimate_cols(m, max_cols=2000, spec=None, span=None):
+    """Cap raster width; a raster wider than the screen buys nothing.
+
+    Records what one column ended up covering, which is the number that
+    actually limits reading time structure off the picture. With
+    `full_rate` the cap is lifted tenfold rather than removed: an image
+    with a column per sample is not a wider picture, it is an unsendable
+    one.
+    """
     if m.shape[1] <= max_cols:
         return m
+    if spec is not None:
+        cell = (1000.0 * span / max_cols) if span else None
+        _note(spec, "picture width",
+              "the raster is averaged into %s columns from %s samples%s"
+              % ("{:,}".format(int(max_cols)), "{:,}".format(m.shape[1]),
+                 (" — one column is %.3g ms, so anything briefer than "
+                  "that is averaged into its neighbours" % cell)
+                 if cell else ""),
+              factor=int(np.ceil(m.shape[1] / max_cols)),
+              # A picture is as wide as the pane. `full_rate` used to raise
+              # this cap tenfold, which produced a 20000-column image that
+              # looked exactly the same and took ten times as long -- so the
+              # toggle appeared to do nothing, because it did nothing.
+              reversible=False,
+              extra={"columns": int(max_cols), "column_ms": cell})
     step = int(np.ceil(m.shape[1] / max_cols))
     n = (m.shape[1] // step) * step
     # A block that is entirely NaN (a bad channel) averages to NaN by design.
@@ -249,7 +446,110 @@ def _decimate_cols(m, max_cols=2000):
 # --------------------------------------------------------------------------
 # Panels
 # --------------------------------------------------------------------------
-def describe_input(session, spec, used=None):
+# What was downsampled
+# --------------------------------------------------------------------------
+# Somebody reading a panel cannot tell 3 kHz from 30 kHz by looking, and the
+# difference decides what the picture is allowed to mean. So every step that
+# changes or limits that gets recorded and shown, and every one of them can
+# be turned off.
+#
+# `lossy` is the flag the badge reads: it means "this limits what you can
+# conclude", not "this is wrong". Anti-aliased decimation to 3 kHz is sound
+# and still lossy in that sense -- there is nothing above 1.5 kHz in the
+# answer. `antialiased: False` is the stronger warning: content from above
+# the new Nyquist folded INTO the band on screen.
+def _note(spec, what, why, frm=None, to=None, factor=None,
+          antialiased=True, lossy=True, reversible=True, extra=None):
+    rep = spec.get("_report")
+    if rep is None:
+        return
+    # `reversible` is whether `full_rate` can undo it. A picture is as wide
+    # as the pane it is drawn in, so its averaging cannot be turned off --
+    # and offering a switch that does nothing is worse than saying so.
+    step = {"what": what, "why": why, "lossy": bool(lossy),
+            "antialiased": bool(antialiased),
+            "reversible": bool(reversible)}
+    if frm is not None:
+        step["from"] = float(frm)
+    if to is not None:
+        step["to"] = float(to)
+    if factor is not None:
+        step["factor"] = int(factor)
+    if extra:
+        step.update(extra)
+    rep.append(step)
+    return step
+
+
+def _full_rate(spec):
+    return bool(spec.get("full_rate"))
+
+
+def window_steps(win):
+    """`csc.get_window`'s report, as the same steps a panel reports.
+
+    Public because the trace view does not go through `render_panel` -- it
+    calls `/api/csc/window` directly -- and the pane that draws the raw
+    trace must not be the one place with no badge on it.
+    """
+    steps = []
+    if not isinstance(win, dict):
+        return steps
+    e = win.get("envelope")
+    if e:
+        n = int(e.get("samples") or 0)
+        cols = int(e.get("columns") or 1)
+        steps.append({
+            "what": "envelope",
+            "why": "drawn as %s min/max columns from %s samples — the "
+                   "extremes are exact, the shape inside a column is not"
+                   % ("{:,}".format(cols), "{:,}".format(n)),
+            "lossy": True, "antialiased": True, "reversible": True,
+            "factor": int(max(1, round(n / max(cols, 1)))),
+            "column_ms": win.get("column_ms"),
+        })
+    pf = win.get("prefilter")
+    if pf:
+        steps.append({
+            "what": "rate before filtering",
+            "why": "block-mean decimated to %g Hz before the filters, which "
+                   "the low-pass makes safe" % (pf.get("to") or 0),
+            "from": pf.get("from"), "to": pf.get("to"),
+            "lossy": True, "antialiased": True, "reversible": True,
+        })
+    if win.get("coarse_filters"):
+        steps.append({
+            "what": "filter shortcut",
+            "why": "the band removed by the "
+                   + ", ".join(win["coarse_filters"])
+                   + " was measured on a decimated copy and subtracted",
+            "lossy": True, "antialiased": True, "reversible": True,
+            "filters": win["coarse_filters"],
+        })
+    return steps
+
+
+# A full-rate comodulogram or CWT is not a slower version of the same thing,
+# it is a different order of cost: 975 cells over 1.8 M samples is billions
+# of operations. Refused with the number rather than started.
+FULL_RATE_MAX_SAMPLES = 1_200_000
+
+
+def _full_rate_ceiling(n, fs, what):
+    if n <= FULL_RATE_MAX_SAMPLES:
+        return
+    raise PanelError(
+        "%s at the full %g Hz is %s samples, past the %s this will attempt. "
+        "About %.3g s of recording would fit at this rate — or leave the "
+        "decimation on, which is anti-aliased and keeps everything below "
+        "%g Hz."
+        % (what, fs, "{:,}".format(int(n)),
+           "{:,}".format(FULL_RATE_MAX_SAMPLES),
+           FULL_RATE_MAX_SAMPLES / max(fs, 1.0), fs / 2.0))
+
+
+# --------------------------------------------------------------------------
+def describe_input(session, spec, used=None, band_locked=None):
     """One line saying what this analysis actually ran on.
 
     Every panel and the spike detector work on the window, channels and
@@ -262,19 +562,24 @@ def describe_input(session, spec, used=None):
     t1 = float(spec.get("t1", 0) or 0)
     span = max(0.0, t1 - t0)
 
-    hp = float(spec.get("highpass", 0) or 0)
-    lp = float(spec.get("lowpass", 0) or 0)
-    notch = float(spec.get("notch", 0) or 0)
-    if hp and lp:
-        band = "%g-%g Hz" % (hp, lp)
-    elif hp:
-        band = ">%g Hz" % hp
-    elif lp:
-        band = "<%g Hz" % lp
+    # A panel that fixed its own band never read the strip, so quoting what
+    # the strip is set to would be naming a filter that did not run.
+    if band_locked:
+        band = "%g-%g Hz (this panel only)" % (band_locked[0], band_locked[1])
     else:
-        band = "unfiltered"
-    if notch:
-        band += " +%gHz notch" % notch
+        hp = float(spec.get("highpass", 0) or 0)
+        lp = float(spec.get("lowpass", 0) or 0)
+        notch = float(spec.get("notch", 0) or 0)
+        if hp and lp:
+            band = "%g-%g Hz" % (hp, lp)
+        elif hp:
+            band = ">%g Hz" % hp
+        elif lp:
+            band = "<%g Hz" % lp
+        else:
+            band = "unfiltered"
+        if notch:
+            band += " +%gHz notch" % notch
 
     if used is not None:
         n_ch = len(used)
@@ -292,8 +597,6 @@ def describe_input(session, spec, used=None):
         bits.append("%d bad excluded" % n_bad)
     if session.get("invert"):
         bits.append("inverted")
-    if session.get("even_only"):
-        bits.append("even only")
     return "  \u00b7  ".join(bits)
 
 
@@ -303,7 +606,30 @@ def _clock(t):
 
 
 def render_panel(session, spec):
-    """Render one panel. `spec.panel` selects which."""
+    """Render one panel. `spec.panel` selects which.
+
+    The spec is copied and given somewhere to record what was downsampled.
+    NOT the caller's dict: `/api/panel` uses the request body as the prewarm
+    cache key both before and after this call, so a key added here would
+    mean the cache never hit again.
+
+    A recording read off the cluster is rendered ON the cluster, by this
+    same function, and the picture comes back (vaccio.py). The rasters read
+    every selected channel at full rate -- five seconds of 64 channels is
+    tens of megabytes -- and only the finished panel is worth sending. Before
+    this branch the traces pane worked off the cluster and every aid window
+    beside it (CSD, theta, voltage, spectrogram) failed with "cannot find
+    the file 'vacc:...'", which is what Checkup, Spotter and StrataScope
+    open on.
+    """
+    if (session or {}).get("source") == "vacc":
+        from . import vaccio
+        got = vaccio.panel(session, spec)
+        if not (got or {}).get("ok"):
+            raise PanelError((got or {}).get("error")
+                             or "The cluster could not draw that panel.")
+        return got
+    spec = dict(spec, _report=[])
     kind = spec.get("panel", "voltage")
     if kind == "traces":
         out = _panel_traces(session, spec)
@@ -313,6 +639,8 @@ def render_panel(session, spec):
         out = _panel_raster(session, spec, mode="csd")
     elif kind == "theta":
         out = _panel_raster(session, spec, mode="theta")
+    elif kind == "bandpower":
+        out = _panel_bandpower(session, spec)
     elif kind == "spectrogram":
         out = _panel_tf(session, spec, method="stft")
     elif kind == "scalogram":
@@ -323,7 +651,21 @@ def render_panel(session, spec):
 
     if isinstance(out, dict) and out.get("ok"):
         out["input"] = describe_input(session, spec,
-                                      used=out.get("channels_used"))
+                                      used=out.get("channels_used"),
+                                      band_locked=out.get("band_locked"))
+        # The traces panel gets its facts from `get_window`, which reports
+        # in its own payload; fold them in so there is one place to look.
+        win = out.pop("sampling", None)
+        steps = list(spec.get("_report") or [])
+        if isinstance(win, dict):
+            steps.extend(window_steps(win))
+            out["full_rate"] = bool(win.get("full_rate"))
+        out["sampling"] = steps
+        out["downsampled"] = any(x.get("lossy") for x in steps)
+        # Whether the offer is worth making. A raster whose only step is its
+        # own width has nothing to turn off.
+        out["reversible"] = any(x.get("lossy") and x.get("reversible", True)
+                                for x in steps)
     return out
 
 
@@ -334,7 +676,8 @@ def _panel_traces(session, spec):
         highpass=float(spec.get("highpass", 0) or 0),
         lowpass=float(spec.get("lowpass", 0) or 0),
         notch=float(spec.get("notch", 0) or 0),
-        mode="voltage", spacing_um=float(spec.get("spacing_um", 50) or 50))
+        mode="voltage", spacing_um=float(spec.get("spacing_um", 50) or 50),
+        full_rate=_full_rate(spec))
     if not win.get("ok"):
         raise PanelError(win.get("error", "Could not read that window."))
     win["panel"] = "traces"
@@ -343,17 +686,34 @@ def _panel_traces(session, spec):
 
 
 def _panel_raster(session, spec, mode):
-    stack, sel, t0, fs = _stack(session, spec)
-    # CSD is a second spatial derivative, so one NaN channel wipes out its two
-    # neighbours as well. Interpolating a bad channel from its neighbours keeps
-    # the profile intact -- the same thing the pipeline's "Interpolated_For_Viz"
-    # channels do. Voltage rasters have no such coupling, so a bad channel is
-    # simply left blank there.
-    bad_mode = spec.get("bad_mode") or ("interpolate" if mode == "csd" else "nan")
+    # The theta CSD owns its band.
+    #
+    # Every other panel reads through the filters that are set on screen,
+    # which is right: they are views of the recording and the recording is
+    # what the corners describe. This one is not a view of the recording,
+    # it is a measurement of one rhythm -- and a panel called "theta" that
+    # silently shows 300-500 Hz because somebody went looking for spikes in
+    # another pane is a picture with the wrong name on it. Worse, the two
+    # filters compose: a 300 Hz high-pass and then a 4-12 Hz band-pass is an
+    # empty band, so the panel would come back blank and true.
+    #
+    # So the session's corners are dropped for the read and the band-pass
+    # below is the only shaping this panel does. `describe_input` is told,
+    # so the line under the picture says 4-12 Hz whatever the strip says.
+    stack, sel, t0, fs = _stack(
+        session, spec, band=(THETA_BAND if mode == "theta" else None))
+    # Both CSD modes are a second spatial derivative, so one NaN channel wipes
+    # out its two neighbours as well. Interpolating a bad channel from its
+    # neighbours keeps the profile intact -- the same thing the pipeline's
+    # "Interpolated_For_Viz" channels do. The voltage raster has no such
+    # coupling, so a bad channel is simply left blank there.
+    bad_mode = spec.get("bad_mode") or (
+        "interpolate" if mode in ("csd", "theta") else "nan")
     stack, sel, _bad = _drop_bad(stack, sel, spec.get("bad_channels"),
                                  bad_mode)
 
     upsample = 1
+    smooth = 0.0
     if mode == "csd":
         spacing = float(spec.get("spacing_um", 50) or 50)
         if stack.shape[0] < 3:
@@ -366,9 +726,38 @@ def _panel_raster(session, spec, mode):
         upsample = int(spec.get("upsample", 2) or 1)
         default_cmap = "jet"
     elif mode == "theta":
-        matrix = np.vstack([csc.apply_filters(r, fs, 4.0, 12.0, 0.0) for r in stack])
-        rows = sel
-        units = "uV (4-12 Hz)"
+        # A theta CSD, not a theta voltage raster.
+        #
+        # It used to be the voltage raster with a 4-12 Hz band-pass on it,
+        # which shows where theta is BIG -- and where theta is big is mostly
+        # where the electrode sits nearest the dipole, so the picture is the
+        # far field and the sinks and sources it is supposed to localise are
+        # smeared across every channel. Removing that far field is the whole
+        # reason the second spatial derivative exists, and xplorefinder's
+        # Csdview is the view this is modelled on: CSDPP2's second
+        # difference, interp2 to fill it in, a symmetric colour range and
+        # depth running down the page.
+        #
+        # The band-pass already happened, in `_stack` above: it is this
+        # panel's own band, not the strip's, and putting it there is what
+        # lets the read decimate first. What is left is the derivative.
+        # Filtering across time and differencing across channels are both
+        # linear, so the order of the two could not have changed the answer.
+        spacing = float(spec.get("spacing_um", 50) or 50)
+        if stack.shape[0] < 3:
+            raise PanelError(
+                "A theta CSD needs at least 3 channels (it is a second "
+                "spatial derivative); %d selected." % stack.shape[0])
+        lo, hi = THETA_BAND
+        matrix = csc.compute_csd(stack, spacing)[1:-1]
+        rows = sel[1:-1]
+        units = "uA/mm3 (%g-%g Hz)" % (lo, hi)
+        upsample = int(spec.get("upsample", 2) or 1)
+        # Default one channel: icsd's own default window, and the amount
+        # that takes the single-contact speckle off without moving a
+        # boundary. 0 turns it off entirely.
+        smooth = (1.0 if spec.get("smooth") is None
+                  else max(0.0, float(spec.get("smooth") or 0.0)))
         default_cmap = "jet"
     else:
         matrix = stack
@@ -376,7 +765,26 @@ def _panel_raster(session, spec, mode):
         units = "uV"
         default_cmap = "jet"
 
-    matrix = _decimate_cols(matrix, int(spec.get("max_cols", 2000)))
+    # The time axis of the picture. Reported, because one column of a 60 s
+    # window at 1800 columns is 33 ms and a dentate spike is narrower than
+    # that -- so what can be seen here is not what was read.
+    matrix = _decimate_cols(matrix, int(spec.get("max_cols", 2000)),
+                            spec=spec,
+                            span=float(spec.get("t1", 0) or 0)
+                                 - float(spec.get("t0", 0) or 0))
+
+    # After the decimation, not before it. Smoothing down the channel axis
+    # and averaging along the time axis are both linear and commute exactly,
+    # so this is the same answer computed on 1800 columns instead of two
+    # million -- and it has to happen before the colour range is taken, or
+    # the scale would describe a picture nobody is looking at.
+    #
+    # Deliberately NOT one of the `_report` steps. Those describe what the
+    # read gave up to be affordable, and their switch is "draw at full
+    # rate" -- which would not touch this. Smoothing is a setting with its
+    # own control, and it is reported as one, in `smooth` below.
+    if smooth > 0:
+        matrix = _smooth_channels(matrix, smooth)
 
     clim = _explicit_clim(spec)
     if clim is None:
@@ -397,14 +805,31 @@ def _panel_raster(session, spec, mode):
         # Row 0 of the image sits at the TOP of the extent (origin="upper"),
         # so the y axis runs from len(rows) at the top down to 1 at the bottom.
         "extent": [t0, t0 + n_samp / fs, 0.5, len(rows) + 0.5],
-        "rows": [{"label": c["label"], "number": c["number"], "bad": bool(b)}
+        # `dim` is always false now and kept for the shape of the answer:
+        # there was briefly a mode that drew unselected channels faintly, and
+        # a response that sometimes has a key and sometimes does not is
+        # harder to read than one that always answers.
+        "rows": [{"label": c["label"], "number": c["number"], "bad": bool(b),
+                  "dim": False}
                  for c, b in zip(rows, row_bad)],
         "clim": clim, "cmap": cmap, "units": units,
-        "clim_auto": list(_robust_clim(matrix, float(spec.get("clim_pct", 99.5)),
+        "clim_auto": list(_robust_clim(matrix,
+                                       float(spec.get("clim_pct", 99.5)),
                                        symmetric=True)),
+        # Voltage, CSD and theta are signed and zero is the middle of them,
+        # so a scale for these is symmetric and the client may say so.
+        "clim_symmetric": True,
         "clim_manual": _explicit_clim(spec) is not None,
         "shape": list(matrix.shape),
         "upsample": upsample,
+        # What the smoothing control ended up at, clamped. Sent for every
+        # raster so the client never has to work out which modes have one.
+        "smooth": float(min(smooth, SMOOTH_MAX_SIGMA)),
+        "smooth_max": SMOOTH_MAX_SIGMA,
+        # The band this panel fixed for itself, ignoring the strip. Absent
+        # on the panels that do read the strip, so the client can tell the
+        # two apart without knowing which mode is which.
+        "band_locked": list(THETA_BAND) if mode == "theta" else None,
         "t0": t0, "t1": t0 + n_samp / fs, "fs": fs,
     }
 
@@ -495,9 +920,16 @@ def _panel_tf(session, spec, method):
         combined = powers[0]
         rows_meta = None
     elif tf_mode == "stack":
-        # Pad each block to the same width, then stack top-to-bottom.
+        # Pad each block to the same width, then stack them -- LAST channel
+        # first. The image is flipped once, below, so that each block's low
+        # frequency sits at its bottom as MATLAB draws it; that flip also
+        # reverses the ORDER of the blocks. Stacked in channel order, the
+        # first channel's spectrogram was drawn in the bottom row while the
+        # client labelled rows top-down from `rows` -- every row carried the
+        # label of its mirror image, so a discharge on CSC57 read as CSC1
+        # (2026-10-13). Reversed here, the flip leaves channel 1 on top.
         width = min(p.shape[1] for p in powers)
-        combined = np.vstack([p[:, :width] for p in powers])
+        combined = np.vstack([p[:, :width] for p in powers[::-1]])
         times = times[:width]
         rows_meta = [{"label": c["label"], "number": c["number"]} for c in sel]
     else:
@@ -546,21 +978,27 @@ def _panel_tf(session, spec, method):
         db = db[lo_i:hi_i + 1]
         freqs = freqs[lo_i:hi_i + 1]
 
+    # The scale this panel picks for itself, worked out whether or not one is
+    # pinned: it is what the control means by "auto", and what pinning should
+    # pin to. Computed once, by whichever rule is actually live -- reporting
+    # the percentile branch while the legacy path drew the full range said
+    # "auto is [82.6, 122.6]" under a picture scaled to [5.2, 136.2].
+    finite = db[np.isfinite(db)]
+    if not finite.size:
+        auto_clim = [0.0, 1.0]
+    elif spec.get("_legacy_stft") and not spec.get("clim_pct"):
+        # MATLAB's imagesc scales to the full range of the data, and that is
+        # part of what the old picture looked like. A percentile clip is
+        # usually the better choice -- one loud artifact cannot wash the plot
+        # out -- but it is not what this is reproducing.
+        auto_clim = [float(np.min(finite)), float(np.max(finite))]
+    else:
+        hi = float(np.percentile(finite, float(spec.get("clim_pct", 99.5))))
+        auto_clim = [hi - float(spec.get("dyn_range_db", 40) or 40), hi]
+
     clim = _explicit_clim(spec)
     if clim is None:
-        finite = db[np.isfinite(db)]
-        if spec.get("_legacy_stft") and not spec.get("clim_pct"):
-            # MATLAB's imagesc scales to the full range of the data, and that
-            # is part of what the old picture looked like. A percentile clip
-            # is usually the better choice -- one loud artifact cannot wash
-            # the plot out -- but it is not what this is reproducing.
-            clim = ([float(np.min(finite)), float(np.max(finite))]
-                    if finite.size else [0.0, 1.0])
-        else:
-            hi = float(np.percentile(finite, float(spec.get("clim_pct", 99.5)))) \
-                if finite.size else 0.0
-            dyn = float(spec.get("dyn_range_db", 40) or 40)
-            clim = [hi - dyn, hi]
+        clim = list(auto_clim)
 
     cmap = spec.get("cmap", "jet")
     # Low frequency at the bottom, as MATLAB draws it.
@@ -577,6 +1015,14 @@ def _panel_tf(session, spec, method):
         "extent": [t0 + float(times[0]), t0 + float(times[-1]),
                    extent_y[0], extent_y[1]],
         "clim": [float(clim[0]), float(clim[1])], "cmap": cmap, "units": "dB",
+        # What the scale would be with nothing pinned. Without this the client
+        # had no idea what this panel's numbers look like and pinned it to a
+        # placeholder.
+        "clim_auto": list(auto_clim),
+        # Decibels above a reference: one-sided, so there is no symmetry to
+        # preserve and forcing some would throw away half the range.
+        "clim_symmetric": False,
+        "clim_manual": _explicit_clim(spec) is not None,
         "channel": {"label": sel[0]["label"], "number": sel[0]["number"],
                     "index": int(sel[0]["index"])} if n_ch == 1 else None,
         "channels_used": [{"label": c["label"], "number": c["number"],
@@ -595,6 +1041,199 @@ def _panel_tf(session, spec, method):
                     if spec.get("_legacy_stft") else "STFT (high resolution)")
                    if method == "stft" else "Morlet CWT")
                   + ("" if n_ch == 1 else "  %d ch %s" % (n_ch, tf_mode)),
+    }
+
+
+def _panel_bandpower(session, spec):
+    """Power in each of a run of narrow bands, across time.
+
+    The panel that exists because `theta` is a trap. That one bandpasses
+    4-12 Hz in one go and draws the result, which answers "how much theta is
+    there" and cannot answer "which theta" -- and when the rhythm shifts from
+    7 Hz to 9 Hz within a session, the second question is the one being asked.
+
+    So: one narrow band per row, the mean squared envelope of each, exactly as
+    `ThetaPower.m` computes it in the CFC pipeline. Same definition of a band
+    as the comodulogram's phase axis uses, from the same analytic signal, so
+    the two panels are never quietly talking about different things.
+
+    What it has to admit, and does, in `realised_bw`: asking for 0.5 Hz does
+    not get you 0.5 Hz. `eegfilt`'s order is tied to the low cutoff, and what
+    comes out is about 0.30 * that -- 1.1 Hz at the bottom of theta and 3.4 Hz
+    at the top. The rows overlap. This is a smooth read of where theta sits,
+    not seventeen independent measurements, and the caption says so.
+    """
+    ch_list = _tf_channels(spec, session)
+    if len(ch_list) != 1:
+        ch_list = ch_list[:1]
+
+    lo = float(spec.get("band_lo", 4) or 4)
+    hi = float(spec.get("band_hi", 12) or 12)
+    step = float(spec.get("band_step", 0.5) or 0.5)
+    bw = float(spec.get("band_bw", 0) or 0) or step
+    if hi <= lo:
+        raise PanelError("The band range is empty: %g must be below %g."
+                         % (lo, hi))
+    if step <= 0:
+        raise PanelError("The band step has to be positive.")
+    vec = cfc.grid(lo, hi, step)
+    if len(vec) > 96:
+        raise PanelError(
+            "%d bands is more than this panel will draw. Widen the step: at "
+            "0.5 Hz the filters already overlap, so more rows is more picture "
+            "and not more information." % len(vec))
+
+    # Read wider than the window so the filter's edge transient falls outside
+    # what gets drawn, then crop back -- the same reason _panel_tf pads.
+    #
+    # Two separate requirements, and an earlier version conflated them. The
+    # transient reaches `edge_seconds` into each end and has to be thrown
+    # away. Separately, filtfilt will not run AT ALL on less than
+    # `needed_seconds` of signal. Padding by the transient alone, capped at
+    # the window length, left a 0.25 s window three samples short of the
+    # second requirement -- and scipy's complaint about vector lengths went
+    # to the browser as a 400.
+    want_t0 = float(spec.get("t0", 0.0))
+    want_t1 = float(spec.get("t1", want_t0 + 1.0))
+    span = max(want_t1 - want_t0, 1e-6)
+    need = cfc.needed_seconds(lo)
+    edge = cfc.edge_seconds(lo)
+    pad = max(edge, (need - span) / 2.0)
+    dur = float(session.get("duration_s") or 0.0)
+    if dur > 0 and dur < need:
+        raise PanelError(
+            "A %g Hz band needs %.2f s of recording to filter at all "
+            "(eegfilt uses 3*fix(fs/%g) taps and filtfilt needs three times "
+            "that), and this recording is %.2f s long. Raise the bottom of "
+            "the band range." % (lo, need, lo, dur))
+    padded = dict(spec)
+    padded["t0"] = max(0.0, want_t0 - pad)
+    padded["t1"] = min(dur, want_t1 + pad) if dur > 0 else want_t1 + pad
+    # Near either end of the recording the pad is clipped on one side, so
+    # take it back on the other -- otherwise looking at the first second of a
+    # recording fails while the middle works.
+    short = need - (padded["t1"] - padded["t0"])
+    if short > 0:
+        padded["t1"] = padded["t1"] + short
+        if dur > 0 and padded["t1"] > dur:
+            padded["t1"] = dur
+            padded["t0"] = max(0.0, dur - need)
+
+    stack, sel, t0, fs = _stack(session, padded, channels=ch_list)
+    row = _fill_gaps(stack[0], sel[0])
+
+    # Down to a rate the filter bank can afford. Anti-aliased, unlike
+    # read_csc.m -- see cfc.decimate_to. At 30 kHz a 60 s window is 1.8
+    # million samples and none of the headroom above 1 kHz is being used.
+    target_fs = float(spec.get("target_fs", 3000) or 3000)
+    if hi + bw >= target_fs * 0.4:
+        target_fs = (hi + bw) * 4.0
+    if _full_rate(spec):
+        _full_rate_ceiling(row.size, fs, "Band power")
+        y, fs_used, factor = row, fs, 1
+    else:
+        y, fs_used, factor = cfc.decimate_to(row, fs, target_fs)
+    if factor > 1:
+        _note(spec, "analysis rate",
+              "the band filters ran at %g Hz, not %g — anti-aliased, so "
+              "nothing above %g Hz is in this answer"
+              % (fs_used, fs, fs_used / 2.0),
+              frm=fs, to=fs_used, factor=factor)
+
+    power = cfc.band_power(y, fs_used, vec, bw)
+
+    # Crop the padding back off, in the decimated sample space.
+    lead = int(round((want_t0 - t0) * fs_used))
+    keep = int(round(span * fs_used))
+    lead = max(0, min(lead, power.shape[1] - 1))
+    keep = max(1, min(keep, power.shape[1] - lead))
+    power = power[:, lead:lead + keep]
+    shown_t0 = t0 + lead / fs_used
+    shown_t1 = shown_t0 + power.shape[1] / fs_used
+
+    # The marginal profile, in the pipeline's own units, before any log.
+    profile = power.mean(axis=1)
+    peak_i = int(np.argmax(profile))
+
+    matrix = _decimate_cols(power, int(spec.get("max_cols", 2000)),
+                            spec=spec, span=shown_t1 - shown_t0)
+
+    log = str(spec.get("band_scale", "log")).lower() != "linear"
+    if log:
+        with np.errstate(divide="ignore", invalid="ignore"):
+            drawn = 10.0 * np.log10(np.maximum(matrix, 1e-12))
+        units = "dB re 1 uV^2"
+    else:
+        drawn = matrix
+        units = "uV^2"
+
+    # The scale this panel picks for itself, computed whether or not one is
+    # pinned: it is what "auto" means on the control, and what pinning should
+    # pin to. Its absence is what pinned a 30 dB panel to [-1, 1].
+    finite = drawn[np.isfinite(drawn)]
+    if not finite.size:
+        auto_clim = [0.0, 1.0]
+    elif log:
+        top = float(np.percentile(finite, float(spec.get("clim_pct", 99.5))))
+        auto_clim = [top - float(spec.get("dyn_range_db", 30) or 30), top]
+    else:
+        auto_clim = [0.0, float(np.percentile(
+            finite, float(spec.get("clim_pct", 99.5))))]
+
+    clim = _explicit_clim(spec)
+    if clim is None:
+        clim = list(auto_clim)
+
+    cmap = spec.get("cmap", "jet")
+    # Low frequency at the bottom, as every other raster here draws it.
+    data_uri = _encode_image(drawn[::-1], cmap, clim)
+
+    table = cfc.band_table(fs_used, vec, bw)
+    widths = [w for w in table["realised_bw"] if np.isfinite(w)]
+
+    return {
+        "ok": True, "panel": "bandpower", "render": "image", "image": data_uri,
+        "extent": [shown_t0, shown_t1,
+                   table["centers"][0], table["centers"][-1]],
+        "clim": [float(clim[0]), float(clim[1])], "cmap": cmap, "units": units,
+        "clim_auto": [float(auto_clim[0]), float(auto_clim[1])],
+        # Power: zero is the floor, not the middle. In dB the useful control
+        # is how far below the peak the map bottoms out, which is a span
+        # anchored at the top, not a magnitude either side of nothing.
+        "clim_symmetric": False,
+        "clim_manual": _explicit_clim(spec) is not None,
+        "channel": {"label": sel[0]["label"], "number": sel[0]["number"],
+                    "index": int(sel[0]["index"])},
+        "channels_used": [{"label": sel[0]["label"], "number": sel[0]["number"],
+                           "index": sel[0]["index"]}],
+        # Drawn by the client as vector beside the image, so it stays crisp
+        # and can be hovered for a number.
+        "profile": [float(v) for v in profile],
+        "profile_units": "uV^2",
+        "centers": table["centers"],
+        "band_lo": lo, "band_hi": hi, "band_step": step, "band_bw": bw,
+        "nominal_bw": bw,
+        "realised_bw": table["realised_bw"],
+        "realised_bw_range": ([round(min(widths), 2), round(max(widths), 2)]
+                              if widths else None),
+        "bands": len(vec),
+        "peak_band": round(table["centers"][peak_i], 3),
+        "peak_power": float(profile[peak_i]),
+        "log_scale": log,
+        "fs_used": float(fs_used),
+        "decimation": int(factor),
+        "fs_native": float(fs),
+        "shape": list(drawn.shape),
+        "t0": shown_t0, "t1": shown_t1, "fs": fs,
+        # One line under the panel. Every part of it is something a reader
+        # would otherwise have to assume, and would assume wrongly.
+        "method": ("%d bands  %g Hz nominal, %.1f-%.1f Hz realised  "
+                   "(firls, 3xfix(fs/f1) taps -- rows overlap)  "
+                   "%.0f->%.0f Hz anti-aliased"
+                   % (len(vec), bw,
+                      min(widths) if widths else float("nan"),
+                      max(widths) if widths else float("nan"),
+                      fs, fs_used)),
     }
 
 
@@ -806,9 +1445,20 @@ def _cwt(y, fs, fmin, fmax, spec):
     # Cap the transform length; a CWT over a long window at high fs is huge.
     max_n = int(spec.get("max_cwt_samples", 200000) or 200000)
     step = 1
-    if y.size > max_n:
+    if _full_rate(spec):
+        _full_rate_ceiling(y.size, fs, "A scalogram")
+    elif y.size > max_n:
         step = int(np.ceil(y.size / max_n))
         y = y[::step]
+        # Said plainly, because this one is not anti-aliased: it is a plain
+        # stride, so anything between the new Nyquist and the old one is
+        # FOLDED INTO the band being drawn. Spike energy in a 250 Hz
+        # scalogram arrives this way.
+        _note(spec, "scalogram rate",
+              "every %dth sample was taken, with no anti-alias filter, so "
+              "energy between %g and %g Hz is folded into this picture"
+              % (step, fs / (2.0 * step), fs / 2.0),
+              frm=fs, to=fs / step, factor=step, antialiased=False)
     fs_eff = fs / step
 
     n = y.size
@@ -833,7 +1483,9 @@ def _cwt(y, fs, fmin, fmax, spec):
         power[i] = np.abs(coef) ** 2
 
     times = np.arange(n) / fs_eff
-    power = _decimate_cols(power, int(spec.get("max_cols", 2000)))
+    power = _decimate_cols(power, int(spec.get("max_cols", 2000)),
+                           spec=spec,
+                           span=(n / fs_eff) if fs_eff else None)
     if power.shape[1] != n:
         times = np.linspace(times[0], times[-1], power.shape[1])
     return power, freqs, times
@@ -986,3 +1638,177 @@ def _merge_group(group):
         "label": "thr",
         "source": "threshold",
     }
+
+
+# ==========================================================================
+# Comodulogram
+#
+# Not a panel. A panel answers in a fraction of a second and redraws when the
+# window moves; this is seconds to half a minute and only happens when
+# somebody asks for it by name. So it runs as a job (see backend/cfc.py) and
+# arrives as numbers rather than only as a picture.
+#
+# Numbers rather than a picture because the map is 17 x 37 -- 629 floats, less
+# than the PNG of it -- and once the browser has them it can rescale, recolour
+# and read out a cell under the cursor without asking again. That matters more
+# here than anywhere else in the app: `fig11_colour_lies.py` exists because a
+# comodulogram autoscaled to its own range and drawn in jet tells a story the
+# numbers do not support, and the fix is to make changing the scale free.
+# ==========================================================================
+def run_comodulogram(session, spec, job=None):
+    """One comodulogram of one channel over one window. Called on a thread."""
+    ch_list = _tf_channels(spec, session)[:1]
+
+    slow = cfc.grid(float(spec.get("slow_lo", 4)), float(spec.get("slow_hi", 12)),
+                    float(spec.get("slow_step", 0.5)))
+    fast = cfc.grid(float(spec.get("fast_lo", 20)), float(spec.get("fast_hi", 200)),
+                    float(spec.get("fast_step", 5)))
+    slow_bw = float(spec.get("slow_bw", 0.5) or 0.5)
+    fast_bw = float(spec.get("fast_bw", 10) or 10)
+    nsurr = int(spec.get("nsurr", 0) or 0)
+    seed = int(spec.get("seed", 42) or 42)
+    nbin = int(spec.get("nbin", cfc.NBIN) or cfc.NBIN)
+
+    want_t0 = float(spec.get("t0", 0.0))
+    want_t1 = float(spec.get("t1", want_t0 + 1.0))
+    span = want_t1 - want_t0
+    if span <= 0:
+        raise PanelError("The window is empty (t1 must be after t0).")
+
+    # Read wider than the window and cut the filter's edge transient off
+    # afterwards. Without this the first and last stretch of every window is
+    # filter ringing being measured as coupling.
+    #
+    # Same two requirements as the band-power panel, and the same trap: the
+    # transient reach and the minimum length filtfilt will accept are
+    # different numbers, and padding by the first is not enough to satisfy
+    # the second on a short window. See cfc.needed_seconds.
+    need = cfc.needed_seconds(slow[0])
+    pad = max(cfc.edge_seconds(slow[0]), (need - span) / 2.0)
+    dur = float(session.get("duration_s") or 0.0)
+    if dur > 0 and dur < need:
+        raise PanelError(
+            "A %g Hz phase band needs %.2f s of recording to filter at all, "
+            "and this recording is %.2f s long. Raise the bottom of the "
+            "phase axis." % (slow[0], need, dur))
+
+    if job:
+        job.begin("read", 1, "windows")
+    read_spec = dict(spec)
+    read_spec["t0"] = max(0.0, want_t0 - pad)
+    read_spec["t1"] = min(dur, want_t1 + pad) if dur > 0 else want_t1 + pad
+    # Clipped at one end of the recording, take it back at the other.
+    short = need - (read_spec["t1"] - read_spec["t0"])
+    if short > 0:
+        read_spec["t1"] = read_spec["t1"] + short
+        if dur > 0 and read_spec["t1"] > dur:
+            read_spec["t1"] = dur
+            read_spec["t0"] = max(0.0, dur - need)
+    stack, sel, got_t0, fs = _stack(session, read_spec, channels=ch_list)
+    row = _fill_gaps(stack[0], sel[0])
+    if job:
+        job.tick("read", 1)
+
+    if job:
+        job.begin("decimate", 1, "passes")
+    target_fs = float(spec.get("target_fs", 3000) or 3000)
+    top = fast[-1] + fast_bw
+    if top >= target_fs * 0.4:
+        # Room above the highest band, so the amplitude axis is not measuring
+        # its own Nyquist. 2.5x the top band rather than the bare 2x.
+        target_fs = top * 2.5
+    if _full_rate(spec):
+        _full_rate_ceiling(row.size, fs, "A comodulogram")
+        y, fs_used, factor = row, fs, 1
+    else:
+        y, fs_used, factor = cfc.decimate_to(row, fs, target_fs)
+    if job:
+        job.tick("decimate", 1)
+    if factor > 1:
+        _note(spec, "analysis rate",
+              "every band filter and every modulation index ran at %g Hz, "
+              "not %g — anti-aliased, so nothing above %g Hz is in this "
+              "map" % (fs_used, fs, fs_used / 2.0),
+              frm=fs, to=fs_used, factor=factor)
+
+    # Trim the padding in the decimated space, so the grid sees exactly the
+    # window that was asked for.
+    lead = max(0, int(round((want_t0 - got_t0) * fs_used)))
+    keep = max(1, int(round(span * fs_used)))
+    y = y[lead:lead + keep]
+    if y.size < int(4 * fs_used / max(slow[0], 0.5)):
+        raise PanelError(
+            "This window is too short for a %g Hz phase band: %.1f s is under "
+            "four cycles, and a modulation index built from that is noise. "
+            "Widen the window or raise the bottom of the phase axis."
+            % (slow[0], y.size / fs_used))
+
+    out = cfc.comodulogram(y, fs_used, slow, slow_bw, fast, fast_bw,
+                           nsurr=nsurr, seed=seed, nbin=nbin, job=job)
+
+    if job:
+        job.begin("draw", 1, "images")
+
+    MI = out["MI"]
+    slow_tab = cfc.band_table(fs_used, slow, slow_bw)
+    fast_tab = cfc.band_table(fs_used, fast, fast_bw)
+    j, i = np.unravel_index(int(np.argmax(MI)), MI.shape)
+
+    # Modulation index is a Kullback-Leibler divergence: zero is no coupling
+    # and it cannot go below that. Nothing symmetric about it.
+    auto_clim = [0.0, float(MI.max())]
+    clim = _explicit_clim(spec) or list(auto_clim)
+    cmap = spec.get("cmap", "seqblue")
+    # Amplitude up the side, phase along the bottom, low at the bottom left --
+    # the orientation every comodulogram in the repo is drawn in. Upsampled
+    # with nearest neighbour rather than smoothed: 17 x 37 cells is what was
+    # measured, and contourf's smooth blobs imply a resolution the 0.5 Hz
+    # phase axis does not have (its filters are 1.1-3.4 Hz wide).
+    image = _encode_image(MI.T[::-1], cmap, clim, upsample=12)
+
+    res = {
+        "ok": True,
+        "kind": "comodulogram",
+        "image": image,
+        "mi": [[float(v) for v in r] for r in MI],
+        "clim": [float(clim[0]), float(clim[1])],
+        "clim_auto": [float(auto_clim[0]), float(auto_clim[1])],
+        "clim_symmetric": False,
+        "clim_manual": _explicit_clim(spec) is not None,
+        "cmap": cmap,
+        "max": float(MI.max()),
+        "peak": {"slow": slow_tab["centers"][j], "fast": fast_tab["centers"][i],
+                 "mi": float(MI[j, i])},
+        "slow": slow_tab, "fast": fast_tab,
+        "nbin": nbin,
+        "channel": {"label": sel[0]["label"], "number": sel[0]["number"],
+                    "index": int(sel[0]["index"])},
+        "t0": want_t0, "t1": want_t1, "span": span,
+        "fs_native": float(fs), "fs_used": float(fs_used),
+        "decimation": int(factor),
+        "n_samples": int(y.size),
+        "cycles": round(y.size / fs_used * (slow[0] + slow_bw / 2.0), 1),
+        "nsurr": int(nsurr),
+        "session": session.get("path"),
+        "filters": {"highpass": float(spec.get("highpass", 0) or 0),
+                    "lowpass": float(spec.get("lowpass", 0) or 0),
+                    "notch": float(spec.get("notch", 0) or 0)},
+    }
+
+    if nsurr:
+        p = out["p"]
+        res.update({
+            "p": [[float(v) for v in r] for r in p],
+            "z": [[(float(v) if np.isfinite(v) else None) for v in r]
+                  for r in out["z"]],
+            "seed": int(seed),
+            "n_significant": int((p <= 0.05).sum()),
+            "n_cells": int(p.size),
+            # What 5% of cells would be if nothing were going on. Printed
+            # beside the count because "31 cells significant" means nothing
+            # until you know that chance alone gives you 31.
+            "expected_by_chance": round(0.05 * p.size, 1),
+            "p_floor": round(1.0 / (nsurr + 1.0), 4),
+        })
+
+    return res

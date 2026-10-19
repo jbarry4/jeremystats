@@ -1,0 +1,24 @@
+{
+  "_at": {
+    "key": "2026-09-10T18:23:14.862252+00:00",
+    "rel": "2026-09-10T18:23:14.862252+00:00",
+    "starred": "2026-09-10T18:23:14.862252+00:00",
+    "updated": "2026-09-10T18:23:14.862252+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-10T18:23:14.862252+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "key": "storyboards/arrow harness_15.png",
+  "rel": "Storyboards/arrow harness_15.png",
+  "starred": false,
+  "updated": {
+    "at": "2026-09-10T14:23:14-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "_at": {
+    "created": "2026-09-22T20:02:28.104563+00:00",
+    "id": "2026-09-22T20:02:28.104563+00:00",
+    "schema": "2026-09-22T20:02:28.104563+00:00",
+    "slides": "2026-09-22T20:02:28.104563+00:00",
+    "title": "2026-09-22T20:02:28.104563+00:00",
+    "updated": "2026-09-22T20:02:28.104563+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-22T20:02:28.104563+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.22.3",
+    "at": "2026-09-22T16:02:28-04:00",
+    "commit": "d21dd4c",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "Home",
+    "machine": "Homebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "id": "deck_da95bf8e",
+  "schema": 1,
+  "slides": [
+    {
+      "id": "p1",
+      "items": [
+        {
+          "a": [
+            0,
+            0
+          ],
+          "alpha": 1,
+          "b": [
+            1,
+            1
+          ],
+          "color": "#c0392b",
+          "filled": false,
+          "h": 0.4000806614236741,
+          "id": "iyequ49a",
+          "shape": "arrow",
+          "type": "shape",
+          "w": 0.3992740471869329,
+          "width": 2,
+          "x": 0.1996370235934664,
+          "y": 0.19832627545876186,
+          "z": 3
+        }
+      ],
+      "notes": "",
+      "show_notes": false,
+      "title": "One"
+    }
+  ],
+  "title": "arrow probe",
+  "updated": {
+    "app_version": "2026.09.22.3",
+    "at": "2026-09-22T16:02:28-04:00",
+    "commit": "d21dd4c",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "Home",
+    "machine": "Homebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

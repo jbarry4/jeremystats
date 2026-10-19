@@ -1,0 +1,151 @@
+{
+  "format": "png",
+  "id": "cc78ffca194f",
+  "kind": "figure",
+  "label": "2022-08-02",
+  "output": {
+    "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/2022-08-02/2022-08-02_20260902_202327.png",
+    "path": "C:\\Users\\info\\Desktop\\JeremyStats\\BARRY GUI\\Results\\2022-08-02\\2022-08-02_20260902_202327.png",
+    "rel": "2022-08-02/2022-08-02_20260902_202327.png"
+  },
+  "panels": [
+    {
+      "col": 0,
+      "panel": "spectrogram",
+      "row": 0,
+      "title": "Spectrogram"
+    },
+    {
+      "col": 0,
+      "panel": "traces",
+      "row": 1,
+      "title": "Voltage traces"
+    }
+  ],
+  "parameters": {
+    "bad_channels": [],
+    "cmap": "jet",
+    "cols": 2,
+    "highpass": 120,
+    "lowpass": 250,
+    "notch": 0,
+    "page": "letter_landscape",
+    "rows": 2,
+    "t0": 250,
+    "t1": 299.077072
+  },
+  "problems": [],
+  "provenance": {
+    "at": "2026-09-02T20:23:27-04:00",
+    "machine": "Home",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "recipe": {
+    "bad_channels": [],
+    "channels": [
+      0,
+      1,
+      2
+    ],
+    "cmap": "jet",
+    "cols": 2,
+    "dpi": 300,
+    "event_count": 0,
+    "events": [],
+    "events_truncated": false,
+    "gain": 1,
+    "height_in": 8.5,
+    "highpass": 120,
+    "identity": {
+      "confidence": "low",
+      "group": null,
+      "key": null,
+      "label": "2022-08-02",
+      "loose_key": null,
+      "mouse": null,
+      "mouse_folder": "Downloads",
+      "mouse_source": "none",
+      "path": "C:\\Users\\info\\Downloads\\TEST_DATA",
+      "rec_folder": null,
+      "session": null,
+      "session_folder": "TEST_DATA",
+      "start": "2022-08-02T17:11:19",
+      "time_source": "header"
+    },
+    "lowpass": 250,
+    "metadata": {
+      "author": "TheShanri",
+      "date": "9/2/2026, 8:22:41 PM",
+      "machine": "Home",
+      "notes": "",
+      "source_path": "C:/Users/info/Downloads/TEST_DATA"
+    },
+    "notch": 0,
+    "page": "letter_landscape",
+    "panels": [
+      {
+        "channel": 0,
+        "cmap": "jet",
+        "col": 0,
+        "colspan": 2,
+        "panel": "spectrogram",
+        "row": 0,
+        "rowspan": 1,
+        "session_id": "s2",
+        "title": "Spectrogram"
+      },
+      {
+        "cmap": "jet",
+        "col": 0,
+        "colspan": 2,
+        "panel": "traces",
+        "row": 1,
+        "rowspan": 1,
+        "session_id": "s2",
+        "title": "Voltage traces"
+      }
+    ],
+    "rows": 2,
+    "schema": 1,
+    "session_label": "2022-08-02",
+    "sessions": {
+      "default": {
+        "even_only": false,
+        "invert": true,
+        "path": "C:/Users/info/Downloads/TEST_DATA"
+      },
+      "s2": {
+        "even_only": false,
+        "invert": true,
+        "path": "C:/Users/info/Downloads/TEST_DATA"
+      }
+    },
+    "show_metadata": true,
+    "spacing_um": 50,
+    "subtitle": "",
+    "t0": 250,
+    "t1": 299.077072,
+    "title": "2022-08-02",
+    "width_in": 11
+  },
+  "schema": 1,
+  "script": "Xplorefinder figure",
+  "session": {
+    "confidence": "low",
+    "group": null,
+    "key": null,
+    "label": "2022-08-02",
+    "loose_key": null,
+    "mouse": null,
+    "mouse_folder": "Downloads",
+    "mouse_source": "none",
+    "path": "C:\\Users\\info\\Downloads\\TEST_DATA",
+    "rec_folder": null,
+    "session": null,
+    "session_folder": "TEST_DATA",
+    "start": "2022-08-02T17:11:19",
+    "time_source": "header"
+  },
+  "status": "done"
+}

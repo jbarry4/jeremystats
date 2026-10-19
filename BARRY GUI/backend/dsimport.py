@@ -3,7 +3,7 @@ dsimport.py -- read a folder of sorted dentate-spike snapshots back in.
 
 The curation that already happened
 ----------------------------------
-Before BARRY there was a folder per recording full of one PNG per candidate
+Before Jarvis there was a folder per recording full of one PNG per candidate
 spike, and sorting meant dragging those PNGs into subfolders named after the
 decision. Thousands of candidates were sorted that way. That work is real
 and it is not going to be redone, so it has to come back in.
@@ -295,14 +295,18 @@ def apply(rows, bank, curation, kind="ds", replace=True, who=None):
                 item["note"] = note
             events.append(item)
 
-        rec, n = curation.create(
+        rec, n, _extra = curation.create(
             row["gid"], kind, events,
             name=row.get("folder"),
             source={"kind": "snapshot folders", "folder": row.get("folder"),
-                    "bank_entry": row.get("entry_id"), "by": who or ""},
+                    "bank_entry": row.get("entry_id"),
+                    "by": who or "snapshot import"},
             session_label=row.get("session_label"),
             replace=replace)
-        prog = rec.get("progress") or {}
+        # Computed, not read off the record: `create` returns the
+        # merged shard, which has no `progress` key -- so every row
+        # in the import report said {}.
+        prog = curation.Curation.progress(rec)
         done.append({"folder": row.get("folder"), "gid": row["gid"],
                      "session_label": row.get("session_label"),
                      "n": len(events), "tally": row.get("tally"),

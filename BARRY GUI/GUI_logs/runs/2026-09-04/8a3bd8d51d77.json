@@ -1,0 +1,41 @@
+{
+  "command": [
+    "C:\\Users\\Z390\\miniconda3\\python.exe",
+    "-m",
+    "pip",
+    "install",
+    "torch",
+    "--index-url",
+    "https://download.pytorch.org/whl/cu121"
+  ],
+  "cwd": "C:\\Users\\Z390\\Desktop\\jeremystats",
+  "duration_s": 2.767,
+  "ended": 1788536509.117064,
+  "id": "8a3bd8d51d77",
+  "kind": "install",
+  "label": "pip install torch",
+  "lang": null,
+  "output_tail": [
+    "$ C:\\Users\\Z390\\miniconda3\\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu121",
+    "  cwd: C:\\Users\\Z390\\Desktop\\jeremystats",
+    "Looking in indexes: https://download.pytorch.org/whl/cu121",
+    "ERROR: Could not find a version that satisfies the requirement torch (from versions: none)",
+    "ERROR: No matching distribution found for torch",
+    "-- exited with code 1 after 2.8s --"
+  ],
+  "overrides": [],
+  "parameters": {},
+  "provenance": {
+    "at": "2026-09-04T11:41:49-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "returncode": 1,
+  "schema": 1,
+  "script": "pip install torch",
+  "session": {},
+  "stage": null,
+  "started": 1788536506.3496175,
+  "status": "failed"
+}

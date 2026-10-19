@@ -1,0 +1,69 @@
+{
+  "_at": {
+    "created": "2026-09-18T16:09:13.253205+00:00",
+    "gid": "2026-09-18T16:09:13.253205+00:00",
+    "group": "2026-09-18T16:09:13.253205+00:00",
+    "key": "2026-09-18T16:09:13.253205+00:00",
+    "label": "2026-09-18T16:09:13.253205+00:00",
+    "loose_key": "2026-09-18T16:09:13.253205+00:00",
+    "mouse": "2026-09-18T16:09:13.253205+00:00",
+    "project": "2026-09-18T16:09:13.253205+00:00",
+    "project_source": "2026-09-18T16:09:13.253205+00:00",
+    "retired": "2026-09-18T16:09:13.253205+00:00",
+    "schema": "2026-09-18T16:09:13.253205+00:00",
+    "session": "2026-09-18T16:09:13.253205+00:00",
+    "start": "2026-09-18T16:09:13.253205+00:00",
+    "updated": "2026-09-18T16:17:20.454963+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\KCNT1\\urethane\\wt\\KCNTM13_WT\\kcnt1s4aug15\\2022-08-15_17-32-31": [
+        "set",
+        "2026-09-18T16:17:20.454963+00:00"
+      ],
+      "D:\\KCNT1\\urethane\\wt\\KCNTM13_WT\\kcnt1s4baug15\\2022-08-15_17-45-59": [
+        "set",
+        "2026-09-18T16:17:20.454963+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-18T16:17:20.454963+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.17.2",
+    "at": "2026-09-18T12:09:13-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "sec6a8c22f77e",
+  "group": null,
+  "key": "m013_s004_2022-08-15_17-32-31",
+  "label": "KCNT1 m13 s4 2022-08-15",
+  "loose_key": "m013_s004",
+  "mouse": 13,
+  "paths": [
+    "D:\\KCNT1\\urethane\\wt\\KCNTM13_WT\\kcnt1s4aug15\\2022-08-15_17-32-31",
+    "D:\\KCNT1\\urethane\\wt\\KCNTM13_WT\\kcnt1s4baug15\\2022-08-15_17-45-59"
+  ],
+  "project": "KCNT1 Urethane",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 4,
+  "start": "2022-08-15T21:32:31+00:00",
+  "updated": {
+    "app_version": "2026.09.17.2",
+    "at": "2026-09-18T12:17:20-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

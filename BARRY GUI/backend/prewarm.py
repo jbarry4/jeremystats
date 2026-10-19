@@ -72,7 +72,9 @@ def key_for(session, spec):
     clean = {k: v for k, v in (spec or {}).items()
              if k not in _IGNORE and not k.startswith("_")}
     blob = json.dumps(
-        [session.get("path"), session.get("even_only"), clean],
+        # `False` where whether it was an even-only read used to be: the
+        # read is always every channel now, and a constant keeps old keys.
+        [session.get("path"), False, clean],
         sort_keys=True, default=str)
     return hashlib.sha1(blob.encode("utf-8")).hexdigest()
 
@@ -188,6 +190,12 @@ def request(session, specs, supersede=True):
     useful -- moving to a different recording, or changing the filters,
     invalidates every window that was waiting.
     """
+    # Nothing is drawn ahead off the cluster. Each render there is a full-rate
+    # read on a login node somebody else is also using, and a speculative one
+    # would also sit in front of the window actually asked for on the one
+    # link. A recording read off the cluster draws each window when shown.
+    if (session or {}).get("source") == "vacc":
+        return 0
     _ensure_worker()
     queued = 0
     with _QUEUE_CV:

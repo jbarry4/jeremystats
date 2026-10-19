@@ -1,0 +1,99 @@
+{
+  "_at": {
+    "created": "2026-09-23T15:16:39.341644+00:00",
+    "entry_id": "2026-09-23T15:16:39.341644+00:00",
+    "from_version": "2026-09-23T15:16:39.341644+00:00",
+    "gid": "2026-09-23T15:16:39.341644+00:00",
+    "mains_uv": "2026-09-23T15:16:39.341644+00:00",
+    "missed": "2026-09-23T15:16:39.341644+00:00",
+    "n_asked": "2026-09-23T15:16:39.341644+00:00",
+    "n_events": "2026-09-23T15:16:39.341644+00:00",
+    "params": "2026-09-23T15:16:39.341644+00:00",
+    "params_hash": "2026-09-23T15:16:39.341644+00:00",
+    "probe": "2026-09-23T15:16:39.341644+00:00",
+    "read_hash": "2026-09-23T15:16:39.341644+00:00",
+    "screened": "2026-09-23T15:16:39.341644+00:00",
+    "spacing_um": "2026-09-23T15:16:39.341644+00:00",
+    "tool": "2026-09-23T15:16:39.341644+00:00",
+    "updated": "2026-09-23T15:16:39.341644+00:00",
+    "wideband_uv": "2026-09-23T15:16:39.341644+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-23T15:16:39.341644+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.23.6",
+    "at": "2026-09-23T11:16:39-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "entry_id": "adc84ab8c916",
+  "from_version": "br-159c6e106b",
+  "gid": "s8d7f397b9708",
+  "mains_uv": 14.360471973233235,
+  "missed": [
+    474
+  ],
+  "n_asked": 475,
+  "n_events": 474,
+  "params": {
+    "bad": [
+      59
+    ],
+    "band": [
+      5.0,
+      100.0
+    ],
+    "channels": "",
+    "cond": 0.3,
+    "csd_bad_x": 4.0,
+    "csd_span": 16,
+    "f_order": 3,
+    "f_sigma": 1.0,
+    "flip": false,
+    "h_power": 1,
+    "invert": true,
+    "lfp_fs": 1000.0,
+    "line": 60.0,
+    "line_q": 30.0,
+    "nclasses": 2,
+    "no_vaknin": false,
+    "notch": true,
+    "pad": 0.5,
+    "probe": "h3",
+    "refine": "off",
+    "rule": "tort",
+    "screen": false,
+    "seed": 0,
+    "sel_hi": null,
+    "sel_lo": null,
+    "spacing": 50.0,
+    "surround_ms": 50.0,
+    "t_hi_ms": null,
+    "t_lo_ms": null,
+    "window_ms": 100.0
+  },
+  "params_hash": "3ff545daf260",
+  "probe": "h3",
+  "read_hash": "d5107d43d4ec",
+  "screened": {
+    "59": "dead (0.4 uV against a median of 137)"
+  },
+  "spacing_um": 50.0,
+  "tool": "dspca",
+  "updated": {
+    "app_version": "2026.09.23.6",
+    "at": "2026-09-23T11:16:39-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "wideband_uv": 239.31680823786965
+}

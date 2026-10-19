@@ -1,0 +1,1417 @@
+{
+ "id": "fefda6bef2a7",
+ "kind": "bug",
+ "title": "Collapsing events in the Event Bank works! However, Event Curation in ToolKit does not update accordingly",
+ "detail": "",
+ "context": {
+  "view": "errors",
+  "recording": "PTEN m34 s8 2024-06-10",
+  "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
+  "panels": [
+   "traces"
+  ],
+  "window": {
+   "t0": 1328.742275,
+   "span": 1
+  },
+  "screen": "1920x918",
+  "agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:155.0) Gecko/20100101 Firefox/155.0"
+ },
+ "wants": "Rain",
+ "state": "open",
+ "at": "2026-09-16T13:48:17-0400",
+ "by": "Rain Younger",
+ "machine": "BARRYLAB",
+ "shard": "barrylab-d8e8",
+ "screenshots": [
+  {
+   "file": "fefda6bef2a7-1.png",
+   "bytes": 26062,
+   "caption": ""
+  },
+  {
+   "file": "fefda6bef2a7-2.png",
+   "bytes": 16994,
+   "caption": ""
+  }
+ ],
+ "recent": {
+  "window_s": 600,
+  "actions": [
+   {
+    "id": "a2ef7975e2",
+    "at": "2026-09-16T17:44:14.347Z",
+    "action": "events.import",
+    "detail": {
+     "file": "import",
+     "n": 167,
+     "total": 169,
+     "units": "seconds"
+    },
+    "session": {
+     "key": "m034_s008_2024-06-10_17-00-07",
+     "loose_key": "m034_s008",
+     "label": "PTEN m34 s8 2024-06-10",
+     "mouse": 34,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "7004fcf717",
+    "at": "2026-09-16T17:44:08.443Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m034_s008_2024-06-10_17-00-07",
+     "loose_key": "m034_s008",
+     "label": "PTEN m34 s8 2024-06-10",
+     "mouse": 34,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "21e14c44c1",
+    "at": "2026-09-16T17:44:08.425Z",
+    "action": "session.open",
+    "detail": {
+     "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1811.6608,
+     "restored": [
+      "3 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m034_s008_2024-06-10_17-00-07",
+     "loose_key": "m034_s008",
+     "label": "PTEN m34 s8 2024-06-10",
+     "mouse": 34,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "b6e649ce11",
+    "at": "2026-09-16T17:42:30.737Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m034_s008_2024-06-10_17-00-07",
+     "loose_key": "m034_s008",
+     "label": "PTEN m34 s8 2024-06-10",
+     "mouse": 34,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "51cda40649",
+    "at": "2026-09-16T17:42:30.718Z",
+    "action": "session.open",
+    "detail": {
+     "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1811.6608,
+     "restored": [
+      "3 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m034_s008_2024-06-10_17-00-07",
+     "loose_key": "m034_s008",
+     "label": "PTEN m34 s8 2024-06-10",
+     "mouse": 34,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07"
+    },
+    "view": "pipeline",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "b68e982fc8",
+    "at": "2026-09-16T17:42:27.617Z",
+    "action": "link.scope",
+    "detail": {
+     "scope": "session"
+    },
+    "session": {},
+    "view": "pipeline",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "459dfa4c0c",
+    "at": "2026-09-16T17:40:36.253Z",
+    "action": "events.import",
+    "detail": {
+     "file": "Events.nev",
+     "n": 2,
+     "source": "nev",
+     "relative_to": "recording",
+     "auto": true
+    },
+    "session": {
+     "key": "m034_s008_2024-06-10_17-00-07",
+     "loose_key": "m034_s008",
+     "label": "PTEN m34 s8 2024-06-10",
+     "mouse": 34,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "0626ddcd32",
+    "at": "2026-09-16T17:40:36.235Z",
+    "action": "session.open",
+    "detail": {
+     "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
+     "channels": 64,
+     "fs": 30000,
+     "duration_s": 1811.6608,
+     "restored": [
+      "3 bad channel(s)",
+      "view restored"
+     ]
+    },
+    "session": {
+     "key": "m034_s008_2024-06-10_17-00-07",
+     "loose_key": "m034_s008",
+     "label": "PTEN m34 s8 2024-06-10",
+     "mouse": 34,
+     "session": 8,
+     "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07"
+    },
+    "view": "xplore",
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "f0f50dd16b",
+    "at": "2026-09-16T13:44:27-04:00",
+    "action": "curation.close",
+    "detail": {
+     "gid": "s8d50a361b096",
+     "kind": "ds",
+     "assignee": "Shahriar Tafti",
+     "left": 68
+    },
+    "session": {},
+    "view": null,
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "a478fe8002",
+    "at": "2026-09-16T13:43:19-04:00",
+    "action": "curation.close",
+    "detail": {
+     "gid": "s8d50a361b096",
+     "kind": "ds",
+     "assignee": "Shahriar Tafti",
+     "left": 68
+    },
+    "session": {},
+    "view": null,
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "364ba04545",
+    "at": "2026-09-16T13:41:38-04:00",
+    "action": "curation.open",
+    "detail": {
+     "gid": "s8d50a361b096",
+     "kind": "ds",
+     "assignee": "Shahriar Tafti",
+     "left": 68
+    },
+    "session": {},
+    "view": null,
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "22f3a0516a",
+    "at": "2026-09-16T13:41:24-04:00",
+    "action": "bank.dedupe",
+    "detail": {
+     "id": "7d5fa32206b4",
+     "version": 5,
+     "removed": 87,
+     "conflicts": 40,
+     "policy": "first"
+    },
+    "session": {
+     "key": "m034_s008_2024-06-10_17-00-07",
+     "label": "PTEN m34 s8 2024-06-10"
+    },
+    "view": null,
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "fd7c04d0b9",
+    "at": "2026-09-16T13:40:07-04:00",
+    "action": "curation.close",
+    "detail": {
+     "gid": "s8d50a361b096",
+     "kind": "ds",
+     "assignee": "Shahriar Tafti",
+     "left": 68
+    },
+    "session": {},
+    "view": null,
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   },
+   {
+    "id": "d5b94f80d6",
+    "at": "2026-09-16T13:39:47-04:00",
+    "action": "bank.version.delete",
+    "detail": {
+     "entry": "7d5fa32206b4",
+     "version": 5,
+     "changed": [
+      "deleted"
+     ]
+    },
+    "session": {},
+    "view": null,
+    "user": "Rain Younger",
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "os": "Windows"
+   }
+  ],
+  "errors": [
+   {
+    "id": "9d87ea752162",
+    "at": "2026-09-16T13:42:46-04:00",
+    "where": "cloud.sync",
+    "message": "POST /rest/v1/sessions -> HTTP 500 {\"code\":\"21000\",\"details\":null,\"hint\":\"Ensure that no rows proposed for insertion within the same command have duplicate constrained values.\",\"message\":\"ON CONFLICT DO UPDATE command cannot affect row a second time\"}\n\nThe database itself returned an error, not a refusal -- nothing is wrong with the request or the key. These are usually brief; the next sync will pick up where this one stopped. If it keeps happening, check the Supabase project status page.",
+    "detail": null,
+    "context": {},
+    "machine": "Strawbarry",
+    "shard": "barrylab-d8e8",
+    "user": "Rain Younger"
+   }
+  ],
+  "requests": [
+   {
+    "at": "13:44:27",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 262.0,
+    "query": "limit=60",
+    "n": 89
+   },
+   {
+    "at": "13:44:29",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 260.6,
+    "query": "limit=60",
+    "n": 90
+   },
+   {
+    "at": "13:44:32",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 248.3,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 91
+   },
+   {
+    "at": "13:44:32",
+    "method": "GET",
+    "path": "/api/registry",
+    "status": 200,
+    "ms": 5317.4,
+    "n": 92
+   },
+   {
+    "at": "13:44:33",
+    "method": "GET",
+    "path": "/api/presence",
+    "status": 200,
+    "ms": 205.1,
+    "n": 93
+   },
+   {
+    "at": "13:44:33",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 248.4,
+    "query": "limit=60",
+    "n": 94
+   },
+   {
+    "at": "13:44:33",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 269.1,
+    "query": "limit=60",
+    "n": 95
+   },
+   {
+    "at": "13:44:36",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 227.2,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 96
+   },
+   {
+    "at": "13:44:39",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 249.0,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 97
+   },
+   {
+    "at": "13:44:42",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 386.2,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 98
+   },
+   {
+    "at": "13:44:43",
+    "method": "GET",
+    "path": "/api/presence",
+    "status": 200,
+    "ms": 186.3,
+    "n": 99
+   },
+   {
+    "at": "13:44:43",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 252.4,
+    "query": "limit=60",
+    "n": 100
+   },
+   {
+    "at": "13:44:46",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 222.9,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 101
+   },
+   {
+    "at": "13:44:49",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 269.9,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 102
+   },
+   {
+    "at": "13:44:53",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 327.2,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 103
+   },
+   {
+    "at": "13:44:54",
+    "method": "GET",
+    "path": "/api/presence",
+    "status": 200,
+    "ms": 206.1,
+    "n": 104
+   },
+   {
+    "at": "13:44:54",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 231.3,
+    "query": "limit=60",
+    "n": 105
+   },
+   {
+    "at": "13:44:57",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 226.9,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 106
+   },
+   {
+    "at": "13:45:00",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 329.7,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 107
+   },
+   {
+    "at": "13:45:03",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 204.2,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 108
+   },
+   {
+    "at": "13:45:04",
+    "method": "GET",
+    "path": "/api/presence",
+    "status": 200,
+    "ms": 222.4,
+    "n": 109
+   },
+   {
+    "at": "13:45:05",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 224.2,
+    "query": "limit=60",
+    "n": 110
+   },
+   {
+    "at": "13:45:08",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 293.3,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 111
+   },
+   {
+    "at": "13:45:11",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 274.4,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 112
+   },
+   {
+    "at": "13:45:14",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 238.9,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 113
+   },
+   {
+    "at": "13:45:15",
+    "method": "GET",
+    "path": "/api/presence",
+    "status": 200,
+    "ms": 204.1,
+    "n": 114
+   },
+   {
+    "at": "13:45:15",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 295.4,
+    "query": "limit=60",
+    "n": 115
+   },
+   {
+    "at": "13:45:18",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 264.9,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 116
+   },
+   {
+    "at": "13:45:21",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 236.6,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 117
+   },
+   {
+    "at": "13:45:24",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 269.1,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 118
+   },
+   {
+    "at": "13:45:25",
+    "method": "GET",
+    "path": "/api/presence",
+    "status": 200,
+    "ms": 189.0,
+    "n": 119
+   },
+   {
+    "at": "13:45:25",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 251.8,
+    "query": "limit=60",
+    "n": 120
+   },
+   {
+    "at": "13:45:28",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 266.7,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 121
+   },
+   {
+    "at": "13:45:31",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 254.0,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 122
+   },
+   {
+    "at": "13:45:34",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 297.8,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 123
+   },
+   {
+    "at": "13:45:35",
+    "method": "GET",
+    "path": "/api/presence",
+    "status": 200,
+    "ms": 219.1,
+    "n": 124
+   },
+   {
+    "at": "13:45:36",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 202.4,
+    "query": "limit=60",
+    "n": 125
+   },
+   {
+    "at": "13:45:39",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 242.1,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 126
+   },
+   {
+    "at": "13:45:40",
+    "method": "GET",
+    "path": "/api/health/summary",
+    "status": 200,
+    "ms": 563.0,
+    "n": 127
+   },
+   {
+    "at": "13:45:42",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 248.5,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 128
+   },
+   {
+    "at": "13:45:45",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 289.9,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 129
+   },
+   {
+    "at": "13:45:48",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 269.2,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 130
+   },
+   {
+    "at": "13:45:48",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 229.2,
+    "query": "limit=60",
+    "n": 131
+   },
+   {
+    "at": "13:45:49",
+    "method": "GET",
+    "path": "/api/curation",
+    "status": 200,
+    "ms": 1429.4,
+    "n": 132
+   },
+   {
+    "at": "13:45:51",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 340.2,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 133
+   },
+   {
+    "at": "13:45:52",
+    "method": "GET",
+    "path": "/api/registry",
+    "status": 200,
+    "ms": 3052.3,
+    "n": 134
+   },
+   {
+    "at": "13:45:53",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 275.5,
+    "query": "limit=60",
+    "n": 135
+   },
+   {
+    "at": "13:45:53",
+    "method": "GET",
+    "path": "/api/errors",
+    "status": 200,
+    "ms": 24.1,
+    "query": "limit=300",
+    "n": 136
+   },
+   {
+    "at": "13:45:53",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 40.4,
+    "n": 137
+   },
+   {
+    "at": "13:45:54",
+    "method": "GET",
+    "path": "/api/errors/grouped",
+    "status": 200,
+    "ms": 430.0,
+    "query": "limit=600",
+    "n": 138
+   },
+   {
+    "at": "13:45:55",
+    "method": "GET",
+    "path": "/api/devices",
+    "status": 200,
+    "ms": 1051.5,
+    "n": 139
+   },
+   {
+    "at": "13:45:56",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 292.2,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 140
+   },
+   {
+    "at": "13:45:58",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 21.6,
+    "n": 141
+   },
+   {
+    "at": "13:45:59",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 570.6,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 142
+   },
+   {
+    "at": "13:46:02",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 270.6,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 143
+   },
+   {
+    "at": "13:46:05",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 283.3,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 144
+   },
+   {
+    "at": "13:46:08",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 238.4,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 145
+   },
+   {
+    "at": "13:46:11",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 258.6,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 146
+   },
+   {
+    "at": "13:46:14",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 617.8,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 147
+   },
+   {
+    "at": "13:46:17",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 327.1,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 148
+   },
+   {
+    "at": "13:46:20",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 258.4,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 149
+   },
+   {
+    "at": "13:46:23",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 292.3,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 150
+   },
+   {
+    "at": "13:46:26",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 249.9,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 151
+   },
+   {
+    "at": "13:46:29",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 226.1,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 152
+   },
+   {
+    "at": "13:46:32",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 231.9,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 153
+   },
+   {
+    "at": "13:46:35",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 303.1,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 154
+   },
+   {
+    "at": "13:46:38",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 239.3,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 155
+   },
+   {
+    "at": "13:46:41",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 284.1,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 156
+   },
+   {
+    "at": "13:46:44",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 283.4,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 157
+   },
+   {
+    "at": "13:46:47",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 301.8,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 158
+   },
+   {
+    "at": "13:46:50",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 253.8,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 159
+   },
+   {
+    "at": "13:46:53",
+    "method": "GET",
+    "path": "/api/bank",
+    "status": 200,
+    "ms": 24.9,
+    "n": 160
+   },
+   {
+    "at": "13:46:53",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 273.4,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 161
+   },
+   {
+    "at": "13:46:55",
+    "method": "GET",
+    "path": "/api/layers",
+    "status": 200,
+    "ms": 2052.0,
+    "n": 162
+   },
+   {
+    "at": "13:46:55",
+    "method": "GET",
+    "path": "/api/bank/7d5fa32206b4",
+    "status": 200,
+    "ms": 3.4,
+    "n": 163
+   },
+   {
+    "at": "13:46:56",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 230.2,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 164
+   },
+   {
+    "at": "13:46:59",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 245.0,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 165
+   },
+   {
+    "at": "13:47:02",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 223.1,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 166
+   },
+   {
+    "at": "13:47:05",
+    "method": "GET",
+    "path": "/api/errors",
+    "status": 200,
+    "ms": 17.7,
+    "query": "limit=300",
+    "n": 167
+   },
+   {
+    "at": "13:47:05",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 37.9,
+    "n": 168
+   },
+   {
+    "at": "13:47:05",
+    "method": "GET",
+    "path": "/api/errors/grouped",
+    "status": 200,
+    "ms": 500.4,
+    "query": "limit=600",
+    "n": 169
+   },
+   {
+    "at": "13:47:05",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 249.8,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 170
+   },
+   {
+    "at": "13:47:08",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 272.7,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 171
+   },
+   {
+    "at": "13:47:11",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 242.4,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 172
+   },
+   {
+    "at": "13:47:15",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 320.0,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 173
+   },
+   {
+    "at": "13:47:18",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 241.7,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 174
+   },
+   {
+    "at": "13:47:21",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 240.6,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 175
+   },
+   {
+    "at": "13:47:24",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 233.1,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 176
+   },
+   {
+    "at": "13:47:24",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 214.2,
+    "query": "limit=60",
+    "n": 177
+   },
+   {
+    "at": "13:47:26",
+    "method": "GET",
+    "path": "/api/presence",
+    "status": 200,
+    "ms": 195.1,
+    "n": 178
+   },
+   {
+    "at": "13:47:26",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 249.1,
+    "query": "limit=60",
+    "n": 179
+   },
+   {
+    "at": "13:47:26",
+    "method": "GET",
+    "path": "/api/curation",
+    "status": 200,
+    "ms": 1565.2,
+    "n": 180
+   },
+   {
+    "at": "13:47:29",
+    "method": "GET",
+    "path": "/api/registry",
+    "status": 200,
+    "ms": 2843.9,
+    "n": 181
+   },
+   {
+    "at": "13:47:29",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 208.6,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 182
+   },
+   {
+    "at": "13:47:29",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 225.2,
+    "query": "limit=60",
+    "n": 183
+   },
+   {
+    "at": "13:47:32",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 221.4,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 184
+   },
+   {
+    "at": "13:47:35",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 239.1,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 185
+   },
+   {
+    "at": "13:47:36",
+    "method": "GET",
+    "path": "/api/presence",
+    "status": 200,
+    "ms": 171.4,
+    "n": 186
+   },
+   {
+    "at": "13:47:36",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 342.2,
+    "query": "limit=60",
+    "n": 187
+   },
+   {
+    "at": "13:47:39",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 262.0,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 188
+   },
+   {
+    "at": "13:47:42",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 216.7,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 189
+   },
+   {
+    "at": "13:47:45",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 216.2,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 190
+   },
+   {
+    "at": "13:47:46",
+    "method": "GET",
+    "path": "/api/presence",
+    "status": 200,
+    "ms": 213.1,
+    "n": 191
+   },
+   {
+    "at": "13:47:46",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 238.0,
+    "query": "limit=60",
+    "n": 192
+   },
+   {
+    "at": "13:47:49",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 259.7,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 193
+   },
+   {
+    "at": "13:47:52",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 256.7,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 194
+   },
+   {
+    "at": "13:47:55",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 231.5,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 195
+   },
+   {
+    "at": "13:47:56",
+    "method": "GET",
+    "path": "/api/presence",
+    "status": 200,
+    "ms": 192.4,
+    "n": 196
+   },
+   {
+    "at": "13:47:56",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 226.6,
+    "query": "limit=60",
+    "n": 197
+   },
+   {
+    "at": "13:47:59",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 238.1,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 198
+   },
+   {
+    "at": "13:48:02",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 234.9,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 199
+   },
+   {
+    "at": "13:48:05",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 257.8,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 200
+   },
+   {
+    "at": "13:48:06",
+    "method": "GET",
+    "path": "/api/presence",
+    "status": 200,
+    "ms": 217.1,
+    "n": 201
+   },
+   {
+    "at": "13:48:06",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 258.1,
+    "query": "limit=60",
+    "n": 202
+   },
+   {
+    "at": "13:48:06",
+    "method": "GET",
+    "path": "/api/errors",
+    "status": 200,
+    "ms": 25.3,
+    "query": "limit=300",
+    "n": 203
+   },
+   {
+    "at": "13:48:06",
+    "method": "GET",
+    "path": "/api/feedback",
+    "status": 200,
+    "ms": 37.5,
+    "n": 204
+   },
+   {
+    "at": "13:48:07",
+    "method": "GET",
+    "path": "/api/errors/grouped",
+    "status": 200,
+    "ms": 384.3,
+    "query": "limit=600",
+    "n": 205
+   },
+   {
+    "at": "13:48:09",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 239.7,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 206
+   },
+   {
+    "at": "13:48:12",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 333.3,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 207
+   },
+   {
+    "at": "13:48:15",
+    "method": "GET",
+    "path": "/api/toolfeed/curate",
+    "status": 200,
+    "ms": 212.0,
+    "query": "limit=60&since=2026-09-16T17%3A42%3A27.000Z",
+    "n": 208
+   }
+  ]
+ },
+ "notes": []
+}

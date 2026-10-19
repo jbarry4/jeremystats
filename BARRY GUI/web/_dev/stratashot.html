@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8"><title>strata shot</title>
+<style>html,body{margin:0;height:100%}iframe{width:100vw;height:100vh;border:0}</style>
+<iframe id="f" src="/"></iframe>
+<script>
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+(async()=>{const f=document.getElementById('f');
+ await new Promise(r=>f.addEventListener('load',r,{once:true}));
+ const W=f.contentWindow;
+ for(let i=0;i<300&&!W.BARRY;i++) await sleep(100);
+ W.eval("setView('toolkit')"); await sleep(400);
+ await W.eval('BARRY.strata.enter("demo-long-session")');
+ for(let i=0;i<300;i++){ if(f.contentDocument.querySelector('.strata-span')) break; await sleep(100);}
+ await sleep(6000);
+ W.eval('BARRY.strata.alignRail()');
+ document.title='shot ready';
+})();
+</script>

@@ -1,0 +1,309 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Horizon, and The Lookout</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 54vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 46vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Horizon, step one of The Lookout.
+
+   Two halves, and they fail for different reasons.
+
+   THE BUNDLE. A bundle that does not remove its members from the flat list
+   is "a menu that describes one thing twice", which is the rule with the
+   longest comment in toolkit.js behind it. Panorama and Braid were flat
+   tools until The Lookout was made, so they are exactly the case that can
+   half-land -- and the step chip has to be DERIVED, or inserting a step
+   ahead of one silently leaves its header claiming the old number.
+
+   THE PANEL. Everything Horizon can say before a run, it must say before a
+   run: how many channels there are, how many are marked bad, which probe
+   template applies and WHETHER ANYBODY CONFIRMED IT, and whether there is a
+   layer sheet to name the bands with. The probe is the one that can be
+   quietly wrong -- channel order is depth order on a linear array and is
+   not on an interleaved one -- so an unconfirmed guess has to read as a
+   guess rather than as an answer.
+
+   The analysis itself is not run here: sixty-two channels is a minute even
+   on the demo, and `tools/check_horizon.py` is where the numbers are
+   judged. The map's shape is checked through the API instead.
+
+   ToolKit renders twice -- the panel is rebuilt after onShow -- so
+   everything below waits for the host to settle and re-queries rather than
+   holding a node across a repaint.
+
+   Restores `barry.tkFolded` and the tool it found selected, in a finally.
+   A harness that establishes a known start by clearing something has
+   deleted real work before now. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 200, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+const txt = (n) => (n && n.textContent || '').trim();
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  /* `BARRY` is a const in core.js and NOT a property of the frame's window,
+     so `W().BARRY` is undefined from out here -- it reads as "the app has
+     not loaded yet" and every wait for it times out. Everything that needs
+     it goes through the frame's own eval, which runs in the scope the const
+     is actually in. This cost twenty minutes once already. */
+  const ev = (src) => W().eval(src);
+  const evJSON = (src) => {
+    const raw = ev('JSON.stringify(' + src + ')');
+    return raw === undefined ? undefined : JSON.parse(raw);
+  };
+  const ready = await untilN(() => typeof W().setView === 'function');
+  check('the application loads', !!ready, 'no setView after 20s');
+  if (!ready) { document.title = 'FAIL'; return; }
+
+  const KEY = 'barry.tkFolded';
+  let savedFold = null;
+  try { savedFold = W().localStorage.getItem(KEY); } catch (e) { /* ignore */ }
+
+  try {
+    try { W().localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+
+    // ---------------------------------------------------------------- bundle
+    head('The Lookout is a bundle, and its steps are its own');
+    const tkReady = await untilN(() => ev('!!(BARRY.views.toolkit)'));
+    check('ToolKit is registered', !!tkReady);
+
+    const bundles = evJSON('BARRY.views.toolkit.bundles()') || [];
+    const look = bundles.find((b) => b.id === 'lookout');
+    check('The Lookout exists', !!look,
+          'bundles: ' + bundles.map((b) => b.id).join(', '));
+    if (look) {
+      const ids = look.steps.map((s) => s.id).join(' > ');
+      check('three steps, widest view first', ids === 'horizon > panorama > cfc',
+            ids);
+      check('it is named for its theme, not for one of its steps',
+            !look.steps.some((s) => s.name === look.name),
+            'a heading repeating a row underneath it is the thing the flat '
+            + 'list was fixed to stop being');
+    }
+
+    head('the step chip is derived, never typed');
+    const hasStepOf = ev("typeof BARRY.views.toolkit.stepOf === 'function'");
+    check('stepOf is exported', !!hasStepOf);
+    if (hasStepOf) {
+      const so = (id) => ev("BARRY.views.toolkit.stepOf('" + id + "')");
+      check('Horizon is step 1 of The Lookout',
+            so('horizon') === 'step 1 of The Lookout', String(so('horizon')));
+      check('Panorama is step 2',
+            so('panorama') === 'step 2 of The Lookout', String(so('panorama')));
+      check('Braid is step 3',
+            so('cfc') === 'step 3 of The Lookout', String(so('cfc')));
+      check('a tool in no bundle gets no chip', so('bad') === null,
+            String(so('bad')));
+      check('an unknown id gets no chip', so('nope') === null);
+    }
+
+    W().setView('toolkit');
+    await sleep(400);
+    await untilN(() => D().querySelector('.tk-tools'));
+    await sleep(300);            // ToolKit renders twice; let it settle
+
+    head('nothing is on the menu twice');
+    const flat = Array.from(D().querySelectorAll('.tk-tool'))
+      .map((b) => txt(b.querySelector('strong')));
+    check('Panorama left the flat tool list', flat.indexOf('Panorama') < 0,
+          'flat list: ' + flat.join(', '));
+    check('Braid left the flat tool list', flat.indexOf('Braid') < 0,
+          'flat list: ' + flat.join(', '));
+    check('Horizon is not in the flat list either', flat.indexOf('Horizon') < 0,
+          'flat list: ' + flat.join(', '));
+    check('the flat list still has the tools that are in no bundle',
+          flat.indexOf('Bad channels') >= 0 && flat.indexOf('StrataScope') >= 0,
+          'flat list: ' + flat.join(', '));
+
+    const cards = Array.from(D().querySelectorAll('.tk-bundle, .tk-bundle-card'));
+    const anyLookout = Array.from(D().querySelectorAll('*'))
+      .some((n) => n.children.length === 0 && txt(n) === 'The Lookout');
+    check('The Lookout is drawn as a bundle heading', anyLookout,
+          cards.length + ' bundle cards found');
+
+    // ---------------------------------------------------------------- panel
+    head('the panel, before a recording is chosen');
+    check('picking Horizon is allowed',
+          ev("BARRY.views.toolkit.pick('horizon')") === true);
+    await sleep(500);
+    await untilN(() => D().querySelector('#tkResult .step-head'));
+    await sleep(200);
+
+    const sh = D().querySelector('#tkResult .step-head');
+    check('it paints a step header', !!sh);
+    check('the header says which step of what',
+          txt(sh && sh.querySelector('.step-n')) === 'step 1 of The Lookout',
+          txt(sh && sh.querySelector('.step-n')));
+    check('the title is the tool, not the step',
+          txt(sh && sh.querySelector('strong')) === 'Horizon',
+          txt(sh && sh.querySelector('strong')));
+
+    const lab = Array.from(D().querySelectorAll('#tkResult .section-label'))
+      .map(txt);
+    check('the recording picker is labelled "Recording"',
+          lab.indexOf('Recording') >= 0,
+          'labels: ' + lab.join(' | '));
+    const ph = D().querySelector('#tkResult .sp-input');
+    check('one placeholder, and it says what you can type',
+          !!ph && /Which recording\? Type a mouse, session or date/
+            .test(ph.getAttribute('placeholder') || ''),
+          ph && ph.getAttribute('placeholder'));
+    check('an empty state says what to do next',
+          !!D().querySelector('#tkResult .empty-state'));
+
+    // ------------------------------------------------- what it knows already
+    head('what is knowable before a run, said before it');
+    const api = async (u) => (await W().fetch(u)).json();
+    const info = await api('/api/horizon/for-recording/demo-long-session');
+    check('the demo recording answers', info && info.ok === true,
+          info && info.error);
+    check('it counts the channels', info.n_channels === 64,
+          String(info.n_channels));
+    check('it counts the ones marked bad', info.n_bad === 2,
+          String(info.n_bad) + ' (demo marks 41 and 59)');
+    check('usable is the difference', info.n_usable === 62,
+          String(info.n_usable));
+    check('it says which probe template applies', !!(info.probe || {}).state,
+          JSON.stringify(info.probe));
+    check('an unconfirmed probe reads as unconfirmed, not as an answer',
+          (info.probe || {}).state !== 'confirmed'
+            ? !!(info.probe || {}).why : true,
+          'a guess presented as a fact is how a depth axis that is not one '
+          + 'comes to look plausible');
+    check('it says whether the layers can be named',
+          !!(info.layers || {}).note, JSON.stringify(info.layers));
+    check('it says how the depth axis will be split',
+          Array.isArray(info.panes) && info.panes.length >= 1,
+          JSON.stringify(info.panes));
+
+    head('the estimate says what it will cost before it is spent');
+    const est = await (await W().fetch('/api/horizon/estimate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'demo:long-session', t0: 0, t1: 60,
+                             channels: [0, 1, 2, 3] }),
+    })).json();
+    check('it answers', est && est.ok === true, est && est.error);
+    check('it gives a number of seconds', typeof est.seconds === 'number',
+          String(est.seconds));
+    check('it says how many columns and how far apart',
+          est.plan.n_windows > 0 && est.plan.column_s > 0,
+          est.plan.n_windows + ' every ' + est.plan.column_s + 's');
+    check('the columns kept are fewer than the columns computed',
+          est.plan.n_windows < est.plan.n_windows_raw,
+          est.plan.n_windows + ' of ' + est.plan.n_windows_raw);
+    check('it explains itself in sentences',
+          (est.notes || []).length >= 5, (est.notes || []).length + ' notes');
+    check('it offers the colormaps', (est.colormaps || []).length > 5,
+          (est.colormaps || []).length + ' maps');
+
+    // ------------------------------------------------------------- the map
+    head('the map, on four channels');
+    const started = await (await W().fetch('/api/horizon/run', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'demo:long-session', t0: 0, t1: 60,
+                             channels: [0, 1, 2, 3] }),
+    })).json();
+    check('a run starts', started && started.ok === true, started && started.error);
+    let res = started.cached ? started.result : null;
+    if (!res && started.job) {
+      const id = started.job.id;
+      for (let i = 0; i < 300; i++) {
+        await sleep(300);
+        const snap = await api('/api/cfc/job/' + id);
+        const j = snap.job || snap;
+        if (j.status === 'done') { res = (await api('/api/cfc/result/' + id)).result; break; }
+        if (j.status === 'error') { check('the run finishes', false, j.error); break; }
+      }
+    }
+    check('the run finishes and returns a map', !!(res && res.map));
+    if (res && res.map) {
+      check('the picture is a PNG data URI',
+            /^data:image\/png;base64,/.test(res.map.png || ''));
+      check('one row per channel asked for', (res.rows || []).length === 4,
+            String((res.rows || []).length));
+      check('the colour bar comes from the server, not from a second ramp',
+            (res.map.swatches || []).length > 0,
+            'a bar built in the browser is a second place that knows what '
+            + '8 Hz looks like');
+      const sw = res.map.swatches || [];
+      check('every swatch carries its frequency and its colour',
+            sw.every((s) => typeof s.hz === 'number' && /^#[0-9a-f]{6}$/i.test(s.css)),
+            JSON.stringify(sw.slice(0, 2)));
+      check('theta is bracketed inside a wider band, not the whole of it',
+            res.plan.f_lo < res.plan.theta[0] && res.plan.f_hi > res.plan.theta[1],
+            res.plan.f_lo + '-' + res.plan.f_hi + ' with theta '
+            + (res.plan.theta || []).join('-'));
+      check('it says which route produced the numbers',
+            !!(res.engine && (res.engine.route || res.engine.fitter)),
+            JSON.stringify(res.engine));
+      check('the demo is one clean rhythm, so the column agrees',
+            res.column_agreement > 0.9, String(res.column_agreement));
+      check('every row reports the demo’s 8 Hz',
+            (res.rows || []).every((r) => r.modal_hz > 7.5 && r.modal_hz < 8.6),
+            (res.rows || []).map((r) => r.modal_hz).join(', '));
+    }
+
+    head('re-colouring does not re-measure');
+    const re = await (await W().fetch('/api/horizon/recolor', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'demo:long-session', t0: 0, t1: 60,
+                             channels: [0, 1, 2, 3], cmap: 'magma',
+                             colour_mode: 'relative' }),
+    })).json();
+    check('it re-colours', re && re.ok === true, re && re.error);
+    if (re && re.map) {
+      check('the new colormap is the one asked for', re.map.cmap === 'magma',
+            re.map.cmap);
+      check('relative centres on the recording’s own median',
+            re.map.colour_mode === 'relative' && re.map.centre !== null,
+            JSON.stringify([re.map.colour_mode, re.map.centre]));
+      check('the swatches followed the colormap',
+            (re.map.swatches || []).length === (res.map.swatches || []).length
+              && re.map.swatches[0].css !== res.map.swatches[0].css,
+            'bar and map must not be able to disagree');
+    }
+  } finally {
+    /* Put back what was found, rather than leaving a tidied menu and a
+       different tool selected than somebody left open. */
+    try {
+      if (savedFold === null) W().localStorage.removeItem(KEY);
+      else W().localStorage.setItem(KEY, savedFold);
+    } catch (e) { /* private mode */ }
+  }
+
+  head(bad ? bad + ' failed' : 'all checks passed');
+  document.title = bad ? 'FAIL — Horizon' : 'ok — Horizon';
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.message));
+  document.title = 'FAIL — Horizon';
+} })();
+</script>

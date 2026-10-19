@@ -1,0 +1,279 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>scanlive: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:700px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:700px;top:0;right:0;bottom:0;width:calc(100vw - 700px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* What a running scan says about itself.
+
+   The line used to be a spinner, two counters and an absolute path, and the
+   counters are the least informative part of it: "31 sessions" reads the
+   same whether the scan is walking the tree you meant or one directory too
+   high. So this page is about the parts that carry information -- the rate,
+   what has been found, and where it has got to -- and about two specific
+   ways of getting them wrong.
+
+   The first is truncation. The old path was one nowrap line with an
+   ellipsis, which clipped the END of the path, and the end is the recording
+   folder -- the only part worth reading. Nothing here may clip.
+
+   The second is racing. The test fixture is three folders and the scan is
+   over in well under a second, so a harness that waits for `status ===
+   "running"` to look at the DOM would mostly find a finished scan and pass
+   by never having looked. The renderer is exported and driven directly with
+   a snapshot instead, and the SERVER side is asserted against a real scan. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(80);
+  }
+  return null;
+}
+const ROOT = new URLSearchParams(location.search).get('root') || '';
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              25000);
+
+  say('=== the server reports what it is finding, not only how much ===');
+  check('this page was given a folder to scan', !!ROOT, ROOT || 'none');
+  if (!ROOT) {
+    say('without a root there is nothing to scan; run it through '
+        + 'tools/run_harnesses.py, which builds the fixture', 'note');
+    document.title = 'scanlive: ' + (fails || 1) + ' FAILED';
+    return;
+  }
+
+  const started = JSON.parse(await ev(
+    'fetch("/api/discover/start",{method:"POST",'
+    + 'headers:{"Content-Type":"application/json"},'
+    + 'body:JSON.stringify({root:' + JSON.stringify(ROOT) + '})})'
+    + '.then(r=>r.text())'));
+  check('the scan started', started.ok === true,
+        JSON.stringify(started).slice(0, 120));
+  const jid = (started.job || {}).id;
+
+  /* Every snapshot, running or finished, carries the summary -- collected
+     rather than sampled once, because a fixture scan can finish between two
+     polls and the running shape is the one that matters. */
+  const seen = [];
+  let last = null;
+  for (let i = 0; i < 80; i++) {
+    const r = JSON.parse(await ev(
+      'fetch("/api/discover/' + jid + '").then(r=>r.text())'));
+    last = r.job || {};
+    seen.push(last);
+    if (last.status !== 'running') break;
+    await sleep(60);
+  }
+  check('it finished', last.status === 'done', last.status);
+  check('every snapshot carried a live summary, running or not',
+        seen.every((s) => s && typeof s.live === 'object' && s.live !== null),
+        seen.filter((s) => !s || typeof s.live !== 'object').length + ' without');
+
+  const live = last.live || {};
+  say('    ' + JSON.stringify(live), 'note');
+  check('it names the projects it found, with counts',
+        live.projects && Object.keys(live.projects).length > 0,
+        JSON.stringify(live.projects));
+  check('the project counts add up to what it found',
+        Object.values(live.projects || {}).reduce((a, b) => a + b, 0)
+          === last.found,
+        Object.values(live.projects || {}).reduce((a, b) => a + b, 0)
+        + ' vs ' + last.found);
+  check('it counts distinct animals', typeof live.mice === 'number',
+        String(live.mice));
+  check('and the channel counts, which is what says which drive this is',
+        live.channels && Object.keys(live.channels).length > 0,
+        JSON.stringify(live.channels));
+  check('the channel counts also add up',
+        Object.values(live.channels || {}).reduce((a, b) => a + b, 0)
+          <= last.found,
+        Object.values(live.channels || {}).reduce((a, b) => a + b, 0)
+        + ' of ' + last.found);
+  check('it names the last one found, so the line has something that moves',
+        typeof live.last === 'string' && live.last.length > 0, live.last);
+
+  say('');
+  say('=== the line itself ===');
+  /* Driven with a snapshot rather than raced. A real one, taken above, with
+     the status forced back to running -- so this is the shape the server
+     actually produces and not a hand-written guess at it. */
+  /* The view has to be shown before it exists. `BARRY.views.sessions` is
+     assigned when the module runs, but nothing in it is reachable until
+     the view has been opened once. */
+  ev("setView('sessions')");
+  const ready = await until(
+    () => ev('typeof (BARRY.views.sessions||{}).scanLive') === 'function',
+    40000);
+  check('the renderer is reachable', !!ready,
+        String(ev('typeof BARRY.views.sessions')));
+  if (!ready) { document.title = 'scanlive: ' + (fails || 1) + ' FAILED'; return; }
+
+  const jobJson = JSON.stringify({
+    status: 'running', root: ROOT, found: last.found, scanned: last.scanned,
+    elapsed: 12.4, live: live,
+    current: ROOT + '\\FAKEPROJ\\fake_m900\\m900s1_2026-01-02\\2026-01-02_10-00-00',
+  });
+  const node = ev('(function(){var n=BARRY.views.sessions.scanLive('
+                + jobJson + ');document.body.appendChild(n);'
+                + 'n.id="scanLiveProbe";return n;})()');
+  const probe = await until(() => D().getElementById('scanLiveProbe'), 8000);
+  check('it rendered', !!probe);
+  if (!probe) { document.title = 'scanlive: ' + (fails || 1) + ' FAILED'; return; }
+  say('    ' + probe.textContent.replace(/\s+/g, ' ').trim(), 'note');
+
+  check('it says how fast it is going',
+        !!probe.querySelector('.scan-rate'),
+        (probe.querySelector('.scan-rate') || {}).textContent);
+  check('and the rate is folders over seconds, not a made-up number',
+        (probe.querySelector('.scan-rate') || {}).textContent
+          === Math.round(last.scanned / 12.4) + '/s',
+        (probe.querySelector('.scan-rate') || {}).textContent
+        + ' wanted ' + Math.round(last.scanned / 12.4) + '/s');
+  const factEls = Array.from(probe.querySelectorAll('.scan-fact'));
+  check('it shows what it has found, not just how many',
+        factEls.length > 0, factEls.map((n) => n.textContent).join(' | '));
+  check('the project is named on the line',
+        factEls.some((n) => n.textContent.indexOf(
+          Object.keys(live.projects)[0]) === 0),
+        factEls.map((n) => n.textContent).join(' | '));
+
+  say('');
+  say('=== a channel count that cannot be right is marked ===');
+  /* The fixture writes two channels per recording, and two is not a
+     multiple of thirty-two -- so the fixture itself exercises the warning
+     rather than needing a special case to do it. */
+  const chFacts = factEls.filter((n) => /\d+ ch/.test(n.textContent));
+  check('the channel counts are on the line', chFacts.length > 0,
+        chFacts.map((n) => n.textContent).join(' | '));
+  const oddOnes = chFacts.filter((n) => {
+    const c = parseInt(n.textContent, 10);
+    return c % 32 !== 0;
+  });
+  if (oddOnes.length) {
+    check('one that is not a multiple of 32 is marked',
+          oddOnes.every((n) => n.classList.contains('warn')),
+          oddOnes.map((n) => n.textContent + ':' + n.className).join(' | '));
+    check('and says why, in words a person can act on',
+          oddOnes.every((n) => /multiple of 32|missing/.test(n.title || '')),
+          (oddOnes[0].title || '').slice(0, 90));
+  }
+  const fine = chFacts.filter((n) => {
+    const c = parseInt(n.textContent, 10);
+    return c % 32 === 0 && c <= 128;
+  });
+  check('an ordinary channel count is NOT marked — a warning on everything '
+        + 'is a warning on nothing',
+        fine.every((n) => !n.classList.contains('warn')),
+        fine.map((n) => n.textContent + ':' + n.className).join(' | '));
+
+  say('');
+  say('=== where it is, without the part you already knew ===');
+  const code = probe.querySelector('.scan-line.where code');
+  check('the path is shown', !!code, code ? code.textContent : 'none');
+  if (code) {
+    check('relative to the folder being scanned, not absolute',
+          code.textContent.indexOf(ROOT) !== 0, code.textContent);
+    check('and it still ends at the recording, which is the part worth '
+          + 'reading',
+          /2026-01-02_10-00-00$/.test(code.textContent), code.textContent);
+    check('the absolute path is kept, on hover',
+          (code.title || '').indexOf(ROOT) === 0, code.title);
+    /* The assertion this page exists for. The old rule was `white-space:
+       nowrap; text-overflow: ellipsis`, which clipped the end. */
+    const cs = getComputedStyle(code);
+    check('nothing is clipped with an ellipsis',
+          cs.textOverflow !== 'ellipsis', cs.textOverflow);
+    check('it wraps instead of running off the edge',
+          cs.whiteSpace !== 'nowrap', cs.whiteSpace);
+    check('and measurably fits, however long the path is',
+          code.scrollWidth <= code.clientWidth + 1,
+          code.scrollWidth + ' in ' + code.clientWidth);
+    check('no ellipsis character was written into the text either',
+          code.textContent.indexOf('…') < 0);
+  }
+
+  ev('(function(){var n=document.getElementById("scanLiveProbe");'
+     + 'if(n)n.remove();})()');
+
+  say('');
+  say('=== and a finished scan says how much of it was news ===');
+  check('the server says how many it had never seen',
+        last.registered && typeof last.registered.new === 'number',
+        JSON.stringify(last.registered));
+
+  say('');
+  say('=== putting the registry back ===');
+  /* This page ran a real scan, and a finished scan registers everything it
+     walked past. Left alone that is three synthetic two-channel recordings
+     added to the catalogue every run, which the audit rightly calls suspect
+     and `scancheck.html` then reports. Same rule as `scanreg.html`: a
+     record whose every path is under the temp fixture folder is this
+     harness's; a fixture path on a record that is otherwise real is
+     detached, never forgotten, because the record is somebody's data. */
+  const reg = JSON.parse(await ev(
+    'fetch("/api/registry?no_demo=1").then(r=>r.text())'));
+  const all = [];
+  for (const p of (reg.tree || [])) {
+    for (const m of (p.mice || [])) for (const s of (m.sessions || [])) {
+      all.push(s);
+    }
+  }
+  let cleared = 0, detached = 0;
+  for (const s of all) {
+    const paths = s.paths || [];
+    const fake = paths.filter((x) => /barry_fakedrive/i.test(x));
+    if (!fake.length) continue;
+    if (fake.length === paths.length) {
+      await ev('fetch("/api/registry/' + s.gid + '/forget",{method:"POST",'
+             + 'headers:{"Content-Type":"application/json"},body:"{}"})'
+             + '.then(r=>r.text())');
+      cleared += 1;
+    } else {
+      for (const bad of fake) {
+        await ev('fetch("/api/registry/' + s.gid + '/patch",{method:"POST",'
+               + 'headers:{"Content-Type":"application/json"},'
+               + 'body:JSON.stringify({forget_path:' + JSON.stringify(bad)
+               + '})}).then(r=>r.text())');
+        detached += 1;
+      }
+    }
+  }
+  say('    cleared ' + cleared + ', detached ' + detached, 'note');
+  const end = JSON.parse(await ev(
+    'fetch("/api/registry?no_demo=1").then(r=>r.text())'));
+  const left = [];
+  for (const p of (end.tree || [])) {
+    for (const m of (p.mice || [])) for (const s of (m.sessions || [])) {
+      if ((s.paths || []).some((x) => /barry_fakedrive/i.test(x))) left.push(s);
+    }
+  }
+  check('nothing of this harness is left in the registry',
+        left.length === 0, left.map((s) => s.key).join(', '));
+
+  say('');
+  say('ran ' + checks + ' checks');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'scanlive: ' + fails + ' FAILED' : 'scanlive: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'scanlive CRASH'; });
+</script></body></html>

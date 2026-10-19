@@ -1,0 +1,1965 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>rootcanal: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre;flex:none}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Root Canal, step four of The Dentist, driven through the real interface.
+
+   IT RUNS ON A REAL RECORDING: PTEN m13 s2, bank entry 46fd29a77cc7, 296
+   aligned dentate spikes, the recording the lab's own IED scripts were
+   written against. There is no demo recording with IEDs in it, and a
+   classifier checked on data with nothing to classify checks nothing.
+
+   IT WRITES NOTHING TO THE BANK. The bank dialog is opened and cancelled;
+   the commit route is never called. Flips and moved centres are fit
+   params -- they live in the panel and the request, not on disk -- and
+   every one this suite makes is undone before it moves on.
+
+   Things that have bitten harnesses here before, each handled:
+
+   1. `BARRY` is a const inside the app's own scope, so it is reached
+      through the frame's `eval`.
+   2. The read is minutes the first time. If it is not already on file the
+      suite starts it and waits with a long timeout; under the runner's
+      virtual time that may not be long enough, and it says so rather than
+      reporting the checks after it as failures of their own.
+   3. It establishes its preconditions -- the set, the version, the default
+      settings, no flips, k-means' own centres -- rather than assuming them.
+   4. Canvas text is read by spying on `fillText`, and point positions come
+      from `_geom()`, so "the label exists in the source" is never mistaken
+      for "the label was drawn".
+   5. Run under PowerShell. Under Bash, Edge dumps nothing and the whole
+      suite reads as clean. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(70), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const eq = (name, got, want) =>
+  ok(name, JSON.stringify(got) === JSON.stringify(want),
+     'wanted ' + JSON.stringify(want) + ', got ' + JSON.stringify(got));
+const note = (s) => say('  note ' + s, 'dim');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(120);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+const NL = String.fromCharCode(10);
+const ENTRY = '46fd29a77cc7';
+
+(async () => {
+  let W = null, D = null, ev = null, viewWas;
+  try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  W = frame.contentWindow;
+  ev = (c) => W.eval(c);
+  D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  const get = (u) => ev('api(' + JSON.stringify(u) + ')');
+  const RC = 'BARRY.rootcanal';
+  const st = () => ev(RC + '._state()');
+  const geom = () => ev(RC + '._geom()');
+
+  /* Canvas text, as drawn: every fillText, with the canvas it went on. */
+  ev('(function(){ var C = window.CanvasRenderingContext2D.prototype;'
+     + ' if (!C.__rcOrig) { C.__rcOrig = C.fillText;'
+     + ' C.fillText = function(t, x, y) { (window.__rc = window.__rc || [])'
+     + '.push([this.canvas && this.canvas.id || "", String(t)]);'
+     + ' return C.__rcOrig.apply(this, arguments); }; }'
+     + ' window.__rc = []; })()');
+  const drawn = () => {
+    ev('window.__rc = []');
+    ev(RC + '._draw()');
+    const out = {};
+    for (const [id, t] of JSON.parse(ev('JSON.stringify(window.__rc)'))) {
+      (out[id] = out[id] || []).push(t);
+    }
+    return out;
+  };
+
+  /* A real pointer, at a point in a canvas's content box. */
+  const client = (id, x, y) => {
+    const cv = D().getElementById(id);
+    const r = cv.getBoundingClientRect();
+    return { cv, cx: r.left + cv.clientLeft + x, cy: r.top + cv.clientTop + y };
+  };
+  const pointer = (type, id, x, y) => {
+    const c = client(id, x, y);
+    c.cv.dispatchEvent(new W.PointerEvent(type, {
+      bubbles: true, cancelable: true, clientX: c.cx, clientY: c.cy,
+      button: 0, buttons: type === 'pointerup' ? 0 : 1, pointerId: 7,
+      pointerType: 'mouse' }));
+  };
+  const click = (id, x, y) => { pointer('pointerdown', id, x, y);
+                                pointer('pointerup', id, x, y); };
+
+  /* ================================================================== */
+  head('THE DENTIST HAS FIVE STEPS, AND THIS IS THE FOURTH');
+
+  /* SINGLE, said rather than assumed. The Single | Pooled choice is
+     remembered per viewer, and the pooled harness runs in the same browser
+     profile; a suite that inherited "pooled" would be checking a different
+     view. What was remembered is put back at the end. */
+  viewWas = ev('(function(){ try { return localStorage.getItem('
+                     + '"barry.rootcanal.view"); } catch (e) { return null; } })()');
+  ev('BARRY.rootcanal._setView("single")');
+  ev('setView("toolkit")');
+  await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
+  const dentist = Array.from(D().querySelectorAll('.tk-bundle'))
+    .find((b) => /The Dentist/.test(
+      (b.querySelector('.tk-bundle-hd') || {}).textContent || ''));
+  ok('the ToolKit offers The Dentist', !!dentist);
+  const stepEls = Array.from((dentist || D()).querySelectorAll('.tk-step'));
+  eq('with five steps, in the order they are done',
+     stepEls.map((b) => (b.querySelector('.tk-step-n') || {}).textContent),
+     ['Incisor', 'Checkup', 'Braces', 'Root Canal', 'X-ray']);
+  eq('numbered one to five',
+     stepEls.map((b) => (b.querySelector('.tk-step-i') || {}).textContent)
+       .join(''), '12345');
+  eq('and says what this one does',
+     ((stepEls[3] || {}).querySelector
+       ? (stepEls[3].querySelector('.tk-step-s') || {}).textContent : null),
+     'take the IEDs out');
+  eq('the header counts them',
+     ((dentist || D()).querySelector('.tk-bundle-c') || {}).textContent,
+     '5 tools');
+  ok('Root Canal is not in the flat tool list as well',
+     !Array.from(D().querySelectorAll('.tk-tool strong'))
+       .some((s) => /Root Canal/.test(s.textContent)));
+
+  if (stepEls[3]) stepEls[3].click();
+  const rcHead = () => Array.from(D().querySelectorAll('.step-head'))
+    .find((h) => /Root Canal/.test(h.textContent));
+  await until(rcHead, 10000, 'the panel');
+  ok('the step opens its own panel', !!rcHead());
+  eq('whose header says which of five it is',
+     rcHead() && (rcHead().querySelector('.step-n') || {}).textContent,
+     'step 4 of The Dentist');
+  ok('and the bad-channel scope card is not over it',
+     !D().querySelector('#tkMain .tk-scope'));
+
+  /* ================================================================== */
+  head('THE SERVER, DIRECTLY');
+
+  const cands = await get('/api/rootcanal/candidates');
+  ok('candidates answers', !!(cands && cands.ok),
+     JSON.stringify(cands).slice(0, 160));
+  const mine = (cands.sets || []).find((s) => s.entry_id === ENTRY);
+  ok('the PTEN m13 s2 set is offered', !!mine,
+     (cands.sets || []).map((s) => s.entry_id).join(' ').slice(0, 200));
+  if (!mine) throw new Error('entry ' + ENTRY + ' is not in the candidates, '
+                             + 'so there is nothing to drive');
+  ok('as aligned and readable here', mine.aligned && mine.readable,
+     JSON.stringify({ aligned: mine.aligned, readable: mine.readable,
+                      why_not: mine.why_not }));
+  const unaligned = (cands.sets || []).filter((s) => !s.aligned);
+  ok('a set Braces has not aligned is offered as unreadable, with the reason',
+     unaligned.every((s) => s.readable === false && /Braces/.test(s.why_not || '')),
+     JSON.stringify(unaligned.slice(0, 2).map((s) => [s.readable, s.why_not])));
+  ok('every set says what Root Canal has done to it',
+     (cands.sets || []).every((s) => s.rootcanal
+                                     && typeof s.rootcanal.done === 'boolean'));
+
+  /* ================================================================== */
+  head('WHICH VERSION IT READS');
+
+  /* The rule, on a list built for the purpose: the newest aligned version
+     Root Canal did not write itself. */
+  const dv = (vs) => ev('JSON.stringify(' + RC + '._defaultVersion('
+                        + JSON.stringify({ versions: vs }) + '))');
+  eq('the newest aligned one that is not Root Canal’s own output',
+     (JSON.parse(dv([
+       { name: '1', ref: 'a', aligned: true, usable: true },
+       { name: '2', ref: 'b', aligned: true, usable: true },
+       { name: '3', ref: 'c', aligned: true, usable: true, tag: 'rootcanal' },
+       { name: '4', ref: 'd', aligned: false, usable: true },
+     ])) || {}).ref, 'b');
+  eq('and never one whose stamps are not on this machine',
+     (JSON.parse(dv([
+       { name: '1', ref: 'a', aligned: true, usable: true },
+       { name: '2', ref: 'b', aligned: true, usable: false },
+     ])) || {}).ref, 'a');
+
+  await until(() => (st().cands || []).length, 20000, 'the panel’s list');
+  ev(RC + '._pickSet(' + JSON.stringify(ENTRY) + ')');
+  const want = JSON.parse(dv(mine.versions || [])) || null;
+  eq('picking the set ticks that version', String(st().q.from_version),
+     String(want ? (want.ref != null ? want.ref : want.name) : null));
+  /* The version tree now (constitution §6e): the chosen row is the one
+     with aria-checked, and it carries the same ref. */
+  const vChecked = D().querySelector('.rc-vers .vtree-row[aria-checked="true"]');
+  ok('and the row on screen agrees', !want || (!!vChecked
+     && vChecked.dataset.ref === String(want.ref != null ? want.ref : want.name)),
+     vChecked ? vChecked.dataset.ref : 'none chosen');
+
+  /* ================================================================== */
+  head('THE ACTIVITY FEED SURVIVES A READ');
+
+  /* A running read ticks every 700 ms. Rebuilding the host on a tick takes
+     the ToolKit's activity feed with it, and it remounts, says "Reading..."
+     and fetches -- X-ray's fault, and Braces' before it. Node identity, not
+     "a .tf exists": a remount leaves one too. */
+  ev(RC + '._fakeJob({ done: 1, of: 296 })');
+  await until(() => D().querySelector('#tkResult .rc-job'), 8000,
+              'the progress card');
+  ok('a running read draws the progress card, with a loader in it',
+     !!D().querySelector('#tkResult .rc-job .loader'));
+  const gotFeed = await until(() => D().querySelector('#tkResult .tf'), 10000,
+                              'the activity feed to mount');
+  ok('the activity feed is mounted under it', gotFeed);
+  const feed0 = D().querySelector('#tkResult .tf');
+  /* The tick itself updates the card where it stands. Asked around one
+     tick, synchronously: the ToolKit repaints the whole panel on its own
+     schedule, and that is a different event from a tick. */
+  const cardA = D().querySelector('#tkResult .rc-job');
+  ev(RC + '._tick({ done: 2 })');
+  ok('a tick updates the card in place rather than replacing it',
+     !!cardA && D().querySelector('#tkResult .rc-job') === cardA);
+  for (let i = 3; i <= 15; i++) {
+    ev(RC + '._tick({ done: ' + i + ' })');
+    await sleep(90);
+  }
+  ok('fourteen ticks later it is the SAME feed, not a remount',
+     !!feed0 && D().querySelector('#tkResult .tf') === feed0);
+  const jobText = (D().querySelector('#tkResult .rc-job') || {}).textContent || '';
+  ok('which says where it is up to', /15 of 296/.test(jobText),
+     jobText.slice(0, 120));
+  ok('and offers Stop', /Stop/.test(jobText));
+  ev(RC + '._endJob()');
+
+  /* ================================================================== */
+  head('THE READ');
+
+  ev(RC + '._read()');
+  /* Cached, this is one round trip. Not cached, it is minutes -- and the
+     runner's virtual clock may run out first, which is reported as what it
+     is rather than as forty failures after it. */
+  const haveRead = await until(() => st().q.read, 900000, 'the read');
+  ok('the read finishes and the panel has a hash', !!haveRead,
+     st().job ? JSON.stringify(st().job.stages || []) : 'no job either');
+  if (!haveRead) {
+    throw new Error('the read of ' + ENTRY + ' did not finish inside the '
+                    + 'budget; run the suite again once it has (it is cached '
+                    + 'after the first time)');
+  }
+  await until(() => st().fit && st().fit.ok !== undefined, 60000, 'the first fit');
+  const f0 = st().fit;
+  ok('a first fit arrives', !!(f0 && f0.ok), f0 && f0.error);
+  if (!f0 || !f0.ok) throw new Error('no fit: ' + (f0 && f0.error));
+  ok('with every event of the read in it', f0.events.length === f0.n,
+     f0.events.length + ' of ' + f0.n);
+  say('       ' + f0.n + ' events: ' + JSON.stringify(f0.counts), 'dim');
+  ok('the three counts add up to the events',
+     f0.counts.ds + f0.counts.ied + f0.counts.unmeasured === f0.n,
+     JSON.stringify(f0.counts));
+  ok('a not-measured event has no z and no class',
+     f0.events.filter((e) => e.z == null).every((e) => e.cls == null));
+  const cD = (f0.centres || []).find((c) => c.cls === 'ds');
+  const cI = (f0.centres || []).find((c) => c.cls === 'ied');
+  ok('two centres, one of each class', !!(cD && cI));
+  ok('and the IED one is the one with more HF power (the naming rule)',
+     !!(cD && cI) && cI.raw[2] > cD.raw[2],
+     JSON.stringify([cD && cD.raw, cI && cI.raw]));
+  ok('the rule is said in a sentence', /IED/.test(f0.rule || ''), f0.rule);
+  const whyText = (D().querySelector('.rc-why') || {}).textContent || '';
+  ok('and the panel says it', whyText.indexOf(f0.rule) >= 0,
+     whyText.slice(0, 160));
+  ok('the chooser folds to one line once there is a read',
+     !!D().querySelector('.rc-choose.rc-folded')
+     && !D().querySelector('input[name="rcEntry"]'));
+
+  /* ================================================================== */
+  head('EVERY AXIS IS LABELLED, AND THE HF AXIS NAMES ITS BAND');
+
+  await until(() => { const g = geom(); return g.space && g.flats.rcFlatHP; },
+              10000, 'the pictures');
+  let txt = drawn();
+  const hfSaid = '500–1000 Hz power · dB re baseline';
+  const has = (id, re) => (txt[id] || []).some((t) => re.test(t)
+                                                    || t.indexOf(re) >= 0);
+  // A long label is wrapped onto two lines where it would not fit, so a
+  // label is looked for in the canvas's text as a whole, not line by line.
+  const hasS = (id, s) => (txt[id] || []).some((t) => t.indexOf(s) >= 0)
+    || (txt[id] || []).join(' ').indexOf(s) >= 0;
+  /* Amplitude is measured on the filtered trace, so its axis says which
+     filter: the default here is LFP. */
+  const ampSaid = 'max amplitude on LFP 1–100 Hz · µV';
+  ok('the space names amplitude, and the filter it was measured on',
+     hasS('rcSpace', ampSaid), JSON.stringify(txt.rcSpace || []).slice(0, 200));
+  ok('and half-width', hasS('rcSpace', 'half-width · ms'));
+  ok('and power, with its band and its reference', hasS('rcSpace', hfSaid));
+  for (const [id, a, b] of [['rcFlatAH', ampSaid, 'half-width · ms'],
+                            ['rcFlatAP', ampSaid, hfSaid],
+                            ['rcFlatHP', 'half-width · ms', hfSaid]]) {
+    ok(id + ' labels both of its axes', hasS(id, a) && hasS(id, b),
+       JSON.stringify(txt[id] || []).slice(0, 200));
+  }
+  const allText = [].concat(...Object.values(txt));
+  ok('nothing drawn is cut short with an ellipsis',
+     !allText.some((t) => /…|\.\.\./.test(t)),
+     JSON.stringify(allText.filter((t) => /…|\.\.\./.test(t))));
+
+  /* ================================================================== */
+  head('THE SETTINGS WAIT FOR RECOMPUTE');
+
+  const body0 = JSON.stringify(ev(RC + '._lastBody()'));
+  ev(RC + '._setParam("band_lo", 600)');
+  ev(RC + '._setParam("band_hi", 900)');
+  ok('a typed band is pending', ev(RC + '._pending()') === true);
+  ok('and the picture’s chip says it is the old answer',
+     !!D().querySelector('.rc-chip.rc-chip-stale'));
+  await sleep(300);
+  eq('nothing was refitted', JSON.stringify(ev(RC + '._lastBody()')), body0);
+  txt = drawn();
+  ok('the axis still names the band the picture was computed with',
+     hasS('rcFlatAP', hfSaid));
+  const go = D().querySelector('.rc-recompute');
+  ok('Recompute is offered', !!go && !go.disabled);
+  const read0 = st().q.read;
+  if (go) go.click();
+  await until(() => st().fit && st().fit.params && st().fit.params.band_lo === 600
+                    && !st().fitting, 30000, 'the recompute');
+  eq('pressing it refits with the band that was typed',
+     [st().fit.params.band_lo, st().fit.params.band_hi], [600, 900]);
+  ok('the chip is current again', !D().querySelector('.rc-chip.rc-chip-stale'));
+  txt = drawn();
+  ok('and the axis now says 600–900 Hz',
+     hasS('rcFlatAP', '600–900 Hz power · dB re baseline')
+     && hasS('rcSpace', '600–900 Hz power · dB re baseline'),
+     JSON.stringify(txt.rcFlatAP || []).slice(0, 160));
+  ok('it did not read the recording again', !st().job && st().q.read === read0);
+
+  // The filter is a fit param too.
+  const ampWas = st().fit.events.map((e) => e.amp_uV);
+  // Corners only mean anything on a custom filter; a preset is its own.
+  ev(RC + '._setParam("filt", "custom")');
+  ev(RC + '._setParam("lo_hz", 5)');
+  ev(RC + '._setParam("hi_hz", 60)');
+  ev(RC + '._recompute()');
+  await until(() => st().fit.params.lo_hz === 5 && !st().fitting, 30000,
+              'the filter recompute');
+  ok('changing the filter changes the amplitudes',
+     st().fit.events.some((e, j) => e.amp_uV !== ampWas[j]));
+  ok('and still reads nothing from disk', !st().job && st().q.read === read0);
+  ev(RC + '._setParam("filt", "lfp")');
+  ev(RC + '._setParam("lo_hz", 1)');
+  ev(RC + '._setParam("hi_hz", 100)');
+  ev(RC + '._recompute()');
+  await until(() => st().fit.params.filt === 'lfp' && !st().fitting, 30000,
+              'back on LFP');
+  ok('and back on LFP the amplitudes are what they were',
+     st().fit.events.every((e, j) => e.amp_uV === ampWas[j]));
+
+  /* The band stops at 2000 Hz -- the decimator's anti-alias corner, not
+     the 2500 Hz Nyquist. 2400 is between the two, which is the case that
+     matters: under the Nyquist, and still not measurable. */
+  ev(RC + '._setParam("band_hi", 2400)');
+  ok('a band edge past 2000 Hz is refused, with the reason',
+     ev(RC + '._problems()').some((p) => /2000 Hz/.test(p)
+                                         && /anti-alias/.test(p)),
+     JSON.stringify(ev(RC + '._problems()')));
+  const bandIn = Array.from(D().querySelectorAll('.rc-controls input'))
+    .find((x) => x.max === '2000' && x.min === '1');
+  ok('the band field says where it stops', !!bandIn);
+  if (bandIn) {
+    bandIn.value = '2400';
+    bandIn.dispatchEvent(new W.Event('change', { bubbles: true }));
+    eq('and a value typed past it comes back to 2000', bandIn.value, '2000');
+    ev(RC + '._setParam("band_hi", 2400)');
+  }
+  ok('and Recompute will not take it',
+     !!D().querySelector('.rc-recompute') && D().querySelector('.rc-recompute').disabled);
+
+  // Back to the defaults, and waited for.
+  for (const [k, v] of [['lo_hz', 1], ['hi_hz', 100], ['band_lo', 500],
+                        ['band_hi', 1000], ['win_ms', 25]]) {
+    ev(RC + '._setParam(' + JSON.stringify(k) + ', ' + v + ')');
+  }
+  ev(RC + '._recompute()');
+  await until(() => st().fit.params.band_lo === 500 && st().fit.params.lo_hz === 1
+                    && !st().fitting, 30000, 'the defaults back');
+  eq('the settings are back at their defaults',
+     [st().fit.params.lo_hz, st().fit.params.hi_hz, st().fit.params.band_lo,
+      st().fit.params.band_hi], [1, 100, 500, 1000]);
+
+  /* ================================================================== */
+  head('WHERE THE HALF-WIDTH SEARCH STRUGGLED, EVERY EVENT IS MARKED');
+
+  /* On this recording, at v1's 50 ms search, two events never come back
+     to half amplitude: i=21 (DS) and i=246 (IED). They are placed on the
+     two axes they have. Widened to 80 ms both are found (56.6 and 59.7 ms)
+     and both are flagged as found only that way. Measured by the backend
+     agent on the same read; checked here as what the panel shows. */
+  const crossIn = D().querySelector('.rc-controls input.rc-in-cross');
+  ok('there is a half-width search control, from 10 to 200 ms',
+     !!crossIn && crossIn.min === '10' && crossIn.max === '200');
+  eq('at v1’s 50 ms by default', crossIn && crossIn.value, '50');
+  eq('and it reaches the fit', ev(RC + '._lastBody()').cross_ms, 50);
+  const f50 = st().fit;
+  eq('two events are placed on 2 of 3 axes, none by a widened search',
+     [f50.counts.partial, f50.counts.wide], [2, 0]);
+  const ev21 = f50.events.find((e) => e.i === 21) || {};
+  const ev246 = f50.events.find((e) => e.i === 246) || {};
+  ok('i=21 is a DS placed without its half-width',
+     ev21.partial && ev21.cls === 'ds' && JSON.stringify(ev21.missing)
+     === '["hw_ms"]' && ev21.z && ev21.z[1] === null, JSON.stringify(ev21));
+  ok('i=246 is an IED placed the same way', ev246.partial && ev246.cls === 'ied');
+  ok('both have a class, so the classified count includes them',
+     f50.n_placed === f50.n_used + 2, [f50.n_used, f50.n_placed].join(' / '));
+
+  await sleep(150);
+  let gp = geom();
+  const markIn = (gg, i) => [gg.space.pts.find((p) => p.i === i)]
+    .concat(['rcFlatAH', 'rcFlatAP', 'rcFlatHP']
+      .map((id) => gg.flats[id].pts.find((p) => p.i === i)));
+  ok('a partial event is a square in all four views',
+     [21, 246].every((i) => markIn(gp, i).every((p) => p && p.mark === 'square')),
+     JSON.stringify(markIn(gp, 21).map((p) => p && p.mark)));
+  ok('on the edge of the views whose axis it lacks, and in place in the other',
+     gp.flats.rcFlatAH.pts.find((p) => p.i === 21).edge
+     && gp.flats.rcFlatHP.pts.find((p) => p.i === 21).edge
+     && !gp.flats.rcFlatAP.pts.find((p) => p.i === 21).edge);
+  ok('and a complete one is still a dot',
+     gp.space.pts.filter((p) => ![21, 246].includes(p.i) && !p.hollow)
+       .every((p) => p.mark === 'dot'));
+  const lgd = Array.from(D().querySelectorAll('.rc-legend .rc-lg'))
+    .map((n2) => n2.textContent);
+  ok('the legend names the square and the dashed outline beside the others',
+     ['on 2 of 3 axes', 'half-width by the widened search', 'set by hand',
+      'not measured'].every((w2) => lgd.includes(w2)), JSON.stringify(lgd));
+  ok('the why-line counts them', /2 on 2 of 3 axes/.test(
+     (D().querySelector('.rc-why') || {}).textContent || ''));
+  ok('and says how many were classified, placed ones included',
+     new RegExp(f50.n_placed + ' of ' + f50.n + ' classified').test(
+       (D().querySelector('.rc-why') || {}).textContent || ''));
+  ok('Bank says so too', /\(2 on 2 of 3 axes\)/.test(
+     (D().querySelector('.rc-bank') || {}).textContent || ''),
+     (D().querySelector('.rc-bank') || {}).textContent);
+
+  ev(RC + '._pick(21)');
+  await until(() => st().evData && st().evData.i === 21, 20000, 'event 21');
+  await sleep(150);
+  const why21 = (D().querySelector('.rc-ev-why') || {}).textContent || '';
+  ok('the click panel says why, in words',
+     /Assigned on 2 of 3 axes/.test(why21)
+     && /never came back to half-amplitude within 50 ms/.test(why21), why21);
+  const tr21 = geom().ev.trace || {};
+  ok('the trace draws no half-width for it',
+     tr21.hasW === false && (!tr21.leftFound || !tr21.rightFound),
+     JSON.stringify(tr21));
+  txt = drawn();
+  ok('and says the crossing was not found rather than drawing the edge',
+     hasS('rcTrace', 'half-width not found'), JSON.stringify(txt.rcTrace || []));
+
+  // Widened to 80 ms, through the field and Recompute.
+  if (crossIn) {
+    crossIn.value = '80';
+    crossIn.dispatchEvent(new W.Event('input', { bubbles: true }));
+    crossIn.dispatchEvent(new W.Event('change', { bubbles: true }));
+  }
+  ok('a new search width waits for Recompute', ev(RC + '._pending()') === true);
+  const go80 = D().querySelector('.rc-recompute');
+  if (go80) go80.click();
+  await until(() => st().fit.params.cross_ms === 80 && !st().fitting, 30000,
+              'the 80 ms fit');
+  eq('80 ms reaches the fit', ev(RC + '._lastBody()').cross_ms, 80);
+  const f80 = st().fit;
+  eq('both are found now, and flagged as found only that way',
+     [f80.counts.partial, f80.counts.wide], [0, 2]);
+  await sleep(150);
+  gp = geom();
+  ok('a widened event is its class dot with the dashed outline, in all four',
+     [21, 246].every((i) => markIn(gp, i).every((p) => p && p.mark === 'dot'
+                                                       && p.wide)),
+     JSON.stringify(markIn(gp, 21)));
+  ok('the why-line and Bank count them',
+     /2 by the widened search/.test((D().querySelector('.rc-why') || {}).textContent)
+     && /\(2 by the widened search\)/.test(
+       (D().querySelector('.rc-bank') || {}).textContent || ''));
+  ev(RC + '._pick(21)');
+  await until(() => st().evData && st().evData.i === 21
+                    && (geom().ev.trace || {}).hasW, 20000, 'event 21 at 80 ms');
+  const why80 = (D().querySelector('.rc-ev-why') || {}).textContent || '';
+  ok('its panel says the search was widened, and to what',
+     /widened to 80 ms: 56\.6 ms/.test(why80), why80);
+  ok('and the trace has its half-width back', geom().ev.trace.hasW === true);
+
+  ev(RC + '._setParam("cross_ms", 50)');
+  ev(RC + '._recompute()');
+  await until(() => st().fit.params.cross_ms === 50 && !st().fitting, 30000,
+              'back to 50 ms');
+  eq('back at v1’s search', st().fit.counts.partial, 2);
+
+  /* ================================================================== */
+  head('THE FILTER IS ONE OF FOUR: NONE, DS, LFP, CUSTOM');
+
+  /* Asked for once it was clear the 1-100 Hz default was a recommendation
+     rather than a measurement. Driven through the buttons themselves, and
+     each one followed to the server's own statement of what it applied. */
+  const fbtn = (label) => Array.from(D().querySelectorAll('.rc-filt button'))
+    .find((b) => b.textContent.trim() === label);
+  const chipText = () => (D().querySelector('.rc-chip') || {}).textContent || '';
+  const filtBefore = JSON.stringify(st().fit.counts);
+  eq('four choices, in order',
+     Array.from(D().querySelectorAll('.rc-filt button'))
+       .map((b) => b.textContent.trim()), ['No filter', 'DS', 'LFP', 'Custom']);
+  ok('LFP is the default, so nothing fitted before moves',
+     !!fbtn('LFP') && fbtn('LFP').classList.contains('active')
+     && st().fit.params.filt === 'lfp', st().fit.params.filt);
+  ok('and the chip names it', /LFP 1–100 Hz/.test(chipText()), chipText());
+  ok('a preset shows what it is, not corner fields',
+     !D().querySelector('.rc-mains') && !!D().querySelector('.rc-filt-is'));
+
+  async function pickFilter(label, want) {
+    fbtn(label).click();
+    await sleep(100);
+    ev(RC + '._recompute()');
+    await until(() => st().fit && st().fit.params.filt === want
+                      && !st().fitting, 30000, label);
+  }
+
+  await pickFilter('DS', 'ds');
+  eq('DS reaches the fit', ev(RC + '._lastBody()').filt, 'ds');
+  const dsp = st().fit.params;
+  ok('and the server applied 5-100 Hz with the mains out',
+     dsp.lo_hz === 5 && dsp.hi_hz === 100 && dsp.mains_out === true,
+     JSON.stringify([dsp.lo_hz, dsp.hi_hz, dsp.mains_out]));
+  ok('the chip says so', /DS 5–100 Hz, mains out/.test(chipText()), chipText());
+  await until(() => st().evData && st().evData.filt === 'ds', 20000,
+              'the event on the DS filter');
+  ok('the open event is re-read on the new filter, not the old one',
+     st().evData && st().evData.filt === 'ds',
+     st().evData && st().evData.filt);
+  {
+    const cv = D().getElementById('rcTrace');
+    const t = cv ? (cv.parentElement.querySelector('.rc-ev-t') || {}).textContent || '' : '';
+    ok('and the trace names the filter it is on', /DS 5–100 Hz/.test(t), t);
+  }
+
+  fbtn('Custom').click();
+  await sleep(150);
+  ok('Custom shows its corners and the mains box',
+     !!D().querySelector('.rc-mains')
+     && D().querySelectorAll('.rc-controls .rc-num input[type=number]').length
+        >= 4, D().querySelectorAll('.rc-controls .rc-num input').length);
+  ev(RC + '._setParam("lo_hz", 3)');
+  ev(RC + '._setParam("hi_hz", 150)');
+  const mainsBox = D().querySelector('.rc-mains input');
+  if (mainsBox && mainsBox.checked) mainsBox.click();
+  ev(RC + '._recompute()');
+  // The mains box applied at once, on the old corners; Recompute then sends
+  // the typed ones -- wait for those.
+  await until(() => st().fit && st().fit.params.filt === 'custom'
+                    && st().fit.params.lo_hz === 3 && !st().fitting, 30000, 'custom');
+  const cp = st().fit.params;
+  ok('custom reaches the server with its own corners and the box as set',
+     cp.lo_hz === 3 && cp.hi_hz === 150 && cp.mains_out === false,
+     JSON.stringify([cp.lo_hz, cp.hi_hz, cp.mains_out]));
+  ok('and the chip names them', /custom 3–150 Hz/.test(chipText()), chipText());
+
+  await pickFilter('No filter', 'none');
+  ok('no filter is no filter', /no filter/.test(chipText()), chipText());
+
+  fbtn('Custom').click();
+  await sleep(150);
+  const ins = Array.from(D().querySelectorAll('.rc-controls .rc-num input[type=number]'))
+    .slice(0, 2).map((i) => i.value);
+  ok('choosing Custom again brings back the corners typed for it',
+     ins[0] === '3' && ins[1] === '150', JSON.stringify(ins));
+
+  await pickFilter('LFP', 'lfp');
+  eq('back on LFP, the answer is the one it was', JSON.stringify(st().fit.counts),
+     filtBefore);
+
+  /* ================================================================== */
+  head('k CLUSTERS, RELABELS AND MARGINS');
+
+  const kBefore = JSON.stringify(st().fit.counts);
+  const kBtn = (v) => Array.from(D().querySelectorAll('.rc-k .rc-kseg button'))
+    .find((b) => b.textContent.trim() === String(v));
+  eq('a choice of 1 to 6 clusters',
+     D().querySelectorAll('.rc-k .rc-kseg button').length, 6);
+  ok('two by default', !!kBtn(2) && kBtn(2).classList.contains('active')
+     && st().fit.k === 2);
+  kBtn(3).click();
+  /* A click is applied at once: k is a button, its fit is a tenth of a
+     second, and waiting for Recompute read as the picture not updating. */
+  await until(() => st().fit && st().fit.k === 3 && !st().fitting, 30000, 'k = 3');
+  ok('k is applied the moment it is pressed, without Recompute',
+     st().fit.k === 3 && ev(RC + '._pending()') === false);
+  eq('k = 3 reaches the fit', ev(RC + '._lastBody()').k, 3);
+  eq('three clusters come back', (st().fit.clusters || []).length, 3);
+  ok('ranked by HF power, lowest first',
+     st().fit.clusters.every((c, i, a2) => i === 0
+                             || a2[i - 1].centre_raw[2] <= c.centre_raw[2]));
+  ok('the highest is IED by the rule, the rest DS',
+     st().fit.clusters.map((c) => c.call).join() === 'ds,ds,ied'
+     && st().fit.clusters.every((c) => c.call_by === 'rule'));
+  eq('one chip per cluster', D().querySelectorAll('.rc-why .rc-clu').length, 3);
+  ok('and the rule says k = 3', /k = 3/.test(st().fit.rule), st().fit.rule);
+  D().querySelector('.rc-why .rc-clu').click();
+  await until(() => !st().fitting && st().fit.clusters
+                    && st().fit.clusters[0].call_by === 'hand', 30000, 'relabel');
+  ok('pressing a cluster calls it the other thing, by hand',
+     st().fit.clusters[0].call === 'ied' && st().fit.clusters[0].call_by === 'hand');
+  eq('and the request carries it', ev(RC + '._lastBody()').cluster_calls,
+     { 0: 'ied' });
+  const kReset = Array.from(D().querySelectorAll('.rc-why button'))
+    .find((b) => b.textContent.trim() === 'Calls back to the rule');
+  ok('a hand call can be undone in one press', !!kReset);
+  if (kReset) kReset.click();
+  await until(() => !st().fitting && st().fit.clusters
+                    && st().fit.clusters.every((c) => c.call_by === 'rule'),
+              30000, 'the rule again');
+  ok('and is', st().fit.clusters.every((c) => c.call_by === 'rule'));
+  ok('the dots can be coloured by cluster',
+     !!D().querySelector('.rc-colour-by'));
+  /* COLOURS THAT MATCH, at k = 3. A chip, its centre and its dots say
+     one colour, in either colour mode; centres are numbered as the chips
+     are; no centre label lands on another. */
+  const kTok = (t) => ev('BARRY.token(' + JSON.stringify(t) + ')');
+  /* Colours compared through a canvas, which writes any colour the same
+     way -- a token's hex and a swatch's rgb() come out alike. */
+  const kNorm = (c) => { const g2 = D().createElement('canvas').getContext('2d');
+                         g2.fillStyle = '#000'; g2.fillStyle = c; return g2.fillStyle; };
+  const kColourOk = () => {
+    const gm = geom();
+    const chips = Array.from(D().querySelectorAll('.rc-why .rc-clu'));
+    return st().fit.clusters.every((c, r) => {
+      const sw = chips[r] && chips[r].querySelector('.rc-swatch');
+      const cen = ((gm.space || {}).centres || []).find((x) => x.k === r);
+      return !!(sw && cen && kNorm(sw.style.backgroundColor) === kNorm(cen.fill));
+    });
+  };
+  ok('each chip’s swatch is its centre’s colour, by call', kColourOk());
+  ok('and by call that is the call’s colour',
+     ((geom().space || {}).centres || []).every((c) =>
+       c.fill === (c.cls === 'ied' ? kTok('--err') : kTok('--ok'))),
+     JSON.stringify(((geom().space || {}).centres || []).map((c) => c.fill)));
+  ev(RC + '._singleColour("cluster")');
+  await sleep(150);
+  ok('by cluster, chip, centre and dots share each cluster’s colour',
+     kColourOk() && ((geom().space || {}).centres || []).every((c) =>
+       c.fill === kTok('--c' + ((c.k % 4) + 1))));
+  ev(RC + '._singleColour("call")');
+  ok('centres are numbered as the chips are',
+     ((geom().space || {}).centres || []).map((c) => c.label && c.label.text)
+       .join() === '#1 DS,#2 DS,#3 IED',
+     JSON.stringify(((geom().space || {}).centres || []).map((c) => c.label)));
+  kBtn(6).click();
+  await until(() => st().fit && st().fit.k === 6 && !st().fitting, 30000, 'k = 6');
+  await sleep(150);
+  const kOverlap = (labs) => labs.some((a, i) => labs.some((b, j) => j > i
+    && !(a.x + a.w < b.x || b.x + b.w < a.x || a.y < b.y - 11 || b.y < a.y - 11)));
+  const gm6 = geom();
+  ok('at k = 6 no centre label lands on another, in any view',
+     !kOverlap(((gm6.space || {}).centres || []).map((c) => c.label).filter(Boolean))
+     && Object.values(gm6.flats || {}).every((f) =>
+       !kOverlap((f.centres || []).map((c) => c.label).filter(Boolean))),
+     JSON.stringify(Object.values(gm6.flats || {}).map((f) =>
+       (f.centres || []).map((c) => c.label && [c.label.text,
+         Math.round(c.label.x), Math.round(c.label.y)]))).slice(0, 300));
+
+  /* Complete events only, in Single too -- the same switch Pooled has. */
+  const kComplete = D().querySelector('.rc-controls .rc-complete input');
+  ok('Single has the complete-events switch Pooled has', !!kComplete);
+  kBtn(2).click();
+  await until(() => st().fit && st().fit.k === 2 && !st().fitting, 30000, 'k = 2');
+  const kPartial = st().fit.counts.partial;
+  if (kComplete) {
+    D().querySelector('.rc-controls .rc-complete input').click();
+    await until(() => st().fit && st().fit.params.complete_only === true
+                      && !st().fitting, 30000, 'complete only');
+    ok('applied at once: events on two axes are left out, and counted so',
+       st().fit.counts.excluded === kPartial && st().fit.counts.partial === 0
+       && kPartial > 0, JSON.stringify(st().fit.counts));
+    D().querySelector('.rc-controls .rc-complete input').click();
+    await until(() => st().fit && st().fit.params.complete_only === false
+                      && !st().fitting, 30000, 'back');
+  }
+
+  kBtn(1).click();
+  await until(() => st().fit && st().fit.k === 1 && !st().fitting, 30000, 'k = 1');
+  ok('k = 1 is no split: nothing called IED, and it says why',
+     st().fit.counts.ied === 0 && /no split/.test(st().fit.rule), st().fit.rule);
+
+  /* A margin that is not here is refused -- by the server, for real --
+     and said in the margin's own card, with the set fitted without it. */
+  ev(RC + '._setMargin({ artifact_id: "harness-none", mode: "fixed" })');
+  await until(() => ev(RC + '._marginErr()') && st().fit && st().fit.ok
+                    && !st().fitting, 30000, 'the refusal');
+  ok('an unknown margin is refused with a sentence',
+     /no saved Root Canal margin/.test(ev(RC + '._marginErr()') || ''),
+     ev(RC + '._marginErr()'));
+  await until(() => D().querySelector('.rc-margins .rc-margin-err')
+                    && !st().fitting, 20000, 'the card to say it');
+  ok('said in the margins card, which opens to say it',
+     !!D().querySelector('.rc-margins[open] .rc-margin-err'));
+  ok('and the set is still fitted, without it',
+     st().fit.ok && st().q.margin === null && !st().fit.margin_used);
+  // Cleared, as somebody would before going on, so the card folds again.
+  ev(RC + '._setMargin(null)');
+  await until(() => !ev(RC + '._marginErr()') && !st().fitting
+                    && !D().querySelector('.rc-margins[open]'), 20000,
+              'the card to fold');
+  ok('and once cleared the card folds back to one line',
+     !D().querySelector('.rc-margins[open]'));
+
+  /* Save margins: the request, through the naming dialog, intercepted so
+     nothing reaches the artifact store. */
+  ev('(function(){ var W = window; W.__rkSent = []; W.__rkFetch = W.fetch;'
+     + ' W.fetch = function(u, o) { if (String(u).indexOf("/api/rootcanal/'
+     + 'margin/save") >= 0) { W.__rkSent.push(JSON.parse((o && o.body) || "{}"));'
+     + ' return Promise.resolve(new Response(JSON.stringify({ ok: true,'
+     + ' artifact_id: "harness-m", version: 1, nickname: "harness margin",'
+     + ' confirmed: false }), { status: 200, headers: { "Content-Type":'
+     + ' "application/json" } })); } return W.__rkFetch.apply(this, arguments); };'
+     + ' W.__rkBd = BARRY.ui.bankDialog; BARRY.ui.bankDialog = async function(o){'
+     + ' await o.onBank({ name: "harness margin", note: "" }); return true; }; })()');
+  const kSave = Array.from(D().querySelectorAll('.rc-margins button'))
+    .find((b) => /Save these margins/.test(b.textContent));
+  ok('Single can save its margins', !!kSave);
+  if (kSave) kSave.click();
+  await until(() => JSON.parse(ev('JSON.stringify(window.__rkSent)')).length,
+              10000, 'the margin save');
+  const kSent = JSON.parse(ev('JSON.stringify(window.__rkSent)'))[0] || {};
+  ok('it asks the server to cut it from this recording, at these settings',
+     kSent.nickname === 'harness margin' && kSent.extract
+     && kSent.extract.source === 'single' && kSent.extract.k === 1
+     && kSent.extract.entry_id === ENTRY, JSON.stringify(kSent).slice(0, 160));
+  ev('(function(){ var W = window; if (W.__rkFetch) { W.fetch = W.__rkFetch;'
+     + ' delete W.__rkFetch; } if (W.__rkBd) { BARRY.ui.bankDialog = W.__rkBd;'
+     + ' delete W.__rkBd; } })()');
+
+  kBtn(2).click();
+  await until(() => st().fit && st().fit.k === 2 && !st().fitting, 30000, 'k = 2');
+  eq('back at k = 2 the answer is the one it was',
+     JSON.stringify(st().fit.counts), kBefore);
+
+  /* ================================================================== */
+  head('A MISSING HALF-WIDTH, SEARCHED AGAIN WIDER ON REQUEST');
+
+  await until(() => st().fit && st().fit.k === 2 && !st().fitting, 30000, 'k = 2');
+  const rMiss = st().fit.events.filter((e) => e.amp_uV != null && e.hw_ms == null);
+  ok('this set has events with an amplitude and no half-width',
+     rMiss.length > 0, rMiss.length);
+  const rAll = D().querySelector('.rc-why .rc-retry-all');
+  ok('the card offers to search them all again, and says how many and how far',
+     !!rAll && new RegExp('Search the ' + rMiss.length + ' with no half-width '
+                          + 'again, to ±200 ms').test(rAll.textContent),
+     rAll && rAll.textContent);
+  ev(RC + '._pick(' + rMiss[0].i + ')');
+  await until(() => D().querySelector('.rc-pickbar .rc-retry-one'), 8000,
+              'the one-event button');
+  ok('a picked event with no half-width offers it for itself',
+     /Search again, to ±200 ms/.test(
+       (D().querySelector('.rc-pickbar .rc-retry-one') || {}).textContent || ''));
+  const rOther = st().fit.events.filter((e) => e.hw_ms != null)
+    .map((e) => [e.i, e.hw_ms]);
+  rAll.click();
+  await until(() => !st().fitting && st().fit.events
+    .some((e) => e.retried != null), 30000, 'the retry');
+  eq('the request names exactly those events', ev(RC + '._lastBody()').retry,
+     rMiss.map((e) => e.i));
+  const rNow = st().fit.events.filter((e) => rMiss.some((m) => m.i === e.i));
+  ok('each is marked searched again, found or not',
+     rNow.every((e) => e.retried === true || e.retried === false));
+  ok('a found one has its half-width, and is marked as widened',
+     rNow.filter((e) => e.retried).every((e) => e.hw_ms != null && e.wide),
+     JSON.stringify(rNow.map((e) => [e.i, e.retried, e.hw_ms])));
+  ok('every other event keeps its half-width exactly', rOther.every(
+    ([i, hw]) => st().fit.events.find((e) => e.i === i).hw_ms === hw));
+  ok('the rule says how many were searched again, and how far',
+     /searched again to ±200 ms found a half-width/.test(st().fit.rule),
+     st().fit.rule);
+  ok('and the button is gone, nothing left to search',
+     !D().querySelector('.rc-why .rc-retry-all'));
+  ev(RC + '._pick(' + rMiss[0].i + ')');
+  await until(() => D().querySelector('.rc-pickbar'), 5000, 'the bar');
+  ok('the event’s bar says it was found by searching again',
+     !rNow[0].retried || /found by searching again/.test(
+       D().querySelector('.rc-pickbar').textContent));
+
+  /* ================================================================== */
+  head('AVERAGES, THE LASSO AND CLUSTERS DRAWN BY HAND');
+
+  await until(() => st().fit && st().fit.k === 2 && !st().fitting, 30000, 'k = 2');
+  eq('every cluster chip has its average',
+     D().querySelectorAll('.rc-why .rc-clu-avg').length, st().fit.clusters.length);
+  const gIed = st().fit.clusters.find((c) => c.call === 'ied');
+  D().querySelectorAll('.rc-why .rc-clu-avg')[gIed.rank].click();
+  await until(() => ev(RC + '._avg()') && !ev(RC + '._avg()').busy, 30000, 'the average');
+  const gA = ev(RC + '._avg()');
+  ok('the average arrives', gA && gA.data && gA.data.ok !== false,
+     gA && (gA.err || ''));
+  eq('over every event in the cluster', gA.data.n, gIed.n);
+  ok('its trace carries its spread, point for point',
+     gA.data.trace.sd.length === gA.data.trace.y.length && gA.data.trace.n > 0);
+  ok('and its stack and CSD are there', gA.data.stack.rows.length > 0
+     && gA.data.csd.rows.length > 0);
+  await until(() => D().querySelector('.rc-avg'), 5000, 'the average pane');
+  ok('the event panel says what it is averaging, and how many',
+     /Average of cluster #/.test((D().querySelector('.rc-avg-head') || {}).textContent || '')
+     && new RegExp('n = ' + gIed.n).test((D().querySelector('.rc-avg-head') || {}).textContent || ''),
+     (D().querySelector('.rc-avg-head') || {}).textContent);
+  for (const id of ['rcTrace', 'rcSpec', 'rcStack', 'rcCsd']) {
+    const cv = D().getElementById(id);
+    ok('the average’s ' + id + ' is drawn at a real size',
+       !!cv && cv.clientWidth >= 150 && cv.clientHeight >= 150);
+  }
+  D().querySelector('.rc-avg-close').click();
+  await until(() => !ev(RC + '._avg()'), 5000, 'closed');
+  ok('and it closes back to the picked dot', !ev(RC + '._avg()')
+     && !D().querySelector('.rc-avg'));
+
+  /* A REAL LASSO: Shift and drag on the 3D view, with pointer events. */
+  const gCv = D().getElementById('rcSpace');
+  const gR = gCv.getBoundingClientRect();
+  const gPts = geom().space.pts;
+  const gXs = gPts.map((q2) => q2.x).sort((a2, b2) => a2 - b2);
+  const gMid = gXs[Math.floor(gXs.length / 2)];
+  const gPath = [[1, 1], [gMid, 1], [gMid, gR.height - 1], [1, gR.height - 1]];
+  const gWant = gPts.filter((q2) => (q2.alpha == null || q2.alpha > 0.5)
+                             && q2.x < gMid && q2.y > 1 && q2.y < gR.height - 1)
+    .map((q2) => q2.i).sort((a2, b2) => a2 - b2);
+  // Content-box pixels, as the geometry is: past the canvas's own border.
+  const gL = gR.left + gCv.clientLeft, gT = gR.top + gCv.clientTop;
+  const fire = (type, x, y) => gCv.dispatchEvent(new W.PointerEvent(type, {
+    clientX: gL + x, clientY: gT + y, button: 0, buttons: 1,
+    shiftKey: true, bubbles: true, pointerId: 1 }));
+  const gYaw = ev(RC + '._view()').yaw, gPitch = ev(RC + '._view()').pitch;
+  fire('pointerdown', gPath[0][0], gPath[0][1]);
+  /* Along each side in steps, the way a hand moves, back to the start. */
+  const gRing = gPath.concat([gPath[0]]);
+  for (let s2 = 1; s2 < gRing.length; s2++) {
+    const [x0, y0] = gRing[s2 - 1], [x1, y1] = gRing[s2];
+    for (let t2 = 1; t2 <= 8; t2++) {
+      fire('pointermove', x0 + (x1 - x0) * t2 / 8, y0 + (y1 - y0) * t2 / 8);
+    }
+  }
+  fire('pointerup', gPath[0][0], gPath[0][1]);
+  await sleep(150);
+  const gSel = ev(RC + '._lassoSel()').slice().sort((a2, b2) => a2 - b2);
+  ok('Shift-drag draws round dots instead of turning the view',
+     gSel.length > 0 && ev(RC + '._view()').yaw === gYaw
+     && ev(RC + '._view()').pitch === gPitch,
+     JSON.stringify([gSel.length, ev(RC + '._view()').yaw, gYaw]));
+  eq('and the dots it took are the ones inside the drawn path', gSel, gWant);
+  /* The exact set, through the same path handed in directly. */
+  const gExact = ev(RC + '._lasso(' + JSON.stringify(gPath) + ')').slice()
+    .sort((a2, b2) => a2 - b2);
+  eq('the lasso takes exactly the dots inside the path', gExact, gWant);
+  await until(() => D().querySelector('.rc-lasso-bar'), 5000, 'the bar');
+  ok('a bar says how many were drawn round',
+     new RegExp(gWant.length + ' dots? drawn round').test(
+       (D().querySelector('.rc-lasso-bar') || {}).textContent || ''));
+  ok('and they are ringed in the 3D view', geom().space.selected === gWant.length);
+  D().querySelector('.rc-lasso-avg').click();
+  await until(() => ev(RC + '._avg()') && !ev(RC + '._avg()').busy, 30000, 'their average');
+  eq('“Average them” averages exactly those', ev(RC + '._avg()').data.n, gWant.length);
+  D().querySelector('.rc-avg-close').click();
+  await until(() => !ev(RC + '._avg()'), 5000, 'closed');
+  D().querySelector('.rc-lasso-ied').click();
+  await until(() => !st().fitting && (st().fit.clusters || [])
+                    .some((c) => c.call_by === 'drawn'), 30000, 'the drawn cluster');
+  const gD = st().fit.clusters.find((c) => c.call_by === 'drawn');
+  ok('“Make an IED cluster” makes one, after k-means’ own, called IED',
+     gD && gD.rank === st().fit.k && gD.call === 'ied' && gD.n === gWant.length,
+     JSON.stringify(gD));
+  eq('the request carries it', (ev(RC + '._lastBody()').drawn[0] || {}).events
+       .slice().sort((a2, b2) => a2 - b2), gWant);
+  ok('its events are in it', st().fit.events.filter((e) => gWant.indexOf(e.i) >= 0)
+     .every((e) => e.cluster === gD.rank && e.cls === 'ied'));
+  ok('the rule says it was drawn', /drawn by hand/.test(st().fit.rule), st().fit.rule);
+  ok('its chip is marked drawn', !!D().querySelector('.rc-why .rc-clu.drawn'));
+  D().querySelector('.rc-why .rc-clu.drawn').click();
+  await until(() => !st().fitting && (st().fit.clusters.find((c) => c.call_by === 'drawn')
+                                       || {}).call === 'ds', 30000, 'relabel drawn');
+  ok('pressing its chip calls the drawn cluster DS', ev(RC + '._drawn()')[0].call === 'ds');
+  D().querySelector('.rc-why .rc-clu-rm').click();
+  await until(() => !st().fitting && !(st().fit.clusters || [])
+                    .some((c) => c.call_by === 'drawn'), 30000, 'undrawn');
+  ok('and × undraws it: its events go back to k-means',
+     ev(RC + '._drawn()').length === 0 && st().fit.clusters.length === 2);
+
+  /* ================================================================== */
+  head('EVERY DOT IS WHERE IT IS DRAWN, AT THE SIZE IT IS SHOWN');
+
+  await until(() => geom().space, 8000, 'the space');
+  let g = geom();
+  const n = st().fit.n;
+  eq('the space holds every event', g.space.pts.length, n);
+  ok('all of them inside the canvas',
+     g.space.pts.every((p) => p.x >= 0 && p.x <= g.space.w
+                              && p.y >= 0 && p.y <= g.space.h));
+  ok('with both centres', (g.space.centres || []).length === 2);
+  for (const id of ['rcFlatAH', 'rcFlatAP', 'rcFlatHP']) {
+    const f = g.flats[id];
+    ok(id + ' holds every event, inside its plot',
+       !!f && f.pts.length === n && f.pts.every((p) =>
+         p.x >= f.box.x0 - 0.5 && p.x <= f.box.x1 + 0.5
+         && p.y >= f.box.y0 - 0.5 && p.y <= f.box.y1 + 0.5),
+       f ? f.pts.length + ' dots' : 'missing');
+  }
+  const dpr = ev('window.devicePixelRatio || 1');
+  for (const id of ['rcSpace', 'rcFlatAH', 'rcFlatAP', 'rcFlatHP']) {
+    const cv = D().getElementById(id);
+    ok(id + ' is drawn at the size it is shown (HiDPI-sharp)',
+       !!cv && Math.abs(cv.width - Math.round(cv.clientWidth * dpr)) <= 1
+       && Math.abs(cv.height - Math.round(cv.clientHeight * dpr)) <= 1,
+       cv ? cv.clientWidth + 'x' + cv.clientHeight + ' shown, '
+            + cv.width + 'x' + cv.height + ' drawn at dpr ' + dpr : 'missing');
+  }
+  ok('and the panel says nothing is mismatched',
+     ev(RC + '._mismatched()') === false);
+
+  /* ================================================================== */
+  head('PICKING');
+
+  /* Exact on a flat view: a dot with nothing else near it, pressed with a
+     real pointer. */
+  const lonely = (pts, r) => pts.find((p) => pts.every((o) => o === p
+    || Math.hypot(o.x - p.x, o.y - p.y) > r));
+  g = geom();
+  const fp = lonely(g.flats.rcFlatAH.pts.filter((p) => !p.hollow), 8);
+  ok('there is an isolated dot on the amp × half-width view to press', !!fp);
+  if (fp) {
+    click('rcFlatAH', fp.x, fp.y);
+    await until(() => st().picked === fp.i, 4000, 'the pick');
+    eq('pressing it picks exactly that event', st().picked, fp.i);
+  }
+
+  /* In the space: the dot under the pointer, the front one winning. */
+  g = geom();
+  const sp = g.space.pts;
+  const under = (x, y) => sp.filter((p) => Math.hypot(p.x - x, p.y - y)
+                                           <= p.r + 1.5);
+  let pair = null;
+  for (const p of sp) {
+    const us = under(p.x, p.y).filter((o) => o !== p);
+    const o = us.find((q2) => Math.abs(q2.depth - p.depth) > 0.05);
+    if (o) { pair = [p, o]; break; }
+  }
+  if (pair) {
+    const [a, b] = pair;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const cands3 = under(mx, my);
+    const front = cands3.reduce((m, p) => (p.depth > m.depth ? p : m), cands3[0]);
+    click('rcSpace', mx, my);
+    await until(() => st().picked === front.i, 4000, 'the 3D pick');
+    eq('where two dots overlap in the space, the front one is picked',
+       st().picked, front.i);
+  } else {
+    note('no two dots overlap in the space at this rotation; front-wins '
+         + 'checked through _pickAt only');
+  }
+  /* A lone dot, and one whose press point 12 px to its right is more than
+     the 6 px pick radius from every OTHER dot too: lonely within 10 px
+     alone let a neighbour 16 px away sit under the press. */
+  const sp1 = sp.find((p) => sp.every((o) => o === p
+    || (Math.hypot(o.x - p.x, o.y - p.y) > 10
+        && Math.hypot(o.x - (p.x + 12), o.y - p.y) > 7)));
+  if (sp1) {
+    eq('a press 4 px off a lone dot still picks it (within 6 px)',
+       ev(RC + '._pickAt("rcSpace",' + (sp1.x + 4) + ',' + sp1.y + ')'), sp1.i);
+    eq('and 12 px off picks nothing',
+       ev(RC + '._pickAt("rcSpace",' + (sp1.x + 12) + ',' + sp1.y + ')'), null);
+  }
+
+  /* Highlighted in all four views. */
+  const target = (st().fit.events.find((e) => e.cls === 'ied')
+                  || st().fit.events.find((e) => e.cls) || {}).i;
+  ev(RC + '._pick(' + target + ')');
+  await sleep(150);
+  g = geom();
+  const inAll = [g.space.picked, g.flats.rcFlatAH.picked, g.flats.rcFlatAP.picked,
+                 g.flats.rcFlatHP.picked];
+  ok('the picked dot is marked in all four views', inAll.every(Boolean),
+     JSON.stringify(inAll));
+  const spPt = sp.find((p) => p.i === target) || {};
+  ok('at the place that dot was drawn',
+     !!g.space.picked && Math.abs(g.space.picked.x - (geom().space.pts
+       .find((p) => p.i === target) || {}).x) < 0.01, JSON.stringify(spPt));
+
+  /* ================================================================== */
+  head('TURNING, ZOOMING, RESETTING');
+
+  let v0 = ev(RC + '._view()');
+  eq('it opens turned, not head-on', [v0.yaw, v0.pitch], [v0.yaw0, v0.pitch0]);
+  ok('and the default is not zero', Math.abs(v0.yaw) > 0.2 && Math.abs(v0.pitch) > 0.2);
+  const before = geom().space.pts.slice(0, 5);
+  const pickedBefore = st().picked;
+  const cvS = D().getElementById('rcSpace');
+  const mid = { x: cvS.clientWidth / 2, y: cvS.clientHeight / 2 };
+  pointer('pointerdown', 'rcSpace', mid.x, mid.y);
+  for (let k = 1; k <= 6; k++) pointer('pointermove', 'rcSpace', mid.x + 10 * k, mid.y + 3 * k);
+  pointer('pointerup', 'rcSpace', mid.x + 60, mid.y + 18);
+  const v1 = ev(RC + '._view()');
+  ok('a drag turns it', Math.abs(v1.yaw - v0.yaw - 0.6) < 0.05
+                        && Math.abs(v1.pitch - v0.pitch - 0.18) < 0.05,
+     JSON.stringify([v0.yaw, v1.yaw, v0.pitch, v1.pitch]));
+  ok('and a drag is not a pick', st().picked === pickedBefore);
+  const after = geom().space.pts.slice(0, 5);
+  ok('the dots moved with it', after.some((p, j) => Math.abs(p.x - before[j].x) > 1));
+  eq('none were lost', geom().space.pts.length, n);
+  const s0 = geom().space.scale;
+  cvS.dispatchEvent(new W.WheelEvent('wheel', { bubbles: true, cancelable: true,
+    deltaY: -300, clientX: 10, clientY: 10 }));
+  ok('the wheel zooms in', geom().space.scale > s0 * 1.2,
+     s0 + ' -> ' + geom().space.scale);
+  cvS.dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true }));
+  const v2 = ev(RC + '._view()');
+  eq('a double-click puts it back', [v2.yaw, v2.pitch, v2.zoom],
+     [v0.yaw0, v0.pitch0, 1]);
+
+  /* The projection itself, at a known view: head-on, amplitude runs to the
+     right and power runs up. */
+  ev(RC + '._rotate(0, 0)');
+  g = geom();
+  const ax = g.space.axes;
+  ok('head-on, amplitude runs across to the right',
+     ax[0].x1 > g.space.cx + 20 && Math.abs(ax[0].y1 - g.space.cy) < 0.5);
+  ok('and power runs straight up',
+     ax[2].y1 < g.space.cy - 20 && Math.abs(ax[2].x1 - g.space.cx) < 0.5);
+  ok('with half-width pointing out of the screen, a dot',
+     Math.hypot(ax[1].x1 - g.space.cx, ax[1].y1 - g.space.cy) < 0.5);
+  ev(RC + '._resetView()');
+
+  /* ================================================================== */
+  head('THE CLICK PANEL');
+
+  ev(RC + '._pick(' + target + ')');
+  await until(() => st().evData && st().evData.i === target, 20000, 'the event');
+  const ed = st().evData;
+  const pe = st().fit.events.find((e) => e.i === target);
+  ok('the event panel arrives for the picked event', !!ed && ed.ok !== false,
+     ed && ed.error);
+  ok('its trace carries a baseline, a peak and the half-amplitude level',
+     [ed.trace.baseline, ed.trace.peak_uV, ed.trace.half_uV]
+       .every((v) => typeof v === 'number'), JSON.stringify(ed.trace).slice(0, 160));
+  eq('on the max-amp contact the fit named', ed.trace.contact, pe.contact);
+  eq('the spectrum shades the fit’s band', ed.spectrum.band, [500, 1000]);
+  ok('the stack has a row per contact',
+     ed.stack.rows.length === ed.stack.nums.length);
+  await sleep(200);
+  g = geom();
+  eq('and the max contact is the one marked on it',
+     g.ev.stack && g.ev.stack.nums[g.ev.stack.maxRow], pe.contact);
+  ok('and on the CSD', !!g.ev.csd && g.ev.csd.nums[g.ev.csd.maxRow] === pe.contact,
+     JSON.stringify(g.ev.csd || {}).slice(0, 120));
+  txt = drawn();
+  ok('the trace says the half-width it measured, or that it could not',
+     hasS('rcTrace', 'half-width'), JSON.stringify(txt.rcTrace || []));
+  ok('the spectrum names the band', hasS('rcSpec', '500–1000 Hz'));
+  /* The CSD is on the dentate-spike filter, mains fitted out -- not the fit
+     filter, on which mains that differed between contacts striped it. The
+     answer says which, and the panel's title says what the answer says. */
+  ok('the event says its CSD is on the dentate-spike filter',
+     ed.csd && /mains taken out/.test(ed.csd.filter || '')
+     && JSON.stringify(ed.csd.band) === '[5,100]',
+     JSON.stringify(ed.csd && { filter: ed.csd.filter, band: ed.csd.band }));
+  {
+    const cv = D().getElementById('rcCsd');
+    const t = cv ? (cv.parentElement.querySelector('.rc-ev-t') || {}).textContent || '' : '';
+    ok('and the CSD panel names that filter, not the fit filter',
+       /5–100 Hz/.test(t) && /mains taken out/.test(t) && !/fit filter/.test(t), t);
+  }
+  for (const id of ['rcTrace', 'rcSpec', 'rcStack', 'rcCsd']) {
+    const cv = D().getElementById(id);
+    ok(id + ' is on screen and a real size',
+       !!cv && cv.clientHeight >= 150 && cv.clientWidth >= 150,
+       cv ? cv.clientWidth + 'x' + cv.clientHeight : 'missing');
+  }
+
+  /* ← and →, from the keyboard. */
+  const evs = st().fit.events.map((e) => e.i);
+  const at0 = evs.indexOf(st().picked);
+  if (D().activeElement && D().activeElement.blur) D().activeElement.blur();
+  D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowRight',
+                                                     bubbles: true }));
+  eq('→ steps to the next event', st().picked, evs[(at0 + 1) % evs.length]);
+  D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowLeft',
+                                                     bubbles: true }));
+  eq('← steps back', st().picked, evs[at0]);
+
+  /* ================================================================== */
+  head('THE CALL IS SHOWN, NOT SET; AN OLDER RESULT’S FLIPS STILL REBUILD');
+
+  const fl = st().fit.events.find((e) => e.i === target);
+  const was = fl.cls;
+  const cnt0 = Object.assign({}, st().fit.counts);
+  /* Asked for 2026-10-06: no identity switch on a single event. The bar
+     says the event's call and offers no way to change it. */
+  ok('there is no DS/IED toggle on the picked event’s bar',
+     !D().querySelector('.rc-pickbar .rc-toggle')
+     && !Array.from(D().querySelectorAll('.rc-pickbar button'))
+       .some((b) => /^(DS|IED)$/.test(b.textContent.trim())));
+  const callChip = D().querySelector('.rc-pickbar .rc-ev-call');
+  ok('its call is shown instead, with its cluster',
+     !!callChip && callChip.textContent.indexOf(was.toUpperCase()) === 0
+     && /cluster #\d/.test(callChip.textContent),
+     callChip && callChip.textContent);
+  /* A result banked before the toggle went can carry flips: they are fit
+     params, and they still rebuild. */
+  ev(RC + '._flip(' + target + ')');
+  await until(() => { const e = st().fit.events.find((x) => x.i === target);
+                      return e && e.flipped && !st().fitting; }, 20000, 'the flip');
+  const fl2 = st().fit.events.find((e) => e.i === target);
+  ok('it flips that event', fl2.flipped && fl2.cls !== was,
+     JSON.stringify([was, fl2.cls, fl2.flipped]));
+  ok('and moves exactly one between the counts',
+     st().fit.counts[was] === cnt0[was] - 1
+     && st().fit.counts[fl2.cls] === cnt0[fl2.cls] + 1,
+     JSON.stringify([cnt0, st().fit.counts]));
+  eq('the flip is a fit param: a list of indices', st().q.flips, [target]);
+  ok('it is ringed as set by hand', /set by hand/.test(
+     (D().querySelector('.rc-why') || {}).textContent || ''));
+  ok('and its bar says it was flipped in an older result',
+     /flipped by hand in an older result/.test(
+       (D().querySelector('.rc-pickbar') || {}).textContent || ''));
+  const clr = Array.from(D().querySelectorAll('.rc-controls button'))
+    .find((b) => /clear flips/.test(b.textContent));
+  ok('clear flips is offered', !!clr && !clr.disabled);
+  if (clr) clr.click();
+  await until(() => !st().q.flips.length && !st().fitting
+                    && !st().fit.events.find((x) => x.i === target).flipped,
+              20000, 'the flips cleared');
+  eq('clearing puts it back', st().fit.events.find((e) => e.i === target).cls, was);
+  eq('and the counts with it', st().fit.counts, cnt0);
+
+  /* ================================================================== */
+  head('A MOVED CENTRE STICKS, AND EVERY EVENT FOLLOWS THE NEAREST');
+
+  const base = st().fit.centres.map((c) => c.z.slice());
+  const k0 = st().fit.centres.findIndex((c) => c.cls === 'ds');
+  const moved = base[k0].map((v, a) => v + (a === 2 ? 0.8 : 0.3));
+  ev(RC + '._moveCentre(' + k0 + ',' + JSON.stringify(moved) + ')');
+  await until(() => !st().fitting && st().fit.centres[k0]
+                    && Math.abs(st().fit.centres[k0].z[2] - moved[2]) < 1e-6,
+              20000, 'the moved centre');
+  ok('the centre is where it was put', st().fit.centres[k0].z.every(
+     (v, a) => Math.abs(v - moved[a]) < 1e-6), JSON.stringify(st().fit.centres[k0].z));
+  ok('the other one did not move', st().fit.centres[1 - k0].z.every(
+     (v, a) => Math.abs(v - base[1 - k0][a]) < 1e-6));
+  const cz = st().fit.centres.map((c) => c.z);
+  // Complete events only: a partial one is placed on the two axes it has,
+  // and a distance over three would count its missing axis as zero.
+  const wrong = st().fit.events.filter((e) => e.z && e.z.every((v) => v != null)
+                                              && !e.flipped).filter((e) => {
+    const d = cz.map((c) => Math.hypot(e.z[0] - c[0], e.z[1] - c[1], e.z[2] - c[2]));
+    return e.cluster !== (d[0] <= d[1] ? 0 : 1);
+  });
+  ok('every measured event is in the cluster of its nearest centre',
+     wrong.length === 0, wrong.length + ' are not');
+  ok('reset centres is offered', !!Array.from(D().querySelectorAll('.rc-controls button'))
+     .find((b) => /reset centres/.test(b.textContent) && !b.disabled));
+  ev(RC + '._resetCentres()');
+  await until(() => !st().q.centres && !st().fitting
+                    && Math.abs(st().fit.centres[k0].z[2] - base[k0][2]) < 1e-6,
+              20000, 'the centres back');
+  ok('resetting gives k-means’ own centres back, exactly',
+     st().fit.centres.every((c, j) => c.z.every((v, a) =>
+       Math.abs(v - base[j][a]) < 1e-6)));
+
+  /* The same thing with a real pointer, on a flat view. */
+  await sleep(150);
+  g = geom();
+  const fAP = g.flats.rcFlatAP;
+  const gc = fAP.centres.find((c) => c.k === k0);
+  ok('the DS centre is on the amp × power view to take hold of', !!gc);
+  if (gc) {
+    pointer('pointerdown', 'rcFlatAP', gc.x, gc.y);
+    for (let k = 1; k <= 5; k++) {
+      pointer('pointermove', 'rcFlatAP', gc.x + 4 * k, gc.y - 3 * k);
+    }
+    pointer('pointerup', 'rcFlatAP', gc.x + 20, gc.y - 15);
+    /* On the ANSWER, not on the request: `q.centres` is set the instant
+       the pointer lets go, and the refit is 60 ms behind it. */
+    await until(() => st().q.centres && !st().fitting
+                      && st().fit.centres[k0].raw[2] !== cD.raw[2],
+                20000, 'the dragged centre');
+    const raw1 = st().fit.centres[k0].raw, raw0 = geom().flats.rcFlatAP.xr;
+    ok('dragging a centre sets it by hand', !!st().q.centres);
+    ok('up and to the right, in µV and dB',
+       st().fit.centres[k0].raw[0] > cD.raw[0] - 1e-9 && raw1[2] > cD.raw[2],
+       JSON.stringify([cD.raw, raw1, raw0]));
+    ok('and it did not pick a dot on the way', st().picked === target);
+    ev(RC + '._resetCentres()');
+    await until(() => !st().q.centres && !st().fitting, 20000, 'the reset');
+  }
+
+  /* ================================================================== */
+  head('NOTHING IS OUT OF REACH, NOTHING IS CUT OFF');
+
+  const box = (sel) => { const e = D().querySelector(sel);
+                         return e ? e.getBoundingClientRect() : null; };
+  const res = D().getElementById('tkResult');
+  ok('the panel does not scroll sideways',
+     !!res && res.scrollWidth <= res.clientWidth + 1,
+     res && (res.scrollWidth + ' in ' + res.clientWidth));
+  const clipped = Array.from(D().querySelectorAll('.rc-work *'))
+    .filter((e) => e.children.length === 0 && e.textContent.trim()
+                   && e.scrollWidth > e.clientWidth + 1
+                   && getComputedStyle(e).overflow !== 'visible');
+  ok('no text in the workbench is clipped',
+     clipped.length === 0, clipped.slice(0, 3).map((e) => e.textContent).join(' | '));
+  const ellip = Array.from(D().querySelectorAll('.rc-work *'))
+    .filter((e) => W.getComputedStyle(e).textOverflow === 'ellipsis');
+  ok('and nothing is set to end in an ellipsis', ellip.length === 0);
+  const shrunk = Array.from(D().querySelectorAll('.rc-work > *'))
+    .filter((e) => e.getBoundingClientRect().height < 4
+                   && !e.classList.contains('rc-busy'));
+  ok('no block of the workbench is squeezed to a sliver', shrunk.length === 0,
+     shrunk.map((e) => e.className).join(', '));
+  const lab = (D().querySelector('.rc-bank') || {}).textContent || '';
+  const c1 = st().fit.counts;
+  ok('Bank says what it will do, in numbers',
+     /* v[\d.]+ -- reading an older version makes the bank a branch, and a
+        branch is named v2.1, not the tip plus one. */
+     new RegExp('^Bank: ' + (c1.ds + c1.unmeasured) + ' DS as (v[\\d.]+|a new '
+                + 'version), ' + c1.ied + ' IED as ').test(lab), lab);
+  const acts = D().querySelector('.rc-why .head-actions');
+  ok('and it is the one primary, at the right, last',
+     !!acts && acts.lastElementChild === D().querySelector('.rc-bank')
+     && D().querySelectorAll('.rc-work .btn:not(.ghost)').length === 1);
+  /* Reachable without scrolling: the settings, Recompute, Bank and the
+     picked event's controls all sit above the pictures. Measured from the
+     top of the tool's own panel, not the page: in a frame this narrow the
+     ToolKit puts its whole list of tools above the panel, which is the
+     ToolKit's layout and not this one's. */
+  const vh = W.innerHeight;
+  const top0 = res.getBoundingClientRect().top;
+  for (const [what, sel] of [['Recompute', '.rc-recompute'], ['Bank', '.rc-bank'],
+                             ['the event’s call', '.rc-ev-call'],
+                             ['Open in Xplorefinder', '.rc-pickbar .head-actions']]) {
+    const r = box(sel);
+    const b = r ? r.bottom - top0 : null;
+    /* Where everything above it sits, so a miss says which card grew. */
+    const above = ['.rc-choose', '.rc-controls', '.rc-why', '.rc-why-acts',
+                   '.rc-pickbar',
+                   /* and the why card's own rows, so a miss says which grew */
+                   '.rc-why .rc-rule', '.rc-why-t > .chip-row',
+                   '.rc-why .rc-clusters', '.rc-why .rc-clu',
+                   '.rc-why .rc-stats-go', '.rc-why .rc-margins',
+                   '.rc-why .head-actions'].map((s2) => {
+      const q2 = box(s2);
+      return q2 ? s2 + ' ' + (q2.top - top0).toFixed(0) + '+'
+                  + q2.height.toFixed(0) : s2 + ' -';
+    }).join(', ');
+    /* And the room left on each wrapping row's last line: what a control
+       added to the card could take without making it a line taller. */
+    const room = ['.rc-why-t > .chip-row', '.rc-why .rc-clusters'].map((s2) => {
+      const rw = D().querySelector(s2);
+      if (!rw || !rw.children.length) return s2 + ' -';
+      const R = rw.getBoundingClientRect();
+      const kids = Array.from(rw.children).map((c2) => c2.getBoundingClientRect());
+      const lastTop = Math.max.apply(null, kids.map((k2) => k2.top));
+      const used = Math.max.apply(null, kids.filter((k2) => k2.top >= lastTop - 2)
+                                           .map((k2) => k2.right));
+      return s2 + ' ' + (R.right - used).toFixed(0) + ' px free of '
+             + R.width.toFixed(0);
+    }).join(', ');
+    ok(what + ' is within one screen of the top of the panel',
+       !!r && b <= vh + 1, r ? b.toFixed(0) + ' px down, screen ' + vh
+                               + ' (' + above + '; ' + room + ')' : 'missing');
+    if (what === 'Open in Xplorefinder') {
+      say('       ' + (r ? b.toFixed(0) : '?') + ' of ' + vh + ' px; ' + room, 'dim');
+    }
+  }
+  const pic = box('#rcSpace');
+  const lastCtl = Math.max.apply(null, ['.rc-recompute', '.rc-bank', '.rc-ev-call']
+    .map((s2) => (box(s2) || { bottom: 0 }).bottom));
+  ok('and every one of them is above the pictures',
+     !!pic && lastCtl <= pic.top + 1);
+
+  /* At 900 px: the frame itself made that wide. */
+  const keepFlex = frame.style.flex, keepW = frame.style.width;
+  frame.style.flex = 'none';
+  frame.style.width = '900px';
+  await sleep(700);
+  ev(RC + '._draw()');
+  await sleep(200);
+  ok('at 900 px the panel still does not scroll sideways',
+     res.scrollWidth <= res.clientWidth + 1, res.scrollWidth + ' in ' + res.clientWidth);
+  const cvs900 = ['rcSpace', 'rcFlatAH', 'rcFlatAP', 'rcFlatHP', 'rcTrace']
+    .map((id) => { const cv = D().getElementById(id);
+                   return [id, cv ? cv.clientWidth : 0, cv ? cv.clientHeight : 0]; });
+  ok('and every picture keeps a real size',
+     cvs900.every(([, w, h]) => w >= 150 && h >= 150), JSON.stringify(cvs900));
+  ok('drawn at the size it is shown', ev(RC + '._mismatched()') === false);
+  const clip900 = Array.from(D().querySelectorAll('.rc-work *'))
+    .filter((e) => e.children.length === 0 && e.textContent.trim()
+                   && e.scrollWidth > e.clientWidth + 1
+                   && W.getComputedStyle(e).overflow !== 'visible');
+  ok('with no text clipped', clip900.length === 0,
+     clip900.slice(0, 3).map((e) => e.textContent).join(' | '));
+  txt = drawn();
+  ok('and every axis still labelled in full',
+     hasS('rcFlatAP', hfSaid) && hasS('rcSpace', hfSaid));
+  frame.style.flex = keepFlex;
+  frame.style.width = keepW;
+  await sleep(500);
+  ev(RC + '._draw()');
+
+  /* ================================================================== */
+  head('THE PICTURES FOR THE BANK, AND THE DIALOG (NOTHING IS BANKED)');
+
+  const pics = ev(RC + '._pngs()');
+  ok('the space is filed as a PNG',
+     /^data:image\/png;base64,/.test(pics.space || '') && pics.space.length > 2000);
+  ok('and the three flat views as one sheet',
+     /^data:image\/png;base64,/.test(pics.flat || '') && pics.flat.length > 2000);
+  ev(RC + '._bankDialog()');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .mf'), 5000,
+              'the dialog');
+  const mf = D().querySelector('#bigModal .mf');
+  const btns = mf ? Array.from(mf.querySelectorAll('button')) : [];
+  ok('the dialog ends Cancel, then Bank it',
+     btns.length >= 2 && /Cancel/.test(btns[btns.length - 2].textContent)
+     && /Bank it/.test(btns[btns.length - 1].textContent),
+     btns.map((b) => b.textContent).join(' | '));
+  ok('and says the IEDs arrive as candidates, not decisions',
+     /candidates/.test((D().querySelector('#bigModal .rc-ask') || {}).textContent || ''));
+  /* The shared bank dialog's sentence, about the version this was read
+     from -- not "the tip plus one", which is wrong whenever an older
+     version was read and the bank is really a branch. */
+  const vline = (D().querySelector('#bigModal .bank-dlg-line') || {}).textContent || '';
+  ok('and which version the bank becomes, from the version read',
+     /^(continues|branches from) v[\d.]+ → v[\d.]+$/.test(vline), vline);
+  say('note', '  ' + vline);
+  const cancel = btns.find((b) => /Cancel/.test(b.textContent));
+  if (cancel) cancel.click();
+  await until(() => D().getElementById('bigModal').classList.contains('hidden'),
+              4000, 'the dialog to close');
+  ok('Cancel closes it', D().getElementById('bigModal').classList.contains('hidden'));
+
+  /* ================================================================== */
+  head('WHAT BANK WOULD SEND (INTERCEPTED; NOTHING REACHES THE BANK)');
+
+  /* The commit route is never reached. `apiPost` is a const and cannot be
+     replaced, so the frame's `fetch` is wrapped instead, for that one URL
+     only, and answers from here. The activity log is silenced while it is
+     wrapped, so no "rootcanal.commit" reaches the shared table for a commit
+     that never happened. Both are put back in the `finally` at the end. */
+  ev('(function(){ var W = window; if (W.__rcFetch) return;'
+     + ' W.__rcFetch = W.fetch; W.__rcSent = []; W.__rcReply = null;'
+     + ' W.__rcLog = BARRY.activity.log; BARRY.activity.log = function(){};'
+     + ' W.fetch = function(u, o) {'
+     + '  if (String(u).indexOf("/api/rootcanal/commit") >= 0) {'
+     + '   W.__rcSent.push(JSON.parse((o && o.body) || "{}"));'
+     + '   var r = W.__rcReply || { status: 500, body: { ok: false,'
+     + '     error: "harness: no reply set" } };'
+     + '   return Promise.resolve(new Response(JSON.stringify(r.body),'
+     + '     { status: r.status, headers: { "Content-Type":'
+     + '       "application/json" } })); }'
+     + '  return W.__rcFetch.apply(this, arguments); }; })()');
+  const sent = () => JSON.parse(ev('JSON.stringify(window.__rcSent || [])'));
+  const cB = st().fit.counts;
+  ev('window.__rcReply = ' + JSON.stringify({ status: 200, body: {
+    ok: true, ds_entry: ENTRY, ds_version: 'harness', ied_entry: 'harness-ied',
+    ied_version: '0', removed: cB.ied, kept: cB.ds + cB.unmeasured,
+    unmeasured: cB.unmeasured, written: { ds: true, ied: true } } }));
+  ev(RC + '._bankDialog()');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .bank-dlg-note'), 5000,
+              'the dialog again');
+  const noteIn = D().querySelector('#bigModal .bank-dlg-note');
+  if (noteIn) noteIn.value = 'harness note';
+  const bankIt = Array.from(D().querySelectorAll('#bigModal .mf button'))
+    .find((b) => /Bank it/.test(b.textContent));
+  ok('Bank it is there to press', !!bankIt);
+  if (bankIt) bankIt.click();
+  await until(() => sent().length >= 1, 8000, 'the intercepted commit');
+  const sb = sent()[0] || {};
+  eq('one commit would go out', sent().length, 1);
+  ok('for this set, at the version read, over this read',
+     sb.entry_id === ENTRY && String(sb.from_version) === String(st().q.from_version)
+     && sb.read === st().q.read, JSON.stringify([sb.entry_id, sb.from_version, sb.read]));
+  eq('with the settings the answer was computed with',
+     [sb.filt, sb.lo_hz, sb.hi_hz, sb.mains_out, sb.win_ms, sb.band_lo, sb.band_hi],
+     ['lfp', 1, 100, false, 25, 500, 1000]);
+  ok('and the overrides, as fit params', Array.isArray(sb.flips) && sb.centres === null,
+     JSON.stringify([sb.flips, sb.centres]));
+  eq('with the note typed', sb.note, 'harness note');
+  ok('and both pictures, as PNGs',
+     /^data:image\/png/.test((sb.pngs || {}).space || '')
+     && /^data:image\/png/.test((sb.pngs || {}).flat || ''));
+  ok('not asking to clean again', !sb.again);
+
+  /* The refusal: a set that is already Root Canal output. The server's
+     sentence is shown, and cleaning again is a deliberate second press. */
+  ev('window.__rcReply = ' + JSON.stringify({ status: 400, body: { ok: false,
+    error: 'This version is already Root Canal output; send again to clean '
+         + 'it a second time.' } }));
+  ev(RC + '._commit("", false)');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-again'), 8000,
+              'the refusal');
+  const again = D().querySelector('#bigModal .rc-again');
+  ok('a refusal is shown in the server’s own words',
+     /already Root Canal output/.test(
+       (D().querySelector('#bigModal .rc-ask') || {}).textContent || ''));
+  const foot = Array.from(D().querySelectorAll('#bigModal .mf button'));
+  ok('with “clean again anyway” as the secondary action, not the primary',
+     !!again && again.classList.contains('ghost')
+     && foot[foot.length - 1] !== again,
+     foot.map((b) => b.className + ':' + b.textContent).join(' | '));
+  ev('window.__rcReply = ' + JSON.stringify({ status: 200, body: {
+    ok: true, ds_entry: ENTRY, ds_version: 'harness', ied_entry: null,
+    ied_version: null, removed: 0, kept: 1, written: { ds: false, ied: false },
+    already: 'harness: nothing written' } }));
+  if (again) again.click();
+  await until(() => sent().length >= 3, 8000, 'the second attempt');
+  ok('pressing it asks again, with again: true',
+     (sent()[2] || {}).again === true, JSON.stringify(sent().map((b) => b.again)));
+  ev('closeModal()');
+  ev('(function(){ var W = window; if (W.__rcFetch) { W.fetch = W.__rcFetch;'
+     + ' delete W.__rcFetch; } if (W.__rcLog) { BARRY.activity.log = W.__rcLog;'
+     + ' delete W.__rcLog; } })()');
+  ok('and the real fetch is back', ev('!window.__rcFetch'));
+
+  /* ================================================================== */
+  head('OPEN IN XPLOREFINDER, AND IT FOLLOWS');
+
+  ev(RC + '._pick(' + target + ')');
+  const opened = await ev(RC + '._openXplore()');
+  const xw = ev(RC + '._xWin()');
+  if (!xw) {
+    note('the pop-out did not open here (pop-ups are blocked in this browser); '
+         + 'the rest of this section needs one');
+  } else {
+    ok('the window opens and the marks land in it', opened === true);
+    const marks = () => { try { return xw.barryXplore.current().curationMarks; }
+                          catch (e) { return null; } };
+    ok('as Root Canal’s marks, one per event',
+       !!marks() && marks().kind === 'rootcanal' && marks().events.length === n,
+       JSON.stringify(marks() && { kind: marks().kind, n: marks().events.length }));
+    eq('on the picked event', marks() && marks().at,
+       st().fit.events.find((e) => e.i === target).t);
+    ev(RC + '._step(1)');
+    await until(() => marks() && marks().at !== st().fit.events
+                  .find((e) => e.i === target).t, 5000, 'the window to follow');
+    eq('stepping here moves it there',
+       marks() && marks().at, st().fit.events.find((e) => e.i === st().picked).t);
+    ev(RC + '._closeXplore()');
+  }
+  ok('the bridge is a real window property, for a pop-out to reach',
+     ev('typeof window.barryRootcanal.step') === 'function'
+     && ev('typeof window.barryRootcanal.current') === 'function');
+
+  /* ================================================================== */
+  head('MANY SETS AT ONCE');
+
+  /* A finished row, without running a batch: what the list does with it
+     is the thing checked. A real batch reads for minutes per recording. */
+  ev(RC + '._fakeBulk([{ id: ' + JSON.stringify(ENTRY) + ', label: "PTEN m13 s2",'
+     + ' status: "done", cached: true },'
+     + ' { id: "harness-other", label: "another", status: "running",'
+     + ' done: 3, of: 64 }])');
+  await until(() => D().querySelector('.rc-bulk-card'), 5000, 'the batch card');
+  const rowsB = Array.from(D().querySelectorAll('.rc-bulk-card tr'));
+  ok('a finished set is a button you can open',
+     !!rowsB[0] && !!rowsB[0].querySelector('td:first-child button.mini'));
+  ok('and bank', !!rowsB[0] && Array.from(rowsB[0].querySelectorAll('button'))
+     .some((b) => /Bank/.test(b.textContent)));
+  ok('while one still reading is neither',
+     !!rowsB[1] && !rowsB[1].querySelector('button'));
+  ok('there is a Stop', Array.from(D().querySelectorAll('.rc-bulk-card button'))
+     .some((b) => b.textContent === 'Stop'));
+  const feedB = D().querySelector('#tkResult .tf');
+  for (let k = 0; k < 6; k++) { ev(RC + '._tickBulk()'); await sleep(90); }
+  ok('ticking the batch leaves the activity feed alone',
+     !feedB || D().querySelector('#tkResult .tf') === feedB);
+  ev(RC + '._endBulk()');
+  await until(() => D().querySelector('.rc-work'), 8000, 'the workbench back');
+
+  const bp = await get('/api/rootcanal/batch/plan');
+  ok('the batch plan answers', !!(bp && bp.ok));
+  ok('and PTEN m13 s2 is already read in it',
+     (bp.done || []).some((r) => r.entry_id === ENTRY),
+     JSON.stringify((bp.done || []).map((r) => r.entry_id)).slice(0, 160));
+
+  /* ================================================================== */
+  head('NAMING A CLUSTER (THE LAB’S LIST INTERCEPTED; NOTHING IS SAVED)');
+
+  await until(() => st().fit && st().fit.ok && !st().fitting, 30000, 'a fit');
+  if (st().fit.k !== 2) {
+    const k2b = Array.from(D().querySelectorAll('.rc-kseg button'))
+      .find((b) => b.textContent.trim() === '2');
+    if (k2b) k2b.click();
+    await until(() => !st().fitting && st().fit.k === 2, 20000, 'k = 2');
+  }
+  ev('(function(){ var W = window; if (W.__rnFetch) return; W.__rnFetch = W.fetch;'
+     + ' W.__rnSent = []; W.fetch = function(u, o) { var s = String(u);'
+     + ' if (s.indexOf("/api/rootcanal/names") >= 0) { var r;'
+     + '   if (o && o.method === "POST") { W.__rnSent.push(JSON.parse(o.body ||'
+     + '     "{}")); r = { ok: true, added: true, names: [] }; }'
+     + '   else r = { ok: true, names: [{ name: "DS slow", type: "ds" },'
+     + '     { name: "IED big", type: "ied" }] };'
+     + '   return Promise.resolve(new Response(JSON.stringify(r), { status: 200,'
+     + '     headers: { "Content-Type": "application/json" } })); }'
+     + ' return W.__rnFetch.apply(this, arguments); }; })()');
+  const nmBtns = () => Array.from(D().querySelectorAll('.rc-why .rc-clu-name'));
+  eq('every cluster chip offers a name', nmBtns().length, st().fit.clusters.length);
+  const dsRank = st().fit.clusters.find((cl) => cl.call === 'ds').rank;
+  nmBtns()[dsRank].click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-name-dlg'),
+              8000, 'the name picker');
+  const picks = Array.from(D().querySelectorAll('#bigModal .rc-name-pick'));
+  eq('the picker offers the lab’s names, by type',
+     picks.map((b) => b.textContent), ['DS slow', 'IED big']);
+  picks[0].click();
+  await until(() => !st().fitting && st().fit.clusters
+    .some((cl) => cl.name === 'DS slow'), 20000, 'the named cluster');
+  const named = st().fit.clusters.find((cl) => cl.name === 'DS slow');
+  ok('the cluster is named, called by its name',
+     named.rank === dsRank && named.call === 'ds' && named.call_by === 'name');
+  ok('and its chip says the name', Array.from(D().querySelectorAll('.rc-why .rc-clu'))
+     .some((b) => /DS slow/.test(b.textContent)));
+  eq('the request carries it', (ev(RC + '._lastBody()').cluster_names
+     || {})[String(dsRank)], { name: 'DS slow', type: 'ds' });
+  ok('every event in it carries the name', st().fit.events
+     .filter((e) => e.cluster === dsRank).every((e) => e.name === 'DS slow'));
+  /* A new name, typed, as an IED name, on the other cluster. */
+  const iedRank = st().fit.clusters.find((cl) => cl.rank !== dsRank).rank;
+  nmBtns()[iedRank].click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-name-in'),
+              8000, 'the picker again');
+  D().querySelector('#bigModal .rc-name-in').value = 'IED harness';
+  const tIed = Array.from(D().querySelectorAll('#bigModal .rc-name-type button'))
+    .find((b) => b.textContent.trim() === 'IED');
+  if (tIed) tIed.click();
+  D().querySelector('#bigModal .rc-name-add').click();
+  await until(() => !st().fitting && st().fit.clusters
+    .some((cl) => cl.name === 'IED harness'), 20000, 'the typed name');
+  eq('a typed name joins the lab’s list, with its type',
+     JSON.parse(ev('JSON.stringify(window.__rnSent)')),
+     [{ name: 'IED harness', type: 'ied' }]);
+  ok('and names the cluster, called IED',
+     st().fit.clusters.find((cl) => cl.name === 'IED harness').call === 'ied');
+  /* Pressing a named chip renames it; the picker can take the name off. */
+  Array.from(D().querySelectorAll('.rc-why .rc-clu'))
+    .find((b) => /DS slow/.test(b.textContent)).click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-name-clear'),
+              8000, 'the rename picker');
+  D().querySelector('#bigModal .rc-name-clear').click();
+  await until(() => !st().fitting && !st().fit.clusters
+    .some((cl) => cl.name === 'DS slow'), 20000, 'the name off');
+  ok('a name can be taken off again',
+     !(String(dsRank) in (ev(RC + '._lastBody()').cluster_names || {})));
+  ev(RC + '._state().q.cluster_names = {}');
+  ev(RC + '._fit()');
+  await until(() => !st().fitting && !st().fit.clusters.some((cl) => cl.name),
+              20000, 'no names');
+  ev('(function(){ var W = window; if (W.__rnFetch) { W.fetch = W.__rnFetch;'
+     + ' delete W.__rnFetch; } })()');
+
+  /* ================================================================== */
+  head('SAVED VERSIONS OF A SINGLE (INTERCEPTED; NOTHING IS SAVED)');
+
+  await until(() => st().fit && st().fit.ok && !st().fitting, 30000, 'a fit');
+  const sRead = st().q.read, sFrom = st().q.from_version;
+  const sFit = JSON.parse(JSON.stringify(st().fit));
+  const sVer = (v, k, nick) => ({ v, id: 'hv' + v, nickname: nick,
+    at: '2026-10-06T12:00:00', by: 'Harness', machine: 'Elsewhere',
+    app_version: 'h', note: null,
+    measure: { filter_label: 'LFP filter, 1–100 Hz, 60 Hz mains left in',
+               band_lo: 500, band_hi: 1000, win_ms: 25, cross_ms: 50 },
+    k, complete_only: false, retry: 0, margin: null,
+    n_summary: { events: sFit.n, ds: 10, ied: 5, names: [] },
+    confirmed: 0, here: true, inputs: [{ read: sRead }] });
+  const sSingle = { artifact_id: 'harness-single', entry_id: ENTRY,
+    versions: [sVer(1, 2, 'two clusters'), sVer(2, 3, 'three clusters')],
+    version: 2 };
+  const sParams = (k) => ({ filt: 'lfp', mains_out: false, lo_hz: 1, hi_hz: 100,
+    win_ms: 25, band_lo: 500, band_hi: 1000, cross_ms: 50, k,
+    complete_only: false, cluster_calls: {}, margin: null, drawn: [],
+    retry: [], flips: [], centres: null });
+  ev('window.__rsSingle = ' + JSON.stringify(sSingle));
+  ev('(function(){ var W = window; if (W.__rsFetch) return; W.__rsFetch = W.fetch;'
+     + ' W.__rsSent = []; W.fetch = function(u, o) { var s = String(u);'
+     + ' var reply = null;'
+     + ' if (s.indexOf("/api/rootcanal/singles") >= 0) reply = { ok: true,'
+     + '   singles: [W.__rsSingle] };'
+     + ' else if (s.indexOf("/api/rootcanal/single/save") >= 0) {'
+     + '   W.__rsSent.push(JSON.parse((o && o.body) || "{}")); reply = W.__rsSave; }'
+     + ' else if (s.indexOf("/api/rootcanal/single/harness-single") >= 0)'
+     + '   reply = W.__rsOpen;'
+     + ' if (reply) return Promise.resolve(new Response(JSON.stringify(reply),'
+     + '   { status: 200, headers: { "Content-Type": "application/json" } }));'
+     + ' return W.__rsFetch.apply(this, arguments); }; })()');
+  await ev(RC + '._loadSingle()');
+  await until(() => D().querySelector('.rc-why .rc-ver-pick'), 8000, 'the picker');
+  const sPick = D().querySelector('.rc-why .rc-ver-pick');
+  const sOpts = Array.from(sPick.querySelectorAll('option')).slice(1);
+  eq('the set’s saved versions are offered beside Bank, newest first',
+     sOpts.map((o2) => o2.textContent),
+     ['v2 · three clusters', 'v1 · two clusters']);
+  ok('each one’s hover says its settings, counts, and who, where and when',
+     /Settings: k3 · LFP filter/.test(sOpts[0].title)
+     && /Counts: \d+ events · 10 DS · 5 IED/.test(sOpts[0].title)
+     && /Saved by Harness on Elsewhere, 2026-10-06 12:00/.test(sOpts[0].title),
+     sOpts[0].title);
+  ok('the set’s sync state is marked beside them',
+     !!D().querySelector('.rc-why .sync-mark'));
+  const sSave = () => D().querySelector('.rc-why .rc-save-ver');
+  eq('Save offers the next version', sSave() && sSave().textContent,
+     'Save as v3…');
+
+  /* Save, through the dialog, with the suggested nickname. */
+  ev('window.__rsSave = ' + JSON.stringify({ ok: true,
+    artifact_id: 'harness-single', version: 3, confirmed: false,
+    rows_digest: 'h', single: Object.assign({}, sSingle, { version: 3,
+      versions: sSingle.versions.concat([sVer(3, 2, 'harness save')]) }) }));
+  ev(RC + '._saveVersion()');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .bank-dlg-name'),
+              8000, 'the save dialog');
+  const sName = D().querySelector('#bigModal .bank-dlg-name');
+  ok('the nickname is suggested from what makes the version itself',
+     /^k\d · LFP filter · 500–1000 Hz/.test(sName.value), sName.value);
+  sName.value = 'harness save';
+  Array.from(D().querySelectorAll('#bigModal .mf button')).pop().click();
+  await until(() => JSON.parse(ev('JSON.stringify(window.__rsSent)')).length,
+              8000, 'the save');
+  const sBody = JSON.parse(ev('JSON.stringify(window.__rsSent)'))[0] || {};
+  ok('it would save under that nickname, with the read and every setting',
+     sBody.nickname === 'harness save' && sBody.entry_id === ENTRY
+     && sBody.read === sRead && Number(sBody.k) === Number(st().q.k)
+     && 'retry' in sBody && 'cluster_calls' in sBody,
+     JSON.stringify(sBody).slice(0, 200));
+  await until(() => ev(RC + '._viewing()') && ev(RC + '._viewing()').v === 3,
+              5000, 'the saved version');
+  ok('and the picture is then that version, unchanged',
+     ev(RC + '._viewing()').v === 3 && ev(RC + '._dirty()') === false);
+
+  /* A change makes it unsaved; leaving asks first. */
+  const sK = Number(st().q.k) === 2 ? 3 : 2;
+  const sKb = Array.from(D().querySelectorAll('.rc-kseg button'))
+    .find((b) => b.textContent.trim() === String(sK));
+  if (sKb) sKb.click();
+  await until(() => !st().fitting && st().fit && st().fit.k === sK, 20000, 'k');
+  ok('a change after saving is a change', ev(RC + '._dirty()') === true);
+  ok('and the picker says so', /\(changed\)/.test(
+    (D().querySelector('.rc-why .rc-ver-pick option') || {}).textContent || ''));
+  ev(RC + '._leaveTo("harness-elsewhere")');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-nudge'),
+              5000, 'the nudge');
+  const sNudge = D().querySelector('#bigModal .rc-nudge');
+  ok('leaving a changed picture asks to save it first, and says what changed',
+     /Save this as v4 first\?/.test(sNudge.textContent)
+     && /: k\b/.test(sNudge.textContent), sNudge.textContent.slice(0, 200));
+  const sLast = Array.from(sNudge.querySelectorAll('.mf button')).pop();
+  ok('saving is the default (the primary, last)',
+     !!sLast && /Save as v4/.test(sLast.textContent)
+     // The filled button is `.btn` alone: there is no `.primary` class.
+     && sLast.classList.contains('btn') && !sLast.classList.contains('ghost'));
+  ev('closeModal()');
+  ok('closing it stays on the set', st().q.entry === ENTRY);
+
+  /* A version whose read is on another machine: its numbers alone. */
+  ev('window.__rsOpen = ' + JSON.stringify({ ok: true, version: 1,
+    nickname: 'two clusters', single: sSingle, here: false,
+    payload: { params: sParams(2), read: sRead, read_on: 'Elsewhere',
+               from_version: sFrom },
+    fit: Object.assign({}, sFit, { params: sParams(2) }) }));
+  await ev(RC + '._openVersion("harness-single", 1)');
+  await until(() => D().querySelector('.rc-why .rc-saved-only'), 8000,
+              'the numbers-only picture');
+  ok('a version whose read is elsewhere opens from its numbers',
+     (ev(RC + '._savedOnly()') || {}).read_on === 'Elsewhere'
+     && geom().space.pts.length === sFit.events.length);
+  ok('it says so, and offers to read the set here',
+     /Elsewhere/.test(D().querySelector('.rc-why .rc-saved-only').textContent)
+     && !!D().querySelector('.rc-why .rc-read-here'));
+  ok('Bank and Save are off: there is no read here to bank or refit from',
+     D().querySelector('.rc-why .rc-bank').disabled && sSave().disabled);
+  eq('its settings came back into the controls', Number(st().q.k), 2);
+  const sKb3 = Array.from(D().querySelectorAll('.rc-kseg button'))
+    .find((b) => b.textContent.trim() === '3');
+  if (sKb3) sKb3.click();
+  await sleep(300);
+  eq('and cannot be changed here', Number(st().q.k), 2);
+  ev(RC + '._pick(' + sFit.events[0].i + ')');
+  await until(() => st().evData && st().evData.ok === false, 5000, 'the event');
+  ok('a dot says its traces are where its read is',
+     /saved numbers/.test(st().evData.error)
+     && /Elsewhere/.test(st().evData.error), st().evData.error);
+
+  /* And one whose read is here: refitted, with its settings. */
+  ev('window.__rsOpen = ' + JSON.stringify({ ok: true, version: 2,
+    nickname: 'three clusters', single: sSingle, here: true,
+    payload: { params: sParams(3), read: sRead, read_on: 'Bluebarry',
+               from_version: sFrom },
+    fit: sFit }));
+  await ev(RC + '._openVersion("harness-single", 2)');
+  await until(() => !st().fitting && st().fit && st().fit.k === 3
+                    && !ev(RC + '._savedOnly()'), 20000, 'the refit');
+  ok('a version whose read is here is refitted from it, with its settings',
+     st().fit.ok && Number(st().q.k) === 3 && ev(RC + '._viewing()').v === 2
+     && ev(RC + '._dirty()') === false);
+  ev('(function(){ var W = window; if (W.__rsFetch) { W.fetch = W.__rsFetch;'
+     + ' delete W.__rsFetch; } })()');
+
+  /* ================================================================== */
+  head('ARE THESE CLUSTERS DIFFERENT? (THE TESTS INTERCEPTED; NOTHING IS SAVED)');
+
+  await until(() => st().fit && st().fit.ok && !st().fitting, 30000, 'a fit');
+  const kBtn6 = (k) => Array.from(D().querySelectorAll('.rc-kseg button'))
+    .find((b) => b.textContent.trim() === String(k));
+  const stGo = () => D().querySelector('.rc-why .rc-stats-go');
+  if (st().fit.k !== 3) {
+    kBtn6(3).click();
+    await until(() => !st().fitting && st().fit.k === 3, 20000, 'k = 3');
+  }
+  ok('at k = 3 the question is not offered: the tests run at k = 2, and '
+     + 'the clusters’ row has no room for a control that is off', !stGo());
+  kBtn6(2).click();
+  await until(() => !st().fitting && st().fit.k === 2, 20000, 'k = 2');
+  ok('at k = 2 it can be asked, and nothing has been asked yet',
+     !!stGo() && !stGo().disabled
+     && stGo().textContent === 'Test the split' && !st().fit.stats
+     && /Are these clusters statistically different\?/.test(stGo().title),
+     stGo() && stGo().textContent);
+  ok('beside the clusters it asks about, on their row',
+     stGo().parentElement.classList.contains('rc-clusters')
+     && Math.abs(stGo().getBoundingClientRect().top
+                 - D().querySelector('.rc-why .rc-clu').getBoundingClientRect()
+                   .top) < 4, stGo().getBoundingClientRect().top);
+  const v1opt = Array.from(D().querySelectorAll('.rc-why .rc-ver-pick option'))
+    .find((o2) => /^v1 · /.test(o2.textContent));
+  ok('a version’s hover says whether its clusters were tested',
+     !!v1opt && /Are the clusters different\? not tested/.test(v1opt.title),
+     v1opt && v1opt.title);
+  const stReply = { ok: true, level: 'single', n: 120, n_used: 120,
+    subsampled: false, recommended: 'sigclust', verdict: 'could be forced',
+    stats_key: 'harness', tests: {
+      sigclust: { p: 0.62, n_sim: 200, genuine: false, say: 'p = 0.620: one '
+        + 'Gaussian cloud split in two does as well -- the split could be forced' },
+      dip: { dip: 0.02, p: 0.71, genuine: false,
+             say: 'dip 0.0200, p = 0.710: one hump along the DS→IED line' },
+      stability: { ari_mean: 0.95, genuine: true, say: 'adjusted Rand 0.95 over '
+        + '50 resamples; 2% of events change cluster in more than 1 in 10' },
+      gmm: { delta: 30.1, agree: 0.2, genuine: false,
+             say: 'ΔBIC = +30.1: two Gaussians, barely the DS / IED split' } } };
+  ev('window.__stReply = ' + JSON.stringify(stReply));
+  ev('(function(){ var W = window; if (W.__stFetch) return; W.__stFetch = W.fetch;'
+     + ' W.__stSent = []; W.__stFail = null; W.fetch = function(u, o) {'
+     + ' var s = String(u);'
+     + ' if (s.indexOf("/api/rootcanal/stats") >= 0 && s.indexOf("/about") < 0) {'
+     + '   var b = JSON.parse((o && o.body) || "{}"); W.__stSent.push(b);'
+     + '   if (W.__stFail) return Promise.resolve(new Response(JSON.stringify('
+     + '     { ok: false, error: W.__stFail }), { status: 400,'
+     + '     headers: { "Content-Type": "application/json" } }));'
+     + '   var t = {}; (b.tests || []).forEach(function(k) {'
+     + '     if (W.__stReply.tests[k]) t[k] = W.__stReply.tests[k]; });'
+     + '   return Promise.resolve(new Response(JSON.stringify(Object.assign({},'
+     + '     W.__stReply, { tests: t })), { status: 200,'
+     + '     headers: { "Content-Type": "application/json" } })); }'
+     + ' return W.__stFetch.apply(this, arguments); }; })()');
+  const stSent = () => JSON.parse(ev('JSON.stringify(window.__stSent)'));
+
+  stGo().click();
+  await until(() => D().querySelectorAll('#bigModal:not(.hidden) .rc-stats-pick')
+    .length === 4, 8000, 'the four tests');
+  const picks6 = Array.from(D().querySelectorAll('#bigModal .rc-stats-pick'));
+  eq('all four tests are offered, every one ticked', picks6.map((p6) =>
+    p6.querySelector('strong').textContent
+    + (p6.querySelector('input').checked ? ' ✓' : '')),
+     ['SigClust ✓', 'Dip test ✓', 'Stability ✓', 'GMM ΔBIC + agreement ✓']);
+  eq('SigClust is marked recommended, and only it',
+     picks6.map((p6) => /recommended/.test(p6.textContent)),
+     [true, false, false, false]);
+  ok('each one’s hover says what it asks, its pro and its con',
+     picks6.every((p6) => /asks: .+\nPro: .+\nCon: .+/.test(p6.title)),
+     picks6[0].title);
+  ok('the dialog says why a t-test between the two clusters is not offered',
+     /t-test/.test(D().querySelector('#bigModal .rc-stats-dlg').textContent));
+  picks6[1].querySelector('input').click();
+  D().querySelector('#bigModal .rc-stats-run').click();
+  await until(() => stSent().length
+    && D().querySelector('#bigModal:not(.hidden) .rc-stats-tab'), 8000, 'the answer');
+  const stB = stSent()[0];
+  ok('it asks of Single’s own picture at k = 2, for the tests ticked',
+     stB.level === 'single' && stB.entry_id === ENTRY && stB.read === st().q.read
+     && Number(stB.k) === 2
+     && JSON.stringify(stB.tests) === JSON.stringify(['sigclust', 'stability', 'gmm']),
+     JSON.stringify(stB).slice(0, 240));
+  const vrd = D().querySelector('#bigModal .rc-stats-verdict');
+  ok('the answer leads with the recommended test’s verdict',
+     /^Could be forced\. SigClust, recommended: p = 0\.620/.test(vrd.textContent)
+     && vrd.classList.contains('warn'), vrd.textContent);
+  const trs6 = Array.from(D().querySelectorAll('#bigModal .rc-stats-tab tbody tr'));
+  eq('then each test asked: its answer, and how it reads', trs6.map((tr) =>
+    tr.querySelector('th span').textContent + ': '
+    + tr.querySelector('td:last-child').textContent),
+     ['SigClust: could be forced', 'Stability: genuine',
+      'GMM ΔBIC + agreement: could be forced']);
+  ok('each row’s hover has its pros and cons',
+     trs6.every((tr) => /Pro: .+\nCon: /.test(tr.title)));
+  ok('and it says how many read the split as genuine, on how many events',
+     /1 of 3 tests read the split as genuine, on 120 complete events of this single recording/
+       .test(D().querySelector('#bigModal .rc-stats-dlg').textContent));
+  D().querySelector('#bigModal .rc-stats-close').click();
+  await until(() => D().querySelector('.rc-why .rc-stats-done'), 5000,
+              'the verdict on the picture');
+  const done6 = D().querySelector('.rc-why .rc-stats-done');
+  ok('the answer is then on the picture, with every test in its hover',
+     done6.textContent === 'maybe forced' && done6.classList.contains('warn')
+     && /SigClust: p = 0\.620/.test(done6.title)
+     && /Stability: adjusted Rand 0\.95/.test(done6.title), done6.title);
+  ok('kept on the fit itself', (st().fit.stats || {}).verdict === 'could be forced');
+  done6.click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-stats-tab'),
+              5000, 'the table again');
+  ok('pressed, it shows the answer again without asking again',
+     stSent().length === 1);
+  D().querySelector('#bigModal .rc-stats-again').click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-stats-pick'),
+              5000, 'the tests again');
+  eq('“Run other tests” goes back to the four, as they were ticked',
+     Array.from(D().querySelectorAll('#bigModal .rc-stats-pick input'))
+       .map((i6) => i6.checked), [true, false, true, true]);
+  ev('window.__stFail = "harness: refused"');
+  D().querySelector('#bigModal .rc-stats-run').click();
+  await until(() => stSent().length === 2
+    && D().querySelector('#bigModal:not(.hidden) .rc-stats-pick')
+    && !D().querySelector('.rc-why .rc-stats-busy'), 8000, 'the refusal');
+  ok('refused, the four are offered again, and the picture keeps its answer',
+     (st().fit.stats || {}).verdict === 'could be forced'
+     && /maybe forced/.test(stGo().textContent));
+  ev('window.__stFail = null');
+  ev('closeModal()');
+  kBtn6(3).click();
+  await until(() => !st().fitting && st().fit.k === 3, 20000, 'k = 3');
+  kBtn6(2).click();
+  await until(() => !st().fitting && st().fit.k === 2, 20000, 'k = 2');
+  ok('refitted, the picture carries only what the server kept for it -- '
+     + 'nothing, as that answer was the harness’s',
+     !st().fit.stats && stGo().textContent === 'Test the split');
+  ev('(function(){ var W = window; if (W.__stFetch) { W.fetch = W.__stFetch;'
+     + ' delete W.__stFetch; } })()');
+
+  /* ================================================================== */
+  head('A BORDER IN SINGLE (ITS CLASSES ADDED TO THE SERVER’S ANSWER)');
+
+  await until(() => st().fit && st().fit.ok && !st().fitting, 30000, 'a fit');
+  ok('folded, the card says margins and borders on one line',
+     D().querySelector('.rc-why .rc-margin-sum').textContent
+       === 'Margins and borders · none applied'
+     && !D().querySelector('.rc-why .rc-margins').open);
+  /* A border the server does not have is refused, said, and taken off. */
+  ev(RC + '._setBorder({ artifact_id: "harness-nope", version: null, grace: null })');
+  /* The refusal refits without it, a debounce later: wait for that
+     picture, which is the one that says so. */
+  await until(() => !st().fitting && ev(RC + '._borderErr()')
+    && D().querySelector('.rc-why .rc-border-err'), 20000, 'the refusal');
+  ok('a border the server refuses is said, taken off, and the set fitted '
+     + 'without it', /^The border harness-nope is not on this machine/
+       .test(ev(RC + '._borderErr()')) && !st().q.border && st().fit.ok
+     && /Not applied: The border harness-nope/.test(
+       (D().querySelector('.rc-why .rc-border-err') || {}).textContent || ''),
+     ev(RC + '._borderErr()'));
+  /* Applied: the real fit, with a border's classes put on it here. */
+  ev('(function(){ var W = window; if (W.__bdFetch) return; W.__bdFetch = W.fetch;'
+     + ' W.fetch = function(u, o) { var s = String(u);'
+     + ' if (s.indexOf("/api/rootcanal/fit") < 0 || !o || !o.body)'
+     + '   return W.__bdFetch.apply(this, arguments);'
+     + ' var b = JSON.parse(o.body); if (!b.border) return W.__bdFetch.apply(this, arguments);'
+     + ' var b2 = Object.assign({}, b, { border: null });'
+     + ' return W.__bdFetch(u, Object.assign({}, o, { body: JSON.stringify(b2) }))'
+     + '  .then(function(r) { return r.json(); }).then(function(j) {'
+     + '   var n = { ds: 0, ied: 0, amb: 0, none: 0 };'
+     + '   (j.events || []).forEach(function(e, k) { e.border = ["ds", "ied", "amb"][k % 3];'
+     + '     n[e.border] += 1; });'
+     + '   j.border_used = { artifact_id: "hb-s", version: 1, nickname: "single border",'
+     + '     grace: 0.05, grace_words: "5%", rule: "Solid IED: harness. Solid DS: harness.",'
+     + '     counts: n, wrong: 0, switch_rate: null, n_identity: 0 };'
+     + '   return new Response(JSON.stringify(j), { status: 200,'
+     + '     headers: { "Content-Type": "application/json" } }); }); }; })()');
+  ev(RC + '._setBorder({ artifact_id: "hb-s", version: null, grace: 0.05 })');
+  await until(() => !st().fitting && st().fit.border_used, 20000, 'the border on');
+  ok('the request carries the border', (ev(RC + '._lastBody()').border || {})
+     .artifact_id === 'hb-s');
+  ok('the call shown is the border’s: the seg says so and the legend has '
+     + 'ambiguous', Array.from(D().querySelectorAll('.rc-why .rc-colour-by button'))
+       .some((b) => b.textContent === 'by border')
+     && /solid DS\s*solid IED\s*ambiguous/.test(D().querySelector('.rc-legend')
+       .textContent));
+  const sFills = new Set(geom().space.pts.filter((p) => !p.hollow)
+                         .map((p) => p.fill));
+  eq('three colours on the picture, one per class', sFills.size, 3);
+  ok('the card opens with the border’s counts',
+     D().querySelector('.rc-why .rc-margins').open
+     && /solid DS · \d+ solid IED · \d+ ambiguous/.test(
+       D().querySelector('.rc-why .rc-border-on').textContent));
+  ev(RC + '._setBorder(null)');
+  await until(() => !st().fitting && !st().fit.border_used, 20000, 'the border off');
+  ok('taken off, the call is k-means’ again',
+     Array.from(D().querySelectorAll('.rc-why .rc-colour-by button'))
+       .some((b) => b.textContent === 'by call'));
+  ev('(function(){ var W = window; if (W.__bdFetch) { W.fetch = W.__bdFetch;'
+     + ' delete W.__bdFetch; } })()');
+
+  } catch (err) {
+    /* A throw used to end a suite in silence: fewer passing checks and no
+       failures reads as a shorter suite rather than a broken one. */
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+    for (const ln of String((err && err.stack) || '').split(NL).slice(0, 5)) {
+      say('       ' + ln, 'dim');
+    }
+  } finally {
+    /* Put back what the suite changed in the panel. Nothing here was ever
+       written anywhere else. */
+    try {
+      if (ev) {
+        ev('(function(){ var W = window; if (W.__stFetch) { W.fetch = W.__stFetch;'
+           + ' delete W.__stFetch; } })()');
+        ev('(function(){ var W = window; if (W.__bdFetch) { W.fetch = W.__bdFetch;'
+           + ' delete W.__bdFetch; } })()');
+        ev('BARRY.rootcanal._setBorder(null)');
+        ev('try { closeModal(); } catch (e) {}');
+        ev('(function(){ var W = window; if (W.__rcFetch) { W.fetch = W.__rcFetch;'
+           + ' delete W.__rcFetch; } if (W.__rcLog) { BARRY.activity.log ='
+           + ' W.__rcLog; delete W.__rcLog; } })()');
+        ev('BARRY.rootcanal._closeXplore()');
+        if (typeof viewWas !== 'undefined') {
+          ev('(function(v){ try { if (v == null) localStorage.removeItem('
+             + '"barry.rootcanal.view"); else localStorage.setItem('
+             + '"barry.rootcanal.view", v); } catch (e) {} })('
+             + JSON.stringify(viewWas) + ')');
+        }
+        ev('BARRY.rootcanal._clearFlips()');
+        ev('BARRY.rootcanal._resetCentres()');
+        ev('(function(){ var C = window.CanvasRenderingContext2D.prototype;'
+           + ' if (C.__rcOrig) { C.fillText = C.__rcOrig; delete C.__rcOrig; }'
+           + ' })()');
+      }
+    } catch (e) { /* the frame may be gone */ }
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'rootcanal: ' + pass + ' ok, ' + fail + ' fail';
+  /* Unloaded, or headless Edge never dumps and the runner says TIMED OUT. */
+  try { document.getElementById('app').src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

@@ -1,0 +1,2855 @@
+/* ==========================================================================
+   incisor.js -- Incisor, the dentate spike detector.
+
+   Dentate means "toothed", and an incisor is the sharp one. It is a hand
+   port of Toothy's `ephys.get_ds_peaks`, checked against Toothy's own code
+   on identical input: 4430 events across ten real and ten synthetic
+   recordings, every one at the same sample.
+
+   WHAT IT IS FOR
+   Detection used to live outside the workbench. You left Jarvis, ran a PyQt
+   application, and imported the result -- and that result was stamped in
+   concatenated time, so every acquisition gap shifted the dentate spikes
+   after it earlier by the cumulative gap. Eighty-two of the two hundred and
+   forty-six recordings checked here have that problem. Incisor reads the
+   `.ncs` files through Jarvis's own readers and stamps the recording's own
+   clock, so a set it produces never needs the correction.
+
+   THE SHAPE OF THE PANEL
+   Four steps, in the order they happen, and each one has to finish before
+   the next means anything:
+
+     1. pick a recording
+     2. scan -- detect on every channel, which is the only way the hilus
+        estimate can be made, because that estimate is computed FROM the
+        per-channel detection
+     3. look at the channel it chose, and correct it
+     4. bank the candidates and vet them in DS curation
+
+   Step 3 is not a formality. Measured against Toothy over ten sessions: the
+   detector agrees to the sample every time, and the CHANNEL was wrong in
+   four of them -- usually by one or two, once by thirty-four. The margins
+   are often single digits, because adjacent sites on a shank see the same
+   spikes at slightly different amplitude and the pick is an argmax over a
+   product of two normalised numbers. So this shows the margin, shows the
+   runner-up, and refuses to choose when the recording's own anatomy
+   disagrees with the scan.
+   ========================================================================== */
+'use strict';
+
+BARRY.incisor = (function () {
+  /* What is being asked for. Held here, not read off the DOM, so a redraw
+     cannot lose a half-filled form. */
+  const q = {
+    /* Which half of the tool is showing: this computer, or the cluster.
+       Local until VACC Mode is on and somebody asks for the other one. */
+    tab: 'local',
+    // Where and how many (constitution §6d). `tab` follows from them: the
+    // cluster panel is VACC and many; everything else is the one-recording
+    // panel, run here or there.
+    where: 'local',
+    count: 'one',
+    gid: null,
+    path: null,
+    // The picked registry row. A banked set has to say which animal and
+    // session it belongs to, or it files itself under "Unfiled" and is
+    // never found again.
+    row: null,
+    channels: null,       // null means every channel
+    /* Which channels THIS scan reads (2026-10-14): null for every one, or
+       { mode: 'first' | 'second' | 'even' | 'odd' } or
+       { mode: 'ranges', ranges: [[lo, hi], ...] } by CSC number. Never a
+       bad mark: bad channels stay out inside any pick, and a pick marks
+       nothing bad. Back to every channel for each new recording. */
+    pick: null,
+    /* A batch's channel range, by CSC number (2026-10-14): first and last,
+       either blank for no limit at that end. The same for every recording
+       sent, with each one's bad channels left out inside it -- as Doppler's
+       is. */
+    batch_lo: null, batch_hi: null,
+    height_sd: 4.5,
+    abs_uv: 300,
+    dist_ms: 100,
+    wlen_ms: 125,
+    estimator: 'sd',
+  };
+
+  /* Toothy's own, from qparam.py. Named once so the "changed" tag and the
+     reset cannot drift apart from what the fields start at. */
+  const DEFAULTS = {
+    height_sd: 4.5, abs_uv: 300, dist_ms: 100, wlen_ms: 125,
+  };
+
+  let est = null;        // what a scan would cost
+  let job = null;        // the scan in flight
+  let poll = null;
+  let res = null;        // the finished scan
+  let chosen = {};       // hilus / theta / ripple, after any correction
+  let banking = false;
+  let savingBad = false; // a bad-channel change on its way to the record
+  let editorOpen = false;// the channel editor, kept open across repaints
+
+  /* Extract all. `pool` is the range somebody chose, as channel INDICES at
+     either end; null means "around the hilus", which follows the hilus
+     pick as it moves. The count is asked of the server on every change and
+     comes back in milliseconds, out of the scan already run. */
+  let pool = null;
+  let tolMs = 25;
+  let unionRes = null;
+  let unionKey = '';
+  let unionSeq = 0;
+  /* Three scanned channels either side of the hilus. Not a natural width
+     -- there is none: measured on fourteen recordings the union grows
+     steadily as the pool widens, 740 on the hilus, 774 at three either
+     side, 1072 across all sixty. Three either side is where the extra
+     spikes are still ones the hilus's own neighbours saw, and it is a
+     default, shown with its count, not a decision. */
+  const POOL_EITHER_SIDE = 3;
+
+  const round2 = (v) => Math.round((v || 0) * 100) / 100;
+  const human = (s) => (s == null ? ''
+    : s < 1 ? 'a moment' : s < 90 ? Math.round(s) + ' s'
+      : Math.round(s / 60) + ' min');
+  const dur = (s) => {
+    s = Math.max(0, s || 0);
+    if (s < 90) return s.toFixed(1) + ' s';
+    const m = Math.floor(s / 60);
+    return m + ' min ' + Math.round(s - m * 60) + ' s';
+  };
+
+  /* The three landmarks, in Toothy's colours: DS red, ripple green, theta
+     blue (`README.md:274`). Named once so the panel, the lines on the
+     traces and the legend cannot drift apart. */
+  /* Listed in depth order, not in the order the code computes them.
+     Theta sits at the fissure, the ripple channel in the pyramidal layer
+     above the hilus, and the hilus below both -- so reading them down the
+     panel reads them down the probe, which is how somebody looking at the
+     traces beside it is already reading them. */
+  const ROLES = [
+    { key: 'theta', label: 'Theta', colour: '#3b82f6',
+      why: 'most power in 6–10 Hz' },
+    { key: 'ripple', label: 'Ripple', colour: '#22c55e',
+      why: 'most ripple power relative to theta' },
+    { key: 'hilus', label: 'Hilus (DS)', colour: '#e5484d',
+      why: 'where the dentate spikes are detected' },
+  ];
+  /* Which registry field corroborates which pick. `fissure_channel` is the
+     landmark the theta estimate is about -- the workbook records the
+     fissure, and the theta channel is the one nearest it. */
+  const KNOWN_KEY = { hilus: 'hilus_channel', theta: 'fissure_channel',
+                      ripple: 'ripple_channel' };
+
+  function reset() {
+    est = null; res = null; chosen = {}; banking = false;
+    pool = null; unionRes = null; unionKey = '';
+    if (poll) { clearInterval(poll); poll = null; }
+    job = null;
+  }
+
+  /* ==================================================================
+     Talking to the server
+     ================================================================== */
+  function body(extra) {
+    return Object.assign({
+      path: q.path,
+      channels: q.channels,
+      channel_pick: q.pick,
+      height_sd: q.height_sd,
+      abs_uv: q.abs_uv,
+      dist_ms: q.dist_ms,
+      wlen_ms: q.wlen_ms,
+      estimator: q.estimator,
+    }, extra || {});
+  }
+
+  let estSeq = 0;
+  async function refreshEstimate() {
+    // VACC mode asks its plan, not one recording's estimate; `q.path` there
+    // is whichever review is open, and re-estimating it would open a link
+    // to the cluster for nothing.
+    if (q.tab === 'vacc') return;
+    if (!q.path) { est = null; return; }
+    const mine = ++estSeq;
+    try {
+      const got = await apiPost('/api/incisor/estimate', body());
+      if (mine !== estSeq) return;
+      est = got;
+    } catch (e) {
+      est = { error: e.message };
+    }
+    paint();
+  }
+
+  async function scan(force, where) {
+    if (!q.path || job) return;
+    let started;
+    try {
+      started = await apiPost('/api/incisor/scan',
+                              body(where ? { where: where } : null));
+    } catch (e) {
+      toast(e.message, 'err', 9000);
+      return;
+    }
+    // A result already in hand, from either machine. The cluster's answers
+    // go into the same cache under the same key, so this branch does not
+    // care which one computed it -- which is the whole point.
+    if (started.cached) { adopt(started.result); paint(); return; }
+    job = started.job;
+    // The rail pulses while the cluster is actually working, and only then.
+    if (where && BARRY.vaccBusy) BARRY.vaccBusy.start();
+    paint();
+    clearInterval(poll);
+    poll = setInterval(async () => {
+      if (!job) { clearInterval(poll); return; }
+      let got;
+      try { got = await api('/api/cfc/job/' + job.id); } catch (e) { return; }
+      job = got.job;
+      paintStages();
+      if (job.status === 'running') return;
+      clearInterval(poll);
+      if (where && BARRY.vaccBusy) BARRY.vaccBusy.stop();
+      const done = job; job = null;
+      if (done.status === 'done') {
+        try {
+          adopt((await api('/api/cfc/result/' + done.id)).result);
+        } catch (e) {
+          toast('The scan finished but its result could not be read: '
+                + e.message, 'err', 9000);
+        }
+      } else if (done.status === 'failed') {
+        toast(done.error || 'The scan failed.', 'err', 10000);
+      }
+      paint();
+    }, 400);
+  }
+
+  async function cancel() {
+    if (!job) return;
+    try { await apiPost('/api/cfc/job/' + job.id + '/cancel', {}); } catch (e) {}
+  }
+
+  /* What the scan chose, and what the recording already believed.
+
+     Where the two agree, the channel is selected and says so. Where they
+     disagree, NEITHER is selected: a disagreement between the anatomy
+     somebody recorded and what this recording's own data says is a finding
+     about the probe, not a tie to be broken automatically. */
+  function adopt(out) {
+    res = out;
+    chosen = {};
+    pool = null; unionRes = null; unionKey = '';
+    const known = (est && est.known) || {};
+    for (const r of ROLES) {
+      const pick = (out.picked || {})[r.key];
+      const was = known[KNOWN_KEY[r.key]];
+      if (pick && was != null && Number(was) !== Number(pick.number)) {
+        chosen[r.key] = null;          // they disagree; ask
+      } else if (pick) {
+        chosen[r.key] = pick.number;
+      }
+    }
+    pushLines();
+  }
+
+  /* ==================================================================
+     The traces, in a window of their own
+     ==================================================================
+     Not by taking over XploreFinder in this window: that replaced the panel
+     and left nowhere to go back to, and the lines had to be published into
+     whatever recording happened to already be open -- which is why they
+     sometimes did not appear at all.
+
+     A window opens on the scanned recording because its URL says so, and
+     closing it is the way back. The same arrangement Braid uses for its
+     panels and its comodulogram. */
+  let traceWin = null;
+
+  function tracesOpen() {
+    try { return !!(traceWin && !traceWin.closed); } catch (e) { return false; }
+  }
+
+  async function openTraces() {
+    if (tracesOpen()) {
+      try { traceWin.focus(); } catch (e) {}
+      pushLines();
+      return traceWin;
+    }
+    if (!q.path) return null;
+    const url = traceUrl();
+    traceWin = window.open(url, 'barry-incisor-traces',
+                           'width=1180,height=900,menubar=no,toolbar=no');
+    if (!traceWin) {
+      toast('The traces window was blocked. Allow pop-ups for 127.0.0.1, '
+            + 'then press “Show them on the traces” again.', 'err', 9000);
+      return null;
+    }
+    paint();
+    /* Waited for rather than assumed. The window is a whole app booting --
+       it has to read the recording before it has lanes to draw a line on --
+       and publishing into it early is how the lines went missing before. */
+    const until = Date.now() + 60000;
+    while (Date.now() < until) {
+      if (!tracesOpen()) { paint(); return null; }
+      if (pushLines()) { paint(); return traceWin; }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    toast('The traces window did not finish opening that recording.',
+          'err', 8000);
+    return traceWin;
+  }
+
+  function traceUrl() {
+    /* What it opens on.
+
+       A CSD rather than the traces: this window exists to check a laminar
+       landmark, and a landmark is a boundary -- the sink/source reversal at
+       the fissure and the hilar sink are visible as bands on a CSD and are
+       a matter of opinion on sixty-four stacked traces. Even channels,
+       because a CSD wants one line of contacts at a known spacing and that
+       is what the 32-channel probe on 64 inputs actually is. Five seconds,
+       because a dentate spike is tens of milliseconds and a ten-second
+       window puts three hundred of them in a pane.
+
+       Starting points, not a cage: the window is the whole application and
+       every one of them can be changed in it. */
+    const args = new URLSearchParams({
+      csc: q.path,
+      panes: JSON.stringify([{ panel: 'csd' }]),
+      sel: 'even',
+      span: '5',
+      chrome: 'notabs,noheads',
+      role: 'incisor',
+      theme: (BARRY.state && BARRY.state.theme) || 'dark',
+    });
+    return location.origin + '/?' + args.toString() + '#xplore';
+  }
+
+  /* Returns whether the lines actually landed, so the caller can keep
+     waiting instead of believing it worked. */
+  function pushLines() {
+    if (!tracesOpen()) return false;
+    let xf = null;
+    try { xf = traceWin.barryXplore; } catch (e) { return false; }
+    if (!xf || !xf.setChannelLines || !xf.current) return false;
+    let sess = null;
+    try { sess = xf.current(); } catch (e) { return false; }
+    if (!sess) return false;
+    try {
+      xf.setChannelLines(sess, ROLES.map((r) => ({
+        key: r.key, label: r.label, colour: r.colour,
+        number: chosen[r.key] == null ? null : Number(chosen[r.key]),
+        // Dragged in the other window, remembered in this one.
+        onmove: (number) => { chosen[r.key] = number; paint(); },
+      })).filter((x) => x.number != null));
+    } catch (e) { return false; }
+    return true;
+  }
+
+  function closeTraces() {
+    if (tracesOpen()) { try { traceWin.close(); } catch (e) {} }
+    traceWin = null;
+    paint();
+  }
+
+  /* ==================================================================
+     Painting
+     ================================================================== */
+  function paint() {
+    const host = document.getElementById('tkResult');
+    if (!host) return;
+    /* Fails CLOSED. The first version was
+     *   if (tk.tool && tk.tool() !== 'incisor') return;
+     * which draws when it cannot tell which tool is open -- so a page
+     * holding an older toolkit.js, where `tool` is not exported yet,
+     * painted this panel over whatever was actually showing and threw from
+     * inside it. The error then names Incisor's variables while the person
+     * is looking at another tool, which is about as misleading as an error
+     * can be. Not knowing is a reason not to draw.
+     */
+    const tk = BARRY.views.toolkit;
+    if (!tk || typeof tk.tool !== 'function' || tk.tool() !== 'incisor') {
+      return;
+    }
+    host.innerHTML = '';
+    host.appendChild(head());
+    /* Here · one, VACC · one and VACC · many. Here · many is in the
+       constitution's matrix and not built yet, so the bar does not offer
+       it: a choice that leads nowhere is not a choice. With VACC Mode off,
+       or no account, there is only one mode and the bar draws nothing. */
+    const bar = BARRY.ui.runBar({
+      modes: { local: ['one'], vacc: ['one', 'many'] },
+      where: q.where, count: q.count,
+      onChange: (w, c) => { q.where = w; q.count = c; paint(); },
+    });
+    q.where = bar.where;
+    q.count = bar.count;
+    q.tab = (q.where === 'vacc' && q.count === 'many') ? 'vacc' : 'local';
+    /* A recording only the cluster can read cannot be scanned on this
+       computer, so switching to "This computer" with one chosen lets it go
+       rather than offering a Scan that cannot read it (§6e: changing what
+       is on offer resets everything downstream). */
+    if (q.where === 'local' && /^vacc:/.test(q.path || '')) {
+      q.path = null; q.gid = null; q.row = null;
+      openKey = null;
+      reset();
+    }
+    if (bar.childNodes.length) host.appendChild(bar);
+
+    if (q.tab === 'vacc') {
+      /* The cluster half. Same detector, same plots, same bank -- the only
+         thing that differs is that the reading happens somewhere else and
+         that many recordings can go at once.
+
+         Separate from the local half rather than mixed into it, because
+         "run this one here" and "run these thirty over there" are different
+         acts with different answers to "what will this cost", and a single
+         panel that tried to be both kept having to say which one it meant.
+
+         In step order: which recordings (and their channels), the
+         detection settings with the cost and the one primary, the cluster's
+         progress, and the queue of answers to look at and bank. */
+      host.appendChild(vaccPickCard());
+      host.appendChild(vaccRunCard());
+      if (batchJob) host.appendChild(batchCard());
+      host.appendChild(reviewCard());
+    } else {
+      host.appendChild(pickCard());
+      if (est && est.plan) host.appendChild(planCard());
+      if (job) host.appendChild(stageCard());
+      if (res) host.appendChild(channelCard());
+      if (res) host.appendChild(resultCard());
+    }
+    /* Drawn now, and again on the next frame.
+
+       Now, because a frame is not guaranteed to come: `requestAnimationFrame`
+       does not fire in a background tab, and a panel whose plots are blank
+       until you look at it twice is worse than one that costs a layout. The
+       nodes are in the live document by this point, so reading
+       `clientWidth` flushes layout and the canvas sizes correctly -- which
+       is the thing the rAF was there to wait for.
+
+       And again on the next frame, because the first measurement can still
+       be taken before a scrollbar appears or a webfont settles, and the
+       second one is a redraw of three small canvases from data already in
+       hand. Found by a harness: after a repick the canvases were still at
+       the HTML default 300x150 with nothing on them, because under a
+       virtual-time budget the rAF had not run yet. */
+    if (res) { wirePlots(); drawPlots(); requestAnimationFrame(drawPlots); }
+  }
+
+  /* ==================================================================
+     VACC mode: many recordings on the cluster, then one at a time
+     ==================================================================
+     Pick any recordings the cluster can read -- including the ones this
+     computer has no copy of at all, which is most of the lab's netfiles
+     share from a desk without `Y:` -- set the channels per recording and
+     the detection parameters once, and send them as one job array. Each
+     answer comes back into the queue below, and opening one gives the
+     ordinary panel: the three plots, the picks, the hilus range, the bank.
+
+     A batch banks nothing. Banking has a person's name on it, so a finished
+     scan is a row here until somebody opens it, reads it and sends it.
+
+     Opening a row loads THAT scan, by its recording and its key
+     (`/api/incisor/result`), with no copy of the recording needed. It used
+     to point the panel at the recording's local path and re-run the scan
+     with whatever parameters the panel showed: a cache hit when they
+     matched, a fresh scan of the whole recording when they did not, and a
+     refusal for every recording this computer could not open.
+     ================================================================== */
+  let reviews = null;        // null until asked for
+  let batchJob = null;
+  let batchPoll = null;
+  let batchGids = null;      // what the last batch here was about
+  let openKey = null;        // the review that is open: gid + '/' + key
+  let vaccList = null;       // the plan: what the cluster can run
+  let vaccListSeq = 0;
+  let vaccFilter = '';
+  let showAllScans = false;
+  const picked = new Set();  // gids ticked for a run
+  /* The per-recording channel editor, by gid: { est, busy, error }. The
+     channel list of a recording only the cluster has comes over the link
+     (a header read, a few seconds), so it is asked for when somebody opens
+     the editor, never for every row. */
+  const chanOpen = {};
+
+  /* The detection parameters, as the plan and the batch are asked them --
+     one set for the whole batch (constitution §6d). */
+  function paramsBody() {
+    return {
+      height_sd: q.height_sd, abs_uv: q.abs_uv, dist_ms: q.dist_ms,
+      wlen_ms: q.wlen_ms, estimator: q.estimator,
+      channel_pick: batchPick(),
+    };
+  }
+
+  /* The batch's range as a channel pick: blank at the bottom is CSC1, blank
+     at the top "to the last" (9999, which the server words that way). */
+  function batchPick() {
+    if (q.batch_lo == null && q.batch_hi == null) return null;
+    return { mode: 'ranges', ranges: [[q.batch_lo || 1, q.batch_hi || 9999]] };
+  }
+
+  /* First and last, by CSC number -- Doppler's field, for every recording
+     in the batch. A blank box is no limit at that end. */
+  function batchRangeField() {
+    const box = (key, ph) => el('input', {
+      type: 'number', class: 'num', min: '1', step: '1', placeholder: ph,
+      'aria-label': key === 'batch_lo' ? 'First channel' : 'Last channel',
+      value: q[key] == null ? '' : String(q[key]),
+      disabled: batchJob ? 'disabled' : null,
+      onchange: (e) => {
+        const raw = String(e.target.value || '').trim();
+        const v = raw === '' ? null : Math.round(Number(raw));
+        if (v != null && !(isFinite(v) && v >= 1)) {
+          e.target.value = q[key] == null ? '' : String(q[key]);
+          return;
+        }
+        q[key] = v;
+        if (q.batch_lo != null && q.batch_hi != null && q.batch_hi < q.batch_lo) {
+          const t = q.batch_lo; q.batch_lo = q.batch_hi; q.batch_hi = t;
+        }
+        paramsChanged();
+      },
+    });
+    const set = q.batch_lo != null || q.batch_hi != null;
+    return BARRY.ui.field({
+      label: 'Channels', inline: true, extra: 'dop-range-field inc-batch-range',
+      hint: 'By CSC number, for every recording sent: a channel outside the '
+          + 'range is not read at all, and each recording\u2019s bad channels '
+          + 'are left out inside it. Blank is every channel. For 128-channel '
+          + 'recordings where only the first probe is wanted: 1 to 64. '
+          + 'Nothing is marked bad by this.',
+      control: el('div', { class: 'dop-range' }, [
+        el('span', { class: 'dop-range-w', text: 'CSC' }),
+        box('batch_lo', 'first'),
+        el('span', { class: 'dop-range-w', text: 'to CSC' }),
+        box('batch_hi', 'last'),
+        set ? el('button', { class: 'mini', text: 'Every channel',
+          disabled: batchJob ? 'disabled' : null,
+          onclick: () => { q.batch_lo = null; q.batch_hi = null;
+                           paramsChanged(); } }) : null,
+      ].filter(Boolean)),
+    });
+  }
+
+  /* Asked again whenever the parameters change, because "already scanned"
+     is a fact about a question and the question just changed. */
+  async function loadVaccList() {
+    const mine = ++vaccListSeq;
+    try {
+      const got = await apiPost('/api/incisor/batch/plan', paramsBody());
+      if (mine !== vaccListSeq) return;
+      vaccList = got;
+      /* Nothing is ticked for you. It used to tick everything runnable,
+         when that was a few dozen scratch copies; now it is every
+         recording on the lab's share, and one click submitting a thousand
+         scans is not a default. What stays ticked is what is still
+         runnable. */
+      const runnable = new Set((got.todo || []).map((r) => r.gid));
+      for (const g of Array.from(picked)) {
+        if (!runnable.has(g)) picked.delete(g);
+      }
+    } catch (e) {
+      if (mine !== vaccListSeq) return;
+      vaccList = { todo: [], blocked: [], error: e.message };
+    }
+    paint();
+  }
+
+  function rowMatches(r) {
+    if (!vaccFilter) return true;
+    const hay = [r.label, r.project, r.mouse != null ? 'm' + r.mouse : '',
+                 r.session != null ? 's' + r.session : '', r.start,
+                 r.remote].join(' ').toLowerCase();
+    return vaccFilter.toLowerCase().split(/\s+/).filter(Boolean)
+      .every((w) => hay.includes(w));
+  }
+
+  function badLabel(r) {
+    const bad = r.bad_channels || [];
+    return (r.n_channels ? r.n_channels + ' channels' : 'channels read on the '
+            + 'cluster')
+      + (bad.length ? ' · ' + bad.length + ' marked bad ('
+         + bad.map((n) => 'CSC' + n).join(', ') + ')' : ' · none marked bad');
+  }
+
+  /* The editor for one recording's channels. The same record as the single
+     panel's (`/api/session/bad-for-path`, by CSC number), reached by the
+     recording's own path here or by `vacc:<gid>` -- so a channel ticked off
+     here is off in the trace view, in a single run and in the next batch. */
+  async function toggleChans(r) {
+    if (chanOpen[r.gid]) { delete chanOpen[r.gid]; paint(); return; }
+    chanOpen[r.gid] = { busy: true };
+    paint();
+    const path = r.here || ('vacc:' + r.gid);
+    try {
+      const got = await apiPost('/api/incisor/estimate',
+                                Object.assign({ path }, paramsBody()));
+      chanOpen[r.gid] = { est: got, path };
+    } catch (e) {
+      chanOpen[r.gid] = { error: e.message, path };
+    }
+    paint();
+  }
+
+  async function setRowBad(r, numbers, change) {
+    const st = chanOpen[r.gid];
+    if (!st || st.busy) return;
+    st.busy = true; paint();
+    try {
+      await apiPost('/api/session/bad-for-path', Object.assign({
+        path: st.path,
+        bad_channels: numbers.map(Number).sort((a, b) => a - b),
+      }, change || {}));
+      const got = await apiPost('/api/incisor/estimate',
+                                Object.assign({ path: st.path }, paramsBody()));
+      chanOpen[r.gid] = { est: got, path: st.path };
+    } catch (e) {
+      st.busy = false;
+      toast(e.message, 'err', 9000);
+    }
+    // The plan reads the new bad set, and with it the request's hash.
+    loadVaccList();
+  }
+
+  function rowChanEditor(r) {
+    const st = chanOpen[r.gid] || {};
+    if (st.error) {
+      return el('p', { class: 'warn-line inc-row-chans', text: st.error });
+    }
+    if (!st.est) {
+      return el('p', { class: 'hint quiet inc-row-chans',
+        text: r.here ? 'Reading its channel list…'
+          : 'Reading its channel list off the cluster — the header only, a '
+            + 'few seconds…' });
+    }
+    const all = st.est.channels || [];
+    const bad = all.filter((c) => c.bad);
+    const box = el('div', { class: 'inc-row-chans' });
+    box.appendChild(chanGrid(all, bad, !!st.busy,
+      // A change, with the list for an older Jarvis. See setBad.
+      (number, isBad) => {
+        const now = new Set(bad.map((c) => Number(c.number)));
+        if (isBad) now.add(Number(number)); else now.delete(Number(number));
+        const n = [Number(number)];
+        setRowBad(r, Array.from(now), isBad ? { add: n } : { remove: n });
+      },
+      () => setRowBad(r, [])));
+    return box;
+  }
+
+  function vaccPickCard() {
+    const box = el('div', { class: 'card' });
+    box.appendChild(el('div', { class: 'section-label',
+                                text: 'Recordings' }));
+    if (!vaccList) {
+      box.appendChild(el('p', { class: 'hint quiet',
+        text: 'Asking what the cluster can read — the registry, the lab’s '
+            + 'netfiles share and scratch…' }));
+      loadVaccList();
+      return box;
+    }
+    if (vaccList.error) {
+      box.appendChild(el('p', { class: 'warn-line', text: vaccList.error }));
+      return box;
+    }
+    const todo = vaccList.todo || [];
+    const blocked = vaccList.blocked || [];
+    const shown = todo.filter(rowMatches);
+    const nHere = todo.filter((r) => r.here).length;
+
+    box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
+      text: todo.length.toLocaleString() + ' recordings are VACC loaded — '
+          + 'the cluster can read them now — and '
+          + (todo.length - nHere).toLocaleString() + ' of those are not on '
+          + 'this computer at all. That does not matter: the scan runs '
+          + 'where the data is, and comes back here to be looked at. Ones '
+          + 'already scanned with these settings are marked, and are '
+          + 'skipped.' }));
+
+    const search = el('input', {
+      type: 'search', class: 'inc-search', value: vaccFilter,
+      placeholder: 'Type a mouse, session, date or project…',
+      'aria-label': 'Search…',
+    });
+    /* Repaint on a pause, not per keystroke, and give the box its focus
+       back: a repaint replaces it, and a search box that loses the cursor
+       after every letter is not a search box. */
+    let t = null;
+    search.addEventListener('input', () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        vaccFilter = search.value;
+        const at = search.selectionStart;
+        paint();
+        const again = document.querySelector('#tkResult .inc-search');
+        if (again) { again.focus(); try { again.setSelectionRange(at, at); } catch (e) {} }
+      }, 220);
+    });
+    box.appendChild(search);
+
+    box.appendChild(el('div', { class: 'tk-actions inc-pick-tools' }, [
+      el('button', { class: 'btn ghost sm',
+        text: 'Tick the ' + shown.length.toLocaleString() + ' shown',
+        onclick: () => { shown.forEach((r) => picked.add(r.gid)); paint(); } }),
+      el('button', { class: 'btn ghost sm', text: 'Only the unscanned shown',
+        onclick: () => {
+          shown.forEach((r) => { if (r.answered) picked.delete(r.gid);
+                                 else picked.add(r.gid); });
+          paint();
+        } }),
+      el('button', { class: 'btn ghost sm', text: 'Clear',
+        disabled: picked.size ? null : 'disabled',
+        onclick: () => { picked.clear(); paint(); } }),
+      el('span', { class: 'hint quiet',
+        text: picked.size.toLocaleString() + ' ticked · '
+            + shown.length.toLocaleString() + ' of '
+            + todo.length.toLocaleString() + ' shown' }),
+    ]));
+
+    const list = el('div', { class: 'inc-pick-list' });
+    if (!shown.length) {
+      list.appendChild(el('div', { class: 'empty-state',
+        text: todo.length ? 'Nothing matches that. Clear the search to see '
+                            + 'all ' + todo.length + '.'
+          : 'Nothing is VACC loaded yet. In Sessions ▸ Everything VACC '
+            + 'knows, add the recordings found on VACC, or upload some.' }));
+    }
+    for (const r of shown) {
+      const on = picked.has(r.gid);
+      const open = !!chanOpen[r.gid];
+      list.appendChild(el('div', { class: 'inc-pick' + (r.answered ? ' done' : '')
+                                         + (on ? ' on' : '') }, [
+        el('input', {
+          type: 'checkbox', checked: on ? 'checked' : null,
+          'aria-label': 'Send ' + r.label,
+          onchange: (e) => { if (e.target.checked) picked.add(r.gid);
+                             else picked.delete(r.gid); paint(); },
+        }),
+        el('div', { class: 'ip-main' }, [
+          el('span', { class: 'ip-name', text: r.label }),
+          el('span', { class: 'ip-sub', text: badLabel(r)
+            + (r.here ? ' · also on this computer' : '') }),
+        ]),
+        // THE cluster mark (§6c): one renderer, never a chip of its own.
+        BARRY.vacc.mark({ gid: r.gid }, { compact: true })
+          || el('span', {}),
+        el('span', { class: 'ip-done',
+                     text: r.answered ? 'already scanned' : '' }),
+        el('button', {
+          class: 'mini', text: open ? 'Done' : 'Channels…',
+          title: 'Which of this recording’s channels are read. Unticking one '
+               + 'marks it bad for this recording everywhere.',
+          onclick: () => toggleChans(r),
+        }),
+      ]));
+      if (open) list.appendChild(rowChanEditor(r));
+    }
+    box.appendChild(list);
+
+    const nBlocked = vaccList.blocked_total != null
+      ? vaccList.blocked_total : blocked.length;
+    if (nBlocked) {
+      /* The sample, not the catalogue. The server explains forty and
+         counts the rest. */
+      box.appendChild(el('details', { class: 'inc-blocked' }, [
+        el('summary', { text: nBlocked.toLocaleString()
+                              + ' not VACC loaded, so left out' }),
+        el('div', {}, blocked.map((b) => el('div', { class: 'hint quiet',
+          text: b.label + ' — ' + b.why }))
+          .concat(nBlocked > blocked.length
+            ? [el('div', { class: 'hint quiet',
+                text: 'and ' + (nBlocked - blocked.length) + ' more.' })]
+            : [])),
+      ]));
+      /* The ones only missing from the cluster can be sent -- the same
+         upload Sessions runs (`uploadMissing`), re-planned afterwards. */
+      if (BARRY.vacc && BARRY.vacc.uploadMissing) {
+        const offer = BARRY.vacc.uploadMissing(blocked, () => {
+          vaccList = null;
+          paint();
+        }, vaccList.upload_gids);
+        if (offer) box.appendChild(offer);
+      }
+    }
+    return box;
+  }
+
+  /* The parameters, once for the batch, and the cost before the primary
+     (constitution §6d: say the cost before it is spent; the primary is last
+     and names what it does). */
+  function vaccRunCard() {
+    const box = el('div', { class: 'card' });
+    box.appendChild(el('div', { class: 'section-label',
+                                text: 'Detection, for every recording sent' }));
+    box.appendChild(params());
+    box.appendChild(batchRangeField());
+    const todo = (vaccList && vaccList.todo) || [];
+    const chosen = todo.filter((r) => picked.has(r.gid));
+    const fresh = chosen.filter((r) => !r.answered);
+    const secs = fresh.reduce((a, r) => a + ((r.plan || {}).seconds || 0), 0);
+    const native = fresh.some((r) => r.state === 'native');
+    const cap = (vaccList && vaccList.cap) || 8;
+    const queued = vaccList && vaccList.queued;
+    box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
+      text: chosen.length
+        ? (fresh.length.toLocaleString() + ' to scan'
+           + (chosen.length > fresh.length
+             ? ', ' + (chosen.length - fresh.length) + ' already scanned and '
+               + 'skipped' : '')
+           + ' · about ' + human(secs) + ' of cluster time in all, '
+           + (fresh.length ? 'about ' + human(secs / fresh.length)
+             + ' each' : '')
+           + ' · ' + ((vaccList && vaccList.partition) || 'general')
+           + ' partition'
+           + (queued ? ' · ' + queued + ' ahead in the queue' : '')
+           + (native ? ' · at most ' + cap + ' at once, because the netfiles '
+                       + 'share slows under many readers' : '')
+           + '. The times are estimates from what the cluster has run '
+           + 'before.')
+        : 'Tick the recordings to send, above.' }));
+    box.appendChild(el('div', { class: 'tk-actions' }, [
+      batchJob ? el('button', { class: 'btn ghost', text: 'Stop',
+        onclick: () => apiPost('/api/cfc/job/' + batchJob.id + '/cancel', {}) })
+        : null,
+      chosen.length > fresh.length && !batchJob ? el('button', {
+        class: 'btn ghost sm', text: 'Run the scanned ones again too',
+        title: 'Send every ticked recording, including the ones already '
+             + 'scanned with these settings',
+        onclick: () => startBatch(true),
+      }) : null,
+      el('button', {
+        class: 'btn',
+        text: batchJob ? 'On the cluster…'
+          : (fresh.length ? 'Submit ' + fresh.length.toLocaleString()
+                            + ' to VACC' : 'Nothing new to submit'),
+        disabled: (batchJob || !fresh.length) ? 'disabled' : null,
+        onclick: () => startBatch(false),
+      }),
+    ].filter(Boolean)));
+    return box;
+  }
+
+  async function loadReviews() {
+    try {
+      const got = await api('/api/incisor/reviews');
+      reviews = got.reviews || [];
+    } catch (e) {
+      reviews = [];
+      reportClientError('incisor.reviews', e.message, e.stack);
+    }
+    paint();
+  }
+
+  async function startBatch(force) {
+    if (batchJob) return;
+    const gids = Array.from(picked);
+    let started;
+    try {
+      started = await apiPost('/api/incisor/batch',
+                              Object.assign({ gids, force: !!force },
+                                            paramsBody()));
+    } catch (e) {
+      toast(e.message, 'err', 9000);
+      return;
+    }
+    batchJob = started.job;
+    batchGids = new Set(gids);
+    if (BARRY.vaccBusy) BARRY.vaccBusy.start();
+    paint();
+    clearInterval(batchPoll);
+    /* A local route, every 1.5 s, while a batch runs -- it reads the job's
+       state in this process and asks the cluster nothing itself (the
+       batch's own thread polls slurm once per round, for every task). */
+    batchPoll = setInterval(async () => {
+      if (!batchJob) { clearInterval(batchPoll); return; }
+      if (document.hidden) return;        // caught up when seen again
+      let got;
+      try { got = await api('/api/cfc/job/' + batchJob.id); } catch (e) { return; }
+      const had = (batchJob.members || []).filter((m) => m.status === 'done').length;
+      batchJob = got.job;
+      const now = (batchJob.members || []).filter((m) => m.status === 'done').length;
+      // A new answer is a new row in the queue below.
+      if (now > had) loadReviews();
+      paint();
+      if (batchJob.status === 'running') return;
+      clearInterval(batchPoll);
+      if (BARRY.vaccBusy) BARRY.vaccBusy.stop();
+      const done = batchJob; batchJob = null;
+      if (done.status === 'failed') toast(done.error || 'The batch failed.',
+                                          'err', 10000);
+      loadReviews();
+      loadVaccList();
+    }, 1500);
+  }
+
+  async function toggleReview(r) {
+    const k = r.gid + '/' + r.params_hash;
+    if (openKey === k) { openKey = null; res = null; paint(); return; }
+    openKey = k;
+    res = null;
+    paint();
+    await openReview(r);
+  }
+
+  /* One scan, by its recording and its key. The result, the anatomy on
+     record and the registry row come together, and the row is not
+     decoration: `bank` reads project, mouse and session off it, and an
+     entry without them files itself under "Unfiled" and can never be found
+     by the animal it came from. */
+  async function openReview(r) {
+    let got;
+    try {
+      got = await api('/api/incisor/result?gid=' + encodeURIComponent(r.gid)
+                      + '&key=' + encodeURIComponent(r.params_hash));
+    } catch (e) {
+      toast(e.message, 'err', 10000);
+      openKey = null;
+      paint();
+      return;
+    }
+    if (openKey !== r.gid + '/' + r.params_hash) return;   // moved on
+    q.gid = r.gid;
+    q.row = got.row || r.row || null;
+    q.path = got.path;
+    // The channels it was scanned on, so the estimate is of the same scan.
+    q.pick = (((got.result || {}).params) || {}).channel_pick || null;
+    est = { known: got.known || {} };
+    adopt(got.result);
+    paint();
+  }
+
+  function batchCard() {
+    const box = el('div', { class: 'card' });
+    box.appendChild(el('div', { class: 'section-label',
+                                text: 'On the cluster' }));
+    box.appendChild(batchRows());
+    return box;
+  }
+
+  function reviewCard() {
+    const box = el('div', { class: 'card' });
+    box.appendChild(el('div', { class: 'section-label',
+                                text: 'Look at them, then bank' }));
+    box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
+      text: 'Nothing is banked on its own. Open one, read the three plots, '
+          + 'take the pick or move it, choose the hilus range, and send it '
+          + '— a set goes to the bank under your name or not at all. A '
+          + 'recording that is only on the cluster opens off the cluster.' }));
+    if (!reviews) { loadReviews(); }
+    box.appendChild(reviewRows());
+    return box;
+  }
+
+  /* §6d's states, one row per recording, the Slurm id on it. Queued is
+     not an error and is not drawn like one. */
+  function batchRows() {
+    const ms = (batchJob && batchJob.members) || [];
+    const wrap = el('div', { class: 'inc-batch' });
+    const n = ms.length;
+    const done = ms.filter((m) => m.status === 'done').length;
+    const failed = ms.filter((m) => m.status === 'failed').length;
+    const pct = n ? Math.round(100 * (done + failed) / n) : 0;
+    wrap.appendChild(el('div', { class: 'comod-total' }, [
+      el('div', { class: 'comod-bar' }, [
+        el('div', { class: 'comod-bar-fill', style: 'width:' + pct + '%' }),
+      ]),
+      el('span', { class: 'comod-eta',
+        text: done + ' of ' + n + ' done' + (failed ? ', ' + failed
+                                             + ' failed' : '') }),
+    ]));
+    for (const m of ms) {
+      if (m.status === 'waiting') continue;
+      const word = m.error ? m.error
+        : m.cached ? 'already answered'
+          : m.status === 'done' ? 'done — in the queue below'
+            : m.status === 'running' ? 'running'
+              : m.status === 'queued' ? ('queued' + (m.step && m.step !== 'waiting'
+                                         && !/^queued on/.test(m.step)
+                                         ? ' · ' + m.step : ''))
+                : (m.step || m.status || '');
+      wrap.appendChild(el('div', { class: 'inc-batch-row ' + (m.status || '') }, [
+        el('span', { class: 'ib-name', text: m.label || m.id }),
+        el('span', { class: 'ib-state', text: word
+          + (m.slurm_id ? '  ·  slurm ' + m.slurm_id : '') }),
+      ]));
+    }
+    return wrap;
+  }
+
+  /* WHICH PROJECT, AND WHICH SCAN (2026-10-14). "KCNT1 m11 s6" is a
+     different animal in KCNT1 and in KCNT1 Urethane, and a recording
+     scanned twice was two identical rows. So each row says its project
+     (and cohort, where the folders name one), and under its name what the
+     scan read and when: its channel count, the range it was given, the bad
+     channels it left out, any detection setting off Toothy's default, and
+     the day it ran. */
+  function reviewProject(r) {
+    const row = r.row || {};
+    const p = row.project || '';
+    if (!p || p === 'Unfiled') return 'project not known';
+    return p + (row.cohort && row.cohort !== p ? ' \u00b7 ' + row.cohort : '');
+  }
+
+  function reviewScan(r) {
+    const sp = r.spec || {};
+    const bad = sp.bad_channels || [];
+    const at = String((r.computed || {}).at || '').slice(0, 16).replace('T', ' ');
+    return [
+      r.n_channels != null ? r.n_channels + ' channels' : null,
+      r.pick_words || null,
+      bad.length ? (bad.length <= 3 ? 'CSC' + bad.join(', CSC') : bad.length
+                    + ' channels') + ' left out as bad' : null,
+      sp.height_sd != null && Number(sp.height_sd) !== 4.5
+        ? 'height ' + sp.height_sd + ' S.D.' : null,
+      sp.abs_uv != null && Number(sp.abs_uv) !== 300
+        ? 'floor ' + sp.abs_uv + ' \u00b5V' : null,
+      sp.estimator === 'mad' ? 'noise by MAD' : null,
+      at ? 'scanned ' + at : null,
+    ].filter(Boolean).join('  \u00b7  ');
+  }
+
+  function reviewRow(r) {
+    const hil = (r.picked || {}).hilus || {};
+    const k = r.gid + '/' + r.params_hash;
+    const on = openKey === k;
+    const out = [el('button', {
+      class: 'inc-review' + (on ? ' on' : '') + (r.banked ? ' banked' : ''),
+      onclick: () => toggleReview(r),
+    }, [
+      el('span', { class: 'ir-who' }, [
+        el('span', { class: 'ir-name', text: r.label || r.gid }),
+        el('span', { class: 'ir-proj' + ((r.row || {}).project
+                                         && (r.row || {}).project !== 'Unfiled'
+                                         ? '' : ' none'),
+                     text: reviewProject(r) }),
+        el('span', { class: 'ir-sub', text: reviewScan(r) }),
+      ]),
+      el('span', { class: 'ir-pick',
+        text: hil.label ? ('hilus ' + hil.label) : 'no hilus pick' }),
+      /* A small margin is the interesting case, not a defect: the two top
+         channels scored almost the same and the argmax could have gone
+         either way, so the plots ARE the answer. Flagged, not buried. */
+      el('span', {
+        class: 'ir-margin' + (hil.margin != null && hil.margin < 0.1
+                              ? ' close' : ''),
+        title: hil.margin != null && hil.margin < 0.1
+          ? 'The winning channel barely beat the runner-up — worth looking '
+            + 'at the plots rather than taking the pick'
+          : 'How far the winning channel stood above the runner-up',
+        text: hil.margin != null
+          ? ('margin ' + Math.round(hil.margin * 100) + '%') : '' }),
+      el('span', { class: 'ir-where',
+        title: (r.slurm_id ? 'slurm job ' + r.slurm_id + '. ' : '')
+             + (r.local ? 'Also on this computer.'
+                        : 'Only on the cluster: it opens off the cluster.'),
+        text: r.ran_on === 'vacc' ? ('VACC' + (r.local ? '' : ' only')) : '' }),
+      el('span', { class: 'ir-banked',
+        text: r.banked ? ('banked · ' + (r.banked.n || 0)) : 'not banked' }),
+    ])];
+    /* The plots for the row you opened, directly under that row -- one at
+       a time, because a hilus is a judgement about one recording. */
+    if (on) {
+      const drop = el('div', { class: 'inc-drop' });
+      if (!res) {
+        drop.appendChild(loader('Fetching the scan',
+          r.local ? 'Out of this computer’s store.'
+            : 'Out of the store, or once off the cluster if this computer '
+              + 'has not seen its events yet.'));
+      } else {
+        drop.appendChild(channelCard());
+        drop.appendChild(resultCard());
+      }
+      out.push(drop);
+    }
+    return out;
+  }
+
+  function reviewRows() {
+    const wrap = el('div', { class: 'inc-reviews' });
+    if (!reviews) {
+      wrap.appendChild(el('p', { class: 'hint quiet', text: 'Loading…' }));
+      return wrap;
+    }
+    if (!reviews.length) {
+      wrap.appendChild(el('div', { class: 'empty-state',
+        text: 'Nothing scanned yet. Tick recordings above and submit them.' }));
+      return wrap;
+    }
+    /* This batch first: it is what somebody came back for. Everything else
+       on request, the way a picker lists the usable first (§6e). */
+    const mine = batchGids
+      ? reviews.filter((r) => batchGids.has(r.gid)) : [];
+    const rest = batchGids
+      ? reviews.filter((r) => !batchGids.has(r.gid)) : reviews;
+    if (mine.length) {
+      wrap.appendChild(el('div', { class: 'hint quiet',
+                                   text: 'From this batch' }));
+      mine.forEach((r) => reviewRow(r).forEach((n) => wrap.appendChild(n)));
+    }
+    if (!mine.length || showAllScans) {
+      if (mine.length) {
+        wrap.appendChild(el('div', { class: 'hint quiet',
+                                     text: 'Every other scan' }));
+      }
+      rest.forEach((r) => reviewRow(r).forEach((n) => wrap.appendChild(n)));
+    }
+    if (mine.length && rest.length) {
+      wrap.appendChild(el('button', { class: 'linkish',
+        text: showAllScans ? 'Only this batch'
+                           : 'Every other scan (' + rest.length + ')',
+        onclick: () => { showAllScans = !showAllScans; paint(); } }));
+    }
+    return wrap;
+  }
+
+  /* The first step of The Dentist, and the one header in the bundle that was
+     still the old boxed, all-caps card -- Braces and X-ray moved to
+     `stepHeader` and left this one behind (constitution section 6). The
+     step number is read from ToolKit rather than typed. */
+  function head() {
+    return BARRY.ui.stepHeader({
+      title: 'Incisor',
+      step: BARRY.ui.stepOf('incisor'),
+      blurb: 'Dentate spike detection. A port of Toothy’s detector, '
+           + 'checked against Toothy’s own code on identical input: 4430 '
+           + 'events across twenty recordings, every one at the same '
+           + 'sample. The difference is the clock — this reads the .ncs '
+           + 'record timestamps, so a set from here already accounts for '
+           + 'acquisition gaps and never needs the concatenation '
+           + 'correction.',
+    });
+  }
+
+  function pickCard() {
+    const box = el('div', { class: 'card' });
+    box.appendChild(el('div', { class: 'section-label',
+                                text: 'Recording' }));
+    const rows = BARRY.views.toolkit.registryRows
+      ? BARRY.views.toolkit.registryRows() : [];
+    /* This computer first, the cluster second (BARRY.vacc.reach). Run here,
+       a recording needs its files here; run on VACC, any recording the
+       cluster can read will do -- one this computer has never had a copy of
+       opens over the link and scans where it is. */
+    const reads = q.where === 'vacc' && BARRY.views.toolkit.readsOf
+      ? BARRY.views.toolkit.readsOf('incisor') : 'here';
+    const reachOf = (r) => BARRY.vacc.reach(r, reads);
+    box.appendChild(BARRY.ui.pickRecording({
+      rows, value: q.gid,
+      usable: (r) => { const g = reachOf(r); return g.path ? true : g.why; },
+      onpick: (r) => {
+        const g = reachOf(r);
+        q.gid = r.gid;
+        q.row = r;
+        q.path = g.path;
+        q.pick = null; pickOpen = false;
+        reset();
+        refreshEstimate();
+        paint();
+      },
+    }));
+    if (q.path) {
+      box.appendChild(el('p', { class: 'hint quiet',
+        text: /^vacc:/.test(q.path)
+          ? 'Not on this computer — it is read off the cluster, and scanned '
+            + 'there.'
+          : q.path }));
+    }
+    return box;
+  }
+
+  function planCard() {
+    const p = est.plan || {};
+    const c = est.continuity || {};
+    const box = el('div', { class: 'card' });
+    box.appendChild(el('div', { class: 'section-label',
+                                text: '2. Scan every channel' }));
+    if (est.error) {
+      box.appendChild(el('p', { class: 'warn-line', text: est.error }));
+      return box;
+    }
+    box.appendChild(el('p', { class: 'hint',
+      text: dur(p.span_s) + ' × ' + p.n_channels + ' channel'
+          + (p.n_channels === 1 ? '' : 's') + '  ·  '
+          + Math.round(p.megasamples).toLocaleString() + ' million samples'
+          + (p.seconds != null ? '  ·  about ' + human(p.seconds) : '')
+          + (p.network ? '  ·  over the network' : '')
+          + (est.vacc_only ? '  ·  on VACC' : '') }));
+    /* The recording's own condition, because it decides whether the times
+       this produces mean anything. For a recording only the cluster has,
+       that is measured on the compute node as part of the scan -- said, not
+       drawn as a plausible "0 segments". */
+    if (c.pending) {
+      box.appendChild(el('p', { class: 'hint quiet', text: c.note || '' }));
+    } else {
+      box.appendChild(el('p', { class: 'hint quiet',
+        text: c.n_segments + ' segment' + (c.n_segments === 1 ? '' : 's')
+            + (c.seconds_lost ? ', ' + c.seconds_lost.toFixed(2)
+                                + ' s lost to gaps' : ', no gaps')
+            + (c.n_short_inside ? ', ' + c.n_short_inside
+                                  + ' short record(s) inside a segment' : '')
+            + '  ·  clock good to '
+            + Math.round(c.residual_sd_us || 0) + ' µs' }));
+    }
+    if ((c.mismatches || []).length) {
+      box.appendChild(el('p', { class: 'warn-line',
+        text: 'The channels checked for gaps disagree with one another, so '
+            + 'there is no single clock to stamp events on. Nothing will '
+            + 'be detected until that is resolved.' }));
+      return box;
+    }
+    box.appendChild(selection());
+    /* One primary, for where the bar says this runs. */
+    box.appendChild(el('div', { class: 'tk-actions' }, [
+      q.where === 'vacc' ? vaccButton() : el('button', {
+        class: 'btn', text: job ? 'Scanning…' : 'Scan',
+        disabled: job ? 'disabled' : null, onclick: scan,
+      }),
+      el('span', { class: 'hint quiet',
+        text: est.cached ? 'Already scanned — this will be instant.'
+          : 'Detects on every channel. That is not wasteful: the hilus '
+            + 'estimate is computed from the per-channel counts, so there '
+            + 'is no cheaper way to make it.' }),
+    ]));
+    const vs = q.where === 'vacc' ? vaccSentence() : null;
+    if (vs) box.appendChild(vs);
+    box.appendChild(params());
+    return box;
+  }
+
+  /* ---------------- running it somewhere else ----------------
+
+     The second button is never a replacement for the first. Two machines,
+     two caches, two answers that have to be compared rather than assumed --
+     and a recording the cluster cannot reach still has a perfectly good
+     local Scan beside it.
+
+     Shown only while VACC Mode is on AND the server says there is a cluster
+     configured. The mode gates the LOOK; `configured` gates the capability.
+     That split matters: turning the glow off because your eyes hurt must
+     not take away the Cancel button for a job still running on a shared
+     machine, so nothing here is ever the only way to reach something. */
+  function vaccOn() {
+    return !!(BARRY.state.vacc && BARRY.vacc
+              && (BARRY.vacc.last || {}).configured);
+  }
+
+  function vaccButton() {
+    if (!vaccOn()) return null;
+    const v = (est && est.vacc) || {};
+    const busy = !!job;
+    return el('button', {
+      class: 'btn',
+      text: busy ? 'Scanning…' : 'Scan on VACC',
+      // Disabled with the reason ON it rather than hidden. A control that
+      // vanishes teaches nothing; `canOpen` in sessions.js carries the same
+      // note about reading an absent answer as a "no".
+      disabled: (busy || !v.can) ? 'disabled' : null,
+      title: v.can ? ('Runs the same detector on ' + (v.remote || 'the cluster'))
+                   : (v.reason || 'The cluster cannot reach this recording.'),
+      onclick: () => scan(false, 'vacc'),
+    });
+  }
+
+  function vaccSentence() {
+    if (!vaccOn()) return null;
+    const v = (est && est.vacc) || {};
+    if (!v.can) {
+      return el('div', { class: 'hint quiet vacc-why', text: v.reason || '' });
+    }
+    const here = Math.max(1, Math.round(((est.plan || {}).seconds) || 0));
+    const there = Math.max(1, Math.round(v.seconds || 0));
+    const q = v.queued ? (', ' + v.queued + ' ahead of you in the queue') : '';
+    // Says plainly when the cluster figure is still the local seed rather
+    // than something the cluster has actually done. An estimate borrowed
+    // from a different computer is not a measurement of this one.
+    const how = v.measured ? '' : ' (estimated from this machine until the '
+                                + 'cluster has run one)';
+    // A recording only the cluster has has no "here" to compare with.
+    return el('div', { class: 'hint quiet vacc-why',
+      text: (est.vacc_only ? 'About ' + human(there) + ' on VACC'
+                           : 'About ' + here + ' s here · about ' + there
+                             + ' s on VACC')
+            + q + how + '.' });
+  }
+
+  /* ---------------- what is being scanned ----------------
+     Said out loud rather than left to be inferred from a channel count.
+     Sixty-two channels on a sixty-four channel probe looks exactly like
+     sixty-four unless the panel says two were dropped -- and the hilus,
+     theta and ripple picks are argmaxes over whatever set was scanned, so
+     what was left out is part of the answer rather than a detail of it. */
+  function selection() {
+    const p = (est && est.plan) || {};
+    const all = (est && est.channels) || [];
+    const bad = all.filter((c) => c.bad);
+    const total = all.length || p.n_channels || 0;
+    const box = el('div', { class: 'inc-selection' });
+
+    box.appendChild(el('p', { class: 'inc-sel-head',
+      text: p.n_channels + ' of ' + total + ' channel'
+          + (total === 1 ? '' : 's') + ' will be read'
+          + (est && est.pick ? ': ' + est.pick_words
+             + (bad.some((c) => c.picked !== false)
+                ? ', less the ones marked bad' : '') : '') }));
+    box.appendChild(pickRow());
+
+    /* Both ways round. "None are marked" is a fact about this recording
+       too, and a panel that only speaks when something was removed leaves
+       you unable to tell that from a panel that never checked. */
+    box.appendChild(el('p', { class: bad.length ? 'hint' : 'hint quiet',
+      style: 'max-width:78ch',
+      text: bad.length
+        ? (bad.length + ' channel' + (bad.length === 1 ? '' : 's')
+           + ' marked bad on this session '
+           + (bad.length === 1 ? 'has' : 'have')
+           + ' been removed from processing — '
+           + bad.map((c) => c.label).join(', ')
+           + '. They are not read at all, so they cannot win any of the '
+           + 'three channel picks and no candidate comes off them.')
+        : 'No channels are marked bad on this session, so every one of '
+          + 'them is read.' }));
+
+    /* How the file is read and how the probe is laid out. Neither changes
+       when an event happened; both change which channels there were. */
+    box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+      text: 'Probe configuration: ' + (p.probe_name || p.probe || 'H3')
+          + '  ·  every channel'
+          + (p.n_csc_files ? ' of ' + p.n_csc_files + ' CSC files' : '')
+          + '  ·  ' + (p.invert ? 'inverted, the lab convention'
+                                     : 'not inverted') }));
+
+    box.appendChild(chanEditor(all, bad));
+    return box;
+  }
+
+  /* WHICH CHANNELS THIS SCAN READS (asked for 2026-10-14).
+
+     A 128-channel recording is often two probes, and the only way to scan
+     one of them was to untick the other 64 -- which marks them bad for this
+     session everywhere, in every tool, for a reason that has nothing to do
+     with the wires. A pick says which channels this one scan reads and
+     nothing else. Bad channels stay out inside any pick; a pick never puts
+     one back and never marks one. The halves are by CSC number over every
+     channel the recording has, so the first half of 128 is CSC1-64
+     whatever is marked. The server applies the rule (`incisor.channel_pick`),
+     so the count above and the scan cannot disagree. */
+  let pickOpen = false;          // the custom range field is showing
+  const PICKS = [
+    ['all', 'All', 'Every channel not marked bad'],
+    ['first', 'First half', 'The first half by CSC number, less the bad ones'],
+    ['second', 'Second half', 'The second half by CSC number, less the bad ones'],
+    ['even', 'Even', 'The even CSC numbers, less the bad ones'],
+    ['odd', 'Odd', 'The odd CSC numbers, less the bad ones'],
+    ['ranges', 'Range\u2026', 'CSC numbers and ranges of your own, such as '
+                         + '1-64, or 1-32, 65-96'],
+  ];
+
+  function pickText(pick) {
+    return ((pick && pick.ranges) || []).map((r) => (r[0] === r[1]
+      ? String(r[0]) : r[0] + '-' + r[1])).join(', ');
+  }
+
+  /* "1-64", "1-32, 65-96", "CSC5, 9-12": ranges by CSC number, or null
+     with the reason. */
+  function parseRanges(text) {
+    const parts = String(text || '').split(/[,;\s]+/).filter(Boolean);
+    if (!parts.length) return { why: 'Type CSC numbers or ranges, such as 1-64.' };
+    const out = [];
+    for (const raw of parts) {
+      const t = raw.replace(/^csc/i, '').replace(/[\u2013\u2014]/g, '-');
+      const m = /^(\d+)(?:-(?:csc)?(\d+))?$/i.exec(t);
+      if (!m) return { why: '\u201c' + raw + '\u201d is not a CSC number or '
+                            + 'a range such as 1-64.' };
+      const lo = Number(m[1]), hi = Number(m[2] || m[1]);
+      if (lo < 1 || hi < 1) return { why: 'CSC numbers start at 1.' };
+      out.push([Math.min(lo, hi), Math.max(lo, hi)]);
+    }
+    return { ranges: out };
+  }
+
+  function setPick(pick) {
+    q.pick = pick;
+    reset();            // a scan of other channels is not this one's answer
+    refreshEstimate();
+    paint();
+  }
+
+  function pickRow() {
+    const cur = (q.pick && q.pick.mode) || 'all';
+    const row = el('div', { class: 'inc-chpick' });
+    row.appendChild(el('span', { class: 'inc-pick-l', text: 'Scan' }));
+    row.appendChild(el('div', { class: 'seg sm inc-pick-seg' }, PICKS.map(
+      ([id, label, why]) => el('button', {
+        class: (id === cur || (id === 'ranges' && pickOpen)) ? 'active' : '',
+        title: why, disabled: (job || savingBad) ? 'disabled' : null,
+        onclick: () => {
+          if (id === 'ranges') { pickOpen = true; paint(); return; }
+          pickOpen = false;
+          if (id === cur) return;
+          setPick(id === 'all' ? null : { mode: id });
+        },
+        text: label,
+      }))));
+    if (pickOpen || cur === 'ranges') {
+      const inp = el('input', { type: 'text', class: 'inc-pick-in',
+        'aria-label': 'CSC numbers and ranges',
+        placeholder: 'e.g. 1-64, or 1-32, 65-96',
+        value: pickText(q.pick) });
+      const go = () => {
+        const got = parseRanges(inp.value);
+        if (!got.ranges) { toast(got.why, 'warn', 7000); return; }
+        setPick({ mode: 'ranges', ranges: got.ranges });
+      };
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+      row.appendChild(inp);
+      row.appendChild(el('button', { class: 'btn ghost sm inc-pick-go',
+        text: 'Use these', disabled: (job || savingBad) ? 'disabled' : null,
+        onclick: go }));
+    }
+    row.appendChild(el('span', { class: 'hint quiet inc-pick-why', text:
+      'Which channels this scan reads. Channels marked bad stay out of any '
+      + 'of these, and choosing one marks nothing bad.' }));
+    return row;
+  }
+
+  /* Putting a channel back, or taking one out, and generating the times
+     again.
+
+     The tick writes through to the session record -- the same one the trace
+     view reads and the same one every other tool honours -- rather than to
+     a copy held in this panel, so a channel marked bad in either place is
+     bad in both. */
+  function chanEditor(all, bad) {
+    const d = el('details', {
+      class: 'inc-chan-edit', open: editorOpen ? 'open' : null,
+      ontoggle: (e) => { editorOpen = e.target.open; },
+    }, [
+      el('summary', { text: 'Add or remove channels, and scan again' }),
+      el('p', { class: 'hint quiet', style: 'max-width:74ch',
+        text: 'Unticking a channel marks it bad for this session '
+            + 'everywhere. Changing it discards the scan on purpose: every '
+            + 'candidate time came out of reading a particular set of '
+            + 'channels, and a result sitting under a selection it no '
+            + 'longer matches is the kind of thing that gets banked by '
+            + 'mistake. Press Scan to generate them again.' }),
+    ]);
+    d.appendChild(chanGrid(all, bad, savingBad,
+                           (number, isBad) => setBad(number, isBad),
+                           () => setBadSet([])));
+    return d;
+  }
+
+  /* The grid of channels and its "put them all back", for the single panel
+     and for each recording in VACC mode -- one control, so a channel looks
+     and behaves the same wherever it is ticked off. `onToggle(number, bad)`
+     is by CSC number, never by row index. */
+  function chanGrid(all, bad, busy, onToggle, onReset) {
+    const wrap = el('div', {});
+    const grid = el('div', { class: 'inc-chan-grid' });
+    for (const c of all) {
+      // `picked` is false only where a pick leaves the channel out; a grid
+      // drawn without one (VACC mode's) has no such field.
+      const out = c.picked === false && !c.bad;
+      grid.appendChild(el('label', {
+        class: 'inc-chan' + (c.bad ? ' bad' : '') + (out ? ' out' : ''),
+        title: c.bad ? c.label + ' is marked bad and is not read'
+          : out ? c.label + ' is not in this scan’s channels (' + ((est
+              && est.pick_words) || 'the pick') + '). It is not marked bad.'
+          : c.label + ' is read',
+      }, [
+        el('input', {
+          type: 'checkbox', checked: c.bad ? null : 'checked',
+          disabled: busy ? 'disabled' : null,
+          onchange: (e) => onToggle(c.number, !e.target.checked),
+        }),
+        el('span', { text: c.label }),
+      ]));
+    }
+    wrap.appendChild(grid);
+    wrap.appendChild(el('div', { class: 'tk-actions' }, [
+      el('button', { class: 'btn ghost sm', text: 'Put them all back',
+        disabled: (busy || !bad.length) ? 'disabled' : null,
+        onclick: onReset }),
+      busy ? el('span', { class: 'hint quiet', text: 'Saving…' }) : null,
+    ].filter(Boolean)));
+    return wrap;
+  }
+
+  /* One channel is sent as a change, not as this panel's list with one
+     channel different: that list was read when the estimate was, and a
+     channel marked in the trace view since then was wiped by it. */
+  function setBad(number, bad) {
+    const now = new Set(((est && est.channels) || [])
+      .filter((c) => c.bad).map((c) => Number(c.number)));
+    if (bad) now.add(Number(number)); else now.delete(Number(number));
+    // The list too, for a Jarvis older than `add` / `remove`.
+    const n = [Number(number)];
+    setBadSet(Array.from(now), bad ? { add: n } : { remove: n });
+  }
+
+  async function setBadSet(numbers, change) {
+    if (!q.path || savingBad) return;
+    savingBad = true; paint();
+    try {
+      await apiPost('/api/session/bad-for-path', Object.assign({
+        path: q.path,
+        bad_channels: numbers.map(Number).sort((a, b) => a - b),
+      }, change || {}));
+    } catch (e) {
+      savingBad = false; paint();
+      toast(e.message, 'err', 9000);
+      return;
+    }
+    savingBad = false;
+    reset();            // the scan was made from a different set of channels
+    editorOpen = true;  // survives the repaint, so you can untick two
+    await refreshEstimate();
+    paint();
+  }
+
+  /* A detection parameter changed. One recording: estimate it again. VACC
+     mode: ask the plan again, because "already scanned" is a fact about the
+     question, and the question just changed. */
+  let planTimer = null;
+  function paramsChanged() {
+    if (q.tab === 'vacc') {
+      clearTimeout(planTimer);
+      planTimer = setTimeout(loadVaccList, 300);
+    } else {
+      refreshEstimate();
+    }
+    paint();
+  }
+
+  function params() {
+    /* Each number decides what counts as a dentate spike, so each says what
+       it means and carries Toothy's own name for it -- `ds_height_thr` and
+       the rest are what you would grep for in `qparam.py`, and a panel that
+       renames them quietly makes that harder. */
+    const FIELDS = [
+      { key: 'height_sd', label: 'Height', unit: 'S.D.', step: 0.1,
+        toothy: 'ds_height_thr',
+        why: 'How far above this channel\u2019s own noise a peak has to '
+           + 'reach. Multiplied by the standard deviation of its filtered '
+           + 'trace, so it means the same thing on a quiet channel and a '
+           + 'loud one.' },
+      { key: 'abs_uv', label: 'Floor', unit: '\u00b5V', step: 10,
+        toothy: 'ds_abs_thr',
+        why: 'And never less than this, whatever the noise. Toothy\u2019s '
+           + '0.3 mV. On a quiet channel this is what binds.' },
+      { key: 'dist_ms', label: 'Min. spacing', unit: 'ms', step: 5,
+        toothy: 'ds_dist_thr',
+        why: 'Two peaks closer together than this are one event; the taller '
+           + 'is kept.' },
+      { key: 'wlen_ms', label: 'Width window', unit: 'ms', step: 5,
+        toothy: 'ds_wlen',
+        why: 'How far either side of a peak to look when measuring how wide '
+           + 'it is. Does not decide what is detected \u2014 only what is '
+           + 'recorded about it.' },
+    ];
+
+    const rows = FIELDS.map((f) => el('div', { class: 'inc-param' }, [
+      el('div', { class: 'inc-param-head' }, [
+        el('label', { class: 'inc-param-name' }, [
+          el('span', { text: f.label }),
+          el('input', {
+            type: 'number', value: q[f.key], step: f.step,
+            onchange: (e) => {
+              const v = parseFloat(e.target.value);
+              if (!isFinite(v)) { e.target.value = q[f.key]; return; }
+              q[f.key] = v; paramsChanged();
+            },
+          }),
+          el('span', { class: 'inc-param-unit', text: f.unit }),
+        ]),
+        el('code', { class: 'inc-param-src', text: f.toothy,
+                     title: 'Toothy\u2019s name for it, in qparam.py' }),
+      ]),
+      el('p', { class: 'inc-param-why', text: f.why }),
+    ]));
+
+    const changed = FIELDS.some((f) => q[f.key] !== DEFAULTS[f.key])
+                    || q.estimator !== 'sd';
+
+    return el('details', { class: 'incisor-params' }, [
+      el('summary', {}, [
+        el('span', { text: 'Detection parameters' }),
+        el('span', { class: 'inc-param-tag',
+                     text: changed ? 'changed' : 'Toothy\u2019s defaults' }),
+      ]),
+      el('div', { class: 'inc-param-body' }, [
+        el('p', { class: 'hint quiet',
+          text: 'These are the numbers that decide what counts as a dentate '
+              + 'spike. The defaults are Toothy\u2019s own, from qparam.py, '
+              + 'and a set detected with them is comparable with one of '
+              + 'Toothy\u2019s.' }),
+        el('div', { class: 'inc-params-grid' }, rows),
+        el('div', { class: 'inc-param', style: 'grid-column:1/-1' }, [
+          el('label', { class: 'comod-check' }, [
+            el('input', {
+              type: 'checkbox',
+              checked: q.estimator === 'mad' ? 'checked' : null,
+              onchange: (e) => {
+                q.estimator = e.target.checked ? 'mad' : 'sd';
+                paramsChanged();
+              },
+            }),
+            el('span', { text: 'Measure the noise with the median absolute '
+                             + 'deviation' }),
+          ]),
+          el('p', { class: 'inc-param-why',
+            text: 'Toothy uses the standard deviation, so that is the '
+                + 'default and a number from it is comparable with a number '
+                + 'from Toothy. The median absolute deviation is more '
+                + 'robust \u2014 one large artifact raises the S.D. enough '
+                + 'to hide every real event after it \u2014 but it is a '
+                + 'departure from the reference, so it is asked for rather '
+                + 'than assumed.' }),
+        ]),
+        changed ? el('div', { class: 'tk-actions' }, [
+          el('button', {
+            class: 'btn ghost sm', text: 'Back to Toothy\u2019s defaults',
+            onclick: () => {
+              Object.assign(q, DEFAULTS);
+              q.estimator = 'sd';
+              paramsChanged();
+            },
+          }),
+        ]) : null,
+      ].filter(Boolean)),
+    ]);
+  }
+
+  /* ---------------- the scan in flight ---------------- */
+  function stageCard() {
+    const box = el('div', { class: 'card comod-run' });
+    box.appendChild(el('div', { class: 'comod-run-head' }, [
+      el('strong', { text: 'Scanning every channel' }),
+      el('span', { class: 'hint', text: (est && est.plan)
+        ? dur(est.plan.span_s) + ' × ' + est.plan.n_channels + ' channels'
+        : '' }),
+      el('div', { style: 'flex:1' }),
+      el('button', { class: 'btn ghost sm', text: 'Cancel', onclick: cancel }),
+    ]));
+    box.appendChild(el('div', { class: 'comod-stages', id: 'incStages' }));
+    box.appendChild(el('div', { class: 'comod-total' }, [
+      el('div', { class: 'comod-bar' }, [
+        el('div', { class: 'comod-bar-fill', id: 'incBarFill' }),
+      ]),
+      el('span', { class: 'comod-eta', id: 'incEta' }),
+    ]));
+    setTimeout(paintStages, 0);
+    return box;
+  }
+
+  /* Reading is nearly all of it: the detection happens interleaved with it
+     to keep one channel in memory at a time, so the second stage is a count
+     of channels finished rather than a phase with a duration. */
+  /* How much of the bar each stage is worth. Reading dominates a local
+     scan, which is why it is forty to one.
+
+     The VACC stages are here because an unlisted stage gets weight 1 by
+     default, and a queue that can sit for an hour beside a read worth forty
+     gives a bar that holds at two percent and then leaps. `vacc queue` is
+     weighted like the read it is standing in for; the transfers are small. */
+  const WEIGHT = {
+    'ds read': 40, 'ds detect': 1,
+    'vacc stage': 4, 'vacc queue': 30, 'vacc fetch': 2,
+  };
+  /* What each stage is called on screen. The cluster's three used to fall
+     through to "Detect and rank the channels", so a scan waiting in the
+     queue said it was detecting. Queued is not an error, and is not drawn
+     like one (§6d). */
+  const STAGE_WORDS = {
+    'ds read': 'Read and decimate to 1 kHz',
+    'ds detect': 'Detect and rank the channels',
+    'vacc stage': 'Send it to the cluster',
+    'vacc queue': 'Wait for VACC, then run there',
+    'vacc fetch': 'Bring the answer back',
+  };
+
+  function paintStages() {
+    const host = document.getElementById('incStages');
+    if (!host || !job) return;
+    const stages = job.stages || [];
+    const w = stages.map((s) => WEIGHT[s.name] || 1);
+    const total = w.reduce((a, b) => a + b, 0) || 1;
+    let done = 0;
+    host.innerHTML = '';
+    stages.forEach((s, i) => {
+      const running = s.status === 'running';
+      const frac = s.of ? Math.min(s.done / s.of, 1) : 0;
+      done += w[i] * (s.status === 'done' ? 1 : frac);
+      host.appendChild(el('div', {
+        class: 'comod-stage' + (running ? ' on' : '')
+               + (s.status === 'done' ? ' done' : '')
+               + (s.status === 'failed' ? ' bad' : ''),
+      }, [
+        el('span', { class: 'comod-tick',
+          text: s.status === 'done' ? '✓' : running ? '▸'
+            : s.status === 'failed' ? '✗' : '' }),
+        el('span', { class: 'comod-stage-name',
+          text: STAGE_WORDS[s.name] || s.name }),
+        el('span', { class: 'comod-stage-count',
+          text: s.of > 1 ? ((s.status === 'waiting' ? '–'
+            : s.done.toLocaleString()) + ' / ' + s.of.toLocaleString()
+            + ' ' + s.unit) : '' }),
+        running && s.of > 1
+          ? el('div', { class: 'comod-mini' }, [
+              el('div', { class: 'comod-mini-fill',
+                          style: 'width:' + (frac * 100).toFixed(1) + '%' })])
+          : null,
+        el('span', { class: 'comod-stage-time',
+          text: s.seconds != null ? s.seconds.toFixed(2) + ' s' : '' }),
+      ].filter(Boolean)));
+    });
+    const fill = document.getElementById('incBarFill');
+    if (fill) fill.style.width = (100 * done / total).toFixed(1) + '%';
+    const eta = document.getElementById('incEta');
+    if (eta) {
+      eta.textContent = job.eta_s != null ? 'about ' + human(job.eta_s)
+        + ' left' : (job.status === 'running' ? 'working it out' : '');
+    }
+  }
+
+  /* ==================================================================
+     Every channel, three ways
+     ==================================================================
+     Toothy's `ephys.py:1144 plot_channel_events` draws exactly these three
+     beside its channel picker, and people have been reading them for years:
+     how many dentate spikes each channel carried, how big they were, and
+     how far each one stood above its own surround. They are here because
+     the hilus pick is an argmax over the first and second of them, and an
+     argmax is a number -- these are the picture it came out of, which is
+     what tells you whether the pick is obvious or a coin toss.
+
+     Same colours as Toothy, deliberately: seaborn's cubehelix at
+     `dark=0.2, light=0.9, rot=0.4`, light for little and dark for a lot. A
+     plot somebody already knows how to read should not change its palette
+     on the way into a second tool.
+     ================================================================== */
+
+  /* Is the page dark? Read off the background token rather than off the
+     theme's name: there are ten themes and the list grows, and what this
+     needs to know is one thing about the pixels behind the plot.
+
+     Read ONCE per draw, into `dark` below. `BARRY.token` is a
+     `getComputedStyle` on the document element, and `cubehelix` is called
+     per mark -- sixty-four channels of four hundred amplitudes is
+     twenty-five thousand marks, and asking the style system the same
+     question twenty-five thousand times to draw one small canvas is a
+     forced layout per dot. */
+  function readDark() {
+    const bg = BARRY.token('--bg', '#ffffff').trim();
+    let r = 255, g = 255, b = 255;
+    let m = bg.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (m) {
+      const hex = m[1].length === 3
+        ? m[1].split('').map((c) => c + c).join('') : m[1];
+      r = parseInt(hex.slice(0, 2), 16);
+      g = parseInt(hex.slice(2, 4), 16);
+      b = parseInt(hex.slice(4, 6), 16);
+    } else if ((m = bg.match(/(\d+)[,\s]+(\d+)[,\s]+(\d+)/))) {
+      r = +m[1]; g = +m[2]; b = +m[3];
+    }
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) < 128;
+  }
+
+  /* Green's cubehelix, the matplotlib formula (`_cm.cubehelix`), at
+     seaborn's `dark=0.2, light=0.9, rot=0.4` -- Toothy's palette, so that a
+     plot somebody has been reading for two years looks like itself here.
+     `t` is 0 for the smallest value and 1 for the largest.
+
+     Which END the largest value gets depends on the page, and this is the
+     one place the copy is deliberately not exact. Toothy draws on white,
+     where seaborn's walk from light to dark puts the busiest channel at the
+     darkest, most prominent point. On a dark theme that same walk makes the
+     busiest channel the one you cannot see -- measured on screen: the tall
+     bars came out near-black on a near-black ground. So the ramp is
+     oriented to the background rather than to the source: "a lot" is always
+     the end that stands out, which is the thing the colour is FOR. On the
+     light themes it is Toothy's ramp exactly. */
+  let dark = false;   // set by drawPlots, before anything is coloured
+  function cubehelix(t) {
+    const LIGHT = 0.9, DARK = 0.2, START = 0.0, ROT = 0.4, HUE = 0.8;
+    const u = Math.max(0, Math.min(1, t || 0));
+    const lo = dark ? DARK : LIGHT;
+    const hi = dark ? LIGHT : DARK;
+    const x = lo + (hi - lo) * u;
+    const a = HUE * x * (1 - x) / 2;
+    const phi = 2 * Math.PI * (START / 3 + ROT * x);
+    const cos = Math.cos(phi), sin = Math.sin(phi);
+    const ch = (p0, p1) => Math.round(255 * Math.max(0, Math.min(1,
+      x + a * (p0 * cos + p1 * sin))));
+    return 'rgb(' + ch(-0.14861, 1.78277) + ',' + ch(-0.29227, -0.90649)
+         + ',' + ch(1.97294, 0.0) + ')';
+  }
+  /* A channel that was not read. Toothy greys its noise channels in place
+     rather than dropping them, and so does this: a gap you can see is the
+     point -- it is how "CSC41 is excluded" reads off the plot instead of
+     off a sentence above it. */
+  const GREY = 'rgba(150,150,150,0.55)';
+
+  /* The x axis every plot shares: every channel on the probe, in order,
+     whether or not it was read. `est.channels` is the whole list and
+     `res.channels` only the scanned ones, so the axis comes from the first
+     and the data from the second. */
+  function plotAxis() {
+    const all = (est && est.channels) || [];
+    const by = {};
+    for (const c of (res && res.channels) || []) by[Number(c.number)] = c;
+    const axis = (all.length ? all : (res && res.channels) || [])
+      .map((c) => Number(c.number)).sort((a, b) => a - b);
+    return { axis, by };
+  }
+
+  /* Deterministic jitter, so a redraw does not reshuffle the dots.
+
+     seaborn's stripplot jitters within the category so that events at the
+     same amplitude are not one dot. Its jitter is random; this one is a
+     hash of the channel and the index, which looks the same and stops the
+     cloud crawling every time the panel repaints. */
+  function jitter(ch, i) {
+    const h = Math.sin(ch * 127.1 + i * 311.7) * 43758.5453;
+    return (h - Math.floor(h)) - 0.5;
+  }
+
+  /* Size from the canvas's OWN laid-out width. `parentNode.clientWidth`
+     includes the card's padding, which is how Panorama's canvases came out
+     wider than the box they sit in. */
+  function plotCanvas(id, h) {
+    const cv = document.getElementById(id);
+    if (!cv || !cv.parentNode) return null;
+    cv.style.width = '100%';
+    const w = Math.max(160, Math.round(
+      cv.clientWidth || cv.getBoundingClientRect().width
+      || cv.parentNode.clientWidth));
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
+    cv.style.height = h + 'px';
+    const g = cv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    return { cv, g, W: w, H: h };
+  }
+
+  const PLOT_PAD = { l: 44, r: 8, t: 22, b: 26 };
+
+  /* The frame the three share: the chosen channel's band behind
+     everything, the axes, the channel ticks and the two titles. Returns the
+     scales, because every caller then needs them. */
+  function plotFrame(c, axis, title, ylab, ymax, ymin) {
+    const { g, W, H } = c;
+    const k = {
+      text: BARRY.token('--text', '#222'),
+      dim: BARRY.token('--text-3', '#888'),
+      faint: BARRY.token('--border', '#ddd'),
+    };
+    const P = PLOT_PAD;
+    const plotW = Math.max(10, W - P.l - P.r);
+    const plotH = Math.max(10, H - P.t - P.b);
+    const lo = ymin || 0;
+    const hi = (ymax > lo) ? ymax : lo + 1;
+    // Half a step of margin at each end, so the first and last channel are
+    // not drawn on the axis line. Toothy's `xmargin=0.05`.
+    const step = plotW / Math.max(1, axis.length);
+    const sx = (num) => {
+      const i = axis.indexOf(Number(num));
+      return P.l + (i < 0 ? 0 : (i + 0.5) * step);
+    };
+    const sy = (v) => P.t + plotH - ((v - lo) / (hi - lo)) * plotH;
+
+    // The chosen hilus channel, behind the data. Toothy marks it with an
+    // `axvspan` for the same reason: the pick has to be findable in the
+    // picture without counting ticks across to it.
+    const hil = chosen.hilus;
+    if (hil != null && axis.indexOf(Number(hil)) >= 0) {
+      g.fillStyle = BARRY.token('--accent', '#FFB81C');
+      g.globalAlpha = 0.22;
+      g.fillRect(sx(hil) - step / 2, P.t, Math.max(2, step), plotH);
+      g.globalAlpha = 1;
+    }
+
+    g.strokeStyle = k.faint;
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(P.l + 0.5, P.t);
+    g.lineTo(P.l + 0.5, P.t + plotH + 0.5);
+    g.lineTo(W - P.r, P.t + plotH + 0.5);
+    g.stroke();
+
+    g.font = '600 11px system-ui, sans-serif';
+    g.fillStyle = k.text;
+    g.textAlign = 'center';
+    g.fillText(title, P.l + plotW / 2, 12);
+
+    g.font = '9.5px system-ui, sans-serif';
+    g.fillStyle = k.dim;
+    // About ten of them, on round numbers, the way Toothy's MaxNLocator
+    // does it -- not every channel, which is unreadable at sixty-four.
+    const every = Math.max(1, Math.ceil(axis.length / 9));
+    g.textAlign = 'center';
+    for (let i = 0; i < axis.length; i += every) {
+      g.fillText(String(axis[i]), sx(axis[i]), H - P.b + 12);
+    }
+    g.textAlign = 'right';
+    // Three, not two. Top and bottom alone leave the reader interpolating
+    // across a hundred and twenty pixels to place a bar, which is most of
+    // what these are looked at for.
+    g.fillText(fmtTick(hi), P.l - 4, P.t + 4);
+    g.fillText(fmtTick((lo + hi) / 2), P.l - 4, P.t + plotH / 2 + 3);
+    g.fillText(fmtTick(lo), P.l - 4, P.t + plotH + 3);
+    g.save();
+    g.translate(10, P.t + plotH / 2);
+    g.rotate(-Math.PI / 2);
+    g.textAlign = 'center';
+    g.fillText(ylab, 0, 0);
+    g.restore();
+    return { sx, sy, step, plotW, plotH, P, lo, hi };
+  }
+
+  /* A count is a count. The first version ran every axis through the same
+     decimal rule and labelled the event axis "73.0" and "0.00", which reads
+     as a measurement with a precision it does not have -- there is no such
+     thing as 73.0 dentate spikes. Whole numbers print whole. */
+  const fmtTick = (v) => {
+    if (!isFinite(v)) return '';
+    if (Math.abs(v - Math.round(v)) < 1e-9) return String(Math.round(v));
+    if (Math.abs(v) >= 100) return String(Math.round(v));
+    if (Math.abs(v) >= 1) return (Math.round(v * 10) / 10).toFixed(1);
+    return (Math.round(v * 100) / 100).toFixed(2);
+  };
+
+  /* 1. How many. Toothy's `ax0`: a bar per channel, coloured by its own
+     height, which is half of what the hilus argmax multiplies. */
+  function drawCount() {
+    const c = plotCanvas('incPlotCount', 170);
+    if (!c) return;
+    const { axis, by } = plotAxis();
+    const ns = axis.map((n) => Number((by[n] || {}).n || 0));
+    const top = Math.max(1, Math.max.apply(null, ns));
+    const f = plotFrame(c, axis, 'DS count', '# events', top);
+    const g = c.g;
+    for (let i = 0; i < axis.length; i += 1) {
+      const row = by[axis[i]];
+      const x = f.sx(axis[i]);
+      const w = Math.max(1, f.step * 0.8);
+      if (!row) { drawGap(g, x, f); continue; }
+      g.fillStyle = cubehelix(ns[i] / top);
+      const y = f.sy(ns[i]);
+      g.fillRect(x - w / 2, y, w, f.P.t + f.plotH - y);
+    }
+  }
+
+  /* A channel that was not read: a thin grey column the full height, so it
+     is obviously absent rather than obviously zero. Those are different
+     facts and a bar of height nothing says the wrong one. */
+  function drawGap(g, x, f) {
+    g.fillStyle = GREY;
+    g.globalAlpha = 0.18;
+    g.fillRect(x - 1, f.P.t, 2, f.plotH);
+    g.globalAlpha = 1;
+  }
+
+  /* 2. How big. Toothy's `ax1`: a stripplot of EVERY event's amplitude,
+     hued by the amplitude itself. What travels here is a sample of at most
+     four hundred per channel, taken at an even stride -- see
+     `AMP_SAMPLE_MAX` in incisor.py. The count above is exact; this is the
+     shape of the distribution, which is all it is read for. */
+  function drawAmp() {
+    const c = plotCanvas('incPlotAmp', 170);
+    if (!c) return;
+    const { axis, by } = plotAxis();
+    let top = 0, bot = Infinity;
+    for (const n of axis) {
+      for (const a of ((by[n] || {}).amp_sample || [])) {
+        if (a > top) top = a;
+        if (a < bot) bot = a;
+      }
+    }
+    /* Scaled to the amplitudes, not to zero.
+
+       A bar chart has to start at zero or its bars lie about their ratios.
+       A cloud of amplitudes does not, and pinning this one to zero wasted
+       the lower two thirds of the panel on the range below the detection
+       threshold -- which is empty BY CONSTRUCTION, since nothing under the
+       threshold is an event. Toothy's axis starts at its data too. */
+    if (!isFinite(bot) || top <= 0) { bot = 0; top = 1; }
+    const pad = (top - bot) * 0.06 || 1;
+    const f = plotFrame(c, axis, 'DS amplitude', 'Amplitude µV',
+                        top + pad, Math.max(0, bot - pad));
+    const g = c.g;
+    const rad = Math.max(0.7, Math.min(1.8, f.step * 0.14));
+    for (const n of axis) {
+      const row = by[n];
+      if (!row) { drawGap(g, f.sx(n), f); continue; }
+      const xs = f.sx(n);
+      const amps = row.amp_sample || [];
+      for (let i = 0; i < amps.length; i += 1) {
+        g.fillStyle = cubehelix(amps[i] / top);
+        g.beginPath();
+        g.arc(xs + jitter(n, i) * f.step * 0.7, f.sy(amps[i]), rad, 0,
+              Math.PI * 2);
+        g.fill();
+      }
+    }
+  }
+
+  /* 3. How far above the surround. Toothy's `ax2`: the mean of
+     `width_height` with its standard error, drawn as a bar through a ring.
+     `width_height` is where `peak_widths(rel_height=0.5)` measured the
+     width -- the trace level halfway down the peak's own prominence --
+     and "prominence / 2" is Toothy's name for that axis, kept. */
+  function drawProm() {
+    const c = plotCanvas('incPlotProm', 170);
+    if (!c) return;
+    const { axis, by } = plotAxis();
+    let top = 0, bot = Infinity;
+    for (const n of axis) {
+      const r = by[n];
+      if (!r || r.width_height_mean == null) continue;
+      top = Math.max(top, r.width_height_mean + (r.width_height_sem || 0));
+      bot = Math.min(bot, r.width_height_mean - (r.width_height_sem || 0));
+    }
+    if (!isFinite(bot)) { bot = 0; top = 1; }
+    const pad = (top - bot) * 0.12 || 1;
+    const f = plotFrame(c, axis, 'DS height above surround',
+                        'prominence / 2', top + pad, bot - pad);
+    const g = c.g;
+    const rad = Math.max(2.5, Math.min(5, f.step * 0.35));
+    for (const n of axis) {
+      const r = by[n];
+      if (!r) { drawGap(g, f.sx(n), f); continue; }
+      if (r.width_height_mean == null) continue;
+      const t = (r.width_height_mean - f.lo) / (f.hi - f.lo);
+      const col = cubehelix(t);
+      const x = f.sx(n), y = f.sy(r.width_height_mean);
+      const e = r.width_height_sem || 0;
+      g.strokeStyle = col;
+      g.lineWidth = Math.max(1.5, Math.min(3.5, f.step * 0.22));
+      g.beginPath();
+      g.moveTo(x, f.sy(r.width_height_mean - e));
+      g.lineTo(x, f.sy(r.width_height_mean + e));
+      g.stroke();
+      // White first, then a wash of the same colour over it: Toothy draws
+      // the ring twice for this, and the white is what keeps a ring legible
+      // where the error bars of its neighbours run behind it.
+      g.fillStyle = BARRY.token('--bg', '#fff');
+      g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 0.2; g.fillStyle = col;
+      g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 1;
+      g.strokeStyle = col;
+      g.lineWidth = 2;
+      g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.stroke();
+    }
+  }
+
+  function drawPlots() {
+    if (!res || !document.getElementById('incPlotCount')) return;
+    // Once, here, for every mark in all three. See `readDark`.
+    dark = readDark();
+    try { drawCount(); drawAmp(); drawProm(); } catch (e) { /* non-fatal */ }
+  }
+
+  /* Which channel is under a pointer at `x` on any of the three. They
+     share an axis, so one function serves all of them. */
+  function channelAtX(cv, x) {
+    const { axis } = plotAxis();
+    if (!axis.length) return null;
+    const w = cv.getBoundingClientRect().width;
+    const step = Math.max(1, (w - PLOT_PAD.l - PLOT_PAD.r) / axis.length);
+    const i = Math.floor((x - PLOT_PAD.l) / step);
+    return axis[Math.max(0, Math.min(axis.length - 1, i))];
+  }
+
+  function plotBlock() {
+    const box = el('div', {});
+    box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+      text: 'The three Toothy draws beside its own channel picker, on this '
+          + 'scan. The hilus pick is an argmax over normalised count × '
+          + 'normalised amplitude, so the first two plots are the picture '
+          + 'that argmax came out of. Click any of them to put the hilus on '
+          + 'that channel. Grey columns were not read.' }));
+    const wrap = el('div', { class: 'inc-plots' });
+    for (const id of ['incPlotCount', 'incPlotAmp', 'incPlotProm']) {
+      const cv = el('canvas', {
+        id, class: 'inc-plot',
+        title: 'Click to put the hilus on this channel',
+        onclick: (e) => {
+          const n = channelAtX(e.target,
+                               e.clientX - e.target.getBoundingClientRect().left);
+          if (n == null) return;
+          chosen.hilus = Number(n);
+          pushLines(); paint();
+        },
+        onmousemove: (e) => {
+          const n = channelAtX(e.target,
+                               e.clientX - e.target.getBoundingClientRect().left);
+          const out = document.getElementById('incPlotRead');
+          if (!out || n == null) return;
+          const { by } = plotAxis();
+          const r = by[Number(n)];
+          out.textContent = r
+            ? ('CSC' + n + ' — ' + r.n + ' candidate'
+               + (r.n === 1 ? '' : 's') + ', mean '
+               + (r.mean_amp || 0).toFixed(0) + ' µV, '
+               + (r.width_height_mean == null ? 'no height'
+                  : (r.width_height_mean.toFixed(2) + ' above surround')))
+            : ('CSC' + n + ' — not read');
+        },
+        onmouseleave: () => {
+          const out = document.getElementById('incPlotRead');
+          if (out) out.textContent = '';
+        },
+      });
+      wrap.appendChild(cv);
+    }
+    box.appendChild(wrap);
+    box.appendChild(el('p', { class: 'hint quiet inc-plot-read',
+                              id: 'incPlotRead', text: '' }));
+    return box;
+  }
+
+  /* Redrawn on a resize, because the canvases are sized from their laid-out
+     width and a narrower pane is a different picture, not the same one
+     squashed. Attached once. */
+  let plotsWired = false;
+  function wirePlots() {
+    if (plotsWired) return;
+    plotsWired = true;
+    let t = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(t);
+      t = setTimeout(drawPlots, 160);
+    });
+  }
+
+  /* ---------------- step 3: the channel ---------------- */
+  function channelCard() {
+    const box = el('div', { class: 'card' });
+    box.appendChild(el('div', { class: 'section-label',
+                                text: '3. Which channel' }));
+    /* The question this step invites, answered before it is asked.
+
+       The three picks are computed FROM the detection -- normalised
+       amplitude x count for the hilus, band power for the other two -- so
+       they cannot have fed back into it. Every channel was detected on
+       separately and carries its own candidates; each time is that
+       candidate's own sample index put through the .ncs record timestamps,
+       which is one clock for the whole file. So switching a channel here
+       swaps which set you are looking at, instantly and with nothing read
+       again, and moves no event by a microsecond.
+
+       What DOES move the picks is step 2: a channel added to or removed
+       from the scan changes the set each argmax runs over. */
+    box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+      text: 'Changing a channel here changes which candidates you are '
+          + 'looking at, not when any of them happened — every channel '
+          + 'was detected on separately, and every time came from the '
+          + '.ncs record timestamps rather than from the channel. The picks '
+          + 'came out of the scan, so switching one costs nothing and '
+          + 'nothing is read again. To move the picks themselves, add or '
+          + 'remove channels in step 2 and scan again.' }));
+    box.appendChild(plotBlock());
+    const known = (est && est.known) || {};
+
+    const most = (res.alternates || {}).most_spikes;
+
+    let unresolved = false;
+    for (const r of ROLES) {
+      const pick = (res.picked || {})[r.key];
+      const was = known[KNOWN_KEY[r.key]];
+      const clash = pick && was != null
+                    && Number(was) !== Number(pick.number);
+      const now = chosen[r.key];
+      if (now == null) unresolved = true;
+
+      /* The candidate count, on the hilus list only. That is the number
+         that changes what step 4 banks, so seeing it in the list is the
+         difference between choosing a channel and guessing at one. On the
+         theta and ripple lists it would be the DS count, which has nothing
+         to do with either pick, so it is left off. */
+      const nOn = (c) => Number((res.n_by_channel || {})[String(c.index)] || 0);
+      const opts = (res.channels || []).map((c) => el('option', {
+        value: c.number,
+        selected: Number(now) === Number(c.number) ? 'selected' : null,
+        text: c.label + (c.bad ? '  (bad)' : '')
+              + (r.key === 'hilus'
+                  ? '  — ' + nOn(c) + ' candidate'
+                    + (nOn(c) === 1 ? '' : 's')
+                  : ''),
+      }));
+
+      box.appendChild(el('div', { class: 'inc-role' }, [
+        el('i', { class: 'inc-dot', style: 'background:' + r.colour }),
+        el('div', { class: 'inc-role-main' }, [
+          el('div', { class: 'inc-role-head' }, [
+            el('strong', { text: r.label }),
+            el('select', {
+              onchange: (e) => {
+                chosen[r.key] = e.target.value === ''
+                  ? null : parseInt(e.target.value, 10);
+                pushLines(); paint();
+              },
+            }, [el('option', { value: '', text: '— choose —',
+                               selected: now == null ? 'selected' : null })]
+              .concat(opts)),
+            pick ? el('button', {
+              class: 'btn ghost sm', text: 'Reset',
+              title: 'Back to what the scan chose: ' + pick.label,
+              onclick: () => {
+                chosen[r.key] = pick.number; pushLines(); paint();
+              },
+            }) : null,
+            /* The other answer to the same question, offered as a button.
+               Toothy's estimate -- and so this one -- is an argmax over a
+               PRODUCT of normalised amplitude and normalised count, which
+               is usually the right trade and sometimes is not: a hilus site
+               next to a quiet one can come second on amplitude while
+               carrying nearly every spike in the recording. Pressing this
+               is somebody saying they mean the count. */
+            (r.key === 'hilus' && most) ? el('button', {
+              class: 'btn ghost sm'
+                     + (Number(now) === Number(most.number) ? ' on' : ''),
+              text: 'Most spikes: ' + most.label,
+              title: most.label + ' carried the most dentate spikes of any '
+                   + 'channel scanned (' + (most.value || 0) + ', ahead of '
+                   + 'the next by ' + (100 * (most.margin || 0)).toFixed(0)
+                   + '%). That is not the same claim as “this is the '
+                   + 'hilus”: the scan’s own pick weighs amplitude as well '
+                   + 'as count.',
+              onclick: () => {
+                chosen.hilus = Number(most.number); pushLines(); paint();
+              },
+            }) : null,
+          ].filter(Boolean)),
+          el('p', { class: 'hint quiet',
+            text: pick
+              ? ('the scan chose ' + pick.label + ' — ' + pick.how
+                 + ', ahead of the next by '
+                 + (100 * pick.margin).toFixed(0) + '%')
+              : 'the scan could not choose one' }),
+          (was != null && pick)
+            ? el('p', { class: clash ? 'warn-line' : 'hint quiet',
+                text: clash
+                  ? ('This recording is on file as CSC' + was + ' for this '
+                     + 'landmark and the scan says ' + pick.label + '. '
+                     + 'Neither is selected: a disagreement between the '
+                     + 'anatomy somebody recorded and what this recording’s '
+                     + 'own data says is worth a look, not a coin toss.')
+                  : ('agrees with the CSC' + was + ' on file for this '
+                     + 'recording') })
+            : null,
+          (r.key === 'hilus' && most && pick
+           && Number(most.number) !== Number(pick.number))
+            ? el('p', { class: 'hint quiet',
+                text: 'The most dentate spikes are on ' + most.label
+                    + ' (' + (most.value || 0) + '), not on ' + pick.label
+                    + '. The scan weighs how big they are as well as how '
+                    + 'many, so the two part company when a channel carries '
+                    + 'a lot of small events. The plots above are that '
+                    + 'disagreement drawn out.' })
+            : null,
+          (pick && !clash && pick.margin < 0.1)
+            ? el('p', { class: 'hint warn',
+                text: 'Only ' + (100 * pick.margin).toFixed(0) + '% ahead of '
+                    + 'the next channel. Adjacent sites see the same spikes '
+                    + 'at slightly different amplitude, so a margin this '
+                    + 'small is close to a tie — worth checking on the '
+                    + 'traces.' })
+            : null,
+        ].filter(Boolean)),
+      ]));
+    }
+
+    box.appendChild(el('div', { class: 'tk-actions' }, [
+      el('button', {
+        class: 'btn ghost',
+        text: tracesOpen() ? 'Focus the traces window'
+                           : 'Show them on the traces\u2026',
+        title: 'Opens the recording in a window of its own with a line '
+             + 'across each chosen channel. Drag a line to move it; close '
+             + 'the window when you are done. This panel stays where it is.',
+        onclick: openTraces,
+      }),
+      tracesOpen() ? el('button', {
+        class: 'btn ghost sm', text: 'Close it', onclick: closeTraces,
+      }) : null,
+      unresolved ? el('span', { class: 'hint warn',
+        text: 'Choose a channel above before banking.' }) : null,
+    ].filter(Boolean)));
+    /* What it opens on, before it opens.
+
+       It is a starting point and all three can be changed in the window,
+       but two of them are worth knowing in advance: the even channels
+       are half the contacts, and a pick on an odd channel then appears as
+       a marked band at its own depth rather than as a line on a lane. Better said here than discovered
+       there. */
+    box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+      text: 'It opens on a CSD of the even-numbered channels over five '
+          + 'seconds — a laminar boundary is a boundary, and it reads '
+          + 'off a CSD where it is a matter of opinion on sixty-four '
+          + 'stacked traces. All three can be changed in the window. A pick '
+          + 'on a channel that view is not showing is marked at its own '
+          + 'depth and labelled hidden.' }));
+    return box;
+  }
+
+  /* ---------------- step 4: bank and vet ---------------- */
+  function resultCard() {
+    const hil = chosen.hilus;
+    const row = (res.channels || []).find(
+      (c) => Number(c.number) === Number(hil));
+    const box = el('div', { class: 'card' });
+    box.appendChild(el('div', { class: 'section-label',
+                                text: '4. Bank the candidates' }));
+    if (!row) {
+      /* A question, not a dead end. This is reached when the scan and the
+         recording's own notes name different channels, and the panel
+         deliberately picks neither -- so it has to say what to do next
+         rather than leave a sentence with no verb in it. */
+      box.appendChild(el('p', { class: 'hint',
+        text: 'Pick the hilus channel in step 3 and the candidates on it '
+            + 'appear here. Nothing is chosen for you because the scan and '
+            + 'this recording’s own notes name different channels — look at '
+            + 'them on the traces and decide.' }));
+      box.appendChild(el('div', { class: 'tk-actions' }, [
+        el('button', {
+          class: 'btn ghost',
+          text: tracesOpen() ? 'Focus the traces window'
+                             : 'Show them on the traces\u2026',
+          onclick: openTraces,
+        }),
+      ]));
+      return box;
+    }
+    /* The count comes with the scan; the events themselves are fetched
+       when they are needed. Shipping all sixty-four channels' events to
+       draw one of them made a response large enough to be cut off in
+       transit, which arrives as a 200 that will not parse. */
+    const n = Number((res.n_by_channel || {})[String(row.index)] || 0);
+    /* The numbers the scan was MADE with, from the scan. In VACC mode the
+       fields above are the next batch's settings, and a review opened from
+       the queue was made with whatever its own batch used. */
+    const made = res.params || {};
+    const hsd = made.height_sd != null ? made.height_sd : q.height_sd;
+    const floor = made.abs_thr_uv != null ? made.abs_thr_uv : q.abs_uv;
+
+    box.appendChild(el('p', { class: 'hint',
+      text: n + ' candidate' + (n === 1 ? '' : 's')
+          + ' on ' + row.label + '  ·  threshold '
+          + (row.thr_uv || 0).toFixed(1) + ' µV ('
+          + (row.thr_source === 'sd'
+              ? (hsd + ' × ' + (row.sd_uv || 0).toFixed(1)
+                 + ' µV S.D.')
+              : row.thr_source === 'override' ? 'set by hand'
+                : 'the ' + floor + ' µV floor, which is higher here')
+          + ')' }));
+    if (row.n_near_stitch) {
+      box.appendChild(el('p', { class: 'hint warn',
+        text: row.n_near_stitch + ' of them sit within a filter length of a '
+            + 'gap in the recording, so they may be the filter ringing '
+            + 'against the step rather than dentate spikes. They are banked '
+            + 'and flagged, not dropped.' }));
+    }
+
+    box.appendChild(el('details', {}, [
+      el('summary', { text: 'Every channel, as the scan ranked them' }),
+      el('p', { class: 'hint quiet',
+        text: 'The pick is an argmax over normalised amplitude × count, '
+            + 'so a channel that lost narrowly lost on one of those two. '
+            + 'Both are here.' }),
+      el('div', { class: 'psd-table-scroll' }, [
+        el('table', { class: 'psd-table' }, [
+          el('thead', {}, [el('tr', {},
+            ['channel', 'events', 'rate Hz', 'mean µV',
+             'threshold µV', 'S.D. µV', 'score'].map(
+              (t) => el('th', { text: t })))]),
+          el('tbody', {}, (res.channels || []).slice()
+            .sort((a, b) => (b.score || 0) - (a.score || 0))
+            .map((c) => el('tr', {
+              class: Number(c.number) === Number(hil) ? 'on' : '',
+            }, [
+              el('td', {}, [el('span', { text: c.label })]),
+              el('td', { text: String(c.n) }),
+              el('td', { text: (c.rate_hz || 0).toFixed(3) }),
+              el('td', { text: (c.mean_amp || 0).toFixed(0) }),
+              el('td', { text: (c.thr_uv || 0).toFixed(0) }),
+              el('td', { text: (c.sd_uv || 0).toFixed(1) }),
+              el('td', { text: (c.score || 0).toFixed(3) }),
+            ]))),
+        ]),
+      ]),
+    ]));
+
+    box.appendChild(el('div', { class: 'tk-actions' }, [
+      el('button', {
+        class: 'btn', text: banking ? 'Banking…' : 'Bank and vet…',
+        disabled: (banking || !n) ? 'disabled' : null,
+        onclick: () => bank(row),
+      }),
+      el('span', { class: 'hint quiet',
+        text: 'Banks them as an UNCURATED set and opens DS curation. '
+            + 'Nothing is decided by this.' }),
+    ]));
+    const all = unionBlock();
+    if (all) box.appendChild(all);
+    return box;
+  }
+
+  /* ==================================================================
+     Extract all
+     ==================================================================
+     Which channel is the hilus decides how many dentate spikes there
+     are -- CSC34 finds 50, CSC35 55, CSC36 53, each a different fifty-odd
+     -- and every channel's list is already in the scan. So this pools a
+     range of them and keeps each spike once, and says how many that is
+     BEFORE anything is banked.
+
+     The same spike lands within two milliseconds on its neighbours
+     (measured: 89.6% of 131,198 nearest-neighbour pairs), with almost
+     nothing between there and the detector's 100 ms spacing, so the merge
+     window barely matters near the hilus and 25 ms sits in the gap. The
+     RANGE is what matters, and that is why it is a choice with a number
+     beside it. See `incisor.union`. */
+  function scannedGood() {
+    return (res.channels || []).filter((c) => !c.bad);
+  }
+
+  function poolRange() {
+    const list = scannedGood();
+    if (!list.length) return [];
+    let ia, ib;
+    if (pool) {
+      ia = list.findIndex((c) => c.index === pool.from);
+      ib = list.findIndex((c) => c.index === pool.to);
+    }
+    if (!pool || ia < 0 || ib < 0) {
+      const k = list.findIndex(
+        (c) => Number(c.number) === Number(chosen.hilus));
+      const at = k < 0 ? 0 : k;
+      ia = Math.max(0, at - POOL_EITHER_SIDE);
+      ib = Math.min(list.length - 1, at + POOL_EITHER_SIDE);
+    }
+    return list.slice(Math.min(ia, ib), Math.max(ia, ib) + 1);
+  }
+
+  function hilusRow() {
+    return (res.channels || []).find(
+      (c) => Number(c.number) === Number(chosen.hilus)) || null;
+  }
+
+  function unionBody(withEvents) {
+    const h = hilusRow();
+    return body(Object.assign({
+      pool: poolRange().map((c) => c.index),
+      tol_ms: tolMs,
+      hilus: h ? h.index : null,
+      with_events: !!withEvents,
+    }, byKey()));
+  }
+
+  /* How to name the scan on screen to the server. A scan made on the
+     cluster -- or opened from the queue -- carries its `key`, and is asked
+     for by recording and key: no copy of the recording needed, and the
+     answer is the scan on screen even if a field above has changed since.
+     A scan made here is asked for the old way, by path and parameters. */
+  function byKey() {
+    return (res && res.key && q.gid) ? { gid: q.gid, key: res.key } : {};
+  }
+
+  /* Asked once per distinct question: paint() runs often, and the key is
+     what stops a repaint from turning into a request. A sequence number
+     drops an answer that arrives after a newer question was asked. */
+  function refreshUnion() {
+    const b = unionBody(false);
+    const key = JSON.stringify([q.path, b.pool, b.tol_ms, b.hilus,
+                                b.channels, b.height_sd, b.abs_uv,
+                                b.dist_ms, b.wlen_ms, b.estimator, b.key]);
+    if (key === unionKey) return;
+    unionKey = key;
+    unionRes = null;
+    const seq = ++unionSeq;
+    apiPost('/api/incisor/union', b).then((got) => {
+      if (seq !== unionSeq) return;
+      unionRes = got; paint();
+    }).catch((e) => {
+      if (seq !== unionSeq) return;
+      unionRes = { ok: false, error: e.message }; paint();
+    });
+  }
+
+  function unionSentence(range) {
+    if (!unionRes) return el('p', { class: 'hint quiet', text: 'Counting…' });
+    if (!unionRes.ok) {
+      return el('p', { class: 'warn-line',
+                       text: unionRes.error || 'That could not be counted.' });
+    }
+    const lab = {};
+    for (const c of (res.channels || [])) lab[c.index] = c.label;
+    const u = unionRes;
+    const span = range[0].label
+      + (range.length > 1 ? '–' + range[range.length - 1].label : '');
+    const h = hilusRow();
+    const inRange = h && range.some((c) => c.index === h.index);
+    const bits = [];
+    bits.push(el('strong', { text: u.n + ' candidate' + (u.n === 1 ? '' : 's') }));
+    bits.push(document.createTextNode(
+      ' across ' + span + ' (' + range.length + ' channel'
+      + (range.length === 1 ? '' : 's') + ')'
+      + (inRange && u.only_off_hilus != null
+        ? ': the ' + u.n_hilus + ' on ' + h.label + ', plus '
+          + u.only_off_hilus + ' that ' + h.label + ' alone missed.'
+        : '.')));
+    const out = [el('p', { class: 'inc-union-count' }, bits)];
+
+    const allSaw = (u.by_seen_on || {})[String(range.length)] || 0;
+    const sole = u.sole_by_channel || {};
+    const soleN = Object.values(sole).reduce((a, b) => a + b, 0);
+    const top = Object.entries(sole).sort((a, b) => b[1] - a[1])[0];
+    const more = [];
+    if (range.length > 1) {
+      more.push(allSaw + ' were seen on every channel in the range');
+    }
+    if (soleN) {
+      more.push(soleN + ' on one channel only'
+        + (top ? ', most of those on ' + (lab[top[0]] || ('#' + top[0]))
+                 + ' (' + top[1] + ')' : ''));
+    }
+    if (more.length) {
+      out.push(el('p', { class: 'hint quiet',
+        text: more.join('; ') + '. Where several channels saw a spike, its '
+            + 'time comes from the one it was largest on. A channel that '
+            + 'contributes many spikes nobody else saw is seeing its own '
+            + 'events, not the hilus’s — narrow the range to leave it out.'
+      }));
+    }
+    if (!inRange && h) {
+      out.push(el('p', { class: 'hint warn',
+        text: 'The hilus you picked, ' + h.label + ', is not in this range.' }));
+    }
+    return out;
+  }
+
+  function unionBlock() {
+    const list = scannedGood();
+    const range = poolRange();
+    if (!list.length || !range.length) return null;
+    refreshUnion();
+
+    const lo = range[0].index;
+    const hi = range[range.length - 1].index;
+    const pickEnd = (which) => el('select', {
+      'aria-label': which === 'from' ? 'first channel' : 'last channel',
+      onchange: (e) => {
+        const v = parseInt(e.target.value, 10);
+        pool = { from: which === 'from' ? v : lo, to: which === 'to' ? v : hi };
+        paint();
+      },
+    }, list.map((c) => el('option', {
+      value: c.index,
+      selected: c.index === (which === 'from' ? lo : hi) ? 'selected' : null,
+      text: c.label + '  — ' + Number((res.n_by_channel || {})[String(c.index)] || 0),
+    })));
+
+    const everyOn = range.length === list.length;
+    const n = unionRes && unionRes.ok ? unionRes.n : null;
+    const wrap = el('div', { class: 'inc-union' }, [
+      el('div', { class: 'section-label',
+                  text: 'Or extract all — a range of channels, each spike once' }),
+      el('div', { class: 'inc-role-head inc-union-row' }, [
+        el('span', { class: 'hint', text: 'from' }), pickEnd('from'),
+        el('span', { class: 'hint', text: 'to' }), pickEnd('to'),
+        el('button', {
+          class: 'btn ghost sm' + (!pool ? ' on' : ''),
+          text: 'Around the hilus',
+          title: 'The hilus and ' + POOL_EITHER_SIDE + ' scanned channels '
+               + 'either side of it, following the hilus if you move it.',
+          onclick: () => { pool = null; paint(); },
+        }),
+        el('button', {
+          class: 'btn ghost sm' + (everyOn && pool ? ' on' : ''),
+          text: 'Every scanned channel',
+          title: 'All of them. Far from the hilus this mostly adds events '
+               + 'of those channels’ own, not dentate spikes the hilus '
+               + 'missed — the count says how many.',
+          onclick: () => {
+            pool = { from: list[0].index, to: list[list.length - 1].index };
+            paint();
+          },
+        }),
+        el('label', { class: 'hint inc-union-tol' }, [
+          document.createTextNode('same spike within ±'),
+          el('input', {
+            type: 'number', min: '1', max: String(q.dist_ms || 100),
+            step: '1', value: String(tolMs),
+            title: 'Two channels saw the same spike when their peaks are '
+                 + 'this close. Measured: the same spike lands within 2 ms '
+                 + 'on its neighbours, and almost nothing lands between '
+                 + 'there and the detector’s ' + (q.dist_ms || 100)
+                 + ' ms spacing, so near the hilus this barely matters.',
+            onchange: (e) => {
+              const v = Math.max(1, Math.min(Number(q.dist_ms || 100),
+                                             Number(e.target.value) || 25));
+              tolMs = v; paint();
+            },
+          }),
+          document.createTextNode(' ms'),
+        ]),
+      ]),
+    ].concat(unionSentence(range)));
+
+    wrap.appendChild(el('div', { class: 'tk-actions' }, [
+      el('button', {
+        class: 'btn',
+        text: banking ? 'Banking…'
+          : (n == null ? 'Extract all…' : 'Extract all ' + n + '…'),
+        disabled: (banking || !n) ? 'disabled' : null,
+        onclick: extractAll,
+      }),
+      el('span', { class: 'hint quiet',
+        text: 'One uncurated set, the same way as a single channel.' }),
+    ]));
+    return wrap;
+  }
+
+  async function extractAll() {
+    const range = poolRange();
+    if (!range.length) return;
+    let got;
+    banking = true; paint();
+    try {
+      got = await apiPost('/api/incisor/union', unionBody(true));
+    } catch (e) {
+      toast('Those candidates are no longer cached — run the scan again. ('
+            + e.message + ')', 'err', 9000);
+      return;
+    } finally {
+      banking = false; paint();
+    }
+    const evs = got.events || [];
+    if (!evs.length) { toast('No candidates in that range.', 'warn'); return; }
+    const span = range[0].label
+      + (range.length > 1 ? '–' + range[range.length - 1].label : '');
+    const h = hilusRow();
+    await bankSet(evs, {
+      label: span,
+      title: 'Bank ' + evs.length + ' candidate(s) from ' + span + '?',
+      what: 'Pooled from ' + range.length + ' channels, each spike once: '
+          + 'where several channels saw it, the time is from the channel '
+          + 'it was largest on, and that channel is recorded on the event.',
+      params: {
+        channel: 'union',
+        channel_label: span,
+        pool: range.map((c) => c.number),
+        pool_labels: range.map((c) => c.label),
+        hilus_channel: h ? h.number : null,
+        union_tol_ms: got.tol_ms,
+        union: {
+          n: got.n, n_detections: got.n_detections,
+          n_hilus: got.n_hilus, only_off_hilus: got.only_off_hilus,
+          by_seen_on: got.by_seen_on, sole_by_channel: got.sole_by_channel,
+        },
+      },
+    });
+  }
+
+  async function bank(row) {
+    /* Fetched now rather than carried since the scan: out of the same cache
+       the scan filled, so this costs a small request and no reading.
+
+       The busy state used to start three lines below this, after the profile
+       lookup and this request had both completed -- so pressing Bank showed
+       nothing at all and then a confirmation dialog appeared out of nowhere,
+       which is the whole complaint in one button. */
+    let evs;
+    banking = true; paint();
+    try {
+      const got = await apiPost('/api/incisor/events',
+                                body(Object.assign({ channel: row.index },
+                                                   byKey())));
+      evs = got.events || [];
+    } catch (e) {
+      toast('Those candidates are no longer cached — run the scan again. ('
+            + e.message + ')', 'err', 9000);
+      return;
+    } finally {
+      // Down again for the dialog: the question is the person's to answer in
+      // their own time, and a button that says "Banking…" behind it is a lie.
+      banking = false; paint();
+    }
+    if (!evs.length) { toast('No candidates on that channel.', 'warn'); return; }
+    await bankSet(evs, {
+      label: row.label,
+      title: 'Bank ' + evs.length + ' candidate(s) from ' + row.label + '?',
+      params: { channel: row.number, channel_label: row.label },
+    });
+  }
+
+  /* One banking path for a channel and for a range: the same dialog, the
+     same record, the same hand-off to DS curation. Two copies of this
+     would drift, and the second one would be the one nobody tested. */
+  async function bankSet(evs, how) {
+
+    /* What this set will be called, chosen here rather than assembled
+       silently. It used to go in as "Incisor CSC61", which is plenty while
+       you are looking at the recording and says nothing at all in a list of
+       forty-five — so the name is offered, with the session already in it,
+       at the one moment somebody knows what this set is for.
+
+       Through the one bank dialog (constitution §6e): a new entry asks its
+       name, never lets it go empty, says who it is credited to, and keeps
+       a refusal on screen. Who used to be checked here and, when nobody was
+       set, Bank simply did nothing. */
+    const r = q.row || {};
+    const suggestion = BARRY.bankName.suggest(r, 'Incisor ' + how.label);
+    let id = null;
+    const ok = await BARRY.ui.bankDialog({
+      kind: 'entry',
+      title: how.title,
+      name: suggestion,
+      what: 'They go in as a detector’s output, not as a curated set — '
+          + 'nothing is decided, and the next step is vetting them in DS '
+          + 'curation.'
+          + (how.what ? ' ' + how.what : ''),
+      where: 'Filed under ' + [r.project || 'Unfiled',
+                               r.mouse != null ? 'm' + r.mouse : null,
+                               r.session != null ? 's' + r.session : null]
+        .filter(Boolean).join(' / ') + ' in the Event Bank.',
+      facts: [
+        'Times are on the recording’s own clock, so this set never needs '
+          + 'the concatenation correction.',
+        'Every detection parameter is recorded with them, so the set can '
+          + 'say how it was made.',
+        'Re-running the detector later reuses the ids of candidates at the '
+          + 'same times, so decisions survive.',
+      ],
+      okText: 'Bank them',
+      onBank: async ({ name, note, who }) => {
+        const added = await apiPost('/api/bank/add', {
+          gid: q.gid,
+          // Who this belongs to. Without it the entry is filed under
+          // "Unfiled / m / s" and cannot be found by the animal it came from.
+          project: r.project,
+          mouse: r.mouse,
+          session: r.session,
+          session_key: r.key,
+          session_loose_key: r.loose_key,
+          session_label: r.label,
+          duration_s: r.duration_s,
+          type: 'ds',
+          type_name: 'Dentate spike',
+          name,
+          note: note || undefined,
+          pipeline: 'Incisor (dentate spike)',
+          added_by: who,
+          session_path: q.path,
+          parameters: Object.assign({}, res.params, how.params),
+          events: evs.map((e) => ({
+            start: e.start, channel: e.channel, amplitude: e.amp,
+          })),
+        });
+        id = (added.entry || {}).id || added.id;
+      },
+    });
+    if (!ok) return;
+    banking = true; paint();
+    try {
+      toast(evs.length + ' candidate(s) banked.', 'ok');
+
+      /* `entry`, not `entry_id` -- and `replace` said out loud.
+         A recording has one curation set per kind, so starting this one
+         replaces whatever is there, and the route refuses unless the caller
+         says it means to. Asked here rather than sent blindly: the set
+         being replaced may be somebody's half-finished pass. */
+      let existing = null;
+      try {
+        existing = await api('/api/curation/' + encodeURIComponent(q.gid)
+                             + '/ds');
+      } catch (e) { existing = null; }
+      const had = ((existing || {}).set || {}).n || 0;
+      if (had) {
+        const go = await BARRY.confirm(
+          'Replace the curation set on this recording?',
+          el('div', { class: 'fix-facts' }, [
+            el('p', { text: 'There is already a dentate spike set here with '
+                + had + ' candidate(s) in it. Starting one from these '
+                + 'candidates replaces it.' }),
+            el('p', { class: 'hint quiet',
+              text: 'The banked sets are untouched either way — this is '
+                  + 'about which one is on the workbench. The one being '
+                  + 'replaced can be started again from the bank.' }),
+          ]), 'Replace it');
+        if (!go) {
+          toast('Banked, and left on the bench. Start it from the Event '
+                + 'Bank when you are ready.', 'ok', 8000);
+          banking = false; paint();
+          return;
+        }
+      }
+      await apiPost('/api/curation/from-bank', {
+        gid: q.gid, kind: 'ds', entry: id, version: 0, replace: true,
+      });
+      await BARRY.curate.enter(q.gid, 'ds');
+    } catch (e) {
+      // The banking itself happened inside the dialog, which showed any
+      // refusal there. What can fail here is opening the set to vet.
+      toast('Banked, but the curation set could not be opened: '
+            + e.message, 'err', 9000);
+    }
+    banking = false; paint();
+  }
+
+  return {
+    paint, scan, reset,
+    openTraces, closeTraces,
+    _tracesOpen: tracesOpen,
+    /* For the harness and for XploreFinder: what is selected now, and a way
+       to set it without a mouse. */
+    _state: () => ({ q, est, res, chosen }),
+    /* The order the landmarks are listed in, the window's starting URL, and
+       a way to mark a channel bad -- three things a harness has to read
+       without a mouse or a pop-up blocker in the way. */
+    _roles: () => ROLES.map((r) => r.key),
+    /* Extract all, without a mouse: the range as it stands, setting it,
+       and the answer the panel is showing. */
+    _union: () => ({ pool, tolMs, unionRes,
+                     range: res ? poolRange().map((c) => c.index) : [] }),
+    _setPool: (from, to) => {
+      pool = (from == null) ? null : { from, to }; paint();
+    },
+    _setTol: (ms) => { tolMs = ms; paint(); },
+    _extractAll: extractAll,
+    _traceUrl: traceUrl,
+    _setBad: setBadSet,
+    _refresh: refreshEstimate,
+    /* The plots' own axis arithmetic, so a harness can ask "which channel
+       is under this pixel" with the same function the click handler uses
+       rather than a second copy of it to drift from the first. */
+    _plotAxis: plotAxis,
+    _channelAtX: channelAtX,
+    _drawPlots: drawPlots,
+    /* Banking one channel of a given scan, for web/_dev/incbank.html: a
+       real scan does not fit the suite's time, and what is being checked
+       is the dialog and what it sends, not the detector. */
+    _bank: (row, result) => { if (result) res = result; return bank(row); },
+    _choose: (key, number) => {
+      chosen[key] = number == null ? null : Number(number);
+      pushLines(); paint();
+    },
+    /* VACC mode, for web/_dev/vaccbatch.html: the plan as the panel holds
+       it, what is ticked, the batch in flight and the queue -- and ways to
+       tick and to open a review without a mouse. */
+    _vacc: () => ({ vaccList, picked: Array.from(picked), batchJob,
+                    reviews, openKey, batchGids: batchGids
+                      ? Array.from(batchGids) : null }),
+    _pick: (gids) => { picked.clear(); (gids || []).forEach((g) => picked.add(g));
+                       paint(); },
+    _openReview: (r) => toggleReview(r),
+    _reloadPlan: loadVaccList,
+  };
+}());

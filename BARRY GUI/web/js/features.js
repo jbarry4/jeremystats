@@ -18,14 +18,27 @@ BARRY.prefs = (function () {
   let pending = null;
   let timer = null;
 
+  // One request, however many callers.
+  //
+  // `loaded` is only true once the answer is back, so two callers starting
+  // before it lands both fetched. That is not hypothetical: radio.wire()
+  // kicks this off at core.js:3150 without awaiting it, and BARRY.init
+  // awaits it again a few lines later -- so every boot asked for /api/prefs
+  // twice. Holding the promise rather than only the result is the whole fix.
+  let inflight = null;
+
   async function load(force) {
     if (loaded && !force) return cache;
-    try {
-      const d = await api('/api/prefs');
-      cache = d.prefs || {};
-      loaded = true;
-    } catch (e) { cache = {}; }
-    return cache;
+    if (inflight && !force) return inflight;
+    inflight = (async () => {
+      try {
+        const d = await api('/api/prefs');
+        cache = d.prefs || {};
+        loaded = true;
+      } catch (e) { cache = {}; } finally { inflight = null; }
+      return cache;
+    })();
+    return inflight;
   }
 
   function get(key, fallback) {
@@ -154,6 +167,17 @@ BARRY.palette = (function () {
        async () => { setView('xplore');
                      const p = await pickPath('folder');
                      if (p) BARRY.views.xplore.open(p); }],
+      /* The other way to open one, for a recording that is not on a drive
+         this computer has. Listed separately rather than folded into the
+         line above: somebody who cannot find a recording anywhere on this
+         machine will type "cluster" or "VACC", and a feature missing from
+         the palette reads as one that does not exist. */
+      ['Open a recording from the cluster',
+       'read one off VACC with no drive mounted here',
+       () => { setView('sessions');
+               if (BARRY.views.sessions.setMode) {
+                 BARRY.views.sessions.setMode('vacc');
+               } }],
       ['Scan a data root for sessions', 'discover recordings',
        () => { setView('sessions'); const i = $('#rootPath'); if (i) i.focus(); }],
       ['Figure builder', 'compose a multi-panel figure',
@@ -178,6 +202,10 @@ BARRY.palette = (function () {
        () => showSync()],
       ['Toggle light / dark', 'switch the theme',
        () => applyTheme(BARRY.state.theme === 'dark' ? 'light' : 'dark')],
+      ['Toggle VACC Mode', 'light the interface up for the cluster',
+       () => applyVacc(!BARRY.state.vacc)],
+      ['VACC status', 'the cluster, the queue, and what it can already read',
+       () => BARRY.vacc && BARRY.vacc.showVacc()],
       ['Export run history as CSV', 'every run, as a table',
        () => BARRY.download('/api/history/export', { what: 'runs' },
                             'run-history.csv')],
@@ -187,6 +215,113 @@ BARRY.palette = (function () {
     ];
     for (const [label, sub, run] of acts) {
       out.push({ kind: 'action', label, sub, hay: label + ' ' + sub, run });
+    }
+
+    /* The name and the mark (js/jarvis.js). Worded for the state it is in,
+       and findable by the name either way: somebody looking for the switch
+       while the name is hidden will still type it. */
+    if (BARRY.jarvis) {
+      const on = BARRY.jarvis.shown();
+      out.push({
+        kind: 'action',
+        label: on ? 'Hide the name and logo' : 'Activate',
+        sub: on ? 'take Jarvis off everything until it is switched back on'
+                : 'bring the name and logo back, with the reveal',
+        hay: 'jarvis name logo brand mark hide show activate reveal',
+        run: () => BARRY.jarvis.toggle(),
+      });
+      if (on) {
+        // For a rehearsal, or for whoever missed it.
+        out.push({ kind: 'action', label: 'Replay the reveal',
+                   sub: 'the whole thing again, ending on its four ways on',
+                   hay: 'replay reveal activate jarvis demo show again',
+                   run: () => BARRY.jarvis.replay() });
+        out.push({ kind: 'action', label: 'Who is Jarvis?',
+                   sub: 'the person this workbench is named for',
+                   hay: 'who is jarvis paul about name memory dedication',
+                   run: () => BARRY.jarvis.about() });
+      }
+    }
+
+    /* The Arc's five steps, each reachable by name.
+     *
+     * By name is the point: "Coupling" and "Circuit" are what somebody will
+     * half-remember, not "ToolKit". The steps that are not built yet are
+     * listed too and say so in their subtitle -- the palette is how people
+     * find out what exists, and a step missing from it reads as one that
+     * does not.
+     *
+     * The Dentist's steps have no entries; adding them is a change to a
+     * shipped menu rather than part of this, and is left alone. */
+    if (BARRY.arc) {
+      for (const st of BARRY.arc.steps()) {
+        out.push({
+          kind: 'action',
+          label: st.name,
+          sub: (st.built ? '' : 'being built · ' + st.phase + ' · ')
+             + 'step of The Arc',
+          hay: st.name + ' arc dewey rats ' + st.blurb,
+          run: () => {
+            setView('toolkit');
+            const tk = BARRY.views.toolkit;
+            if (tk && tk.pick) tk.pick(st.id);
+          },
+        });
+      }
+    }
+
+    /* The Storm's three steps, by name.
+     *
+     * Same reason as The Arc's: "Doppler" and "Spotter" are what somebody
+     * will half-remember, not "ToolKit". Spotter goes to the step rather
+     * than entering the mode, because entering takes over the panes and the
+     * keyboard and is not something a search box should do to you.
+     *
+     * The Dentist's steps still have no entries; adding them is a change to
+     * a shipped menu rather than part of this, and is left alone. */
+    const storm = [
+      ['Doppler', 'find interictal discharges on the cluster', 'doppler'],
+      ['Spotter', 'confirm discharges, solid or sputter', 'spotter'],
+      ['Eye', 'line the confirmed discharges up', 'eye'],
+    ];
+    for (const [label, sub, id] of storm) {
+      out.push({
+        kind: 'action', label, sub: sub + ' · step of The Storm',
+        hay: label + ' storm ied interictal discharge ' + sub,
+        run: () => {
+          setView('toolkit');
+          const tk = BARRY.views.toolkit;
+          if (tk && tk.pick) tk.pick(id);
+        },
+      });
+    }
+
+    /* The Lookout's three steps, by name.
+     *
+     * Same reason as The Storm's, and one more: neither Panorama nor Braid
+     * had an entry at all before this, so somebody half-remembering "that
+     * thing that draws the whole recording" had no way to reach either from
+     * here. Horizon goes first because it is what answers "which channel",
+     * which is the question the other two used to assume you had already
+     * answered somewhere else.
+     *
+     * The Dentist's steps still have no entries; adding them is a change to
+     * a shipped menu rather than part of this, and is left alone. */
+    const lookout = [
+      ['Horizon', 'which frequency won, on every channel, by depth', 'horizon'],
+      ['Panorama', 'the whole recording on one channel, end to end', 'panorama'],
+      ['Braid', 'band-resolved power and how the bands couple', 'cfc'],
+    ];
+    for (const [label, sub, id] of lookout) {
+      out.push({
+        kind: 'action', label, sub: sub + ' · step of The Lookout',
+        hay: label + ' lookout theta frequency spectral depth ' + sub,
+        run: () => {
+          setView('toolkit');
+          const tk = BARRY.views.toolkit;
+          if (tk && tk.pick) tk.pick(id);
+        },
+      });
     }
 
     // Favourite scripts float to the top of the script block.
@@ -223,8 +358,7 @@ BARRY.palette = (function () {
     box = el('div', { class: 'pal-backdrop hidden', id: 'palette' }, [
       el('div', { class: 'pal-box', onclick: (e) => e.stopPropagation() }, [
         el('div', { class: 'pal-input-wrap' }, [
-          el('svg', { class: 'search-icon', viewBox: '0 0 20 20',
-                      html: '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/>' }),
+          BARRY.ui.magnifier(),
           input,
           el('kbd', { class: 'pal-esc', text: 'esc' }),
         ]),
@@ -389,13 +523,64 @@ BARRY.checkList = function checkList(checks, opts) {
       el('span', { class: 'check-dot' }),
       el('span', { class: 'check-name', text: c.name }),
       el('span', { class: 'check-msg', text: c.message }),
+      /* A row may carry its own control -- the continuity check has a gap
+         table behind it, and the evidence for a number belongs beside the
+         number rather than in a second place to go looking. */
+      o.extra ? (o.extra(c) || null) : null,
     ])));
 };
 
 /* A yes/no the user actually has to read, for anything destructive. */
-BARRY.confirm = function confirmBox(title, message, okLabel, danger) {
+/* `onOk` is optional, and it is the whole point of the fifth argument.
+ *
+ * Without it the dialog closes the instant you press the button and the
+ * caller's work starts against an empty screen. Every destructive action in
+ * the app goes through here -- twenty-three of them -- so that one line was
+ * the single largest source of "I clicked it, nothing happened, and then a
+ * second later it had". Forgetting a recording, archiving a device, deleting
+ * files off disk: dialog gone, nothing, toast.
+ *
+ * Pass an async function instead and the dialog holds its ground: the button
+ * says what it is doing and stops accepting clicks, and the box only closes
+ * once the work is actually done. A failure keeps it open and prints the
+ * reason where the question was, which is where the person is looking --
+ * rather than closing anyway and firing a toast about it.
+ */
+BARRY.confirm = function confirmBox(title, message, okLabel, danger, onOk) {
   return new Promise((resolve) => {
-    const done = (v) => { closeModal(); resolve(v); };
+    let busy = false;
+    const label = okLabel || 'Do it';
+    const why = el('p', { class: 'confirm-err hidden' });
+    const okBtn = el('button', { class: 'btn' + (danger ? ' danger' : ''),
+                                 text: label });
+
+    // Cancelling is refused while the work is in flight. There is nothing to
+    // cancel -- the request has gone -- and closing the box would only hide
+    // whether it worked.
+    const done = (v) => { if (busy) return; closeModal(); resolve(v); };
+
+    const go = async () => {
+      if (busy) return;
+      if (typeof onOk !== 'function') { done(true); return; }
+      busy = true;
+      okBtn.disabled = 'disabled';
+      okBtn.textContent = label + '…';
+      why.classList.add('hidden');
+      try {
+        await onOk();
+        busy = false;
+        closeModal();
+        resolve(true);
+      } catch (e) {
+        busy = false;
+        okBtn.disabled = null;
+        okBtn.textContent = label;
+        why.textContent = (e && e.message) ? e.message : String(e);
+        why.classList.remove('hidden');
+      }
+    };
+    okBtn.addEventListener('click', go);
+
     showModal(el('div', {}, [
       el('div', { class: 'mh' }, [
         el('h3', { text: title }),
@@ -407,17 +592,89 @@ BARRY.confirm = function confirmBox(title, message, okLabel, danger) {
         typeof message === 'string'
           ? el('p', { class: 'confirm-msg', text: message })
           : message,
+        why,
       ]),
       el('div', { class: 'mf' }, [
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn ghost', text: 'Cancel',
                        onclick: () => done(false) }),
-        el('button', { class: 'btn' + (danger ? ' danger' : ''),
-                       text: okLabel || 'Do it', onclick: () => done(true) }),
+        okBtn,
       ]),
     ]));
   });
 };
+
+/* ==========================================================================
+   Naming a banked set
+
+   A bank entry's name is the only part of it a person reads in a list, and
+   the names in this archive are "Incisor CSC61", "m33s8", "dupes seed" and
+   "DS candidates (ETS)". Every one of those made sense to whoever typed it
+   and none of them says which animal, which session, or which day — so the
+   Event Bank is a list of forty-five things you have to open to identify.
+
+   One rule, here, because two callers need it and a second copy would drift:
+   Incisor when it banks, and the Edit dialog when somebody fixes an old
+   name. Both offer it; neither imposes it. A name somebody typed on purpose
+   is never overwritten.
+   ========================================================================== */
+BARRY.bankName = (function () {
+  /* The session, as somebody says it out loud. The registry's own label
+     where there is one -- it already carries the project, the animal, the
+     session and the date -- and built from the pieces where there is not,
+     because an entry filed under "Unfiled / m / s" is exactly the one whose
+     name most needs to say something. */
+  function session(row) {
+    const r = row || {};
+    if (r.session_label) return String(r.session_label);
+    if (r.label) return String(r.label);
+    const bits = [];
+    if (r.project) bits.push(r.project);
+    if (r.mouse != null) bits.push('m' + r.mouse);
+    if (r.session != null) bits.push('s' + r.session);
+    if (r.date) bits.push(r.date);
+    return bits.join(' ');
+  }
+
+  /* `<the session> · <what this set is>`. The session first, because that
+     is what a list is sorted and scanned by; what made it second, because
+     that is what tells two sets of the same recording apart. */
+  function suggest(row, what) {
+    const s = session(row);
+    const w = (what || '').trim();
+    if (!s) return w;
+    if (!w) return s;
+    // Already says it -- a curated set banked from a set somebody named
+    // after the session should not become "m33s8 · m33s8".
+    if (s.toLowerCase().indexOf(w.toLowerCase()) >= 0) return s;
+    if (w.toLowerCase().indexOf(s.toLowerCase()) >= 0) return w;
+    return s + '  ·  ' + w;
+  }
+
+  /* Whether a name is worth offering to replace: one that says nothing
+     about which recording it belongs to. Used to decide if the suggestion
+     button should draw attention to itself, never to rename anything on
+     its own. */
+  function vague(name, row) {
+    const s = session(row);
+    if (!s) return false;
+    const n = String(name || '').toLowerCase();
+    if (!n) return true;
+    // It counts as specific if it carries the session, or the animal AND
+    // the session number -- "M8s9feb8" says both without matching the
+    // registry's spelling of either.
+    if (n.indexOf(s.toLowerCase()) >= 0) return false;
+    const r = row || {};
+    if (r.mouse != null && r.session != null) {
+      const m = String(r.mouse), ss = String(r.session);
+      if (new RegExp('m[^0-9]?' + m + '\\b').test(n)
+          && new RegExp('s[^0-9]?' + ss + '\\b').test(n)) return false;
+    }
+    return true;
+  }
+
+  return { session, suggest, vague };
+}());
 
 /* A labeled section header with an action on the right. Used a lot below. */
 BARRY.sectionHead = function sectionHead(title, right) {

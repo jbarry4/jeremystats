@@ -1,0 +1,45 @@
+{
+  "_at": {
+    "gid": "2026-09-14T16:22:25.147401+00:00",
+    "label": "2026-09-14T16:22:25.147401+00:00",
+    "path": "2026-09-14T16:22:25.147401+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "aa92df63fdc8": [
+        "set",
+        "2026-09-14T16:22:25.147401+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T16:22:25.147401+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:22:25.146844+00:00",
+      "by": "Shahriar Tafti",
+      "concat_duration_s": 540.7605,
+      "gap_map_sha": "6da467990dbb1051",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "aa92df63fdc8",
+      "level": "ok",
+      "machine": "Bluebarry",
+      "max_time_error_ms": 0.0,
+      "mismatches": 0,
+      "n_gaps": 0,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 1,
+      "seconds_lost": 0.0,
+      "sub_threshold_lost_s": 0.0,
+      "true_duration_s": 540.757019
+    }
+  ],
+  "gid": "sa5b013129df4",
+  "label": "KCNT1 m530 s10 2026-04-10",
+  "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_het_cre_m530\\KCNT1_het530_s10_041026\\2026-04-10_17-39-03"
+}

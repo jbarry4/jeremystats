@@ -37,7 +37,7 @@ async function until(fn, ms) {
     await sleep(2500);
   } else if (pose === 'compact') {
     setView('xplore');
-    const s0 = await B.views.xplore.open(sess, { evenOnly: false });
+    const s0 = await B.views.xplore.open(sess);
     await until(() => $('.pane-canvas-host canvas'), 25000);
     // Click the panel's own "All" button, the way a person would.
     const all = $$('.ch-quick button').find((b) => b.textContent === 'All');

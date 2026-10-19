@@ -1,0 +1,472 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Drift: the Monolith tab</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 40vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 60vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Drift's third tab: the Monolith, from Upload to View.
+
+   The real thing uploads 250 GB and runs on the cluster, so NOTHING here
+   does. Inside the app frame, fetch is wrapped for /api/arc/monolith/*
+   only: status answers with a state this harness sets, and every POST is
+   recorded and answered as the real route would. The routes themselves --
+   the plan, the upload, the check, the submit, the fetch -- are proven by
+   tools/check_monolith.py against a folder on this machine and a fake
+   login node. What only the page can get wrong is checked here:
+
+     - five steps in order; one primary at a time, last in its bar and
+       right-aligned (measured), and it is whichever step comes next:
+       Upload, Check VACC status, Run, Fetch, View Monolith Artifact
+     - the upload asks where every time, Scratch first, and says what it
+       would send before the button that sends it; Temp is planned on its
+       own; the upload goes where the card said
+     - progress while it uploads, polled, with Stop
+     - "detected" once the check finds enough rats; Run says its size
+     - while the run goes: Check, Cancel, and the cluster asked on a timer
+     - Fetch only when pressed; View opens the page
+     - an interrupted upload and older code each say so
+
+   Negative control: a second primary injected into a bar is counted as two.
+   The real /api/arc/monolith/status is asked once, un-stubbed, so a server
+   without the route is a failure rather than a pass.
+
+   Restores what it touched: the Drift tab remembered in localStorage, the
+   frame's fetch and window.open. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad', n + (c || d === undefined ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2'); h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, tries = 120, gap = 50) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  const $ = (q) => doc().querySelector(q);
+  const $$ = (q) => Array.from(doc().querySelectorAll(q));
+  const errs = [];
+  win().addEventListener('error', (e) => errs.push(e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  await until(() => typeof win().setView === 'function' && win().BARRY.driftMono);
+  await sleep(500);
+  const ev = (src) => win().eval(src);
+
+  /* ---- the stub: /api/arc/monolith/* only ---- */
+  const RATS = [3, 4, 6, 7, 8, 9, 10, 11];
+  const stub = { status: null, calls: [], plans: {} };
+  const w0 = win();
+  const realFetch = w0.fetch;
+  const realOpen = w0.open;
+  const opened = [];
+  w0.open = (url) => { opened.push(url); return null; };
+  const json = (obj, code) => new w0.Response(JSON.stringify(obj), { status: code || 200, headers: { 'Content-Type': 'application/json' } });
+  w0.fetch = function (url, opts) {
+    const u = String(url);
+    if (u.indexOf('/api/arc/monolith/') === 0) {
+      const method = (opts && opts.method) || 'GET';
+      let body = null;
+      try { body = opts && opts.body ? JSON.parse(opts.body) : null; } catch (e) { body = null; }
+      stub.calls.push({ path: u, method, body });
+      const S = () => JSON.parse(JSON.stringify(stub.status));
+      if (u === '/api/arc/monolith/status') return Promise.resolve(json(Object.assign({ ok: true }, S())));
+      if (u === '/api/arc/monolith/upload/plan') {
+        const d = body.dest;
+        return Promise.resolve(json({ ok: true, plan: stub.plans[d], status: S() }));
+      }
+      return Promise.resolve(json({ ok: true, status: S() }));
+    }
+    return realFetch.apply(this, arguments);
+  };
+  let savedMode = null;
+  try { savedMode = w0.localStorage.getItem('barry.drift.mode'); } catch (e) { /* none */ }
+
+  const man = { at: iso(60), digest: 'd1', n_days: 16, n_folders: 48, bytes: 250.1e9, n_units: 242, n_rest: 125,
+                notes: ['r7 Precon1: FP1 passed over.'], excluded: { r5: 'no Precon4 recording' }, rats: RATS, days: [], roots: {} };
+  const dests = [{ id: 'scratch', label: 'Scratch', root: '/gpfs2/scratch/sakhava1/Jarvis Data', say: 'The lab’s shared space.' },
+                 { id: 'temp', label: 'Temp', root: '/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp', say: 'The lab’s temporary space.' }];
+  const base = () => ({ schema: 'arc.monolith/1', manifest: man, dests, upload: null, upload_plan: null, check: null, poll: null,
+                        run: null, again: [], fetch: null, built: null, work: null, interrupted: null,
+                        vacc: { configured: true, available: true }, min_rats: 5, concurrency: 100, code_changed: [] });
+  const rows = (d) => RATS.flatMap((rat) => ['Precon1', 'Precon4'].flatMap((day) => ['SPC', 'FP1', 'FP2'].map((role) => ({
+    rat, day, role, local: 'E:/x', remote: '/' + d + '/x', n_files: 50, n_send: 50, n_skip: 0, bytes: 5.2e9, total_bytes: 5.2e9 }))));
+  stub.plans.scratch = { dest: 'scratch', rows: rows('s'), bytes: 250.1e9, files: 2439, skipped: 0, seconds: 2981, at: iso(),
+    room: { known: true, fits: true, say: 'On gpfs2, the lab group pi-jbarry4 uses 3,687 GB of its 4,398 GB quota (hard limit 8,796 GB), 711 GB left under the quota. This needs 250 GB, and fits.' } };
+  stub.plans.temp = { dest: 'temp', rows: rows('t'), bytes: 120.5e9, files: 1200, skipped: 1239, seconds: 1436, at: iso() };
+  const days = RATS.flatMap((rat) => ['Precon1', 'Precon4'].map((day) => ({ rat, day, gid: 'g', spc_ready: true, rest_ready: true,
+    folders: ['SPC', 'FP1', 'FP2'].map((role) => ({ role, gid: 'g', use: 'temp', remote: '/t', at: { temp: { state: 'complete', have: 50, of: 50 },
+      scratch: { state: 'missing', have: 0, of: 50 } } })) })));
+  const checked = { days, ready_rats: RATS, n_folders: 48, n_ready: 48, can_run: true, at: iso(5), manifest: 'd1',
+    plan: { n_tasks: 144, cpu_s: 25000, longest_s: 900, wall_s: 900, waves: 2, concurrency: 100, partition: 'short',
+            time: '02:00:00', mem: '6G', by_kind: { state: 64, trans_slow: 16, trans_fast: 16, pac: 16, rest: 16, pac_rest: 16 } } };
+  const run = { rid: 'abcdef012345', dest: 'temp', rdir: '/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp/_monolith/abcdef012345',
+    arrays: [{ id: '777001', indices: null }], submitted_at: iso(600), ready_rats: RATS,
+    tasks: Array.from({ length: 144 }, (_x, i) => ({ i, key: 'k' + i })) };
+  const host = () => $('#drMono');
+  const step = (id) => host() && host().querySelector('[data-step="' + id + '"]');
+  const primaries = () => $$('#drMono button.dpc-go');
+  const btn = (re, root) => Array.from((root || host()).querySelectorAll('button')).find((b) => re.test((b.textContent || '').trim()));
+  async function show(status) {
+    stub.status = status;
+    await ev('BARRY.driftMono.refresh()');
+    await sleep(80);
+  }
+  function lastAndRight(b) {
+    if (!b) return false;
+    const bar = b.parentElement, cs = getComputedStyle(bar);
+    const edge = bar.getBoundingClientRect().right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth);
+    return bar.lastElementChild === b && Math.abs(edge - b.getBoundingClientRect().right) <= 2;
+  }
+  const onePrimary = (where, re) => {
+    const p = primaries();
+    check('one primary, in ' + where + ': ' + (p[0] ? p[0].textContent.trim() : 'none'),
+          p.length === 1 && step(where).contains(p[0]) && re.test(p[0].textContent.trim()) && lastAndRight(p[0]),
+          p.map((b) => b.textContent.trim()).join(' | '));
+  };
+
+  try {
+    head('the real route');
+    const real = await (await realFetch.call(w0, '/api/arc/monolith/status')).json();
+    check('this server answers /api/arc/monolith/status (un-stubbed)',
+          real.ok === true && 'manifest' in real && 'run' in real && 'check' in real && 'dests' in real, JSON.stringify(real).slice(0, 160));
+
+    head('the tab');
+    stub.status = base();
+    ev('setView("toolkit")');
+    await sleep(300);
+    check('the Drift step opens', ev('BARRY.views.toolkit.pick("drift")') === true);
+    let node = $('#drModes'), steady = 0;
+    for (let i = 0; i < 120 && steady < 12; i++) {
+      await sleep(100);
+      const now = $('#drModes');
+      steady = (now && now === node && now.isConnected) ? steady + 1 : 0;
+      node = now;
+    }
+    const segs = $$('#drModes .seg button');
+    check('three tabs, the third the Monolith', segs.length === 3 && segs[2].textContent === 'Monolith',
+          segs.map((b) => b.textContent).join(' | '));
+    segs[2].click();
+    await until(() => host() && !host().hidden && step('view'), 80);
+    check('the Monolith tab shows, the others hide', host() && !host().hidden && $('#drBuild').hidden && $('#drPrecon').hidden);
+    check('five steps, in order', $$('#drMono .dmo-step').map((c) => c.dataset.step).join() === 'upload,check,run,fetch,view');
+    check('it says what it does: 1–55 Hz, both layers, uncorrected', /1–55 Hz/.test(host().textContent) && /uncorrected/.test(host().textContent));
+
+    head('upload: where, and how much, first');
+    onePrimary('upload', /^Upload…$/);
+    check('View is there, and off', btn(/^View Monolith Artifact$/) && btn(/^View Monolith Artifact$/).disabled);
+    const seg = step('upload').querySelector('.dmo-where .seg');
+    check('it asks where: Scratch and Temp, Scratch chosen', seg && seg.textContent === 'ScratchTemp'
+          && seg.querySelector('[aria-checked="true"]').dataset.dest === 'scratch');
+    stub.calls.length = 0;
+    btn(/^Upload…$/).click();
+    await until(() => btn(/^Upload 250 GB to Scratch$/), 80);
+    const planCall = stub.calls.find((c) => c.path === '/api/arc/monolith/upload/plan');
+    check('the plan is asked for Scratch, and sends nothing', planCall && planCall.body.dest === 'scratch'
+          && !stub.calls.some((c) => c.path === '/api/arc/monolith/upload'));
+    check('the size is said before it is spent', /250 GB in 2,439 files to send to Scratch/.test(step('upload').textContent)
+          && /About 50 min/.test(step('upload').textContent), step('upload').textContent.slice(0, 300));
+    onePrimary('upload', /^Upload 250 GB to Scratch$/);
+    step('upload').querySelector('.dmo-where [data-dest="temp"]').click();
+    await until(() => btn(/^Upload 121 GB to Temp$/), 80);
+    check('Temp is planned on its own, and says what it already holds',
+          stub.calls.filter((c) => c.path === '/api/arc/monolith/upload/plan').pop().body.dest === 'temp'
+          && /1,239 files already there/.test(step('upload').textContent));
+    btn(/^Upload 121 GB to Temp$/).click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/upload'), 60);
+    const up = stub.calls.find((c) => c.path === '/api/arc/monolith/upload');
+    check('the upload goes where the card said, confirmed', up && up.body.dest === 'temp' && up.body.confirm === true, JSON.stringify(up && up.body));
+
+    head('a place that is full is said before anything is sent');
+    stub.plans.temp = Object.assign({}, stub.plans.temp, { room: { known: true, fits: false,
+      say: 'On gpfs3tmp, the lab group pi-jbarry4 uses 1,084 GB of its 1,074 GB quota (hard limit 1,084 GB) -- it is full. This needs 121 GB, so it would be refused part way through.' } });
+    stub.calls.length = 0;
+    // The upload's own request is still settling; its buttons are off until it has.
+    await until(() => btn(/^Work it out again$/) && !btn(/^Work it out again$/).disabled, 80);
+    btn(/^Work it out again$/).click();
+    await until(() => btn(/^Not enough room in Temp$/), 80);
+    const fullBtn = btn(/^Not enough room in Temp$/);
+    check('Temp full: the button says so and is off', fullBtn && fullBtn.disabled,
+          Array.from(step('upload').querySelectorAll('button')).map((b) => b.textContent + (b.disabled ? '(off)' : '')).join(' | ') + ' :: ' + step('upload').textContent.slice(0, 400));
+    check('the card says the quota, and to choose Scratch', /it is full/.test(step('upload').textContent)
+          && /Choose Scratch, or free some space in Temp first/.test(step('upload').textContent));
+    check('no primary in the upload card while it cannot go',
+          !step('upload').querySelector('button.dpc-go'));
+    check('and nothing is sent', !stub.calls.some((c) => c.path === '/api/arc/monolith/upload'));
+    step('upload').querySelector('.dmo-where [data-dest="scratch"]').click();
+    await until(() => btn(/^Upload 250 GB to Scratch$/), 80);
+    check('Scratch says it fits, and how much is left', /711 GB left under the quota/.test(step('upload').textContent)
+          && !!btn(/^Upload 250 GB to Scratch$/) && !btn(/^Upload 250 GB to Scratch$/).disabled);
+
+    head('while it uploads');
+    await show(Object.assign(base(), { work: { what: 'upload', status: 'running', started: iso(60), progress: {
+      phase: 'sending', dest: 'temp', bytes_done: 30e9, bytes_total: 120.5e9, rate: 80e6, folder: 'r4 Precon1 SPC', file: 'CSC12.ncs',
+      failed: [] } } }));
+    check('how far, where, and the file in flight', /30 GB of 121 GB · r4 Precon1 SPC · CSC12\.ncs/.test(step('upload').textContent),
+          step('upload').textContent.slice(0, 200));
+    const fill = step('upload').querySelector('.comod-bar-fill');
+    check('the bar is the share sent (25%)', fill && fill.style.width === '25%', fill && fill.style.width);
+    check('and the rate and time left', /80 MB\/s · about 19 min left/.test(step('upload').textContent));
+    check('Stop, and no primary anywhere', !!btn(/^Stop the upload$/) && primaries().length === 0,
+          primaries().map((b) => b.textContent).join('|'));
+    check('it polls while it uploads', ev('BARRY.driftMono.state.polling') === true);
+
+    head('check');
+    await show(Object.assign(base(), { upload: { dest: 'temp', status: 'done', ended: iso(30), bytes_sent: 120.5e9, failed: [] } }));
+    onePrimary('check', /^Check VACC status$/);
+    check('polling stops when nothing runs', ev('BARRY.driftMono.state.polling') === false);
+    stub.calls.length = 0;
+    stub.status = Object.assign(base(), { upload: { dest: 'temp', status: 'done' }, check: checked });
+    btn(/^Check VACC status$/).click();
+    await until(() => btn(/^Run 144 tasks on the VACC$/), 80);
+    check('Check asks the cluster once', stub.calls.filter((c) => c.path === '/api/arc/monolith/check').length === 1);
+    check('detected: eight rats, ready to run', /Detected: 8 rats with both days whole/.test(step('check').textContent));
+    onePrimary('run', /^Run 144 tasks on the VACC$/);
+    check('the run says its cost first', /144 tasks \(64 state, 4 band chunks, 16 slow transitions/.test(step('run').textContent)
+          && /at most 100 at once/.test(step('run').textContent) && /partition short, 02:00:00 and 6G a task/.test(step('run').textContent),
+          step('run').textContent.slice(0, 300));
+
+    head('run');
+    stub.calls.length = 0;
+    btn(/^Run 144 tasks on the VACC$/).click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/run'), 60);
+    const rc = stub.calls.find((c) => c.path === '/api/arc/monolith/run');
+    check('Run sends confirm', rc && rc.body.confirm === true);
+    await show(Object.assign(base(), { upload: { dest: 'temp', status: 'done' }, check: checked, run,
+      poll: { tasks: [{ i: 1, key: 'r3_Precon1_state_1', state: 'failed', why: 'out of memory', log: 'MemoryError' }],
+              tally: { done: 40, running: 60, queued: 43, failed: 1, unknown: 0 }, n: 144, answered: [0], out_bytes: 9e9,
+              finished: false, active: true, at: iso(10) } }));
+    onePrimary('check', /^Check VACC status$/);
+    check('the run’s tasks, counted', /40 done/.test(step('check').textContent) && /60 running/.test(step('check').textContent)
+          && /43 queued/.test(step('check').textContent) && /1 failed/.test(step('check').textContent));
+    check('a task that failed says why', /out of memory/.test(step('check').textContent));
+    check('Cancel is there while it runs', !!btn(/^Cancel the run$/));
+    check('the cluster is asked again on a timer while it runs', ev('BARRY.driftMono.state.watching') === true);
+
+    head('the check: every session, and a run nothing has asked about yet');
+    const days4 = RATS.flatMap((rat) => ['Precon1', 'Precon2', 'Precon3', 'Precon4'].map((day) => ({ rat, day, gid: 'g', spc_ready: true, rest_ready: true,
+      folders: ['SPC', 'FP1', 'FP2'].map((role) => ({ role, gid: 'g', use: 'scratch', remote: '/s', at: { scratch: { state: 'complete', have: 50, of: 50 } } })) })));
+    const checked4 = Object.assign({}, checked, { days: days4, n_folders: 96, n_ready: 96 });
+    await show(Object.assign(base(), { upload: { dest: 'scratch', status: 'done' }, check: checked4, run,
+      poll: { rid: run.rid, tasks: [], tally: { done: 144 }, n: 144, answered: [0], finished: true, active: false, at: iso(5) } }));
+    const fd = step('check').querySelector('details.dpc-fold');
+    if (fd && !fd.open) fd.querySelector('summary').click();
+    await sleep(40);
+    const grid = step('check').querySelector('table.dmo-days');
+    const heads = grid ? Array.from(grid.querySelectorAll('th')).map((t) => t.textContent) : [];
+    check('the grid has a column for every session in what goes, in order', heads.join() === 'rat,Precon1,Precon2,Precon3,Precon4', heads.join());
+    const ths = grid ? Array.from(grid.querySelectorAll('th')) : [];
+    const misplaced = [];
+    for (const td of grid ? grid.querySelectorAll('td.dmo-cell') : []) {
+      const col = ths.find((t) => t.textContent === td.dataset.day);
+      const cb = col && col.getBoundingClientRect();
+      for (const chip of td.querySelectorAll('.dmo-dot')) {
+        const b = chip.getBoundingClientRect();
+        if (!cb || b.left < cb.left - 1 || b.right > cb.right + 40 || b.left > cb.right) misplaced.push(td.dataset.day);
+      }
+    }
+    check('every chip sits in its own session’s column (measured: 8 rats × 4 sessions × 3)',
+          grid && grid.querySelectorAll('.dmo-dot').length === 96 && misplaced.length === 0, misplaced.slice(0, 4).join());
+    check('the poll says which run it is about', /The run submitted 10 hours? ago · 144 tasks/.test(step('check').textContent)
+          || /The run submitted .* · 144 tasks · asked/.test(step('check').textContent), step('check').textContent.slice(0, 300));
+    stub.calls.length = 0;
+    const run2 = Object.assign({}, run, { rid: 'fedcba543210', submitted_at: iso(1) });
+    await show(Object.assign(base(), { upload: { dest: 'scratch', status: 'done' }, check: checked4, run: run2,
+      poll: { rid: run.rid, tasks: [], tally: { done: 144 }, n: 144, answered: [0], finished: true, active: false, at: iso(5) } }));
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/check'), 60);
+    const autoc = stub.calls.filter((c) => c.path === '/api/arc/monolith/check');
+    check('a run just submitted is asked about at once, about the run only', autoc.length === 1 && autoc[0].body.run_only === true,
+          JSON.stringify(autoc.map((c) => c.body)));
+    check('and the last run’s poll is not shown as this one’s', /has not been asked about yet/.test(step('check').textContent)
+          && !/144 done/.test(step('check').textContent), step('check').textContent.slice(0, 300));
+    check('and the cluster is asked on a timer until it answers', ev('BARRY.driftMono.state.watching') === true);
+    await show(Object.assign(base(), { upload: { dest: 'scratch', status: 'done' }, check: checked4, run: run2, poll: null }));
+    check('with no poll at all, the same: watched', ev('BARRY.driftMono.state.watching') === true);
+    await show(Object.assign(base(), { upload: { dest: 'scratch', status: 'done' }, check: checked4, run: run2,
+      poll: { rid: run2.rid, tasks: [], tally: { done: 144 }, n: 144, answered: [0], finished: true, active: false, at: iso(1) } }));
+    check('and once its own poll says it is finished, the timer stops', ev('BARRY.driftMono.state.watching') === false);
+
+    head('fetch, only when pressed');
+    await show(Object.assign(base(), { upload: { dest: 'temp', status: 'done' }, check: checked, run,
+      poll: { tasks: [], tally: { done: 144 }, n: 144, answered: run.tasks.map((t) => t.i), out_bytes: 3.6e8, finished: true, active: false, at: iso(5) } }));
+    onePrimary('fetch', /^Fetch results and build the Monolith$/);
+    check('nothing is fetched until it is pressed', !stub.calls.some((c) => c.path === '/api/arc/monolith/fetch'));
+    check('the timer stops when the run is done', ev('BARRY.driftMono.state.watching') === false);
+    btn(/^Fetch results and build the Monolith$/).click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/fetch'), 60);
+    check('Fetch sends confirm', stub.calls.find((c) => c.path === '/api/arc/monolith/fetch').body.confirm === true);
+    await show(Object.assign(base(), { check: checked, run, work: { what: 'fetch', status: 'running', started: iso(5),
+      progress: { phase: 'fetching', bytes_done: 1.8e8, bytes_total: 3.6e8 } } }));
+    check('bringing it home: how far', /Bringing the answers home: 180 MB of about 360 MB/.test(step('fetch').textContent));
+
+    head('view');
+    await show(Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] },
+      built: { rid: run.rid, at: iso(1), artifact_id: 'zzmono', version: 1, missing_tasks: [],
+               counts: { raw: { tested: 340000, p05: 18000, chance_p05: 17000 }, minus_fp: { tested: 330000, p05: 17000 } } } }));
+    onePrimary('view', /^View Monolith Artifact$/);
+    check('what it found, and that p is uncorrected', /Raw: 340,000 entries tested, 18,000 with p < \.05 \(about 17,000 by chance alone\)/.test(step('view').textContent)
+          && /uncorrected/.test(step('view').textContent));
+    btn(/^View Monolith Artifact$/).click();
+    check('View opens the Monolith page', opened[0] === '/monolith.html', opened.join());
+    check('Results knows a monolith artifact', ev('BARRY.artifacts.viewers().indexOf("monolith") >= 0'));
+    check('a Monolith with everything offers nothing to add (but the trajectory)', !btn(/^Add (the delta|phase)/) && !!btn(/^Add Precon2 and Precon3$/));
+
+    head('adding to it: delta, and PAC at the transitions');
+    const builtS = { rid: run.rid, at: iso(1), artifact_id: 'zzmono', version: 1, missing_tasks: [],
+                     counts: { raw: { tested: 340000, p05: 18000, chance_p05: 17000 }, minus_fp: { tested: 330000, p05: 17000 } } };
+    const says = { delta: 'the delta band (2–4 Hz)', pac_trans: 'phase–amplitude coupling at the transitions' };
+    await show(Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] }, built: builtS,
+                                       missing: { bands: ['delta'], pac_trans: true }, additions_say: says }));
+    const addBtn = btn(/^Add the delta band/);
+    check('a Monolith built without them says so, and offers to add them', !!addBtn
+          && /built without the delta band \(2–4 Hz\) or phase–amplitude coupling at the transitions/.test(step('view').textContent)
+          && /nothing already measured is measured again/.test(step('view').textContent), step('view').textContent.slice(0, 300));
+    check('  it is not the next step: View still is', primaries().length === 1 && /^View Monolith Artifact$/.test(primaries()[0].textContent.trim()));
+    stub.calls.length = 0;
+    addBtn.click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/run'), 60);
+    const addCall = stub.calls.find((c) => c.path === '/api/arc/monolith/run');
+    check('  pressed, it runs only what is missing, confirmed', addCall && addCall.body.confirm === true
+          && JSON.stringify(addCall.body.extra) === JSON.stringify({ bands: ['delta'], pac_trans: true }), addCall && JSON.stringify(addCall.body));
+    await show(Object.assign(base(), { check: null, run, poll: { finished: true, answered: [0] }, built: builtS,
+                                       missing: { pac_trans: true }, additions_say: says }));
+    const off2 = btn(/^Add phase–amplitude coupling at the transitions$/);
+    check('  without a check of the VACC it is off, and says why', off2 && off2.disabled && /Check the VACC first/.test(step('view').textContent));
+    // Fast transitions refused as not banked when they ran: offered once
+    // their recordings have been clipping-checked (the run route re-reads them).
+    const fastMiss = [[3, 'Precon2'], [3, 'Precon3'], [4, 'Precon2']];
+    await show(Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] }, built: builtS,
+                                       missing: { fast: fastMiss }, additions_say: Object.assign({ fast: 'the fast transitions (13–55 Hz, −1/+2 s)' }, says) }));
+    const fastBtn = btn(/^Add the fast transitions \(13–55 Hz, −1\/\+2 s\) of 3 recordings \(Precon2, Precon3\)$/);
+    check('fast transitions never measured: offered by their count and sessions', !!fastBtn && !fastBtn.disabled
+          && /built without the fast transitions \(13–55 Hz, −1\/\+2 s\) of 3 recordings/.test(step('view').textContent), step('view').textContent.slice(0, 300));
+    stub.calls.length = 0;
+    fastBtn.click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/run'), 60);
+    const fastCall = stub.calls.find((c) => c.path === '/api/arc/monolith/run');
+    check('  pressed, it posts exactly those rat-days, confirmed', fastCall && fastCall.body.confirm === true
+          && JSON.stringify(fastCall.body.extra) === JSON.stringify({ fast: fastMiss }), fastCall && JSON.stringify(fastCall.body));
+
+    head('histology v2: a build made under v1 is remade here');
+    const H2 = { now: 'v2: y only, Left POR-SUB, no Right POR-SUB', say: 'Histology v2 (rescored 2026-10-05).' };
+    await show(Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] }, built: builtS,
+                                       histology: Object.assign({ built: null }, H2) }));
+    const rb = btn(/^Rebuild under histology v2$/);
+    check('built under v1: said, and a rebuild offered (not the primary)', !!rb && !rb.disabled
+          && /This Monolith was built under histology v1/.test(step('view').textContent)
+          && primaries().length === 1 && /^View Monolith Artifact$/.test(primaries()[0].textContent.trim()));
+    stub.calls.length = 0;
+    rb.click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/rebuild'), 60);
+    check('  pressed, it rebuilds, confirmed', stub.calls.find((c) => c.path === '/api/arc/monolith/rebuild').body.confirm === true);
+    await show(Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] }, built: builtS,
+                                       histology: Object.assign({ built: H2.now }, H2) }));
+    check('CONTROL: built under v2, nothing to rebuild', !btn(/^Rebuild under histology/));
+
+    head('the trajectory: Precon2 and Precon3');
+    const trajSt = (t) => Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] }, built: builtS, trajectory: t });
+    const tdef = { days: ['Precon2', 'Precon3'], in_manifest: [], ready: [], checked_now: true, built: [] };
+    await show(trajSt(tdef));
+    const tb = btn(/^Add Precon2 and Precon3$/);
+    check('not in what goes yet: offered, and not the next step', !!tb && !tb.disabled
+          && primaries().length === 1 && /^View Monolith Artifact$/.test(primaries()[0].textContent.trim()));
+    stub.calls.length = 0;
+    tb.click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/manifest/extend'), 60);
+    check('  pressed, it adds them, confirmed', stub.calls.find((c) => c.path === '/api/arc/monolith/manifest/extend').body.confirm === true);
+    await show(trajSt(Object.assign({}, tdef, { in_manifest: ['Precon2', 'Precon3'], checked_now: false })));
+    const tr0 = btn(/^Run Precon2 and Precon3$/);
+    check('in what goes, not yet checked: Run is off, and says upload then check', tr0 && tr0.disabled
+          && /Upload \(step 1\) sends only what is not on the cluster yet; then Check the VACC/.test(step('view').textContent));
+    await show(trajSt(Object.assign({}, tdef, { in_manifest: ['Precon2', 'Precon3'], ready: [[3, 'Precon2'], [3, 'Precon3']] })));
+    const tr1 = btn(/^Run Precon2 and Precon3$/);
+    check('whole on the cluster: Run is on, and says how many', tr1 && !tr1.disabled && /2 rat-sessions are whole on the cluster/.test(step('view').textContent));
+    stub.calls.length = 0;
+    tr1.click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/run'), 60);
+    const trCall = stub.calls.find((c) => c.path === '/api/arc/monolith/run');
+    check('  pressed, it runs only them, confirmed', trCall.body.confirm === true
+          && JSON.stringify(trCall.body.extra) === JSON.stringify({ days: ['Precon2', 'Precon3'] }), JSON.stringify(trCall.body));
+    await show(trajSt(Object.assign({}, tdef, { in_manifest: ['Precon2', 'Precon3'], built: ['Precon2', 'Precon3'] })));
+    check('built: said so, nothing to press', /Precon2 and Precon3 are in this Monolith/.test(step('view').textContent) && !btn(/Precon2 and Precon3$/));
+
+    head('the whole pair (cue 1 + cue 2) goes with them');
+    const pairSt = (t) => Object.assign(trajSt(Object.assign({}, tdef, t)), { missing: { pair: true },
+      additions_say: { pair: 'the whole pair (cue 1 + cue 2, 20 s)' } });
+    await show(pairSt({ in_manifest: ['Precon2', 'Precon3'], pair_rest: false }));
+    const pr0 = btn(/^Add the pair window’s rest$/);
+    check('its 20 s rest not yet in what goes: added first, by the same step', !!pr0 && !pr0.disabled);
+    await show(pairSt({ in_manifest: ['Precon2', 'Precon3'], pair_rest: true, ready: [[3, 'Precon2']] }));
+    const pr1 = btn(/^Run Precon2\/3 and the pair window$/);
+    check('one run, one button: Precon2/3 and the whole pair, and no second button for the pair alone',
+          !!pr1 && !pr1.disabled && !btn(/^Add the whole pair/) && /measures the whole pair \(cue 1 \+ cue 2, 20 s\) on Precon1 and Precon4/.test(step('view').textContent));
+    stub.calls.length = 0;
+    pr1.click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/run'), 60);
+    const prCall = stub.calls.find((c) => c.path === '/api/arc/monolith/run');
+    check('  pressed: Precon2/3 whole and the whole pair, confirmed', prCall.body.confirm === true
+          && JSON.stringify(prCall.body.extra) === JSON.stringify({ days: ['Precon2', 'Precon3'], pair: true }), JSON.stringify(prCall.body));
+    await show(pairSt({ in_manifest: ['Precon2', 'Precon3'], pair_rest: true, built: ['Precon2', 'Precon3'] }));
+    check('Precon2/3 built but not the whole pair: offered on its own', !!btn(/^Add the whole pair \(cue 1 \+ cue 2, 20 s\)$/));
+
+    head('what goes wrong says so');
+    await show(Object.assign(base(), { interrupted: { what: 'upload', id: 'x', started: iso(3600), status: 'running' } }));
+    check('an upload a restart cut short says to upload again', /cut short when Jarvis stopped/.test(step('upload').textContent));
+    await show(Object.assign(base(), { upload: { dest: 'temp', status: 'done' }, check: checked, code_changed: ['backend/sweep.py'] }));
+    const runBtn = btn(/^Run 144 tasks on the VACC$/);
+    check('older code: Run is off and says restart', runBtn && runBtn.disabled && /Restart Jarvis before running/.test(step('run').textContent));
+
+    head('negative control');
+    const extra = doc().createElement('button');
+    extra.className = 'btn dpc-go';
+    extra.textContent = 'Injected';
+    step('check').querySelector('.dpc-actions').appendChild(extra);
+    check('a second primary injected is counted as two', primaries().length === 2);
+    extra.remove();
+    // Errors from this tab's own code fail it; anyone else's are said, not
+    // counted -- another tool's bug is that tool's harness's to find.
+    const mine = errs.filter((e) => /@(driftmono|drift|vacc)\.js:/.test(e));
+    check('no page errors from the Drift or VACC code', mine.length === 0, mine.join(' | '));
+    if (errs.length > mine.length) say('note', 'other page errors (not this tab’s): ' + errs.filter((e) => mine.indexOf(e) < 0).join(' | '));
+  } finally {
+    w0.fetch = realFetch;
+    w0.open = realOpen;
+    try {
+      if (savedMode == null) w0.localStorage.removeItem('barry.drift.mode');
+      else w0.localStorage.setItem('barry.drift.mode', savedMode);
+    } catch (e) { /* none */ }
+  }
+  head(bad === 0 ? 'the Monolith tab works' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad + ': ' + Array.from(out.querySelectorAll('.bad')).map((d) => d.textContent).join(' | ');
+  // The app in the frame polls for as long as it is open, and every poll is
+  // a real request -- which holds Edge's virtual time to the wall clock, so
+  // the runner's 600 s budget became 600 s of waiting and the page TIMED OUT
+  // at 280 s with every check passed. Empty the frame and the page goes idle:
+  // virtual time runs out at once and the dump is taken.
+  document.getElementById('app').src = 'about:blank';
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.stack || e));
+  document.title = 'FAIL threw: ' + e.message;
+} })();
+</script>

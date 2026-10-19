@@ -1,0 +1,259 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — bookmark colours and the version chip</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Two features, both checked against what actually ends up on screen and in
+   the store rather than against the code having been written.
+
+   Bookmarks carry a colour. Every one was drawn in the theme accent, so a
+   recording with eight of them had eight identical flags and the label was
+   the only way to tell them apart -- which on a busy trace is the thing
+   there is no room for. The colour has to survive the round trip to the
+   server, come back on reload, and reach all three places a bookmark is
+   drawn.
+
+   The version chip reads CHANGELOG.md, which is the only place the version
+   is written. What matters is that the chip agrees with the file, that the
+   notes open, and that the commit the machine is running is reported --
+   "we are both on 2026.09.08" and "we are both on 65ece68" are different
+   claims and the second is the one that settles an argument.
+
+   `?session=<a CSC folder>` is needed for the bookmark half; without it
+   those checks say so and are skipped rather than passing vacuously. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  const errs = [];
+  win().addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  win().addEventListener('unhandledrejection',
+                         (e) => errs.push('rejected: ' + e.reason));
+  /* `BARRY` is a top-level const, so it is not on the frame's window;
+     `setView` is a function declaration, so it is. */
+  await untilN(() => typeof win().setView === 'function');
+  await sleep(700);
+  const run = (src) => win().eval(src);
+  const val = (expr) => run('(' + expr + ')');
+  const get = (u) => win().fetch(u).then((r) => r.json());
+  const byText = (sel, re) => Array.from(doc().querySelectorAll(sel))
+    .find((n) => re.test((n.textContent || '').trim()));
+  const seen = (n) => !!(n && n.offsetParent !== null);
+
+  head('1. The version comes from the changelog, and only from there');
+  const notes = await get('/api/notes');
+  check('the notes route answers', notes.ok === true, notes.error);
+  say('note', '  version ' + notes.version + ', ' + (notes.entries || []).length
+      + ' release(s)');
+  check('there is a version', !!notes.version);
+  /* The version IS the newest heading. Read the file and confirm, so the
+     two cannot drift without this failing. */
+  const md = await win().fetch('/CHANGELOG.md').then((r) => r.ok ? r.text() : '')
+    .catch(() => '');
+  if (md) {
+    const first = (md.match(/^##\s+(\S+)/m) || [])[1];
+    say('note', '  the file’s newest heading is ' + first);
+    check('the version equals the newest heading in the file',
+          first === notes.version, first + ' vs ' + notes.version);
+  } else {
+    say('note', '  CHANGELOG.md is not served over HTTP; skipping that check');
+  }
+  const runInfo = notes.running || null;
+  check('it reports the commit this machine runs', !!(runInfo && runInfo.commit),
+        JSON.stringify(runInfo));
+  say('note', '  running ' + (runInfo && runInfo.commit)
+      + (runInfo && runInfo.dirty ? ' + local changes' : '')
+      + ' on ' + (runInfo && runInfo.branch));
+
+  head('2. The chip is in the rail and opens the notes');
+  const chip = doc().getElementById('verChip');
+  check('the chip exists', !!chip);
+  check('and is visible', seen(chip), 'still hidden');
+  say('note', '  chip reads "' + ((chip || {}).textContent || '').trim() + '"');
+  check('it shows the version', ((chip || {}).textContent || '')
+        .indexOf(notes.version) >= 0, (chip || {}).textContent);
+  check('it sits with the repo name, not loose in the rail',
+        !!(chip && chip.closest('.brand')), 'not inside .brand');
+  check('its tooltip names the commit as well as the version',
+        !!(chip && (chip.title || '').indexOf(
+          (runInfo && runInfo.commit) || 'x') >= 0),
+        (chip || {}).title);
+  if (runInfo && runInfo.dirty) {
+    check('and it is marked when local changes are running',
+          chip.classList.contains('dirty'), chip.className);
+  }
+
+  chip.click();
+  await untilN(() => byText('h3', /^What changed$/), 120);
+  check('clicking it opens the patch notes',
+        !!byText('h3', /^What changed$/));
+  const rels = doc().querySelectorAll('.notes-rel');
+  const secs = doc().querySelectorAll('.notes-sec');
+  const items = doc().querySelectorAll('.notes-sec li');
+  say('note', '  ' + rels.length + ' release(s), ' + secs.length
+      + ' section(s), ' + items.length + ' bullet(s) rendered');
+  check('the release is rendered', rels.length >= 1);
+  check('with its sections', secs.length >= 3, secs.length + ' sections');
+  check('and its bullets', items.length >= 5, items.length + ' bullets');
+  /* A wrapped bullet must be one bullet, not two fragments. The parser got
+     this wrong first time and the notes read as rubble. */
+  const longest = Array.from(items).reduce(
+    (n, li) => Math.max(n, (li.textContent || '').length), 0);
+  say('note', '  longest bullet is ' + longest + ' characters');
+  check('wrapped bullets are joined, not split into fragments',
+        longest > 90, 'longest is only ' + longest);
+  check('the notes say where they live',
+        /CHANGELOG\.md/.test(doc().body.textContent || ''));
+  const closeBtn = byText('.mf button', /^Close$/);
+  if (closeBtn) closeBtn.click();
+  await sleep(300);
+
+  head('3. A bookmark carries a colour');
+  const params = new URLSearchParams(location.search);
+  const sessPath = params.get('session');
+  if (!sessPath) {
+    say('note', '  no ?session=<a CSC folder> given, so the bookmark checks '
+        + 'are skipped rather than passed');
+  } else {
+    run("setView('xplore')");
+    const ok = await run('BARRY.views.xplore.open('
+                         + JSON.stringify(sessPath) + ')');
+    check('the recording opened', !!ok, sessPath);
+    if (ok) {
+      await sleep(1500);
+      const id = val('BARRY.views.xplore.state.order[0]');
+      const nBefore = val('(BARRY.views.xplore.state.sessions['
+                          + JSON.stringify(id) + '].bookmarks||[]).length');
+      say('note', '  ' + nBefore + ' bookmark(s) to start with');
+
+      /* Place one the way a person does: the Marks dialog's own button, so
+         the dialog under test is the one the interface actually opens. */
+      run('BARRY.views.xplore.addBookmark');
+      const opened = await (async () => {
+        run('BARRY.views.xplore.state.focused = 0');
+        // The public entry point used by the Marks footer.
+        run('BARRY.views.xplore.bookmarkAt(0)');
+        return untilN(() => byText('h3', /^Name this bookmark$/), 60);
+      })();
+      check('the naming dialog opens', opened >= 0,
+            'no dialog — is bookmarkAt exposed?');
+      if (opened >= 0) {
+        const sw = doc().querySelectorAll('.bm-swatch');
+        say('note', '  ' + sw.length + ' colour(s) offered');
+        check('it offers colours', sw.length >= 4, sw.length + ' swatches');
+        check('one of them is the default', sw.length
+              && doc().querySelector('.bm-swatch.default'),
+              'no default swatch');
+        /* Pick a specific one and remember which. */
+        const want = Array.from(sw).find(
+          (b) => (b.getAttribute('style') || '').indexOf('#dc2626') >= 0);
+        check('the palette includes a red', !!want,
+              Array.from(sw).map((b) => b.getAttribute('style')).join(' '));
+        if (want) {
+          want.click();
+          await sleep(200);
+          check('picking one marks it as chosen',
+                want.classList.contains('on'), want.className);
+        }
+        const name = doc().querySelector('.mb input[type="text"]');
+        name.value = 'HARNESS red mark';
+        name.dispatchEvent(new (win().Event)('input', { bubbles: true }));
+        byText('.mf button', /^Add$/).click();
+        await sleep(2000);
+
+        const marks = val('BARRY.views.xplore.state.sessions['
+                          + JSON.stringify(id) + '].bookmarks||[]');
+        const mine = marks.filter((m) => m.name === 'HARNESS red mark');
+        say('note', '  ' + marks.length + ' bookmark(s) now, '
+            + mine.length + ' of them mine');
+        check('the bookmark was added', mine.length === 1,
+              mine.length + ' found');
+        check('and it carries the colour that was chosen',
+              mine.length === 1 && mine[0].color === '#dc2626',
+              JSON.stringify(mine[0] && mine[0].color));
+
+        /* It has to have reached the server, not just this tab. */
+        const back = await win().fetch('/api/session/bookmarks?key='
+          + encodeURIComponent(val('BARRY.views.xplore.state.sessions['
+            + JSON.stringify(id) + '].identity.key') || ''))
+          .then((r) => r.json()).catch(() => ({}));
+        const saved = (back.bookmarks || []).filter(
+          (m) => m.name === 'HARNESS red mark');
+        check('the colour was saved, not only drawn',
+              saved.length === 1 && saved[0].color === '#dc2626',
+              JSON.stringify(saved.map((m) => m.color)));
+
+        /* And the Marks list shows it in that colour rather than the
+           accent -- the list is the one render path a harness can read
+           without going to the canvas. */
+        run('BARRY.views.xplore.openMarks(0)');
+        await untilN(() => byText('.bm-row', /HARNESS red mark/), 80);
+        const row = byText('.bm-row', /HARNESS red mark/);
+        check('the mark appears in the Marks list', !!row,
+              'the list did not open, or the row is not in it');
+        if (row) {
+          check('and the list draws it in its own colour, not the accent',
+                row.innerHTML.indexOf('dc2626') >= 0,
+                'no dc2626 anywhere in the row');
+        }
+        const c2 = byText('.mf button', /^Close$/);
+        if (c2) c2.click();
+        await sleep(300);
+
+        /* Clean up after itself. */
+        await win().fetch('/api/session/bookmarks', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identity: val('BARRY.views.xplore.state.sessions['
+                          + JSON.stringify(id) + '].identity'),
+            id: mine[0].id,
+          }),
+        }).catch(() => {});
+        say('note', '  removed the harness bookmark again');
+      }
+    }
+  }
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  else say('note', '\nno uncaught errors');
+  head(bad ? bad + ' FAILED' : 'all checks passed');
+  document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'new features';
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.message));
+  document.title = 'harness threw';
+} })();
+</script>

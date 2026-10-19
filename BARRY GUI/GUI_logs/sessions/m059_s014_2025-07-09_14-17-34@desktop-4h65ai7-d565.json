@@ -1,0 +1,97 @@
+{
+  "_at": {
+    "converted": "2026-09-04T15:57:01.904974+00:00",
+    "created": "2026-09-04T15:57:01.904974+00:00",
+    "duration_s": "2026-09-04T15:57:01.904974+00:00",
+    "first_seen_by": "2026-09-04T15:57:01.904974+00:00",
+    "fs": "2026-09-04T15:57:01.904974+00:00",
+    "gid": "2026-09-04T15:57:01.904974+00:00",
+    "group": "2026-09-04T15:57:01.904974+00:00",
+    "has_video": "2026-09-04T15:57:01.904974+00:00",
+    "key": "2026-09-04T15:57:01.904974+00:00",
+    "label": "2026-09-04T15:57:01.904974+00:00",
+    "loose_key": "2026-09-04T15:57:01.904974+00:00",
+    "mouse": "2026-09-04T15:57:01.904974+00:00",
+    "n_channels": "2026-09-04T15:57:01.904974+00:00",
+    "project": "2026-09-04T15:57:01.904974+00:00",
+    "project_source": "2026-09-04T15:57:01.904974+00:00",
+    "retired": "2026-09-08T18:38:58.649622+00:00",
+    "schema": "2026-09-04T15:57:01.904974+00:00",
+    "session": "2026-09-04T15:57:01.904974+00:00",
+    "start": "2026-09-04T15:57:01.904974+00:00",
+    "updated": "2026-09-08T18:38:58.649622+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s14jul8\\2025-07-09_14-17-34": [
+        "set",
+        "2026-09-04T15:57:01.904974+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M59_s14_DCZ": [
+        "set",
+        "2026-09-04T15:57:01.904974+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s14_DCZ": [
+        "set",
+        "2026-09-04T15:57:01.904974+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-04T15:57:01.904974+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-08T18:38:58.649622+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "converted": true,
+  "created": {
+    "at": "2026-09-04T11:26:53-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "duration_s": 2039.7056,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "sf9773a807b83",
+  "group": "PTENDKO",
+  "has_video": true,
+  "key": "m059_s014_2025-07-09_14-17-34",
+  "label": "PTENDKO m59 s14 2025-07-09",
+  "loose_key": "m059_s014",
+  "mouse": 59,
+  "n_channels": 64,
+  "paths": [
+    "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s14jul8\\2025-07-09_14-17-34",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M59_s14_DCZ",
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s14_DCZ"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-04T11:27:06-04:00",
+      "by": "barry",
+      "path": "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s14_DCZ",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    }
+  },
+  "session": 14,
+  "start": "2025-07-09T14:17:34",
+  "updated": {
+    "at": "2026-09-08T14:38:58-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "StrawBarry",
+    "os": "Windows",
+    "user": "Rain"
+  }
+}

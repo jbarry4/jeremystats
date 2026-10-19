@@ -1,0 +1,24 @@
+{
+  "_at": {
+    "key": "2026-09-08T20:47:37.174548+00:00",
+    "rel": "2026-09-08T20:47:37.174548+00:00",
+    "starred": "2026-09-08T20:47:37.174548+00:00",
+    "updated": "2026-09-08T20:47:37.174548+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-08T20:47:37.174548+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "key": "rebuild harness_20260908_164222.png",
+  "rel": "rebuild harness_20260908_164222.png",
+  "starred": false,
+  "updated": {
+    "at": "2026-09-08T16:47:37-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "StrawBarry",
+    "os": "Windows",
+    "user": "Rain"
+  }
+}

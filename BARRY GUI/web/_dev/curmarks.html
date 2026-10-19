@@ -169,12 +169,15 @@ async function untilN(fn, tries = 300, gap = 90) {
         + ' drewCurrent=' + (now && now.drewCurrent) + ' pixels=' + px);
   }
 
-  head('Toggling even channels, then stepping');
+  head('Changing the channels and reopening, then stepping');
   /* The reported sequence: load a sorted set, the first is fine, switch to
-     even channels only -- still fine -- then step, and it is gone. */
+     the even channels -- still fine -- then step, and it is gone. It was
+     reported against the even-only read, which reopened the recording; that
+     read is gone, so this does both halves of it: the Even preset, and a
+     reopen, which replaces the session object the mode is holding. */
   W.eval('(function(){var S=BARRY.views.xplore.state;'
-       + 'var s=S.sessions[S.active]; s.evenOnly = !s.evenOnly;'
-       + 'BARRY.views.xplore.publishFacts(s);'
+       + 'var s=S.sessions[S.active];'
+       + 'BARRY.views.xplore.select("even", s);'
        + 'BARRY.views.xplore.reopenSameView(s);})()');
   await untilN(() => { const i = info(); return i && i.ok; }, 200);
   await sleep(2500);

@@ -1,0 +1,27 @@
+{
+  "format": "png",
+  "id": "e434672c9586",
+  "kind": "deck",
+  "label": "arrow harness",
+  "output": {
+    "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/_scratch/Storyboards/arrow%20harness_11.png",
+    "path": "C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\_scratch\\Storyboards\\arrow harness_11.png",
+    "rel": "_scratch/Storyboards/arrow harness_11.png"
+  },
+  "parameters": {
+    "slides": 1
+  },
+  "provenance": {
+    "app_version": "2026.09.23.6",
+    "at": "2026-09-23T09:48:03-04:00",
+    "commit": "86c3076",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "schema": 1,
+  "script": "Storyboard export",
+  "status": "done"
+}

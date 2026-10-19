@@ -1,0 +1,340 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>confluence: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* The Confluence: the bundle and its stream, Junction's panel and its merge
+   picture, Lock, Panning's step page and its drawing, and Root Canal in two
+   bundles.
+
+   IT BANKS NOTHING. A merge is a new bank entry that syncs to everybody, so
+   the two places this harness presses Merge, the request is answered here
+   (the page's `fetch` is wrapped for exactly those two routes, proven with a
+   probe before anything is pressed, and put back in a `finally`). What is checked is that the picture runs, lands,
+   and ends on the plan's own numbers. The routes themselves are checked
+   against a throwaway bank by `tools/test_confluence_routes.py`. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const head = (t) => { say(''); say('=== ' + t + ' ===', 'hd'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              30000);
+  const W = frame.contentWindow, D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const txt = (n) => (n ? n.textContent.trim() : '');
+  let realPost = null;
+  try {
+
+  /* ---------------------------------------------------------------- */
+  head('the bundle');
+  const bs = JSON.parse(ev('JSON.stringify(BARRY.views.toolkit.bundles())') || '[]');
+  const ids = bs.map((b) => b.id);
+  const cf = bs.find((b) => b.id === 'confluence');
+  check('The Confluence is a bundle', !!cf, ids.join(','));
+  check('its four steps, in the order they happen',
+        cf && cf.steps.map((s) => s.id).join(',')
+          === 'junction,panning,lock,rootcanal',
+        cf ? cf.steps.map((s) => s.id).join(',') : '');
+  check('under The Dentist and The Storm, which feed it',
+        ids.indexOf('dentist') < ids.indexOf('confluence')
+          && ids.indexOf('storm') === ids.indexOf('confluence') - 1,
+        ids.join(','));
+  const dent = bs.find((b) => b.id === 'dentist');
+  check('Root Canal is still a step of The Dentist too',
+        !!dent && dent.steps.some((s) => s.id === 'rootcanal'));
+
+  ev("setView('toolkit')");
+  await until(() => $('.tk-flow'));
+  const flow = $('.tk-flow');
+  check('The Dentist, The Storm and The Confluence are drawn together',
+        !!flow && ['dentist', 'storm', 'confluence'].every(
+          (id) => flow.querySelector('.tk-bundle[data-bundle="' + id + '"]')),
+        flow ? flow.className : 'no .tk-flow');
+  await until(() => $$('.tk-river path').length >= 4, 4000);
+  const paths = $$('.tk-river path');
+  check('with a stream of two strands drawn beside them',
+        paths.length === 4 && paths.every((p) => (p.getAttribute('d') || '')
+                                                  .length > 20),
+        paths.length + ' paths');
+  const strand = $('.tk-river-i');
+  const anim = strand ? W.getComputedStyle(strand).animationName : '';
+  const calm = W.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  check('which flows' + (calm ? ' -- or holds still, motion being reduced' : ''),
+        calm ? anim === 'none' : anim === 'tkRiver', anim);
+  check('the stream carries no words a bundle could be found by',
+        !$$('.tk-river').some((s) => /\w/.test(s.textContent)));
+  const flat = $$('.tk-tool').map((b) => txt(b.querySelector('strong')));
+  check('none of its steps is also in the flat tool list',
+        !['Junction', 'Panning', 'Lock'].some((n) => flat.indexOf(n) >= 0),
+        flat.join(','));
+
+  /* ---------------------------------------------------------------- */
+  head('every step says it is a step of The Confluence');
+  for (const [id, name, n] of [['junction', 'Junction', 1],
+                               ['panning', 'Panning', 2],
+                               ['lock', 'Lock', 3],
+                               ['rootcanal', 'Root Canal', 4]]) {
+    ev("BARRY.views.toolkit.pick('" + id + "', 'confluence')");
+    const ok = await until(() => txt($('#tkResult .step-head strong')) === name,
+                           15000);
+    const chip = txt($('#tkResult .step-head .step-n'));
+    check(name + ' paints "step ' + n + ' of The Confluence"',
+          ok && chip === 'step ' + n + ' of The Confluence', chip);
+  }
+  const lit = $$('.tk-bundle.on').map((b) => b.getAttribute('data-bundle'));
+  check('Root Canal opened from The Confluence lights only that card',
+        lit.join(',') === 'confluence', lit.join(','));
+  check('and its blurb is about teasing a pool apart',
+        /pooled set/i.test(txt($('#tkResult .step-head .hint'))));
+
+  // From The Dentist's step, it is The Dentist's again.
+  const dStep = $$('.tk-bundle[data-bundle="dentist"] .tk-step')
+    .find((b) => /Root Canal/.test(b.textContent));
+  if (dStep) dStep.click();
+  await until(() => /The Dentist/.test(txt($('#tkResult .step-head .step-n'))),
+              15000);
+  check('opened from The Dentist, it is step 4 of The Dentist',
+        txt($('#tkResult .step-head .step-n')) === 'step 4 of The Dentist',
+        txt($('#tkResult .step-head .step-n')));
+  check('and The Dentist is the card lit',
+        $$('.tk-bundle.on').map((b) => b.getAttribute('data-bundle')).join(',')
+          === 'dentist');
+  check('Eye is still step 3 of The Storm',
+        ev("BARRY.ui.stepOf('eye')") === 'step 3 of The Storm',
+        ev("BARRY.ui.stepOf('eye')"));
+
+  /* ---------------------------------------------------------------- */
+  head('Lock is Eye pointed at a pooled set');
+  ev("BARRY.views.toolkit.pick('lock', 'confluence')");
+  await until(() => txt($('#tkResult .step-head strong')) === 'Lock', 15000);
+  const lc = await (await fetch('/api/braces/candidates?type=pooled')).json();
+  check('the alignment candidates can be asked for pooled sets', !!lc.ok,
+        lc.error || '');
+  check('Eye and Lock are two panels, not one', ev('BARRY.eye !== BARRY.lock'));
+  ev("BARRY.views.toolkit.pick('eye')");
+  await until(() => txt($('#tkResult .step-head strong')) === 'Eye', 15000);
+  check('and Eye still paints as Eye',
+        txt($('#tkResult .step-head strong')) === 'Eye');
+
+  /* ---------------------------------------------------------------- */
+  head('Junction');
+  const recs = await (await fetch('/api/confluence/recordings')).json();
+  say('  note  ' + recs.n + ' recording(s) have both kinds banked', 'note');
+  ev('BARRY.junction._reset()');
+  ev("BARRY.views.toolkit.pick('junction', 'confluence')");
+  await until(() => $('.jn-rec') || $('#tkResult .empty-state'), 20000);
+  if (!recs.n) {
+    check('with nothing to pool it says what would make something',
+          /Incisor/.test(txt($('#tkResult .empty-state'))));
+  } else {
+    check('every recording with both is listed',
+          $$('.jn-rec').length === recs.n, $$('.jn-rec').length + ' rows: '
+          + txt($('#tkResult')).slice(0, 240));
+    check('none of them is a harness leftover',
+          !$$('.jn-rec').some((r) => /harness/i.test(r.textContent)));
+    $$('.jn-rec')[0].click();
+    await until(() => $$('.jn-side').length === 2, 8000);
+    check('choosing one shows both sides, Incisor’s and Doppler’s',
+          $$('.jn-side').length === 2
+            && /Incisor/.test(txt($('.jn-side.i')))
+            && /Doppler/.test(txt($('.jn-side.d'))));
+    const planned = await until(() => ev('!!BARRY.junction._plan()'), 12000);
+    check('and works out the pool before anything is written', planned);
+    const plan = JSON.parse(ev('JSON.stringify(BARRY.junction._plan())') || '{}');
+    const st = plan.stats || {};
+    await until(() => txt($('#jnNt')) === Number(st.n || 0).toLocaleString(), 4000);
+    check('the counts on screen are the plan’s',
+          txt($('#jnNt')) === Number(st.n || 0).toLocaleString()
+            && txt($('#jnNb')) === Number(st.merged || 0).toLocaleString(),
+          txt($('#jnNt')) + ' / ' + st.n);
+    check('they add up: Incisor only + merged + Doppler only is the pool',
+          st.incisor_only + st.merged + st.doppler_only === st.n
+            && st.merged + st.incisor_only === st.n_ds
+            && st.merged + st.doppler_only === st.n_ied, JSON.stringify(st));
+    const stage = $('#jnStage');
+    check('the stage is drawn', !!stage && stage.width > 100
+          && stage.height > 100);
+    const go = $('#jnGo');
+    check('and Merge is offered', !!go && !go.disabled, go ? go.textContent : '');
+
+    /* Merge, answered here -- at `fetch`, which every request goes through.
+       NOT at `apiPost`: that is a `const` in core.js, so assigning
+       window.apiPost makes a new property nothing calls, and the first run
+       of this harness banked two real pools that way (taken back out the
+       same day). So the stub is proven with a probe before anything is
+       pressed, and nothing is pressed if the probe reached the server. */
+    realPost = W.fetch;
+    W.eval('window.__cfSent = [];');
+    const fake = (obj) => Promise.resolve(new W.Response(JSON.stringify(obj),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    W.fetch = function (u, opts) {
+      const path = String(u).split('?')[0];
+      if (path === '/api/confluence/merge' || path === '/api/confluence/batch') {
+        let b = {};
+        try { b = JSON.parse((opts && opts.body) || '{}'); } catch (e) {}
+        W.__cfSent.push(path + (b.probe ? '#probe' : ''));
+        if (path === '/api/confluence/merge') {
+          return fake({ ok: true, cached: false, stats: st,
+            entry: { id: 'harness-not-banked', name: 'harness pool, not banked' } });
+        }
+        return fake({ ok: true, rows: (b.items || []).map((it) => ({
+          gid: it.gid, ok: true, cached: false,
+          entry: { id: 'harness-not-banked' },
+          stats: { incisor_only: 3, merged: 2, doppler_only: 1 } })) });
+      }
+      return realPost.apply(this, arguments);
+    };
+    const probe = await W.eval("apiPost('/api/confluence/merge', {probe: 1})"
+                               + ".then(function (r) { return r.entry.id; },"
+                               + " function (e) { return 'ERR ' + e.message; })");
+    const stubbed = probe === 'harness-not-banked'
+      && ev('window.__cfSent.join(",")') === '/api/confluence/merge#probe';
+    check('the stub answers before anything is pressed', stubbed,
+          probe + ' / ' + ev('window.__cfSent.join(",")'));
+    if (!stubbed) throw new Error('the merge stub did not take; nothing pressed');
+    W.eval('window.__cfSent = [];');
+    /* And the activity log: a merge that did not happen must not be
+       written down as one, under the name of whoever owns this machine. */
+    ev("BARRY.activity.__realLog = BARRY.activity.log;"
+       + "BARRY.activity.log = function (a) {"
+       + "  if (/^(junction|panning|confluence)[.]/.test(String(a))) return;"
+       + "  return BARRY.activity.__realLog.apply(this, arguments); }; 'ok'");
+    const t0 = Date.now();
+    go.click();
+    const landed = await until(() => $('.jn-landed'), 12000);
+    const took = Date.now() - t0;
+    check('pressing Merge plays the merge and lands', landed,
+          landed ? took + ' ms' : 'no .jn-landed');
+    check('it sent one merge, and only through the stubbed route',
+          ev('window.__cfSent.join(",")') === '/api/confluence/merge',
+          ev('window.__cfSent.join(",")'));
+    check('it ends on the plan’s numbers',
+          txt($('#jnNi')) === Number(st.incisor_only).toLocaleString()
+            && txt($('#jnNd')) === Number(st.doppler_only).toLocaleString()
+            && txt($('#jnNt')) === Number(st.n).toLocaleString(),
+          txt($('#jnNi')) + '/' + txt($('#jnNd')) + '/' + txt($('#jnNt')));
+    check('and offers the next step: Pan them',
+          /Pan them/.test(txt($('.jn-landed'))));
+
+    /* Many, answered here too. */
+    const many = $$('.jn-mode .seg button').find((b) => /Many/.test(b.textContent));
+    if (many) many.click();
+    await until(() => $$('.jn-mrow').length, 8000);
+    check('Many lists every recording with both',
+          $$('.jn-mrow').length === recs.n, $$('.jn-mrow').length + ' rows');
+    ev("document.querySelectorAll('.jn-mrow input[type=checkbox]').forEach("
+       + "function(c,i){ if (c.checked !== (i < 2)) c.click(); })");
+    const mg = $('#jnManyGo');
+    const want = Math.min(2, recs.n);
+    check('the button counts what is ticked',
+          !!mg && new RegExp('Merge ' + want + ' recording').test(mg.textContent),
+          mg ? mg.textContent : '');
+    mg.click();
+    const rowsOk = await until(() => $$('.jn-mrow.ok').length === want, 8000);
+    check('each ticked row lands, in turn', rowsOk,
+          $$('.jn-mrow.ok').length + ' of ' + want);
+    await until(() => $$('.jn-mnum').length === want
+                && $$('.jn-mnum').every((n) => txt(n) === '6'), 4000);
+    check('with its count run up to the answer',
+          $$('.jn-mnum').every((n) => txt(n) === '6'),
+          $$('.jn-mnum').map(txt).join(','));
+    W.fetch = realPost; realPost = null;
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('Panning');
+  ev("BARRY.views.toolkit.pick('panning', 'confluence')");
+  await until(() => txt($('#tkResult .step-head strong')) === 'Panning', 15000);
+  await until(() => $('#tkResult .dop-review') || $('#tkResult .empty-state'),
+              15000);
+  check('its step page lists pools, or says how to make one',
+        !!($('#tkResult .dop-review') || /Junction/.test(
+          txt($('#tkResult .empty-state')))));
+  check('it is a registered mode',
+        ev("BARRY.modes.names().indexOf('panning') >= 0"));
+  const lead = ev('JSON.stringify([BARRY.panning._leadOf({origin:"doppler",'
+    + 'start:1},{origin:"incisor",start:1.003}).origin, BARRY.panning._leadOf('
+    + '{origin:"doppler",start:2.004},{origin:"doppler",start:2}).start, '
+    + 'BARRY.panning._leadOf({origin:"both",start:3},{origin:"incisor",'
+    + 'start:2.999}).start])');
+  check('a merge keeps Incisor’s time whichever was clicked first, and '
+        + 'otherwise the earlier', lead === '["incisor",2,3]', lead);
+
+  /* Its pane drawing, from the session alone -- as the aid window has it. */
+  const px = ev(`(function(){
+    var cv=document.createElement('canvas'); cv.width=300; cv.height=120;
+    var g=cv.getContext('2d');
+    var s={curationMarks:{kind:'pooled',index:1,labels:[],events:[
+      {start:0.2,label:null,origin:'incisor'},
+      {start:0.5,label:null,origin:'both',pair_t:0.503},
+      {start:0.8,label:null,origin:'doppler'}]}};
+    BARRY.panning.draw(g,s,{t0:0,t1:1},0,300,0,120,{});
+    var d=g.getImageData(0,0,300,120).data, n=0;
+    for (var i=3;i<d.length;i+=4) if (d[i]>0) n++;
+    var g2=document.createElement('canvas'); g2.width=300; g2.height=120;
+    var c2=g2.getContext('2d');
+    BARRY.views.xplore._drawCuration(c2,s,0,1,0,300,0,120);
+    var d2=c2.getImageData(0,0,300,120).data, m=0;
+    for (var j=3;j<d2.length;j+=4) if (d2[j]>0) m++;
+    return JSON.stringify([n,m]);
+  })()`);
+  const [drawn, generic] = JSON.parse(px || '[0,1]');
+  check('Panning draws a pooled set on a pane from the session alone',
+        drawn > 200, drawn + ' px');
+  check('and the generic curation painter steps aside for it',
+        generic === 0, generic + ' px');
+
+  /* ---------------------------------------------------------------- */
+  head('the colours are one pair');
+  const oi = ev("BARRY.token('--o-incisor')"), od = ev("BARRY.token('--o-doppler')");
+  check('Incisor’s and Doppler’s are tokens, and differ',
+        !!oi && !!od && oi !== od, oi + ' / ' + od);
+
+  } catch (e) {
+    say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+    fails++;
+  } finally {
+    if (realPost) { try { W.fetch = realPost; } catch (e) {} }
+    try {
+      ev("if (BARRY.activity.__realLog) { BARRY.activity.log = "
+         + "BARRY.activity.__realLog; delete BARRY.activity.__realLog; } 'ok'");
+    } catch (e) {}
+    try { ev("BARRY.views.toolkit.pick('bad')"); } catch (e) {}
+  }
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'confluence: ' + fails + ' FAILED' : 'confluence: passed';
+  // The app's polling pins virtual time to the wall; let the runner go.
+  frame.src = 'about:blank';
+})().catch((e) => {
+  say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+  document.title = 'confluence CRASH';
+});
+</script></body></html>

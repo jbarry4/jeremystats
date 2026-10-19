@@ -184,8 +184,7 @@ BARRY.views.misc = (function () {
 
     box.appendChild(el('div', { class: 'grep-form' }, [
       el('div', { class: 'search-wrap inline' }, [
-        el('svg', { class: 'search-icon', viewBox: '0 0 20 20',
-                    html: '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/>' }),
+        BARRY.ui.magnifier(),
         input,
       ]),
       el('label', { class: 'toggle sm' + (grepState.regex ? ' on' : '') }, [
@@ -262,10 +261,10 @@ BARRY.views.misc = (function () {
      Feature 2 -- Scratch runner
      The "just check one thing" script. Runs as a normal job so its output
      lands in the log dock and its run is recorded like any other, with the
-     repo and BARRY's own readers already importable.
+     repo and Jarvis's own readers already importable.
      ====================================================================== */
   const SCRATCH_SEED = [
-    '# nlx and csc are BARRY\'s own readers -- no MEX, no MATLAB needed.',
+    '# nlx and csc are Jarvis\'s own readers -- no MEX, no MATLAB needed.',
     'from backend import nlx',
     '',
     'folder = r"D:\\PTEN\\PTEN"',
@@ -323,7 +322,7 @@ BARRY.views.misc = (function () {
         },
       }),
       el('span', { class: 'hint',
-        text: 'The repo and BARRY\'s backend are on sys.path; os, sys, glob, '
+        text: 'The repo and Jarvis\'s backend are on sys.path; os, sys, glob, '
             + 'json, math and numpy as np are already imported.' }),
     ]));
 
@@ -507,7 +506,7 @@ BARRY.views.misc = (function () {
     }
 
     host.innerHTML = '';
-    const bar = el('div', { class: 'fb-stats', style: 'margin-bottom:10px' }, [
+    const bar = el('div', { class: 'chip-row', style: 'margin-bottom:10px' }, [
       el('span', { class: 'stat-chip', text: data.files.length + ' file(s)' }),
       el('code', { style: 'font-size:10.5px;color:var(--text-3)', text: data.dir }),
       el('button', {
@@ -536,7 +535,7 @@ BARRY.views.misc = (function () {
       const url = '/api/outputs/file?rel=' + encodeURIComponent(f.rel);
       grid.appendChild(el('div', { class: 'out-card' }, [
         el('div', { class: 'thumb' }, [
-          isImg ? el('img', { src: url, alt: f.name, loading: 'lazy' })
+          isImg ? el('img', { src: url + '&thumb=1', alt: f.name, loading: 'lazy' })
                 : el('span', { class: 'noimg',
                     text: (f.ext || '?').replace('.', '').toUpperCase() }),
         ]),

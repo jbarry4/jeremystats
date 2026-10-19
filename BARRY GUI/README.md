@@ -32,8 +32,8 @@ never installs anything without asking.
 
 | | |
 |---|---|
-| **Windows** | double-click **`Start BARRY GUI.bat`** |
-| **macOS** | double-click **`Start BARRY GUI.command`** |
+| **Windows** | double-click **`Activate Jarvis.bat`** |
+| **macOS** | double-click **`Activate Jarvis.command`** |
 | **Either** | `python start.py` |
 
 It prints what it found and opens `http://127.0.0.1:8733/`. Stop with `Ctrl+C`.
@@ -179,7 +179,7 @@ the button says what they are.
 
 `More` holds the things you set once per recording: the event actions
 (classes, import, export), the threshold spike detector, the read options
-(invert polarity, even channels only), jump-to-start and jump-to-end, and
+(invert polarity), jump-to-start and jump-to-end, and
 Reveal / Figure builder.
 
 | | |
@@ -517,7 +517,7 @@ session, unambiguous), **weak** (ambiguous — nearest start time wins). Mark a
 channel bad on one machine and it is found on the next.
 
 Bad channels are stored by **CSC channel number**, not row index, because an
-index shifts the moment someone toggles even-only. In a CSD panel a bad channel
+index shifts the moment a channel file goes missing. In a CSD panel a bad channel
 is interpolated from its neighbours rather than blanked — a second spatial
 derivative would otherwise lose three rows to one bad channel.
 
@@ -564,7 +564,9 @@ always the same: which recording, which seconds of it, which channels,
 filtered how. Every export writes the **complete layout** onto its run record
 — not a summary of it, because a summary is exactly what cannot be rebuilt
 from — including the channel selection, the bad channels, the gain, the event
-marks and how the session was opened (`invert`, `even_only`).
+marks and how the session was opened (`invert`). A figure made before
+even-only reading was removed has its channel positions carried across by CSC
+number when it is rebuilt.
 
 **Rebuild…** on a figure, in Results or in History, reads that back and checks
 it against the machine as it is *now* before doing anything:
@@ -716,7 +718,7 @@ http://127.0.0.1:8733/?theme=light#explorer
 ```
 BARRY GUI/
   Setup Windows.bat / Setup Mac.command      one-time install
-  Start BARRY GUI.bat / .command             launchers
+  Activate Jarvis.bat / .command .lnk      launchers
   setup.py  start.py  requirements.txt
   backend/
     app.py          Flask routes (86 of them)
@@ -736,6 +738,9 @@ BARRY GUI/
     pipeline.py     the IED pipeline definition
     live.py         cross-window state sync
     eventbank.py    the shared record of detected events
+    layers.py       layer sheets: labels, versions, StrataScope's steps
+    stratasteps.py  StrataScope's evidence: the one read, depth curves,
+                    ripples, triggered averages, Methods A and B
     results.py      the results catalog and deck storage
     storyboard.py   deck rendering to PDF / PNG
     extras.py       session health, recording overview, error grouping,
@@ -744,19 +749,45 @@ BARRY GUI/
     index.html  app.css
     js/core.js         shared state, API, routing, log dock
     js/features.js     preferences, command palette, shared dialogs
-    js/{pipeline,explorer,xplore,sessions,logs,misc}.js
-    js/{eventimport,figure,results,storyboard,eventbank,activity}.js
-    _dev/              four harnesses that drive the real UI in an iframe
+    js/{pipeline,explorer,xplore,sessions,logs,misc}.js      the views
+    js/{eventimport,figure,figrebuild,results,storyboard,eventbank,activity}.js
+    js/toolkit.js      the tool menu, Event curation and StrataScope
+    js/{incisor,curate,braces,dspca}.js      The Dentist, steps 1 to 4
+    js/{comod,cfcguide,cfcscope,spectrum,panorama,strata}.js the analysis tools
+    js/stratasteps.js  StrataScope's steps; strata-aids.html + js/strataaids.js
+                       its aid window
+    js/{vacc,vaccfx,kilosort,housekeeping,hk_views}.js
+    js/{radio,tour,tourmodules,toolfeed}.js
+    _dev/              159 harnesses that drive the real UI in an iframe
+    _dev/baseline/     the UI's measured shape, to diff a refactor against
+    GUI-CONSTITUTION.md  how new interface is built
   Output/                       everything exported, grouped by session
   GUI_logs/                     the sync store
 ```
 
 ### Tests
 
-There is no framework and nothing to install. `web/_dev/` holds four pages
-that drive the live interface in an iframe and report what they find — 66
-assertions across all nine sections, plus a channel-alignment measurement and a
-listener-leak count. See `web/_dev/README.md`.
+There is no framework and nothing to install. `web/_dev/` holds 159 pages that
+drive the live interface in an iframe and report what they find — behaviour
+harnesses, geometry measurements, a listener-leak count, and pose pages that
+open one state and hold it for a screenshot. See `web/_dev/README.md`.
+
+```
+python tools/harness_run.py            every harness
+python tools/harness_run.py motion     just the ones whose names match
+python tools/check_classes.py          classes the markup applies that no rule matches
+python tools/ui_baseline.py            diff the UI's measured shape against the stored baseline
+```
+
+Run them from **PowerShell**. Measured: under a bash shell Edge's
+`--dump-dom` writes nothing on this machine, so every harness reports zero
+checks and the whole suite reads as a clean sweep.
+
+### Building new interface
+
+`web/GUI-CONSTITUTION.md` is the rulebook — where buttons go, which loader to
+use, what the theme rules are, which words to use, and the checks that enforce
+the parts a machine can check. Read it before adding a view or a tool.
 
 ## Notes
 

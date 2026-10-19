@@ -1,0 +1,326 @@
+{
+  "_at": {
+    "alternates": "2026-10-02T23:57:44.724880+00:00",
+    "channels": "2026-10-02T23:57:44.724880+00:00",
+    "chosen": "2026-10-02T23:57:44.724880+00:00",
+    "computed": "2026-10-02T23:57:44.724880+00:00",
+    "continuity": "2026-10-02T23:57:44.724880+00:00",
+    "created": "2026-10-02T23:57:44.724880+00:00",
+    "events": "2026-10-02T23:57:44.724880+00:00",
+    "gid": "2026-10-02T23:57:44.724880+00:00",
+    "n": "2026-10-02T23:57:44.724880+00:00",
+    "n_by_channel": "2026-10-02T23:57:44.724880+00:00",
+    "n_channels": "2026-10-02T23:57:44.724880+00:00",
+    "ok": "2026-10-02T23:57:44.724880+00:00",
+    "params": "2026-10-02T23:57:44.724880+00:00",
+    "params_hash": "2026-10-02T23:57:44.724880+00:00",
+    "path_used": "2026-10-02T23:57:44.724880+00:00",
+    "picked": "2026-10-02T23:57:44.724880+00:00",
+    "plan": "2026-10-02T23:57:44.724880+00:00",
+    "session_label": "2026-10-02T23:57:44.724880+00:00",
+    "spec": "2026-10-02T23:57:44.724880+00:00",
+    "time_basis": "2026-10-02T23:57:44.724880+00:00",
+    "tool": "2026-10-02T23:57:44.724880+00:00",
+    "units": "2026-10-02T23:57:44.724880+00:00",
+    "updated": "2026-10-02T23:57:44.724880+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-02T23:57:44.724880+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "alternates": {
+    "most_spikes": {
+      "how": "most dentate spikes detected",
+      "index": 1,
+      "label": "CSC2",
+      "margin": 1.0,
+      "number": 2,
+      "runner_up": 0.0,
+      "value": 1.0
+    }
+  },
+  "channels": [
+    {
+      "amp_sample": [],
+      "amp_sample_stride": 1,
+      "bad": false,
+      "estimator": "sd",
+      "index": 0,
+      "label": "CSC1",
+      "mean_amp": 0.0,
+      "mean_half_width_ms": 0.0,
+      "median_amp": 0.0,
+      "n": 0,
+      "n_near_stitch": 0,
+      "n_samples": 115899,
+      "n_width_height": 0,
+      "norm_amp": 0.0,
+      "norm_n": 0.0,
+      "number": 1,
+      "rate_hz": 0.0,
+      "score": 0.0,
+      "sd_uv": 31.399928304389974,
+      "std_swr": 2.321,
+      "std_theta": 15.4586,
+      "tail_short": 0,
+      "tail_short_ms": 0.0,
+      "thr_abs_uv": 300.0,
+      "thr_sd_uv": 141.29967736975487,
+      "thr_source": "absolute",
+      "thr_uv": 300.0,
+      "width_height_mean": null,
+      "width_height_sem": 0.0
+    },
+    {
+      "amp_sample": [
+        305.641
+      ],
+      "amp_sample_stride": 1,
+      "bad": false,
+      "estimator": "sd",
+      "index": 1,
+      "label": "CSC2",
+      "mean_amp": 305.641,
+      "mean_half_width_ms": 7.729,
+      "median_amp": 305.641,
+      "n": 1,
+      "n_near_stitch": 0,
+      "n_samples": 115899,
+      "n_width_height": 1,
+      "norm_amp": 1.0,
+      "norm_n": 1.0,
+      "number": 2,
+      "rate_hz": 0.00863,
+      "score": 1.0,
+      "sd_uv": 30.527407557841638,
+      "std_swr": 2.4087,
+      "std_theta": 15.3708,
+      "tail_short": 0,
+      "tail_short_ms": 0.0,
+      "thr_abs_uv": 300.0,
+      "thr_sd_uv": 137.37333401028738,
+      "thr_source": "absolute",
+      "thr_uv": 300.0,
+      "width_height_mean": 118.6027,
+      "width_height_sem": 0.0
+    },
+    {
+      "amp_sample": [],
+      "amp_sample_stride": 1,
+      "bad": false,
+      "estimator": "sd",
+      "index": 2,
+      "label": "CSC3",
+      "mean_amp": 0.0,
+      "mean_half_width_ms": 0.0,
+      "median_amp": 0.0,
+      "n": 0,
+      "n_near_stitch": 0,
+      "n_samples": 115899,
+      "n_width_height": 0,
+      "norm_amp": 0.0,
+      "norm_n": 0.0,
+      "number": 3,
+      "rate_hz": 0.0,
+      "score": 0.0,
+      "sd_uv": 40.15796358660202,
+      "std_swr": 2.8171,
+      "std_theta": 14.7738,
+      "tail_short": 0,
+      "tail_short_ms": 0.0,
+      "thr_abs_uv": 300.0,
+      "thr_sd_uv": 180.7108361397091,
+      "thr_source": "absolute",
+      "thr_uv": 300.0,
+      "width_height_mean": null,
+      "width_height_sem": 0.0
+    }
+  ],
+  "chosen": 1,
+  "computed": {
+    "app_version": "2026.10.02.9",
+    "at": "2026-10-02T19:57:44-04:00",
+    "commit": "deb2b3ac",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "continuity": {
+    "n_segments": 2,
+    "n_short_inside": 0,
+    "probed": [
+      "CSC1.ncs",
+      "CSC33.ncs",
+      "CSC65.ncs",
+      "CSC97.ncs"
+    ],
+    "seconds_lost": 203.103952,
+    "sub_threshold_lost_s": 0.0,
+    "true_duration_s": 319.003571
+  },
+  "created": {
+    "app_version": "2026.10.02.9",
+    "at": "2026-10-02T19:57:44-04:00",
+    "commit": "deb2b3ac",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "events": [
+    {
+      "abs_us": 102770517192,
+      "amp": 305.6414,
+      "asym": 33.333,
+      "channel": 2,
+      "half_width_ms": 7.7294,
+      "idx": 2385900,
+      "near_stitch": false,
+      "prom": 1058.5656,
+      "segment": 0,
+      "start": 79.529968,
+      "width_height": 118.6027
+    }
+  ],
+  "gid": "s96884739a6ff",
+  "n": 1,
+  "n_by_channel": {
+    "0": 0,
+    "1": 1,
+    "2": 0
+  },
+  "n_channels": 3,
+  "ok": true,
+  "params": {
+    "abs_thr_uv": 300.0,
+    "bad_channels_excluded": [
+      59
+    ],
+    "band_hz": [
+      5.0,
+      100.0
+    ],
+    "decimate": 30,
+    "detector": "Incisor",
+    "dist_ms": 100.0,
+    "estimator": "sd",
+    "filter_order": 3,
+    "height_sd": 4.5,
+    "invert": true,
+    "lfp_fs": 1000.0,
+    "n_channels_scanned": 3,
+    "notes": [
+      "Filtered per segment and pooled for the threshold, so the voltage step at each stitch is excluded; Toothy's np.std spans its concatenated trace and includes it.",
+      "Decimated with scipy.signal.decimate in stages; Toothy uses scipy.signal.resample, an FFT method. Measured against Toothy's own code on 300 s of CSC41: the same dentate spikes to within one sample, a 2% difference in the threshold (an FFT resample is a brick wall and decimate is not, so they leave different variance in band), and one event in 193.",
+      "Times are stamped through the record-level breakpoint map, not from a linear axis.",
+      "Channels marked bad on this session were not read at all, so they cannot win the hilus, theta or ripple pick. Toothy keeps them and nulls them out of the estimates afterwards (ephys.py noise_idx); the three answers are the same either way.",
+      "The hilus, theta and ripple channels are derived FROM the detection, not used to produce it. Every event time here is a sample index put through the record timestamps, so choosing a different channel shows a different set of events and moves none of them."
+    ],
+    "ported_from": "Toothy ephys.get_ds_peaks",
+    "probe": "dual",
+    "prom_uv": 0.0,
+    "wlen_ms": 125.0
+  },
+  "params_hash": "6f2e870be33e188d626d",
+  "path_used": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S3_03182022\\2022-03-18_16-19-08",
+  "picked": {
+    "hilus": {
+      "how": "largest and most frequent dentate spikes",
+      "index": 1,
+      "label": "CSC2",
+      "margin": 1.0,
+      "number": 2,
+      "runner_up": 0.0,
+      "value": 1.0
+    },
+    "ripple": {
+      "how": "most ripple power relative to theta",
+      "index": 1,
+      "label": "CSC2",
+      "margin": 0.14497177948954595,
+      "number": 2,
+      "runner_up": 2.4087,
+      "value": 2.8171
+    },
+    "theta": {
+      "how": "most power in 6-10 Hz",
+      "index": 0,
+      "label": "CSC1",
+      "margin": 0.005679686388159434,
+      "number": 1,
+      "runner_up": 15.3708,
+      "value": 15.4586
+    }
+  },
+  "plan": {
+    "bad_channels": [
+      59
+    ],
+    "chunks": 2,
+    "decimate": 30,
+    "excluded": [],
+    "fs": 30000.0,
+    "invert": true,
+    "lfp_fs": 1000.0,
+    "megasamples": 10.43097,
+    "n_channels": 3,
+    "n_csc_files": 128,
+    "n_excluded": 0,
+    "n_segments": 2,
+    "network": false,
+    "probe": "dual",
+    "probe_name": "Dual array (hippocampus + M2)",
+    "samples_read": 10430970,
+    "span_s": 115.89966666666666,
+    "volume": "d:"
+  },
+  "session_label": null,
+  "spec": {
+    "abs_uv": 300.0,
+    "bad_channels": [
+      59
+    ],
+    "band": [
+      5.0,
+      100.0
+    ],
+    "dist_ms": 100.0,
+    "estimator": "sd",
+    "excluded": [],
+    "height_sd": 4.5,
+    "invert": true,
+    "lfp_fs": 1000.0,
+    "path": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S3_03182022\\2022-03-18_16-19-08",
+    "probe": "dual",
+    "probe_name": "Dual array (hippocampus + M2)",
+    "prom_uv": 0.0,
+    "wlen_ms": 125.0
+  },
+  "time_basis": {
+    "breaks_sha": "e4353e602bb45a16",
+    "depends_on_channel": false,
+    "gap_map_sha": "7f441e552a272fc1",
+    "kind": "neuralynx_true",
+    "origin": "first .ncs record timestamp",
+    "residual_max_us": 0.89691162109375,
+    "residual_sd_us": 0.3082765882295854,
+    "t0_us": 102690987224,
+    "tool": "jarvis.incisor/1"
+  },
+  "tool": "incisor",
+  "units": "microvolts",
+  "updated": {
+    "app_version": "2026.10.02.9",
+    "at": "2026-10-02T19:57:44-04:00",
+    "commit": "deb2b3ac",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

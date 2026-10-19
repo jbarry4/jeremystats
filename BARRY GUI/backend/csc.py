@@ -20,13 +20,13 @@ import os
 import warnings
 import numpy as np
 
-from . import nlx
+from . import demo, nlx, vaccio
 
-try:
-    from scipy.signal import butter, sosfiltfilt, iirnotch, tf2sos
-    HAVE_SCIPY = True
-except Exception:                                    # pragma: no cover
-    HAVE_SCIPY = False
+# Loaded on first use, not at start-up; see lazyimp.py for why.
+from . import lazyimp  # noqa: E402
+HAVE_SCIPY = lazyimp.have("scipy")
+butter, sosfiltfilt, iirnotch, tf2sos = lazyimp.names(
+    "scipy.signal", "butter", "sosfiltfilt", "iirnotch", "tf2sos")
 
 _MAT_CACHE = {}
 
@@ -41,7 +41,7 @@ def describe_path(path):
         return {"ok": False, "error": "Path not found: " + path}
 
     if os.path.isdir(path):
-        ncs_all = nlx.list_csc_files(path, even_only=False)
+        ncs_all = nlx.list_csc_files(path)
         mats = [f for f in sorted(os.listdir(path)) if f.lower().endswith(".mat")]
         if ncs_all:
             return {"ok": True, "kind": "ncs_folder", "path": path,
@@ -58,25 +58,36 @@ def describe_path(path):
     return {"ok": False, "error": "Unsupported file type: " + ext}
 
 
-def open_session(path, even_only=None, invert=True):
+def open_session(path, invert=True):
     """Open a session and return its channel inventory + timing metadata.
 
-    `even_only=None` means "work it out", which is the default because
-    neither answer is right for both rigs. See nlx.channel_scheme: the old
-    32-channel probe left its odd AD channels empty, the 64-channel probe
-    fills all of them, and assuming either one silently halves or doubles
-    what anybody looks at. True or False still forces it.
+    A "demo:" path is a recording that is not on disk -- see demo.py. It
+    exists so the Guide works on a laptop with nothing mounted, and it goes
+    through the same code as everything else from here on.
+
+    Every channel is read. There was an even-channels-only read; see the
+    note in nlx.py on why it went.
     """
+    if demo.is_demo(path):
+        return demo.open_session(path, invert)
+    # A "vacc:" path is a recording on the cluster and not on this disk --
+    # see vaccio.py. Here rather than in the route, so that every caller of
+    # open_session gets it: the exporter, the panel renderer and the health
+    # check all reach a recording through this function and none of them
+    # should have to know where it is.
+    if vaccio.is_vacc(path):
+        return vaccio.open_session(path, invert=invert)
+
     info = describe_path(path)
     if not info.get("ok"):
         return info
 
     kind = info["kind"]
     if kind == "ncs_folder":
-        return _open_ncs_folder(info["path"], even_only, invert)
+        return _open_ncs_folder(info["path"], invert)
     if kind == "ncs_file":
         folder = os.path.dirname(info["path"])
-        sess = _open_ncs_folder(folder, even_only, invert)
+        sess = _open_ncs_folder(folder, invert)
         if sess.get("ok"):
             return sess
         return _open_single_ncs(info["path"], invert)
@@ -91,15 +102,8 @@ def open_session(path, even_only=None, invert=True):
     return {"ok": False, "error": "Unrecognized session type."}
 
 
-def _open_ncs_folder(folder, even_only, invert):
-    scheme = None
-    if even_only is None:
-        scheme = nlx.channel_scheme(folder)
-        even_only = (scheme["scheme"] == "even")
-    files = nlx.list_csc_files(folder, even_only=even_only)
-    if not files:
-        files = nlx.list_csc_files(folder, even_only=False)
-        even_only = False
+def _open_ncs_folder(folder, invert):
+    files = nlx.list_csc_files(folder)
     if not files:
         return {"ok": False, "error": "No CSC*.ncs in " + folder}
 
@@ -111,6 +115,34 @@ def _open_ncs_folder(folder, even_only, invert):
     n_rec = max(0, (size - nlx.HEADER_BYTES) // nlx.RECORD_DTYPE.itemsize)
     duration = n_rec * nlx.SAMPLES_PER_RECORD / fs if fs else 0.0
 
+    # A file with a header and no data is not a recording.
+    #
+    # An aborted acquisition leaves CSC*.ncs files of exactly 16384 bytes, and
+    # a zero-byte placeholder does the same thing. Those used to open
+    # perfectly happily with duration 0.0 -- and then every panel, every pan
+    # and every poll failed with "No samples in 0.000-4.000 s", four times a
+    # refresh, for as long as the session stayed open. That is the error spam:
+    # one bad folder, hundreds of failures, none of which says what is
+    # actually wrong.
+    #
+    # Refusing here means one clear message instead.
+    if n_rec <= 0:
+        empties = sum(
+            1 for _num, fp in files
+            if os.path.getsize(fp) <= nlx.HEADER_BYTES)
+        return {
+            "ok": False,
+            "error": (
+                "That folder has %d CSC file(s) but no data in them -- %d of "
+                "them are header-only or empty. It looks like an acquisition "
+                "that was started and stopped, or a partial copy. There is "
+                "nothing to plot."
+                % (len(files), empties)),
+            "path": folder,
+            "empty": True,
+            "n_csc_files": len(files),
+        }
+
     channels = []
     for i, (num, p) in enumerate(files):
         channels.append({"index": i, "number": num, "label": "CSC" + str(num),
@@ -120,11 +152,8 @@ def _open_ncs_folder(folder, even_only, invert):
         "ok": True, "source": "ncs", "path": folder,
         "name": os.path.basename(folder.rstrip("\\/")) or folder,
         "fs": float(fs), "adbitvolts": float(adbv), "duration_s": float(duration),
-        "even_only": bool(even_only), "invert": bool(invert),
-        # How the channel list was arrived at, so it is visible rather than
-        # assumed. `decided` is None when the caller forced it.
-        "channel_scheme": scheme,
-        "n_csc_files": len(nlx.list_csc_files(folder, even_only=False)),
+        "invert": bool(invert),
+        "n_csc_files": len(files),
         "channels": channels, "units": "microvolts",
     }
 
@@ -147,7 +176,7 @@ def _open_single_ncs(path, invert):
         "ok": True, "source": "ncs", "path": os.path.dirname(path),
         "name": os.path.basename(path),
         "fs": float(fs), "adbitvolts": float(adbv),
-        "duration_s": float(duration), "even_only": False, "invert": invert,
+        "duration_s": float(duration), "invert": invert,
         "channels": [{"index": 0, "number": num, "label": os.path.basename(path),
                       "file": path, "bad": False}],
         "units": "microvolts",
@@ -307,7 +336,7 @@ def _open_mat(path):
         "ok": True, "source": "mat", "path": path,
         "name": os.path.basename(path), "fs": float(fs),
         "duration_s": float(n_samp / fs) if fs else 0.0,
-        "even_only": False, "invert": False, "channels": channels,
+        "invert": False, "channels": channels,
         "units": "microvolts", "mat_var": p["var"], "n_samples": int(n_samp),
     }
 
@@ -317,6 +346,8 @@ def _open_mat(path):
 # --------------------------------------------------------------------------
 def _read_channel_window(session, ch, t0, t1):
     """Return (samples, actual_t0, fs) for one channel over [t0, t1) seconds."""
+    if session["source"] == "demo":
+        return demo.read_window(session, ch, t0, t1)
     if session["source"] == "ncs":
         return nlx.read_ncs_range(ch["file"], t0, t1, invert=session.get("invert", True))
 
@@ -343,10 +374,15 @@ def _read_channel_window(session, ch, t0, t1):
     return seg, i0 / fs, fs
 
 
-def apply_filters(x, fs, highpass=0.0, lowpass=0.0, notch=0.0):
+def apply_filters(x, fs, highpass=0.0, lowpass=0.0, notch=0.0,
+                  exact=False, report=None):
     """Zero-phase Butterworth band shaping (filtfilt -> no phase distortion).
 
     Matches the xplorefinder low/high pass controls; 0 disables a stage.
+
+    `exact` forbids the coarse-subtraction shortcut in `_highpass` and
+    `_notch` whatever it costs. `report`, if given, is a dict this fills in
+    with what was actually done, so a caller can say so on screen.
     """
     if x.size == 0 or not HAVE_SCIPY:
         return x
@@ -374,9 +410,9 @@ def apply_filters(x, fs, highpass=0.0, lowpass=0.0, notch=0.0):
 
     try:
         if notch and 0 < notch < nyq:
-            y = _notch(y, fs, notch)
+            y = _notch(y, fs, notch, exact=exact, report=report)
         if highpass and 0 < highpass < nyq:
-            y = _highpass(y, fs, highpass)
+            y = _highpass(y, fs, highpass, exact=exact, report=report)
         if lowpass and 0 < lowpass < nyq:
             y = sosfiltfilt(butter(4, lowpass / nyq, btype="lowpass", output="sos"), y)
     except Exception:
@@ -460,11 +496,11 @@ def _subtract_coarse(y, fs, target_fs, make_component):
     return y
 
 
-def _highpass(y, fs, corner):
+def _highpass(y, fs, corner, exact=False, report=None):
     """High-pass: the signal minus its own low-frequency baseline."""
     direct = lambda: sosfiltfilt(
         butter(2, corner / (fs / 2.0), btype="highpass", output="sos"), y)
-    if fs / max(corner, 1e-9) < BASELINE_RATIO:
+    if exact or fs / max(corner, 1e-9) < BASELINE_RATIO:
         return direct()
 
     def baseline(coarse, fs_c):
@@ -474,16 +510,21 @@ def _highpass(y, fs, corner):
                    output="sos"), coarse)
 
     out = _subtract_coarse(y, fs, 20.0 * corner, baseline)
-    return out if out is not None else direct()
+    if out is None:
+        return direct()
+    if report is not None:
+        report.setdefault("coarse_filters", []).append(
+            "%g Hz high-pass" % corner)
+    return out
 
 
-def _notch(y, fs, freq, q_factor=30.0):
+def _notch(y, fs, freq, q_factor=30.0, exact=False, report=None):
     """Notch: the signal minus the narrow band around `freq`."""
     def direct():
         b, a = iirnotch(freq / (fs / 2.0), q_factor)
         return sosfiltfilt(tf2sos(b, a), y)
 
-    if fs / max(freq, 1e-9) < BASELINE_RATIO:
+    if exact or fs / max(freq, 1e-9) < BASELINE_RATIO:
         return direct()
 
     def hum(coarse, fs_c):
@@ -499,7 +540,11 @@ def _notch(y, fs, freq, q_factor=30.0):
     # the error under a tenth of a percent, and the coarse array is still
     # small enough that the filter on it costs nothing.
     out = _subtract_coarse(y, fs, 40.0 * freq, hum)
-    return out if out is not None else direct()
+    if out is None:
+        return direct()
+    if report is not None:
+        report.setdefault("coarse_filters", []).append("%g Hz notch" % freq)
+    return out
 
 
 def _prep_for_filter(x, fs, highpass, lowpass, notch, px, span):
@@ -612,10 +657,39 @@ def _json_row(arr):
     return [None if not np.isfinite(v) else float(v) for v in arr]
 
 
+# Every sample, per channel, when somebody asks for no envelope.
+#
+# 400 k points is 13 s at 30 kHz, or two minutes of a 3 kHz .mat -- past
+# anything a screen can show and already a large JSON array. The refusal
+# names the window that would fit rather than leaving somebody to guess.
+FULL_RATE_MAX_POINTS = 400_000
+
+
 def get_window(session, t0, t1, channels=None, px=1400,
                highpass=0.0, lowpass=0.0, notch=0.0, mode="voltage",
-               spacing_um=50.0, ylim=None):
-    """Build the payload the viewer draws: per-channel min/max envelopes."""
+               spacing_um=50.0, ylim=None, full_rate=False, report=None):
+    """Build the payload the viewer draws: per-channel min/max envelopes.
+
+    `full_rate` sends every sample instead -- no envelope, no decimation
+    before filtering, the exact filter -- so that what is drawn is the
+    recording rather than a summary of it. `report`, if given, is filled in
+    with what was actually done either way.
+    """
+    # A recording on the cluster is read there, by this same function.
+    #
+    # Forwarded HERE rather than one layer down at `_read_channel_window`,
+    # and the difference is the whole reason a live read is usable. Measured
+    # on a 64-channel 30 kHz recording: ten seconds of it is 39 MB of raw
+    # records and 2.9 MB once enveloped to 1400 columns -- and the envelope
+    # is what the viewer was going to be sent either way. Reading remotely
+    # and filtering locally would put the 39 MB on the wire for a picture
+    # 1400 pixels wide.
+    if session.get("source") == "vacc":
+        return vaccio.get_window(
+            session, t0, t1, channels=channels, px=px, highpass=highpass,
+            lowpass=lowpass, notch=notch, mode=mode, spacing_um=spacing_um,
+            ylim=ylim, full_rate=full_rate, report=report)
+
     all_ch = session["channels"]
     if channels:
         sel = [all_ch[i] for i in channels if 0 <= i < len(all_ch)]
@@ -636,21 +710,46 @@ def get_window(session, t0, t1, channels=None, px=1400,
     # however far out the view is zoomed.
     needs_stack = mode == "csd"
 
+    rep = report if report is not None else {}
+
+    if full_rate:
+        # Checked before reading anything, from the arithmetic rather than
+        # from a failed allocation.
+        want = int(round((t1 - t0) * fs))
+        if want > FULL_RATE_MAX_POINTS:
+            fits = FULL_RATE_MAX_POINTS / max(fs, 1.0)
+            return {"ok": False, "error":
+                    "Every sample of %.3g s at %g Hz is %s points per "
+                    "channel, past the %s this will send without an "
+                    "envelope. About %.2g s would fit — or leave the "
+                    "envelope on, which keeps the true extremes."
+                    % (t1 - t0, fs, "{:,}".format(want),
+                       "{:,}".format(FULL_RATE_MAX_POINTS), fits)}
+
     rows, filtered = [], []
     actual_t0, actual_fs = t0, fs
     width = 0
     for ch in sel:
         seg, seg_t0, seg_fs = _read_channel_window(session, ch, t0, t1)
         actual_t0, actual_fs = seg_t0, seg_fs
-        seg, seg_fs = _prep_for_filter(seg, seg_fs, highpass, lowpass,
-                                       notch, px, t1 - t0)
+        raw_fs = seg_fs
+        if not full_rate:
+            seg, seg_fs = _prep_for_filter(seg, seg_fs, highpass, lowpass,
+                                           notch, px, t1 - t0)
+            if seg_fs != raw_fs:
+                rep["prefilter"] = {"from": float(raw_fs),
+                                    "to": float(seg_fs)}
         actual_fs = seg_fs
-        seg = apply_filters(seg, seg_fs, highpass, lowpass, notch)
+        seg = apply_filters(seg, seg_fs, highpass, lowpass, notch,
+                            exact=bool(full_rate), report=rep)
         width = max(width, seg.size)
         if needs_stack:
             filtered.append(seg)
         else:
-            rows.append((ch, envelope(seg, px), _scale_sample(seg)))
+            n_out = seg.size if full_rate else px
+            rows.append((ch, envelope(seg, n_out), _scale_sample(seg)))
+            if not full_rate and seg.size > px:
+                rep["envelope"] = {"samples": int(seg.size), "columns": px}
 
     if width == 0:
         return {"ok": False, "error": "No samples in that time range."}
@@ -698,6 +797,14 @@ def get_window(session, t0, t1, channels=None, px=1400,
         except (TypeError, ValueError):
             pass
 
+    # What was done to get here, in the payload rather than only in a
+    # caller's dict: every caller of this draws or exports the result, and
+    # all of them owe the reader the same sentence.
+    rep["full_rate"] = bool(full_rate)
+    rep["raw_fs"] = float(fs)
+    rep["column_ms"] = (1000.0 * (t1 - t0) / max(len(series[0]["min"]), 1)
+                        if series else None)
+
     return {
         "ok": True, "t0": float(actual_t0),
         "t1": float(actual_t0 + width / actual_fs),
@@ -709,6 +816,7 @@ def get_window(session, t0, t1, channels=None, px=1400,
         "robust_auto": robust_auto,
         "ylim_manual": manual,
         "abs_max": abs_max,
+        "sampling": rep,
     }
 
 

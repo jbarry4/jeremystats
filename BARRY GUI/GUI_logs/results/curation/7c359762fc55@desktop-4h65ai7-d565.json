@@ -1,0 +1,25 @@
+{
+  "_at": {
+    "key": "2026-09-16T13:25:59.791951+00:00",
+    "rel": "2026-09-16T13:25:59.791951+00:00",
+    "starred": "2026-09-16T13:25:59.791951+00:00",
+    "updated": "2026-09-16T13:25:59.791951+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-16T13:25:59.791951+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "key": "pten/m7/s2 2023-08-22/figures/pten m7 s2 2023-08-22_20260902_150342.png",
+  "rel": "PTEN/m7/s2 2023-08-22/Figures/PTEN m7 s2 2023-08-22_20260902_150342.png",
+  "starred": false,
+  "tags": [],
+  "updated": {
+    "app_version": "2026.09.16.2",
+    "at": "2026-09-16T09:25:59-04:00",
+    "commit": "485fc76",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  }
+}

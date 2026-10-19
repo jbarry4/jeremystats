@@ -1,0 +1,28 @@
+{
+  "_at": {
+    "key": "2026-09-16T01:04:46.119892+00:00",
+    "rel": "2026-09-16T01:04:46.119892+00:00",
+    "starred": "2026-09-16T01:04:46.119892+00:00",
+    "title": "2026-09-21T13:35:53.110335+00:00",
+    "updated": "2026-09-21T13:35:53.110335+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-21T13:35:53.110335+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "key": "rebuild harness_20260915_205305.png",
+  "rel": "rebuild harness_20260915_205305.png",
+  "starred": false,
+  "title": "rebuild harness_20260915_205305",
+  "updated": {
+    "app_version": "2026.09.21.1",
+    "at": "2026-09-21T09:35:53-04:00",
+    "commit": "f693752",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

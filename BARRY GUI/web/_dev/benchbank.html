@@ -1,0 +1,156 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Checkup banks a version through the one dialog</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 52vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 48vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Checkup banks a curation set as a new VERSION, through
+   BARRY.ui.bankDialog (constitution §6e) -- the path the bench card's Bank
+   and Spotter both take (BARRY.curate.bankAt).
+
+   The set is not open, which is the bench's case: the mix comes from the
+   set's progress. The network is stood in for, so nothing is banked: the
+   "banked" read answers with a history whose stored numbers collide and a
+   `based_on`, and the bank POST is recorded. Checked: the version sentence
+   is about the version the route will really write, the history is the
+   read-only tree with its notes, who comes from the profile and is never
+   asked, and what is typed is what is sent. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || d === undefined ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 200, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const ready = await untilN(() => typeof W().setView === 'function'
+                                   && W().eval('BARRY.curate && BARRY.curate.bankAt'));
+  check('the application loads', !!ready);
+  if (!ready) { document.title = 'FAIL'; return; }
+  const B = W().eval('BARRY');
+  const txt = (n) => (n ? n.textContent : '').replace(/\s+/g, ' ').trim();
+  const modal = () => D().getElementById('bigModalBox');
+  const open = () => !D().getElementById('bigModal').classList.contains('hidden');
+  const btn = (re) => Array.from(modal().querySelectorAll('.mf button'))
+    .find((b) => re.test(b.textContent));
+
+  const T = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+  const history = [
+    { id: 'a', v: 0, name: '0', at: T(50), by: 'Incisor', n: 12,
+      note: 'Imported from the detector.', imported: true },
+    { id: 'b', v: 1, name: '1', from_v: 0, from_id: 'a', at: T(40), by: 'zz one',
+      n: 12, note: 'first pass' },
+    { id: 'c', v: 2, name: '2', from_v: 1, from_id: 'b', at: T(30), by: 'zz one',
+      n: 12, note: 'second pass' },
+    { id: 'd', v: 2, name: '1.1', from_v: 1, from_id: 'b', at: T(20), by: 'zz two',
+      n: 12, note: 'back to v1 on another machine' },
+  ];
+  const realApi = W().api;
+  const realWho = B.profile.who;
+  const sent = [];
+  let basedOn = 1;
+  W().api = async (path, opts) => {
+    if (/^\/api\/curation\/zz-gid\/ds\/banked$/.test(path)) {
+      return { ok: true, based_on: basedOn,
+               entry: { id: 'zz-e', name: 'zz PTEN m41 s1 · DS', n: 12,
+                        versions: history } };
+    }
+    if (/^\/api\/curation\/zz-gid\/ds\/bank$/.test(path)) {
+      sent.push(JSON.parse(opts.body));
+      return { entries: [{ replaced: true, new_version: true, version: 3,
+                           n: 12, by_label: { spike: 8, garbage: 4 },
+                           label_names: { spike: 'DS', garbage: 'garbage' } }] };
+    }
+    return realApi(path, opts);
+  };
+  B.profile.who = () => 'zz harness';
+  const at = { gid: 'zz-gid', kind: 'ds', name: 'zz PTEN m41 s1 · DS',
+               labels: [{ id: 'spike', name: 'DS' }, { id: 'garbage', name: 'garbage' }],
+               progress: { by_label: { spike: 8, garbage: 4 }, left: 3 } };
+
+  try {
+    head('the dialog');
+    let p = B.curate.bankAt(at);
+    await untilN(() => open() && modal().querySelector('.bank-dlg'), 50, 100);
+    check('banking a set opens the one bank dialog', !!modal().querySelector('.bank-dlg'));
+    check('it names the entry rather than asking for a name',
+          /zz PTEN m41 s1/.test(txt(modal())) && !modal().querySelector('.bank-dlg-name'));
+    check('picked up from v1, with v2 and v1.1 after it, it branches again',
+          /branches from v1 → v1\.2/.test(txt(modal())),
+          txt(modal().querySelector('.bank-dlg-line')));
+    check('and the title and the button name that version',
+          /Bank this as v1\.2/.test(txt(modal().querySelector('h3')))
+          && !!btn(/^Bank as v1\.2$/));
+    check('the mix this version will hold, from the set’s progress',
+          /DS 8/.test(txt(modal())) && /garbage 4/.test(txt(modal()))
+          && /3 still undecided/.test(txt(modal())));
+    const tree = modal().querySelector('.vtree.ro');
+    check('the history it joins is the read-only version tree',
+          tree && tree.querySelectorAll('.vtree-row').length === 4
+          && tree.querySelectorAll('button').length === 0);
+    check('with each version’s note on it',
+          tree && /back to v1 on another machine/.test(txt(tree)));
+    check('who comes from the profile, and is not asked',
+          /Banked by zz harness/.test(txt(modal()))
+          && !D().querySelector('#bigModalBox input[type=text]'));
+
+    head('banking');
+    modal().querySelector('.bank-dlg-note').value = 'zz third look';
+    btn(/^Bank/).click();
+    await p;
+    const s = sent[sent.length - 1] || {};
+    check('it sends the note and who', s.note === 'zz third look'
+          && s.added_by === 'zz harness', JSON.stringify(s));
+    check('and the dialog is gone', !open());
+
+    head('with nothing recorded as the base');
+    basedOn = null;
+    p = B.curate.bankAt(at);
+    await untilN(() => open() && modal().querySelector('.bank-dlg'), 50, 100);
+    check('the route takes the highest stored number, so the dialog does: v1.1',
+          /continues v1\.1 → v1\.2/.test(txt(modal())),
+          txt(modal().querySelector('.bank-dlg-line')));
+    btn(/^Cancel$/).click();
+    await p;
+    check('Cancel sends nothing', sent.length === 1, sent.length);
+  } finally {
+    W().api = realApi;
+    B.profile.who = realWho;
+    try { if (open()) btn(/^Cancel$/).click(); } catch (e) { /* gone */ }
+  }
+
+  head(bad === 0 ? 'Checkup banks through the one dialog' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad + ': ' + Array.from(
+    out.querySelectorAll('.bad')).map((d) => d.textContent).join(' | ');
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.stack || e));
+  document.title = 'FAIL threw: ' + e.message;
+} })();
+</script>

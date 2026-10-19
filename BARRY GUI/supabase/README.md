@@ -12,6 +12,24 @@ more than once.
 | `01_schema.sql` | the tables, indexes, the newest-wins trigger, two views |
 | `02_rls.sql` | locks it down — **read the note at the top of that file** |
 | `03_storage.sql` | the `results` bucket for figures |
+| `04`–`23` | everything since, in number order; the Sync panel names any the database is missing |
+
+`21_shard_files.sql` (2026-10-06) lets Braces sets and AI Beta runs reach the
+other machines without a git pull; until it is run they travel by git only,
+as before, and their marks say "this computer".
+
+`23_strata_steps.sql` (2026-10-09) carries StrataScope's steps with each
+layer sheet: Theta Walk, wheel times, parameters, the confidence of every
+boundary, the anchors, the checks and the sign-off. Until it is run they
+travel by git with the sheet; the labels sync as before.
+
+`22_review_questions.sql` (2026-10-06) is the open-questions list of the
+Monolith's review site on Vercel (`tools/export_review.py`); Jarvis itself
+never reads or writes it.
+
+`19_request_budget.sql` is the one that goes with the request budget
+(CHANGELOG 2026.09.29.1): which version each computer runs, and error
+triage back in the watermark view.
 
 ## Then, on each machine: nothing
 

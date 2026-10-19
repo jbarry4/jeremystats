@@ -1,0 +1,62 @@
+{
+  "_at": {
+    "created": "2026-09-10T18:39:44.354823+00:00",
+    "gid": "2026-09-10T18:39:44.354823+00:00",
+    "group": "2026-09-10T18:39:44.354823+00:00",
+    "key": "2026-09-10T18:39:44.354823+00:00",
+    "label": "2026-09-10T18:39:44.354823+00:00",
+    "loose_key": "2026-09-10T18:39:44.354823+00:00",
+    "mouse": "2026-09-10T18:39:44.354823+00:00",
+    "project": "2026-09-10T18:39:44.354823+00:00",
+    "project_source": "2026-09-10T18:39:44.354823+00:00",
+    "retired": "2026-09-10T18:40:31.357247+00:00",
+    "schema": "2026-09-10T18:39:44.354823+00:00",
+    "session": "2026-09-10T18:39:44.354823+00:00",
+    "start": "2026-09-10T18:39:44.354823+00:00",
+    "updated": "2026-09-10T18:40:31.357247+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260910_143838\\FAKEPROJ\\fake_m959\\m959s2_2026-09-10\\2026-09-10_14-38-45": [
+        "set",
+        "2026-09-10T18:40:02.115020+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-10T18:40:31.357247+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-10T14:39:44-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s576ceb464cf7",
+  "group": null,
+  "key": "m959_s002_2026-09-10_14-38-45",
+  "label": "m959 s2 2026-09-10",
+  "loose_key": "m959_s002",
+  "mouse": 959,
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260910_143838\\FAKEPROJ\\fake_m959\\m959s2_2026-09-10\\2026-09-10_14-38-45"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 2,
+  "start": "2026-09-10T18:38:45+00:00",
+  "updated": {
+    "at": "2026-09-10T14:40:31-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

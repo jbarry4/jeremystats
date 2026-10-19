@@ -1,0 +1,82 @@
+{
+  "_at": {
+    "created": "2026-09-14T13:59:18.787774+00:00",
+    "duration_s": "2026-09-14T13:59:18.787774+00:00",
+    "first_seen_by": "2026-09-14T13:59:18.787774+00:00",
+    "fs": "2026-09-14T13:59:18.787774+00:00",
+    "gid": "2026-09-14T13:59:18.787774+00:00",
+    "group": "2026-09-14T13:59:18.787774+00:00",
+    "key": "2026-09-14T14:11:12.273861+00:00",
+    "label": "2026-09-14T13:59:18.787774+00:00",
+    "mouse": "2026-09-14T13:59:18.787774+00:00",
+    "n_channels": "2026-09-14T13:59:18.787774+00:00",
+    "project": "2026-09-14T13:59:18.787774+00:00",
+    "project_source": "2026-09-14T13:59:18.787774+00:00",
+    "retired": "2026-09-14T14:11:12.273861+00:00",
+    "schema": "2026-09-14T13:59:18.787774+00:00",
+    "start": "2026-09-14T13:59:18.787774+00:00",
+    "updated": "2026-09-14T14:11:12.273861+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\PTEN\\PTEN\\m27_ptenblind\\New folder\\2024-07-03_12-14-01": [
+        "set",
+        "2026-09-14T13:59:18.787774+00:00"
+      ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-14T13:59:18.787774+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T14:11:12.273861+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-14T09:59:18-04:00",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "duration_s": 1735.2362666666668,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "sa769bc8d874e",
+  "group": "PTEN",
+  "key": null,
+  "label": "PTEN m27 2024-07-03",
+  "mouse": 27,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\PTEN\\m27_ptenblind\\New folder\\2024-07-03_12-14-01"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-14T09:59:16-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\PTEN\\m27_ptenblind\\New folder\\2024-07-03_12-14-01",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_f179140bc2"
+    }
+  },
+  "start": "2024-07-03T12:14:01",
+  "updated": {
+    "at": "2026-09-14T10:11:12-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}
