@@ -1,0 +1,190 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>setpicker: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Spotter's and Panning's way in: Checkup's workbench for their own kind of
+   set (toolkit.js `WB`), plus the banked runs no set has been started from
+   (setpicker.js), checked against what the routes say is there.
+
+   Reported 2026-10-19: Spotter was "a lame list" -- six sets while Doppler
+   had banked dozens of runs, nothing said which had been banked, nothing
+   could be put down, no search, no archive, no idea who was on what.
+
+   IT PRESSES NOTHING THAT WRITES. Start, Bank, Put it down, Pick it up and
+   Archive are counted, never clicked. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const head = (t) => { say(''); say('=== ' + t + ' ===', 'hd'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+const getj = (u) => fetch(u).then((r) => r.json());
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const W = frame.contentWindow;
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              30000);
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const txt = (n) => (n ? n.textContent.trim() : '');
+  const type = async (input, value) => {
+    input.value = value;
+    input.dispatchEvent(new W.Event('input', { bubbles: true }));
+    await sleep(500);
+  };
+  try {
+
+  for (const [tool, kind, mine, bundle, title] of [
+      ['spotter', 'ied', /^Doppler/, 'storm', 'Spotter'],
+      ['panning', 'pooled', /^The Confluence/, 'confluence', 'Panning']]) {
+    head(title + ': the workbench');
+    const [cur, st] = await Promise.all([getj('/api/curation'),
+      getj('/api/curation/startable?kind=' + kind)]);
+    const sets = (cur.sets || []).filter((s) => s.kind === kind && !s.test);
+    const open = sets.filter((s) => s.open && !s.archived);
+    const down = sets.filter((s) => !s.open && !s.archived);
+    const fresh = (st.entries || []).filter((e) => !e.test);
+    const freshMine = fresh.filter((e) => mine.test(e.pipeline || ''));
+    say('  note  ' + open.length + ' on the bench, ' + down.length + ' put down, '
+        + fresh.length + ' banked and not started (' + freshMine.length
+        + ' the bundle’s own)', 'note');
+
+    ev("setView('toolkit'); BARRY.views.toolkit.pick('" + tool + "', '"
+       + bundle + "')");
+    const up = await until(() => $('#tkResult #curBench'), 60000);
+    check('the page is up after a stepped loader, not a blank',
+          up && txt($('#tkResult .step-head strong')) === title,
+          txt($('#tkResult .step-head strong')));
+    check('it says which step of which bundle it is',
+          /step \d of The /.test(txt($('#tkResult .step-head .step-n'))),
+          txt($('#tkResult .step-head .step-n')));
+
+    // The bench.
+    const cards = $$('#curBench .cur-set');
+    check('every set of its kind on the bench is a card',
+          cards.length === open.length, cards.length + ' of ' + open.length);
+    check('each says whose it is',
+          cards.every((c) => !!c.querySelector('.cur-who')));
+    check('each says whether its work is in the bank',
+          cards.every((c) => /banked v|changed since v|not banked yet|nothing to bank yet/
+            .test(c.textContent)));
+    check('each can be put down',
+          cards.every((c) => Array.from(c.querySelectorAll('button'))
+            .some((b) => /Put it down/.test(b.textContent))));
+    const kindName = (sets[0] || {}).kind_name;
+    check('no set of another kind is on it',
+          cards.every((c) => !kindName
+            || txt(c.querySelector('.hk-chip')) === kindName),
+          cards.map((c) => txt(c.querySelector('.hk-chip'))).join(', '));
+
+    // The shelf: folded until asked for.
+    const shelfBtn = $$('#tkResult .cur-shelf-toggle')
+      .find((b) => /Pick up/.test(b.textContent));
+    check('the shelf says how many are put down',
+          !!shelfBtn && new RegExp(down.length + ' put down').test(shelfBtn.textContent),
+          shelfBtn ? shelfBtn.textContent : 'no toggle');
+    if (shelfBtn && !shelfBtn.classList.contains('on')) shelfBtn.click();
+    await until(() => $('#curShelfList'), 4000);
+    const shelfRows = () => $$('#curShelfList .cur-shelf-row');
+    const live = down.filter((s) => !s.archived);
+    check('the shelf lists every set put down', shelfRows().length === live.length,
+          shelfRows().length + ' of ' + live.length);
+    check('with whose it is and when it was last touched',
+          !!$('#curShelf .csr-who') && !!$('#curShelf .csr-when'));
+    check('and whether it is banked',
+          shelfRows().every((r) => !!r.querySelector('.sp-bank')));
+    const chips = $$('#curShelf .cur-chips .pill').map(txt).join(' | ');
+    check('filters: all, unfinished, flagged, done (and archived when any)',
+          /All/.test(chips) && /Unfinished/.test(chips) && /Has flagged/.test(chips)
+            && /Done/.test(chips), chips);
+    const shelfSearch = $('#curShelf .cur-search');
+    check('the shelf has a search', !!shelfSearch);
+    if (shelfSearch && shelfRows().length) {
+      const w = (txt(shelfRows()[0].querySelector('.csr-name')).match(/\bm\d+\b/) || [])[0]
+        || txt(shelfRows()[0].querySelector('.csr-name')).split(/\s+/)[0];
+      await type(shelfSearch, w);
+      check('searching "' + w + '" keeps only sets that say it',
+            shelfRows().length >= 1 && shelfRows().every((r) =>
+              r.textContent.toLowerCase().indexOf(w.toLowerCase()) >= 0),
+            shelfRows().length + ' rows');
+      await type(shelfSearch, '');
+    }
+
+    // The banked runs not started.
+    const freshBtn = $$('#tkResult .cur-shelf-toggle')
+      .find((b) => /banked run/.test(b.textContent));
+    check('the banked runs not started are offered, counted',
+          !!freshBtn && new RegExp(freshMine.length + ' not started').test(freshBtn.textContent),
+          freshBtn ? freshBtn.textContent : 'no toggle');
+    if (freshBtn && !freshBtn.classList.contains('on')) freshBtn.click();
+    await until(() => $('#curFresh'), 4000);
+    const freshRows = () => $$('#curFresh .sp-row.fresh');
+    check('every one of the bundle’s own is listed',
+          freshRows().length === freshMine.length,
+          freshRows().length + ' of ' + freshMine.length);
+    check('each can be started', freshRows().every((r) =>
+      Array.from(r.querySelectorAll('button')).some((b) => /Start/.test(b.textContent))));
+    const all = $$('#curFresh .seg button').find((b) => /Everything/.test(b.textContent));
+    if (fresh.length > freshMine.length) {
+      check('imports are one click away', !!all);
+      if (all) {
+        all.click();
+        await until(() => freshRows().length === fresh.length, 4000);
+        check('and then every run is listed', freshRows().length === fresh.length,
+              freshRows().length + ' of ' + fresh.length);
+      }
+    }
+    const fs = $('#curFresh .sp-search input');
+    if (fs && freshRows().length) {
+      const name = txt(freshRows()[0].querySelector('strong'));
+      const w = (name.match(/\bm\d+\b/) || [])[0] || name.split(/\s+/)[0];
+      await type(fs, w);
+      check('searching the runs for "' + w + '" keeps only runs that say it',
+            freshRows().length >= 1 && freshRows().every((r) =>
+              r.textContent.toLowerCase().indexOf(w.toLowerCase()) >= 0),
+            freshRows().length + ' rows');
+      await type(fs, '');
+    }
+    check('no harness leftover is offered anywhere',
+          !$$('#tkResult .cur-set, #tkResult .cur-shelf-row, #tkResult .sp-row')
+            .some((r) => /harness/i.test(r.textContent)));
+  }
+
+  } catch (e) {
+    say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+    fails++;
+  } finally {
+    try { ev("BARRY.views.toolkit.pick('bad')"); } catch (e) {}
+  }
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'setpicker: ' + fails + ' FAILED' : 'setpicker: passed';
+  frame.src = 'about:blank';
+})().catch((e) => {
+  say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+  document.title = 'setpicker CRASH';
+});
+</script></body></html>

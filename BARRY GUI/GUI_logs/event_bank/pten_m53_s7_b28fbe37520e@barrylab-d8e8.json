@@ -1,0 +1,711 @@
+{
+  "_at": {
+    "added": "2026-10-16T17:06:23.518479+00:00",
+    "by_label": "2026-10-16T17:06:23.518479+00:00",
+    "curation_label": "2026-10-16T17:06:23.518479+00:00",
+    "duration_s": "2026-10-16T17:06:23.518479+00:00",
+    "events": "2026-10-16T17:06:23.518479+00:00",
+    "gid": "2026-10-16T17:06:23.518479+00:00",
+    "id": "2026-10-16T17:06:23.518479+00:00",
+    "label_names": "2026-10-16T17:06:23.518479+00:00",
+    "mouse": "2026-10-16T17:06:23.518479+00:00",
+    "n": "2026-10-16T17:06:23.518479+00:00",
+    "name": "2026-10-16T17:06:23.518479+00:00",
+    "note": "2026-10-16T17:06:23.518479+00:00",
+    "project": "2026-10-16T17:06:23.518479+00:00",
+    "recording_start": "2026-10-16T17:06:23.518479+00:00",
+    "schema": "2026-10-16T17:06:23.518479+00:00",
+    "session": "2026-10-16T17:06:23.518479+00:00",
+    "session_key": "2026-10-16T17:06:23.518479+00:00",
+    "session_label": "2026-10-16T17:06:23.518479+00:00",
+    "session_loose_key": "2026-10-16T17:06:23.518479+00:00",
+    "session_path": "2026-10-16T17:06:23.518479+00:00",
+    "source": "2026-10-16T17:06:23.518479+00:00",
+    "specified": "2026-10-16T17:06:23.518479+00:00",
+    "type": "2026-10-16T17:06:23.518479+00:00",
+    "type_name": "2026-10-16T17:06:23.518479+00:00",
+    "units": "2026-10-16T17:06:23.518479+00:00",
+    "version": "2026-10-16T17:06:23.518479+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "e5426509c393": [
+        "set",
+        "2026-10-16T17:06:23.518479+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-16T17:06:23.518479+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-16T13:06:23-04:00",
+    "by": "Rain Younger",
+    "machine": "BarryLab"
+  },
+  "by_label": {
+    "unspecified": 47
+  },
+  "curation_label": null,
+  "duration_s": 1800.7893333333334,
+  "events": [
+    {
+      "amplitude": 1049.712,
+      "channel": 42,
+      "end": 102.788097,
+      "start": 102.334099
+    },
+    {
+      "amplitude": 1132.75,
+      "channel": 42,
+      "end": 120.498028,
+      "start": 119.93653
+    },
+    {
+      "amplitude": 1254.298,
+      "channel": 42,
+      "end": 151.448907,
+      "start": 151.435907
+    },
+    {
+      "amplitude": 919.321,
+      "channel": 42,
+      "end": 206.75969,
+      "start": 206.75169
+    },
+    {
+      "amplitude": 878.304,
+      "channel": 42,
+      "end": 218.014146,
+      "start": 217.967646
+    },
+    {
+      "amplitude": 1673.905,
+      "channel": 40,
+      "end": 233.598585,
+      "start": 233.585085
+    },
+    {
+      "amplitude": 1053.618,
+      "channel": 42,
+      "end": 235.895076,
+      "start": 235.753077
+    },
+    {
+      "amplitude": 1267.688,
+      "channel": 42,
+      "end": 268.817447,
+      "start": 268.369449
+    },
+    {
+      "amplitude": 1006.4,
+      "channel": 42,
+      "end": 313.832271,
+      "start": 313.813771
+    },
+    {
+      "amplitude": 905.378,
+      "channel": 42,
+      "end": 342.788658,
+      "start": 342.756658
+    },
+    {
+      "amplitude": 914.636,
+      "channel": 42,
+      "end": 400.329932,
+      "start": 400.148933
+    },
+    {
+      "amplitude": 1590.978,
+      "channel": 42,
+      "end": 435.102796,
+      "start": 435.091796
+    },
+    {
+      "amplitude": 1211.801,
+      "channel": 36,
+      "end": 443.768262,
+      "start": 443.720762
+    },
+    {
+      "amplitude": 929.274,
+      "channel": 34,
+      "end": 507.291013,
+      "start": 507.280014
+    },
+    {
+      "amplitude": 1224.183,
+      "channel": 42,
+      "end": 596.484664,
+      "start": 596.471664
+    },
+    {
+      "amplitude": 704.299,
+      "channel": 4,
+      "end": 620.42357,
+      "start": 620.397571
+    },
+    {
+      "amplitude": 1166.052,
+      "channel": 42,
+      "end": 745.994579,
+      "start": 745.59608
+    },
+    {
+      "amplitude": 1300.178,
+      "channel": 42,
+      "end": 760.463022,
+      "start": 760.390022
+    },
+    {
+      "amplitude": 801.021,
+      "channel": 4,
+      "end": 767.731994,
+      "start": 767.709994
+    },
+    {
+      "amplitude": 702.495,
+      "channel": 42,
+      "end": 821.997281,
+      "start": 821.671282
+    },
+    {
+      "amplitude": 1918.695,
+      "channel": 40,
+      "end": 856.858645,
+      "start": 856.515146
+    },
+    {
+      "amplitude": 1357.725,
+      "channel": 42,
+      "end": 897.540485,
+      "start": 897.323486
+    },
+    {
+      "amplitude": 1033.06,
+      "channel": 42,
+      "end": 915.341416,
+      "start": 914.712418
+    },
+    {
+      "amplitude": 1112.034,
+      "channel": 42,
+      "end": 969.652203,
+      "start": 968.786206
+    },
+    {
+      "amplitude": 1109.475,
+      "channel": 42,
+      "end": 1028.606472,
+      "start": 1028.202474
+    },
+    {
+      "amplitude": 1599.743,
+      "channel": 42,
+      "end": 1037.047439,
+      "start": 1037.002439
+    },
+    {
+      "amplitude": 957.128,
+      "channel": 42,
+      "end": 1096.357707,
+      "start": 1095.61321
+    },
+    {
+      "amplitude": 660.831,
+      "channel": 42,
+      "end": 1105.146672,
+      "start": 1104.869673
+    },
+    {
+      "amplitude": 1120.822,
+      "channel": 42,
+      "end": 1215.691739,
+      "start": 1215.678739
+    },
+    {
+      "amplitude": 1554.261,
+      "channel": 44,
+      "end": 1288.575954,
+      "start": 1288.559954
+    },
+    {
+      "amplitude": 811.426,
+      "channel": 42,
+      "end": 1330.167791,
+      "start": 1329.827292
+    },
+    {
+      "amplitude": 711.983,
+      "channel": 42,
+      "end": 1358.61318,
+      "start": 1358.59868
+    },
+    {
+      "amplitude": 1044.289,
+      "channel": 42,
+      "end": 1373.138123,
+      "start": 1372.478625
+    },
+    {
+      "amplitude": 842.133,
+      "channel": 42,
+      "end": 1384.627078,
+      "start": 1383.626082
+    },
+    {
+      "amplitude": 1168.864,
+      "channel": 42,
+      "end": 1408.598484,
+      "start": 1408.266485
+    },
+    {
+      "amplitude": 717.915,
+      "channel": 36,
+      "end": 1538.907474,
+      "start": 1538.891974
+    },
+    {
+      "amplitude": 998.672,
+      "channel": 42,
+      "end": 1577.577822,
+      "start": 1577.319823
+    },
+    {
+      "amplitude": 1540.432,
+      "channel": 42,
+      "end": 1593.50476,
+      "start": 1593.46176
+    },
+    {
+      "amplitude": 1281.102,
+      "channel": 42,
+      "end": 1605.677712,
+      "start": 1605.596213
+    },
+    {
+      "amplitude": 827.225,
+      "channel": 42,
+      "end": 1623.361143,
+      "start": 1622.928145
+    },
+    {
+      "amplitude": 591.839,
+      "channel": 8,
+      "end": 1666.654973,
+      "start": 1666.624474
+    },
+    {
+      "amplitude": 2065.976,
+      "channel": 42,
+      "end": 1679.332924,
+      "start": 1678.877426
+    },
+    {
+      "amplitude": 587.789,
+      "channel": 42,
+      "end": 1721.733758,
+      "start": 1721.714258
+    },
+    {
+      "amplitude": 995.6,
+      "channel": 42,
+      "end": 1743.038674,
+      "start": 1742.237678
+    },
+    {
+      "amplitude": 701.926,
+      "channel": 42,
+      "end": 1755.926624,
+      "start": 1755.709125
+    },
+    {
+      "amplitude": 932.954,
+      "channel": 42,
+      "end": 1784.336013,
+      "start": 1784.290013
+    },
+    {
+      "amplitude": 748.665,
+      "channel": 42,
+      "end": 1793.715476,
+      "start": 1793.535477
+    }
+  ],
+  "gid": "s503339c95a67",
+  "id": "b28fbe37520e",
+  "label_names": {},
+  "mouse": 53,
+  "n": 47,
+  "name": "PTEN_DKO m53 s7 2025-03-04  \u00b7  Doppler 20\u2013300 Hz",
+  "note": "Detected by Doppler on the VACC, Storm line length (validated on the PTEN hand-sorts). Validated on the PTEN hand-sorts (every confirmed IED caught). Decimated to 2000 Hz, common-average referenced per probe bank, detected on even channels, kept when 7 or more took part. Band-passed 20\u2013300 Hz after a 60 Hz notch. Line-length window 15 ms, threshold at the 99.9th percentile of the line-length values pooled over the 32 channels that were read (1 marked bad were not read at all, so they neither started events nor took part in the threshold). Each stamp is the largest deflection inside the detector\u2019s window, measured only on the channels that took part. Times are seconds from the start of the recording, converted from the joined signal through this recording\u2019s gap map. Detected on the 32 even channels: CSC2, CSC4, CSC6, CSC8, CSC10, CSC12, CSC14, CSC16, CSC18, CSC20, CSC22, CSC24, CSC26, CSC28, CSC30, CSC32, CSC34, CSC36, CSC38, CSC40, CSC42, CSC44, CSC46, CSC48, CSC50, CSC52, CSC54, CSC56, CSC58, CSC60, CSC62, CSC64. Read for the common reference only (31): CSC1, CSC3, CSC5, CSC7, CSC9, CSC11, CSC13, CSC15, CSC17, CSC19, CSC21, CSC23, CSC25, CSC27, CSC29, CSC31, CSC33, CSC35, CSC37, CSC39, CSC41, CSC43, CSC45, CSC47, CSC49, CSC51, CSC53, CSC55, CSC57, CSC61, CSC63. Marked bad and not read: CSC59.",
+  "project": "PTEN",
+  "recording_start": "2025-03-04T17:03:31",
+  "schema": 1,
+  "session": 7,
+  "session_key": "m053_s007_2025-03-04_17-03-31",
+  "session_label": "PTEN_DKO m53 s7 2025-03-04",
+  "session_loose_key": "m053_s007",
+  "session_path": "Y:\\ProcessedPtenData\\PTENDKOM53\\m53s7mar4-2025\\2025-03-04_17-03-31",
+  "source": {
+    "detector": "LLspikedetector",
+    "file": null,
+    "parameters": {
+      "bad_channels": [
+        59
+      ],
+      "band": [
+        20,
+        300
+      ],
+      "car": true,
+      "car_groups": 1,
+      "channel_range": null,
+      "channels": [
+        2,
+        4,
+        6,
+        8,
+        10,
+        12,
+        14,
+        16,
+        18,
+        20,
+        22,
+        24,
+        26,
+        28,
+        30,
+        32,
+        34,
+        36,
+        38,
+        40,
+        42,
+        44,
+        46,
+        48,
+        50,
+        52,
+        54,
+        56,
+        58,
+        60,
+        62,
+        64
+      ],
+      "detect_on": "even",
+      "detector": "Storm line length (validated on the PTEN hand-sorts)",
+      "display": "as the detector saw it: common-average referenced, notched, band-passed",
+      "excluded": [
+        {
+          "index": 58,
+          "label": "CSC59",
+          "number": 59
+        }
+      ],
+      "fs": 2000,
+      "fs_work": 2000,
+      "gap_map_sha": "745accd34f2e9e96",
+      "left_out": [],
+      "llw_s": 0.015,
+      "merge_s": 0.3,
+      "method": "storm",
+      "min_channels": 7,
+      "min_event_s": 0.0125,
+      "not_connected": [],
+      "notch_hz": 60,
+      "out_of_range": [],
+      "prc": 99.9,
+      "preset": null,
+      "read_channels": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        63,
+        64
+      ],
+      "stamp": "peak",
+      "threshold": 1405.402256
+    },
+    "pipeline": "Doppler (line length)",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ied",
+  "type_name": "IED",
+  "units": "seconds relative to the start of the recording",
+  "version": 0,
+  "versions": [
+    {
+      "at": "2026-10-16T13:06:23-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 47
+      },
+      "changed": 0,
+      "from_id": null,
+      "from_v": null,
+      "gained": 0,
+      "id": "e5426509c393",
+      "imported": true,
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 47,
+      "note": "The detector\u2019s own list, nothing decided about it yet.",
+      "snap": [
+        [
+          102.334099,
+          null
+        ],
+        [
+          119.93653,
+          null
+        ],
+        [
+          151.435907,
+          null
+        ],
+        [
+          206.75169,
+          null
+        ],
+        [
+          217.967646,
+          null
+        ],
+        [
+          233.585085,
+          null
+        ],
+        [
+          235.753077,
+          null
+        ],
+        [
+          268.369449,
+          null
+        ],
+        [
+          313.813771,
+          null
+        ],
+        [
+          342.756658,
+          null
+        ],
+        [
+          400.148933,
+          null
+        ],
+        [
+          435.091796,
+          null
+        ],
+        [
+          443.720762,
+          null
+        ],
+        [
+          507.280014,
+          null
+        ],
+        [
+          596.471664,
+          null
+        ],
+        [
+          620.397571,
+          null
+        ],
+        [
+          745.59608,
+          null
+        ],
+        [
+          760.390022,
+          null
+        ],
+        [
+          767.709994,
+          null
+        ],
+        [
+          821.671282,
+          null
+        ],
+        [
+          856.515146,
+          null
+        ],
+        [
+          897.323486,
+          null
+        ],
+        [
+          914.712418,
+          null
+        ],
+        [
+          968.786206,
+          null
+        ],
+        [
+          1028.202474,
+          null
+        ],
+        [
+          1037.002439,
+          null
+        ],
+        [
+          1095.61321,
+          null
+        ],
+        [
+          1104.869673,
+          null
+        ],
+        [
+          1215.678739,
+          null
+        ],
+        [
+          1288.559954,
+          null
+        ],
+        [
+          1329.827292,
+          null
+        ],
+        [
+          1358.59868,
+          null
+        ],
+        [
+          1372.478625,
+          null
+        ],
+        [
+          1383.626082,
+          null
+        ],
+        [
+          1408.266485,
+          null
+        ],
+        [
+          1538.891974,
+          null
+        ],
+        [
+          1577.319823,
+          null
+        ],
+        [
+          1593.46176,
+          null
+        ],
+        [
+          1605.596213,
+          null
+        ],
+        [
+          1622.928145,
+          null
+        ],
+        [
+          1666.624474,
+          null
+        ],
+        [
+          1678.877426,
+          null
+        ],
+        [
+          1721.714258,
+          null
+        ],
+        [
+          1742.237678,
+          null
+        ],
+        [
+          1755.709125,
+          null
+        ],
+        [
+          1784.290013,
+          null
+        ],
+        [
+          1793.535477,
+          null
+        ]
+      ],
+      "v": 0
+    }
+  ]
+}

@@ -228,6 +228,11 @@ def main():
     from backend import store as storemod, toolresults
     # Synthetic timings must not teach this machine's rate table anything.
     cfcmod._RATES_PATH = None
+    # The synthetic world is ONE fake recording with many answers, pooled
+    # together on purpose to test each kind of member; the rule that a
+    # recording goes into a pool once is checked on its own, below, and by
+    # tools/check_rootcanal_reread.py on the real bank (2026-10-19).
+    A.RC_REFUSE_TWICE = False
 
     tmp = tempfile.mkdtemp(prefix="rootcanal_check_")
     data, stamp_t, kinds = build_recording()
@@ -1233,10 +1238,14 @@ def _real(A, rc, fresh):
         print("  %-3s centre: amp %.0f uV, hw %.1f ms, HF %+.1f dB  (n %d)"
               % (cen["cls"].upper(), cen["raw"][0], cen["raw"][1],
                  cen["raw"][2], cen["n"]))
-    ck("all 296 events were read", res["n"] == 296 and not got["missed"],
-       (res["n"], got["missed"]))
+    # As many as the set holds NOW: it was 296 when this was written and is
+    # curated further since (431 on 2026-10-19), so a fixed number tested
+    # the bank, not the read.
+    ck("all %d events were read" % len(stamps),
+       res["n"] == len(stamps) and not got["missed"],
+       (res["n"], len(stamps), got["missed"]))
     ck("and nearly all were measured on all three axes",
-       res["n_used"] >= 290, res["n_used"])
+       res["n_used"] >= 0.97 * len(stamps), (res["n_used"], len(stamps)))
     ck("the dead contact (59) is out", 59 in got["bad"])
 
 
@@ -1574,14 +1583,33 @@ def _border_core():
         miss = str(exc)
     ck("a grace it was not saved with is refused, naming the ones it has",
        bool(miss) and "none, 1%, 2%, 5%" in miss, miss)
+    # ONE GROUP (2026-10-19): too few of one identity is no longer a
+    # refusal -- the border is drawn AROUND the other, an envelope.
+    env = B.extract(events[:n_d] + events[n_d:n_d + 3])
+    lv0, lv5 = B.level_of(env, 0), B.level_of(env, 0.05)
+    ck("too few of one identity: an envelope round the other",
+       env.get("kind") == "envelope" and env.get("group") == "ds",
+       (env.get("kind"), env.get("group")))
+    ck("at no grace it wraps every one of them",
+       lv0["outside"] == 0 and lv0["counts"]["ds"] >= n_d - 1, lv0["counts"])
+    ck("and grace pulls it in, leaving out at most that share",
+       0 < lv5["outside"] <= 0.05 * n_d + 1
+       and lv5["counts"]["amb"] > lv0["counts"]["amb"],
+       (lv5["outside"], lv5["counts"]))
+    ec, _info = B.apply(events[:n_d], env, 0.05)
+    ck("applied, inside is solid DS and outside ambiguous, as drawn",
+       ec.count("ds") == lv5["counts"]["ds"] - sum(
+           1 for x in B.apply(events[n_d:n_d + 3], env, 0.05)[0] if x == "ds"),
+       (ec.count("ds"), lv5["counts"]))
+    ck("its rule says it is a box",
+       B.rule_words(env, 0.05).startswith("Solid DS: inside "), B.rule_words(env, 0.05))
     try:
-        B.extract(events[:n_d] + events[n_d:n_d + 3])
+        B.extract(events[n_d:n_d + 3])
         few = None
     except B.BorderError as exc:
         few = str(exc)
-    ck("too few of one identity is refused in a sentence",
-       bool(few) and "has 3 complete events with an IED identity" in few,
-       few)
+    ck("too few of either is refused in a sentence",
+       bool(few) and "at least 5 complete events of one identity" in few, few)
     ck("its rule in words, at a grace",
        B.rule_words(b, 0.05).startswith("Solid IED: max amplitude ≥ ")
        and "half-width ≤" in B.rule_words(b, 0.05)
@@ -1917,12 +1945,20 @@ def _cluster_stats_routes(A, c, unbanked):
                                                          None)
                                     for e in sf["events"]),
        sf.get("error"))
+    # Measured another way it APPLIES, saying how (2026-10-19: "warn us ...
+    # but still let us do it"); it used to be refused.
     mm = c.post("/api/rootcanal/fit", json=dict(body, filt="ds", border=ref))
-    ck("measured another way, it is refused, saying how, in a sentence that "
-       "starts with the border", mm.status_code == 400
-       and mm.get_json()["error"].startswith("The border ‘two blobs’ cannot "
-                                             "be applied here")
-       and "DS filter" in mm.get_json()["error"], mm.get_json())
+    mmj = mm.get_json() or {}
+    mmu = mmj.get("border_used") or {}
+    ck("measured another way, it is applied all the same, and says how",
+       mm.status_code == 200 and mmj.get("ok")
+       and mmu.get("artifact_id") == bs["artifact_id"]
+       and any("DS filter" in x for x in mmu.get("mismatch") or [])
+       and all(e.get("border") in ("ds", "ied", "amb", None)
+               for e in mmj.get("events") or []), mmj.get("error") or mmu)
+    ck("measured the same way, it says nothing is different",
+       (sf.get("border_used") or {}).get("mismatch") == [],
+       (sf.get("border_used") or {}).get("mismatch"))
     psb = c.post("/api/rootcanal/pool/save", json=dict(
         tb, border=ref, nickname="classified by a border")).get_json()
     sp_ = A.ARTIFACTS.payload(psb["artifact_id"], psb["version"])
@@ -3075,11 +3111,37 @@ def _saved_elsewhere(A, c, unbanked):
 def _real_pool(A):
     head("A REAL POOL: every Root Canal single on this machine")
     from backend import rootcanalpool as pool
+    from backend import rootcanal
     t0 = time.time()
     cands = A._rootcanal_pool_candidates()
     if not cands:
         print("  skipped: no Root Canal singles on this machine")
         return
+    # ONE ANSWER PER RECORDING, AND ONE MEASUREMENT (2026-10-19). Every
+    # candidate went in: a recording banked and read here went in twice,
+    # and since sets were banked on the LFP filter too, the pool refused the
+    # mix of filters outright. So: banked first, then a saved single, then
+    # the read here -- one per recording -- and the members on the
+    # measurement most of them share.
+    def filt_of(c):
+        if str(c["key"]).startswith("s:"):
+            return (c.get("measure") or {}).get("filter_label")
+        if c.get("banked"):
+            rec = A.ROOTCANAL.get(c["gid"], c["params_hash"]) or {}
+            return rootcanal.Params(**A._rootcanal_fit_part(
+                rec.get("params"))).filter_label()
+        return rootcanal.Params().filter_label()
+
+    one = {}
+    for c in sorted(cands, key=lambda c: (not c["banked"],
+                                          str(c["key"]).startswith("u:"))):
+        one.setdefault(c.get("gid") or c.get("entry_id"), c)
+    by_f = {}
+    for c in one.values():
+        by_f.setdefault(filt_of(c), []).append(c)
+    cands = max(by_f.values(), key=len)
+    print("  %d recording(s) on %r (of %d candidates)"
+          % (len(cands), filt_of(cands[0]), sum(len(v) for v in by_f.values())))
     members = A._rootcanal_pool_members([{"key": c["key"]} for c in cands])
     res = pool.fit_pool(members, focus={"mouse_key": "PTEN|m13"})
     g, sw = res["gmm"], res["switches"]

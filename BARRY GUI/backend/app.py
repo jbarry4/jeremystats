@@ -197,13 +197,19 @@ def fail(where, exc, status=400, context=None, user_message=None):
     """Log an error and return a JSON body the UI can show verbatim."""
     detail = traceback.format_exc(limit=8)
     rec = STORE.record_error(where, user_message or str(exc), detail, context)
-    return jsonify({
+    out = {
         "ok": False,
         "error": user_message or str(exc),
         "type": type(exc).__name__,
         "where": where,
         "error_id": rec["id"],
-    }), status
+    }
+    # A refusal about particular pool members names them, so the panel can
+    # offer to fix exactly those (Root Canal's "read them here").
+    away = getattr(exc, "away", None)
+    if away:
+        out["away"] = list(away)
+    return jsonify(out), status
 
 
 @app.errorhandler(Exception)
@@ -4677,8 +4683,17 @@ def _doppler_public(out):
     when it draws the report. Sending them with every poll of a batch is how
     a 200 arrives truncated and will not parse.
     """
-    return {k: v for k, v in (out or {}).items()
-            if k != "snippets" and not k.startswith("_")}
+    pub = {k: v for k, v in (out or {}).items()
+           if k != "snippets" and not k.startswith("_")}
+    # The note a banked run carries, from the one place it is written
+    # (doppler.bank_note), so the panel's Bank dialog and the bank made when
+    # the run landed cannot say two different things.
+    if pub.get("params") and "bank_note" not in pub:
+        try:
+            pub["bank_note"] = dopplermod.bank_note(pub["params"])
+        except Exception:                                # noqa: BLE001
+            pass
+    return pub
 
 
 def _doppler_remember(sess, spec, key, out, extra=None):
@@ -4715,6 +4730,83 @@ def _doppler_remember(sess, spec, key, out, extra=None):
     except Exception as exc:                             # noqa: BLE001
         STORE.record_error("doppler.remember", exc, None, {"gid": gid})
         return False
+
+
+def _doppler_banked_for(gid, key):
+    """The bank entry a run was filed as, found by the run's key -- or None.
+    Every run banked since 2026-10-19 carries it as `run_key`."""
+    if not gid or not key:
+        return None
+    for rec in BANK.all():
+        if (rec.get("gid") == gid and (rec.get("type") or "") == "ied"
+                and ((rec.get("source") or {}).get("parameters") or {})
+                .get("run_key") == key):
+            return rec
+    return None
+
+
+def _doppler_autobank(gid, key, out, sess=None, label=None):
+    """Bank a run the moment it lands (asked for 2026-10-19: "when Doppler
+    is done, auto bank them").
+
+    As its own entry, the way the panel's Bank button files one: the
+    detector's list with nothing decided, the note saying how it was made,
+    the name the dialog would have suggested. Once per run -- found again by
+    `run_key` -- so a run that lands twice, or one somebody banked from the
+    panel after this, is not filed twice. A run with no events has nothing to
+    bank. Never raises: a run that could not be banked has still landed, and
+    the panel's Bank button is still there.
+
+    Returns {id, name, n, auto} or None.
+    """
+    try:
+        events = (out or {}).get("events") or []
+        if not gid or not key or not events:
+            return None
+        done = _doppler_banked_for(gid, key)
+        if done:
+            return {"id": done["id"], "name": done.get("name"),
+                    "n": done.get("n"), "auto": False}
+        reg = _session_by_gid(gid) or {}
+        ident = (sess or {}).get("identity") or {}
+        lab = reg.get("label") or ident.get("label") or label or gid
+        p = dict((out or {}).get("params") or {}, run_key=key)
+        here = reg.get("here") or []
+        entry = BANK.add({
+            "project": reg.get("project") or reg.get("group"),
+            "mouse": reg.get("mouse"), "session": reg.get("session"),
+            "session_key": reg.get("key"),
+            "session_loose_key": reg.get("loose_key"),
+            "session_label": lab,
+            "session_path": (sess or {}).get("path") or (here[0] if here
+                                                         else None),
+            "recording_start": reg.get("start"),
+            "duration_s": reg.get("duration_s"),
+            "gid": gid, "type": "ied", "type_name": "IED",
+            "name": dopplermod.bank_name(lab, p),
+            "note": dopplermod.bank_note(p),
+            "events": [{"start": e.get("start"), "end": e.get("end"),
+                        "channel": e.get("peak_channel"),
+                        "amplitude": e.get("peak_uv")} for e in events],
+            "pipeline": "Doppler (line length)",
+            "detector": "LLspikedetector",
+            "time_basis": "recording",
+            "parameters": p,
+            "added_by": (STORE.provenance() or {}).get("user"),
+            "version_note": "The detector\u2019s own list, nothing decided "
+                            "about it yet. Banked when the run landed.",
+        })
+        STORE.record_activity([{"action": "doppler.autobank",
+                                "detail": {"gid": gid, "key": key,
+                                           "entry": entry["id"],
+                                           "n": entry.get("n")}}])
+        mirror_bank_soon()
+        return {"id": entry["id"], "name": entry.get("name"),
+                "n": entry.get("n"), "auto": True}
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("doppler.autobank", str(exc), None,
+                           {"gid": gid, "key": key})
+        return None
 
 
 def _doppler_recall(sess, key):
@@ -5024,7 +5116,8 @@ def _doppler_scan_vacc(body, sess):
     def work(job):
         out = run.work(job)
         key = _doppler_file_vacc(gid, label, spec, out)
-        return dict(_doppler_public(out), key=key)
+        banked = _doppler_autobank(gid, key, out, label=label)
+        return dict(_doppler_public(out), key=key, banked=banked)
 
     job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
                        max(0.001, plan["megasamples"]), where)
@@ -5170,10 +5263,11 @@ def api_doppler_scan():
         # "already run" for this exact question whichever way it was run.
         _doppler_remember(sess, spec, key, out, extra={
             "request_hash": _doppler_request_hash(sess.get("gid"), spec)})
+        banked = _doppler_autobank(sess.get("gid"), key, out, sess=sess)
         # With its key, as a run of a recording only the cluster has comes
         # back: the panel asks for the snippets, and opens it again from
         # the landed list, by recording and key.
-        return dict(_doppler_public(out), key=key)
+        return dict(_doppler_public(out), key=key, banked=banked)
 
     try:
         run, where = _vacc_run_for("doppler", sess, spec, plan, rep, steps)
@@ -5285,9 +5379,13 @@ def api_doppler_run():
         path = used
     else:
         path = _local_path_of(row) or incisorvaccmod.path_of(gid)
+    done = _doppler_banked_for(gid, key)
     return jsonify({
         "ok": True, "key": key,
-        "result": dict(_doppler_public(full), key=key),
+        "result": dict(_doppler_public(full), key=key,
+                       banked=({"id": done["id"], "name": done.get("name"),
+                                "n": done.get("n"), "auto": False}
+                               if done else None)),
         "spec": rec.get("spec"), "path": path, "row": row or None,
         "label": rec.get("session_label") or row.get("label"),
         "computed": rec.get("computed"),
@@ -5324,8 +5422,13 @@ def api_doppler_reviews():
                 pass
             row = by_gid.get(gid) or {}
             local = _local_path_of(row)
+            mine = _doppler_banked_for(gid, rec.get("params_hash"))
             rows.append({
                 "gid": gid,
+                # This run's own entry, when it has been banked -- by the
+                # server as it landed, or from the panel since 2026-10-19.
+                "banked_run": ({"id": mine["id"], "name": mine.get("name"),
+                                "n": mine.get("n")} if mine else None),
                 "label": rec.get("session_label") or row.get("label"),
                 "n": rec.get("n_events"),
                 "params_hash": rec.get("params_hash"),
@@ -5725,13 +5828,16 @@ def api_doppler_batch():
 
         def adopt(t, out):
             if (t.get("resume") or {}).get("vacc_only"):
-                _doppler_file_vacc(t["gid"], t.get("label"),
-                                   t["spec_local"], out)
+                key = _doppler_file_vacc(t["gid"], t.get("label"),
+                                         t["spec_local"], out)
+                _doppler_autobank(t["gid"], key, out, label=t.get("label"))
                 return
             dopplermod.cache_put(t["key"], out)
             _doppler_remember(t["sess"], t["spec_local"], t["key"], out,
                               extra={"request_hash": _doppler_request_hash(
                                   t["gid"], t["spec_local"])})
+            _doppler_autobank(t["gid"], t["key"], out, sess=t.get("sess"),
+                              label=t.get("label"))
 
         done = 0
         if tasks:
@@ -8650,7 +8756,8 @@ def _rootcanal_events(rec, src_v):
         have = live.get(curation._tkey(ev.get("start")))
         if have:
             for k in ("end", "channel", "amplitude", "from_t", "align_flag",
-                      "clipped", "excluded", "kept", "origin", "pair_t"):
+                      "clipped", "excluded", "kept", "origin", "pair_t",
+                      "stamp"):
                 if have.get(k) is not None and k not in item:
                     item[k] = have[k]
         out.append(item)
@@ -9710,14 +9817,35 @@ def api_rootcanal_batch_plan():
         body = dict(request.args)
     try:
         todo, done, blocked = [], [], []
+        # WHAT EACH SET IS, for the batch card's search and filter chips
+        # (2026-10-19): the entry's own name (two sets of one session told
+        # apart), the recording's date, the project and mouse type the pool
+        # files it under, and -- below -- group, subgroup and condition from
+        # the session workbook, the same facts Pooled's chips read. One read
+        # of the registry for all of it (`_rootcanal_reg_index`).
+        reg = _rootcanal_reg_index()
         for rec in BANK.all():
             if (rec.get("type") or "") != "ds":
                 continue
             label = (rec.get("session_label") or rec.get("name")
                      or rec.get("id"))
+            proj, mk, mt = _rootcanal_who(rec.get("gid"), rec.get("project"),
+                                          rec.get("mouse"), reg)
+            # The date the search finds: the recording's start where the
+            # entry has it, else the one its session key or label carries
+            # (most entries have no recording_start; 2026-10-19).
+            day = str(rec.get("recording_start") or "")[:10]
+            if not _re.match(r"\d{4}-\d{2}-\d{2}$", day):
+                hit = _re.search(r"\d{4}-\d{2}-\d{2}",
+                                "%s %s" % (rec.get("session_key") or "",
+                                           rec.get("session_label") or ""))
+                day = hit.group(0) if hit else ""
             row = {"entry_id": rec["id"], "gid": rec.get("gid"),
                    "label": label, "n_good": _n_good(rec),
-                   "project": rec.get("project"), "mouse": rec.get("mouse"),
+                   "name": rec.get("name"), "n": rec.get("n"),
+                   "date": day or None,
+                   "project": proj, "mouse": rec.get("mouse"),
+                   "mouse_key": mk, "mouse_type": mt,
                    "session": rec.get("session")}
             if not rec.get("specified"):
                 blocked.append(dict(row, why="nobody has been through this "
@@ -9761,8 +9889,23 @@ def api_rootcanal_batch_plan():
                 done.append(dict(row, cached=True))
             else:
                 todo.append(row)
-        key = lambda r: (str(r.get("project") or ""), str(r.get("mouse") or ""),
-                         str(r.get("session") or ""))
+        # The facts are for finding sets, never a reason to leave one out:
+        # a workbook that cannot be read leaves the chips without them.
+        try:
+            _rootcanal_describe(todo + done + blocked, reg)
+        except Exception as exc:                         # noqa: BLE001
+            STORE.record_error("rootcanal/batch-plan-facts",
+                               "The batch plan has no group or condition "
+                               "for its sets: %s" % exc, None)
+        # Mouse and session as NUMBERS: as strings m13 sorted before m2.
+        def _num(v):
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return float("inf")
+        key = lambda r: (str(r.get("project") or ""), _num(r.get("mouse")),
+                         str(r.get("mouse") or ""), _num(r.get("session")),
+                         str(r.get("label") or ""))
         todo.sort(key=key)
         done.sort(key=key)
         blocked.sort(key=key)
@@ -10513,7 +10656,7 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
             if got_m:
                 out.append(got_m)
             else:
-                stuck.append(why)
+                stuck.append(tuple(why) + (key,))
             continue
         c = cands.get(key)
         s = kept.get(key)
@@ -10523,11 +10666,11 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
                 out.append(got)
             else:
                 stuck.append((s["member"].get("session_label") or key,
-                              s["read_on"], words))
+                              s["read_on"], words, key))
             continue
         if not c:
             label, where = _rootcanal_key_words(key)
-            raise rootcanalpool.PoolError(
+            raise _away(key, rootcanalpool.PoolError(
                 "%s %sis not a Root Canal result or a cached read on this "
                 "machine, so it cannot be pooled here.%s Take it out, read "
                 "that set on this machine in Single, or pool it on the "
@@ -10539,7 +10682,7 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
                    " The saved pool this was opened from does not hold it "
                    "either." if kept else
                    " The saved pool this was opened from is not on this "
-                   "machine yet, so its numbers cannot stand in for it."))
+                   "machine yet, so its numbers cannot stand in for it.")))
         gid, rh = c["gid"], c.get("read")
         rebanded = None
         remeasured = []
@@ -10562,17 +10705,14 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
                         out.append(got)
                     else:
                         stuck.append((c.get("session_label") or key,
-                                      s["read_on"], words))
+                                      s["read_on"], words, key))
                     continue
             if remeasured:
                 if not (rh and ROOTCANAL.has_cached(gid, rh, ".npz")):
-                    raise rootcanalpool.PoolError(
-                        "%s was banked measured differently (%s) and its read "
-                        "is not on this machine, so it cannot be measured the "
-                        "pool's way. Take it out, set the pool's measurement "
-                        "back, or read that set here."
-                        % (c.get("session_label") or key,
-                           "; ".join(remeasured)))
+                    stuck.append((c.get("session_label") or key,
+                                  _rootcanal_read_on(gid, rh),
+                                  remeasured, key))
+                    continue
                 if [p0.band_lo, p0.band_hi] != [p.band_lo, p.band_hi]:
                     rebanded = [p0.band_lo, p0.band_hi]
                 rows = _rootcanal_member_rows(gid, rh, p)
@@ -10615,28 +10755,378 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
             event_body=(dict(p.fit_params(), entry_id=c["entry_id"], read=rh)
                         if here else None)))
     if stuck:
-        where = sorted({w_ for _l, w_, _x in stuck if w_})
+        where = sorted({w_ for _l, w_, _x, _k in stuck if w_})
         # Grouped by what was asked: one change, said once, with every
         # member it strands.
         asks = {}
-        for lab, _w, words in stuck:
+        for lab, _w, words, _k in stuck:
             asks.setdefault("; ".join(words), []).append(lab)
         one_ = len(stuck) == 1
-        raise rootcanalpool.PoolError(
-            "%d member%s of this pool %s read on %s, so %s here only as the "
-            "saved pool holds %s, and %s cannot be measured another way "
-            "without %s read. Asked for %s. Set the measurement back "
-            "(filter, window, half-width search, HF band), take %s out, or "
-            "read %s on this machine in Single."
+        raise _away([k for _l, _w, _x, k in stuck], rootcanalpool.PoolError(
+            "%d member%s of this pool %s measured another way and read on "
+            "%s, so %s cannot be measured the pool's way here without %s "
+            "read. Asked for %s. Read %s here (this computer finds the "
+            "recording, or the VACC reads it) and the analysis is redone; "
+            "or set the measurement back, or take %s out."
             % (len(stuck), "" if one_ else "s", "was" if one_ else "were",
                " and ".join(where) if where else "another machine",
-               "it is" if one_ else "they are", "it" if one_ else "them",
                "it" if one_ else "they", "its" if one_ else "their",
                "; and ".join("%s, for %s" % (ask, ", ".join(labs))
                              for ask, labs in asks.items()),
-               "it" if one_ else "them",
-               "that set" if one_ else "those sets"))
+               "it" if one_ else "them", "it" if one_ else "them")))
+    # THE SAME RECORDING TWICE (2026-10-19). A recording with a banked
+    # result and a read cached here was offered as two candidates, and both
+    # could be ticked: every one of its events then went into the pool
+    # twice, as two dots on top of each other. Refused, naming both.
+    seen, twice = {}, []
+    for m in (out if RC_REFUSE_TWICE else []):
+        k_ = m.get("gid") or m.get("entry_id")
+        if not k_:
+            continue
+        if k_ in seen:
+            twice.append((seen[k_], m))
+        else:
+            seen[k_] = m
+    if twice:
+        raise _away([b_["key"] for _a, b_ in twice], rootcanalpool.PoolError(
+            "%s %s in this pool twice: %s. Those are two answers about the "
+            "same events, so pooling both would count every one of them "
+            "twice. Keep one."
+            % ("; ".join(a_.get("session_label") or a_["key"]
+                         for a_, _b in twice),
+               "is" if len(twice) == 1 else "are",
+               "; ".join("as %s and as %s" % (_rootcanal_member_kind(a_),
+                                              _rootcanal_member_kind(b_))
+                         for a_, b_ in twice))))
     return out
+
+
+# The checks pool one fake recording's many answers on purpose, to test
+# the mechanics of each kind of member, and turn this off; nothing else does.
+RC_REFUSE_TWICE = True
+
+
+def _away(keys, exc):
+    """`exc`, naming the pool members it is about (see `fail`)."""
+    exc.away = [keys] if isinstance(keys, str) else list(keys)
+    return exc
+
+
+def _rootcanal_member_kind(m):
+    """What kind of answer a pool member is, in words."""
+    key = str(m.get("key") or "")
+    if key.startswith("s:"):
+        return "saved single v%s" % key.split(":")[-1]
+    if key.startswith("b:") or m.get("banked"):
+        return "banked%s" % (" v%s" % m["version"] if m.get("version") else "")
+    return "the read cached here (not banked)"
+
+
+# --------------------------------------------------------------------------
+# READ AGAIN, HERE (2026-10-19)
+# --------------------------------------------------------------------------
+# A member whose read is on another machine -- read on Strawbarry, say --
+# can be pooled from its numbers, but not measured another way and not
+# drawn (its traces). It used to say so and stop: "read that set on this
+# machine in Single". Now it can be asked to: the recording is found the
+# way every tool finds one -- a drive here first, the VACC second -- and
+# read exactly as it was read there (the same set, the same version of its
+# stamps, so the same read), here or on a compute node. The pool is then
+# fitted again, and every member measures the pool's way.
+def _rootcanal_target(key, cands, kept):
+    """(entry id, read hash, label, version hint) a member's numbers came
+    from."""
+    key = str(key or "")
+    if key.startswith("s:"):
+        _s, aid, v = key.split(":", 2)
+        pay, _row = _rootcanal_single_payload(aid, int(v))
+        if not pay:
+            raise rootcanal.RootCanalError(
+                "The saved single %s is not on this machine." % key)
+        return (pay.get("entry_id"), pay.get("read"),
+                pay.get("session_label") or key, pay.get("from_version"))
+    c = cands.get(key)
+    if c:
+        return (c.get("entry_id"), c.get("read"),
+                c.get("session_label") or key, None)
+    s = kept.get(key)
+    if s:
+        m = s["member"]
+        return (m.get("entry_id"), (m.get("pin") or {}).get("read"),
+                m.get("session_label") or key, None)
+    parts = key.split(":")
+    if len(parts) == 3 and parts[0] == "u":
+        ent = BANK.get(parts[1]) or {}
+        return (parts[1], parts[2],
+                ent.get("session_label") or ent.get("name") or key, None)
+    raise rootcanal.RootCanalError(
+        "%s is not a member this machine can find." % key)
+
+
+def _rootcanal_version_for(rec, rh, hint=None):
+    """The version of a set whose stamps make the read `rh`. Cheap: the
+    read's name is the set and its stamps, so no recording is opened."""
+    tries = ([hint] if hint is not None else []) + [None] + [
+        BANK.version_key(v) for v in reversed(rec.get("versions") or [])]
+    seen = set()
+    for v in tries:
+        if repr(v) in seen:
+            continue
+        seen.add(repr(v))
+        try:
+            stamps, _n = _dspca_stamps(rec, v)
+        except Exception:                                # noqa: BLE001
+            continue
+        if stamps and rootcanal.Params(
+                entry_id=rec["id"],
+                stamps_hash=rootcanal.stamps_hash(stamps)).read_hash() == rh:
+            return v
+    raise rootcanal.RootCanalError(
+        "None of the versions of %s on this machine has the stamps that "
+        "read was made from, so it cannot be read again the same way. Pull, "
+        "so its versions arrive, or read it where it was read."
+        % (rec.get("session_label") or rec.get("name") or rec.get("id")))
+
+
+def _rootcanal_read_vacc(sess, chans, stamps, p, marked, rec, src_v, job,
+                         mid):
+    """A Root Canal read on a compute node, for a recording only the cluster
+    has: the same `rootcanal.read`, its .npz written beside the run and
+    brought home in one stream, then filed as a read made here."""
+    import subprocess
+    gid = rec.get("gid")
+    place = _vacc_place_for_gid(gid)
+    cfg = vaccmod.load_config(LOGS_DIR)
+    vaccmod.push_code(cfg, APP_DIR)
+    where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
+             else "vacc:scratch")
+    spec = {"path": incisorvaccmod.path_of(gid), "tool": "rootcanal",
+            "invert": bool(sess.get("invert", True)),
+            "channels": [int(c["number"]) for c in chans],
+            "stamps": stamps,
+            "params": dict(p.read_params(), from_version=src_v,
+                           invert=p.invert, probe=p.probe,
+                           spacing=p.spacing),
+            "marked": {str(k): v for k, v in marked.items()}}
+    span_s = len(stamps) * 2 * (p.snip_ms / 1000.0 + p.pad_s)
+    seconds = max(300.0, cfcmod.rate_for("ds read", where) * span_s * 3
+                  * max(1, len(chans)) + 120.0)
+    run = vaccrunmod.VaccRun(
+        cfg, "rootcanal", spec, place["remote"], plan={"seconds": seconds},
+        megasamples=max(1.0, span_s * 30000.0 * len(chans) / 1e6),
+        tool_steps=[(rootcanal.STAGE_READ, len(chans))], report=None)
+    out = run.work(_MemberJob(job, mid))
+    rel = (out or {}).get("file")
+    if not rel or not run.ws:
+        raise rootcanal.RootCanalError(
+            "The cluster finished the read but said nothing about where it "
+            "put it.")
+    remote = run.ws.rstrip("/") + "/" + rel
+    rh = p.read_hash()
+    dest = _rootcanal_npz(gid, rh)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    part = dest + ".incoming"
+    job.member(mid, step="bringing the read home")
+    cmd = vaccmod.ssh_cmd(cfg, "cat %s" % vaccmod.q(remote))
+    with open(part, "wb") as fh, open(part + ".err", "wb") as eh:
+        proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=fh,
+                                stderr=eh, **vaccmod.popen_kwargs())
+        try:
+            while proc.poll() is None:
+                job.check()
+                time.sleep(0.4)
+        except BaseException:
+            proc.kill()
+            raise
+    try:
+        if proc.returncode != 0:
+            with open(part + ".err", "rb") as eh:
+                err = eh.read().decode("utf-8", "replace").strip()
+            raise rootcanal.RootCanalError(
+                "Bringing the read home from the cluster failed: %s"
+                % (err or "no reason given")[:300])
+        got = rootcanal.load_read(part)          # a read, or it raises
+        os.replace(part, dest)
+    finally:
+        for f in (part, part + ".err"):
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+    cfcmod.cache_put("rootcanal:%s:%s" % (gid, rh), got)
+    ROOTCANAL.put({
+        "gid": gid, "params_hash": rh, "kind": "read",
+        "entry_id": rec["id"], "from_version": src_v,
+        "session_label": rec.get("session_label"),
+        "params": p.read_params(),
+        "marked": sorted(marked),
+        "screened": {str(k): v for k, v in (got.get("bad") or {}).items()},
+        "n_events": len(stamps),
+        "missed": got.get("missed"),
+        "probe": got.get("probe"),
+        "computed_on": {"where": where, "remote": place.get("remote"),
+                        "rid": run.rid},
+    })
+    try:
+        vaccmod._ssh(cfg, "rm -f %s" % vaccmod.q(remote), timeout=60)
+    except Exception:                                    # noqa: BLE001
+        pass
+    return rh
+
+
+def _rootcanal_read_anywhere(it, job, mid):
+    """Read one set again, wherever its recording is. Returns where."""
+    rec = BANK.get(it["entry_id"])
+    if not rec:
+        raise rootcanal.RootCanalError("No bank entry %s." % it["entry_id"])
+    job.member(mid, step="finding the recording")
+    sess, chans, stamps, p, marked = _rootcanal_prepare(rec, it["src_v"])
+    if p.read_hash() != it["read"]:
+        raise rootcanal.RootCanalError(
+            "The stamps of %s have changed since it was read, so reading it "
+            "now would not be the same read." % it["label"])
+    if vacciomod.is_vacc(sess.get("path")):
+        job.member(mid, step="reading on the VACC", where="vacc")
+        _rootcanal_read_vacc(sess, chans, stamps, p, marked, rec,
+                             it["src_v"], job, mid)
+        return "vacc"
+    job.member(mid, step="reading", where="here", done=0, of=len(chans))
+
+    def progress(done, of):
+        job.member(mid, done=int(done), of=int(of))
+
+    _rootcanal_do_read(sess, chans, stamps, p, marked, rec, it["src_v"],
+                       job=None, stop=job.check, progress=progress)
+    return "here"
+
+
+@app.route("/api/rootcanal/pool/reread", methods=["POST"])
+def api_rootcanal_pool_reread():
+    """Read the named pool members again on this machine (or the VACC), so
+    they can be measured the pool's way and drawn. Body: {members: [{key}],
+    saved}. A job, one row per member; a member whose read is already here
+    is not read again."""
+    body = request.get_json(force=True) or {}
+    want = [str((m or {}).get("key") or "") for m in body.get("members") or []]
+    want = [k for k in want if k]
+    if not want:
+        return jsonify({"ok": False, "error": "Which members?"}), 400
+    try:
+        cands = ({c["key"]: c for c in _rootcanal_pool_candidates()}
+                 if any(not k.startswith("s:") for k in want) else {})
+        kept = _rootcanal_saved_members(body.get("saved"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/pool-reread", exc, 400)
+    items, refused, here = [], [], []
+    for key in want:
+        try:
+            eid, rh, label, hint = _rootcanal_target(key, cands, kept)
+            rec = BANK.get(eid) or {}
+            if not rec:
+                raise rootcanal.RootCanalError(
+                    "%s's set is not in this machine's bank." % label)
+            if rh and ROOTCANAL.has_cached(rec.get("gid"), rh, ".npz"):
+                here.append(key)
+                continue
+            items.append({"id": key, "label": label, "entry_id": eid,
+                          "read": rh,
+                          "src_v": _rootcanal_version_for(rec, rh, hint)})
+        except Exception as exc:                         # noqa: BLE001
+            refused.append({"key": key, "why": str(exc)})
+    if not items:
+        return jsonify({"ok": True, "job": None, "here": here,
+                        "refused": refused})
+
+    def work(job):
+        job.members_init([{"id": it["id"], "label": it["label"]}
+                          for it in items])
+        job.begin(rootcanal.STAGE_SETS, of=len(items), unit="recordings")
+        done, failed = 0, 0
+        for k, it in enumerate(items):
+            job.check()
+            job.tick(rootcanal.STAGE_SETS, k)
+            job.member(it["id"], status="running")
+            try:
+                where = _rootcanal_read_anywhere(it, job, it["id"])
+                job.member(it["id"], status="done", step=None, where=where)
+                done += 1
+            except cfcmod.Canceled:
+                job.member(it["id"], status="stopped")
+                raise
+            except Exception as exc:                     # noqa: BLE001
+                failed += 1
+                job.member(it["id"], status="failed", step=None,
+                           error=str(exc)[:300])
+        return {"done": done, "failed": failed, "here": here,
+                "refused": refused}
+
+    job = cfcmod.start({"tool": "rootcanal"},
+                       [(rootcanal.STAGE_SETS, len(items))], work,
+                       max(0.001, float(len(items))))
+    STORE.record_activity([{"action": "rootcanal.reread",
+                            "detail": {"n": len(items),
+                                       "refused": len(refused)}}])
+    return jsonify({"ok": True, "job": job.snapshot(), "here": here,
+                    "refused": refused})
+
+
+@app.route("/api/rootcanal/pool/singles", methods=["POST"])
+def api_rootcanal_pool_singles():
+    """Save members of a pool as Root Canal singles, one version each, at
+    the pool's measurement: each one's own analysis, redone the pool's way
+    from its read here. Body: the pool body, and `keys` -- the members to
+    save. Nothing is banked."""
+    body = request.get_json(force=True) or {}
+    keys = [str(k) for k in body.get("keys") or [] if k]
+    if not keys:
+        return jsonify({"ok": False, "error": "Tick the members to save."}), 400
+    try:
+        over = {k: v for k, v in (body.get("measure") or {}).items()
+                if k in RC_MEASURE_KEYS and v is not None}
+        tp = rootcanal.Params(**over)
+        target = rootcanal.measure_of(tp)
+        cands = {c["key"]: c for c in _rootcanal_pool_candidates()}
+        kept = _rootcanal_saved_members(body.get("saved"))
+        byk = {str((w or {}).get("key") or ""): w
+               for w in body.get("members") or []}
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/pool-singles", exc, 400)
+    done, away = [], []
+    for key in keys:
+        try:
+            eid, rh, label, _hint = _rootcanal_target(key, cands, kept)
+            rec = BANK.get(eid) or {}
+            gid = rec.get("gid")
+            if not (gid and rh and ROOTCANAL.has_cached(gid, rh, ".npz")):
+                away.append({"key": key, "label": label,
+                             "why": "its read is not on this machine -- "
+                                    "read it here first"})
+                continue
+            got = _rootcanal_member_measure(byk.get(key) or {"key": key},
+                                            cands, kept)
+            fitp = dict((got or {}).get("params") or {})
+            if not got and key.startswith("u:"):
+                fitp = _rootcanal_fit_part((byk.get(key) or {}).get("params"))
+            fbody = dict(fitp, **over)
+            if body.get("k"):
+                fbody["k"] = int(body["k"])
+            fbody.update(entry_id=eid, read=rh)
+            fbody.pop("margin", None)        # a margin is one measurement's
+            out, nv, conf, _p = _rootcanal_single_save(
+                fbody, "measured the pool's way · %s"
+                % target["filter_label"].split(",")[0],
+                note="Saved from a pool, measured the pool's way: %s."
+                     % target["filter_label"],
+                from_={"kind": "pool_member", "from_key": key})
+            done.append({"key": key, "label": label,
+                         "new_key": "s:%s:%s" % (out["id"], nv),
+                         "confirmed": bool(conf)})
+        except Exception as exc:                         # noqa: BLE001
+            away.append({"key": key, "why": str(exc)[:300]})
+    STORE.record_activity([{"action": "rootcanal.pool_singles",
+                            "detail": {"n": len(done), "away": len(away)}}])
+    return jsonify({"ok": True, "done": done, "away": away,
+                    "target": target})
 
 
 def _rootcanal_pool_fit(body):
@@ -12398,7 +12888,8 @@ def _rootcanal_border_row(r):
                 strict=ns.get("strict"), levels=ns.get("levels") or [],
                 grace_default=ns.get("grace"), measure=ns.get("filter"),
                 source=ns.get("source"), level=ns.get("level"),
-                events=ns.get("events"))
+                events=ns.get("events"),
+                kind=ns.get("kind") or "between", group=ns.get("group"))
 
 
 @app.route("/api/rootcanal/borders")
@@ -12466,8 +12957,8 @@ def _rootcanal_border_cite(res, out, where):
 
 def _rootcanal_border_on(res, ref, measure):
     """Each event's class under a saved border, onto a fit: `border` on
-    every event and `border_used` on the fit. Refuses, in a sentence that
-    starts "The border", one measured another way."""
+    every event and `border_used` on the fit. One measured another way is
+    applied all the same, with `border_used.mismatch` saying how."""
     if not ref:
         return res
     pay, used = _rootcanal_border_load(ref)
@@ -12479,14 +12970,15 @@ def _rootcanal_border_on(res, ref, measure):
                                       "order", "win_ms", "cross_ms",
                                       "band_lo", "band_hi")})
     diff = rootcanal.margin_mismatch({"measure": pay.get("measure")}, mp)
-    if diff:
-        raise rcborder.BorderError(
-            "The border ‘%s’ cannot be applied here: %s. A border is "
-            "cut-offs in µV, dB and ms, and those are only the same numbers "
-            "under the same measurement."
-            % (used["nickname"],
-               "; ".join(diff).replace("the margin", "the border")
-               .replace("its ", "the border's ")))
+    # MEASURED ANOTHER WAY: APPLIED, AND SAID (2026-10-19). It was refused.
+    # The user: "warn us when the filtering parameters of our border are
+    # different from what is being applied, but still let us do it." A
+    # border's cut-offs are numbers of the measurement it was drawn under,
+    # so on another filter or window they are a different question -- which
+    # the person may well mean to ask. So it applies, and `mismatch` says
+    # exactly how the two differ, on the fit, for the panel to show.
+    mismatch = ["; ".join(diff).replace("the margin", "the border")
+                .replace("its ", "the border's ")] if diff else []
     try:
         lv = rcborder.level_of(pay, g)
     except rcborder.BorderError as exc:
@@ -12499,7 +12991,11 @@ def _rootcanal_border_on(res, ref, measure):
         used, grace=g, grace_words=rcborder.grace_words(g),
         rule=rcborder.rule_words(pay, g), strict=pay.get("strict"),
         edges=lv["edges"], ied_above=pay.get("ied_above"),
+        # "between" two identities, or an "envelope" round one (2026-10-19).
+        kind=pay.get("kind") or "between", group=pay.get("group"),
         saved={"counts": lv["counts"], "switch_rate": lv["switch_rate"]},
+        measure=(pay.get("measure") or {}).get("filter_label"),
+        mismatch=mismatch,
         **info)
     res["params"] = dict(res.get("params") or {}, border={
         "artifact_id": used["artifact_id"], "version": used["version"],
@@ -15574,6 +16070,76 @@ def _cur_history(gid, kind, summaries=None):
     return out
 
 
+def _when_s(stamp):
+    """An ISO time as seconds since the epoch, or None. Both spellings in
+    this repo: curation writes `-0400`, the bank writes `-04:00`."""
+    if not stamp:
+        return None
+    s = str(stamp).strip().replace("Z", "+00:00")
+    if len(s) > 5 and s[-5] in "+-" and s[-4:].isdigit():
+        s = s[:-2] + ":" + s[-2:]
+    try:
+        return datetime.datetime.fromisoformat(s).timestamp()
+    except ValueError:
+        return None
+
+
+def _cur_banked(row, bank_rows):
+    """Whether this set's work is in the bank, for a list of sets.
+
+    The entry a set banks into is the one the bank route writes: same
+    recording, same kind, `curation_label` "*". Its newest version is the
+    last bank. The set has moved on since when its decisions no longer
+    count up to what that version holds, or when two candidates were merged
+    after it -- a merge can change a version's content without changing a
+    single count. Decision times are not compared: a set rebuilt from a
+    version stamps its decisions with the moment it was rebuilt, and would
+    read as changed when nothing was.
+
+    None when the set has never been banked.
+    """
+    gid, kind = row.get("gid"), row.get("kind")
+    ent = None
+    for rec in bank_rows:
+        if (rec.get("gid") != gid or (rec.get("type") or "") != kind
+                or rec.get("curation_label") != "*"):
+            continue
+        if ent is None or (str((rec.get("added") or {}).get("at") or "")
+                           > str((ent.get("added") or {}).get("at") or "")):
+            ent = rec
+    if ent is None:
+        return None
+    vers = list(ent.get("versions") or [])
+    named = versionsmod.label_rows(vers)
+    if not named:
+        return None
+    tip = versionsmod.tip_next(vers)[0]
+    ver = next((v for v, nm in named if nm == tip), named[-1][0])
+    vocab = curation.vocabulary(kind) if kind in curation.KINDS else []
+    names = ent.get("label_names") or {}
+
+    def ids(counts):
+        out = {}
+        for k, n in (counts or {}).items():
+            if not n or k in (None, "", "unspecified"):
+                continue
+            lid = curation.resolve_label(vocab, names.get(k, k)) \
+                or curation.resolve_label(vocab, k) or k
+            out[lid] = out.get(lid, 0) + n
+        return out
+
+    have = ids((row.get("progress") or {}).get("by_label"))
+    was = ids(ver.get("by_label"))
+    changed = have != was
+    merged = _when_s(row.get("last_merge"))
+    banked_at = _when_s(ver.get("at"))
+    if not changed and merged and banked_at and merged > banked_at + 1:
+        changed = True
+    return {"entry": ent.get("id"), "name": ent.get("name"),
+            "version": tip, "at": ver.get("at"), "by": ver.get("by"),
+            "n": ver.get("n"), "changed": changed}
+
+
 @app.route("/api/curation")
 def api_curation_list():
     """Every curation set, with how far through each one is."""
@@ -15596,6 +16162,11 @@ def api_curation_list():
         rec = by_gid.get(row["gid"])
         row["session"] = REG.summary(rec) if rec else None
         row["history"] = _cur_history(row["gid"], row.get("kind"), banked)
+        # Whether the work on it is in the bank: "banked v3", or changed
+        # since, or never banked. The bench showed none of it, so a set
+        # finished and banked looked exactly like one still in progress.
+        row["banked"] = _cur_banked(row, banked)
+        row["test"] = _cf_is_test(row)
         out.append(row)
     out.sort(key=lambda r: (r.get("progress", {}).get("left", 0) == 0,
                             -(r.get("progress", {}).get("total") or 0)))
@@ -15613,7 +16184,63 @@ def api_curation_get(gid, kind):
     return jsonify({"ok": True, "set": rec,
                     "progress": CURATE.progress(rec),
                     "history": _cur_history(gid, kind),
+                    "banked": _cur_banked(CURATE.summary(rec),
+                                          BANK.summaries()),
                     "session": _session_by_gid(gid)})
+
+
+@app.route("/api/curation/startable")
+def api_curation_startable():
+    """Banked entries of one kind that a set could be started from, and
+    is not already.
+
+    Spotter's list showed only sets that existed, so a Doppler run banked on
+    another machine -- or banked and never opened -- could only be reached
+    from Doppler's own review list. Every entry of the kind is here except
+    the ones a set already stands for: the entry the set was started from,
+    and the entry it banks into (`curation_label` "*").
+
+    One set per recording and kind, so an entry on a recording that already
+    has a set from a different entry says so (`set_name`): starting it asks
+    before replacing that set.
+    """
+    kind = (request.args.get("kind") or "").strip()
+    if kind not in curation.KINDS:
+        return jsonify({"ok": False,
+                        "error": "%r is not a kind of curation this Jarvis "
+                                 "knows about." % kind}), 400
+    sets = {s["gid"]: s for s in CURATE.summaries() if s.get("kind") == kind}
+    out = []
+    for rec in BANK.summaries():
+        gid = rec.get("gid")
+        if (rec.get("type") or "") != kind or not gid:
+            continue
+        st = sets.get(gid)
+        if st and (((st.get("source") or {}).get("bank_entry") == rec.get("id"))
+                   or rec.get("curation_label") == "*"):
+            continue
+        vers = list(rec.get("versions") or [])
+        last = max([str(v.get("at") or "") for v in vers]
+                   + [str((rec.get("added") or {}).get("at") or "")])
+        src = rec.get("source") or {}
+        out.append({
+            "id": rec.get("id"), "name": rec.get("name"), "gid": gid,
+            "session_label": rec.get("session_label"),
+            "project": rec.get("project"), "mouse": rec.get("mouse"),
+            "session": rec.get("session"), "n": rec.get("n"),
+            "pipeline": src.get("pipeline"),
+            "by": (rec.get("added") or {}).get("by"),
+            "at": last or None,
+            "tip": versionsmod.tip_next(vers)[0] if vers else "0",
+            "by_label": rec.get("by_label") or {},
+            "curated": bool(rec.get("specified")),
+            "test": _cf_is_test(rec)
+                    or str(src.get("pipeline") or "").startswith("harness"),
+            "set_name": (st or {}).get("name") if st else None,
+        })
+    out.sort(key=lambda r: str(r.get("at") or ""), reverse=True)
+    return jsonify({"ok": True, "kind": kind, "entries": out,
+                    "n": len(out)})
 
 
 @app.route("/api/curation/create", methods=["POST"])
@@ -15749,8 +16376,9 @@ def api_curation_from_bank():
             key = round(float(e.get("start")), 4)
         except (TypeError, ValueError):
             continue
-        facts[key] = {k: e[k] for k in ("origin", "pair_t", "channel",
-                                         "amplitude") if e.get(k) is not None}
+        facts[key] = {k: e[k] for k in ("origin", "pair_t", "stamp",
+                                         "channel", "amplitude")
+                      if e.get(k) is not None}
     if facts:
         for item in events:
             try:
@@ -15838,6 +16466,9 @@ def api_curation_for_recording(gid):
                 "n": v.get("n"), "note": v.get("note"),
                 "by_label": v.get("by_label") or {},
                 "imported": bool(v.get("imported")),
+                # The version an alignment (Braces, Eye, Lock) wrote, which
+                # the version tree says on its row.
+                "aligned": bool(v.get("aligned")),
                 # Whether a set can actually be built from it.
                 "usable": bool(v.get("snap")) or v.get("v") == newest,
             })
@@ -15879,7 +16510,7 @@ def _cf_entry_row(rec):
     # detector); the one somebody has been working in is the one to offer.
     last = max([str(v.get("at") or "") for v in vers]
                + [str((rec.get("added") or {}).get("at") or "")])
-    return {
+    row = {
         "id": rec["id"], "name": rec.get("name"), "n": rec.get("n"),
         "type": rec.get("type"),
         "curated": bool(rec.get("specified")),
@@ -15888,6 +16519,59 @@ def _cf_entry_row(rec):
         "params": (rec.get("source") or {}).get("parameters") or {},
         "at": last or None,
     }
+    row.update(_cf_aligned(rec))
+    return row
+
+
+def _cf_aligned(rec, raw=False):
+    """Whether an entry's stamps have been lined up -- Braces for Incisor's,
+    Eye for Doppler's, Lock for a pool -- said outright, so Junction can
+    label each input "aligned" or "not aligned" (2026-10-19).
+
+      aligned        the entry's events as they stand are (`rec.aligned`,
+                     which every re-bank carries forward)
+      aligned_v      the newest version an alignment wrote
+      aligned_names  every version whose stamps are aligned: one an
+                     alignment wrote, or one on a line that came after one
+                     -- a curation pass on an aligned version keeps its
+                     times. A branch off an earlier, unaligned version is
+                     not on the list.
+
+    Named from the repaired history, as /api/curation/for-recording names
+    the versions the page picks from; `raw` names them as `_cf_vname` does,
+    for comparing against a version this module resolved itself.
+    """
+    src = rec if raw else BANK.repaired(rec)
+    rows = versionsmod.label_rows(list(src.get("versions") or []))
+    own = [name for v, name in rows if v.get("aligned")]
+    owned = {versionsmod.key(n) for n in own}
+
+    def on_aligned(name):
+        k = versionsmod.key(name)
+        # Its ancestors: every earlier version of each line it descends
+        # through, and itself.
+        for i in range(len(k)):
+            for j in range(k[i] + 1):
+                if k[:i] + (j,) in owned:
+                    return True
+        return False
+    al = rec.get("aligned") or {}
+    return {
+        "aligned": bool(al),
+        "aligned_by": al.get("by") if isinstance(al, dict) else None,
+        "aligned_at": al.get("at") if isinstance(al, dict) else None,
+        "aligned_v": versionsmod.newest(own) if own else None,
+        "aligned_names": [name for _v, name in rows if on_aligned(name)],
+    }
+
+
+def _cf_ver_aligned(ent, ver):
+    """Whether the version going in has aligned stamps; `ver` None is the
+    entry as it stands."""
+    al = _cf_aligned(ent, raw=True)
+    if ver is None:
+        return al["aligned"]
+    return _cf_vname(ent, ver) in al["aligned_names"]
 
 
 def _cf_is_test(rec):
@@ -15995,11 +16679,12 @@ def _cf_inputs(body):
                          "their times would not line up.")
     win = confluencemod.window_s(body.get("window_ms",
                                           confluencemod.DEFAULT_WINDOW_MS))
+    keep = confluencemod.keep_of(body.get("keep"))
     ds_ev, ds_ver = _cf_version_events(ds, body.get("ds_version"))
     ied_ev, ied_ver = _cf_version_events(ied, body.get("ied_version"))
     ds_use = confluencemod.usable(ds_ev, curation.vocabulary("ds"))
     ied_use = confluencemod.usable(ied_ev, curation.vocabulary("ied"))
-    return {"gid": gid, "ds": ds, "ied": ied, "win": win,
+    return {"gid": gid, "ds": ds, "ied": ied, "win": win, "keep": keep,
             "ds_ver": ds_ver, "ied_ver": ied_ver,
             "ds_events": ds_use, "ied_events": ied_use,
             "ds_left_out": len(ds_ev) - len(ds_use),
@@ -16017,14 +16702,22 @@ def _cf_vname(ent, ver):
 
 
 def _cf_params(inp):
+    kept = confluencemod.WORD[inp["keep"]]
+    other = confluencemod.WORD["doppler" if inp["keep"] == "incisor"
+                               else "incisor"]
     return {
         "ds_entry": inp["ds"]["id"], "ds_name": inp["ds"].get("name"),
         "ds_version": _cf_vname(inp["ds"], inp["ds_ver"]),
         "ied_entry": inp["ied"]["id"], "ied_name": inp["ied"].get("name"),
         "ied_version": _cf_vname(inp["ied"], inp["ied_ver"]),
         "window_ms": round(inp["win"] * 1e3, 3),
+        "keep": inp["keep"],
+        # Whether each input's stamps had been lined up (Braces, Eye), so
+        # the pool says what it was made from long after the fact.
+        "ds_aligned": _cf_ver_aligned(inp["ds"], inp["ds_ver"]),
+        "ied_aligned": _cf_ver_aligned(inp["ied"], inp["ied_ver"]),
         "rule": "time only, any channel; one to one, nearest first; "
-                "Incisor's time kept, Doppler's as pair_t",
+                "%s's time kept, %s's as pair_t" % (kept, other),
     }
 
 
@@ -16036,7 +16729,8 @@ def api_confluence_plan():
     try:
         inp = _cf_inputs(body)
         events, stats = confluencemod.pool(inp["ds_events"],
-                                           inp["ied_events"], inp["win"])
+                                           inp["ied_events"], inp["win"],
+                                           inp["keep"])
     except (ValueError, eventbank.BankError) as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     stats.update(ds_left_out=inp["ds_left_out"],
@@ -16061,6 +16755,9 @@ def _cf_existing(gid, params):
         if rec.get("gid") != gid or (rec.get("type") or "") != "pooled":
             continue
         got = (rec.get("source") or {}).get("parameters") or {}
+        # A pool from before the choice existed kept Incisor's time.
+        if (got.get("keep") or "incisor") != (params.get("keep") or "incisor"):
+            continue
         if all(got.get(k) == v for k, v in want.items()):
             return rec
     return None
@@ -16076,10 +16773,13 @@ def _cf_merge(body, who=None):
             return done, (done.get("source") or {}).get("parameters", {}) \
                 .get("stats") or {}, True
     events, stats = confluencemod.pool(inp["ds_events"], inp["ied_events"],
-                                       inp["win"])
+                                       inp["win"], inp["keep"])
     if not events:
         raise ValueError("Nothing to pool: both entries are empty once what "
                          "was called Garbage is left out.")
+    # Said in the name and the note only when it is not the default, so a
+    # pool filed under Doppler's stamps cannot be mistaken for one that is not.
+    kept_said = (", Doppler's time" if inp["keep"] == "doppler" else "")
     # Where the recording is filed, from the dentate-spike entry: it was
     # banked against this gid, and asking the registry costs a re-stat of
     # every shard per call -- a batch of forty would wait half a minute.
@@ -16102,22 +16802,23 @@ def _cf_merge(body, who=None):
         "duration_s": src.get("duration_s") or inp["ied"].get("duration_s"),
         "gid": inp["gid"],
         "name": (body.get("name") or "").strip()
-                or "%s — pooled (Incisor + Doppler, %g ms)"
-                   % (label, round(inp["win"] * 1e3, 3)),
+                or "%s — pooled (Incisor + Doppler, %g ms%s)"
+                   % (label, round(inp["win"] * 1e3, 3), kept_said),
         "type": "pooled", "type_name": "Pooled spike",
         "events": [{k: e[k] for k in ("start", "channel", "amplitude",
-                                      "origin", "pair_t") if k in e}
+                                      "origin", "pair_t", "stamp") if k in e}
                    for e in events],
-        "pipeline": "The Confluence: Junction (Incisor + Doppler, %g ms)"
-                    % round(inp["win"] * 1e3, 3),
+        "pipeline": "The Confluence: Junction (Incisor + Doppler, %g ms%s)"
+                    % (round(inp["win"] * 1e3, 3), kept_said),
         "parameters": params,
         "version_tag": "junction",
         "added_by": (who or body.get("added_by")
                      or (STORE.provenance() or {}).get("user")),
         "version_note": "Junction's pool: %d from Incisor, %d from Doppler, "
-                        "%d merged within %g ms." % (
+                        "%d merged within %g ms%s." % (
                             stats["incisor_only"], stats["doppler_only"],
-                            stats["merged"], round(inp["win"] * 1e3, 3)),
+                            stats["merged"], round(inp["win"] * 1e3, 3),
+                            ", each at Doppler's time" if kept_said else ""),
     })
     return entry, stats_kept, False
 
@@ -16152,6 +16853,7 @@ def api_confluence_batch():
     rows = []
     for it in (body.get("items") or []):
         one = dict(it, window_ms=body.get("window_ms", it.get("window_ms")),
+                   keep=body.get("keep", it.get("keep")),
                    force=body.get("force"))
         try:
             entry, stats, cached = _cf_merge(one)
@@ -16180,7 +16882,8 @@ def api_curation_merge(gid, kind):
     body = request.get_json(force=True) or {}
     try:
         ev, prog, gone = CURATE.merge_events(gid, kind, body.get("keep"),
-                                             body.get("drop"))
+                                             body.get("drop"),
+                                             stamp=body.get("stamp"))
     except curation.CurationError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     except Exception as exc:                             # noqa: BLE001
@@ -26982,7 +27685,9 @@ def api_vacc_setup():
     """
     body = request.get_json(force=True) or {}
     netid = (body.get("netid") or "").strip()
-    if netid and not re.match(r"^[a-z0-9._-]{2,32}$", netid, re.I):
+    # `_re`: this module imports the regex module under that name only, so
+    # `re` here was a NameError the moment a NetID was typed (2026-10-19).
+    if netid and not _re.match(r"^[a-z0-9._-]{2,32}$", netid, _re.I):
         return jsonify({"ok": False,
                         "error": "That does not look like a NetID."}), 400
     key_path = (body.get("key_path") or "").strip()

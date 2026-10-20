@@ -1,0 +1,190 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>compact: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:470px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+/* A small laptop's screen: 1366x768 is the size this was measured at. */
+iframe{position:fixed;left:470px;top:0;width:1366px;height:768px;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Compact (the switch in the theme picker): the same interface with less air
+   in it, for a small screen. Measured on a 1366x768 frame, the headers
+   first, because they are on screen whatever you are doing.
+
+   The switch is pressed the way a person presses it. BARRY.prefs.set is
+   stood in for during the run, so no preference is written, and the
+   density, the theme and localStorage are put back afterwards. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(80);
+  }
+  return null;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const ev = (c) => W().eval(c);
+  let B = null, realSet = null, wasDensity = null, wasLocal = null, wasTheme = null;
+  try {
+    await until(() => W().BARRY && typeof W().applyDensity === 'function'
+                      && D().querySelector('#rail .nav-item'), 30000);
+    B = ev('BARRY');
+    wasDensity = !!B.state.compact;
+    wasTheme = B.state.theme;
+    wasLocal = W().localStorage.getItem('barry.density');
+    const written = [];
+    realSet = B.prefs.set;
+    B.prefs.set = (k, v) => { written.push([k, v]); };
+    W().applyDensity(false, false);
+    W().applyTheme('dark', false);
+
+    const $ = (s) => D().querySelector(s);
+    const h = (s) => { const n = $('.view.active ' + s);
+                       return n ? n.getBoundingClientRect().height : null; };
+    const measure = async () => {
+      const out = {};
+      ev("setView('toolkit')"); B.views.toolkit.pick('curate');
+      await until(() => $('.view.active .step-head'), 8000);
+      await sleep(250);
+      out.toolHead = h('.view-head');
+      out.stepHead = h('.step-head');
+      ev("setView('xplore')");
+      await until(() => $('#paneGrid .pane-ctl'), 15000);
+      await sleep(250);
+      out.xfHead = h('.view-head');
+      out.paneHead = h('.pane-head');
+      out.strip = h('.pane-ctl');
+      ev("setView('sessions')");
+      await sleep(250);
+      out.sessHead = h('.view-head');
+      out.rail = $('#rail').getBoundingClientRect().width;
+      out.log = $('#logDock').getBoundingClientRect().height;
+      out.foot = $('#rail .rail-foot').getBoundingClientRect().height;
+      return out;
+    };
+    await B.views.xplore.open('demo:long-session');
+    const before = await measure();
+    say('comfortable: ' + JSON.stringify(before), 'note');
+
+    say('=== the switch ===');
+    $('#themeToggle').click();
+    const sw = await until(() => $('#themePop .density-opt'), 3000);
+    check('the theme picker has a Compact switch', !!sw && /Compact/.test(sw.textContent));
+    check('off to start with', sw && sw.getAttribute('aria-checked') === 'false');
+    sw.click();
+    await sleep(200);
+    check('pressing it turns compact on', D().documentElement.dataset.density === 'compact');
+    check('and says so on the switch', sw.getAttribute('aria-checked') === 'true'
+          && sw.classList.contains('on'));
+    check('the picker stays open to judge it from', !!$('#themePop'));
+    check('remembered here', W().localStorage.getItem('barry.density') === 'compact');
+    check('and for this machine', written.some(([k, v]) => k === 'density' && v === 'compact'),
+          JSON.stringify(written));
+    ev('closeThemePicker()');
+
+    const after = await measure();
+    say('compact:     ' + JSON.stringify(after), 'note');
+
+    say('');
+    say('=== the headers ===');
+    const less = (k, by) => check(k + ' ' + Math.round(before[k]) + ' -> '
+                                  + Math.round(after[k]) + 'px',
+                                  after[k] <= before[k] - by,
+                                  'wanted at least ' + by + 'px less');
+    less('toolHead', 10);
+    less('stepHead', 10);
+    less('xfHead', 10);
+    less('paneHead', 4);
+    less('strip', 8);
+    less('sessHead', 10);
+    less('log', 8);
+    less('rail', 20);
+    less('foot', 50);
+
+    say('');
+    say('=== nothing lost to it ===');
+    ev("setView('toolkit')"); B.views.toolkit.pick('curate');
+    await sleep(300);
+    const sh = $('.view.active .step-head');
+    const hint = sh && sh.querySelector('.hint');
+    const strong = sh && sh.querySelector('strong');
+    check('a tool’s description is off the page', !hint || getComputedStyle(hint).display === 'none');
+    check('and is its title’s tooltip instead', !hint || (strong && strong.title === hint.textContent),
+          strong && strong.title);
+    ev("setView('xplore')");
+    await sleep(300);
+    const strip = $('#paneGrid .pane-ctl');
+    check('the control strip shows every row it has',
+          strip && strip.scrollHeight <= strip.clientHeight + 1,
+          strip && strip.scrollHeight + ' / ' + strip.clientHeight);
+    const chips = Array.from(D().querySelectorAll('#rail .rail-foot .chip-btn'))
+      .filter((c) => c.offsetParent);
+    const vh = W().innerHeight;
+    check('every footer chip is on screen', chips.every((c) => c.getBoundingClientRect().bottom <= vh),
+          chips.map((c) => Math.round(c.getBoundingClientRect().bottom)).join(','));
+    check('and none is wider than it is drawn',
+          chips.every((c) => c.scrollWidth <= c.clientWidth + 1),
+          chips.filter((c) => c.scrollWidth > c.clientWidth + 1).map((c) => c.id).join(','));
+    check('two to a row', chips.length >= 4 && Math.abs(
+            chips[1].getBoundingClientRect().top - chips[2].getBoundingClientRect().top) < 2,
+          chips.map((c) => Math.round(c.getBoundingClientRect().top)).join(','));
+    const navs = Array.from(D().querySelectorAll('#rail .nav-item')).filter((n) => n.offsetParent);
+    const last = navs[navs.length - 1];
+    const scroller = $('#rail .rail-scroll');
+    check('the whole nav fits without scrolling at 1366x768',
+          scroller.scrollHeight <= scroller.clientHeight + 1,
+          scroller.scrollHeight + ' / ' + scroller.clientHeight + ', last ' + (last && last.textContent.trim()));
+    // The icon rail is left exactly as it is.
+    $('#app').classList.add('rail-icons');
+    await sleep(80);
+    const ic = D().querySelector('#tourBtn svg');
+    check('the icon rail keeps its icons', ic && getComputedStyle(ic).display !== 'none');
+    $('#app').classList.remove('rail-icons');
+
+    say('');
+    say('=== and back ===');
+    $('#themeToggle').click();
+    const sw2 = await until(() => $('#themePop .density-opt'), 3000);
+    check('the switch reads on when the picker reopens', sw2 && sw2.getAttribute('aria-checked') === 'true');
+    sw2.click();
+    await sleep(200);
+    check('pressing it again turns compact off', !D().documentElement.dataset.density);
+    ev('closeThemePicker()');
+    const again = await measure();
+    check('and every measurement comes back',
+          Object.keys(before).every((k) => Math.abs(again[k] - before[k]) <= 1),
+          JSON.stringify(again));
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  } finally {
+    try {
+      if (B && realSet) B.prefs.set = realSet;
+      W().applyDensity(wasDensity, false);
+      if (wasLocal == null) W().localStorage.removeItem('barry.density');
+      else W().localStorage.setItem('barry.density', wasLocal);
+      if (wasTheme) W().applyTheme(wasTheme, false);
+      W().closeThemePicker && W().closeThemePicker();
+    } catch (e) { /* the frame is going anyway */ }
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'compact: ' + fails + ' FAILED' : 'compact: passed';
+  frame.src = 'about:blank';
+})();
+</script>
+</body></html>

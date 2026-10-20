@@ -2024,6 +2024,27 @@ BARRY.doppler = (function () {
   /* ------------------------------------------------------------- banking */
 
   function bankCard() {
+    /* Banked already: by the server the moment the run landed (asked for
+       2026-10-19), or from this card before. Said, with the way on to
+       Spotter, rather than offering to file the same run a second time. */
+    if (res.banked && res.banked.id) {
+      return el('div', { class: 'card' }, [
+        el('div', { class: 'section-label', text: '4. Banked' }),
+        el('p', { class: 'hint', style: 'max-width:78ch',
+          text: (res.banked.auto ? 'Banked as it landed, as ' : 'Banked as ')
+              + '“' + (res.banked.name || 'its own entry') + '” — '
+              + (res.banked.n || res.n || 0).toLocaleString() + ' candidates, '
+              + 'nothing decided yet. The next step is confirming them in '
+              + 'Spotter.' }),
+        el('div', { class: 'tk-actions dop-actions' }, [
+          el('span', { class: 'spacer' }),
+          el('button', { class: 'btn', text: 'Confirm them in Spotter',
+            onclick: () => {
+              if (BARRY.spotter) BARRY.spotter.enter(q.gid, res.banked.id);
+            } }),
+        ]),
+      ]);
+    }
     const box = el('div', { class: 'card' }, [
       el('div', { class: 'section-label', text: '4. Bank them' }),
       el('p', { class: 'hint', style: 'max-width:78ch',
@@ -2099,7 +2120,9 @@ BARRY.doppler = (function () {
             pipeline: 'Doppler (line length)',
             detector: 'LLspikedetector',
             time_basis: 'recording',
-            parameters: p,
+            // The run's key, so it is found again as banked (and the
+            // server does not bank it a second time).
+            parameters: Object.assign({}, p, res.key ? { run_key: res.key } : {}),
             added_by: who,
             version_note: 'The detector’s own list, nothing decided about '
                         + 'it yet.',
@@ -2110,6 +2133,10 @@ BARRY.doppler = (function () {
       },
     });
     if (!ok || !added) return;
+    {
+      const ent = added.entry || added;
+      res.banked = { id: ent.id, name: ent.name, n: ent.n, auto: false };
+    }
     toast('Banked. Confirm them in Spotter.', 'ok', 7000);
     loadReviews(true);
     paint();
@@ -2125,6 +2152,9 @@ BARRY.doppler = (function () {
   }
 
   function bankNote() {
+    // The server's, when it sent one: the same note the run is banked with
+    // as it lands (doppler.bank_note), so the two cannot drift.
+    if (res.bank_note) return res.bank_note;
     const p = res.params || {};
     const storm = p.method === 'storm';
     return 'Detected by Doppler on the VACC, ' + p.detector + '. '
@@ -2400,10 +2430,16 @@ BARRY.doppler = (function () {
       el('span', { class: 'dop-run-tags' }, [
         isNew ? BARRY.ui.chip('new', { kind: 'ok' }) : null,
         open ? BARRY.ui.chip('open') : null,
-        (r.banked || []).length
-          ? BARRY.ui.chip('banked', { kind: 'ok',
-              title: r.banked.map((b) => b.name).filter(Boolean).join(', ') })
-          : BARRY.ui.chip('not banked'),
+        /* This run's own entry when there is one (banked as it landed, or
+           from the dialog); otherwise whether anything is banked on the
+           recording, which is all an older run can say. */
+        r.banked_run
+          ? BARRY.ui.chip('banked', { kind: 'ok', title: r.banked_run.name })
+          : (r.banked || []).length
+            ? BARRY.ui.chip('recording banked', {
+                title: 'Another run of this recording is banked: '
+                     + r.banked.map((b) => b.name).filter(Boolean).join(', ') })
+            : BARRY.ui.chip('not banked'),
         warn ? BARRY.ui.chip(warn + ' to look at', { kind: 'warn',
                   title: warns.join('\n') }) : null,
       ].filter(Boolean)),
@@ -2901,6 +2937,10 @@ BARRY.doppler = (function () {
     _rasterAt: rasterAt,
     _rasterRows: () => (res ? rasterRows() : null),
     _bankNote: bankNote,
+    // A parameter changed the way a field does it: the estimate is asked
+    // again and the panel repainted (storm.html's channel-range check used to
+    // rely on a slower load landing after it had set the range).
+    _changed: () => changedParams(),
     _flights: () => Array.from(flights.values()).map((f) => ({
       id: f.id, kind: f.kind, status: (f.snap || {}).status })),
     _track: track,

@@ -571,12 +571,63 @@
   --event: #ff9ec7;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
 }
+/* Halloween: a night sky, pumpkin, slime and bone. The palette is an
+   ordinary theme -- the same thirty tokens, so every view and every chart
+   is simply recoloured. The spiders, the bats and the rest are a separate
+   layer at the end of this file (js/spooky.js), drawn only while this
+   theme is on, and never inside a view. */
+:root[data-theme="halloween"] {
+  --bg:        #0e0a12;
+  --bg-2:      #16101c;
+  --bg-3:      #1f1727;
+  --bg-hover:  #2b2036;
+  --line:      #3d2c47;
+  --line-soft: #271c31;
+
+  --text:      #f3ead8;
+  --text-2:    #c9b89d;
+  --text-3:    #8f7e6b;
+
+  --accent:      #ff7a1a;
+  --accent-soft: rgba(255, 122, 26, 0.16);
+  --accent-line: rgba(255, 122, 26, 0.46);
+  --on-accent:   #1c0b01;
+
+  --ok:      #9be564;
+  --ok-soft: rgba(155, 229, 100, 0.15);
+  --warn:      #ffd23f;
+  --warn-soft: rgba(255, 210, 63, 0.15);
+  --err:      #ff3b5c;
+  --on-err:   #2b0510;
+  --err-soft: rgba(255, 59, 92, 0.17);
+
+  --accent-2:      #b48cff;
+  --accent-2-soft: rgba(180, 140, 255, 0.16);
+
+  /* Categorical chart colors -- see --c1 on the default theme. */
+  --c1: #ff7a1a;
+  --c2: #9be564;
+  --c3: #b48cff;
+  --c4: #ffd23f;
+  --c5: #8d8296;
+
+  --trace: #9be564;
+  --event: #ff7a1a;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.65);
+
+  /* The spooky layer's own three. Silk and the spiders' legs are bone, so
+     they show on the night; their bodies are darker than the page, so
+     they read as something sitting ON it. */
+  --spk-silk: rgba(243, 234, 216, 0.38);
+  --spk-body: #2a1a24;
+  --spk-eye:  #ff7a1a;
+}
 /* Native controls and scrollbars follow whichever family the theme is in. */
 :root[data-theme="parchment"], :root[data-theme="horizon"],
 :root[data-theme="jirai-shiro"] { color-scheme: light; }
 :root[data-theme="slate"], :root[data-theme="phosphor"],
 :root[data-theme="horizon-night"], :root[data-theme="jirai"],
-:root[data-theme="jirai-yami"] { color-scheme: dark; }
+:root[data-theme="jirai-yami"], :root[data-theme="halloween"] { color-scheme: dark; }
 /* ==========================================================================
    VACC Mode -- a layer, not a theme
 
@@ -617,7 +668,8 @@
 :root[data-vacc="on"][data-theme="phosphor"],
 :root[data-vacc="on"][data-theme="horizon-night"],
 :root[data-vacc="on"][data-theme="jirai"],
-:root[data-vacc="on"][data-theme="jirai-yami"] {
+:root[data-vacc="on"][data-theme="jirai-yami"],
+:root[data-vacc="on"][data-theme="halloween"] {
   --fire-glow: color-mix(in srgb, var(--accent) 38%, transparent);
 }
 /* Light family: no headroom, so weight instead of light.
@@ -11526,6 +11578,8 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   width: 11px; height: 3px; border-radius: 1px; display: inline-block;
   flex: none;
 }
+/* The cap a stop wears on the traces (2026-10-19). */
+.br-stop-sw b { font-size: var(--fs-105); line-height: 1; flex: none; }
 .br-nudge { display: inline-flex; gap: 3px; }
 .br-nudge .mini {
   min-width: 30px; font-variant-numeric: tabular-nums;
@@ -12854,6 +12908,9 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
 .rc-none .empty-state { padding: var(--sp-16) 0; }
 .rc-mode { display: flex; flex-wrap: wrap; align-items: center;
            gap: var(--sp-10); }
+/* The run bar's old 22 px top margin (`.run-bar`, written for a bar under
+   a form) left the card's words floating over an empty band (2026-10-19). */
+.rc-mode > .run-bar { margin-top: 0; flex: none; }
 .rc-mode .hint { flex: 1 1 260px; min-width: 0; margin: 0; }
 .rc-bulk-note { color: var(--accent); }
 
@@ -12966,6 +13023,11 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
 .rc-pane-head { display: flex; flex-wrap: wrap; align-items: baseline;
                 gap: var(--sp-8); }
 .rc-pane-head .hint { margin: 0; min-width: 0; }
+/* How to use the picture, on a line of its own under its title, chip and
+   buttons (2026-10-19): between them it pushed Lasso onto a third line
+   by itself, and it was set larger than the chip it followed. */
+.rc-pane-head > .hint { order: 1; flex: 1 0 100%; font-size: var(--fs-115);
+                        color: var(--text-3); }
 .rc-canvas {
   width: 100%; display: block; background: var(--bg);
   border: 1px solid var(--line); border-radius: var(--r-4);
@@ -12979,9 +13041,18 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
             gap: var(--sp-8); }
 .rc-flat { cursor: pointer; touch-action: none; }
 
+/* The event's four pictures: four across, two by two, or one above the
+   other -- never three and then one alone on a row of its own, which is
+   what `auto-fit` at 240 px gave a 950 px panel (2026-10-19). */
 .rc-ev-grid {
   display: grid; gap: var(--sp-10);
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@container rc (min-width: 1000px) {
+  .rc-ev-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@container rc (max-width: 520px) {
+  .rc-ev-grid { grid-template-columns: minmax(0, 1fr); }
 }
 .rc-ev-cell { display: flex; flex-direction: column; gap: var(--sp-4);
               min-width: 0; }
@@ -13018,6 +13089,12 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
 .rc-lg-m.rc-lg-ds { background: var(--ok); }
 .rc-lg-m.rc-lg-ied { background: var(--err); }
 .rc-lg-m.rc-lg-amb { background: var(--text-3); }
+/* Outside a border, in its own call's colour, faded, with a dotted edge
+   (2026-10-19): the dots on the plots are drawn the same way. */
+.rc-lg-m.rc-lg-amb-ds { background: color-mix(in srgb, var(--ok) 55%, var(--text-3)); }
+.rc-lg-m.rc-lg-amb-ied { background: color-mix(in srgb, var(--err) 55%, var(--text-3)); }
+.rc-lg-m.rc-lg-amb-ds, .rc-lg-m.rc-lg-amb-ied { outline: 1px dotted var(--text-3);
+  outline-offset: 0; }
 .rc-lg-m.rc-lg-square { border-radius: 0; background: var(--text-2);
                         border: 1px solid var(--text); }
 .rc-lg-m.rc-lg-wide { outline: 1px dashed var(--text); outline-offset: 1px; }
@@ -13045,11 +13122,131 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
   background: var(--bg); color: var(--text);
 }
 .rc-note:focus { outline: none; border-color: var(--accent-line); }
-.rc-bulk-card { display: flex; flex-direction: column; gap: var(--sp-8); }
-/* Sized to what is in it, not to the panel. At full width on a 2560 px
-   screen "set" and "events" sat a screen apart -- measured: a 2014 px table
-   for four short columns -- and reading across a row was a hunt. */
-.rc-bulk { width: auto; max-width: 100%; }
+/* ---- Read a batch (rebuilt 2026-10-19 in the house's picker shape) ------
+   Doppler's and Braces' Many: a sentence, a search, the filter chips with
+   their marks, the tools that tick what is shown and the count, the list,
+   the two folds ("Already read", "Left out"), and the primary last. While
+   it reads: a line, Braces' bar, and a row per set with its dot. Every
+   word wraps; nothing is cut. */
+.rc-bulk-card { display: flex; flex-direction: column; gap: var(--sp-8);
+                container-type: inline-size; container-name: rcbulk; }
+.rc-bulk-body { display: flex; flex-direction: column; gap: var(--sp-8);
+                min-width: 0; }
+.rc-bulk-body > * { flex: none; min-width: 0; }
+.rc-bulk-say { display: flex; flex-direction: column; gap: var(--sp-4); }
+/* `.card p` sets a 12 px foot and its own colour; every paragraph here
+   says its own, through the card. */
+.rc-bulk-card .rc-bulk-say p { margin: 0; max-width: 90ch; }
+.rc-bulk-card p.rc-bulk-last { font-size: var(--fs-115); color: var(--text-2);
+                               overflow-wrap: anywhere; }
+.rc-bulk-card p.rc-bulk-last.bad { color: var(--err); }
+.rc-bulk-find { width: 100%; }
+/* A category a row, its words in one column so every row's chips start
+   at the same edge. */
+.rc-bulk-chips { display: grid; grid-template-columns: max-content minmax(0, 1fr);
+                 gap: var(--sp-6) var(--sp-12); align-items: baseline; }
+.rc-bulk-chips:empty { display: none; }
+.rc-bulk-cat { display: contents; }
+.rc-bulk-k { font-size: var(--fs-95); text-transform: uppercase;
+             letter-spacing: .06em; font-weight: 600; color: var(--text-3);
+             white-space: nowrap; }
+.rc-bulk-vals { display: flex; flex-wrap: wrap; gap: var(--sp-4) var(--sp-6);
+                min-width: 0; }
+.mini.rc-bulk-chip {
+  display: inline-flex; align-items: center; gap: var(--sp-4);
+  padding: 2px 9px 2px 7px; border-radius: var(--r-pill);
+  font-size: var(--fs-115); line-height: 1.35; text-align: left;
+  white-space: normal; overflow-wrap: anywhere;
+}
+.mini.rc-bulk-chip.on { background: var(--accent-soft);
+                        border-color: var(--accent-line); color: var(--accent); }
+.rc-bulk-chip-n { font-variant-numeric: tabular-nums; font-size: var(--fs-105);
+                  color: var(--text-3); }
+.rc-bulk-chip.on .rc-bulk-chip-n { color: inherit; }
+/* The marks: stroked on currentColor, the ToolKit's `.tk-ico`, smaller. */
+.rc-bulk-ico { width: 13px; height: 13px; flex: none; fill: none;
+               stroke: currentColor; stroke-width: 1.5;
+               stroke-linecap: round; stroke-linejoin: round; }
+.rc-bulk-chip .rc-bulk-ico { color: var(--text-3); }
+.rc-bulk-chip:hover .rc-bulk-ico, .rc-bulk-chip.on .rc-bulk-ico { color: inherit; }
+.rc-bulk-tools { margin: 0; gap: var(--sp-6) var(--sp-8); }
+.rc-bulk-tools .linkish { font-size: var(--fs-115); }
+.rc-bulk-count { margin: 0 0 0 var(--sp-4); font-size: var(--fs-115);
+                 color: var(--text-2); font-variant-numeric: tabular-nums; }
+/* The list keeps its scroll (`data-keep-scroll`); a row is the tick and
+   the set as one label, and an already-read set's Open and Bank… beside. */
+.rc-bulk-list { margin: 0; max-height: min(52vh, 520px); }
+.inc-pick.rc-bulk-row { grid-template-columns: minmax(0, 1fr) auto;
+                        gap: var(--sp-8); padding: 0 10px 0 0; }
+.rc-bulk-tick { display: flex; align-items: flex-start; gap: var(--sp-10);
+                min-width: 0; padding: 6px 0 6px 10px; cursor: pointer; }
+.rc-bulk-tick input { flex: none; margin: 2px 0 0; }
+.rc-bulk-row .ip-name { font-weight: 600; }
+.rc-bulk-row-acts { display: inline-flex; flex-wrap: wrap; gap: var(--sp-4);
+                    justify-content: flex-end; }
+.rc-bulk-empty { height: auto; padding: var(--sp-16) var(--sp-12); }
+/* The two folds, one shape: a caret, the words, the count, and a line. */
+.inc-blocked.rc-bulk-fold { margin: 0; color: var(--text-2);
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm); }
+.rc-bulk-fold > summary {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-4) var(--sp-8); padding: 6px 10px; list-style: none;
+  border-radius: var(--radius-sm);
+}
+.rc-bulk-fold > summary::-webkit-details-marker { display: none; }
+.rc-bulk-fold > summary::before {
+  content: ''; flex: none; width: 0; height: 0;
+  border-left: 5px solid var(--text-3); border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform var(--ease-dur) var(--ease-out);
+}
+.rc-bulk-fold[open] > summary::before { transform: rotate(90deg); }
+.rc-bulk-fold > summary:hover { background: var(--bg-3); }
+.rc-bulk-fold-h { font-weight: 600; color: var(--text); }
+.rc-bulk-fold-n, .rc-bulk-why-n {
+  font-variant-numeric: tabular-nums; font-size: var(--fs-105);
+  padding: 0 7px; border-radius: var(--r-pill);
+  background: var(--bg-3); color: var(--text-2);
+}
+.rc-bulk-fold-tk { font-size: var(--fs-105); color: var(--accent); }
+.rc-bulk-fold-tk:empty { display: none; }
+.rc-bulk-fold-say { font-size: var(--fs-105); color: var(--text-3); }
+.rc-bulk-done-list { margin: 0 10px 10px; max-height: min(40vh, 400px); }
+.rc-bulk-whys { display: flex; flex-direction: column; gap: var(--sp-8);
+                padding: var(--sp-4) 12px 10px; }
+.rc-bulk-why-h { display: flex; flex-wrap: wrap; align-items: baseline;
+                 gap: var(--sp-8); color: var(--text-2); }
+.rc-bulk-why-h strong { font-weight: 600; overflow-wrap: anywhere; }
+.rc-bulk-card p.rc-bulk-why-sets { margin: 2px 0 0; font-size: var(--fs-105);
+                                   color: var(--text-3); overflow-wrap: anywhere; }
+.rc-bulk-card p.rc-bulk-empty { margin: 0 12px 10px; font-size: var(--fs-115); }
+/* What it costs, beside the one primary. */
+.rc-bulk-go-row { gap: var(--sp-8) var(--sp-12); }
+.rc-bulk-card p.rc-bulk-cost { flex: 1 1 36ch; min-width: 0; margin: 0;
+                               font-size: var(--fs-115); }
+/* While it reads. */
+.rc-bulk-line { display: flex; flex-wrap: wrap; align-items: baseline;
+                gap: var(--sp-4) var(--sp-10); }
+.rc-bulk-line .hint { margin: 0; color: var(--text-2); }
+.br-fbar.rc-bulk-bar { margin: var(--sp-2) 0; }
+.dop-batch.rc-bulk-run { margin: 0; max-height: min(56vh, 560px);
+                         overflow: auto; }
+/* Dot, set, what it is doing, Open and Bank…: one grid, so every row's
+   state starts at the same edge whether it has buttons or not. */
+.dop-batch-row.rc-bulk-member {
+  display: grid; align-items: center; gap: var(--sp-4) var(--sp-10);
+  grid-template-columns: 8px minmax(10ch, 16rem) minmax(0, 1fr) auto;
+}
+.rc-bulk-member .dop-batch-name, .rc-bulk-member .dop-batch-state { min-width: 0; }
+.rc-bulk-member.stopped .dop-batch-dot { background: var(--warn); opacity: 1; }
+/* Narrow (the card's own width, not the window's): what it is doing goes
+   under the set's name, and the chips' words over their chips. */
+@container rcbulk (max-width: 560px) {
+  .dop-batch-row.rc-bulk-member { grid-template-columns: 8px minmax(0, 1fr) auto; }
+  .rc-bulk-member .dop-batch-state { grid-column: 2 / -1; grid-row: 2; }
+  .rc-bulk-chips { grid-template-columns: minmax(0, 1fr); row-gap: var(--sp-2); }
+  .rc-bulk-vals { margin-bottom: var(--sp-4); }
+}
 /* The fit filter's four choices, and what the chosen preset is in words. */
 .rc-filt { flex: none; }
 /* k, the cluster chips, the margins card and Pooled's own settings. */
@@ -13115,13 +13312,6 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
                gap: var(--sp-8); margin-bottom: var(--sp-6); }
 .rc-filt-is { white-space: nowrap; }
 .rc-mains { display: inline-flex; align-items: center; gap: var(--sp-4); }
-.rc-bulk td, .rc-bulk th { padding-right: var(--sp-16); }
-.rc-bulk td, .rc-bulk th { font-size: var(--fs-115);
-                           padding: var(--sp-2) var(--sp-6); }
-.rc-bulk tr.bad td { color: var(--err); }
-.rc-bulk tr.ready td:first-child { font-weight: 600; }
-.rc-bulk td.dim { color: var(--text-3); }
-.rc-done-list { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
 
 /* ---- Root Canal, Pooled (ROOTCANAL-POOL-SPEC.md) --------------------------
    The same space and flat views as Single, drawn by the same code; these
@@ -13225,6 +13415,80 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
 .rc-gmm-tab.rc-gmm-agree th { white-space: normal; max-width: 34ch; }
 .rc-gmm-tab.rc-gmm-x th:first-child { white-space: normal; }
 .rc-ev-cell.rc-hist-split { align-self: start; }
+
+/* ---- Pooled, in three screens (2026-10-19) --------------------------------
+   Home is the saved pools with New pool beside them; build is choosing,
+   one row per recording; view is the picture. Everything wraps: a long
+   nickname, a recording's answers, a reason a read failed. */
+.rc-shelf-head { display: flex; flex-wrap: wrap; align-items: center;
+                 gap: var(--sp-6) var(--sp-12); }
+.rc-shelf-head .section-label { margin: 0; }
+.rc-shelf-head .rc-new-pool { margin-left: auto; }
+.rc-carry { display: flex; flex-wrap: wrap; align-items: center;
+            gap: var(--sp-6) var(--sp-10); padding: var(--sp-8) var(--sp-10);
+            background: var(--bg-2); border: 1px solid var(--accent-line);
+            border-radius: var(--r-6); }
+.rc-carry-say { flex: 1 1 260px; min-width: 0; font-size: var(--fs-12);
+                color: var(--text); overflow-wrap: anywhere; }
+.cur-set.rc-build-card { flex: none; }
+.rc-build-say { margin: 0; max-width: 90ch; }
+/* One row per recording: its choice of answer, and what that answer is.
+   The table scrolls across inside its own box on a narrow panel. */
+.rc-pool-cands-wrap { max-width: 100%; min-width: 0; overflow-x: auto; }
+.rc-pool-cands td.rc-rec-answer { min-width: 0; }
+/* As wide as its longest answer where the table has the room, narrower --
+   wrapping, never cut -- where it has not: a select's percentage width
+   lets the column give way on a narrow panel. */
+.rc-in.rc-rec-src { width: max-content; max-width: 100%; white-space: normal; }
+.rc-rec-chips { display: inline-flex; flex-wrap: wrap; gap: var(--sp-4);
+                margin-left: var(--sp-4); vertical-align: middle; }
+.rc-rec-chips .flagchip { margin-right: 0; }
+.rc-pool-cands tr.rc-rec-dup td { padding-top: 0; }
+.rc-dup { display: flex; flex-wrap: wrap; align-items: center;
+          gap: var(--sp-4) var(--sp-10); padding: var(--sp-6) var(--sp-8);
+          border-left: 2px solid var(--warn); background: var(--bg-2);
+          border-radius: var(--r-6); }
+.rc-dup-say { margin: 0; flex: 1 1 280px; min-width: 0; color: var(--warn);
+              font-size: var(--fs-115); overflow-wrap: anywhere; }
+.rc-dup-acts { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+.mini.rc-dup-keep { white-space: normal; text-align: left; }
+.btn.rc-dup-fix { white-space: normal; text-align: left; max-width: 100%; }
+/* A refusal about members, and reading them here again. */
+.rc-refused-box { display: flex; flex-direction: column; gap: var(--sp-6); }
+.rc-refused-box:empty { display: none; }
+.card.rc-refusal { display: flex; flex-direction: column; gap: var(--sp-6);
+                   flex: none; }
+.rc-redo { display: flex; flex-direction: column; gap: var(--sp-6); }
+.rc-redo-say, .rc-redo-line { margin: 0; max-width: 90ch;
+                              overflow-wrap: anywhere; }
+.rc-redo-say { font-size: var(--fs-12); color: var(--text); }
+.dop-batch.rc-redo-rows { margin: 0; }
+.dop-batch-row.rc-redo-row { flex-wrap: wrap; row-gap: var(--sp-2); }
+.dop-batch-row.rc-redo-row.stopped .dop-batch-dot { background: var(--warn);
+                                                    opacity: 1; }
+.rc-redo-state { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
+.btn.rc-redo-go { white-space: normal; text-align: left; max-width: 100%; }
+/* The click panel's words about a trace read elsewhere: above the
+   pictures, wrapping, never inside a canvas. */
+.rc-ev-note { display: flex; flex-direction: column; align-items: flex-start;
+              gap: var(--sp-4); }
+.rc-ev-note:empty { display: none; }
+.rc-ev-note .rc-ev-why { max-width: 100%; }
+.rc-ev-progress { margin: 0; max-width: 100%; font-size: var(--fs-12);
+                  color: var(--text-2); overflow-wrap: anywhere; }
+/* Save as singles. */
+.rc-singles-tools { display: flex; flex-wrap: wrap; align-items: center;
+                    gap: var(--sp-6) var(--sp-12); margin: var(--sp-6) 0; }
+.rc-singles-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+.rc-singles-row { display: flex; flex-wrap: wrap; align-items: baseline;
+                  gap: var(--sp-2) var(--sp-8); padding: var(--sp-2) 0;
+                  cursor: pointer; }
+.rc-singles-row input { flex: none; align-self: center; }
+.rc-singles-name { font-weight: 600; color: var(--text);
+                   overflow-wrap: anywhere; }
+.rc-singles-sub { margin: 0; overflow-wrap: anywhere; }
+.rc-singles-done li, .rc-singles-away li { overflow-wrap: anywhere; }
+.rc-singles-away li { color: var(--warn); }
 
 /* Nothing here animates except the loader, which carries its own
    reduced-motion rule; the bar's width transition is stopped here. */
@@ -13779,7 +14043,36 @@ div.tf-tile { cursor: default; }
 .rc-stats-verdict.warn { color: var(--warn); }
 
 /* A DS / IED border, drawn and applied (Root Canal, 2026-10-06) */
-.rc-border-row { margin-top: var(--sp-6); }
+/* THE BORDERS CARD (2026-10-19): a card of its own beside the margins, in
+   Pooled's picture and in Single -- what is applied, the saved borders as a
+   pick list in the house's shape (`.inc-pick`), the picked one's graces
+   with what each means, then Clear, Draw and Apply. Every line wraps;
+   nothing is cut. */
+.rc-borders { margin-top: var(--sp-6); padding: var(--sp-4) var(--sp-10); }
+.rc-border-sum { cursor: pointer; font-size: var(--fs-115); color: var(--text-2);
+  overflow-wrap: anywhere; }
+.rc-borders[open] .rc-border-sum { margin-bottom: var(--sp-6); }
+.rc-border-now { margin: 0; display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-4) var(--sp-8); }
+.rc-border-none { color: var(--text-2); }
+.rc-border-state .rc-border-drawn { margin: var(--sp-2) 0 0; }
+.rc-border-row { display: flex; flex-direction: column; gap: var(--sp-6);
+  margin-top: var(--sp-8); }
+.rc-border-pick { margin: 0; max-height: 300px; }
+.rc-border-item { grid-template-columns: auto minmax(0, 1fr); align-items: start;
+  cursor: pointer; }
+.rc-border-item > input { margin-top: 3px; }
+.rc-border-name { display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-2) var(--sp-6); }
+.rc-border-meas.rc-border-no { color: var(--warn); }
+.rc-border-grace { display: flex; flex-direction: column; gap: var(--sp-4); }
+.rc-border-gopt { display: flex; align-items: baseline; gap: var(--sp-6);
+  cursor: pointer; font-size: var(--fs-115); }
+.rc-border-gw { flex: none; min-width: 3.5em; color: var(--text-2); }
+.rc-border-gopt.on .rc-border-gw { color: var(--text); font-weight: 600; }
+.rc-border-gopt .hint { flex: 1 1 20ch; min-width: 0; }
+.rc-border-actions { flex-wrap: wrap; }
+.rc-border-where { margin: 0; }
 .rc-border-rule { margin: var(--sp-4) 0 0; }
 .rc-border-go-row { margin: var(--sp-4) 0 var(--sp-6); }
 .rc-border-tab td, .rc-border-tab th { white-space: nowrap; }
@@ -13789,6 +14082,11 @@ div.tf-tile { cursor: default; }
 .rc-border-pickg { display: inline-flex; align-items: center; gap: var(--sp-4);
   cursor: pointer; }
 .rc-border-custom { width: 6em; }
+/* In the dialog the modal's own input rule stretched it across the whole
+   dialog, its label and button on lines of their own (2026-10-19). */
+.rc-border-dlg .rc-border-custom-row { display: flex; flex-wrap: wrap;
+  align-items: center; gap: var(--sp-6); }
+.rc-border-dlg .rc-border-custom-row .rc-border-custom { width: 6em; flex: none; }
 .rc-border-strict { margin: 0; font-weight: 600; }
 
 /* The deep dive: events whose identity does not sit still (2026-10-06) */
@@ -14186,6 +14484,24 @@ div.tf-tile { cursor: default; }
 }
 .jn-tag.i { color: var(--o-incisor); }
 .jn-tag.d { color: var(--o-doppler); }
+/* Aligned or not, said on every input (2026-10-19). */
+.jn-tag { display: inline-flex; align-items: center; gap: 6px; }
+.jn-al-w { font-size: var(--fs-10); color: var(--text-3); white-space: nowrap; }
+.jn-al-w.on { color: var(--ok, var(--accent)); font-weight: 600; }
+.jn-tag .jn-al-w::before { content: '·'; margin-right: 5px; color: var(--text-3);
+  font-weight: 400; }
+.jn-ent-one .hint, .jn-ent .hint { white-space: nowrap; }
+.jn-ent, .jn-ent-one { flex-wrap: wrap; }
+.jn-side-hd .jn-al { margin-left: auto; }
+.stat-chip.jn-al.on { color: var(--ok, var(--accent)); }
+/* In Many, on a line of its own under the entry: beside the count it ran
+   into the number on a narrow row. */
+.jn-mside { flex-wrap: wrap; }
+.jn-mside .jn-al-w { order: 3; flex-basis: 100%; padding-left: 15px; }
+.jn-aligned { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px;
+  margin: 0 0 8px; }
+.jn-aligned .section-label { margin: 0; }
+.jn-aligned .hint { flex: 1 1 260px; min-width: 0; }
 .jn-inputs {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-12); margin-bottom: var(--sp-12);
@@ -14283,6 +14599,43 @@ div.tf-tile { cursor: default; }
                                             var(--o-doppler) 50%); }
 .cur-cat.pan-merge { --cat: var(--accent); }
 .cur-cat.pan-merge.armed { border-style: dashed; border-color: var(--accent); }
+/* Merge to Incisor's time (M) or to Doppler's (D), each in its colour. */
+.cur-cat.pan-merge.incisor { --cat: var(--o-incisor); }
+.cur-cat.pan-merge.doppler { --cat: var(--o-doppler); }
+.cur-cat.pan-merge .pan-od { width: 8px; height: 8px; }
+
+/* Label many (2026-10-19). */
+.pan-bulk-modal { width: min(640px, 94vw); }
+.pan-bulk { display: flex; flex-direction: column; gap: 6px; }
+.pan-bulk .section-label { margin-top: 6px; }
+.pan-bulk-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.pan-bulk-opt {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 4px 10px; border-radius: var(--r-4); font-size: var(--fs-12);
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text-2);
+}
+.pan-bulk-opt.on { border-color: var(--accent-line); background: var(--accent-soft);
+  color: var(--text); }
+.pan-bulk-opt.none { opacity: .55; }
+.pan-bulk-opt input { margin: 0; }
+.pan-bulk-say { margin-top: 8px; }
+
+/* The list of a pool (2026-10-19): Checkup's, with where each came from. */
+.pan-list-modal { width: min(940px, 94vw); }
+.pan-list-o { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.pill.pan-o { display: inline-flex; align-items: center; gap: 5px; }
+.pill.pan-o:not(.active) { opacity: .55; }
+.pan-list-from { display: inline-flex; align-items: center; gap: 5px;
+  flex: none; width: 168px; font-size: var(--fs-11); color: var(--text-2); }
+.pan-list-gap { flex: none; width: 104px; font-family: var(--mono);
+  font-size: var(--fs-10); color: var(--text-3); }
+@media (max-width: 700px) {
+  .pan-list-row { flex-wrap: wrap; }
+  .pan-list-from, .pan-list-gap { width: auto; }
+}
+.pan-list-bulk { display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  margin-top: 8px; }
+.pan-list-bulk:empty { display: none; }
 
 /* Root Canal's legend, coloured by origin. */
 .rc-lg-m.rc-lg-oi { background: var(--o-incisor); }
@@ -14404,3 +14757,343 @@ div.tf-tile { cursor: default; }
 @media (prefers-reduced-motion: reduce) {
   #app.br-shake { animation: none; }
 }
+
+/* ==========================================================================
+   Halloween: the spooky layer (js/spooky.js)
+   ==========================================================================
+   Everything here exists only while `data-theme="halloween"`, because
+   spooky.js builds it on the way in and removes every node on the way out.
+
+   Three rules hold it in place:
+   - It never takes a click it was not meant for. The layer is
+     `pointer-events: none`; only the things you are meant to poke (a
+     spider, the ghost, the pumpkin, the moon, the cauldron) take the
+     pointer, and they are small and keep to the edges.
+   - It sits under every toast (60) and every dialog (70).
+   - Motion is transform and opacity only, and none of it runs under
+     `prefers-reduced-motion` (the block at the end). The cobwebs and the
+     little yard in the rail stay; nothing crawls. */
+#spooky {
+  position: fixed; inset: 0; z-index: 55; pointer-events: none;
+  overflow: hidden;
+}
+#spooky .spk-hit { pointer-events: auto; cursor: pointer; }
+#spooky svg { display: block; overflow: visible; }
+
+/* ---- cobwebs, in the two corners nothing lives in ---- */
+.spk-web {
+  position: fixed; width: 132px; height: 132px; color: var(--spk-silk);
+  pointer-events: none;
+}
+.spk-web.tr { top: 0; right: 0; }
+.spk-web.bl { bottom: 0; left: var(--rail); }
+/* The top web notices the mouse by position (spooky.js, onMove), so it
+   lays nothing over the buttons in that corner. */
+
+/* ---- a spider: body, two leg sets that step against each other ---- */
+.spk-spider { position: fixed; left: 0; top: 0; width: 30px; height: 30px;
+              margin: -15px 0 0 -15px; will-change: transform; }
+.spk-spider .legs-a, .spk-spider .legs-b {
+  transform-origin: 15px 15px;
+  animation: spk-step 0.22s ease-in-out infinite alternate;
+}
+.spk-spider .legs-b { animation-direction: alternate-reverse; }
+.spk-spider.still .legs-a, .spk-spider.still .legs-b { animation-play-state: paused; }
+@keyframes spk-step { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+.spk-spider .body { fill: var(--spk-body); stroke: var(--text-2); stroke-width: 1; }
+.spk-spider .leg { fill: none; stroke: var(--text-2); stroke-width: 1.4;
+                   stroke-linecap: round; stroke-linejoin: round; }
+.spk-spider .eye { fill: var(--spk-eye); }
+.spk-spider.squished { transition: transform .12s ease-in, opacity .5s .5s;
+                       opacity: 0; }
+.spk-splat { position: fixed; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+             color: var(--ok); opacity: .8; transition: opacity 1.2s .6s; }
+.spk-splat.gone { opacity: 0; }
+
+/* ---- a spider on its silk ---- */
+.spk-dangle { position: fixed; top: 0; width: 30px; margin-left: -15px; }
+.spk-dangle .silk { position: absolute; left: 14.5px; top: 0; width: 1px;
+                    background: var(--spk-silk); transform-origin: 0 0; }
+.spk-dangle .spk-spider { position: absolute; left: 15px; top: 0; margin: -4px 0 0 -15px; }
+
+/* ---- bats ---- */
+.spk-bat { position: fixed; left: 0; top: 0; width: 44px; height: 24px;
+           margin: -12px 0 0 -22px; color: var(--text-3); will-change: transform; }
+.spk-bat .wing { transform-origin: 17px 9px; fill: currentColor;
+                 animation: spk-flap .16s ease-in-out infinite alternate; }
+@keyframes spk-flap { from { transform: scaleY(1); } to { transform: scaleY(-.35); } }
+.spk-bat .bat-body { fill: currentColor; }
+.spk-bat .bat-eye { fill: var(--spk-eye); }
+
+/* ---- the ghost ---- */
+.spk-ghost { position: fixed; left: 0; top: 0; width: 46px; height: 56px;
+             margin: -28px 0 0 -23px; opacity: .88; will-change: transform; }
+.spk-ghost .sheet { fill: var(--text); fill-opacity: .9; }
+.spk-ghost .face { fill: var(--bg); }
+.spk-ghost.gone { transition: opacity .35s ease, transform .35s ease;
+                  opacity: 0; }
+
+/* ---- speech bubbles, which is how anything here talks ---- */
+.spk-say {
+  position: fixed; padding: 5px 9px; border-radius: var(--radius-sm);
+  background: var(--bg-3); border: 1px solid var(--accent-line);
+  color: var(--text); font-size: var(--fs-115); white-space: nowrap;
+  box-shadow: var(--shadow); pointer-events: none;
+  animation: spk-pop .18s ease-out;
+}
+.spk-say.big { font-size: var(--fs-20); font-weight: 800; color: var(--accent);
+               letter-spacing: .04em; }
+.spk-say.gone { transition: opacity .3s; opacity: 0; }
+@keyframes spk-pop { from { opacity: 0; transform: translateY(6px) scale(.9); } }
+
+/* ---- treats ---- */
+.spk-candy { position: fixed; left: 0; top: 0; width: 18px; height: 18px;
+             margin: -9px 0 0 -9px; will-change: transform; }
+.spk-witch { position: fixed; left: 0; top: 0; width: 64px; height: 40px;
+             color: var(--spk-body); will-change: transform; }
+.spk-witch path { fill: currentColor; stroke: var(--text-3); stroke-width: .8; }
+
+/* ---- the yard: moon, pumpkin, cauldron, at the foot of the rail ---- */
+.spk-yard {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--sp-6); padding: 2px 6px 0; flex: none;
+}
+.spk-yard > * { flex: none; cursor: pointer; background: none; border: 0;
+                padding: 0; line-height: 0; }
+.spk-yard svg { display: block; overflow: visible; }
+.spk-moon { width: 28px; height: 28px; }
+.spk-moon .disc { fill: var(--text); fill-opacity: .82; }
+.spk-moon .crater { fill: var(--text-3); fill-opacity: .35; }
+.spk-pumpkin { width: 34px; height: 30px; }
+.spk-pumpkin .flesh { fill: var(--accent); stroke: color-mix(in srgb, var(--accent) 60%, black);
+                      stroke-width: 1; }
+.spk-pumpkin .stem { fill: var(--ok); }
+.spk-pumpkin .glow { fill: var(--warn); animation: spk-flicker 2.6s steps(6) infinite; }
+.spk-pumpkin:hover .glow { fill: color-mix(in srgb, var(--warn) 40%, white);
+                          animation-duration: .9s; }
+@keyframes spk-flicker { 0%, 100% { opacity: 1; } 30% { opacity: .55; }
+                         55% { opacity: .9; } 75% { opacity: .65; } }
+.spk-cauldron { width: 30px; height: 26px; }
+.spk-cauldron .pot { fill: var(--spk-body); stroke: var(--text-3); stroke-width: 1; }
+.spk-cauldron .brew { fill: var(--brew, var(--ok)); }
+.spk-cauldron .bubble { fill: var(--brew, var(--ok)); opacity: 0;
+                        animation: spk-bubble 2.4s ease-in infinite; }
+.spk-cauldron .bubble.b2 { animation-delay: .8s; }
+.spk-cauldron .bubble.b3 { animation-delay: 1.6s; }
+@keyframes spk-bubble { 0% { opacity: 0; transform: translateY(0); }
+                        30% { opacity: .9; }
+                        100% { opacity: 0; transform: translateY(-9px); } }
+.spk-yard > *:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px;
+                              border-radius: var(--r-4); }
+/* The narrow rail has room for the pumpkin and nothing else. */
+#app.rail-icons .spk-yard { justify-content: center; padding: 6px 0 2px; }
+#app.rail-icons .spk-yard .spk-moon,
+#app.rail-icons .spk-yard .spk-cauldron { display: none; }
+
+/* Nothing crawls, flies or flickers for somebody who has asked the page to
+   keep still. The webs, the yard and the eggs that need no movement stay;
+   spooky.js does not send the moving ones at all. */
+@media (prefers-reduced-motion: reduce) {
+  .spk-spider .legs-a, .spk-spider .legs-b, .spk-bat .wing,
+  .spk-pumpkin .glow, .spk-cauldron .bubble, .spk-say { animation: none; }
+}
+
+/* ==========================================================================
+   Compact (the theme picker's switch; `data-density="compact"` on the root)
+   ==========================================================================
+   For a small screen: the same interface with less air in it. A second
+   attribute beside `data-theme`, like `data-vacc`, so it goes with every
+   palette, and it changes geometry only -- no colour, and no type smaller
+   than the house scale already uses.
+
+   What it takes the room from, biggest first:
+   - the headers that are on screen all the time: every view's title bar,
+     Xplorefinder's bar, its pane head and control strip, a tool's head,
+     and the Output bar. Field labels move beside their fields instead of
+     above them, and a one-line description moves into the title's
+     tooltip;
+   - the rail: narrower, tighter rows, and the footer chips two to a row;
+   - padding and gaps in panels, cards, workbench cards and dialogs.
+
+   Nothing is truncated to make it fit: text that does not fit wraps, as
+   everywhere else. Measured at 1366x768 in web/_dev/compact.html. */
+:root[data-density="compact"] { --rail: 166px; }
+
+/* The switch in the theme picker. The same shape as the name switch below
+   it (.jv-opt), drawn by its own class so the two are never mistaken for
+   each other by anything that looks for one of them. */
+.theme-opt.density-opt {
+  border-top: 1px solid var(--line-soft); border-radius: 0;
+  margin-top: 3px; padding-top: 8px;
+}
+.theme-opt.density-opt.on { background: transparent; color: var(--text-2); }
+.theme-opt.density-opt:hover { background: var(--bg-3); color: var(--text); }
+.density-opt.on .jv-pill { background: var(--accent-soft); border-color: var(--accent-line); }
+.density-opt.on .jv-pill::after { transform: translateX(12px); background: var(--accent); }
+
+/* ---- the rail ---- */
+:root[data-density="compact"] #rail { padding: 8px 8px; gap: var(--sp-8); }
+:root[data-density="compact"] .rail-scroll { gap: var(--sp-8); }
+:root[data-density="compact"] .brand { gap: var(--sp-8); padding: 0 4px; }
+:root[data-density="compact"] .brand-mark { width: 24px; height: 24px; }
+:root[data-density="compact"] .brand-text strong { font-size: var(--fs-13); }
+:root[data-density="compact"] .who-chip { margin: 0 4px 2px; padding: 3px 8px; }
+:root[data-density="compact"] .rail-toggle { padding: 4px 10px; }
+:root[data-density="compact"] .nav-group { gap: 1px; }
+:root[data-density="compact"] .nav-item {
+  padding: 5px 9px; gap: var(--sp-8); font-size: var(--fs-125);
+}
+:root[data-density="compact"] .nav-item svg { width: 15px; height: 15px; }
+:root[data-density="compact"] .nav-group > .section-label { margin: 4px 0 2px; }
+/* Two chips to a row. The sync chip has the most to say and keeps a row
+   of its own, and so do the yard and anything else that is not a chip. */
+:root[data-density="compact"] #app:not(.rail-icons) .rail-foot {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4);
+}
+:root[data-density="compact"] #app:not(.rail-icons) .rail-foot > :not(.chip-btn) { grid-column: 1 / -1; }
+:root[data-density="compact"] #app:not(.rail-icons) .rail-foot .chip-btn {
+  padding: 4px 7px; gap: 5px; font-size: var(--fs-11); min-width: 0;
+}
+/* Half a 166px rail is about 70px, which holds "Halloween" or "VACC on"
+   but not those and an icon. The words say what each one is; the sync
+   chip has its row to itself and keeps its icon. */
+:root[data-density="compact"] #app:not(.rail-icons) .rail-foot .chip-btn:not(.sync-go) svg { display: none; }
+:root[data-density="compact"] #app:not(.rail-icons) .rail-foot .chip-btn svg { width: 12px; height: 12px; flex: none; }
+/* MATLAB and Python versions: a once-a-month need, as on a short screen. */
+:root[data-density="compact"] .env { display: none; }
+/* The icon rail is already as small as it goes, and is left as it is. */
+
+/* ---- every view's title bar ---- */
+:root[data-density="compact"] .view-head { padding: 6px 14px 5px; gap: 6px 12px; }
+:root[data-density="compact"] .view-head.compact { padding: 5px 12px 4px; }
+:root[data-density="compact"] .view-head h1 { font-size: var(--fs-15); }
+:root[data-density="compact"] .view-head .sub { font-size: var(--fs-115); }
+:root[data-density="compact"] .head-actions { gap: var(--sp-6); }
+/* A labelled control in a bar: the label beside it, not over it.
+   In the head bar, where there is room across and none down. */
+:root[data-density="compact"] .head-actions .ctl {
+  flex-direction: row; align-items: center; gap: 5px;
+}
+:root[data-density="compact"] .head-actions .ctl > label { white-space: nowrap; }
+/* A pane's control strip is the other way round -- full across already,
+   and beside its field a label would push the strip onto a second row --
+   so its labels stay above their fields, smaller and closer. */
+:root[data-density="compact"] .pane-ctl .ctl { gap: 1px; }
+:root[data-density="compact"] .pane-ctl .ctl > label {
+  font-size: var(--fs-9); line-height: 1.15;
+}
+:root[data-density="compact"] .pad { padding: 8px 12px 12px; }
+:root[data-density="compact"] .btn { padding: 5px 11px; }
+:root[data-density="compact"] .btn.sm { padding: 3px 8px; }
+:root[data-density="compact"] .section-label { margin-bottom: 6px; }
+:root[data-density="compact"] * + .section-label { margin-top: 12px; }
+
+/* ---- Xplorefinder ---- */
+:root[data-density="compact"] .xf-head { gap: var(--sp-10); }
+:root[data-density="compact"] .xf-tab { padding: 3px 8px; }
+:root[data-density="compact"] .pane-head { padding: 3px 8px; gap: var(--sp-6); }
+/* No 52px floor: a row is as tall as its tallest control. */
+:root[data-density="compact"] .pane-ctl { padding: 3px 6px; gap: 5px 7px; min-height: 0; }
+:root[data-density="compact"] .ctl input[type=number],
+:root[data-density="compact"] .ctl input[type=text],
+:root[data-density="compact"] .ctl select { padding: 3px 6px; }
+
+/* ---- the Output bar ---- */
+:root[data-density="compact"] #logDock.collapsed { height: 28px; }
+:root[data-density="compact"] .log-head { height: 28px; padding: 0 10px; gap: var(--sp-8); }
+
+/* ---- a tool's head, and the ToolKit around it ---- */
+/* The description goes; it is the title's tooltip (ui.stepHeader). */
+:root[data-density="compact"] .step-head > .hint { display: none; }
+:root[data-density="compact"] .tk-head { gap: var(--sp-8); }
+:root[data-density="compact"] .tk-head .sub { display: none; }
+:root[data-density="compact"] .tk-layout { grid-template-columns: 206px minmax(0, 1fr); gap: var(--sp-10); }
+:root[data-density="compact"] .tk-main { gap: var(--sp-8); }
+:root[data-density="compact"] .tk-bundle { padding: 7px 8px 8px; gap: 5px; }
+:root[data-density="compact"] .tk-bundle:not(.open) { padding-bottom: 7px; }
+:root[data-density="compact"] .tk-steps { gap: 1px; }
+/* A step on one line: number, name, what it does. */
+:root[data-density="compact"] .tk-step {
+  grid-template-columns: 15px auto minmax(0, 1fr) auto; gap: 2px 6px;
+  padding: 3px 6px;
+}
+:root[data-density="compact"] .tk-step-s { grid-column: auto; }
+
+/* ---- panels, cards and dialogs ---- */
+:root[data-density="compact"] .card { padding: 10px 12px; }
+:root[data-density="compact"] .card-grid { gap: var(--sp-8); }
+:root[data-density="compact"] .cur-set { padding: 7px 10px; }
+:root[data-density="compact"] .modal { padding: 14px; }
+:root[data-density="compact"] .modal.big .mh { padding: 8px 12px; }
+:root[data-density="compact"] .modal.big .mb { padding: 10px 12px; }
+:root[data-density="compact"] .modal.big .mf { padding: 8px 12px; }
+
+/* Root Canal's archived borders (2026-10-19): folded under the list, each
+   with "Put back". */
+.rc-border-archived { margin-top: var(--sp-8); }
+.rc-border-archived > summary { cursor: pointer; color: var(--text-2);
+  font-size: var(--fs-12); }
+.rc-border-arch-list { display: flex; flex-direction: column;
+  gap: var(--sp-4); margin-top: var(--sp-6); }
+.rc-border-arch-row { display: flex; align-items: baseline; flex-wrap: wrap;
+  gap: var(--sp-8); }
+.rc-border-arch-name { flex: 1 1 30ch; min-width: 0; color: var(--text-2);
+  font-size: var(--fs-115); overflow-wrap: anywhere; }
+
+/* Root Canal Pooled's category and name chips, pressed (2026-10-19): they
+   carry `.on` and nothing drew it, so a pressed filter looked like every
+   other chip. */
+.rc-sel .mini.on, .rc-sel-chip.on, .rc-name-chip.on {
+  background: var(--accent-soft); color: var(--accent);
+  border-color: var(--accent-line);
+}
+
+/* ---------- The way into Spotter and Panning (setpicker.js) ---------- */
+.sp-search { margin: 4px 0 10px; }
+.sp-search input { width: 100%; max-width: 460px; }
+.sp-lists { display: flex; flex-direction: column; gap: 6px; }
+.sp-group-hd {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 8px; padding-bottom: 2px;
+  border-bottom: 1px solid var(--line-soft, var(--line));
+}
+.sp-group-hd strong { font-size: var(--fs-12); }
+.sp-none { margin: 4px 0; }
+.sp-row {
+  display: grid; align-items: center; gap: 6px 12px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: 8px 12px; border-radius: var(--r-8);
+  border: 1px solid var(--line); background: var(--bg-2);
+}
+.sp-row.done { border-color: var(--accent-line); }
+.sp-row.fresh { background: transparent; }
+@media (max-width: 900px) {
+  .sp-row { grid-template-columns: minmax(0, 1fr); }
+}
+.sp-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sp-row-main strong { font-weight: 600; overflow-wrap: anywhere; }
+.sp-row-sub { font-size: var(--fs-11); color: var(--text-2);
+  overflow-wrap: anywhere; }
+.sp-row-chips, .sp-row-acts { display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap; }
+
+/* --------------------------------------------------------------------------
+   Xplorefinder: a pane on a filter of its own (xplore.js, filtOf)
+   -------------------------------------------------------------------------- */
+/* Said on the pane, in the second accent, so it is not read as the probe
+   column tag beside it. */
+.pane-filt-tag {
+  flex: none; font-family: var(--mono); font-size: var(--fs-95);
+  padding: 0 6px; border-radius: var(--r-3); white-space: nowrap;
+  background: var(--accent-2-soft); color: var(--accent-2);
+}
+.ctl-pop select.filt-target { max-width: 100%; }
+.filt-own-line { display: flex; align-items: center; gap: var(--sp-6);
+                 flex-wrap: wrap; margin-top: 2px; }
+/* A channel pick that is on. The same pressed look as any active mini
+   button, said again here so a pick reads as a switch. */
+.mini.pick[aria-pressed="true"] {
+  background: var(--accent); color: var(--on-accent); border-color: var(--accent);
+}
+/* The auto-bank switch in Spotter's and Panning's bars. */
+.mini.spot-auto.on { border-color: var(--accent-line); color: var(--accent); }

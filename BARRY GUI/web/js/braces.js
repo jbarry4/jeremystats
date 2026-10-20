@@ -2410,7 +2410,14 @@ BARRY.braces = (function () {
   ];
 
   const vRows = () => (view && set_ && set_.set.rows) || [];
-  /* Which stamps the pass walks. An overlapping row is wanted even when it
+  /* SEEN IS NOT STEPPED (2026-10-19). "We should be able to SEE all
+     spikes, but only go next/previous to the ones needing a decision."
+     Every stamp is drawn, at full strength, whatever the pass; the pass
+     only decides where n / p and the arrows stop. A stop wears a cap (▼)
+     on the traces, so you can see which ones the arrows will land on, and
+     a press on any other stamp goes to it.
+
+     Which stamps the pass walks. An overlapping row is wanted even when it
      arrived unflagged and has been answered: it is the one state a person
      has to come back to, so stepping must not walk past it. `i` is the row
      number -- every caller passes it, because `filter`, `findIndex` and
@@ -2418,6 +2425,7 @@ BARRY.braces = (function () {
   const vWanted = (r, i) => (!view || view.only === 'all')
     ? true : (!!r.flag || !!overlapping(i));
   const vAt = () => vRows()[view.at] || null;
+  const vWaiting = (i) => !!(vRows()[i] || {}).flag && !callFor(i);
 
   async function enter() {
     const s = set_ && set_.set;
@@ -2468,8 +2476,12 @@ BARRY.braces = (function () {
       return false;
     }
     step('opened', { view: BARRY.state.view });
+    /* Stepping stops at the decisions whenever the set has any --
+       answered ones too, so a second look walks the same stops -- and at
+       every stamp only when there is nothing to decide at all. */
+    const stops = (s.rows || []).some((r, i) => r.flag || overlapping(i));
     view = { sess: sess, at: 0, rev: 0, curve: curvePref(),
-             only: (set_.counts || {}).waiting ? 'flag' : 'all' };
+             only: stops ? 'flag' : 'all' };
     /* THIS WINDOW OWNS THE MARKS.
        `xplore`'s live loop skips the window that is running a curation and
        calls `adoptCuration` on every other one -- and `adoptCuration` with
@@ -2486,7 +2498,9 @@ BARRY.braces = (function () {
     // used to take the bar and the marks with it and leave the mode half
     // open with no sign of why.
     try {
-      const first = vRows().findIndex(vWanted);
+      // The first one still waiting, then the first stop of any kind.
+      let first = vRows().findIndex((r, i) => vWaiting(i));
+      if (first < 0) first = vRows().findIndex(vWanted);
       vGoTo(first >= 0 ? first : 0);
     } catch (err) {
       step('failed', { why: String((err && err.message) || err) });
@@ -2714,9 +2728,19 @@ BARRY.braces = (function () {
     const cur = vAt();
     const evs = [];
     vRows().forEach((r, i) => {
-      if (view.only === 'flag' && !r.flag && !overlapping(i) && r !== cur) {
-        return;
-      }
+      /* EVERY STAMP IS DRAWN, in either pass (2026-10-15).
+
+         "Needing a decision" used to leave every stamp outside the pass
+         -- every one Braces was sure of -- out of the marks altogether. So
+         the little bars showing where the other spikes are came and went
+         with whether the set still had a flag open, and a stamp could be
+         dragged onto a neighbour nobody could see. The pass decides which
+         stamps the arrows step through (`vWanted`), not which exist.
+
+         `o` says a stamp is not a stop. Since 2026-10-19 it is drawn at
+         full strength all the same -- "we should be able to SEE all
+         spikes" -- and it is the stops that are marked, with a cap. */
+      const outside = view.only === 'flag' && !r.flag && !overlapping(i);
       const mine = r === cur;
       const said = callFor(i);
       // What the dashed half says: answered, still being asked about, or
@@ -2733,11 +2757,14 @@ BARRY.braces = (function () {
       if (Math.abs(to - r.was) < 1e-9) {
         // It is not going anywhere, so one mark, not two on top of
         // each other.
-        evs.push({ start: r.was, k: 'now', st: st, f: mine ? 1 : 0, r: i });
+        evs.push({ start: r.was, k: 'now', st: st, f: mine ? 1 : 0, r: i,
+                   o: outside ? 1 : 0 });
         return;
       }
-      evs.push({ start: r.was, k: 'was', st: st, f: mine ? 1 : 0, r: i });
-      evs.push({ start: to, k: 'now', st: st, f: mine ? 1 : 0, r: i });
+      evs.push({ start: r.was, k: 'was', st: st, f: mine ? 1 : 0, r: i,
+                 o: outside ? 1 : 0 });
+      evs.push({ start: to, k: 'now', st: st, f: mine ? 1 : 0, r: i,
+                 o: outside ? 1 : 0 });
     });
     evs.sort((a, b) => a.start - b.start);
     view.sess.curationMarks = {
@@ -2921,8 +2948,9 @@ BARRY.braces = (function () {
       if (vWanted(all[i], i)) { vGoTo(i); return; }
       i += d;
     }
-    toast(d > 0 ? 'That is the last one in this pass.'
-                : 'That is the first one in this pass.', null, 3500);
+    const what = view.only === 'flag' ? 'needing a decision' : 'in this set';
+    toast(d > 0 ? 'That is the last one ' + what + '.'
+                : 'That is the first one ' + what + '.', null, 3500);
   }
 
   /* Moving one by hand. The marks repaint as it goes, so the line you are
@@ -2949,7 +2977,17 @@ BARRY.braces = (function () {
     if (!view) return;
     const all = vRows();
     for (let i = view.at + 1; i < all.length; i++) {
-      if (all[i].flag && !callFor(i)) { vGoTo(i); return; }
+      if (vWaiting(i)) { vGoTo(i); return; }
+    }
+    /* None after it, but one skipped before it: back round to that one,
+       said, rather than stopping as if the pass were done (2026-10-19). */
+    for (let i = 0; i < view.at; i++) {
+      if (vWaiting(i)) {
+        toast('Back round to the first one still waiting, at '
+              + clock(all[i].was) + '.', null, 4000);
+        vGoTo(i);
+        return;
+      }
     }
     vBar();
     if (passDone()) celebrate('pass');
@@ -3047,16 +3085,54 @@ BARRY.braces = (function () {
      which. */
   const DRAG_PUBLISH_MS = 120;
 
+  /* THE STAMP UNDER A PRESS, if there is one (2026-10-19): any stamp but
+     the one in view, either of its two lines, within HIT_PX on the pane
+     pressed. Seconds per pixel from the pane itself, so it is the same
+     few pixels at any zoom. */
+  const HIT_PX = 6;
+  function stampAt(t, index) {
+    const X = BARRY.views.xplore.clientAtTime;
+    if (!X || !view) return null;
+    const a = X(t, index);
+    const b = X(t + 0.01, index) || X(t - 0.01, index);
+    if (!a || !b || Math.abs(b.x - a.x) < 1e-6) return null;
+    const tol = HIT_PX * 0.01 / Math.abs(b.x - a.x);
+    let best = null, bestD = tol;
+    vRows().forEach((r, i) => {
+      if (i === view.at) return;
+      for (const tt of [r.was, vNow(r)]) {
+        const d = Math.abs(tt - t);
+        if (d <= bestD) { bestD = d; best = i; }
+      }
+    });
+    return best;
+  }
+
   function vGrab() {
     if (!BARRY.views.xplore.grabTime) return;
     BARRY.views.xplore.grabTime({
-      onStart: (t) => {
+      onStart: (t, index) => {
         const r = vAt();
         if (!r) return false;
         // Within a window of the one being decided, or it is somebody
         // panning rather than aiming.
         const reach = ((set_.set.params || {}).window_ms || 100) / 1000;
-        if (Math.abs(t - vNow(r)) > reach) return false;
+        if (Math.abs(t - vNow(r)) > reach) {
+          /* Out there, a press ON another stamp goes to it: every spike is
+             drawn, so any of them can be looked at, stop or not. The
+             gesture is kept (nothing pans) and no drag starts. Inside the
+             reach a press still drags the one in view -- that is how a
+             stamp is put down, even beside a neighbour. */
+          /* Not while something is being asked about the one in view,
+             or the glove is pulling it back: the question and the yoink
+             are about THAT stamp, and going elsewhere under them would
+             leave them answering for a stamp nobody is looking at. */
+          if (enterAsk || closeAsk || yoinking || view.pending) return false;
+          const hit = stampAt(t, index);
+          if (hit == null) return false;
+          vGoTo(hit);
+          return true;
+        }
         view.drag = { row: view.at, t: vNow(r), last: 0, from: vNow(r) };
         return true;
       },
@@ -3470,6 +3546,14 @@ BARRY.braces = (function () {
     const n = all.filter(vWanted).length;
     const seen = all.slice(0, view.at + 1).filter(vWanted).length;
     const left = (set_.counts || {}).waiting || 0;
+    /* Where this one is: among the stops, and among every stamp -- every
+       one is on the traces, so the count says how many there are. */
+    const stop = vWanted(r, view.at);
+    const where = view.only === 'all'
+      ? 'stamp ' + (view.at + 1) + ' of ' + all.length
+      : (stop ? 'decision ' + seen + ' of ' + n
+              : 'no decision needed here')
+        + '  ·  stamp ' + (view.at + 1) + ' of ' + all.length;
 
     bar.appendChild(el('div', { class: 'cur-where' }, [
       el('strong', { text: s.name || 'Braces' }),
@@ -3486,7 +3570,7 @@ BARRY.braces = (function () {
              + (overlapMate(view.at) != null
                 ? ' (stamp ' + (overlapMate(view.at) + 1) + ')' : '')
            : (r.flag ? '   ·   ' + (REASONS[r.flag] || r.flag) : '')) }),
-      el('span', { class: 'cur-count', text: seen + ' / ' + n }),
+      el('span', { class: 'cur-count', text: where }),
     ]));
 
     bar.appendChild(el('div', { class: 'cur-prog' }, [
@@ -3621,13 +3705,20 @@ BARRY.braces = (function () {
           }),
         ]),
       ]),
+      /* WHERE n / p STOP, not what is shown (2026-10-19). It was "Show",
+         and every stamp is drawn whichever is picked. */
       el('div', { class: 'ctl' }, [
-        el('label', { text: 'Show' }),
-        el('div', { class: 'seg sm' }, [
-          ['flag', 'Needing a decision'],
-          ['all', 'All of them'],
-        ].map(([id, label]) => el('button', {
+        el('label', { text: 'Step through' }),
+        el('div', { class: 'seg sm br-step-seg' }, [
+          ['flag', 'Needing a decision',
+           'n / p and the arrows stop only at the ones needing a decision '
+           + '(▼ on the traces). Every stamp is still drawn; press any of '
+           + 'them to go to it.'],
+          ['all', 'Every stamp',
+           'n / p and the arrows stop at every stamp in the set.'],
+        ].map(([id, label, tip]) => el('button', {
           class: view.only === id ? 'active' : '',
+          title: tip,
           onclick: () => {
             if (view.only === id) return;
             const was = view.only;
@@ -3651,7 +3742,11 @@ BARRY.braces = (function () {
          VIEW_LABELS.map((l) => el('span', { class: 'br-browse-sw' }, [
            el('i', { style: 'background:' + l.color }),
            el('span', { text: l.name }),
-         ]))),
+         ])).concat(view.only === 'flag' ? [el('span', {
+           class: 'br-browse-sw br-stop-sw' }, [
+           el('b', { style: 'color:' + DRAW.ask, text: '▼' }),
+           el('span', { text: 'n / p stop here' }),
+         ])] : [])),
       el('div', { style: 'flex:1' }),
       el('button', { class: 'btn ghost sm', text: 'Undo every decision',
                      title: 'Clears the whole pass. The proposal itself is '
@@ -3704,7 +3799,9 @@ BARRY.braces = (function () {
      The rules, which are the whole function:
 
        the one in focus      full height
-       everything else       a short tick from the top
+       everything else       a tick down from the top and one up from
+                             the bottom, at full strength, stop or not
+       a stop for n / p      a cap (▼) on the top edge
        where it goes         solid, green
        where it was          dashed, and the colour says what was decided:
                              green once confirmed, amber while flagged,
@@ -3929,8 +4026,16 @@ BARRY.braces = (function () {
          number on every pointer, and marks that arrive are adopted
          whatever the receiver thinks it already knows. */
       const small = plotH < 150;
-      const top = focus ? y0 : y0 + plotH * (small ? 0.62 : 0.82);
-      const bottom = y0 + plotH;
+      /* SEEN, EVERY ONE (2026-10-19). A neighbour was one short tick at
+         the bottom -- 18% of the pane, drawn quieter still when it was
+         not in the pass -- and on a busy raster, under the curve, that
+         is nothing at all. Now it is two: down from the top and up from
+         the bottom, each a quarter of the pane, so a stamp is found from
+         either edge and the data between stays clear. The one being
+         decided still runs the whole height. */
+      const tick = plotH * (small ? 0.34 : 0.25);
+      const spans = focus ? [[y0, y0 + plotH]]
+        : [[y0, y0 + tick], [y0 + plotH - tick, y0 + plotH]];
       /* A rejected stamp is red on BOTH halves -- it is not going
          anywhere and it is not being written, so drawing its new
          position in the colour of an accepted move would be a lie. */
@@ -3945,7 +4050,7 @@ BARRY.braces = (function () {
          time gridlines use. On every mark, as curation does it -- a tick
          over a jet raster is exactly as invisible as a full-height line
          over one, and these are the ticks somebody is scanning for. */
-      {
+      for (const [top, bottom] of spans) {
         ctx.setLineDash([]);
         ctx.lineWidth = focus ? 1.5 : 1;
         ctx.globalAlpha = 0.55;
@@ -3960,14 +4065,41 @@ BARRY.braces = (function () {
       /* Curation's weights too: the one being decided is wider and fully
          opaque, a neighbour that has been answered is nearly so, and one
          nobody has looked at is quieter still and dashed. */
-      ctx.globalAlpha = focus ? 1 : (e.st === 'open' ? 0.6 : 0.85);
+      /* Not quieter for being outside the pass, nor for nobody having
+         looked: where it goes solid and nearly opaque, where it was
+         dashed and a little less. */
+      ctx.globalAlpha = focus ? 1 : (dashed ? 0.8 : 0.92);
       ctx.setLineDash(dashed ? [4, 3] : []);
-      ctx.lineWidth = focus ? 2.5 : 1.6;
+      ctx.lineWidth = focus ? 2.5 : 1.8;
       ctx.strokeStyle = colour;
-      ctx.beginPath();
-      ctx.moveTo(x, top);
-      ctx.lineTo(x, bottom);
-      ctx.stroke();
+      for (const [top, bottom] of spans) {
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+      }
+
+      /* A STOP: a cap on the top edge, once per stamp (on its "goes
+         here" line), in the colour of what it is waiting for -- amber
+         while it needs an answer, green once it has one, red when it was
+         called garbage. What the arrows will land on, seen before they
+         land on it. */
+      if (!focus && !e.o && e.k === 'now') {
+        const capCol = e.st === 'garbage' ? DRAW.bin
+          : (e.st === 'confirmed' || e.st === 'kept') ? DRAW.ok : DRAW.ask;
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.moveTo(x - 6, y0 + 1);
+        ctx.lineTo(x + 6, y0 + 1);
+        ctx.lineTo(x, y0 + 10);
+        ctx.closePath();
+        ctx.fillStyle = capCol;
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+        ctx.stroke();
+      }
     }
 
     /* Which way the focused pair moved, drawn once: a hairline between the
@@ -4126,6 +4258,15 @@ BARRY.braces = (function () {
     const all = set_.set.rows || [];
     for (let i = from + 1; i < all.length; i++) {
       if (all[i].flag && !callFor(i)) { openBench(i); return; }
+    }
+    // One skipped before it is gone back to, as in the review.
+    for (let i = 0; i < from; i++) {
+      if (all[i].flag && !callFor(i)) {
+        toast('Back round to the first one still waiting, at '
+              + clock(all[i].was) + '.', null, 4000);
+        openBench(i);
+        return;
+      }
     }
     bench = null;
     render();
@@ -4367,7 +4508,8 @@ BARRY.braces = (function () {
       if ((rep.overlaps || []).length) {
         readOverlaps(rep.overlaps);
         const first = rep.overlaps[0].rows[0];
-        if (view) { view.only = 'all'; vGoTo(first); vBar(); }
+        // Overlapping stamps are stops in either pass.
+        if (view) { vGoTo(first); vBar(); }
         else { filter = 'overlap'; render(); }
       }
       return;
@@ -4926,6 +5068,9 @@ BARRY.braces = (function () {
     _reused: () => reused,
     _allSets: () => allSets,
     _goTo: (n) => vGoTo(n),
+    _step: (d) => vStep(d),
+    _stampAt: (t, index) => stampAt(t, index || 0),
+    _wanted: () => vRows().map((r, i) => vWanted(r, i)),
     _exitView: () => exitView(),
     _enterAsk: () => (enterAsk ? { row: enterAsk.row, ms: enterAsk.ms,
                                    text: enterAsk.box.textContent } : null),

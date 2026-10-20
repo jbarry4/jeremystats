@@ -30,7 +30,7 @@
     "schema": "2026-09-04T15:57:01.884995+00:00",
     "session": "2026-09-04T15:57:01.884995+00:00",
     "start": "2026-09-04T15:57:01.884995+00:00",
-    "updated": "2026-10-15T18:36:23.244653+00:00",
+    "updated": "2026-10-19T16:59:01.069104+00:00",
     "view_state": "2026-10-13T15:23:16.577266+00:00"
   },
   "_keys": {
@@ -41,11 +41,15 @@
       ],
       "Y:\\ProcessedPtenData\\PTENDKOm56\\m56s8_06192025\\2025-06-19_16-39-58": [
         "set",
-        "2026-09-04T15:57:01.884995+00:00"
+        "2026-09-10T03:54:39.238703+00:00"
       ],
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\DKO\\M56\\M56_s8_CNO": [
         "set",
-        "2026-09-04T15:57:01.884995+00:00"
+        "2026-09-10T03:54:39.238703+00:00"
+      ],
+      "vacc:sb5b24f9f8e93": [
+        "set",
+        "2026-10-19T16:59:01.069104+00:00"
       ]
     },
     "seen": {
@@ -63,12 +67,12 @@
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-10-15T18:36:23.244653+00:00"
+        "2026-10-15T19:32:08.898928+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-15T18:36:23.244653+00:00",
+    "at": "2026-10-19T16:59:01.069104+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -104,7 +108,8 @@
   "paths": [
     "D:\\PTEN\\PTEN_DKO\\PTENDKOm56\\m56s8_06192025\\2025-06-19_16-39-58",
     "Y:\\ProcessedPtenData\\PTENDKOm56\\m56s8_06192025\\2025-06-19_16-39-58",
-    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\DKO\\M56\\M56_s8_CNO"
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\DKO\\M56\\M56_s8_CNO",
+    "vacc:sb5b24f9f8e93"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -136,7 +141,7 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-10-15T14:36:23-04:00",
+      "at": "2026-10-15T15:32:08-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN_DKO\\PTENDKOm56\\m56s8_06192025\\2025-06-19_16-39-58",
@@ -147,9 +152,9 @@
   "session": 8,
   "start": "2025-06-19T16:39:58",
   "updated": {
-    "app_version": "2026.10.15.1",
-    "at": "2026-10-15T14:36:23-04:00",
-    "commit": "3c5e9a56",
+    "app_version": "2026.10.19.2",
+    "at": "2026-10-19T12:59:01-04:00",
+    "commit": "a4626323",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

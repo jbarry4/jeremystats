@@ -1,0 +1,896 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>rootcanalborder: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre;flex:none}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Root Canal's borders, driven through the real interface (2026-10-19).
+
+   What it checks: a pool that is all one identity is answered with an
+   ENVELOPE -- a box round its events -- and the dialog previews it at every
+   grace with how many are inside, how many of the group it leaves outside
+   and how many of the other identity are inside; the BORDERS CARD says what
+   is applied ("Classified by ‘x’ at grace 5%: …"), lists the saved borders
+   with their rule, kind, measurement and source, says what each grace
+   means, ticks a pick in place, and applies, clears and reports a refusal;
+   and the applied border is DRAWN on the three flat views -- the box with
+   the outside washed, or a two-identity border's dashed cut-offs -- read
+   back both from the geometry hook and from the canvas pixels.
+
+   It pools THREE REAL SINGLES, the smallest cached here, as
+   rootcanalpool.html does, so the picture is a real one. The border's
+   numbers are worked out here FROM THAT PICTURE's own events, so the box
+   sits where the dots are.
+
+   IT WRITES NOTHING. The preview, the save and the list of saved borders
+   are answered from here, and so is every fit with a border on; the one
+   border Apply sends to the real server is refused there (it is not on
+   this machine), which is the refusal checked. Activity logging and shared
+   prefs are stubbed for the run and put back, the view choice is put back
+   as it was found, and the frame is unloaded at the end -- without that,
+   headless Edge never dumps and the runner reports TIMED OUT.
+
+   Run under PowerShell. Under Bash, Edge dumps nothing and every suite
+   reads clean. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(70), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const eq = (name, got, want) =>
+  ok(name, JSON.stringify(got) === JSON.stringify(want),
+     'wanted ' + JSON.stringify(want) + ', got ' + JSON.stringify(got));
+const note = (s) => say('  note ' + s, 'dim');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(120);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+const NL = String.fromCharCode(10);
+const AX = ['amp_uV', 'hf_db', 'hw_ms'];
+const fin = (v) => v != null && isFinite(v);
+const pct = (r) => (100 * r).toFixed(1) + '%';
+const bnum = (v) => (Math.abs(v) >= 100 ? Number(v).toFixed(0) : Number(v).toFixed(1));
+// A grace as the app says it: 0.05 * 100 is 5.000000000000001 in JS.
+const gw = (g) => (Number(g) === 0 ? 'none' : +(100 * Number(g)).toFixed(2) + '%');
+
+/* The quantile numpy takes by default (linear between order statistics). */
+function quantile(sorted, q) {
+  const pos = (sorted.length - 1) * q;
+  const lo = Math.floor(pos), hi = Math.ceil(pos);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+}
+
+(async () => {
+  let W = null, D = null, ev = null, viewWas;
+  const A = document.getElementById('app');
+  try {
+  await new Promise((r) => A.addEventListener('load', r, { once: true }));
+  W = A.contentWindow;
+  ev = (c) => W.eval(c);
+  D = () => A.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  const get = (u) => ev('api(' + JSON.stringify(u) + ')');
+  const RC = 'BARRY.rootcanal';
+  const P = () => ev(RC + '._pool()');
+  const geom = () => ev(RC + '._geom()');
+  const bgeom = () => ev(RC + '._borderGeom()');
+  viewWas = ev('(function(){ try { return localStorage.getItem('
+               + '"barry.rootcanal.view"); } catch (e) { return null; } })()');
+
+  /* Shared prefs and the activity log are not this suite's to write. */
+  ev('(function(){ var W = window; if (W.__rcbPrefSet) return;'
+     + ' W.__rcbPrefSet = BARRY.prefs.set; W.__rcbPrefGet = BARRY.prefs.get; W.__rcbMem = {};'
+     + ' BARRY.prefs.set = function(k, v) { W.__rcbMem[k] = v; return v; };'
+     + ' BARRY.prefs.get = function(k, d) { if (k in W.__rcbMem) return W.__rcbMem[k];'
+     + '   if (k === "rootcanal_border_archive") return d;'
+     + '   return W.__rcbPrefGet.apply(BARRY.prefs, arguments); };'
+     + ' W.__rcbLog = BARRY.activity.log; BARRY.activity.log = function(){}; })()');
+
+  /* Every border request, and any fit while a reply is set, answered from
+     here. Wrapped once, for the frame's fetch only, and put back in the
+     finally. */
+  ev('(function(){ var W = window; if (W.__rcbFetch) return;'
+     + ' W.__rcbFetch = W.fetch; W.__rcbFits = 0; W.__rcbSent = [];'
+     + ' W.__rcbReply = {};'
+     + ' W.fetch = function(u, o) { var s = String(u);'
+     + '  if (s.indexOf("/api/rootcanal/pool/fit") >= 0) W.__rcbFits++;'
+     + '  var hit = null;'
+     + '  if (s.indexOf("/api/rootcanal/border/preview") >= 0) hit = "bprev";'
+     + '  else if (s.indexOf("/api/rootcanal/border/save") >= 0) hit = "bsave";'
+     + '  else if (s.indexOf("/api/rootcanal/borders") >= 0) hit = "borders";'
+     + '  else if (s.indexOf("/api/rootcanal/pool/save") >= 0) hit = "save";'
+     + '  else if (s.indexOf("/api/rootcanal/margin/save") >= 0) hit = "msave";'
+     + '  else if (s.indexOf("/api/rootcanal/pool/remeasure") >= 0) hit = "remeasure";'
+     + '  else if (s.indexOf("/api/rootcanal/pool/propagate") >= 0) hit = "propagate";'
+     + '  else if (s.indexOf("/api/rootcanal/pool/fit") >= 0 && W.__rcbReply.fit)'
+     + '   hit = "fit";'
+     + '  else if (s.indexOf("/api/rootcanal/pool/fit") >= 0) W.__rcbSent.push(["realfit",'
+     + '   JSON.parse((o && o.body) || "{}")]);'
+     + '  if (hit) { W.__rcbSent.push([hit, JSON.parse((o && o.body) || "{}")]);'
+     + '   var r = W.__rcbReply[hit] || { status: 500, body: { ok: false,'
+     + '     error: "harness: no reply" } };'
+     + '   return Promise.resolve(new Response(JSON.stringify(r.body),'
+     + '     { status: r.status, headers: { "Content-Type": "application/json" } })); }'
+     + '  return W.__rcbFetch.apply(this, arguments); }; })()');
+  const sent = () => JSON.parse(ev('JSON.stringify(window.__rcbSent)'));
+  const fits = () => Number(ev('window.__rcbFits'));
+  const reply = (k, body) => ev('window.__rcbReply.' + k + ' = '
+    + (body == null ? 'null' : JSON.stringify({ status: 200, body })));
+  /* Nothing listed until the pool is up: the listing is set below, from
+     the pool's own numbers. */
+  reply('borders', { ok: true, borders: [] });
+
+  /* ================================================================== */
+  head('A REAL POOL OF THREE SMALL SINGLES');
+
+  ev(RC + '._setView("single")');
+  ev('setView("toolkit")');
+  await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
+  const rcStep = Array.from(D().querySelectorAll('.tk-step'))
+    .find((b) => /Root Canal/.test(b.textContent));
+  ok('Root Canal is a step of The Dentist', !!rcStep);
+  if (rcStep) rcStep.click();
+  await until(() => D().querySelector('.rc-viewseg'), 10000, 'the bar');
+  const pooledBtn = Array.from(D().querySelectorAll('.rc-viewseg button'))
+    .find((b) => b.textContent === 'Pooled');
+  if (pooledBtn) pooledBtn.click();
+  await until(() => ev(RC + '._viewMode()') === 'pooled', 10000, 'the pooled view');
+  /* The members are put in through the panel's own hooks, not its table:
+     choosing them is rootcanalpool.html's to check, and this suite is
+     about what happens once there is a picture. The three it pools are
+     NOT BANKED, of three recordings: an unbanked one is measured at the
+     settings bar, so the three agree and the pool asks no one-measurement
+     question (whose answer would measure saved singles again as new
+     versions -- stubbed here, and never pressed). The smallest with 150 or
+     more events each: with fewer, pulling the box in by any quantile puts
+     the six extreme events out at once, and no grace under 10% can leave
+     anything out (measured on a pool of 70). */
+  await ev(RC + '._poolLoad()');
+  const cands = (await get('/api/rootcanal/pool/candidates')).singles || [];
+  const seenLab = {};
+  const unb = cands.filter((c) => c.here !== false && !c.banked).slice()
+    .sort((a, b) => (a.n || 0) - (b.n || 0))
+    .filter((c) => (seenLab[c.session_label] ? false : (seenLab[c.session_label] = true)));
+  let picks = unb.filter((c) => c.n >= 150 && c.n <= 600).slice(0, 3);
+  if (picks.length < 3) {
+    note('fewer than three unbanked singles of 150–600 events here; taking the largest');
+    picks = unb.slice(-3);
+  }
+  ok('three singles to pool, not banked, of three recordings', picks.length === 3,
+     cands.length + ' candidates');
+  say('       ' + picks.map((c) => c.session_label + ' (' + c.n + ')').join(', '), 'dim');
+  ev(RC + '._poolGo("build")');
+  for (const c of picks) ev(RC + '._poolToggle(' + JSON.stringify(c.key) + ', true)');
+  ev(RC + '._poolGo("view")');
+  ev(RC + '._poolRun()');
+  await until(() => (P().fit && P().fit.ok !== undefined && !P().fitting)
+              || D().querySelector('#bigModal:not(.hidden)'), 120000, 'the pool');
+  if (!P().fit && D().querySelector('#bigModal:not(.hidden)')) {
+    note('the pool asked a question instead: '
+         + D().querySelector('#bigModalBox').textContent.slice(0, 160));
+    ev('try { closeModal(); } catch (e) {}');
+  }
+  const f0 = P().fit;
+  ok('the pool is fitted', !!(f0 && f0.ok), f0 && f0.error);
+  if (!f0 || !f0.ok) throw new Error('no pool: ' + (f0 && f0.error));
+  const filt = ((f0.params || {}).measure || {}).filter_label;
+  ok('it says how it was measured', !!filt, JSON.stringify((f0.params || {}).measure));
+  /* The four event charts as soon as the pool is up (2026-10-19): an
+     event is picked without a click -- one whose read is here. */
+  await until(() => P().picked != null, 8000, 'an event picked');
+  ok('an event is picked at once, so its four charts draw without a click',
+     P().picked != null && !!D().querySelector('.rc-event'), String(P().picked));
+  say('       ' + f0.n + ' events, measured on ' + filt, 'dim');
+
+  /* ---- the border's numbers, from this pool's own events ----
+
+     As if every event were DS -- the case asked about: a pool of 1263 DS
+     and 0 IED. The envelope is drawn round every event with all three
+     numbers; at a grace, every side is pulled in by the same quantile
+     until that share of them is outside (rcborder.envelope). */
+  const evs = f0.events;
+  const comp = evs.filter((e) => AX.every((k) => fin(e[k])));
+  const sorted = AX.map((k) => comp.map((e) => e[k]).sort((a, b) => a - b));
+  const boxAt = (q) => {
+    const lo = {}, hi = {};
+    AX.forEach((k, a) => { lo[k] = quantile(sorted[a], q); hi[k] = quantile(sorted[a], 1 - q); });
+    return { lo, hi };
+  };
+  const inBox = (e, b) => AX.every((k) => fin(e[k]) && e[k] >= b.lo[k] && e[k] <= b.hi[k]);
+  const trimFor = (g) => {
+    if (g <= 0) return 0;
+    let a = 0, b = 0.5;
+    for (let j = 0; j < 40; j++) {
+      const m = (a + b) / 2;
+      const bx = boxAt(m);
+      const out = 1 - comp.filter((e) => inBox(e, bx)).length / comp.length;
+      if (out <= g + 1e-12) a = m; else b = m;
+    }
+    return a;
+  };
+  const envLevel = (g) => {
+    const q = trimFor(g);
+    const bx = q === 0
+      ? { lo: Object.fromEntries(AX.map((k, a) => [k, sorted[a][0]])),
+          hi: Object.fromEntries(AX.map((k, a) => [k, sorted[a][sorted[a].length - 1]])) }
+      : boxAt(q);
+    const counts = { ds: 0, ied: 0, amb: 0, none: 0 };
+    const cls = evs.map((e) => {
+      const c = !AX.some((k) => fin(e[k])) ? null : inBox(e, bx) ? 'ds' : 'amb';
+      if (c == null) counts.none += 1; else counts[c] += 1;
+      return c;
+    });
+    const left = comp.filter((e) => !inBox(e, bx)).length;
+    return { lv: { grace: g, trim: q, reached: true,
+      edges: Object.fromEntries(AX.map((k) => [k, { lo: bx.lo[k], hi: bx.hi[k] }])),
+      counts, wrong: 0, switch_rate: 0, outside: left,
+      outside_rate: left / comp.length }, cls };
+  };
+  const E = { 0: envLevel(0), 0.01: envLevel(0.01), 0.02: envLevel(0.02),
+              0.05: envLevel(0.05) };
+  const boxWords = (edges) => [['amp_uV', 'amplitude', 'µV'], ['hf_db', 'HF', 'dB'],
+    ['hw_ms', 'half-width', 'ms']].map(([k, w, u]) => w + ' ' + bnum(edges[k].lo)
+      + '–' + bnum(edges[k].hi) + ' ' + u).join(' · ');
+  const numWords = (edges) => [['amp_uV', 'µV'], ['hf_db', 'dB'], ['hw_ms', 'ms']]
+    .map(([k, u]) => bnum(edges[k].lo) + '–' + bnum(edges[k].hi) + ' ' + u).join(' · ');
+  const strict = E[0].lv.edges;
+  const envRule = (g) => 'Solid DS: inside ' + [['amp_uV', 'max amplitude', 'µV'],
+    ['hf_db', 'HF power', 'dB'], ['hw_ms', 'half-width', 'ms']].map(([k, w, u]) =>
+      w + ' ' + bnum(E[g].lv.edges[k].lo) + ' to ' + bnum(E[g].lv.edges[k].hi) + ' ' + u)
+    .join(', ') + '. Outside it on any axis is ambiguous (grace ' + gw(g) + ': '
+    + 'the box leaves out the outermost ' + gw(g) + ' of the DS events).';
+  const envPrev = (gs) => ({ ok: true, kind: 'envelope', group: 'ds', level: 'pool',
+    strict, levels: gs.map((g) => E[g].lv),
+    fit: { group: 'ds', n_group: comp.length, n_other: 0 },
+    n: evs.length, n_identity: evs.length, n_complete: comp.length,
+    measure: (f0.params || {}).measure,
+    name: 'Envelope · DS · ' + boxWords(strict) });
+
+  /* A two-identity border through the middle of the cloud: past both
+     cut-offs on all three is IED, short of both is DS. */
+  const q = (a, p) => quantile(sorted[a], p);
+  const between = {
+    amp_uV: { ied_at: q(0, 0.7), ds_at: q(0, 0.45), at: q(0, 0.55) },
+    hf_db: { ied_at: q(1, 0.7), ds_at: q(1, 0.45), at: q(1, 0.55) },
+    hw_ms: { ied_at: q(2, 0.3), ds_at: q(2, 0.55), at: q(2, 0.45) } };
+  const bwCls = evs.map((e) => {
+    if (!AX.some((k) => fin(e[k]))) return null;
+    if (!AX.every((k) => fin(e[k]))) return 'amb';
+    const past = e.amp_uV >= between.amp_uV.ied_at && e.hf_db >= between.hf_db.ied_at
+      && e.hw_ms <= between.hw_ms.ied_at;
+    const short = e.amp_uV < between.amp_uV.ds_at && e.hf_db < between.hf_db.ds_at
+      && e.hw_ms > between.hw_ms.ds_at;
+    return past ? 'ied' : short ? 'ds' : 'amb';
+  });
+  const bwCounts = { ds: 0, ied: 0, amb: 0, none: 0 };
+  bwCls.forEach((c) => { if (c == null) bwCounts.none += 1; else bwCounts[c] += 1; });
+
+  /* The saved borders the card lists: an older envelope and a two-identity
+     border measured like this pool, and one measured another way. */
+  const otherFilt = /^DS filter/.test(filt)
+    ? 'LFP filter, 1–100 Hz, 60 Hz mains left in'
+    : 'DS filter, 5–100 Hz, 60 Hz mains out';
+  const row = (o) => Object.assign({ version: 1, level: 'pool', events: evs.length,
+    current: { v: 1, n_summary: { recordings: 12, mice: 4 } } }, o);
+  const lvRow = (lv) => ({ grace: lv.grace, switch_rate: lv.switch_rate,
+                           outside_rate: lv.outside_rate, counts: lv.counts });
+  const rowEnv = row({ artifact_id: 'hb-env', nickname: 'harness envelope (old)',
+    name: 'Envelope · DS · ' + boxWords(strict), kind: 'envelope', group: 'ds',
+    strict, grace_default: 0.05, levels: [0, 0.01, 0.05].map((g) => lvRow(E[g].lv)),
+    measure: filt, source: 'harness controls' });
+  const rowBw = row({ artifact_id: 'hb-two', nickname: 'harness two-sided',
+    name: 'Border · harness', kind: 'between', group: null,
+    strict: { amp_uV: between.amp_uV.at, hf_db: between.hf_db.at, hw_ms: between.hw_ms.at },
+    grace_default: 0.05,
+    levels: [0, 0.01, 0.05].map((g) => ({ grace: g, switch_rate: g, counts: bwCounts })),
+    measure: filt, source: null });
+  const rowOther = row({ artifact_id: 'hb-other', nickname: 'harness other filter',
+    name: 'Border · other', kind: 'between', group: null,
+    strict: { amp_uV: 1000, hf_db: 9, hw_ms: 30 }, grace_default: 0.01,
+    levels: [{ grace: 0.01, switch_rate: 0.01, counts: bwCounts }],
+    measure: otherFilt, source: 'another pool', level: 'double' });
+  reply('borders', { ok: true, borders: [rowEnv, rowBw, rowOther] });
+  ev(RC + '._loadBorders()');
+  await until(() => D().querySelectorAll('.rc-pool-work .rc-border-item').length === 3,
+              8000, 'the listing');
+
+  /* ================================================================== */
+  head('THE BORDERS CARD, NOTHING APPLIED');
+
+  const card = () => D().querySelector('.rc-pool-work .rc-borders');
+  ok('the pool has a Borders card of its own, open', !!card() && card().open
+     && !card().closest('.rc-margins'));
+  eq('its folded line says nothing is applied, and how many are saved',
+     card().querySelector('summary').textContent, 'Borders · No border applied · 3 saved');
+  ok('and so does the card', /^No border applied: every event is called by its cluster/
+     .test(card().querySelector('.rc-border-none').textContent));
+  ok('the margins card no longer carries the borders',
+     !D().querySelector('.rc-pool-work .rc-margins .rc-border-row')
+     && /^Margins · /.test(D().querySelector('.rc-pool-work .rc-margin-sum').textContent));
+  const items = () => Array.from(card().querySelectorAll('.rc-border-item'));
+  const txt = (r, sel) => (r.querySelector(sel) || {}).textContent || '';
+  eq('the saved borders are a list, each by its nickname',
+     items().map((r) => txt(r, '.rc-border-name strong')),
+     ['harness envelope (old)', 'harness two-sided', 'harness other filter']);
+  ok('built in the house’s pick-list shape, radios in rows',
+     !!card().querySelector('.inc-pick-list.rc-border-pick')
+     && items().every((r) => r.classList.contains('inc-pick')
+                             && r.querySelector('input[type=radio]')));
+  eq('each says its kind', items().map((r) => txt(r, '.rc-border-kind')),
+     ['drawn around the DS events', 'drawn between DS and IED', 'drawn between DS and IED']);
+  eq('its numbers', txt(items()[0], '.rc-border-nums'), 'Envelope · DS · ' + numWords(strict));
+  ok('its rule in words', /^Solid DS inside the box, ambiguous outside it on any axis\. At no grace the box is amplitude /
+     .test(txt(items()[0], '.rc-border-what'))
+     && /^Solid IED past all three cut-offs, solid DS short of all three/
+       .test(txt(items()[1], '.rc-border-what')), txt(items()[0], '.rc-border-what'));
+  eq('the measurement it was made under, and that it is this pool’s',
+     txt(items()[0], '.rc-border-meas'), 'Measured on ' + filt + ': the same filter as this pool.');
+  ok('and when it is not, a warning -- and that it can still be applied',
+     txt(items()[2], '.rc-border-meas') === 'Measured on ' + otherFilt + '. This pool is '
+       + 'measured on ' + filt + '. It can still be applied: its cut-offs are '
+       + 'numbers of the measurement it was drawn under, so here they ask a '
+       + 'slightly different question.'
+     && items()[2].querySelector('.rc-border-meas').classList.contains('rc-border-no'),
+     txt(items()[2], '.rc-border-meas'));
+  eq('where each came from', items().map((r) => txt(r, '.rc-border-from')),
+     ['Drawn from ‘harness controls’, a pool: ' + evs.length + ' events, 12 recordings, 4 mice.',
+      'Drawn from a pool that was not saved: ' + evs.length + ' events, 12 recordings, 4 mice.',
+      'Drawn from ‘another pool’, a pool of pools: ' + evs.length + ' events, 12 recordings, 4 mice.']);
+  ok('the first is picked to begin with', items()[0].classList.contains('on')
+     && items()[0].querySelector('input').checked);
+  const gopts = () => Array.from(card().querySelectorAll('.rc-border-gopt'));
+  eq('its graces, each with what it means for that border',
+     gopts().map((o) => o.textContent),
+     ['none' + 'wraps every DS event. Where it was drawn: ' + E[0].lv.counts.ds
+        + ' inside · ' + E[0].lv.counts.amb + ' outside.',
+      '1%' + 'leaves out the outermost 1% of the DS events. Where it was drawn: '
+        + E[0.01].lv.counts.ds + ' inside · ' + E[0.01].lv.counts.amb + ' outside.',
+      '5%' + 'leaves out the outermost 5% of the DS events. Where it was drawn: '
+        + E[0.05].lv.counts.ds + ' inside · ' + E[0.05].lv.counts.amb + ' outside.']);
+  ok('at its saved grace unless another is picked',
+     gopts()[2].classList.contains('on') && gopts()[2].querySelector('input').checked);
+  const apply = () => card().querySelector('.rc-border-apply');
+  ok('Apply names what it does, and is the primary, last',
+     !!apply() && apply().textContent === 'Apply to this pool'
+     && !apply().classList.contains('ghost') && !apply().disabled
+     && apply() === Array.from(card().querySelectorAll('.rc-border-actions button')).pop(),
+     apply() && apply().className);
+  ok('beside it, Draw a new border from this pool…',
+     !!card().querySelector('.rc-border-draw')
+     && card().querySelector('.rc-border-draw').textContent === 'Draw a new border from this pool…');
+  ok('and no Clear, with nothing to clear', !card().querySelector('.rc-border-clear'));
+
+  /* A pick ticks in place: nothing is rebuilt, nothing is sent. */
+  const listNode = card().querySelector('.rc-border-pick');
+  const cardNode = card();
+  const nFit0 = fits();
+  items()[1].querySelector('input').click();
+  await sleep(80);
+  ok('picking another ticks its row where it stands',
+     items()[1].classList.contains('on') && !items()[0].classList.contains('on')
+     && card() === cardNode && card().querySelector('.rc-border-pick') === listNode
+     && listNode.isConnected);
+  ok('its graces replace the first one’s, saying what grace means between two',
+     /^Grace for ‘harness two-sided’/.test(txt(card(), '.rc-border-grace .rc-group-l'))
+     && /^nonethe widest band: no event lands in the other identity’s solid class/
+       .test(gopts()[0].textContent)
+     && /^1%a narrower band: at most 1% of the events land in the other identity’s solid class/
+       .test(gopts()[1].textContent), gopts().map((o) => o.textContent).join(' | '));
+  gopts()[1].querySelector('input').click();
+  await sleep(60);
+  ok('a grace is picked in place too, and Apply says which',
+     gopts()[1].classList.contains('on') && !gopts()[2].classList.contains('on')
+     && / at grace 1%/.test(apply().title) && card() === cardNode, apply().title);
+  ok('and nothing is applied, or asked for, until Apply',
+     !P().border && fits() === nFit0);
+  items()[0].querySelector('input').click();
+  await sleep(60);
+  ok('back on the envelope, at its saved grace again',
+     items()[0].classList.contains('on') && gopts()[2].classList.contains('on'));
+
+  /* ================================================================== */
+  head('DRAWN FROM A POOL THAT IS ALL ONE IDENTITY: AN ENVELOPE');
+
+  reply('bprev', envPrev([0, 0.01, 0.05]));
+  card().querySelector('.rc-border-draw').click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-border-tab'),
+              8000, 'the preview');
+  const bp0 = sent().filter(([k]) => k === 'bprev').pop()[1];
+  ok('it asks for this pool’s border, with no border on',
+     bp0.level === 'pool' && bp0.border === null
+     && JSON.stringify(bp0.members) === JSON.stringify(P().lastBody.members));
+  const modal = () => D().querySelector('#bigModalBox');
+  ok('the dialog is titled for what it draws',
+     /Save a border around the DS events/.test(modal().textContent));
+  const dlg = () => D().querySelector('#bigModal .rc-border-dlg');
+  ok('it says why it is a box, and what is inside and outside it',
+     dlg().querySelector('p').textContent === 'Every event here is DS ('
+       + comp.length + ' DS, 0 IED), so there is nothing to draw a line between. '
+       + 'Instead the border is a box around the DS events, in µV, dB and ms: '
+       + 'inside it is solid DS, and outside it on any axis is ambiguous.',
+     dlg().querySelector('p').textContent);
+  eq('and the box itself, at no grace',
+     D().querySelector('#bigModal .rc-border-strict').textContent,
+     'The box at no grace: ' + boxWords(strict) + '.');
+  ok('and what grace does to it', /^Grace pulls the box in: none wraps every DS event, and 1% and 5% leave out the outermost 1% and 5% of them, ignoring more and more outliers/
+     .test(dlg().querySelector('.hint').textContent)
+     && dlg().querySelector('.hint').textContent.indexOf(filt) >= 0);
+  eq('the table: grace, inside, left outside, the other identity inside',
+     Array.from(D().querySelectorAll('#bigModal .rc-border-tab th')).map((t) => t.textContent),
+     ['grace', 'solid DS (inside)', 'DS left outside', 'IED inside']);
+  const lvRows = () => Array.from(D().querySelectorAll('#bigModal .rc-border-lv'));
+  const rowTxt = (r) => Array.from(r.children).map((td) => td.textContent.trim()).join(' | ');
+  const envRowTxt = (g) => gw(g) + ' | '
+    + E[g].lv.counts.ds + ' | ' + E[g].lv.outside + ' (' + pct(E[g].lv.outside_rate) + ') | 0';
+  eq('a row per grace, inside and outside at each',
+     lvRows().map(rowTxt), [envRowTxt(0), envRowTxt(0.01), envRowTxt(0.05)]);
+  ok('none leaves nothing out; each grace leaves out more',
+     E[0].lv.outside === 0 && E[0.01].lv.outside <= E[0.05].lv.outside
+     && E[0.05].lv.outside > 0, JSON.stringify([E[0].lv.outside, E[0.01].lv.outside,
+                                               E[0.05].lv.outside]));
+  const edg = Array.from(D().querySelectorAll('#bigModal .rc-border-edges'))
+    .map((r) => r.textContent);
+  eq('under each, the box at that grace and what the grace does',
+     edg, ['the box: ' + boxWords(E[0].lv.edges) + '; it wraps every DS event',
+           'the box: ' + boxWords(E[0.01].lv.edges) + '; it leaves out the outermost 1% of the DS events',
+           'the box: ' + boxWords(E[0.05].lv.edges) + '; it leaves out the outermost 5% of the DS events']);
+  ok('5% is the one picked unless another is', lvRows()[2].querySelector('input').checked);
+  reply('bprev', envPrev([0, 0.01, 0.02, 0.05]));
+  D().querySelector('#bigModal .rc-border-custom').value = '2';
+  D().querySelector('#bigModal .rc-border-custom-go').click();
+  await until(() => lvRows().length === 4, 8000, 'the custom grace');
+  const bp1 = sent().filter(([k]) => k === 'bprev').pop()[1];
+  ok('another grace is asked for as a fraction, and is then the one picked',
+     bp1.custom === 0.02 && lvRows()[2].querySelector('input').checked, bp1.custom);
+  eq('with its own row', rowTxt(lvRows()[2]), envRowTxt(0.02));
+  lvRows()[3].querySelector('input').click();
+  await sleep(50);
+  ok('a grace is picked by its row', lvRows()[3].querySelector('input').checked
+     && lvRows()[3].classList.contains('on'));
+  const bName = D().querySelector('#bigModal .bank-dlg-name');
+  ok('a nickname is suggested, saying it is drawn round the DS events',
+     !!bName && /^border around DS · /.test(bName.value), bName && bName.value);
+  bName.value = 'harness envelope';
+
+  /* Saved (from here) and applied at once: the pool refitted with the
+     envelope's classes put on the real answer. */
+  const used = (o) => Object.assign({ version: 1, wrong: 0, switch_rate: 0,
+    n_identity: evs.length }, o);
+  const fitWith = (bu, cls) => {
+    const fb = JSON.parse(JSON.stringify(f0));
+    fb.events.forEach((e, j) => { e.border = cls[j]; });
+    fb.border_used = bu;
+    fb.params = Object.assign({}, fb.params, { border: { artifact_id: bu.artifact_id,
+      version: bu.version, grace: bu.grace } });
+    return fb;
+  };
+  const buEnv = used({ artifact_id: 'hb-env-new', nickname: 'harness envelope',
+    grace: 0.05, grace_words: '5%', rule: envRule(0.05), kind: 'envelope', group: 'ds',
+    strict, edges: E[0.05].lv.edges, counts: E[0.05].lv.counts });
+  reply('bsave', { ok: true, artifact_id: 'hb-env-new', version: 1,
+                   nickname: 'harness envelope', grace: 0.05 });
+  const rowNew = row({ artifact_id: 'hb-env-new', nickname: 'harness envelope',
+    name: rowEnv.name, kind: 'envelope', group: 'ds', strict, grace_default: 0.05,
+    levels: [0, 0.01, 0.02, 0.05].map((g) => lvRow(E[g].lv)), measure: filt,
+    source: null });
+  reply('borders', { ok: true, borders: [rowNew, rowEnv, rowBw, rowOther] });
+  reply('fit', fitWith(buEnv, E[0.05].cls));
+  const nFit1 = fits();
+  Array.from(D().querySelectorAll('#bigModal .mf button')).pop().click();
+  await until(() => sent().some(([k]) => k === 'bsave') && fits() > nFit1
+    && !P().fitting && P().fit && P().fit.border_used, 10000, 'the save and the refit');
+  const bsv = sent().filter(([k]) => k === 'bsave').pop()[1];
+  ok('it saves under that nickname at the grace picked, keeping the extra one',
+     bsv.nickname === 'harness envelope' && bsv.grace === 0.05 && bsv.custom === 0.02
+     && bsv.level === 'pool', JSON.stringify(bsv).slice(0, 160));
+  ok('and classifies the pool by it at once',
+     JSON.stringify(P().border) === JSON.stringify({ artifact_id: 'hb-env-new',
+       version: 1, grace: 0.05 }) && P().colour === 'border');
+
+  /* ================================================================== */
+  head('THE BORDERS CARD, WITH THE ENVELOPE APPLIED');
+
+  await until(() => card() && /Classified by/.test(card().querySelector('summary').textContent)
+              && card().querySelectorAll('.rc-border-item').length === 4, 8000, 'the card');
+  const cE = E[0.05].lv.counts;
+  eq('its folded line says which border, at what grace, and what it made of the pool',
+     card().querySelector('summary').textContent,
+     'Borders · Classified by ‘harness envelope’ at grace 5%: ' + cE.ds + ' solid DS · '
+       + cE.amb + ' outside');
+  eq('in the card: classified by it, v1, at grace 5%',
+     txt(card(), '.rc-border-now strong'), 'Classified by ‘harness envelope’ v1 at grace 5%:');
+  eq('with how many are inside and outside', txt(card(), '.rc-border-on'),
+     cE.ds + ' inside · ' + cE.amb + ' outside');
+  eq('its rule, and that no IED event is inside it', txt(card(), '.rc-border-rule'),
+     envRule(0.05) + ' No IED event here is inside the box.');
+  ok('and how it is drawn on the flat views',
+     /^On the flat views it is the box, outlined, with everything outside it shaded\.$/
+       .test(txt(card(), '.rc-border-drawn')));
+  ok('the one applied is picked, and marked as applied here',
+     items()[0].classList.contains('on')
+     && txt(items()[0], '.rc-border-here') === 'applied here'
+     && items().filter((r) => r.querySelector('.rc-border-here')).length === 1);
+  ok('at the grace applied', gopts().length === 4 && gopts()[3].classList.contains('on'));
+  ok('Apply says it is applied, and waits for another pick',
+     apply().textContent === 'Applied to this pool' && apply().disabled);
+  gopts()[1].querySelector('input').click();
+  await sleep(60);
+  ok('another grace picked, it offers to apply that',
+     apply().textContent === 'Apply to this pool' && !apply().disabled
+     && / at grace 1%/.test(apply().title));
+  gopts()[3].querySelector('input').click();
+  await sleep(60);
+  ok('and Clear is offered', !!card().querySelector('.rc-border-clear'));
+  ok('the legend colours by it', /border:/.test((D().querySelector('.rc-pool-legend') || {})
+     .textContent || ''));
+
+  /* ================================================================== */
+  head('OUTSIDE THE BORDER: ITS OWN COLOUR, FADED');
+  {
+    const pe = ev(RC + '._pool().evs') || [];
+    const jA = pe.findIndex((e) => e.border === 'amb' && (e.cls_pool === 'ds' || e.cls_pool === 'ied'));
+    const jS = pe.findIndex((e) => e.border === 'ds' || e.border === 'ied');
+    const grey = ev('BARRY.token("--text-3")');
+    if (jA < 0) {
+      note('no event outside the box at this grace; skipped');
+    } else {
+      const fa = ev(RC + '._poolFillOf(' + jA + ')');
+      const fs = jS >= 0 ? ev(RC + '._poolFillOf(' + jS + ')') : null;
+      ok('an event outside the box is not plain grey: it keeps a tint of its own call',
+         !!fa && fa !== grey && /^rgb\(/.test(fa), fa + ' vs grey ' + grey);
+      ok('and it is not the full colour of a solid one either', !fs || fa !== fs, fa + ' / ' + fs);
+    }
+    const lg = Array.from(D().querySelectorAll('.rc-legend .rc-lg, .rc-pool-legend .rc-lg'))
+      .map((n) => n.textContent);
+    ok('the legend says what the faded ones are',
+       lg.some((t) => /outside, pooled as DS/.test(t)) && lg.some((t) => /outside, pooled as IED/.test(t)),
+       JSON.stringify(lg));
+  }
+
+  head('THE ENVELOPE IN THE 3D VIEW');
+  ev(RC + '._draw()');
+  await sleep(150);
+  const b3 = ev(RC + '._border3d()');
+  ok('the 3D view outlines it: one box', !!b3 && b3.kind === 'envelope'
+     && (b3.boxes || []).length === 1, JSON.stringify(b3));
+  ok('each of its sides a real range, lo below hi', !!b3 && (b3.boxes || [])
+     .every((bx) => bx.r.every(([a, b]) => isFinite(a) && isFinite(b) && a < b)),
+     JSON.stringify(b3));
+
+  head('THE ENVELOPE ON THE FLAT VIEWS');
+
+  await sleep(150);
+  let g = geom(), bg = bgeom();
+  const FL = [['rcFlatAH', 'amp_uV', 'hw_ms'], ['rcFlatAP', 'amp_uV', 'hf_db'],
+              ['rcFlatHP', 'hw_ms', 'hf_db']];
+  const px = (fl, axis, v) => (axis === 'x'
+    ? fl.box.x0 + ((v - fl.xr[0]) / (fl.xr[1] - fl.xr[0])) * (fl.box.x1 - fl.box.x0)
+    : fl.box.y1 - ((v - fl.yr[0]) / (fl.yr[1] - fl.yr[0])) * (fl.box.y1 - fl.box.y0));
+  const near = (a, b) => Math.abs(a - b) < 0.6;
+  const ed5 = E[0.05].lv.edges;
+  for (const [id, kx, ky] of FL) {
+    const fl = g.flats[id], b = bg[id];
+    ok(id + ': the box is drawn', !!b && b.kind === 'envelope' && !!b.rect, JSON.stringify(b));
+    if (!b || !b.rect) continue;
+    ok(id + ': from lo to hi on both of its axes',
+       near(b.rect.x0, px(fl, 'x', ed5[kx].lo)) && near(b.rect.x1, px(fl, 'x', ed5[kx].hi))
+       && near(b.rect.y1, px(fl, 'y', ed5[ky].lo)) && near(b.rect.y0, px(fl, 'y', ed5[ky].hi)),
+       JSON.stringify(b.rect));
+    ok(id + ': inside the plot', b.rect.x0 >= fl.box.x0 && b.rect.x1 <= fl.box.x1
+       && b.rect.y0 >= fl.box.y0 && b.rect.y1 <= fl.box.y1);
+    ok(id + ': labelled, whole, inside the plot',
+       !!b.label && b.label.text === 'DS envelope · grace 5%'
+       && b.label.lines.join(' ') === b.label.text
+       && b.label.x >= fl.box.x0 && b.label.x + b.label.w <= fl.box.x1
+       && b.label.y >= fl.box.y0 && b.label.y + b.label.h <= fl.box.y1, JSON.stringify(b.label));
+  }
+
+  /* The pixels: the outline in the accent colour, the wash outside it,
+     nothing inside it -- sampled where no dot is. */
+  const accent = JSON.parse(ev('(function(){ var c = document.createElement("canvas");'
+    + ' c.width = c.height = 1; var x = c.getContext("2d");'
+    + ' x.fillStyle = BARRY.token("--accent"); x.fillRect(0, 0, 1, 1);'
+    + ' return JSON.stringify(Array.from(x.getImageData(0, 0, 1, 1).data)); })()'));
+  /* The strongest of the pixel under a point and its neighbours across a
+     line: a 1.5 px stroke at a fractional position lands mostly in one of
+     them, not always the rounded one. `across` is 'y' for a horizontal
+     line, 'x' for a vertical one, null for the point alone. */
+  const pixel = (id, x, y, across) => {
+    const cv = D().getElementById(id);
+    const s = cv.width / cv.clientWidth;
+    const g2 = cv.getContext('2d');
+    let best = null;
+    for (const d of (across ? [-1, 0, 1] : [0])) {
+      const px0 = Math.floor(x * s) + (across === 'x' ? d : 0);
+      const py0 = Math.floor(y * s) + (across === 'y' ? d : 0);
+      const p = Array.from(g2.getImageData(px0, py0, 1, 1).data);
+      if (!best || p[3] > best[3]) best = p;
+    }
+    return best;
+  };
+  const like = (p, c, tol) => Math.abs(p[0] - c[0]) + Math.abs(p[1] - c[1])
+    + Math.abs(p[2] - c[2]) <= (tol || 90);
+  /* Away from every dot and the ring a switched one wears, the centres and
+     their names, the border's label, and the line along the top that
+     counts the dots on the edge. */
+  const clear = (fl, x, y, b) => fl.pts.every((p) => Math.hypot(p.x - x, p.y - y) > 10)
+    && fl.centres.every((c) => Math.hypot(c.x - x, c.y - y) > 16
+                               && !(x > c.x && x < c.x + 60 && Math.abs(y - c.y) < 9))
+    && y > fl.box.y0 + 16
+    && !(b.label && x >= b.label.x - 3 && x <= b.label.x + b.label.w + 3
+         && y >= b.label.y - 3 && y <= b.label.y + b.label.h + 3);
+  {
+    const id = 'rcFlatAH', fl = g.flats[id], b = bg[id];
+    if (b && b.rect) {
+      const r = b.rect;
+      /* All four sides, densely: which recordings this pools depends on
+         what is read on this machine today, and a dense cloud can cover
+         most of the top and bottom (2026-10-19: one clear sample of 22). */
+      let edgeN = 0, edgeHit = 0;
+      for (let j = 1; j < 40; j++) {
+        const x = r.x0 + ((r.x1 - r.x0) * j) / 40;
+        for (const y of [r.y0, r.y1]) {
+          if (!clear(fl, x, y, b)) continue;
+          edgeN += 1;
+          const p = pixel(id, x, y, 'y');
+          if (p[3] > 150 && like(p, accent)) edgeHit += 1;
+        }
+        const y = r.y0 + ((r.y1 - r.y0) * j) / 40;
+        for (const x2 of [r.x0, r.x1]) {
+          if (!clear(fl, x2, y, b)) continue;
+          edgeN += 1;
+          const p = pixel(id, x2, y, 'x');
+          if (p[3] > 150 && like(p, accent)) edgeHit += 1;
+        }
+      }
+      ok('the outline reads back in the accent colour', edgeN >= 4 && edgeHit >= edgeN * 0.7,
+         edgeHit + ' of ' + edgeN + ' edge samples, accent ' + JSON.stringify(accent));
+      const outS = [], inS = [];
+      for (let ix = 1; ix < 24; ix++) {
+        for (let iy = 1; iy < 16; iy++) {
+          const x = fl.box.x0 + ((fl.box.x1 - fl.box.x0) * ix) / 24;
+          const y = fl.box.y0 + ((fl.box.y1 - fl.box.y0) * iy) / 16;
+          if (!clear(fl, x, y, b)) continue;
+          if (x > r.x0 + 3 && x < r.x1 - 3 && y > r.y0 + 3 && y < r.y1 - 3) {
+            inS.push(pixel(id, x, y));
+          }
+        }
+      }
+      /* Outside, in the gap between the box and the plot's edge on each
+         side wide enough to sample: down its middle. */
+      const gaps = [
+        [r.x0 - fl.box.x0, (t) => [(fl.box.x0 + r.x0) / 2, r.y0 + (r.y1 - r.y0) * t]],
+        [fl.box.x1 - r.x1, (t) => [(fl.box.x1 + r.x1) / 2, r.y0 + (r.y1 - r.y0) * t]],
+        [r.y0 - fl.box.y0, (t) => [r.x0 + (r.x1 - r.x0) * t, (fl.box.y0 + r.y0) / 2]],
+        [fl.box.y1 - r.y1, (t) => [r.x0 + (r.x1 - r.x0) * t, (fl.box.y1 + r.y1) / 2]]];
+      for (const [gap, at] of gaps) {
+        if (gap < 8) continue;
+        for (let j = 1; j < 16; j++) {
+          const [x, y] = at(j / 16);
+          if (clear(fl, x, y, b)) outS.push(pixel(id, x, y));
+        }
+      }
+      const washed = outS.filter((p) => p[3] >= 8 && p[3] <= 60 && like(p, accent, 120));
+      ok('outside it, a light wash of the accent colour', outS.length >= 4
+         && washed.length >= outS.length * 0.8,
+         washed.length + ' of ' + outS.length + ' outside samples: '
+           + JSON.stringify(outS.slice(0, 3)));
+      ok('inside it, none', inS.length >= 4 && inS.every((p) => p[3] < 8),
+         inS.length + ' inside samples: ' + JSON.stringify(inS.filter((p) => p[3] >= 8)
+           .slice(0, 3)));
+    } else {
+      ok('the outline reads back in the accent colour', false, 'no box on ' + id);
+    }
+  }
+
+  /* ================================================================== */
+  head('A TWO-IDENTITY BORDER, APPLIED FROM THE CARD, DRAWN AS ITS CUT-OFFS');
+
+  const buBw = used({ artifact_id: 'hb-two', nickname: 'harness two-sided',
+    grace: 0.01, grace_words: '1%', kind: 'between', group: null,
+    rule: 'Solid IED: harness. Solid DS: harness. Anything else is ambiguous (grace 1%).',
+    strict: rowBw.strict, edges: between,
+    ied_above: { amp_uV: true, hf_db: true, hw_ms: false }, counts: bwCounts,
+    wrong: 7, switch_rate: 7 / evs.length });
+  reply('fit', fitWith(buBw, bwCls));
+  items()[2].querySelector('input').click();
+  await sleep(50);
+  gopts()[1].querySelector('input').click();
+  await sleep(50);
+  const nFit2 = fits();
+  apply().click();
+  await until(() => fits() > nFit2 && !P().fitting && P().fit.border_used
+              && P().fit.border_used.artifact_id === 'hb-two', 10000, 'the refit');
+  const fb2 = sent().filter(([k]) => k === 'fit').pop()[1];
+  ok('Apply sends the picked border at the picked grace',
+     JSON.stringify(fb2.border) === JSON.stringify({ artifact_id: 'hb-two', version: null,
+                                                     grace: 0.01 }), JSON.stringify(fb2.border));
+  await until(() => /harness two-sided/.test(card().querySelector('summary').textContent),
+              5000, 'the card');
+  eq('the card says what it made of the pool',
+     txt(card(), '.rc-border-on'), bwCounts.ds + ' solid DS · ' + bwCounts.ied
+       + ' solid IED · ' + bwCounts.amb + ' ambiguous');
+  ok('with how many land in the other’s solid class',
+     txt(card(), '.rc-border-rule').indexOf(' Here 7 of ' + evs.length
+       + ' events with an identity (') > 0);
+  ok('and that it is drawn as dashed cut-offs',
+     /^On the flat views it is two dashed lines on each axis/.test(txt(card(), '.rc-border-drawn')));
+  await sleep(150);
+  g = geom(); bg = bgeom();
+  for (const [id, kx, ky] of FL) {
+    const fl = g.flats[id], b = bg[id];
+    ok(id + ': both of its axes’ cut-offs are drawn', !!b && b.kind === 'between'
+       && (b.lines || []).map((l) => l.axis + ':' + l.key).join(',') === 'x:' + kx + ',y:' + ky,
+       JSON.stringify(b && b.lines));
+    if (!b || !b.lines) continue;
+    const lx = b.lines[0], ly = b.lines[1];
+    ok(id + ': where the border puts them',
+       near(lx.ied, px(fl, 'x', between[kx].ied_at)) && near(lx.ds, px(fl, 'x', between[kx].ds_at))
+       && near(ly.ied, px(fl, 'y', between[ky].ied_at)) && near(ly.ds, px(fl, 'y', between[ky].ds_at)),
+       JSON.stringify(b.lines));
+    ok(id + ': labelled, whole', !!b.label && b.label.text === 'DS / IED border · grace 1%'
+       && b.label.x >= 0 && b.label.x + b.label.w <= fl.w);
+  }
+  {
+    /* Along both IED cut-offs of every view, clear of the dots themselves
+       (a dot is 3.2 px; the ring a switched one wears is another colour,
+       so it can only lower the count). Dashed 5 on, 4 off: about half. */
+    const ied = JSON.parse(ev('(function(){ var c = document.createElement("canvas");'
+      + ' c.width = c.height = 1; var x = c.getContext("2d");'
+      + ' x.fillStyle = BARRY.token("--err"); x.fillRect(0, 0, 1, 1);'
+      + ' return JSON.stringify(Array.from(x.getImageData(0, 0, 1, 1).data)); })()'));
+    let n = 0, hit = 0;
+    for (const [id] of FL) {
+      const fl = g.flats[id], b = bg[id];
+      if (!b || !b.lines) continue;
+      const free = (x, y) => fl.pts.every((p) => Math.hypot(p.x - x, p.y - y) > 5)
+        && fl.centres.every((c) => Math.hypot(c.x - x, c.y - y) > 16
+                                   && !(x > c.x && x < c.x + 60 && Math.abs(y - c.y) < 9))
+        && y > fl.box.y0 + 16
+        && !(x >= b.label.x - 3 && x <= b.label.x + b.label.w + 3
+             && y >= b.label.y - 3 && y <= b.label.y + b.label.h + 3);
+      for (const ln of b.lines) {
+        const other = b.lines.find((o) => o !== ln);
+        for (let j = 1; j < 60; j++) {
+          const t = j / 60;
+          const x = ln.axis === 'x' ? ln.ied : fl.box.x0 + (fl.box.x1 - fl.box.x0) * t;
+          const y = ln.axis === 'y' ? ln.ied : fl.box.y0 + (fl.box.y1 - fl.box.y0) * t;
+          // Not where the other axis' lines cross it.
+          if (other && [other.ied, other.ds].some((v) =>
+            Math.abs((other.axis === 'x' ? x : y) - v) < 4)) continue;
+          if (!free(x, y)) continue;
+          n += 1;
+          const p = pixel(id, x, y, ln.axis);
+          if (p[3] > 150 && like(p, ied)) hit += 1;
+        }
+      }
+    }
+    ok('the IED cut-offs read back dashed, in the IED colour',
+       n >= 12 && hit >= n * 0.25 && hit <= n * 0.85, hit + ' of ' + n + ' samples');
+  }
+
+  head('THE TWO-IDENTITY BORDER IN THE 3D VIEW');
+  ev(RC + '._draw()');
+  await sleep(150);
+  const b3b = ev(RC + '._border3d()');
+  ok('the 3D view outlines both solid regions, DS and IED',
+     !!b3b && b3b.kind === 'between'
+     && JSON.stringify((b3b.boxes || []).map((x) => x.cls).sort())
+        === JSON.stringify(['ds', 'ied']), JSON.stringify(b3b));
+
+  head('ARCHIVING A BORDER, AND PUTTING IT BACK');
+  {
+    const rowsN = () => D().querySelectorAll('.rc-borders .rc-border-item').length;
+    const n0 = rowsN();
+    const btn = D().querySelector('.rc-borders .rc-border-item .rc-border-archive');
+    ok('each saved border can be archived from its row', !!btn && n0 > 0, n0 + ' rows');
+    if (btn) {
+      const id = btn.closest('.rc-border-item').getAttribute('data-id');
+      btn.click();
+      await until(() => rowsN() === n0 - 1, 4000, 'the row to go');
+      ok('archived, it leaves the list', rowsN() === n0 - 1, rowsN() + ' of ' + n0);
+      const fold = D().querySelector('.rc-borders .rc-border-archived');
+      ok('and is listed under Archived borders, with a way back',
+         !!fold && /Archived borders \(1\)/.test(fold.textContent)
+         && !!fold.querySelector('.rc-border-arch-row[data-id="' + id + '"] .rc-border-unarchive'),
+         fold && fold.textContent.slice(0, 120));
+      ok('kept in the shared archive list, by its id (in memory here)',
+         !!(ev('window.__rcbMem.rootcanal_border_archive') || {})[id]);
+      fold.querySelector('.rc-border-unarchive').click();
+      await until(() => rowsN() === n0, 4000, 'the row back');
+      ok('put back, it is in the list again', rowsN() === n0
+         && !D().querySelector('.rc-borders .rc-border-archived'), rowsN() + ' of ' + n0);
+    }
+  }
+
+  /* ================================================================== */
+  head('CLEAR, AND A BORDER THE SERVER REFUSES');
+
+  reply('fit', null);
+  card().querySelector('.rc-border-clear').click();
+  await until(() => !P().fitting && P().fit && !P().fit.border_used && !P().border,
+              60000, 'cleared');
+  ok('cleared, the pool is fitted without it and coloured by its call again',
+     P().colour === 'pool' && !P().fit.border_used);
+  await sleep(150);
+  bg = bgeom();
+  ok('and nothing is drawn on the flat views', Object.keys(bg).length === 0, JSON.stringify(bg));
+  eq('the card says so', card().querySelector('summary').textContent,
+     'Borders · No border applied · 4 saved');
+  items()[3].querySelector('input').click();
+  await sleep(50);
+  apply().click();
+  await until(() => !P().fitting && P().borderErr, 60000, 'the refusal');
+  ok('a border the server refuses is said in the card, in its words, and taken off',
+     /^The border hb-other is not on this machine/.test(P().borderErr) && !P().border
+     && /^Not applied: The border hb-other/.test(txt(card(), '.rc-border-err'))
+     && /not applied, said below/.test(card().querySelector('summary').textContent),
+     P().borderErr);
+  ev(RC + '._pool().borderErr = null');
+  ev(RC + '._render()');
+
+  /* ================================================================== */
+  head('NOTHING CUT');
+
+  const bc = card();
+  const clipped = Array.from(bc.querySelectorAll('*'))
+    .filter((e) => e.children.length === 0 && e.textContent.trim()
+                   && e.scrollWidth > e.clientWidth + 1
+                   && W.getComputedStyle(e).overflow !== 'visible');
+  ok('no text in the card is clipped', !clipped.length,
+     clipped.slice(0, 3).map((e) => e.textContent).join(' | '));
+  ok('nothing ends in an ellipsis', !Array.from(bc.querySelectorAll('*'))
+     .some((e) => W.getComputedStyle(e).textOverflow === 'ellipsis'));
+  ok('the card is no wider than the panel', bc.scrollWidth <= bc.clientWidth + 1,
+     bc.scrollWidth + ' in ' + bc.clientWidth);
+  note('Single’s Borders card is checked in rootcanal.html, which reads a set');
+
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+    for (const ln of String((err && err.stack) || '').split(NL).slice(0, 5)) {
+      say('       ' + ln, 'dim');
+    }
+  } finally {
+    try {
+      if (ev) {
+        ev('(function(){ var W = window; if (W.__rcbFetch) { W.fetch = W.__rcbFetch;'
+           + ' delete W.__rcbFetch; } if (W.__rcbLog) { BARRY.activity.log ='
+           + ' W.__rcbLog; delete W.__rcbLog; } if (W.__rcbPrefSet) {'
+           + ' BARRY.prefs.set = W.__rcbPrefSet; delete W.__rcbPrefSet;'
+           + ' if (W.__rcbPrefGet) { BARRY.prefs.get = W.__rcbPrefGet; delete W.__rcbPrefGet; } } })()');
+        ev('try { closeModal(); } catch (e) {}');
+        ev('BARRY.rootcanal._poolClose()');
+        ev('(function(v){ try { if (v == null) localStorage.removeItem('
+           + '"barry.rootcanal.view"); else localStorage.setItem('
+           + '"barry.rootcanal.view", v); } catch (e) {} })('
+           + JSON.stringify(viewWas == null ? null : viewWas) + ')');
+      }
+    } catch (e) { /* the frame may be gone */ }
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'rootcanalborder: ' + pass + ' ok, ' + fail + ' fail';
+  // Unloaded, or headless Edge never dumps and the runner says TIMED OUT.
+  try { A.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

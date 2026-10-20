@@ -428,6 +428,10 @@ class EventBank:
                     item["pair_t"] = round(float(ev["pair_t"]), 6)
                 except (TypeError, ValueError):
                     pass
+            # Whose of its two times `start` is, for one both found
+            # (2026-10-19): Incisor's unless it says Doppler's.
+            if ev.get("stamp") in ("incisor", "doppler"):
+                item["stamp"] = ev["stamp"]
             # Channels this event is not valid on, and the two different
             # reasons it might not be.
             #

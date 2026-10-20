@@ -18,7 +18,9 @@ THE RULE (decided with the user, 2026-10-14)
       leaves the other two as Doppler's own.
     * A merged event keeps INCISOR's time -- a dentate-spike detector stamps
       the spike's own peak, sample-precise -- and `pair_t` keeps Doppler's,
-      so nothing is lost and the gap can always be read back.
+      so nothing is lost and the gap can always be read back. Unless
+      somebody chooses Doppler's (2026-10-19, see KEEPS): the same pairs,
+      filed under the other stamp.
 
 WHAT GOES IN
 A banked entry's events at one version. Anything already called Garbage --
@@ -33,6 +35,34 @@ import bisect
 DEFAULT_WINDOW_MS = 5.0
 MAX_WINDOW_MS = 100.0
 ORIGINS = ("incisor", "doppler", "both")
+
+#: Whose time a merged event keeps (2026-10-19). Incisor's by default -- the
+#: rule above -- or Doppler's when somebody says so: then `start` is
+#: Doppler's stamp, `pair_t` is Incisor's, and the event carries
+#: `stamp: "doppler"` so every reader knows which of its two times is which.
+#: Either way no time is invented or moved; the choice is only which of the
+#: two detectors' stamps the event is filed under.
+KEEPS = ("incisor", "doppler")
+WORD = {"incisor": "Incisor", "doppler": "Doppler"}
+
+
+def keep_of(v):
+    """Whose time is kept, from a request, refusing anything else."""
+    k = str(v or "incisor").strip().lower()
+    if k not in KEEPS:
+        raise ValueError("A merged event keeps Incisor's time or Doppler's; "
+                         "%r is neither." % v)
+    return k
+
+
+def stamp_of(ev):
+    """Whose stamp an event's `start` is: 'incisor', 'doppler', or None when
+    its origin is not known. An event both found keeps Incisor's unless it
+    says otherwise."""
+    o = (ev or {}).get("origin")
+    if o == "both":
+        return "doppler" if ev.get("stamp") == "doppler" else "incisor"
+    return o if o in KEEPS else None
 
 
 def window_s(ms):
@@ -73,13 +103,19 @@ def usable(events, vocab):
     return out
 
 
-def pool(ds, ied, win_s):
+def pool(ds, ied, win_s, keep="incisor"):
     """Pool two sorted lists of events. Returns (events, stats).
 
     `ds` and `ied` are dicts with at least `start`. Every output event is
     {start, origin, pair_t?, dt_ms?, channel?, amplitude?, ds?, ied?} where
     `ds`/`ied` are the indices of the events it came from.
+
+    `keep` says whose time a merged event is filed under (KEEPS). Which
+    pairs merge does not depend on it -- only which stamp is `start`, and
+    whose channel and amplitude come with it. `dt_ms` is Doppler's time less
+    Incisor's either way: a fact about the pair, not about the choice.
     """
+    keep = keep_of(keep)
     dt = [float(e["start"]) for e in ds]
     it = [float(e["start"]) for e in ied]
     # Every candidate pair within the window, nearest first.
@@ -110,6 +146,14 @@ def pool(ds, ied, win_s):
             row["ied"] = j
             row["pair_t"] = round(float(o["start"]), 6)
             row["dt_ms"] = round((float(o["start"]) - float(e["start"])) * 1e3, 3)
+            if keep == "doppler":
+                # Filed under Doppler's stamp: its time, and its channel and
+                # amplitude where it has them; Incisor's time beside it.
+                row["start"], row["pair_t"] = row["pair_t"], row["start"]
+                row["stamp"] = "doppler"
+                for k in ("channel", "amplitude"):
+                    if o.get(k) is not None:
+                        row[k] = o[k]
             if row.get("channel") is None and o.get("channel") is not None:
                 row["channel"] = o["channel"]
         else:
@@ -132,6 +176,7 @@ def pool(ds, ied, win_s):
         "incisor_only": len(ds) - both,
         "doppler_only": len(ied) - both,
         "window_ms": round(win_s * 1e3, 3),
+        "keep": keep,
         "dt_ms": sorted(r["dt_ms"] for r in out if "dt_ms" in r),
     }
     return out, stats

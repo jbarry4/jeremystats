@@ -179,6 +179,10 @@ BARRY.rootcanal = (function () {
   let bordersErr = null;
   let bordersLoading = false;
   let borderErr = null;
+  /* What the Borders card has picked, per view (2026-10-19): which saved
+     border and which grace, before Apply -- kept across repaints, so a list
+     arriving does not throw the pick away. */
+  const borderPick = {};
   /* Single's dots coloured by DS / IED call, or by cluster. */
   let singleColour = 'call';
   /* AVERAGES AND THE LASSO. `avg` is Single's average on show ({ label,
@@ -250,7 +254,18 @@ BARRY.rootcanal = (function () {
   let live = null;        // { k, z: [a,h,f], raw: [a,h,f] }
   let bankAfterFit = false;
 
-  const bulk = { on: false, plan: null, pick: {}, job: null, poll: null };
+  /* MANY SETS AT ONCE (rebuilt 2026-10-19 in the house's picker shape:
+     Doppler's and Braces' Many). `want` is what is ticked, by entry id --
+     NOTHING is ticked to begin with: every todo row used to start ticked,
+     so one press read forty-two sets, which is hours of disk. `filt` is the
+     search and the chips (OR inside one category, AND across them); `rev`
+     moves when a new plan lands, so every part built from the old one is
+     rebuilt. */
+  const bulk = { on: false, plan: null, want: {}, job: null, poll: null,
+                 rev: 0, filt: { q: '' },
+                 // The send in flight and what it sent, a Stop pressed, and
+                 // the batch before, said on the picker until the next.
+                 sending: false, sent: null, stopping: false, last: null };
 
   /* SINGLE OR POOLED, remembered per viewer. Browser storage, because it is
      a convenience of the person looking and nothing else reads it; wrapped,
@@ -301,6 +316,21 @@ BARRY.rootcanal = (function () {
     picked: null, evData: null, evFor: null, evGen: 0, evBusy: false,
     shelf: null, shelfErr: null, open: null, saved: false,
     fitErr: null,       // the server's sentence when it refused the members
+    /* WHICH SCREEN (2026-10-19). Pooled was one long page -- the shelf, the
+       table of recordings and the picture one under the other -- so Open on
+       the shelf drew the pool at the very bottom, under the table, and read
+       as though it had done nothing. Three screens now, at both levels:
+       'home' (the saved pools, and New pool), 'build' (choosing what goes
+       in) and 'view' (the picture, with nothing to choose). `paintPool`. */
+    screen: 'home',
+    /* The answer a recording's row offers while it is not ticked, by
+       recording: what a tick puts in. */
+    pickSrc: {},
+    /* A refusal that names members ({ error, away: [keys], from: 'fit' |
+       'save' | 'singles' }), and the run that reads them here again. */
+    refusal: null, redo: null,
+    /* The label typed into the save dialog, for when it comes back. */
+    lastNick: '',
   };
 
   /* The 3D view. Yaw about the vertical, then pitch about the screen's
@@ -1029,9 +1059,10 @@ BARRY.rootcanal = (function () {
           if (bulk.on && !bulk.plan) loadBulk();
         },
       }),
+      // Said once here; the card under it says what a tick costs.
       el('span', { class: 'hint', text: bulk.on
-        ? 'Reads them one after another. Nothing is banked by the queue — '
-          + 'each set is still looked at and banked by somebody.'
+        ? 'Read many sets in one go, while you do something else. Each is '
+          + 'still looked at and banked by a person, one at a time.'
         : 'Pick an aligned set, read it once, then look at what it splits '
           + 'into.' }),
       bulk.job && !bulk.on
@@ -1040,6 +1071,12 @@ BARRY.rootcanal = (function () {
             return 'Batch still reading — ' + (st.done || 0) + ' of '
                  + (st.of || '?') + '.';
           })() })
+        : null,
+      // Back to it in one press, rather than through How many.
+      bulk.job && !bulk.on
+        ? BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Show the batch',
+            extra: 'rc-bulk-show',
+            onclick: () => { bulk.on = true; render(); } })
         : null,
     ].filter(Boolean));
   }
@@ -1055,11 +1092,17 @@ BARRY.rootcanal = (function () {
       /* FOLDED, once there is a read. The whole choice on one line, and one
          button to unfold it. */
       const v = versionOf(cur, q.from_version);
+      const title = cur.session_label || cur.gid || cur.entry_id;
+      /* The entry's own name less the session it repeats: the line said
+         "PTEN m13 s2 2023-08-01" twice in a row (2026-10-19). */
+      let nm = String(cur.name || 'DS set ' + cur.entry_id);
+      if (nm.indexOf(title) === 0 && nm.length > title.length) {
+        nm = nm.slice(title.length).replace(/^\s*[·:–-]\s*/, '');
+      }
       return el('div', { class: 'card rc-choose rc-folded' }, [
-        el('strong', { text: cur.session_label || cur.gid || cur.entry_id }),
+        el('strong', { text: title }),
         el('span', { class: 'hint', text:
-          (cur.name || 'DS set ' + cur.entry_id)
-          + '  ·  ' + (v ? BARRY.ui.versionLabel(v) : 'as it is now')
+          nm + '  ·  ' + (v ? BARRY.ui.versionLabel(v) : 'as it is now')
           + '  ·  ' + ((v && v.n) || cur.n) + ' events'
           + (v && v.aligned ? '  ·  aligned' : '') }),
         el('span', { class: 'spacer' }),
@@ -1171,9 +1214,11 @@ BARRY.rootcanal = (function () {
         value: q.from_version,
         unit: 'stamps',
         disabled: (v) => (usable(v) ? null : (v.why_not || 'not readable here')),
+        /* The tree says "aligned" on the rows that are; "not aligned" on
+           every other row was the same two words eight times over, and
+           the warning under the tree says it where it matters (2026-10-19). */
         state: (v) => [
           v.tag === 'rootcanal' ? 'Root Canal’s own output' : null,
-          v.aligned ? null : 'not aligned',
           want && versionRef(want) === versionRef(v) ? 'the default' : null,
         ].filter(Boolean),
         onpick: (v) => {
@@ -1323,10 +1368,12 @@ BARRY.rootcanal = (function () {
     return rep;
   }
 
+  /* Ghost and small, as Save and Open beside them are (2026-10-19: they were
+     minis, a size smaller than the buttons on either side of them). */
   function importButtons() {
-    return singleBanked.map((b) => BARRY.ui.button({ kind: 'mini',
+    return singleBanked.map((b) => BARRY.ui.button({ kind: 'ghost', size: 'sm',
       extra: 'rc-import-banked',
-      text: 'Keep the result banked as v' + b.ds_version + ' as a version',
+      text: 'Keep banked v' + b.ds_version + ' as a saved version',
       title: 'Banked ' + String(b.at || '').replace('T', ' ').slice(0, 16)
         + (b.k ? ' at k = ' + b.k : '') + ': ' + (b.counts.ds || 0) + ' DS, '
         + (b.counts.ied || 0) + ' IED. Kept '
@@ -1966,6 +2013,7 @@ BARRY.rootcanal = (function () {
                882 without it). */
             tail: statsButton('single') }),
         marginCard(singleMarginCtx()),
+        bordersCard(singleBorderCtx()),
       ]),
       savedOnly ? el('p', { class: 'hint rc-warn rc-saved-only', text:
         'Drawn from v' + (viewing ? viewing.v : '?') + '’s saved numbers. Its '
@@ -2292,8 +2340,32 @@ BARRY.rootcanal = (function () {
     render();
   }
 
-  /* One side of a band: "amplitude ≥ 1482 µV · HF ≥ 13.2 dB · ...". */
+  /* TWO KINDS OF BORDER (2026-10-19). "between" is the one above: cut-offs
+     drawn between DS and IED. "envelope" is drawn AROUND one identity when
+     the other has too few events to draw a line between -- a pool of
+     controls is every event DS, and drawing one from a pool of 1263 DS and
+     0 IED was refused ("at least 5 of each are needed"). It is a box in µV,
+     dB and ms: inside it is solid <that identity>, outside it on any axis
+     is ambiguous, and grace is how many of the group's OWN events it may
+     leave out -- none wraps every one, 1% and 5% pull every side in,
+     ignoring more and more outliers (backend/rcborder.py `envelope`). A
+     border with no `kind` is an older one, and is "between". */
+  const isEnv = (b) => !!b && b.kind === 'envelope';
+  const bGroup = (b) => ((b && b.group) === 'ied' ? 'IED' : 'DS');
+  const bOther = (b) => ((b && b.group) === 'ied' ? 'DS' : 'IED');
+  const bspan = (r) => bnum((r || {}).lo) + '–' + bnum((r || {}).hi);
+  const sameG = (a, b) => a != null && b != null
+                          && Math.abs(Number(a) - Number(b)) < 1e-9;
+
+  /* One side of a band: "amplitude ≥ 1482 µV · HF ≥ 13.2 dB · ...". An
+     envelope has no sides: its edges are a range on every axis --
+     "amplitude 220–1613 µV · HF 3.1–14.2 dB · ..." -- and `side` is not
+     read. */
   function edgeWords(b, edges, side) {
+    if (isEnv(b)) {
+      return BAX.map(([k, word, unit]) => word + ' ' + bspan((edges || {})[k])
+                                          + ' ' + unit).join(' · ');
+    }
     const ab = b.ied_above || {};
     return BAX.map(([k, word, unit]) => {
       const up = ab[k] !== false;
@@ -2303,74 +2375,491 @@ BARRY.rootcanal = (function () {
     }).join(' · ');
   }
 
+  /* A saved border's numbers in a line: "Envelope · DS · 220–1613 µV ·
+     3.1–14.2 dB · 12.0–40.3 ms", or "Between DS and IED · 1193 µV · ...".
+     Its nickname, measurement and source are said beside it, in the
+     Borders card, rather than run into one long line as the old picker's
+     options were. */
   function borderWords(r) {
     const st = r.strict || {};
-    return (r.nickname || r.name || r.artifact_id) + ' · '
-      + BAX.map(([k, , unit]) => bnum(st[k]) + ' ' + unit).join(', ')
-      + ' · ' + (r.measure || 'measurement not recorded')
-      + (r.source ? ' · from ‘' + r.source + '’' : '');
+    if (isEnv(r)) {
+      return 'Envelope · ' + bGroup(r) + ' · '
+        + BAX.map(([k, , unit]) => bspan(st[k]) + ' ' + unit).join(' · ');
+    }
+    return 'Between DS and IED · '
+      + BAX.map(([k, , unit]) => bnum(st[k]) + ' ' + unit).join(' · ');
   }
 
-  /* Picking a saved border and its grace, beside the margins. */
-  function borderRow(b) {
+  /* What one grace does to one border, in a phrase. */
+  function graceMeans(b, g) {
+    if (isEnv(b)) {
+      return Number(g) === 0 ? 'wraps every ' + bGroup(b) + ' event'
+        : 'leaves out the outermost ' + graceWords(g) + ' of the '
+          + bGroup(b) + ' events';
+    }
+    return Number(g) === 0
+      ? 'the widest band: no event lands in the other identity’s solid class'
+      : 'a narrower band: at most ' + graceWords(g) + ' of the events land '
+        + 'in the other identity’s solid class';
+  }
+
+  /* What a border made of the events: "1203 inside · 60 outside" round one
+     identity; solid DS, solid IED and ambiguous between two. */
+  function borderCounts(b, c) {
+    const n = c || {};
+    if (isEnv(b)) {
+      return (n[b.group === 'ied' ? 'ied' : 'ds'] || 0) + ' inside · '
+             + (n.amb || 0) + ' outside';
+    }
+    return (n.ds || 0) + ' solid DS · ' + (n.ied || 0) + ' solid IED · '
+           + (n.amb || 0) + ' ambiguous';
+  }
+
+  /* The same, for the card's folded line: what inside means, said. */
+  function borderShort(b, c) {
+    const n = c || {};
+    return isEnv(b) ? (n[b.group === 'ied' ? 'ied' : 'ds'] || 0) + ' solid '
+                      + bGroup(b) + ' · ' + (n.amb || 0) + ' outside'
+                    : borderCounts(b, n);
+  }
+
+  /* How this view was measured, in the server's words for it
+     (`Params.filter_label` in rootcanal.py) -- which is what a saved
+     border's listing carries, so one measured on another filter can be
+     said to be refused before Apply is pressed. Pooled has the server's
+     own; Single's is built from the params its fit was made with, the same
+     way. Only the filter is in the listing: a border on the same filter
+     can still differ in its band or window, and the server, which checks
+     all of them, has the last word. */
+  function measureHere(where) {
+    if (where === 'pool') {
+      const m = pool.fit && pool.fit.params && pool.fit.params.measure;
+      return (m && m.filter_label) || null;
+    }
+    const p = (fit && fit.params) || null;
+    if (!p || !p.filt) return null;
+    if (p.filt === 'none') return 'no filter (60 Hz mains left in)';
+    const lo = Number(p.lo_hz), hi = Number(p.hi_hz);
+    if (!isFinite(lo) || !isFinite(hi)) return null;
+    const name = { ds: 'DS filter', lfp: 'LFP filter' }[p.filt] || 'custom filter';
+    return name + ', ' + (lo > 0 ? lo + '–' + hi + ' Hz' : 'low-pass ' + hi + ' Hz')
+      + ', ' + (asParam('mains_out', p.mains_out) ? '60 Hz mains out'
+                                                  : '60 Hz mains left in');
+  }
+
+  /* The applied border's rule, and how it sits with this view's own
+     identities: round one identity, how many of the OTHER are inside the
+     box; between two, how many land in the other's solid class. */
+  function borderRule(bu) {
+    let tail = '';
+    if (bu.switch_rate != null) {
+      tail = !isEnv(bu)
+        ? ' Here ' + bu.wrong + ' of ' + bu.n_identity + ' events with an '
+          + 'identity (' + pct(bu.switch_rate) + ') land in the other’s solid '
+          + 'class.'
+        : bu.wrong ? ' Here ' + bu.wrong + ' of ' + bu.n_identity + ' events '
+          + 'with an identity (' + pct(bu.switch_rate) + ') are '
+          + bOther(bu) + ' events inside the box.'
+        : ' No ' + bOther(bu) + ' event here is inside the box.';
+    }
+    return (bu.rule || '') + tail;
+  }
+
+  /* One saved border in the card's list: a row picked by pressing it
+     anywhere, in the house's pick-list shape (Braces' and Doppler's Many).
+     Its nickname and kind, its numbers, its rule in words, the measurement
+     it was made under -- and whether that is this view's -- and where it
+     was drawn. */
+  function borderItem(r, ctx) {
+    const ns = (r.current && r.current.n_summary) || {};
+    const v = r.version != null ? r.version : (r.current || {}).v;
+    const fits = r.measure && ctx.here ? r.measure === ctx.here : null;
+    const what = ctx.where === 'pool' ? 'pool' : 'set';
+    const lvl = r.level === 'double' ? 'a pool of pools' : 'a pool';
+    const size = [
+      r.events != null ? r.events + ' events' : null,
+      ns.recordings != null ? ns.recordings + ' recording'
+        + (ns.recordings === 1 ? '' : 's') : null,
+      ns.mice != null ? ns.mice + (ns.mice === 1 ? ' mouse' : ' mice') : null,
+    ].filter(Boolean).join(', ');
+    const st = r.strict || {};
+    const rule = isEnv(r)
+      ? 'Solid ' + bGroup(r) + ' inside the box, ambiguous outside it on any '
+        + 'axis. At no grace the box is ' + edgeWords(r, st) + '.'
+      : 'Solid IED past all three cut-offs, solid DS short of all three, '
+        + 'anything else ambiguous. The cut-offs: ' + BAX.map(([k, word, unit]) =>
+          word + ' ' + bnum(st[k]) + ' ' + unit).join(' · ') + '.';
+    const on = r.artifact_id === ctx.pickId();
+    return el('label', { class: 'inc-pick rc-border-item' + (on ? ' on' : ''),
+                         'data-id': r.artifact_id }, [
+      el('input', { type: 'radio', name: 'rc-border-pick-' + ctx.where,
+                    value: r.artifact_id, checked: on ? 'checked' : null,
+                    onchange: () => ctx.onPick(r.artifact_id) }),
+      el('div', { class: 'ip-main' }, [
+        el('span', { class: 'ip-name rc-border-name' }, [
+          el('strong', { text: r.nickname || r.name || r.artifact_id }),
+          v != null ? el('span', { class: 'hint', text: 'v' + v }) : null,
+          BARRY.ui.chip(isEnv(r) ? 'drawn around the ' + bGroup(r) + ' events'
+                                 : 'drawn between DS and IED',
+                        { extra: 'rc-border-kind' }),
+          ctx.appliedId === r.artifact_id
+            ? BARRY.ui.chip('applied here', { kind: 'ok', extra: 'rc-border-here' })
+            : null,
+          ctx.onArchive ? BARRY.ui.button({ kind: 'mini', text: 'Archive',
+            extra: 'rc-border-archive',
+            title: 'Put it away: it leaves this list, on every machine once '
+                 + 'it syncs, and stays saved. It is listed under Archived '
+                 + 'borders and can be put back.',
+            onclick: (e) => { e.preventDefault(); e.stopPropagation();
+                              ctx.onArchive(r.artifact_id); } }) : null,
+        ]),
+        el('span', { class: 'ip-sub rc-border-nums', text: borderWords(r) }),
+        el('span', { class: 'ip-sub rc-border-what', text: rule }),
+        el('span', { class: 'ip-sub rc-border-meas'
+                            + (fits === false ? ' rc-border-no' : ''),
+          text: !r.measure ? 'How it was measured was not recorded.'
+            : 'Measured on ' + r.measure + (fits === true
+              ? ': the same filter as this ' + what + '.'
+              : fits === false ? '. This ' + what + ' is measured on '
+                + ctx.here + '. It can still be applied: its cut-offs are '
+                + 'numbers of the measurement it was drawn under, so here they '
+                + 'ask a slightly different question.' : '.') }),
+        el('span', { class: 'ip-sub rc-border-from', text: (r.source
+          ? 'Drawn from ‘' + r.source + '’, ' + lvl
+          : 'Drawn from ' + lvl + ' that was not saved')
+          + (size ? ': ' + size : '') + '.' }),
+      ]),
+    ]);
+  }
+
+  /* THE BORDERS CARD (2026-10-19), in Pooled's picture and in Single.
+     Applying a saved border was a small row inside the margins card -- a
+     select, a grace select and "Apply" -- and how it was done was not
+     clear (asked for: "make it more clear how we apply the existing
+     borders"). It is a card of its own now, saying, top to bottom:
+       - what is applied -- "Classified by ‘x’ at grace 5%: 1203 inside ·
+         60 outside", its rule, and how it is drawn on the flat views -- or
+         that no border is;
+       - the saved borders, a list to pick from, each with its rule, its
+         kind, the measurement it was made under (and whether that is this
+         view's: the server refuses another) and where it was drawn;
+       - the picked one's graces, each with what it means for that border;
+       - Clear, in Pooled "Draw a new border from this pool…", and the
+         primary last, naming what it does: "Apply to this pool" / "set".
+     A pick ticks in place: the rows, the grace and the buttons change
+     where they stand, and nothing is rebuilt until Apply. The pick is kept
+     per view in `borderPick`, so a repaint -- the list arriving, a poll --
+     does not throw it away. The class names the suites read are kept on
+     the parts doing the same jobs (rc-border-row, -pick, -grace, -apply,
+     -clear, -on, -rule, -err). */
+  /* ARCHIVED BORDERS (2026-10-19): "allow us to archive borders". An
+     archived border leaves the list -- everyone's, once it syncs -- and
+     stays saved: it is listed under "Archived borders" and can be put back,
+     and one that is applied stays applied, saying so. Kept in a shared
+     preference merged per border (backend/store.py PREFS_SPEC). */
+  const ARCH_KEY = 'rootcanal_border_archive';
+
+  function archivedBorders() {
+    try {
+      return (BARRY.prefs && BARRY.prefs.get(ARCH_KEY, {})) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function setArchived(id, on) {
+    const m = Object.assign({}, archivedBorders());
+    if (on) m[id] = { at: new Date().toISOString() };
+    else delete m[id];
+    BARRY.prefs.set(ARCH_KEY, m);
+    const r = (borders || []).find((x) => x.artifact_id === id) || {};
+    toast((on ? 'Archived ‘' : 'Put back ‘') + (r.nickname || r.name || id)
+          + (on ? '’. It is listed under Archived borders, and can be put '
+                  + 'back from there.' : '’.'), 'ok', 6000);
+    BARRY.activity.log('rootcanal.border_archive', { artifact: id,
+                                                     archived: !!on });
+    render();
+  }
+
+  function bordersCard(b) {
     if (borders === null) loadBorders();
-    const list = borders || [];
-    let pickId = b.applied ? b.applied.artifact_id
-                           : (list[0] && list[0].artifact_id) || '';
-    let grace = b.applied ? b.applied.grace : null;
+    const arch = archivedBorders();
+    const shelved = (borders || []).filter((r) => arch[r.artifact_id]);
+    const list = (borders || []).filter((r) => !arch[r.artifact_id]);
+    const st = borderPick[b.where] || (borderPick[b.where] = {});
+    const bu = b.used || null;
     const rowOf = (id) => list.find((x) => x.artifact_id === id) || null;
-    const gsel = el('select', { class: 'rc-margin-pick rc-border-grace',
-      'aria-label': 'grace', onchange: (e) => { grace = Number(e.target.value); } });
-    const fillGrace = () => {
-      const r = rowOf(pickId);
-      const lv = (r && r.levels) || [];
-      if (grace == null || !lv.some((x) => Math.abs(x.grace - grace) < 1e-9)) {
-        grace = r && r.grace_default != null ? r.grace_default
-              : (lv[0] ? lv[0].grace : null);
+    const aid = b.applied ? b.applied.artifact_id : null;
+    /* A border applied from elsewhere -- saved and applied at once, or
+       opened with a saved pool -- becomes the pick. */
+    if (st.seen !== aid) {
+      st.seen = aid;
+      if (aid) {
+        st.id = aid;
+        st.grace = b.applied.grace != null ? b.applied.grace
+                                           : bu ? bu.grace : null;
       }
-      gsel.replaceChildren(...(lv.length ? lv.map((x) => el('option', {
-        value: String(x.grace),
-        text: 'grace ' + graceWords(x.grace) + ': '
-              + ((x.counts || {}).amb != null ? x.counts.amb : '?')
-              + ' ambiguous',
-        selected: Math.abs(x.grace - grace) < 1e-9 ? 'selected' : null }))
-        : [el('option', { value: '', text: 'no grace saved' })]));
+    }
+    if (borders !== null && !rowOf(st.id)) {
+      st.id = list[0] ? list[0].artifact_id : null;
+      st.grace = null;
+    }
+    const here = measureHere(b.where);
+    const what = b.where === 'pool' ? 'pool' : 'set';
+    const isOn = () => !!(bu && bu.artifact_id === st.id
+                          && sameG(bu.grace, st.grace));
+    const fixGrace = () => {
+      const r = rowOf(st.id);
+      const lv = (r && r.levels) || [];
+      if (!r || lv.some((x) => sameG(x.grace, st.grace))) return;
+      st.grace = bu && bu.artifact_id === st.id && bu.grace != null ? bu.grace
+        : r.grace_default != null ? r.grace_default
+        : lv[0] ? lv[0].grace : null;
     };
-    const sel = el('select', { class: 'rc-margin-pick rc-border-pick',
-      'aria-label': 'saved border',
-      onchange: (e) => { pickId = e.target.value; grace = null; fillGrace(); } },
-      list.length ? list.map((r) => el('option', { value: r.artifact_id,
-          text: borderWords(r),
-          selected: r.artifact_id === pickId ? 'selected' : null }))
-        : [el('option', { value: '', text: 'no borders saved yet: draw one in '
-                                          + 'Pooled' })]);
+    const gHold = el('div', { class: 'rc-border-grace', role: 'radiogroup',
+                              'aria-label': 'grace' });
+    const aHold = el('div', { class: 'rc-border-acts' });
+    let gFor;
+    const fillGrace = () => {
+      gFor = st.id;
+      const r = rowOf(st.id);
+      if (!r) { gHold.replaceChildren(); return; }
+      const lv = r.levels || [];
+      gHold.replaceChildren(
+        el('div', { class: 'rc-group-l', text: 'Grace for ‘'
+                    + (r.nickname || r.name || r.artifact_id) + '’' }),
+        ...(lv.length ? lv.map((x) => {
+          const on = sameG(x.grace, st.grace);
+          return el('label', { class: 'rc-border-gopt' + (on ? ' on' : ''),
+                               'data-grace': String(x.grace) }, [
+            el('input', { type: 'radio', name: 'rc-border-g-' + b.where,
+                          checked: on ? 'checked' : null,
+                          onchange: () => { st.grace = x.grace; sync(); } }),
+            el('span', { class: 'rc-border-gw', text: graceWords(x.grace) }),
+            el('span', { class: 'hint', text: graceMeans(r, x.grace)
+              + (x.counts ? '. Where it was drawn: '
+                            + borderCounts(r, x.counts) + '.' : '.') }),
+          ]);
+        }) : [el('p', { class: 'hint', text: 'This border was saved with no '
+                                             + 'grace to apply it at.' })]));
+    };
+    const fillActs = () => {
+      const r = rowOf(st.id);
+      const on = isOn();
+      aHold.replaceChildren(BARRY.ui.actions([
+        b.applied ? BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Clear',
+          extra: 'rc-border-clear',
+          title: 'Take the border off: every event is called by its cluster '
+               + 'again.',
+          onclick: () => b.onApply(null) }) : null,
+        b.onDraw ? BARRY.ui.button({ kind: 'ghost', size: 'sm',
+          text: 'Draw a new border from this pool…', extra: 'rc-border-draw',
+          title: 'Between the events’ own identities, or around them when the '
+               + 'pool is all one identity. Previewed at every grace before '
+               + 'it is saved.',
+          onclick: () => b.onDraw() }) : null,
+        /* The primary in Pooled, where the card is a surface of its own;
+           in Single it sits inside the card whose one primary is Bank, so
+           there it is the last of its row but not filled. */
+        BARRY.ui.button({ kind: b.where === 'pool' ? 'primary' : 'ghost',
+          size: 'sm', text: (on ? 'Applied to this ' : 'Apply to this ') + what,
+          extra: 'rc-border-apply', disabled: !r || st.grace == null || on,
+          title: r ? 'Classify every event of this ' + what + ' by ‘'
+                     + (r.nickname || r.name || r.artifact_id) + '’ at grace '
+                     + graceWords(st.grace) + ', by its three numbers alone.'
+                   : 'Pick a saved border first.',
+          onclick: () => {
+            if (r && r.measure && here && r.measure !== here) {
+              toast('‘' + (r.nickname || r.name || r.artifact_id) + '’ was '
+                    + 'drawn on ' + r.measure + ', and this ' + what + ' is '
+                    + 'measured on ' + here + '. Applying it all the same.',
+                    'warn', 9000);
+            }
+            b.onApply({ artifact_id: st.id, version: null, grace: st.grace });
+          } }),
+      ], { extra: 'rc-border-actions' }));
+    };
+    const items = list.map((r) => borderItem(r, {
+      where: b.where, here, appliedId: bu ? bu.artifact_id : null,
+      pickId: () => st.id,
+      onPick: (id) => { st.id = id; st.grace = null; sync(); },
+      onArchive: (id) => setArchived(id, true) }));
+    const sync = () => {
+      for (const it of items) {
+        const on = it.getAttribute('data-id') === st.id;
+        it.classList.toggle('on', on);
+        const inp = it.querySelector('input');
+        if (inp) inp.checked = on;
+      }
+      fixGrace();
+      if (gFor !== st.id) {
+        fillGrace();
+      } else {
+        for (const o of gHold.querySelectorAll('.rc-border-gopt')) {
+          const on = sameG(Number(o.getAttribute('data-grace')), st.grace);
+          o.classList.toggle('on', on);
+          const inp = o.querySelector('input');
+          if (inp) inp.checked = on;
+        }
+      }
+      fillActs();
+    };
+    fixGrace();
     fillGrace();
-    const u = b.used;
-    const c = (u && u.counts) || {};
-    return el('div', { class: 'rc-margin-row rc-border-row' }, [
-      el('div', { class: 'rc-group-l', text: 'Border' }),
-      u ? BARRY.ui.chip(c.ds + ' solid DS · ' + c.ied + ' solid IED · '
-                        + c.amb + ' ambiguous', { extra: 'rc-border-on',
-        title: 'Classified by the border ‘' + u.nickname + '’ v' + u.version
-             + ' at grace ' + u.grace_words + '. ' + u.rule }) : null,
-      sel, gsel,
-      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Apply',
-        extra: 'rc-border-apply', disabled: !pickId,
-        title: 'Classify every event by this border: solid DS, solid IED or '
-             + 'ambiguous, by its three numbers alone.',
-        onclick: () => b.onApply({ artifact_id: pickId, version: null,
-                                   grace }) }),
-      b.applied ? BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Clear',
-        extra: 'rc-border-clear', onclick: () => b.onApply(null) }) : null,
+    fillActs();
+    const c = (bu && bu.counts) || {};
+    const state = bu
+      ? el('div', { class: 'rc-border-state' }, [
+          el('p', { class: 'rc-border-now' }, [
+            el('strong', { text: 'Classified by ‘' + bu.nickname + '’'
+              + (bu.version != null ? ' v' + bu.version : '') + ' at grace '
+              + bu.grace_words + ':' }),
+            BARRY.ui.chip(borderCounts(bu, c), { extra: 'rc-border-on',
+              title: isEnv(bu)
+                ? 'Inside the box is solid ' + bGroup(bu) + '; outside it on '
+                  + 'any axis is ambiguous, drawn in its own call’s colour, '
+                  + 'faded, with a dotted edge. An event missing one of the '
+                  + 'three numbers counts as outside.'
+                : 'Every event by its three numbers alone: solid DS, solid IED '
+                  + 'or ambiguous -- an ambiguous one in its own call’s '
+                  + 'colour, faded, with a dotted edge.' }),
+            c.none ? BARRY.ui.chip(c.none + ' with no numbers', {
+              title: 'Not measured on any axis, so no border can place them.' })
+                   : null,
+            (bu.mismatch || []).length ? BARRY.ui.chip('measured another way', {
+              kind: 'warn', extra: 'rc-border-is-mismatch',
+              title: bu.mismatch.join('; ') }) : null,
+            arch[bu.artifact_id] ? BARRY.ui.chip('archived', {
+              extra: 'rc-border-is-archived',
+              title: 'Archived, and still applied here. Put it back from '
+                   + 'Archived borders below, or Clear it.' }) : null,
+          ]),
+          (bu.mismatch || []).length ? el('p', { class: 'hint rc-warn rc-border-mismatch',
+            text: 'Measured another way: ' + bu.mismatch.join('; ') + '. It is '
+              + 'applied all the same, as asked -- read its cut-offs as numbers '
+              + 'of the measurement it was drawn under.' }) : null,
+          el('p', { class: 'hint rc-border-rule', text: borderRule(bu) }),
+          bu.edges ? el('p', { class: 'hint rc-border-drawn', text: isEnv(bu)
+            ? 'On the flat views it is the box, outlined, with everything '
+              + 'outside it shaded.'
+            : 'On the flat views it is two dashed lines on each axis, with '
+              + 'the ambiguous band between them shaded: where solid DS ends '
+              + '(in the DS colour) and where solid IED begins (in the IED '
+              + 'colour).' }) : null,
+        ])
+      : el('p', { class: 'rc-border-now rc-border-none',
+                  text: 'No border applied: every event is called by its '
+                        + 'cluster.' });
+    /* OPEN IN POOLED, under the pictures. FOLDED IN SINGLE unless a border
+       was just refused: there the card sits above the pictures, in a card
+       455 px wide, and open it put the picked event's own controls below
+       the fold -- its folded line says what is applied. Opened or folded
+       by hand, it stays that way across repaints and applies. */
+    const dflt = b.where === 'pool' || !!b.err;
+    const open = st.open != null ? st.open : dflt;
+    return el('details', { class: 'card rc-borders', open: open ? 'open' : null,
+      ontoggle: (e) => { st.open = e.target.open === dflt ? null
+                                                          : e.target.open; } }, [
+      el('summary', { class: 'rc-border-sum',
+        title: 'A border classifies every event by its three numbers alone '
+             + '-- amplitude, HF power and half-width -- in place of its '
+             + 'cluster’s call. A saved one can be applied to any ' + what
+             + ' measured the same way.',
+        text: 'Borders · ' + (bu ? 'Classified by ‘' + bu.nickname
+          + '’ at grace ' + bu.grace_words + ': ' + borderShort(bu, c)
+          : b.err ? 'not applied, said below'
+          : 'No border applied' + (list.length ? ' · ' + list.length
+                                                 + ' saved' : '')
+            + (shelved.length ? ' · ' + shelved.length + ' archived' : '')) }),
+      state,
+      b.err ? el('p', { class: 'hint rc-warn rc-border-err',
+                        text: 'Not applied: ' + b.err }) : null,
+      bordersErr ? el('p', { class: 'hint rc-warn',
+                             text: 'Saved borders could not be listed: '
+                                 + bordersErr }) : null,
+      el('div', { class: 'rc-border-row' }, [
+        el('div', { class: 'rc-group-l', text: list.length
+          ? 'Saved borders: pick one' : 'Saved borders' }),
+        borders === null && !bordersErr
+          ? el('p', { class: 'hint', text: 'Listing the saved borders…' })
+          : list.length
+            ? el('div', { class: 'inc-pick-list rc-border-pick',
+                          role: 'radiogroup', 'aria-label': 'saved borders' },
+                 items)
+            : el('p', { class: 'hint rc-border-empty', text: b.where === 'pool'
+                ? 'No border has been saved yet. Draw one from this pool: it '
+                  + 'is saved under a nickname, and can then be applied here '
+                  + 'or to anything measured the same way.'
+                : 'No border has been saved yet.' }),
+        gHold,
+        aHold,
+        shelved.length ? el('details', { class: 'rc-border-archived',
+                                         'data-keep': 'rc-border-archived-'
+                                                      + b.where }, [
+          el('summary', { text: 'Archived borders (' + shelved.length + ')' }),
+          el('div', { class: 'rc-border-arch-list' }, shelved.map((r) =>
+            el('div', { class: 'rc-border-arch-row',
+                        'data-id': r.artifact_id }, [
+              el('span', { class: 'rc-border-arch-name',
+                           text: borderWords(r) }),
+              BARRY.ui.button({ kind: 'mini', text: 'Put back',
+                extra: 'rc-border-unarchive',
+                title: 'Back in the list of saved borders, on every machine '
+                     + 'once it syncs.',
+                onclick: () => setArchived(r.artifact_id, false) }),
+            ]))),
+        ]) : null,
+        b.where === 'single' ? el('p', { class: 'hint rc-border-where',
+          text: 'New borders are drawn in Pooled, against each event’s own '
+              + 'identity, which one recording on its own does not have.' })
+          : null,
+      ].filter(Boolean)),
     ].filter(Boolean));
   }
 
-  /* Each grace's band: its counts, its switch rate, and its edges. */
+  function singleBorderCtx() {
+    return {
+      where: 'single', applied: q.border, used: fit && fit.border_used,
+      err: borderErr,
+      onApply: (ref) => { q.border = ref; borderErr = null; refit(); },
+    };
+  }
+
+  function poolBorderCtx() {
+    return {
+      where: 'pool', applied: pool.border,
+      used: pool.fit && pool.fit.border_used, err: pool.borderErr,
+      onApply: (ref) => {
+        pool.border = ref;
+        pool.borderErr = null;
+        if (ref) pool.colour = 'border';
+        else if (pool.colour === 'border') pool.colour = 'pool';
+        if (pool.sel.length) runPool(); else render();
+      },
+      onDraw: borderDialog,
+    };
+  }
+
+  /* Each grace's band: its counts, its switch rate, and its edges. An
+     envelope's (2026-10-19) is its box instead: how many of the group are
+     inside it (solid), how many of the group it leaves outside, how many
+     of the OTHER identity are inside it, and the box's range on each axis
+     with what that grace does. */
   function borderTable(b, pick, onPick) {
+    const env = isEnv(b);
+    const gk = b.group === 'ied' ? 'ied' : 'ds';
+    const known = (v) => (v == null ? '?' : String(v));
     const rows = [];
     for (const lv of b.levels || []) {
       const on = Math.abs(lv.grace - pick) < 1e-9;
       const c = lv.counts || {};
+      const cells = env
+        ? [known(c[gk]),
+           known(lv.outside) + ' (' + pct(lv.outside_rate) + ')',
+           known(lv.wrong)]
+        : [String(c.ds), String(c.ied), String(c.amb),
+           pct(lv.switch_rate) + ' (' + lv.wrong + ')'
+           + (lv.reached ? '' : ', not reached')];
       rows.push(el('tr', { class: 'rc-border-lv' + (on ? ' on' : ''),
                            'data-grace': String(lv.grace) }, [
         el('td', {}, [el('label', { class: 'rc-border-pickg' }, [
@@ -2378,22 +2867,22 @@ BARRY.rootcanal = (function () {
                         checked: on ? 'checked' : null,
                         onchange: () => onPick(lv.grace) }),
           el('span', { text: graceWords(lv.grace) })])]),
-        el('td', { text: String(c.ds) }),
-        el('td', { text: String(c.ied) }),
-        el('td', { text: String(c.amb) }),
-        el('td', { text: pct(lv.switch_rate) + ' (' + lv.wrong + ')'
-                         + (lv.reached ? '' : ', not reached') }),
-      ]));
+      ].concat(cells.map((t) => el('td', { text: t })))));
       rows.push(el('tr', { class: 'rc-border-edges' }, [el('td', {
-        colspan: '5', class: 'hint',
-        text: 'solid IED: ' + edgeWords(b, lv.edges, 'ied') + '; solid DS: '
-              + edgeWords(b, lv.edges, 'ds')
-              + (lv.s_sd ? ' (band ±' + lv.s_sd + ' SD)' : ' (no band)') })]));
+        colspan: String(cells.length + 1), class: 'hint',
+        text: env
+          ? 'the box: ' + edgeWords(b, lv.edges) + '; it '
+            + graceMeans(b, lv.grace)
+          : 'solid IED: ' + edgeWords(b, lv.edges, 'ied') + '; solid DS: '
+            + edgeWords(b, lv.edges, 'ds')
+            + (lv.s_sd ? ' (band ±' + lv.s_sd + ' SD)' : ' (no band)') })]));
     }
-    return el('table', { class: 'tbl rc-border-tab' }, [
-      el('thead', {}, [el('tr', {}, ['grace', 'solid DS', 'solid IED',
-                                     'ambiguous', 'switches']
-        .map((t) => el('th', { text: t })))]),
+    const heads = env
+      ? ['grace', 'solid ' + bGroup(b) + ' (inside)', bGroup(b) + ' left outside',
+         bOther(b) + ' inside']
+      : ['grace', 'solid DS', 'solid IED', 'ambiguous', 'switches'];
+    return el('table', { class: 'tbl rc-border-tab' + (env ? ' rc-border-env' : '') }, [
+      el('thead', {}, [el('tr', {}, heads.map((t) => el('th', { text: t })))]),
       el('tbody', {}, rows)]);
   }
 
@@ -2426,7 +2915,11 @@ BARRY.rootcanal = (function () {
       extra: 'rc-border-custom-go', onclick: async () => {
         const v = Number(cin.value);
         if (cin.value === '' || !isFinite(v) || v < 0 || v > 50) {
-          toast('A grace is a switch rate between 0% and 50%.', 'warn', 6000);
+          toast(isEnv(prev) ? 'A grace is the share of the ' + bGroup(prev)
+                              + ' events the box may leave out, between 0% '
+                              + 'and 50%.'
+                            : 'A grace is a switch rate between 0% and 50%.',
+                'warn', 6000);
           return;
         }
         try {
@@ -2440,15 +2933,41 @@ BARRY.rootcanal = (function () {
         pick = custom;
         draw();
       } });
-    const what = el('div', { class: 'rc-ask rc-border-dlg' }, [
+    /* ROUND ONE IDENTITY (2026-10-19): a pool whose events are all DS --
+       or with too few IED to draw a line between -- is answered with an
+       envelope, and the dialog says what that is instead of the cut-offs
+       it does not have. */
+    const env = isEnv(prev);
+    const nf = prev.fit || {};
+    const filtWords = (prev.measure || {}).filter_label || 'this measurement';
+    const what = el('div', { class: 'rc-ask rc-border-dlg' + (env ? ' rc-border-env' : '') }, (env ? [
+      el('p', { text: (nf.n_other
+          ? 'Only ' + nf.n_other + ' event' + (nf.n_other === 1 ? ' here is '
+                                                                : 's here are ')
+            + bOther(prev) + ' (' + nf.n_group + ' are ' + bGroup(prev)
+            + '), too few to draw a line between them'
+          : 'Every event here is ' + bGroup(prev) + ' (' + nf.n_group + ' '
+            + bGroup(prev) + ', 0 ' + bOther(prev) + '), so there is nothing '
+            + 'to draw a line between')
+        + '. Instead the border is a box around the ' + bGroup(prev)
+        + ' events, in µV, dB and ms: inside it is solid ' + bGroup(prev)
+        + ', and outside it on any axis is ambiguous.' }),
+      el('p', { class: 'rc-border-strict', text: 'The box at no grace: '
+        + edgeWords(prev, prev.strict) + '.' }),
+      el('p', { class: 'hint', text: 'Grace pulls the box in: none wraps '
+        + 'every ' + bGroup(prev) + ' event, and 1% and 5% leave out the '
+        + 'outermost 1% and 5% of them, ignoring more and more outliers. Pick '
+        + 'the grace it applies at; every one listed is saved with it. It is '
+        + 'the same border only where things are measured the same way ('
+        + filtWords + ').' }),
+    ] : [
       el('p', { text: 'Three cut-offs, one each in µV, dB and ms, drawn '
         + 'between the events’ own identities: ' + (lvl === 'double'
           ? 'what each event’s own pool called it (v0)'
           : 'what each event’s single called it')
         + '. Past all three is solid IED, short of all three solid DS, and '
         + 'anything else ambiguous. It is the same border only where things '
-        + 'are measured the same way (' + ((prev.measure || {}).filter_label
-                                           || 'this measurement') + ').' }),
+        + 'are measured the same way (' + filtWords + ').' }),
       el('p', { class: 'rc-border-strict', text: 'The border: '
         + BAX.map(([k, word, unit]) => word + ' ' + bnum(prev.strict[k]) + ' '
                   + unit).join(' · ') + ', on ' + prev.n_identity
@@ -2459,6 +2978,7 @@ BARRY.rootcanal = (function () {
         + 'the events land in the other identity’s solid class; the events '
         + 'in a band are ambiguous. Pick the grace it applies at; every one '
         + 'listed is saved with it.' }),
+    ]).concat([
       holder,
       el('div', { class: 'chip-row rc-border-custom-row' }, [
         el('span', { class: 'hint', text: 'Another grace, in %:' }), cin, cgo]),
@@ -2467,12 +2987,15 @@ BARRY.rootcanal = (function () {
                       onchange: (e) => { applyNow = e.target.checked; } }),
         el('span', { class: 'rc-num-l', text: 'classify this pool by it once '
                                             + 'saved' })]),
-    ]);
-    const sugg = 'border · ' + ((pool.open && pool.open.nickname)
-                                || (lvl === 'double' ? 'pool of pools' : 'pool'));
+    ]));
+    const sugg = (env ? 'border around ' + bGroup(prev) + ' · ' : 'border · ')
+      + ((pool.open && pool.open.nickname)
+         || (lvl === 'double' ? 'pool of pools' : 'pool'));
     let rep = null;
     return BARRY.ui.bankDialog({
-      kind: 'entry', title: 'Save a DS / IED border', name: sugg, what,
+      kind: 'entry', name: sugg, what,
+      title: env ? 'Save a border around the ' + bGroup(prev) + ' events'
+                 : 'Save a DS / IED border',
       okText: 'Save the border',
       onBank: async ({ name, note }) => {
         const nick = String(name || '').trim();
@@ -2482,8 +3005,11 @@ BARRY.rootcanal = (function () {
       },
     }).then((ok) => {
       if (!ok || !rep) return null;
-      toast('Saved the border ‘' + rep.nickname + '’, applied at grace '
-            + graceWords(rep.grace) + '.', 'ok', 8000);
+      toast(applyNow ? 'Saved the border ‘' + rep.nickname + '’; this pool is '
+                       + 'classified by it at grace ' + graceWords(rep.grace)
+                       + '.'
+                     : 'Saved the border ‘' + rep.nickname + '’. Apply it from '
+                       + 'the Borders card.', 'ok', 8000);
       BARRY.activity.log('rootcanal.border_save', { artifact: rep.artifact_id,
                                                     grace: rep.grace });
       borders = null;
@@ -2544,39 +3070,22 @@ BARRY.rootcanal = (function () {
       onclick: () => saveMargin(sv) })));
     /* FOLDED to one line unless a margin is on or was just refused: the
        card sits above the pictures, and an open one pushed the event's own
-       controls below the fold. */
-    const b = ctx.border || null;
-    const bu = b && b.used;
-    const open = !!(ctx.applied || ctx.err || ctx.used
-                    || (b && (b.applied || b.err || bu)));
+       controls below the fold. Margins only, since 2026-10-19: the borders
+       that shared this card have one of their own (`bordersCard`). */
+    const open = !!(ctx.applied || ctx.err || ctx.used);
     /* SHORT, folded: the card is 455 px wide in Single and its summary
        must stay one line. The rest is in its hover. */
-    const on = [used ? 'margin ‘' + used.nickname + '’ v' + used.version
-                       + ' · ' + used.mode : null,
-                bu ? 'border ‘' + bu.nickname + '’ · grace '
-                     + bu.grace_words : null].filter(Boolean);
+    const on = used ? 'margin ‘' + used.nickname + '’ v' + used.version
+                      + ' · ' + used.mode : null;
     return el('details', { class: 'card rc-margins',
                            open: open ? 'open' : null }, [
       el('summary', { class: 'rc-margin-sum',
         title: 'Margins: saved cluster centres, applied in place of k-means’ '
-             + 'own. Borders: three cut-offs drawn between DS and IED in a '
-             + 'pool, which classify every event as solid DS, solid IED or '
-             + 'ambiguous. Use a saved one, or save these.',
-        text: 'Margins and borders · ' + (on.join(' · ') || 'none applied') }),
+             + 'own. Use a saved one, or save these.',
+        text: 'Margins · ' + (on || 'none applied') }),
       el('div', { class: 'rc-margin-row' }, kids.filter(Boolean)),
       ctx.err ? el('p', { class: 'hint rc-warn rc-margin-err',
                           text: 'Not applied: ' + ctx.err }) : null,
-      b ? borderRow(b) : null,
-      bu ? el('p', { class: 'hint rc-border-rule', text: bu.rule
-        + (bu.switch_rate != null ? ' Here ' + bu.wrong + ' of '
-           + bu.n_identity + ' events with an identity ('
-           + pct(bu.switch_rate) + ') land in the other’s solid class.'
-           : '') }) : null,
-      b && b.err ? el('p', { class: 'hint rc-warn rc-border-err',
-                             text: 'Not applied: ' + b.err }) : null,
-      bordersErr ? el('p', { class: 'hint rc-warn',
-                             text: 'Saved borders could not be listed: '
-                                 + bordersErr }) : null,
       marginsErr ? el('p', { class: 'hint rc-warn',
                              text: 'Saved margins could not be listed: '
                                  + marginsErr }) : null,
@@ -2624,8 +3133,6 @@ BARRY.rootcanal = (function () {
     return {
       applied: q.margin, used: fit && fit.margin_used, err: marginErr,
       onApply: (ref) => { q.margin = ref; marginErr = null; refit(); },
-      border: { applied: q.border, used: fit && fit.border_used, err: borderErr,
-                onApply: (ref) => { q.border = ref; borderErr = null; refit(); } },
       saves: [{ label: 'Save these margins…',
         title: 'This recording’s clusters as a named margin.',
         what: 'Saves this recording’s ' + ((fit && fit.k) || q.k)
@@ -2808,9 +3315,13 @@ BARRY.rootcanal = (function () {
       el('canvas', { class: 'rc-canvas rc-ev', id }),
     ]);
     const why = eventWhy(e);
-    const away = viewMode === 'pooled' ? poolEventNote() : null;
+    /* Pooled: what is known about the trace -- read elsewhere and being
+       read here, or why it is not -- as wrapping words above the pictures
+       (2026-10-19). Always in the tree, so its progress can be swapped. */
+    const away = viewMode === 'pooled'
+      ? poolEventNote() || el('div', { class: 'rc-ev-note' }) : null;
     return el('div', { class: 'rc-pane rc-event' }, [
-      away ? el('p', { class: 'rc-ev-why rc-ev-away', text: away }) : null,
+      away,
       why ? el('p', { class: 'rc-ev-why', text: why }) : null,
       el('div', { class: 'rc-ev-grid' }, [
         cell('rcTrace', 'Max-amp contact', (e.contact != null
@@ -2887,7 +3398,8 @@ BARRY.rootcanal = (function () {
     return el('div', { class: 'rc-legend' }, [
       item('rc-lg-ds', byBorder ? 'solid DS' : 'DS'),
       item('rc-lg-ied', byBorder ? 'solid IED' : 'IED'),
-      byBorder ? item('rc-lg-amb', 'ambiguous') : null,
+      byBorder ? item('rc-lg-amb rc-lg-amb-ds', 'outside, called DS') : null,
+      byBorder ? item('rc-lg-amb rc-lg-amb-ied', 'outside, called IED') : null,
       item('rc-lg-square', 'on 2 of 3 axes'),
       item('rc-lg-wide', 'half-width by the widened search'),
       item('rc-lg-flip', 'set by hand'),
@@ -3233,142 +3745,751 @@ BARRY.rootcanal = (function () {
   /* ==================================================================
      Many sets at once
      ================================================================== */
+  /* REBUILT 2026-10-19 in the house's picker shape -- Doppler's and Braces'
+     Many: what the plan says in a sentence, a search, a chip for each value
+     of each thing a set is, the tools that tick what is shown, the list,
+     the sets that cannot be read with their reasons, and the primary last,
+     naming what it will do.
+
+     ONE CARD, RECONCILED IN PLACE. `render()` empties the panel and builds
+     it again, which is right for a change of view and wrong for a tick: the
+     list lost its scroll and the search box its cursor on every one. So
+     the card is a shell whose parts are kept by `BARRY.ui.sections`, and a
+     tick, a chip, a letter typed or a poll of a running batch goes through
+     `bulkRefresh()`, which rebuilds only the parts whose content changed.
+     A tick rebuilds nothing in the list at all: its row is changed where it
+     stands (`syncTicks`).
+
+     ALREADY READ IS FOLDED UNDER THE LIST, counted, beside "Left out"
+     (2026-10-19): the list is the sets that cost a read, and the ones that
+     cost nothing are a fold away with Open and Bank… on each row. They
+     tick like the rest -- ticking one costs nothing, the batch finds its
+     read on file and the row lands at once beside the fresh ones -- and
+     the search and the chips narrow the folds as they narrow the list. */
   function bulkCard() {
-    const kids = [
+    const card = el('div', { class: 'card rc-bulk-card' }, [
       el('div', { class: 'section-label', text: 'Read a batch' }),
+      el('div', { class: 'rc-bulk-body' }),
+    ]);
+    bulkFill(card);
+    return card;
+  }
+
+  function bulkFill(card) {
+    const body = card.querySelector('.rc-bulk-body');
+    if (!body) return;
+    BARRY.ui.sections(body, bulk.job || bulk.sending ? bulkRunParts()
+      : bulk.plan ? bulkPickParts()
+      : [{ key: 'wait', enter: false, sig: 'wait', build: () => el('div', {}, [
+          loader('Working out what could be read',
+                 'every aligned set in the bank, checked against what this '
+                 + 'computer has read')]) }]);
+  }
+
+  /* The card where it stands; false when it is not on screen. */
+  function bulkRefresh() {
+    const box = host();
+    const card = box && box.querySelector('.rc-bulk-card');
+    if (!card) return false;
+    bulkFill(card);
+    return true;
+  }
+
+  /* What a set can be filtered by, each with its mark: stroked on
+     `currentColor` at 16 px, the ToolKit's own convention (toolkit.js,
+     `TOOL_ICONS`), so a mark takes its chip's state in every theme. */
+  const BULK_ICO = {
+    project: 'M1.5 3.5h4.5l1.5 1.5h7v7.5h-13z',
+    // Side on, nose to the right: it was a dome with its tail curled over
+    // it, which read as a shoe at 13 px.
+    mouse: 'M3 11.5c0-3 2.5-5.5 5.5-5.5 2.4 0 4.5 1.9 5 4.3.1.7-.4 1.2-1.1 '
+           + '1.2zM8.9 6.2a1.7 1.7 0 1 1 2.8 1M11.4 9h.01M3 11.5c-1.3.1-1.9 '
+           + '1-1.5 2',
+    group: 'M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1.5 13c0-2.2 1.8-4 4-4s4 '
+           + '1.8 4 4M11 7.2a1.7 1.7 0 1 0 0-3.4M12 9.2c1.5.4 2.5 1.9 2.5 3.8',
+    subgroup: 'M3.5 2.5v10M3.5 7.5h5M3.5 12.5h5M10.5 6h3.5v3h-3.5zM10.5 '
+              + '11h3.5v3h-3.5z',
+    condition: 'M6 2h4M6.5 2v4.2L2.8 12.4c-.5.9.1 1.6 1 1.6h8.4c.9 0 1.5-.7 '
+               + '1-1.6L9.5 6.2V2M4.6 9.5h6.8',
+    probe: 'M7 1.5h2v10l-1 3-1-3zM8 4.5h.01M8 7h.01M8 9.5h.01',
+    tick: 'M3.5 8.5l3 3 6-7',
+    // The folds: a set already read (an open book), and one left out.
+    done: 'M8 4.2C6.6 3 4.6 2.6 2 2.8v9.6c2.6-.2 4.6.2 6 1.4 1.4-1.2 3.4-1.6 '
+          + '6-1.4V2.8c-2.6-.2-4.6.2-6 1.4zM8 4.2v9.6',
+    left: 'M8 1.8a6.2 6.2 0 1 0 0 12.4A6.2 6.2 0 0 0 8 1.8zM3.6 3.6l8.8 8.8',
+  };
+  const bulkIco = (d, extra) => el('svg', {
+    class: 'rc-bulk-ico' + (extra ? ' ' + extra : ''), viewBox: '0 0 16 16',
+    'aria-hidden': 'true', html: '<path d="' + d + '" />' });
+
+  /* [key, words, value of a row, mark]. A category is offered once it
+     splits the sets two ways -- a chip that every set has filters nothing.
+     Read or not is not one of them: that is the list against its fold. */
+  const BULK_CATS = [
+    ['project', 'project', (r) => r.project, BULK_ICO.project],
+    ['mouse_type', 'mouse type', (r) => r.mouse_type, BULK_ICO.mouse],
+    ['group', 'group', (r) => r.group, BULK_ICO.group],
+    ['subgroup', 'subgroup', (r) => r.subgroup, BULK_ICO.subgroup],
+    ['condition', 'condition', (r) => r.condition, BULK_ICO.condition],
+    ['probe', 'probe', (r) => r.probe, BULK_ICO.probe],
+  ];
+
+  const numOr = (v) => (v == null || v === '' || !isFinite(Number(v))
+    ? Infinity : Number(v));
+  const natural = (a, b) => String(a).localeCompare(String(b), undefined,
+                                                     { numeric: true });
+  /* Project, then mouse and session as NUMBERS: as strings m13 came
+     before m2. */
+  function bulkOrder(a, b) {
+    return String(a.project || '~').localeCompare(String(b.project || '~'))
+      || (numOr(a.mouse) - numOr(b.mouse)) || natural(a.mouse, b.mouse)
+      || (numOr(a.session) - numOr(b.session))
+      || natural(a.label, b.label);
+  }
+
+  /* Every set that can be read here: not read yet, and already read. */
+  let bulkMemo = { plan: null, rows: [] };
+  function bulkRows() {
+    if (bulkMemo.plan === bulk.plan) return bulkMemo.rows;
+    const bp = bulk.plan || {};
+    bulkMemo = { plan: bulk.plan,
+                 rows: (bp.todo || []).concat(bp.done || []).sort(bulkOrder) };
+    return bulkMemo.rows;
+  }
+
+  const bulkFiltered = () => !!String(bulk.filt.q || '').trim()
+    || BULK_CATS.some(([k]) => (bulk.filt[k] || []).length);
+
+  function bulkHay(r) {
+    return [r.label, r.name, r.project, r.mouse_type, r.group, r.subgroup,
+            r.condition, r.probe, r.date,
+            r.mouse != null ? 'm' + r.mouse : '',
+            r.session != null ? 's' + r.session : '',
+            r.cached ? 'already read' : 'not read yet']
+      .filter(Boolean).join(' ').toLowerCase();
+  }
+
+  /* Every word typed has to match somewhere; inside one category any chip
+     pressed will do, and every category with one pressed has to match. */
+  function bulkShown(r) {
+    const f = bulk.filt;
+    for (const [key, , get] of BULK_CATS) {
+      const want = f[key] || [];
+      if (want.length && want.indexOf(String(get(r))) < 0) return false;
+    }
+    const words = String(f.q || '').trim().toLowerCase().split(/\s+/)
+      .filter(Boolean);
+    if (!words.length) return true;
+    const hay = bulkHay(r);
+    return words.every((w) => hay.indexOf(w) >= 0);
+  }
+
+  /* The list is the sets not read yet; the ones already read are the fold
+     under it. Both are narrowed by the search and the chips. */
+  function bulkPickParts() {
+    const rows = bulkRows();
+    const todo = rows.filter((r) => !r.cached);
+    const done = rows.filter((r) => r.cached);
+    const left = (bulk.plan && bulk.plan.blocked) || [];
+    const shown = rows.filter(bulkShown);
+    const ticked = rows.filter((r) => bulk.want[r.entry_id]);
+    const fs = JSON.stringify(bulk.filt);
+    const tk = ticked.map((r) => r.entry_id).join(',');
+    return [
+      { key: 'say', enter: false, sig: [bulk.rev, bulk.last],
+        build: () => bulkSay(todo, done, left) },
+      { key: 'find', enter: false, sig: 'find', build: bulkSearch },
+      { key: 'chips', enter: false, sig: [bulk.rev, fs],
+        build: () => bulkChips(rows) },
+      { key: 'tools', enter: false, sig: [bulk.rev, fs, tk],
+        build: () => bulkTools(rows, shown, ticked) },
+      { key: 'list', enter: false, sig: [bulk.rev, fs],
+        build: () => bulkList(todo, shown.filter((r) => !r.cached)) },
+      { key: 'done', enter: false, sig: [bulk.rev, fs],
+        build: () => bulkDone(done, shown.filter((r) => r.cached)),
+        // How many of them are ticked, said without rebuilding the rows.
+        update: (box) => {
+          const n = done.filter((r) => bulk.want[r.entry_id]).length;
+          const t = box.querySelector('.rc-bulk-fold-tk');
+          const w = n ? n + ' ticked' : '';
+          if (t && t.textContent !== w) t.textContent = w;
+        } },
+      { key: 'left', enter: false, sig: [bulk.rev, fs],
+        build: () => bulkLeft(left) },
+      { key: 'go', enter: false, sig: [bulk.rev, tk, !!bulk.sending],
+        build: () => bulkGo(ticked) },
     ];
-    if (bulk.job) {
-      const st = (bulk.job.stages || [])[0] || {};
-      kids.push(el('div', { class: 'hint', text:
-        'Reading ' + (st.done || 0) + ' of ' + (st.of || '?') + ' sets' }));
-      kids.push(el('div', { class: 'rc-bar' }, [
-        el('i', { style: 'width:'
-                  + (100 * (st.of ? (st.done || 0) / st.of : 0)).toFixed(1)
-                  + '%' })]));
-      /* A SET THAT IS DONE CAN BE OPENED -- AND BANKED -- WHILE THE REST
-         RUN. The read is the expensive half and it is finished for that
-         one. "Bank" opens it and puts the bank dialog up once its pictures
-         are drawn, so what is filed is what was on screen; the queue itself
-         never banks anything. */
-      kids.push(el('table', { class: 'tbl rc-bulk' }, [
-        el('tbody', {}, (bulk.job.members || []).map((m) => {
-          const ready = m.status === 'done';
-          return el('tr', {
-            class: m.status === 'error' ? 'bad' : (ready ? 'ready' : null),
-          }, [
-            el('td', {}, [
-              ready ? BARRY.ui.button({ kind: 'mini', text: m.label,
-                        title: 'Open this one now. The rest keep reading.',
-                        onclick: () => openRead(m.id) })
-                    : el('span', { text: m.label }),
-            ]),
-            el('td', { text: m.cached ? 'already read'
-                             : m.status === 'running'
-                               ? (m.of ? m.done + ' / ' + m.of : 'reading…')
-                               : m.status }),
-            el('td', {}, [ready ? BARRY.ui.button({ kind: 'mini',
-              text: 'Bank…', title: 'Open it and put up the bank dialog '
-                                  + 'for the answer as fitted.',
-              onclick: () => openRead(m.id, { bank: true }) }) : null]),
-            el('td', { class: 'dim', text: m.error || '' }),
-          ]);
-        })),
+  }
+
+  /* One sentence: how many, and what a tick costs. That the batch banks
+     nothing is said once, on the line beside the primary. */
+  function bulkSay(todo, done, left) {
+    if (bulk.plan && bulk.plan.ok === false) {
+      return el('p', { class: 'warn-line rc-bulk-say', text:
+        'The list of sets could not be worked out: '
+        + (bulk.plan.error || 'no reason given') });
+    }
+    const s = (n) => (n === 1 ? '' : 's');
+    const L = bulk.last;
+    return el('div', { class: 'rc-bulk-say' }, [
+      el('p', { class: 'hint', text: todo.length || done.length
+        ? todo.length + ' set' + s(todo.length) + ' not read yet, '
+          + 'each minutes of disk'
+          + (done.length ? ', and ' + done.length + ' already read, which '
+                           + 'open at once' : '')
+          + '. Tick the ones to read.'
+        : 'No set can be read from here yet.'
+          + (left.length ? ' The reasons are below.' : '') }),
+      // The batch before, until the next one: what landed, what failed.
+      L ? el('p', { class: 'rc-bulk-last' + (L.failed.length ? ' bad' : ''),
+        text: 'The last batch ' + (L.quit ? 'was stopped: ' : 'read ')
+          + L.n + ' of ' + L.of + (L.quit ? ' read' : '')
+          + (L.failed.length
+            ? '. ' + L.failed.length + ' failed, and '
+              + (L.failed.length === 1 ? 'is' : 'are') + ' still ticked to '
+              + 'send again: ' + L.failed.map((f) => f.label + ' ('
+                + (f.why || 'no reason given') + ')').join('; ')
+            : '') + '.' }) : null,
+    ]);
+  }
+
+  /* Built once and kept (its sig never changes), so it keeps its cursor
+     while the list under it changes. */
+  function bulkSearch() {
+    const f = BARRY.ui.searchField({
+      placeholder: 'Type a set, mouse, session, date or project',
+      value: bulk.filt.q, width: '30rem',
+      title: 'Every word has to match: the set’s name, the mouse (m13), the '
+           + 'session (s2), the date, the project, the group or condition.',
+      oninput: (e) => { bulk.filt.q = e.target.value; bulkRefresh(); },
+    });
+    f.classList.add('rc-bulk-find');
+    f.input.setAttribute('data-fk', 'rc-bulk-search');
+    f.input.setAttribute('aria-label', 'Search the sets');
+    return f;
+  }
+
+  /* A category whose every value is another's, word for word, is one
+     category said twice (a mouse type that is only ever its project's
+     name): the second is not offered. Only word for word (2026-10-19): a
+     condition that merely happened to split the sets as the projects do
+     was hidden, and "where is condition?" has no answer on the page. */
+  function samePartition(rows, a, b) {
+    return rows.every((r) => String(a(r)) === String(b(r)));
+  }
+
+  function bulkChips(rows) {
+    const f = bulk.filt;
+    const cats = [];
+    const offered = [];
+    for (const [key, words, get, d] of BULK_CATS) {
+      const counts = new Map();
+      for (const r of rows) {
+        const v = get(r);
+        if (v == null || v === '') continue;
+        counts.set(String(v), (counts.get(String(v)) || 0) + 1);
+      }
+      const on = f[key] || [];
+      if (!on.length && (counts.size < 2
+          || offered.some((g) => samePartition(rows, g, get)))) continue;
+      offered.push(get);
+      /* A value no set has any more (its sets were read and banked) but
+         still pressed stays offered, at 0, so it can be let go of. */
+      for (const v of on) if (!counts.has(v)) counts.set(v, 0);
+      cats.push(el('div', { class: 'rc-bulk-cat', 'data-cat': key }, [
+        el('span', { class: 'rc-bulk-k', text: words }),
+        el('div', { class: 'rc-bulk-vals' },
+          Array.from(counts.keys()).sort(natural).map((v) => {
+            const lit = on.indexOf(v) >= 0;
+            const n = counts.get(v);
+            // The shared button (§3), its mark and its count inside it.
+            const b = BARRY.ui.button({ kind: 'mini', on: lit,
+              extra: 'rc-bulk-chip',
+              title: lit
+                ? 'Showing only ' + words + ' ' + v + '. Press again to show '
+                  + 'every ' + words + '.'
+                : 'Show only ' + words + ' ' + v + ' (with any other ' + words
+                  + ' pressed too): ' + n + ' set' + (n === 1 ? '' : 's') + '.',
+              onclick: () => {
+                f[key] = lit ? on.filter((x) => x !== v) : on.concat([v]);
+                bulkRefresh();
+              },
+              children: [
+                bulkIco(lit ? BULK_ICO.tick : d, lit ? 'rc-bulk-lit' : null),
+                el('span', { class: 'rc-bulk-chip-v', text: v }),
+                el('span', { class: 'rc-bulk-chip-n', text: String(n) }),
+              ] });
+            b.type = 'button';
+            b.setAttribute('aria-pressed', lit ? 'true' : 'false');
+            b.dataset.v = v;
+            return b;
+          })),
       ]));
-      kids.push(BARRY.ui.actions([
-        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Stop',
-          title: 'Stop the batch. The sets already read are kept.',
-          onclick: () => apiPost('/api/cfc/job/' + bulk.job.id + '/cancel', {})
-                           .catch(() => {}) }),
-      ]));
-      return el('div', { class: 'card rc-bulk-card' }, kids);
     }
-    if (!bulk.plan) {
-      kids.push(loader('Working out what could be read'));
-      return el('div', { class: 'card rc-bulk-card' }, kids);
+    return el('div', { class: 'rc-bulk-chips' }, cats);
+  }
+
+  /* A tick, or many, changed where the rows stand: the list is not rebuilt,
+     so it keeps its scroll. Then the counts and the primary. */
+  function bulkTick(fn) {
+    fn();
+    syncTicks();
+    bulkRefresh();
+  }
+
+  function syncTicks() {
+    const box = host();
+    for (const row of (box ? box.querySelectorAll('.rc-bulk-row[data-id]') : [])) {
+      const on = !!bulk.want[row.dataset.id];
+      const cb = row.querySelector('input[type=checkbox]');
+      if (cb && cb.checked !== on) cb.checked = on;
+      row.classList.toggle('on', on);
     }
-    const bp = bulk.plan;
-    kids.push(el('div', { class: 'hint', text:
-      (bp.n || 0) + ' could be read now  ·  ' + (bp.n_done || 0)
-      + ' already read  ·  ' + (bp.n_blocked || 0) + ' cannot be' }));
-    if ((bp.done || []).length) {
-      kids.push(el('div', { class: 'section-label', text: 'Already read' }));
-      kids.push(el('div', { class: 'rc-done-list' },
-        bp.done.map((r) => BARRY.ui.button({ kind: 'mini', text: r.label,
-          title: 'Open it. The read is cached, so this is immediate.',
-          onclick: () => openRead(r.entry_id) }))));
+  }
+
+  function bulkTools(rows, shown, ticked) {
+    const notYet = shown.filter((r) => !r.cached);
+    const hidden = ticked.filter((r) => !bulkShown(r)).length;
+    return el('div', { class: 'tk-actions inc-pick-tools rc-bulk-tools' }, [
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', extra: 'rc-bulk-all',
+        text: 'Select all ' + shown.length + ' shown',
+        disabled: !shown.length,
+        title: 'Tick every set the search and the chips show, the list and '
+             + '“Already read” alike. Ones they hide keep whatever they had.',
+        onclick: () => bulkTick(() => {
+          for (const r of shown) bulk.want[r.entry_id] = true;
+        }) }),
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', extra: 'rc-bulk-fresh',
+        text: 'Only the ' + notYet.length + ' not read yet',
+        disabled: !notYet.length,
+        title: 'Of the sets shown, tick the ones never read here and untick '
+             + 'the ones already read.',
+        onclick: () => bulkTick(() => {
+          for (const r of shown) {
+            if (r.cached) delete bulk.want[r.entry_id];
+            else bulk.want[r.entry_id] = true;
+          }
+        }) }),
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', extra: 'rc-bulk-none',
+        text: 'Unselect all', disabled: !ticked.length,
+        title: 'Untick every set, shown or not.',
+        onclick: () => bulkTick(() => { bulk.want = {}; }) }),
+      bulkFiltered() ? BARRY.ui.button({ kind: 'link',
+        extra: 'rc-bulk-unfilter', text: 'Clear the search and chips',
+        title: 'Show every set again. What is ticked stays ticked.',
+        onclick: () => {
+          bulk.filt = { q: '' };
+          const box = host();
+          const inp = box && box.querySelector('.rc-bulk-find input');
+          if (inp) inp.value = '';
+          bulkRefresh();
+        } }) : null,
+      el('span', { class: 'hint quiet rc-bulk-count', text:
+        ticked.length + ' ticked  ·  ' + shown.length + ' of ' + rows.length
+        + ' shown' + (hidden ? '  ·  ' + hidden + ' of the ticked '
+                              + (hidden === 1 ? 'is' : 'are')
+                              + ' hidden by the filters' : '') }),
+    ]);
+  }
+
+  /* The sets not read yet. `todo` is all of them, `shown` the ones the
+     search and the chips leave. */
+  function bulkList(todo, shown) {
+    const list = el('div', { class: 'inc-pick-list rc-bulk-list',
+                             'data-keep-scroll': 'rc-bulk-list' });
+    if (!shown.length) {
+      const done = bulkRows().length - todo.length;
+      list.appendChild(el('div', { class: 'empty-state rc-bulk-empty',
+        text: todo.length
+          ? 'No set that is not read yet matches that. Clear the search and '
+            + 'the chips to see all ' + todo.length + '.'
+          : done ? 'Every set that can be read here has been read. They are '
+                   + 'under “Already read”, ready to open.'
+          : 'No set can be read from here yet; the reasons are below.' }));
     }
-    if ((bp.todo || []).length) {
-      kids.push(el('table', { class: 'tbl rc-bulk' }, [
-        el('thead', {}, [el('tr', {}, ['', 'set', 'events', 'probe']
-          .map((t) => el('th', { text: t })))]),
-        el('tbody', {}, bp.todo.map((r) => el('tr', {}, [
-          el('td', {}, [el('input', {
-            type: 'checkbox', checked: bulk.pick[r.entry_id] !== false || null,
-            onchange: (e) => { bulk.pick[r.entry_id] = e.target.checked; },
-          })]),
-          el('td', { text: r.label }),
-          el('td', { text: String(r.n_good != null ? r.n_good : (r.n || '')) }),
-          /* Every row here is aligned -- a set Braces has not lined up is
-             listed under "Left out" with that reason -- so the column says
-             the other thing worth knowing before paying for a read. */
-          el('td', { class: 'dim', text: r.probe || '' }),
+    for (const r of shown) list.appendChild(bulkRow(r));
+    return list;
+  }
+
+  /* Under the name: what tells two sets of one session apart (the entry's
+     own name, less the session it repeats), the events, the probe, and
+     the facts the chips filter by. */
+  function bulkSub(r) {
+    let nm = r.name && r.name !== r.label ? String(r.name) : '';
+    if (nm && r.label && nm.indexOf(r.label) === 0) {
+      nm = nm.slice(r.label.length).replace(/^\s*[·:–-]\s*/, '');
+    }
+    const n = r.n_good != null ? r.n_good : r.n;
+    return [
+      nm || null,
+      n != null ? n + ' event' + (n === 1 ? '' : 's') : null,
+      r.probe ? 'probe ' + r.probe : null,
+      r.mouse_type && r.mouse_type !== r.project ? r.mouse_type : null,
+      r.group ? 'group ' + r.group : null,
+      r.subgroup ? 'subgroup ' + r.subgroup : null,
+      r.condition || null,
+    ].filter(Boolean).join('  ·  ');
+  }
+
+  /* One set. The tick and the name are one label, so the name ticks it
+     too; an already-read set has Open and Bank… of its own beside them,
+     outside the label, so pressing one does not also tick it. A tick
+     changes this row and the counts IN PLACE. */
+  function bulkRow(r) {
+    const on = !!bulk.want[r.entry_id];
+    const row = el('div', {
+      class: 'inc-pick rc-bulk-row' + (on ? ' on' : '') + (r.cached ? ' done' : ''),
+      'data-id': r.entry_id,
+    }, [
+      el('label', { class: 'rc-bulk-tick' }, [
+        el('input', {
+          type: 'checkbox', checked: on ? 'checked' : null,
+          'aria-label': 'Read ' + r.label,
+          onchange: (e) => {
+            if (e.target.checked) bulk.want[r.entry_id] = true;
+            else delete bulk.want[r.entry_id];
+            row.classList.toggle('on', e.target.checked);
+            bulkRefresh();
+          },
+        }),
+        el('span', { class: 'ip-main' }, [
+          el('span', { class: 'ip-name', text: r.label }),
+          el('span', { class: 'ip-sub', text: bulkSub(r) }),
+        ]),
+      ]),
+      r.cached ? el('span', { class: 'rc-bulk-row-acts' }, [
+        BARRY.ui.button({ kind: 'mini', text: 'Open', extra: 'rc-bulk-open',
+          title: 'Open it now. Its read is on file, so nothing is read.',
+          onclick: () => openRead(r.entry_id) }),
+        BARRY.ui.button({ kind: 'mini', text: 'Bank…', extra: 'rc-bulk-bank',
+          title: 'Open it and put up the bank dialog for the answer as '
+               + 'fitted. Nothing is banked until you say so there.',
+          onclick: () => openRead(r.entry_id, { bank: true }) }),
+      ]) : null,
+    ]);
+    return row;
+  }
+
+  /* The sets already read, folded, with how many there are, how many the
+     search and the chips leave, and how many are ticked (kept up to date
+     by the part's `update`, without rebuilding the rows). */
+  function bulkDone(done, shown) {
+    const box = el('div', {});
+    if (!done.length) return box;
+    box.appendChild(el('details', { class: 'inc-blocked rc-bulk-fold rc-bulk-done',
+                                    'data-keep': 'rc-bulk-done' }, [
+      el('summary', {}, [
+        bulkIco(BULK_ICO.done),
+        el('span', { class: 'rc-bulk-fold-h', text: 'Already read' }),
+        el('span', { class: 'rc-bulk-fold-n', text: bulkFiltered()
+          ? shown.length + ' of ' + done.length : String(done.length) }),
+        el('span', { class: 'rc-bulk-fold-tk' }),
+        el('span', { class: 'rc-bulk-fold-say', text:
+          'open at once; nothing is read again' }),
+      ]),
+      el('div', { class: 'inc-pick-list rc-bulk-list rc-bulk-done-list',
+                  'data-keep-scroll': 'rc-bulk-done-list' },
+        shown.length ? shown.map(bulkRow)
+          : [el('div', { class: 'empty-state rc-bulk-empty', text:
+              'None of the ' + done.length + ' matches that.' })]),
+    ]));
+    return box;
+  }
+
+  /* The sets that cannot be read yet, folded, grouped by their reason --
+     a hundred rows each repeating "Braces hasn't aligned this set yet" is
+     a reason said a hundred times. The search and the chips narrow it too,
+     so "why is m13 s5 not in the list" is answered by typing it. */
+  function bulkLeft(left) {
+    const box = el('div', {});
+    if (!left.length) return box;
+    const shown = left.filter(bulkShown);
+    const by = new Map();
+    for (const r of shown) {
+      const w = String(r.why || 'no reason given');
+      if (!by.has(w)) by.set(w, []);
+      by.get(w).push(r);
+    }
+    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+    box.appendChild(el('details', { class: 'inc-blocked rc-bulk-fold rc-bulk-left',
+                                    'data-keep': 'rc-bulk-left' }, [
+      el('summary', {}, [
+        bulkIco(BULK_ICO.left),
+        el('span', { class: 'rc-bulk-fold-h', text: 'Left out' }),
+        el('span', { class: 'rc-bulk-fold-n', text: bulkFiltered()
+          ? shown.length + ' of ' + left.length : String(left.length) }),
+        el('span', { class: 'rc-bulk-fold-say', text:
+          'cannot be read yet; each with its reason' }),
+      ]),
+      shown.length ? null : el('p', { class: 'hint quiet rc-bulk-empty', text:
+        'None of the ' + left.length + ' matches that.' }),
+      el('div', { class: 'rc-bulk-whys' }, Array.from(by.entries())
+        .sort((a, b) => b[1].length - a[1].length)
+        .map(([why, rs]) => el('div', { class: 'rc-bulk-why' }, [
+          el('div', { class: 'rc-bulk-why-h' }, [
+            el('strong', { text: cap(why) }),
+            el('span', { class: 'rc-bulk-why-n', text: String(rs.length) }),
+          ]),
+          el('p', { class: 'rc-bulk-why-sets',
+                    text: rs.map((r) => r.label).join('  ·  ') }),
         ]))),
-      ]));
-      kids.push(BARRY.ui.actions([
-        BARRY.ui.button({ kind: 'primary', text: 'Read the ticked',
-                          onclick: runBulk }),
+    ]));
+    return box;
+  }
+
+  /* The cost, said before it is spent, and the one primary, last. */
+  function bulkGo(ticked) {
+    const fresh = ticked.filter((r) => !r.cached);
+    const again = ticked.length - fresh.length;
+    const evs = fresh.reduce((s, r) => s + (Number(r.n_good) || 0), 0);
+    const words = !ticked.length ? 'Tick the sets to read, above.'
+      : [fresh.length ? fresh.length + ' to read (' + evs.toLocaleString()
+                        + ' events), one after another, minutes each'
+                      : null,
+         again ? again + ' already read, which ' + (again === 1 ? 'lands' : 'land')
+                 + ' at once' : null].filter(Boolean).join('  ·  ')
+        + '. Each can be opened and banked as soon as it lands; the batch '
+        + 'itself banks nothing.';
+    return BARRY.ui.actions([
+      el('p', { class: 'hint rc-bulk-cost', text: words }),
+      BARRY.ui.button({ kind: 'primary', extra: 'rc-bulk-go',
+        text: ticked.length ? 'Read the ' + ticked.length + ' ticked'
+                            : 'Read the ticked',
+        disabled: !ticked.length || bulk.sending, onclick: runBulk }),
+    ], { extra: 'rc-bulk-go-row' });
+  }
+
+  /* ---- the batch, while it reads ---------------------------------------
+     A row per set with its own state and a dot, and one bar over them:
+     Braces' batch card (`flightRows`, `.br-fbar`). A set that has landed
+     can be opened -- and banked -- while the rest read: the read is the
+     expensive half and it is finished for that one. "Bank…" opens it and
+     puts the bank dialog up once its pictures are drawn, so what is filed
+     is what was on screen; the batch itself never banks anything. */
+  function bulkMembers() {
+    const ms = (bulk.job && bulk.job.members) || [];
+    if (ms.length) return ms;
+    // Sent, and the server has not listed them yet: they are waiting.
+    return (bulk.sent || []).map((m) => ({ id: m.id, label: m.label,
+                                           status: 'waiting' }));
+  }
+
+  function bulkTally(ms) {
+    const n = { waiting: 0, running: 0, done: 0, cached: 0, error: 0,
+                stopped: 0 };
+    for (const m of ms) {
+      if (m.status === 'done' && m.cached) n.cached += 1;
+      n[m.status in n ? m.status : 'waiting'] += 1;
+    }
+    return n;
+  }
+
+  function bulkRunParts() {
+    const ms = bulkMembers();
+    const n = bulkTally(ms);
+    const j = bulk.job || {};
+    return [
+      { key: 'rline', enter: false,
+        sig: [j.status, !!bulk.stopping, ms.length, n.done, n.cached,
+              n.running, n.waiting, n.error, n.stopped],
+        build: () => bulkRunLine(ms, n) },
+      { key: 'rbar', enter: false, sig: 'rbar',
+        build: () => el('div', { class: 'br-fbar rc-bulk-bar', role: 'progressbar',
+                                 'aria-label': 'How far the batch has got',
+                                 'aria-valuemin': '0', 'aria-valuemax': '100' }, [
+          el('i', { class: 'ok' }), el('i', { class: 'bad' }),
+          el('i', { class: 'run' })]),
+        update: (b) => paintBulkBar(b, ms, n) },
+      { key: 'rrows', enter: false,
+        sig: ms.map((m) => [m.id, m.status, m.cached ? 1 : 0, m.error || '']
+          .join(':')).join('|'),
+        build: () => bulkRunRows(ms),
+        // How far the one reading has got, without rebuilding the rows.
+        update: (box) => {
+          for (const row of box.querySelectorAll('[data-mid]')) {
+            const m = ms.find((x) => x.id === row.dataset.mid);
+            const cell = row.querySelector('.dop-batch-state');
+            const w = m ? bulkMemberWords(m) : null;
+            if (cell && w && cell.textContent !== w) cell.textContent = w;
+          }
+        } },
+      { key: 'racts', enter: false, sig: [j.id, j.status, !!bulk.stopping],
+        build: bulkRunActs },
+    ];
+  }
+
+  function bulkRunLine(ms, n) {
+    const j = bulk.job || {};
+    const state = bulk.stopping || j.status === 'canceled' ? 'stopping'
+      : j.id ? 'reading' : 'sending';
+    return el('div', { class: 'rc-bulk-line' }, [
+      el('strong', { text: ms.length + ' set' + (ms.length === 1 ? '' : 's')
+                           + ', ' + state }),
+      el('span', { class: 'hint', text: [
+        n.done - n.cached ? (n.done - n.cached) + ' read' : null,
+        n.cached ? n.cached + ' already read' : null,
+        n.running ? n.running + ' reading now' : null,
+        n.waiting ? n.waiting + ' waiting' : null,
+        n.error ? n.error + ' failed' : null,
+        n.stopped ? n.stopped + ' stopped' : null,
+      ].filter(Boolean).join('  ·  ') || 'starting' }),
+    ]);
+  }
+
+  /* Landed, failed and reading, as one bar that never goes back: a set
+     part-way through counts for the part it has read. */
+  function paintBulkBar(b, ms, n) {
+    const all = Math.max(1, ms.length);
+    let part = 0;
+    for (const m of ms) {
+      if (m.status === 'running') {
+        part += m.of ? Math.min(1, (m.done || 0) / m.of) * 0.9 + 0.05 : 0.05;
+      }
+    }
+    const pct = (v) => (100 * v / all).toFixed(2) + '%';
+    const [ok, bad, run] = b.children;
+    ok.style.width = pct(n.done);
+    bad.style.width = pct(n.error);
+    run.style.width = pct(part);
+    b.setAttribute('aria-valuenow', String(Math.round(100 * (n.done + n.error)
+                                                       / all)));
+    b.title = n.done + ' of ' + ms.length + ' read'
+      + (n.error ? ', ' + n.error + ' failed' : '');
+  }
+
+  function bulkMemberWords(m) {
+    if (m.status === 'error') return 'failed: ' + (m.error || 'no reason given');
+    if (m.status === 'done') {
+      return m.cached ? 'already read — opens at once'
+                      : 'read — open it to look, or bank it';
+    }
+    if (m.status === 'running') {
+      return m.of ? 'reading channel ' + Math.min((m.done || 0) + 1, m.of)
+                    + ' of ' + m.of
+                  : 'getting it ready';
+    }
+    if (m.status === 'stopped') return 'stopped part-way; nothing of it kept';
+    return 'waiting its turn';
+  }
+
+  function bulkRunRows(ms) {
+    const box = el('div', { class: 'dop-batch rc-bulk-run',
+                            'data-keep-scroll': 'rc-bulk-run' });
+    for (const m of ms) {
+      const st = m.status === 'error' ? 'failed' : (m.status || 'waiting');
+      const ready = m.status === 'done';
+      box.appendChild(el('div', {
+        class: 'dop-batch-row rc-bulk-member ' + st, 'data-mid': m.id,
+      }, [
+        el('span', { class: 'dop-batch-dot', 'aria-hidden': 'true' }),
+        el('span', { class: 'dop-batch-name', text: m.label || m.id }),
+        el('span', { class: 'dop-batch-state', text: bulkMemberWords(m) }),
+        // Always there, empty until it lands, so the columns hold.
+        el('span', { class: 'rc-bulk-row-acts' }, ready ? [
+          BARRY.ui.button({ kind: 'mini', text: 'Open', extra: 'rc-bulk-open',
+            title: 'Open this one now. The rest keep reading.',
+            onclick: () => openRead(m.id) }),
+          BARRY.ui.button({ kind: 'mini', text: 'Bank…', extra: 'rc-bulk-bank',
+            title: 'Open it and put up the bank dialog for the answer as '
+                 + 'fitted. Nothing is banked until you say so there.',
+            onclick: () => openRead(m.id, { bank: true }) }),
+        ] : []),
       ]));
     }
-    if ((bp.blocked || []).length) {
-      kids.push(el('div', { class: 'section-label', text: 'Left out' }));
-      kids.push(el('table', { class: 'tbl rc-bulk' }, [
-        el('tbody', {}, bp.blocked.map((r) => el('tr', {}, [
-          el('td', { text: r.label }),
-          el('td', { class: 'dim', text: r.why }),
-        ]))),
-      ]));
-    }
-    return el('div', { class: 'card rc-bulk-card' }, kids);
+    return box;
+  }
+
+  function bulkRunActs() {
+    const j = bulk.job || {};
+    return BARRY.ui.actions([
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Stop',
+        extra: 'rc-bulk-stop',
+        disabled: !j.id || bulk.stopping || j.status === 'canceled',
+        title: 'Stop the batch. The sets already read are kept; the one '
+             + 'being read stops where it is, and nothing of it is kept.',
+        onclick: stopBulk }),
+    ]);
   }
 
   async function loadBulk() {
+    if (bulk.loading) return;
+    bulk.loading = true;
     try {
       bulk.plan = await api('/api/rootcanal/batch/plan');
     } catch (e) {
-      bulk.plan = { ok: false, todo: [], done: [], blocked: [],
-                    n: 0, n_done: 0, n_blocked: 0 };
+      bulk.plan = { ok: false, error: e.message, todo: [], done: [],
+                    blocked: [], n: 0, n_done: 0, n_blocked: 0 };
       toast(e.message, 'err', 8000);
+    } finally {
+      bulk.loading = false;
     }
-    render();
+    bulk.rev += 1;
+    // What stays ticked is what can still be read.
+    const can = new Set(bulkRows().map((r) => r.entry_id));
+    for (const id of Object.keys(bulk.want)) {
+      if (!can.has(id)) delete bulk.want[id];
+    }
+    if (!bulkRefresh() && bulk.on) render();
   }
 
+  /* THROUGH THE NUDGE, AND THEN THE READ (2026-10-19). It called
+     `pickSet`, which on a changed picture puts "Save as vN first?" up and
+     returns -- and then read the set still open, the one being left, at
+     `from_version` null. Everything now waits for the answer. */
   function openRead(entryId, o) {
     if (!entryId) return;
-    bulk.on = false;
-    pickSet(entryId);
-    /* The batch reads each set as it stands (`from_version` null), so that
-       is what is opened; anything else could be a read nobody has paid for
-       yet, and "Open" would quietly start one. */
-    q.from_version = null;
-    bankAfterFit = !!(o && o.bank);
-    BARRY.activity.log('rootcanal.open_from_batch', { entry: entryId });
-    // The read is done, so this comes back cached and goes straight to a fit.
-    startRead();
+    const go = () => {
+      bulk.on = false;
+      pickSetNow(entryId);
+      /* The batch reads each set as it stands (`from_version` null), so
+         that is what is opened; anything else could be a read nobody has
+         paid for yet, and "Open" would quietly start one. */
+      q.from_version = null;
+      bankAfterFit = !!(o && o.bank);
+      BARRY.activity.log('rootcanal.open_from_batch', { entry: entryId });
+      // The read is done, so this comes back cached and goes to a fit.
+      startRead();
+    };
+    if (entryId !== q.entry && isDirty()) { nudgeThen(go); return; }
+    go();
   }
 
+  /* What is ticked, in the list's order, and nothing else (2026-10-19: it
+     read `bulk.pick`, where an untouched row counted as ticked). Until the
+     server lists the members, the card shows the ones sent as waiting. */
   async function runBulk() {
-    const want = ((bulk.plan && bulk.plan.todo) || [])
-      .filter((r) => bulk.pick[r.entry_id] !== false)
-      .map((r) => r.entry_id);
-    if (!want.length) { toast('Nothing is ticked.', 'warn', 5000); return; }
+    if (bulk.sending || bulk.job) return;
+    const rows = bulkRows().filter((r) => bulk.want[r.entry_id]);
+    if (!rows.length) { toast('Nothing is ticked.', 'warn', 5000); return; }
+    bulk.sending = true;
+    bulk.stopping = false;
+    bulk.last = null;
+    bulk.sent = rows.map((r) => ({ id: r.entry_id, label: r.label }));
+    bulkRefresh();
     try {
-      const got = await apiPost('/api/rootcanal/batch', { entries: want });
+      const got = await apiPost('/api/rootcanal/batch',
+                                { entries: rows.map((r) => r.entry_id) });
       bulk.job = got.job;
-      render();
       watchBulk();
     } catch (e) {
+      bulk.sent = null;
       toast(e.message, 'err', 10000);
+    } finally {
+      bulk.sending = false;
     }
+    if (!bulkRefresh() && bulk.on) render();
+  }
+
+  function stopBulk() {
+    const j = bulk.job;
+    if (!j || bulk.stopping) return;
+    bulk.stopping = true;
+    bulkRefresh();
+    apiPost('/api/cfc/job/' + j.id + '/cancel', {}).catch((e) => {
+      bulk.stopping = false;
+      toast('It could not be stopped: ' + e.message, 'err', 8000);
+      bulkRefresh();
+    });
   }
 
   function watchBulk() {
@@ -3383,26 +4504,39 @@ BARRY.rootcanal = (function () {
         /* WHICHEVER MODE YOU ARE IN. Opening a finished set switches to one
            at a time, and a poll that only refreshed the batch card then
            froze the count -- which reads exactly like the batch stopping.
-           X-ray's lesson. */
-        if (!swap('.rc-bulk-card', bulkCard())) swap('.rc-mode', modeSwitch());
+           X-ray's lesson. The card is reconciled in place (2026-10-19): it
+           was built again from nothing on every poll. */
+        if (!bulkRefresh()) swap('.rc-mode', modeSwitch());
         return;
       }
       clearInterval(bulk.poll);
       bulk.poll = null;
-      const done = bulk.job;
-      bulk.job = null;
-      const n = (done.members || []).filter((m) => m.status === 'done').length;
-      const quit = done.status === 'canceled';
-      toast(quit
-        ? ('Stopped. ' + n + ' of ' + (done.members || []).length
-           + ' were read and are kept; the rest were not started.')
-        : ('Read ' + n + ' of ' + (done.members || []).length
-           + '. Nothing was banked.'),
-        quit ? 'warn' : 'ok', 8000);
-      bulk.plan = null;
-      if (bulk.on) loadBulk();
-      else swap('.rc-mode', modeSwitch());
+      endBulk(bulk.job);
     }, 900);
+  }
+
+  /* A batch over: said in a toast and, with what failed and why, on the
+     picker's first line until the next batch. What landed is unticked --
+     it is under "Already read" now -- and what failed stays ticked, so
+     "Read the N ticked" sends it again. */
+  function endBulk(done) {
+    const ms = (done && done.members) || [];
+    bulk.job = null;
+    bulk.sent = null;
+    bulk.stopping = false;
+    for (const m of ms) if (m.status === 'done') delete bulk.want[m.id];
+    const n = ms.filter((m) => m.status === 'done').length;
+    const quit = done && done.status === 'canceled';
+    bulk.last = { n, of: ms.length, quit,
+                  failed: ms.filter((m) => m.status === 'error')
+                    .map((m) => ({ label: m.label || m.id, why: m.error })) };
+    toast(quit
+      ? 'Stopped. ' + n + ' of ' + ms.length + ' were read and are kept; '
+        + 'the rest were not started.'
+      : 'Read ' + n + ' of ' + ms.length + '. Nothing was banked.',
+      quit ? 'warn' : 'ok', 8000);
+    bulk.plan = null;
+    if (bulk.on) { bulkRefresh(); loadBulk(); } else swap('.rc-mode', modeSwitch());
   }
 
   /* ==================================================================
@@ -3425,6 +4559,25 @@ BARRY.rootcanal = (function () {
   function colOf(cls) {
     return cls === 'ied' ? tok('--err') : cls === 'ds' ? tok('--ok')
                                                         : tok('--text-3');
+  }
+
+  /* OUTSIDE THE BORDER, BUT STILL SOMETHING (2026-10-19). With a border
+     applied, every event it left ambiguous was drawn the same grey, so
+     what they had been called was lost exactly where it was most worth
+     seeing. Now an ambiguous dot keeps its own call's colour, faded halfway
+     to the grey, and wears a dotted grey edge (`outside` in the scene):
+     clearly not solid, and still DS-ish or IED-ish at a glance. */
+  function outsideCol(cls) {
+    if (cls !== 'ds' && cls !== 'ied') return tok('--text-3');
+    const a = rgbOf(colOf(cls)), b = rgbOf(tok('--text-3'));
+    return 'rgb(' + [0, 1, 2].map((j) => Math.round(a[j] * 0.55 + b[j] * 0.45))
+      .join(',') + ')';
+  }
+
+  /* The colour a border gives an event: solid DS or IED in full, and an
+     ambiguous one its own call, faded. */
+  function borderCol(e, own) {
+    return e.border === 'amb' ? outsideCol(own) : colOf(e.border);
   }
 
   /* Which detector found a pooled event, in the colours Panning and the
@@ -3578,7 +4731,10 @@ BARRY.rootcanal = (function () {
                     ? originCol(e.origin)
                     : singleColour === 'cluster' && e.cluster != null
                     ? cluColour(e.cluster)
-                    : colOf(fit.border_used ? e.border : e.cls)),
+                    : fit.border_used ? borderCol(e, e.cls) : colOf(e.cls)),
+      outside: (e) => !!fit.border_used && e.border === 'amb'
+                      && singleColour !== 'cluster'
+                      && !(singleColour === 'origin' && hasOrigins()),
       fill2: (e) => (singleColour === 'origin' && hasOrigins()
                      ? originCol2(e.origin) : null),
       shape: (e) => (singleColour === 'cluster' && e.cluster != null
@@ -3725,9 +4881,18 @@ BARRY.rootcanal = (function () {
         g.fillStyle = fill;
         g.fill();
       }
-      g.strokeStyle = k.bg;
-      g.lineWidth = 0.7;
-      g.stroke();
+      if (sc && sc.outside && sc.outside(e)) {
+        // Outside the border: a dotted grey edge round its faded colour.
+        g.strokeStyle = k.dim;
+        g.lineWidth = 1;
+        g.setLineDash([1.4, 1.4]);
+        g.stroke();
+        g.setLineDash([]);
+      } else {
+        g.strokeStyle = k.bg;
+        g.lineWidth = 0.7;
+        g.stroke();
+      }
     }
     if (e.wide) {
       g.beginPath();
@@ -3804,6 +4969,8 @@ BARRY.rootcanal = (function () {
       axes.push({ a, x0: A.x, y0: A.y, x1: B.x, y1: B.y });
     }
 
+    borderOutline3d(g, k, S, toScreen, L);
+
     // Everything that has a depth, sorted far to near.
     const items = [];
     const pts = [];
@@ -3815,7 +4982,8 @@ BARRY.rootcanal = (function () {
       items.push({ d: P.d, kind: 'e', e, P, hollow: zz.hollow, mk, al });
       pts.push({ i: e.i, x: P.x, y: P.y, depth: P.d, hollow: zz.hollow,
                  r: 3.4, mark: mk, wide: !!e.wide, alpha: al,
-                 fill: S.fill(e), shape: S.shape(e), ringed: S.ringed(e) });
+                 fill: S.fill(e), shape: S.shape(e), ringed: S.ringed(e),
+                 outside: !!(S.outside && S.outside(e)) });
     }
     const cpts = [];
     for (const c of cs) {
@@ -4060,6 +5228,7 @@ BARRY.rootcanal = (function () {
       g.globalAlpha = 1;
     }
 
+    borderOverlay(id, g, k, S, xa, ya, X, Y, { x0, y0, x1, y1 });
     // The dots. Not measured on either axis of THIS view: on that edge,
     // hollow, so it is counted rather than lost.
     const pts = [];
@@ -4081,7 +5250,7 @@ BARRY.rootcanal = (function () {
       drawMark(g, k, x, y, 3.2, e, mk, (hollow ? 1 : 0.9) * al, S);
       pts.push({ i: e.i, x, y, hollow, mark: mk, wide: !!e.wide,
                  edge: !hx || !hy, alpha: al, fill: S.fill(e),
-                 ringed: S.ringed(e) });
+                 ringed: S.ringed(e), outside: !!(S.outside && S.outside(e)) });
     }
     // The dots drawn round in the 3D view, ringed here too.
     const selF = new Set(lassoIds());
@@ -4141,6 +5310,190 @@ BARRY.rootcanal = (function () {
     };
   }
 
+  /* THE APPLIED BORDER ON A FLAT VIEW (2026-10-19), drawn under the dots
+     from one line in `drawFlat`. A border classifies by the same three
+     numbers the flat views plot, so it can be shown where it cuts:
+       - round one identity (an envelope), the box from lo to hi on both
+         axes of the view, outlined in the accent colour, with a light wash
+         over everything outside it -- outside is what it calls ambiguous;
+       - between two, each axis's two cut-offs as dashed lines, where solid
+         DS ends (in the DS colour) and where solid IED begins (in the IED
+         colour), with the ambiguous band between them faint. A view shows
+         two of the three axes, so a dot past both lines here can still be
+         ambiguous by the third: the lines are where it cuts, not the call.
+     Inside the plot's clip. Its label is drawn after the clip, in the
+     corner with the fewest dots, so it is never cut off, and kept short --
+     the Borders card names the border. What was drawn is kept in
+     `GEOM.border[id]`, for the suites. */
+  /* THE BORDER IN 3D (2026-10-19): "make a faint outline of where the
+     borders are in the 3d graph". The flat views draw it; the cloud did
+     not, so a border applied to a pool was colour alone there. Now its
+     regions are outlined, faint and behind the dots:
+       around one group (an envelope)  its box, in the accent colour;
+       between DS and IED              the solid-DS region and the solid-IED
+                                       region, each a box cut off at the
+                                       axes' ends, dashed, in their colours.
+     In the view's own z units, through the same raw-to-z line the dots
+     use, so a box edge and a dot at that number land in one place.
+     `GEOM.border3d` holds what was drawn, for the harness. */
+  function borderOutline3d(g, k, S, toScreen, L) {
+    GEOM.border3d = null;
+    const bu = S.kind === 'pooled' ? pool.fit && pool.fit.border_used
+                                   : fit && fit.border_used;
+    const ed = bu && bu.edges;
+    if (!ed) return;
+    const ok = (v) => v != null && isFinite(v);
+    const clamp = (z) => Math.max(-L, Math.min(L, z));
+    const boxes = [];
+    if (isEnv(bu)) {
+      const r = [0, 1, 2].map((a) => {
+        const e = ed[KEYS[a]] || {};
+        return ok(e.lo) && ok(e.hi)
+          ? [clamp(rawToZ(a, e.lo)), clamp(rawToZ(a, e.hi))] : null;
+      });
+      if (r.every(Boolean)) boxes.push({ cls: 'env', r, col: k.accent, dash: [] });
+    } else {
+      const up = bu.ied_above || {};
+      const ied = [], ds = [];
+      for (let a = 0; a < 3; a++) {
+        const e = ed[KEYS[a]] || {};
+        if (!ok(e.ied_at) || !ok(e.ds_at)) return;
+        const zi = rawToZ(a, e.ied_at), zd = rawToZ(a, e.ds_at);
+        const above = up[KEYS[a]] !== false;
+        ied.push(above ? [clamp(zi), L] : [-L, clamp(zi)]);
+        ds.push(above ? [-L, clamp(zd)] : [clamp(zd), L]);
+      }
+      const real = (r) => r.every(([a, b]) => b - a > 1e-6);
+      if (real(ds)) boxes.push({ cls: 'ds', r: ds, col: colOf('ds'), dash: [4, 4] });
+      if (real(ied)) boxes.push({ cls: 'ied', r: ied, col: colOf('ied'), dash: [4, 4] });
+    }
+    if (!boxes.length) return;
+    g.save();
+    g.lineWidth = 1;
+    for (const bx of boxes) {
+      const [xr, yr, zr] = bx.r;
+      const corner = (i, j, l) => toScreen([xr[i], yr[j], zr[l]]);
+      g.strokeStyle = bx.col;
+      g.setLineDash(bx.dash);
+      g.globalAlpha = 0.32;
+      g.beginPath();
+      for (let i = 0; i < 2; i++) {
+        for (let j = 0; j < 2; j++) {
+          for (let l = 0; l < 2; l++) {
+            const P0 = corner(i, j, l);
+            // The three edges leaving this corner towards the far side.
+            if (!i) { const Q = corner(1, j, l); g.moveTo(P0.x, P0.y); g.lineTo(Q.x, Q.y); }
+            if (!j) { const Q = corner(i, 1, l); g.moveTo(P0.x, P0.y); g.lineTo(Q.x, Q.y); }
+            if (!l) { const Q = corner(i, j, 1); g.moveTo(P0.x, P0.y); g.lineTo(Q.x, Q.y); }
+          }
+        }
+      }
+      g.stroke();
+    }
+    g.restore();
+    g.globalAlpha = 1;
+    g.setLineDash([]);
+    GEOM.border3d = { kind: isEnv(bu) ? 'envelope' : 'between',
+                      boxes: boxes.map((b) => ({ cls: b.cls, r: b.r })) };
+  }
+
+  function borderOverlay(id, g, k, S, xa, ya, X, Y, bx) {
+    const all = GEOM.border || (GEOM.border = {});
+    delete all[id];
+    const bu = S.kind === 'pooled' ? pool.fit && pool.fit.border_used
+                                   : fit && fit.border_used;
+    const ed = bu && bu.edges;
+    const ex = ed && ed[KEYS[xa]], ey = ed && ed[KEYS[ya]];
+    if (!ex || !ey) return;
+    const ok = (v) => v != null && isFinite(v);
+    const env = isEnv(bu);
+    const w = bx.x1 - bx.x0, h = bx.y1 - bx.y0;
+    const out = { kind: env ? 'envelope' : 'between', grace: bu.grace };
+    g.save();
+    g.beginPath(); g.rect(bx.x0, bx.y0, w, h); g.clip();
+    if (env) {
+      if (![ex.lo, ex.hi, ey.lo, ey.hi].every(ok)) { g.restore(); return; }
+      const L = X(ex.lo), R = X(ex.hi), T = Y(ey.hi), B = Y(ey.lo);
+      g.fillStyle = k.accent;
+      g.globalAlpha = 0.08;
+      g.beginPath();
+      g.rect(bx.x0, bx.y0, w, h);
+      g.rect(L, T, R - L, B - T);
+      g.fill('evenodd');
+      g.globalAlpha = 0.95;
+      g.strokeStyle = k.accent;
+      g.lineWidth = 1.5;
+      g.strokeRect(L, T, R - L, B - T);
+      out.rect = { x0: L, y0: T, x1: R, y1: B };
+    } else {
+      out.lines = [];
+      for (const [axis, e, P, key] of [['x', ex, X, KEYS[xa]],
+                                       ['y', ey, Y, KEYS[ya]]]) {
+        if (!ok(e.ied_at) || !ok(e.ds_at)) continue;
+        const a = P(e.ied_at), d = P(e.ds_at);
+        g.globalAlpha = 0.1;
+        g.fillStyle = k.accent;
+        if (axis === 'x') g.fillRect(Math.min(a, d), bx.y0, Math.abs(a - d), h);
+        else g.fillRect(bx.x0, Math.min(a, d), w, Math.abs(a - d));
+        g.globalAlpha = 0.95;
+        g.lineWidth = 1.4;
+        g.setLineDash([5, 4]);
+        for (const [v, col] of [[a, k.ied], [d, k.ds]]) {
+          g.strokeStyle = col;
+          g.beginPath();
+          if (axis === 'x') { g.moveTo(v, bx.y0); g.lineTo(v, bx.y1); }
+          else { g.moveTo(bx.x0, v); g.lineTo(bx.x1, v); }
+          g.stroke();
+        }
+        g.setLineDash([]);
+        out.lines.push({ axis, key, ied: a, ds: d });
+      }
+      if (!out.lines.length) { g.restore(); return; }
+    }
+    g.restore();
+    /* The label: in the emptiest corner, and never over the line that
+       says how many dots sit on the edge without a value (top left). */
+    const gw = bu.grace_words || graceWords(bu.grace);
+    const text = env ? bGroup(bu) + ' envelope · grace ' + gw
+                     : 'DS / IED border · grace ' + gw;
+    g.save();
+    const ft = fitText(g, text, Math.max(40, w - 12), 9, true);
+    const lh = ft.pt + 2;
+    const lw = Math.ceil(Math.max(...ft.lines.map((ln) => g.measureText(ln)
+                                                          .width))) + 8;
+    const lhh = ft.lines.length * lh + 4;
+    const edge = S.events.some((e) => !ok(e[KEYS[xa]]) || !ok(e[KEYS[ya]]));
+    const spots = [[bx.x1 - 3 - lw, bx.y0 + 3], [bx.x1 - 3 - lw, bx.y1 - 3 - lhh],
+                   [bx.x0 + 3, bx.y1 - 3 - lhh]]
+      .concat(edge ? [] : [[bx.x0 + 3, bx.y0 + 3]]);
+    let best = spots[0], bn = Infinity;
+    for (const [sx, sy] of spots) {
+      let n = 0;
+      for (const e of S.events) {
+        const vx = e[KEYS[xa]], vy = e[KEYS[ya]];
+        if (!ok(vx) || !ok(vy)) continue;
+        const px = X(vx), py = Y(vy);
+        if (px >= sx - 3 && px <= sx + lw + 3 && py >= sy - 3
+            && py <= sy + lhh + 3) n += 1;
+      }
+      if (n < bn) { bn = n; best = [sx, sy]; }
+    }
+    const [lx, ly] = best;
+    g.globalAlpha = 0.9;
+    g.fillStyle = k.bg;
+    g.fillRect(lx, ly, lw, lhh);
+    g.globalAlpha = 1;
+    g.strokeStyle = k.accent;
+    g.lineWidth = 1;
+    g.strokeRect(lx + 0.5, ly + 0.5, lw - 1, lhh - 1);
+    g.fillStyle = k.text;
+    g.textAlign = 'left';
+    drawLines(g, ft, lx + 4, ly + 2 + ft.pt, lh);
+    g.restore();
+    out.label = { text, lines: ft.lines, x: lx, y: ly, w: lw, h: lhh, dots: bn };
+    all[id] = out;
+  }
+
   function pickFlat(id, x, y) {
     const G = GEOM.flats[id];
     if (!G) return null;
@@ -4191,11 +5544,21 @@ BARRY.rootcanal = (function () {
     drawCsd(ok ? d.csd : null, ok ? d.stack : null, e, d);
   }
 
-  /* An event canvas with nothing yet to draw on it, saying why. */
+  /* An event canvas with nothing yet to draw on it, saying why.
+
+     POOLED SAYS IT IN WORDS, NOT HERE (2026-10-19): "Its trace could not
+     be read here…" was drawn into each of the four canvases and cut off
+     at every edge. The sentence is above the pictures now, as text that
+     wraps (`poolEventNote`); a pooled event's canvas says only "reading…"
+     or "no trace". */
   function waitText(s, k, d) {
-    s.g.fillStyle = d && d.ok === false ? k.warn : k.dim;
-    const f = fitText(s.g, d && d.ok === false ? d.error : 'reading…',
-                      s.w - 16, 10);
+    const failed = d && d.ok === false;
+    const pooledEv = viewMode === 'pooled' && !curAvg();
+    const words = pooledEv
+      ? (failed && !evComing() ? 'no trace' : 'reading…')
+      : (failed ? d.error : 'reading…');
+    s.g.fillStyle = failed && words !== 'reading…' ? k.warn : k.dim;
+    const f = fitText(s.g, words, s.w - 16, 10);
     drawLines(s.g, f, 8, 18);
   }
 
@@ -5133,7 +6496,19 @@ BARRY.rootcanal = (function () {
     ]);
   }
 
-  async function loadPool() {
+  /* One read of the lists at a time (2026-10-19): the ToolKit paints twice
+     on opening and the view bar once more, and each asked for the
+     candidates again while the first answer was still on its way -- four
+     reads of the bank for one press. */
+  let poolLoading = null;
+  function loadPool() {
+    if (!poolLoading) {
+      poolLoading = loadPool_().finally(() => { poolLoading = null; });
+    }
+    return poolLoading;
+  }
+
+  async function loadPool_() {
     const jobs = [];
     if (!pool.cands) {
       jobs.push(api('/api/rootcanal/pool/candidates').then((got) => {
@@ -5160,7 +6535,8 @@ BARRY.rootcanal = (function () {
       pool.shelf = [];
       pool.shelfErr = e.message;
     }
-    if (!quiet && viewMode === 'pooled') swap('.rc-shelf', shelfCard());
+    // Not the pools-of-pools shelf, which carries `.rc-shelf` too.
+    if (!quiet && viewMode === 'pooled') swap('.rc-shelf:not(.rc-dshelf)', shelfCard());
   }
 
   /* A candidate by a member's key. A saved single is ONE candidate whatever
@@ -5184,22 +6560,197 @@ BARRY.rootcanal = (function () {
     return pool.sel.find((m) => m.key === c.key) || null;
   }
 
-  /* The version of a saved single a member uses: its picked one, or the
-     latest. */
+  /* The version of a saved single a member uses: its picked one, the one
+     its row offers while unticked (2026-10-19), or the latest. */
   function versionOfCand(c) {
     const m = selOf(c);
-    const v = m ? Number(String(m.key).split(':')[2]) : c.version;
+    const at = /^s:([^:]+):(\d+)$/.exec(String(m ? m.key
+                                              : pool.pickSrc[recOf(c)] || ''));
+    const v = at && at[1] === c.artifact_id ? Number(at[2]) : c.version;
     return (c.versions || []).find((x) => x.v === v) || null;
   }
 
-  function setVersion(c, v) {
-    const m = selOf(c);
-    const key = 's:' + c.artifact_id + ':' + v;
-    if (m) m.key = key;
-    else pool.sel.push({ key });
+  /* ONE ROW PER RECORDING (2026-10-19). The server offers every ANSWER
+     about a recording as a candidate of its own -- its banked result
+     ("b:"), a read cached here and not banked ("u:"), each version of a
+     saved single ("s:<artifact>:<v>") -- because they are different
+     answers. Listed as they came, one recording showed two or three times
+     ("some events are duplicates here"), and ticking both counted every
+     one of its events twice. So the list is of RECORDINGS, by bank entry:
+     one row and one tick each, and a choice of which answer where there is
+     more than one -- the banked one unless another is chosen, else the
+     newest saved single, else the read here. Only one answer about a
+     recording goes into a pool; the server refuses a second by name. */
+  const recOf = (c) => String((c && (c.entry_id || c.gid || c.key)) || '');
+  const KIND_ORDER = { single: 0, banked: 1, read: 2, saved: 3 };
+  let recMemo = { sig: null, list: [], byKey: new Map(), byId: new Map(),
+                  byArt: new Map() };
+
+  function recordings() {
+    const cs = pool.cands || [];
+    const sm = pool.savedMembers || [];
+    const sig = [cs, cs.length, sm, sm.length];
+    const was = recMemo.sig;
+    if (was && sig.every((x, j) => x === was[j])) return recMemo.list;
+    const byId = new Map(), byKey = new Map(), byArt = new Map();
+    const recFor = (id, facts) => {
+      let r = byId.get(id);
+      if (!r) {
+        r = { id, facts: [], answers: [], keys: new Set(), def: null };
+        byId.set(id, r);
+      }
+      r.facts.push(facts);
+      return r;
+    };
+    const add = (r, a) => {
+      if (r.keys.has(a.key)) return;     // offered twice is one answer
+      r.answers.push(a); r.keys.add(a.key); byKey.set(a.key, r);
+    };
+    for (const c of cs) {
+      const r = recFor(recOf(c), c);
+      if (c.kind === 'single') {
+        byArt.set(c.artifact_id, r);
+        const vs = (c.versions || []).filter((x) => x.here !== false)
+          .sort((a, b) => b.v - a.v);
+        if (!vs.length) vs.push({ v: c.version, nickname: c.nickname });
+        for (const x of vs) {
+          const ns = x.n_summary || {};
+          add(r, { key: 's:' + c.artifact_id + ':' + x.v, kind: 'single', cand: c,
+                   ver: x, n: ns.events != null ? ns.events : c.n,
+                   words: 'saved v' + x.v + (x.nickname ? ' · ' + x.nickname : ''),
+                   title: versionHover(x) });
+        }
+      } else if (c.banked) {
+        add(r, { key: c.key, kind: 'banked', cand: c, n: c.n,
+                 words: 'banked' + (c.version ? ' v' + c.version : ''),
+                 title: 'Its banked result' + (c.version ? ', v' + c.version
+                   + ' of the set' : '') + ': the numbers are in the bank, so '
+                   + 'it reads no recording.' });
+      } else {
+        add(r, { key: c.key, kind: 'read', cand: c, n: c.n,
+                 words: 'read here, not banked',
+                 title: 'The read cached on this machine, not banked: fitted '
+                      + 'at Single’s settings as they stand when it is ticked.' });
+      }
+    }
+    /* A member of the opened pool that this machine does not offer: read
+       on another machine, its numbers in the save. It joins its
+       recording's row if this machine has one. */
+    for (const m of sm) {
+      if (byKey.has(m.key) || candOf(m.key)) continue;
+      const fm = poolMemberByKey(m.key) || m;
+      const r = recFor(recOf(m), {
+        session_label: m.session_label, entry_id: m.entry_id, gid: m.gid,
+        mouse_key: m.mouse_key, project: m.project, banked: !!m.banked,
+        mouse_type: m.mouse_type_default || m.mouse_type, kind: 'saved', n: m.n,
+      });
+      add(r, { key: m.key, kind: 'saved', member: m, n: m.n,
+               read_on: fm.read_on || 'another machine',
+               words: (m.banked ? 'banked' : 'not banked') + ', as saved',
+               title: 'Its read is on ' + (fm.read_on || 'another machine')
+                    + ', not here. Its numbers come from the saved pool, '
+                    + 'exactly as they were saved, so it pools as saved. '
+                    + 'Measuring it another way needs its read.' });
+    }
+    /* Two answers of one kind -- two reads here made from two versions of
+       the set's stamps, say -- are told apart by their events, and failing
+       that by the read's own name. */
+    const twins = (r) => r.answers.filter((a, j) => r.answers.some(
+      (b, i) => i !== j && b.words === a.words));
+    for (const r of byId.values()) {
+      for (const a of twins(r)) {
+        if (a.n != null) a.words += ' · ' + a.n + ' events';
+      }
+      for (const a of twins(r)) {
+        const tail = String(a.key).split(':').pop();
+        a.words += (a.kind === 'banked' ? ' · result ' : ' · read ') + tail.slice(0, 6);
+      }
+    }
+    for (const r of byId.values()) {
+      r.answers.sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind]);
+      r.def = (r.answers.find((a) => a.kind === 'banked')
+               || r.answers.find((a) => a.kind === 'single')
+               || r.answers.find((a) => a.kind === 'read')
+               || r.answers[0]).key;
+    }
+    recMemo = { sig, list: Array.from(byId.values()), byKey, byId, byArt };
+    return recMemo.list;
+  }
+
+  /* The recording an answer is about. A saved single's version that is not
+     listed (one measured again just now) is found by its artifact. */
+  function recOfKey(key) {
+    recordings();
+    const k = String(key || '');
+    if (recMemo.byKey.has(k)) return recMemo.byKey.get(k);
+    const m = /^s:([^:]+):/.exec(k);
+    return m ? recMemo.byArt.get(m[1]) || null : null;
+  }
+
+  /* What of one recording is in the pool: one answer, or -- in a pool
+     opened from the shelf that was saved with two -- more. */
+  function recSel(rec) {
+    return rec ? pool.sel.filter((m) => recOfKey(m.key) === rec) : [];
+  }
+
+  function curKey(rec) {
+    const mine = recSel(rec);
+    if (mine.length) return mine[0].key;
+    const want = pool.pickSrc[rec.id];
+    return want && rec.keys.has(want) ? want : rec.def;
+  }
+
+  /* Its answers, and any in the pool that the list does not name. */
+  function answersOf(rec) {
+    const extra = recSel(rec).filter((m) => !rec.keys.has(m.key)).map((m) => ({
+      key: m.key, kind: 'single', cand: candOf(m.key), n: null,
+      words: 'saved v' + String(m.key).split(':').pop(), title: '' }));
+    return extra.length ? rec.answers.concat(extra) : rec.answers;
+  }
+
+  const answerOf = (rec, key) => answersOf(rec).find((a) => a.key === key) || null;
+
+  /* What goes into `pool.sel` for an answer. A read here is fitted at
+     Single's settings as they stand; a saved single pools its own numbers;
+     a member read elsewhere keeps the settings it was saved at. */
+  function entryFor(key) {
+    const c = candOf(key);
+    if (c && !c.banked && c.kind !== 'single') return { key, params: singleParams() };
+    const sm = (pool.savedMembers || []).find((x) => x.key === key);
+    if (!c && sm && sm.banked === false) {
+      return { key, params: (sm.pin || {}).params || singleParams() };
+    }
+    return { key };
+  }
+
+  /* Something about who is in changed: said in place (`membersRefresh`),
+     not by repainting the page. */
+  function touched() {
     pool.dirty = true;
     pool.fitErr = null;
-    render();
+    pool.refusal = null;
+    membersRefresh();
+  }
+
+  /* A row's choice of answer. Ticked, it is swapped in where the other
+     stood; unticked, it is what a tick will put in. */
+  function setRecAnswer(rec, key) {
+    if (!recSel(rec).length) {
+      pool.pickSrc[rec.id] = key;
+      syncRows();
+    } else {
+      toggleMember(key, true);
+    }
+    // The names on offer are the chosen versions'.
+    swap('.rc-sel', selectBar());
+  }
+
+  /* One answer about the recording kept, the others taken out. */
+  function keepOnly(rec, key) {
+    const mine = recSel(rec);
+    const keep = mine.find((m) => m.key === key) || mine[0];
+    pool.sel = pool.sel.filter((m) => m === keep || mine.indexOf(m) < 0);
+    touched();
   }
 
   /* The settings an unbanked member is fitted at: Single's, as they stand.
@@ -5215,24 +6766,26 @@ BARRY.rootcanal = (function () {
     return pool.types[mk] || fallback || '';
   }
 
+  /* In or out, ONE ANSWER PER RECORDING (2026-10-19): ticking an answer
+     about a recording that already has one in swaps it in where the other
+     stood; unticking takes every answer about it out. Said in place. */
   function toggleMember(key, on) {
-    const c = candOf(key);
-    // A saved single is in or out whatever version is picked.
-    const have = c && c.kind === 'single'
-      ? pool.sel.indexOf(selOf(c))
-      : pool.sel.findIndex((m) => m.key === key);
-    if (on && have < 0) {
-      // A saved single pools its own numbers: no fit settings go with it.
-      pool.sel.push(c && !c.banked && c.kind !== 'single'
-        ? { key, params: singleParams() } : { key });
-      pool.fitErr = null;
-    } else if (!on && have >= 0) {
-      pool.sel.splice(have, 1);
+    const rec = recOfKey(key);
+    const mine = rec ? recSel(rec) : pool.sel.filter((m) => m.key === key);
+    if (on) {
+      if (mine.length === 1 && mine[0].key === key) return;
+      const entry = entryFor(key);
+      if (mine.length) {
+        pool.sel = pool.sel.filter((m) => m === mine[0] || mine.indexOf(m) < 0);
+        pool.sel.splice(pool.sel.indexOf(mine[0]), 1, entry);
+      } else {
+        pool.sel.push(entry);
+      }
     } else {
-      return;
+      if (!mine.length) return;
+      pool.sel = pool.sel.filter((m) => mine.indexOf(m) < 0);
     }
-    pool.dirty = true;
-    render();
+    touched();
   }
 
   /* ---------- choosing who is in the pool ---------- */
@@ -5250,17 +6803,24 @@ BARRY.rootcanal = (function () {
       .sort((a, b) => String(a).localeCompare(String(b)));
   }
 
-  function shown(c) {
+  /* A recording is shown when ANY of its answers fits each category
+     pressed -- the kind chip "banked" shows every recording that has a
+     banked answer -- and every word typed is somewhere in it. */
+  function recShown(rec) {
     const f = pool.filt;
     for (const [key, _w, get] of CATS) {
       const want = f[key] || [];
-      if (want.length && want.indexOf(get(c)) < 0) return false;
+      if (want.length && !rec.facts.some((c) => want.indexOf(get(c)) >= 0)) {
+        return false;
+      }
     }
     const text = String(f.q || '').trim().toLowerCase();
     if (text) {
-      const hay = [c.session_label, c.mouse_key, c.group, c.subgroup,
-                   c.condition, c.project, c.nickname, c.entry_id]
-        .filter(Boolean).join(' ').toLowerCase();
+      const hay = rec.facts.map((c) => [c.session_label, c.mouse_key, c.group,
+                                         c.subgroup, c.condition, c.project,
+                                         c.nickname, c.entry_id]
+        .filter(Boolean).join(' ')).concat(rec.answers.map((a) => a.words))
+        .join(' ').toLowerCase();
       if (text.split(/\s+/).some((w) => hay.indexOf(w) < 0)) return false;
     }
     return true;
@@ -5273,8 +6833,11 @@ BARRY.rootcanal = (function () {
     return ((v && v.n_summary) || {}).names || [];
   }
 
-  /* A name chip: every saved single holding that name, pooled for that
-     name's events only. Pressed again, the pool is every event again. */
+  /* A name chip: every saved single holding that name, for that name's
+     events only. Pressed again, the pool is every event again. It CHOOSES
+     (2026-10-19), and Pool pools: choosing and looking are two screens now,
+     and a chip that pooled on the choosing one fitted a picture nobody
+     could see. */
   function pickName(nm, cs) {
     if (pool.name === nm) {
       pool.name = null;
@@ -5283,16 +6846,21 @@ BARRY.rootcanal = (function () {
       pool.name = nm;
       pool.sel = cs.filter((c) => namesOf(c).indexOf(nm) >= 0).map((c) => {
         const m = selOf(c);
-        return { key: m ? m.key : c.key, names: [nm] };
+        const want = pool.pickSrc[recOf(c)];
+        const key = m ? m.key : (want && String(want).indexOf('s:' + c.artifact_id
+          + ':') === 0 ? want : c.key);
+        return { key, names: [nm] };
       });
     }
-    pool.dirty = true;
-    pool.fitErr = null;
-    render();
-    if (pool.sel.length) runPool();
+    swap('.rc-sel', selectBar());
+    touched();
   }
 
-  function selectBar(cs) {
+  /* The search, the chips, and the tools that tick what is shown. Counted
+     in RECORDINGS (2026-10-19), and "Select all shown" ticks one answer
+     each -- the one its row offers. */
+  function selectBar() {
+    const cs = pool.cands || [];
     const f = pool.filt;
     const groups = CATS.map(([key, words, get]) => {
       const vals = facetValues(cs, get);
@@ -5308,12 +6876,13 @@ BARRY.rootcanal = (function () {
           const have = f[key] || [];
           f[key] = have.indexOf(v) >= 0 ? have.filter((x) => x !== v)
                                         : have.concat([v]);
-          swap('.rc-sel', selectBar(cs));
-          swap('.rc-pool-cands', membersTable(cs, null, null));
+          swap('.rc-sel', selectBar());
+          swap('.rc-pool-cands', membersTable());
         } }))));
     }).filter(Boolean);
     const names = Array.from(new Set([].concat(...cs.map(namesOf)))).sort();
-    const nShown = cs.filter(shown).length;
+    const recs = recordings();
+    const nShown = recs.filter(recShown).length;
     return el('div', { class: 'rc-sel' }, [
       el('div', { class: 'rc-sel-top' }, [
         BARRY.ui.searchField({ placeholder: 'Find a recording, mouse or nickname',
@@ -5322,137 +6891,251 @@ BARRY.rootcanal = (function () {
                + 'a saved version’s nickname -- every word has to match.',
           oninput: (ev2) => {
             f.q = ev2.target.value;
-            swap('.rc-pool-cands', membersTable(cs, null, null));
-            const n2 = document.querySelector('.rc-sel-n');
-            if (n2) n2.textContent = cs.filter(shown).length + ' of '
-              + cs.length + ' shown';
+            swap('.rc-pool-cands', membersTable());
+            shownCount();
           } }),
         el('span', { class: 'hint rc-sel-n', text: nShown + ' of '
-                     + cs.length + ' shown' }),
+                     + recs.length + ' recordings shown' }),
         el('span', { class: 'spacer' }),
-        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Select all shown',
-          extra: 'rc-sel-all',
-          title: 'Tick every recording the filters show (one that cannot be '
-               + 'pooled here is left).',
+        BARRY.ui.button({ kind: 'ghost', size: 'sm',
+          text: 'Select all ' + nShown + ' shown', extra: 'rc-sel-all',
+          title: 'Tick every recording the search and the chips show, one '
+               + 'answer each: the one its row offers. Ones they hide keep '
+               + 'whatever they had.',
           onclick: () => {
-            for (const c of cs.filter(shown)) {
-              if (!(c.banked || c.here !== false || c.kind === 'single')) continue;
-              if (!selOf(c)) toggleMember(c.key, true);
+            for (const rec of recordings().filter(recShown)) {
+              if (!recSel(rec).length) pool.sel.push(entryFor(curKey(rec)));
             }
+            touched();
           } }),
         BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Unselect all',
           extra: 'rc-sel-none',
           title: 'Untick every recording, shown or not.',
-          onclick: () => { pool.sel = []; pool.name = null; pool.dirty = true;
-                           render(); } }),
+          onclick: () => { pool.sel = []; pool.name = null; touched(); } }),
       ]),
       groups.length ? el('div', { class: 'rc-sel-cats' }, groups) : null,
       names.length ? el('div', { class: 'rc-sel-cat rc-sel-names' }, [
         el('span', { class: 'rc-sel-k', text: 'names' }),
       ].concat(names.map((nm) => BARRY.ui.button({ kind: 'mini', text: nm,
         on: pool.name === nm, extra: 'rc-name-chip',
-        title: 'Pool every saved single holding a cluster named “' + nm
-             + '”, and only those clusters’ events. Press again for every '
-             + 'event.',
+        title: 'Tick every saved single holding a cluster named “' + nm
+             + '”, for only those clusters’ events; Pool pools them. Press '
+             + 'again for every event.',
         onclick: () => pickName(nm, cs) })))) : null,
     ].filter(Boolean));
   }
 
-  function membersTable(cs, fromSaveIn, selIn) {
-    const fromSave = fromSaveIn
-      || (pool.savedMembers || []).filter((m) => !candOf(m.key));
-    const sel = selIn || new Set(pool.sel.map((m) => m.key));
-    const isOn = (c) => !!selOf(c);
+  /* The counts the search changes, where they stand. */
+  function shownCount() {
+    const box = host();
+    if (!box) return;
+    const recs = recordings();
+    const n = recs.filter(recShown).length;
+    const say = box.querySelector('.rc-sel-n');
+    if (say) say.textContent = n + ' of ' + recs.length + ' recordings shown';
+    const all = box.querySelector('.rc-sel-all');
+    if (all) all.textContent = 'Select all ' + n + ' shown';
+  }
+
+  /* The recordings, one row each (2026-10-19), and under a row that holds
+     two answers about one recording, the warning that its events would be
+     counted twice, with a press to keep one. A tick changes its row where
+     it stands: the table is not rebuilt (`syncRows`). */
+  function membersTable() {
+    const tb = el('tbody', {});
+    for (const rec of recordings().filter(recShown)) {
+      tb.appendChild(recRow(rec));
+      const mine = recSel(rec);
+      if (mine.length > 1) tb.appendChild(dupRow(rec, mine));
+    }
     return el('table', { class: 'tbl rc-pool-cands' }, [
       el('thead', {}, [el('tr', {}, ['', 'recording', 'mouse', 'group',
-                                     'condition', 'kind', 'events']
+                                     'condition', 'answer', 'events']
         .map((t) => el('th', { text: t })))]),
-      el('tbody', {}, cs.filter(shown).map((c) => {
-        const can = c.banked || c.here !== false || c.kind === 'single';
-        const vv = c.kind === 'single' ? versionOfCand(c) : null;
-        return el('tr', { class: isOn(c) ? 'on' : null, 'data-key': c.key }, [
-          el('td', {}, [el('input', {
-            type: 'checkbox', class: 'rc-pool-pick',
-            checked: isOn(c) ? 'checked' : null,
-            disabled: can ? null : 'disabled',
-            title: can ? '' : 'Its read is not on this machine, and it is '
-                            + 'not banked, so there is nothing to pool.',
-            onchange: (ev2) => toggleMember(c.key, ev2.target.checked),
-          })]),
-          el('td', { text: c.session_label || c.entry_id,
-            title: [c.session_label, c.group ? 'Group ' + c.group : null,
-                    c.subgroup ? 'Subgroup ' + c.subgroup : null,
-                    c.condition ? 'Condition ' + c.condition
-                      + (c.condition_from ? ' (' + c.condition_from + ')' : '')
-                      : null,
-                    c.facts_from ? 'Group from the ' + c.facts_from : null]
-              .filter(Boolean).join('\n') }),
-          el('td', { text: c.mouse_key || '' }),
-          el('td', { text: [c.group, c.subgroup && c.subgroup !== c.group
-                            ? c.subgroup : null].filter(Boolean).join(' · ')
-                           || typeFor(c.mouse_key, c.mouse_type) }),
-          el('td', { text: c.condition || '' }),
-          el('td', {}, [
-            /* A saved single: which version, picked here -- the latest
-               unless another is chosen -- with its hover. */
-            c.kind === 'single'
-              ? el('select', { class: 'rc-in rc-cand-ver',
-                  title: versionHover(vv),
-                  onchange: (ev2) => setVersion(c, Number(ev2.target.value)) },
-                  (c.versions || []).slice().reverse().map((x) => el('option', {
-                    value: String(x.v), title: versionHover(x),
-                    selected: vv && x.v === vv.v ? 'selected' : null,
-                    text: 'v' + x.v + ' · ' + (x.nickname || 'no nickname') })))
-              : c.banked
-              ? BARRY.ui.chip('banked' + (c.version ? ' v' + c.version : ''),
-                              { flag: true })
-              : BARRY.ui.chip('not banked', { flag: true, kind: 'warn' }),
-            c.kind === 'single' && BARRY.syncState
-              ? BARRY.syncState.mark('artifacts', c.artifact_id) : null,
-            /* What it was measured on: the filter is part of the version. */
-            c.kind === 'single' && vv && vv.measure
-              ? BARRY.ui.chip(String(vv.measure.filter_label || '')
-                                .split(',')[0], { flag: true,
-                  extra: 'rc-cand-filter', title: vv.measure.filter_label })
-              : null,
-            c.here === false
-              ? BARRY.ui.chip('read elsewhere', { flag: true,
-                  title: 'Its numbers can be pooled; its traces cannot be '
-                       + 'opened on this machine.' })
-              : null,
-          ].filter(Boolean)),
-          el('td', { text: String(c.n != null ? c.n : '') }),
-        ]);
-      }).concat(fromSave.map((m) => {
-        const fm = poolMemberByKey(m.key) || m;
-        const where = fm.read_on || 'another machine';
-        return el('tr', { class: (sel.has(m.key) ? 'on ' : '') + 'rc-from-save',
-                          'data-key': m.key }, [
-          el('td', {}, [el('input', {
-            type: 'checkbox', class: 'rc-pool-pick',
-            checked: sel.has(m.key) ? 'checked' : null,
-            onchange: (ev2) => toggleMember(m.key, ev2.target.checked),
-          })]),
-          el('td', { text: m.session_label || m.entry_id }),
-          el('td', { text: m.mouse_key || '' }),
-          el('td', { text: typeFor(m.mouse_key, m.mouse_type_default
-                                                || m.mouse_type) }),
-          el('td', { text: '' }),
-          el('td', {}, [
-            m.banked
-              ? BARRY.ui.chip('banked', { flag: true })
-              : BARRY.ui.chip('not banked', { flag: true, kind: 'warn' }),
-            BARRY.ui.chip('read on ' + where, { flag: true,
-              extra: 'rc-read-on',
-              title: 'Its read is on ' + where + ', not here. Its numbers '
-                   + 'come from the saved pool, exactly as they were saved, '
-                   + 'so it pools as saved. Measuring it another way needs '
-                   + 'its read.' }),
-          ]),
-          el('td', { text: String(m.n != null ? m.n : '') }),
-        ]);
-      }))),
+      tb,
     ]);
+  }
+
+  function recRow(rec) {
+    const f = rec.facts[0] || {};
+    const label = f.session_label || f.entry_id || rec.id;
+    const fromSave = rec.answers.every((a) => a.kind === 'saved');
+    const tr = el('tr', { class: 'rc-rec-row' + (fromSave ? ' rc-from-save' : ''),
+                          'data-rec': rec.id }, [
+      el('td', {}, [el('input', {
+        type: 'checkbox', class: 'rc-pool-pick', 'aria-label': 'Pool ' + label,
+        onchange: (ev2) => toggleMember(curKey(rec), ev2.target.checked),
+      })]),
+      el('td', { class: 'rc-rec-name', text: label,
+        title: [f.session_label, f.group ? 'Group ' + f.group : null,
+                f.subgroup ? 'Subgroup ' + f.subgroup : null,
+                f.condition ? 'Condition ' + f.condition
+                  + (f.condition_from ? ' (' + f.condition_from + ')' : '') : null,
+                f.facts_from ? 'Group from the ' + f.facts_from : null]
+          .filter(Boolean).join('\n') }),
+      el('td', { text: f.mouse_key || '' }),
+      el('td', { text: [f.group, f.subgroup && f.subgroup !== f.group
+                        ? f.subgroup : null].filter(Boolean).join(' · ')
+                       || typeFor(f.mouse_key, f.mouse_type) }),
+      el('td', { text: f.condition || '' }),
+      el('td', { class: 'rc-rec-answer' }),
+      el('td', { class: 'rc-rec-n' }),
+    ]);
+    fillRow(tr, rec);
+    return tr;
+  }
+
+  /* A row brought up to date in place: its tick, which answer it shows,
+     the chips saying what that answer is, and its events. The choice is
+     only rebuilt when its options change, so it keeps its focus. */
+  function fillRow(tr, rec) {
+    const mine = recSel(rec);
+    const key = curKey(rec);
+    const as = answersOf(rec);
+    const a = answerOf(rec, key) || as[0];
+    const sig = JSON.stringify([mine.map((m) => m.key), key,
+                                as.map((x) => x.key)]);
+    if (tr.__sig === sig) return;
+    const optsSig = JSON.stringify(as.map((x) => x.key));
+    const on = mine.length > 0;
+    tr.classList.toggle('on', on);
+    tr.dataset.key = key;
+    const cb = tr.querySelector('.rc-pool-pick');
+    if (cb && cb.checked !== on) cb.checked = on;
+    const cell = tr.querySelector('.rc-rec-answer');
+    const pick = cell && cell.querySelector('.rc-rec-src');
+    if (cell && (!pick || tr.__opts !== optsSig)) {
+      cell.innerHTML = '';
+      cell.appendChild(as.length > 1
+        ? el('select', {
+            class: 'rc-in rc-rec-src',
+            'aria-label': 'Which answer about '
+                          + ((rec.facts[0] || {}).session_label || rec.id),
+            onchange: (ev2) => setRecAnswer(rec, ev2.target.value),
+          }, as.map((x) => el('option', { value: x.key, title: x.title || null,
+                                          text: x.words })))
+        : el('span', { class: 'rc-rec-one' }, [answerChip(a)]));
+      cell.appendChild(el('span', { class: 'rc-rec-chips' }));
+    }
+    const sel2 = cell && cell.querySelector('.rc-rec-src');
+    if (sel2) {
+      if (sel2.value !== key) sel2.value = key;
+      sel2.title = (a && a.title) || '';
+    }
+    const chips = cell && cell.querySelector('.rc-rec-chips');
+    if (chips) {
+      chips.innerHTML = '';
+      for (const n of answerChips(a)) chips.appendChild(n);
+    }
+    const ev = tr.querySelector('.rc-rec-n');
+    if (ev) ev.textContent = a && a.n != null ? String(a.n) : '';
+    tr.__sig = sig;
+    tr.__opts = optsSig;
+    // Two answers about it in the pool: the warning under the row.
+    const next = tr.nextElementSibling;
+    const dup = next && next.classList.contains('rc-rec-dup') ? next : null;
+    if (mine.length > 1 && tr.parentNode) {
+      const d = dupRow(rec, mine);
+      if (dup) dup.replaceWith(d); else tr.after(d);
+    } else if (dup) {
+      dup.remove();
+    }
+  }
+
+  /* An answer that is the only one, said as a chip. */
+  function answerChip(a) {
+    if (!a) return null;
+    if (a.kind === 'read') {
+      return BARRY.ui.chip('read here, not banked', { flag: true, kind: 'warn',
+                                                      title: a.title });
+    }
+    if (a.kind === 'saved') {
+      return BARRY.ui.chip(a.member && a.member.banked ? 'banked' : 'not banked',
+                           { flag: true, kind: a.member && a.member.banked
+                             ? null : 'warn', title: a.title });
+    }
+    return BARRY.ui.chip(a.words, { flag: true, title: a.title });
+  }
+
+  /* What else is worth knowing about the answer shown: the filter a saved
+     single was measured on, whether it has reached the shared tables, and
+     where its read is when it is not here. */
+  function answerChips(a) {
+    if (!a) return [];
+    const c = a.cand;
+    const vv = a.kind === 'single' ? a.ver || (c ? versionOfCand(c) : null) : null;
+    return [
+      a.kind === 'single' && c && BARRY.syncState
+        ? BARRY.syncState.mark('artifacts', c.artifact_id) : null,
+      vv && vv.measure
+        ? BARRY.ui.chip(String(vv.measure.filter_label || '').split(',')[0],
+            { flag: true, extra: 'rc-cand-filter',
+              title: vv.measure.filter_label }) : null,
+      c && c.here === false
+        ? BARRY.ui.chip('read elsewhere', { flag: true,
+            title: 'Its numbers can be pooled; its traces are on another '
+                 + 'machine, and Jarvis reads it here when they are asked '
+                 + 'for.' }) : null,
+      a.kind === 'saved'
+        ? BARRY.ui.chip('read on ' + a.read_on, { flag: true,
+            extra: 'rc-read-on', title: a.title }) : null,
+    ].filter(Boolean);
+  }
+
+  /* The warning under a row holding two answers about one recording. */
+  function dupRow(rec, mine) {
+    const ws = mine.map((m) => (answerOf(rec, m.key) || { words: m.key }).words);
+    const n = mine.length;
+    return el('tr', { class: 'rc-rec-dup', 'data-rec': rec.id }, [
+      el('td', { colspan: '7' }, [el('div', { class: 'rc-dup' }, [
+        el('p', { class: 'rc-dup-say', text: 'This pool holds ' + n
+          + ' answers about this one recording — ' + ws.join(' and ')
+          + ' — so each of its events would be counted '
+          + (n === 2 ? 'twice' : n + ' times') + '. Keep one:' }),
+        el('div', { class: 'rc-dup-acts' }, mine.map((m, j) => BARRY.ui.button({
+          kind: 'mini', extra: 'rc-dup-keep', text: 'Keep this one: ' + ws[j],
+          title: 'Keeps ' + ws[j] + ' and takes the other answer'
+               + (n === 2 ? '' : 's') + ' about this recording out of the pool.',
+          onclick: () => keepOnly(rec, m.key) }))),
+      ])]),
+    ]);
+  }
+
+  /* Every row on screen brought up to date, in place. */
+  function syncRows() {
+    const box = host();
+    const tb = box && box.querySelector('.rc-pool-cands tbody');
+    if (!tb) return;
+    recordings();
+    for (const tr of Array.from(tb.querySelectorAll('tr.rc-rec-row'))) {
+      const rec = recMemo.byId.get(tr.dataset.rec);
+      if (rec) fillRow(tr, rec);
+    }
+  }
+
+  /* Who is in changed, on the choosing screen: the rows, the card above,
+     the mouse types, the refusal and the button, each where it stands --
+     the list is not rebuilt, so it keeps its scroll and the search its
+     cursor. Elsewhere, the card that counts them. */
+  function membersRefresh() {
+    const box = host();
+    if (!box || viewMode !== 'pooled') return;
+    if (pool.level === 'double') {
+      swap('.rc-build-card', buildCard());
+      swap('.rc-pools-foot', poolsFoot());
+      swap('.rc-pools-refused', refusedPart('pools'));
+      return;
+    }
+    if (!box.querySelector('.rc-members')) {
+      swap('.rc-pool-card', openPoolCard());
+      return;
+    }
+    syncRows();
+    swap('.rc-build-card', buildCard());
+    swap('.rc-from-save-box', fromSaveNote());
+    swap('.rc-types-box', typesBox());
+    swap('.rc-members-refused', refusedPart('members'));
+    swap('.rc-members-foot', membersFoot());
   }
 
   function setType(mk, value, fallback) {
@@ -5460,7 +7143,7 @@ BARRY.rootcanal = (function () {
     if (!v || v === (fallback || '')) delete pool.types[mk];
     else pool.types[mk] = v;
     pool.dirty = true;
-    render();
+    membersRefresh();
   }
 
   function serverFocus() {
@@ -5548,15 +7231,7 @@ BARRY.rootcanal = (function () {
       err: pool.marginErr,
       onApply: (ref) => { pool.margin = ref; pool.marginErr = null;
                           if (pool.sel.length) runPool(); else render(); },
-      border: { applied: pool.border, used: pool.fit && pool.fit.border_used,
-                err: pool.borderErr,
-                onApply: (ref) => {
-                  pool.border = ref;
-                  pool.borderErr = null;
-                  if (ref) pool.colour = 'border';
-                  else if (pool.colour === 'border') pool.colour = 'pool';
-                  if (pool.sel.length) runPool(); else render();
-                } },
+      // The border is applied from its own card now: `poolBorderCtx`.
       saves,
     };
   }
@@ -5791,7 +7466,38 @@ BARRY.rootcanal = (function () {
         return runPool();
       }
       pool.fitErr = e.message;
+      /* A refusal about PARTICULAR members names them (2026-10-19): ones
+         read elsewhere that would have to be measured again, or the second
+         answer about one recording. The panel then offers to fix exactly
+         those -- read them here, or take the copy out. */
+      const away = (e.data && e.data.away) || [];
+      pool.refusal = away.length ? { error: e.message, away: away.slice(),
+                                     from: 'fit' } : null;
       if (!pool.fit || !pool.fit.ok) pool.fit = { ok: false, error: e.message };
+      /* MEMBERS THAT ONLY NEED READING HERE ARE READ (2026-10-19). Changing
+         the filter on a pool with members read on another machine was a red
+         error -- "3 members of this pool were measured another way and read
+         on Strawbarry..." -- for something Jarvis can simply do. So the
+         reads start by themselves, said calmly, and the pool fits again when
+         they land. Once per request: when reading did not fix it, the
+         refusal and its button stay, with the reasons. */
+      const toRead = readKeys(pool.refusal);
+      const ask = JSON.stringify([toRead.slice().sort(), body.measure || null,
+                                  body.band || null]);
+      if (toRead.length && toRead.length === away.length
+          && pool.autoRedoFor !== ask) {
+        pool.autoRedoFor = ask;
+        toast('Reading ' + toRead.length + ' recording'
+              + (toRead.length === 1 ? '' : 's') + ' here so '
+              + (toRead.length === 1 ? 'it' : 'they') + ' can be measured the '
+              + 'pool’s way -- ' + (toRead.length === 1 ? 'its read was' : 'their '
+              + 'reads were') + ' made on another machine. The pool fits again '
+              + 'when ' + (toRead.length === 1 ? 'it lands' : 'they land') + '.',
+              null, 9000);
+        render();
+        startRedo();
+        return null;
+      }
       toast(e.message, 'err', 10000);
       render();
       return null;
@@ -5799,6 +7505,7 @@ BARRY.rootcanal = (function () {
     if (mine !== pool.gen) return null;
     pool.fitting = false;
     pool.fitErr = null;
+    pool.refusal = null;
     pool.fit = got;
     pool.saved = false;
     pool.dirty = false;
@@ -5815,7 +7522,45 @@ BARRY.rootcanal = (function () {
     });
     render();
     if (pool.picked != null) loadPoolEvent();
+    else autoPick();
     return got;
+  }
+
+  /* THE FOUR EVENT CHARTS AT ONCE (2026-10-19): "any time a pool is
+     created, render the 4 charts as soon as pooling is pulled up". They
+     waited for a dot to be clicked, so a pool came up as a cloud beside
+     four empty boxes. Now, when nothing is picked, the event nearest the
+     centre of its own cluster is -- the most typical dot there is, of the
+     first cluster, from a recording whose read is here when there is one,
+     so its traces draw straight away rather than starting a read. Picking
+     another dot works as it always did. */
+  function autoPick() {
+    const f = pool.fit;
+    if (!f || !f.ok || pool.picked != null) return;
+    const evs = poolEvents();
+    if (!evs.length) return;
+    const cents = f.centres || [];
+    const dist = (e) => {
+      const c = cents.find((x) => x.cls === e.cls_pool) || cents[0];
+      if (!c || !e.z || !c.z) return Infinity;
+      let d = 0;
+      for (let a = 0; a < 3; a++) {
+        const v = e.z[a], w = c.z[a];
+        if (v == null || !isFinite(v) || w == null || !isFinite(w)) return Infinity;
+        d += (v - w) * (v - w);
+      }
+      return d;
+    };
+    let best = -1, bestD = Infinity, bestHere = false;
+    evs.forEach((e, j) => {
+      const here = memberHere(poolMember(e));
+      const d = dist(e);
+      // Here beats elsewhere; then nearer beats farther.
+      if ((here && !bestHere) || (here === bestHere && d < bestD)) {
+        best = j; bestD = d; bestHere = here;
+      }
+    });
+    if (best >= 0) poolPick(best);
   }
 
   /* The pool's events, in the shape the shared renderer draws: `i` is the
@@ -5909,7 +7654,8 @@ BARRY.rootcanal = (function () {
   function poolFill(e) {
     const mode = pool.colour;
     if (mode === 'border') {
-      return colOf(pool.fit && pool.fit.border_used ? e.border : e.cls_pool);
+      return pool.fit && pool.fit.border_used ? borderCol(e, e.cls_pool)
+                                              : colOf(e.cls_pool);
     }
     if (mode === 'cluster') return e.cluster != null ? cluColour(e.cluster)
                                                      : tok('--text-3');
@@ -5997,6 +7743,8 @@ BARRY.rootcanal = (function () {
                                    : hfLabel(DEF) },
       picked: pool.picked,
       fill: poolFill,
+      outside: (e) => pool.colour === 'border' && !!(pool.fit
+                      && pool.fit.border_used) && e.border === 'amb',
       shape: poolShape,
       centreFill: (c) => cluFill(c.k, c.cls),
       alpha: (e) => (inFocus(e) ? 1 : 0.12),
@@ -6053,6 +7801,9 @@ BARRY.rootcanal = (function () {
 
   function memberHere(m) {
     if (!m) return false;
+    // Read here since the pool was fitted (2026-10-19).
+    const R = evRedoOf(m);
+    if (R && R.landed) return true;
     // The server's own word: no request body means no read here to ask.
     if (Object.prototype.hasOwnProperty.call(m, 'event_body')
         && m.event_body == null) return false;
@@ -6062,21 +7813,287 @@ BARRY.rootcanal = (function () {
   }
 
   function awayText(m) {
-    return 'This member’s read is not on this machine'
+    return 'This recording’s read is not on this machine'
       + (m && m.read_on ? ': it was read on ' + m.read_on : '')
-      + ', so its pooled numbers are here and its trace is not. Open it in '
-      + 'Single on the machine that read it.';
+      + ', so its pooled numbers are here and its trace is not.';
+  }
+
+  /* ==================================================================
+     READING A MEMBER AGAIN, HERE (2026-10-19)
+
+     A member read on another machine pools from its numbers, but cannot
+     be measured another way, and its traces are not here. The panel used
+     to say so and stop -- "read that set on this machine in Single" --
+     and a save measured the pool's way was refused outright. Now Jarvis
+     reads it again itself: `/api/rootcanal/pool/reread` finds the
+     recording the way every tool does (a drive on this computer first,
+     the VACC second) and reads it exactly as it was read there -- the
+     same set, the same stamps, so the same read. A job per saved pool the
+     members come from (a pool of pools' members each belong to one), each
+     polled until it ends, one row per member: its step, its channels done
+     of how many, and whether it is on this computer or the VACC.
+     ================================================================== */
+  const REREAD_OVER = ['done', 'failed', 'canceled', 'error'];
+
+  function rereadRun(asks, onPaint, onEnd) {
+    const R = { asks, groups: [], state: 'sending', poll: null, ended: false,
+                landed: false };
+    for (const a of asks) {
+      const sk = JSON.stringify(a.saved || null);
+      let g = R.groups.find((x) => x.sk === sk);
+      if (!g) {
+        g = { sk, saved: a.saved || null, asks: [], job: null, here: [],
+              refused: [], err: null, lost: 0 };
+        R.groups.push(g);
+      }
+      g.asks.push(a);
+    }
+    const live = (g) => !!(g.job && !g.err
+                           && REREAD_OVER.indexOf(g.job.status) < 0);
+    const end = () => {
+      if (R.ended) return;
+      R.ended = true;
+      R.state = 'ended';
+      if (R.poll) { clearInterval(R.poll); R.poll = null; }
+      R.landed = rereadRows(R).some((x) => x.status === 'done'
+                                           || x.status === 'here');
+      onPaint(R);
+      onEnd(R);
+    };
+    R.live = () => R.groups.some(live);
+    R.stop = () => {
+      R.stopping = true;
+      for (const g of R.groups.filter(live)) {
+        apiPost('/api/cfc/job/' + encodeURIComponent(g.job.id) + '/cancel', {})
+          .catch(() => {});
+      }
+      onPaint(R);
+    };
+    (async () => {
+      await Promise.all(R.groups.map(async (g) => {
+        try {
+          const got = await apiPost('/api/rootcanal/pool/reread', {
+            members: g.asks.map((a) => ({ key: a.key })), saved: g.saved });
+          g.job = got.job || null;
+          g.here = got.here || [];
+          g.refused = got.refused || [];
+        } catch (e) {
+          g.err = e.message;
+        }
+      }));
+      if (R.ended) return;
+      if (!R.live()) { end(); return; }
+      R.state = 'running';
+      onPaint(R);
+      let busy = false;
+      R.poll = setInterval(async () => {
+        if (busy || R.ended) return;
+        busy = true;
+        try {
+          for (const g of R.groups.filter(live)) {
+            try {
+              const got = await api('/api/cfc/job/' + encodeURIComponent(g.job.id));
+              g.job = got.job || g.job;
+              g.lost = 0;
+            } catch (e) {
+              // A job the server no longer knows is not waited on for ever.
+              g.lost += 1;
+              if (g.lost >= 6) g.err = 'Jarvis lost track of the read: ' + e.message;
+            }
+          }
+        } finally {
+          busy = false;
+        }
+        if (R.ended) return;
+        if (!R.live()) end(); else onPaint(R);
+      }, 900);
+    })();
+    return R;
+  }
+
+  /* One row per member asked about, whatever has happened to it. */
+  function rereadRows(R) {
+    const out = [];
+    for (const g of R.groups) {
+      const jm = (g.job && g.job.members) || [];
+      const over = g.job && REREAD_OVER.indexOf(g.job.status) >= 0;
+      for (const a of g.asks) {
+        const row = { id: a.id, key: a.key, label: a.label || a.key,
+                      status: 'waiting' };
+        const ref = g.refused.find((x) => x.key === a.key);
+        const m = jm.find((x) => x.id === a.key);
+        if (ref) Object.assign(row, { status: 'failed', error: ref.why });
+        else if (g.here.indexOf(a.key) >= 0) row.status = 'here';
+        else if (m) {
+          Object.assign(row, { label: m.label || row.label,
+                               status: m.status || 'waiting', step: m.step,
+                               done: m.done, of: m.of, where: m.where,
+                               error: m.error });
+        }
+        if (g.err && row.status !== 'done' && row.status !== 'here'
+            && row.status !== 'failed') {
+          Object.assign(row, { status: 'failed', error: g.err });
+        } else if (over && (row.status === 'waiting' || row.status === 'running')) {
+          row.status = g.job.status === 'canceled' ? 'stopped' : 'failed';
+          if (row.status === 'failed' && !row.error) {
+            row.error = (g.job && g.job.error) || 'the read ended without it';
+          }
+        }
+        out.push(row);
+      }
+    }
+    return out;
+  }
+
+  function rereadWhere(x) {
+    return x.where === 'vacc' ? 'on the VACC'
+      : x.where === 'here' ? 'on this computer' : null;
+  }
+
+  function rereadWords(x) {
+    if (!x) return 'getting ready';
+    if (x.status === 'here') return 'already read here — nothing to read';
+    if (x.status === 'done') {
+      return 'read again' + (rereadWhere(x) ? ' ' + rereadWhere(x) : '')
+        + ' — its read is here now';
+    }
+    if (x.status === 'failed') return 'could not be read: ' + (x.error || 'no reason given');
+    if (x.status === 'stopped') return 'stopped part-way; nothing of it kept';
+    if (x.status === 'running') {
+      return [x.step || 'reading',
+              x.of ? Math.min(Number(x.done) || 0, x.of) + ' of ' + x.of
+                     + ' channels done' : null,
+              rereadWhere(x)].filter(Boolean).join(' · ');
+    }
+    return 'waiting its turn';
+  }
+
+  /* The rows, as the house draws a batch (Doppler's `dop-batch`): a dot
+     for its state, the name, and what it is doing in words. */
+  function rereadList(R) {
+    return el('div', { class: 'dop-batch rc-redo-rows' }, rereadRows(R).map((x) => {
+      const st = x.status === 'here' ? 'done' : x.status;
+      return el('div', { class: 'dop-batch-row rc-redo-row ' + st,
+                         'data-mid': x.id }, [
+        el('span', { class: 'dop-batch-dot', 'aria-hidden': 'true' }),
+        el('span', { class: 'dop-batch-name', text: x.label }),
+        el('span', { class: 'dop-batch-state rc-redo-state', text: rereadWords(x) }),
+      ]);
+    }));
+  }
+
+  /* What a pool member is asked about as. At the second level a member is
+     a recording INSIDE one of the saved pools: asked for by its key in
+     that pool, with that pool's version (`pin.pool`). */
+  function askOfMember(m) {
+    const pp = (m && m.pin && m.pin.pool) || null;
+    if (pp && pp.member) {
+      return { id: m.key, key: pp.member, label: m.session_label || pp.member,
+               saved: { artifact_id: pp.artifact_id, version: pp.version } };
+    }
+    return { id: m.key, key: m.key, label: m.session_label || m.key,
+             saved: pool.open && pool.open.source
+               ? Object.assign({}, pool.open.source) : null };
+  }
+
+  const askId = (a) => a.key + '@' + (a.saved ? a.saved.artifact_id + ':'
+                                                + a.saved.version : '');
+
+  /* THE CLICK PANEL READS IT ITSELF: a dot whose member is read elsewhere
+     starts its read here at once -- once per member per page load, so a
+     dot pressed again does not start a second -- and the event opens
+     when it lands. */
+  const evRedo = new Map();
+
+  function evRedoOf(m) {
+    return m ? evRedo.get(askId(askOfMember(m))) || null : null;
+  }
+
+  function startEvRedo(m, again) {
+    const a = askOfMember(m);
+    const id = askId(a);
+    if (evRedo.has(id) && !again) return evRedo.get(id);
+    const R = rereadRun([a], paintEvNote, () => {
+      const e = poolPicked();
+      const now = e ? poolMember(e) : null;
+      if (R.landed) refreshCandsQuietly();
+      if (R.landed && now && now.key === m.key) { loadPoolEvent(); return; }
+      if (now && now.key === m.key) drawEvent();
+    });
+    evRedo.set(id, R);
+    return R;
+  }
+
+  /* What the click panel says about a member read elsewhere, above its
+     four pictures: in words that wrap, never drawn into a canvas, where a
+     sentence is cut off at the canvas's edge. */
+  function awayNote(m) {
+    const R = evRedoOf(m);
+    const x = R ? rereadRows(R)[0] : null;
+    let say;
+    if (!R || R.state === 'sending') {
+      say = 'Reading it here, so its trace can be drawn: Jarvis looks for the '
+        + 'recording on this computer’s drives first and on the VACC after, '
+        + 'and reads it exactly as it was read there.';
+    } else if (!R.ended) {
+      say = 'Reading it here: ' + rereadWords(x) + '.';
+    } else if (R.landed) {
+      say = 'Read here. Opening the event…';
+    } else {
+      say = 'It could not be read here: ' + (x && x.status === 'stopped'
+        ? 'it was stopped' : (x && x.error) || 'no reason given') + '. Its '
+        + 'pooled numbers are still in the pool; its trace opens on the machine '
+        + 'that read it.';
+    }
+    return el('div', { class: 'rc-ev-note' }, [
+      el('p', { class: 'rc-ev-why rc-ev-away', text: awayText(m) }),
+      el('p', { class: 'rc-ev-progress', text: say }),
+      R && !R.ended ? BARRY.ui.button({ kind: 'mini', text: 'Stop',
+        extra: 'rc-ev-stop', disabled: !!R.stopping,
+        title: 'Stop reading it. Nothing of a part-read set is kept.',
+        onclick: () => R.stop() }) : null,
+      R && R.ended && !R.landed ? BARRY.ui.button({ kind: 'mini',
+        text: 'Try again', extra: 'rc-ev-retry',
+        title: 'Ask for its read here once more.',
+        onclick: () => { startEvRedo(m, true); paintEvNote(); } }) : null,
+    ].filter(Boolean));
   }
 
   function poolEventNote() {
     const e = poolPicked();
     if (!e) return null;
     const m = poolMember(e);
-    if (m && !memberHere(m)) return awayText(m);
-    if (pool.evFor === pool.picked && pool.evData && pool.evData.ok === false) {
-      return pool.evData.error;
+    if (m && !memberHere(m)) return awayNote(m);
+    if (pool.evFor === pool.picked && pool.evData && pool.evData.ok === false
+        && pool.evData.error) {
+      return el('div', { class: 'rc-ev-note' }, [
+        el('p', { class: 'rc-ev-why rc-ev-away', text: pool.evData.error })]);
     }
     return null;
+  }
+
+  function paintEvNote() {
+    swap('.rc-ev-note', poolEventNote() || el('div', { class: 'rc-ev-note' }));
+  }
+
+  /* Whether the picked dot's trace is on its way: its canvases say
+     "reading…" until it lands, and "no trace" if it cannot. */
+  function evComing() {
+    const e = poolPicked();
+    const m = e ? poolMember(e) : null;
+    if (!m || memberHere(m)) return false;
+    const R = evRedoOf(m);
+    return !R || !R.ended;
+  }
+
+  /* The candidates again, without repainting the picture: what was read
+     here is offered as here now. */
+  function refreshCandsQuietly() {
+    api('/api/rootcanal/pool/candidates').then((got) => {
+      pool.cands = got.singles || [];
+      pool.candsErr = null;
+      if (poolScreen() === 'build') render();
+    }).catch(() => { /* the list keeps what it had */ });
   }
 
   const loadPoolEvent = debounce(async function loadPoolEvent_() {
@@ -6085,8 +8102,9 @@ BARRY.rootcanal = (function () {
     if (!e) return;
     const m = poolMember(e);
     if (!memberHere(m)) {
-      pool.evData = { ok: false, error: awayText(m) };
+      pool.evData = { ok: false, away: true };
       pool.evFor = j;
+      if (m) startEvRedo(m);
       swap('.rc-event', eventPane());
       drawEvent();
       return;
@@ -6142,34 +8160,126 @@ BARRY.rootcanal = (function () {
     return el('div', { class: 'rc-busy on' }, [loader(what)]);
   }
 
+  /* THREE SCREENS (2026-10-19), the same at both levels -- "clearly
+     bifurcate the creation and viewing workflow":
+
+       home   the saved pools, the main thing on the page, with New pool
+              (New pool of pools) and, while one is in hand, a row to
+              carry on with it;
+       build  choosing: what the pool is, the settings, the recordings (or
+              the pools) and the button that pools them -- which goes
+              straight to the picture;
+       view   looking: the pool's card, the settings, the waiting line and
+              the picture. No table of recordings under it.
+
+     Open on the shelf goes to view, at the top of the tool. */
+  function poolScreen() {
+    const s = pool.screen;
+    if (s === 'view' && !pool.fit && !pool.fitting && !pool.sel.length
+        && !pool.open && !pool.refusal) return 'home';
+    return s === 'build' || s === 'view' ? s : 'home';
+  }
+
   function paintPool(box) {
     if (!pool.cands && !pool.candsErr) {
       box.appendChild(loading('Reading what can be pooled',
                               'banked Root Canal results and reads cached here'));
       return;
     }
+    const dbl = pool.level === 'double';
     box.appendChild(levelBar());
-    if (pool.level === 'double') {
-      box.appendChild(dshelfCard());
-      if (pool.open || pool.fit || pool.sel.length) box.appendChild(openPoolCard());
-      box.appendChild(controlsBar());
-      box.appendChild(poolsCard());
-      box.appendChild(poolBusyLine());
-      const w2 = poolWork();
-      if (w2) box.appendChild(w2);
+    const scr = poolScreen();
+    if (scr === 'home') {
+      box.appendChild(dbl ? dshelfCard() : shelfCard());
       return;
     }
-    box.appendChild(shelfCard());
-    if (pool.open || pool.fit || pool.sel.length) box.appendChild(openPoolCard());
-    /* The same controls bar as Single: one set of settings for both views. */
+    if (scr === 'build') {
+      box.appendChild(buildCard());
+      /* The same controls bar as Single: one set of settings for both views. */
+      box.appendChild(controlsBar());
+      box.appendChild(dbl ? poolsCard() : membersCard());
+      return;
+    }
+    box.appendChild(openPoolCard());
     box.appendChild(controlsBar());
-    box.appendChild(membersCard());
+    const refused = refusalCard();
+    if (refused) box.appendChild(refused);
     /* Always in the tree, so the first pool -- half a minute cold -- has a
-       line to say so in. Before, it only existed inside the workbench, and
-       there is no workbench until something has been pooled. */
+       line to say so in. */
     box.appendChild(poolBusyLine());
     const w = poolWork();
     if (w) box.appendChild(w);
+  }
+
+  /* To a screen, with the tool's top in sight: a shelf long enough to
+     scroll left the opened pool below the fold. */
+  function goScreen(s) {
+    pool.screen = s;
+    render();
+    toTop();
+  }
+
+  function toTop() {
+    const box = host();
+    if (!box) return;
+    let sc = box;
+    while (sc && sc !== document.body && sc !== document.documentElement) {
+      const oy = getComputedStyle(sc).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && sc.scrollHeight > sc.clientHeight + 1) {
+        if (sc === box) {
+          sc.scrollTop = 0;
+        } else {
+          const d = box.getBoundingClientRect().top - sc.getBoundingClientRect().top;
+          if (d < 0) sc.scrollTop += d;
+        }
+      }
+      sc = sc.parentElement;
+    }
+  }
+
+  /* New pool: an empty one, on the choosing screen. A pool in hand that
+     was never saved is asked about first -- it is only ticks, but ticks
+     somebody chose. */
+  async function newPool() {
+    const unsaved = (pool.sel.length || pool.fit) && (!pool.open || pool.dirty);
+    if (unsaved) {
+      const n = pool.sel.length;
+      const what = pool.level === 'double' ? 'pool' : 'recording';
+      const ok = await BARRY.confirm(
+        pool.level === 'double' ? 'Start a new pool of pools?' : 'Start a new pool?',
+        (pool.open ? 'The changes to ‘' + pool.open.nickname + '’ are put down'
+                   : 'The pool you were building is put down')
+          + ': ' + n + ' ' + what + (n === 1 ? '' : 's') + ', not saved. '
+          + 'Nothing else is lost.',
+        'Start a new one', false);
+      if (!ok) return;
+    }
+    closePool(true);
+    goScreen('build');
+  }
+
+  /* Back to what was in hand: its picture if it has one, else its choosing. */
+  function carryOn() {
+    goScreen(pool.fit && pool.fit.ok ? 'view' : 'build');
+  }
+
+  /* Pool pressed on the choosing screen: straight to the picture, with the
+     waiting line saying what it is doing while it fits. A pool that does
+     not happen -- the one-measurement question cancelled -- goes back. */
+  async function poolAndView() {
+    if (!pool.sel.length) {
+      toast('Tick at least one ' + (pool.level === 'double' ? 'pool' : 'recording')
+            + ' to pool.', 'warn', 5000);
+      return null;
+    }
+    // Started first: it says it is pooling before the screen is drawn.
+    const fitting = runPool();
+    goScreen('view');
+    const got = await fitting;
+    if (!got && !pool.fitErr && !pool.refusal && !(pool.fit && pool.fit.ok)) {
+      goScreen('build');
+    }
+    return got;
   }
 
   /* POOL RECORDINGS | POOL POOLS. The second level pools saved pools: the
@@ -6187,13 +8297,16 @@ BARRY.rootcanal = (function () {
     ]);
   }
 
+  /* A level is chosen on its saved pools (2026-10-19): home. */
   function setLevel(v) {
     if (v === pool.level) return;
-    closePool();
+    closePool(true);
     pool.level = v;
+    pool.screen = 'home';
     if (v === 'double' && !pool.dshelf) loadDshelf();
     if (!pool.shelf) loadShelf(true);
     render();
+    toTop();
   }
 
   async function loadDshelf() {
@@ -6207,8 +8320,50 @@ BARRY.rootcanal = (function () {
     if (viewMode === 'pooled' && pool.level === 'double') render();
   }
 
+  /* The home screen's head (2026-10-19): what the shelf is, and the one
+     primary -- a new pool -- last. */
+  function shelfHead(title, newText, newTitle) {
+    return el('div', { class: 'rc-shelf-head' }, [
+      el('div', { class: 'section-label', text: title }),
+      el('span', { class: 'spacer' }),
+      BARRY.ui.button({ kind: 'primary', text: newText, extra: 'rc-new-pool',
+                        title: newTitle, onclick: newPool }),
+    ]);
+  }
+
+  /* A pool in hand while the shelf is up: carried on with, or put down. */
+  function carryRow() {
+    if (!pool.sel.length && !pool.fit) return null;
+    const dbl = pool.level === 'double';
+    const n = pool.sel.length;
+    const what = n + ' ' + (dbl ? 'pool' : 'recording') + (n === 1 ? '' : 's');
+    const pooled = !!(pool.fit && pool.fit.ok);
+    const nick = pool.open && pool.open.nickname;
+    return el('div', { class: 'rc-carry' }, [
+      el('span', { class: 'rc-carry-say', text: nick
+        ? '‘' + nick + '’ v' + pool.open.version + ' is open: ' + what
+          + (pool.dirty ? ', changed since it was pooled' : '')
+        : 'A pool you were building: ' + what + ', '
+          + (pooled ? 'pooled' : 'not pooled yet') + ', not saved.' }),
+      el('span', { class: 'spacer' }),
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Put it down',
+        extra: 'rc-carry-drop',
+        title: 'Closes it. Closing saves nothing and costs nothing.',
+        onclick: () => closePool() }),
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', extra: 'rc-carry-go',
+        text: nick ? 'Carry on with ‘' + nick + '’'
+                   : 'Carry on with the pool you were building',
+        title: pooled ? 'Back to its picture.' : 'Back to choosing what is in it.',
+        onclick: carryOn }),
+    ]);
+  }
+
   function dshelfCard() {
-    const kids = [el('div', { class: 'section-label', text: 'Saved pools of pools' })];
+    const kids = [shelfHead('Saved pools of pools', 'New pool of pools',
+      'Choose saved pools and pool them into one: a pool of pools. Each event '
+      + 'keeps what its own pool called it.')];
+    const carry = carryRow();
+    if (carry) kids.push(carry);
     const list = pool.dshelf;
     if (!list) {
       kids.push(el('p', { class: 'hint', text: 'Reading them…' }));
@@ -6216,21 +8371,24 @@ BARRY.rootcanal = (function () {
       kids.push(el('p', { class: 'hint rc-warn', text: 'They could not be read: '
                                                        + pool.dshelfErr }));
     } else if (!list.length) {
-      kids.push(el('p', { class: 'hint', text: 'None saved yet. Tick saved pools '
-        + 'below, pool them, and save that under a label.' }));
+      kids.push(el('div', { class: 'empty-state rc-shelf-empty' }, [
+        el('p', { text: 'None saved yet. Press New pool of pools, tick saved '
+                      + 'pools, pool them, and save that under a label.' }),
+      ]));
     } else {
       kids.push(el('div', { class: 'bm-list rc-dshelf-list' }, list.map((p) => {
         const id = p.artifact_id || p.id;
         const cur = p.current || {};
-        return el('div', { class: 'bm-row rc-shelf-row' }, [
+        const on = !!(pool.open && pool.open.artifact_id === id);
+        return el('div', { class: 'bm-row rc-shelf-row' + (on ? ' on' : '') }, [
           el('span', { class: 'mk-name', text: p.nickname || p.name || id }),
           p.version != null ? el('span', { class: 'flagchip',
                                            text: 'v' + p.version }) : null,
           el('span', { class: 'flagchip', text: ((cur.n_summary || {}).pools
                                                  || 0) + ' pools' }),
           BARRY.syncState ? BARRY.syncState.mark('artifacts', id) : null,
-          BARRY.ui.button({ kind: 'mini', text: 'Open',
-            title: 'Reopen it as it was saved. Nothing is refitted.',
+          BARRY.ui.button({ kind: 'mini', text: 'Open', extra: 'rc-shelf-open',
+            title: 'Open its picture as it was saved. Nothing is refitted.',
             onclick: () => openSaved(id) }),
         ].filter(Boolean));
       })));
@@ -6285,28 +8443,32 @@ BARRY.rootcanal = (function () {
                           : (vs.length ? vs[vs.length - 1].v : p.version);
           const vrow = vs.find((v) => v.v === curV) || vs[vs.length - 1];
           const pp = (vrow && vrow.params) || {};
-          return el('tr', { class: sm ? 'on' : null, 'data-pool': id }, [
+          const tr = el('tr', { class: sm ? 'on' : null, 'data-pool': id }, [
+            /* A tick changes its row where it stands (2026-10-19). */
             el('td', {}, [el('input', { type: 'checkbox', class: 'rc-pool-pick',
               checked: sm ? 'checked' : null,
               onchange: (ev2) => {
                 if (ev2.target.checked && !selOfPool(id)) {
-                  pool.sel.push({ key: 'P:' + id + ':' + curV });
+                  const vSel = tr.querySelector('.rc-pool-ver');
+                  pool.sel.push({ key: 'P:' + id + ':'
+                                       + (vSel ? Number(vSel.value) : curV) });
                 } else if (!ev2.target.checked) {
                   pool.sel = pool.sel.filter((m) => m !== selOfPool(id));
                 }
-                pool.dirty = true;
-                pool.fitErr = null;
-                render();
+                tr.classList.toggle('on', ev2.target.checked);
+                touched();
               } })]),
             el('td', { text: p.nickname || p.name || id,
                        title: poolHover(p, vrow) }),
             el('td', {}, [el('select', { class: 'rc-in rc-pool-ver',
               title: poolHover(p, vrow),
               onchange: (ev2) => {
+                // A ticked pool takes the version; an unticked one is
+                // ticked at it when it is ticked.
                 const v = Number(ev2.target.value);
                 const m = selOfPool(id);
-                if (m) m.key = 'P:' + id + ':' + v;
-                else pool.sel.push({ key: 'P:' + id + ':' + v });
+                if (!m) return;
+                m.key = 'P:' + id + ':' + v;
                 pool.dirty = true;
                 render();
               } }, vs.slice().reverse().map((v) => el('option', {
@@ -6321,23 +8483,29 @@ BARRY.rootcanal = (function () {
               BARRY.syncState ? BARRY.syncState.mark('artifacts', id) : null,
             ].filter(Boolean)),
           ]);
+          return tr;
         })),
       ]));
     }
-    if (pool.fitErr) {
-      kids.push(el('p', { class: 'hint rc-warn rc-pool-refused',
-                          text: 'Not pooled: ' + pool.fitErr }));
-    }
-    kids.push(BARRY.ui.actions([
-      el('span', { class: 'hint', text: pool.sel.length + ' pool'
-        + (pool.sel.length === 1 ? '' : 's') + ' ticked'
-        + (pool.dirty && pool.fit ? ' — changed since the picture below' : '') }),
-      BARRY.ui.button({ kind: (pool.dirty || !pool.fit) ? 'primary' : 'ghost',
-        text: 'Pool ' + pool.sel.length + ' pool' + (pool.sel.length === 1 ? '' : 's'),
-        extra: 'rc-pool-run', disabled: !pool.sel.length || pool.fitting,
-        onclick: runPool }),
-    ]));
+    kids.push(refusedPart('pools'));
+    kids.push(poolsFoot());
     return el('div', { class: 'card rc-members rc-pools' }, kids);
+  }
+
+  /* How many pools are ticked, and the button that pools them -- and goes
+     straight to the picture. */
+  function poolsFoot() {
+    const n = pool.sel.length;
+    return BARRY.ui.actions([
+      el('span', { class: 'hint', text: n + ' pool' + (n === 1 ? '' : 's')
+        + ' ticked' + (pool.dirty && pool.fit && pool.fit.ok
+          ? ' — changed since its picture' : '') }),
+      BARRY.ui.button({ kind: 'primary',
+        text: 'Pool ' + n + ' pool' + (n === 1 ? '' : 's'),
+        extra: 'rc-pool-run', disabled: !n || pool.fitting,
+        title: 'Pools their events in one space and shows the picture.',
+        onclick: poolAndView }),
+    ], { extra: 'rc-pools-foot' });
   }
 
   /* After a pool of pools is saved: its identity down, to its pools and/or
@@ -6398,7 +8566,14 @@ BARRY.rootcanal = (function () {
      overrides and its focus, and draws what was saved -- no refit, no
      recording read. */
   function shelfCard() {
-    const kids = [el('div', { class: 'section-label', text: 'Saved pools' })];
+    /* THE HOME SCREEN (2026-10-19): the saved pools first, as they were --
+       "that we can see all the saved pools at the start is good" -- with
+       New pool beside them, and a pool in hand one row above the list. */
+    const kids = [shelfHead('Saved pools', 'New pool',
+      'Choose recordings and pool them. You see the picture as soon as it is '
+      + 'pooled; nothing is saved until you save it.')];
+    const carry = carryRow();
+    if (carry) kids.push(carry);
     if (!pool.shelf) {
       kids.push(el('p', { class: 'hint', text: 'Reading the saved pools…' }));
     } else if (pool.shelfErr) {
@@ -6406,8 +8581,9 @@ BARRY.rootcanal = (function () {
         'The saved pools could not be read: ' + pool.shelfErr }));
     } else if (!pool.shelf.length) {
       kids.push(el('div', { class: 'empty-state rc-shelf-empty' }, [
-        el('p', { text: 'No pool has been saved yet. Tick recordings below, '
-                      + 'pool them, and save the pool under a label.' }),
+        el('p', { text: 'No pool has been saved yet. Press New pool, tick '
+                      + 'recordings, pool them, and save the pool under a '
+                      + 'label.' }),
       ]));
     } else {
       kids.push(el('div', { class: 'bm-list rc-shelf-list' }, pool.shelf.map((p) => {
@@ -6421,9 +8597,9 @@ BARRY.rootcanal = (function () {
                                                   : (p.n || 0)) + ' recordings' }),
           unbankedChip(p.n_unbanked || 0),
           el('span', { class: 'person-what', text: p.name || '' }),
-          BARRY.ui.button({ kind: 'mini', text: on ? 'Open' : 'Open',
-            title: 'Reopen it as it was saved. Nothing is refitted and no '
-                 + 'recording is read.',
+          BARRY.ui.button({ kind: 'mini', text: 'Open', extra: 'rc-shelf-open',
+            title: 'Open its picture as it was saved. Nothing is refitted and '
+                 + 'no recording is read.',
             onclick: () => openSaved(id) }),
         ].filter(Boolean));
       })));
@@ -6445,8 +8621,12 @@ BARRY.rootcanal = (function () {
   }
 
   /* The pool that is open, on the bench: what it is called, which version,
-     how many recordings and mice, and whether any of it is unbanked. */
+     how many recordings and mice, and whether any of it is unbanked. On
+     the picture's screen (2026-10-19) it is the screen's head: back to the
+     saved pools, change what is in it, save it -- as a pool, or each
+     recording as a single of its own -- and close it. */
   function openPoolCard() {
+    const dbl = pool.level === 'double';
     const f = pool.fit && pool.fit.ok ? pool.fit : null;
     const members = f ? (f.members || []) : pool.sel.map((m) => candOf(m.key))
       .filter(Boolean);
@@ -6454,6 +8634,11 @@ BARRY.rootcanal = (function () {
     const nUnb = f ? unbankedOf(members)
                    : pool.sel.filter((m) => { const c = candOf(m.key);
                                               return c && !c.banked; }).length;
+    // Not while it is being pooled: the waiting line says that.
+    const changed = pool.dirty && !pool.fitting;
+    // A pool saved with two answers about one recording, said up here too.
+    const nDup = dbl ? 0 : recordings().filter((r) => recSel(r).length > 1).length;
+    const again = changed && pool.sel.length > 0;
     const primarySave = !pool.dirty && !!f;
     return BARRY.ui.workbenchCard({
       title: pool.open ? pool.open.nickname : 'A pool not saved yet',
@@ -6463,8 +8648,15 @@ BARRY.rootcanal = (function () {
                       { flag: true }),
         pool.saved ? BARRY.ui.chip('as saved: nothing refitted', { flag: true })
                    : null,
-        pool.dirty ? BARRY.ui.chip('changed: pool again to see it',
-                                   { flag: true, kind: 'warn' }) : null,
+        changed ? BARRY.ui.chip('changed: pool again to see it',
+                                { flag: true, kind: 'warn' }) : null,
+        nDup ? BARRY.ui.chip(nDup + ' recording' + (nDup === 1 ? '' : 's')
+                             + ' in twice', { flag: true, kind: 'warn',
+          extra: 'rc-dup-chip',
+          title: 'This pool holds two answers about ' + (nDup === 1
+            ? 'one recording' : nDup + ' recordings') + ', so ' + (nDup === 1
+            ? 'its' : 'their') + ' events are counted twice. Change recordings '
+            + 'says which, with a press to keep one.' }) : null,
         unbankedChip(nUnb),
       ].filter(Boolean),
       count: members.length + ' recording' + (members.length === 1 ? '' : 's')
@@ -6472,21 +8664,104 @@ BARRY.rootcanal = (function () {
       owner: { name: (pool.open && pool.open.by) || null },
       when: pool.open && pool.open.updated ? String(pool.open.updated) : null,
       actions: [
+        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Back to pools',
+          extra: 'rc-back',
+          title: 'The saved pools. This one stays in hand: “Carry on” there '
+               + 'brings it back as it is.',
+          onclick: () => goScreen('home') }),
+        BARRY.ui.button({ kind: 'ghost', size: 'sm', extra: 'rc-change',
+          text: dbl ? 'Change pools' : 'Change recordings',
+          title: dbl ? 'Choose which saved pools are in it, and their versions.'
+                     : 'Choose which recordings are in it, and which answer '
+                       + 'about each.',
+          onclick: () => goScreen('build') }),
         BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Close this pool',
+          extra: 'rc-close',
           title: 'Puts it down. Closing saves nothing and costs nothing; a '
-               + 'saved pool is on the shelf above.',
-          onclick: closePool }),
+               + 'saved pool stays on the shelf.',
+          onclick: () => closePool() }),
+        f ? BARRY.ui.button({ kind: 'ghost', size: 'sm', extra: 'rc-singles',
+          text: 'Save as singles…',
+          title: 'Save any of its recordings as Root Canal singles of their '
+               + 'own, measured the pool’s way. Nothing is banked.',
+          onclick: singlesDialog }) : null,
+        again ? BARRY.ui.button({ kind: 'primary', size: 'sm',
+          text: 'Pool again', extra: 'rc-pool-again',
+          title: 'Fits it again with what is in it now.',
+          onclick: () => runPool() }) : null,
         BARRY.ui.button({ kind: primarySave ? 'primary' : 'ghost', size: 'sm',
           text: saveLabel(), extra: 'rc-save',
           disabled: !pool.sel.length,
           title: 'Saved as a Jarvis artifact, refitted on the server from its '
                + 'members. Nothing goes to the Event Bank.',
           onclick: saveDialog }),
-      ],
+      ].filter(Boolean),
     });
   }
 
-  /* Which recordings, and what type each mouse is. */
+  /* The choosing screen's head (2026-10-19): a new pool, or the one open
+     being changed, what is ticked so far, and the way back. */
+  function buildCard() {
+    const dbl = pool.level === 'double';
+    const nick = pool.open && pool.open.nickname;
+    const n = pool.sel.length;
+    const chips = [];
+    let count;
+    if (dbl) {
+      count = n + ' pool' + (n === 1 ? '' : 's') + ' ticked';
+    } else {
+      const mice = new Set(pool.sel.map((m) => {
+        const c = candOf(m.key);
+        const sm = (pool.savedMembers || []).find((x) => x.key === m.key);
+        return (c && c.mouse_key) || (sm && sm.mouse_key) || null;
+      }).filter(Boolean));
+      count = n + ' recording' + (n === 1 ? '' : 's') + ' ticked · ' + mice.size
+              + ' mice';
+      chips.push(unbankedChip(pool.sel.filter((m) => {
+        const c = candOf(m.key);
+        return c && !c.banked;
+      }).length));
+    }
+    if (pool.open) {
+      chips.unshift(BARRY.ui.chip('v' + pool.open.version + ' open',
+                                  { flag: true }));
+    }
+    if (pool.dirty && pool.fit && pool.fit.ok) {
+      chips.push(BARRY.ui.chip('changed since its picture',
+                               { flag: true, kind: 'warn' }));
+    }
+    return BARRY.ui.workbenchCard({
+      title: nick ? 'Changing ‘' + nick + '’'
+                  : (dbl ? 'New pool of pools' : 'New pool'),
+      extra: 'rc-build-card',
+      chips: chips.filter(Boolean),
+      count,
+      owner: { name: (pool.open && pool.open.by) || null },
+      extras: [el('p', { class: 'hint rc-build-say', text: dbl
+        ? 'Tick the saved pools to pool together, each at a version, then '
+          + 'pool them: the picture comes up as soon as they are pooled, and '
+          + 'nothing is saved until you save it.'
+        : 'Tick the recordings, one answer about each, then pool them: the '
+          + 'picture comes up as soon as they are pooled, and nothing is saved '
+          + 'until you save it.' })],
+      actions: [
+        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Back to pools',
+          extra: 'rc-back',
+          title: 'The saved pools. What is ticked stays: “Carry on” there '
+               + 'brings it back.',
+          onclick: () => goScreen('home') }),
+        pool.fit && pool.fit.ok ? BARRY.ui.button({ kind: 'ghost', size: 'sm',
+          text: 'Back to the picture', extra: 'rc-to-view',
+          title: pool.dirty ? 'The picture as it was last pooled; it says it '
+                              + 'has changed until it is pooled again.'
+                            : 'The picture, as it was.',
+          onclick: () => goScreen('view') }) : null,
+      ].filter(Boolean),
+    });
+  }
+
+  /* Which recordings -- one row each, one answer each (2026-10-19) -- and
+     what type each mouse is. */
   function membersCard() {
     const kids = [el('div', { class: 'section-label', text: 'Recordings in the pool' })];
     if (pool.candsErr) {
@@ -6495,57 +8770,82 @@ BARRY.rootcanal = (function () {
     }
     const sp = singleParams();
     kids.push(el('p', { class: 'hint', text:
-      'A banked result reads no recording. An unbanked one is a Root Canal '
-      + 'read cached on this machine, fitted at Single’s settings as they '
-      + 'stand when it is ticked: ' + filterWords(sp) + ', ±' + hz(sp.win_ms) + ' ms, half-width ±' + hz(sp.cross_ms)
-      + ' ms, ' + hz(sp.band_lo) + '–' + hz(sp.band_hi) + ' Hz. Only sets '
-      + 'that have been through Braces are offered.' }));
+      'One row per recording. Where Jarvis has more than one answer about a '
+      + 'recording — its banked result, a saved single, a read cached here — '
+      + 'its row says which goes in, and only that one does. A banked result '
+      + 'reads no recording. A read here, not banked, is fitted at Single’s '
+      + 'settings as they stand when it is ticked: ' + filterWords(sp) + ', ±'
+      + hz(sp.win_ms) + ' ms, half-width ±' + hz(sp.cross_ms) + ' ms, '
+      + hz(sp.band_lo) + '–' + hz(sp.band_hi) + ' Hz. Only sets that have been '
+      + 'through Braces are offered.' }));
     const cs = pool.cands || [];
-    // Members of the opened pool that this machine does not offer: read on
-    // another machine, pooled from the save.
-    const fromSave = (pool.savedMembers || []).filter((m) => !candOf(m.key));
-    if (cs.length) kids.push(selectBar(cs));
-    if (!cs.length && !fromSave.length && !pool.candsErr) {
+    const recs = recordings();
+    if (cs.length) kids.push(selectBar());
+    if (!recs.length && !pool.candsErr) {
       kids.push(el('div', { class: 'empty-state rc-pool-empty' }, [
         el('p', { text: 'Nothing can be pooled yet. Bank a set in Single, or '
                       + 'read one there: a read cached on this machine can '
                       + 'join a pool before it is banked.' }),
       ]));
     }
-    const sel = new Set(pool.sel.map((m) => m.key));
-    if (cs.length || fromSave.length) {
-      kids.push(membersTable(cs, fromSave, sel));
+    /* In a box of its own that scrolls across on a narrow panel, so a
+       recording's answers are never cut and the page never scrolls
+       sideways. */
+    if (recs.length) {
+      kids.push(el('div', { class: 'rc-pool-cands-wrap' }, [membersTable()]));
     }
-    /* Members of an opened pool that this machine does not offer. They
-       pool from the saved version, number for number, so everything that
-       works on numbers works; what would measure them again cannot. */
-    const missing = pool.sel.filter((m) => !candOf(m.key));
-    if (missing.length) {
-      const one_ = missing.length === 1;
-      const src = pool.open && pool.open.source;
-      const wh = Array.from(new Set(missing.map((m) =>
-        (poolMemberByKey(m.key) || {}).read_on).filter(Boolean)));
-      kids.push(el('p', { class: 'hint rc-from-save-note', text:
-        missing.length + ' member' + (one_ ? '' : 's') + ' of this pool '
-        + (one_ ? 'was' : 'were') + ' read on '
-        + (wh.length ? wh.join(' and ') : 'another machine') + ', so '
-        + (one_ ? 'its read is' : 'their reads are') + ' not here. '
-        + (src
-          ? (one_ ? 'It pools' : 'They pool') + ' from v' + src.version
-            + (pool.open.nickname ? ' of ‘' + pool.open.nickname + '’' : '')
-            + ', number for number as saved: k, calls, focus, margins and '
-            + 'drawn clusters all work. Measuring ' + (one_ ? 'it' : 'them')
-            + ' another way (filter, window, half-width search, HF band) '
-            + 'needs ' + (one_ ? 'its read' : 'their reads') + ', and '
-            + (one_ ? 'its traces open' : 'their traces open') + ' only where '
-            + (one_ ? 'it was' : 'they were') + ' read.'
-          : 'Pooling again here would need ' + (one_ ? 'it' : 'them')
-            + '.') }));
-    }
+    kids.push(fromSaveNote());
+    kids.push(typesBox());
+    kids.push(refusedPart('members'));
+    kids.push(el('label', { class: 'rc-all-ds',
+      title: 'Every event of this pool is a dentate spike: one cluster, '
+           + 'called DS, saved with the pool -- the controls. In a pool of '
+           + 'pools its events go in as DS.' }, [
+      el('input', { type: 'checkbox', class: 'rc-all-ds-box',
+        checked: pool.all_ds ? 'checked' : null,
+        onchange: (ev2) => { pool.all_ds = ev2.target.checked;
+                             pool.dirty = true; membersRefresh(); } }),
+      el('span', { text: ' every event is DS (the controls)' }),
+    ]));
+    kids.push(membersFoot());
+    return el('div', { class: 'card rc-members' }, kids);
+  }
 
-    /* Mouse type, per mouse in the pool: the registry's filing unless
-       somebody says otherwise, free text with the types already in use as
-       suggestions. The override is the pool's, not the registry's. */
+  /* Members of an opened pool that this machine does not offer. They
+     pool from the saved version, number for number, so everything that
+     works on numbers works; what would measure them again needs their
+     reads, which Jarvis reads here when it is asked to (2026-10-19). */
+  function fromSaveNote() {
+    const box = el('div', { class: 'rc-from-save-box' });
+    const missing = pool.sel.filter((m) => !candOf(m.key));
+    if (!missing.length) return box;
+    const one_ = missing.length === 1;
+    const src = pool.open && pool.open.source;
+    const wh = Array.from(new Set(missing.map((m) =>
+      (poolMemberByKey(m.key) || {}).read_on).filter(Boolean)));
+    box.appendChild(el('p', { class: 'hint rc-from-save-note', text:
+      missing.length + ' member' + (one_ ? '' : 's') + ' of this pool '
+      + (one_ ? 'was' : 'were') + ' read on '
+      + (wh.length ? wh.join(' and ') : 'another machine') + ', so '
+      + (one_ ? 'its read is' : 'their reads are') + ' not here. '
+      + (src
+        ? (one_ ? 'It pools' : 'They pool') + ' from v' + src.version
+          + (pool.open.nickname ? ' of ‘' + pool.open.nickname + '’' : '')
+          + ', number for number as saved: k, calls, focus, margins and '
+          + 'drawn clusters all work. Measuring ' + (one_ ? 'it' : 'them')
+          + ' another way (filter, window, half-width search, HF band) '
+          + 'needs ' + (one_ ? 'its read' : 'their reads') + ': where that '
+          + 'is asked for, Jarvis offers to read ' + (one_ ? 'it' : 'them')
+          + ' here, and a dot of ' + (one_ ? 'its' : 'theirs') + ' opened on '
+          + 'the picture is read here by itself.'
+        : 'Pooling again here would need ' + (one_ ? 'it' : 'them')
+          + ', which Jarvis offers to read here when it is refused.') }));
+    return box;
+  }
+
+  /* The mice of the pool, from what is ticked: kept apart so a tick can
+     bring it up to date without the table around it. */
+  function poolMice() {
     const mice = new Map();
     for (const m of pool.sel) {
       // A member pooled from the save is still a mouse whose type can be
@@ -6555,61 +8855,284 @@ BARRY.rootcanal = (function () {
         mouse_type: sm.mouse_type_default || sm.mouse_type });
       if (c && c.mouse_key && !mice.has(c.mouse_key)) mice.set(c.mouse_key, c);
     }
-    if (mice.size) {
-      const inUse = new Set();
-      for (const c of cs) if (c.mouse_type) inUse.add(c.mouse_type);
-      for (const k2 of Object.keys(pool.types)) inUse.add(pool.types[k2]);
-      kids.push(el('div', { class: 'section-label', text: 'Mouse type' }));
-      kids.push(el('datalist', { id: 'rcTypeList' },
-        Array.from(inUse).sort().map((t) => el('option', { value: t }))));
-      kids.push(el('div', { class: 'rc-types' }, Array.from(mice.entries())
-        .map(([mk, c]) => el('label', { class: 'rc-type' }, [
-          el('span', { class: 'rc-type-k', text: mk }),
-          el('input', {
-            type: 'text', class: 'rc-in rc-type-in', list: 'rcTypeList',
-            value: typeFor(mk, c.mouse_type), 'data-mouse': mk,
-            title: 'The registry files this mouse as “' + (c.mouse_type || 'no '
-                 + 'type') + '”. Type another to override it in this pool.',
-            onchange: (ev2) => setType(mk, ev2.target.value, c.mouse_type),
-          }),
-          pool.types[mk]
-            ? el('span', { class: 'hint', text: 'set here; the registry says '
-                                                + (c.mouse_type || 'nothing') })
-            : el('span', { class: 'hint', text: 'from the registry' }),
-        ]))));
-    }
+    return mice;
+  }
 
-    const nMice = mice.size;
-    if (pool.fitErr) {
-      kids.push(el('p', { class: 'hint rc-warn rc-pool-refused',
-                          text: 'Not pooled: ' + pool.fitErr }));
-    }
-    kids.push(el('label', { class: 'rc-all-ds',
-      title: 'Every event of this pool is a dentate spike: one cluster, '
-           + 'called DS, saved with the pool -- the controls. In a pool of '
-           + 'pools its events go in as DS.' }, [
-      el('input', { type: 'checkbox', class: 'rc-all-ds-box',
-        checked: pool.all_ds ? 'checked' : null,
-        onchange: (ev2) => { pool.all_ds = ev2.target.checked;
-                             pool.dirty = true; render(); } }),
-      el('span', { text: ' every event is DS (the controls)' }),
-    ]));
-    kids.push(BARRY.ui.actions([
-      el('span', { class: 'hint', text: pool.sel.length + ' recording'
-        + (pool.sel.length === 1 ? '' : 's') + ' ticked, ' + nMice + ' mice'
-        + (pool.dirty && pool.fit ? ' — changed since the picture below' : '') }),
+  /* Mouse type, per mouse in the pool: the registry's filing unless
+     somebody says otherwise, free text with the types already in use as
+     suggestions. The override is the pool's, not the registry's. */
+  function typesBox() {
+    const box = el('div', { class: 'rc-types-box' });
+    const mice = poolMice();
+    if (!mice.size) return box;
+    const inUse = new Set();
+    for (const c of pool.cands || []) if (c.mouse_type) inUse.add(c.mouse_type);
+    for (const k2 of Object.keys(pool.types)) inUse.add(pool.types[k2]);
+    box.appendChild(el('div', { class: 'section-label', text: 'Mouse type' }));
+    box.appendChild(el('datalist', { id: 'rcTypeList' },
+      Array.from(inUse).sort().map((t) => el('option', { value: t }))));
+    box.appendChild(el('div', { class: 'rc-types' }, Array.from(mice.entries())
+      .map(([mk, c]) => el('label', { class: 'rc-type' }, [
+        el('span', { class: 'rc-type-k', text: mk }),
+        el('input', {
+          type: 'text', class: 'rc-in rc-type-in', list: 'rcTypeList',
+          value: typeFor(mk, c.mouse_type), 'data-mouse': mk,
+          title: 'The registry files this mouse as “' + (c.mouse_type || 'no '
+               + 'type') + '”. Type another to override it in this pool.',
+          onchange: (ev2) => setType(mk, ev2.target.value, c.mouse_type),
+        }),
+        pool.types[mk]
+          ? el('span', { class: 'hint', text: 'set here; the registry says '
+                                              + (c.mouse_type || 'nothing') })
+          : el('span', { class: 'hint', text: 'from the registry' }),
+      ]))));
+    return box;
+  }
+
+  /* How many are ticked, and the button that pools them -- and goes
+     straight to the picture (2026-10-19). */
+  function membersFoot() {
+    const n = pool.sel.length;
+    const nMice = poolMice().size;
+    return BARRY.ui.actions([
+      el('span', { class: 'hint rc-members-count', text: n + ' recording'
+        + (n === 1 ? '' : 's') + ' ticked, ' + nMice + ' mice'
+        + (pool.dirty && pool.fit && pool.fit.ok ? ' — changed since its picture'
+                                                 : '') }),
       BARRY.ui.button({
-        kind: (pool.dirty || !pool.fit) ? 'primary' : 'ghost',
-        text: 'Pool ' + pool.sel.length + ' recording'
-              + (pool.sel.length === 1 ? '' : 's'),
+        kind: 'primary',
+        text: 'Pool ' + n + ' recording' + (n === 1 ? '' : 's')
+              + (pool.name ? ' (“' + pool.name + '” only)' : ''),
         extra: 'rc-pool-run',
-        disabled: !pool.sel.length || pool.fitting,
+        disabled: !n || pool.fitting,
         title: 'One z-score over the pooled raw numbers, one k-means, and the '
-             + '1-vs-2 group test. Banked members read no recording.',
-        onclick: runPool,
+             + '1-vs-2 group test, and then the picture. Banked members read '
+             + 'no recording.',
+        onclick: poolAndView,
       }),
-    ]));
-    return el('div', { class: 'card rc-members' }, kids);
+    ], { extra: 'rc-members-foot' });
+  }
+
+  /* ==================================================================
+     A REFUSAL ABOUT MEMBERS, AND ITS FIX (2026-10-19)
+
+     "It should be able to just redo the analysis when I ask it to." A
+     refusal that names members (`away`) is about one of two things: a
+     member read elsewhere that would have to be measured again -- read it
+     here, then pool again -- or a second answer about a recording already
+     in the pool -- take the copy out. Each is offered beside the sentence,
+     wherever the refusal is said: the choosing screen, the picture's,
+     either level. When the reading is done the pool is fitted again, and a
+     save that was refused is offered again.
+     ================================================================== */
+  function refusalOf() {
+    return pool.refusal || (pool.fitErr ? { error: pool.fitErr, away: [],
+                                            from: 'fit' } : null);
+  }
+
+  /* A key is a SECOND COPY when its recording has more than one answer in
+     the pool and it is not the first. */
+  function isSecondCopy(k) {
+    const rec = pool.level === 'double' ? null : recOfKey(k);
+    if (!rec) return false;
+    const mine = recSel(rec);
+    return mine.length > 1 && mine[0].key !== k;
+  }
+
+  const readKeys = (r) => ((r && r.away) || []).filter((k) => !isSecondCopy(k));
+  const copyKeys = (r) => ((r && r.away) || []).filter(isSecondCopy);
+
+  function labelOfKey(k) {
+    const m = poolMemberByKey(k)
+      || (pool.savedMembers || []).find((x) => x.key === k);
+    if (m && m.session_label) return m.session_label;
+    const c = candOf(k);
+    if (c && c.session_label) return c.session_label;
+    const rec = recOfKey(k);
+    return (rec && (rec.facts[0] || {}).session_label) || k;
+  }
+
+  /* What each named member is asked for as: its own key and the saved
+     pool it is read from, or -- in a pool of pools -- its key inside the
+     member pool it belongs to, with that pool's version. */
+  function asksFor(keys) {
+    return keys.map((k) => {
+      const m = poolMemberByKey(k);
+      if (m) return askOfMember(m);
+      const p = /^p:([^:]+):(\d+):(.+)$/.exec(String(k));
+      if (p) {
+        return { id: k, key: p[3], label: labelOfKey(k),
+                 saved: { artifact_id: p[1], version: Number(p[2]) } };
+      }
+      return { id: k, key: k, label: labelOfKey(k),
+               saved: pool.open && pool.open.source
+                 ? Object.assign({}, pool.open.source) : null };
+    });
+  }
+
+  function startRedo() {
+    const r = refusalOf();
+    const keys = readKeys(r);
+    if (!keys.length) return;
+    if (pool.redo && !pool.redo.ended) return;
+    const R = rereadRun(asksFor(keys), paintRedo, () => redoEnded(R));
+    R.from = (r && r.from) || 'fit';
+    pool.redo = R;
+    paintRedo();
+  }
+
+  /* Read again: the candidates are asked for afresh (what was read is
+     here now), the pool is fitted again, and a refused save or singles
+     save is offered again once it has fitted. Nothing is fitted when
+     nothing landed: the rows say why. */
+  async function redoEnded(R) {
+    if (pool.redo !== R) return;
+    const rows = rereadRows(R);
+    const got = rows.filter((x) => x.status === 'done' || x.status === 'here');
+    const bad = rows.length - got.length;
+    toast(got.length
+      ? got.length + ' read here' + (bad ? '; ' + bad + ' could not be — '
+          + 'the reasons are in the pool’s card' : '') + '. Pooling again.'
+      : 'Nothing could be read here; the reasons are in the pool’s card.',
+      bad ? 'warn' : 'ok', 10000);
+    if (!got.length) return;
+    pool.cands = null;
+    loadPool();
+    pool.refusal = null;
+    pool.fitErr = null;
+    if (pool.fit && !pool.fit.ok) pool.fit = null;
+    const fitted = await runPool();
+    if (!fitted || pool.redo !== R) return;
+    if (R.from === 'save') saveDialog();
+    else if (R.from === 'singles') singlesDialog();
+  }
+
+  /* Every place the run is shown, brought up to date: the words of each
+     row in place while its rows stay the same, and the box rebuilt when
+     they change. */
+  function paintRedo() {
+    const box = host();
+    if (!box) return;
+    for (const n of Array.from(box.querySelectorAll('.rc-redo'))) {
+      const fresh = redoBox();
+      if (n.__shape && n.__shape === fresh.__shape) {
+        const words = Array.from(fresh.querySelectorAll('.rc-redo-state'));
+        Array.from(n.querySelectorAll('.rc-redo-state')).forEach((s, j) => {
+          if (words[j] && s.textContent !== words[j].textContent) {
+            s.textContent = words[j].textContent;
+          }
+        });
+      } else {
+        n.replaceWith(fresh);
+      }
+    }
+  }
+
+  /* The sentence, the press that fixes it, and the run while it reads. */
+  function redoBox() {
+    const R = pool.redo;
+    const r = refusalOf();
+    const keys = readKeys(r);
+    const running = !!(R && !R.ended);
+    const kids = [];
+    if (R && (running || r)) {
+      const rows = rereadRows(R);
+      const n = rows.length;
+      kids.push(el('p', { class: 'hint rc-redo-line', text: running
+        ? (R.state === 'sending' ? 'Asking for ' : 'Reading ') + n
+          + ' recording' + (n === 1 ? '' : 's') + ' here again, one after '
+          + 'another, from a drive on this computer or on the VACC — exactly '
+          + 'as ' + (n === 1 ? 'it was' : 'they were') + ' read. The pool is '
+          + 'fitted again when ' + (n === 1 ? 'it lands' : 'they land') + '.'
+        : 'The last time ' + (n === 1 ? 'it was' : 'they were')
+          + ' asked for here:' }));
+      kids.push(rereadList(R));
+      if (running) {
+        kids.push(BARRY.ui.actions([
+          BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Stop',
+            extra: 'rc-redo-stop', disabled: !!R.stopping || R.state === 'sending',
+            title: 'Stop reading. A set read part-way is not kept; the ones '
+                 + 'already read are.',
+            onclick: () => R.stop() }),
+        ]));
+      }
+    }
+    if (!running && keys.length) {
+      const names = keys.map(labelOfKey);
+      const one = keys.length === 1;
+      kids.push(el('p', { class: 'rc-redo-say', text: names.join(', ')
+        + (one ? ' has' : ' have') + ' to be measured again for this, and '
+        + (one ? 'its read is' : 'their reads are') + ' not on this machine. '
+        + 'Jarvis can read ' + (one ? 'it' : 'them') + ' here — from a drive '
+        + 'on this computer if the recording is on one, otherwise on the '
+        + 'VACC — exactly as ' + (one ? 'it was' : 'they were') + ' read, '
+        + 'and then redo the analysis.' }));
+      kids.push(BARRY.ui.actions([
+        BARRY.ui.button({ kind: 'primary', extra: 'rc-redo-go',
+          text: 'Read them here and redo the analysis',
+          title: 'Reads ' + names.join(', ') + ' again here, then pools again'
+               + (r && r.from === 'save' ? ' and offers the save again.'
+                  : r && r.from === 'singles'
+                    ? ' and offers to save the singles again.' : '.'),
+          onclick: startRedo }),
+      ]));
+    }
+    const box = el('div', { class: 'rc-redo' }, kids);
+    box.__shape = JSON.stringify([R ? rereadRows(R).map((x) => [x.id, x.status])
+                                    : null, running, !!(R && R.stopping),
+                                  R && R.state, keys]);
+    return box;
+  }
+
+  /* A refusal, where it is said: the sentence, and its fix. */
+  function refusedPart(where) {
+    const box = el('div', { class: 'rc-refused-box rc-' + where + '-refused' });
+    const r = refusalOf();
+    const running = !!(pool.redo && !pool.redo.ended);
+    if (!r && !running) return box;
+    if (r) {
+      // The picture's card says what was refused in its heading.
+      box.appendChild(el('p', { class: 'hint rc-warn rc-pool-refused', text:
+        (where === 'view' ? '' : r.from === 'save' ? 'Not saved: '
+          : r.from === 'singles' ? 'Not saved as singles: ' : 'Not pooled: ')
+        + r.error }));
+    }
+    const copies = copyKeys(r);
+    if (copies.length) {
+      box.appendChild(el('div', { class: 'rc-dup rc-dup-fix-row' }, [
+        el('p', { class: 'rc-dup-say', text: 'The pool holds two answers about '
+          + copies.map(labelOfKey).join(', ') + ', and a recording can be in a '
+          + 'pool once. Take the second out and pool again, or choose which '
+          + 'to keep in its row.' }),
+        BARRY.ui.button({ kind: readKeys(r).length ? 'ghost' : 'primary',
+          size: 'sm', extra: 'rc-dup-fix',
+          text: 'Take the second copies out and pool again',
+          onclick: () => {
+            pool.sel = pool.sel.filter((m) => copies.indexOf(m.key) < 0);
+            pool.refusal = null;
+            pool.fitErr = null;
+            pool.dirty = true;
+            poolAndView();
+          } }),
+      ]));
+    }
+    if (readKeys(r).length || pool.redo) box.appendChild(redoBox());
+    return box;
+  }
+
+  /* On the picture's screen: a card of its own, above the picture -- which
+     stays, being the answer for the members it was drawn from. */
+  function refusalCard() {
+    const r = refusalOf();
+    const running = !!(pool.redo && !pool.redo.ended);
+    if (!r && !running) return null;
+    return el('div', { class: 'card rc-err rc-refusal' }, [
+      el('strong', { text: !r ? 'Reading recordings here again'
+        : r.from === 'save' ? 'That pool could not be saved'
+        : r.from === 'singles' ? 'Those singles could not be saved'
+        : 'That pool could not be fitted' }),
+      refusedPart('view'),
+    ]);
   }
 
   function poolChip() {
@@ -6629,6 +9152,8 @@ BARRY.rootcanal = (function () {
     const f = pool.fit;
     if (!f) return null;
     if (!f.ok) {
+      // Said once, in the refusal's own card, with its fix (2026-10-19).
+      if (refusalOf()) return null;
       return el('div', { class: 'rc-work' }, [
         el('div', { class: 'card rc-err' }, [
           el('strong', { text: 'That pool could not be fitted' }),
@@ -6643,6 +9168,7 @@ BARRY.rootcanal = (function () {
       poolPickBar(),
       poolLegend(),
       el('div', { class: 'rc-main' }, [spacePane(), flatsPane(), eventPane()]),
+      bordersCard(poolBorderCtx()),
       gmmPanel(),
       switchPanel(),
       deepPanel(),
@@ -6832,7 +9358,8 @@ BARRY.rootcanal = (function () {
       ([id]) => id === mode) || [0, ''])[1] + ':' })];
     if (mode === 'border' && pool.fit && pool.fit.border_used) {
       kids.push(item('rc-lg-ds', 'solid DS'), item('rc-lg-ied', 'solid IED'),
-                item('rc-lg-amb', 'ambiguous'));
+                item('rc-lg-amb rc-lg-amb-ds', 'outside, pooled as DS'),
+                item('rc-lg-amb rc-lg-amb-ied', 'outside, pooled as IED'));
     } else if (mode === 'pool' || mode === 'single' || mode === 'border') {
       kids.push(item('rc-lg-ds', 'DS'), item('rc-lg-ied', 'IED'));
     } else if (mode === 'switches') {
@@ -7528,8 +10055,8 @@ BARRY.rootcanal = (function () {
                              : 'between its single and this pool')
         + (f.border_used ? ', and every one the border ‘'
                            + f.border_used.nickname + '’ leaves ambiguous'
-                         : ' (apply a border, in Margins and borders, to add '
-                           + 'the ones it leaves ambiguous)')
+                         : ' (apply a border, in the Borders card above, to '
+                           + 'add the ones it leaves ambiguous)')
         + '. Step through them with their traces, average them, see where '
         + 'they come from by mouse, type, group, subgroup and condition, '
         + 'export them as a CSV and bank them.' }));
@@ -7693,7 +10220,8 @@ BARRY.rootcanal = (function () {
                                        : 'their singles’ calls')
                + '): past all three is solid IED, short of all three solid '
                + 'DS, anything else ambiguous. With grace, the switch rate '
-               + 'allowed. Previewed before it is saved.',
+               + 'allowed. Previewed before it is saved. A pool that is all '
+               + 'one identity gets a box drawn around it instead.',
           onclick: borderDialog })]),
       el('div', { class: 'rc-sw-top' }, [
         el('table', { class: 'tbl rc-crosstab' }, [
@@ -7764,7 +10292,8 @@ BARRY.rootcanal = (function () {
       kind: 'entry',
       title: pool.open ? 'Save v' + nextPoolVersion() + ' of ‘' + pool.open.nickname + '’'
                        : 'Save this pool',
-      name: pool.open ? pool.open.nickname : '',
+      // The label typed last time, when a refused save comes back.
+      name: pool.open ? pool.open.nickname : (pool.lastNick || ''),
       what,
       okText: pool.open ? 'Save as v' + nextPoolVersion() : 'Save pool',
       onBank: async ({ name, note }) => {
@@ -7774,19 +10303,37 @@ BARRY.rootcanal = (function () {
            the types and the focus alone, and the server refitted at its
            defaults: a pool shown at k = 1 was saved at k = 2, and its
            relabels, margin, drawn clusters and measurement were lost. */
-        rep = await apiPost(pool.level === 'double'
-          ? '/api/rootcanal/dpool/save' : '/api/rootcanal/pool/save', Object.assign(
-          poolBody(), {
-            artifact_id: pool.open ? pool.open.artifact_id : null,
-            nickname: nick,
-            // The whole focus, a recording's included: it is the saved
-            // pool's to reopen with, not only the server's second test.
-            focus: pool.focus,
-            note: note || '',
-          }));
+        try {
+          rep = await apiPost(pool.level === 'double'
+            ? '/api/rootcanal/dpool/save' : '/api/rootcanal/pool/save', Object.assign(
+            poolBody(), {
+              artifact_id: pool.open ? pool.open.artifact_id : null,
+              nickname: nick,
+              // The whole focus, a recording's included: it is the saved
+              // pool's to reopen with, not only the server's second test.
+              focus: pool.focus,
+              note: note || '',
+            }));
+        } catch (e) {
+          /* A SAVE REFUSED ABOUT MEMBERS (2026-10-19) -- "banked measured
+             differently, and its read is not on this machine" -- is not a
+             dead end: the dialog closes and the pool's card says it, with
+             "Read them here and redo the analysis", which opens this
+             dialog again once the pool has been fitted. */
+          const away = (e.data && e.data.away) || [];
+          if (!away.length) throw e;
+          pool.refusal = { error: e.message, away: away.slice(), from: 'save' };
+          pool.lastNick = nick;
+          rep = null;
+        }
       },
     }).then((ok) => {
+      if (pool.refusal && pool.refusal.from === 'save' && !rep) {
+        goScreen('view');
+        return null;
+      }
       if (!ok || !rep) return null;
+      pool.lastNick = '';
       afterSave(rep);
       if (!rep.confirmed) {
         if (pool.level === 'double') dpropagateDialog(rep);
@@ -7812,8 +10359,17 @@ BARRY.rootcanal = (function () {
     BARRY.activity.log('rootcanal.pool_save', {
       artifact: rep.artifact_id, version: rep.version, confirmed: !!rep.confirmed,
     });
-    pool.shelf = null;
-    loadShelf();
+    pool.refusal = null;
+    /* Its own shelf (2026-10-19): a pool of pools saved reloaded the
+       recordings' shelf and left its own showing what it showed before. */
+    if (pool.level === 'double') {
+      pool.dshelf = null;
+      loadDshelf();
+    } else {
+      pool.shelf = null;
+      loadShelf();
+    }
+    // It stays on its picture: saving is not leaving.
     render();
   }
 
@@ -7887,13 +10443,20 @@ BARRY.rootcanal = (function () {
                 version: got.version != null ? got.version : version },
     };
     pool.savedMembers = (pay.members || []).slice();
+    pool.refusal = null; pool.fitErr = null; pool.redo = null;
+    pool.lastNick = '';
     BARRY.activity.log('rootcanal.pool_open', { artifact: pool.open.artifact_id,
                                                 version: pool.open.version });
-    render();
+    /* OPEN OPENS IT (2026-10-19): its picture, on a screen of its own, at
+       the top of the tool -- not drawn under the table of recordings at
+       the bottom of the page, which is where "Open" used to put it. */
+    goScreen('view');
+    if (pool.picked == null) autoPick();
     return got;
   }
 
-  function closePool() {
+  /* `quiet`: the caller paints next. */
+  function closePool(quiet) {
     pool.sel = []; pool.types = {}; pool.focus = null;
     pool.fit = null; pool.evs = null; pool.saved = false; pool.dirty = false;
     pool.open = null; pool.picked = null; pool.evData = null; pool.evFor = null;
@@ -7906,7 +10469,198 @@ BARRY.rootcanal = (function () {
     pool.border = null; pool.borderErr = null;
     if (pool.colour === 'border') pool.colour = 'pool';
     pool.lassoSel = []; pool.fitErr = null; pool.deep = null;
-    render();
+    /* And the screen it was on (2026-10-19): back to the saved pools. A
+       read running for a refusal goes on on the server -- what it reads is
+       kept -- and is no longer watched from here. */
+    if (pool.redo && pool.redo.poll) clearInterval(pool.redo.poll);
+    pool.refusal = null; pool.redo = null; pool.lastNick = '';
+    pool.pickSrc = {};
+    pool.screen = 'home';
+    if (quiet !== true) render();
+  }
+
+  /* ==================================================================
+     SAVE AS SINGLES (2026-10-19)
+
+     "And then have the option to save the single ones individually if I
+     want." Any member of the pool on the picture saved as a Root Canal
+     single of its own -- a new version of that recording's single --
+     measured the pool's way, its own analysis redone from its read here.
+     None is ticked to begin with. At the second level the recordings come
+     from the member pools, and each member pool is asked once for its own.
+     A member whose read is not here is said, with its reason, and with an
+     offer to read it here first. Nothing is banked.
+     ================================================================== */
+  function measureWords(ms) {
+    if (!ms) return 'the pool’s measurement';
+    return [ms.filter_label || filterWords(ms),
+            ms.win_ms != null ? '±' + hz(ms.win_ms) + ' ms' : null,
+            ms.cross_ms != null ? 'half-width search ±' + hz(ms.cross_ms) + ' ms'
+                                : null,
+            ms.band_lo != null ? hz(ms.band_lo) + '–' + hz(ms.band_hi) + ' Hz'
+                               : null].filter(Boolean).join(' · ');
+  }
+
+  function singlesDialog() {
+    const f = pool.fit && pool.fit.ok ? pool.fit : null;
+    const ms = (f && f.members) || [];
+    if (!ms.length) {
+      toast('Pool it first: the singles are saved measured the pool’s way.',
+            'warn', 6000);
+      return;
+    }
+    const dbl = pool.level === 'double';
+    const picks = new Set();
+    const goBtn = BARRY.ui.button({ kind: 'primary', extra: 'rc-singles-go',
+      text: 'Tick the recordings to save', disabled: true, onclick: () => go() });
+    const sync = () => {
+      goBtn.textContent = picks.size
+        ? 'Save ' + picks.size + ' as single' + (picks.size === 1 ? '' : 's')
+        : 'Tick the recordings to save';
+      goBtn.disabled = !picks.size;
+    };
+    const boxes = [];
+    const list = el('div', { class: 'rc-singles-list' }, ms.map((m) => {
+      const cb = el('input', { type: 'checkbox', class: 'rc-singles-pick',
+        'data-key': m.key,
+        onchange: (e) => {
+          if (e.target.checked) picks.add(m.key); else picks.delete(m.key);
+          sync();
+        } });
+      boxes.push(cb);
+      const pp = (m.pin && m.pin.pool) || null;
+      return el('label', { class: 'rc-singles-row' }, [
+        cb,
+        el('span', { class: 'rc-singles-name', text: m.session_label || m.key }),
+        el('span', { class: 'hint rc-singles-sub', text: [
+          pp ? 'in ‘' + (pp.nickname || pp.artifact_id) + '’' : null,
+          m.banked ? 'banked' : (m.pin && m.pin.single ? 'saved single v'
+                                 + m.pin.single.version : 'not banked'),
+          memberHere(m) ? 'read here' : 'read ' + (m.read_on ? 'on ' + m.read_on
+                                                            : 'elsewhere'),
+        ].filter(Boolean).join(' · ') }),
+      ]);
+    }));
+    const tickAll = BARRY.ui.button({ kind: 'link', text: 'Tick all',
+      extra: 'rc-singles-all',
+      onclick: () => {
+        for (const cb of boxes) { cb.checked = true; picks.add(cb.dataset.key); }
+        sync();
+      } });
+    const meas = dbl ? (f.params || {}).measure : poolBody().measure;
+    const body = el('div', { class: 'mb' }, [el('div', { class: 'rc-ask' }, [
+      el('p', { text: 'Each recording you tick is saved as its own Root Canal '
+        + 'single — a new version of that recording’s single — measured the '
+        + 'pool’s way (' + measureWords(meas) + ', k = ' + (+q.k) + '). Its own '
+        + 'analysis is redone from its read on this machine. The pool is not '
+        + 'changed, and nothing is banked.' }),
+      el('div', { class: 'rc-singles-tools' }, [
+        tickAll,
+        el('span', { class: 'hint', text: ms.length + ' recording'
+                     + (ms.length === 1 ? '' : 's') + ' in the pool' }),
+      ]),
+      list,
+    ])]);
+    const shell = el('div', { class: 'rc-singles-dlg' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Save recordings as singles' }),
+        el('div', { class: 'spacer' })]),
+      body,
+      BARRY.ui.modalFoot([], [
+        BARRY.ui.button({ kind: 'ghost', text: 'Cancel', extra: 'rc-singles-no',
+                          onclick: closeModal }),
+        goBtn,
+      ]),
+    ]);
+    showModal(shell, { replace: true });
+
+    async function go() {
+      const keys = ms.map((m) => m.key).filter((k) => picks.has(k));
+      if (!keys.length) return;
+      goBtn.disabled = true;
+      goBtn.textContent = 'Saving…';
+      /* One request per pool the members are from: the pool itself, or at
+         the second level each member pool, with its own version. */
+      const asks = asksFor(keys);
+      const groups = [];
+      for (const a of asks) {
+        const sk = JSON.stringify(a.saved || null);
+        let g = groups.find((x) => x.sk === sk);
+        if (!g) { g = { sk, saved: a.saved || null, asks: [] }; groups.push(g); }
+        g.asks.push(a);
+      }
+      const done = [], away = [];
+      for (const g of groups) {
+        const req = dbl
+          ? { measure: meas || null, k: +q.k, saved: g.saved,
+              members: g.asks.map((a) => ({ key: a.key })),
+              keys: g.asks.map((a) => a.key) }
+          : Object.assign(poolBody(), { keys: g.asks.map((a) => a.key) });
+        const back = (k) => (g.asks.find((a) => a.key === k) || { id: k });
+        try {
+          const got = await apiPost('/api/rootcanal/pool/singles', req);
+          for (const d of got.done || []) {
+            done.push(Object.assign({}, d, { id: back(d.key).id,
+              label: d.label || back(d.key).label }));
+          }
+          for (const a of got.away || []) {
+            away.push(Object.assign({}, a, { id: back(a.key).id,
+              label: a.label || back(a.key).label || a.key }));
+          }
+        } catch (e) {
+          for (const a of g.asks) away.push({ id: a.id, key: a.key, label: a.label,
+                                              why: e.message });
+        }
+      }
+      singlesReport(done, away);
+    }
+  }
+
+  /* What was saved and what was not, with why -- and, for what was not,
+     the offer to read it here first. */
+  function singlesReport(done, away) {
+    const vOf = (d) => String(d.new_key || '').split(':').pop();
+    toast(done.length + ' saved as single' + (done.length === 1 ? '' : 's')
+          + (away.length ? ', ' + away.length + ' not' : '') + '. Nothing was '
+          + 'banked.', away.length ? 'warn' : 'ok', 10000);
+    if (done.length) refreshCandsQuietly();
+    showModal(el('div', { class: 'rc-singles-dlg rc-singles-report' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: done.length ? 'Saved as singles' : 'Nothing was saved' }),
+        el('div', { class: 'spacer' })]),
+      el('div', { class: 'mb' }, [el('div', { class: 'rc-ask' }, [
+        done.length ? el('div', { class: 'section-label', text: 'Saved' }) : null,
+        done.length ? el('ul', { class: 'rc-singles-done' }, done.map((d) =>
+          el('li', { text: (d.label || d.key) + ' — ' + (d.confirmed
+            ? 'nothing had changed, so v' + vOf(d) + ' of its single is confirmed'
+            : 'saved as v' + vOf(d) + ' of its single') }))) : null,
+        away.length ? el('div', { class: 'section-label', text: 'Not saved' }) : null,
+        away.length ? el('ul', { class: 'rc-singles-away' }, away.map((a) =>
+          el('li', { text: (a.label || a.key) + ' — ' + (a.why
+                                                          || 'no reason given') })))
+          : null,
+        away.length ? el('p', { class: 'hint', text: 'A recording whose read is '
+          + 'not on this machine can be read here first: Jarvis finds it on a '
+          + 'drive here or on the VACC, reads it as it was read, and offers this '
+          + 'save again.' }) : null,
+      ].filter(Boolean))]),
+      BARRY.ui.modalFoot([], [
+        BARRY.ui.button({ kind: away.length ? 'ghost' : 'primary', text: 'Close',
+                          extra: 'rc-singles-close', onclick: closeModal }),
+        away.length ? BARRY.ui.button({ kind: 'primary', extra: 'rc-singles-redo',
+          text: 'Read them here first',
+          title: 'Reads them here, pools again, and offers to save the singles '
+               + 'again.',
+          onclick: () => {
+            closeModal();
+            pool.refusal = { error: away.length + ' could not be saved as '
+              + 'singles here: their reads are not on this machine.',
+              away: away.map((a) => a.id), from: 'singles' };
+            goScreen('view');
+            startRedo();
+          } }) : null,
+      ]),
+    ]), { replace: true });
   }
 
   /* Published as a real property so the OTHER window can drive this one.
@@ -7973,6 +10727,9 @@ BARRY.rootcanal = (function () {
     _resetCentres: resetCentres,
     _clearFlips: clearFlips,
     _rawToZ: rawToZ,
+    _border3d: () => GEOM.border3d || null,
+    _poolFillOf: (j) => poolFill(poolEvents()[j]),
+    _autoPick: () => autoPick(),
     _zToRaw: zToRaw,
     /* A setting typed but not recomputed, which is the state the stale
        chip exists for; and Recompute, which is the button. */
@@ -8021,9 +10778,10 @@ BARRY.rootcanal = (function () {
                    members: members || [] };
       render();
     },
-    _tickBulk: () => (swap('.rc-bulk-card', bulkCard())
-                      || swap('.rc-mode', modeSwitch())),
-    _endBulk: () => { bulk.job = null; bulk.on = false; render(); },
+    // The poll's own path (2026-10-19: the card is reconciled, not swapped).
+    _tickBulk: () => (bulkRefresh() || swap('.rc-mode', modeSwitch())),
+    _endBulk: () => { bulk.job = null; bulk.sent = null; bulk.on = false;
+                      render(); },
     /* Pooled, for web/_dev/rootcanalpool.html. */
     _setView: setView,
     _margins: () => margins,
@@ -8043,6 +10801,10 @@ BARRY.rootcanal = (function () {
     _loadBorders: loadBorders,
     _setBorder: (ref) => { q.border = ref; borderErr = null; refit(); },
     _borderErr: () => borderErr,
+    /* What the applied border drew on each flat view (2026-10-19): its
+       box or its lines, in canvas pixels, and its label. */
+    _borderGeom: () => JSON.parse(JSON.stringify(GEOM.border || {})),
+    _borderPick: () => JSON.parse(JSON.stringify(borderPick)),
     _statsDialog: statsDialog,
     _statsRun: statsRun,
     _statsPick: (ts) => { if (ts) statsPick = ts.slice(); return statsPick; },
@@ -8082,6 +10844,19 @@ BARRY.rootcanal = (function () {
     _poolOpen: openSaved,
     _poolClose: closePool,
     _poolCats: (mode) => catList(mode || pool.colour),
+    /* The screens, the recordings and the read-again runs (2026-10-19). */
+    _poolScreen: () => poolScreen(),
+    _poolGo: goScreen,
+    _poolNew: newPool,
+    _poolRecs: () => recordings().map((r) => ({ id: r.id, def: r.def,
+      cur: curKey(r), keys: r.answers.map((a) => a.key),
+      words: r.answers.map((a) => a.words),
+      label: (r.facts[0] || {}).session_label || r.id })),
+    _poolRedo: () => pool.redo && { state: pool.redo.state, ended: pool.redo.ended,
+                                    rows: rereadRows(pool.redo) },
+    _poolEvRedo: () => Array.from(evRedo.entries()).map(([id, R]) => ({
+      id, state: R.state, ended: R.ended, landed: R.landed, rows: rereadRows(R) })),
+    _poolSingles: singlesDialog,
     _reset: () => {
       cands = null; q.entry = null; q.gid = null; q.from_version = null;
       forget();

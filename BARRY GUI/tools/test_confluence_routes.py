@@ -95,6 +95,27 @@ def main():
         check("only recordings with both kinds are listed", gids == ["g1", "g3"],
               gids)
         check("with the default window", got.get("window_ms") == 5.0, got)
+        g1 = next(r for r in got["recordings"] if r["gid"] == "g1")
+        check("every input says outright whether it is aligned",
+              all(e.get("aligned") is False and e.get("aligned_names") == []
+                  for e in g1["ds"] + g1["ied"]), g1)
+
+        print("\nwhich versions are aligned")
+        fake = {"versions": [
+            {"v": 0, "id": "a0", "at": "2026-10-01T00:00:00"},
+            {"v": 1, "id": "a1", "from_v": 0, "at": "2026-10-02T00:00:00",
+             "aligned": {"tool": "jarvis.braces/1"}},
+            {"v": 2, "id": "a2", "from_v": 1, "at": "2026-10-03T00:00:00"},
+            {"v": 3, "id": "a3", "from_v": 0, "from_id": "a0",
+             "at": "2026-10-04T00:00:00"},
+        ], "aligned": {"tool": "jarvis.braces/1", "by": "Rain"}}
+        al = A._cf_aligned(fake)
+        names = [n for _v, n in A.versionsmod.label_rows(fake["versions"])]
+        check("the alignment's version and the pass after it are aligned; "
+              "v0 and a branch off it are not",
+              al["aligned"] and al["aligned_by"] == "Rain"
+              and al["aligned_v"] == "1"
+              and sorted(al["aligned_names"]) == ["1", "2"], (al, names))
 
         print("\nthe plan")
         body = {"gid": "g1", "ds_entry": ds["id"], "ied_entry": ied["id"],
@@ -159,6 +180,33 @@ def main():
         check("force makes a second",
               m3.get("ok") and not m3.get("cached")
               and m3["entry"]["id"] != ent["id"], m3)
+        check("its parameters say whether each input was aligned",
+              prm.get("ds_aligned") is False and prm.get("ied_aligned") is False
+              and prm.get("keep") == "incisor", prm)
+
+        print("\nmerged to Doppler's time")
+        pd = cli.post("/api/confluence/plan",
+                      json=dict(body, keep="doppler")).get_json()
+        check("the plan counts the same pairs",
+              pd.get("ok") and pd["stats"].get("merged") == now.get("merged")
+              and pd["stats"].get("keep") == "doppler", pd)
+        md = cli.post("/api/confluence/merge",
+                      json=dict(body, keep="doppler")).get_json()
+        dent = A.BANK.get((md.get("entry") or {}).get("id")) or {}
+        devs = dent.get("events") or []
+        check("a pool from the same inputs keeping Doppler's is not the "
+              "Incisor one", md.get("ok") and not md.get("cached")
+              and dent.get("id") not in (ent["id"], m3["entry"]["id"]), md)
+        m1 = next((e for e in devs if e.get("origin") == "both"), {})
+        check("its merged events are at Doppler's time, filed as such",
+              m1.get("start") == 1.003 and m1.get("pair_t") == 1.0
+              and m1.get("stamp") == "doppler", devs)
+        check("and its name says so",
+              "Doppler's time" in (dent.get("name") or ""), dent.get("name"))
+        bad_keep = cli.post("/api/confluence/plan",
+                            json=dict(body, keep="nobody"))
+        check("a time that is neither detector's is refused in a sentence",
+              bad_keep.status_code == 400, bad_keep.get_json())
 
         print("\nmany at once")
         b = cli.post("/api/confluence/batch", json={

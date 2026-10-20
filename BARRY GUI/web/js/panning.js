@@ -27,6 +27,18 @@
 
      PASSES BY ORIGIN as well as by decision: All, Merged, Incisor only,
      Doppler only -- so "what did only Doppler see" is one click.
+
+   ADDED 2026-10-19, asked for in so many words:
+     MERGE TO INCISOR OR TO DOPPLER. M keeps Incisor's time, as before; D
+     keeps Doppler's. Either way the survivor is the candidate already
+     carrying that time, so still no stamp moves -- and the event says
+     whose it is (`stamp: 'doppler'`), so its two times are never read the
+     wrong way round. A pool Junction made at Doppler's time arrives the
+     same way.
+     LABEL MANY at once: "every merged and every Incisor-only one is a
+     spike" is one write and one Z, from Label many… or from the list.
+     THE LIST: every event in the pool, by time, decision or origin,
+     searchable -- Checkup's List all, with where each came from on it.
    ========================================================================== */
 'use strict';
 
@@ -38,7 +50,9 @@ BARRY.panning = (function () {
   let kind = null;      // { id, labels[] } -- COPIED from the set
   let sess = null;      // the open xplore session
   let index = 0;
-  let span = 0.6;
+  let span = 1.0;
+  let banked = null;    // what the bank holds of this set (api _cur_banked)
+  let bankDirty = false; // a decision or merge made since `banked` was read
   let history = [];     // [{type:'label', id, from} | {type:'merge', ...}]
   let review = 'left';  // 'left' | 'flag' | 'all'
   let origin = 'all';   // 'all' | 'both' | 'incisor' | 'doppler'
@@ -62,6 +76,25 @@ BARRY.panning = (function () {
   const oCol = (o) => (o === 'doppler' ? tok('--o-doppler', '#f59fb4')
                                        : tok('--o-incisor', '#8ec5ff'));
   const ORIGIN_WORD = { incisor: 'Incisor', doppler: 'Doppler', both: 'both' };
+
+  /* Whose stamp an event's `start` is: 'incisor', 'doppler', or null when
+     its origin is not known. One both detectors found is Incisor's unless
+     it says Doppler's (curation._stamp_of, the same rule). */
+  const stampOf = (e) => {
+    if (!e) return null;
+    if (e.origin === 'both') return e.stamp === 'doppler' ? 'doppler' : 'incisor';
+    return e.origin === 'incisor' || e.origin === 'doppler' ? e.origin : null;
+  };
+  /* The time `who` put on it, or null when that detector did not find it.
+     An event of no known origin is drawn as Incisor's, as it always was. */
+  const timeBy = (e, who) => {
+    const s = stampOf(e) || 'incisor';
+    if (s === who) return e.start;
+    if (e.origin === 'both') return e.pair_t != null ? e.pair_t : e.start;
+    return null;
+  };
+  const otherOf = (who) => (who === 'doppler' ? 'incisor' : 'doppler');
+  const KEEP_WORD = { incisor: 'Incisor', doppler: 'Doppler' };
   const fx = () => BARRY.jarvisfx || window.JarvisFX || null;
   const sfx = (name, a) => {
     try { const f = fx(); if (f && !f.muted && f[name]) f[name](a); }
@@ -140,11 +173,16 @@ BARRY.panning = (function () {
     sess = await BARRY.views.xplore.open(got.path);
     if (!sess) { set_ = null; return false; }
 
+    /* The width somebody last looked at events with, and 1 s the first
+       time -- the same as Spotter and Checkup. It was 0.6 s and was put
+       back on every event, whatever the span field had been set to. */
     span = (opts && opts.span)
-        || parseFloat(BARRY.prefs.get('panning_span', 0)) || 0.6;
-    if (!(span > 0)) span = 0.6;
+        || parseFloat(BARRY.prefs.get('panning_span', 0)) || 1.0;
+    if (!(span > 0)) span = 1.0;
     index = 0; history = []; review = 'left'; origin = 'all'; mark = null;
     lastWin = null;
+    banked = data.banked || null;
+    bankDirty = false;
 
     apiPost(url('open'), { open: true })
       .then((r) => { if (r && r.set) set_.assignee = r.set.assignee; })
@@ -165,7 +203,7 @@ BARRY.panning = (function () {
       const was = [review, origin];
       review = back.review; origin = back.origin || 'all';
       if (!nWanted()) { review = was[0]; origin = was[1]; }
-      goTo(back.index, true);
+      goTo(back.index, true, true);
       const at = events().slice(0, index + 1).filter(wanted).length;
       toast(back.gone
         ? 'Back where you were — that one is no longer in this pool, so '
@@ -173,7 +211,7 @@ BARRY.panning = (function () {
         : 'Back where you left off: ' + at + ' of ' + nWanted() + '.',
         null, 5000);
     } else {
-      goTo(firstWanted(), true);
+      goTo(firstWanted(), true, true);
     }
     render();
 
@@ -283,6 +321,15 @@ BARRY.panning = (function () {
 
   function exit() {
     if (!set_) return;
+    /* Leaving with decisions or merges the bank does not have: banked on
+       the way out, when that is on (quietBank, below). */
+    {
+      const decided = events().filter((e) => e.label).length;
+      if (autoOn() && decided
+          && (bankDirty || !banked || banked.changed)) {
+        quietBank(set_.gid, 'Banked on leaving Panning.');
+      }
+    }
     rememberWhere();
     try { BARRY.prefs.flush(); } catch (e) { /* the timer will get it */ }
     BARRY.activity.log('panning.leave', { gid: set_.gid, left: left() }, sess);
@@ -369,13 +416,49 @@ BARRY.panning = (function () {
     return i < 0 ? 0 : i;
   }
 
-  function goTo(i, quiet) {
+  /* The span, and the one place it is written down: per machine, in
+     preferences (`panning_span` is in PREFS_LOCAL), because how wide
+     somebody likes the window is about this screen. */
+  function setSpan(v) {
+    const want = Math.max(0.05, parseFloat(v) || 1);
+    if (Math.abs(want - span) < 1e-6) return;
+    span = want;
+    try { BARRY.prefs.set('panning_span', span); } catch (e) { /* later */ }
+  }
+
+  /* What the pane is actually showing -- Checkup's `paneSpan`, for the
+     reason it gives: the mode centres the window on each event, and doing
+     that with its own remembered span undid every zoom and every span
+     typed into the field the moment the next event came up. */
+  function paneSpan() {
+    try {
+      const XF = BARRY.views.xplore.state;
+      const pane = (XF.panes || [])[0];
+      const s = (XF.linkMode === 'none' && pane && pane.t0 != null)
+        ? pane.span : (sess ? sess.span : null);
+      return (s > 0) ? s : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function goTo(i, quiet, ownSpan) {
     const n = events().length;
     if (!n) return;
     index = Math.max(0, Math.min(n - 1, i));
     const ev = current();
     if (!ev || !sess) return;
     publishMarks();
+    // Somebody zoomed the pane or typed a span: that is the window they
+    // want, so take it rather than putting it back. Only a real change --
+    // the centring below sets the span itself, and the edge of a recording
+    // can trim it a little.
+    // Not on the way in: the pane then still shows whatever the recording
+    // was last looked at with, and the span this mode remembers wins.
+    const shown = ownSpan ? null : paneSpan();
+    if (shown && Math.abs(shown - span) > Math.max(0.02, span * 0.02)) {
+      setSpan(shown);
+    }
     BARRY.views.xplore.setWindow(0, Math.max(0, ev.start - span / 2), span);
     lightChannel(ev);
     if (!quiet) render();
@@ -432,6 +515,7 @@ BARRY.panning = (function () {
     if (!ev) return;
     const was = ev.label || null;
     ev.label = labelId;
+    bankDirty = true;
     const h = { type: 'label', id: ev.id, from: was };
     history.push(h);
     if (history.length > 500) history.shift();
@@ -444,6 +528,10 @@ BARRY.panning = (function () {
     try {
       const res = await apiPost(url('label'), { event: ev.id, label: labelId });
       if (res.progress) set_._progress = res.progress;
+      // The last one decided: bank it, if banking without asking is on.
+      if (set_ && autoOn() && !left()) {
+        quietBank(set_.gid, 'Every event decided in Panning.');
+      }
       if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
         BARRY.views.toolkit.curationChanged();
       }
@@ -471,6 +559,7 @@ BARRY.panning = (function () {
     if (!ev || !ev.label) return;
     const was = ev.label;
     ev.label = null;
+    bankDirty = true;
     const h = { type: 'label', id: ev.id, from: was };
     history.push(h);
     markRev += 1;
@@ -490,12 +579,24 @@ BARRY.panning = (function () {
      ================================================================== */
 
   /* Which of two survives: the server's rule (curation.merge_events), so
-     the optimistic step and the write agree. */
-  const hasI = (o) => o === 'incisor' || o === 'both';
-  function leadOf(a, b) {
-    if (hasI(b.origin) && !hasI(a.origin)) return b;
-    if (hasI(a.origin) || a.start <= b.start) return a;
+     the optimistic step and the write agree. `want` is whose time to keep,
+     Incisor's unless D asked for Doppler's: the one already carrying it
+     survives, else the earlier. */
+  function leadOf(a, b, want) {
+    const w = want || 'incisor';
+    const ha = stampOf(a) === w, hb = stampOf(b) === w;
+    if (hb && !ha) return b;
+    if (ha || a.start <= b.start) return a;
     return b;
+  }
+
+  /* Whether a merge can keep `want`'s time: one of the two has to carry it.
+     Incisor's is always offered -- with neither carrying it, the earlier
+     survives, which is the rule for two of Doppler's. */
+  function canKeep(a, b, want) {
+    if (!a || !b) return false;
+    if (want !== 'doppler') return true;
+    return stampOf(a) === 'doppler' || stampOf(b) === 'doppler';
   }
 
   function nearestOther(a) {
@@ -516,21 +617,28 @@ BARRY.panning = (function () {
     return nearestOther(a);
   }
 
-  const KEEP = ['origin', 'pair_t', 'label', 'by', 'at', 'channel',
+  const KEEP = ['origin', 'pair_t', 'stamp', 'label', 'by', 'at', 'channel',
                 'merged_by', 'merged_at'];
   const BACK = ['start', 'end', 'channel', 'amplitude', 'origin', 'pair_t',
-                'label', 'by', 'at', 'note'];
+                'stamp', 'label', 'by', 'at', 'note'];
   const pickOf = (e, keys) => {
     const out = {};
     for (const k of keys) if (e[k] !== undefined && e[k] !== null) out[k] = e[k];
     return out;
   };
 
-  async function merge() {
+  async function merge(want) {
+    const keepT = want === 'doppler' ? 'doppler' : 'incisor';
     const a = current();
     const b = partner();
     if (!a || !b) {
       toast('There is nothing next to this one to merge it with.', null, 4000);
+      return;
+    }
+    if (!canKeep(a, b, keepT)) {
+      toast('Neither of these two carries Doppler’s time, so there is no '
+            + 'Doppler stamp to merge to. M merges them at Incisor’s.',
+            'warn', 6000);
       return;
     }
     const gap = Math.abs(b.start - a.start) * 1000;
@@ -544,12 +652,13 @@ BARRY.panning = (function () {
         'Merge them');
       if (!ok) return;
     }
-    const lead = leadOf(a, b);
+    const lead = leadOf(a, b, keepT);
     const other = lead === a ? b : a;
     const before = pickOf(lead, KEEP);
     const dropped = pickOf(other, BACK);
     const dropAt = events().indexOf(other);
     const fromX = other.start;
+    const leadStamp = stampOf(lead);
 
     // Optimistic, as the server will do it.
     if (!lead.label && other.label) {
@@ -564,6 +673,8 @@ BARRY.panning = (function () {
       else if (o) srcs.add(o);
     }
     if (srcs.size) lead.origin = srcs.size > 1 ? 'both' : [...srcs][0];
+    // Which of its two times `start` is, once it has two detectors'.
+    if (lead.origin === 'both' && leadStamp) lead.stamp = leadStamp;
     if (lead.channel == null && other.channel != null) lead.channel = other.channel;
     lead.merged_at = new Date().toISOString();
     events().splice(dropAt, 1);
@@ -576,21 +687,40 @@ BARRY.panning = (function () {
     fuse = { from: fromX, to: lead.start, at: performance.now(),
              o: other.origin };
     sfx('select');
-    publishMarks();
-    render();
+    bankDirty = true;
+    /* Bring up what comes next, the way a decision does. It used to stay
+       put without redrawing, so the traces still showed the event that had
+       just gone and nothing moved until an arrow was pressed.
+
+       Which "next" depends on what is left to do here: a survivor that is
+       already decided -- you called it and then merged its twin into it --
+       is done, so the next event of this pass comes up; one that is still
+       undecided stays, centred and redrawn as one event, to be called. */
+    let to = index;
+    if (lead.label) {
+      const evs = events();
+      for (let i = index + 1; i < evs.length; i++) {
+        if (wanted(evs[i])) { to = i; break; }
+      }
+    }
+    goTo(to);
     animateFuse();
 
     saving += 1; updateSaving();
     try {
-      const res = await apiPost(url('merge'), { keep: a.id, drop: b.id });
+      const res = await apiPost(url('merge'), { keep: a.id, drop: b.id,
+                                                stamp: keepT });
       if (res.event) Object.assign(lead, res.event);
       if (res.progress) set_._progress = res.progress;
       if (res.dropped && res.dropped !== other.id) {
         // The server chose otherwise; its answer is the truth.
         await reload();
+      } else if (set_) {
+        render();          // who merged it, as the server stamped it
       }
       BARRY.activity.log('panning.merge', { gid: set_.gid, kept: lead.id,
-                                            gap_ms: +gap.toFixed(2) }, sess);
+                                            gap_ms: +gap.toFixed(2),
+                                            stamp: keepT }, sess);
       if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
         BARRY.views.toolkit.curationChanged();
       }
@@ -602,11 +732,10 @@ BARRY.panning = (function () {
         else delete lead[k];
       }
       events().splice(dropAt, 0, other);
-      index = events().indexOf(a);
       const back = history.indexOf(h);
       if (back >= 0) history.splice(back, 1);
       markRev += 1;
-      publishMarks(); render();
+      goTo(events().indexOf(a));
       toast('That merge did not save: ' + e.message, 'err', 8000);
     } finally {
       saving -= 1; updateSaving();
@@ -633,7 +762,9 @@ BARRY.panning = (function () {
   async function undo() {
     const last = history.pop();
     if (!last) { toast('Nothing to undo.', null, 2000); return; }
+    bankDirty = true;
     if (last.type === 'merge') { await undoMerge(last); return; }
+    if (last.type === 'bulk') { await undoBulk(last); return; }
     const at = events().findIndex((e) => e.id === last.id);
     if (at < 0) return;
     const was = events()[at].label || null;
@@ -697,6 +828,500 @@ BARRY.panning = (function () {
   }
 
   /* ==================================================================
+     Many at once: one label for many events, and the list
+     ================================================================== */
+
+  const labelOf = (id) => ((kind && kind.labels) || []).find((l) => l.id === id) || null;
+  const labelName = (id) => (id ? (labelOf(id) || {}).name || id : 'undecided');
+  const goodLabel = () => ((kind && kind.labels) || []).find((l) => l.good) || null;
+  const ORIGINS = [
+    ['both', 'Merged', 'The ones both detectors found'],
+    ['incisor', 'Incisor only', 'Found by Incisor and not by Doppler'],
+    ['doppler', 'Doppler only', 'Found by Doppler and not by Incisor'],
+    ['none', 'Origin not known', 'Carries no origin'],
+  ];
+  const originKey = (e) => (ORIGIN_WORD[e.origin] ? e.origin : 'none');
+  const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
+
+  /* One label for many events, in one write -- and one step of undo that
+     puts every one of them back the way it was. Checkup's All Garbage, for
+     any label and any selection. `labelId` null makes them undecided. On
+     screen first, as a single decision is, and put back if the write fails. */
+  async function labelMany(evs, labelId) {
+    const own = set_;
+    if (!own) return false;
+    const want = labelId || null;
+    const change = (evs || []).filter((e) => (e.label || null) !== want);
+    if (!change.length) {
+      toast('Nothing to change: ' + ((evs || []).length === 1 ? 'it is'
+            : 'they are all') + ' ' + labelName(want) + ' already.', null, 4000);
+      return false;
+    }
+    await settled();
+    if (set_ !== own) return false;
+    const h = { type: 'bulk', label: want,
+                items: change.map((e) => ({ id: e.id, from: e.label || null })) };
+    const pairs = {};
+    for (const e of change) { pairs[e.id] = want; e.label = want; }
+    history.push(h);
+    if (history.length > 500) history.shift();
+    bankDirty = true;
+    markRev += 1;
+    lastChange = null;
+    publishMarks();
+    if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
+    render(); drawStrips();
+    saving += 1; updateSaving();
+    try {
+      const res = await apiPost(url('label'), { labels: pairs });
+      if (res.progress) own._progress = res.progress;
+      if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
+        BARRY.views.toolkit.curationChanged();
+      }
+    } catch (e) {
+      if (set_ === own) {
+        const byId = new Map(events().map((x) => [x.id, x]));
+        for (const it of h.items) {
+          const ev = byId.get(it.id);
+          if (ev) ev.label = it.from;
+        }
+        const back = history.indexOf(h);
+        if (back >= 0) history.splice(back, 1);
+        markRev += 1;
+        publishMarks(); render(); drawStrips();
+      }
+      toast('That did not save: ' + e.message, 'err', 9000);
+      return false;
+    } finally {
+      saving -= 1; updateSaving();
+    }
+    BARRY.activity.log('panning.label_many',
+                       { gid: own.gid, n: change.length, label: want }, sess);
+    // The last ones decided: banked, as a single decision would be.
+    if (set_ === own && want && autoOn() && !left()) {
+      quietBank(own.gid, 'Every event decided in Panning.');
+    }
+    toast(plural(change.length, 'event') + ' '
+          + (want ? 'labelled ' + labelName(want) : 'made undecided')
+          + '. Z puts ' + (change.length === 1 ? 'it' : 'them all') + ' back.',
+          'ok', 8000);
+    // The one on screen may have just left this pass.
+    if (set_ === own && !wanted(current()) && nWanted()) goTo(firstWanted());
+    return true;
+  }
+
+  /* Undoing that: every one back to what it was, in one write. */
+  async function undoBulk(last) {
+    const own = set_;
+    const byId = new Map(events().map((x) => [x.id, x]));
+    const pairs = {}, now = {};
+    for (const it of last.items) {
+      const ev = byId.get(it.id);
+      if (!ev) continue;
+      now[it.id] = ev.label || null;
+      ev.label = it.from;
+      pairs[it.id] = it.from;
+    }
+    markRev += 1;
+    lastChange = null;
+    publishMarks();
+    if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
+    render(); drawStrips();
+    saving += 1; updateSaving();
+    try {
+      await apiPost(url('label'), { labels: pairs });
+      toast(plural(Object.keys(pairs).length, 'event') + ' put back the way '
+            + (Object.keys(pairs).length === 1 ? 'it was.' : 'they were.'),
+            'ok', 4000);
+    } catch (e) {
+      if (set_ === own) {
+        for (const id in now) {
+          const ev = byId.get(id);
+          if (ev) ev.label = now[id];
+        }
+        history.push(last);
+        markRev += 1;
+        publishMarks(); render(); drawStrips();
+      }
+      toast('That undo did not save: ' + e.message, 'err', 8000);
+    } finally {
+      saving -= 1; updateSaving();
+    }
+  }
+
+  /* LABEL MANY: which events, by where they came from and what they are
+     now, and the one label they all get. "Every merged one and every
+     Incisor-only one is a spike" is three clicks and a button. */
+  const bulkQ = { origins: null, from: null, to: null };
+
+  function bulkDialog() {
+    if (!set_) return;
+    const labs = ((kind && kind.labels) || []).filter((l) => !l.computed);
+    const nO = (o) => events().filter((e) => originKey(e) === o).length;
+    const nF = (f) => events().filter((e) => (e.label || '') === f).length;
+    // What it opens on: what was asked last time, else the pass on screen,
+    // the undecided ones, and the label that means "a real event".
+    const origins = new Set(bulkQ.origins
+      || (origin === 'all' ? ['both', 'incisor', 'doppler', 'none'] : [origin]));
+    const from = new Set(bulkQ.from || ['']);
+    let to = bulkQ.to !== null && bulkQ.to !== undefined ? bulkQ.to
+      : ((goodLabel() || labs[0] || {}).id || '');
+
+    const body = el('div', { class: 'mb pan-bulk' });
+    const okBtn = el('button', { class: 'btn' });
+    const picked = () => events().filter(
+      (e) => origins.has(originKey(e)) && from.has(e.label || ''));
+
+    const toggle = (set, id, label, n, title) => el('label', {
+      class: 'pan-bulk-opt' + (set.has(id) ? ' on' : '') + (n ? '' : ' none'),
+      title: title || null,
+    }, [
+      el('input', { type: 'checkbox', checked: set.has(id) ? 'checked' : null,
+        onchange: (e) => {
+          if (e.target.checked) set.add(id); else set.delete(id);
+          paint();
+        } }),
+      id && ORIGIN_WORD[id] ? originDot(id) : null,
+      el('span', { text: label }),
+      el('span', { class: 'cur-count', text: n.toLocaleString() }),
+    ].filter(Boolean));
+
+    const paint = () => {
+      body.innerHTML = '';
+      body.appendChild(el('div', { class: 'section-label',
+                                   text: 'Found by' }));
+      body.appendChild(el('div', { class: 'pan-bulk-row' },
+        ORIGINS.filter(([id]) => id !== 'none' || nO('none'))
+          .map(([id, label, title]) => toggle(origins, id, label, nO(id), title))));
+      body.appendChild(el('div', { class: 'section-label',
+                                   text: 'That are now' }));
+      body.appendChild(el('div', { class: 'pan-bulk-row' },
+        [toggle(from, '', 'Undecided', nF(''), 'Nobody has decided these yet')]
+          .concat(labs.map((l) => toggle(from, l.id, l.name, nF(l.id),
+                                         'Already called ' + l.name)))));
+      body.appendChild(el('div', { class: 'section-label',
+                                   text: 'Label them' }));
+      body.appendChild(el('div', { class: 'pan-bulk-row' },
+        labs.map((l) => el('button', {
+          class: 'cur-cat' + (to === l.id ? ' on' : ''),
+          style: '--cat:' + l.color,
+          onclick: () => { to = l.id; paint(); },
+        }, [el('span', { text: l.name })]))
+          .concat([el('button', {
+            class: 'cur-cat' + (to === '' ? ' on' : ''),
+            title: 'Take the decision off them, so they are to do again',
+            onclick: () => { to = ''; paint(); },
+          }, [el('span', { text: 'Undecided' })])])));
+
+      const sel = picked();
+      const change = sel.filter((e) => (e.label || '') !== to);
+      const byO = {};
+      for (const e of change) byO[originKey(e)] = (byO[originKey(e)] || 0) + 1;
+      const said = { both: 'merged', incisor: 'Incisor only',
+                     doppler: 'Doppler only', none: 'of no known origin' };
+      const mix = ORIGINS.filter(([id]) => byO[id])
+        .map(([id]) => byO[id].toLocaleString() + ' ' + said[id])
+        .join(', ');
+      body.appendChild(el('p', { class: 'confirm-msg pan-bulk-say',
+        text: !sel.length ? 'Nothing matches that. Tick at least one of each.'
+          : !change.length ? 'All ' + sel.length.toLocaleString() + ' of them '
+            + 'are ' + labelName(to || null) + ' already.'
+          : plural(change.length, 'event') + ' become'
+            + (change.length === 1 ? 's ' : ' ') + labelName(to || null)
+            + ': ' + mix + '.'
+            + (sel.length > change.length
+                ? ' ' + (sel.length - change.length).toLocaleString()
+                  + ' already are.' : '')
+            + ' One write, and Z puts every one of them back.' }));
+      okBtn.textContent = change.length
+        ? 'Label ' + change.length.toLocaleString() + ' ' + labelName(to || null)
+        : 'Label them';
+      okBtn.disabled = change.length ? null : 'disabled';
+    };
+
+    okBtn.onclick = async () => {
+      const sel = picked();
+      bulkQ.origins = [...origins]; bulkQ.from = [...from]; bulkQ.to = to;
+      closeModal();
+      await labelMany(sel, to || null);
+    };
+
+    showModal(el('div', { class: 'modal pan-bulk-modal' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Label many' }),
+        el('span', { class: 'sub', text: set_.name || '' }),
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: closeModal,
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ]),
+      body,
+      el('div', { class: 'mf' }, [
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn ghost', text: 'Cancel', onclick: closeModal }),
+        okBtn,
+      ]),
+    ]));
+    paint();
+  }
+
+  /* THE LIST: every event in the pool at once -- Checkup's List all, with
+     where each one came from on it. By time, by decision or by origin;
+     searchable; click one to go to it; and whatever is shown can be
+     labelled in one go. How it was last looked at is kept for next time. */
+  const listQ = { by: 'time', text: '', only: 'all', origins: null };
+
+  function listAll() {
+    if (!set_) return;
+    const labs = ((kind && kind.labels) || []).filter((l) => !l.computed);
+    const colorOf = (id) => (labelOf(id) || {}).color || null;
+    if (!listQ.origins) listQ.origins = ['both', 'incisor', 'doppler', 'none'];
+    const origins = new Set(listQ.origins);
+
+    const sub = el('p', { class: 'sub' });
+    const rowsHost = el('div', { class: 'cur-list pan-list' });
+    const chips = el('div', { class: 'res-toolbar cur-list-chips' });
+    const ochips = el('div', { class: 'res-toolbar cur-list-chips pan-list-o' });
+    const count = el('span', { class: 'hint' });
+    const bulk = el('div', { class: 'pan-list-bulk' });
+
+    const gapWord = (e) => {
+      if (e.origin !== 'both' || e.pair_t == null) return '';
+      const d = (e.pair_t - e.start) * 1000;
+      return KEEP_WORD[otherOf(stampOf(e))] + ' ' + (d >= 0 ? '+' : '−')
+           + Math.abs(d).toFixed(1) + ' ms';
+    };
+    const fromWord = (e) => (e.origin === 'both'
+      ? 'both, ' + KEEP_WORD[stampOf(e)] + '’s time'
+      : e.origin ? ORIGIN_WORD[e.origin] + ' only' : 'origin not known');
+
+    function matching() {
+      const q = listQ.text.trim().toLowerCase();
+      const words = q ? q.split(/\s+/) : [];
+      const out = [];
+      events().forEach((e, i) => {
+        if (!origins.has(originKey(e))) return;
+        if (listQ.only === 'left' && e.label) return;
+        if (listQ.only !== 'all' && listQ.only !== 'left'
+            && e.label !== listQ.only) return;
+        if (words.length) {
+          const hay = [clock(e.start), e.start.toFixed(3), labelName(e.label),
+                       fromWord(e), e.origin === 'both' ? 'merged' : '',
+                       e.by, e.merged_by, e.merged_at ? 'merged here' : '',
+                       e.channel != null ? 'csc' + e.channel : '']
+            .filter(Boolean).join(' ').toLowerCase();
+          if (!words.every((w) => hay.indexOf(w) >= 0)) return;
+        }
+        out.push({ e, i });
+      });
+      return out;
+    }
+
+    function rowFor(rec) {
+      const e = rec.e;
+      return el('div', {
+        class: 'cur-list-row pan-list-row' + (rec.i === index ? ' here' : '')
+             + (e.label ? '' : ' undecided'),
+        style: e.label ? '--cat:' + (colorOf(e.label) || 'var(--line)') : '',
+        title: (e.by ? 'Decided by ' + e.by : 'Nobody has decided this one')
+             + (e.merged_at ? '\nMerged here' + (e.merged_by ? ' by '
+                + e.merged_by : '') : ''),
+        onclick: () => {
+          closeModal();
+          if (!wanted(e)) { review = 'all'; origin = 'all'; }
+          mark = null;
+          goTo(rec.i);
+        },
+      }, [
+        el('span', { class: 'cl-n', text: '#' + (rec.i + 1) }),
+        el('span', { class: 'cl-t', text: clock(e.start) }),
+        el('span', { class: 'pan-list-from' }, [originDot(e.origin),
+          el('span', { text: fromWord(e) })]),
+        el('span', { class: 'pan-list-gap', text: gapWord(e) }),
+        el('span', { class: 'cl-lab', text: labelName(e.label) }),
+        el('span', { class: 'cl-who', text: e.by || '' }),
+        e.merged_at ? el('span', { class: 'cl-revs', text: 'merged here' }) : null,
+        rec.i === index ? el('span', { class: 'pill sm', text: 'here' }) : null,
+      ].filter(Boolean));
+    }
+
+    function paintChips() {
+      const tally = {};
+      for (const e of events()) {
+        if (!origins.has(originKey(e))) continue;
+        const k = e.label || '';
+        tally[k] = (tally[k] || 0) + 1;
+      }
+      const nIn = events().filter((e) => origins.has(originKey(e))).length;
+      chips.innerHTML = '';
+      const chip = (id, label, n) => el('button', {
+        class: 'pill' + (listQ.only === id ? ' active' : ''),
+        disabled: (!n && id !== 'all' && listQ.only !== id) ? 'disabled' : null,
+        text: label + ' (' + n.toLocaleString() + ')',
+        onclick: () => { listQ.only = id; paintAll(); },
+      });
+      chips.appendChild(chip('all', 'All', nIn));
+      chips.appendChild(chip('left', 'Undecided', tally[''] || 0));
+      for (const l of labs) chips.appendChild(chip(l.id, l.name, tally[l.id] || 0));
+      ochips.innerHTML = '';
+      ochips.appendChild(el('span', { class: 'hint quiet', text: 'Found by' }));
+      for (const [id, label, title] of ORIGINS) {
+        const n = events().filter((e) => originKey(e) === id).length;
+        if (id === 'none' && !n) continue;
+        ochips.appendChild(el('button', {
+          class: 'pill pan-o ' + id + (origins.has(id) ? ' active' : ''),
+          title: title + '. Click to ' + (origins.has(id) ? 'leave them out'
+                                                        : 'show them') + '.',
+          'aria-pressed': origins.has(id) ? 'true' : 'false',
+          onclick: () => {
+            if (origins.has(id)) origins.delete(id); else origins.add(id);
+            listQ.origins = [...origins];
+            paintAll();
+          },
+        }, [ORIGIN_WORD[id] ? originDot(id) : null,
+            el('span', { text: label + ' (' + n.toLocaleString() + ')' })]
+          .filter(Boolean)));
+      }
+    }
+
+    function paintRows(rows) {
+      rowsHost.innerHTML = '';
+      count.textContent = rows.length === events().length
+        ? plural(rows.length, 'event')
+        : rows.length.toLocaleString() + ' of ' + events().length.toLocaleString();
+      if (!rows.length) {
+        rowsHost.appendChild(el('div', { class: 'hint',
+          text: 'Nothing matches that.' }));
+        return;
+      }
+      const group = (title, colour, mine, two) => {
+        rowsHost.appendChild(el('div', { class: 'cl-head' }, [
+          two ? el('span', { class: 'pan-od both' })
+              : el('span', { class: 'cl-dot',
+                             style: 'background:' + (colour || 'var(--text-3)') }),
+          el('strong', { text: title }),
+          el('span', { class: 'count', text: mine.length.toLocaleString() }),
+        ]));
+        mine.forEach((r) => rowsHost.appendChild(rowFor(r)));
+      };
+      if (listQ.by === 'type') {
+        // Undecided last: it is the work remaining, not a result.
+        for (const id of labs.map((l) => l.id).concat([''])) {
+          const mine = rows.filter((r) => (r.e.label || '') === id);
+          if (mine.length) group(id ? labelName(id) : 'Undecided', colorOf(id), mine);
+        }
+        return;
+      }
+      if (listQ.by === 'origin') {
+        for (const [id, label] of ORIGINS) {
+          const mine = rows.filter((r) => originKey(r.e) === id);
+          if (mine.length) {
+            group(label, ORIGIN_WORD[id] && id !== 'both' ? oCol(id) : null,
+                  mine, id === 'both');
+          }
+        }
+        return;
+      }
+      /* By time, with a marker wherever the events thin out -- a
+         half-minute with nothing in it is a fact about the recording. */
+      let last = null;
+      for (const r of rows) {
+        if (last !== null && r.e.start - last > 30) {
+          rowsHost.appendChild(el('div', { class: 'cl-gap',
+            text: '… ' + Math.round(r.e.start - last) + ' s with no events …' }));
+        }
+        rowsHost.appendChild(rowFor(r));
+        last = r.e.start;
+      }
+    }
+
+    /* Everything shown, one label: the bulk action, scoped to exactly the
+       rows the filters and the search left on screen. */
+    function paintBulk(rows) {
+      bulk.innerHTML = '';
+      if (!rows.length) return;
+      bulk.appendChild(el('span', { class: 'hint',
+        text: 'Label ' + (rows.length === events().length ? 'all ' : 'the ')
+            + rows.length.toLocaleString() + ' shown:' }));
+      const go = async (id) => {
+        const evs = rows.map((r) => r.e);
+        const change = evs.filter((e) => (e.label || null) !== id);
+        if (!change.length) {
+          toast('They are all ' + labelName(id) + ' already.', null, 4000);
+          return;
+        }
+        const ok = await BARRY.confirm(
+          'Label ' + plural(change.length, 'event') + ' ' + labelName(id) + '?',
+          el('p', { text: 'Every event the list is showing'
+              + (evs.length > change.length ? ' that is not '
+                 + labelName(id) + ' already' : '') + ' becomes '
+              + labelName(id) + '. One write, and Z puts every one of them '
+              + 'back.' }),
+          'Label ' + change.length.toLocaleString());
+        if (!ok) return;
+        await labelMany(evs, id);
+        if (set_) paintAll();
+      };
+      for (const l of labs) {
+        bulk.appendChild(el('button', {
+          class: 'cur-cat', style: '--cat:' + l.color,
+          onclick: () => go(l.id) }, [el('span', { text: l.name })]));
+      }
+      bulk.appendChild(el('button', { class: 'cur-cat',
+        title: 'Take the decision off them, so they are to do again',
+        onclick: () => go(null) }, [el('span', { text: 'Undecided' })]));
+    }
+
+    function paintAll() {
+      sub.textContent = plural(events().length, 'event') + '  ·  '
+        + left().toLocaleString() + ' still undecided  ·  ' + (set_.name || '');
+      paintChips();
+      const rows = matching();
+      paintRows(rows);
+      paintBulk(rows);
+    }
+
+    // Its own buttons rather than ui.seg, which remembers the value it was
+    // built with and would not answer a click back to it.
+    const controls = el('div', { class: 'cur-list-bar' }, [
+      el('div', { class: 'seg sm' }, [
+        ['time', 'By time', 'In time order'],
+        ['type', 'By decision', 'Grouped by what each was called'],
+        ['origin', 'By origin', 'Grouped by which detector found it'],
+      ].map(([id, label, title]) => el('button', {
+        class: listQ.by === id ? 'active' : '', text: label, title,
+        onclick: (ev) => {
+          listQ.by = id;
+          Array.from(ev.target.parentNode.children).forEach(
+            (b) => b.classList.toggle('active', b === ev.target));
+          paintAll();
+        },
+      }))),
+      el('input', {
+        type: 'search', class: 'cur-list-search', value: listQ.text,
+        placeholder: 'Find a time, a decision, an origin, a name…',
+        oninput: (e) => { listQ.text = e.target.value; paintAll(); },
+      }),
+      count,
+    ]);
+
+    showModal(el('div', { class: 'modal cur-list-modal pan-list-modal' }, [
+      el('div', { class: 'mh' }, [
+        el('h2', { text: 'Everything in this pool' }),
+        sub,
+      ]),
+      controls, chips, ochips, rowsHost, bulk,
+      el('div', { class: 'mf' }, [
+        el('div', { style: 'flex:1' }),
+        el('button', { class: 'btn', text: 'Close', onclick: closeModal }),
+      ]),
+    ]));
+    paintAll();
+    // Land on where you actually are, rather than at the top of a thousand.
+    const here = rowsHost.querySelector('.cur-list-row.here');
+    if (here && here.scrollIntoView) here.scrollIntoView({ block: 'center' });
+  }
+
+  /* ==================================================================
      The keyboard
      ================================================================== */
   const modalOpen = () => {
@@ -718,7 +1343,9 @@ BARRY.panning = (function () {
       n: () => step(1), p: () => step(-1),
       z: undo, u: undo, backspace: undo,
       c: clearLabel,
-      m: merge,
+      m: () => merge('incisor'),
+      d: () => merge('doppler'),
+      l: listAll,
       escape: () => { if (mark) { mark = null; render(); drawStrips(); } else exit(); },
     };
     if (nav[k]) {
@@ -765,14 +1392,16 @@ BARRY.panning = (function () {
       el('span', { class: 'cur-sub', text: clock(ev && ev.start) }),
       ev ? el('span', { class: 'pan-from' }, [
         originDot(ev.origin),
-        el('span', { text: ev.origin === 'both' ? 'both found it'
+        el('span', { text: ev.origin === 'both'
+                           ? 'both found it, at ' + KEEP_WORD[stampOf(ev)] + '’s time'
                          : ev.origin ? ORIGIN_WORD[ev.origin] + ' only'
                          : 'origin not known' }),
       ]) : null,
       pair != null
         ? el('span', { class: 'cur-sub',
             title: 'Where the other detector put it',
-            text: (ev.origin === 'both' ? 'Doppler ' : 'other ')
+            text: (ev.origin === 'both' ? KEEP_WORD[otherOf(stampOf(ev))] + ' '
+                                        : 'other ')
                 + (pair >= 0 ? '+' : '−') + Math.abs(pair).toFixed(1) + ' ms' })
         : null,
       ev && ev.merged_at
@@ -783,6 +1412,13 @@ BARRY.panning = (function () {
       ev && ev.channel != null
         ? el('span', { class: 'cur-sub', text: 'CSC' + ev.channel }) : null,
       el('span', { class: 'cur-count', text: at + ' / ' + nWanted() }),
+      // Whether the work is in the bank -- the step page says the same.
+      BARRY.setPicker ? BARRY.setPicker._bankChip({
+        banked: banked ? Object.assign({}, banked,
+                                       { changed: banked.changed || bankDirty })
+                       : null,
+        progress: { specified: events().filter((e) => e.label).length },
+      }) : null,
       beatOthers.length
         ? BARRY.ui.chip(beatOthers.length + ' also here', { kind: 'warn' })
         : null,
@@ -814,23 +1450,41 @@ BARRY.panning = (function () {
     }
     const b = partner();
     const gap = b && ev ? (b.start - ev.start) * 1000 : null;
-    cats.appendChild(el('button', {
-      class: 'cur-cat pan-merge' + (mark ? ' armed' : ''),
-      disabled: b ? null : 'disabled',
-      title: b ? 'Make this and the ' + (mark ? 'picked' : 'nearest')
-                 + ' event one: ' + ORIGIN_WORD[b.origin || 'incisor']
-                 + '’s, ' + (gap >= 0 ? gap.toFixed(1) + ' ms later'
-                                           : (-gap).toFixed(1) + ' ms earlier')
-                 + '. Shift-click another on the strip to pick it.  [M]'
-               : 'Nothing next to this one',
-      onclick: merge,
-    }, [
-      el('span', { text: mark ? 'Merge with the picked one' : 'Merge with nearest' }),
-      el('kbd', { text: 'M' }),
-      gap != null ? el('span', { class: 'cur-count',
-        text: (gap >= 0 ? '+' : '−') + Math.abs(gap).toFixed(1) + ' ms' })
-        : null,
-    ].filter(Boolean)));
+    /* Two merges: to Incisor's time (M) and to Doppler's (D). Each says
+       which of the two it would keep, and the one that cannot -- neither
+       event carries Doppler's time -- says why rather than vanishing. */
+    const mergeBtn = (want, key) => {
+      const ok = !!b && canKeep(ev, b, want);
+      const lead = ok ? leadOf(ev, b, want) : null;
+      const word = KEEP_WORD[want];
+      return el('button', {
+        class: 'cur-cat pan-merge ' + want + (mark ? ' armed' : ''),
+        disabled: ok ? null : 'disabled',
+        'data-merge': want,
+        title: !b ? 'Nothing next to this one'
+          : !ok ? 'Neither this one nor the ' + (mark ? 'picked' : 'nearest')
+                  + ' one carries Doppler’s time, so there is no Doppler stamp '
+                  + 'to keep. Merge to Incisor instead.'
+          : 'Make this and the ' + (mark ? 'picked' : 'nearest') + ' event '
+            + '(' + ORIGIN_WORD[b.origin || 'incisor'] + '’s, '
+            + (gap >= 0 ? gap.toFixed(1) + ' ms later'
+                        : (-gap).toFixed(1) + ' ms earlier')
+            + ') one, at ' + word + '’s time — ' + clock(lead.start)
+            + '. The other time is kept beside it. Shift-click another on '
+            + 'the strip to pick it.  [' + key + ']',
+        onclick: () => merge(want),
+      }, [
+        el('i', { class: 'pan-od ' + want }),
+        el('span', { text: 'Merge to ' + word }),
+        el('kbd', { text: key }),
+        want === 'incisor' && gap != null ? el('span', { class: 'cur-count',
+          text: (mark ? 'picked ' : '') + (gap >= 0 ? '+' : '−')
+              + Math.abs(gap).toFixed(1) + ' ms' })
+          : null,
+      ].filter(Boolean));
+    };
+    cats.appendChild(mergeBtn('incisor', 'M'));
+    cats.appendChild(mergeBtn('doppler', 'D'));
     bar.appendChild(cats);
 
     bar.appendChild(el('div', { class: 'cur-nav' }, [
@@ -865,11 +1519,33 @@ BARRY.panning = (function () {
         if (!wanted(current())) goTo(firstWanted());
         render(); drawStrips();
       }, { extra: 'pan-origin' }),
+      el('button', { class: 'btn ghost sm', text: 'List all…',
+        title: 'Every event in this pool, by time, decision or origin. Click '
+             + 'one to go to it; label everything shown at once.  [L]',
+        onclick: listAll }),
+      el('button', { class: 'btn ghost sm', text: 'Label many…',
+        title: 'Give one label to every event of the kinds you pick — say, '
+             + 'every merged and every Incisor-only one is a spike. One step '
+             + 'of undo puts them all back.',
+        onclick: () => bulkDialog() }),
       el('span', { id: 'panSaving', class: 'cur-saving' }),
       el('span', { class: 'spacer' }),
       el('button', { class: 'btn ghost sm', text: 'Bank the results…',
         title: 'Write these decisions and merges as a new version of the pool',
         onclick: bank }),
+      el('button', {
+        class: 'mini spot-auto' + (autoOn() ? ' on' : ''),
+        text: 'Auto-bank: ' + (autoOn() ? 'on' : 'off'),
+        title: autoOn()
+          ? 'The decisions and merges are banked as a new version without '
+            + 'asking: when the last undecided event is decided, and when you '
+            + 'leave with work the bank does not have yet. Click to turn it off.'
+          : 'Off: nothing is banked until you press Bank the results. '
+            + 'Click to turn it on.',
+        onclick: () => {
+          try { BARRY.prefs.set(AUTO_KEY, !autoOn()); } catch (e) { /* later */ }
+          render();
+        } }),
       el('button', { class: 'btn ghost sm', text: 'Line them up…',
         title: 'Take the spikes to Lock',
         onclick: () => toTool('lock') }),
@@ -889,11 +1565,73 @@ BARRY.panning = (function () {
     if (!set_ || !BARRY.curate || !BARRY.curate.bankAt) return;
     const t = {};
     for (const e of events()) if (e.label) t[e.label] = (t[e.label] || 0) + 1;
-    return BARRY.curate.bankAt({
+    const gid = set_.gid;
+    return settled().then(() => BARRY.curate.bankAt({
       gid: set_.gid, kind: set_.kind, name: set_.name,
       labels: (kind && kind.labels) || set_.labels || [],
       progress: { by_label: t, left: left() },
-    });
+    })).then(() => refreshBanked(gid));
+  }
+
+  /* Banking without being asked (2026-10-19), as Spotter does: when the
+     last undecided event is decided, and on leaving with work the bank does
+     not have. The dialog's own route, so a bank that would hold nothing new
+     writes nothing. On by default, off by the switch in the bar. */
+  const AUTO_KEY = 'panning_autobank';
+  function autoOn() {
+    try { return BARRY.prefs.get(AUTO_KEY, true) !== false; }
+    catch (e) { return true; }
+  }
+
+  async function quietBank(gid, why) {
+    await settled();
+    let res;
+    try {
+      res = await apiPost('/api/curation/' + encodeURIComponent(gid) + '/'
+                          + KIND + '/bank', {
+        note: why,
+        added_by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
+                  || undefined,
+      });
+    } catch (e) {
+      toast('Could not bank automatically: ' + e.message
+            + ' Bank the results by hand to keep them.', 'warn', 9000);
+      return;
+    }
+    const it = (res.entries || [])[0] || {};
+    if (it.replaced && !it.new_version) return;          // nothing new
+    toast('Banked automatically as ' + BARRY.ui.versionLabel(it.version)
+          + ': ' + (it.n || 0) + ' decided.', 'ok', 6000);
+    await refreshBanked(gid);
+    if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
+      BARRY.views.toolkit.curationChanged();
+    }
+    // The workbench, if it is the page on screen, shows the new version.
+    if (BARRY.views.toolkit && BARRY.views.toolkit.refresh
+        && BARRY.state.view === 'toolkit') {
+      BARRY.views.toolkit.refresh();
+    }
+  }
+
+  /* Every decision and merge on the server before the bank reads them, or
+     the version is one short -- a last key pressed just before Bank. */
+  async function settled() {
+    for (let i = 0; i < 60 && saving > 0; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+
+  /* What the bank holds of this set now, read back after banking rather
+     than assumed: a bank that wrote nothing new says so in the chip too. */
+  async function refreshBanked(gid) {
+    if (!set_ || set_.gid !== gid) return;
+    try {
+      const got = await api(url(''));
+      if (!set_ || set_.gid !== gid) return;
+      banked = got.banked || null;
+      bankDirty = false;
+      render();
+    } catch (e) { /* the chip keeps what it had */ }
   }
 
   const flagged = () => events().filter(
@@ -971,12 +1709,15 @@ BARRY.panning = (function () {
     };
     const x = Math.round(X(ev.start)) + 0.5;
     if (ev.origin === 'both') {
-      const xd = ev.pair_t != null ? Math.round(X(ev.pair_t)) + 0.5 : x;
-      line(x, yI, ci);
+      // Each detector's tick at its own time, whichever the event is filed
+      // under (`stamp`); `x`, returned, is the time it is filed at.
+      const xi = Math.round(X(timeBy(ev, 'incisor'))) + 0.5;
+      const xd = Math.round(X(timeBy(ev, 'doppler'))) + 0.5;
+      line(xi, yI, ci);
       line(xd, yD, cd);
       g.strokeStyle = tok('--text-3', '#888');
       g.lineWidth = 1;
-      g.beginPath(); g.moveTo(x, yI + lh - 2); g.lineTo(xd, yD + 2); g.stroke();
+      g.beginPath(); g.moveTo(xi, yI + lh - 2); g.lineTo(xd, yD + 2); g.stroke();
     } else if (ev.origin === 'doppler') {
       line(x, yD, cd);
     } else {
@@ -1091,8 +1832,9 @@ BARRY.panning = (function () {
     const inD = py > WP.t + WP.lane + 2;
     let best = null, bestD = 9;     // px
     for (const ev of events()) {
-      const ts = [[ev.start, ev.origin !== 'doppler' ? 'i' : 'd']];
-      if (ev.origin === 'both' && ev.pair_t != null) ts.push([ev.pair_t, 'd']);
+      const ts = ev.origin === 'both'
+        ? [[timeBy(ev, 'incisor'), 'i'], [timeBy(ev, 'doppler'), 'd']]
+        : [[ev.start, ev.origin !== 'doppler' ? 'i' : 'd']];
       for (const [t, lane] of ts) {
         const x = WP.l + ((t - W.t0) / (W.t1 - W.t0)) * plotW;
         const d = Math.abs(x - px) + ((lane === 'd') !== inD ? 4 : 0);
@@ -1194,6 +1936,7 @@ BARRY.panning = (function () {
         start: e.start, label: e.label || null,
         origin: e.origin || null,
         pair_t: e.pair_t != null ? e.pair_t : null,
+        stamp: e.stamp || null,
       })),
       mark: mark,
       gid: set_.gid,
@@ -1343,7 +2086,10 @@ BARRY.panning = (function () {
       const isNow = i === marks.index;
       const x = Math.round(X(e.start)) + 0.5;
       const top = isNow ? y0 : y0 + plotH * 0.78;
-      const colI = e.origin === 'doppler' ? oCol('doppler') : oCol('incisor');
+      // The stamp it is filed under, in that detector's colour; the other
+      // detector's time beside it, in the other's.
+      const own = stampOf(e) || 'incisor';
+      const colI = oCol(own);
       // A dark and a light line under the colour, so it reads on a CSD too.
       ctx.globalAlpha = 0.5 * A;
       ctx.lineWidth = 1;
@@ -1359,7 +2105,7 @@ BARRY.panning = (function () {
       ctx.setLineDash([]);
       if (e.origin === 'both' && e.pair_t != null) {
         const xd = Math.round(X(e.pair_t)) + 0.5;
-        ctx.strokeStyle = oCol('doppler');
+        ctx.strokeStyle = oCol(otherOf(own));
         ctx.lineWidth = isNow ? 2 : 1.2;
         ctx.setLineDash([2, 2]);
         ctx.beginPath(); ctx.moveTo(xd, top + (isNow ? 10 : 4)); ctx.lineTo(xd, y0 + plotH);
@@ -1381,7 +2127,8 @@ BARRY.panning = (function () {
         ctx.fill();
         ctx.font = '11px system-ui, sans-serif';
         ctx.textAlign = 'left';
-        const word = (e.origin === 'both' ? 'both' : e.origin === 'doppler'
+        const word = (e.origin === 'both'
+          ? 'both, at ' + KEEP_WORD[own] + '’s' : e.origin === 'doppler'
           ? 'Doppler' : e.origin === 'incisor' ? 'Incisor' : '')
           + (lab ? ' · ' + lab.name : '');
         if (word) ctx.fillText(word, x + 7, y0 + 24);
@@ -1400,105 +2147,37 @@ BARRY.panning = (function () {
     render();
   }
 
+  /* Put the current event back in the middle at whatever span the window
+     is now on. Called by xplore's setWindow after a zoom, the way Checkup's
+     is: a zoom from the pane's buttons, the wheel or the span field keeps
+     the event in view, and is the span from then on. */
   function recentre() {
-    const p = (BARRY.views.xplore.state.panes || [])[0];
-    if (p && p.span) span = p.span;
-  }
-
-  /* ==================================================================
-     The step page in ToolKit
-     ================================================================== */
-
-  /* The way in: pools being sorted, and pools nobody has started on. */
-  async function paintStep() {
-    const h = document.getElementById('tkResult');
-    if (!h) return;
-    h.style.opacity = '1';
-    h.innerHTML = '';
-    h.dataset.tool = 'panning';      // so ToolKit's refresh leaves it be
-    h.appendChild(BARRY.ui.stepHeader({
-      title: 'Panning',
-      step: BARRY.ui.stepOf('panning'),
-      blurb: 'Sort a pool one event at a time: spike, garbage or flag. '
-           + 'Every event shows which detector found it, and two that are '
-           + 'one event can be merged.',
-    }));
-    const box = el('div', { class: 'card' }, [
-      el('div', { class: 'section-label', text: 'Which pool' }),
-    ]);
-    h.appendChild(box);
-    BARRY.skeleton.into(box, 'row', 3);
-    let sets = [], recs = [];
-    try {
-      const [a, b] = await Promise.all([
-        api('/api/curation?kind=' + KIND),
-        api('/api/confluence/recordings'),
-      ]);
-      sets = (a.sets || []).filter((s) => s.kind === KIND);
-      recs = b.recordings || [];
-    } catch (e) {
-      box.innerHTML = '';
-      box.appendChild(el('div', { class: 'empty-state', text: e.message }));
-      return;
-    }
-    if (!BARRY.views.toolkit || BARRY.views.toolkit.tool() !== 'panning') return;
-    box.innerHTML = '';
-    box.appendChild(el('div', { class: 'section-label', text: 'Which pool' }));
-    const started = new Set(sets.map((s) => s.gid));
-    const fresh = [];
-    for (const r of recs) {
-      if (started.has(r.gid)) continue;
-      const p = (r.pooled || [])[0];
-      if (p) fresh.push({ r, p });
-    }
-    if (!sets.length && !fresh.length) {
-      box.appendChild(el('div', { class: 'empty-state',
-        text: 'Nothing pooled yet. Pool a recording in Junction — step 1 '
-            + '— and it is here to sort.' }));
-      return;
-    }
-    if (sets.length) {
-      box.appendChild(el('div', { class: 'hint quiet', text: 'Being sorted' }));
-      for (const st of sets) {
-        const pr = st.progress || {};
-        box.appendChild(el('button', {
-          class: 'dop-review', onclick: () => enter(st.gid),
-        }, [
-          el('strong', { text: st.name || st.session_label || st.gid }),
-          el('span', { text: (pr.specified || 0) + ' of ' + (pr.total || 0)
-                           + ' decided' }),
-          st.open ? BARRY.ui.chip('on the bench', { kind: 'ok' }) : null,
-          st.assignee ? BARRY.ui.chip(st.assignee) : null,
-        ].filter(Boolean)));
-      }
-    }
-    if (fresh.length) {
-      box.appendChild(el('div', { class: 'hint quiet', text: 'Pooled, not started' }));
-      for (const { r, p } of fresh) {
-        const s = (p.params || {}).stats || {};
-        box.appendChild(el('button', {
-          class: 'dop-review', onclick: () => enter(r.gid, p.id),
-        }, [
-          el('strong', { text: p.name || r.label || r.gid }),
-          el('span', { text: (p.n || 0).toLocaleString() + ' events'
-                           + (s.merged != null ? ' · ' + s.merged + ' merged' : '') }),
-        ]));
-      }
-    }
+    if (!set_ || !sess) return;
+    const shown = paneSpan();
+    if (shown) setSpan(shown);
+    goTo(index, true);
   }
 
   return {
-    enter, exit, draw, rebind, recentre, receipt, paintStep,
+    enter, exit, draw, rebind, recentre, receipt,
     step: (d) => step(d),
     goTo: (i) => goTo(i),
     assign: (id) => assign(id),
     merge, undo,
     clear: clearLabel,
     bank,
+    // Many at once (2026-10-19): the list, Label many, and the write both
+    // use -- `labelMany(ids, label)` takes event ids, for a harness.
+    listAll, bulkDialog,
+    labelMany: (ids, label) => {
+      const want = new Set(ids || []);
+      return labelMany(events().filter((e) => want.has(e.id)), label);
+    },
     events: () => events().map((e) => ({ id: e.id, start: e.start,
                                          label: e.label || null,
                                          origin: e.origin || null,
-                                         pair_t: e.pair_t != null ? e.pair_t : null })),
+                                         pair_t: e.pair_t != null ? e.pair_t : null,
+                                         stamp: e.stamp || null })),
     get review() { return review; },
     get origin() { return origin; },
     get active() { return !!set_; },
@@ -1511,6 +2190,8 @@ BARRY.panning = (function () {
     _keys: keys,
     _leadOf: leadOf,
     _strips: drawStrips,
+    // For a harness: the span the mode will use, and what the pane shows.
+    _span: () => ({ span, pane: paneSpan() }),
   };
 })();
 
