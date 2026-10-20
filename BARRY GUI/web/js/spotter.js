@@ -358,6 +358,16 @@ BARRY.spotter = (function () {
 
   function exit() {
     if (!set_) return;
+    /* Leaving with decisions the bank does not have: banked on the way out,
+       when that is on. After the set is let go, so it cannot hold up the
+       leaving; quietBank waits for any save still in flight. */
+    {
+      const decided = events().filter((e) => e.label).length;
+      if (autoOn() && decided
+          && (bankDirty || !banked || banked.changed)) {
+        quietBank(set_.gid, 'Banked on leaving Spotter.');
+      }
+    }
     /* Written now rather than in 350 ms. Preference writes are coalesced,
        and leaving is exactly the moment somebody is about to do something
        else -- the whole point is that it survives a tab switch. */
@@ -652,6 +662,10 @@ BARRY.spotter = (function () {
         '/api/curation/' + encodeURIComponent(set_.gid) + '/ied/label',
         { event: ev.id, label: labelId });
       if (res.progress) set_._progress = res.progress;
+      // The last one decided: bank it, if banking without asking is on.
+      if (set_ && autoOn() && !left()) {
+        quietBank(set_.gid, 'Every candidate decided in Spotter.');
+      }
       if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
         BARRY.views.toolkit.curationChanged();
       }
@@ -891,6 +905,19 @@ BARRY.spotter = (function () {
       el('button', { class: 'btn ghost sm', text: 'Bank the results\u2026',
         title: 'Write these decisions as a new version of the banked run',
         onclick: bank }),
+      el('button', {
+        class: 'mini spot-auto' + (autoOn() ? ' on' : ''),
+        text: 'Auto-bank: ' + (autoOn() ? 'on' : 'off'),
+        title: autoOn()
+          ? 'The decisions are banked as a new version without asking: when '
+            + 'the last undecided one is decided, and when you leave with '
+            + 'decisions the bank does not have yet. Click to turn it off.'
+          : 'Off: nothing is banked until you press Bank the results. '
+            + 'Click to turn it on.',
+        onclick: () => {
+          try { BARRY.prefs.set(AUTO_KEY, !autoOn()); } catch (e) { /* later */ }
+          render();
+        } }),
       el('button', { class: 'btn ghost sm', text: 'Line them up…',
         title: 'Take the confirmed ones to Eye',
         onclick: () => {
@@ -901,6 +928,59 @@ BARRY.spotter = (function () {
     ]));
     updateSaving();
     ensureRaster();
+  }
+
+  /* ==================================================================
+     Banking without being asked (2026-10-19)
+     ==================================================================
+     When the last undecided candidate is decided, and on leaving with
+     decisions the bank does not have yet, the set is banked as a new
+     version of its entry -- the same route the dialog uses, so a bank that
+     would hold nothing new writes nothing. On by default, off by the switch
+     in the bar, remembered per person. */
+  const AUTO_KEY = 'spotter_autobank';
+  function autoOn() {
+    try { return BARRY.prefs.get(AUTO_KEY, true) !== false; }
+    catch (e) { return true; }
+  }
+
+  async function quietBank(gid, why) {
+    for (let i = 0; i < 60 && saving > 0; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    let res;
+    try {
+      res = await apiPost('/api/curation/' + encodeURIComponent(gid) + '/ied/bank', {
+        note: why,
+        added_by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
+                  || undefined,
+      });
+    } catch (e) {
+      toast('Could not bank automatically: ' + e.message
+            + ' Bank the results by hand to keep them.', 'warn', 9000);
+      return;
+    }
+    const it = (res.entries || [])[0] || {};
+    const v = BARRY.ui.versionLabel(it.version);
+    if (it.replaced && !it.new_version) return;          // nothing new
+    toast('Banked automatically as ' + v + ': ' + (it.n || 0) + ' decided.',
+          'ok', 6000);
+    if (set_ && set_.gid === gid) {
+      try {
+        const got = await api('/api/curation/' + encodeURIComponent(gid) + '/ied');
+        if (set_ && set_.gid === gid) {
+          banked = got.banked || null; bankDirty = false; render();
+        }
+      } catch (e) { /* the chip keeps what it had */ }
+    }
+    if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
+      BARRY.views.toolkit.curationChanged();
+    }
+    // The workbench, if it is the page on screen, shows the new version.
+    if (BARRY.views.toolkit && BARRY.views.toolkit.refresh
+        && BARRY.state.view === 'toolkit') {
+      BARRY.views.toolkit.refresh();
+    }
   }
 
   async function bank() {

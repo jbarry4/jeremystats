@@ -15,6 +15,184 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.20.1 - Braces: every spike seen, and the arrows stop only where a decision is needed
+
+A page reload is enough: nothing on the server changed.
+
+### Changed
+
+- **Every spike is drawn properly in the review.** On "Needing a
+  decision", the stamps Braces was sure of used to be a short, faint tick
+  at the bottom of each panel, which disappeared on a CSD raster or under
+  the curve. Now every stamp is two full-strength ticks, one down from the
+  top and one up from the bottom, whether or not it needs a decision. The
+  data between them stays clear. The one you are on still runs the full
+  height.
+- **The arrows stop only where a decision is needed.** n / p and ◀ ▶ visit
+  exactly the flagged stamps (and any overlapping ones), in order, both
+  ways.
+  - Each of those wears a **▼ cap** on the top edge: amber while it waits,
+    green once answered, red if called garbage. You can see where the
+    arrows will land before you press them.
+  - The toggle was "Show: Needing a decision | All of them", which hid
+    stamps as well as skipping them. It is now **"Step through: Needing a
+    decision | Every stamp"**, and every stamp is drawn either way.
+  - The review now opens stepping through the decisions whenever the set
+    has any, answered ones included, on the first one still waiting.
+- **The bar says where you are:** "decision 3 of 12 · stamp 57 of 172", or
+  "no decision needed here · stamp 57 of 172".
+
+### Added
+
+- **Press any spike to go to it.** Away from the stamp you are on, a press
+  on another stamp's line goes to it, including one that needs no
+  decision. From there n / p carry on to the decisions on either side.
+  - A press near the stamp you are on still drags it, as before.
+  - A press on empty trace still pans.
+  - It does nothing while a question about the current stamp is open, or
+    while the glove is yoinking it.
+- **Skipped ones come back.** Answering the last one still waiting now goes
+  back round to the first one you skipped, and says so, instead of
+  stopping as if the set were done. This works in the review and in the
+  proposal page's bench.
+
+### Checked
+
+- New browser test `_dev/bracessee.html` (32 checks), on a real set of 172
+  stamps with 12 waiting. Decisions were caught in the page and never
+  sent. It checks:
+  - every stamp on screen is drawn top and bottom at full strength, and
+    the ones needing no decision are not fainter;
+  - every decision has its cap, in amber while waiting, and no other stamp
+    has one;
+  - n / p visit exactly the decisions and nothing else, and "Every stamp"
+    visits every one;
+  - a press on another stamp goes to it, a press on empty trace pans, a
+    press near the current stamp drags it, and nothing is jumped to while
+    a question is open;
+  - answering the last one waiting goes back to a skipped one.
+- To test the test, the caps were removed, the other stamps dimmed and the
+  arrows allowed to step into every stamp: 9 checks failed. The file was
+  then restored byte for byte.
+- All nine Braces browser tests pass (179 checks).
+- Screenshots of a real recording show the neighbours and caps on the
+  traces and all three rasters.
+
+---
+
+## 2026.10.19.6 - Spotter and Panning get Checkup's workbench; Doppler banks as it lands; m13 s17 runs
+
+**Pull and restart Jarvis on every machine.** Banking a run as it lands,
+the banked state of each set and the list of runs not started are new on
+the server, and the cluster picks up the new Doppler the next time it is
+sent a job.
+
+### Changed
+
+- **Spotter's and Panning's step pages are Checkup's workbench.** Spotter
+  was a plain list. Both now have:
+  - the bench, with whose each set is, since when, who is in it right
+    now, and how far through it is;
+  - Carry on, Put it down, Version…, Bank the results, Export CSV,
+    Receipt and Archive;
+  - the shelf, with search, sort, and Unfinished / Has flagged / Done /
+    Archived;
+  - **Start from a banked run:** every banked run that no set has been
+    started from, with its own search. Spotter shows Doppler's runs and
+    Panning shows Junction's; Everything adds the older imports. Spotter
+    showed six sets while 42 Doppler runs were banked; all of them are
+    here now.
+  - Each page shows its header straight away and says what it is reading
+    while it loads.
+  - Sets and runs left behind by test harnesses are not shown, and the page
+    says how many were hidden.
+- **Every set says whether its work is in the Event Bank:** *banked v3*,
+  *changed since v3*, *not banked yet*. This shows on the bench, on the
+  shelf, in Checkup, and in Spotter's and Panning's bars.
+- **Auto-bank in Spotter and Panning.** When the last undecided event is
+  decided, and when you leave with work the bank does not have, the set is
+  banked as a new version without asking. A bank that would hold nothing
+  new writes nothing. The *Auto-bank* switch in the bar turns it off.
+- **Doppler banks each run as it lands.** It goes in as its own entry, with
+  the name and the note the Bank dialog would have given it, so a batch
+  that lands overnight is banked in the morning. A run is never banked
+  twice: the panel and the landed list say *banked*, and the panel offers
+  **Confirm them in Spotter**. A run with no events is not banked.
+
+### Fixed
+
+- **Panning put the span back to 0.6 s on every event.** It now keeps
+  whatever the span is set to, by the field, by zooming or with the wheel,
+  remembers it on this computer, and starts at 1 s the first time. Spotter
+  did the same thing (back to 1 s) and is fixed the same way.
+- **Merging in Panning left the traces where they were** until an arrow
+  was pressed. If the event kept is already decided, the next event comes
+  up. If it is not, it stays on screen, centred and redrawn as one event,
+  ready to be called.
+- **Doppler could not run PTEN m13 s17.** On netfiles that folder holds
+  every channel twice: `CSCn.ncs` and `CSCn_0001.ncs` are byte for byte the
+  same. Doppler took the copy for a recording in two pieces and refused it.
+  A second file that is a copy of the first, or that has no records in it,
+  is no longer counted as a piece; the run says each was read once. A real
+  continuation is still refused.
+- **Doppler now handles gaps the way Incisor does.** A segment that read
+  short of what its records say let the next segment move up into its
+  place, so every event after it was stamped early by the shortfall (36 ms
+  on a recording like KCNT1 m306 s1). The missing stretch is now held flat,
+  every time after it stays on the recording's own clock, and the run says
+  how short the segment was. Event times already came from the breakpoint
+  map, as Incisor's do.
+
+## 2026.10.19.5 - The Confluence: aligned or not, merge to either detector, label many, and the list
+
+**Pull and restart Jarvis on every machine.** The server changed: pools
+can keep Doppler's time, Panning's merge takes a choice, and the bank
+carries whose stamp a merged event is under.
+
+### Added
+
+- **Junction says whether each input is aligned.** Every input is labelled
+  *✓ aligned* or *not aligned*, meaning whether Braces (for Incisor's
+  stamps) or Eye (for Doppler's) has put its stamps on their peaks. The
+  label appears:
+  - on each detector in the recording list;
+  - on each side, for the version chosen;
+  - in the version tree;
+  - in Many.
+
+  The pool says it in a sentence under its counts. The pool's record keeps
+  whether each input was aligned. A pool Lock has lined up says
+  *pool aligned* in the list.
+- **Merge to Incisor's time or to Doppler's.**
+  - In Junction, *Merged events keep* chooses whose stamp a merged event is
+    filed at, for one recording or Many. The same pairs merge either way.
+    The other detector's time is kept beside it.
+  - In Panning, **M** merges to Incisor's time and **D** to Doppler's. The
+    survivor is the event already carrying that time, so no stamp moves.
+    *Merge to Doppler* is greyed out, and says why, when neither event has
+    Doppler's time.
+  - **Z** undoes either.
+  - The bar, the list and the traces all say which time an event is filed
+    at (*both found it, at Doppler's time · Incisor −4.1 ms*).
+- **Label many, in Panning.** Pick which events by who found them (Merged,
+  Incisor only, Doppler only) and what they are now (Undecided, Spike, …),
+  then the one label they all get. For example, every merged and every
+  Incisor-only event becomes a Spike. It counts what it will change before
+  it changes anything. It saves as one write, and one **Z** puts every
+  event back.
+- **The list, in Panning.** *List all…* (**L**) shows every event in the
+  pool: when it is, who found it, the other detector's time, and what it
+  was called. You can:
+  - group it by time, by decision or by origin;
+  - search it;
+  - filter it by decision, and leave origins out;
+  - click an event to go to it;
+  - give every event shown one label at once.
+
+Tests: `tools/test_confluence.py` and `tools/test_confluence_routes.py`
+(merging to Doppler's time, aligned versions). Harness:
+`_dev/panmany.html` (38) — it writes nothing.
+
 ## 2026.10.19.4 - Xplorefinder: a filter for one pane, picks that combine, and panels that keep to themselves
 
 ### Added

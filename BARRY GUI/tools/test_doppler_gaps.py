@@ -83,6 +83,49 @@ def fake_reader(short):
     return read
 
 
+def _ncs(path, t0_us, n_records):
+    """A minimal .ncs: a blank header and `n_records` records from t0."""
+    from backend import nlx
+    recs = np.zeros(n_records, dtype=nlx.RECORD_DTYPE)
+    recs["timestamp"] = t0_us + np.arange(n_records) * 17066
+    recs["nvalid"] = nlx.SAMPLES_PER_RECORD
+    with open(path, "wb") as fh:
+        fh.write(b"\0" * nlx.HEADER_BYTES)
+        fh.write(recs.tobytes())
+
+
+def parts_checks():
+    """PTEN m13 s17's netfiles copy holds every CSCn.ncs twice, the second
+    as CSCn_0001.ncs, byte for byte: that is not a split recording."""
+    import shutil
+    import tempfile
+    d = tempfile.mkdtemp(prefix="jarvis-parts-")
+    try:
+        _ncs(os.path.join(d, "CSC1.ncs"), 1000, 50)
+        shutil.copyfile(os.path.join(d, "CSC1.ncs"),
+                        os.path.join(d, "CSC1_0001.ncs"))
+        _ncs(os.path.join(d, "CSC2.ncs"), 1000, 50)
+        open(os.path.join(d, "CSC2_0001.ncs"), "wb").write(b"\0" * 16384)
+        split, dupes = doppler.parts_report(d)
+        check("a byte-for-byte copy is not a piece", not split
+              and sorted(dupes) == [1, 2], (split, dupes))
+        check("a header with no records is not a piece either",
+              2 in dupes, dupes)
+        check("so the recording is not refused",
+              doppler.check_parts(d) is None, doppler.check_parts(d))
+        w = doppler.duplicate_words(d)
+        check("and the run says each was read once",
+              w is not None and "read once" in w and "CSC1" in w, w)
+        _ncs(os.path.join(d, "CSC3.ncs"), 1000, 50)
+        _ncs(os.path.join(d, "CSC3_0001.ncs"), 1000 + 50 * 17066 + 5e6, 40)
+        split, dupes = doppler.parts_report(d)
+        check("a real continuation still is a piece", 3 in split, split)
+        r = doppler.check_parts(d)
+        check("and is still refused, naming it", r is not None and "3" in r, r)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
 def main():
     real = csc._read_channel_window
     try:
@@ -124,6 +167,9 @@ def main():
         check("and has nothing to say", doppler._short_words([], FS) is None)
     finally:
         csc._read_channel_window = real
+
+    print("\na channel that is on disk twice")
+    parts_checks()
 
     print("\n%s" % ("ALL PASS" if not FAILED else
                     "%d FAILED: %s" % (len(FAILED), "; ".join(FAILED))))

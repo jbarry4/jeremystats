@@ -85,6 +85,32 @@ def pooling():
     check("the pool comes out in time order",
           [e["start"] for e in out] == sorted(e["start"] for e in out))
 
+    print("\nkeeping Doppler's time instead")
+    dout, dst = CF.pool(ds, [dict(e, channel=40) if e["start"] == 10.001
+                             else e for e in ied], CF.window_s(5), "doppler")
+    d_by = {round(e["start"], 4): e for e in dout}
+    m = d_by.get(10.001) or {}
+    check("the same pairs merge, filed under Doppler's stamp",
+          m.get("origin") == "both" and m.get("pair_t") == 10.0
+          and m.get("stamp") == "doppler" and 10.0 not in d_by, m)
+    check("with Doppler's channel, and Incisor's amplitude where it has none",
+          m.get("channel") == 40 and m.get("amplitude") == 900, m)
+    check("the gap is still Doppler's time less Incisor's",
+          m.get("dt_ms") == 1.0 and dst["dt_ms"] == st["dt_ms"], m)
+    check("and the counts do not change",
+          all(dst[k] == st[k] for k in ("merged", "incisor_only",
+                                        "doppler_only", "n"))
+          and dst["keep"] == "doppler" and st["keep"] == "incisor", dst)
+    check("the default keeps Incisor's and writes no stamp",
+          "stamp" not in first, first)
+    try:
+        CF.keep_of("both")
+        got = None
+    except ValueError as e:
+        got = str(e)
+    check("keeping anybody else's time is refused in a sentence",
+          bool(got) and got.endswith("."), got)
+
     print("\nwhat goes in")
     vocab_ds = C.vocabulary("ds")
     vocab_ied = C.vocabulary("ied")
@@ -125,6 +151,10 @@ def banking(tmp):
     events = [{k: e[k] for k in ("start", "origin", "pair_t") if k in e}
               for e in out]
     events.append({"start": 4.0, "origin": "somebody else"})
+    events.append({"start": 6.002, "origin": "both", "pair_t": 6.0,
+                   "stamp": "doppler"})
+    events.append({"start": 7.0, "origin": "both", "pair_t": 7.001,
+                   "stamp": "nobody"})
     ent = bank.add({"gid": "g-test", "type": "pooled", "name": "pool",
                     "events": events,
                     "pipeline": "The Confluence: Junction (test)",
@@ -136,6 +166,10 @@ def banking(tmp):
           and got[3.0].get("origin") == "doppler", ent["events"])
     check("an origin it does not know is dropped, not stored",
           "origin" not in got[4.0], got[4.0])
+    check("whose stamp a merged event is filed under is kept",
+          got[6.002].get("stamp") == "doppler", got[6.002])
+    check("and a stamp it does not know is dropped",
+          "stamp" not in got[7.0], got[7.0])
     return events
 
 
@@ -223,6 +257,58 @@ def panning(tmp):
         except C.CurationError as e:
             got = str(e)
         check("merging with %s is refused" % name, bool(got), got)
+
+    print("\nmerging to Doppler's time")
+    rec2, _n, _rep = cur.create("g-pan2", "pooled", [
+        {"start": 3.0000, "origin": "incisor", "channel": 7},
+        {"start": 3.0020, "origin": "doppler", "channel": 30},
+        {"start": 6.0000, "origin": "incisor"},
+        {"start": 6.0010, "origin": "incisor"},
+        {"start": 8.0, "origin": "both", "pair_t": 8.003, "stamp": "doppler"},
+    ], name="test pool 2")
+    i2 = {round(e["start"], 4): e["id"] for e in rec2["events"]}
+    check("a set carries whose stamp a merged event is under",
+          next(e for e in rec2["events"] if e["id"] == i2[8.0])
+          .get("stamp") == "doppler", rec2["events"])
+    dv, _p, dgone = cur.merge_events("g-pan2", "pooled", i2[3.0], i2[3.002],
+                                     stamp="doppler")
+    check("the survivor is the one with Doppler's time, whichever was "
+          "clicked first",
+          dv["id"] == i2[3.002] and dgone == i2[3.0]
+          and dv["start"] == 3.002 and dv.get("pair_t") == 3.0, dv)
+    check("and it says Doppler's is the stamp it is filed under",
+          dv.get("origin") == "both" and dv.get("stamp") == "doppler", dv)
+    try:
+        cur.merge_events("g-pan2", "pooled", i2[6.0], i2[6.001],
+                         stamp="doppler")
+        got = None
+    except C.CurationError as e:
+        got = str(e)
+    check("two of Incisor's cannot be merged to Doppler's time", bool(got),
+          got)
+    dv2, _p, _g = cur.merge_events("g-pan2", "pooled", i2[6.0], i2[8.0],
+                                   stamp="doppler")
+    check("a merged event already under Doppler's stamp stays the survivor",
+          dv2["id"] == i2[8.0] and dv2["start"] == 8.0
+          and dv2.get("stamp") == "doppler", dv2)
+    back2, _r, _p = cur.unmerge("g-pan2", "pooled", i2[3.002],
+                                {"origin": "doppler", "channel": 30},
+                                {"start": 3.0, "origin": "incisor",
+                                 "channel": 7})
+    check("undoing it takes the stamp off again",
+          back2.get("origin") == "doppler" and "stamp" not in back2
+          and "pair_t" not in back2, back2)
+    try:
+        cur.merge_events("g-pan2", "pooled", i2[6.0], i2[6.001],
+                         stamp="somebody")
+        got = None
+    except C.CurationError as e:
+        got = str(e)
+    check("a stamp that is neither detector's is refused", bool(got), got)
+    b2 = cur.bank_one(cur.get("g-pan2", "pooled"), only_specified=False)
+    check("banking the set carries the stamp",
+          any(e.get("stamp") == "doppler" and round(e["start"], 4) == 8.0
+              for e in b2["events"]), b2["events"])
 
     cur.label("g-pan", "pooled", ids[12.0], "garbage")
     banked = cur.bank_one(cur.get("g-pan", "pooled"), only_specified=False)

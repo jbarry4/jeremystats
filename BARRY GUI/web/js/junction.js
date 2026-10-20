@@ -11,7 +11,15 @@
    THE RULE is backend/confluence.py's, and the panel only states it: time
    only, any channel; within a window (5 ms unless you say otherwise); one
    to one, nearest first; a merged event keeps Incisor's time and holds
-   Doppler's as `pair_t`. What somebody already called Garbage stays out.
+   Doppler's as `pair_t` -- or Doppler's, holding Incisor's, when that is
+   chosen (2026-10-19). What somebody already called Garbage stays out.
+
+   ALIGNED OR NOT, SAID OUTRIGHT (2026-10-19). Every input -- in the list,
+   on each side, on each version, in Many -- carries an "aligned" or "not
+   aligned" label: whether Braces (Incisor's) or Eye (Doppler's) has put
+   its stamps on their peaks. Two detectors a few milliseconds apart about
+   one event is what this step merges on, so whether those milliseconds are
+   the detectors' or the peaks' is worth seeing before pooling.
 
    THE MERGE IS SHOWN, NOT ANNOUNCED. Asked for in so many words: "a cool
    animation, would be nice if we see the files flowing together". The two
@@ -33,6 +41,7 @@ BARRY.junction = (function () {
     ds: null, dsV: null,  // the dentate-spike entry, and its version (null: newest)
     ied: null, iedV: null,
     win: 5,               // ms
+    keep: 'incisor',      // whose time a merged event keeps
     sel: null,            // Many: the gids ticked (a Set), null until listed
   };
 
@@ -86,14 +95,59 @@ BARRY.junction = (function () {
     return { ds, ied };
   }
 
-  /* Whether a pool from exactly these inputs is already banked. */
+  /* Whether a pool from exactly these inputs is already banked. A pool from
+     before the choice existed kept Incisor's time. */
   function pooledFrom(r, dsId, dsName, iedId, iedName, win) {
     return (r.pooled || []).find((p) => {
       const pr = p.params || {};
       return pr.ds_entry === dsId && String(pr.ds_version) === String(dsName)
         && pr.ied_entry === iedId && String(pr.ied_version) === String(iedName)
-        && Number(pr.window_ms) === Number(win);
+        && Number(pr.window_ms) === Number(win)
+        && (pr.keep || 'incisor') === q.keep;
     }) || null;
+  }
+
+  /* ---------- aligned, or not ---------- */
+  const ALIGNER = { ds: 'Braces', ied: 'Eye', pooled: 'Lock' };
+  const ALIGN_STEP = { ds: 'The Dentist, step 3', ied: 'The Storm, step 3',
+                       pooled: 'The Confluence, step 3' };
+  const KEEP_WORD = { incisor: 'Incisor', doppler: 'Doppler' };
+
+  /* Whether these stamps have been lined up: the entry as it stands when
+     no version is chosen, else that version -- one an alignment wrote, or
+     one on a line after one (the server's `aligned_names`). */
+  function alignedAt(ent, vId) {
+    if (!ent) return false;
+    if (vId == null) return !!ent.aligned;
+    const v = (vers[ent.id] || []).find((x) => x.id === vId);
+    return !!(v && (ent.aligned_names || []).indexOf(v.name) >= 0);
+  }
+
+  /* The label itself. Both states are said -- "not aligned" is the fact
+     somebody is deciding on, not the absence of one. */
+  function alignChip(ent, vId, kind) {
+    const on = alignedAt(ent, vId);
+    const who = ALIGNER[kind] || 'An alignment';
+    const when = ent && ent.aligned_at
+      ? String(ent.aligned_at).slice(0, 10) : '';
+    return BARRY.ui.chip(on ? '✓ aligned' : 'not aligned', {
+      kind: on ? 'ok' : null, extra: 'jn-al' + (on ? ' on' : ''),
+      title: on
+        ? who + ' has put these stamps on their peaks'
+          + (ent.aligned_v ? ' (v' + ent.aligned_v + ')' : '')
+          + (ent.aligned_by ? ', ' + ent.aligned_by : '')
+          + (when ? ', ' + when : '') + '.'
+        : who + ' (' + (ALIGN_STEP[kind] || 'its step 3') + ') has not lined '
+          + 'these stamps up. They can still be pooled; the gap between '
+          + 'the two detectors then includes where each put its stamp.',
+    });
+  }
+
+  /* The same, as a word inside a detector's tag in the list. */
+  function alignWord(ent) {
+    const on = !!(ent && ent.aligned);
+    return el('span', { class: 'jn-al-w' + (on ? ' on' : ''),
+                        text: on ? '✓ aligned' : 'not aligned' });
   }
 
   /* ==================================================================
@@ -192,19 +246,35 @@ BARRY.junction = (function () {
       return list;
     }
     for (const r of rows) {
+      // The newest of each, which is what picking the row starts from.
+      const pool = (r.pooled || [])[0];
       list.appendChild(el('button', {
         class: 'jn-rec' + (q.gid === r.gid ? ' on' : ''),
         onclick: () => choose(r.gid),
       }, [
         el('strong', { text: nameOf(r) }),
         el('span', { class: 'jn-tag i',
-          text: 'Incisor' + (r.ds.length > 1 ? ' ×' + r.ds.length : '') }),
+          title: r.ds[0] && r.ds[0].aligned
+            ? 'Braces has put the newest Incisor entry’s stamps on their peaks'
+            : 'Braces has not lined up the newest Incisor entry' }, [
+          el('span', { text: 'Incisor' + (r.ds.length > 1 ? ' ×' + r.ds.length : '') }),
+          alignWord(r.ds[0]),
+        ]),
         el('span', { class: 'jn-tag d',
-          text: 'Doppler' + (r.ied.length > 1 ? ' ×' + r.ied.length : '') }),
+          title: r.ied[0] && r.ied[0].aligned
+            ? 'Eye has put the newest Doppler entry’s stamps on their peaks'
+            : 'Eye has not lined up the newest Doppler entry' }, [
+          el('span', { text: 'Doppler' + (r.ied.length > 1 ? ' ×' + r.ied.length : '') }),
+          alignWord(r.ied[0]),
+        ]),
         r.pooled.length
           ? BARRY.ui.chip(r.pooled.length === 1 ? 'pooled'
                           : 'pooled ×' + r.pooled.length,
                           { flag: true, kind: 'ok' })
+          : null,
+        pool && pool.aligned
+          ? BARRY.ui.chip('pool aligned', { flag: true, kind: 'ok',
+              title: 'Lock has lined up the newest pool’s stamps' })
           : null,
       ].filter(Boolean)));
     }
@@ -241,8 +311,7 @@ BARRY.junction = (function () {
         inline: true,
         hint: 'Events this close are one event: by time only, on any '
             + 'channel, each paired with at most one of the other '
-            + 'detector’s, nearest first. A merged event keeps '
-            + 'Incisor’s time; Doppler’s is kept beside it.',
+            + 'detector’s, nearest first.',
         control: el('input', {
           type: 'number', class: 'num', min: 0.5, max: 100, step: 0.5,
           value: q.win, disabled: merging ? 'disabled' : null,
@@ -255,8 +324,35 @@ BARRY.junction = (function () {
           },
         }),
       }),
+      keepField(() => { landed = null; requestPlan(); }),
     ]);
     return box;
+  }
+
+  /* Whose time a merged event keeps. Incisor's by default -- a dentate-spike
+     detector stamps the peak itself -- or Doppler's. The same pairs merge
+     either way; the other detector's time is kept beside it. */
+  function keepField(onChange) {
+    const other = q.keep === 'incisor' ? 'Doppler' : 'Incisor';
+    return BARRY.ui.field({
+      label: 'Merged events keep',
+      inline: true,
+      extra: 'jn-keep',
+      hint: 'A merged event is filed at ' + KEEP_WORD[q.keep] + '’s time, '
+          + 'with its channel; ' + other + '’s time is kept beside it, so '
+          + 'the gap can always be read back.',
+      control: BARRY.ui.seg([
+        ['incisor', 'Incisor’s time', 'The dentate-spike detector’s stamp, '
+                                     + 'on the spike’s own peak'],
+        ['doppler', 'Doppler’s time', 'The discharge detector’s stamp'],
+      ], q.keep, (k) => {
+        if (merging) return;
+        q.keep = k;
+        const f = document.querySelector('.jn-keep');
+        if (f) f.replaceWith(keepField(onChange));
+        onChange();
+      }),
+    });
   }
 
   function sideOf(kind, entries, who, cls) {
@@ -268,6 +364,8 @@ BARRY.junction = (function () {
         el('strong', { text: who }),
         el('span', { class: 'hint quiet',
           text: kind === 'ds' ? 'dentate spikes' : 'interictal discharges' }),
+        // Of what goes in: this entry, at the version chosen below.
+        alignChip(ent, kind === 'ds' ? q.dsV : q.iedV, kind),
       ]),
     ]);
     if (entries.length > 1) {
@@ -286,7 +384,8 @@ BARRY.junction = (function () {
                when it was last worked on. */
             el('span', { class: 'hint quiet',
               text: BARRY.ui.versionLabel(x.tip) + ' · ' + num(x.n)
-                  + (x.at ? ' · ' + String(x.at).slice(0, 10) : '') })]))));
+                  + (x.at ? ' · ' + String(x.at).slice(0, 10) : '') }),
+            alignWord(x)]))));
     } else {
       side.appendChild(el('div', { class: 'jn-ent-one' }, [
         el('span', { text: ent.name || ent.id }),
@@ -315,14 +414,19 @@ BARRY.junction = (function () {
       return side;
     }
     const value = kind === 'ds' ? q.dsV : q.iedV;
+    const onLine = new Set(ent.aligned_names || []);
     slot.appendChild(BARRY.ui.versionTree({
       versions: vs,
       idOf: (v) => v.id,
       value: value,
       unit: 'events',
-      lead: { name: 'newest', text: num(ent.n) + ' events, as it stands' },
+      lead: { name: 'newest', text: num(ent.n) + ' events, as it stands'
+                                  + (ent.aligned ? ' · aligned' : '') },
       disabled: (v) => (v.usable ? null : 'no snapshot of this version on '
                                           + 'this computer'),
+      // The tree itself says "aligned" on the version an alignment wrote;
+      // a pass after it carries the same stamps, and says so.
+      state: (v) => (!v.aligned && onLine.has(v.name) ? ['stamps aligned'] : []),
       notes: (v) => {
         const bl = v.by_label || {};
         const ks = Object.keys(bl).sort((a, b) => bl[b] - bl[a]);
@@ -362,7 +466,8 @@ BARRY.junction = (function () {
   /* ---------- 3. the pool ---------- */
   function body() {
     return { gid: q.gid, ds_entry: q.ds, ds_version: q.dsV,
-             ied_entry: q.ied, ied_version: q.iedV, window_ms: q.win };
+             ied_entry: q.ied, ied_version: q.iedV, window_ms: q.win,
+             keep: q.keep };
   }
 
   let planTimer = null;
@@ -415,6 +520,8 @@ BARRY.junction = (function () {
       return kids;
     }
     kids.push(countsRow(st, !!landed));
+    const al = alignedLine();
+    if (al) kids.push(al);
     const left = st ? [
       st.ds_left_out ? st.ds_left_out + ' of Incisor’s' : null,
       st.ied_left_out ? st.ied_left_out + ' of Doppler’s' : null,
@@ -456,6 +563,41 @@ BARRY.junction = (function () {
       ]));
     }
     return kids;
+  }
+
+  /* What the pool is made from, aligned or not, in a sentence under the
+     counts -- from the plan when there is one (the server's answer for the
+     versions actually going in), else from what is chosen. */
+  function alignedLine() {
+    const r = recOf(q.gid);
+    if (!r) return null;
+    const pr = (plan && plan.params) || null;
+    const ds = r.ds.find((x) => x.id === q.ds) || r.ds[0];
+    const ied = r.ied.find((x) => x.id === q.ied) || r.ied[0];
+    const a = pr && pr.ds_aligned != null ? !!pr.ds_aligned : alignedAt(ds, q.dsV);
+    const b = pr && pr.ied_aligned != null ? !!pr.ied_aligned : alignedAt(ied, q.iedV);
+    const chips = [
+      BARRY.ui.chip('Incisor ' + (a ? '✓ aligned' : 'not aligned'),
+                    { kind: a ? 'ok' : null, extra: 'jn-al i' + (a ? ' on' : '') }),
+      BARRY.ui.chip('Doppler ' + (b ? '✓ aligned' : 'not aligned'),
+                    { kind: b ? 'ok' : null, extra: 'jn-al d' + (b ? ' on' : '') }),
+    ];
+    const said = a && b
+      ? 'Both inputs are aligned: every stamp is on its peak, so the gap '
+        + 'between the two detectors is theirs.'
+      : (!a && !b
+        ? 'Neither input has been aligned (Braces for Incisor’s, Eye for '
+          + 'Doppler’s), so a gap between the two is partly where each put '
+          + 'its stamp. Pooling works either way.'
+        : (a ? 'Doppler’s' : 'Incisor’s') + ' input is not aligned ('
+          + (a ? 'Eye, The Storm' : 'Braces, The Dentist') + ', step 3), so '
+          + 'a gap to it is partly where it put its stamp. Pooling works '
+          + 'either way.');
+    return el('div', { class: 'jn-aligned' }, [
+      el('span', { class: 'section-label', text: 'Aligned' }),
+      ...chips,
+      el('span', { class: 'hint quiet', text: said }),
+    ]);
   }
 
   /* The four numbers, in the order the eye reads the picture: what came in
@@ -655,7 +797,9 @@ BARRY.junction = (function () {
       fileCard(g, G.P, ci, cd, landed ? 'Pooled' : 'The pool',
                landed ? ((landed.entry || {}).name || 'banked')
                       : (planning ? 'working it out…'
-                         : st ? '±' + st.window_ms + ' ms, not yet banked'
+                         : st ? '±' + st.window_ms + ' ms'
+                                + (q.keep === 'doppler' ? ', Doppler’s time' : '')
+                                + ', not yet banked'
                               : 'pick what goes in'),
                st ? num(st.n) : null, landed ? 0.6 : 0);
     };
@@ -916,6 +1060,8 @@ BARRY.junction = (function () {
     return !!(d.ds && d.ied && pooledFrom(r, d.ds.id, d.ds.tip, d.ied.id,
                                           d.ied.tip, q.win));
   };
+  const nAligned = (rows) => rows.filter(
+    (r) => (r.ds[0] || {}).aligned && (r.ied[0] || {}).aligned).length;
 
   function paintMany(h) {
     if (!q.sel) q.sel = new Set();
@@ -942,6 +1088,7 @@ BARRY.junction = (function () {
           batch = null; paint();
         } }),
     }));
+    box.appendChild(keepField(() => { batch = null; paint(); }));
     box.appendChild(el('div', { class: 'tk-actions' }, [
       el('button', { class: 'btn ghost sm', text: 'All',
         onclick: () => { for (const r of rows) q.sel.add(r.gid); paint(); } }),
@@ -951,6 +1098,17 @@ BARRY.junction = (function () {
         title: 'Only the recordings with no pool from their newest entries',
         onclick: () => {
           q.sel = new Set(rows.filter((r) => !pooledDefault(r)).map((r) => r.gid));
+          paint();
+        } }),
+      el('button', { class: 'btn ghost sm',
+        text: 'Both aligned (' + nAligned(rows) + ')',
+        disabled: nAligned(rows) ? null : 'disabled',
+        title: 'Only the recordings whose newest Incisor AND Doppler entries '
+             + 'have both been aligned (Braces, Eye)',
+        onclick: () => {
+          q.sel = new Set(rows.filter((r) => (r.ds[0] || {}).aligned
+                                             && (r.ied[0] || {}).aligned)
+                              .map((r) => r.gid));
           paint();
         } }),
       el('span', { class: 'spacer' }),
@@ -988,12 +1146,14 @@ BARRY.junction = (function () {
         el('i', { class: 'jn-dot i' }),
         el('span', { text: (d.ds.name || d.ds.id) + ' · '
                           + BARRY.ui.versionLabel(d.ds.tip) }),
+        alignWord(d.ds),
         el('b', { text: num(d.ds.n) }),
       ]),
       el('span', { class: 'jn-mside d' }, [
         el('i', { class: 'jn-dot d' }),
         el('span', { text: (d.ied.name || d.ied.id) + ' · '
                           + BARRY.ui.versionLabel(d.ied.tip) }),
+        alignWord(d.ied),
         el('b', { text: num(d.ied.n) }),
       ]),
       el('canvas', { class: 'jn-mflow', width: 64, height: 26 }),
@@ -1063,7 +1223,7 @@ BARRY.junction = (function () {
     let got;
     try {
       got = await apiPost('/api/confluence/batch',
-                          { items, window_ms: q.win });
+                          { items, window_ms: q.win, keep: q.keep });
     } catch (e) {
       merging = false;
       toast('The batch did not run: ' + e.message, 'err', 10000);
@@ -1157,7 +1317,7 @@ BARRY.junction = (function () {
       recs = null; plan = null; planSig = null; landed = null; batch = null;
       vers = {}; merging = false; planning = false;
       q.gid = null; q.ds = null; q.ied = null; q.dsV = null; q.iedV = null;
-      q.sel = null; q.mode = 'one'; q.win = 5;
+      q.sel = null; q.mode = 'one'; q.win = 5; q.keep = 'incisor';
     },
   };
 })();

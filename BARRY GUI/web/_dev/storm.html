@@ -319,7 +319,10 @@ const post = (u, b) => fetch(u, { method: 'POST',
       await until(() => $('#tkResult .step-head'));
       ev('(function(){var s=BARRY.doppler._state();s.count="one";'
          + 's.ch_lo=' + nums[0] + ';s.ch_hi=' + half + ';})()');
-      ev('BARRY.doppler.paint()');
+      /* As the range fields do it: the estimate asked again. Calling paint()
+         alone only worked while the panel's own first load happened to land
+         after the range was set. */
+      ev('BARRY.doppler._changed ? BARRY.doppler._changed() : BARRY.doppler.paint()');
       const shown = await until(() => {
         const g = $('#tkResult .dop-feed .dop-feed-g.out');
         return g && $('#tkResult .dop-feed .dop-feed-g.det');
@@ -327,7 +330,8 @@ const post = (u, b) => fetch(u, { method: 'POST',
       check('"What goes in" shows the detection channels and the range',
             !!shown, shown ? '' : ($('#tkResult .dop-feed') || {}).textContent);
       ev('(function(){var s=BARRY.doppler._state();'
-         + 's.ch_lo=null;s.ch_hi=null;})()');
+         + 's.ch_lo=null;s.ch_hi=null;'
+         + 'if (BARRY.doppler._changed) BARRY.doppler._changed();})()');
     }
   }
 

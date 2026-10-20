@@ -62,6 +62,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import struct
 import threading
 
 import numpy as np
@@ -656,6 +658,233 @@ def cache_clear():
         del _CACHE_ORDER[:]
 
 
+def _ncs_span(path):
+    """(size, first record's timestamp, last record's timestamp) of a .ncs,
+    from three small reads -- or None when it cannot be read."""
+    try:
+        size = os.path.getsize(path)
+        rec = nlx.RECORD_DTYPE.itemsize
+        n = max(0, (size - nlx.HEADER_BYTES) // rec)
+        if not n:
+            return (size, None, None)
+        with open(path, "rb") as fh:
+            fh.seek(nlx.HEADER_BYTES)
+            first = struct.unpack("<Q", fh.read(8))[0]
+            fh.seek(nlx.HEADER_BYTES + (n - 1) * rec)
+            last = struct.unpack("<Q", fh.read(8))[0]
+        return (size, first, last)
+    except (OSError, struct.error):
+        return None
+
+
+def parts_report(folder):
+    """(channels really in more than one piece, channels whose extra file
+    is a copy of the first). Both {channel number: [files]}.
+
+    A `CSCn_0001.ncs` is not always a continuation. On netfiles, PTEN m13
+    s17's ProcessedPtenData folder holds every channel twice -- `CSCn.ncs`
+    and `CSCn_0001.ncs` byte for byte the same, same size, same first and
+    last record (checked with `cmp`, 2026-10-19) -- and refusing it as split
+    is why Doppler could not run it while Incisor, which reads `CSCn.ncs`,
+    could. So an extra file that starts and ends on the same records as the
+    first, at the same size, is a copy and is not a piece; one with no
+    records at all is not a piece either. Anything else still is.
+    """
+    try:
+        parts = nlx.csc_parts(folder)
+    except Exception:                                    # noqa: BLE001
+        return {}, {}
+    split, dupes = {}, {}
+    rec = nlx.RECORD_DTYPE.itemsize
+
+    def size(p):
+        try:
+            return os.path.getsize(p)
+        except OSError:
+            return None
+
+    for k, v in (parts or {}).items():
+        if len(v) < 2:
+            continue
+        # Sizes first: a stat each, where opening a file on a network share
+        # is the slow part -- a real continuation is almost never the same
+        # size as the first piece, so the records are read only for pieces
+        # that are, and a 128-channel split recording costs 256 stats rather
+        # than 768 reads (measured on the Doppler panel's estimate: the
+        # reads made it miss its own feed).
+        n0 = size(v[0])
+        base = None
+        real, same = [], []
+        for p in v[1:]:
+            n = size(p)
+            if n is not None and n <= nlx.HEADER_BYTES + rec - 1:
+                same.append(p)               # a header and no records
+                continue
+            if n is None or n0 is None or n != n0:
+                real.append(p)
+                continue
+            if base is None:
+                base = _ncs_span(v[0])
+            got = _ncs_span(p)
+            if base is not None and got == base:
+                same.append(p)               # the same file, twice
+            else:
+                real.append(p)
+        if real:
+            split[k] = v
+        elif same:
+            dupes[k] = v
+    return split, dupes
+
+
+def duplicate_words(folder):
+    """A sentence for the run when some channels are on disk twice."""
+    _split, dupes = parts_report(folder)
+    if not dupes:
+        return None
+    nums = sorted(dupes)
+    return ("%d channel%s (%s) %s a second file that is a copy of the first "
+            "-- same size, same first and last record -- so each was read "
+            "once." % (len(nums), "" if len(nums) == 1 else "s",
+                       ", ".join("CSC%d" % n for n in nums[:4])
+                       + (" and %d more" % (len(nums) - 4)
+                          if len(nums) > 4 else ""),
+                       "has" if len(nums) == 1 else "have"))
+
+
+# --------------------------------------------------------------------------
+# What a banked run says about itself
+# --------------------------------------------------------------------------
+# One copy, here: the run is banked by the server the moment it lands
+# (app.py `_doppler_autobank`), and the panel's own Bank dialog shows the
+# same note, served with the result (`bank_note` on `_doppler_public`).
+
+def _runs_of(nums):
+    nums = sorted({int(n) for n in nums})
+    out, i = [], 0
+    while i < len(nums):
+        j = i
+        while j + 1 < len(nums) and nums[j + 1] == nums[j] + 1:
+            j += 1
+        out.append("CSC%d to CSC%d" % (nums[i], nums[j]) if j > i
+                   else "CSC%d" % nums[i])
+        i = j + 1
+    return out
+
+
+def _num(x):
+    try:
+        return int(x.get("number") if isinstance(x, dict) else x)
+    except (TypeError, ValueError):
+        return None
+
+
+def channels_sentence(p):
+    """The channels a run was given, written out: the range, then every
+    channel by role, whole lists by name -- what somebody reads six months
+    later to know what was detected on."""
+    p = p or {}
+    storm = p.get("method") == "storm"
+    det = [int(n) for n in (p.get("channels") or [])]
+    read = [int(n) for n in (p.get("read_channels") or p.get("channels") or [])]
+    det_set = set(det)
+    ref = [n for n in read if n not in det_set]
+    label = (lambda x: (x.get("label") if isinstance(x, dict) and x.get("label")
+                        else "CSC%s" % _num(x)))
+    parts = []
+    rng = p.get("channel_range")
+    if rng:
+        out = [n for n in (_num(x) for x in (p.get("out_of_range") or []))
+               if n is not None]
+        hi = "the last channel" if int(rng[1]) >= 9999 else "CSC%d" % int(rng[1])
+        parts.append("Channels CSC%d to %s only%s." % (
+            int(rng[0]), hi,
+            (" (%s not read)" % ", ".join(_runs_of(out))) if out else ""))
+    rule = p.get("detect_on")
+    parts.append("Detected on %s: %s." % (
+        ("the %d %s channels" % (len(det), rule))
+        if storm and rule and rule != "all"
+        else "%d channel%s" % (len(det), "" if len(det) == 1 else "s"),
+        ", ".join("CSC%d" % n for n in det)))
+    if ref:
+        parts.append("%s (%d): %s." % (
+            "Read for the common reference only" if storm and p.get("car")
+            else "Read, not detected on", len(ref),
+            ", ".join("CSC%d" % n for n in ref)))
+    if p.get("excluded"):
+        parts.append("Marked bad and not read: %s."
+                     % ", ".join(label(x) for x in p["excluded"]))
+    if p.get("left_out"):
+        parts.append("Left out of this run by choice: %s."
+                     % ", ".join(label(x) for x in p["left_out"]))
+    if p.get("not_connected"):
+        parts.append("On a bank marked not connected, not read: %s."
+                     % ", ".join("CSC%s" % _num(x) for x in p["not_connected"]))
+    return " ".join(parts)
+
+
+def _g(v):
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return str(v)
+    return ("%d" % f) if f == int(f) else ("%g" % f)
+
+
+def bank_note(p):
+    """How the run was made, as the note a banked run carries."""
+    p = p or {}
+    storm = p.get("method") == "storm"
+    band = p.get("band")
+    out = "Detected by Doppler on the VACC, %s. " % (p.get("detector")
+                                                    or "line length")
+    if storm:
+        out += ("Validated on the PTEN hand-sorts (every confirmed IED "
+                "caught). Decimated to %d Hz, %sdetected on %s channels, "
+                "kept when %s or more took part. " % (
+                    round(float(p.get("fs_work") or 2000)),
+                    "common-average referenced per probe bank, "
+                    if p.get("car") else "",
+                    p.get("detect_on") or "even", p.get("min_channels") or 1))
+    if band:
+        out += "Band-passed %s\u2013%s Hz%s. " % (
+            _g(band[0]), _g(band[1]),
+            (" after a %s Hz notch" % _g(p["notch_hz"]))
+            if p.get("notch_hz") else "")
+    else:
+        out += ("No band-pass. " if storm else
+                "No filtering, which is what the original detector does. ")
+    ex = p.get("excluded") or []
+    lo = p.get("left_out") or []
+    out += ("Line-length window %s ms, threshold at the %sth percentile of the "
+            "line-length values pooled over the %d channels that were read"
+            % (_g(float(p.get("llw_s") or 0) * 1000), _g(p.get("prc")),
+               len(p.get("channels") or [])))
+    if ex:
+        out += (" (%d marked bad were not read at all, so they neither "
+                "started events nor took part in the threshold)" % len(ex))
+    if lo:
+        out += (". %d more were left out of this run by choice (%s), without "
+                "marking them bad" % (len(lo), ", ".join(
+                    (x.get("label") if isinstance(x, dict) and x.get("label")
+                     else "CSC%s" % _num(x)) for x in lo)))
+    out += (". Each stamp is the largest deflection inside the detector\u2019s "
+            "window, measured only on the channels that took part. Times are "
+            "seconds from the start of the recording, converted from the "
+            "joined signal through this recording\u2019s gap map. ")
+    return (out + channels_sentence(p)).strip()
+
+
+def bank_name(label, p):
+    """`<the session>  \u00b7  Doppler 20\u2013300 Hz` -- the name the panel's
+    dialog suggests (features.js `bankName.suggest`)."""
+    band = (p or {}).get("band")
+    what = ("Doppler %s\u2013%s Hz" % (_g(band[0]), _g(band[1])) if band
+            else "Doppler unfiltered")
+    s = (label or "").strip()
+    return (s + "  \u00b7  " + what) if s else what
+
+
 def check_parts(folder):
     """Refuse a recording that is in more than one piece per channel.
 
@@ -665,12 +894,12 @@ def check_parts(folder):
     perfectly healthy-looking rate for a third of a recording, which is the
     worst failure available to a detector. Joining them is real work and is
     not done here, so this says so instead.
+
+    A second file that is only a copy of the first is not a piece, and is
+    not refused (`parts_report`).
     """
-    try:
-        parts = nlx.csc_parts(folder)
-    except Exception:                                    # noqa: BLE001
-        return None
-    split = {str(k): list(v) for k, v in (parts or {}).items() if len(v) > 1}
+    split, _dupes = parts_report(folder)
+    split = {str(k): list(v) for k, v in split.items()}
     if not split:
         return None
     names = sorted(split)[:4]
@@ -854,6 +1083,7 @@ def run_legacy(session, spec, report, job=None):
     refusal = check_parts(session.get("path"))
     if refusal:
         raise ValueError(refusal)
+    dup_words = duplicate_words(session.get("path"))
 
     by_index = {c["index"]: c for c in (session.get("channels") or [])}
     want = [by_index[i] for i in (spec.get("channels") or []) if i in by_index]
@@ -935,6 +1165,8 @@ def run_legacy(session, spec, report, job=None):
     said = _short_words(short, fs)
     if said:
         out["warnings"].append(said)
+    if dup_words:
+        out["warnings"].append(dup_words)
     return out
 
 
@@ -961,6 +1193,7 @@ def run_storm(session, spec, report, job=None):
     refusal = check_parts(session.get("path"))
     if refusal:
         raise ValueError(refusal)
+    dup_words = duplicate_words(session.get("path"))
     if not HAVE_SCIPY:
         raise RuntimeError("The Storm method needs scipy, which is not "
                            "installed here.")
@@ -1080,6 +1313,8 @@ def run_storm(session, spec, report, job=None):
     said = _short_words(short, fs)
     if said:
         out["warnings"].append(said)
+    if dup_words:
+        out["warnings"].append(dup_words)
     return out
 
 

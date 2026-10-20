@@ -11578,6 +11578,8 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   width: 11px; height: 3px; border-radius: 1px; display: inline-block;
   flex: none;
 }
+/* The cap a stop wears on the traces (2026-10-19). */
+.br-stop-sw b { font-size: var(--fs-105); line-height: 1; flex: none; }
 .br-nudge { display: inline-flex; gap: 3px; }
 .br-nudge .mini {
   min-width: 30px; font-variant-numeric: tabular-nums;
@@ -14482,6 +14484,24 @@ div.tf-tile { cursor: default; }
 }
 .jn-tag.i { color: var(--o-incisor); }
 .jn-tag.d { color: var(--o-doppler); }
+/* Aligned or not, said on every input (2026-10-19). */
+.jn-tag { display: inline-flex; align-items: center; gap: 6px; }
+.jn-al-w { font-size: var(--fs-10); color: var(--text-3); white-space: nowrap; }
+.jn-al-w.on { color: var(--ok, var(--accent)); font-weight: 600; }
+.jn-tag .jn-al-w::before { content: '·'; margin-right: 5px; color: var(--text-3);
+  font-weight: 400; }
+.jn-ent-one .hint, .jn-ent .hint { white-space: nowrap; }
+.jn-ent, .jn-ent-one { flex-wrap: wrap; }
+.jn-side-hd .jn-al { margin-left: auto; }
+.stat-chip.jn-al.on { color: var(--ok, var(--accent)); }
+/* In Many, on a line of its own under the entry: beside the count it ran
+   into the number on a narrow row. */
+.jn-mside { flex-wrap: wrap; }
+.jn-mside .jn-al-w { order: 3; flex-basis: 100%; padding-left: 15px; }
+.jn-aligned { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px;
+  margin: 0 0 8px; }
+.jn-aligned .section-label { margin: 0; }
+.jn-aligned .hint { flex: 1 1 260px; min-width: 0; }
 .jn-inputs {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-12); margin-bottom: var(--sp-12);
@@ -14579,6 +14599,43 @@ div.tf-tile { cursor: default; }
                                             var(--o-doppler) 50%); }
 .cur-cat.pan-merge { --cat: var(--accent); }
 .cur-cat.pan-merge.armed { border-style: dashed; border-color: var(--accent); }
+/* Merge to Incisor's time (M) or to Doppler's (D), each in its colour. */
+.cur-cat.pan-merge.incisor { --cat: var(--o-incisor); }
+.cur-cat.pan-merge.doppler { --cat: var(--o-doppler); }
+.cur-cat.pan-merge .pan-od { width: 8px; height: 8px; }
+
+/* Label many (2026-10-19). */
+.pan-bulk-modal { width: min(640px, 94vw); }
+.pan-bulk { display: flex; flex-direction: column; gap: 6px; }
+.pan-bulk .section-label { margin-top: 6px; }
+.pan-bulk-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.pan-bulk-opt {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 4px 10px; border-radius: var(--r-4); font-size: var(--fs-12);
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text-2);
+}
+.pan-bulk-opt.on { border-color: var(--accent-line); background: var(--accent-soft);
+  color: var(--text); }
+.pan-bulk-opt.none { opacity: .55; }
+.pan-bulk-opt input { margin: 0; }
+.pan-bulk-say { margin-top: 8px; }
+
+/* The list of a pool (2026-10-19): Checkup's, with where each came from. */
+.pan-list-modal { width: min(940px, 94vw); }
+.pan-list-o { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.pill.pan-o { display: inline-flex; align-items: center; gap: 5px; }
+.pill.pan-o:not(.active) { opacity: .55; }
+.pan-list-from { display: inline-flex; align-items: center; gap: 5px;
+  flex: none; width: 168px; font-size: var(--fs-11); color: var(--text-2); }
+.pan-list-gap { flex: none; width: 104px; font-family: var(--mono);
+  font-size: var(--fs-10); color: var(--text-3); }
+@media (max-width: 700px) {
+  .pan-list-row { flex-wrap: wrap; }
+  .pan-list-from, .pan-list-gap { width: auto; }
+}
+.pan-list-bulk { display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  margin-top: 8px; }
+.pan-list-bulk:empty { display: none; }
 
 /* Root Canal's legend, coloured by origin. */
 .rc-lg-m.rc-lg-oi { background: var(--o-incisor); }
@@ -15038,3 +15095,5 @@ div.tf-tile { cursor: default; }
 .mini.pick[aria-pressed="true"] {
   background: var(--accent); color: var(--on-accent); border-color: var(--accent);
 }
+/* The auto-bank switch in Spotter's and Panning's bars. */
+.mini.spot-auto.on { border-color: var(--accent-line); color: var(--accent); }

@@ -1847,7 +1847,9 @@ const MODES = {
        TWICE, and a viewer who does not know that is looking at twice as
        many dentate spikes as the recording has. */
     what: 'Every stamp drawn where it was and where it goes '
-        + '\u00b7 n / p to step \u00b7 [ and ] to move it a millisecond',
+        + '\u00b7 n / p stop at the ones needing a decision (\u25bc) '
+        + '\u00b7 press any stamp to go to it '
+        + '\u00b7 [ and ] to move it a millisecond',
   },
   arcconfirm: {
     name: 'Confirm cue pairs',

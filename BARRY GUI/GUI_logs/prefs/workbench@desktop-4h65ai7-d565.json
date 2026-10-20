@@ -1,28 +1,29 @@
 {
   "_at": {
-    "braces_curve": "2026-10-07T19:25:45.859231+00:00",
-    "braces_span": "2026-10-16T16:08:52.612624+00:00",
-    "curate_at": "2026-10-15T14:53:57.026814+00:00",
-    "curate_span": "2026-10-14T17:36:49.834684+00:00",
+    "braces_curve": "2026-10-19T16:52:32.986134+00:00",
+    "braces_span": "2026-10-19T15:21:48.933670+00:00",
+    "curate_at": "2026-10-19T21:11:47.004652+00:00",
+    "curate_span": "2026-10-19T21:11:31.970054+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "fav_scripts": "2026-09-02T23:21:29.293258+00:00",
-    "panning_at": "2026-10-14T23:31:27.850104+00:00",
+    "panning_at": "2026-10-20T14:40:35.834306+00:00",
+    "panning_span": "2026-10-20T14:35:45.248794+00:00",
     "pipeline_folders": "2026-09-23T13:26:19.592745+00:00",
     "radio": "2026-10-13T19:54:21.520703+00:00",
     "recent_scripts": "2026-10-12T15:37:32.641324+00:00",
     "result_group": "2026-09-28T20:50:31.306822+00:00",
-    "smoke_probe": "2026-10-19T15:36:41.701059+00:00",
-    "spotter_at": "2026-10-19T20:31:19.895064+00:00",
-    "spotter_light": "2026-09-25T22:03:51.166243+00:00",
+    "smoke_probe": "2026-10-19T20:41:11.823753+00:00",
+    "spotter_at": "2026-10-19T20:54:28.107053+00:00",
+    "spotter_light": "2026-10-16T17:21:44.827873+00:00",
     "themes": "2026-09-02T23:21:29.293258+00:00",
-    "updated": "2026-10-19T20:35:43.093866+00:00",
+    "updated": "2026-10-20T14:40:53.538031+00:00",
     "vacc": "2026-09-16T14:55:08.027793+00:00"
   },
   "_keys": {
     "fav_scripts": {
       "IED/03_IED_Detection/vacc_ied_detect.m": [
         "gone",
-        "2026-10-19T15:36:42.621469+00:00"
+        "2026-10-19T20:41:12.504020+00:00"
       ],
       "IED/06_IPP_Take4/Run_Take4_IPP_v2.m": [
         "gone",
@@ -54,7 +55,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-19T15:22:42.213249+00:00"
+        "2026-10-20T13:51:12.813074+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -84,7 +85,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-19T15:22:41.068586+00:00"
+        "2026-10-19T20:42:09.732785+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -101,12 +102,12 @@
     }
   },
   "_shard": {
-    "at": "2026-10-19T20:35:43.093866+00:00",
+    "at": "2026-10-20T14:40:53.538031+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "braces_curve": true,
-  "braces_span": 0.7,
+  "braces_span": 1,
   "curate_at": {
     "demo-ds-tutorial:ds": {
       "at": 1790615198941,
@@ -277,11 +278,11 @@
       "t": 31.451987
     },
     "s503339c95a67:ds": {
-      "at": 1792076036995,
-      "id": "ea0e0cd8865",
+      "at": 1792176213533,
+      "id": "e0512705e05",
       "n": 867,
-      "review": "flag",
-      "t": 1793.484977
+      "review": "all",
+      "t": 86.134663
     },
     "s5b932a8e933d:ds": {
       "at": 1791557841641,
@@ -366,6 +367,13 @@
       "n": 96,
       "review": "flag",
       "t": 1190.719523
+    },
+    "s96884739a6ff:ied": {
+      "at": 1792444289735,
+      "id": "e1403db09d7",
+      "n": 10,
+      "review": "left",
+      "t": 13.8
     },
     "s9a8f6138b49e:ds": {
       "at": 1790969447716,
@@ -515,14 +523,15 @@
       "t": 1614.749398
     }
   },
-  "curate_span": 0.8,
+  "curate_span": 1,
   "digest_seen": "2026-09-08T02:30:43.952468+00:00",
   "fav_scripts": [],
   "jarvis": {
     "DESKTOP-4H65AI7": true,
     "LCOM549913": false
   },
-  "panning_at": "{\"demo-ds-tutorial:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e3\",\"t\":15.11,\"at\":1792020687838}}",
+  "panning_at": "{\"s45965a6b13d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e9609fe60ed\",\"t\":39.066984,\"at\":1792507235815}}",
+  "panning_span": 0.5,
   "pipeline_folders": {
     "session": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43"
   },
@@ -548,20 +557,20 @@
   ],
   "result_group": "",
   "smoke_probe": null,
-  "spotter_at": "{\"s45965a6b13d3:ied\":{\"review\":\"all\",\"index\":49,\"id\":\"e4c9f7bba8b\",\"t\":943.472121,\"at\":1792001370071},\"sddf3e5010ff2:ied\":{\"review\":\"left\",\"index\":7,\"id\":\"eb9bd781841\",\"t\":17.209561,\"at\":1790372908151},\"s9a8f6138b49e:ied\":{\"review\":\"left\",\"index\":162,\"id\":\"ef8f3715329\",\"t\":1248.283006,\"at\":1791910611232},\"s91039ecb8aa9:ied\":{\"review\":\"left\",\"index\":38,\"id\":\"ea4af54247d\",\"t\":334.640772,\"at\":1791915271213},\"s96884739a6ff:ied\":{\"review\":\"left\",\"index\":9,\"id\":\"e1153f548e4\",\"t\":96.5977,\"at\":1792441879878}}",
+  "spotter_at": "{\"s45965a6b13d3:ied\":{\"review\":\"all\",\"index\":49,\"id\":\"e4c9f7bba8b\",\"t\":943.472121,\"at\":1792001370071},\"sddf3e5010ff2:ied\":{\"review\":\"left\",\"index\":7,\"id\":\"eb9bd781841\",\"t\":17.209561,\"at\":1790372908151},\"s9a8f6138b49e:ied\":{\"review\":\"left\",\"index\":162,\"id\":\"ef8f3715329\",\"t\":1248.283006,\"at\":1791910611232},\"s91039ecb8aa9:ied\":{\"review\":\"left\",\"index\":38,\"id\":\"ea4af54247d\",\"t\":334.640772,\"at\":1791915271213}}",
   "spotter_light": "lit",
   "themes": {
     "BarryLab": "horizon-night",
-    "DESKTOP-4H65AI7": "halloween",
+    "DESKTOP-4H65AI7": "light",
     "DESKTOP-AH45FAE": "horizon-night",
     "DESKTOP-NR2H5O7": "horizon-night",
     "Home": "dark",
     "LCOM549913": "horizon-night"
   },
-  "updated": "2026-10-19T16:35:43-04:00",
+  "updated": "2026-10-20T10:40:53-04:00",
   "vacc": {
     "BarryLab": true,
-    "DESKTOP-4H65AI7": false,
+    "DESKTOP-4H65AI7": true,
     "DESKTOP-AH45FAE": true,
     "Home": true,
     "LCOM549913": true
