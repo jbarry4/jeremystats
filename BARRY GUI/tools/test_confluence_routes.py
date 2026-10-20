@@ -94,7 +94,7 @@ def main():
         gids = sorted(r["gid"] for r in got["recordings"])
         check("only recordings with both kinds are listed", gids == ["g1", "g3"],
               gids)
-        check("with the default window", got.get("window_ms") == 5.0, got)
+        check("with the default window", got.get("window_ms") == 20.0, got)
         g1 = next(r for r in got["recordings"] if r["gid"] == "g1")
         check("every input says outright whether it is aligned",
               all(e.get("aligned") is False and e.get("aligned_names") == []
@@ -225,31 +225,36 @@ def main():
         r = cli.post("/api/curation/from-bank", json={
             "gid": "g1", "kind": "pooled", "entry": ent["id"],
             "replace": True, "version": 0}).get_json()
-        st_ = cli.get("/api/curation/g1/pooled").get_json().get("set") or {}
+        # The set's kind names its entry since 2026-10-20 ("pooled.e<id>"):
+        # a set belongs to one bank entry. Every route below asks by it.
+        sk = r.get("kind") or "pooled"
+        check("the set is the pool's own (pooled.e<entry>)",
+              sk == "pooled.e" + ent["id"], r)
+        st_ = cli.get("/api/curation/g1/" + sk).get_json().get("set") or {}
         pev = st_.get("events") or []
         check("a set made from the pool carries the origins",
               r.get("ok") is not False
               and [e.get("origin") for e in pev] == ["both", "incisor", "both"],
               pev)
         a_, b_ = pev[1], pev[0]          # the Incisor-only one, and a merged one
-        mg = cli.post("/api/curation/g1/pooled/merge",
+        mg = cli.post("/api/curation/g1/" + sk + "/merge",
                       json={"keep": a_["id"], "drop": b_["id"]}).get_json()
         check("merging through the route keeps Incisor's earlier-time one",
               mg.get("ok") and mg.get("event", {}).get("id") in (a_["id"], b_["id"]),
               mg)
-        after = cli.get("/api/curation/g1/pooled").get_json()["set"]["events"]
+        after = cli.get("/api/curation/g1/" + sk).get_json()["set"]["events"]
         check("and the set is one shorter", len(after) == len(pev) - 1,
               [e["start"] for e in after])
         survivor = mg["event"]
         gone = next(e for e in (a_, b_) if e["id"] == mg["dropped"])
         before = {k: v for k, v in (a_ if survivor["id"] == a_["id"] else b_)
                   .items() if k in ("origin", "pair_t", "label", "channel")}
-        un = cli.post("/api/curation/g1/pooled/unmerge", json={
+        un = cli.post("/api/curation/g1/" + sk + "/unmerge", json={
             "keep": survivor["id"], "before": before,
             "dropped": {k: gone.get(k) for k in ("start", "origin",
                                                  "pair_t", "channel")}
         }).get_json()
-        back = cli.get("/api/curation/g1/pooled").get_json()["set"]["events"]
+        back = cli.get("/api/curation/g1/" + sk).get_json()["set"]["events"]
         check("undone through the route, it ends as it began",
               un.get("ok") and sorted(e["start"] for e in back)
               == sorted(e["start"] for e in pev)
@@ -259,11 +264,11 @@ def main():
         print("\nRoot Canal")
         # Curated: label everything a spike and bank the set back.
         for e in back:
-            cli.post("/api/curation/g1/pooled/label",
+            cli.post("/api/curation/g1/" + sk + "/label",
                      json={"event": e["id"], "label": "spike"})
         # Banked straight onto the pool: the route that does this in the
         # app wants a registered recording, which a test gid is not.
-        bundle = A.CURATE.bank_one(A.CURATE.get("g1", "pooled"))
+        bundle = A.CURATE.bank_one(A.CURATE.get("g1", sk))
         A.BANK.add(dict(A.BANK.get(ent["id"]), events=bundle["events"],
                         by_label=bundle["by_label"],
                         label_names=bundle["label_names"], curated=True,

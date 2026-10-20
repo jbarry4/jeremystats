@@ -2068,9 +2068,14 @@ BARRY.doppler = (function () {
               + 'Spotter.' }),
         el('div', { class: 'tk-actions dop-actions' }, [
           el('span', { class: 'spacer' }),
-          el('button', { class: 'btn', text: 'Confirm them in Spotter',
+          /* Onto Spotter's bench, not straight into the mode
+             (2026-10-20): the set is looked at there first, and opened
+             from its card. */
+          el('button', { class: 'btn', text: 'Next: Spotter — confirm them →',
+            title: 'Put this run on Spotter’s bench as a set of its own',
             onclick: () => {
-              if (BARRY.spotter) BARRY.spotter.enter(q.gid, res.banked.id);
+              const tk = BARRY.views.toolkit;
+              if (tk && tk.benchFrom) tk.benchFrom('spotter', q.gid, res.banked.id);
             } }),
         ]),
       ]);
@@ -2183,9 +2188,11 @@ BARRY.doppler = (function () {
     const go = await BARRY.confirm(
       'Confirm them now?',
       el('p', { text: res.n.toLocaleString() + ' candidates are banked. '
-          + 'Spotter walks them one at a time.' }),
-      'Open Spotter');
-    if (go && BARRY.spotter) BARRY.spotter.enter(q.gid, entryId);
+          + 'Spotter walks them one at a time; the run goes on its bench '
+          + 'first, as a set of its own.' }),
+      'Put it on Spotter’s bench');
+    const tk = BARRY.views.toolkit;
+    if (go && tk && tk.benchFrom) tk.benchFrom('spotter', q.gid, entryId);
   }
 
   function bankNote() {

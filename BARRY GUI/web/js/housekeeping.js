@@ -398,7 +398,7 @@ BARRY.views.housekeeping = (function () {
     return Array.from(seen).sort((a, b) => {
       if (a === 'Unfiled') return 1;
       if (b === 'Unfiled') return -1;
-      return a.localeCompare(b);
+      return BARRY.ui.natCompare(a, b);
     });
   }
 

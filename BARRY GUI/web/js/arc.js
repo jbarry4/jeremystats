@@ -4190,7 +4190,9 @@ BARRY.arcmode = (function () {
      The panel
      ================================================================== */
   function render() {
-    const host = document.getElementById('xfBody');
+    // In the one mode bar (core.js `BARRY.modeSlot`): Confirm's panel is
+    // its bar alone; Clean's grows by the grid of blocks above it.
+    const host = BARRY.modeSlot();
     if (!host) return;
     if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
     const p = now();
@@ -4286,30 +4288,10 @@ BARRY.arcmode = (function () {
     }
 
     bits.push(el('div', { class: 'spacer' }));
-    /* The keys, spelled as keys.
-     *
-     * The arrows have been bound since the first version of this mode and
-     * were advertised nowhere, so the bar taught n and p to people whose
-     * hand was already on the arrow keys -- "why is it n/p? not the arrow
-     * keys" is the whole of the report. Both still work; the arrows are
-     * named first, because they are the pair that needs no learning. */
-    const keyBits = [
-      el('kbd', { text: '←' }), el('kbd', { text: '→' }),
-      el('span', { text: 'or' }),
-      el('kbd', { text: 'n' }), el('kbd', { text: 'p' }),
-      el('span', { text: 'step pairs' }),
-    ];
-    if (kind === 'clean') {
-      keyBits.push(el('kbd', { text: '↑' }), el('kbd', { text: '↓' }),
-                   el('span', { text: 'pick a channel' }),
-                   el('kbd', { text: 'k' }), el('span', { text: 'keep' }),
-                   el('kbd', { text: 'x' }), el('span', { text: 'drop' }),
-                   el('kbd', { text: 't' }),
-                   el('span', { text: 'state / transition' }));
-    }
-    keyBits.push(el('kbd', { text: 'esc' }),
-                 el('span', { text: edit ? 'call off the drag' : 'leave' }));
-    bits.push(el('span', { class: 'arc-bar-keys' }, keyBits));
+    /* The keys are on the one bar's ? now (core.js MODES.arcconfirm /
+       arcclean `keys`), the same place every mode keeps them -- the arrows
+       named first, because they are the pair that needs no learning ("why
+       is it n/p? not the arrow keys"). Esc calls off a drag, else leaves. */
 
     /* The way out, with the decisions written down.
      *
@@ -4321,12 +4303,8 @@ BARRY.arcmode = (function () {
      * here files them and goes back, and it is the last thing on the bar
      * because it is the one thing to click. */
     if (kind === 'clean') {
-      bits.push(el('button', {
-        class: 'btn ghost sm',
-        text: 'Back to Spark',
-        title: 'Leave without filing. The decisions are kept.',
-        onclick: () => exit(),
-      }));
+      /* No "Back to Spark": Leave, at the far right of the one bar, does
+         that, and keeps the decisions. */
       bits.push(el('button', {
         class: 'btn' + (saving ? ' off' : ''),
         disabled: saving ? 'disabled' : null,

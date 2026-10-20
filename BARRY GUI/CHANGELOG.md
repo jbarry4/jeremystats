@@ -15,6 +15,116 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.20.8 - One mode bar at the bottom, sets by bank entry, number order, fewer phantom errors
+
+**Restart Jarvis on every machine.** The server changed.
+
+### Changed
+
+- **Every add-on has one compact bar, at the bottom.** The banner across the
+  top is gone, along with the second Leave it carried. The bar names the
+  mode on the left; the mode's own tools sit in the middle; More, the next
+  step and Bank come next; then **Simplify**, **?** and **Leave**, which is
+  always the last thing on the right. **Esc** leaves too. More holds the
+  occasional controls (window length, light switch, List all, Tooth Fairy,
+  Auto-bank). Checkup, Spotter, Panning, StrataScope, Braid, the Arc's
+  Confirm and Clean, and Braces all use it. Checkup's mode is called
+  Checkup, as its button is.
+- **Simplify** hides the channel list, the Xplorefinder header and the pane
+  strips so the traces fill the window. It is remembered per add-on.
+- **Working sets belong to one bank entry.** Two Doppler runs (or two pools)
+  on one recording are two sets, and starting one never replaces the other.
+  A set's decisions stay in that set and bank into its own entry. This is
+  what made flags seem to carry across M3S2's versions. Sets made before
+  today stay as they are.
+- **Checkup shows dentate spikes only.** Junction's pools are in Panning and
+  Doppler's runs in Spotter; none of them sit under Checkup any more.
+- **Add a set** works the same in all three doors: recording, then dataset,
+  then version (archived ones at the bottom), then onto the bench. It never
+  opens Xplorefinder by itself; open it from the card. Doppler's "Next:
+  Spotter" and Junction's "Pan them" put the run on the bench the same way.
+  Each bench card says which dataset it is.
+- **Junction, many at once:** a search, and each side shows the versions it
+  has, with a choice of which to pool from.
+- **Number order everywhere recordings are listed:** m1, m3, m5, m12, never
+  m1, m12, m3. Pickers, pool rows, batch plans, Results, the VACC browser,
+  Sessions and the Event Bank all sort this way, on the page and on the
+  server.
+- **Tables:** numbers right-aligned, words left-aligned, in every table.
+- **"Put it down" is "Close", and "Close all" is "Clear the bench".**
+
+### Fixed
+
+- **The Errors badge read 5,233.** It counted every row ever written, on
+  every computer, resolved or not. It now counts faults still open from the
+  last week. Faults that test harnesses make on purpose are marked and left
+  out, with a note in the Errors view and a "Show them" button.
+- The activity list spelled its verbs out letter by letter
+  ("i m p o r t e d"): a Tooth Fairy style leaked onto it.
+
+## 2026.10.20.7 - Root Canal: Bank that changes nothing writes nothing, one entry per answer, natural order
+
+**Restart Jarvis on every machine.** The server changed.
+
+### Fixed
+
+- **Bank said it had done nothing, and a new version appeared.** When the
+  set would come out exactly as a version the bank already holds (at
+  k = 1, say, where no event is called IED), Bank still filed a new result
+  under the new settings and saved another single version, "banked as vN".
+  Now nothing is written at all, and the message says why: "Nothing to
+  bank: these settings call no event an IED (k = 1: 53 DS), so the set
+  would be exactly v11, which the bank already holds. Nothing was
+  written. To keep these numbers (DS filter …), save them as a version."
+  It shows as information, not as a warning. Pooled sets work the same
+  way.
+- **The pool picker offered one recording's answers many times over.** PTEN
+  m2 s3 showed 7 entries.
+  - A saved version that is a banked result (banking and importing both
+    make one) is no longer listed twice. The banked entry says "saved as
+    v2" instead.
+  - Two answers that look alike are told apart by what differs: the
+    filter they were measured on, then k, then their events. A hash is
+    the last resort.
+  - A read says which version of the set it read ("of v11, the set as it
+    is", "of an earlier version").
+  - Answers about earlier versions of the set sit at the bottom, under
+    "Older: about earlier versions of the set", and the default is taken
+    from the current ones.
+  - A banked entry shows its filter as a chip, and an older one says
+    "older version".
+- **Root Canal rebuilt its whole page on every ToolKit refresh.** In Pooled,
+  the table you were ticking could be replaced under you. It now paints
+  once per bundle and view, and refills only what arrives. The Single
+  view's own loads (its sets, versions and first pick) no longer repaint
+  Pooled.
+- **The saved-version menu in Single was cut to 64 px**, so a version's name
+  could not be read. It is now as wide as its text.
+
+### Changed
+
+- **Recordings are listed in natural order:** m1, m3, m5, m12, never m12
+  before m3. This covers Root Canal's pool rows, its set chooser, its chip
+  values, the list of sets already done and the colour categories, and
+  Braces' recording chooser and Many list. The server's pool candidates,
+  saved singles and batch plan are sorted the same way.
+- **Braces' review bar is part of the one mode bar** at the bottom. The
+  shell's Leave replaces "Back to the proposal", "Undo every decision" is
+  under More, and the keys are listed in the ? popover.
+
+### Checked
+
+- `tools/check_rootcanal.py`: 455 ok, 0 fail. New checks:
+  - the same set under other settings files no new result and saves no
+    new version, and says so;
+  - every banked answer says its filter, its k and whether it is older;
+  - every cached read says which version it read.
+- The m2 s3 report was checked against the real pool candidates:
+  - the two banked v11 results are one LFP-filter and one DS-filter
+    answer;
+  - the two saved versions are those same two results;
+  - v5 and the 37-event read are older.
+
 ## 2026.10.20.6 - What was deleted stays deleted, here and in the cloud
 
 **Pull and restart Jarvis on every machine.** Until a machine runs this, it
@@ -34,9 +144,26 @@ can bring a deleted entry back with its next commit.
     notes it, so a later merge is refused too. Until now the pull only
     skipped the row and left the copy live.
 
-  A curation set's id is its recording and kind. A set started again on the
-  same recording after a deletion was made after the note, so it is left
-  alone. Only a deliberate deletion writes these notes.
+  A curation set's id is its recording and kind, so a set started again on
+  the same recording after a deletion shares the old set's id.
+  - **Copies are judged one at a time.** A merge can put the deleted set's
+    old copy beside the new set's copy. Only copies made before the deletion,
+    with nothing imported into them since, are erased. The new set keeps
+    every decision.
+  - **The new set still syncs.** The cloud keeps the old row marked deleted,
+    but the new set's decisions sync as normal.
+- **Deleting in Jarvis now reaches Supabase.** Deleting a bank entry or a
+  curation set (in the Event Bank, in a workbench, or when banking folds old
+  entries into one) used to erase this computer's copy and nothing else.
+  - The cloud row stayed live, and the next merge brought the entry back.
+  - Each deletion now writes a note, so the next sync marks the row deleted
+    and every computer erases its copy.
+  - A deletion is dated when it happened, not when the sync got it through.
+  - Test harnesses write no notes: the harness server, Flask's test client,
+    demo records and a harness's own seeds.
+- **The harness runner no longer puts back what the sweep erased.** It
+  leaves those records deleted and says so, instead of restoring them from
+  git and blaming the page.
 
 ### Data
 

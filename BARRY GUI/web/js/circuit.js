@@ -2315,7 +2315,7 @@ BARRY.circuit = (function () {
       if (!bulk.want[r.gid]) continue;
       for (const c of (r.cue_types || [])) all[c.cue_type] = c.cue_label;
     }
-    const ids = Object.keys(all).sort();
+    const ids = BARRY.ui.natSort(Object.keys(all));
     const isAll = bulk.cues === 'all';
     const box = el('div', { class: 'cir-cuepick' }, [
       el('button', {

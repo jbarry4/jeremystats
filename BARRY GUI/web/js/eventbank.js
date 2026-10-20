@@ -168,7 +168,7 @@ BARRY.views.eventbank = (function () {
         title: 'Filter by project',
         onchange: (e) => { projectFilter = e.target.value; render(); },
       }, [el('option', { value: '', text: 'All projects' })].concat(
-        projects.sort().map((p) => el('option', {
+        BARRY.ui.natSort(projects).map((p) => el('option', {
           value: p, text: p, selected: projectFilter === p ? 'selected' : null,
         })))));
     }
@@ -233,7 +233,7 @@ BARRY.views.eventbank = (function () {
       if (!byProject.has(proj)) byProject.set(proj, []);
       byProject.get(proj).push(x);
     });
-    Array.from(byProject.keys()).sort().forEach(function (proj) {
+    BARRY.ui.natSort(Array.from(byProject.keys())).forEach(function (proj) {
       const rows = byProject.get(proj).slice().sort(function (a, b) {
         const am = (a.session || {}).mouse || 0;
         const bm = (b.session || {}).mouse || 0;
@@ -1538,7 +1538,7 @@ BARRY.views.eventbank = (function () {
        means. */
     let windows = EXCL_WINDOWS.filter((w) => seen[w] || anyFlat)
       .concat(Object.keys(seen).filter(
-        (w) => EXCL_WINDOWS.indexOf(w) < 0).sort());
+        (w) => EXCL_WINDOWS.indexOf(w) < 0).sort(BARRY.ui.natCompare));
     if (!windows.length) windows = EXCL_WINDOWS.slice();
 
     const chan = {};                 // csc -> one row of the channel table

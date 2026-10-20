@@ -1280,36 +1280,51 @@ BARRY.views.toolkit = (function () {
      thing Checkup did not need -- the banked runs no set has been started
      from, to start one.
 
-     `kinds` null is every kind, which is what Checkup has always shown.
-     Harness leftovers are hidden from the two new doors, and counted. */
+     Each door shows ITS OWN kind (2026-10-20): Checkup's dentate spikes,
+     Spotter's discharges, Panning's pools. Checkup used to show every kind,
+     so Junction's pools and Doppler's runs sat on its bench among the
+     dentate spikes ("appeared together under Checkup; separate them").
+     Harness leftovers are hidden from the doors, and counted.
+
+     A set's kind names its bank entry ("ied.e3b31..."; `BARRY.ui.kindBase`
+     for the door), and a set is entered with its own kind. Starting from a
+     banked run goes through the add-a-set dialog (`newSetDialog`) and ends
+     on the bench, never straight in the mode. */
   const WB = {
-    curate: { tool: 'curate', title: 'Checkup', kinds: null,
-              enter: (st) => BARRY.curate.enter(st.gid, st.kind) },
+    curate: {
+      tool: 'curate', title: 'Checkup', kinds: ['ds'], kind: 'ds',
+      noun: 'dentate spikes', from: 'Incisor banks them.',
+      enter: (st) => BARRY.curate.enter(st.gid, st.kind),
+    },
     spotter: {
       tool: 'spotter', title: 'Spotter', kinds: ['ied'], kind: 'ied',
+      noun: 'discharges', from: 'Doppler banks them.',
       hideTests: true,
       blurb: 'Confirm what the radar found, one discharge at a time: solid, '
            + 'sputter, or neither.',
-      enter: (st) => BARRY.spotter.enter(st.gid),
+      enter: (st) => BARRY.spotter.enter(st.gid, null, { kind: st.kind }),
       startable: {
         kind: 'ied', noun: 'discharges', otherLabel: 'imported',
         mine: { label: 'From Doppler', chip: 'Doppler',
                 test: (p) => /^Doppler/.test(p) },
-        enter: (gid, id) => BARRY.spotter.enter(gid, id),
+        enter: (gid, id) => newSetDialog({ door: 'spotter',
+                                           preset: { gid, entry: id } }),
       },
     },
     panning: {
       tool: 'panning', title: 'Panning', kinds: ['pooled'], kind: 'pooled',
+      noun: 'events', from: 'Junction pools them.',
       hideTests: true,
       blurb: 'Sort a pool one event at a time: spike, garbage or flag. Every '
            + 'event shows which detector found it, and two that are one '
            + 'event can be merged.',
-      enter: (st) => BARRY.panning.enter(st.gid),
+      enter: (st) => BARRY.panning.enter(st.gid, null, { kind: st.kind }),
       startable: {
         kind: 'pooled', noun: 'events', otherLabel: 'other',
         mine: { label: 'From Junction', chip: 'Junction',
                 test: (p) => /^The Confluence/.test(p) },
-        enter: (gid, id) => BARRY.panning.enter(gid, id),
+        enter: (gid, id) => newSetDialog({ door: 'panning',
+                                           preset: { gid, entry: id } }),
       },
     },
   };
@@ -1321,15 +1336,20 @@ BARRY.views.toolkit = (function () {
   function wbSets() {
     const w = wb();
     return ((cur && cur.sets) || []).filter((st) =>
-      (!w.kinds || w.kinds.indexOf(st.kind) >= 0)
+      (!w.kinds || w.kinds.indexOf(BARRY.ui.kindBase(st.kind)) >= 0)
       && !(w.hideTests && st.test));
   }
 
   /* Opening a set through the door it was picked up from. */
   function wbEnter(st) {
     const w = wb();
-    // Checkup opens any kind in Checkup; the other two only their own.
-    return (w.kinds && w.kinds.indexOf(st.kind) < 0 ? WB.curate : w).enter(st);
+    // Each door opens its own kind; a set of another kind opens in its own
+    // door's mode (a pool in Panning, a run in Spotter), never in Checkup.
+    const base = BARRY.ui.kindBase(st.kind);
+    const own = Object.keys(WB).map((k) => WB[k])
+      .find((x) => x.kinds && x.kinds.indexOf(base) >= 0);
+    return (w.kinds && w.kinds.indexOf(base) < 0 ? (own || WB.curate) : w)
+      .enter(st);
   }
 
   /* Which half of Checkup is showing: the sets, or AI Beta (aibeta.js).
@@ -1415,13 +1435,11 @@ BARRY.views.toolkit = (function () {
          this at all" -- a stronger statement than closing it; the drawer
          at the bottom of the shelf is where those sets are found again. */
       if (!words.length) return true;
-      const hay = [st.name, st.kind_name, st.kind, st.gid, st.assignee,
-                   st.session && st.session.label,
-                   st.session && st.session.project,
-                   st.session && ('m' + st.session.mouse),
-                   st.session && ('s' + st.session.session)]
-        .filter(Boolean).join(' ').toLowerCase();
-      return words.every((w) => hay.indexOf(w) >= 0);
+      return BARRY.ui.searchMatch(
+        [st.name, st.kind_name, st.kind, st.gid, st.assignee,
+         st.session && st.session.label, st.session && st.session.project],
+        q, { mouse: st.session && st.session.mouse,
+             session: st.session && st.session.session });
     });
 
     const num = (v) => (isFinite(v) ? Number(v) : -1);
@@ -1438,7 +1456,7 @@ BARRY.views.toolkit = (function () {
       left: (a, b) => ((b.progress || {}).left || 0)
                     - ((a.progress || {}).left || 0),
       flag: (a, b) => (by(b).flag || 0) - (by(a).flag || 0),
-      name: (a, b) => String(a.name || '').localeCompare(String(b.name || '')),
+      name: (a, b) => BARRY.ui.natCompare(a.name, b.name),
       size: (a, b) => ((b.progress || {}).total || 0)
                     - ((a.progress || {}).total || 0),
       /* Newest first, by time. These stamps are not all in one offset --
@@ -1452,7 +1470,7 @@ BARRY.views.toolkit = (function () {
         const sa = a.session || {}, sb = b.session || {};
         return (num(sa.mouse) - num(sb.mouse))
             || (num(sa.session) - num(sb.session))
-            || String(a.name || '').localeCompare(String(b.name || ''));
+            || BARRY.ui.natCompare(a.name, b.name);
       },
     }[curQ.sort] || (() => 0);
     return rows.slice().sort(cmp);
@@ -1513,8 +1531,9 @@ BARRY.views.toolkit = (function () {
       el('div', { class: 'spacer' }),
       curPaneSwitch(),
       open.length > 1 ? el('button', {
-        class: 'btn ghost sm', text: 'Close all',
-        title: 'Clear the bench. Nothing is archived, deleted or unbanked.',
+        class: 'btn ghost sm', text: 'Clear the bench',
+        title: 'Close every set on the bench. Nothing is archived, deleted '
+             + 'or unbanked.',
         onclick: closeAllSets,
       }) : null,
       /* Not "Import candidates". Candidates live in the Event Bank, with
@@ -1544,16 +1563,18 @@ BARRY.views.toolkit = (function () {
              + 'curator what garbage looks like.',
         onclick: showGarbageHall,
       }),
-      el('button', { class: 'btn', text: 'New curation set…',
-                     onclick: newCurationSet }),
+      el('button', { class: 'btn', text: 'Add a set…',
+                     title: 'Recording, then dataset, then version: onto the '
+                          + 'bench, to look at before opening it.',
+                     onclick: () => newSetDialog({ door: 'curate' }) }),
     ].filter(Boolean)));
 
     if (!sets.length) {
       host.appendChild(el('div', { class: 'hint tk-empty',
-        text: 'Nothing to curate yet. Start a set from something in the '
-            + 'Event Bank — pick the recording, the entry and which '
-            + 'version of it to work from. Version 0 is the detector\u2019s '
-            + 'list with nothing decided yet.' }));
+        text: 'Nothing to curate yet. Add a set: pick the recording, the '
+            + 'dataset banked for it and which version of it to work from. '
+            + 'Version 0 is the detector\u2019s list with nothing decided '
+            + 'yet.' }));
       return;
     }
 
@@ -1615,7 +1636,7 @@ BARRY.views.toolkit = (function () {
     const open = curOpen();
     const fresh = curStart[w.kind] || [];
     const tests = ((cur && cur.sets) || []).filter(
-      (st) => w.kinds.indexOf(st.kind) >= 0 && st.test).length
+      (st) => w.kinds.indexOf(BARRY.ui.kindBase(st.kind)) >= 0 && st.test).length
       + fresh.filter((e) => e.test).length;
     host.appendChild(el('div', { class: 'tk-head' }, [
       BARRY.ui.stepHeader({
@@ -1623,11 +1644,15 @@ BARRY.views.toolkit = (function () {
       }),
       el('div', { class: 'spacer' }),
       open.length > 1 ? el('button', {
-        class: 'btn ghost sm', text: 'Close all',
-        title: 'Put every ' + w.title + ' set on the bench down. Nothing is '
+        class: 'btn ghost sm', text: 'Clear the bench',
+        title: 'Close every ' + w.title + ' set on the bench. Nothing is '
              + 'archived, deleted or unbanked.',
         onclick: closeAllSets,
       }) : null,
+      el('button', { class: 'btn', text: 'Add a set…',
+                     title: 'Recording, then dataset, then version: onto the '
+                          + 'bench, to look at before opening it.',
+                     onclick: () => newSetDialog({ door: w.tool }) }),
     ].filter(Boolean)));
 
     /* ---- the bench ---- */
@@ -2096,10 +2121,15 @@ BARRY.views.toolkit = (function () {
       done: done,
       extra: st.archived ? 'archived' : null,
       title: st.name,
+      gid: st.gid,
+      kind: st.kind,
       chips: [
         el('span', { class: 'hk-chip', text: st.kind_name }),
         el('span', { class: 'cur-set-sess',
                      text: (st.session || {}).label || st.gid }),
+        // Which dataset it is (2026-10-20): a set belongs to one bank
+        // entry, and two on one recording are told apart by it.
+        entryChip(st),
         // Whether the work on it is in the Event Bank (setpicker.js).
         BARRY.setPicker ? BARRY.setPicker.bankChip(st) : null,
       ].filter(Boolean),
@@ -2130,7 +2160,7 @@ BARRY.views.toolkit = (function () {
           onclick: () => enterSet(st),
         }),
         el('button', {
-          class: 'btn ghost sm', text: 'Put it down',
+          class: 'btn ghost sm', text: 'Close',
           title: 'Off the bench. Nothing to save first — every decision '
                + 'was written as you made it, and it is all still here.',
           onclick: () => openSet(st, false),
@@ -2167,6 +2197,25 @@ BARRY.views.toolkit = (function () {
   /* Which cards have their administrative half showing. Outside the render
      so opening it survives the next repaint. */
   const curMore = {};
+
+  /* The dataset a set stands for: its detector and the bank entry's id,
+     with the entry's name in the title. Older sets say the entry they were
+     started from, when they know it. */
+  function entryChip(st) {
+    const src = st.source || {};
+    const id = st.entry || src.bank_entry;
+    if (!id) return null;
+    const v = src.version !== undefined && src.version !== null
+      ? ' · from ' + BARRY.ui.versionLabel(src.version) : '';
+    return BARRY.ui.chip((src.pipeline || 'bank entry') + v, {
+      flag: true, extra: 'cur-entry',
+      title: 'This set belongs to bank entry ' + id
+           + (src.entry_name ? ' (\u201c' + src.entry_name + '\u201d)' : '')
+           + (st.entry ? '. Its versions are that entry\u2019s, and nothing '
+                         + 'else writes to it.'
+                       : '. An older set: one per recording and kind.'),
+    });
+  }
 
   /* The shelf: a picker, and the only place the list is a list. This is
      where searching and sorting belong -- you are looking something up. */
@@ -2220,15 +2269,23 @@ BARRY.views.toolkit = (function () {
     /* Named columns. A bare "416 ✓", a dash and "15 minutes ago"
        are three facts nobody can identify without being told which
        is which. */
-    shelf.appendChild(el('div', { class: 'cur-shelf-cols' }, [
-      el('span', { class: 'csr-name', text: 'Set' }),
-      el('span', { class: 'csr-sess', text: 'Recording' }),
-      el('span', { class: 'csr-n', text: 'Decided' }),
-      el('span', { class: 'csr-who', text: 'Whose' }),
-      el('span', { class: 'csr-when', text: 'Last touched' }),
-      el('span', {}),
+    /* One grid for the header and every row (2026-10-20). Each row used to
+       be a grid of its own, so its last column sized to its own chip and
+       buttons and every column before it moved row to row -- the numbers
+       and names zig-zagged down the shelf, and a wide row ran off the
+       right edge. Rows are subgrids of this one now: a column is as wide as
+       its widest cell, for every row at once. */
+    shelf.appendChild(el('div', { class: 'cur-shelf-grid' }, [
+      el('div', { class: 'cur-shelf-cols' }, [
+        el('span', { class: 'csr-name', text: 'Set' }),
+        el('span', { class: 'csr-sess', text: 'Recording' }),
+        el('span', { class: 'csr-n', text: 'Decided' }),
+        el('span', { class: 'csr-who', text: 'Whose' }),
+        el('span', { class: 'csr-when', text: 'Last touched' }),
+        el('span', {}),
+      ]),
+      el('div', { class: 'cur-shelf-list', id: 'curShelfList' }),
     ]));
-    shelf.appendChild(el('div', { class: 'cur-shelf-list', id: 'curShelfList' }));
     paintShelfList();
   }
 
@@ -2313,26 +2370,43 @@ BARRY.views.toolkit = (function () {
     }
   }
 
-  /* Start a set from a banked entry's version.
+  /* ADD A SET (2026-10-20): recording, then dataset, then version, then
+     onto the bench -- the same three questions in all three doors, each
+     door offering its own kind (Checkup's dentate spikes, Spotter's
+     discharges, Panning's pools). "For everything including Panning, when
+     adding something, have it chosen by recording, and then which dataset
+     to be offered as a choice with all the versions."
 
-     Three questions in order, because each one narrows the next: which
-     recording, which of its banked entries, and which version of that
-     entry. The version matters and used to be unaskable -- v0 is the
-     detector's list with nothing decided, which is how a fresh pass begins,
-     and a later version is how you carry on from where somebody left off. */
-  async function newCurationSet() {
-    /* Wait for the registry rather than reading whatever is cached.
-       It is a seconds-long fetch on a network share, and reading it early
-       gave an empty list -- which the code then reported as "no recordings
-       are registered", to somebody with a recording open. */
+     It never opens the mode. The set lands on the bench, where its card
+     says what it is and how far through, and Xplorefinder opens from the
+     card when wanted ("not directly opening into Xplorefinder").
+
+     A set belongs to one bank entry, so nothing is replaced: two runs on
+     one recording are two sets, and a dataset that already has a set offers
+     to pick that one up instead.
+
+       door     'curate' | 'spotter' | 'panning' (default: the one showing)
+       preset   { gid, entry } -- start on a recording, and a dataset
+       quick    put it straight on the bench when there is nothing to
+                choose: one version a set can be built from, and no set yet */
+  async function newSetDialog(o) {
+    const opt = o || {};
+    const w = WB[opt.door] || wb();
+    const base = w.kind || 'ds';
+    const noun = w.noun || 'events';
+    /* Wait for the registry rather than reading whatever is cached: it is a
+       seconds-long fetch on a share, and reading it early gave an empty
+       list -- reported as "no recordings are registered" to somebody with a
+       recording open. */
     if (!(cur && cur.registry)) {
       toast('Reading the recording registry\u2026', null, 2500);
       await loadCuration();
     }
     const reg = ((cur || {}).registry || {}).tree || [];
-    const rows = reg.flatMap((p) => p.mice.flatMap((m) => m.sessions));
+    const rows = BARRY.ui.natSort(
+      reg.flatMap((p) => p.mice.flatMap((m) => m.sessions)),
+      (r) => r.label || r.gid);
     if (!rows.length) {
-      /* Now it is safe to say which of the two it is. */
       toast((cur && cur.registry)
         ? 'The recording registry is empty \u2014 no recording has been '
           + 'opened on this machine yet. Open one in Xplorefinder and it '
@@ -2340,63 +2414,92 @@ BARRY.views.toolkit = (function () {
         : 'Could not read the recording registry'
           + ((cur || {}).error ? ': ' + cur.error : '.')
           + ' Nothing can be picked until it answers.', 'err', 9000);
-      return;
+      return false;
     }
 
-    /* Default to a recording that actually has something banked. The first
-       reachable one is usually not that, and opening the wizard onto "there
-       is nothing to work from here" makes it look broken when it is only
-       pointed at the wrong session. */
-    let banked = new Set();
+    // Which recordings have a dataset of this kind banked -- not counting
+    // what a test harness left behind, which is offered nowhere.
+    const harness = (e) => /harness/i.test([((e.added || {}).by || ''),
+      e.name || '', e.pipeline || ((e.source || {}).pipeline || '')].join(' '));
+    const has = new Set();
     try {
       const b = await api('/api/bank');
       for (const e of (b.entries || [])) {
-        if (e.gid && (e.type === 'ds' || e.type === 'ied')) banked.add(e.gid);
+        if (e.gid && e.type === base && !harness(e)) has.add(e.gid);
       }
-    } catch (e) { /* the picker still works, it just starts somewhere else */ }
-    let gid = (rows.find((r) => r.reachable && banked.has(r.gid))
-               || rows.find((r) => banked.has(r.gid))
-               || rows.find((r) => r.reachable) || rows[0] || {}).gid;
+    } catch (e) { /* every recording is offered; the next step says */ }
+
+    const pre = opt.preset || {};
+    let gid = pre.gid
+      || (rows.find((r) => r.reachable && has.has(r.gid))
+          || rows.find((r) => has.has(r.gid)) || {}).gid || null;
+    let wantEntry = pre.entry || null;
     let info = null;            // what is banked for the chosen recording
     let entry = null;
     let ver = null;
 
-    const body = el('div', { class: 'mb' });
-    const okBtn = el('button', { class: 'btn', text: 'Start on it',
+    const body = el('div', { class: 'mb ncs' });
+    const okBtn = el('button', { class: 'btn', text: 'Put on the bench',
                                  disabled: 'disabled' });
 
-    const sessPick = BARRY.pickSession({
+    const ents = () => BARRY.ui.natSort(
+      ((info && info.entries) || []).filter((e) => e.kind === base && !e.test),
+      (e) => [e.name || '', e.at || '']);
+    const nTests = () => ((info && info.entries) || [])
+      .filter((e) => e.kind === base && e.test).length;
+    // The set that stands for a dataset: its own, or an older one started
+    // from it.
+    const setOf = (e) => (((info && info.existing) || []).find((x) =>
+      BARRY.ui.kindBase(x.kind) === base
+      && (BARRY.ui.kindEntry(x.kind) === e.id
+          || (!BARRY.ui.kindEntry(x.kind)
+              && (x.source || {}).bank_entry === e.id)))) || null;
+    const firstUsable = (e) => ((e && e.versions) || [])
+      .find((v) => v.usable && !v.archived)
+      || ((e && e.versions) || []).find((v) => v.usable) || null;
+
+    const recPick = BARRY.ui.pickRecording({
       rows,
       value: gid,
-      placeholder: 'Which recording? Type a mouse, session or date\u2026',
-      onpick: (r) => { gid = r.gid; entry = null; ver = null; load(); },
+      usable: (r) => (has.has(r.gid) ? true
+        : 'Nothing for ' + w.title + ' is banked against this recording '
+          + 'yet. ' + (w.from || '')),
+      emptyText: 'Nothing for ' + w.title + ' is banked against any '
+               + 'recording yet. ' + (w.from || ''),
+      onpick: (r) => {
+        gid = r.gid; entry = null; ver = null; wantEntry = null; load();
+      },
     });
 
     const load = async () => {
       info = null;
       paint();
+      if (!gid) { info = { entries: [], existing: [] }; paint(); return; }
       try {
         info = await api('/api/curation/for-recording/'
                          + encodeURIComponent(gid));
       } catch (e) {
         info = { entries: [], existing: [], error: e.message };
       }
-      // One entry, one version worth having: choose it, so the common case
-      // is two clicks rather than four.
-      const es = info.entries || [];
-      if (es.length === 1) {
-        entry = es[0];
-        const usable = (entry.versions || []).filter((v) => v.usable);
-        if (usable.length === 1) ver = usable[0];
+      const es = ents();
+      const live = es.filter((e) => !e.archived);
+      entry = es.find((e) => e.id === wantEntry)
+        || (live.length === 1 ? live[0] : null);
+      ver = entry ? firstUsable(entry) : null;
+      // Quick: nothing to choose -- its set is there already, or there is
+      // one version a set can be built from -- so straight to the bench.
+      if (opt.quick && !shown && entry && (setOf(entry)
+          || (entry.versions || []).filter((v) => v.usable).length === 1)) {
+        await go();
+        return;
       }
       paint();
     };
 
     const paint = () => {
       body.innerHTML = '';
-      body.appendChild(el('div', { class: 'field' }, [
-        el('label', { text: 'Recording' }), sessPick]));
-
+      body.appendChild(recPick);
+      if (!gid) { okBtn.disabled = 'disabled'; return; }
       if (!info) {
         body.appendChild(el('p', { class: 'hint',
           text: 'Reading what is banked for it\u2026' }));
@@ -2409,75 +2512,99 @@ BARRY.views.toolkit = (function () {
         okBtn.disabled = 'disabled';
         return;
       }
-
-      /* What is already there, said before anything is chosen -- replacing
-         a half-finished set is the one irreversible thing here. */
-      for (const ex of (info.existing || [])) {
-        const pr = ex.progress || {};
-        body.appendChild(el('p', { class: 'confirm-sub warn',
-          text: 'This recording already has a ' + (ex.kind_name || ex.kind)
-              + ' set \u2014 ' + pr.specified + ' of ' + pr.total
-              + ' decided'
-              + (ex.assignee ? ', ' + ex.assignee + '\u2019s' : '')
-              + (ex.archived ? ', archived' : '')
-              + '. Starting a new one of that kind replaces it.' }));
-      }
-
-      const es = info.entries || [];
+      const es = ents();
       if (!es.length) {
         body.appendChild(el('p', { class: 'confirm-msg',
-          text: 'Nothing of a curatable kind is banked against this '
-              + 'recording, so there are no times to work from. File the '
-              + 'detector\u2019s output in the Event Bank first \u2014 that '
-              + 'is where candidates live.' }));
+          text: 'Nothing for ' + w.title + ' is banked against this '
+              + 'recording, so there is nothing to work from. '
+              + (w.from || '') }));
         okBtn.disabled = 'disabled';
         return;
       }
 
-      body.appendChild(el('div', { class: 'section-label',
-                                   text: 'Which banked entry' }));
+      body.appendChild(el('div', { class: 'section-label', text: 'Dataset' }));
       const list = el('div', { class: 'bm-list' });
-      for (const e of es) {
-        list.appendChild(el('label', {
-          class: 'bm-row' + (entry && entry.id === e.id ? ' on' : ''),
+      const rowOf = (e) => {
+        const st = setOf(e);
+        const pr = (st && st.progress) || {};
+        const nv = (e.versions || []).length;
+        return el('label', {
+          class: 'bm-row' + (entry && entry.id === e.id ? ' on' : '')
+                 + (e.archived ? ' is-archived' : ''),
         }, [
           el('input', { type: 'radio', name: 'ncsEntry',
             checked: entry && entry.id === e.id ? 'checked' : null,
             onchange: () => {
-              entry = e; ver = null;
-              const usable = (e.versions || []).filter((v) => v.usable);
-              if (usable.length === 1) ver = usable[0];
-              paint();
+              entry = e; wantEntry = e.id; ver = firstUsable(e); paint();
             } }),
-          el('span', { class: 'mk-name', text: e.name }),
-          el('span', { class: 'flagchip', text: e.kind_name }),
+          el('span', { class: 'mk-name', text: e.name || 'unnamed' }),
+          e.source ? el('span', { class: 'flagchip', text: e.source }) : null,
           el('span', { class: 'person-what',
-                       text: (e.n || 0) + ' events'
-                           + (e.source ? '  \u00b7  ' + e.source : '') }),
-        ]));
-      }
+                       text: (e.n || 0).toLocaleString() + ' ' + noun
+                           + '  \u00b7  ' + nv + ' version'
+                           + (nv === 1 ? '' : 's')
+                           + (e.by ? '  \u00b7  ' + e.by : '') }),
+          st ? BARRY.ui.chip((st.open ? 'on the bench' : 'has its set')
+                             + ' \u00b7 ' + (pr.specified || 0) + ' of '
+                             + (pr.total || 0) + ' decided',
+                             { flag: true, kind: 'ok' }) : null,
+        ].filter(Boolean));
+      };
+      const [live, gone] = BARRY.ui.splitArchived(es, (e) => e.archived);
+      for (const e of live) list.appendChild(rowOf(e));
+      const tail = BARRY.ui.archivedTail({
+        key: 'ncs-' + base, items: gone, noun: ['dataset', 'datasets'],
+        render: (xs) => xs.map(rowOf), onToggle: () => paint(),
+        forceOpen: !!(entry && entry.archived),
+      });
+      if (tail) list.appendChild(tail);
       body.appendChild(list);
+      if (nTests()) {
+        body.appendChild(el('p', { class: 'hint quiet',
+          text: nTests() + ' left behind by test harnesses '
+              + (nTests() === 1 ? 'is' : 'are') + ' not shown.' }));
+      }
 
-      if (!entry) { okBtn.disabled = 'disabled'; return; }
+      if (!entry) {
+        okBtn.textContent = 'Put on the bench';
+        okBtn.disabled = 'disabled';
+        return;
+      }
+      const st = setOf(entry);
+      if (st) {
+        const pr = st.progress || {};
+        body.appendChild(el('p', { class: 'confirm-msg',
+          text: 'This dataset already has its set, \u201c'
+              + (st.name || entry.name || '') + '\u201d \u2014 '
+              + (pr.specified || 0) + ' of ' + (pr.total || 0) + ' decided'
+              + (st.assignee ? ', ' + st.assignee + '\u2019s' : '')
+              + '. ' + (st.open ? 'It is on the bench.'
+                                : 'Picking it up puts it on the bench.')
+              + ' Nothing is replaced. To work from another version, use '
+              + 'Version on its card.' }));
+        okBtn.textContent = st.open ? 'Show it on the bench' : 'Pick it up';
+        okBtn.disabled = null;
+        return;
+      }
 
-      body.appendChild(el('div', { class: 'section-label',
-                                   text: 'Which version to work from' }));
+      body.appendChild(el('div', { class: 'section-label', text: 'Version' }));
       const names = entry.label_names || {};
       const nameOf = (k) => names[k] || (k === 'unspecified' ? 'undecided' : k);
-      /* The version tree (constitution §6e), chosen by id: the stored
-         number repeats when two machines both mint the next one, so
-         `ver.v === v.v` lit up two rows and sent an ambiguous number. */
+      /* Every version, chosen by id: the stored number repeats when two
+         machines both mint the next one, so `ver.v === v.v` lit two rows
+         and sent an ambiguous number. */
       body.appendChild(el('div', { class: 'ncs-vers' }, [BARRY.ui.versionTree({
         versions: entry.versions || [],
         idOf: (v) => (v.id != null ? v.id : 'v' + v.v),
         value: ver ? (ver.id != null ? ver.id : 'v' + ver.v) : undefined,
-        disabled: (v) => (v.usable ? null : 'no snapshot kept — a set cannot '
-                                          + 'be built from it'),
-        state: (v) => (v.imported ? ['the detector'] : []),
+        disabled: (v) => (v.usable ? null : 'no snapshot kept \u2014 a set '
+                                          + 'cannot be built from it'),
+        state: (v) => [v.imported ? 'the detector' : null,
+                       v.archived ? 'archived' : null].filter(Boolean),
         notes: (v) => Object.keys(v.by_label || {})
           .sort((a, b) => v.by_label[b] - v.by_label[a])
           .map((k) => nameOf(k) + ' ' + v.by_label[k]).join('  \u00b7  ')
-          || ((v.n || 0) + ' events'),
+          || ((v.n || 0) + ' ' + noun),
         onpick: (v) => { ver = v; paint(); },
       })]));
 
@@ -2486,78 +2613,112 @@ BARRY.views.toolkit = (function () {
           .filter((k) => k !== 'unspecified')
           .reduce((n, k) => n + ver.by_label[k], 0);
         body.appendChild(el('p', { class: 'confirm-msg',
-          text: 'The set will hold ' + (ver.n || 0) + ' candidate(s)'
+          text: 'The set will hold ' + (ver.n || 0) + ' ' + noun
               + (decided ? ', ' + decided + ' of them already decided as of '
                            + BARRY.ui.versionLabel(ver) + '.'
-                         : ', none decided \u2014 a fresh pass.') }));
+                         : ', none decided \u2014 a fresh pass.')
+              + ' It goes on the bench; open it from there.' }));
         if (ver.note) {
           body.appendChild(el('p', { class: 'hint', text: '\u201c'
                                      + ver.note + '\u201d' }));
         }
       }
+      okBtn.textContent = 'Put on the bench';
       okBtn.disabled = ver ? null : 'disabled';
     };
 
-    okBtn.onclick = async () => {
-      if (!entry || !ver) return;
-      const had = (info.existing || []).find((x) => x.kind === entry.kind);
-      if (had) {
-        const pr = had.progress || {};
-        const ok = await BARRY.confirm(
-          'Replace the existing ' + (had.kind_name || had.kind) + ' set?',
-          'This recording already has one \u2014 "' + (had.name || '')
-          + '", ' + pr.specified + ' of ' + pr.total + ' decided'
-          + (had.assignee ? ', assigned to ' + had.assignee : '')
-          + '. A recording has one set per kind, so starting from '
-          + BARRY.ui.versionLabel(ver) + ' replaces it. The decisions in it '
-          + 'are still in the bank if they were ever banked; anything never '
-          + 'banked goes.',
-          'Replace it with ' + BARRY.ui.versionLabel(ver), true);
-        if (!ok) return;
-      }
+    let shown = false;
+    let went = false;
+    const go = async () => {
+      if (!entry) return;
+      went = true;
+      const st = setOf(entry);
       okBtn.disabled = 'disabled';
       try {
-        const res = await apiPost('/api/curation/from-bank', {
-          gid, kind: entry.kind, entry: entry.id,
-          // By id where there is one (the route resolves a ref).
-          version: ver.id != null ? ver.id : ver.v,
-          replace: true,
-        });
-        closeModal();
-        const pr = res.progress || {};
-        toast('Started "' + (res.set || {}).name + '" from '
-              + BARRY.ui.versionLabel(ver)
-              + ': ' + pr.total + ' candidate(s), ' + pr.left + ' to decide.'
-              + (res.replaced ? ' The previous set was replaced.' : ''),
-              'ok', 8000);
-        await loadCuration();
-        // Straight onto the bench, which is what "start working on it" means.
-        openSet((cur.sets || []).find(
-          (x) => x.gid === gid && x.kind === entry.kind) || {}, true);
+        let kind;
+        if (st) {
+          kind = st.kind;
+        } else {
+          if (!ver) { okBtn.disabled = null; return; }
+          const res = await apiPost('/api/curation/from-bank', {
+            gid, kind: base, entry: entry.id,
+            // By id where there is one (the route resolves a ref).
+            version: ver.id != null ? ver.id : ver.v,
+            open: true,
+          });
+          kind = res.kind;
+          const pr = res.progress || {};
+          toast('On the bench: \u201c' + ((res.set || {}).name || entry.name)
+                + '\u201d from ' + BARRY.ui.versionLabel(ver) + ' \u2014 '
+                + (pr.total || 0) + ' ' + noun + ', ' + (pr.left || 0)
+                + ' to decide. Open it from its card when you want to look.',
+                'ok', 8000);
+        }
+        if (shown) closeModal();
+        await benchShow(w, gid, kind, !!st);
       } catch (e) {
+        // Made by somebody else a moment ago: that set is this dataset's.
+        const d = e && e.data;
+        if (d && d.exists && d.kind) {
+          if (shown) closeModal();
+          await benchShow(w, gid, d.kind, true);
+          return;
+        }
+        went = false;
         toast(e.message, 'err', 9000);
         okBtn.disabled = null;
       }
     };
+    okBtn.onclick = go;
 
-    showModal(el('div', {}, [
-      el('div', { class: 'mh' }, [
-        el('h3', { text: 'New curation set' }),
-        el('span', { class: 'sub',
-                     text: 'from a version of something already banked' }),
-        el('div', { class: 'spacer' }),
-        el('button', { class: 'close-x', onclick: closeModal,
-          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
-      ]),
-      body,
-      el('div', { class: 'mf' }, [
-        el('div', { class: 'spacer' }),
-        el('button', { class: 'btn ghost', text: 'Cancel',
-                       onclick: closeModal }),
-        okBtn,
-      ]),
-    ]));
-    load();
+    const showIt = (sub) => {
+      shown = true;
+      showModal(el('div', { class: 'ncs-modal' }, [
+        el('div', { class: 'mh' }, [
+          el('h3', { text: 'Add a set to ' + w.title }),
+          el('span', { class: 'sub', text: sub }),
+          el('div', { class: 'spacer' }),
+          el('button', { class: 'close-x', onclick: closeModal,
+            title: 'Close',
+            html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+        ]),
+        body,
+        BARRY.ui.modalFoot(null, [
+          el('button', { class: 'btn ghost', text: 'Cancel',
+                         onclick: closeModal }),
+          okBtn,
+        ]),
+      ]));
+    };
+    if (!opt.quick) showIt('recording, dataset, version \u2014 onto the bench');
+    await load();
+    // Quick, but there was a choice to make after all: ask.
+    if (opt.quick && !shown && !went) {
+      showIt('which version to work from');
+      paint();
+    }
+    return true;
+  }
+
+  /* A set onto the bench of its door, the door on screen, and the card
+     lit so it is found. */
+  async function benchShow(w, gid, kind, pickUp) {
+    curStale = true;
+    delete curStart[w.kind];
+    if (q.tool !== w.tool) pickTool(w.tool, (bundleOf(w.tool) || {}).id);
+    await loadCuration();
+    const st = ((cur && cur.sets) || []).find(
+      (x) => x.gid === gid && x.kind === kind);
+    if (st && pickUp && !st.open) await openSet(st, true);
+    else renderCuration();
+    const card = Array.from(document.querySelectorAll('#curBench .cur-set'))
+      .find((n) => n.dataset.gid === gid && n.dataset.kind === kind);
+    if (card) {
+      try { card.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+      catch (e) { /* an old engine scrolls without the options */ }
+      if (BARRY.motion && BARRY.motion.land) BARRY.motion.land(card);
+    }
+    return st || null;
   }
 
   /* ---- the workbench verbs ---- */
@@ -2706,7 +2867,10 @@ BARRY.views.toolkit = (function () {
       });
       if (!pick) return false;      // asked, and called off
     }
-    const got = await openSet(st, true, false, pick ? pick.v : null);
+    // The version by its id: numbers repeat when two machines both mint
+    // the next one, and the bank refuses to guess (2026-10-20).
+    const got = await openSet(st, true, false, pick
+      ? ((pick.row && pick.row.id != null) ? pick.row.id : pick.v) : null);
     if (!got) return false;
     /* Before entering, not after: the panel reads the set when it opens, and
        restoring underneath it would leave the decisions on screen belonging
@@ -4027,6 +4191,13 @@ BARRY.views.toolkit = (function () {
        costs one request. */
     loadRegistry: registry,
     tool: () => q.tool, onShow, refresh,
+    /* A banked run onto its door's bench, and the door on screen: what
+       "Next: Spotter" from Doppler and "Pan them" from Junction do. Quick
+       when there is nothing to choose (one version, no set yet); otherwise
+       the add-a-set dialog opens on that dataset. Never the mode itself. */
+    benchFrom: (door, gid, entryId) => newSetDialog({
+      door, preset: { gid, entry: entryId }, quick: true }),
+    newSet: (door) => newSetDialog({ door }),
     /* Open a tool by name, for anything outside this view that knows which
        one it wants -- the command palette, and a deep link. The same
        function the bundle steps and the flat buttons call, rather than a

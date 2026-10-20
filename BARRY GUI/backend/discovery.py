@@ -336,7 +336,8 @@ def group_sessions(sessions):
         tree[g][mkey]["sessions"].append(s)
 
     out = []
-    for g in sorted(tree.keys()):
+    from . import natsort
+    for g in sorted(tree.keys(), key=natsort.key):
         mice = []
         for mkey in sorted(tree[g].keys(),
                            key=lambda k: (tree[g][k]["mouse"] is None,

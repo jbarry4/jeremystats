@@ -108,17 +108,30 @@ async function untilN(fn, tries = 250, gap = 100) {
   await sleep(300);
   await post('/api/errors/test', {}).catch(() => null);
   await sleep(400);
-  const server = ((await get('/api/sync/status')).index || {}).counts || {};
-  say('note', '  the server now counts ' + (server.errors || 0));
+  /* The badge counts distinct faults still open from the last week, not
+     every row ever written (2026-10-20: it read 5,233), and a test's own
+     faults -- like the one just written -- are not among them. The server
+     recounts beside its poll, so ask until it has. */
+  let open = null;
+  for (let i = 0; i < 20 && (open === null || open.faults == null); i++) {
+    open = (await get('/api/sync/status')).errors_open || {};
+    if (open.faults == null) await sleep(300);
+  }
+  const server = { errors: (open || {}).faults || 0 };
+  say('note', '  the server now counts ' + server.errors + ' open fault(s)');
   await run('BARRY.refreshSync()');
   await sleep(300);
   const now = readBadge();
   say('note', '  badge reads ' + now + ' after a sync refresh, without '
       + 'opening Errors');
-  check('the badge follows the count without the view being opened',
-        now === (server.errors || 0), now + ' vs ' + (server.errors || 0));
+  check('the badge follows the open faults without the view being opened',
+        now === server.errors, now + ' vs ' + server.errors);
   check('and it is showing rather than hidden',
-        (server.errors || 0) === 0 || !badge.classList.contains('hidden'));
+        server.errors === 0 || !badge.classList.contains('hidden'));
+  const raw = ((await get('/api/sync/status')).index || {}).counts || {};
+  check('and it is not every row ever written',
+        (raw.errors || 0) <= server.errors || now < (raw.errors || 0),
+        now + ' of ' + (raw.errors || 0) + ' rows');
   check('the Errors view was never opened',
         val("BARRY.state.view") === 'pipeline', val("BARRY.state.view"));
 

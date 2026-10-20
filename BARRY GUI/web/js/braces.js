@@ -601,8 +601,8 @@ BARRY.braces = (function () {
         reachable: true,
       });
     }
-    rows.sort((x, y) => String(x.label || '').localeCompare(
-      String(y.label || '')));
+    // Natural order (2026-10-20): m1, m3, m5, m12.
+    rows.sort((x, y) => BARRY.ui.natCompare(x.label || '', y.label || ''));
 
     // Opened on something workable rather than on nothing: the recording
     // of whatever is already chosen, else the first one that has entries.
@@ -1086,9 +1086,9 @@ BARRY.braces = (function () {
       const r = reachOf(c);
       out.push({ c, r, why: whyNot(c, r) });
     }
-    out.sort((a, b) => String(a.c.project || '~')
-      .localeCompare(String(b.c.project || '~'))
-      || rowLabel(a.c).localeCompare(rowLabel(b.c)));
+    // By project, then recording, in natural order (2026-10-20).
+    out.sort((a, b) => BARRY.ui.natCompare(a.c.project || '~', b.c.project || '~')
+      || BARRY.ui.natCompare(rowLabel(a.c), rowLabel(b.c)));
     return out;
   }
 
@@ -3534,8 +3534,10 @@ BARRY.braces = (function () {
     let bar = document.getElementById('brViewBar');
     if (!bar) {
       bar = el('div', { class: 'cur-bar br-view-bar', id: 'brViewBar' });
-      const body = document.getElementById('xfBody');
-      (body || document.body).appendChild(bar);
+      /* In the middle of the one mode bar (core.js `BARRY.modeSlot`,
+         2026-10-20): the shell draws the mode's name, Simplify, ? and
+         Leave at its ends, and Leave calls `exitView`. */
+      BARRY.modeSlot().appendChild(bar);
       document.addEventListener('keydown', vKeys, true);
     }
     bar.innerHTML = '';
@@ -3748,12 +3750,16 @@ BARRY.braces = (function () {
            el('span', { text: 'n / p stop here' }),
          ])] : [])),
       el('div', { style: 'flex:1' }),
-      el('button', { class: 'btn ghost sm', text: 'Undo every decision',
-                     title: 'Clears the whole pass. The proposal itself is '
-                          + 'untouched.',
-                     onclick: vUndoAll }),
-      el('button', { class: 'btn ghost sm', text: 'Back to the proposal',
-                     onclick: exitView }),
+      /* Its own end: the rare, sweeping one under More. Back to the
+         proposal is the shell's Leave now, last on the bar. */
+      BARRY.ui.modeEnd ? BARRY.ui.modeEnd({ more: [
+        el('button', { class: 'btn ghost sm br-undo-all',
+                       text: 'Undo every decision',
+                       title: 'Clears the whole pass. The proposal itself is '
+                            + 'untouched.',
+                       onclick: vUndoAll }),
+      ] }) : el('button', { class: 'btn ghost sm br-undo-all',
+                            text: 'Undo every decision', onclick: vUndoAll }),
     ]));
   }
 

@@ -1065,8 +1065,8 @@ BARRY.dspca = (function () {
         reachable: true,
       });
     }
-    rows.sort((x, y) => String(x.label || '').localeCompare(
-      String(y.label || '')));
+    // Number order: m1, m3, m12 (2026-10-20).
+    BARRY.ui.natSort(rows, (x) => x.label || '');
 
     // Opened on something workable rather than on nothing.
     if (!q.gid || !seen.has(q.gid)) {

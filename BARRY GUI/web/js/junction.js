@@ -40,14 +40,16 @@ BARRY.junction = (function () {
     find: '',
     ds: null, dsV: null,  // the dentate-spike entry, and its version (null: newest)
     ied: null, iedV: null,
-    win: 5,               // ms
+    win: 20,              // ms (the default since 2026-10-20; was 5)
     keep: 'incisor',      // whose time a merged event keeps
     sel: null,            // Many: the gids ticked (a Set), null until listed
+    manyFind: '',         // Many: what is typed in its search
+    manyV: {},            // Many: gid -> { ds, ied } version names chosen
   };
 
   let recs = null;        // /api/confluence/recordings
   let recsErr = null;
-  let defaultWin = 5;
+  let defaultWin = 20;
   let plan = null;        // the preview for the inputs on screen
   let planErr = null;
   let planSig = null;
@@ -75,7 +77,7 @@ BARRY.junction = (function () {
     try {
       const got = await api('/api/confluence/recordings');
       recs = got.recordings || [];
-      defaultWin = Number(got.window_ms) || 5;
+      defaultWin = Number(got.window_ms) || 20;
       recsErr = null;
     } catch (e) {
       recs = [];
@@ -174,7 +176,8 @@ BARRY.junction = (function () {
       await load();
       if (!q.sel) q.sel = new Set((recs || []).filter(
         (r) => !pooledDefault(r)).map((r) => r.gid));
-      if (q.win === 5 && defaultWin !== 5) q.win = defaultWin;
+      // Still the starting window (nobody has typed one): the server's.
+      if (q.win === 20 && defaultWin !== 20) q.win = defaultWin;
       paint();
       return;
     }
@@ -1063,38 +1066,81 @@ BARRY.junction = (function () {
     g.fill();
   }
 
+  /* Onto Panning's bench, not straight into Xplorefinder (2026-10-20:
+     "pick a set and version into the workbench, inspect its details, then
+     open Xplorefinder only if needed"). */
   function panIt(gid, entryId) {
-    if (!BARRY.panning) return;
     const tk = BARRY.views.toolkit;
-    if (tk && tk.pick) tk.pick('panning', 'confluence');
-    BARRY.panning.enter(gid, entryId);
+    if (tk && tk.benchFrom) tk.benchFrom('panning', gid, entryId);
   }
 
   /* ==================================================================
      Many at once
      ================================================================== */
+  /* The version each side pools from: the one chosen on its row, else
+     the newest (the entry's tip). */
+  const manyVer = (r, side) => {
+    const d = defaultsFor(r)[side];
+    const want = (q.manyV[r.gid] || {})[side];
+    return want || (d && d.tip);
+  };
   const pooledDefault = (r) => {
     const d = defaultsFor(r);
-    return !!(d.ds && d.ied && pooledFrom(r, d.ds.id, d.ds.tip, d.ied.id,
-                                          d.ied.tip, q.win));
+    return !!(d.ds && d.ied && pooledFrom(r, d.ds.id, manyVer(r, 'ds'),
+                                          d.ied.id, manyVer(r, 'ied'), q.win));
   };
+  /* The rows the search finds, in number order (m1, m3, m12). */
+  const manyRows = () => BARRY.ui.natSort((recs || []).filter(
+    (r) => BARRY.ui.searchMatch([nameOf(r), r.project, r.gid,
+                                 ((defaultsFor(r).ds || {}).name),
+                                 ((defaultsFor(r).ied || {}).name)],
+                                q.manyFind, { mouse: r.mouse, session: r.session })),
+    (r) => nameOf(r));
   const nAligned = (rows) => rows.filter(
     (r) => (r.ds[0] || {}).aligned && (r.ied[0] || {}).aligned).length;
 
   function paintMany(h) {
     if (!q.sel) q.sel = new Set();
-    const rows = recs || [];
+    const all = recs || [];
+    const rows = manyRows();
     const box = el('div', { class: 'card' }, [
       el('div', { class: 'section-label', text: 'Which recordings' }),
       el('p', { class: 'hint',
         text: 'Each is pooled from its newest Incisor entry and its newest '
-            + 'Doppler entry, at their newest versions. To choose another '
-            + 'entry or version, pool that recording on its own.' }),
+            + 'Doppler entry, at the versions shown -- the newest, unless '
+            + 'another is chosen on its row. To choose another entry, pool '
+            + 'that recording on its own.' }),
     ]);
+    /* A search, as every list of recordings has (2026-10-20): "m3s2",
+       "M3S2" and "m3 s2" find the same recording. */
+    const found = el('span', { class: 'hint jn-many-count' });
     const list = el('div', { class: 'jn-many', id: 'jnMany' });
-    for (const r of rows) list.appendChild(manyRow(r));
+    const fill = () => {
+      const shown = manyRows();
+      list.innerHTML = '';
+      for (const r of shown) list.appendChild(manyRow(r));
+      if (!shown.length) {
+        list.appendChild(el('p', { class: 'hint quiet',
+          text: all.length ? 'None of them match.' : 'Nothing to pool yet.' }));
+      }
+      found.textContent = shown.length === all.length
+        ? all.length + ' recording' + (all.length === 1 ? '' : 's')
+        : shown.length + ' of ' + all.length + ' shown';
+    };
+    box.appendChild(el('div', { class: 'cur-filter jn-many-find' }, [
+      BARRY.ui.searchField({
+        placeholder: 'Type a mouse, session, project or entry\u2026',
+        value: q.manyFind,
+        oninput: (ev) => {
+          q.manyFind = (ev && ev.target) ? ev.target.value : (ev || '');
+          fill();
+        },
+      }),
+      found,
+    ]));
+    fill();
     box.appendChild(list);
-    const n = rows.filter((r) => q.sel.has(r.gid)).length;
+    const n = all.filter((r) => q.sel.has(r.gid)).length;
     box.appendChild(BARRY.ui.field({
       label: 'Merge window (ms)', inline: true,
       control: el('input', { type: 'number', class: 'num', min: 0.5,
@@ -1108,14 +1154,16 @@ BARRY.junction = (function () {
     }));
     box.appendChild(keepField(() => { batch = null; paint(); }));
     box.appendChild(el('div', { class: 'tk-actions' }, [
-      el('button', { class: 'btn ghost sm', text: 'All',
-        onclick: () => { for (const r of rows) q.sel.add(r.gid); paint(); } }),
+      el('button', { class: 'btn ghost sm', text: 'All shown',
+        title: 'Tick every recording the search shows',
+        onclick: () => { for (const r of manyRows()) q.sel.add(r.gid); paint(); } }),
       el('button', { class: 'btn ghost sm', text: 'None',
         onclick: () => { q.sel.clear(); paint(); } }),
       el('button', { class: 'btn ghost sm', text: 'Not pooled yet',
         title: 'Only the recordings with no pool from their newest entries',
         onclick: () => {
-          q.sel = new Set(rows.filter((r) => !pooledDefault(r)).map((r) => r.gid));
+          q.sel = new Set(manyRows().filter((r) => !pooledDefault(r))
+                                    .map((r) => r.gid));
           paint();
         } }),
       el('button', { class: 'btn ghost sm',
@@ -1162,15 +1210,15 @@ BARRY.junction = (function () {
       el('strong', { class: 'jn-mname', text: nameOf(r) }),
       el('span', { class: 'jn-mside i' }, [
         el('i', { class: 'jn-dot i' }),
-        el('span', { text: (d.ds.name || d.ds.id) + ' · '
-                          + BARRY.ui.versionLabel(d.ds.tip) }),
+        el('span', { text: (d.ds.name || d.ds.id) }),
+        manyVerPick(r, 'ds'),
         alignWord(d.ds),
         el('b', { text: num(d.ds.n) }),
       ]),
       el('span', { class: 'jn-mside d' }, [
         el('i', { class: 'jn-dot d' }),
-        el('span', { text: (d.ied.name || d.ied.id) + ' · '
-                          + BARRY.ui.versionLabel(d.ied.tip) }),
+        el('span', { text: (d.ied.name || d.ied.id) }),
+        manyVerPick(r, 'ied'),
         alignWord(d.ied),
         el('b', { text: num(d.ied.n) }),
       ]),
@@ -1181,6 +1229,43 @@ BARRY.junction = (function () {
     ]);
     requestAnimationFrame(() => drawMini(row.querySelector('.jn-mflow'), res ? 1 : 0));
     return row;
+  }
+
+  /* Which version a side pools from, out of every version its entry has
+     -- shown, so what is available is seen, and choosable. Archived ones
+     are offered last, and said. */
+  function manyVerPick(r, side) {
+    const ent = defaultsFor(r)[side] || {};
+    const vs = (ent.versions || []).slice();
+    const cur = manyVer(r, side);
+    if (vs.length <= 1) {
+      return el('span', { class: 'jn-mver one',
+        text: BARRY.ui.versionLabel(cur),
+        title: vs.length ? 'Its only version' : '' });
+    }
+    const live = vs.filter((v) => !v.archived);
+    const gone = vs.filter((v) => v.archived);
+    const opt = (v) => el('option', {
+      value: v.name, selected: String(v.name) === String(cur) ? 'selected' : null,
+      text: BARRY.ui.versionLabel(v.name)
+          + (v.n != null ? ' \u00b7 ' + num(v.n) : '')
+          + (String(v.name) === String(ent.tip) ? ' \u00b7 newest' : '')
+          + (v.archived ? ' \u00b7 archived' : ''),
+    });
+    return el('select', {
+      class: 'jn-mver',
+      title: vs.length + ' versions of this entry. The pool is made from the '
+           + 'one chosen here.',
+      disabled: merging ? 'disabled' : null,
+      'aria-label': 'Version of ' + (ent.name || side),
+      onchange: (e) => {
+        const m = q.manyV[r.gid] || (q.manyV[r.gid] = {});
+        m[side] = e.target.value === String(ent.tip) ? null : e.target.value;
+        batch = null;
+        paint();
+      },
+    }, live.map(opt).concat(gone.length
+      ? [el('optgroup', { label: 'Archived' }, gone.map(opt))] : []));
   }
 
   function resultBits(res, r) {
@@ -1235,7 +1320,12 @@ BARRY.junction = (function () {
     if (b) { b.disabled = true; b.textContent = 'Merging…'; }
     const items = rows.map((r) => {
       const d = defaultsFor(r);
-      return { gid: r.gid, ds_entry: d.ds.id, ied_entry: d.ied.id };
+      const it = { gid: r.gid, ds_entry: d.ds.id, ied_entry: d.ied.id };
+      // A version chosen on the row; the newest otherwise.
+      const m = q.manyV[r.gid] || {};
+      if (m.ds) it.ds_version = m.ds;
+      if (m.ied) it.ied_version = m.ied;
+      return it;
     });
     sfx('charge', Math.min(4, 0.9 + rows.length * 0.12));
     let got;

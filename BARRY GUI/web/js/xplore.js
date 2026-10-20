@@ -1045,7 +1045,7 @@ BARRY.views.xplore = (function () {
        detector that found it, and an event both found is two stamps joined
        -- one mark per candidate coloured by its decision cannot say either.
        `BARRY.panning.draw` is called from the same places this is. */
-    if (marks.kind === 'pooled') return;
+    if (BARRY.ui.kindBase(marks.kind) === 'pooled') return;
     const span = t1 - t0;
     if (!(span > 0)) return;
     const small = (opts && opts.small) || false;

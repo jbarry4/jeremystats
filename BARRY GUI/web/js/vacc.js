@@ -437,11 +437,11 @@ BARRY.vacc = (function () {
       list.appendChild(el('button', { class: 'vacc-ls-row up', text: '..',
                                       onclick: () => go(up) }));
     }
-    for (const d of (here.dirs || [])) {
+    for (const d of BARRY.ui.natSort((here.dirs || []).slice(), (x) => x.name)) {
       list.appendChild(el('button', { class: 'vacc-ls-row dir', text: d.name,
                                       onclick: () => go(d.path) }));
     }
-    for (const r of (here.recordings || [])) {
+    for (const r of BARRY.ui.natSort((here.recordings || []).slice(), (x) => x.name)) {
       list.appendChild(el('div', { class: 'vacc-ls-row rec' }, [
         el('span', { text: r.name }),
         el('span', { class: 'vr-n', text: r.n_channels + ' ch' }),
@@ -475,7 +475,7 @@ BARRY.vacc = (function () {
     const line = (label, rows, cls) => rows.length
       ? el('details', { class: cls || '' }, [
           el('summary', { text: rows.length + ' ' + label }),
-          el('div', {}, rows.slice(0, 40).map((r) => el('div', {
+          el('div', {}, BARRY.ui.natSort(rows.slice(), (r) => [r.label, r.path]).slice(0, 40).map((r) => el('div', {
             class: 'hint quiet',
             text: (r.label ? r.label + ' — ' : '')
                 + (r.path || '').replace(d.root + '/', '')

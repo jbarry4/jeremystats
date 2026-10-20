@@ -1578,8 +1578,10 @@ def browse(cfg, path=None, timeout=60):
         return {"at": at, "dirs": [], "recordings": [], "error": err}
     if not done:
         raise SSHError("The listing was cut short.", "garbled", raw)
-    dirs.sort(key=lambda d: d["name"].lower())
-    recs.sort(key=lambda d: d["name"].lower())
+    # Number order, as every list of recordings (2026-10-20): m2 before m10.
+    from . import natsort
+    dirs.sort(key=lambda d: natsort.key(d["name"]))
+    recs.sort(key=lambda d: natsort.key(d["name"]))
     return {"at": at, "dirs": dirs, "recordings": recs, "error": None}
 
 

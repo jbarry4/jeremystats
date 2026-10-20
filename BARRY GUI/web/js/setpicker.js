@@ -15,13 +15,15 @@
      fresh(host, entries, cfg)
                      every banked run of the kind that no set has been
                      started from (/api/curation/startable), with a search,
-                     newest first, each with Start.
+                     by recording in number order or newest first, each
+                     with "Add to the bench".
    ========================================================================== */
 'use strict';
 
 BARRY.setPicker = (function () {
   const find = {};          // kind -> what is typed in the search box
   const showAll = {};       // kind -> imports as well as the tool's own runs
+  const order = {};         // kind -> 'rec' (by recording) | 'new' (newest)
 
   const num = (n) => Number(n || 0).toLocaleString();
   const when = (at) => {
@@ -74,7 +76,7 @@ BARRY.setPicker = (function () {
        mine        { label, chip, test(pipeline) } -- the bundle's own runs
        otherLabel  what everything else is called
        noun        'discharges'
-       enter(gid, entryId)  start a set from it and open it */
+       enter(gid, entryId)  put it on the bench (the add-a-set dialog) */
   function fresh(host, entries, cfg) {
     host.innerHTML = '';
     const all = (entries || []).filter((e) => !e.test);
@@ -87,11 +89,19 @@ BARRY.setPicker = (function () {
       const want = (find[cfg.kind] || '').trim().toLowerCase();
       const words = want ? want.split(/\s+/) : [];
       const pool = showAll[cfg.kind] ? all : all.filter(isMine);
-      const rows = pool.filter((e) => {
-        const h = hay([e.name, recOf(e), e.project, 'm' + e.mouse,
-                       's' + e.session, e.by, e.pipeline, e.gid]);
-        return words.every((w) => h.indexOf(w) >= 0);
-      });
+      // One search rule for every recording list (ui.searchMatch): "m3s2"
+      // and "M3S2" find m3 s2 as well as "m3 s2" does (2026-10-20).
+      const rows = pool.filter((e) => BARRY.ui.searchMatch(
+        [e.name, recOf(e), e.project, e.by, e.pipeline, e.gid],
+        want, { mouse: e.mouse, session: e.session }));
+      /* By recording, in number order -- m1, m3, m5, m12, never m1, m12, m3
+         (2026-10-20) -- the newest run of a recording first; or newest
+         first, as the server sends them. */
+      if ((order[cfg.kind] || 'rec') === 'rec') {
+        const at = (e) => String(e.at || '');
+        rows.sort((a, b) => BARRY.ui.natCompare(recOf(a), recOf(b))
+          || (at(a) < at(b) ? 1 : at(a) > at(b) ? -1 : 0));
+      }
       /* Archived runs sink (2026-10-20): counted and listed apart, at the
          bottom behind one toggle -- kept, and not offered first. The
          server sends them last, flagged `archived`. */
@@ -123,6 +133,9 @@ BARRY.setPicker = (function () {
         el('div', { class: 'sp-row-main' }, [
           el('strong', { text: e.name || recOf(e) }),
           el('span', { class: 'sp-row-sub', text: [
+            // Which recording, when the run's name does not say: the
+            // search finds a row by it, so the row shows it.
+            (e.name && recOf(e) && e.name.indexOf(recOf(e)) < 0) ? recOf(e) : null,
             num(e.n) + ' ' + cfg.noun,
             BARRY.ui.versionLabel(e.tip),
             e.by ? 'by ' + e.by : null,
@@ -143,16 +156,23 @@ BARRY.setPicker = (function () {
             disabled: 'disabled',
             title: 'Archived in the Event Bank, so it is not started from. '
                  + 'Unarchive one of its versions there to work from it.' }) :
-          el('button', { class: 'btn sm', text: 'Start…',
-            title: e.set_name
-              ? 'This recording already has a set, “' + e.set_name
-                + '”. Starting from this run asks before replacing it.'
-              : 'Make a set from this run and open it',
+          /* Onto the bench, as a set of its own (2026-10-20): the version
+             is chosen, the set is looked at on its card, and the mode opens
+             from there. A run never replaces another run's set. */
+          el('button', { class: 'btn sm', text: 'Add to the bench…',
+            title: 'Choose the version and put it on the bench as a set of '
+                 + 'its own'
+                 + ((e.on_recording || []).length
+                   ? '. The other set' + (e.on_recording.length === 1 ? '' : 's')
+                     + ' on this recording stay' + (e.on_recording.length === 1
+                       ? 's' : '') + ' as ' + (e.on_recording.length === 1
+                       ? 'it is' : 'they are') + '.'
+                   : '.'),
             onclick: (ev) => {
               const b = ev.currentTarget;
-              b.disabled = true; b.textContent = 'Opening…';
+              b.disabled = true;
               Promise.resolve(cfg.enter(e.gid, e.id)).finally(() => {
-                if (b.isConnected) { b.disabled = false; b.textContent = 'Start…'; }
+                if (b.isConnected) b.disabled = false;
               });
             } }),
         ]),
@@ -179,7 +199,14 @@ BARRY.setPicker = (function () {
         showAll[cfg.kind] = v === 'all';
         fresh(host, entries, cfg);
       }) : null,
-      el('div', { class: 'spacer', style: 'flex:1' }),
+      BARRY.ui.seg([
+        ['rec', 'By recording', 'Recordings in number order: m1, m3, m12'],
+        ['new', 'Newest first', 'The most recently banked runs first'],
+      ], order[cfg.kind] || 'rec', (v) => {
+        order[cfg.kind] = v;
+        fresh(host, entries, cfg);
+      }),
+      el('div', { class: 'spacer' }),
       el('span', { class: 'hint sp-count' }),
     ].filter(Boolean)));
     host.appendChild(list);

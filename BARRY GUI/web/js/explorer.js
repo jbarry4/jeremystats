@@ -73,7 +73,7 @@ BARRY.views.explorer = (function () {
     // Keep IED first and Misc last, matching the sidebar's mental model.
     const names = Array.from(bySection.keys()).sort((a, b) => {
       const rank = (n) => (n === 'IED Pipeline' ? 0 : n === 'Misc' ? 2 : 1);
-      return rank(a) - rank(b) || a.localeCompare(b);
+      return rank(a) - rank(b) || BARRY.ui.natCompare(a, b);
     });
 
     // Favourites and recents ride above the real sections. They are views

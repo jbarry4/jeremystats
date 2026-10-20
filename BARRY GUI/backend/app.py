@@ -46,6 +46,7 @@ from . import (aibeta as aibetamod,
                rcdeep,
                guides as guidesmod,
                versions as versionsmod,
+               natsort as natsortmod,
                panorama as panoramamod,
                panoramaset as pnsetmod,
                horizon as horizonmod,
@@ -1101,10 +1102,12 @@ def api_history_one(run_id):
 
 @app.route("/api/errors")
 def api_errors():
-    return jsonify({"ok": True,
-                    "errors": STORE.list_errors(
-                        limit=int(request.args.get("limit", 300)),
-                        day=request.args.get("day") or None),
+    # A test's faults only when asked (`_is_test_error`), as the grouped
+    # list does.
+    recs, hidden = _list_errors(int(request.args.get("limit", 300)),
+                                day=request.args.get("day") or None,
+                                tests=request.args.get("tests") or "hide")
+    return jsonify({"ok": True, "errors": recs, "hidden_tests": hidden,
                     "days": STORE.error_days()})
 
 
@@ -1113,7 +1116,7 @@ def api_errors_test():
     """Write a sample error so the log viewer can be verified end to end."""
     rec = STORE.record_error("selftest", "Test error from the Errors panel",
                              "No stack trace -- this entry was created on purpose.",
-                             {"source": "ui"})
+                             {"source": "ui"}, test=True)
     return jsonify({"ok": True, "error": rec})
 
 
@@ -1165,6 +1168,9 @@ def api_sync_status():
     body["started_at"] = _STARTED_AT
     body["conflicts"] = conflict_audit()
     body["warm"] = WARM.marker("sync_status", how)
+    # The Errors badge: distinct faults still open, not every row ever
+    # written (`_errors_open`).
+    body["errors_open"] = _errors_open()
     # The page polls this for a count and a git state. The full index is
     # ~470 kB of it and nothing on screen reads more than its counts.
     if request.args.get("head"):
@@ -2999,8 +3005,8 @@ def api_panorama_grouping_create():
         auto, names = _pn_auto_groups(rec, body.get("attr") or "group")
         facet = body.get("attr") or "group"
         groups = [{"id": k, "name": v, "facet": facet, "order": i}
-                  for i, (k, v) in enumerate(sorted(names.items(),
-                                                    key=lambda kv: kv[1]))]
+                  for i, (k, v) in enumerate(sorted(
+                      names.items(), key=lambda kv: natsortmod.key(kv[1])))]
         assign = auto
     rec2 = PNSETS.grouping_create(body.get("name") or "Custom grouping",
                                   groups=groups, assign=assign,
@@ -3898,10 +3904,9 @@ def _incisor_vacc_rows(body=None):
                     ("project", "mouse", "session", "key", "loose_key",
                      "label", "duration_s", "cohort")},
         })
-    todo.sort(key=lambda r: (str(r.get("project") or ""),
-                             str(r.get("mouse") or ""),
-                             str(r.get("session") or ""),
-                             str(r.get("start") or "")))
+    # Number order: m2 before m12 (as text, "12" came first; 2026-10-20).
+    todo.sort(key=lambda r: natsortmod.keys(r.get("project"), r.get("mouse"),
+                                            r.get("session"), r.get("start")))
     return todo, blocked, cfg
 
 
@@ -3999,9 +4004,9 @@ def api_incisor_reviews():
         # KCNT1 and in KCNT1 Urethane.
         rows.sort(key=lambda r: str((r.get("computed") or {}).get("at") or ""),
                   reverse=True)
-        rows.sort(key=lambda r: (str((r.get("row") or {}).get("project")
-                                     or "~ not known"),
-                                 str(r.get("label") or "")))
+        rows.sort(key=lambda r: natsortmod.keys(
+            (r.get("row") or {}).get("project") or "~ not known",
+            r.get("label") or ""))
     except Exception as exc:                             # noqa: BLE001
         return fail("incisor/reviews", exc, 400)
     return jsonify({"ok": True, "reviews": rows, "n": len(rows)})
@@ -6035,10 +6040,9 @@ def _doppler_vacc_rows(body=None):
                     ("project", "mouse", "session", "key", "loose_key",
                      "label", "duration_s", "cohort")},
         })
-    todo.sort(key=lambda r: (str(r.get("project") or ""),
-                             str(r.get("mouse") or ""),
-                             str(r.get("session") or ""),
-                             str(r.get("start") or "")))
+    # Number order: m2 before m12 (as text, "12" came first; 2026-10-20).
+    todo.sort(key=lambda r: natsortmod.keys(r.get("project"), r.get("mouse"),
+                                            r.get("session"), r.get("start")))
     return todo, blocked, cfg
 
 
@@ -8352,8 +8356,9 @@ def api_dspca_batch_plan():
                 done.append(dict(row, cached=True))
             else:
                 todo.append(row)
-        key = lambda r: (str(r.get("project") or ""), str(r.get("mouse") or ""),
-                         str(r.get("session") or ""))
+        # Number order: m2 before m12 (2026-10-20).
+        key = lambda r: natsortmod.keys(r.get("project"), r.get("mouse"),
+                                        r.get("session"))
         todo.sort(key=key)
         done.sort(key=key)
         blocked.sort(key=key)
@@ -9897,6 +9902,11 @@ def _rootcanal_commit_pooled(body, rec, p, res, rh, events, src_v):
         return fail("rootcanal/commit", exc, 400,
                     {"entry_id": rec["id"], "step": "pooled version"})
     version = versionsmod.tip_next(made.get("versions") or [])[0]
+    # Unchanged: nothing else is filed either (see the DS commit's note).
+    if not made.get("new_version"):
+        return jsonify(_rootcanal_unchanged(
+            rec, p, res, counts, 0, len(out), version, None, None,
+            answer_hash, filed, src_v, pooled=True, named=named))
     try:
         ROOTCANAL.put({
             "gid": rec.get("gid"), "params_hash": answer_hash,
@@ -9940,9 +9950,6 @@ def _rootcanal_commit_pooled(body, rec, p, res, rh, events, src_v):
             "partial": counts["partial"], "wide": counts["wide"],
             "written": {"ds": written, "ied": False},
             "figures": filed, "params_hash": answer_hash}
-    if not written:
-        out_["already"] = ("These names are already banked, so nothing was "
-                           "written. Version %s still holds them." % version)
     return jsonify(out_)
 
 
@@ -10192,6 +10199,19 @@ def api_rootcanal_commit():
     ds_version = versionsmod.tip_next(made.get("versions") or [])[0]
     ds_written = bool(made.get("new_version"))
 
+    # NOTHING TO BANK, AND NOTHING ELSE WRITTEN EITHER (2026-10-20). "You
+    # try to bank it, it says it didn't do it, and there's a new version?"
+    # The bank minted nothing -- the set would be exactly a version it
+    # already holds, as at k = 1, where no event is an IED -- but this route
+    # went on to file a new result under the new settings' hash and to save
+    # another single version "banked as vN": two new answers about one bank
+    # version, each a row in the pool picker. Now an unchanged bank is the
+    # end of it, and the sentence says why and what would keep the numbers.
+    if not ds_written and not ied_written:
+        return jsonify(_rootcanal_unchanged(
+            rec, p, res, counts, removed, kept, ds_version, ied_entry,
+            ied_version, answer_hash, filed, src_v))
+
     # -- 3. the numbers ------------------------------------------------------
     try:
         ROOTCANAL.put({
@@ -10279,10 +10299,47 @@ def api_rootcanal_commit():
            "partial": counts["partial"], "wide": counts["wide"],
            "written": {"ds": ds_written, "ied": ied_written},
            "figures": filed, "params_hash": answer_hash}
-    if not ds_written and not ied_written:
-        out["already"] = ("This answer is already banked, so nothing was "
-                          "written. Version %s still holds it." % ds_version)
     return jsonify(out)
+
+
+def _rootcanal_unchanged(rec, p, res, counts, removed, kept, ds_version,
+                         ied_entry, ied_version, answer_hash, filed, src_v,
+                         pooled=False, named=None):
+    """The answer to a Bank that changed nothing: what the bank already
+    holds, why these settings make the same set, that nothing at all was
+    written, and how to keep these numbers if they are wanted."""
+    k = res.get("k")
+    if pooled:
+        why = ("every event already carries these names in v%s"
+               % ds_version)
+    elif not removed:
+        why = ("these settings call no event an IED (k = %s: %d DS%s), so "
+               "the set would be exactly v%s"
+               % (k, counts.get("ds") or 0,
+                  (", %d not measured" % counts["unmeasured"])
+                  if counts.get("unmeasured") else "", ds_version))
+    else:
+        why = ("v%s already holds this set without these %d IED%s, and the "
+               "IED entry already has them"
+               % (ds_version, removed, "" if removed == 1 else "s"))
+    msg = ("Nothing to bank: %s, which the bank already holds. Nothing was "
+           "written -- no bank version, no result, no saved version. To keep "
+           "these numbers (%s), save them as a version."
+           % (why, p.filter_label()))
+    STORE.record_activity([{
+        "action": "rootcanal.commit_unchanged",
+        "detail": {"entry": rec["id"], "from_version": src_v,
+                   "ds_version": ds_version, "params_hash": answer_hash,
+                   "pooled": bool(pooled)},
+    }])
+    return {"ok": True, "ds_entry": rec["id"], "ds_version": ds_version,
+            "ied_entry": ied_entry, "ied_version": ied_version,
+            "single": None, "pooled": bool(pooled), "named": named,
+            "removed": removed, "kept": kept,
+            "unmeasured": counts.get("unmeasured"),
+            "partial": counts.get("partial"), "wide": counts.get("wide"),
+            "written": {"ds": False, "ied": False}, "unchanged": True,
+            "already": msg, "figures": filed, "params_hash": answer_hash}
 
 
 @app.route("/api/rootcanal/batch/plan", methods=["GET", "POST"])
@@ -10382,9 +10439,11 @@ def api_rootcanal_batch_plan():
                 return float(v)
             except (TypeError, ValueError):
                 return float("inf")
-        key = lambda r: (str(r.get("project") or ""), _num(r.get("mouse")),
-                         str(r.get("mouse") or ""), _num(r.get("session")),
-                         str(r.get("label") or ""))
+        key = lambda r: (natsortmod.key(r.get("project") or ""),
+                         _num(r.get("mouse")),
+                         natsortmod.key(r.get("mouse") or ""),
+                         _num(r.get("session")),
+                         natsortmod.key(r.get("label") or ""))
         todo.sort(key=key)
         done.sort(key=key)
         blocked.sort(key=key)
@@ -10560,7 +10619,26 @@ def _rootcanal_pool_candidates():
         proj, mk, mt = _rootcanal_who(gid, ent.get("project"),
                                       ent.get("mouse"), reg)
         rh = r.get("read")
+        # What it was measured on, and how many clusters: two answers about
+        # one bank version are told apart by these, not by a hash
+        # (2026-10-20).
+        try:
+            fl = rootcanal.Params(**_rootcanal_fit_part(
+                r.get("params"))).filter_label()
+        except Exception:                                # noqa: BLE001
+            fl = None
+        who_ = r.get("updated") or r.get("created") or {}
+        fv = r.get("from_version")
+        newest = _rootcanal_version_name(ent, None)
         out.append({
+            "filter_label": fl, "k": r.get("k"),
+            "from_version": fv,
+            # None was "whatever was live then": not named after the fact.
+            "from_name": (_rootcanal_version_name(ent, fv)
+                          if fv is not None else None),
+            # About an earlier version of the set than the one it holds now.
+            "older": bool(newest) and str(r.get("ds_version")) != str(newest),
+            "at": who_.get("at"),
             "key": "b:%s:%s" % (gid, ph),
             "entry_id": r.get("entry_id"),
             "session_label": r.get("session_label")
@@ -10576,8 +10654,10 @@ def _rootcanal_pool_candidates():
     reads = {}
     for r in records:
         if r.get("kind") == "read" and r.get("entry_id"):
-            reads.setdefault(r["entry_id"], {})[r.get("params_hash")] = \
-                r.get("n_events")
+            reads.setdefault(r["entry_id"], {})[r.get("params_hash")] = {
+                "n": r.get("n_events"),
+                "from_version": r.get("from_version"),
+                "at": (r.get("updated") or r.get("created") or {}).get("at")}
     for rec in BANK.all():
         if (rec.get("type") or "") != "ds" or not rec.get("aligned"):
             continue
@@ -10585,27 +10665,43 @@ def _rootcanal_pool_candidates():
             continue
         gid = rec.get("gid")
         have = dict(reads.get(rec["id"]) or {})
+        live = None
         try:
             stamps, _n = _dspca_stamps(rec, None)
             if stamps:
                 live = rootcanal.Params(
                     entry_id=rec["id"],
                     stamps_hash=rootcanal.stamps_hash(stamps)).read_hash()
-                have.setdefault(live, len(stamps))
+                have.setdefault(live, {"n": len(stamps), "from_version": None})
         except Exception:                                # noqa: BLE001
             pass
         proj, mk, mt = _rootcanal_who(gid, rec.get("project"),
                                       rec.get("mouse"), reg)
-        for rh, n in sorted(have.items(), key=lambda kv: str(kv[0])):
+        for rh, rd in sorted(have.items(), key=lambda kv: str(kv[0])):
             if not rh or not ROOTCANAL.has_cached(gid, rh, ".npz"):
                 continue
+            # Which version of the set's stamps it read: the live set
+            # (whichever version is newest), or the one named.
+            fv = None if rh == live else rd.get("from_version")
+            newest = _rootcanal_version_name(rec, None)
+            fname = (newest if rh == live else
+                     _rootcanal_version_name(rec, fv) if fv is not None
+                     else None)
             out.append({
                 "key": "u:%s:%s" % (rec["id"], rh),
                 "entry_id": rec["id"],
                 "session_label": rec.get("session_label") or rec.get("name"),
                 "gid": gid, "project": proj, "mouse": rec.get("mouse"),
                 "mouse_key": mk, "mouse_type": mt,
-                "n": n, "banked": False, "version": None,
+                "from_version": fv, "live": rh == live,
+                "from_name": fname,
+                # A read of an earlier version of the set's stamps: an unnamed
+                # one that is not the live set's read was made when an older
+                # version was live.
+                "older": rh != live and (fname is None
+                                         or str(fname) != str(newest)),
+                "at": rd.get("at"),
+                "n": rd.get("n"), "banked": False, "version": None,
                 "params_hash": None, "read": rh, "here": True,
                 # Not fitted yet: an unbanked single's counts depend on the
                 # settings it is added with, and fitting every cached read to
@@ -10654,9 +10750,35 @@ def _rootcanal_pool_candidates():
             "counts": {"ds": ns.get("ds"), "ied": ns.get("ied")},
         })
     _rootcanal_describe(out, reg)
-    out.sort(key=lambda c: (str(c.get("project")), str(c.get("mouse_key")),
-                            str(c.get("session_label")), not c["banked"]))
+    # Natural order (2026-10-20): m2, m6, m21 -- not m2, m21, m6.
+    out.sort(key=lambda c: (natsortmod.keys(c.get("project"),
+                                            c.get("mouse_key"),
+                                            c.get("session_label")),
+                            not c["banked"]))
     return out
+
+
+def _rootcanal_version_name(rec, ref):
+    """A version reference (an id, a number or a name) as the name the
+    version tree shows it by; the newest version's name for None, the live
+    set. None when it cannot be found."""
+    try:
+        rows = named_versions((rec or {}).get("versions") or [])
+    except Exception:                                    # noqa: BLE001
+        return None
+    if not rows:
+        return None
+    if ref is None:
+        try:
+            return versionsmod.newest([r["name"] for r in rows])
+        except Exception:                                # noqa: BLE001
+            return rows[-1].get("name")
+    want = str(ref)
+    for r in rows:
+        if want in (str(BANK.version_key(r)), str(r.get("id")),
+                    str(r.get("name")), str(r.get("v"))):
+            return r.get("name")
+    return None
 
 
 def _rootcanal_mouse_facts():
@@ -12337,7 +12459,7 @@ def api_rootcanal_singles():
     out = [_rootcanal_single_rows(r) for r in rows
            if not r.get("deleted")
            and (not want or (r.get("subject") or {}).get("entry_id") == want)]
-    out.sort(key=lambda r: str(r.get("session_label") or ""))
+    out.sort(key=lambda r: natsortmod.key(r.get("session_label") or ""))
     body = {"ok": True, "singles": out}
     if want:
         try:
@@ -15200,7 +15322,9 @@ def api_results():
         "outputs_dir": outputs_dir(),
         "github": github_url_for(outputs_dir()),
         "tags": sorted(tags.items(), key=lambda kv: -kv[1]),
-        "sessions": sorted(sessions.items(), key=lambda kv: kv[1]),
+        # Recordings in number order: m1, m3, m12 (2026-10-20).
+        "sessions": sorted(sessions.items(),
+                           key=lambda kv: natsortmod.key(kv[1])),
         "roots": _KNOWN_ROOTS,
     })
 
@@ -16487,8 +16611,11 @@ def api_curation_categories(kind):
     """A kind's whole vocabulary, and adding a category to it.
 
     A category added here is a category of EVERY set of that kind, on every
-    recording (curation.Categories) -- Spotter's "new category" chip.
+    recording (curation.Categories) -- Spotter's "new category" chip. A set
+    of one bank entry ("ied.e3b31...") asks with its own kind; the
+    vocabulary is its base kind's.
     """
+    kind = curation.kind_of(kind)
     if kind not in curation.KINDS:
         return jsonify({"ok": False, "error": "Unknown kind %r." % kind}), 404
     if request.method == "GET":
@@ -16518,6 +16645,35 @@ def api_curation_kinds():
                     "reserved": sorted(curation.RESERVED_KEYS)})
 
 
+def _owned_entries(gid):
+    """The bank entries that per-entry sets on this recording stand for."""
+    return {curation.entry_of(s.get("kind")) for s in CURATE.summaries()
+            if s.get("gid") == gid and curation.entry_of(s.get("kind"))}
+
+
+def _legacy_curated(gid, kind):
+    """What an older set (one per recording and kind) has banked: the
+    curated entries on its recording, minus those a per-entry set owns.
+
+    A per-entry set banks into its own entry with the same "*" mark, and an
+    older set on the same recording must never write onto it -- nor adopt
+    it -- or one set's decisions land in another's history (2026-10-20:
+    "make sure bank identity and recording identities don't override each
+    other")."""
+    owned = _owned_entries(gid)
+    return [p for p in BANK.curated_entries(gid, curation.kind_of(kind))
+            if p.get("id") not in owned]
+
+
+def _legacy_adopt(gid, kind, events):
+    """The detector import an older set's events came from -- never an
+    entry a per-entry set stands for."""
+    got = BANK.source_entry_for(gid, curation.kind_of(kind), events)
+    if got and got.get("id") in _owned_entries(gid):
+        return None
+    return got
+
+
 def _cur_history(gid, kind, summaries=None):
     """The banked versions of one curation set, newest first.
 
@@ -16531,13 +16687,30 @@ def _cur_history(gid, kind, summaries=None):
     machine cannot actually read back would fail at the click.
     """
     rows = summaries if summaries is not None else BANK.summaries()
+    # A per-entry set's history is its own entry's, and only that
+    # (2026-10-20); an older set's is every entry of its kind on the
+    # recording, as before.
+    own = curation.entry_of(kind)
+    kind = curation.kind_of(kind)
     out = []
     for rec in rows:
-        if rec.get("gid") != gid or (rec.get("type") or "") != kind:
+        if own:
+            if rec.get("id") != own:
+                continue
+        elif rec.get("gid") != gid or (rec.get("type") or "") != kind:
             continue
         vers = []
         for ver, vname in versionsmod.label_rows(rec.get("versions") or []):
             vers.append({
+                # The identity, not the number (2026-10-20). Without it the
+                # bench's version chooser fell back to sending the stored
+                # number, and an entry whose history holds two v0s -- two
+                # machines both made one -- refused the switch: "Could not
+                # work from v0 ... Say which by its id." The summaries are
+                # repaired, so a version from before ids has a derived one.
+                "id": ver.get("id"),
+                "from_id": ver.get("from_id"),
+                "archived": bool(ver.get("archived")),
                 "v": ver.get("v"),
                 "name": vname,
                 "label": ver.get("label"),
@@ -16592,8 +16765,16 @@ def _cur_banked(row, bank_rows):
     None when the set has never been banked.
     """
     gid, kind = row.get("gid"), row.get("kind")
+    own = curation.entry_of(kind)
+    kind = curation.kind_of(kind)
     ent = None
     for rec in bank_rows:
+        # A per-entry set (2026-10-20) banks into its own entry and no other.
+        if own:
+            if rec.get("id") == own:
+                ent = rec
+                break
+            continue
         if (rec.get("gid") != gid or (rec.get("type") or "") != kind
                 or rec.get("curation_label") != "*"):
             continue
@@ -16693,24 +16874,40 @@ def api_curation_startable():
     the ones a set already stands for: the entry the set was started from,
     and the entry it banks into (`curation_label` "*").
 
-    One set per recording and kind, so an entry on a recording that already
-    has a set from a different entry says so (`set_name`): starting it asks
-    before replacing that set.
+    A set belongs to ONE bank entry (2026-10-20): a new set's kind names it
+    (`<kind>.e<entry>`), and an older set -- one per recording and kind --
+    stands for the entry it was started from. So an entry is left out when
+    a set already stands for it, and starting one never replaces another:
+    `set_name` is always None now, and `on_recording` names the other sets
+    on the same recording, so the picker can say they stay as they are.
     """
-    kind = (request.args.get("kind") or "").strip()
+    kind = curation.kind_of((request.args.get("kind") or "").strip())
     if kind not in curation.KINDS:
         return jsonify({"ok": False,
                         "error": "%r is not a kind of curation this Jarvis "
                                  "knows about." % kind}), 400
-    sets = {s["gid"]: s for s in CURATE.summaries() if s.get("kind") == kind}
+    by_entry, legacy, on_rec = {}, {}, {}
+    for s in CURATE.summaries():
+        if curation.kind_of(s.get("kind")) != kind:
+            continue
+        on_rec.setdefault(s.get("gid"), []).append(s.get("name"))
+        own = curation.entry_of(s.get("kind"))
+        if own:
+            by_entry[own] = s
+        else:
+            legacy[s.get("gid")] = s
+            src = (s.get("source") or {}).get("bank_entry")
+            if src:
+                by_entry.setdefault(src, s)
     out = []
     for rec in BANK.summaries():
         gid = rec.get("gid")
         if (rec.get("type") or "") != kind or not gid:
             continue
-        st = sets.get(gid)
-        if st and (((st.get("source") or {}).get("bank_entry") == rec.get("id"))
-                   or rec.get("curation_label") == "*"):
+        # A set already stands for this entry -- or this is the entry an
+        # older set on the recording banks into ("*").
+        if rec.get("id") in by_entry or (
+                gid in legacy and rec.get("curation_label") == "*"):
             continue
         vers = list(rec.get("versions") or [])
         last = max([str(v.get("at") or "") for v in vers]
@@ -16729,7 +16926,8 @@ def api_curation_startable():
             "curated": bool(rec.get("specified")),
             "test": _cf_is_test(rec)
                     or str(src.get("pipeline") or "").startswith("harness"),
-            "set_name": (st or {}).get("name") if st else None,
+            "set_name": None,
+            "on_recording": [n for n in on_rec.get(gid, []) if n],
             # Sent, not left out: the picker draws it under its archived
             # toggle at the bottom (`_bank_archived`).
             "archived": bool(rec.get("archived")),
@@ -16887,28 +17085,44 @@ def api_curation_from_bank():
                 for k, v in got.items():
                     item.setdefault(k, v)
 
-    existing = CURATE.get(gid, kind)
+    # Whose set this is (2026-10-20, the user's ruling): a NEW set belongs to
+    # this bank entry -- `<kind>.e<entry>` -- so two runs on one recording
+    # are two sets and starting one never replaces the other. An older set
+    # (one per recording and kind) that was started from this very entry IS
+    # this entry's set, and is used rather than doubled.
+    # So is the entry an older set banks INTO (its "*" entry), unless a
+    # per-entry set already stands for that entry: two sets never write
+    # one entry.
+    legacy = CURATE.get(gid, kind)
+    per = CURATE.get(gid, curation.set_kind(kind, ent["id"]))
+    if legacy and not per and (
+            (legacy.get("source") or {}).get("bank_entry") == ent["id"]
+            or any(p.get("id") == ent["id"]
+                   for p in _legacy_curated(gid, kind))):
+        skind = kind
+    else:
+        skind = curation.set_kind(kind, ent["id"])
+    existing = legacy if skind == kind else CURATE.get(gid, skind)
     if existing and not body.get("replace"):
         prog = CURATE.progress(existing)
         return jsonify({
             "ok": False,
+            "kind": skind,
             "exists": {
                 "name": existing.get("name"),
+                "kind": skind,
                 "total": prog["total"], "specified": prog["specified"],
                 "left": prog["left"],
                 "assignee": existing.get("assignee"),
                 "archived": bool(existing.get("archived")),
             },
-            "error": "%s already has a %s set -- %d of %d decided. A "
-                     "recording has one set per kind, so starting from v%s "
-                     "would replace it."
-                     % (sess.get("label") or gid,
-                        curation.KINDS[kind]["name"].lower(),
-                        prog["specified"], prog["total"], want_v)}), 409
+            "error": "This dataset already has a set -- %d of %d decided. "
+                     "Pick it up from the shelf, or switch it to v%s there."
+                     % (prog["specified"], prog["total"], want_v)}), 409
 
     try:
         rec, n, extra = CURATE.create(
-            gid, kind, events,
+            gid, skind, events,
             name=(body.get("name") or "").strip() or ent.get("name"),
             source={"kind": "bank version", "bank_entry": ent["id"],
                     "entry_name": ent.get("name"), "version": want_v,
@@ -16919,10 +17133,25 @@ def api_curation_from_bank():
     except curation.CurationError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
 
+    # On the bench, when asked (2026-10-20): the workbench's "add a set" puts
+    # it there to be looked at, and Xplorefinder opens only when somebody
+    # asks for it -- the flow the user wants for Panning, and for every door.
+    if body.get("open"):
+        try:
+            rec = CURATE.open_set(gid, skind, True) or rec
+        except curation.CurationError:
+            pass
+    # The version it now holds, by id: what the next bank continues from.
+    if ver.get("id"):
+        try:
+            rec = CURATE.set_based_on(gid, skind, ver["id"]) or rec
+        except curation.CurationError:
+            pass
+
     prog = CURATE.progress(rec)
     STORE.record_activity([{
         "action": "curation.from_bank",
-        "detail": {"gid": gid, "kind": kind, "entry": ent["id"],
+        "detail": {"gid": gid, "kind": skind, "entry": ent["id"],
                    "version": want_v, "n": n,
                    "decided": prog["specified"],
                    "replaced": bool(existing)},
@@ -16930,6 +17159,7 @@ def api_curation_from_bank():
     }])
     return jsonify({"ok": True, "n": n, "version": want_v,
                     "replaced": bool(existing),
+                    "kind": skind,
                     "entry": {"id": ent["id"], "name": ent.get("name")},
                     "progress": prog,
                     "set": CURATE.summary(rec)})
@@ -16969,6 +17199,8 @@ def api_curation_for_recording(gid):
                 "aligned": bool(v.get("aligned")),
                 # Whether a set can actually be built from it.
                 "usable": bool(v.get("snap")) or v.get("v") == newest,
+                # Archived versions are offered last, under a toggle.
+                "archived": bool(v.get("archived")),
             })
         vs.sort(key=lambda x: versionsmod.key(x["name"]), reverse=True)
         out.append({
@@ -16976,16 +17208,24 @@ def api_curation_for_recording(gid):
             "kind_name": curation.KINDS[kind]["name"],
             "n": rec.get("n"),
             "source": (rec.get("source") or {}).get("pipeline"),
+            "by": (rec.get("added") or {}).get("by"),
+            "at": max([str(v.get("at") or "") for v in vs] or [""]) or None,
             "label_names": rec.get("label_names") or {},
             "versions": vs,
+            # An archived dataset sinks to the bottom of the picker.
+            "archived": _bank_archived(rec),
+            # A harness's leftover: the picker leaves it out, and counts it.
+            "test": _cf_is_test(rec)
+                    or str((rec.get("source") or {}).get("pipeline")
+                           or "").startswith("harness"),
         })
     out.sort(key=lambda r: (r["kind"], r["name"] or ""))
 
-    have = []
-    for kind in curation.KINDS:
-        got = CURATE.get(gid, kind)
-        if got:
-            have.append(CURATE.summary(got))
+    # Every set on this recording: the older one per kind, and one per bank
+    # entry since 2026-10-20 (`<kind>.e<entry>`), each saying which entry
+    # it stands for (`entry`).
+    have = [s for s in CURATE.summaries() if s.get("gid") == gid]
+    have.sort(key=lambda s: (s.get("kind_base") or "", s.get("kind") or ""))
     return jsonify({"ok": True, "entries": out, "existing": have,
                     "session": _session_by_gid(gid)})
 
@@ -17020,6 +17260,20 @@ def _cf_entry_row(rec):
         "archived": _bank_archived(rec),
     }
     row.update(_cf_aligned(rec))
+    # Every version, named as the bank names them (newest first), so Many
+    # at once can say which are available and pool from one of them
+    # ("show which versions are available there", 2026-10-20).
+    try:
+        named = versionsmod.label_rows(BANK.repaired(rec).get("versions")
+                                       or [])
+        row["versions"] = [{"name": nm, "id": v.get("id"), "n": v.get("n"),
+                            "at": v.get("at"),
+                            "archived": bool(v.get("archived"))}
+                           for v, nm in sorted(
+                               named, key=lambda x: versionsmod.key(x[1]),
+                               reverse=True)]
+    except Exception:                                    # noqa: BLE001
+        row["versions"] = []
     return row
 
 
@@ -17123,10 +17377,9 @@ def api_confluence_recordings():
             # Many pools from [0], and the row's tags describe [0].
             row[k].sort(key=lambda r: bool(r.get("archived")))
         out.append(row)
-    out.sort(key=lambda r: (str(r.get("project") or ""),
-                            str(r.get("mouse") or ""),
-                            str(r.get("session") or ""),
-                            str(r.get("label") or "")))
+    # Number order: m2 before m12 (2026-10-20).
+    out.sort(key=lambda r: natsortmod.keys(r.get("project"), r.get("mouse"),
+                                           r.get("session"), r.get("label")))
     return jsonify({"ok": True, "recordings": out, "n": len(out),
                     "window_ms": confluencemod.DEFAULT_WINDOW_MS})
 
@@ -18438,11 +18691,20 @@ def api_tooth_fairy_batch():
     it could not be swept. One set failing does not stop the rest.
     """
     body = request.get_json(force=True, silent=True) or {}
-    gids = [g for g in (body.get("gids") or []) if g]
+    # Which sets: {gid, kind} each since 2026-10-20, because a recording can
+    # hold several DS sets now (one per bank entry); `gids` alone still
+    # means each recording's older "ds" set.
+    sets = [(str(x.get("gid")), str(x.get("kind") or "ds"))
+            for x in (body.get("sets") or [])
+            if isinstance(x, dict) and x.get("gid")
+            and curation.kind_of(x.get("kind") or "ds") == "ds"]
+    if not sets:
+        sets = [(g, "ds") for g in (body.get("gids") or []) if g]
+    gids = [g for g, _k in sets]
     ds_loss, err = _tf_tolerance(body)
     if err:
         return jsonify({"ok": False, "error": err}), 400
-    if not gids:
+    if not sets:
         return jsonify({"ok": False, "error": "Choose at least one set."}), 400
     st = tfmod.status(AIBETA, "tooth_fairy")
     if not st["ready"]:
@@ -18452,34 +18714,45 @@ def api_tooth_fairy_batch():
         return jsonify({"ok": False, "error": "Tooth Fairy is already "
                                               "sweeping.",
                         "job": busy.snapshot()}), 409
-    missing = [g for g in gids if not CURATE.get(g, "ds")]
+    missing = [g for g, k in sets if not CURATE.get(g, k)]
     if missing:
         return jsonify({"ok": False, "error": "No DS set for %d of those "
                                               "recordings." % len(missing)}), 404
-    names = {g: (CURATE.get(g, "ds") or {}).get("session_label")
-             or (CURATE.get(g, "ds") or {}).get("name") or g for g in gids}
+    # A member is named by its gid for an older set (as before) and by
+    # "gid/kind" for a set of one bank entry.
+    mid = {(g, k): (g if k == "ds" else g + "/" + k) for g, k in sets}
+    names = {}
+    for g, k in sets:
+        rec = CURATE.get(g, k) or {}
+        names[(g, k)] = rec.get("session_label") or rec.get("name") or g
+        if k != "ds" and rec.get("name"):
+            names[(g, k)] = "%s · %s" % (rec.get("session_label") or g,
+                                               rec.get("name"))
 
     def work(job):
-        job.members_init([{"id": g, "label": names[g]} for g in gids])
+        job.members_init([{"id": mid[x], "label": names[x]} for x in sets])
         out = []
-        for k, g in enumerate(gids):
+        for k, (g, kind) in enumerate(sets):
+            m = mid[(g, kind)]
             job.check()
-            job.member(g, status="reading")
+            job.member(m, status="reading")
             try:
-                sw = tfmod.sweep(AIBETA, CURATE, BANK, _tf_open, g, "ds", job,
+                sw = tfmod.sweep(AIBETA, CURATE, BANK, _tf_open, g, kind, job,
                                  slot="tooth_fairy", ds_loss=ds_loss)
             except Exception as exc:                     # noqa: BLE001
                 if job._cancel:
                     raise
-                job.member(g, status="failed", error=str(exc)[:200])
-                out.append({"gid": g, "name": names[g], "error": str(exc)[:300]})
+                job.member(m, status="failed", error=str(exc)[:200])
+                out.append({"gid": g, "kind": kind, "name": names[(g, kind)],
+                            "error": str(exc)[:300]})
                 continue
             sid = "%s-%d" % (job.id, k)
             sw["id"] = sid
             tfmod.remember(sid, sw)
-            job.member(g, status="done")
+            job.member(m, status="done")
             out.append({
-                "gid": g, "name": names[g], "sid": sid, "n": sw["n"],
+                "gid": g, "kind": kind, "name": names[(g, kind)], "sid": sid,
+                "n": sw["n"],
                 "counts": sw["counts"], "agreement": sw.get("agreement"),
                 "already_decided": sw.get("already_decided"),
                 "undecided": sum(1 for r in sw["rows"] if not r.get("human")),
@@ -18487,12 +18760,12 @@ def api_tooth_fairy_batch():
             })
         STORE.record_activity([{
             "action": "toothfairy.batch",
-            "detail": {"sets": len(gids), "swept": sum(1 for o in out if o.get("sid")),
+            "detail": {"sets": len(sets), "swept": sum(1 for o in out if o.get("sid")),
                        "run": st["run_id"], "ds_loss": ds_loss}}])
         return {"batch": out, "ds_loss": ds_loss, "run_id": st["run_id"],
                 "model_name": st["name"]}
 
-    job = cfcmod.start({"tool": "toothfairy", "batch": len(gids)}, TF_STAGES,
+    job = cfcmod.start({"tool": "toothfairy", "batch": len(sets)}, TF_STAGES,
                        work, 1.0)
     _TF_JOB["id"] = job.id
     return jsonify({"ok": True, "job": job.snapshot()})
@@ -18539,10 +18812,12 @@ def _tf_accept(sid):
                 % round(100 * sw["ds_loss"])) if sw.get("ds_loss") else "",
                c.get("spike", 0), c.get("review", 0),
                c.get("flag", 0), c.get("garbage", 0)))
-    prior = BANK.curated_entries(gid, kind)
+    # A set of one bank entry banks into that entry (as `api_curation_bank`).
+    own = curation.entry_of(kind)
+    prior = [] if own else _legacy_curated(gid, kind)
     whole = [p for p in prior if p.get("curation_label") == "*"]
-    keep = whole[0]["id"] if whole else None
-    adopt = BANK.source_entry_for(gid, kind, events)
+    keep = own or (whole[0]["id"] if whole else None)
+    adopt = None if own else _legacy_adopt(gid, kind, events)
     if not keep and adopt:
         keep = adopt["id"]
     try:
@@ -18554,9 +18829,9 @@ def _tf_accept(sid):
             "session_loose_key": sess.get("loose_key"),
             "session_label": sess.get("label"),
             "recording_start": sess.get("start"),
-            "name": rec.get("name"), "type": kind,
+            "name": rec.get("name"), "type": curation.kind_of(kind),
             "events": events, "by_label": by_label, "label_names": names,
-            "pipeline": "Jarvis curation (" + kind + ")",
+            "pipeline": "Jarvis curation (" + curation.kind_of(kind) + ")",
             "added_by": aibetamod.MODEL_BY,
             "version_note": note,
             "version_tag": aibetamod.MODEL_TAG,
@@ -18668,7 +18943,11 @@ def api_curation_archive(gid, kind):
 
 @app.route("/api/curation/<gid>/<kind>/delete", methods=["POST"])
 def api_curation_delete(gid, kind):
+    rec = CURATE.get(gid, kind)
     ok = CURATE.delete(gid, kind)
+    if ok:
+        _note_deleted("curation", "%s__%s" % (gid, kind),
+                      "deleted in Jarvis", rec)
     STORE.record_activity([{"action": "curation.delete",
                             "detail": {"gid": gid, "kind": kind}}])
     return jsonify({"ok": ok})
@@ -18701,9 +18980,15 @@ def api_curation_bank(gid, kind):
     # banked -- including the per-category entries it used to be split into,
     # which get folded into this one and then removed, because every event
     # in them came from this set and is being written again right now.
-    prior = BANK.curated_entries(gid, kind)
+    #
+    # A per-entry set (2026-10-20) banks into its own entry, as the next
+    # version, and touches no other: nothing to find, fold or adopt. The
+    # older sets keep the search below.
+    own = curation.entry_of(kind)
+    base_kind = curation.kind_of(kind)
+    prior = [] if own else _legacy_curated(gid, kind)
     whole = [p for p in prior if p.get("curation_label") == "*"]
-    keep = whole[0]["id"] if whole else None
+    keep = own or (whole[0]["id"] if whole else None)
     # Nothing curated here yet: continue the detector's export these
     # candidates came from, rather than filing a second record of the same
     # four hundred times.
@@ -18712,7 +18997,7 @@ def api_curation_bank(gid, kind):
     # continues that entry in place -- same id, same link. If something has,
     # the import is folded into its history as version zero and the second
     # record of the same four hundred times goes away.
-    adopt = BANK.source_entry_for(gid, kind, bundle["events"])
+    adopt = None if own else _legacy_adopt(gid, kind, bundle["events"])
     if not keep and adopt:
         keep = adopt["id"]
     removed = []
@@ -18727,12 +19012,12 @@ def api_curation_bank(gid, kind):
             "session_label": sess.get("label"),
             "recording_start": sess.get("start"),
             "name": rec.get("name"),
-            "type": kind,
+            "type": base_kind,
             "events": bundle["events"],
             "by_label": bundle["by_label"],
             "label_names": bundle["label_names"],
             "pipeline": (body.get("pipeline")
-                         or "Jarvis curation (" + kind + ")"),
+                         or "Jarvis curation (" + base_kind + ")"),
             "added_by": body.get("added_by"),
             "version_note": body.get("note"),
             # Where this pass belongs in the history. The caller may say;
@@ -18765,6 +19050,8 @@ def api_curation_bank(gid, kind):
         if old_entry.get("curation_label") == "*":
             continue
         if BANK.delete(old_entry["id"]):
+            _note_deleted("bank", old_entry["id"],
+                          "folded into " + str(entry["id"]), old_entry)
             removed.append({"id": old_entry["id"],
                             "name": old_entry.get("name"),
                             "n": old_entry.get("n"),
@@ -18793,6 +19080,8 @@ def api_curation_bank(gid, kind):
             }
             made[0]["kept_import"] = kept_import
         elif BANK.delete(adopt["id"]):
+            _note_deleted("bank", adopt["id"],
+                          "now version 0 of " + str(entry["id"]), adopt)
             removed.append({"id": adopt["id"], "name": adopt.get("name"),
                             "n": adopt.get("n"),
                             "why": "now version 0 of this entry"})
@@ -18831,9 +19120,16 @@ def api_curation_banked(gid, kind):
     version note written without seeing the previous ones tends to say
     "update". Events are left out: this is the history, not the payload.
     """
-    found = BANK.curated_entries(gid, kind)
-    whole = [e for e in found if e.get("curation_label") == "*"]
-    ent = whole[0] if whole else None
+    own = curation.entry_of(kind)
+    if own:
+        # A set of one bank entry banks into that entry and no other
+        # (`api_curation_bank`), so its history is that entry's.
+        found = []
+        ent = BANK.get(own)
+    else:
+        found = _legacy_curated(gid, kind)
+        whole = [e for e in found if e.get("curation_label") == "*"]
+        ent = whole[0] if whole else None
 
     # The detector import this set will be written onto, if it has not been
     # banked under its own name yet. `curated_entries` only knows about
@@ -18847,7 +19143,7 @@ def api_curation_banked(gid, kind):
         if rec:
             bundle = CURATE.bank_one(rec, only_specified=True)
             if bundle["n"]:
-                ent = BANK.source_entry_for(gid, kind, bundle["events"])
+                ent = _legacy_adopt(gid, kind, bundle["events"])
     if ent is None:
         return jsonify({"ok": True, "entry": None,
                         "split": [{"id": e["id"], "name": e.get("name"),
@@ -22183,10 +22479,13 @@ def api_errors_client():
     if not message:
         return jsonify({"ok": False, "error": "Nothing to report."}), 400
     ctx = body.get("context")
+    # A harness page (web/_dev/) reporting against the live server: the
+    # fault is the test's, so it is marked as one (`_is_test_error`).
     rec = STORE.record_error(
         "ui/" + where, message,
         str(body.get("stack") or "")[:8000] or None,
-        ctx if isinstance(ctx, dict) else {"detail": ctx})
+        ctx if isinstance(ctx, dict) else {"detail": ctx},
+        test="/_dev/" in (request.referrer or ""))
     return jsonify({"ok": True, "id": (rec or {}).get("id")})
 
 
@@ -22247,6 +22546,157 @@ def _drop_archived(recs, want):
     return kept, len(recs) - len(kept), gone
 
 
+# A fault a test made on purpose. New ones carry `test` (store.record_error);
+# older ones are known by what they mention: a harness page (web/_dev/), the
+# harness server's ports (tools/harness_run.py takes 8791-8830; the app is
+# 8733), or a harness fixture by name ("harness-none", "HarnessFolder",
+# "Data Bank/HARNESS/m99"). The selftest rows are the Errors view's own
+# "Write a test entry". (`re` by its own name: this module's `_re` is
+# imported at the very end, after this line has run.)
+import re as _re_tests                                           # noqa: E402
+_TEST_ERR_RX = _re_tests.compile(
+    r"/_dev/|harness|127\.0\.0\.1:(?:879[1-9]|88[0-2]\d|8830)\b",
+    _re_tests.I)
+
+
+def _is_test_error(rec):
+    if rec.get("test") or rec.get("where") == "selftest":
+        return True
+    try:
+        blob = json.dumps([rec.get("message"), rec.get("detail"),
+                           rec.get("context")], default=str)
+    except Exception:                                    # noqa: BLE001
+        return False
+    return bool(_TEST_ERR_RX.search(blob))
+
+
+def _list_errors(limit, day=None, tests="hide"):
+    """The newest `limit` errors, without a test's unless asked ("all").
+
+    Returns (rows, hidden_count): how many of a test's were passed over
+    getting them, said beside the list, never silent. Filtered BEFORE the
+    limit counts, so a harness run cannot push the real faults out of the
+    window.
+    """
+    if tests == "all":
+        return STORE.list_errors(limit=limit, day=day), 0
+    hidden = [0]
+
+    def keep(r):
+        if _is_test_error(r):
+            hidden[0] += 1
+            return False
+        return True
+    return STORE.list_errors(limit=limit, day=day, keep=keep), hidden[0]
+
+
+def _request_is_test():
+    """Whether the request being served is a test's: Flask's test client
+    (every tools/test_*.py; it asks for host "localhost" with no port, which
+    no browser does) or a harness page in web/_dev. What it records is
+    marked as a test's (STORE.test_origin)."""
+    try:
+        from flask import has_request_context
+        if not has_request_context():
+            return False
+        if request.host == "localhost":
+            return True
+        return "/_dev/" in (request.referrer or "")
+    except Exception:                                    # noqa: BLE001
+        return False
+
+
+STORE.test_origin = _request_is_test
+
+
+_ERR_OPEN = {"sig": None, "out": None}
+
+# How recent a fault has to be to count on the badge.
+ERROR_BADGE_DAYS = 7
+
+
+def _errors_open():
+    """How many distinct faults are still open and recent: the Errors badge.
+
+    The badge used to count every row ever written, on every computer,
+    resolved or not, and the user saw 5,233. A number that only grows is
+    not read. It now counts faults the Errors view lists as unresolved that
+    happened in the last week -- without a test's faults and without
+    archived computers -- so the number goes down when a fault is fixed and
+    when it stops happening. `all` is every unresolved fault in the view's
+    window. Recounted when the log or the resolved marks change, and on the
+    hour (faults age out), because the page polls this.
+    """
+    d = STORE.dirs["errors"]
+    # The archived computers as last asked -- never asked from here: this
+    # is on the page's poll, and a poll must not become a database request
+    # a minute (Supabase egress is requests). The Errors view asks.
+    gone = _archived_machines(max_age=float("inf"))
+    try:
+        # Today's files and the resolved marks are what change; a new file
+        # (another computer's day, pulled) changes the folder. Not a stat of
+        # every day on record: 90 of them cost a fifth of a second a poll.
+        names = os.listdir(d)
+        today = time.strftime("%Y-%m-%d")
+        watch = sorted(n for n in names
+                       if n.startswith(today) or n.startswith("resolved"))
+        sig = (len(names), os.stat(d).st_mtime,
+               tuple((n, os.path.getmtime(os.path.join(d, n)))
+                     for n in watch),
+               tuple(sorted(gone)), int(time.time() // 3600))
+    except Exception:                                    # noqa: BLE001
+        sig = None
+    if sig is not None and sig == _ERR_OPEN["sig"] and _ERR_OPEN["out"]:
+        return dict(_ERR_OPEN["out"])
+    # A recount reads the log back to its 600th real row -- a second or
+    # two -- so it runs beside the poll, never in it: the poll answers with
+    # the count as it last stood (None before the first, which the page
+    # takes as "not yet" and leaves the badge alone).
+    with _ERR_OPEN_LOCK:
+        if not _ERR_OPEN["busy"]:
+            _ERR_OPEN["busy"] = True
+            threading.Thread(target=_errors_open_recount, args=(sig, gone),
+                             daemon=True, name="errors-open").start()
+    return dict(_ERR_OPEN["out"] or {"faults": None, "n": None})
+
+
+_ERR_OPEN["busy"] = False
+_ERR_OPEN_LOCK = threading.Lock()
+
+
+def _errors_open_recount(sig, gone):
+    try:
+        recs, _t = _list_errors(600)
+        recs = [r for r in recs
+                if str(r.get("shard") or r.get("machine") or "") not in gone]
+        book = STORE.resolved_errors()
+        for r in recs:
+            mark = (book.get(extras.mark_key(extras.signature(r),
+                                             extras.host_of(r)))
+                    or book.get(extras.signature(r)))
+            r["resolved"] = bool(mark) and extras.marked_after(
+                r.get("at"), mark.get("at"))
+        groups = extras.group_errors(recs, per_machine=True)
+        open_ = [g for g in groups if not g.get("resolved")]
+        cut = time.time() - ERROR_BADGE_DAYS * 86400
+        recent = [g for g in open_
+                  if extras.moment_key(g.get("last")) >= cut]
+        out = {"faults": len(recent),
+               "n": sum(int(g.get("count") or 0) for g in recent),
+               "all": len(open_), "days": ERROR_BADGE_DAYS}
+        _ERR_OPEN.update(sig=sig, out=out)
+    except Exception:                                    # noqa: BLE001
+        pass
+    finally:
+        _ERR_OPEN["busy"] = False
+
+
+# Counted once at start, so the first poll has a number to give.
+if not os.environ.get("BARRY_HARNESS_SERVER"):
+    threading.Thread(target=_errors_open, daemon=True,
+                     name="errors-open-warm").start()
+
+
 @app.route("/api/errors/export")
 def api_errors_export():
     """Every unresolved error, with the activity around each occurrence.
@@ -22265,7 +22715,8 @@ def api_errors_export():
     except (TypeError, ValueError):
         days = 0
 
-    recs = STORE.list_errors(limit=4000)
+    recs, _tests = _list_errors(4000,
+                                tests=request.args.get("tests") or "hide")
     recs, hidden_n, hidden_ids = _drop_archived(
         recs, request.args.get("machines") or "active")
     if days > 0:
@@ -22392,8 +22843,11 @@ def api_errors_export():
 
 @app.route("/api/errors/grouped")
 def api_errors_grouped():
-    recs = STORE.list_errors(limit=int(request.args.get("limit", 600)),
-                             day=request.args.get("day") or None)
+    # Not the ones a test made on purpose (`_is_test_error`), unless asked.
+    recs, hidden_tests = _list_errors(
+        int(request.args.get("limit", 600)),
+        day=request.args.get("day") or None,
+        tests=request.args.get("tests") or "hide")
     # A retired computer's faults are not this week's problem.
     recs, hidden_n, hidden_ids = _drop_archived(
         recs, request.args.get("machines") or "active")
@@ -22487,6 +22941,7 @@ def api_errors_grouped():
                     # Said, not silently applied: a list that hides rows
                     # without saying so is a list nobody can trust.
                     "hidden_archived": hidden_n,
+                    "hidden_tests": hidden_tests,
                     "archived_machines": sorted(hidden_ids)})
 
 
@@ -25622,8 +26077,10 @@ def api_bank_dedupe(entry_id):
 
 @app.route("/api/bank/<entry_id>/delete", methods=["POST"])
 def api_bank_delete(entry_id):
+    rec = BANK.get(entry_id)
     ok = BANK.delete(entry_id)
     if ok:
+        _note_deleted("bank", entry_id, "deleted in the Event Bank", rec)
         STORE.record_activity([{"action": "bank.delete",
                                 "detail": {"id": entry_id}}])
     mirror_bank_soon()
@@ -26695,6 +27152,42 @@ threading.Thread(target=_resume_later, daemon=True,
 SWEEP_EVERY_S = 300.0
 
 
+def _note_deleted(kind, ident, note, rec=None):
+    """A deletion somebody asked for, noted: the next sync marks the row
+    deleted in Supabase, and every machine's sweep erases any copy a merge
+    brings back ("make sure it is also applied to the supabase",
+    2026-10-20). Deleting used to erase this clone's shards and nothing
+    else, so the row stayed live and the next merge undid it.
+
+    Not for a test harness's own records -- demo gids never sync, and a
+    harness's seeds are its own to put back -- and not on a harness server
+    at all (tools/harness_run.py sets BARRY_HARNESS_SERVER): the runner puts
+    back any committed record a page deletes, and a note would erase it
+    again everywhere. Never raises: the deletion has happened either way.
+    """
+    if os.environ.get("BARRY_HARNESS_SERVER"):
+        return
+    # Flask's test client, which every tools/test_*.py drives: it asks for
+    # host "localhost" with no port, which no browser does. Those tests
+    # swap the bank for a temp one but not the tombstones.
+    try:
+        from flask import has_request_context
+        if has_request_context() and request.host == "localhost":
+            return
+    except Exception:                                    # noqa: BLE001
+        pass
+    r = rec or {}
+    if str(r.get("gid") or "").startswith(CLOUD.DEMO_PREFIX) \
+            or _cf_is_test(r) \
+            or str(r.get("project") or "").upper() == "HARNESS":
+        return
+    try:
+        RESULTS.tombs.add(kind, ident, note=note)
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("tombstones.add", exc, None,
+                           {"kind": kind, "id": ident})
+
+
 def _sweep_tombstoned():
     """Erase any bank entry or curation set a tombstone says is gone and
     that has come back. Returns {"bank": n, "curation": n}. Never raises."""
@@ -26710,11 +27203,12 @@ def _sweep_tombstoned():
                     out["bank"] += 1
         for row in (tombs.all("curation") or []):
             gid, _, kind = str(row.get("id") or "").partition("__")
-            rec = CURATE.get(gid, kind) if gid and kind else None
-            if rec and tombs.outlives("curation", row.get("id"),
-                                      (rec.get("created") or {}).get("at")):
-                if CURATE.delete(gid, kind):
-                    out["curation"] += 1
+            # Shard by shard: the merged set's `created` is its OLDEST
+            # copy's, so a set started again after the note, sitting beside
+            # a deleted set's old shard, would read as the deleted one.
+            if gid and kind and CURATE.get(gid, kind) \
+                    and CURATE.delete_made_before(gid, kind, row.get("at")):
+                out["curation"] += 1
     except Exception as exc:                             # noqa: BLE001
         STORE.record_error("tombstones.sweep", exc, None, {})
         return out

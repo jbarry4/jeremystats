@@ -561,7 +561,12 @@ class Results:
                     continue
                 counts.setdefault(self.clean_folder(rel), 0)
         out = []
-        for path in sorted(x for x in counts if x):
+        # By path segment in number order, so "Figure 3/Panels" stays
+        # under "Figure 3" and "Figure 10" comes after it (2026-10-20).
+        from . import natsort
+        for path in sorted((x for x in counts if x),
+                           key=lambda x: tuple(natsort.key(seg)
+                                               for seg in x.split("/"))):
             out.append({
                 "path": path,
                 "name": path.rsplit("/", 1)[-1],

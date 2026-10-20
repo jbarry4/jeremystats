@@ -449,7 +449,7 @@ BARRY.views.sessions = (function () {
         const g = x.identity.group || 'Ungrouped';
         by[g] = (by[g] || 0) + 1;
       }
-      tree = Object.keys(by).sort().map((g) => ({ group: g, n: by[g] }));
+      tree = BARRY.ui.natSort(Object.keys(by)).map((g) => ({ group: g, n: by[g] }));
       renderGroupFilter();
     }
     const filters = $('#sessFilters');
@@ -894,7 +894,7 @@ BARRY.views.sessions = (function () {
       const g = s.identity.group || 'Ungrouped';
       here[g] = (here[g] || 0) + 1;
     }
-    for (const g of tree) {
+    for (const g of BARRY.ui.natSort(tree.slice(), (x) => x.group)) {
       /* Zero is the answer, not a missing one.
          `here` only has a key for a cohort that has something in this
          view, so falling back to `g.n` -- the catalogue's tally -- meant a
@@ -1097,7 +1097,7 @@ BARRY.views.sessions = (function () {
     return Array.from(seen).sort((a, b) => {
       if (a === 'Unfiled') return 1;
       if (b === 'Unfiled') return -1;
-      return a.localeCompare(b);
+      return BARRY.ui.natCompare(a, b);
     });
   }
 
@@ -1519,12 +1519,7 @@ BARRY.views.sessions = (function () {
           el('span', { class: 'count', text: total + ' session(s), ' + mice.size + ' mice' }),
         ]),
       ]);
-      const keys = Array.from(mice.keys()).sort((a, b) => {
-        const na = parseInt(a.replace(/\D/g, ''), 10);
-        const nb = parseInt(b.replace(/\D/g, ''), 10);
-        if (isFinite(na) && isFinite(nb)) return na - nb;
-        return String(a).localeCompare(String(b));
-      });
+      const keys = BARRY.ui.natSort(Array.from(mice.keys()));
       for (const mk of keys) {
         const list = mice.get(mk).slice().sort(
           (a, b) => (a.identity.session || 0) - (b.identity.session || 0));
@@ -3597,7 +3592,7 @@ BARRY.views.sessions = (function () {
     const part = (label, rows, line, cls) => (rows && rows.length)
       ? el('details', { class: cls || '' }, [
           el('summary', { text: label }),
-          el('div', {}, rows.map((r) => el('div', { class: 'hint quiet',
+          el('div', {}, BARRY.ui.natSort(rows.slice(), (r) => [r.label || r.key, r.path]).map((r) => el('div', { class: 'hint quiet',
                                                    text: line(r) }))),
         ])
       : null;
@@ -3753,11 +3748,11 @@ BARRY.views.sessions = (function () {
       list.appendChild(el('button', { class: 'vacc-ls-row up', text: '..',
                                       onclick: () => vaccGo(up) }));
     }
-    for (const d of (vHere.dirs || [])) {
+    for (const d of BARRY.ui.natSort((vHere.dirs || []).slice(), (x) => x.name)) {
       list.appendChild(el('button', { class: 'vacc-ls-row dir', text: d.name,
                                       onclick: () => vaccGo(d.path) }));
     }
-    for (const r of (vHere.recordings || [])) {
+    for (const r of BARRY.ui.natSort((vHere.recordings || []).slice(), (x) => x.name)) {
       list.appendChild(el('div', { class: 'vacc-ls-row rec' }, [
         el('span', { text: r.name }),
         el('span', { class: 'vr-n', text: r.n_channels + ' ch' }),
@@ -3791,7 +3786,7 @@ BARRY.views.sessions = (function () {
     const part = (label, rows, cls) => rows.length
       ? el('details', { class: cls || '' }, [
           el('summary', { text: rows.length + ' ' + label }),
-          el('div', {}, rows.slice(0, 40).map((r) => el('div', {
+          el('div', {}, BARRY.ui.natSort(rows.slice(), (r) => [r.label, r.path]).slice(0, 40).map((r) => el('div', {
             class: 'hint quiet',
             text: (r.label ? r.label + ' — ' : '')
                 + String(r.path || '').replace((d.root || '') + '/', '')

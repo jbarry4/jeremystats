@@ -829,7 +829,8 @@ BARRY.views.errors = (function () {
 
   async function load() {
     try {
-      const res = await api('/api/errors?limit=300' + (day ? '&day=' + day : ''));
+      const res = await api('/api/errors?limit=300' + (day ? '&day=' + day : '')
+                            + (errShowTests ? '&tests=all' : ''));
       errors = res.errors || [];
       days = res.days || [];
     } catch (e) {
@@ -839,9 +840,11 @@ BARRY.views.errors = (function () {
     try {
       const res = await api('/api/errors/grouped?limit=600'
                             + (day ? '&day=' + day : '')
-                            + (errShowArchived ? '&machines=all' : ''));
+                            + (errShowArchived ? '&machines=all' : '')
+                            + (errShowTests ? '&tests=all' : ''));
       groups = res.groups || [];
       hiddenArchived = res.hidden_archived || 0;
+      hiddenTests = res.hidden_tests || 0;
       archivedIds = res.archived_machines || [];
     } catch (e) { groups = []; }
     try {
@@ -852,10 +855,14 @@ BARRY.views.errors = (function () {
     renderDays();
     render();
     // The badge counts what still needs attention, not the whole archive:
-    // a number that never goes down stops being read.
-    const open = groups.filter((g) => !g.resolved)
-                       .reduce((n, g) => n + g.count, 0);
-    BARRY.setErrorCount(grouped ? open : errors.length);
+    // a number that never goes down stops being read. Distinct faults still
+    // open from the last week, as the server counts them for the rail
+    // (app.py `_errors_open`), so opening this view does not change it.
+    if (!day && !errShowArchived && !errShowTests) {
+      const cut = Date.now() - 7 * 86400e3;
+      BARRY.setErrorCount(groups.filter(
+        (g) => !g.resolved && (Date.parse(g.last) || 0) >= cut).length);
+    }
   }
 
   function renderDays() {
@@ -1185,6 +1192,12 @@ BARRY.views.errors = (function () {
   let errShowArchived = false;
   let hiddenArchived = 0;
   let archivedIds = [];
+  /* And faults a test made on purpose -- a harness page, the harness
+     server, "Write a test entry" (app.py `_is_test_error`). A third of the
+     log was these (2026-10-20). Left out the same way: said, with a way to
+     see them. */
+  let errShowTests = false;
+  let hiddenTests = 0;
 
   function render() {
     const host = $('#errBody');
@@ -1216,6 +1229,20 @@ BARRY.views.errors = (function () {
         }),
         el('span', { class: 'hint',
           text: 'Archive a computer in DEVICE, beside its name.' }),
+      ]));
+    }
+    if (hiddenTests || errShowTests) {
+      host.appendChild(el('p', { class: 'hint err-archived' }, [
+        el('span', {
+          text: errShowTests
+            ? 'Including faults that tests made on purpose.'
+            : hiddenTests + ' error(s) that tests made on purpose are not '
+              + 'shown.',
+        }),
+        el('button', {
+          class: 'mini', text: errShowTests ? 'Hide test faults' : 'Show them',
+          onclick: () => { errShowTests = !errShowTests; load(); },
+        }),
       ]));
     }
 
@@ -1413,8 +1440,7 @@ BARRY.views.errors = (function () {
     }
     /* Sorted by what is on screen. Sorting shard ids puts
        "barrylab-d8e8" before "desktop-..." for reasons nobody can see. */
-    const names = Array.from(seen).sort(
-      (a, b) => String(labels[a] || a).localeCompare(String(labels[b] || b)));
+    const names = BARRY.ui.natSort(Array.from(seen), (id) => labels[id] || id);
     if (!devices) loadDevices();
 
     const online = (id) => {
@@ -2528,7 +2554,14 @@ BARRY.views.errors = (function () {
     $('#errRefresh').addEventListener('click', load);
     $('#errDay').addEventListener('change', (e) => { day = e.target.value; load(); });
     $('#errTest').addEventListener('click', async () => {
-      try { await apiPost('/api/errors/test'); await load(); toast('Wrote a test entry', 'ok'); }
+      // A test entry is a test's fault, left out unless they are shown --
+      // so they are shown, or the entry written would not be seen.
+      try {
+        await apiPost('/api/errors/test');
+        errShowTests = true;
+        await load();
+        toast('Wrote a test entry. Faults made by tests are showing.', 'ok');
+      }
       catch (e) { toast(e.message, 'err'); }
     });
   }

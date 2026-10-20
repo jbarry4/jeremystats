@@ -26,6 +26,7 @@ better for it; the extra failures those two then report are real findings
 that a crash was hiding, not regressions.
 """
 import html
+import json
 import os
 import re
 import subprocess
@@ -68,6 +69,39 @@ def _deleted_records():
     return [p for p in out.stdout.decode("utf-8", "replace").split("\0") if p]
 
 
+def _tombstoned(paths):
+    """The deleted paths a bank or curation tombstone covers -- erased on
+    purpose by the server's sweep, not by a harness (app.py
+    `_sweep_tombstoned`). A harness server never writes such a note
+    (tools/harness_run.py), so a page cannot hide its own deletions here."""
+    keys = set()
+    tdir = os.path.join(ROOT, "GUI_logs", "tombstones")
+    try:
+        names = os.listdir(tdir)
+    except OSError:
+        return set()
+    for n in names:
+        try:
+            with open(os.path.join(tdir, n), encoding="utf-8") as fh:
+                keys.update(k for k in (json.load(fh).get("gone") or {})
+                            if k.startswith(("bank:", "curation:")))
+        except (OSError, ValueError, AttributeError):
+            continue
+    out = set()
+    for p in paths:
+        folder, _, fname = p.replace("\\", "/").rpartition("/")
+        base = fname.rsplit("@", 1)[0]
+        if folder.endswith("/event_bank"):
+            key = "bank:" + base.rsplit("_", 1)[-1]
+        elif folder.endswith("/curation"):
+            key = "curation:" + base
+        else:
+            continue
+        if key in keys:
+            out.add(p)
+    return out
+
+
 def _put_back(name, before):
     """Restore any committed record a harness deleted, and say which one.
 
@@ -89,6 +123,16 @@ def _put_back(name, before):
     if not after:
         return
     new = [p for p in after if p not in before]
+    # Erased on purpose while the page ran: the server's tombstone sweep
+    # (or its sync's pull) removing a deleted entry or set that a merge had
+    # brought back. Putting those back would undo a deletion somebody asked
+    # for, and blame a page that did nothing.
+    swept = _tombstoned(new)
+    if swept:
+        print("  .. %d record(s) under GUI_logs were erased by the tombstone "
+              "sweep during %s, not by it; left deleted." % (len(swept), name),
+              flush=True)
+        new = [p for p in new if p not in swept]
     if not new:
         return
     try:

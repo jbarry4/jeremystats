@@ -343,6 +343,9 @@ BARRY.ui = (function () {
       class: 'cur-set' + (opt.done ? ' done' : '')
              + (opt.extra ? ' ' + opt.extra : ''),
       'data-gid': opt.gid || null,
+      // Which set, exactly: a recording can hold several (one per bank
+      // entry), so the gid alone no longer finds a card.
+      'data-kind': opt.kind || null,
     }, [
       el('div', { class: 'cur-set-top' }, [
         typeof opt.title === 'string' ? el('strong', { text: opt.title })
@@ -1202,6 +1205,37 @@ BARRY.ui = (function () {
          + 'lands there; nothing new was started.');
   }
 
+  /* ---------- one search rule for every list of recordings ---------- */
+
+  /* Whether `query` finds a row whose words are `parts` (2026-10-20).
+     People type a recording the way they say it -- "m3 s2", "M3S2",
+     "m3s2", "PTEN m3" -- and a list that only matched the spaced form
+     could not find M3S2's runs that were plainly there. So the row's mouse
+     and session are also offered joined ("m3s2"), case is ignored, and a
+     joined word must match a whole token, so "m3s2" does not find m3 s21.
+     `parts` may hold strings and numbers; `mouse`/`session` name the
+     recording's numbers when the row has them. */
+  function searchMatch(parts, query, o) {
+    const opt = o || {};
+    const q = String(query || '').trim().toLowerCase();
+    if (!q) return true;
+    const toks = [];
+    for (const p of parts || []) {
+      if (p === null || p === undefined || p === '') continue;
+      toks.push(String(p).toLowerCase());
+    }
+    if (opt.mouse != null) {
+      toks.push('m' + opt.mouse);
+      if (opt.session != null) toks.push('m' + opt.mouse + 's' + opt.session);
+    }
+    if (opt.session != null) toks.push('s' + opt.session);
+    const hay = ' ' + toks.join(' ') + ' ';
+    const words = ' ' + toks.join(' ').split(/[\s,·()]+/).join(' ') + ' ';
+    return q.split(/\s+/).every((w) => (/^m\d+s\d+$/.test(w)
+      ? words.indexOf(' ' + w + ' ') >= 0
+      : hay.indexOf(w) >= 0));
+  }
+
   /* Split a list into [live, archived] by `isArchived`, keeping order. */
   function splitArchived(list, isArchived) {
     const live = [], gone = [];
@@ -1209,9 +1243,251 @@ BARRY.ui = (function () {
     return [live, gone];
   }
 
+  /* ---------- a mode's own end of the one bar ---------- */
+
+  /* Every add-on's bar ends the same way (2026-10-20): its occasional
+     controls folded into More, then the next step of its bundle, then Bank
+     -- and after those the shell's Simplify, ? and Leave (core.js
+     `setMode`), so Leave is always the last thing, far right.
+
+       more   nodes for the More panel (a window length, a light switch,
+              List all, Tooth Fairy, Auto-bank...); none, no More
+       next   { text, title, onclick }: "Next: Eye — line them up →"
+       bank   { text, title, onclick, disabled }: "Bank the results…" */
+  function modeEnd(o) {
+    const opt = o || {};
+    const more = [].concat(opt.more || []).filter(Boolean);
+    const bits = [];
+    if (more.length) {
+      const pop = el('div', { class: 'mode-more-pop' }, more);
+      // Open again after a repaint if it was open before it.
+      const det = el('details', { class: 'mode-more',
+                                  open: modeEnd.open ? 'open' : null }, [
+        el('summary', { text: 'More', title: 'Settings and tools for this '
+                                             + 'sitting' }),
+        pop,
+      ]);
+      det.addEventListener('toggle', () => { modeEnd.open = det.open; });
+      /* Shut when somebody clicks anywhere else -- a <details> stays open.
+         One listener for every bar ever drawn, not one per repaint. */
+      if (!modeEnd.wired) {
+        modeEnd.wired = true;
+        document.addEventListener('mousedown', (e) => {
+          for (const d of document.querySelectorAll('details.mode-more[open]')) {
+            if (!d.contains(e.target)) { d.open = false; modeEnd.open = false; }
+          }
+        });
+      }
+      bits.push(det);
+    }
+    if (opt.next) {
+      bits.push(button({ kind: 'ghost', size: 'sm', text: opt.next.text,
+                         title: opt.next.title || null,
+                         onclick: opt.next.onclick }));
+    }
+    if (opt.bank) {
+      bits.push(button({ kind: 'ghost', size: 'sm',
+                         text: opt.bank.text || 'Bank the results…',
+                         title: opt.bank.title || null,
+                         disabled: !!opt.bank.disabled,
+                         onclick: opt.bank.onclick }));
+    }
+    return el('div', { class: 'mode-own-end' }, bits);
+  }
+
+  /* ---------- which working set: a kind names its bank entry ---------- */
+
+  /* A working set belongs to ONE bank entry since 2026-10-20 ("purely bank
+     identity based"), and its kind says which: "ied.e3b3111be3118" is the
+     set of entry 3b3111be3118. The sets made before stay "ds", "ied",
+     "pooled" -- one per recording -- and are matched to the entry they were
+     started from. Every route keeps its shape, /api/curation/<gid>/<kind>/..,
+     so a caller only has to carry the set's own kind instead of a constant. */
+  const kindBase = (k) => String(k || '').split('.')[0];
+  function kindEntry(k) {
+    const s = String(k || '');
+    const i = s.indexOf('.e');
+    return i >= 0 ? (s.slice(i + 2) || null) : null;
+  }
+
+  function setUrl(gid, kind, what) {
+    return '/api/curation/' + encodeURIComponent(gid) + '/'
+      + encodeURIComponent(kind) + (what ? '/' + what : '');
+  }
+
+  /* The kind of the set that stands for bank entry `entryId` on `gid`, or
+     null when there is none: a per-entry set of it, or an older set started
+     from it. */
+  async function setForEntry(gid, base, entryId) {
+    const got = await api('/api/curation/for-recording/'
+                          + encodeURIComponent(gid));
+    const s = ((got && got.existing) || []).find((x) => kindBase(x.kind) === base
+      && (kindEntry(x.kind) === entryId
+          || (!kindEntry(x.kind) && (x.source || {}).bank_entry === entryId)));
+    return s ? s.kind : null;
+  }
+
+  /* ---------- one order for every list of recordings ---------- */
+
+  /* Numbers inside names compare as numbers (2026-10-20): m1, m3, m5, m12
+     -- never m1, m12, m3, m34, m5 -- "wherever there are lists of
+     recordings displayed". So do sessions (s2 before s10), rats (J2 before
+     J10), channels (CSC9 before CSC10) and nicknames. Case is ignored; a
+     tie falls back to the plain text, so the order is total. A list that
+     is in time order, or ranked by a count, keeps that order: this is the
+     order for names. */
+  const NAT = (typeof Intl !== 'undefined' && Intl.Collator)
+    ? new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+    : null;
+
+  function natCompare(a, b) {
+    const x = a == null ? '' : String(a);
+    const y = b == null ? '' : String(b);
+    const c = NAT ? NAT.compare(x, y) : 0;
+    if (c) return c;
+    return x < y ? -1 : (x > y ? 1 : 0);
+  }
+
+  /* `list` sorted in place by `key(item)` in that order, and returned. A
+     key may be an array, compared part by part: [project, label]. */
+  function natSort(list, key) {
+    const k = key || ((x) => x);
+    return (list || []).sort((a, b) => {
+      const ka = k(a), kb = k(b);
+      if (!Array.isArray(ka) && !Array.isArray(kb)) return natCompare(ka, kb);
+      const A = [].concat(ka), B = [].concat(kb);
+      for (let i = 0; i < Math.max(A.length, B.length); i++) {
+        const c = natCompare(A[i], B[i]);
+        if (c) return c;
+      }
+      return 0;
+    });
+  }
+
+  /* ---------- numbers right, words left, in every table ---------- */
+
+  /* "All the text results are right aligned" (2026-10-20). Tables are
+     built in some eighty places, and many right-align every column but the
+     first, so a mouse, a group or a verdict sat on the right like a number.
+     Every table now aligns by what its columns hold -- a column of numbers
+     (signs, units, ranges and "312 / 1,204" allowed) right, in tabular
+     figures; a column of words left -- decided from the cells, so no
+     builder has to remember. A cell holding a control (a button, an input)
+     or nothing but a dash does not vote, and keeps its own alignment. A
+     table that wants its own says data-al="off". Big tables (over 3,000
+     rows) are left as built. */
+  const NUM_CELL = new RegExp(
+    '^[(\\[]?[-+−±~≈<>≤≥]?\\s*[$£€]?'
+    + '\\d[\\d,]*(?:\\.\\d+)?(?:[eE][-+]?\\d+)?'
+    + '(?:\\s*(?:%|‰|[A-Za-zµ°×]{1,7}))?'
+    + '(?:\\s*(?:/|–|-|to|of|±)\\s*[-+−]?\\d[\\d,]*'
+    + '(?:\\.\\d+)?(?:\\s*(?:%|[A-Za-zµ°]{1,7}))?)?'
+    + '[*†]{0,3}[)\\]]?$');
+
+  function cellVote(cell) {
+    if (cell.colSpan > 1) return null;
+    if (cell.querySelector('button, input, select, textarea')) return null;
+    const t = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!t || /^[-–—·?…]$|^n\/?a$/i.test(t)) return null;
+    return NUM_CELL.test(t) ? 'num' : 'text';
+  }
+
+  function alignTable(table) {
+    if (table.dataset.al === 'off') return;
+    const rows = table.rows;
+    if (!rows || !rows.length || rows.length > 3000) return;
+    const head = [], body = [];
+    for (const r of rows) {
+      const inHead = r.parentNode && r.parentNode.tagName === 'THEAD';
+      const allTh = r.cells.length
+        && Array.prototype.every.call(r.cells, (c) => c.tagName === 'TH');
+      ((inHead || (allTh && !body.length)) ? head : body).push(r);
+    }
+    const votes = [];                      // per column: [num, text]
+    const cols = (r) => {                  // [cell, column] pairs, colspans counted
+      const out = [];
+      let i = 0;
+      for (const c of r.cells) { out.push([c, i]); i += c.colSpan || 1; }
+      return out;
+    };
+    for (const r of body.slice(0, 400)) {
+      for (const [c, i] of cols(r)) {
+        const v = cellVote(c);
+        if (!v) continue;
+        const t = votes[i] || (votes[i] = [0, 0]);
+        t[v === 'num' ? 0 : 1] += 1;
+      }
+    }
+    const kind = votes.map((t) => {
+      if (!t) return null;
+      if (t[0] && t[1] <= Math.floor(t[0] / 10)) return 'num';
+      return t[1] ? 'text' : null;
+    });
+    for (const r of head.concat(body)) {
+      for (const [c, i] of cols(r)) {
+        const k = c.colSpan > 1 ? null : kind[i];
+        if (k && c.dataset.al !== k) c.dataset.al = k;
+        else if (!k && c.dataset.al) delete c.dataset.al;
+      }
+    }
+  }
+
+  const alignQ = new Set();
+  let alignT = 0;
+
+  function alignSoon(t) {
+    if (!t || (t.dataset && t.dataset.al === 'off')) return;
+    alignQ.add(t);
+    if (!alignT) alignT = setTimeout(alignFlush, 40);
+  }
+
+  function alignFlush() {
+    alignT = 0;
+    const ts = Array.from(alignQ);
+    alignQ.clear();
+    for (const t of ts) {
+      if (!t.isConnected) continue;
+      try { alignTable(t); } catch (e) { /* a table it cannot read keeps its look */ }
+    }
+  }
+
+  function alignWatch() {
+    if (alignWatch.on || typeof MutationObserver === 'undefined') return;
+    alignWatch.on = true;
+    const mo = new MutationObserver((muts) => {
+      for (const m of muts) {
+        const at = m.target.nodeType === 1 ? m.target : m.target.parentElement;
+        const t = at && at.closest ? at.closest('table') : null;
+        if (t) { alignSoon(t); continue; }
+        for (const n of m.addedNodes) {
+          if (n.nodeType !== 1) continue;
+          if (n.tagName === 'TABLE') alignSoon(n);
+          else for (const x of n.getElementsByTagName('table')) alignSoon(x);
+        }
+      }
+    });
+    mo.observe(document.body, { childList: true, subtree: true,
+                                characterData: true });
+    for (const t of document.getElementsByTagName('table')) alignSoon(t);
+  }
+
+  if (typeof document !== 'undefined') {
+    if (document.body) alignWatch();
+    else document.addEventListener('DOMContentLoaded', alignWatch);
+  }
+
   return {
     archivedTail: archivedTail,
     splitArchived: splitArchived,
+    searchMatch: searchMatch,
+    natCompare: natCompare,
+    natSort: natSort,
+    alignTable: alignTable,
+    modeEnd: modeEnd,
+    kindBase: kindBase,
+    kindEntry: kindEntry,
+    setUrl: setUrl,
+    setForEntry: setForEntry,
     submitOnce: submitOnce,
     isSending: isSending,
     duplicateOf: duplicateOf,
