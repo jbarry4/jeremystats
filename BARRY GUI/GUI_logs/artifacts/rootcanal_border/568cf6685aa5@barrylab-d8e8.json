@@ -1,0 +1,150 @@
+{
+  "_at": {
+    "added": "2026-10-19T17:13:00.010363+00:00",
+    "deleted": "2026-10-19T17:13:00.010363+00:00",
+    "id": "2026-10-19T17:13:00.010363+00:00",
+    "kind": "2026-10-19T17:13:00.010363+00:00",
+    "name": "2026-10-19T17:13:00.010363+00:00",
+    "nickname": "2026-10-19T17:13:00.010363+00:00",
+    "schema": "2026-10-19T17:13:00.010363+00:00",
+    "subject": "2026-10-19T17:13:00.010363+00:00",
+    "subject_key": "2026-10-19T17:13:00.010363+00:00",
+    "version": "2026-10-19T17:13:00.010363+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "362f1715ca0e": [
+        "set",
+        "2026-10-19T17:13:00.010363+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-19T17:13:00.010363+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-19T13:12:28-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "568cf6685aa5",
+  "kind": "rootcanal_border",
+  "name": "Envelope \u00b7 DS \u00b7 207 to 3802 \u00b5V \u00b7 -7.1 to 25.7 dB \u00b7 6.0 to 71.0 ms",
+  "nickname": "border around DS \u00b7 PTEN Baseline All CTL",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "border_key": "eb34f9d080694d0c8993b525a1ba186f",
+    "gids": [
+      "s016e132432c8",
+      "s0a9e96cf1739",
+      "s37c7c8edfe10",
+      "s43b16cd74bcb",
+      "s79ba9ba163c4",
+      "s8d7f397b9708",
+      "s9eb56573e0b4",
+      "sd42a6992b76c",
+      "sd94396e874c7"
+    ],
+    "level": "pool",
+    "name": "Envelope \u00b7 DS \u00b7 207 to 3802 \u00b5V \u00b7 -7.1 to 25.7 dB \u00b7 6.0 to 71.0 ms"
+  },
+  "subject_key": "rootcanal_border|eb34f9d080694d0c8993b525a1ba186f",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.10.19.2",
+      "at": "2026-10-19T13:12:28-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "a4626323",
+      "digest": "92769828ccad",
+      "id": "362f1715ca0e",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 1263,
+        "filter": "LFP filter, 1\u2013100 Hz, 60 Hz mains left in",
+        "grace": 0.05,
+        "group": "ds",
+        "kind": "envelope",
+        "level": "pool",
+        "levels": [
+          {
+            "counts": {
+              "amb": 0,
+              "ds": 1263,
+              "ied": 0,
+              "none": 0
+            },
+            "grace": 0.0,
+            "outside_rate": 0.0,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 12,
+              "ds": 1251,
+              "ied": 0,
+              "none": 0
+            },
+            "grace": 0.01,
+            "outside_rate": 0.009501187648456057,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 59,
+              "ds": 1204,
+              "ied": 0,
+              "none": 0
+            },
+            "grace": 0.05,
+            "outside_rate": 0.04671417260490895,
+            "switch_rate": 0.0
+          }
+        ],
+        "mice": 9,
+        "recordings": 9,
+        "source": null,
+        "strict": {
+          "amp_uV": {
+            "hi": 3801.925861802178,
+            "lo": 206.74645424905128
+          },
+          "hf_db": {
+            "hi": 25.67663298782695,
+            "lo": -7.1429977917795835
+          },
+          "hw_ms": {
+            "hi": 71.00421738538981,
+            "lo": 6.0418884749646224
+          }
+        }
+      },
+      "nickname": "border around DS \u00b7 PTEN Baseline All CTL",
+      "nickname_at": "2026-10-19T13:12:28-04:00",
+      "note": null,
+      "params": {
+        "grace": 0.05,
+        "level": "pool",
+        "measure": {
+          "band_hi": 1000.0,
+          "band_lo": 500.0,
+          "cross_ms": 50.0,
+          "filt": "lfp",
+          "filter_label": "LFP filter, 1\u2013100 Hz, 60 Hz mains left in",
+          "hi_hz": 100.0,
+          "lo_hz": 1.0,
+          "mains_out": false,
+          "order": 4,
+          "win_ms": 25.0
+        }
+      },
+      "params_hash": "5ff4ab25a471",
+      "v": 1
+    }
+  ]
+}
