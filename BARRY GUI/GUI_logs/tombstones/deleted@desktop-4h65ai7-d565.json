@@ -12,9 +12,21 @@
         "set",
         "2026-10-20T15:11:03.961738+00:00"
       ],
+      "bank:1a5bd9f32d3e": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
       "bank:38e200ea3375": [
         "set",
         "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:3b3111be3118": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:3bef61c4f955": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
       ],
       "bank:4e00ff2b9b7d": [
         "set",
@@ -24,9 +36,41 @@
         "set",
         "2026-10-20T15:11:03.961738+00:00"
       ],
+      "bank:5dcf2c3aaa7a": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:6949b9dc9581": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:6c077ff96604": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:773e8e73c6ab": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:78a241655378": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:7e0d577f151f": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
       "bank:8931cc766fe7": [
         "set",
         "2026-10-15T14:04:29.390985+00:00"
+      ],
+      "bank:96ccc0c35b19": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:9f269d624f95": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
       ],
       "bank:abd7cd89926f": [
         "set",
@@ -44,6 +88,10 @@
         "set",
         "2026-10-20T15:11:03.961738+00:00"
       ],
+      "bank:cd649397cfc0": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
       "bank:cfc179ca8cbf": [
         "set",
         "2026-10-20T15:11:03.961738+00:00"
@@ -60,6 +108,10 @@
         "set",
         "2026-10-20T15:11:03.961738+00:00"
       ],
+      "bank:e722ca5724d7": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
       "bank:ebd7e0c826c2": [
         "set",
         "2026-10-20T15:11:03.961738+00:00"
@@ -67,6 +119,22 @@
       "bank:f05308cb9f1f": [
         "set",
         "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "curation:s8d7f397b9708__ied": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "curation:s8d7f397b9708__pooled": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "curation:s9a8f6138b49e__ied": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "curation:sba57286bdee3__ied": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
       ],
       "deck:deck_008e35e2": [
         "set",
@@ -3259,7 +3327,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-20T15:11:03.961738+00:00",
+    "at": "2026-10-20T17:58:42.922968+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -3282,6 +3350,15 @@
       "synced": true,
       "synced_at": "2026-10-20T11:11:03-0400"
     },
+    "bank:1a5bd9f32d3e": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "1a5bd9f32d3e",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
     "bank:38e200ea3375": {
       "at": "2026-10-20T11:10:47-0400",
       "by": "desktop-4h65ai7-d565",
@@ -3290,6 +3367,24 @@
       "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
       "synced": true,
       "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:3b3111be3118": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "3b3111be3118",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:3bef61c4f955": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "3bef61c4f955",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
     },
     "bank:4e00ff2b9b7d": {
       "at": "2026-10-14T19:08:52-0400",
@@ -3309,6 +3404,60 @@
       "synced": true,
       "synced_at": "2026-10-20T11:11:03-0400"
     },
+    "bank:5dcf2c3aaa7a": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "5dcf2c3aaa7a",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:6949b9dc9581": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "6949b9dc9581",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:6c077ff96604": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "6c077ff96604",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:773e8e73c6ab": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "773e8e73c6ab",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:78a241655378": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "78a241655378",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:7e0d577f151f": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "7e0d577f151f",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
     "bank:8931cc766fe7": {
       "at": "2026-10-14T19:08:53-0400",
       "by": "desktop-4h65ai7-d565",
@@ -3317,6 +3466,24 @@
       "note": "banked by the confluence.html harness by mistake",
       "synced": true,
       "synced_at": "2026-10-15T10:04:29-0400"
+    },
+    "bank:96ccc0c35b19": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "96ccc0c35b19",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:9f269d624f95": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "9f269d624f95",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
     },
     "bank:abd7cd89926f": {
       "at": "2026-10-20T11:10:47-0400",
@@ -3354,6 +3521,15 @@
       "synced": true,
       "synced_at": "2026-10-20T11:11:03-0400"
     },
+    "bank:cd649397cfc0": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "cd649397cfc0",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
     "bank:cfc179ca8cbf": {
       "at": "2026-10-20T11:10:47-0400",
       "by": "desktop-4h65ai7-d565",
@@ -3390,6 +3566,15 @@
       "synced": true,
       "synced_at": "2026-10-20T11:11:03-0400"
     },
+    "bank:e722ca5724d7": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "e722ca5724d7",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
     "bank:ebd7e0c826c2": {
       "at": "2026-10-20T11:10:48-0400",
       "by": "desktop-4h65ai7-d565",
@@ -3407,6 +3592,42 @@
       "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
       "synced": true,
       "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "curation:s8d7f397b9708__ied": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8d7f397b9708__ied",
+      "kind": "curation",
+      "note": "Curation set started from a Doppler run (or its pool) that predates the gap fix; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "curation:s8d7f397b9708__pooled": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8d7f397b9708__pooled",
+      "kind": "curation",
+      "note": "Curation set started from a Doppler run (or its pool) that predates the gap fix; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "curation:s9a8f6138b49e__ied": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9a8f6138b49e__ied",
+      "kind": "curation",
+      "note": "Curation set started from a Doppler run (or its pool) that predates the gap fix; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "curation:sba57286bdee3__ied": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sba57286bdee3__ied",
+      "kind": "curation",
+      "note": "Curation set started from a Doppler run (or its pool) that predates the gap fix; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
     },
     "deck:deck_008e35e2": {
       "at": "2026-09-08T23:45:28-0400",

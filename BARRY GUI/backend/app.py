@@ -26061,6 +26061,9 @@ def cloud_sync_once(push=True, pull=True, files=False):
                 if not push:
                     raise
                 pull_failed = exc
+        # Before anything is pushed: a copy a merge brought back must not
+        # go up as though it were live.
+        _sweep_tombstoned()
         if push:
             # Deletions first: a push that re-sends a row we have locally
             # deleted would undo the tombstone it is about to write.
@@ -26673,6 +26676,65 @@ def _resume_later():
 
 threading.Thread(target=_resume_later, daemon=True,
                  name="barry-vacc-resume").start()
+
+
+# ==========================================================================
+# WHAT WAS DELETED STAYS DELETED (2026-10-20)
+#
+# A bank entry or curation set lives as one shard per machine, and git
+# carries every machine's. Deleting one erases the shards this clone has --
+# and the next merge brings back any another machine still had: thirteen
+# Doppler runs deleted at 11:10 were live again after a 13:36 merge. The
+# tombstone travels too (GUI_logs/tombstones, every machine's merged), so
+# anything a note says is gone, made before the note, is erased again here:
+# at start-up, every few minutes, and after each sync's pull. Bank and
+# curation notes are written only by a deliberate deletion -- nothing in
+# Jarvis writes one on the way past -- so this never removes anything
+# somebody did not set out to remove.
+# ==========================================================================
+SWEEP_EVERY_S = 300.0
+
+
+def _sweep_tombstoned():
+    """Erase any bank entry or curation set a tombstone says is gone and
+    that has come back. Returns {"bank": n, "curation": n}. Never raises."""
+    out = {"bank": 0, "curation": 0}
+    try:
+        tombs = RESULTS.tombs
+        for row in (tombs.all("bank") or []):
+            eid = row.get("id")
+            rec = BANK.get(eid) if eid else None
+            if rec and tombs.outlives("bank", eid,
+                                      (rec.get("added") or {}).get("at")):
+                if BANK.delete(eid):
+                    out["bank"] += 1
+        for row in (tombs.all("curation") or []):
+            gid, _, kind = str(row.get("id") or "").partition("__")
+            rec = CURATE.get(gid, kind) if gid and kind else None
+            if rec and tombs.outlives("curation", row.get("id"),
+                                      (rec.get("created") or {}).get("at")):
+                if CURATE.delete(gid, kind):
+                    out["curation"] += 1
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("tombstones.sweep", exc, None, {})
+        return out
+    if out["bank"] or out["curation"]:
+        STORE.record_activity([{"action": "tombstones.swept",
+                                "detail": dict(out)}])
+        if out["bank"]:
+            mirror_bank_soon()
+    return out
+
+
+def _sweep_loop():
+    time.sleep(25)
+    while True:
+        _sweep_tombstoned()
+        time.sleep(SWEEP_EVERY_S)
+
+
+threading.Thread(target=_sweep_loop, daemon=True,
+                 name="barry-tomb-sweep").start()
 
 
 def _vacc_status_marked():

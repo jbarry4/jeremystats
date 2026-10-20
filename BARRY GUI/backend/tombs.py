@@ -19,7 +19,9 @@ per machine like everything else, and pruned once the sync has carried them.
 from __future__ import annotations
 
 import os
+import re
 import time
+from datetime import datetime
 
 from . import shards
 
@@ -34,6 +36,34 @@ def _now():
     return time.strftime("%Y-%m-%dT%H:%M:%S%z")
 
 
+def when(stamp):
+    """A stamp as seconds since the epoch, or None when it cannot say.
+
+    Takes what this codebase writes: `_now()`'s `-0400`, isoformat's
+    `-04:00`, the database's `Z`. A stamp with no zone is None, not a guess:
+    machines here keep their own clocks and offsets, and a deletion decided
+    on a misread hour is the one mistake these notes exist to prevent.
+    """
+    s = str(stamp or "").strip().replace("Z", "+00:00")
+    if not s:
+        return None
+    m = re.match(r"^(.*\d)([+-]\d\d)(\d\d)$", s)
+    if m and ":" not in m.group(2) + m.group(3):
+        s = "%s%s:%s" % m.groups()
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        return None
+    return dt.timestamp() if dt.tzinfo is not None else None
+
+
+def newer(a, b):
+    """Stamp `a` is later than stamp `b`. False when either cannot be read:
+    no evidence, no deletion."""
+    ta, tb = when(a), when(b)
+    return ta is not None and tb is not None and ta > tb
+
+
 class Tombs:
     """What this machine has deleted, and whether the sync has said so yet."""
 
@@ -46,18 +76,20 @@ class Tombs:
     def _rec(self):
         return self.book.read(self.base) or {"schema": 1, "gone": {}}
 
-    def add(self, kind, ident, note=None):
+    def add(self, kind, ident, note=None, at=None, synced=False):
         """Note that something is gone.
 
         `ident` is whatever the other side keys on: a gid for a session, the
         repo-relative path for a result, the entry id for a bank entry.
+        `at` and `synced` are for a deletion that arrived from the cloud: it
+        happened when the row says, and the cloud already knows.
         """
         if kind not in KINDS or not ident:
             return None
         rec = self._rec()
         rec.setdefault("gone", {})["%s:%s" % (kind, ident)] = {
-            "kind": kind, "id": str(ident), "at": _now(),
-            "by": shards.machine_id(), "note": note, "synced": False,
+            "kind": kind, "id": str(ident), "at": at or _now(),
+            "by": shards.machine_id(), "note": note, "synced": bool(synced),
         }
         self.book.write(self.base, rec)
         return rec
@@ -101,6 +133,19 @@ class Tombs:
 
     def is_deleted(self, kind, ident):
         return ("%s:%s" % (kind, ident)) in (self._rec().get("gone") or {})
+
+    def outlives(self, kind, ident, made_at):
+        """A note says (kind, ident) is gone, written after `made_at`.
+
+        So the thing here is the one that was deleted and has come back -- a
+        git merge carrying another machine's copy, or a sync that had not
+        heard -- and not a later one that happens to share the name. A
+        curation set's id is its recording and kind, so a set started again
+        on the same recording after a deletion has the deleted one's id;
+        it was made after the note, and the note does not touch it.
+        """
+        row = (self._rec().get("gone") or {}).get("%s:%s" % (kind, ident))
+        return isinstance(row, dict) and newer(row.get("at"), made_at)
 
     def forget(self, kind, ident):
         """Take a note back -- for something deliberately re-created."""

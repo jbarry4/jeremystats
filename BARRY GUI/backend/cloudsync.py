@@ -32,6 +32,7 @@ import time
 from datetime import datetime
 
 from . import cloud, eventbank, shards
+from . import tombs as tombsmod
 
 BUCKET = "results"
 # What the bucket accepts (supabase/03_storage.sql, allowed_mime_types), by
@@ -372,8 +373,17 @@ class Sync:
         self.repo_root = repo_root
         self.cloud = cloud.Cloud(self.logs, store)
         self.machine = shards.machine_id()
-        from . import tombs
-        self.tombs = tombs.Tombs(self.logs, store)
+        self.tombs = tombsmod.Tombs(self.logs, store)
+
+    def _note_gone(self, kind, ident, at):
+        """Remember a deletion that arrived from elsewhere, as said already
+        (the cloud has it) -- so the next merge that brings a copy back is
+        refused here as well, by the note and not only by the row."""
+        try:
+            self.tombs.add(kind, ident, note="deleted elsewhere",
+                           at=at, synced=True)
+        except Exception:                                # noqa: BLE001
+            pass
 
     # ==================================================================
     # Local records -> rows
@@ -2873,10 +2883,26 @@ class Sync:
     def _apply_bank(self, rows):
         if not self.bank:
             return 0
-        have = {e.get("id") for e in self.bank.all()}
+        have = {e.get("id"): e for e in self.bank.all()}
         n = 0
         for r in rows:
             if r.get("deleted_at"):
+                # Deleted somewhere else, and still here. It used to be
+                # skipped, which left this machine's copy live -- and its
+                # shard went back into git and brought the entry back for
+                # everybody (2026-10-20: thirteen deleted Doppler runs
+                # returned in one merge). Erased here, and noted, so a
+                # later merge of another machine's copy is erased too
+                # (`_sweep_tombstoned` in app.py). Only a copy older than
+                # the deletion: bank ids are never reused, but a stamp is
+                # the evidence, and without it nothing is removed.
+                mine = have.get(r.get("id"))
+                if mine is not None and tombsmod.newer(
+                        r.get("deleted_at"), _prov(mine, "added").get("at")):
+                    if self.bank.delete(r.get("id")):
+                        self._note_gone("bank", r.get("id"),
+                                        r.get("deleted_at"))
+                        n += 1
                 continue
             # An entry this machine already has is not nothing to do. It
             # used to be skipped outright, so a version created elsewhere
@@ -2941,6 +2967,18 @@ class Sync:
                 continue          # the set has to exist locally to take
                                   # decisions; a whole new set arrives with
                                   # its own import, not through a sync
+            if s.get("deleted_at"):
+                # Deleted somewhere else (see `_apply_bank`). A set's id is
+                # its recording and kind, so one started again here after
+                # the deletion shares it: only a set made before the
+                # deletion is the one that was deleted.
+                if tombsmod.newer(s.get("deleted_at"),
+                                  _prov(rec, "created").get("at")):
+                    if self.curate.delete(gid, kind):
+                        self._note_gone("curation", s.get("id"),
+                                        s.get("deleted_at"))
+                        n += 1
+                continue
             mine = {e["id"]: e for e in (rec.get("events") or [])}
             touched = False
             for e in by_set.get(s["id"], []):

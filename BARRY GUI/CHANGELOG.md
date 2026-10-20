@@ -15,6 +15,45 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.20.6 - What was deleted stays deleted, here and in the cloud
+
+**Pull and restart Jarvis on every machine.** Until a machine runs this, it
+can bring a deleted entry back with its next commit.
+
+### Fixed
+
+- **A deleted bank entry or curation set came back with the next merge.**
+  Deleting erased the copies this computer had. A git merge then brought back
+  the copies other computers still had. Thirteen Doppler runs deleted at
+  11:10 were live again after a merge at 13:36. Now:
+  - **The deletion note is checked.** Anything a deletion note says is gone,
+    and that was made before the note, is erased again. This happens at
+    start-up, every five minutes, and after each sync's pull. Deletion notes
+    travel in git like everything else.
+  - **A sync's pull erases a local copy the cloud says was deleted**, and
+    notes it, so a later merge is refused too. Until now the pull only
+    skipped the row and left the copy live.
+
+  A curation set's id is its recording and kind. A set started again on the
+  same recording after a deletion was made after the note, so it is left
+  alone. Only a deliberate deletion writes these notes.
+
+### Data
+
+- **Deleted, not archived:** everything built from the Doppler runs made
+  before the gap fix on recordings in more than one segment. Archiving them
+  was causing confusion. Deleted here and in Supabase:
+  - the 14 runs again (13 had come back in a merge);
+  - the 13 Junction pools made from them;
+  - four curation sets: the Spotter sets on KCNT1 m1606 s1, PTEN m60 s1 and
+    PTEN m8 s2, and the Panning set on PTEN m60 s1;
+  - the one Doppler result still on record from before the fix (PTEN m8 s2,
+    CSC1–CSC64).
+
+  In Supabase, each entry's and set's row is marked deleted and kept, so
+  other computers erase their copies. Their snapshots and decisions are
+  removed. The reruns on all 13 recordings are untouched.
+
 ## 2026.10.20.5 - A title screen to start on, and the first of the new look
 
 A page reload is enough for the look. The start menu shows from the next
