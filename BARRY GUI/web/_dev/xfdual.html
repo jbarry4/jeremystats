@@ -183,13 +183,14 @@ async function until(fn, ms) {
     await sleep(300);
     check('the first array, none of it selected, draws nothing of it',
           !live()[0]._win, String(!!live()[0]._win));
-    chBtn().click();
-    await until(() => pop(), 3000);
+    // The picks combine, so the menu stays open after one (xfpanels.html
+    // checks the combining).
+    check('the menu stays open after a pick', !!pop());
     presets().find((b) => b.textContent === 'All').click();
     await sleep(100);
     check('All brings every channel back', A.sel.size === 64, String(A.sel.size));
 
-    chBtn().click();
+    if (!pop()) chBtn().click();
     await until(() => pop(), 3000);
     const rows = () => Array.from(pop().querySelectorAll('.ctl-chan'));
     const okRow = rows().findIndex((r) => r.querySelector('.badbtn').textContent === 'ok');
@@ -275,13 +276,15 @@ async function until(fn, ms) {
   } catch (e) {
     check('the harness ran', false, (e && e.stack) || String(e));
   } finally {
-    if (realApi) W().api = realApi;
+    // The stand-in stays until the frame is blanked below: putting the real
+    // api back first let the unload flush write the demo's view state.
     try { const i = ev('BARRY.views.xplore.state').probes.findIndex((p) => p.id === 'zzsplit');
           if (i >= 0) ev('BARRY.views.xplore.state').probes.splice(i, 1); } catch (e) {}
   }
   say('');
   say('ran ' + checks + ' checks');
   document.title = fails ? 'xfdual: ' + fails + ' FAILED' : 'xfdual: passed';
+  frame.src = 'about:blank';
 })();
 </script>
 </body></html>

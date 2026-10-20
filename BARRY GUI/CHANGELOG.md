@@ -15,6 +15,553 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.20.4 - Root Canal: every set already done, pools in folders, and the dot you pick is the one Xplorefinder shows
+
+**Restart Jarvis on every machine.** The server has a new list of the sets
+Root Canal has done, and a read that only opens a cached one.
+
+### Added
+
+- **"Already through Root Canal", in Single.** A list of every set Root
+  Canal has been run on, built like Checkup's shelf:
+  - one row per set, with what Root Canal left on it: saved versions (the
+    newest by its nickname), a banked call (its version and its DS and IED
+    counts), and a read, here or on another machine;
+  - who last touched it, on which machine, and when, with its shared
+    mark;
+  - a search, an order (last touched, recording, most events), and chips
+    with counts: what was done (saved, banked, read but nothing kept, read
+    on this machine) and the project, mouse type, group, subgroup and
+    condition;
+  - **Open**, which puts the set in front of you the way it was left. A
+    saved version opens as saved. A read on this machine opens at once.
+    It never starts a new read: when its read is on another machine, it
+    says so.
+  The list is open while you choose a set and folds itself to one line,
+  beside Change set, once a picture is up.
+- **Folders for saved pools and pools of pools.**
+  - Every pool saved so far is in **Preliminary analysis**.
+  - **New folder** makes one. A pool is dragged onto a folder to file it,
+    or moved with the folder menu on its row. "Not in a folder" takes one
+    out.
+  - Folders can be renamed, folded shut and deleted. Deleting a folder
+    deletes no pool: its pools are just out of it.
+  - The same folders are on both shelves.
+  - A new pool is filed as it is saved: the save dialog asks which folder.
+  - Folders are shared, and merged per pool, so two people filing
+    different pools both keep theirs.
+- **Open a dot in Xplorefinder from the 3D view.** Double-click a dot, or
+  pick it and press **Open in Xplorefinder** in the 3D view's header.
+  Double-click empty space still resets the view. This works in the flat
+  views too.
+
+### Fixed
+
+- **Xplorefinder could show the wrong event.**
+  - In Pooled, the picked dot was never found in the window's list. The
+    window was not moved to it, and its mark said the recording's first
+    event, so a second dot opened showed the first one.
+  - A dot from another recording (another pool member, or a set picked
+    since) had its marks and its time put on whatever recording the
+    window already showed. The window is now sent to the dot's own
+    recording, at the dot.
+  - A dot picked while the window was still opening the last one was
+    dropped. The window now ends on the newest pick.
+  - Opening a dot waited for the recording registry to be read again
+    whenever a minute had passed. The rows already read are used first.
+- **Pooled's "Open in Xplorefinder" was greyed out** for a member whose
+  read is on another machine, even when its recording is on this one. It
+  now depends only on whether the recording is reachable.
+
+### Checked
+
+- `tools/check_rootcanal.py`: 451 ok, 0 fail. New checks:
+  - a cached-only read starts nothing;
+  - a set is listed as done once read, and its saved versions are
+    listed.
+- New browser tests, all on real data, with every write held:
+  - `_dev/rootcanaldone.html` (24): the list, its counts, chips, search
+    and order, and Open on a set read here and on one read elsewhere.
+  - `_dev/rootcanalfolders.html` (32): Preliminary analysis, making,
+    dragging, moving, renaming, folding, deleting, both shelves, and a
+    new pool filed where its dialog said.
+  - `_dev/rootcanalxplore.html` (14): with a stand-in recording window,
+    the right recording, time and mark for a picked dot, a
+    double-clicked dot, a dot of another pool member, two picks in a
+    row, and a recording not on this machine.
+- To test the tests, each fix was undone on purpose: 5, 3 and 6 checks
+  failed. The files were then restored byte for byte.
+- rootcanal (356), rootcanalpool (294), rootcanalborder (103) and
+  confluence (56) all pass.
+
+---
+
+## 2026.10.20.3 - VACC: one job per question, and signing in lands first time; archived things sink
+
+**Run Setup once, then restart Jarvis.** The changes are on the server, and
+the accounts have moved into Setup.
+
+### Changed
+
+- **The Supabase key and the VACC sign-in are asked for in Setup, not when
+  Jarvis is activated.** `Setup Windows.bat` / `Setup Mac.command` has a new
+  step 6, *Accounts*. It shows how each account stands, offers to change
+  it, and every question can be skipped. Activating Jarvis now just opens
+  it, with one line each saying how the accounts stand.
+- **Signing in to VACC lands the first time.** Setup and the app now share
+  one sign-in, and the app opens signed in, with VACC Mode on. It used to
+  take two tries for three reasons:
+  - the console sign-in never made a key, so on a fresh computer it could
+    not work;
+  - the new key was tested with one connection straight after it was
+    installed. `login.vacc.uvm.edu` is four login nodes, and one that has
+    not yet seen the new key says no. The test is now retried, and the
+    install and the test go to the same node;
+  - a sign-in did not turn VACC Mode on, so the app looked signed out.
+- **The same VACC job is never submitted twice.** "The same" means the same
+  tool, recording(s) and settings.
+  - A second click, a second tab, or a second computer asking while the
+    first is queued or running is refused with a sentence saying where the
+    running job is. A batch skips those members and names them on their
+    rows.
+  - Already landed still opens the answer, as before.
+  - Every submit takes a lock on the cluster in the same connection as its
+    `sbatch`. Jobs now carry a Slurm comment naming the tool and the
+    computer.
+- **Archived things sink.** In every list that has archived things in it,
+  they go to the bottom, behind one *Show N archived* toggle. They are
+  never mixed in among current ones and never dropped from view. This
+  covers:
+  - the Event Bank's list, and an entry's version history;
+  - Junction's entries;
+  - Spotter's and Panning's *Start from a banked run* (archived runs are
+    shown and say why they cannot be started);
+  - the workbench shelf;
+  - the people in Profile;
+  - the Explorer's sections, and Misc's archived scripts.
+
+### Fixed
+
+- **A long producer no longer squeezes a bank entry's name to one word a
+  line.** The type and the producer now share the row's second line.
+- **An entry's note reads as a sentence** under its tags, not as an
+  upper-case pill, and an archived entry carries an *archived* tag.
+- **With VACC Mode on, the lit wiring dims over lists, cards, tables and
+  traces.** It stays lit over the rail and the gutters, so it no longer
+  lights up across the names and numbers under the pointer.
+
+## 2026.10.20.2 - An archived bank entry says so everywhere, the Data Bank included
+
+**Restart Jarvis.** The change is on the server.
+
+### Changed
+
+- **Archiving every version of a banked entry now puts the entry away.**
+  The Event Bank archives versions, not entries, so an entry whose every
+  version is archived counts as archived. Unarchive in its history brings it
+  back.
+  - The lists that offer entries to start from still send it, marked
+    archived and placed after every current entry. These lists are
+    Junction's, Spotter's and Panning's *Start from a banked run*, and Root
+    Canal's. The newest entry a list offers is always a current one.
+  - Pooling the same inputs again makes a new pool rather than handing back
+    the archived one.
+- **The Data Bank says what is archived.** An archived entry's files are
+  named `ARCHIVED - <type> - <name>.csv` / `.json`, and its JSON says
+  `"archived": true`. `_index.csv` has two new columns at the end:
+  - `archived`, yes or no;
+  - `note`, the entry's note, which says why.
+- **A Doppler run from before the gap fix is not an answer on a recording in
+  pieces.** This means a run made before 2026.10.19.6 on a recording the
+  health check found in more than one segment. It stays on the landed list
+  and can still be opened.
+  - The landed list marks it *before the gap fix*.
+  - Its report will not bank it, and says why.
+  - Many counts the recording as not run, and a batch runs it again.
+
+  A recording nobody has checked for gaps is not judged.
+- **Doppler no longer shows an earlier run's events under a later run.** The
+  run's key is the question, so asking the same question again files the new
+  answer under the old key. Another computer's cache could still hold the old
+  answer's events and show them. A cached run older than the run on record
+  is now fetched again from the cluster.
+
+### Data
+
+- **Everything built from the Doppler runs made before the gap fix
+  (2026.10.19.6) on recordings in more than one segment is archived.** Those
+  14 runs, on 13 recordings, were deleted and Doppler was rerun on each.
+  Archived:
+  - the 13 Junction pools made from them, every version. This includes PTEN
+    m60 s1's 5 ms pool and the Panning decisions banked into it;
+  - the Spotter set on KCNT1 m1606 s1, which had nothing decided.
+
+  Each pool's note names the run it came from and the new run to pool from
+  instead.
+
+  Archives, deletions and notes reach other computers through a commit and a
+  pull, not through the cloud sync, which carries neither an archived
+  version nor a removed entry. Rain Younger's Panning and Spotter sets on
+  PTEN m60 s1, and the Spotter set on PTEN m8 s2, are on Rain's computer
+  only. Archive them there.
+
+## 2026.10.20.1 - Braces: every spike seen, and the arrows stop only where a decision is needed
+
+A page reload is enough: nothing on the server changed.
+
+### Changed
+
+- **Every spike is drawn properly in the review.** On "Needing a
+  decision", the stamps Braces was sure of used to be a short, faint tick
+  at the bottom of each panel, which disappeared on a CSD raster or under
+  the curve. Now every stamp is two full-strength ticks, one down from the
+  top and one up from the bottom, whether or not it needs a decision. The
+  data between them stays clear. The one you are on still runs the full
+  height.
+- **The arrows stop only where a decision is needed.** n / p and ◀ ▶ visit
+  exactly the flagged stamps (and any overlapping ones), in order, both
+  ways.
+  - Each of those wears a **▼ cap** on the top edge: amber while it waits,
+    green once answered, red if called garbage. You can see where the
+    arrows will land before you press them.
+  - The toggle was "Show: Needing a decision | All of them", which hid
+    stamps as well as skipping them. It is now **"Step through: Needing a
+    decision | Every stamp"**, and every stamp is drawn either way.
+  - The review now opens stepping through the decisions whenever the set
+    has any, answered ones included, on the first one still waiting.
+- **The bar says where you are:** "decision 3 of 12 · stamp 57 of 172", or
+  "no decision needed here · stamp 57 of 172".
+
+### Added
+
+- **Press any spike to go to it.** Away from the stamp you are on, a press
+  on another stamp's line goes to it, including one that needs no
+  decision. From there n / p carry on to the decisions on either side.
+  - A press near the stamp you are on still drags it, as before.
+  - A press on empty trace still pans.
+  - It does nothing while a question about the current stamp is open, or
+    while the glove is yoinking it.
+- **Skipped ones come back.** Answering the last one still waiting now goes
+  back round to the first one you skipped, and says so, instead of
+  stopping as if the set were done. This works in the review and in the
+  proposal page's bench.
+
+### Checked
+
+- New browser test `_dev/bracessee.html` (32 checks), on a real set of 172
+  stamps with 12 waiting. Decisions were caught in the page and never
+  sent. It checks:
+  - every stamp on screen is drawn top and bottom at full strength, and
+    the ones needing no decision are not fainter;
+  - every decision has its cap, in amber while waiting, and no other stamp
+    has one;
+  - n / p visit exactly the decisions and nothing else, and "Every stamp"
+    visits every one;
+  - a press on another stamp goes to it, a press on empty trace pans, a
+    press near the current stamp drags it, and nothing is jumped to while
+    a question is open;
+  - answering the last one waiting goes back to a skipped one.
+- To test the test, the caps were removed, the other stamps dimmed and the
+  arrows allowed to step into every stamp: 9 checks failed. The file was
+  then restored byte for byte.
+- All nine Braces browser tests pass (179 checks).
+- Screenshots of a real recording show the neighbours and caps on the
+  traces and all three rasters.
+
+---
+
+## 2026.10.19.6 - Spotter and Panning get Checkup's workbench; Doppler banks as it lands; m13 s17 runs
+
+**Pull and restart Jarvis on every machine.** Banking a run as it lands,
+the banked state of each set and the list of runs not started are new on
+the server, and the cluster picks up the new Doppler the next time it is
+sent a job.
+
+### Changed
+
+- **Spotter's and Panning's step pages are Checkup's workbench.** Spotter
+  was a plain list. Both now have:
+  - the bench, with whose each set is, since when, who is in it right
+    now, and how far through it is;
+  - Carry on, Put it down, Version…, Bank the results, Export CSV,
+    Receipt and Archive;
+  - the shelf, with search, sort, and Unfinished / Has flagged / Done /
+    Archived;
+  - **Start from a banked run:** every banked run that no set has been
+    started from, with its own search. Spotter shows Doppler's runs and
+    Panning shows Junction's; Everything adds the older imports. Spotter
+    showed six sets while 42 Doppler runs were banked; all of them are
+    here now.
+  - Each page shows its header straight away and says what it is reading
+    while it loads.
+  - Sets and runs left behind by test harnesses are not shown, and the page
+    says how many were hidden.
+- **Every set says whether its work is in the Event Bank:** *banked v3*,
+  *changed since v3*, *not banked yet*. This shows on the bench, on the
+  shelf, in Checkup, and in Spotter's and Panning's bars.
+- **Auto-bank in Spotter and Panning.** When the last undecided event is
+  decided, and when you leave with work the bank does not have, the set is
+  banked as a new version without asking. A bank that would hold nothing
+  new writes nothing. The *Auto-bank* switch in the bar turns it off.
+- **Doppler banks each run as it lands.** It goes in as its own entry, with
+  the name and the note the Bank dialog would have given it, so a batch
+  that lands overnight is banked in the morning. A run is never banked
+  twice: the panel and the landed list say *banked*, and the panel offers
+  **Confirm them in Spotter**. A run with no events is not banked.
+
+### Fixed
+
+- **Panning put the span back to 0.6 s on every event.** It now keeps
+  whatever the span is set to, by the field, by zooming or with the wheel,
+  remembers it on this computer, and starts at 1 s the first time. Spotter
+  did the same thing (back to 1 s) and is fixed the same way.
+- **Merging in Panning left the traces where they were** until an arrow
+  was pressed. If the event kept is already decided, the next event comes
+  up. If it is not, it stays on screen, centred and redrawn as one event,
+  ready to be called.
+- **Doppler could not run PTEN m13 s17.** On netfiles that folder holds
+  every channel twice: `CSCn.ncs` and `CSCn_0001.ncs` are byte for byte the
+  same. Doppler took the copy for a recording in two pieces and refused it.
+  A second file that is a copy of the first, or that has no records in it,
+  is no longer counted as a piece; the run says each was read once. A real
+  continuation is still refused.
+- **Doppler now handles gaps the way Incisor does.** A segment that read
+  short of what its records say let the next segment move up into its
+  place, so every event after it was stamped early by the shortfall (36 ms
+  on a recording like KCNT1 m306 s1). The missing stretch is now held flat,
+  every time after it stays on the recording's own clock, and the run says
+  how short the segment was. Event times already came from the breakpoint
+  map, as Incisor's do.
+
+## 2026.10.19.5 - The Confluence: aligned or not, merge to either detector, label many, and the list
+
+**Pull and restart Jarvis on every machine.** The server changed: pools
+can keep Doppler's time, Panning's merge takes a choice, and the bank
+carries whose stamp a merged event is under.
+
+### Added
+
+- **Junction says whether each input is aligned.** Every input is labelled
+  *✓ aligned* or *not aligned*, meaning whether Braces (for Incisor's
+  stamps) or Eye (for Doppler's) has put its stamps on their peaks. The
+  label appears:
+  - on each detector in the recording list;
+  - on each side, for the version chosen;
+  - in the version tree;
+  - in Many.
+
+  The pool says it in a sentence under its counts. The pool's record keeps
+  whether each input was aligned. A pool Lock has lined up says
+  *pool aligned* in the list.
+- **Merge to Incisor's time or to Doppler's.**
+  - In Junction, *Merged events keep* chooses whose stamp a merged event is
+    filed at, for one recording or Many. The same pairs merge either way.
+    The other detector's time is kept beside it.
+  - In Panning, **M** merges to Incisor's time and **D** to Doppler's. The
+    survivor is the event already carrying that time, so no stamp moves.
+    *Merge to Doppler* is greyed out, and says why, when neither event has
+    Doppler's time.
+  - **Z** undoes either.
+  - The bar, the list and the traces all say which time an event is filed
+    at (*both found it, at Doppler's time · Incisor −4.1 ms*).
+- **Label many, in Panning.** Pick which events by who found them (Merged,
+  Incisor only, Doppler only) and what they are now (Undecided, Spike, …),
+  then the one label they all get. For example, every merged and every
+  Incisor-only event becomes a Spike. It counts what it will change before
+  it changes anything. It saves as one write, and one **Z** puts every
+  event back.
+- **The list, in Panning.** *List all…* (**L**) shows every event in the
+  pool: when it is, who found it, the other detector's time, and what it
+  was called. You can:
+  - group it by time, by decision or by origin;
+  - search it;
+  - filter it by decision, and leave origins out;
+  - click an event to go to it;
+  - give every event shown one label at once.
+
+Tests: `tools/test_confluence.py` and `tools/test_confluence_routes.py`
+(merging to Doppler's time, aligned versions). Harness:
+`_dev/panmany.html` (38) — it writes nothing.
+
+## 2026.10.19.4 - Xplorefinder: a filter for one pane, picks that combine, and panels that keep to themselves
+
+### Added
+
+- **A filter for one pane only.** The Filter menu now asks where its
+  corners go: *Every pane on this recording*, or *Pane N only*.
+  - A pane given its own filter keeps it whatever the recording's is set
+    to.
+  - Its head says *own filter 300–500 Hz*, and its Filter button says
+    *own …*.
+  - It reads its traces and draws its rasters with its own filter.
+  - Its traces keep their own amplitude, rather than the scale shared by
+    the recording's other trace panes.
+  - *Give it back* returns it to the recording's filter.
+- **Channel picks that combine.** In the Ch menu, *Even*, *Odd*,
+  *1st half*, *2nd half* and *Good* are switches that narrow the selection
+  together. *Even* + *1st half* is the even channels of the first half.
+  - Press a pick again to take it off.
+  - The two in a pair exclude each other.
+  - The menu stays open, so a second pick can be added to the first.
+  - *All*, *None* and *Flip* reset the picks.
+  - Ticking a channel by hand ends them.
+
+### Fixed
+
+- **A colour scale pinned on one kind of panel painted every other
+  kind.** A CSD pinned at ±2.8e5 µV/mm² turned the band-power map on the
+  same pane into one flat colour. With a shared strip, it did the same to
+  every panel on the recording. A pinned scale now belongs to its kind of
+  panel, so each kind keeps its own.
+- **Switching a pane to another panel kept the last panel's data.** The
+  old picture stood in for the new one, the strip offered the old panel's
+  units, and a late reply for the old panel could land on top of the new
+  one. A switch now drops all of that, and any read still in flight.
+- **Another pane's data arriving shut whatever menu was open.** A CSD
+  pane's colour range landing closed the Ch menu open on the traces pane
+  beside it. Only a menu on the strip being rebuilt is affected now, and
+  it stays open on the rebuilt button.
+
+Harness: `_dev/xfpanels.html` (52). It drives every panel kind alone,
+four kinds side by side, two of a kind sharing a strip, fast switching,
+moving the window, zoom, a filter for one pane, and the picks.
+
+## 2026.10.19.3 - Root Canal: pools you open, build and redo; borders around one group, archived, and drawn in 3D
+
+**Pull and restart Jarvis on every machine.** The server changed (pool
+rereads, single saving, one-group borders, the VACC read).
+
+### Fixed
+
+- **Duplicate events in a pool.** A recording with a banked Root Canal
+  result and a read cached on this machine was offered as two rows. If
+  both were ticked, every one of its events went into the pool twice.
+  - The list now has one row per recording. When there is more than one
+    answer about it, a picker in the row chooses which one goes in: a saved
+    single version, the banked result, or the read here. "Select all"
+    ticks one per recording.
+  - The server refuses a pool holding one recording twice and names the
+    second copy.
+  - A saved pool that already holds two copies shows a warning on that row,
+    with "Keep this one".
+- **"Measured differently … its read is not on this machine".** This used
+  to stop a pool and say to read the set in Single. Now it offers
+  **"Read them here and redo the analysis"**:
+  - Jarvis finds each recording itself: on this computer when a copy is
+    here, otherwise on the VACC, where a compute node reads it and brings
+    the read home.
+  - Each one is read exactly as it was read before (the same stamps, so
+    the same read), and the pool is fitted again.
+  - It works from a pool, a pool of pools and the save dialog.
+- **The trace panel for a member read elsewhere** used to print a clipped
+  sentence inside all four of its charts. Clicking such a dot now reads
+  that recording here or on the VACC, with its progress in plain text
+  above the charts, and opens the event when the read lands.
+- **Pooled's filter chips** now show when they are pressed.
+- **Changing the filter on a pool looked like an error.** When members had
+  been read on another machine, a red message said they were "measured
+  another way and read on Strawbarry", even though nothing was wrong.
+  - Now Jarvis reads those members here (or on the VACC) by itself.
+  - It says so in a plain message, and the pool fits again when they land.
+  - The refusal and its button only appear if reading did not fix it.
+- **VACC sign-in** failed with an error as soon as a NetID was entered (a
+  missing name in the server code).
+
+### Changed
+
+- **Pooled is three screens, for pools of recordings and pools of pools
+  alike:**
+  - **Saved pools** first, with **New pool**.
+  - **Building one:** the recordings, then Pool.
+  - **Viewing one:** the picture.
+  Open goes straight to the picture, at the top of the tool rather than
+  under the table at the bottom of the page. Pooling goes straight to the
+  picture too. "Change recordings" goes back to building.
+- **The four event charts come up with the pool.** The most typical event
+  of the first cluster is picked, from a recording read here when there is
+  one, so the trace, spectrum, contacts and CSD draw without a click.
+- **Applying a border has a Borders card of its own.** It says what is
+  applied ("Classified by ‘x’ at grace 5%: 1203 inside · 60 outside"), then
+  lists the saved borders, each with:
+  - its rule in words;
+  - its kind;
+  - the measurement it was made under, and whether that matches here;
+  - where it came from.
+  Below the list: the picked border's graces, each saying what it means,
+  then Clear, "Draw a new border from this pool…" and **Apply to this
+  pool**.
+- **Dots outside a border keep their colour.** They used to be one grey,
+  so you couldn't tell what they had been called. Now an event the border
+  leaves ambiguous is drawn in its own call's colour, faded, with a dotted
+  grey edge. The legend says "outside, called DS / IED" in Single and
+  "outside, pooled as DS / IED" in Pooled.
+- **A border measured another way can be applied, with a warning.** It used
+  to be refused.
+  - Its row in the list says how the measurement differs.
+  - Apply warns before applying it.
+  - Once applied, the card shows a "measured another way" chip and a
+    sentence naming the difference.
+  - Its cut-offs are numbers of the measurement it was drawn under, so here
+    they ask a slightly different question.
+- **Single → Many ("Read a batch")** is built the way Braces' and Doppler's
+  lists are:
+  - a search, and filter chips with icons and counts;
+  - "Select all shown", "Only the ones not read yet" and "Unselect all";
+  - a count line, and rows that tick in place;
+  - "Already read" and "Left out" folded away, each with its count;
+  - while it reads, a progress bar and a row per set.
+  The other Single views were tidied as well.
+
+### Added
+
+- **A border around one group.** A pool where every event is DS (the
+  controls) now gets a border drawn around the group instead of being
+  refused. On each axis, the box spans what the events span. Inside it is
+  solid DS, and outside it on any axis is ambiguous. Grace pulls every side
+  in, leaving out more and more outliers. On a test pool of 1263 DS events:
+  0 left outside at no grace, 12 at 1%, 60 at 5%.
+- **Archiving borders.** Each saved border has "Archive". An archived one
+  leaves the list on every machine once it syncs, stays saved, and is
+  listed under "Archived borders" with "Put back".
+- **Borders drawn where you look.** The applied border shows on the flat
+  views (the box, or the dashed cut-offs with their band) and as a faint
+  outline in the 3D view: the box around one group, or the solid-DS and
+  solid-IED regions of a two-sided border.
+- **Save as singles…** in a pool's view. It saves any of its members as
+  their own Root Canal single versions, measured the pool's way. None are
+  ticked until you choose. Nothing is banked.
+
+### Checked
+
+- `tools/check_rootcanal_reread.py`, all passing, on this machine's real
+  bank with copies of the stores:
+  - a member read elsewhere is refused and named;
+  - it is read again on this computer, as the same read;
+  - the pool then fits the pool's way;
+  - banked plus read-here of one recording is refused, naming the second;
+  - a member saves as its own single.
+  With `--vacc`, the same member was read on a compute node, brought home
+  and pooled from.
+- `tools/check_rootcanal.py`: 451 ok, 0 fail. This includes the one-group
+  border. Its two checks on the real bank no longer assume a stamp count
+  (the set has grown) or pool every candidate (one per recording now, on
+  one measurement). A border measured another way is now checked to apply
+  and say how it differs; one measured the same way says nothing differs.
+- Browser tests: rootcanalpool (294), rootcanalborder (103, new: the
+  envelope, the card, the overlays, the 3D outline, archiving, the
+  measured-another-way warning), rootcanal (356), confluence (45). Also
+  bracesmany, incisorpick, toolkit, uikit and uiparts. All pass. No real
+  record was written by any of them.
+  - New in rootcanal and rootcanalpool: dots outside a border are in a
+    faded colour per call, never the plain grey. Turning the fading off on
+    purpose made 3 checks fail; the file was then restored byte for byte.
+  - New in rootcanalpool: a refusal that only needs members read starts
+    the reading itself, calmly. Refused the same way again, it is not read
+    a second time by itself, and the button shows.
+- Screenshots of the saved pools, a new pool, an opened pool with its four
+  charts up, the Borders card, and the envelope on the flat views and in
+  3D.
+
 ## 2026.10.19.2 - Compact, for a small screen
 
 ### Added

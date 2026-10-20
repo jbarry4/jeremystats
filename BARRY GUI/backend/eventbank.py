@@ -79,6 +79,19 @@ def _slug(text, fallback="x"):
     return out[:40] or fallback
 
 
+def entry_archived(rec):
+    """Every version of the entry is archived: put away, not deleted.
+
+    The bank archives versions, not entries, so an entry is archived when
+    nothing in its history is left out. Unarchiving any one version brings
+    it back. Read by the pickers that offer entries to start from, and by
+    the Data Bank, which names the files so they cannot be mistaken for
+    current ones (bankmirror.py).
+    """
+    vers = (rec or {}).get("versions") or []
+    return bool(vers) and all(v.get("archived") for v in vers)
+
+
 def _source_for(entry, prior, pipeline):
     """Where the times came from, which is never the curation that read
     them.
@@ -255,6 +268,9 @@ class EventBank:
                     dict({k: v for k, v in ver.items() if k != "snap"},
                          label=nm, has_snap=bool(ver.get("snap")))
                     for ver, nm in versionsmod.label_rows(row["versions"])]
+            # Said once, here, so every list reads the one rule rather than
+            # working it out again from the versions.
+            row["archived"] = entry_archived(row)
             out.append(row)
         self._summaries = out
         self._sum_stamp = stamp
@@ -428,6 +444,10 @@ class EventBank:
                     item["pair_t"] = round(float(ev["pair_t"]), 6)
                 except (TypeError, ValueError):
                     pass
+            # Whose of its two times `start` is, for one both found
+            # (2026-10-19): Incisor's unless it says Doppler's.
+            if ev.get("stamp") in ("incisor", "doppler"):
+                item["stamp"] = ev["stamp"]
             # Channels this event is not valid on, and the two different
             # reasons it might not be.
             #

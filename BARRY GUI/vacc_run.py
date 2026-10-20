@@ -143,6 +143,12 @@ def main(argv):
     except Exception as exc:                             # noqa: BLE001
         emit({"k": "fatal", "error": "%s: %s" % (type(exc).__name__, exc),
               "traceback": traceback.format_exc(limit=12)})
+        # Nothing will land, so the question is free to be asked again. On
+        # success the lock stays until the computer that asked has fetched
+        # and filed the answer (vaccrun.VaccRun._drop_lock): released here,
+        # a second computer could ask the same question in the minutes
+        # before the first one's answer reached it.
+        _release_lock(bundle.get("lock"), rid)
         return 1
 
     # Named after the spec that produced it: `spec_7.json` -> `result_7.json`.
@@ -164,6 +170,32 @@ def main(argv):
     emit({"k": "done", "rid": rid, "file": name,
           "bytes": os.path.getsize(final)})
     return 0
+
+
+def _release_lock(path, rid):
+    """Remove this job's duplicate lock (backend/flights.py) as it ends.
+
+    Only when the lock's owner line names this run -- or, for a task of an
+    array, the array it belongs to. Another computer's lock on the same
+    question is left exactly where it is.
+    """
+    if not path or not os.path.isdir(path):
+        return
+    mine = {str(rid or "")}
+    if "_" in str(rid or ""):
+        mine.add(str(rid).rsplit("_", 1)[0])
+    try:
+        with open(os.path.join(path, "owner"), "r", encoding="utf-8") as fh:
+            owner = json.loads(fh.read().strip() or "{}")
+    except (OSError, ValueError):
+        owner = {}
+    if str(owner.get("rid") or "") not in mine:
+        return
+    try:
+        import shutil
+        shutil.rmtree(path, ignore_errors=True)
+    except Exception:                                    # noqa: BLE001
+        pass
 
 
 def run_tool(tool, spec, bundle, job, csc):

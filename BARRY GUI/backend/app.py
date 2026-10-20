@@ -25,6 +25,7 @@ from flask import Flask, jsonify, request, send_from_directory, Response, send_f
 
 from . import (aibeta as aibetamod,
                toothfairy as tfmod,
+               flights as flightsmod,
                analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                dspcahf,
                compose, continuity as continuitymod, csc,
@@ -3639,25 +3640,43 @@ def api_incisor_scan():
         return _incisor_public(out)
 
     if str(body.get("where") or "").startswith("vacc"):
+        again = _vacc_again(body)
+        if again is not None:
+            return again
+        gid = sess.get("gid") or vacciomod.gid_of(sess.get("path"))
+        # The duplicate guard, before anything is sent (flights.py).
+        try:
+            fk = _vacc_door("incisor", gid,
+                            incisorvaccmod.request_hash(gid, spec))
+        except flightsmod.Duplicate as exc:
+            return _vacc_duplicate(exc)
         try:
             run, where = _vacc_run_for("incisor", sess, spec, plan, rep, steps)
+            _vacc_arm(run, fk, (run.plan or {}).get("seconds"))
         except Exception as exc:                         # noqa: BLE001
+            flightsmod.FLIGHTS.release(fk)
             return fail("incisor/scan-vacc", exc, 400,
                         {"path": body.get("path")})
 
-        def work(job, _run=run):
-            return finish(_run.work(job))
+        def work(job, _run=run, _fk=fk):
+            try:
+                return finish(_run.work(job))
+            finally:
+                flightsmod.FLIGHTS.release(_fk)
 
         job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
                            max(0.001, plan["megasamples"]), where)
+        flightsmod.FLIGHTS.attach(fk, job_id=job.id, rid=run.rid)
         STORE.record_activity([{
             "action": "incisor.scan",
             "detail": {"channels": len(spec["channels"]), "where": where,
                        "remote": run.spec_remote.get("path")},
         }])
-        return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
-                        "plan": plan, "where": where,
-                        "remote": run.spec_remote.get("path")})
+        answer = {"ok": True, "cached": False, "job": job.snapshot(),
+                  "plan": plan, "where": where,
+                  "remote": run.spec_remote.get("path")}
+        flightsmod.FLIGHTS.remember(body.get("submit_id"), answer)
+        return jsonify(answer)
 
     def work(job):
         return finish(incisormod.run(sess, spec, rep, job))
@@ -3700,12 +3719,22 @@ def _incisor_scan_vacc(body, sess):
                             "result": dict(_incisor_public(hit), key=done)})
         except LookupError:
             pass                    # on record but gone: run it again
+    again = _vacc_again(body)
+    if again is not None:
+        return again
+    # The duplicate guard, before anything is sent (flights.py). The same
+    # key a batch member for this recording and these settings gets.
+    try:
+        fk = _vacc_door("incisor", gid, rh)
+    except flightsmod.Duplicate as exc:
+        return _vacc_duplicate(exc)
     cfg = vaccmod.load_config(LOGS_DIR)
     steps = [("ds read", int(plan["span_s"] * plan["n_channels"])),
              ("ds detect", plan["n_channels"])]
     try:
         vaccmod.push_code(cfg, APP_DIR)
     except Exception as exc:                             # noqa: BLE001
+        flightsmod.FLIGHTS.release(fk)
         return fail("incisor/scan-vacc", exc, 400, {"gid": gid})
     where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
              else "vacc:scratch")
@@ -3720,23 +3749,29 @@ def _incisor_scan_vacc(body, sess):
         megasamples=max(0.001, float(plan.get("span_s") or 0)
                         * float(plan.get("fs") or 30000.0) * 2 / 1e6),
         tool_steps=list(steps), report=None)
+    _vacc_arm(run, fk, seconds)
     label = ((REG.by_gid(gid) or {}).get("label")) or gid
 
     def work(job):
-        out = run.work(job)
-        key = _incisor_file_vacc(gid, label, spec, out)
-        return dict(_incisor_public(out), key=key)
+        try:
+            out = run.work(job)
+            key = _incisor_file_vacc(gid, label, spec, out)
+            return dict(_incisor_public(out), key=key)
+        finally:
+            flightsmod.FLIGHTS.release(fk)
 
     job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
                        max(0.001, plan["megasamples"]), where)
+    flightsmod.FLIGHTS.attach(fk, job_id=job.id, rid=run.rid)
     STORE.record_activity([{
         "action": "incisor.scan",
         "detail": {"channels": len(spec["channels"]), "where": where,
                    "remote": place.get("remote"), "vacc_only": True},
     }])
-    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
-                    "plan": plan, "where": where,
-                    "remote": place.get("remote")})
+    answer = {"ok": True, "cached": False, "job": job.snapshot(),
+              "plan": plan, "where": where, "remote": place.get("remote")}
+    flightsmod.FLIGHTS.remember(body.get("submit_id"), answer)
+    return jsonify(answer)
 
 
 @app.route("/api/incisor/batch/plan", methods=["GET", "POST"])
@@ -4210,13 +4245,33 @@ def _vacc_run_array(job, tasks, failed, concurrency=None,
     one row per recording AND cue type), else its gid.
     """
     cfg = vaccmod.load_config(LOGS_DIR)
+    # The duplicate guard (flights.py), per member: one already queued or
+    # running -- here, or on the cluster from another computer -- is named
+    # and left out, never submitted a second time. Done before the array is
+    # built, because an array cannot drop a task once it is written.
+    claimed = _vacc_batch_door(job, tool, tasks)
+    if not tasks:
+        return 0, failed
     arr = vaccrunmod.VaccArray(cfg, tool, tasks,
                                concurrency=concurrency)
+    arr.device = _vacc_device()
+    for t in tasks:
+        t["lock"] = flightsmod.lock_path(cfg, t["fkey"])
+        t["lock_owner"] = flightsmod.owner_line(
+            t["fkey"], arr.rid, tool, _vacc_device(), _vacc_who())
     arr.runlog = runlog
     arr.record = dict(record or {})
     worst = max([t["seconds"] for t in tasks] or [60.0])
     msamp = max([t["megasamples"] for t in tasks] or [1.0])
-    arr.submit(seconds=worst, megasamples=msamp)
+    try:
+        arr.submit(seconds=worst, megasamples=msamp)
+    except Exception:
+        for k in claimed:
+            flightsmod.FLIGHTS.release(k)
+        raise
+    for k in claimed:
+        flightsmod.FLIGHTS.attach(k, job_id=job.id, rid=arr.rid,
+                                  slurm_id=arr.array_id)
     for i, t in enumerate(tasks):
         # The Slurm id on the row itself (constitution section 6d: the job's
         # own id visible), because the step text moves on to "pending" and
@@ -4242,8 +4297,151 @@ def _vacc_run_array(job, tasks, failed, concurrency=None,
         t["sess"] = None
         t["report"] = None
 
-    return vaccrunmod.collect(job, arr, tasks, on_result, failed,
-                              deadline_s=deadline_s)
+    try:
+        return vaccrunmod.collect(job, arr, tasks, on_result, failed,
+                                  deadline_s=deadline_s)
+    finally:
+        for k in claimed:
+            flightsmod.FLIGHTS.release(k)
+        arr.release_locks()
+
+
+# --------------------------------------------------------------------------
+# The duplicate guard's door (backend/flights.py)
+# --------------------------------------------------------------------------
+# Every VACC submit passes through one of the two functions below BEFORE any
+# ssh: `_vacc_door` for a single run, `_vacc_batch_door` for the members of
+# an array. Same tool + same recording(s) + same settings, already queued or
+# running here or on the cluster, is refused (single: HTTP 409 with the
+# flight, which the page turns into "Follow the running job") or skipped by
+# name (batch). Landed work is each route's own existing cache check.
+_VACC_HELD = {"at": 0.0, "held": {}}
+_VACC_HELD_TTL_S = 15.0
+
+
+def _vacc_device():
+    try:
+        return (DEVICE.get(PROFILE) or {}).get("name") or shardsmod_id()
+    except Exception:                                    # noqa: BLE001
+        return shardsmod_id()
+
+
+def shardsmod_id():
+    try:
+        return shards.machine_id()
+    except Exception:                                    # noqa: BLE001
+        return ""
+
+
+def _vacc_who():
+    try:
+        return (PROFILE.get() or {}).get("name") or ""
+    except Exception:                                    # noqa: BLE001
+        return ""
+
+
+def _vacc_cluster_held(force=False):
+    """{hash: owner} of the locks on the cluster, held for 15 s. Never
+    raises: a cluster that cannot be asked blocks nothing here, and the
+    atomic `mkdir` in the submit script still refuses a real duplicate."""
+    now = time.time()
+    if not force and now - _VACC_HELD["at"] < _VACC_HELD_TTL_S:
+        return _VACC_HELD["held"]
+    try:
+        held = flightsmod.cluster_holders(vaccmod.load_config(LOGS_DIR))
+    except Exception:                                    # noqa: BLE001
+        return _VACC_HELD["held"] if now - _VACC_HELD["at"] < 120 else {}
+    _VACC_HELD.update(at=now, held=held)
+    return held
+
+
+def _flight_question(tool, t):
+    """What one batch member asks, as its tool's single run would ask it."""
+    spec = t.get("spec_local") or {}
+    if tool == "incisor":
+        return ((t.get("resume") or {}).get("request")
+                or incisorvaccmod.request_hash(t.get("gid"), spec))
+    if tool == "doppler":
+        return ((t.get("resume") or {}).get("request")
+                or _doppler_request_hash(t.get("gid"), spec))
+    if t.get("rq_hash"):
+        return t["rq_hash"]
+    return {"member": t.get("member"), "spec": spec}
+
+
+def _vacc_door(tool, gids, question, run=None, seconds=None):
+    """Claim this single run's key, or raise flights.Duplicate. Returns it."""
+    fk = flightsmod.key(tool, gids, question)
+    have = flightsmod.FLIGHTS.find(fk)
+    if have:
+        raise flightsmod.Duplicate(have)
+    owner = _vacc_cluster_held().get(flightsmod.keyhash(fk))
+    if owner is not None:
+        raise flightsmod.Duplicate(
+            flightsmod.holder_flight(fk, owner, _vacc_device()))
+    flightsmod.FLIGHTS.claim(fk, tool=tool, gids=list(
+        [gids] if isinstance(gids, str) else (gids or [])),
+        who=_vacc_who(), device=_vacc_device())
+    if run is not None:
+        _vacc_arm(run, fk, seconds)
+    return fk
+
+
+def _vacc_arm(run, fk, seconds=None):
+    """Give a claimed run its cluster lock (taken atomically at submit)."""
+    tool = fk.split(":", 1)[0]
+    run.lock = {"key": fk, "device": _vacc_device(),
+                "owner": flightsmod.owner_line(fk, run.rid, tool,
+                                               _vacc_device(), _vacc_who()),
+                "stale_s": float(seconds or 3600) * 3
+                           + flightsmod.STALE_MARGIN_S}
+    return run
+
+
+def _vacc_batch_door(job, tool, tasks):
+    """Drop every member already in flight from `tasks`, naming each on its
+    row; claim the rest. Returns the keys claimed."""
+    held = _vacc_cluster_held(force=True)
+    keep, claimed = [], []
+    for t in tasks:
+        fk = t.get("fkey") or flightsmod.key(tool, t.get("gid"),
+                                             _flight_question(tool, t))
+        t["fkey"] = fk
+        flight = flightsmod.FLIGHTS.find(fk)
+        if flight is None and flightsmod.keyhash(fk) in held:
+            flight = flightsmod.holder_flight(
+                fk, held[flightsmod.keyhash(fk)], _vacc_device())
+        if flight is None:
+            try:
+                flightsmod.FLIGHTS.claim(fk, tool=tool, gids=[t.get("gid")],
+                                         who=_vacc_who(),
+                                         device=_vacc_device())
+                claimed.append(fk)
+                keep.append(t)
+                continue
+            except flightsmod.Duplicate as exc:
+                flight = exc.flight
+        try:
+            job.member(t.get("member") or t.get("gid"), status="skipped",
+                       cached=False,
+                       step="already running on VACC, from %s -- following "
+                            "that one" % (flight.get("where")
+                                          or "another computer"))
+        except Exception:                                # noqa: BLE001
+            pass
+    tasks[:] = keep
+    return claimed
+
+
+def _vacc_duplicate(exc):
+    """The 409 a refused duplicate gets, for every route the same."""
+    return jsonify(exc.payload()), 409
+
+
+def _vacc_again(body):
+    """The answer a repeated click already got (`submit_id`), or None."""
+    got = flightsmod.FLIGHTS.recall((body or {}).get("submit_id"))
+    return jsonify(got) if got else None
 
 
 # Every VACC batch this machine submits is written down
@@ -4683,8 +4881,17 @@ def _doppler_public(out):
     when it draws the report. Sending them with every poll of a batch is how
     a 200 arrives truncated and will not parse.
     """
-    return {k: v for k, v in (out or {}).items()
-            if k != "snippets" and not k.startswith("_")}
+    pub = {k: v for k, v in (out or {}).items()
+           if k != "snippets" and not k.startswith("_")}
+    # The note a banked run carries, from the one place it is written
+    # (doppler.bank_note), so the panel's Bank dialog and the bank made when
+    # the run landed cannot say two different things.
+    if pub.get("params") and "bank_note" not in pub:
+        try:
+            pub["bank_note"] = dopplermod.bank_note(pub["params"])
+        except Exception:                                # noqa: BLE001
+            pass
+    return pub
 
 
 def _doppler_remember(sess, spec, key, out, extra=None):
@@ -4723,13 +4930,100 @@ def _doppler_remember(sess, spec, key, out, extra=None):
         return False
 
 
+def _doppler_banked_for(gid, key):
+    """The bank entry a run was filed as, found by the run's key -- or None.
+    Every run banked since 2026-10-19 carries it as `run_key`."""
+    if not gid or not key:
+        return None
+    for rec in BANK.all():
+        if (rec.get("gid") == gid and (rec.get("type") or "") == "ied"
+                and ((rec.get("source") or {}).get("parameters") or {})
+                .get("run_key") == key):
+            return rec
+    return None
+
+
+def _doppler_autobank(gid, key, out, sess=None, label=None):
+    """Bank a run the moment it lands (asked for 2026-10-19: "when Doppler
+    is done, auto bank them").
+
+    As its own entry, the way the panel's Bank button files one: the
+    detector's list with nothing decided, the note saying how it was made,
+    the name the dialog would have suggested. Once per run -- found again by
+    `run_key` -- so a run that lands twice, or one somebody banked from the
+    panel after this, is not filed twice. A run with no events has nothing to
+    bank. Never raises: a run that could not be banked has still landed, and
+    the panel's Bank button is still there.
+
+    Returns {id, name, n, auto} or None.
+    """
+    try:
+        events = (out or {}).get("events") or []
+        if not gid or not key or not events:
+            return None
+        done = _doppler_banked_for(gid, key)
+        if done:
+            return {"id": done["id"], "name": done.get("name"),
+                    "n": done.get("n"), "auto": False}
+        reg = _session_by_gid(gid) or {}
+        ident = (sess or {}).get("identity") or {}
+        lab = reg.get("label") or ident.get("label") or label or gid
+        p = dict((out or {}).get("params") or {}, run_key=key)
+        here = reg.get("here") or []
+        entry = BANK.add({
+            "project": reg.get("project") or reg.get("group"),
+            "mouse": reg.get("mouse"), "session": reg.get("session"),
+            "session_key": reg.get("key"),
+            "session_loose_key": reg.get("loose_key"),
+            "session_label": lab,
+            "session_path": (sess or {}).get("path") or (here[0] if here
+                                                         else None),
+            "recording_start": reg.get("start"),
+            "duration_s": reg.get("duration_s"),
+            "gid": gid, "type": "ied", "type_name": "IED",
+            "name": dopplermod.bank_name(lab, p),
+            "note": dopplermod.bank_note(p),
+            "events": [{"start": e.get("start"), "end": e.get("end"),
+                        "channel": e.get("peak_channel"),
+                        "amplitude": e.get("peak_uv")} for e in events],
+            "pipeline": "Doppler (line length)",
+            "detector": "LLspikedetector",
+            "time_basis": "recording",
+            "parameters": p,
+            "added_by": (STORE.provenance() or {}).get("user"),
+            "version_note": "The detector\u2019s own list, nothing decided "
+                            "about it yet. Banked when the run landed.",
+        })
+        STORE.record_activity([{"action": "doppler.autobank",
+                                "detail": {"gid": gid, "key": key,
+                                           "entry": entry["id"],
+                                           "n": entry.get("n")}}])
+        mirror_bank_soon()
+        return {"id": entry["id"], "name": entry.get("name"),
+                "n": entry.get("n"), "auto": True}
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("doppler.autobank", str(exc), None,
+                           {"gid": gid, "key": key})
+        return None
+
+
 def _doppler_recall(sess, key):
-    """The full run back, from disk, when memory has forgotten it."""
+    """The full run back, from disk, when memory has forgotten it.
+
+    Not when the file is older than the run the vault has on record under
+    that key. The key is the question, not the answer, so a question asked
+    again -- the gap fix's reruns of 2026-10-20 were the same questions --
+    files a new answer under the old key, and another machine's cache still
+    holds the old answer's events. Read as they were, they would be shown
+    under today's run. None sends the caller to the cluster for the run the
+    vault names (`_tool_full`), or runs it again (the scan)."""
     gid = (sess or {}).get("gid")
     if not gid:
         return None
     path = DOPPLER_VAULT.cached_path(gid, key, ".json")
     if not os.path.exists(path):
+        return None
+    if _doppler_cache_older(gid, key, path):
         return None
     try:
         with open(path, "r", encoding="utf-8") as fh:
@@ -4738,6 +5032,57 @@ def _doppler_recall(sess, key):
         return None
     dopplermod.cache_put(key, out)
     return out
+
+
+#: Slack for `_doppler_cache_older`: a run's cache file is written a moment
+#: before its vault record is stamped, and machines' clocks disagree by
+#: minutes. A rerun under the same key comes days later, not minutes.
+DOPPLER_CACHE_SLACK_S = 900.0
+
+
+def _doppler_cache_older(gid, key, path):
+    """This machine's cached full run predates the run the vault records
+    under the same key, so it is an earlier answer (`_doppler_recall`)."""
+    rec = DOPPLER_VAULT.get(gid, key) or {}
+    at = ((rec.get("computed") or {}).get("at") or "")
+    if not at:
+        return False
+    try:
+        made = datetime.datetime.fromisoformat(
+            str(at).replace("Z", "+00:00"))
+        return os.path.getmtime(path) < made.timestamp() - DOPPLER_CACHE_SLACK_S
+    except (ValueError, TypeError, OSError):
+        return False
+
+
+#: The release whose Doppler holds a short segment flat instead of letting
+#: the next segment move up into its place (CHANGELOG 2026.10.19.6).
+DOPPLER_GAP_FIX = (2026, 10, 19, 6)
+
+
+def _doppler_before_fix(rec):
+    """A run made before the gap fix, on a recording the health check found
+    in more than one segment: every event after a short segment may be
+    stamped early. Such a run is still on record and can be opened, but it
+    is not an answer -- a batch runs it again, the Many list does not count
+    it as run, and the panel says so and will not bank it (asked
+    2026-10-20, after the runs on these recordings were deleted and run
+    again). A recording nobody has checked for gaps is not judged.
+    """
+    if not rec:
+        return False
+    try:
+        made = tuple(int(x) for x in str(
+            (rec.get("computed") or {}).get("app_version") or "").split("."))
+    except ValueError:
+        made = ()
+    if made and made >= DOPPLER_GAP_FIX:
+        return False
+    try:
+        last = HEALTHLOG.latest(HEALTHLOG.get(rec.get("gid")) or {})
+    except Exception:                                    # noqa: BLE001
+        return False
+    return bool(last and int(last.get("n_segments") or 1) > 1)
 
 
 def _doppler_full(gid, key):
@@ -4796,7 +5141,7 @@ def _doppler_request_hash(gid, spec):
 
 def _doppler_answered(gid, rhash):
     for rec in (DOPPLER_VAULT.for_gid(gid) or []):
-        if rec.get("request_hash") == rhash:
+        if rec.get("request_hash") == rhash and not _doppler_before_fix(rec):
             return rec.get("params_hash")
     return None
 
@@ -5013,10 +5358,19 @@ def _doppler_scan_vacc(body, sess):
                             "result": dict(_doppler_public(hit), key=done)})
         except LookupError:
             pass                        # on record and gone: run it again
+    again = _vacc_again(body)
+    if again is not None:
+        return again
+    # The duplicate guard, before anything is sent (flights.py).
+    try:
+        fk = _vacc_door("doppler", gid, _doppler_request_hash(gid, spec))
+    except flightsmod.Duplicate as exc:
+        return _vacc_duplicate(exc)
     cfg = vaccmod.load_config(LOGS_DIR)
     try:
         vaccmod.push_code(cfg, APP_DIR)
     except Exception as exc:                             # noqa: BLE001
+        flightsmod.FLIGHTS.release(fk)
         return fail("doppler/scan-vacc", exc, 400, {"gid": gid})
     steps = _doppler_steps(plan)
     where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
@@ -5025,15 +5379,21 @@ def _doppler_scan_vacc(body, sess):
         cfg, "doppler", spec, place["remote"], plan=plan,
         megasamples=max(0.001, plan["megasamples"]),
         tool_steps=list(steps), report=None)
+    _vacc_arm(run, fk, (plan or {}).get("seconds"))
     label = ((REG.by_gid(gid) or {}).get("label")) or gid
 
     def work(job):
-        out = run.work(job)
-        key = _doppler_file_vacc(gid, label, spec, out)
-        return dict(_doppler_public(out), key=key)
+        try:
+            out = run.work(job)
+            key = _doppler_file_vacc(gid, label, spec, out)
+            banked = _doppler_autobank(gid, key, out, label=label)
+            return dict(_doppler_public(out), key=key, banked=banked)
+        finally:
+            flightsmod.FLIGHTS.release(fk)
 
     job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
                        max(0.001, plan["megasamples"]), where)
+    flightsmod.FLIGHTS.attach(fk, job_id=job.id, rid=run.rid)
     _doppler_track(job, "one", [{"gid": gid, "label": label}],
                    path=sess.get("path"), spec=spec)
     STORE.record_activity([{
@@ -5041,9 +5401,10 @@ def _doppler_scan_vacc(body, sess):
         "detail": {"channels": len(spec["channels"]), "where": where,
                    "remote": place.get("remote"), "vacc_only": True},
     }])
-    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
-                    "plan": plan, "where": where,
-                    "remote": place.get("remote")})
+    answer = {"ok": True, "cached": False, "job": job.snapshot(),
+              "plan": plan, "where": where, "remote": place.get("remote")}
+    flightsmod.FLIGHTS.remember(body.get("submit_id"), answer)
+    return jsonify(answer)
 
 
 @app.route("/api/doppler/snippets", methods=["POST"])
@@ -5176,21 +5537,39 @@ def api_doppler_scan():
         # "already run" for this exact question whichever way it was run.
         _doppler_remember(sess, spec, key, out, extra={
             "request_hash": _doppler_request_hash(sess.get("gid"), spec)})
+        banked = _doppler_autobank(sess.get("gid"), key, out, sess=sess)
         # With its key, as a run of a recording only the cluster has comes
         # back: the panel asks for the snippets, and opens it again from
         # the landed list, by recording and key.
-        return dict(_doppler_public(out), key=key)
+        return dict(_doppler_public(out), key=key, banked=banked)
 
+    again = _vacc_again(body)
+    if again is not None:
+        return again
+    # The duplicate guard, before anything is sent (flights.py). Keyed by
+    # the request hash, so a run of this recording from a batch, or from a
+    # copy only the cluster has, is the same job.
+    try:
+        fk = _vacc_door("doppler", sess.get("gid"),
+                        _doppler_request_hash(sess.get("gid"), spec))
+    except flightsmod.Duplicate as exc:
+        return _vacc_duplicate(exc)
     try:
         run, where = _vacc_run_for("doppler", sess, spec, plan, rep, steps)
+        _vacc_arm(run, fk, (run.plan or {}).get("seconds"))
     except Exception as exc:                             # noqa: BLE001
+        flightsmod.FLIGHTS.release(fk)
         return fail("doppler/scan-vacc", exc, 400, {"path": body.get("path")})
 
     def work(job, _run=run):
-        return finish(_run.work(job))
+        try:
+            return finish(_run.work(job))
+        finally:
+            flightsmod.FLIGHTS.release(fk)
 
     job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
                        max(0.001, plan["megasamples"]), where)
+    flightsmod.FLIGHTS.attach(fk, job_id=job.id, rid=run.rid)
     _doppler_track(job, "one",
                    [{"gid": sess.get("gid"),
                      "label": (sess.get("identity") or {}).get("label")}],
@@ -5202,9 +5581,11 @@ def api_doppler_scan():
                    "notch_hz": spec["notch_hz"], "band": spec["band"],
                    "remote": run.spec_remote.get("path")},
     }])
-    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
-                    "plan": plan, "where": where,
-                    "remote": run.spec_remote.get("path")})
+    answer = {"ok": True, "cached": False, "job": job.snapshot(),
+              "plan": plan, "where": where,
+              "remote": run.spec_remote.get("path")}
+    flightsmod.FLIGHTS.remember(body.get("submit_id"), answer)
+    return jsonify(answer)
 
 
 #: Doppler's runs on the cluster, by job id: what the panel finds again when
@@ -5229,6 +5610,34 @@ def _doppler_track(job, kind, members, path=None, spec=None):
         _DOPPLER_INFLIGHT[job.id] = {
             "id": job.id, "kind": kind, "members": list(members or []),
             "path": path, "params": keep, "started": time.time()}
+
+
+@app.route("/api/vacc/flights")
+def api_vacc_flights():
+    """Every VACC job in flight, for one tool or all (flights.py).
+
+    What this process is following, with each job's live snapshot, plus --
+    with `cluster=1` -- the locks other computers hold on the cluster, so a
+    panel can say "running from Strawbarry" rather than offering to run the
+    same thing again. The one list §12 asked for; `/api/doppler/inflight`
+    and `/api/braces/inflight` stay until their panels move onto it.
+    """
+    tool = request.args.get("tool") or None
+    out = []
+    for f in flightsmod.FLIGHTS.list(tool):
+        job = cfcmod.get(f.get("job_id")) if f.get("job_id") else None
+        out.append(dict(f, job=job.snapshot() if job else None))
+    if request.args.get("cluster") in ("1", "true"):
+        mine = {flightsmod.keyhash(f["key"]) for f in out}
+        here = _vacc_device()
+        for h, owner in _vacc_cluster_held().items():
+            if h in mine:
+                continue
+            k = owner.get("key") or ("%s:%s" % (owner.get("tool") or "?", h))
+            if tool and owner.get("tool") != tool:
+                continue
+            out.append(flightsmod.holder_flight(k, owner, here))
+    return jsonify({"ok": True, "jobs": out})
 
 
 @app.route("/api/doppler/inflight")
@@ -5291,12 +5700,17 @@ def api_doppler_run():
         path = used
     else:
         path = _local_path_of(row) or incisorvaccmod.path_of(gid)
+    done = _doppler_banked_for(gid, key)
     return jsonify({
         "ok": True, "key": key,
-        "result": dict(_doppler_public(full), key=key),
+        "result": dict(_doppler_public(full), key=key,
+                       banked=({"id": done["id"], "name": done.get("name"),
+                                "n": done.get("n"), "auto": False}
+                               if done else None)),
         "spec": rec.get("spec"), "path": path, "row": row or None,
         "label": rec.get("session_label") or row.get("label"),
         "computed": rec.get("computed"),
+        "before_fix": _doppler_before_fix(rec),
     })
 
 
@@ -5330,8 +5744,15 @@ def api_doppler_reviews():
                 pass
             row = by_gid.get(gid) or {}
             local = _local_path_of(row)
+            mine = _doppler_banked_for(gid, rec.get("params_hash"))
             rows.append({
                 "gid": gid,
+                # This run's own entry, when it has been banked -- by the
+                # server as it landed, or from the panel since 2026-10-19.
+                "banked_run": ({"id": mine["id"], "name": mine.get("name"),
+                                "n": mine.get("n")} if mine else None),
+                # Kept on the list, said: run again (`_doppler_before_fix`).
+                "before_fix": _doppler_before_fix(rec),
                 "label": rec.get("session_label") or row.get("label"),
                 "n": rec.get("n_events"),
                 "params_hash": rec.get("params_hash"),
@@ -5381,8 +5802,10 @@ def _doppler_prepare(member, body, force):
     rep = _incisor_report(local)
     spec = _doppler_spec(dict(body, path=local), sess)
     key = dopplermod.cache_key(spec, rep)
-    if not force and (dopplermod.cache_get(key) is not None
-                      or _doppler_recall(sess, key) is not None):
+    if (not force
+            and not _doppler_before_fix(DOPPLER_VAULT.get(sess["gid"], key))
+            and (dopplermod.cache_get(key) is not None
+                 or _doppler_recall(sess, key) is not None)):
         return None
 
     plan = dopplermod.plan_for(sess, spec, rep)
@@ -5544,7 +5967,9 @@ def _doppler_vacc_rows(body=None):
                 ((vaccmod.status().get("roots") or {}).items())}
     asked = {}
     for r in (DOPPLER_VAULT.all() or []):
-        if r.get("request_hash"):
+        # A run from before the gap fix on a recording in pieces is not an
+        # answer: "only the ones not yet run" includes it.
+        if r.get("request_hash") and not _doppler_before_fix(r):
             asked[(r.get("gid"), r.get("request_hash"))] = r.get("params_hash")
     params = dopplermod.params_from(body)
     storm = params["method"] == "storm"
@@ -5731,13 +6156,16 @@ def api_doppler_batch():
 
         def adopt(t, out):
             if (t.get("resume") or {}).get("vacc_only"):
-                _doppler_file_vacc(t["gid"], t.get("label"),
-                                   t["spec_local"], out)
+                key = _doppler_file_vacc(t["gid"], t.get("label"),
+                                         t["spec_local"], out)
+                _doppler_autobank(t["gid"], key, out, label=t.get("label"))
                 return
             dopplermod.cache_put(t["key"], out)
             _doppler_remember(t["sess"], t["spec_local"], t["key"], out,
                               extra={"request_hash": _doppler_request_hash(
                                   t["gid"], t["spec_local"])})
+            _doppler_autobank(t["gid"], t["key"], out, sess=t.get("sess"),
+                              label=t.get("label"))
 
         done = 0
         if tasks:
@@ -8656,7 +9084,8 @@ def _rootcanal_events(rec, src_v):
         have = live.get(curation._tkey(ev.get("start")))
         if have:
             for k in ("end", "channel", "amplitude", "from_t", "align_flag",
-                      "clipped", "excluded", "kept", "origin", "pair_t"):
+                      "clipped", "excluded", "kept", "origin", "pair_t",
+                      "stamp"):
                 if have.get(k) is not None and k not in item:
                     item[k] = have[k]
         out.append(item)
@@ -9000,10 +9429,155 @@ def api_rootcanal_candidates():
                                     if aligned_names else None),
             "rootcanal": _rootcanal_state(rec, ied_by),
             "added": rec.get("added"),
+            # Sent, not left out: the picker draws it under its archived
+            # toggle (`_bank_archived`).
+            "archived": _bank_archived(rec),
         })
     out.sort(key=lambda r: ((r.get("added") or {}).get("at") or ""),
              reverse=True)
+    out.sort(key=lambda r: bool(r.get("archived")))
     _rootcanal_reachable(out)
+    return jsonify({"ok": True, "sets": out, "n": len(out),
+                    "archived": sum(1 for r in out if r["archived"])})
+
+
+def _rootcanal_when(at):
+    """An ISO stamp as seconds, whatever offset it was written with: the
+    results bank writes local time with an offset, the artifacts UTC, and
+    sorting the strings put a Strawbarry read before a Bluebarry one made
+    an hour earlier."""
+    try:
+        return datetime.datetime.fromisoformat(str(at)).timestamp()
+    except (TypeError, ValueError):
+        return 0.0
+
+
+@app.route("/api/rootcanal/done")
+def api_rootcanal_done():
+    """Every set Root Canal has already been run on, newest first
+    (2026-10-20: "a way to see every session with Root Canal already ran,
+    similar to the Checkup view").
+
+    Run means any of the three things it leaves behind:
+      read     a read on file (the results bank, from any machine), and
+               whether its .npz is on THIS one;
+      banked   a classification banked into the set's next version;
+      saved    a single kept as versions (an artifact, shared).
+    Each row says which, the newest of each, and who last touched it where.
+    `?type=` is "ds" (The Dentist) or "pooled" (The Confluence).
+    """
+    want = request.args.get("type") or "ds"
+    try:
+        entries = {}
+        for rec in BANK.all():
+            if (rec.get("type") or "ds") != want or _bank_archived(rec):
+                continue
+            entries[rec["id"]] = rec
+        acts = {}
+
+        def slot(eid):
+            return acts.setdefault(eid, {"reads": [], "banked": [],
+                                         "saved": None})
+
+        for r in ROOTCANAL.all() or []:
+            eid = r.get("entry_id")
+            if eid not in entries:
+                continue
+            who = r.get("updated") or r.get("created") or {}
+            base = {"at": who.get("at"), "by": who.get("user"),
+                    "machine": who.get("machine"),
+                    "from_version": r.get("from_version")}
+            if r.get("kind") == "read":
+                slot(eid)["reads"].append(dict(
+                    base, params_hash=r.get("params_hash"),
+                    n_events=r.get("n_events"),
+                    here=ROOTCANAL.has_cached(r.get("gid"),
+                                              r.get("params_hash"), ".npz")))
+            elif r.get("kind") == "classification":
+                cn = r.get("counts") or {}
+                slot(eid)["banked"].append(dict(
+                    base, ds_version=r.get("ds_version"), k=r.get("k"),
+                    ds=cn.get("ds"), ied=cn.get("ied"), n=r.get("n"),
+                    ied_entry=r.get("ied_entry"), read=r.get("read"),
+                    here=bool(r.get("read") and ROOTCANAL.has_cached(
+                        r.get("gid"), r.get("read"), ".npz"))))
+        for art in ARTIFACTS.list(kind="rootcanal_single") or []:
+            if art.get("deleted"):
+                continue
+            eid = (art.get("subject") or {}).get("entry_id")
+            if eid not in entries:
+                continue
+            row = _rootcanal_single_rows(art)
+            vs = row.get("versions") or []
+            if not vs:
+                continue
+            last = vs[-1]
+            ns = last.get("n_summary") or {}
+            sv = {"artifact_id": row["artifact_id"], "n_versions": len(vs),
+                  "last": {"v": last.get("v"),
+                           "nickname": last.get("nickname"),
+                           "at": last.get("at"), "by": last.get("by"),
+                           "machine": last.get("machine"),
+                           "k": last.get("k"),
+                           "filter": (last.get("measure") or {})
+                           .get("filter_label"),
+                           "events": ns.get("events"), "ds": ns.get("ds"),
+                           "ied": ns.get("ied"),
+                           "here": bool(last.get("here", True))}}
+            had = slot(eid)["saved"]
+            if (not had or _rootcanal_when(sv["last"]["at"])
+                    > _rootcanal_when(had["last"]["at"])):
+                slot(eid)["saved"] = sv
+        reg = _rootcanal_reg_index()
+        out = []
+        for eid, a in acts.items():
+            rec = entries[eid]
+            key = lambda x: _rootcanal_when(x.get("at"))
+            reads = sorted(a["reads"], key=key)
+            banked = sorted(a["banked"], key=key)
+            seen = ([("read", x) for x in reads]
+                    + [("banked", x) for x in banked]
+                    + ([("saved", a["saved"]["last"])] if a["saved"] else []))
+            if not seen:
+                continue
+            what, last = max(seen, key=lambda kv: key(kv[1]))
+            proj, mk, mt = _rootcanal_who(rec.get("gid"), rec.get("project"),
+                                          rec.get("mouse"), reg)
+            here_reads = [x for x in reads if x.get("here")]
+            out.append({
+                "entry_id": eid, "gid": rec.get("gid"),
+                "name": rec.get("name"),
+                "session_label": rec.get("session_label"),
+                "type": rec.get("type") or "ds",
+                "project": proj, "mouse": rec.get("mouse"),
+                "mouse_key": mk, "mouse_type": mt,
+                "session": rec.get("session"),
+                "session_path": rec.get("session_path"),
+                "n": _n_good(rec), "aligned": bool(rec.get("aligned")),
+                "saved": a["saved"],
+                "banked": ({"n": len(banked), "last": banked[-1]}
+                           if banked else None),
+                "reads": ({"n": len(reads), "here": len(here_reads),
+                           "machines": sorted({x["machine"] for x in reads
+                                               if x.get("machine")}),
+                           "last": reads[-1],
+                           "last_here": here_reads[-1] if here_reads
+                           else None} if reads else None),
+                "last": {"what": what, "at": last.get("at"),
+                         "by": last.get("by"),
+                         "machine": last.get("machine"),
+                         "t": key(last)},
+            })
+        _rootcanal_reachable(out)
+        try:
+            _rootcanal_describe(out, reg)
+        except Exception as exc:                         # noqa: BLE001
+            STORE.record_error("rootcanal/done-facts",
+                               "The list of sets already through Root Canal "
+                               "has no group or condition: %s" % exc, None)
+        out.sort(key=lambda r: r["last"]["t"], reverse=True)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/done", exc, 400)
     return jsonify({"ok": True, "sets": out, "n": len(out)})
 
 
@@ -9106,6 +9680,12 @@ def api_rootcanal_read():
     if _rootcanal_is_read(gid, rh, marked, stamps) and not body.get("force"):
         return jsonify({"ok": True, "cached": True, "job": None, "read": rh,
                         "n": len(stamps)})
+    # Opening a set from the list of the ones already done (2026-10-20):
+    # what is read here opens at once, and nothing is started -- a press on
+    # "Open" must never quietly become minutes of reading.
+    if body.get("only_cached"):
+        return jsonify({"ok": True, "cached": False, "job": None, "read": rh,
+                        "n": len(stamps), "not_here": True})
 
     def work(job):
         got, rh_, screened = _rootcanal_do_read(
@@ -12856,8 +13436,8 @@ def _rootcanal_border_cite(res, out, where):
 
 def _rootcanal_border_on(res, ref, measure):
     """Each event's class under a saved border, onto a fit: `border` on
-    every event and `border_used` on the fit. Refuses, in a sentence that
-    starts "The border", one measured another way."""
+    every event and `border_used` on the fit. One measured another way is
+    applied all the same, with `border_used.mismatch` saying how."""
     if not ref:
         return res
     pay, used = _rootcanal_border_load(ref)
@@ -12869,14 +13449,15 @@ def _rootcanal_border_on(res, ref, measure):
                                       "order", "win_ms", "cross_ms",
                                       "band_lo", "band_hi")})
     diff = rootcanal.margin_mismatch({"measure": pay.get("measure")}, mp)
-    if diff:
-        raise rcborder.BorderError(
-            "The border ‘%s’ cannot be applied here: %s. A border is "
-            "cut-offs in µV, dB and ms, and those are only the same numbers "
-            "under the same measurement."
-            % (used["nickname"],
-               "; ".join(diff).replace("the margin", "the border")
-               .replace("its ", "the border's ")))
+    # MEASURED ANOTHER WAY: APPLIED, AND SAID (2026-10-19). It was refused.
+    # The user: "warn us when the filtering parameters of our border are
+    # different from what is being applied, but still let us do it." A
+    # border's cut-offs are numbers of the measurement it was drawn under,
+    # so on another filter or window they are a different question -- which
+    # the person may well mean to ask. So it applies, and `mismatch` says
+    # exactly how the two differ, on the fit, for the panel to show.
+    mismatch = ["; ".join(diff).replace("the margin", "the border")
+                .replace("its ", "the border's ")] if diff else []
     try:
         lv = rcborder.level_of(pay, g)
     except rcborder.BorderError as exc:
@@ -12892,6 +13473,8 @@ def _rootcanal_border_on(res, ref, measure):
         # "between" two identities, or an "envelope" round one (2026-10-19).
         kind=pay.get("kind") or "between", group=pay.get("group"),
         saved={"counts": lv["counts"], "switch_rate": lv["switch_rate"]},
+        measure=(pay.get("measure") or {}).get("filter_label"),
+        mismatch=mismatch,
         **info)
     res["params"] = dict(res.get("params") or {}, border={
         "artifact_id": used["artifact_id"], "version": used["version"],
@@ -15215,11 +15798,19 @@ def _strata_scan_vacc(gid, sess, ctx, plan, only):
     removed once it is home: a workspace is not a cache.
     """
     bad = list(ctx["bad"])
+    # The duplicate guard, before anything is sent (flights.py): one read
+    # of these channels of this recording at a time, anywhere.
+    try:
+        fk = _vacc_door("strata", gid, {"channels": sorted(only),
+                                        "skip": sorted(bad)})
+    except flightsmod.Duplicate as exc:
+        return _vacc_duplicate(exc)
     try:
         place = _vacc_place_for_gid(vacciomod.gid_of(sess.get("path")))
         cfg = vaccmod.load_config(LOGS_DIR)
         vaccmod.push_code(cfg, APP_DIR)
     except Exception as exc:                             # noqa: BLE001
+        flightsmod.FLIGHTS.release(fk)
         return _strata_fail("scan", exc, gid)
     where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
              else "vacc:scratch")
@@ -15237,18 +15828,24 @@ def _strata_scan_vacc(gid, sess, ctx, plan, only):
         megasamples=max(0.001, float(plan.get("span_s") or 0)
                         * float(plan.get("fs") or 30000.0) * 2 * 4 / 1e6),
         tool_steps=list(steps), report=None)
+    _vacc_arm(run, fk, seconds)
 
     def work(job):
-        out = run.work(job)
-        _strata_bring_home(cfg, run, gid, sess, out, job, where, place)
-        return {"status": stratamod.status(gid, sess, bad), "meta": {
-            k: (out.get("meta") or {}).get(k)
-            for k in ("n_bins", "channels", "end_s", "scanned_at", "lfp_fs")},
-            "where": where}
+        try:
+            out = run.work(job)
+            _strata_bring_home(cfg, run, gid, sess, out, job, where, place)
+            return {"status": stratamod.status(gid, sess, bad), "meta": {
+                k: (out.get("meta") or {}).get(k)
+                for k in ("n_bins", "channels", "end_s", "scanned_at",
+                          "lfp_fs")},
+                "where": where}
+        finally:
+            flightsmod.FLIGHTS.release(fk)
 
     job = cfcmod.start(spec, vaccrunmod.steps() + steps
                        + [(stratamod.STAGE_FETCH, mb)], work,
                        max(0.001, plan["megasamples"]), where)
+    flightsmod.FLIGHTS.attach(fk, job_id=job.id, rid=run.rid)
     _strata_job_keep(gid, "scan", job)
     STORE.record_activity([{
         "action": "strata.scan",
@@ -15966,6 +16563,76 @@ def _cur_history(gid, kind, summaries=None):
     return out
 
 
+def _when_s(stamp):
+    """An ISO time as seconds since the epoch, or None. Both spellings in
+    this repo: curation writes `-0400`, the bank writes `-04:00`."""
+    if not stamp:
+        return None
+    s = str(stamp).strip().replace("Z", "+00:00")
+    if len(s) > 5 and s[-5] in "+-" and s[-4:].isdigit():
+        s = s[:-2] + ":" + s[-2:]
+    try:
+        return datetime.datetime.fromisoformat(s).timestamp()
+    except ValueError:
+        return None
+
+
+def _cur_banked(row, bank_rows):
+    """Whether this set's work is in the bank, for a list of sets.
+
+    The entry a set banks into is the one the bank route writes: same
+    recording, same kind, `curation_label` "*". Its newest version is the
+    last bank. The set has moved on since when its decisions no longer
+    count up to what that version holds, or when two candidates were merged
+    after it -- a merge can change a version's content without changing a
+    single count. Decision times are not compared: a set rebuilt from a
+    version stamps its decisions with the moment it was rebuilt, and would
+    read as changed when nothing was.
+
+    None when the set has never been banked.
+    """
+    gid, kind = row.get("gid"), row.get("kind")
+    ent = None
+    for rec in bank_rows:
+        if (rec.get("gid") != gid or (rec.get("type") or "") != kind
+                or rec.get("curation_label") != "*"):
+            continue
+        if ent is None or (str((rec.get("added") or {}).get("at") or "")
+                           > str((ent.get("added") or {}).get("at") or "")):
+            ent = rec
+    if ent is None:
+        return None
+    vers = list(ent.get("versions") or [])
+    named = versionsmod.label_rows(vers)
+    if not named:
+        return None
+    tip = versionsmod.tip_next(vers)[0]
+    ver = next((v for v, nm in named if nm == tip), named[-1][0])
+    vocab = curation.vocabulary(kind) if kind in curation.KINDS else []
+    names = ent.get("label_names") or {}
+
+    def ids(counts):
+        out = {}
+        for k, n in (counts or {}).items():
+            if not n or k in (None, "", "unspecified"):
+                continue
+            lid = curation.resolve_label(vocab, names.get(k, k)) \
+                or curation.resolve_label(vocab, k) or k
+            out[lid] = out.get(lid, 0) + n
+        return out
+
+    have = ids((row.get("progress") or {}).get("by_label"))
+    was = ids(ver.get("by_label"))
+    changed = have != was
+    merged = _when_s(row.get("last_merge"))
+    banked_at = _when_s(ver.get("at"))
+    if not changed and merged and banked_at and merged > banked_at + 1:
+        changed = True
+    return {"entry": ent.get("id"), "name": ent.get("name"),
+            "version": tip, "at": ver.get("at"), "by": ver.get("by"),
+            "n": ver.get("n"), "changed": changed}
+
+
 @app.route("/api/curation")
 def api_curation_list():
     """Every curation set, with how far through each one is."""
@@ -15988,6 +16655,11 @@ def api_curation_list():
         rec = by_gid.get(row["gid"])
         row["session"] = REG.summary(rec) if rec else None
         row["history"] = _cur_history(row["gid"], row.get("kind"), banked)
+        # Whether the work on it is in the bank: "banked v3", or changed
+        # since, or never banked. The bench showed none of it, so a set
+        # finished and banked looked exactly like one still in progress.
+        row["banked"] = _cur_banked(row, banked)
+        row["test"] = _cf_is_test(row)
         out.append(row)
     out.sort(key=lambda r: (r.get("progress", {}).get("left", 0) == 0,
                             -(r.get("progress", {}).get("total") or 0)))
@@ -16005,7 +16677,68 @@ def api_curation_get(gid, kind):
     return jsonify({"ok": True, "set": rec,
                     "progress": CURATE.progress(rec),
                     "history": _cur_history(gid, kind),
+                    "banked": _cur_banked(CURATE.summary(rec),
+                                          BANK.summaries()),
                     "session": _session_by_gid(gid)})
+
+
+@app.route("/api/curation/startable")
+def api_curation_startable():
+    """Banked entries of one kind that a set could be started from, and
+    is not already.
+
+    Spotter's list showed only sets that existed, so a Doppler run banked on
+    another machine -- or banked and never opened -- could only be reached
+    from Doppler's own review list. Every entry of the kind is here except
+    the ones a set already stands for: the entry the set was started from,
+    and the entry it banks into (`curation_label` "*").
+
+    One set per recording and kind, so an entry on a recording that already
+    has a set from a different entry says so (`set_name`): starting it asks
+    before replacing that set.
+    """
+    kind = (request.args.get("kind") or "").strip()
+    if kind not in curation.KINDS:
+        return jsonify({"ok": False,
+                        "error": "%r is not a kind of curation this Jarvis "
+                                 "knows about." % kind}), 400
+    sets = {s["gid"]: s for s in CURATE.summaries() if s.get("kind") == kind}
+    out = []
+    for rec in BANK.summaries():
+        gid = rec.get("gid")
+        if (rec.get("type") or "") != kind or not gid:
+            continue
+        st = sets.get(gid)
+        if st and (((st.get("source") or {}).get("bank_entry") == rec.get("id"))
+                   or rec.get("curation_label") == "*"):
+            continue
+        vers = list(rec.get("versions") or [])
+        last = max([str(v.get("at") or "") for v in vers]
+                   + [str((rec.get("added") or {}).get("at") or "")])
+        src = rec.get("source") or {}
+        out.append({
+            "id": rec.get("id"), "name": rec.get("name"), "gid": gid,
+            "session_label": rec.get("session_label"),
+            "project": rec.get("project"), "mouse": rec.get("mouse"),
+            "session": rec.get("session"), "n": rec.get("n"),
+            "pipeline": src.get("pipeline"),
+            "by": (rec.get("added") or {}).get("by"),
+            "at": last or None,
+            "tip": versionsmod.tip_next(vers)[0] if vers else "0",
+            "by_label": rec.get("by_label") or {},
+            "curated": bool(rec.get("specified")),
+            "test": _cf_is_test(rec)
+                    or str(src.get("pipeline") or "").startswith("harness"),
+            "set_name": (st or {}).get("name") if st else None,
+            # Sent, not left out: the picker draws it under its archived
+            # toggle at the bottom (`_bank_archived`).
+            "archived": bool(rec.get("archived")),
+        })
+    out.sort(key=lambda r: str(r.get("at") or ""), reverse=True)
+    out.sort(key=lambda r: r["archived"])
+    return jsonify({"ok": True, "kind": kind, "entries": out,
+                    "n": len(out),
+                    "archived": sum(1 for r in out if r["archived"])})
 
 
 @app.route("/api/curation/create", methods=["POST"])
@@ -16141,8 +16874,9 @@ def api_curation_from_bank():
             key = round(float(e.get("start")), 4)
         except (TypeError, ValueError):
             continue
-        facts[key] = {k: e[k] for k in ("origin", "pair_t", "channel",
-                                         "amplitude") if e.get(k) is not None}
+        facts[key] = {k: e[k] for k in ("origin", "pair_t", "stamp",
+                                         "channel", "amplitude")
+                      if e.get(k) is not None}
     if facts:
         for item in events:
             try:
@@ -16230,6 +16964,9 @@ def api_curation_for_recording(gid):
                 "n": v.get("n"), "note": v.get("note"),
                 "by_label": v.get("by_label") or {},
                 "imported": bool(v.get("imported")),
+                # The version an alignment (Braces, Eye, Lock) wrote, which
+                # the version tree says on its row.
+                "aligned": bool(v.get("aligned")),
                 # Whether a set can actually be built from it.
                 "usable": bool(v.get("snap")) or v.get("v") == newest,
             })
@@ -16271,7 +17008,7 @@ def _cf_entry_row(rec):
     # detector); the one somebody has been working in is the one to offer.
     last = max([str(v.get("at") or "") for v in vers]
                + [str((rec.get("added") or {}).get("at") or "")])
-    return {
+    row = {
         "id": rec["id"], "name": rec.get("name"), "n": rec.get("n"),
         "type": rec.get("type"),
         "curated": bool(rec.get("specified")),
@@ -16279,7 +17016,62 @@ def _cf_entry_row(rec):
         "pipeline": (rec.get("source") or {}).get("pipeline"),
         "params": (rec.get("source") or {}).get("parameters") or {},
         "at": last or None,
+        # Sent, not left out: the list draws it under its archived toggle.
+        "archived": _bank_archived(rec),
     }
+    row.update(_cf_aligned(rec))
+    return row
+
+
+def _cf_aligned(rec, raw=False):
+    """Whether an entry's stamps have been lined up -- Braces for Incisor's,
+    Eye for Doppler's, Lock for a pool -- said outright, so Junction can
+    label each input "aligned" or "not aligned" (2026-10-19).
+
+      aligned        the entry's events as they stand are (`rec.aligned`,
+                     which every re-bank carries forward)
+      aligned_v      the newest version an alignment wrote
+      aligned_names  every version whose stamps are aligned: one an
+                     alignment wrote, or one on a line that came after one
+                     -- a curation pass on an aligned version keeps its
+                     times. A branch off an earlier, unaligned version is
+                     not on the list.
+
+    Named from the repaired history, as /api/curation/for-recording names
+    the versions the page picks from; `raw` names them as `_cf_vname` does,
+    for comparing against a version this module resolved itself.
+    """
+    src = rec if raw else BANK.repaired(rec)
+    rows = versionsmod.label_rows(list(src.get("versions") or []))
+    own = [name for v, name in rows if v.get("aligned")]
+    owned = {versionsmod.key(n) for n in own}
+
+    def on_aligned(name):
+        k = versionsmod.key(name)
+        # Its ancestors: every earlier version of each line it descends
+        # through, and itself.
+        for i in range(len(k)):
+            for j in range(k[i] + 1):
+                if k[:i] + (j,) in owned:
+                    return True
+        return False
+    al = rec.get("aligned") or {}
+    return {
+        "aligned": bool(al),
+        "aligned_by": al.get("by") if isinstance(al, dict) else None,
+        "aligned_at": al.get("at") if isinstance(al, dict) else None,
+        "aligned_v": versionsmod.newest(own) if own else None,
+        "aligned_names": [name for _v, name in rows if on_aligned(name)],
+    }
+
+
+def _cf_ver_aligned(ent, ver):
+    """Whether the version going in has aligned stamps; `ver` None is the
+    entry as it stands."""
+    al = _cf_aligned(ent, raw=True)
+    if ver is None:
+        return al["aligned"]
+    return _cf_vname(ent, ver) in al["aligned_names"]
 
 
 def _cf_is_test(rec):
@@ -16288,6 +17080,18 @@ def _cf_is_test(rec):
     who = "%s %s" % ((rec.get("added") or {}).get("by") or "",
                      rec.get("name") or "")
     return "harness" in who.lower()
+
+
+def _bank_archived(rec):
+    """Every version of the entry is archived (`eventbank.entry_archived`).
+
+    It stays in the Event Bank, where Unarchive brings it back. The lists
+    that offer entries to start from -- Junction's, the workbench's banked
+    runs, Root Canal's sets -- still send it, flagged `archived`, and draw
+    it at the bottom under a toggle rather than leaving it out ("if they
+    are archived put them at the bottom with a toggle to view archived",
+    2026-10-20)."""
+    return eventbank.entry_archived(rec)
 
 
 @app.route("/api/confluence/recordings")
@@ -16315,6 +17119,9 @@ def api_confluence_recordings():
             continue
         for k in ("ds", "ied", "pooled"):
             row[k].sort(key=lambda r: str(r.get("at") or ""), reverse=True)
+            # Archived ones last, so the newest is always a current one:
+            # Many pools from [0], and the row's tags describe [0].
+            row[k].sort(key=lambda r: bool(r.get("archived")))
         out.append(row)
     out.sort(key=lambda r: (str(r.get("project") or ""),
                             str(r.get("mouse") or ""),
@@ -16387,11 +17194,12 @@ def _cf_inputs(body):
                          "their times would not line up.")
     win = confluencemod.window_s(body.get("window_ms",
                                           confluencemod.DEFAULT_WINDOW_MS))
+    keep = confluencemod.keep_of(body.get("keep"))
     ds_ev, ds_ver = _cf_version_events(ds, body.get("ds_version"))
     ied_ev, ied_ver = _cf_version_events(ied, body.get("ied_version"))
     ds_use = confluencemod.usable(ds_ev, curation.vocabulary("ds"))
     ied_use = confluencemod.usable(ied_ev, curation.vocabulary("ied"))
-    return {"gid": gid, "ds": ds, "ied": ied, "win": win,
+    return {"gid": gid, "ds": ds, "ied": ied, "win": win, "keep": keep,
             "ds_ver": ds_ver, "ied_ver": ied_ver,
             "ds_events": ds_use, "ied_events": ied_use,
             "ds_left_out": len(ds_ev) - len(ds_use),
@@ -16409,14 +17217,22 @@ def _cf_vname(ent, ver):
 
 
 def _cf_params(inp):
+    kept = confluencemod.WORD[inp["keep"]]
+    other = confluencemod.WORD["doppler" if inp["keep"] == "incisor"
+                               else "incisor"]
     return {
         "ds_entry": inp["ds"]["id"], "ds_name": inp["ds"].get("name"),
         "ds_version": _cf_vname(inp["ds"], inp["ds_ver"]),
         "ied_entry": inp["ied"]["id"], "ied_name": inp["ied"].get("name"),
         "ied_version": _cf_vname(inp["ied"], inp["ied_ver"]),
         "window_ms": round(inp["win"] * 1e3, 3),
+        "keep": inp["keep"],
+        # Whether each input's stamps had been lined up (Braces, Eye), so
+        # the pool says what it was made from long after the fact.
+        "ds_aligned": _cf_ver_aligned(inp["ds"], inp["ds_ver"]),
+        "ied_aligned": _cf_ver_aligned(inp["ied"], inp["ied_ver"]),
         "rule": "time only, any channel; one to one, nearest first; "
-                "Incisor's time kept, Doppler's as pair_t",
+                "%s's time kept, %s's as pair_t" % (kept, other),
     }
 
 
@@ -16428,7 +17244,8 @@ def api_confluence_plan():
     try:
         inp = _cf_inputs(body)
         events, stats = confluencemod.pool(inp["ds_events"],
-                                           inp["ied_events"], inp["win"])
+                                           inp["ied_events"], inp["win"],
+                                           inp["keep"])
     except (ValueError, eventbank.BankError) as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     stats.update(ds_left_out=inp["ds_left_out"],
@@ -16452,7 +17269,14 @@ def _cf_existing(gid, params):
     for rec in BANK.all():
         if rec.get("gid") != gid or (rec.get("type") or "") != "pooled":
             continue
+        # Put away is not banked: pooling the same inputs again makes a
+        # current pool rather than handing back the archived one.
+        if _bank_archived(rec):
+            continue
         got = (rec.get("source") or {}).get("parameters") or {}
+        # A pool from before the choice existed kept Incisor's time.
+        if (got.get("keep") or "incisor") != (params.get("keep") or "incisor"):
+            continue
         if all(got.get(k) == v for k, v in want.items()):
             return rec
     return None
@@ -16468,10 +17292,13 @@ def _cf_merge(body, who=None):
             return done, (done.get("source") or {}).get("parameters", {}) \
                 .get("stats") or {}, True
     events, stats = confluencemod.pool(inp["ds_events"], inp["ied_events"],
-                                       inp["win"])
+                                       inp["win"], inp["keep"])
     if not events:
         raise ValueError("Nothing to pool: both entries are empty once what "
                          "was called Garbage is left out.")
+    # Said in the name and the note only when it is not the default, so a
+    # pool filed under Doppler's stamps cannot be mistaken for one that is not.
+    kept_said = (", Doppler's time" if inp["keep"] == "doppler" else "")
     # Where the recording is filed, from the dentate-spike entry: it was
     # banked against this gid, and asking the registry costs a re-stat of
     # every shard per call -- a batch of forty would wait half a minute.
@@ -16494,22 +17321,23 @@ def _cf_merge(body, who=None):
         "duration_s": src.get("duration_s") or inp["ied"].get("duration_s"),
         "gid": inp["gid"],
         "name": (body.get("name") or "").strip()
-                or "%s — pooled (Incisor + Doppler, %g ms)"
-                   % (label, round(inp["win"] * 1e3, 3)),
+                or "%s — pooled (Incisor + Doppler, %g ms%s)"
+                   % (label, round(inp["win"] * 1e3, 3), kept_said),
         "type": "pooled", "type_name": "Pooled spike",
         "events": [{k: e[k] for k in ("start", "channel", "amplitude",
-                                      "origin", "pair_t") if k in e}
+                                      "origin", "pair_t", "stamp") if k in e}
                    for e in events],
-        "pipeline": "The Confluence: Junction (Incisor + Doppler, %g ms)"
-                    % round(inp["win"] * 1e3, 3),
+        "pipeline": "The Confluence: Junction (Incisor + Doppler, %g ms%s)"
+                    % (round(inp["win"] * 1e3, 3), kept_said),
         "parameters": params,
         "version_tag": "junction",
         "added_by": (who or body.get("added_by")
                      or (STORE.provenance() or {}).get("user")),
         "version_note": "Junction's pool: %d from Incisor, %d from Doppler, "
-                        "%d merged within %g ms." % (
+                        "%d merged within %g ms%s." % (
                             stats["incisor_only"], stats["doppler_only"],
-                            stats["merged"], round(inp["win"] * 1e3, 3)),
+                            stats["merged"], round(inp["win"] * 1e3, 3),
+                            ", each at Doppler's time" if kept_said else ""),
     })
     return entry, stats_kept, False
 
@@ -16544,6 +17372,7 @@ def api_confluence_batch():
     rows = []
     for it in (body.get("items") or []):
         one = dict(it, window_ms=body.get("window_ms", it.get("window_ms")),
+                   keep=body.get("keep", it.get("keep")),
                    force=body.get("force"))
         try:
             entry, stats, cached = _cf_merge(one)
@@ -16572,7 +17401,8 @@ def api_curation_merge(gid, kind):
     body = request.get_json(force=True) or {}
     try:
         ev, prog, gone = CURATE.merge_events(gid, kind, body.get("keep"),
-                                             body.get("drop"))
+                                             body.get("drop"),
+                                             stamp=body.get("stamp"))
     except curation.CurationError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     except Exception as exc:                             # noqa: BLE001
@@ -20756,6 +21586,22 @@ def api_session_health():
                                      deep=bool(deep))
                 except Exception as exc:                 # noqa: BLE001
                     app.logger.warning("health log: %s", exc)
+        # What this copy holds, on this machine's sighting (2026-10-20), so
+        # the card describes the copy you open: a recording's one stored
+        # channel count came from whichever copy was scanned last, which is
+        # how a card said 128 above a folder of 64.
+        if rep.get("channels"):
+            try:
+                gid = rep.get("gid") or _gid_for_path(p)
+                rec = REG.by_gid(gid) if gid else None
+                if rec:
+                    REG.note_copy(rec, p, {
+                        "n_channels": rep.get("channels"),
+                        "fs": rep.get("fs"),
+                        "duration_s": rep.get("duration_s")})
+                    rep["gid"] = gid
+            except Exception as exc:                     # noqa: BLE001
+                app.logger.warning("copy facts: %s", exc)
         out.append(rep)
     STORE.record_activity([{
         "action": "session.health",
@@ -23858,8 +24704,21 @@ def api_arc_monolith_run():
                 extra = dict(extra, fast=[[int(r), d] for r, d in
                                           extra["fast"]
                                           if "r%d %s" % (int(r), d) in done])
-        run = monolithmod.run_now(man, cfg, APP_DIR, ssh=MONO_SSH,
-                                  extra=extra)
+        # One submit at a time (flights.py): a second click while the first
+        # is still pushing code and writing specs used to submit a second
+        # sweep. Once `run_now` has saved the run, its own "still going on
+        # the cluster" refusal takes over.
+        fk = flightsmod.key("sweep", [], {"extra": extra or None})
+        try:
+            flightsmod.FLIGHTS.claim(fk, tool="sweep", who=_vacc_who(),
+                                     device=_vacc_device())
+        except flightsmod.Duplicate as exc:
+            return _vacc_duplicate(exc)
+        try:
+            run = monolithmod.run_now(man, cfg, APP_DIR, ssh=MONO_SSH,
+                                      extra=extra)
+        finally:
+            flightsmod.FLIGHTS.release(fk)
     except monolithmod.MonolithError as exc:
         return _mono_refused(exc)
     except vaccmod.SSHError as exc:
@@ -27246,95 +28105,59 @@ def api_vacc_signin():
     password = body.get("password") or ""
     use_existing = (body.get("use_key") or "").strip()
 
-    try:
-        if use_existing:
-            # An existing key the person nominated. Nothing to install and
-            # no password to ask for -- just prove it works and write it
-            # down. Refused if it is in the repository, same as `setup`.
-            repo = os.path.dirname(APP_DIR)
-            try:
-                inside = os.path.commonpath(
-                    [os.path.abspath(use_existing), repo]) == repo
-            except ValueError:
-                inside = False
-            if inside:
-                return jsonify({"ok": False,
-                                "error": "That key is inside the repository. "
-                                         "Move it to ~/.ssh first."}), 400
-            key_path = use_existing
-            made = {"created": False}
-            installed = {"already": True, "netid": netid}
-        else:
-            # A key this machine already has, that this account already
-            # accepts. Tried first, and it is the ordinary case on a rig
-            # where one person set the cluster up and the rest of the lab
-            # takes turns at the keyboard.
-            #
-            # Being asked for a password by software that does not need one
-            # is how people learn to type passwords into things that should
-            # not have them, so not asking is a small security feature and
-            # not only a convenience.
-            already = vaccmod.working_key(netid)
-            if already:
-                key_path = already
-                made = {"created": False}
-                installed = {"already": True, "netid": netid}
-            elif not password:
-                # No key works and none was offered, so there is nothing to
-                # try. Said as a fact rather than as a failure: it is the
-                # first sign-in on this machine and a password is genuinely
-                # needed once.
-                return jsonify({
-                    "ok": False, "kind": "need-password",
-                    "error": "No key on this computer works for %s yet, so "
-                             "a password is needed once to install one."
-                             % netid,
-                }), 400
-            else:
-                made = vaccmod.make_key()
-                key_path = vaccmod.key_paths()[0]
-                installed = vaccmod.install_key(netid, password,
-                                                duo=body.get("duo") or "1")
-                netid = installed.get("netid") or netid
+    if use_existing:
+        # An existing key the person nominated: nothing to install and no
+        # password to ask for. Refused if it is in the repository.
+        repo = os.path.dirname(APP_DIR)
+        try:
+            inside = os.path.commonpath(
+                [os.path.abspath(use_existing), repo]) == repo
+        except ValueError:
+            inside = False
+        if inside:
+            return jsonify({"ok": False,
+                            "error": "That key is inside the repository. "
+                                     "Move it to ~/.ssh first."}), 400
 
-        # The proof. Key only, password auth off -- the ordinary `_ssh`
-        # options, which is exactly how every later call will connect.
-        check = dict(vaccmod.load_config(LOGS_DIR))
-        check["netid"] = netid
-        check["key_path"] = key_path
-        who = vaccmod._ssh(check, "whoami", timeout=30).strip()
+    # One implementation for this route and for Setup (`vacc.sign_in`):
+    # a working key first, then make + install, then a RETRIED key-only
+    # proof, and only then the config -- with `enabled` and `signed_in_at`.
+    # The single unretried proof this route used to make is what had
+    # people signing in twice (2026-10-20). Refused attempts are noted so
+    # the activity log says why if it ever takes more than one.
+    refused = []
+    try:
+        got = vaccmod.sign_in(LOGS_DIR, netid, password=password or None,
+                              use_key=use_existing or None,
+                              duo=body.get("duo") or "1",
+                              note=refused.append)
     except vaccmod.SSHError as exc:
         # `kind` rather than the text, so the page can say something useful
-        # about a wrong password without parsing English.
+        # about a wrong password -- or ask for one -- without parsing English.
+        if refused:
+            STORE.record_activity([{"action": "vacc.signin.refused",
+                                    "detail": {"netid": netid,
+                                               "attempts": refused}}])
         return jsonify({"ok": False, "error": str(exc),
                         "kind": getattr(exc, "kind", "failed")}), 400
     except Exception as exc:                             # noqa: BLE001
         return fail("vacc/signin", exc, 400, {"netid": netid})
+    finally:
+        password = None
 
-    if who and who != netid:
-        # The cluster says you are somebody else. Almost always a typo in
-        # the netid that happened to match another account's key, and not
-        # something to write into a config file.
-        return jsonify({
-            "ok": False, "kind": "mismatch",
-            "error": "The key works, but the cluster says that account is "
-                     "%r rather than %r. Check the netid." % (who, netid),
-        }), 400
-
-    vaccmod.save_config(LOGS_DIR, netid=netid, key_path=key_path,
-                        enabled=True)
     vaccmod.refresh(force=True)
     STORE.record_activity([{
         "action": "vacc.signin",
-        "detail": {"netid": netid, "made_key": bool(made.get("created")),
-                   "key_was_there": bool(installed.get("already"))},
+        "detail": {"netid": got["netid"], "made_key": got["made_key"],
+                   "key_was_there": got["already_installed"],
+                   "refused_first": refused},
     }])
     return jsonify({
         "ok": True,
-        "netid": netid,
-        "key_path": key_path,
-        "made_key": bool(made.get("created")),
-        "already_installed": bool(installed.get("already")),
+        "netid": got["netid"],
+        "key_path": got["key_path"],
+        "made_key": got["made_key"],
+        "already_installed": got["already_installed"],
         "config": vaccmod.load_config(LOGS_DIR),
     })
 
@@ -27374,7 +28197,9 @@ def api_vacc_setup():
     """
     body = request.get_json(force=True) or {}
     netid = (body.get("netid") or "").strip()
-    if netid and not re.match(r"^[a-z0-9._-]{2,32}$", netid, re.I):
+    # `_re`: this module imports the regex module under that name only, so
+    # `re` here was a NameError the moment a NetID was typed (2026-10-19).
+    if netid and not _re.match(r"^[a-z0-9._-]{2,32}$", netid, _re.I):
         return jsonify({"ok": False,
                         "error": "That does not look like a NetID."}), 400
     key_path = (body.get("key_path") or "").strip()

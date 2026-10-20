@@ -86,6 +86,20 @@ PREFS_SPEC = {
     # same reason again -- and start.py reads it to keep the name out of the
     # terminal on a machine where it is hidden.
     "jarvis": shards.MAPLWW,
+    # Root Canal's archived borders (2026-10-19): {artifact id: {at}}.
+    # Merged per border, so two people archiving different ones both keep
+    # theirs, and putting one back (a removed key) wins over an older
+    # archive of it. A preference rather than a field on the artifact,
+    # because putting one back has to sync too, and an artifact's soft
+    # delete only ever travels one way.
+    "rootcanal_border_archive": shards.MAPLWW,
+    # Root Canal's folders for saved pools and pools of pools (2026-10-20):
+    # the folders, {id: {name, at, by, gone}}, and which folder each pool is
+    # in, {pool id: folder id or ""}. Merged per key for the same reason as
+    # the archive: two people filing different pools both keep theirs, and
+    # renaming one folder does not undo somebody else's new one.
+    "rootcanal_pool_folders": shards.MAPLWW,
+    "rootcanal_pool_in": shards.MAPLWW,
 }
 
 # Settings that describe this screen rather than this project. Merging them
@@ -99,9 +113,17 @@ PREFS_LOCAL = ("theme", "density", "panes", "last_view", "last_session",
                "curate_span",
                # And Braces' trace view, the same way (2026-10-13).
                "braces_span",
+               # And Spotter's and Panning's (2026-10-19).
+               "spotter_span", "panning_span",
                "chrome", "fullscreen", "zoom",
                "recent_scripts", "recent_bookmarks", "pipeline_folders",
-               "scratch_draft")
+               "scratch_draft",
+               # The VACC sign-in this machine's app has already greeted
+               # (2026-10-20): a newer `signed_in_at` in .vacc.json -- a
+               # sign-in done in Setup -- turns VACC Mode on once.
+               "vacc_signed_ack",
+               # Motion: "lively" (default) or "calm" (2026-10-20).
+               "motion")
 
 TRIAGE_SPEC = {"marks": shards.MAPLWW}
 TRIAGE_BASE = "resolved"

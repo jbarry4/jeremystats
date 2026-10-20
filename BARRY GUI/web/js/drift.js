@@ -722,7 +722,11 @@ BARRY.drift = (function () {
     });
     if ((st.nickname || '').trim()) body.nickname = st.nickname.trim();
     try {
-      const got = await apiPost('/api/arc/drift/run', body);
+      // One run per click (ui.submitOnce); on the VACC the cluster lock
+      // refuses a second copy of the same drift as well.
+      const got = await BARRY.ui.submitOnce('drift:run', (sid) =>
+        apiPost('/api/arc/drift/run', Object.assign({}, body,
+                                                    { submit_id: sid })));
       st.job = { id: got.job, status: 'running', stages: [], where: body.where };
       log('arc.drift.run', { where: body.where, left: body.left.length,
                              right: body.right.length });

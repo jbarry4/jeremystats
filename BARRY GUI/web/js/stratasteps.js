@@ -294,7 +294,10 @@ BARRY.strataSteps = (function () {
   async function scan(force) {
     if (!H || jobId) return;
     try {
-      const res = await apiPost(url('scan'), body({ force: !!force }));
+      // One read per click (ui.submitOnce). On the VACC a second read of
+      // the same channels is refused as a duplicate and followed instead.
+      const res = await BARRY.ui.submitOnce('strata:' + H.gid, (sid) =>
+        apiPost(url('scan'), body({ force: !!force, submit_id: sid })));
       if (res.cached) {
         status = res.status;
         await load();
@@ -305,7 +308,18 @@ BARRY.strataSteps = (function () {
       H.render();
       poll();
     } catch (e) {
-      toast('Could not start the read: ' + e.message, 'err', 9000);
+      const dup = BARRY.ui.duplicateOf(e);
+      if (dup && dup.job_id) {
+        toast(BARRY.ui.duplicateWords(dup), null, 7000);
+        jobId = dup.job_id; jobKind = 'scan';
+        jobSnap = { id: dup.job_id, status: 'running' };
+        H.render();
+        poll();
+        return;
+      }
+      toast(dup ? BARRY.ui.duplicateWords(dup)
+                : 'Could not start the read: ' + e.message,
+            dup ? 'warn' : 'err', 9000);
     }
   }
 

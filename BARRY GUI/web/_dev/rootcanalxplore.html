@@ -1,0 +1,321 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>rootcanalxplore: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Root Canal: the dot picked in the 3D view, opened in Xplorefinder -- and
+   the RIGHT one (2026-10-20).
+
+   WHAT WAS ASKED: "allow us to select a dot (from the 3D diagram) and open
+   that specific event in Xplorefinder. I think it's already there, but
+   make sure it pulls out the right one."
+
+   WHAT WAS WRONG, found reading it: in Pooled the picked event is a copy,
+   so the recording window never found it in its list -- it was not moved
+   to the dot and the mark said the member's first event; and a dot from
+   another recording had its marks and its time put on whatever recording
+   the window already showed.
+
+   The recording window is a stand-in: `window.open` returns an object that
+   boots like Xplorefinder does (a moment later, with the recording named
+   in its URL) and records every mark, channel line and window it is given.
+   On real data:
+     Single  a dot picked and opened: the window is on the set's recording,
+             at the dot's time, and its mark is that event; another dot
+             picked moves it; a double-click on a dot opens THAT dot; on
+             empty space it only resets the view;
+     Pooled  a dot of one member: its recording, its time, its mark; a dot
+             of another member: the window is sent to that recording, at
+             that dot.
+
+   IT WRITES NOTHING. Preference writes are held, the activity log is
+   quiet, every save, read and commit is refused here, and no real window
+   is opened. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const near = (a, b, tol) => a != null && b != null && Math.abs(a - b) <= (tol || 1e-6);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(150);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  const W = () => frame.contentWindow;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  await until(() => ev('!!(BARRY.prefs && BARRY.rootcanal)'), 10000, 'the modules');
+  const RC = 'BARRY.rootcanal';
+  let viewWas = null;
+  try { viewWas = ev('localStorage.getItem("barry.rootcanal.view")'); } catch (e) { /* none */ }
+
+  ev('(function(){ var W = window; if (W.__rcxPrefSet) return;'
+     + ' W.__rcxPrefSet = BARRY.prefs.set; W.__rcxPrefGet = BARRY.prefs.get; W.__rcxMem = {};'
+     + ' BARRY.prefs.set = function(k, v) { W.__rcxMem[k] = v; return v; };'
+     + ' BARRY.prefs.get = function(k, d) { if (k in W.__rcxMem) return W.__rcxMem[k];'
+     + '   return W.__rcxPrefGet.apply(BARRY.prefs, arguments); };'
+     + ' W.__rcxLog = BARRY.activity.log; BARRY.activity.log = function(){}; })()');
+  ev('(function(){ var W = window; if (W.__rcxFetch) return; W.__rcxFetch = W.fetch;'
+     + ' W.__rcxRefused = [];'
+     + ' var json = function(o, st) { return Promise.resolve(new Response(JSON.stringify(o),'
+     + '   { status: st || 200, headers: { "Content-Type": "application/json" } })); };'
+     + ' W.fetch = function(u, o) { var s = String(u).split("?")[0];'
+     + '  var post = o && o.method === "POST";'
+     + '  if (post && /\\/api\\/rootcanal\\/read$/.test(s)) {'
+     + '    var b = JSON.parse(o.body || "{}");'
+     + '    if (!b.only_cached) { W.__rcxRefused.push(s); return json({ ok: false, error: "harness: no new reads" }, 400); } }'
+     + '  if (post && /\\/api\\/rootcanal\\/(commit|batch|single\\/save|single\\/import|names|pool\\/save|dpool\\/save|pool\\/reread|pool\\/singles|border\\/save|margin\\/save)$/.test(s)) {'
+     + '    W.__rcxRefused.push(s); return json({ ok: false, error: "harness: no writes" }, 400); }'
+     + '  return W.__rcxFetch.apply(this, arguments); }; })()');
+
+  /* The stand-in recording window. It boots 300 ms after it is opened or
+     sent somewhere, on the recording its URL names, and keeps what it is
+     handed. Which recording a path is, from the same registry rows Root
+     Canal asks. */
+  ev('(function(){ var W = window; if (W.__rcxOpen) return; W.__rcxOpen = W.open;'
+     + ' var fx = W.__fx = { urls: [], wins: [], lines: [] };'
+     + ' var gidOf = function(csc) { var rows = (BARRY.views.toolkit.registryRows ? BARRY.views.toolkit.registryRows() : []);'
+     + '   for (var i = 0; i < rows.length; i++) { try { if (BARRY.vacc.reachFor(rows[i], "rootcanal").path === csc) return rows[i].gid; } catch (e) {} }'
+     + '   return null; };'
+     + ' W.open = function(url, name) {'
+     + '   var w = { closed: false, focus: function(){}, url: url, barryXplore: null };'
+     + '   var boot = function() { var q = new URL(w.url).searchParams; var csc = q.get("csc");'
+     + '     w.barryXplore = null; fx.urls.push({ csc: csc, gid: gidOf(csc), t0: +q.get("t0"), span: +q.get("span") });'
+     + '     setTimeout(function() { var sess = { identity: { gid: gidOf(csc) }, span: 0.5, path: csc };'
+     + '       w.sess = sess;'
+     + '       w.barryXplore = { current: function() { return sess; },'
+     + '         setChannelLines: function(s, l) { fx.lines.push(l); },'
+     + '         setWindow: function(i, t0, span) { fx.wins.push({ gid: sess.identity.gid, t0: t0, span: span }); },'
+     + '         redraw: function() {} }; }, 300); };'
+     + '   Object.defineProperty(w, "location", { get: function() { return {'
+     + '     get href() { return w.url; }, set href(u) { w.url = u; boot(); } }; } });'
+     + '   boot(); fx.win = w; return w; }; })()');
+  const fx = () => ev('JSON.parse(JSON.stringify({ urls: window.__fx.urls, wins: window.__fx.wins,'
+    + ' marks: window.__fx.win && window.__fx.win.sess ? window.__fx.win.sess.curationMarks : null }))');
+  const lastWin = () => { const w = fx().wins; return w[w.length - 1] || null; };
+  /* The window shows the dot when: it is on the dot's recording, its view
+     is centred on the dot's time, and its mark is the dot. */
+  const showing = (xt) => {
+    const f = fx();
+    const w = f.wins[f.wins.length - 1];
+    const m = f.marks;
+    return !!(w && m && w.gid === xt.gid && near(w.t0 + w.span / 2, xt.t, 1e-4)
+      && near(m.at, xt.t) && m.events[m.index] && near(m.events[m.index].start, xt.t));
+  };
+  const geomPts = () => ev(RC + '._geom()').space.pts;
+  const dbl = (pt) => {
+    const cv = D().getElementById('rcSpace');
+    const r = cv.getBoundingClientRect();
+    cv.dispatchEvent(new (W().MouseEvent)('dblclick', { bubbles: true, cancelable: true,
+      clientX: r.left + cv.clientLeft + pt.x, clientY: r.top + cv.clientTop + pt.y }));
+  };
+
+  try {
+    head('SINGLE: A SET WITH ITS READ HERE');
+    ev(RC + '._setView("single")');
+    ev('setView("toolkit")');
+    await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
+    const step = Array.from(D().querySelectorAll('.tk-step'))
+      .find((b) => /Root Canal/.test(b.textContent));
+    if (step) step.click();
+    await until(() => D().querySelector('.rc-viewseg'), 15000, 'Root Canal');
+    ev(RC + '._setView("single")');
+    await until(() => (ev(RC + '._done()') || {}).rows, 60000, 'the list of sets done');
+    const rows = ev(RC + '._done()').rows || [];
+    let opened = false;
+    for (const r of rows.filter((x) => !x.saved && x.reads && x.reads.here).slice(0, 6)) {
+      await ev(RC + '._openDone(' + JSON.stringify(r.entry_id) + ')');
+      if (await until(() => { const s = ev(RC + '._state()'); return s.fit && s.fit.ok
+                               && (s.fit.events || []).length > 5; }, 30000, 'its picture')) {
+        say('       on ' + (r.session_label || r.entry_id), 'dim');
+        opened = true;
+        break;
+      }
+    }
+    ok('precondition: a set whose read is here opens to its picture', opened);
+    if (opened) {
+      await until(() => geomPts().length > 5, 10000, 'the dots');
+      ok('the 3D view has the button, and says double-click opens a dot',
+         !!D().querySelector('.rc-space-pane .rc-space-xplore')
+         && /double-click a dot to open it in Xplorefinder/.test(
+           D().querySelector('.rc-space-pane .rc-pane-head').textContent));
+      const evs = ev(RC + '._state()').fit.events;
+      const e1 = evs[Math.floor(evs.length / 3)];
+      ev(RC + '._pick(' + e1.i + ')');
+      await ev(RC + '._openPicked()');
+      const xt1 = ev(RC + '._xTarget()');
+      await until(() => showing(xt1), 8000, 'the window on the dot');
+      ok('picked and opened: the window is on its recording, at its time, and '
+         + 'its mark is that event', xt1.i === e1.i && near(xt1.t, e1.t) && showing(xt1)
+         && fx().urls[0] && near(fx().urls[0].t0, Math.max(0, e1.t - 0.25), 1e-3),
+         JSON.stringify([xt1, lastWin(), fx().urls[0]]));
+      const e2 = evs[Math.floor(evs.length * 2 / 3)];
+      ev(RC + '._pick(' + e2.i + ')');
+      const xt2 = ev(RC + '._xTarget()');
+      await until(() => showing(xt2), 5000, 'the follow');
+      ok('another dot picked: the window follows to it', showing(xt2) && !near(xt2.t, xt1.t),
+         JSON.stringify([xt2, lastWin()]));
+      ok('in the same window, not a second one', fx().urls.length === 1);
+      // A double-click on a dot, away from the one picked.
+      const pts = geomPts().filter((p) => !p.hollow && p.i !== e2.i);
+      const target = pts.find((p) => pts.every((q) => q === p
+        || Math.hypot(q.x - p.x, q.y - p.y) > 9)) || pts[0];
+      dbl(target);
+      await until(() => ev(RC + '._state()').picked === target.i, 4000, 'the pick');
+      const xt3 = ev(RC + '._xTarget()');
+      await until(() => showing(xt3), 5000, 'the window on it');
+      ok('a double-click on a dot picks THAT dot and opens it', xt3.i === target.i
+         && showing(xt3), JSON.stringify([target.i, xt3, lastWin()]));
+      // A double-click on empty space.
+      const cv = D().getElementById('rcSpace');
+      const all = geomPts();
+      let empty = null;
+      for (const [x, y] of [[8, 8], [cv.clientWidth - 8, 8], [8, cv.clientHeight - 8],
+                            [cv.clientWidth - 8, cv.clientHeight - 8]]) {
+        if (all.every((p) => Math.hypot(p.x - x, p.y - y) > 12)) { empty = { x: x, y: y }; break; }
+      }
+      if (empty) {
+        const nWins = fx().wins.length;
+        dbl(empty);
+        await sleep(400);
+        ok('on empty space it only resets the view: the pick and the window stay',
+           ev(RC + '._state()').picked === target.i && fx().wins.length === nWins);
+      }
+    }
+
+    head('POOLED: DOTS OF TWO RECORDINGS');
+    ev(RC + '._setView("pooled")');
+    ev(RC + '._setLevel("pool")');
+    ev(RC + '._render()');
+    await until(() => ev(RC + '._pool()').shelf, 30000, 'the saved pools');
+    const shelf = ev(RC + '._pool()').shelf || [];
+    let pooled = false, A = null, B = null;
+    for (const p of shelf.slice(0, 8)) {
+      const btn = D().querySelector('.rc-shelf-row[data-pool="' + (p.artifact_id || p.id)
+                                    + '"] .rc-shelf-open');
+      if (!btn) continue;
+      btn.click();
+      if (!(await until(() => { const P = ev(RC + '._pool()'); return P.fit && P.fit.ok
+                                 && (P.fit.events || []).length > 5; }, 30000, 'the pool'))) continue;
+      const P = ev(RC + '._pool()');
+      const evs = ev(RC + '._poolEvents()');
+      const here = (P.fit.members || []).map((m, k) => ({ m: m, k: k }))
+        .filter((x) => x.m.gid && ev('(function(g){ var rows = BARRY.views.toolkit.registryRows();'
+          + ' var r = rows.find(function(x){ return x.gid === g; });'
+          + ' return !!(r && BARRY.vacc.reachFor(r, "rootcanal").path); })('
+          + JSON.stringify(x.m.gid) + ')'));
+      const ofM = (k) => evs.filter((e) => e.m === k);
+      const two = here.filter((x) => ofM(x.k).length >= 3);
+      if (two.length >= 2 && two[0].m.gid !== two[1].m.gid) {
+        A = ofM(two[0].k)[1];
+        B = ofM(two[1].k)[2];
+        say('       on ‘' + (p.nickname || p.name) + '’: members ' + two[0].k + ' and '
+            + two[1].k, 'dim');
+        pooled = true;
+        break;
+      }
+      ev(RC + '._poolClose()');
+      await sleep(300);
+    }
+    ok('precondition: a saved pool with two members whose recordings are here', pooled);
+    if (pooled) {
+      ev(RC + '._poolPick(' + A.i + ')');
+      await ev(RC + '._openPicked()');
+      const xa = ev(RC + '._xTarget()');
+      await until(() => showing(xa), 20000, 'the window on the dot');
+      ok('a dot of one member: the window is on that recording, at that dot, and '
+         + 'its mark is that event (the copy is found)', xa.i === A.i && xa.at >= 0
+         && showing(xa), JSON.stringify([xa, lastWin(), fx().marks && fx().marks.index,
+           fx().urls, Array.from(D().querySelectorAll('#toasts .toast')).map((n) => n.textContent).slice(-3)]));
+      const nUrls = fx().urls.length;
+      ev(RC + '._poolPick(' + B.i + ')');
+      const xb = ev(RC + '._xTarget()');
+      await until(() => fx().urls.length > nUrls && showing(xb), 10000, 'the move');
+      const u = fx().urls[fx().urls.length - 1];
+      ok('a dot of another member: the window is sent to its recording, at it',
+         u && u.gid === xb.gid && near(u.t0, Math.max(0, xb.t - 0.25), 1e-3) && showing(xb),
+         JSON.stringify([xb, u, lastWin()]));
+      ok('and nothing of the first recording is left on it',
+         fx().marks && fx().marks.gid === xb.gid && lastWin().gid === xb.gid);
+      /* Two picks in a row, the second before the window has opened the
+         first's recording: it ends on the second. */
+      const evsR = ev(RC + '._poolEvents()');
+      const A2 = evsR.filter((x) => x.m === A.m)[2] || A;
+      const B2 = evsR.filter((x) => x.m === B.m)[0];
+      ev(RC + '._poolPick(' + A2.i + ')');
+      ev(RC + '._poolPick(' + B2.i + ')');
+      const xb2 = ev(RC + '._xTarget()');
+      await until(() => showing(xb2), 15000, 'the second pick');
+      ok('two dots picked in a row, of two recordings: the window ends on the '
+         + 'second', xb2.i === B2.i && showing(xb2), JSON.stringify([xb2, lastWin()]));
+      /* A dot whose recording is not on this machine: said, and the window
+         left on the one it shows. */
+      const P2 = ev(RC + '._pool()');
+      const evs2 = ev(RC + '._poolEvents()');
+      const awayK = (P2.fit.members || []).findIndex((m) => m.gid && !ev(
+        '(function(g){ var rows = BARRY.views.toolkit.registryRows();'
+        + ' var r = rows.find(function(x){ return x.gid === g; });'
+        + ' return !!(r && BARRY.vacc.reachFor(r, "rootcanal").path); })(' + JSON.stringify(m.gid) + ')'));
+      const C = awayK >= 0 ? evs2.find((e) => e.m === awayK) : null;
+      if (C) {
+        const nU = fx().urls.length;
+        ev(RC + '._poolPick(' + C.i + ')');
+        await ev(RC + '._openPicked()');
+        await until(() => Array.from(D().querySelectorAll('#toasts .toast')).some((n) =>
+          /recording is not reachable from this machine/.test(n.textContent)), 5000, 'the toast');
+        ok('a dot whose recording is not on this machine says so, and the window '
+           + 'stays where it is', fx().urls.length === nU && lastWin().gid === xb2.gid
+           && Array.from(D().querySelectorAll('#toasts .toast')).some((n) =>
+             /recording is not reachable from this machine/.test(n.textContent)));
+      }
+    }
+    ok('nothing was written, read or saved', !ev('window.__rcxRefused.length'),
+       JSON.stringify(ev('window.__rcxRefused')));
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+  } finally {
+    try {
+      ev(RC + '._poolClose()');
+      ev('(function(){ var W = window; if (W.__rcxFetch) { W.fetch = W.__rcxFetch; delete W.__rcxFetch; }'
+         + ' if (W.__rcxOpen) { W.open = W.__rcxOpen; delete W.__rcxOpen; }'
+         + ' if (W.__rcxLog) { BARRY.activity.log = W.__rcxLog; delete W.__rcxLog; }'
+         + ' if (W.__rcxPrefSet) { BARRY.prefs.set = W.__rcxPrefSet; BARRY.prefs.get = W.__rcxPrefGet;'
+         + ' delete W.__rcxPrefSet; delete W.__rcxPrefGet; } })()');
+      ev('(function(v){ try { if (v == null) localStorage.removeItem("barry.rootcanal.view");'
+         + ' else localStorage.setItem("barry.rootcanal.view", v); } catch (e) {} })('
+         + JSON.stringify(viewWas == null ? null : viewWas) + ')');
+    } catch (e) { /* gone */ }
+    await sleep(500);
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'rootcanalxplore: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

@@ -127,7 +127,9 @@ BARRY.views.toolkit = (function () {
   }
 
   const refresh = debounce(async function refresh_() {
-    if (q.tool === 'curate') { await loadCuration(); return; }
+    /* Checkup, Spotter and Panning are one workbench (`WB`, below): the
+       same bench and shelf, each showing its own kind of set. */
+    if (WB[q.tool]) { await loadCuration(); return; }
     if (q.tool === 'strata') { await loadStrata(); return; }
     if (q.tool === 'incisor') { await loadIncisor(); return; }
     if (q.tool === 'braces') { BARRY.braces.paint(); return; }
@@ -139,17 +141,12 @@ BARRY.views.toolkit = (function () {
     /* Only when the pane is not already theirs: `render` has painted them a
        moment before this debounced call lands, and a second paint rebuilt
        the panel under the pointer -- the "it keeps reloading" Doppler had. */
-    if (q.tool === 'junction' || q.tool === 'panning') {
+    if (q.tool === 'junction') {
       const h = $('#tkResult');
       if (!(h && h.dataset.tool === q.tool)) renderResult();
       return;
     }
     if (q.tool === 'lock') { BARRY.lock.paint(); return; }
-    /* Spotter has no panel of its own: it is a MODE, and the step is the
-       way in rather than the thing itself. It still needs a branch here,
-       or it falls through to the bad-channel query below -- which is the
-       fault Kilosort's comment above is about. */
-    if (q.tool === 'spotter') { renderResult(); return; }
     if (q.tool === 'rootcanal') { BARRY.rootcanal.paint(); return; }
     if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
     if (q.tool === 'cfc') { await loadCFC(); return; }
@@ -1221,15 +1218,27 @@ BARRY.views.toolkit = (function () {
        re-read -- that is the point of the stale flag -- and showing the old
        cards motionless for five seconds while it happens looked like the
        view had simply stopped. */
-    const l = (q.tool === 'curate' && (!cur || curStale))
-      ? tkLoading('Event curation', ['reading the curation sets',
-                                     'reading the recording registry'])
+    const w = WB[q.tool];
+    const l = (w && (!cur || curStale || (w.startable && !curStart[w.kind])))
+      ? (w.startable ? doorLoading(w)
+                     : tkLoading(w.title, ['reading the curation sets',
+                                           'reading the recording registry']))
       : null;
     curLoading = (async () => {
       try {
         const got = await api('/api/curation');
         if (l) l.step('reading the recording registry');
         got.registry = await registry();
+        /* And, for Spotter and Panning, the banked runs no set has been
+           started from -- the list that used to be missing entirely. */
+        if (w && w.startable) {
+          if (l) l.step('reading the banked runs');
+          try {
+            const st = await api('/api/curation/startable?kind='
+                                 + encodeURIComponent(w.kind));
+            curStart[w.kind] = st.entries || [];
+          } catch (e) { curStart[w.kind] = []; }
+        }
         /* And what the cluster can read, which the cards' open buttons ask
            (`openReach`). Cached for minutes and usually already here. */
         if (BARRY.vacc && BARRY.vacc.loadKnows) {
@@ -1246,7 +1255,7 @@ BARRY.views.toolkit = (function () {
          that lands after you have clicked StrataScope must not paint
          Curation over it -- the same guard the bad-channel loader has
          carried all along. */
-      if (q.tool === 'curate') renderCuration();
+      if (WB[q.tool]) renderCuration();
       return cur;
     })();
     return curLoading;
@@ -1255,7 +1264,73 @@ BARRY.views.toolkit = (function () {
   /* How the shelf is being looked at -- the shelf only, because the bench
      is not a query result and has no order to choose. Held here rather than
      read off the DOM so a re-render cannot lose a half-typed search. */
-  const curQ = { text: '', sort: 'recent', show: 'all', shelf: false };
+  const curQ = { text: '', sort: 'recent', show: 'all', shelf: false,
+                 fresh: true };
+
+  /* ONE WORKBENCH, THREE DOORS (2026-10-19).
+
+     Spotter's step page was a plain list -- "a lame list", and rightly: no
+     search, no archive, no idea who was working on what, no way to put a set
+     down, and none of the Doppler runs nobody had started on. Checkup's
+     workbench already did all of that for every kind of set, so Spotter and
+     Panning ARE it now, each showing its own kind: the bench (whose, since
+     when, who is in it right now, how far through, whether it is banked;
+     carry on, put it down, version, bank, export, receipt, archive), the
+     shelf (search, sort, unfinished / flagged / done / archived), and one
+     thing Checkup did not need -- the banked runs no set has been started
+     from, to start one.
+
+     `kinds` null is every kind, which is what Checkup has always shown.
+     Harness leftovers are hidden from the two new doors, and counted. */
+  const WB = {
+    curate: { tool: 'curate', title: 'Checkup', kinds: null,
+              enter: (st) => BARRY.curate.enter(st.gid, st.kind) },
+    spotter: {
+      tool: 'spotter', title: 'Spotter', kinds: ['ied'], kind: 'ied',
+      hideTests: true,
+      blurb: 'Confirm what the radar found, one discharge at a time: solid, '
+           + 'sputter, or neither.',
+      enter: (st) => BARRY.spotter.enter(st.gid),
+      startable: {
+        kind: 'ied', noun: 'discharges', otherLabel: 'imported',
+        mine: { label: 'From Doppler', chip: 'Doppler',
+                test: (p) => /^Doppler/.test(p) },
+        enter: (gid, id) => BARRY.spotter.enter(gid, id),
+      },
+    },
+    panning: {
+      tool: 'panning', title: 'Panning', kinds: ['pooled'], kind: 'pooled',
+      hideTests: true,
+      blurb: 'Sort a pool one event at a time: spike, garbage or flag. Every '
+           + 'event shows which detector found it, and two that are one '
+           + 'event can be merged.',
+      enter: (st) => BARRY.panning.enter(st.gid),
+      startable: {
+        kind: 'pooled', noun: 'events', otherLabel: 'other',
+        mine: { label: 'From Junction', chip: 'Junction',
+                test: (p) => /^The Confluence/.test(p) },
+        enter: (gid, id) => BARRY.panning.enter(gid, id),
+      },
+    },
+  };
+  const wb = () => WB[q.tool] || WB.curate;
+  /* The banked runs no set has been started from, per kind. */
+  const curStart = {};
+
+  /* The sets this door shows. */
+  function wbSets() {
+    const w = wb();
+    return ((cur && cur.sets) || []).filter((st) =>
+      (!w.kinds || w.kinds.indexOf(st.kind) >= 0)
+      && !(w.hideTests && st.test));
+  }
+
+  /* Opening a set through the door it was picked up from. */
+  function wbEnter(st) {
+    const w = wb();
+    // Checkup opens any kind in Checkup; the other two only their own.
+    return (w.kinds && w.kinds.indexOf(st.kind) < 0 ? WB.curate : w).enter(st);
+  }
 
   /* Which half of Checkup is showing: the sets, or AI Beta (aibeta.js).
      A preference, so it survives a reload; read and written in try/catch
@@ -1311,35 +1386,34 @@ BARRY.views.toolkit = (function () {
       { month: 'short', day: 'numeric' });
   }
 
-  const curOpen = () => ((cur && cur.sets) || [])
-    .filter((s) => s.open && !s.archived);
+  const curOpen = () => wbSets().filter((s) => s.open && !s.archived);
 
   /* The sets on the shelf that match what is being asked for. Everything
      not on the bench, which includes the finished ones -- being done is not
      a reason to be hidden, only a reason not to be in the way. */
-  function curationRows() {
-    const all = (cur && cur.sets) || [];
+  function curationRows(arch) {
+    const all = wbSets();
     const q = curQ.text.trim().toLowerCase();
     const words = q ? q.split(/\s+/) : [];
     const by = (st) => (st.progress || {}).by_label || {};
 
     let rows = all.filter((st) => {
       if (st.open) return false;
+      /* Archived sets sink (2026-10-20): never among the shelf's own rows,
+         and listed apart, under the toggle at the bottom (`arch`), where
+         only the search narrows them -- the pills are about live work. */
+      if (!!st.archived !== !!arch) return false;
       const pr = st.progress || {};
-      if (curQ.show === 'left' && !(pr.left > 0)) return false;
-      if (curQ.show === 'flagged' && !(by(st).flag > 0)) return false;
-      if (curQ.show === 'done' && !(pr.left === 0 && pr.total > 0)) return false;
-      if (curQ.show === 'demo' && !String(st.gid || '').startsWith('demo-')) {
+      const pill = arch ? 'all' : curQ.show;
+      if (pill === 'left' && !(pr.left > 0)) return false;
+      if (pill === 'flagged' && !(by(st).flag > 0)) return false;
+      if (pill === 'done' && !(pr.left === 0 && pr.total > 0)) return false;
+      if (pill === 'demo' && !String(st.gid || '').startsWith('demo-')) {
         return false;
       }
-      /* Archived sessions are out of the way unless asked for. Archiving
-         still means what it meant -- "I am done thinking about this at all"
-         -- which is a stronger statement than closing it. */
-      if (curQ.show === 'archived') {
-        if (!st.archived) return false;
-      } else if (st.archived) {
-        return false;
-      }
+      /* Archiving still means what it meant -- "I am done thinking about
+         this at all" -- a stronger statement than closing it; the drawer
+         at the bottom of the shelf is where those sets are found again. */
       if (!words.length) return true;
       const hay = [st.name, st.kind_name, st.kind, st.gid, st.assignee,
                    st.session && st.session.label,
@@ -1392,11 +1466,12 @@ BARRY.views.toolkit = (function () {
        after the tool has changed -- one place that refuses is worth more
        than a guard at each call site, because the next call site will not
        have one. */
-    if (q.tool !== 'curate') return;
+    if (!WB[q.tool]) return;
+    const w = wb();
     host.style.opacity = '1';
     host.innerHTML = '';
     /* AI Beta needs none of the sets, so it does not wait for them. */
-    if (curPane() === 'ai') {
+    if (w.tool === 'curate' && curPane() === 'ai') {
       host.appendChild(el('div', { class: 'tk-head' }, [
         BARRY.ui.stepHeader({
           title: 'Checkup',
@@ -1411,12 +1486,14 @@ BARRY.views.toolkit = (function () {
       BARRY.aibeta.paint(host);
       return;
     }
-    if (!cur) {
+    if (!cur || (w.startable && !curStart[w.kind])) {
+      if (w.startable) { doorLoading(w); return; }
       host.appendChild(el('div', { class: 'tk-loading' }, [
-        stepLoader('Event curation', ['reading the curation sets',
-                                      'reading the recording registry'])]));
+        stepLoader(w.title, ['reading the curation sets',
+                             'reading the recording registry'])]));
       return;
     }
+    if (w.tool !== 'curate') { renderDoor(host, w); return; }
 
     const sets = cur.sets || [];
     const open = curOpen();
@@ -1511,6 +1588,107 @@ BARRY.views.toolkit = (function () {
     if (curQ.shelf) paintShelf();
   }
 
+  /* A door's page while it reads: its header straight away, then what it
+     is waiting on, step by step -- "Spotter needs a clear loading" (asked
+     2026-10-19). The registry is the slow read, seconds on a share. */
+  function doorLoading(w) {
+    const host = $('#tkResult');
+    if (!host) return null;
+    host.style.opacity = '1';
+    host.innerHTML = '';
+    host.appendChild(el('div', { class: 'tk-head' }, [
+      BARRY.ui.stepHeader({ title: w.title, step: BARRY.ui.stepOf(w.tool),
+                            blurb: w.blurb }),
+    ]));
+    const l = stepLoader('Reading ' + w.title + '\u2019s sets',
+                         ['reading the curation sets',
+                          'reading the recording registry',
+                          'reading the banked runs']);
+    host.appendChild(el('div', { class: 'tk-loading' }, [l]));
+    return l;
+  }
+
+  /* Spotter's and Panning's page: Checkup's bench and shelf for its own
+     kind of set, then the banked runs no set has been started from. */
+  function renderDoor(host, w) {
+    const sets = wbSets();
+    const open = curOpen();
+    const fresh = curStart[w.kind] || [];
+    const tests = ((cur && cur.sets) || []).filter(
+      (st) => w.kinds.indexOf(st.kind) >= 0 && st.test).length
+      + fresh.filter((e) => e.test).length;
+    host.appendChild(el('div', { class: 'tk-head' }, [
+      BARRY.ui.stepHeader({
+        title: w.title, step: BARRY.ui.stepOf(w.tool), blurb: w.blurb,
+      }),
+      el('div', { class: 'spacer' }),
+      open.length > 1 ? el('button', {
+        class: 'btn ghost sm', text: 'Close all',
+        title: 'Put every ' + w.title + ' set on the bench down. Nothing is '
+             + 'archived, deleted or unbanked.',
+        onclick: closeAllSets,
+      }) : null,
+    ].filter(Boolean)));
+
+    /* ---- the bench ---- */
+    const bench = el('div', { class: 'cur-sets cur-bench', id: 'curBench' });
+    if (open.length) {
+      for (const st of open) bench.appendChild(curCard(st));
+    } else {
+      bench.appendChild(el('div', { class: 'cur-bench-empty' }, [
+        el('p', { text: 'Nothing open.' }),
+        el('p', { class: 'hint',
+          text: (sets.length ? 'Pick one up from the shelf below, or start '
+                             : 'Start ')
+              + 'one from a banked run. It stays on the bench until you put '
+              + 'it down, and every decision is written the moment it is '
+              + 'made.' }),
+      ]));
+    }
+    host.appendChild(bench);
+
+    /* ---- the shelf ---- */
+    const nShelf = sets.filter((s) => !s.open && !s.archived).length;
+    host.appendChild(el('div', { class: 'cur-shelf-head' }, [
+      el('button', {
+        class: 'cur-shelf-toggle' + (curQ.shelf ? ' on' : ''),
+        text: (curQ.shelf ? '\u25be  ' : '\u25b8  ')
+            + (open.length ? 'Pick up another set' : 'Pick up a set')
+            + '  \u00b7  ' + nShelf + ' put down',
+        onclick: () => { curQ.shelf = !curQ.shelf; renderCuration(); },
+      }),
+    ]));
+    if (curQ.shelf) {
+      host.appendChild(el('div', { class: 'cur-shelf', id: 'curShelf' }));
+      paintShelf();
+    }
+
+    /* ---- the banked runs not started ---- */
+    // Current ones only: archived runs are listed apart, under their own
+    // toggle at the bottom of the list.
+    const nFresh = fresh.filter((e) => !e.test && !e.archived
+      && (w.startable.mine.test(e.pipeline || ''))).length;
+    host.appendChild(el('div', { class: 'cur-shelf-head' }, [
+      el('button', {
+        class: 'cur-shelf-toggle' + (curQ.fresh ? ' on' : ''),
+        text: (curQ.fresh ? '\u25be  ' : '\u25b8  ')
+            + 'Start from a banked run  \u00b7  ' + nFresh + ' not started',
+        onclick: () => { curQ.fresh = !curQ.fresh; renderCuration(); },
+      }),
+    ]));
+    if (curQ.fresh) {
+      const box = el('div', { class: 'cur-shelf sp-fresh', id: 'curFresh' });
+      host.appendChild(box);
+      BARRY.setPicker.fresh(box, fresh, w.startable);
+    }
+    if (tests) {
+      host.appendChild(el('p', { class: 'hint quiet',
+        text: tests + ' set' + (tests === 1 ? '' : 's') + ' and run'
+            + (tests === 1 ? '' : 's') + ' left behind by test harnesses '
+            + (tests === 1 ? 'is' : 'are') + ' not shown.' }));
+    }
+  }
+
   /* One set on the bench. Two verbs on the face of it -- carry on, or put
      it down -- and everything administrative folded behind "More", because
      a row that offers you Delete reads as a record in a table rather than
@@ -1543,7 +1721,7 @@ BARRY.views.toolkit = (function () {
          as the ToolKit is open, so without the second condition it repaints
          Curation over StrataScope, or over Kilosort, on its own -- a jump to
          another module with nothing you did to explain it. */
-      if (andRender && q.tool === 'curate'
+      if (andRender && WB[q.tool]
           && presenceSig(res.sessions) !== before) {
         renderCuration();
       }
@@ -1657,7 +1835,7 @@ BARRY.views.toolkit = (function () {
      set it no longer holds. */
   async function enterSet(st) {
     const held = heldBy(st);
-    if (!held) { BARRY.curate.enter(st.gid, st.kind); return; }
+    if (!held) { wbEnter(st); return; }
 
     const who = held.person || held.device || 'Somebody';
     const got = (held.n_decided != null && held.n_total)
@@ -1680,7 +1858,7 @@ BARRY.views.toolkit = (function () {
       await apiPost('/api/presence/take',
                     { gid: st.gid, kind: st.kind, machine: held.machine });
     } catch (e) { /* saying so is best effort; opening it is not */ }
-    BARRY.curate.enter(st.gid, st.kind);
+    wbEnter(st);
     loadPresence(true);
   }
 
@@ -1858,7 +2036,7 @@ BARRY.views.toolkit = (function () {
   function curCard(st) {
     const pr = st.progress || {};
     const done = pr.left === 0 && pr.total > 0;
-    const rr = openReach(st.gid, st.session, 'curate');
+    const rr = openReach(st.gid, st.session, wb().tool);
     const reach = rr.ok;
     const who = st.assignee || null;
     const when = curWhen(st.opened_at);
@@ -1922,7 +2100,9 @@ BARRY.views.toolkit = (function () {
         el('span', { class: 'hk-chip', text: st.kind_name }),
         el('span', { class: 'cur-set-sess',
                      text: (st.session || {}).label || st.gid }),
-      ],
+        // Whether the work on it is in the Event Bank (setpicker.js).
+        BARRY.setPicker ? BARRY.setPicker.bankChip(st) : null,
+      ].filter(Boolean),
       count: pr.specified + ' / ' + pr.total
              + (done ? '  ✓' : '  ·  ' + pr.left + ' left'),
       owner: { name: who, onAssign: () => assignSet(st) },
@@ -1994,7 +2174,7 @@ BARRY.views.toolkit = (function () {
     const shelf = document.getElementById('curShelf');
     if (!shelf) return;
     shelf.innerHTML = '';
-    const sets = (cur && cur.sets) || [];
+    const sets = wbSets();
     const down = sets.filter((s) => !s.open && !s.archived);
     const nLeft = down.filter((s) => ((s.progress || {}).left || 0) > 0).length;
     const nFlag = down.filter(
@@ -2005,7 +2185,8 @@ BARRY.views.toolkit = (function () {
     }).length;
     const nDemo = down.filter(
       (s) => String(s.gid || '').startsWith('demo-')).length;
-    const nArch = sets.filter((s) => s.archived).length;
+    // The archived ones are the drawer at the bottom of the list now.
+    if (curQ.show === 'archived') curQ.show = 'all';
 
     const search = el('input', {
       type: 'text', class: 'cur-search', value: curQ.text,
@@ -2032,7 +2213,6 @@ BARRY.views.toolkit = (function () {
       chip('left', 'Unfinished', nLeft),
       chip('flagged', 'Has flagged', nFlag),
       chip('done', 'Done', nDone),
-      nArch ? chip('archived', 'Archived', nArch) : null,
       nDemo ? chip('demo', 'Demo', nDemo) : null,
       el('div', { class: 'spacer', style: 'flex:1' }),
       el('span', { class: 'hint', id: 'curCount' }),
@@ -2059,27 +2239,37 @@ BARRY.views.toolkit = (function () {
     if (!list) return;
     list.innerHTML = '';
     const rows = curationRows();
-    const total = ((cur && cur.sets) || []).filter(
-      (s) => !s.open && !s.archived).length;
+    const total = wbSets().filter((s) => !s.open && !s.archived).length;
     const count = document.getElementById('curCount');
     if (count) {
       count.textContent = rows.length === total
-        ? rows.length + ' set(s)'
+        ? rows.length + (rows.length === 1 ? ' set' : ' sets')
         : rows.length + ' of ' + total;
     }
     if (!rows.length) {
       list.appendChild(el('div', { class: 'hint',
         text: 'Nothing matches that. Clear the search, or pick All.' }));
-      return;
     }
-    for (const st of rows) {
+    for (const st of rows) list.appendChild(shelfRow(st));
+    const tail = BARRY.ui.archivedTail({
+      key: 'shelf-' + wb().tool, items: curationRows(true),
+      noun: ['set', 'sets'],
+      render: (xs) => xs.map(shelfRow),
+      onToggle: () => paintShelfList(),
+    });
+    if (tail) list.appendChild(tail);
+  }
+
+  function shelfRow(st) {
+    {
       const pr = st.progress || {};
       const done = pr.left === 0 && pr.total > 0;
-      const rr = openReach(st.gid, st.session, 'curate');
+      const rr = openReach(st.gid, st.session, wb().tool);
       const reach = rr.ok;
       const when = curWhen(st.opened_at) || curWhen((st.updated || {}).at);
-      list.appendChild(el('div', {
-        class: 'cur-shelf-row' + (done ? ' done' : ''),
+      return el('div', {
+        class: 'cur-shelf-row' + (done ? ' done' : '')
+               + (st.archived ? ' is-archived' : ''),
       }, [
         el('span', { class: 'csr-name', text: st.name }),
         el('span', { class: 'csr-sess',
@@ -2097,6 +2287,8 @@ BARRY.views.toolkit = (function () {
             ? BARRY.syncState.mark('curation', st.gid + '__' + st.kind) : null,
         ].filter(Boolean)),
         el('div', { class: 'csr-acts' }, [
+        // Whether its work is in the bank, as on the bench cards.
+        BARRY.setPicker ? BARRY.setPicker.bankChip(st) : null,
         el('button', {
           class: 'btn ghost sm', text: 'Pick it up',
           title: 'Put it on the bench. Opening the recording is the '
@@ -2116,8 +2308,8 @@ BARRY.views.toolkit = (function () {
              are you carrying on from -- rather than skipping both. */
           onclick: () => pickUpSet(st, true),
         }),
-        ]),
-      ]));
+        ].filter(Boolean)),
+      ]);
     }
   }
 
@@ -2523,7 +2715,7 @@ BARRY.views.toolkit = (function () {
       await restoreVersion(st, pick);
       await loadCuration();
     }
-    if (andEnter) BARRY.curate.enter(st.gid, st.kind);
+    if (andEnter) wbEnter(st);
     return true;
   }
 
@@ -2569,6 +2761,21 @@ BARRY.views.toolkit = (function () {
       + 'written as they were made. Each one goes back on the shelf.',
       'Put down ' + open.length + ' set(s)');
     if (!ok) return;
+    /* Spotter's and Panning's own sets only: the server's close-all puts
+       down every set of every kind, Checkup's included. */
+    if (wb().kinds) {
+      let n = 0;
+      for (const st of open) {
+        try {
+          await apiPost('/api/curation/' + encodeURIComponent(st.gid) + '/'
+                        + encodeURIComponent(st.kind) + '/open', { open: false });
+          n += 1;
+        } catch (e) { toast(e.message, 'err', 8000); }
+      }
+      toast('Bench cleared \u2014 ' + n + ' set(s) put down.', 'ok', 5000);
+      await loadCuration();
+      return;
+    }
     try {
       const res = await apiPost('/api/curation/close-all', {});
       toast('Bench cleared — ' + res.n + ' set(s) put down.', 'ok', 5000);
@@ -3134,52 +3341,6 @@ BARRY.views.toolkit = (function () {
      It draws the sets rather than a recording picker, because "which of the
      three runs on this recording" is the question -- the recording alone
      does not say which list you mean. */
-  function renderSpotter() {
-    const host = document.getElementById('tkResult');
-    if (!host) return;
-    host.innerHTML = '';
-    host.appendChild(BARRY.ui.stepHeader({
-      title: 'Spotter',
-      step: 'step 2 of The Storm',
-      blurb: 'Confirm what the radar found, one discharge at a time: solid, '
-           + 'sputter, or neither.',
-    }));
-    const box = el('div', { class: 'card' }, [
-      el('div', { class: 'section-label', text: 'Which set' }),
-    ]);
-    host.appendChild(box);
-    BARRY.skeleton.into(box, 'row', 3);
-    api('/api/curation?kind=ied').then((got) => {
-      box.innerHTML = '';
-      box.appendChild(el('div', { class: 'section-label',
-        text: 'Which set' }));
-      const sets = (got.sets || []).filter((s) => s.kind === 'ied');
-      if (!sets.length) {
-        box.appendChild(el('div', { class: 'empty-state',
-          text: 'Nothing to confirm yet. Run Doppler on a recording and '
-              + 'bank what it finds — that is what makes a set for '
-              + 'this step to walk.' }));
-        return;
-      }
-      for (const st of sets) {
-        const p = st.progress || {};
-        box.appendChild(el('button', {
-          class: 'dop-review',
-          onclick: () => BARRY.spotter.enter(st.gid),
-        }, [
-          el('strong', { text: st.name || st.session_label || st.gid }),
-          el('span', { text: (p.specified || 0) + ' of ' + (p.total || 0)
-                           + ' decided' }),
-          st.open ? BARRY.ui.chip('on the bench', { kind: 'ok' }) : null,
-          st.assignee ? BARRY.ui.chip(st.assignee) : null,
-        ].filter(Boolean)));
-      }
-    }).catch((e) => {
-      box.innerHTML = '';
-      box.appendChild(el('div', { class: 'empty-state', text: e.message }));
-    });
-  }
-
   async function loadIncisor() {
     const host = document.getElementById('tkResult');
     if (host) host.style.opacity = '1';
@@ -3672,10 +3833,11 @@ BARRY.views.toolkit = (function () {
       }
       return;
     }
-    if (q.tool === 'curate') {
+    if (WB[q.tool]) {
       // Reload rather than repaint when something has changed since this
       // was last read -- which is the whole of "why do I have to refresh".
-      if (!cur || curStale) loadCuration();
+      const w = WB[q.tool];
+      if (!cur || curStale || (w.startable && !curStart[w.kind])) loadCuration();
       else renderCuration();
       return;
     }
@@ -3683,10 +3845,8 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'incisor') { BARRY.incisor.paint(); return; }
     if (q.tool === 'braces') { BARRY.braces.paint(); return; }
     if (q.tool === 'doppler') { BARRY.doppler.paint(); return; }
-    if (q.tool === 'spotter') { renderSpotter(); return; }
     if (q.tool === 'eye') { BARRY.eye.paint(); return; }
     if (q.tool === 'junction') { BARRY.junction.paint(); return; }
-    if (q.tool === 'panning') { BARRY.panning.paintStep(); return; }
     if (q.tool === 'lock') { BARRY.lock.paint(); return; }
     if (q.tool === 'rootcanal') { BARRY.rootcanal.paint(); return; }
     if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }

@@ -34,6 +34,14 @@
 'use strict';
 
 BARRY.doppler = (function () {
+  /* What a run from before the gap fix is, said once for the landed list's
+     chip and the report's bank card (the server's `_doppler_before_fix`). */
+  const GAP_FIX_WORDS =
+    'Made before the gap fix (2026.10.19.6) on a recording the health '
+    + 'check found in more than one segment. Every event after a segment '
+    + 'that read short may be stamped early by the shortfall, so this run '
+    + 'is not banked. Run the recording again: Many counts it as not run.';
+
   /* What is being asked for. Held here rather than read off the DOM, so a
      redraw cannot lose a half-filled form. */
   const q = {
@@ -447,13 +455,15 @@ BARRY.doppler = (function () {
       ? 'No cluster is configured on this computer.'
       : (!v.can ? (v.reason || 'The cluster cannot reach this recording.')
                 : ('Runs on ' + (v.remote || 'the cluster')));
+    const sendingNow = BARRY.ui.isSending('doppler:' + q.path);
     return el('button', {
       class: 'btn',
-      text: mine ? 'On the cluster' : 'Run on the VACC',
+      text: mine ? 'On the cluster'
+        : sendingNow ? 'Submitting…' : 'Run on the VACC',
       // Disabled with the reason ON it rather than hidden: a control that
       // vanishes teaches nothing.
-      disabled: (mine || !vaccOn() || !v.can || (est && est.split))
-        ? 'disabled' : null,
+      disabled: (mine || sendingNow || !vaccOn() || !v.can
+                 || (est && est.split)) ? 'disabled' : null,
       title: why,
       onclick: () => run(false),
     });
@@ -1050,11 +1060,31 @@ BARRY.doppler = (function () {
   async function run(force) {
     if (!q.path || myFlight()) return;
     let started;
+    /* One submit per click (ui.submitOnce), and a duplicate the server
+       refuses is followed rather than reported as a failure: the same
+       recording with the same settings already on the cluster is that
+       run (backend/flights.py). */
     try {
-      started = await apiPost('/api/doppler/scan', body({ where: 'vacc',
-        force: !!force }));
+      const p = BARRY.ui.submitOnce('doppler:' + q.path, (sid) =>
+        apiPost('/api/doppler/scan', body({ where: 'vacc', force: !!force,
+                                            submit_id: sid })));
+      paint();
+      started = await p;
     } catch (e) {
-      toast(e.message, 'err', 9000);
+      const dup = BARRY.ui.duplicateOf(e);
+      if (dup && dup.job_id) {
+        toast(BARRY.ui.duplicateWords(dup), null, 7000);
+        if (!flights.has(dup.job_id)) {
+          track({ id: dup.job_id, status: 'running' }, 'one',
+                [{ gid: q.gid, label: (q.row || {}).label || null }],
+                { path: q.path, params: paramsBody() });
+        }
+        paint();
+        return;
+      }
+      toast(dup ? BARRY.ui.duplicateWords(dup) : e.message,
+            dup ? 'warn' : 'err', 9000);
+      paint();
       return;
     }
     if (started.cached) {
@@ -2024,6 +2054,34 @@ BARRY.doppler = (function () {
   /* ------------------------------------------------------------- banking */
 
   function bankCard() {
+    /* Banked already: by the server the moment the run landed (asked for
+       2026-10-19), or from this card before. Said, with the way on to
+       Spotter, rather than offering to file the same run a second time. */
+    if (res.banked && res.banked.id) {
+      return el('div', { class: 'card' }, [
+        el('div', { class: 'section-label', text: '4. Banked' }),
+        el('p', { class: 'hint', style: 'max-width:78ch',
+          text: (res.banked.auto ? 'Banked as it landed, as ' : 'Banked as ')
+              + '“' + (res.banked.name || 'its own entry') + '” — '
+              + (res.banked.n || res.n || 0).toLocaleString() + ' candidates, '
+              + 'nothing decided yet. The next step is confirming them in '
+              + 'Spotter.' }),
+        el('div', { class: 'tk-actions dop-actions' }, [
+          el('span', { class: 'spacer' }),
+          el('button', { class: 'btn', text: 'Confirm them in Spotter',
+            onclick: () => {
+              if (BARRY.spotter) BARRY.spotter.enter(q.gid, res.banked.id);
+            } }),
+        ]),
+      ]);
+    }
+    if (res.before_fix) {
+      return el('div', { class: 'card' }, [
+        el('div', { class: 'section-label', text: '4. Not for the bank' }),
+        el('p', { class: 'hint', style: 'max-width:78ch',
+          text: GAP_FIX_WORDS }),
+      ]);
+    }
     const box = el('div', { class: 'card' }, [
       el('div', { class: 'section-label', text: '4. Bank them' }),
       el('p', { class: 'hint', style: 'max-width:78ch',
@@ -2099,7 +2157,9 @@ BARRY.doppler = (function () {
             pipeline: 'Doppler (line length)',
             detector: 'LLspikedetector',
             time_basis: 'recording',
-            parameters: p,
+            // The run's key, so it is found again as banked (and the
+            // server does not bank it a second time).
+            parameters: Object.assign({}, p, res.key ? { run_key: res.key } : {}),
             added_by: who,
             version_note: 'The detector’s own list, nothing decided about '
                         + 'it yet.',
@@ -2110,6 +2170,10 @@ BARRY.doppler = (function () {
       },
     });
     if (!ok || !added) return;
+    {
+      const ent = added.entry || added;
+      res.banked = { id: ent.id, name: ent.name, n: ent.n, auto: false };
+    }
     toast('Banked. Confirm them in Spotter.', 'ok', 7000);
     loadReviews(true);
     paint();
@@ -2125,6 +2189,9 @@ BARRY.doppler = (function () {
   }
 
   function bankNote() {
+    // The server's, when it sent one: the same note the run is banked with
+    // as it lands (doppler.bank_note), so the two cannot drift.
+    if (res.bank_note) return res.bank_note;
     const p = res.params || {};
     const storm = p.method === 'storm';
     return 'Detected by Doppler on the VACC, ' + p.detector + '. '
@@ -2400,10 +2467,22 @@ BARRY.doppler = (function () {
       el('span', { class: 'dop-run-tags' }, [
         isNew ? BARRY.ui.chip('new', { kind: 'ok' }) : null,
         open ? BARRY.ui.chip('open') : null,
-        (r.banked || []).length
-          ? BARRY.ui.chip('banked', { kind: 'ok',
-              title: r.banked.map((b) => b.name).filter(Boolean).join(', ') })
-          : BARRY.ui.chip('not banked'),
+        /* Made before the gap fix on a recording in pieces: kept, so the
+           run can still be opened, and said, so it is not banked again. */
+        r.before_fix
+          ? BARRY.ui.chip('before the gap fix', { kind: 'warn',
+              title: GAP_FIX_WORDS })
+          : null,
+        /* This run's own entry when there is one (banked as it landed, or
+           from the dialog); otherwise whether anything is banked on the
+           recording, which is all an older run can say. */
+        r.banked_run
+          ? BARRY.ui.chip('banked', { kind: 'ok', title: r.banked_run.name })
+          : (r.banked || []).length
+            ? BARRY.ui.chip('recording banked', {
+                title: 'Another run of this recording is banked: '
+                     + r.banked.map((b) => b.name).filter(Boolean).join(', ') })
+            : BARRY.ui.chip('not banked'),
         warn ? BARRY.ui.chip(warn + ' to look at', { kind: 'warn',
                   title: warns.join('\n') }) : null,
       ].filter(Boolean)),
@@ -2464,7 +2543,8 @@ BARRY.doppler = (function () {
       c && c.number != null ? c.number : c)).filter(isFinite);
     q.preset = sp.preset || (q.exclude.length ? 'custom' : 'all');
     est = null;
-    adopt(got.result, true);
+    adopt(Object.assign({}, got.result, { before_fix: !!got.before_fix }),
+          true);
     landedOpen = r.key;
     freshKeys.delete(r.key);
     /* The estimate is for the plan card above the report; a moment is
@@ -2862,9 +2942,12 @@ BARRY.doppler = (function () {
                                     && (force || !r.answered));
     if (!send.length) return;
     try {
-      const started = await apiPost('/api/doppler/batch',
-        Object.assign({ gids: send.map((r) => r.gid), force: !!force },
-                      paramsBody()));
+      // One batch per click (ui.submitOnce); members already running on
+      // the VACC are skipped by the server and named on their rows.
+      const started = await BARRY.ui.submitOnce('doppler:batch', (sid) =>
+        apiPost('/api/doppler/batch',
+          Object.assign({ gids: send.map((r) => r.gid), force: !!force,
+                          submit_id: sid }, paramsBody())));
       track(started.job, 'many',
             send.map((r) => ({ gid: r.gid, label: r.label })),
             { params: paramsBody() });
@@ -2901,6 +2984,10 @@ BARRY.doppler = (function () {
     _rasterAt: rasterAt,
     _rasterRows: () => (res ? rasterRows() : null),
     _bankNote: bankNote,
+    // A parameter changed the way a field does it: the estimate is asked
+    // again and the panel repainted (storm.html's channel-range check used to
+    // rely on a slower load landing after it had set the range).
+    _changed: () => changedParams(),
     _flights: () => Array.from(flights.values()).map((f) => ({
       id: f.id, kind: f.kind, status: (f.snap || {}).status })),
     _track: track,

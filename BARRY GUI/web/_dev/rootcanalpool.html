@@ -21,7 +21,15 @@ iframe{flex:1;height:100vh;border:0}
    headless Edge never dumps and the runner reports TIMED OUT.
 
    Run under PowerShell. Under Bash, Edge dumps nothing and every suite
-   reads clean. */
+   reads clean.
+
+   THREE SCREENS (2026-10-19): Pooled opens on the saved pools; New pool
+   (or Change recordings) is the choosing screen, with the table of
+   recordings -- one row per recording now, a choice of answer in it --
+   and Pool and Open both go to the picture's screen, which has no table.
+   So the suite presses New pool / Change recordings before it ticks, and
+   looks for the picture after. Reading members here again (/pool/reread,
+   its job, /pool/singles) is answered from here too: nothing is read. */
 const L = document.getElementById('log');
 let pass = 0, fail = 0;
 const say = (s, cls) => {
@@ -97,6 +105,16 @@ const NL = String.fromCharCode(10);
       clientX: r.left + cv.clientLeft + x, clientY: r.top + cv.clientTop + y }));
   };
 
+  /* Shared prefs are not this suite's to write (2026-10-20): a pool saved
+     here is filed into a folder as it is saved, and that is a shared
+     preference. Held in the page, the folders read as they really are
+     until the suite files something, and put back in the finally. */
+  ev('(function(){ var W = window; if (W.__rcpPrefSet) return;'
+     + ' W.__rcpPrefSet = BARRY.prefs.set; W.__rcpPrefGet = BARRY.prefs.get; W.__rcpMem = {};'
+     + ' BARRY.prefs.set = function(k, v) { W.__rcpMem[k] = v; return v; };'
+     + ' BARRY.prefs.get = function(k, d) { if (k in W.__rcpMem) return W.__rcpMem[k];'
+     + '   return W.__rcpPrefGet.apply(BARRY.prefs, arguments); }; })()');
+
   /* Every request the panel makes for a pool fit, and the save and the
      reopen answered from here. Wrapped once, for the frame's fetch only,
      and put back in the finally. */
@@ -128,11 +146,21 @@ const NL = String.fromCharCode(10);
      + '  else if (s.indexOf("/api/rootcanal/borders") >= 0'
      + '   && W.__rcpReply.borders) hit = "borders";'
      + '  else if (s.indexOf("/api/rootcanal/pool/harness-") >= 0) hit = "open";'
+     + '  else if (s.indexOf("/api/rootcanal/pool/reread") >= 0) hit = "reread";'
+     + '  else if (s.indexOf("/api/rootcanal/pool/singles") >= 0) hit = "singles";'
+     + '  else if (s.indexOf("/api/cfc/job/harness-") >= 0)'
+     + '   hit = s.indexOf("/cancel") >= 0 ? "jobstop" : "job";'
      + '  if (hit) { W.__rcpSent.push([hit, JSON.parse((o && o.body) || "{}")]);'
      + '   var r = W.__rcpReply[hit] || { status: 500, body: { ok: false,'
      + '     error: "harness: no reply" } };'
      + '   return Promise.resolve(new Response(JSON.stringify(r.body),'
      + '     { status: r.status, headers: { "Content-Type": "application/json" } })); }'
+     /* The candidates in flight, counted: a read that lands after the
+        suite has pushed a candidate of its own replaces the list. */
+     + '  if (s.indexOf("/api/rootcanal/pool/candidates") >= 0) {'
+     + '   W.__rcpCandsIn = (W.__rcpCandsIn || 0) + 1;'
+     + '   return W.__rcpFetch.apply(this, arguments).finally(function () {'
+     + '     W.__rcpCandsIn -= 1; }); }'
      + '  return W.__rcpFetch.apply(this, arguments); }; })()');
   const sent = () => JSON.parse(ev('JSON.stringify(window.__rcpSent)'));
 
@@ -155,48 +183,162 @@ const NL = String.fromCharCode(10);
      !!D().querySelector('.step-head + .rc-viewbar'));
   const pooledBtn = segBtns.find((b) => b.textContent === 'Pooled');
   if (pooledBtn) pooledBtn.click();
-  await until(() => D().querySelector('.rc-members'), 20000, 'the pooled view');
+  await until(() => D().querySelector('.rc-shelf'), 20000, 'the pooled view');
   eq('pressing Pooled opens the pooled view', ev(RC + '._viewMode()'), 'pooled');
   eq('and the choice is remembered for this viewer',
      ev('localStorage.getItem("barry.rootcanal.view")'), 'pooled');
   ok('Single’s set chooser is not drawn under it', !D().querySelector('.rc-choose'));
-  ok('but the settings bar is: one set of settings for both views',
-     !!D().querySelector('#tkResult .rc-controls'));
 
   /* ================================================================== */
-  head('WHAT CAN JOIN A POOL');
+  head('THE SAVED POOLS FIRST; NEW POOL TO MAKE ONE');
 
-  const cands = (await get('/api/rootcanal/pool/candidates')).singles || [];
-  ok('the server offers singles to pool', cands.length > 0,
-     cands.length + ' candidates');
-  const rows = () => Array.from(D().querySelectorAll('.rc-pool-cands tbody tr'));
-  eq('every one is listed', rows().length, cands.length);
-  ok('each says whether it is banked',
-     rows().every((r) => /banked|not banked/.test(r.textContent)));
-  const unb = cands.filter((c) => !c.banked).length;
-  eq('the unbanked ones say so', rows().filter((r) =>
-     /not banked/.test(r.textContent)).length, unb);
+  ok('Pooled opens on the saved pools, with no table of recordings and no '
+     + 'picture under them', P().screen === 'home' && !!D().querySelector('.rc-shelf')
+     && !D().querySelector('.rc-members') && !D().querySelector('.rc-pool-work'),
+     P().screen);
   ok('saved pools have a shelf, which says what fills it when empty',
      !!D().querySelector('.rc-shelf')
      && (D().querySelectorAll('.rc-shelf-row').length > 0
          || /No pool has been saved/.test(D().querySelector('.rc-shelf').textContent)));
+  const newBtn = D().querySelector('.rc-shelf .rc-new-pool');
+  ok('with New pool beside them, as the primary', !!newBtn
+     && newBtn.textContent === 'New pool' && newBtn.classList.contains('btn')
+     && !newBtn.classList.contains('ghost'));
+  if (newBtn) newBtn.click();
+  await until(() => D().querySelector('.rc-members'), 10000, 'the choosing screen');
+  ok('New pool is the choosing screen: its card, the settings and the '
+     + 'recordings, and no shelf', P().screen === 'build'
+     && /^New pool/.test((D().querySelector('.rc-build-card strong') || {})
+       .textContent || '') && !!D().querySelector('#tkResult .rc-controls')
+     && !!D().querySelector('.rc-members') && !D().querySelector('.rc-shelf'));
+  ok('with the way back to the saved pools',
+     !!D().querySelector('.rc-build-card .rc-back'));
+  // Moved here from the bar's checks: the saved pools have no settings.
+  ok('but the settings bar is: one set of settings for both views',
+     !!D().querySelector('#tkResult .rc-controls'));
 
-  // Three small singles, two mice.
-  const by = (lab) => cands.find((c) => c.session_label === lab);
-  let picks = [by('PTEN m1 s2 2023-10-02'), by('PTEN m1 s8 2023-10-05'),
-               by('PTEN m2 s3 2024-01-23')].filter(Boolean);
-  if (picks.length < 3) {
-    note('the three named singles are not all here; taking the three smallest');
-    picks = cands.filter((c) => c.here !== false).slice()
-      .sort((a, b) => (a.n || 0) - (b.n || 0)).slice(0, 3);
+  /* ================================================================== */
+  head('WHAT CAN JOIN A POOL: ONE ROW PER RECORDING');
+
+  const cands = (await get('/api/rootcanal/pool/candidates')).singles || [];
+  ok('the server offers singles to pool', cands.length > 0,
+     cands.length + ' candidates');
+  const recOfC = (c) => String(c.entry_id || c.gid || c.key);
+  const byRec = new Map();
+  for (const c of cands) {
+    if (!byRec.has(recOfC(c))) byRec.set(recOfC(c), []);
+    byRec.get(recOfC(c)).push(c);
   }
+  note(cands.length + ' answers about ' + byRec.size + ' recordings');
+  const rows = () => Array.from(D().querySelectorAll('.rc-pool-cands tbody tr.rc-rec-row'));
+  eq('one row per recording, not one per answer', rows().length, byRec.size);
+  ok('no recording is listed twice',
+     new Set(rows().map((r) => r.dataset.rec)).size === rows().length);
+  ok('each says what its answer is',
+     rows().every((r) => /banked|saved v\d/.test(r.textContent)));
+  const unbRecs = Array.from(byRec.values()).filter((cs) => !cs.some((c) => c.banked)
+    && !cs.some((c) => c.kind === 'single') && cs.some((c) => /^u:/.test(c.key))).length;
+  eq('the unbanked ones say so: a recording with only a read here offers it, '
+     + '“not banked”', rows().filter((r) => /^u:/.test(r.dataset.key)
+       && /not banked/.test(r.textContent)).length, unbRecs);
+  const multi = Array.from(byRec.entries()).filter(([, cs]) =>
+    cs.filter((c) => c.kind !== 'single').length > 1
+    || (cs.some((c) => !c.kind) && cs.some((c) => c.kind === 'single')));
+  if (multi.length) {
+    const [mid, mcs] = multi[0];
+    const msrc = D().querySelector('tr.rc-rec-row[data-rec="' + mid + '"] .rc-rec-src');
+    ok('a recording with more than one answer has a choice of which, in its row',
+       !!msrc && msrc.options.length >= mcs.length,
+       msrc ? Array.from(msrc.options).map((o) => o.textContent).join(' | ') : 'none');
+    const mb = mcs.find((c) => c.banked);
+    if (mb) eq('the banked one unless another is chosen', msrc && msrc.value, mb.key);
+    ok('two answers of one kind are told apart in it', !msrc
+       || new Set(Array.from(msrc.options).map((o) => o.textContent)).size
+          === msrc.options.length);
+  } else {
+    note('no recording here has two answers; the choice is not exercised');
+  }
+  /* Select all shown: one answer per recording, ticked where the rows
+     stand -- the table is not rebuilt. */
+  const tbl0 = D().querySelector('.rc-pool-cands');
+  const recOfKey = (k) => {
+    const c = cands.find((x) => x.key === k) || cands.find((x) => x.kind === 'single'
+      && String(k).indexOf('s:' + x.artifact_id + ':') === 0);
+    return c ? recOfC(c) : k;
+  };
+  D().querySelector('.rc-sel-all').click();
+  await sleep(120);
+  eq('Select all shown ticks one answer per recording',
+     [P().sel.length, new Set(P().sel.map((m) => recOfKey(m.key))).size],
+     [byRec.size, byRec.size]);
+  ok('the rows are ticked where they stand: the table is the same table',
+     D().querySelector('.rc-pool-cands') === tbl0
+     && rows().every((r) => r.querySelector('.rc-pool-pick').checked
+                            && r.classList.contains('on')));
+  ok('and none is warned of being in twice', !D().querySelector('.rc-rec-dup'));
+  D().querySelector('.rc-sel-none').click();
+  await sleep(120);
+  eq('Unselect all clears it', P().sel.length, 0);
+  /* A pool saved with two answers about one recording, as one opened from
+     the shelf can be: the row warns, and one press keeps one. */
+  if (multi.length) {
+    const [mid2, mcs2] = multi[0];
+    const twoKeys = mcs2.filter((c) => c.kind !== 'single').slice(0, 2)
+      .map((c) => c.key);
+    if (twoKeys.length === 2) {
+      ev(RC + '._pool().sel = ' + JSON.stringify(twoKeys.map((k) => ({ key: k }))));
+      ev(RC + '._render()');
+      await until(() => D().querySelector('tr.rc-rec-dup[data-rec="' + mid2 + '"]'),
+                  5000, 'the warning');
+      const dupT = (D().querySelector('tr.rc-rec-dup') || {}).textContent || '';
+      ok('a recording in the pool twice is warned of on its row: counted twice',
+         /counted twice/.test(dupT)
+         && D().querySelectorAll('tr.rc-rec-dup .rc-dup-keep').length === 2, dupT);
+      D().querySelectorAll('tr.rc-rec-dup .rc-dup-keep')[1].click();
+      await sleep(120);
+      eq('and “Keep this one” keeps that one, in place',
+         [P().sel.map((m) => m.key), !!D().querySelector('tr.rc-rec-dup')],
+         [[twoKeys[1]], false]);
+      D().querySelector('.rc-sel-none').click();
+      await sleep(120);
+    } else {
+      note('the recording with two answers has a saved single among them; '
+           + 'the warning is not exercised');
+    }
+  }
+
+  /* Three recordings with a read cached here, two mice at least: pooled
+     from their reads at Single's settings, so the fit is the bar's. */
+  const reads = cands.filter((c) => /^u:/.test(c.key) && c.here !== false)
+    .sort((a, b) => (a.n || 0) - (b.n || 0));
+  const seenR = new Set();
+  let picks = [];
+  for (const c of reads) {
+    if (seenR.has(recOfC(c))) continue;
+    seenR.add(recOfC(c));
+    picks.push(c);
+  }
+  let three = picks.slice(0, 3);
+  if (new Set(three.map((c) => c.mouse_key)).size < 2) {
+    const other = picks.find((c) => c.mouse_key !== three[0].mouse_key);
+    if (other) three = [three[0], three[1], other];
+  }
+  picks = three;
+  note('pooling ' + picks.map((c) => c.session_label + ' (' + c.n + ')').join(', '));
   const mice = Array.from(new Set(picks.map((c) => c.mouse_key)));
   for (const c of picks) {
-    const box = D().querySelector('.rc-pool-cands tr[data-key="' + c.key + '"] input');
+    const tr = D().querySelector('tr.rc-rec-row[data-rec="' + recOfC(c) + '"]');
+    const box = tr && tr.querySelector('.rc-pool-pick');
     ok('ticking ' + c.session_label, !!box);
     if (box) { box.click(); await sleep(60); }
+    const src = tr && tr.querySelector('.rc-rec-src');
+    if (src && src.value !== c.key) {
+      src.value = c.key;
+      src.dispatchEvent(new W.Event('change', { bubbles: true }));
+      await sleep(60);
+    }
   }
-  eq('three members are in the pool', P().sel.map((m) => m.key),
+  eq('three members are in the pool, one answer each', P().sel.map((m) => m.key),
      picks.map((c) => c.key));
   const body0 = ev(RC + '._poolBody()');
   const sp = ev(RC + '._fitBody()');
@@ -205,10 +347,11 @@ const NL = String.fromCharCode(10);
        m.params.lo_hz === sp.lo_hz && m.params.band_lo === sp.band_lo
        && m.params.cross_ms === sp.cross_ms),
      JSON.stringify(body0.members[0]));
-  const unbChip = D().querySelector('.rc-pool-card .rc-unbanked');
+  const unbChip = D().querySelector('.rc-build-card .rc-unbanked');
+  const nUnbP = picks.filter((c) => !c.banked).length;
   eq('the pool says how many members are not banked',
      unbChip && unbChip.textContent,
-     picks.filter((c) => !c.banked).length + ' members not banked');
+     nUnbP + ' member' + (nUnbP === 1 ? '' : 's') + ' not banked');
   ok('and why that matters, on the chip',
      !!unbChip && /only be rebuilt while those reads are on this machine/
        .test(unbChip.getAttribute('title') || ''));
@@ -240,11 +383,22 @@ const NL = String.fromCharCode(10);
   await until(() => D().querySelector('.rc-busy.on'), 3000, 'the waiting line');
   ok('a waiting line while it pools', /Pooling 3 recordings/.test(
      (D().querySelector('.rc-busy') || {}).textContent || ''));
+  ok('on the picture’s screen at once, not under the table',
+     P().screen === 'view' && !D().querySelector('.rc-members')
+     && !!D().querySelector('.rc-pool-card'), P().screen);
   await until(() => P().fit && P().fit.ok !== undefined && !P().fitting,
               120000, 'the pool');
   const f = P().fit;
   ok('the pool is fitted', !!(f && f.ok), f && f.error);
   if (!f || !f.ok) throw new Error('no pool: ' + (f && f.error));
+  await until(() => D().querySelector('.rc-pool-work'), 8000, 'the picture');
+  ok('Pool goes straight to the picture: its card, the settings and the '
+     + 'picture, and no table of recordings', P().screen === 'view'
+     && !!D().querySelector('.rc-pool-work') && !D().querySelector('.rc-members')
+     && !!D().querySelector('#tkResult .rc-controls'));
+  ok('its card has the way back, Change recordings, Save… and Save as singles…',
+     ['.rc-back', '.rc-change', '.rc-save', '.rc-singles', '.rc-close'].every((s) =>
+       !!D().querySelector('.rc-pool-card ' + s)));
   eq('one answer, three members', f.members.length, 3);
   ok('every dot belongs to one of them',
      f.events.every((e) => e.m >= 0 && e.m < 3));
@@ -578,16 +732,34 @@ const NL = String.fromCharCode(10);
      JSON.stringify(P().border) === JSON.stringify({ artifact_id: 'hb-1',
        version: 1, grace: 0.01 }) && fb.border && fb.border.artifact_id === 'hb-1',
      JSON.stringify(fb.border));
-  ok('coloured by the border: solid DS, solid IED and ambiguous',
-     P().colour === 'border' && /border:\s*solid DS\s*solid IED\s*ambiguous/
+  ok('coloured by the border: solid DS, solid IED, and outside it by '
+     + 'what the pool called them',
+     P().colour === 'border' && /border:\s*solid DS\s*solid IED\s*outside, pooled as DS\s*outside, pooled as IED/
        .test(D().querySelector('.rc-pool-legend').textContent),
      D().querySelector('.rc-pool-legend').textContent.slice(0, 80));
   ok('“border” is offered as a colour now that one is on',
      Array.from(D().querySelectorAll('.rc-colour option')).some((o) =>
        o.value === 'border' && o.selected));
-  const fills = new Set(geom().space.pts.filter((p) => !p.hollow)
-                        .map((p) => p.fill));
-  eq('three colours on the picture, one per class', fills.size, 3);
+
+  /* SOLID IN FULL, OUTSIDE FADED (2026-10-19). Outside the border a dot
+     keeps its own call's colour, faded, with a dotted edge -- it was one
+     grey for all of them. */
+  const solidF = new Set(geom().space.pts.filter((p) => !p.hollow && !p.outside)
+                         .map((p) => p.fill));
+  const outF = new Set(geom().space.pts.filter((p) => !p.hollow && p.outside)
+                       .map((p) => p.fill));
+  const greyF = (function () { const g = D().createElement('canvas').getContext('2d');
+    g.fillStyle = W.getComputedStyle(D().documentElement)
+      .getPropertyValue('--text-3').trim(); return String(g.fillStyle); })();
+  const norm = (c) => { const g = D().createElement('canvas').getContext('2d');
+    g.fillStyle = c; return String(g.fillStyle); };
+  const outCls = new Set(P().fit.events.filter((e) => e.border === 'amb')
+    .map((e) => e.cls_pool).filter((c) => c === 'ds' || c === 'ied'));
+  eq('solid DS and solid IED in two full colours', solidF.size, 2);
+  eq('outside it, one faded colour per call it had', outF.size, outCls.size);
+  ok('none of them the plain grey, nor a solid colour',
+     outF.size > 0 && Array.from(outF).every((c) => norm(c) !== greyF
+       && !solidF.has(c)), JSON.stringify([Array.from(outF), greyF]));
   /* The border has a card of its own since 2026-10-19 (it shared the
      margins card before). */
   const card = D().querySelector('.rc-pool-work .rc-borders');
@@ -753,15 +925,54 @@ const NL = String.fromCharCode(10);
     await sleep(150);
     ok('the four event pictures are drawn', !!geom().ev.trace && !!geom().ev.stack);
   }
-  // A banked member read elsewhere: no request, a sentence.
+  /* A member read elsewhere: said in a sentence, and its read asked for
+     here at once (answered from here: a job that is reading, then done). */
   const live = P().fit.members[0];
   const keepBody = live.event_body;
   live.event_body = null;
+  const rrJob = (st, extra) => ({ id: 'harness-rr1', status: st, members: [
+    Object.assign({ id: live.key, label: live.session_label, status: 'running',
+                    step: 'reading', done: 3, of: 64, where: 'vacc' }, extra || {})] });
+  ev('window.__rcpReply.reread = ' + JSON.stringify({ status: 200, body: {
+    ok: true, job: rrJob('running'), here: [], refused: [] } }));
+  ev('window.__rcpReply.job = ' + JSON.stringify({ status: 200, body: {
+    ok: true, job: rrJob('running') } }));
+  const nRr0 = sent().filter(([k]) => k === 'reread').length;
   const other = P().fit.events.findIndex((e) => e.m === 0);
   ev(RC + '._poolPick(' + other + ')');
   await until(() => D().querySelector('.rc-ev-away'), 5000, 'the sentence');
   ok('a member whose read is not here says so, in a sentence',
      /not on this machine/.test((D().querySelector('.rc-ev-away') || {}).textContent || ''));
+  const evNote = () => (D().querySelector('.rc-ev-note') || {}).textContent || '';
+  await until(() => sent().filter(([k]) => k === 'reread').length > nRr0
+              && /3 of 64 channels/.test(evNote()), 8000, 'its read here');
+  const rr1 = (sent().filter(([k]) => k === 'reread').pop() || [null, {}])[1];
+  ok('its read is asked for here at once, by its key',
+     (rr1.members || []).length === 1 && rr1.members[0].key === live.key
+     && 'saved' in rr1, JSON.stringify(rr1));
+  ok('and how far it has got is said in words above the pictures: its step, '
+     + 'its channels, and where', /reading · 3 of 64 channels done · on the VACC/
+       .test(evNote()) && !!D().querySelector('.rc-event > .rc-ev-note'), evNote());
+  const txtA = drawn();
+  const evIds = ['rcTrace', 'rcSpec', 'rcStack', 'rcCsd'];
+  ok('the four canvases say a word or two, no sentence: the sentence is HTML',
+     evIds.some((id) => (txtA[id] || []).length)
+     && evIds.every((id) => (txtA[id] || []).every((t) => t.split(' ').length <= 2)),
+     JSON.stringify(evIds.map((id) => txtA[id])));
+  ok('and the words wrap', W.getComputedStyle(D().querySelector('.rc-ev-away'))
+     .whiteSpace !== 'nowrap' && W.getComputedStyle(D().querySelector('.rc-ev-progress'))
+     .whiteSpace !== 'nowrap');
+  ev(RC + '._poolPick(' + other + ')');
+  await sleep(400);
+  eq('pressed again, it is not asked for a second time',
+     sent().filter(([k]) => k === 'reread').length, nRr0 + 1);
+  ev('window.__rcpReply.job = ' + JSON.stringify({ status: 200, body: {
+    ok: true, job: rrJob('done', { status: 'done', step: null, done: 64 }) } }));
+  await until(() => P().evFor === other && P().evData && P().evData.trace, 30000,
+              'the event, once read');
+  ok('when its read lands, the event opens from it',
+     !!(P().evData && P().evData.trace) && !D().querySelector('.rc-ev-away'),
+     JSON.stringify(P().evData).slice(0, 160));
   live.event_body = keepBody;
 
   /* ================================================================== */
@@ -828,9 +1039,29 @@ const NL = String.fromCharCode(10);
                           nickname: 'harness pool', name: 'Root Canal pool' },
     payload: pay } }));
   ev(RC + '._poolClose()');
-  ok('closing puts the pool down', !P().fit && !P().sel.length);
+  ok('closing puts the pool down, and goes back to the saved pools',
+     !P().fit && !P().sel.length && P().screen === 'home'
+     && !!D().querySelector('.rc-shelf') && !D().querySelector('.rc-pool-work'));
+  /* Open, pressed on the shelf: a row for the save answered from here,
+     with every scroller wound to the bottom first, so the top has to come
+     back. */
+  ev(RC + '._pool().shelf = ' + JSON.stringify([{ artifact_id: 'harness-art',
+    nickname: 'harness pool', name: 'Root Canal pool', version: 1,
+    n_members: 3 }]));
+  ev(RC + '._render()');
+  await until(() => D().querySelector('.rc-shelf .rc-shelf-open'), 5000, 'its row');
+  ev('(function(){ var n = document.getElementById("tkResult"); while (n) {'
+     + ' if (n.scrollHeight > n.clientHeight) n.scrollTop = n.scrollHeight;'
+     + ' n = n.parentElement; } })()');
   const fitsBefore = ev('window.__rcpFits');
-  await ev(RC + '._poolOpen("harness-art")');
+  D().querySelector('.rc-shelf .rc-shelf-open').click();
+  await until(() => P().saved && D().querySelector('.rc-pool-work'), 8000,
+              'the saved pool');
+  ok('Open opens its picture, on a screen of its own: no shelf, no table '
+     + 'of recordings', P().screen === 'view' && !!D().querySelector('.rc-pool-work')
+     && !D().querySelector('.rc-members') && !D().querySelector('.rc-shelf'));
+  const pcTop = D().querySelector('.rc-pool-card').getBoundingClientRect().top;
+  ok('at the top of the tool', pcTop >= -1 && pcTop < W.innerHeight, pcTop);
   ok('reopening fetches no fit', ev('window.__rcpFits') === fitsBefore);
   ok('and says it is as saved', P().saved === true
      && /as saved: nothing refitted/.test(D().querySelector('.rc-pool-card').textContent));
@@ -842,10 +1073,178 @@ const NL = String.fromCharCode(10);
      saveBtn() && saveBtn().textContent, 'Save as v2 of ‘harness pool’');
 
   /* ================================================================== */
+  head('A REFUSAL THAT NAMES MEMBERS: READ THEM HERE AND REDO (INTERCEPTED)');
+
+  const awayMsg = 'PTEN m59 s4 was banked measured differently (half-width '
+    + 'search ±50 ms, not ±100 ms) and its read is not on this machine.';
+  ev('window.__rcpReply.measures = ' + JSON.stringify({ status: 200, body: {
+    ok: true, mismatch: false } }));
+  ev('window.__rcpReply.fit = ' + JSON.stringify({ status: 400, body: {
+    ok: false, error: awayMsg, away: ['b:x:y'] } }));
+  const rrJob2 = (st, m) => ({ id: 'harness-rr2', status: st, members: [
+    Object.assign({ id: 'b:x:y', label: 'PTEN m59 s4', status: 'running',
+                    step: 'reading', done: 2, of: 64, where: 'here' }, m || {})] });
+  /* READ BY ITSELF (2026-10-19: "just make sure when we change filtering it
+     works out properly"). A refusal whose members only need reading here
+     starts the reading without a press, said calmly; the button below is
+     for when the reading did not fix it. */
+  ev('window.__rcpReply.reread = ' + JSON.stringify({ status: 200, body: {
+    ok: true, job: rrJob2('running'), here: [], refused: [] } }));
+  ev('window.__rcpReply.job = ' + JSON.stringify({ status: 200, body: {
+    ok: true, job: rrJob2('running') } }));
+  const nRa0 = sent().filter(([k]) => k === 'reread').length;
+  ev(RC + '._poolRun()');
+  await until(() => sent().filter(([k]) => k === 'reread').length > nRa0
+              && /2 of 64 channels/.test((D().querySelector('.rc-refusal .rc-redo-row')
+                || {}).textContent || ''), 8000, 'the reading, by itself');
+  const rra0 = sent().filter(([k]) => k === 'reread').pop()[1];
+  ok('members that only need reading here are read by themselves, with '
+     + 'nothing to press', JSON.stringify(rra0.members) === JSON.stringify([{ key: 'b:x:y' }])
+     && !D().querySelector('.rc-refusal .rc-redo-go'), JSON.stringify(rra0));
+  const toastT = (sel) => Array.from(D().querySelectorAll('#toasts ' + sel))
+    .map((n) => n.textContent).join(' | ');
+  ok('said calmly, not as an error',
+     /Reading 1 recording here so it can be measured the pool’s way/
+       .test(toastT('.toast:not(.err)')) && toastT('.toast.err').indexOf(awayMsg) < 0,
+     toastT('.toast'));
+  const nFa = sent().filter(([k]) => k === 'fit').length;
+  ev('window.__rcpReply.fit = ' + JSON.stringify({ status: 200,
+    body: Object.assign({ ok: true }, pay) }));
+  ev('window.__rcpReply.job = ' + JSON.stringify({ status: 200, body: {
+    ok: true, job: rrJob2('done', { status: 'done', step: null, done: 64 }) } }));
+  await until(() => sent().filter(([k]) => k === 'fit').length > nFa
+              && !P().fitting && !P().refusal, 10000, 'the pool again');
+  ok('and when it lands the pool fits again, with no refusal left',
+     !P().refusal && P().fit.ok && !D().querySelector('.rc-refusal'));
+
+  /* Read, and refused again the same way: reading did not fix it, so it
+     is not read a second time by itself -- the refusal stays, with its
+     button. */
+  ev('window.__rcpReply.fit = ' + JSON.stringify({ status: 400, body: {
+    ok: false, error: awayMsg, away: ['b:x:y'] } }));
+  const nRa1 = sent().filter(([k]) => k === 'reread').length;
+  ev(RC + '._poolRun()');
+  await until(() => P().refusal && !P().fitting, 8000, 'the refusal');
+  ok('refused the same way again, it is not read a second time by itself',
+     sent().filter(([k]) => k === 'reread').length === nRa1);
+  const rfT = () => (D().querySelector('.rc-refusal') || {}).textContent || '';
+  ok('the refusal is said on the picture, in a card of its own, and the '
+     + 'picture is kept', rfT().indexOf(awayMsg) >= 0
+     && !!D().querySelector('.rc-pool-work'), rfT().slice(0, 200));
+  const redoGo = () => D().querySelector('.rc-refusal .rc-redo-go');
+  ok('with “Read them here and redo the analysis”, the primary', !!redoGo()
+     && redoGo().textContent === 'Read them here and redo the analysis'
+     && !redoGo().classList.contains('ghost'));
+  ev('window.__rcpReply.reread = ' + JSON.stringify({ status: 200, body: {
+    ok: true, job: rrJob2('running'), here: [], refused: [] } }));
+  ev('window.__rcpReply.job = ' + JSON.stringify({ status: 200, body: {
+    ok: true, job: rrJob2('running') } }));
+  const nRr2 = sent().filter(([k]) => k === 'reread').length;
+  redoGo().click();
+  await until(() => sent().filter(([k]) => k === 'reread').length > nRr2
+              && /2 of 64 channels/.test((D().querySelector('.rc-refusal .rc-redo-row')
+                || {}).textContent || ''), 8000, 'its row');
+  const rr2 = sent().filter(([k]) => k === 'reread').pop()[1];
+  ok('it asks for exactly those members, from the pool that is open',
+     JSON.stringify(rr2.members) === JSON.stringify([{ key: 'b:x:y' }])
+     && JSON.stringify(rr2.saved) === JSON.stringify(P().open.source),
+     JSON.stringify(rr2));
+  const rowT2 = (D().querySelector('.rc-refusal .rc-redo-row') || {}).textContent || '';
+  ok('a row per member: its name, its step, its channels done, and where',
+     /PTEN m59 s4/.test(rowT2)
+     && /reading · 2 of 64 channels done · on this computer/.test(rowT2), rowT2);
+  ok('with a Stop', !!D().querySelector('.rc-refusal .rc-redo-stop'));
+  const nFr = sent().filter(([k]) => k === 'fit').length;
+  ev('window.__rcpReply.fit = ' + JSON.stringify({ status: 200,
+    body: Object.assign({ ok: true }, pay) }));
+  ev('window.__rcpReply.job = ' + JSON.stringify({ status: 200, body: {
+    ok: true, job: rrJob2('done', { status: 'done', step: null, done: 64 }) } }));
+  await until(() => sent().filter(([k]) => k === 'fit').length > nFr
+              && !P().fitting && !P().refusal, 10000, 'the pool again');
+  ok('when it lands, the pool is fitted again and the refusal is gone',
+     !P().refusal && P().fit.ok && !D().querySelector('.rc-refusal'));
+
+  /* A save refused the same way: the dialog closes, the card says it, and
+     once read the save is offered again. Every dialog left up by what came
+     before is put down first -- the propagation offer after the save above
+     is still there, and a dialog closed over it shows it again. */
+  ev('(function(){ var s = document.getElementById("bigModal");'
+     + ' for (var i = 0; i < 6 && !s.classList.contains("hidden"); i++) closeModal(); })()');
+  ev('window.__rcpReply.save = ' + JSON.stringify({ status: 400, body: {
+    ok: false, error: awayMsg, away: ['b:x:y'] } }));
+  ev(RC + '._poolSave()');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .bank-dlg-name'), 5000,
+              'the dialog');
+  Array.from(D().querySelectorAll('#bigModal .mf button')).pop().click();
+  await until(() => P().refusal && P().refusal.from === 'save'
+              && D().querySelector('.rc-refusal .rc-redo-go'), 8000, 'the refused save');
+  ok('a save refused about members closes its dialog and says so on the '
+     + 'picture, with the same offer', D().querySelector('#bigModal')
+       .classList.contains('hidden') && /could not be saved/.test(rfT())
+     && rfT().indexOf(awayMsg) >= 0);
+  ev('window.__rcpReply.reread = ' + JSON.stringify({ status: 200, body: {
+    ok: true, job: null, here: ['b:x:y'], refused: [] } }));
+  redoGo().click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .bank-dlg-name')
+              && !P().fitting, 10000, 'the save, again');
+  ok('read, it is pooled again and the save dialog opens again',
+     !!D().querySelector('#bigModal:not(.hidden) .bank-dlg-name') && !P().refusal);
+  ev('closeModal()');
+  ev('delete window.__rcpReply.fit');
+  ev('delete window.__rcpReply.measures');
+  // The save answered as before, for what follows.
+  ev('window.__rcpReply.save = ' + JSON.stringify({ status: 200, body: {
+    ok: true, artifact_id: 'harness-art', version: 1, confirmed: false,
+    name: 'Root Canal pool · PTEN · 3 recordings, 2 mice', nickname: 'harness pool' } }));
+
+  /* ================================================================== */
+  head('SAVE AS SINGLES (INTERCEPTED)');
+
+  await until(() => D().querySelector('.rc-pool-card .rc-singles'), 5000, 'the button');
+  D().querySelector('.rc-pool-card .rc-singles').click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-singles-dlg'), 5000,
+              'the dialog');
+  const sPicks = () => Array.from(D().querySelectorAll('#bigModal .rc-singles-pick'));
+  eq('it lists the pool’s recordings, none ticked',
+     [sPicks().length, sPicks().filter((b) => b.checked).length],
+     [P().fit.members.length, 0]);
+  const sGo = () => D().querySelector('#bigModal .rc-singles-go');
+  ok('its primary waits for a tick', !!sGo() && sGo().disabled);
+  const sDlgT = D().querySelector('#bigModal .rc-singles-dlg').textContent;
+  ok('it says each is saved as a single of its own, measured the pool’s way, '
+     + 'and nothing banked', /its own Root Canal single/.test(sDlgT)
+     && /measured the pool’s way/.test(sDlgT) && /nothing is banked/.test(sDlgT),
+     sDlgT.slice(0, 200));
+  D().querySelector('#bigModal .rc-singles-all').click();
+  ok('Tick all ticks every one', sPicks().every((b) => b.checked) && !sGo().disabled
+     && sGo().textContent === 'Save ' + sPicks().length + ' as singles',
+     sGo().textContent);
+  const mks = P().fit.members.map((m) => m.key);
+  ev('window.__rcpReply.singles = ' + JSON.stringify({ status: 200, body: {
+    ok: true, target: { filter_label: 'LFP filter, 1–100 Hz' },
+    done: [{ key: mks[0], label: 'Harness one', new_key: 's:hs-a:4',
+             confirmed: false }],
+    away: [{ key: mks[1], label: 'Harness two',
+             why: 'its read is not on this machine -- read it here first' }] } }));
+  sGo().click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-singles-report'),
+              8000, 'the report');
+  const sB = (sent().filter(([k]) => k === 'singles').pop() || [null, {}])[1];
+  ok('it asks for the ticked, with the pool as it is',
+     JSON.stringify(sB.keys) === JSON.stringify(mks) && !!sB.measure
+     && Array.isArray(sB.members), JSON.stringify(sB).slice(0, 200));
+  const sRep = D().querySelector('#bigModal .rc-singles-report').textContent;
+  ok('and says what was saved, and what was not and why',
+     /Harness one — saved as v4 of its single/.test(sRep)
+     && /Harness two — its read is not on this machine/.test(sRep), sRep.slice(0, 300));
+  ok('offering to read the ones not saved here first',
+     !!D().querySelector('#bigModal .rc-singles-redo'));
+  ev('closeModal()');
+
+  /* ================================================================== */
   head('THE SAME SETTINGS AS SINGLE, k, COMPLETE EVENTS ONLY, AND MARGINS');
 
   const sq = () => ev(RC + '._state()').q;
-  const kRun = () => D().querySelector('.rc-pool-run');
   async function kWaitPool(what, cond) {
     await until(() => !P().fitting && P().fit && P().fit.ok && cond(), 120000, what);
     await sleep(150);
@@ -936,7 +1335,8 @@ const NL = String.fromCharCode(10);
      + ' delete window.__rkBd; } })()');
 
   P().margin = { artifact_id: 'harness-none', mode: 'fixed' };
-  kRun().click();
+  // Pooled again from the picture's screen, which has no Pool button.
+  ev(RC + '._poolRun()');
   await until(() => P().marginErr && !P().fitting && P().fit && P().fit.ok,
               120000, 'refit without it');
   await sleep(200);
@@ -1037,8 +1437,44 @@ const NL = String.fromCharCode(10);
                 nickname: 'harness away', name: 'Root Canal pool' },
     payload: aw } }));
   ev(RC + '._poolClose()');
+  // Its read, asked for when its dot is opened: refused here, with why.
+  ev('window.__rcpReply.reread = ' + JSON.stringify({ status: 200, body: {
+    ok: true, job: null, here: [],
+    refused: [{ key: awayKey, why: 'harness: no such set here' }] } }));
+  const nRr3 = sent().filter(([k]) => k === 'reread').length;
   await ev(RC + '._poolOpen("harness-away")');
+  ok('Open goes to its picture', P().screen === 'view'
+     && !!D().querySelector('.rc-pool-work') && !D().querySelector('.rc-members'));
+  const awI = P().fit.events.findIndex((e) => e.m === mAway);
+  ev(RC + '._poolPick(' + awI + ')');
+  await until(() => /Elsewhere/.test((D().querySelector('.rc-ev-away') || {})
+    .textContent || ''), 5000, 'the sentence');
+  ok('its dot says where its read is', /it was read on Elsewhere/.test(
+    (D().querySelector('.rc-ev-away') || {}).textContent || ''));
+  await until(() => /harness: no such set here/.test((D().querySelector(
+    '.rc-ev-progress') || {}).textContent || ''), 8000, 'the answer');
+  const rr3 = (sent().filter(([k]) => k === 'reread').pop() || [null, {}])[1];
+  ok('its read is asked for as a member of the saved pool it came from',
+     sent().filter(([k]) => k === 'reread').length === nRr3 + 1
+     && JSON.stringify(rr3.members) === JSON.stringify([{ key: awayKey }])
+     && JSON.stringify(rr3.saved) === JSON.stringify({ artifact_id: 'harness-away',
+                                                        version: 1 }),
+     JSON.stringify(rr3));
+  ok('and when it cannot be read here, the panel says why, in words, with '
+     + 'another try', /It could not be read here: harness: no such set here/
+       .test(D().querySelector('.rc-ev-progress').textContent)
+     && !!D().querySelector('.rc-ev-retry'));
+  ok('its canvases say only that there is no trace', (() => {
+    const t = drawn();
+    return ['rcTrace', 'rcSpec', 'rcStack', 'rcCsd'].every((id) =>
+      (t[id] || []).every((s) => s === 'no trace'));
+  })());
+  // To its recordings.
+  D().querySelector('.rc-pool-card .rc-change').click();
   await until(() => D().querySelector('.rc-from-save'), 5000, 'its row');
+  ok('Change recordings is the choosing screen, for the pool that is open',
+     P().screen === 'build' && /Changing ‘harness away’/.test(
+       (D().querySelector('.rc-build-card') || {}).textContent || ''));
   const awRow = () => D().querySelector('.rc-from-save[data-key="' + awayKey + '"]');
   ok('a member this machine does not offer still has its row, ticked',
      !!awRow() && awRow().querySelector('.rc-pool-pick').checked);
@@ -1053,12 +1489,6 @@ const NL = String.fromCharCode(10);
      !!D().querySelector('.rc-type-in[data-mouse="HARNESS|m99"]'));
   eq('the pool keeps the version it was opened from', P().open.source,
      { artifact_id: 'harness-away', version: 1 });
-  const awI = P().fit.events.findIndex((e) => e.m === mAway);
-  ev(RC + '._poolPick(' + awI + ')');
-  await until(() => /Elsewhere/.test((D().querySelector('.rc-ev-away') || {})
-    .textContent || ''), 5000, 'the sentence');
-  ok('its dot says where its read is', /it was read on Elsewhere/.test(
-    (D().querySelector('.rc-ev-away') || {}).textContent || ''));
   awRow().querySelector('.rc-pool-pick').click();
   await until(() => !P().sel.some((m) => m.key === awayKey), 5000, 'taken out');
   ok('unticking takes it out, and its row stays, to put it back',
@@ -1096,7 +1526,14 @@ const NL = String.fromCharCode(10);
   head('CHOOSING WHO IS IN THE POOL: SEARCH, CATEGORIES, VERSIONS, NAMES');
 
   ev(RC + '._poolClose()');
-  await until(() => (P().cands || []).length > 0, 20000, 'the candidates');
+  const candsSettled = async () => {
+    await until(() => (P().cands || []).length > 0
+                && !(ev('window.__rcpCandsIn') > 0), 20000, 'the candidates');
+    await sleep(300);
+  };
+  await candsSettled();
+  D().querySelector('.rc-shelf .rc-new-pool').click();
+  await until(() => D().querySelector('.rc-members'), 5000, 'the choosing screen');
   /* A saved single, as another machine's would arrive: two versions, the
      newer holding a named cluster. */
   const hv = (v, nick, names) => ({ v, id: 'hs' + v, nickname: nick,
@@ -1115,7 +1552,8 @@ const NL = String.fromCharCode(10);
     condition_from: 'workbook', counts: {} }) + ')');
   ev(RC + '._render()');
   await until(() => D().querySelector('.rc-sel'), 8000, 'the selection bar');
-  const selRows = () => Array.from(D().querySelectorAll('.rc-pool-cands tbody tr'));
+  const selRows = () => Array.from(D().querySelectorAll('.rc-pool-cands tbody tr.rc-rec-row'));
+  const hsRow = () => D().querySelector('tr.rc-rec-row[data-rec="harness-e1"]');
   const nAll = selRows().length;
   ok('a search, select-all and unselect-all sit above the list',
      !!D().querySelector('.rc-sel input[type=search]')
@@ -1141,45 +1579,57 @@ const NL = String.fromCharCode(10);
   await until(() => selRows().length === nAll, 5000, 'the chip off');
   D().querySelector('.rc-sel-all').click();
   await sleep(100);
-  ok('select all shown ticks every one that can be pooled',
-     P().sel.length >= nAll - selRows().filter((r) => r.querySelector('input')
-       .disabled).length && P().sel.some((m) => m.key === 's:harness-s1:2'));
+  ok('select all shown ticks one answer for every recording shown',
+     P().sel.length === nAll && P().sel.some((m) => m.key === 's:harness-s1:2'),
+     P().sel.length + ' of ' + nAll);
   D().querySelector('.rc-sel-none').click();
   await sleep(100);
   eq('unselect all clears it', P().sel.length, 0);
 
-  /* Versions: the latest unless another is picked. */
-  const vSel = () => D().querySelector('.rc-pool-cands tr[data-key="s:harness-s1:2"] .rc-cand-ver');
+  /* Versions: the latest unless another is picked -- each version one of
+     the row's answers. */
+  const vSel = () => hsRow() && hsRow().querySelector('.rc-rec-src');
   ok('a saved single offers its versions, latest first, each with its hover',
      !!vSel() && Array.from(vSel().options).map((o) => o.textContent)
-       .join('|') === 'v2 · named|v1 · first'
-     && /Settings: k2 · LFP filter/.test(vSel().options[0].title));
-  D().querySelector('.rc-pool-cands tr[data-key="s:harness-s1:2"] .rc-pool-pick').click();
+       .join('|') === 'saved v2 · named|saved v1 · first'
+     && /Settings: k2 · LFP filter/.test(vSel().options[0].title),
+     vSel() ? Array.from(vSel().options).map((o) => o.textContent).join('|') : 'none');
+  hsRow().querySelector('.rc-pool-pick').click();
   await sleep(100);
   eq('ticked, it is its latest version', P().sel.map((m) => m.key),
      ['s:harness-s1:2']);
-  vSel().value = '1';
+  vSel().value = 's:harness-s1:1';
   vSel().dispatchEvent(new W.Event('change', { bubbles: true }));
   await sleep(100);
-  eq('picking another version pools that one', P().sel.map((m) => m.key),
-     ['s:harness-s1:1']);
+  eq('picking another version pools that one, in its place',
+     P().sel.map((m) => m.key), ['s:harness-s1:1']);
   ok('v1 holds no name, so no name chip is offered for it',
      !D().querySelector('.rc-name-chip'));
-  vSel().value = '2';
+  vSel().value = 's:harness-s1:2';
   vSel().dispatchEvent(new W.Event('change', { bubbles: true }));
   await until(() => D().querySelector('.rc-name-chip'), 5000, 'the name chip');
 
-  /* A name chip: every saved single holding the name, that name only. */
+  /* A name chip: every saved single holding the name, that name only --
+     chosen here, pooled by Pool. */
   ev('window.__rcpReply.fit = ' + JSON.stringify({ status: 200,
     body: Object.assign({ ok: true }, aw) }));
   const nFit2 = sent().filter(([k]) => k === 'fit').length;
   D().querySelector('.rc-name-chip').click();
+  await sleep(100);
+  eq('a name chip ticks every single holding it, for that name only',
+     P().sel, [{ key: 's:harness-s1:2', names: ['DS slow'] }]);
+  ok('and is shown pressed', D().querySelector('.rc-name-chip.on') !== null);
+  ok('and the button says so', /“DS slow” only/.test(
+     (D().querySelector('.rc-pool-run') || {}).textContent || ''));
+  D().querySelector('.rc-pool-run').click();
   await until(() => sent().filter(([k]) => k === 'fit').length > nFit2, 8000,
               'the pool of one name');
   const nmFit = sent().filter(([k]) => k === 'fit').pop()[1];
-  eq('a name chip pools every single holding it, for that name only',
+  eq('pooled, it is every single holding it, for that name only',
      nmFit.members, [{ key: 's:harness-s1:2', names: ['DS slow'] }]);
-  ok('and is shown pressed', D().querySelector('.rc-name-chip.on') !== null);
+  await until(() => !P().fitting, 8000, 'settled');
+  D().querySelector('.rc-pool-card .rc-change').click();
+  await until(() => D().querySelector('.rc-name-chip.on'), 5000, 'back to choosing');
   D().querySelector('.rc-name-chip').click();
   await sleep(150);
   ok('pressed again, the pool is every event again',
@@ -1200,11 +1650,14 @@ const NL = String.fromCharCode(10);
     mouse_type: 'PTEN', n: 40, banked: false, here: false, group: 'CTL',
     subgroup: 'CTL', condition: 'CNO', counts: {} }) + ')');
   ev(RC + '._render()');
-  await until(() => D().querySelector('.rc-pool-cands tr[data-key="s:harness-s1:2"]'),
-              5000, 'the saved single');
+  D().querySelector('.rc-shelf .rc-new-pool').click();
+  await until(() => hsRow(), 5000, 'the saved single');
   ok('a saved single’s row says the filter it was measured on',
-     /LFP filter/.test((D().querySelector('.rc-pool-cands tr[data-key="s:harness-s1:2"] '
-                        + '.rc-cand-filter') || {}).textContent || ''));
+     /LFP filter/.test((hsRow().querySelector('.rc-cand-filter') || {})
+       .textContent || ''));
+  ok('and the same answer offered twice is one answer in its row',
+     !hsRow().querySelector('.rc-rec-src')
+     || hsRow().querySelector('.rc-rec-src').options.length === 2);
   const lfp = { filt: 'lfp', mains_out: false, lo_hz: 1, hi_hz: 100, order: 4,
     filter_label: 'LFP filter, 1–100 Hz, 60 Hz mains left in', win_ms: 25,
     cross_ms: 50, band_lo: 500, band_hi: 1000 };
@@ -1290,7 +1743,8 @@ const NL = String.fromCharCode(10);
   /* ================================================================== */
   head('A POOL OF POOLS, AND EVERY EVENT DS');
 
-  /* Every event DS: the controls' pool option. */
+  /* Every event DS: the controls' pool option, on the choosing screen. */
+  D().querySelector('.rc-shelf .rc-new-pool').click();
   await until(() => D().querySelector('.rc-all-ds-box'), 5000, 'the option');
   D().querySelector('.rc-all-ds-box').click();
   await sleep(100);
@@ -1309,7 +1763,16 @@ const NL = String.fromCharCode(10);
   ev('window.__rcpReply.dpools = ' + JSON.stringify({ status: 200, body: {
     ok: true, dpools: [] } }));
   ev(RC + '._setLevel("double")');
+  await until(() => D().querySelector('.rc-dshelf'), 8000, 'the pools of pools');
+  ok('“Pool pools” opens on its own saved pools, with New pool of pools',
+     P().screen === 'home' && !D().querySelector('.rc-pools')
+     && (D().querySelector('.rc-dshelf .rc-new-pool') || {}).textContent
+        === 'New pool of pools');
+  D().querySelector('.rc-dshelf .rc-new-pool').click();
   await until(() => D().querySelector('.rc-pools'), 8000, 'the pools card');
+  ok('which is the choosing screen of a pool of pools',
+     /^New pool of pools/.test((D().querySelector('.rc-build-card strong') || {})
+       .textContent || '') && !D().querySelector('.rc-dshelf'));
   ev(RC + '._pool().shelf = ' + JSON.stringify([
     { artifact_id: 'hp-ctl', nickname: 'All CTL', name: 'pool', version: 1,
       n_members: 4, versions: [pv(1, 'controls', true)] },
@@ -1319,7 +1782,7 @@ const NL = String.fromCharCode(10);
   await until(() => D().querySelectorAll('.rc-pool-pools tbody tr').length === 2,
               5000, 'the pools');
   ok('“Pool pools” lists the saved pools, not the recordings',
-     !D().querySelector('.rc-pool-cands') && !!D().querySelector('.rc-dshelf'));
+     !D().querySelector('.rc-pool-cands') && !!D().querySelector('.rc-pools'));
   const prow = (id) => D().querySelector('.rc-pool-pools tr[data-pool="' + id + '"]');
   ok('each says its identity: every event DS, or its k',
      /every event DS/.test(prow('hp-ctl').textContent)
@@ -1350,6 +1813,10 @@ const NL = String.fromCharCode(10);
   ok('with the shared settings', dBody.k === Number(ev(RC + '._state()').q.k)
      && 'cluster_names' in dBody && !('members' in dBody));
   await until(() => D().querySelector('.rc-switch'), 8000, 'the switches');
+  ok('and goes straight to its picture', P().screen === 'view'
+     && !D().querySelector('.rc-pools') && !!D().querySelector('.rc-pool-work'));
+  ok('whose card offers Change pools', /Change pools/.test(
+     (D().querySelector('.rc-pool-card .rc-change') || {}).textContent || ''));
   /* The cluster tests, asked of the pool of pools as one. */
   ev('window.__rcpReply.stats = ' + JSON.stringify({ status: 200, body: {
     ok: true, level: 'double', n: 300, n_used: 300, subsampled: false,
@@ -1385,6 +1852,39 @@ const NL = String.fromCharCode(10);
        .textContent) && /pool ↓\s+double →/.test(D().querySelector('.rc-crosstab')
        .textContent) && /Against its single instead: 2 of 10/.test(
        D().querySelector('.rc-switch').textContent));
+  /* A pool of pools refused about one of its recordings: read here as a
+     member of its own pool, at that pool's version. */
+  ev('window.__rcpReply.dfit = ' + JSON.stringify({ status: 400, body: {
+    ok: false, error: 'harness: a recording of All CTL would have to be '
+      + 'measured again, and its read is not on this machine.',
+    away: ['p:hp-ctl:1:b:x:y'] } }));
+  ev(RC + '._poolRun()');
+  await until(() => P().refusal && !P().fitting
+              && D().querySelector('.rc-refusal .rc-redo-go'), 8000, 'the refusal');
+  ok('a pool of pools refused about a recording offers to read it here too',
+     !!D().querySelector('.rc-refusal .rc-redo-go'));
+  ev('window.__rcpReply.reread = ' + JSON.stringify({ status: 200, body: {
+    ok: true, job: null, here: [],
+    refused: [{ key: 'b:x:y', why: 'harness: not on any drive here' }] } }));
+  const nRrD = sent().filter(([k]) => k === 'reread').length;
+  D().querySelector('.rc-refusal .rc-redo-go').click();
+  await until(() => sent().filter(([k]) => k === 'reread').length > nRrD
+              && /harness: not on any drive here/.test((D().querySelector('.rc-refusal')
+                || {}).textContent || ''), 8000, 'the answer');
+  const rrD = sent().filter(([k]) => k === 'reread').pop()[1];
+  ok('asked for by its key in its own pool, with that pool’s version',
+     JSON.stringify(rrD) === JSON.stringify({ members: [{ key: 'b:x:y' }],
+                                              saved: { artifact_id: 'hp-ctl',
+                                                       version: 1 } }),
+     JSON.stringify(rrD));
+  ok('and what could not be read is said, with why, and the offer stays',
+     /could not be read: harness: not on any drive here/.test(
+       D().querySelector('.rc-refusal').textContent)
+     && !!D().querySelector('.rc-refusal .rc-redo-go'));
+  ev('window.__rcpReply.dfit = ' + JSON.stringify({ status: 200, body: dfitBody }));
+  ev(RC + '._poolRun()');
+  await until(() => !P().fitting && P().fit && P().fit.ok && !P().refusal, 8000,
+              'the pool of pools again');
   /* Saved: the offer to carry its identity down, both ticked. */
   ev('window.__rcpReply.dsave = ' + JSON.stringify({ status: 200, body: {
     ok: true, artifact_id: 'hd-1', version: 1, confirmed: false,
@@ -1413,8 +1913,13 @@ const NL = String.fromCharCode(10);
      dp.to_pools === true && dp.to_singles === false
      && dp.dpool.artifact_id === 'hd-1' && dp.pools.length === 2);
   ev(RC + '._setLevel("pool")');
-  await until(() => D().querySelector('.rc-pool-cands'), 8000, 'back to recordings');
-  ok('and back to pooling recordings', !D().querySelector('.rc-pools'));
+  await until(() => D().querySelector('.rc-shelf:not(.rc-dshelf)'), 8000,
+              'back to recordings');
+  ok('and back to pooling recordings, on their saved pools',
+     !D().querySelector('.rc-pools') && P().screen === 'home');
+  /* The choosing screen, for the checks that follow. */
+  D().querySelector('.rc-shelf .rc-new-pool').click();
+  await until(() => D().querySelector('.rc-pool-cands'), 8000, 'the recordings');
 
   /* ================================================================== */
   head('NOTHING IS CUT OFF');
@@ -1454,7 +1959,9 @@ const NL = String.fromCharCode(10);
       if (ev) {
         ev('(function(){ var W = window; if (W.__rcpFetch) { W.fetch = W.__rcpFetch;'
            + ' delete W.__rcpFetch; } if (W.__rcpLog) { BARRY.activity.log ='
-           + ' W.__rcpLog; delete W.__rcpLog; } })()');
+           + ' W.__rcpLog; delete W.__rcpLog; } if (W.__rcpPrefSet) {'
+           + ' BARRY.prefs.set = W.__rcpPrefSet; BARRY.prefs.get = W.__rcpPrefGet;'
+           + ' delete W.__rcpPrefSet; delete W.__rcpPrefGet; } })()');
         ev('try { closeModal(); } catch (e) {}');
         ev('BARRY.rootcanal._poolClose()');
         ev('(function(v){ try { if (v == null) localStorage.removeItem('

@@ -271,11 +271,10 @@ async function until(fn, ms) {
   head('Panning');
   ev("BARRY.views.toolkit.pick('panning', 'confluence')");
   await until(() => txt($('#tkResult .step-head strong')) === 'Panning', 15000);
-  await until(() => $('#tkResult .dop-review') || $('#tkResult .empty-state'),
-              15000);
-  check('its step page lists pools, or says how to make one',
-        !!($('#tkResult .dop-review') || /Junction/.test(
-          txt($('#tkResult .empty-state')))));
+  await until(() => $('#tkResult #curBench'), 60000);
+  check('its step page is the workbench: a bench, the shelf and the pools '
+        + 'not started', !!$('#tkResult #curBench')
+        && $$('#tkResult .cur-shelf-toggle').length === 2);
   check('it is a registered mode',
         ev("BARRY.modes.names().indexOf('panning') >= 0"));
   const lead = ev('JSON.stringify([BARRY.panning._leadOf({origin:"doppler",'
@@ -309,6 +308,128 @@ async function until(fn, ms) {
         drawn > 200, drawn + ' px');
   check('and the generic curation painter steps aside for it',
         generic === 0, generic + ' px');
+
+  /* ---------------------------------------------------------------- */
+  head('Panning keeps your span, and a merge brings up what comes next');
+  /* On the demo recording, with the pool answered here: the set, its
+     writes and presence go no further than this page, the activity log
+     is quiet, and the span preference is caught rather than written. */
+  const G = 'demo-ds-tutorial';
+  W.eval(`(function(){
+    var evs=[], id=0;
+    function add(t,o,p,lab){ var e={id:'e'+(id++),start:t,origin:o,label:lab||null,channel:12};
+      if(p!=null) e.pair_t=p; evs.push(e); }
+    add(8.0,'both',8.0027); add(10.37,'incisor',null,'spike');
+    add(12.74,'doppler'); add(15.11,'incisor'); add(15.1141,'doppler');
+    add(17.48,'both',17.4827); add(19.85,'incisor',null,'spike');
+    add(19.853,'doppler'); add(22.22,'doppler'); add(24.59,'incisor');
+    window.__panSet={gid:'${G}',kind:'pooled',name:'harness pool, not banked',
+      labels:[{id:'spike',name:'Spike',keys:['1','s'],color:'#2f9e6e',good:true},
+              {id:'garbage',name:'Garbage',keys:['2','g'],color:'#dc2626'},
+              {id:'flag',name:'Flag',keys:['3','f'],color:'#E5A823',flagged:true}],
+      events:evs};
+    window.__panSent=[]; window.__panPrefs={};
+    window.__panRealFetch=window.fetch;
+    window.fetch=function(u,o){ var p=String(u).split('?')[0];
+      var fake=function(obj){return Promise.resolve(new Response(JSON.stringify(obj),
+        {status:200,headers:{'Content-Type':'application/json'}}));};
+      if(p.indexOf('/api/curation/${G}/pooled')===0){ window.__panSent.push(p);
+        if(p==='/api/curation/${G}/pooled') return fake({ok:true,
+          set:JSON.parse(JSON.stringify(window.__panSet)), banked:null,
+          session:{gid:'${G}',here:['demo:ds-tutorial'],reachable:true,demo:true}});
+        if(p.slice(-8)==='/receipt') return fake({ok:true,sitting:{n:0},labels:[],progress:{}});
+        if(p.slice(-8)==='/unmerge') return fake({ok:true,restored:{id:'r'+Date.now()}});
+        return fake({ok:true}); }
+      if(p.indexOf('/api/presence/')===0) return fake({ok:true,others:[]});
+      return window.__panRealFetch.apply(this,arguments); };
+    BARRY.activity.__panLog=BARRY.activity.log; BARRY.activity.log=function(){};
+    BARRY.prefs.__panSet=BARRY.prefs.set;
+    BARRY.prefs.set=function(k,v){ if(/_span$|_at$/.test(k)) { window.__panPrefs[k]=v; return; }
+      return BARRY.prefs.__panSet.apply(this,arguments); };
+  })()`);
+  let entered = false;
+  try {
+    entered = await W.eval("BARRY.panning.enter('" + G + "')");
+    await until(() => $('#panBar') && $('#panWin'), 20000);
+    check('a pool opens in Panning (demo recording, answered here)', !!entered
+          && !!$('#panBar'));
+    const spanNow = () => JSON.parse(ev('JSON.stringify(BARRY.panning._span())'));
+    const st = () => JSON.parse(ev('JSON.stringify(BARRY.panning.state)'));
+    const cur = () => JSON.parse(ev('JSON.stringify(BARRY.panning.events()['
+                                    + 'BARRY.panning.state.index])'));
+    const n0 = st().total;
+    // The span this machine last used, or 1 s the first time -- never the
+    // recording's own saved view, and never 0.6.
+    const remembered = parseFloat(ev("BARRY.prefs.get('panning_span', 0)")) || 1;
+    check('opening at the remembered span (1 s the first time)',
+          Math.abs(spanNow().span - remembered) < 1e-6
+            && Math.abs(spanNow().pane - remembered) < 0.05,
+          JSON.stringify(spanNow()) + ' remembered ' + remembered);
+    // Set the span the way the field does: a window change on the pane.
+    ev("(function(){var c=BARRY.panning.events()[BARRY.panning.state.index];"
+       + "BARRY.views.xplore.setWindow(0, Math.max(0,c.start-1.25), 2.5);})()");
+    await sleep(200);
+    check('a span set on the pane becomes the mode’s span',
+          Math.abs(spanNow().span - 2.5) < 0.05, JSON.stringify(spanNow()));
+    ev('BARRY.panning.step(1)');
+    await sleep(300);
+    check('and stays when the next event comes up -- it was put back to 0.6',
+          Math.abs(spanNow().pane - 2.5) < 0.05, JSON.stringify(spanNow()));
+    check('it is kept for next time, on this machine',
+          Math.abs(Number(ev('window.__panPrefs.panning_span')) - 2.5) < 0.05,
+          String(ev('window.__panPrefs.panning_span')));
+
+    // An undecided pair: the survivor stays, centred and redrawn.
+    const evs = () => JSON.parse(ev('JSON.stringify(BARRY.panning.events())'));
+    const at = (t) => evs().findIndex((e) => Math.abs(e.start - t) < 1e-6);
+    ev('BARRY.panning.goTo(' + at(15.11) + ')');
+    ev('BARRY.panning._mark(' + JSON.stringify(evs()[at(15.1141)].id) + ')');
+    await W.eval('BARRY.panning.merge()');
+    await sleep(300);
+    check('merging two undecided events stays on the one kept, to be called',
+          Math.abs(cur().start - 15.11) < 1e-6 && cur().origin === 'both'
+          && st().total === n0 - 1, JSON.stringify(cur()));
+    const w1 = spanNow();
+    check('centred on it at your span', Math.abs(w1.pane - 2.5) < 0.05,
+          JSON.stringify(w1));
+
+    // A decided survivor: the next event of the pass comes up.
+    ev('BARRY.panning.goTo(' + at(19.853) + ')');
+    await W.eval('BARRY.panning.merge()');
+    await sleep(300);
+    const c2 = cur();
+    check('merging into an event already called brings up the next one',
+          c2.start > 19.86 && !c2.label, JSON.stringify(c2));
+    check('the merge reached the route, and nothing else wrote',
+          ev("window.__panSent.filter(function(p){return /merge$/.test(p);}).length")
+            === 2, ev("window.__panSent.join(',')"));
+
+    // Z undoes the last one.
+    await W.eval('BARRY.panning.undo()');
+    await sleep(300);
+    check('Z puts the other event back', st().total === n0 - 1 + 0
+          && at(19.853) >= 0, JSON.stringify(st()));
+    check('the bar says the work is not in the bank yet',
+          /not banked yet|nothing to bank yet/.test(txt($('#panBar'))),
+          txt($('#panBar')).slice(0, 160));
+  } finally {
+    try { ev('BARRY.panning.active && BARRY.panning.exit()'); } catch (e) {}
+    await sleep(200);
+    ev(`(function(){
+      if (window.__panRealFetch) { window.fetch=window.__panRealFetch; delete window.__panRealFetch; }
+      if (BARRY.activity.__panLog) { BARRY.activity.log=BARRY.activity.__panLog; delete BARRY.activity.__panLog; }
+      if (BARRY.prefs.__panSet) { BARRY.prefs.set=BARRY.prefs.__panSet; delete BARRY.prefs.__panSet; }
+      /* A remembered place on the demo pool is this harness's own (an
+         earlier screenshot run wrote one through the real prefs before the
+         stub existed): taken out, and only that key. */
+      try {
+        var at = JSON.parse(BARRY.prefs.get('panning_at', '{}')) || {};
+        if (at['${G}:pooled']) { delete at['${G}:pooled'];
+          BARRY.prefs.set('panning_at', JSON.stringify(at)); }
+      } catch (e) {}
+    })()`);
+    ev("setView('toolkit')");
+  }
 
   /* ---------------------------------------------------------------- */
   head('the colours are one pair');
