@@ -1,0 +1,75 @@
+{
+  "_at": {
+    "added": "2026-10-20T20:31:55.317350+00:00",
+    "deleted": "2026-10-20T20:31:55.317350+00:00",
+    "id": "2026-10-20T20:31:55.317350+00:00",
+    "kind": "2026-10-20T20:31:55.317350+00:00",
+    "name": "2026-10-20T20:31:55.317350+00:00",
+    "nickname": "2026-10-20T20:31:55.317350+00:00",
+    "schema": "2026-10-20T20:31:55.317350+00:00",
+    "subject": "2026-10-20T20:31:55.317350+00:00",
+    "subject_key": "2026-10-20T20:31:55.317350+00:00",
+    "version": "2026-10-20T20:31:55.317350+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "e6a4381017d2": [
+        "set",
+        "2026-10-20T20:31:55.317350+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-20T20:31:55.317350+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-20T15:09:31-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "7ab31fb47f0e",
+  "kind": "rootcanal_margin",
+  "name": "Clusters of PTEN ALL PTEN Baseline Full Incisor",
+  "nickname": "PTEN ALL PTEN Baseline Full Incisor v1 clusters",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "margin_key": "28aa77b244c44c31a56ecccd90539305",
+    "name": "Clusters of PTEN ALL PTEN Baseline Full Incisor"
+  },
+  "subject_key": "rootcanal_margin|28aa77b244c44c31a56ecccd90539305",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.10.20.5",
+      "at": "2026-10-20T15:09:31-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "f729a289",
+      "digest": "eeef34443765",
+      "id": "e6a4381017d2",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "ds": 1,
+        "events": 2198,
+        "filter": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+        "ied": 1,
+        "k": 2,
+        "source": "pool"
+      },
+      "note": null,
+      "params": {
+        "pool": {
+          "artifact_id": "f669e8c87dc9",
+          "nickname": "PTEN ALL PTEN Baseline Full Incisor",
+          "version": 1
+        }
+      },
+      "params_hash": "0a47220a1aae",
+      "v": 1
+    }
+  ]
+}

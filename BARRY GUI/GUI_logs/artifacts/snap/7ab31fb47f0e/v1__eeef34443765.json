@@ -1,0 +1,60 @@
+{
+ "calls_by_hand": [],
+ "clusters": [
+  {
+   "call": "ds",
+   "centre_raw": [
+    891.9851405225318,
+    22.2139610696593,
+    10.23388388789629
+   ],
+   "n": 1226,
+   "rank": 0
+  },
+  {
+   "call": "ied",
+   "centre_raw": [
+    1623.2586386299033,
+    16.201744466901744,
+    18.512743069667646
+   ],
+   "n": 972,
+   "rank": 1
+  }
+ ],
+ "k": 2,
+ "measure": {
+  "band_hi": 1000.0,
+  "band_lo": 500.0,
+  "cross_ms": 100.0,
+  "filt": "ds",
+  "filter_label": "DS filter, 5–100 Hz, 60 Hz mains out",
+  "hi_hz": 100.0,
+  "lo_hz": 5.0,
+  "mains_out": true,
+  "order": 3,
+  "win_ms": 25.0
+ },
+ "rule": "Pooled over 9 recordings from 9 mice, in pooled raw units: the cluster whose centre has more 500–1000 Hz power is called IED: +18.5 dB against +10.2 dB for the other, which is called DS (1226 DS, 972 IED; 3 resolved only with a half-width search widened past 50 ms).",
+ "scale": {
+  "mean": [
+   1215.3690532433563,
+   19.555237440050423,
+   13.89496265253767
+  ],
+  "sd": [
+   531.9635872537239,
+   8.569880747476663,
+   6.882761158493607
+  ]
+ },
+ "source": {
+  "kind": "pool",
+  "n_events": 2198,
+  "pool": {
+   "artifact_id": "f669e8c87dc9",
+   "nickname": "PTEN ALL PTEN Baseline Full Incisor",
+   "version": 1
+  }
+ }
+}

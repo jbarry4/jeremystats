@@ -1,16 +1,16 @@
 {
   "_at": {
     "added": "2026-09-09T02:03:39.417787+00:00",
-    "aligned": "2026-10-14T00:11:05.425892+00:00",
-    "by_label": "2026-10-14T00:11:05.425892+00:00",
+    "aligned": "2026-10-15T15:22:30.782332+00:00",
+    "by_label": "2026-10-15T15:22:30.782332+00:00",
     "curation_label": "2026-10-14T00:11:05.425892+00:00",
     "duration_s": "2026-10-14T00:11:05.425892+00:00",
-    "events": "2026-10-14T00:11:05.425892+00:00",
+    "events": "2026-10-15T15:22:30.782332+00:00",
     "gid": "2026-10-14T00:11:05.425892+00:00",
     "id": "2026-10-14T00:11:05.425892+00:00",
     "label_names": "2026-10-14T00:11:05.425892+00:00",
     "mouse": "2026-10-14T00:11:05.425892+00:00",
-    "n": "2026-10-14T00:11:05.425892+00:00",
+    "n": "2026-10-15T15:22:30.782332+00:00",
     "name": "2026-10-14T00:11:05.425892+00:00",
     "note": "2026-10-14T00:11:05.425892+00:00",
     "project": "2026-10-14T00:11:05.425892+00:00",
@@ -26,7 +26,7 @@
     "type": "2026-10-14T00:11:05.425892+00:00",
     "type_name": "2026-10-14T00:11:05.425892+00:00",
     "units": "2026-10-14T00:11:05.425892+00:00",
-    "version": "2026-10-15T15:23:19.780425+00:00"
+    "version": "2026-10-20T20:28:38.505530+00:00"
   },
   "_keys": {
     "history": {
@@ -59,6 +59,10 @@
       "br-6c99edb29f": [
         "gone",
         "2026-10-13T18:22:21.994523+00:00"
+      ],
+      "br-e4a68e40cf": [
+        "set",
+        "2026-10-15T15:22:30.782332+00:00"
       ],
       "c2b8be4c463c": [
         "gone",
@@ -113,17 +117,25 @@
         "2026-10-14T15:58:25.863115+00:00"
       ],
       "{\"at\": \"2026-10-15T11:22:30-04:00\", \"by\": \"Shahriar Tafti\", \"by_label\": {\"Dentate Spike\": 431}, \"machine\": \"DESKTOP-4H65AI7\", \"n\": 431, \"note\": \"Aligned to the mean magnitude over 16 channels, \\u00b1200 ms, reading v6. 337 stamp(s) moved by -192.8 to 191.8 ms; 282 left where they were. No labels changed.\", \"snap\": [[4.714998, \"spike\"], [10.434272, \"spike\"], [15.244531, \"spike\"], [19.899992, \"spike\"], [21.977052, \"spike\"], [23.342752, \"spike\"], [27.511989, \"spike\"], [31.087751, \"spike\"], [41.151427, \"spike\"], [41.45837, \"spike\"], [41.617107, \"spike\"], [42.889766, \"spike\"], [47.723706, \"spike\"], [53.106494, \"spike\"], [53.347497, \"spike\"], [64.884405, \"spike\"], [65.039858, \"spike\"], [69.314543, \"spike\"], [70.17945, \"spike\"], [70.966836, \"spike\"], [72.056971, \"spike\"], [73.68604, \"spike\"], [74.476417, \"spike\"], [77.384765, \"spike\"], [87.313307, \"spike\"], [94.824161, \"spike\"], [95.369975, \"spike\"], [101.067455, \"spike\"], [101.51314, \"spike\"], [103.824028, \"spike\"], [106.769312, \"spike\"], [106.936957, \"spike\"], [112.923085, \"spike\"], [118.340606, \"spike\"], [122.415057, \"spike\"], [129.745948, \"spike\"], [131.380119, \"spike\"], [137.606945, \"spike\"], [137.926945, \"spike\"], [142.62654, \"spike\"], [142.978153, \"spike\"], [144.078321, \"spike\"], [144.2486, \"spike\"], [144.627505, \"spike\"], [145.653174, \"spike\"], [146.443752, \"spike\"], [147.214666, \"spike\"], [159.687721, \"spike\"], [162.733694, \"spike\"], [172.647444, \"spike\"], [178.906341, \"spike\"], [178.997928, \"spike\"], [179.442928, \"spike\"], [181.492505, \"spike\"], [182.721832, \"spike\"], [183.617926, \"spike\"], [189.291464, \"spike\"], [258.977227, \"spike\"], [261.913433, \"spike\"], [267.819425, \"spike\"], [295.402881, \"spike\"], [334.148866, \"spike\"], [337.321375, \"spike\"], [342.889147, \"spike\"], [345.674581, \"spike\"], [345.75095, \"spike\"], [348.951308, \"spike\"], [350.990088, \"spike\"], [353.558858, \"spike\"], [356.725706, \"spike\"], [361.176506, \"spike\"], [404.944733, \"spike\"], [441.814984, \"spike\"], [449.977893, \"spike\"], [450.226028, \"spike\"], [462.547053, \"spike\"], [465.950813, \"spike\"], [475.474148, \"spike\"], [482.897833, \"spike\"], [483.029914, \"spike\"], [485.607623, \"spike\"], [504.175798, \"spike\"], [510.045489, \"spike\"], [519.180922, \"spike\"], [527.399089, \"spike\"], [532.944603, \"spike\"], [534.230851, \"spike\"], [538.238282, \"spike\"], [538.645784, \"spike\"], [539.215522, \"spike\"], [548.72978, \"spike\"], [551.127779, \"spike\"], [551.749864, \"spike\"], [553.039743, \"spike\"], [557.289543, \"spike\"], [559.784417, \"spike\"], [560.295884, \"spike\"], [561.138309, \"spike\"], [565.395016, \"spike\"], [566.759172, \"spike\"], [567.361061, \"spike\"], [567.751643, \"spike\"], [575.236833, \"spike\"], [575.775338, \"spike\"], [576.493769, \"spike\"], [579.338675, \"spike\"], [582.951456, \"spike\"], [592.419516, \"spike\"], [592.677263, \"spike\"], [592.831259, \"spike\"], [595.969896, \"spike\"], [596.060988, \"spike\"], [597.923529, \"spike\"], [599.799448, \"spike\"], [600.339581, \"spike\"], [612.092144, \"spike\"], [612.403344, \"spike\"], [629.104748, \"spike\"], [629.948747, \"spike\"], [630.455485, \"spike\"], [633.674763, \"spike\"], [633.935201, \"spike\"], [637.770744, \"spike\"], [641.390242, \"spike\"], [641.620103, \"spike\"], [642.834345, \"spike\"], [643.729709, \"spike\"], [646.164936, \"spike\"], [657.382736, \"spike\"], [660.994727, \"spike\"], [663.415385, \"spike\"], [665.072387, \"spike\"], [671.965081, \"spike\"], [672.806409, \"spike\"], [673.592097, \"spike\"], [673.777111, \"spike\"], [675.08958, \"spike\"], [681.131681, \"spike\"], [691.522526, \"spike\"], [694.758944, \"spike\"], [708.396802, \"spike\"], [712.451514, \"spike\"], [717.349712, \"spike\"], [718.98654, \"spike\"], [721.352596, \"spike\"], [721.780604, \"spike\"], [724.45717, \"spike\"], [726.765708, \"spike\"], [729.244342, \"spike\"], [731.822173, \"spike\"], [741.118703, \"spike\"], [743.283098, \"spike\"], [743.804287, \"spike\"], [749.21576, \"spike\"], [749.776582, \"spike\"], [749.931887, \"spike\"], [750.414442, \"spike\"], [751.015699, \"spike\"], [751.862432, \"spike\"], [759.177675, \"spike\"], [769.201099, \"spike\"], [771.29869, \"spike\"], [776.395096, \"spike\"], [779.273557, \"spike\"], [781.877852, \"spike\"], [784.379852, \"spike\"], [785.509685, \"spike\"], [786.088519, \"spike\"], [786.454434, \"spike\"], [786.576932, \"spike\"], [787.799684, \"spike\"], [794.786246, \"spike\"], [798.814487, \"spike\"], [800.108993, \"spike\"], [800.994612, \"spike\"], [801.831678, \"spike\"], [802.450931, \"spike\"], [803.159298, \"spike\"], [803.361945, \"spike\"], [803.538971, \"spike\"], [807.73126, \"spike\"], [815.401861, \"spike\"], [816.553812, \"spike\"], [817.457672, \"spike\"], [826.169752, \"spike\"], [828.019352, \"spike\"], [829.516954, \"spike\"], [834.501103, \"spike\"], [834.654226, \"spike\"], [835.627665, \"spike\"], [836.049153, \"spike\"], [839.269021, \"spike\"], [839.590863, \"spike\"], [840.180663, \"spike\"], [840.459663, \"spike\"], [841.328728, \"spike\"], [841.825283, \"spike\"], [848.715659, \"spike\"], [856.849412, \"spike\"], [878.723647, \"spike\"], [878.870647, \"spike\"], [881.845813, \"spike\"], [883.483325, \"spike\"], [884.069496, \"spike\"], [884.719645, \"spike\"], [890.785274, \"spike\"], [891.185361, \"spike\"], [895.254932, \"spike\"], [896.136293, \"spike\"], [898.842639, \"spike\"], [904.92975, \"spike\"], [905.168406, \"spike\"], [906.597636, \"spike\"], [906.853636, \"spike\"], [906.971567, \"spike\"], [907.508399, \"spike\"], [911.530297, \"spike\"], [916.042198, \"spike\"], [917.068525, \"spike\"], [917.783462, \"spike\"], [917.944131, \"spike\"], [918.667631, \"spike\"], [920.176945, \"spike\"], [926.788902, \"spike\"], [929.855172, \"spike\"], [934.803625, \"spike\"], [940.484638, \"spike\"], [940.794632, \"spike\"], [941.450552, \"spike\"], [941.863622, \"spike\"], [945.199983, \"spike\"], [945.321688, \"spike\"], [952.385618, \"spike\"], [953.454547, \"spike\"], [957.07116, \"spike\"], [957.843053, \"spike\"], [958.420615, \"spike\"], [958.974615, \"spike\"], [959.723247, \"spike\"], [960.327615, \"spike\"], [961.193404, \"spike\"], [961.591782, \"spike\"], [961.990568, \"spike\"], [962.479124, \"spike\"], [963.71322, \"spike\"], [974.743173, \"spike\"], [975.096633, \"spike\"], [980.864608, \"spike\"], [981.733606, \"spike\"], [992.245602, \"spike\"], [995.7016, \"spike\"], [996.449758, \"spike\"], [998.113599, \"spike\"], [998.335745, \"spike\"], [998.543658, \"spike\"], [998.794469, \"spike\"], [999.923424, \"spike\"], [1000.372598, \"spike\"], [1008.762317, \"spike\"], [1012.401594, \"spike\"], [1017.321432, \"spike\"], [1021.431303, \"spike\"], [1027.736588, \"spike\"], [1029.232766, \"spike\"], [1030.942586, \"spike\"], [1031.213664, \"spike\"], [1039.249468, \"spike\"], [1039.782768, \"spike\"], [1040.305531, \"spike\"], [1040.499231, \"spike\"], [1042.840384, \"spike\"], [1047.66158, \"spike\"], [1056.689576, \"spike\"], [1061.010101, \"spike\"], [1061.049234, \"spike\"], [1062.145574, \"spike\"], [1065.394216, \"spike\"], [1065.863788, \"spike\"], [1067.101572, \"spike\"], [1067.706571, \"spike\"], [1068.212605, \"spike\"], [1069.547196, \"spike\"], [1100.065706, \"spike\"], [1124.351398, \"spike\"], [1132.535537, \"spike\"], [1135.471854, \"spike\"], [1139.778934, \"spike\"], [1143.226229, \"spike\"], [1144.877524, \"spike\"], [1148.293365, \"spike\"], [1148.520475, \"spike\"], [1149.143211, \"spike\"], [1152.194538, \"spike\"], [1162.13818, \"spike\"], [1167.321821, \"spike\"], [1167.818798, \"spike\"], [1172.349529, \"spike\"], [1173.451143, \"spike\"], [1177.593454, \"spike\"], [1177.881613, \"spike\"], [1179.770011, \"spike\"], [1192.057517, \"spike\"], [1194.390521, \"spike\"], [1208.81176, \"spike\"], [1212.153513, \"spike\"], [1216.777947, \"spike\"], [1219.74051, \"spike\"], [1238.555557, \"spike\"], [1239.678633, \"spike\"], [1239.987349, \"spike\"], [1241.64705, \"spike\"], [1256.679401, \"spike\"], [1263.105841, \"spike\"], [1269.418548, \"spike\"], [1277.344771, \"spike\"], [1282.045039, \"spike\"], [1299.83091, \"spike\"], [1300.160764, \"spike\"], [1302.229745, \"spike\"], [1307.594198, \"spike\"], [1312.449846, \"spike\"], [1318.866291, \"spike\"], [1321.753465, \"spike\"], [1324.362102, \"spike\"], [1324.44566, \"spike\"], [1327.141084, \"spike\"], [1332.729506, \"spike\"], [1333.236181, \"spike\"], [1342.110636, \"spike\"], [1345.640285, \"spike\"], [1354.79933, \"spike\"], [1358.557914, \"spike\"], [1361.590095, \"spike\"], [1367.719774, \"spike\"], [1368.348916, \"spike\"], [1377.993082, \"spike\"], [1382.56722, \"spike\"], [1383.334445, \"spike\"], [1392.584441, \"spike\"], [1394.431365, \"spike\"], [1409.376607, \"spike\"], [1428.24689, \"spike\"], [1439.984124, \"spike\"], [1489.287402, \"spike\"], [1497.898925, \"spike\"], [1505.326006, \"spike\"], [1567.106056, \"spike\"], [1582.600009, \"spike\"], [1587.787291, \"spike\"], [1588.113905, \"spike\"], [1590.290531, \"spike\"], [1591.221464, \"spike\"], [1593.035169, \"spike\"], [1609.759581, \"spike\"], [1615.370113, \"spike\"], [1615.616167, \"spike\"], [1615.854414, \"spike\"], [1618.65935, \"spike\"], [1619.22635, \"spike\"], [1619.566542, \"spike\"], [1624.649327, \"spike\"], [1633.095345, \"spike\"], [1637.19643, \"spike\"], [1637.954343, \"spike\"], [1639.189164, \"spike\"], [1649.479338, \"spike\"], [1651.963219, \"spike\"], [1653.039337, \"spike\"], [1654.027215, \"spike\"], [1656.117335, \"spike\"], [1658.795964, \"spike\"], [1662.024243, \"spike\"], [1664.819332, \"spike\"], [1665.377592, \"spike\"], [1666.213016, \"spike\"], [1669.272765, \"spike\"], [1671.461292, \"spike\"], [1672.989165, \"spike\"], [1676.013327, \"spike\"], [1681.819865, \"spike\"], [1685.370651, \"spike\"], [1685.890535, \"spike\"], [1686.14954, \"spike\"], [1689.775517, \"spike\"], [1690.640969, \"spike\"], [1691.691462, \"spike\"], [1693.476952, \"spike\"], [1693.56732, \"spike\"], [1699.347318, \"spike\"], [1699.736489, \"spike\"], [1700.035157, \"spike\"], [1700.812668, \"spike\"], [1704.666316, \"spike\"], [1704.835686, \"spike\"], [1705.134342, \"spike\"], [1705.395076, \"spike\"], [1706.315174, \"spike\"], [1712.395313, \"spike\"], [1714.405312, \"spike\"], [1717.400631, \"spike\"], [1719.159809, \"spike\"], [1738.199216, \"spike\"], [1763.191423, \"spike\"], [1768.728205, \"spike\"], [1771.748179, \"spike\"], [1776.185211, \"spike\"], [1780.190757, \"spike\"], [1788.792282, \"spike\"], [1791.148033, \"spike\"], [1800.928277, \"spike\"], [1804.676276, \"spike\"], [1807.10922, \"spike\"], [1810.878577, \"spike\"], [1811.958181, \"spike\"], [1812.229741, \"spike\"], [1813.615232, \"spike\"], [1814.297729, \"spike\"], [1820.926468, \"spike\"], [1823.628752, \"spike\"], [1823.932944, \"spike\"], [1824.371268, \"spike\"], [1829.789266, \"spike\"], [1830.325265, \"spike\"], [1832.648114, \"spike\"], [1835.205263, \"spike\"], [1847.195259, \"spike\"], [1847.401005, \"spike\"], [1851.436267, \"spike\"], [1855.074081, \"spike\"], [1863.871252, \"spike\"], [1871.54584, \"spike\"]], \"v\": 7}": [
-        "set",
-        "2026-10-15T15:23:21.394075+00:00"
+        "gone",
+        "2026-10-20T20:28:38.505530+00:00"
       ],
       "{\"at\": \"2026-10-15T11:22:30-04:00\", \"by\": \"Shahriar Tafti\", \"by_label\": {\"Dentate Spike\": 431}, \"machine\": \"DESKTOP-4H65AI7\", \"n\": 431, \"note\": \"Aligned to the mean magnitude over 16 channels, \\u00b1200 ms, reading v6. 337 stamp(s) moved by -192.8 to 191.8 ms; 282 left where they were. No labels changed.\", \"snap_elsewhere\": true, \"v\": 7}": [
         "gone",
         "2026-10-15T15:23:21.394075+00:00"
+      ],
+      "{\"at\": \"2026-10-20T14:54:14-04:00\", \"by\": \"Shahriar Tafti\", \"by_label\": {\"spike\": 243}, \"machine\": \"DESKTOP-4H65AI7\", \"n\": 243, \"note\": \"Root Canal: 188 hidden IED(s) taken out of 431 dentate spikes read from the live set; 243 kept as DS. The cluster whose centre has more 500\\u20131000 Hz power is called IED: +21.1 dB against +12.1 dB for the other, which is called DS (243 DS, 188 IED). measured on DS filter, 5\\u2013100 Hz, 60 Hz mains out, amplitude window \\u00b125 ms, half-width search \\u00b1100 ms, 500\\u20131000 Hz power. IEDs banked to entry aa63b568bddb.  Numbers and figures: results bank rootcanal/s38b9e61c5684__f4ae75ce0ff5. JA Management\", \"snap\": [[4.714998, \"spike\"], [10.434272, \"spike\"], [15.244531, \"spike\"], [19.899992, \"spike\"], [31.087751, \"spike\"], [41.151427, \"spike\"], [41.45837, \"spike\"], [41.617107, \"spike\"], [42.889766, \"spike\"], [47.723706, \"spike\"], [64.884405, \"spike\"], [65.039858, \"spike\"], [69.314543, \"spike\"], [70.17945, \"spike\"], [70.966836, \"spike\"], [74.476417, \"spike\"], [77.384765, \"spike\"], [95.369975, \"spike\"], [101.067455, \"spike\"], [106.936957, \"spike\"], [112.923085, \"spike\"], [118.340606, \"spike\"], [129.745948, \"spike\"], [131.380119, \"spike\"], [144.2486, \"spike\"], [145.653174, \"spike\"], [159.687721, \"spike\"], [162.733694, \"spike\"], [172.647444, \"spike\"], [178.906341, \"spike\"], [178.997928, \"spike\"], [181.492505, \"spike\"], [182.721832, \"spike\"], [183.617926, \"spike\"], [189.291464, \"spike\"], [337.321375, \"spike\"], [345.674581, \"spike\"], [348.951308, \"spike\"], [350.990088, \"spike\"], [353.558858, \"spike\"], [356.725706, \"spike\"], [361.176506, \"spike\"], [404.944733, \"spike\"], [449.977893, \"spike\"], [450.226028, \"spike\"], [465.950813, \"spike\"], [475.474148, \"spike\"], [485.607623, \"spike\"], [504.175798, \"spike\"], [532.944603, \"spike\"], [538.238282, \"spike\"], [538.645784, \"spike\"], [553.039743, \"spike\"], [557.289543, \"spike\"], [566.759172, \"spike\"], [567.751643, \"spike\"], [575.236833, \"spike\"], [575.775338, \"spike\"], [576.493769, \"spike\"], [579.338675, \"spike\"], [592.677263, \"spike\"], [592.831259, \"spike\"], [595.969896, \"spike\"], [596.060988, \"spike\"], [630.455485, \"spike\"], [633.935201, \"spike\"], [637.770744, \"spike\"], [641.390242, \"spike\"], [646.164936, \"spike\"], [657.382736, \"spike\"], [665.072387, \"spike\"], [671.965081, \"spike\"], [673.592097, \"spike\"], [681.131681, \"spike\"], [717.349712, \"spike\"], [718.98654, \"spike\"], [724.45717, \"spike\"], [726.765708, \"spike\"], [731.822173, \"spike\"], [741.118703, \"spike\"], [743.804287, \"spike\"], [749.776582, \"spike\"], [749.931887, \"spike\"], [751.015699, \"spike\"], [751.862432, \"spike\"], [759.177675, \"spike\"], [771.29869, \"spike\"], [779.273557, \"spike\"], [781.877852, \"spike\"], [784.379852, \"spike\"], [786.088519, \"spike\"], [800.108993, \"spike\"], [800.994612, \"spike\"], [801.831678, \"spike\"], [802.450931, \"spike\"], [803.159298, \"spike\"], [807.73126, \"spike\"], [815.401861, \"spike\"], [817.457672, \"spike\"], [826.169752, \"spike\"], [829.516954, \"spike\"], [834.501103, \"spike\"], [834.654226, \"spike\"], [839.590863, \"spike\"], [840.180663, \"spike\"], [840.459663, \"spike\"], [841.328728, \"spike\"], [878.870647, \"spike\"], [881.845813, \"spike\"], [884.719645, \"spike\"], [891.185361, \"spike\"], [906.853636, \"spike\"], [907.508399, \"spike\"], [911.530297, \"spike\"], [917.068525, \"spike\"], [918.667631, \"spike\"], [934.803625, \"spike\"], [941.450552, \"spike\"], [945.321688, \"spike\"], [953.454547, \"spike\"], [957.07116, \"spike\"], [957.843053, \"spike\"], [961.193404, \"spike\"], [961.591782, \"spike\"], [961.990568, \"spike\"], [962.479124, \"spike\"], [963.71322, \"spike\"], [974.743173, \"spike\"], [975.096633, \"spike\"], [981.733606, \"spike\"], [992.245602, \"spike\"], [995.7016, \"spike\"], [998.113599, \"spike\"], [998.335745, \"spike\"], [998.794469, \"spike\"], [1017.321432, \"spike\"], [1029.232766, \"spike\"], [1030.942586, \"spike\"], [1039.782768, \"spike\"], [1042.840384, \"spike\"], [1061.010101, \"spike\"], [1061.049234, \"spike\"], [1065.863788, \"spike\"], [1067.101572, \"spike\"], [1067.706571, \"spike\"], [1069.547196, \"spike\"], [1135.471854, \"spike\"], [1139.778934, \"spike\"], [1144.877524, \"spike\"], [1148.293365, \"spike\"], [1149.143211, \"spike\"], [1152.194538, \"spike\"], [1162.13818, \"spike\"], [1167.321821, \"spike\"], [1172.349529, \"spike\"], [1173.451143, \"spike\"], [1177.593454, \"spike\"], [1177.881613, \"spike\"], [1179.770011, \"spike\"], [1192.057517, \"spike\"], [1208.81176, \"spike\"], [1216.777947, \"spike\"], [1219.74051, \"spike\"], [1256.679401, \"spike\"], [1263.105841, \"spike\"], [1269.418548, \"spike\"], [1277.344771, \"spike\"], [1282.045039, \"spike\"], [1299.83091, \"spike\"], [1300.160764, \"spike\"], [1307.594198, \"spike\"], [1312.449846, \"spike\"], [1318.866291, \"spike\"], [1321.753465, \"spike\"], [1324.362102, \"spike\"], [1327.141084, \"spike\"], [1332.729506, \"spike\"], [1333.236181, \"spike\"], [1345.640285, \"spike\"], [1358.557914, \"spike\"], [1367.719774, \"spike\"], [1382.56722, \"spike\"], [1392.584441, \"spike\"], [1409.376607, \"spike\"], [1428.24689, \"spike\"], [1439.984124, \"spike\"], [1489.287402, \"spike\"], [1497.898925, \"spike\"], [1582.600009, \"spike\"], [1588.113905, \"spike\"], [1590.290531, \"spike\"], [1591.221464, \"spike\"], [1593.035169, \"spike\"], [1615.370113, \"spike\"], [1615.616167, \"spike\"], [1618.65935, \"spike\"], [1619.22635, \"spike\"], [1624.649327, \"spike\"], [1633.095345, \"spike\"], [1637.954343, \"spike\"], [1649.479338, \"spike\"], [1653.039337, \"spike\"], [1656.117335, \"spike\"], [1658.795964, \"spike\"], [1662.024243, \"spike\"], [1664.819332, \"spike\"], [1665.377592, \"spike\"], [1666.213016, \"spike\"], [1671.461292, \"spike\"], [1672.989165, \"spike\"], [1685.370651, \"spike\"], [1686.14954, \"spike\"], [1689.775517, \"spike\"], [1690.640969, \"spike\"], [1691.691462, \"spike\"], [1693.476952, \"spike\"], [1699.347318, \"spike\"], [1700.035157, \"spike\"], [1700.812668, \"spike\"], [1704.666316, \"spike\"], [1704.835686, \"spike\"], [1705.395076, \"spike\"], [1712.395313, \"spike\"], [1714.405312, \"spike\"], [1717.400631, \"spike\"], [1738.199216, \"spike\"], [1763.191423, \"spike\"], [1776.185211, \"spike\"], [1780.190757, \"spike\"], [1791.148033, \"spike\"], [1800.928277, \"spike\"], [1804.676276, \"spike\"], [1807.10922, \"spike\"], [1811.958181, \"spike\"], [1812.229741, \"spike\"], [1814.297729, \"spike\"], [1820.926468, \"spike\"], [1823.932944, \"spike\"], [1829.789266, \"spike\"], [1835.205263, \"spike\"], [1847.195259, \"spike\"], [1851.436267, \"spike\"], [1863.871252, \"spike\"]], \"v\": 8}": [
+        "set",
+        "2026-10-20T20:31:41.124695+00:00"
+      ],
+      "{\"at\": \"2026-10-20T14:54:14-04:00\", \"by\": \"Shahriar Tafti\", \"by_label\": {\"spike\": 243}, \"machine\": \"DESKTOP-4H65AI7\", \"n\": 243, \"note\": \"Root Canal: 188 hidden IED(s) taken out of 431 dentate spikes read from the live set; 243 kept as DS. The cluster whose centre has more 500\\u20131000 Hz power is called IED: +21.1 dB against +12.1 dB for the other, which is called DS (243 DS, 188 IED). measured on DS filter, 5\\u2013100 Hz, 60 Hz mains out, amplitude window \\u00b125 ms, half-width search \\u00b1100 ms, 500\\u20131000 Hz power. IEDs banked to entry aa63b568bddb.  Numbers and figures: results bank rootcanal/s38b9e61c5684__f4ae75ce0ff5. JA Management\", \"snap_elsewhere\": true, \"v\": 8}": [
+        "gone",
+        "2026-10-20T20:31:41.124695+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-15T15:23:21.394075+00:00",
+    "at": "2026-10-20T20:31:41.124695+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -133,12 +145,12 @@
     "machine": "DESKTOP-4H65AI7"
   },
   "aligned": {
-    "at": "2026-09-21T15:37:46-04:00",
+    "at": "2026-10-15T11:22:30-04:00",
     "band": [
       5.0,
       100.0
     ],
-    "by": "Rain Younger",
+    "by": "Shahriar Tafti",
     "cand_dist_ms": 12.0,
     "cand_height_sd": 0.0,
     "channels": [
@@ -175,38 +187,109 @@
     "n_channels": 16,
     "order": 3,
     "profile": {
-      "33": 0.1485,
-      "34": 0.210174,
-      "35": 0.334126,
-      "36": 0.383821,
-      "37": 0.222954,
-      "38": 0.080066,
-      "39": -0.004671,
-      "40": -0.153807,
-      "41": -0.343184,
-      "42": -0.45434,
-      "43": -0.41587,
-      "44": -0.247456,
-      "45": -0.021832,
-      "46": 0.102515,
-      "47": 0.119298,
-      "48": 0.106853
+      "33": 0.150725,
+      "34": 0.233477,
+      "35": 0.379392,
+      "36": 0.405128,
+      "37": 0.196411,
+      "38": -0.00145,
+      "39": -0.117921,
+      "40": -0.219718,
+      "41": -0.361588,
+      "42": -0.450375,
+      "43": -0.347985,
+      "44": -0.154915,
+      "45": 0.025125,
+      "46": 0.110721,
+      "47": 0.114057,
+      "48": 0.096782
     },
+    "request": {
+      "channels": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        63,
+        64
+      ],
+      "depth_band": 16,
+      "entry_id": "46fd29a77cc7",
+      "from_version": "vk-e012eec00756",
+      "kind": "ds",
+      "stamps": "03b8cf6c1849"
+    },
+    "request_hash": "25927247838151d6",
     "screened": {
       "55": "not ticked",
-      "59": "dead (0.5 uV against a median of 124)"
+      "59": "dead (0.5 uV against a median of 130)"
     },
     "smooth_ms": 0.0,
-    "source_version": 2,
-    "source_version_id": "fb0c28180051",
+    "source_version": 6,
+    "source_version_id": null,
     "spacing_um": 30.0,
     "tool": "jarvis.braces/1",
-    "version": 3,
-    "window_ms": 100.0
+    "version": 7,
+    "window_ms": 200.0
   },
   "by_label": {
-    "garbage": 187,
-    "spike": 432
+    "Dentate Spike": 431
   },
   "curation_label": "*",
   "duration_s": null,
@@ -217,29 +300,16 @@
       "start": 4.714998
     },
     {
+      "from_t": 10.432996,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 10.432996
+      "start": 10.434272
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 14.410994
-    },
-    {
+      "from_t": 15.242994,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 15.242994
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 19.175992
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 19.397992
+      "start": 15.244531
     },
     {
       "label": "Dentate Spike",
@@ -247,19 +317,16 @@
       "start": 19.899992
     },
     {
+      "from_t": 21.975991,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 21.975991
+      "start": 21.977052
     },
     {
+      "from_t": 23.343991,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 23.343991
-    },
-    {
-      "label": "Dentate Spike",
-      "label_id": "spike",
-      "start": 23.71799
+      "start": 23.342752
     },
     {
       "label": "Dentate Spike",
@@ -267,84 +334,88 @@
       "start": 27.511989
     },
     {
+      "from_t": 31.080988,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 31.080988
+      "start": 31.087751
     },
     {
+      "from_t": 41.154983,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 41.154983
+      "start": 41.151427
     },
     {
+      "align_flag": "contested",
+      "from_t": 41.459983,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 41.459983
+      "start": 41.45837
     },
     {
+      "align_flag": "outlier",
+      "from_t": 41.708983,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 41.708983
+      "start": 41.617107
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 42.983983
-    },
-    {
+      "align_flag": "edge",
+      "from_t": 43.061983,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 43.061983
+      "start": 42.889766
     },
     {
+      "align_flag": "outlier",
+      "from_t": 47.659981,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 47.659981
+      "start": 47.723706
     },
     {
+      "from_t": 53.109979,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 53.109979
+      "start": 53.106494
     },
     {
+      "from_t": 53.348979,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 53.348979
+      "start": 53.347497
     },
     {
+      "align_flag": "contested",
+      "from_t": 64.864974,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 64.864974
+      "start": 64.884405
     },
     {
+      "from_t": 65.041974,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 65.041974
+      "start": 65.039858
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 67.719973
-    },
-    {
+      "from_t": 69.320972,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 69.320972
+      "start": 69.314543
     },
     {
+      "from_t": 70.180972,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 70.180972
+      "start": 70.17945
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 70.609972
-    },
-    {
+      "align_flag": "outlier",
+      "from_t": 70.890972,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 70.890972
+      "start": 70.966836
     },
     {
       "label": "Dentate Spike",
@@ -352,114 +423,102 @@
       "start": 72.056971
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 72.920971
-    },
-    {
+      "from_t": 73.68497,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 73.68497
+      "start": 73.68604
     },
     {
+      "from_t": 74.47497,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 74.47497
+      "start": 74.476417
     },
     {
+      "from_t": 77.386969,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 77.386969
+      "start": 77.384765
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 82.249967
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 86.580965
-    },
-    {
+      "from_t": 87.315965,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 87.315965
+      "start": 87.313307
     },
     {
+      "from_t": 94.827962,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 94.827962
+      "start": 94.824161
     },
     {
+      "from_t": 95.371962,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 95.371962
+      "start": 95.369975
     },
     {
+      "from_t": 101.047959,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 101.047959
+      "start": 101.067455
     },
     {
+      "align_flag": "outlier",
+      "from_t": 101.581959,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 101.581959
+      "start": 101.51314
     },
     {
+      "from_t": 103.826958,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 103.826958
+      "start": 103.824028
     },
     {
+      "from_t": 106.770957,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 106.770957
+      "start": 106.769312
     },
     {
+      "align_flag": "contested",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 106.936957
     },
     {
+      "from_t": 112.917955,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 112.917955
+      "start": 112.923085
     },
     {
+      "from_t": 118.341953,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 118.341953
+      "start": 118.340606
     },
     {
+      "from_t": 122.412951,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 122.412951
+      "start": 122.415057
     },
     {
+      "align_flag": "outlier",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 129.745948
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 129.818948
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 129.833948
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 129.972948
-    },
-    {
+      "align_flag": "outlier",
+      "from_t": 131.368947,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 131.368947
+      "start": 131.380119
     },
     {
       "label": "Dentate Spike",
@@ -467,119 +526,85 @@
       "start": 137.606945
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 137.885945
-    },
-    {
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 137.926945
     },
     {
+      "from_t": 142.629943,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 142.629943
+      "start": 142.62654
     },
     {
+      "from_t": 142.981943,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 142.981943
+      "start": 142.978153
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 143.457942
-    },
-    {
+      "from_t": 144.075942,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 144.075942
+      "start": 144.078321
     },
     {
+      "align_flag": "contested",
+      "from_t": 144.250942,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 144.250942
+      "start": 144.2486
     },
     {
+      "from_t": 144.623942,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 144.623942
+      "start": 144.627505
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 145.451942
-    },
-    {
+      "from_t": 145.654942,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 145.654942
+      "start": 145.653174
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 146.097941
-    },
-    {
+      "align_flag": "outlier",
+      "from_t": 146.374941,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 146.374941
+      "start": 146.443752
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 146.454941
-    },
-    {
+      "from_t": 147.216941,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 147.216941
+      "start": 147.214666
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 147.361941
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 147.675941
-    },
-    {
+      "from_t": 159.691936,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 159.691936
+      "start": 159.687721
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 162.356935
-    },
-    {
+      "from_t": 162.734935,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 162.734935
+      "start": 162.733694
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 163.821934
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 169.839932
-    },
-    {
+      "align_flag": "outlier",
+      "from_t": 172.689931,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 172.689931
+      "start": 172.647444
     },
     {
+      "align_flag": "contested",
+      "from_t": 178.949928,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 178.949928
+      "start": 178.906341
     },
     {
       "label": "Dentate Spike",
@@ -592,94 +617,46 @@
       "start": 179.442928
     },
     {
+      "from_t": 181.490927,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 181.490927
+      "start": 181.492505
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 181.608927
-    },
-    {
+      "from_t": 182.722927,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 182.722927
+      "start": 182.721832
     },
     {
+      "align_flag": "edge",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 183.617926
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 184.564926
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 186.936925
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 189.084924
-    },
-    {
+      "from_t": 189.276924,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 189.276924
+      "start": 189.291464
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 189.314924
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 195.542922
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 196.006921
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 196.359921
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 213.836914
-    },
-    {
+      "from_t": 258.978896,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 258.978896
+      "start": 258.977227
     },
     {
+      "from_t": 261.914895,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 261.914895
+      "start": 261.913433
     },
     {
+      "from_t": 267.821893,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 267.821893
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 284.639886
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 285.226886
+      "start": 267.819425
     },
     {
       "label": "Dentate Spike",
@@ -687,54 +664,47 @@
       "start": 295.402881
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 302.946878
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 304.160878
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 320.704871
-    },
-    {
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 334.148866
     },
     {
+      "from_t": 337.309865,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 337.309865
+      "start": 337.321375
     },
     {
+      "from_t": 342.890862,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 342.890862
+      "start": 342.889147
     },
     {
+      "align_flag": "contested",
+      "from_t": 345.724861,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 345.724861
+      "start": 345.674581
     },
     {
+      "from_t": 345.753861,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 345.753861
+      "start": 345.75095
     },
     {
+      "from_t": 348.94386,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 348.94386
+      "start": 348.951308
     },
     {
+      "align_flag": "edge",
+      "from_t": 351.164859,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 351.164859
+      "start": 350.990088
     },
     {
       "label": "Dentate Spike",
@@ -742,99 +712,77 @@
       "start": 353.558858
     },
     {
+      "from_t": 356.731857,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 356.731857
+      "start": 356.725706
     },
     {
+      "from_t": 361.168855,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 361.168855
+      "start": 361.176506
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 375.178849
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 385.526845
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 388.687844
-    },
-    {
+      "from_t": 404.949837,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 404.949837
+      "start": 404.944733
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 436.299825
-    },
-    {
+      "from_t": 441.818823,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 441.818823
+      "start": 441.814984
     },
     {
+      "from_t": 449.960819,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 449.960819
+      "start": 449.977893
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 450.141819
-    },
-    {
+      "from_t": 450.229819,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 450.229819
+      "start": 450.226028
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 454.017818
-    },
-    {
+      "from_t": 462.549814,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 462.549814
+      "start": 462.547053
     },
     {
+      "align_flag": "outlier",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 465.950813
     },
     {
+      "from_t": 475.507809,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 475.507809
+      "start": 475.474148
     },
     {
+      "align_flag": "contested",
+      "from_t": 482.899806,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 482.899806
+      "start": 482.897833
     },
     {
+      "from_t": 483.032806,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 483.032806
+      "start": 483.029914
     },
     {
+      "from_t": 485.608805,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 485.608805
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 489.250804
+      "start": 485.607623
     },
     {
       "label": "Dentate Spike",
@@ -842,34 +790,41 @@
       "start": 504.175798
     },
     {
+      "from_t": 510.047795,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 510.047795
+      "start": 510.045489
     },
     {
+      "from_t": 519.157792,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 519.157792
+      "start": 519.180922
     },
     {
+      "from_t": 527.397788,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 527.397788
+      "start": 527.399089
     },
     {
+      "from_t": 532.945786,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 532.945786
+      "start": 532.944603
     },
     {
+      "align_flag": "edge",
+      "from_t": 534.395786,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 534.395786
+      "start": 534.230851
     },
     {
+      "from_t": 538.236784,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 538.236784
+      "start": 538.238282
     },
     {
       "label": "Dentate Spike",
@@ -877,9 +832,10 @@
       "start": 538.645784
     },
     {
+      "from_t": 539.217784,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 539.217784
+      "start": 539.215522
     },
     {
       "label": "Dentate Spike",
@@ -892,69 +848,78 @@
       "start": 551.127779
     },
     {
+      "align_flag": "outlier",
+      "from_t": 551.701779,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 551.701779
+      "start": 551.749864
     },
     {
+      "from_t": 553.042778,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 553.042778
+      "start": 553.039743
     },
     {
+      "from_t": 557.299776,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 557.299776
+      "start": 557.289543
     },
     {
+      "from_t": 559.773775,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 559.773775
+      "start": 559.784417
     },
     {
+      "from_t": 560.300775,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 560.300775
+      "start": 560.295884
     },
     {
+      "from_t": 561.135775,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 561.135775
+      "start": 561.138309
     },
     {
+      "align_flag": "edge",
+      "from_t": 565.226773,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 565.226773
+      "start": 565.395016
     },
     {
+      "from_t": 566.760773,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 566.760773
+      "start": 566.759172
     },
     {
+      "from_t": 567.363772,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 567.363772
+      "start": 567.361061
     },
     {
+      "from_t": 567.727772,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 567.727772
+      "start": 567.751643
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 568.029772
-    },
-    {
+      "from_t": 575.218769,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 575.218769
+      "start": 575.236833
     },
     {
+      "from_t": 575.795769,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 575.795769
+      "start": 575.775338
     },
     {
       "label": "Dentate Spike",
@@ -962,69 +927,79 @@
       "start": 576.493769
     },
     {
+      "align_flag": "outlier",
+      "from_t": 579.272768,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 579.272768
+      "start": 579.338675
     },
     {
+      "from_t": 582.933766,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 582.933766
+      "start": 582.951456
     },
     {
+      "from_t": 592.421762,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 592.421762
+      "start": 592.419516
     },
     {
+      "from_t": 592.685762,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 592.685762
+      "start": 592.677263
     },
     {
+      "align_flag": "outlier",
+      "from_t": 592.888762,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 592.888762
+      "start": 592.831259
     },
     {
+      "align_flag": "contested",
+      "from_t": 596.036761,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 596.036761
+      "start": 595.969896
     },
     {
+      "from_t": 596.074761,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 596.074761
+      "start": 596.060988
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 597.77076
-    },
-    {
+      "from_t": 597.92476,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 597.92476
+      "start": 597.923529
     },
     {
+      "from_t": 599.800759,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 599.800759
+      "start": 599.799448
     },
     {
+      "from_t": 600.341759,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 600.341759
+      "start": 600.339581
     },
     {
+      "from_t": 612.094754,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 612.094754
+      "start": 612.092144
     },
     {
+      "from_t": 612.380754,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 612.380754
+      "start": 612.403344
     },
     {
       "label": "Dentate Spike",
@@ -1037,24 +1012,23 @@
       "start": 629.948747
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 630.424747
-    },
-    {
+      "from_t": 630.457747,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 630.457747
+      "start": 630.455485
     },
     {
+      "align_flag": "outlier",
+      "from_t": 633.589746,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 633.589746
+      "start": 633.674763
     },
     {
+      "from_t": 633.936746,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 633.936746
+      "start": 633.935201
     },
     {
       "label": "Dentate Spike",
@@ -1062,149 +1036,120 @@
       "start": 637.770744
     },
     {
+      "from_t": 641.391743,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 641.391743
+      "start": 641.390242
     },
     {
+      "from_t": 641.621742,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 641.621742
+      "start": 641.620103
     },
     {
+      "align_flag": "outlier",
+      "from_t": 642.790742,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 642.790742
+      "start": 642.834345
     },
     {
+      "from_t": 643.731742,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 643.731742
+      "start": 643.729709
     },
     {
+      "from_t": 646.171741,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 646.171741
+      "start": 646.164936
     },
     {
+      "align_flag": "outlier",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 657.382736
     },
     {
+      "from_t": 660.998735,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 660.998735
+      "start": 660.994727
     },
     {
+      "from_t": 663.417734,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 663.417734
+      "start": 663.415385
     },
     {
+      "align_flag": "outlier",
+      "from_t": 665.124733,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 665.124733
+      "start": 665.072387
     },
     {
+      "from_t": 671.96773,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 671.96773
+      "start": 671.965081
     },
     {
+      "from_t": 672.80873,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 672.80873
+      "start": 672.806409
     },
     {
+      "from_t": 673.56773,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 673.56773
+      "start": 673.592097
     },
     {
+      "from_t": 673.77473,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 673.77473
+      "start": 673.777111
     },
     {
+      "from_t": 675.091729,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 675.091729
+      "start": 675.08958
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 677.819728
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 678.497728
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 678.523728
-    },
-    {
+      "from_t": 681.132727,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 681.132727
+      "start": 681.131681
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 683.586726
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 686.137725
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 687.007724
-    },
-    {
+      "from_t": 691.523722,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 691.523722
+      "start": 691.522526
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 691.586722
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 694.048721
-    },
-    {
+      "from_t": 694.760721,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 694.760721
+      "start": 694.758944
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 697.97172
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 706.526716
-    },
-    {
+      "from_t": 708.395716,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 708.395716
+      "start": 708.396802
     },
     {
+      "from_t": 712.449714,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 712.449714
+      "start": 712.451514
     },
     {
       "label": "Dentate Spike",
@@ -1212,29 +1157,30 @@
       "start": 717.349712
     },
     {
+      "align_flag": "edge",
+      "from_t": 719.147711,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 719.147711
+      "start": 718.98654
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 719.618711
-    },
-    {
+      "from_t": 721.35671,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 721.35671
+      "start": 721.352596
     },
     {
+      "align_flag": "outlier",
+      "from_t": 721.81571,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 721.81571
+      "start": 721.780604
     },
     {
+      "from_t": 724.459709,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 724.459709
+      "start": 724.45717
     },
     {
       "label": "Dentate Spike",
@@ -1242,119 +1188,85 @@
       "start": 726.765708
     },
     {
+      "from_t": 729.245707,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 729.245707
+      "start": 729.244342
     },
     {
+      "from_t": 731.802706,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 731.802706
+      "start": 731.822173
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 732.250706
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 732.284706
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 734.761705
-    },
-    {
+      "align_flag": "outlier",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 741.118703
     },
     {
+      "from_t": 743.285702,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 743.285702
+      "start": 743.283098
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 743.863701
-    },
-    {
+      "align_flag": "outlier",
+      "from_t": 743.895701,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 743.895701
+      "start": 743.804287
     },
     {
+      "from_t": 749.217699,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 749.217699
+      "start": 749.21576
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 749.452699
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 749.617699
-    },
-    {
+      "align_flag": "contested",
+      "from_t": 749.778699,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 749.778699
+      "start": 749.776582
     },
     {
+      "from_t": 749.948699,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 749.948699
+      "start": 749.931887
     },
     {
+      "from_t": 750.416699,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 750.416699
+      "start": 750.414442
     },
     {
+      "align_flag": "outlier",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 751.015699
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 751.720698
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 751.834698
-    },
-    {
+      "from_t": 751.864698,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 751.864698
+      "start": 751.862432
     },
     {
+      "align_flag": "edge",
+      "from_t": 759.349695,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 759.349695
+      "start": 759.177675
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 759.795695
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 765.989693
-    },
-    {
+      "from_t": 769.204691,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 769.204691
+      "start": 769.201099
     },
     {
       "label": "Dentate Spike",
@@ -1362,24 +1274,30 @@
       "start": 771.29869
     },
     {
+      "from_t": 776.396688,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 776.396688
+      "start": 776.395096
     },
     {
+      "align_flag": "outlier",
+      "from_t": 779.237687,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 779.237687
+      "start": 779.273557
     },
     {
+      "from_t": 781.853686,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 781.853686
+      "start": 781.877852
     },
     {
+      "align_flag": "edge",
+      "from_t": 784.189685,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 784.189685
+      "start": 784.379852
     },
     {
       "label": "Dentate Spike",
@@ -1387,19 +1305,23 @@
       "start": 785.509685
     },
     {
+      "from_t": 786.089684,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 786.089684
+      "start": 786.088519
     },
     {
+      "align_flag": "contested",
+      "from_t": 786.455684,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 786.455684
+      "start": 786.454434
     },
     {
+      "from_t": 786.578684,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 786.578684
+      "start": 786.576932
     },
     {
       "label": "Dentate Spike",
@@ -1407,49 +1329,28 @@
       "start": 787.799684
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 794.167681
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 794.200681
-    },
-    {
+      "from_t": 794.790681,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 794.790681
+      "start": 794.786246
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 798.51668
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 798.542679
-    },
-    {
+      "from_t": 798.815679,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 798.815679
+      "start": 798.814487
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 799.510679
-    },
-    {
+      "from_t": 800.091679,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 800.091679
+      "start": 800.108993
     },
     {
+      "from_t": 800.995679,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 800.995679
+      "start": 800.994612
     },
     {
       "label": "Dentate Spike",
@@ -1457,54 +1358,50 @@
       "start": 801.831678
     },
     {
+      "from_t": 802.462678,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 802.462678
+      "start": 802.450931
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 802.861678
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 802.993678
-    },
-    {
+      "align_flag": "contested",
+      "from_t": 803.162678,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 803.162678
+      "start": 803.159298
     },
     {
+      "align_flag": "contested",
+      "from_t": 803.345678,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 803.345678
+      "start": 803.361945
     },
     {
+      "from_t": 803.532677,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 803.532677
+      "start": 803.538971
     },
     {
+      "from_t": 807.733676,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 807.733676
+      "start": 807.73126
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 814.870673
-    },
-    {
+      "align_flag": "outlier",
+      "from_t": 815.255673,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 815.255673
+      "start": 815.401861
     },
     {
+      "align_flag": "outlier",
+      "from_t": 816.692672,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 816.692672
+      "start": 816.553812
     },
     {
       "label": "Dentate Spike",
@@ -1512,44 +1409,35 @@
       "start": 817.457672
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 820.716671
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 825.642669
-    },
-    {
+      "from_t": 826.165668,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 826.165668
+      "start": 826.169752
     },
     {
+      "from_t": 828.022668,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 828.022668
+      "start": 828.019352
     },
     {
+      "from_t": 829.502667,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 829.502667
+      "start": 829.516954
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 829.912667
-    },
-    {
+      "align_flag": "contested",
+      "from_t": 834.502665,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 834.502665
+      "start": 834.501103
     },
     {
+      "from_t": 834.655665,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 834.655665
+      "start": 834.654226
     },
     {
       "label": "Dentate Spike",
@@ -1557,19 +1445,23 @@
       "start": 835.627665
     },
     {
+      "from_t": 836.052664,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 836.052664
+      "start": 836.049153
     },
     {
+      "from_t": 839.272663,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 839.272663
+      "start": 839.269021
     },
     {
+      "align_flag": "edge",
+      "from_t": 839.763663,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 839.763663
+      "start": 839.590863
     },
     {
       "label": "Dentate Spike",
@@ -1582,14 +1474,16 @@
       "start": 840.459663
     },
     {
+      "from_t": 841.317662,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 841.317662
+      "start": 841.328728
     },
     {
+      "from_t": 841.817662,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 841.817662
+      "start": 841.825283
     },
     {
       "label": "Dentate Spike",
@@ -1597,19 +1491,10 @@
       "start": 848.715659
     },
     {
+      "from_t": 856.853656,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 856.853656
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 877.798648
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 877.964648
+      "start": 856.849412
     },
     {
       "label": "Dentate Spike",
@@ -1617,34 +1502,28 @@
       "start": 878.723647
     },
     {
+      "align_flag": "contested",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 878.870647
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 879.284647
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 879.349647
-    },
-    {
+      "from_t": 881.829646,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 881.829646
+      "start": 881.845813
     },
     {
+      "from_t": 883.485645,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 883.485645
+      "start": 883.483325
     },
     {
+      "from_t": 884.071645,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 884.071645
+      "start": 884.069496
     },
     {
       "label": "Dentate Spike",
@@ -1652,34 +1531,29 @@
       "start": 884.719645
     },
     {
+      "from_t": 890.788642,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 890.788642
+      "start": 890.785274
     },
     {
+      "align_flag": "outlier",
+      "from_t": 891.292642,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 891.292642
+      "start": 891.185361
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 893.079642
-    },
-    {
+      "from_t": 895.256641,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 895.256641
+      "start": 895.254932
     },
     {
+      "from_t": 896.13864,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 896.13864
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 898.193639
+      "start": 896.136293
     },
     {
       "label": "Dentate Spike",
@@ -1687,19 +1561,16 @@
       "start": 898.842639
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 904.426637
-    },
-    {
+      "from_t": 904.925637,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 904.925637
+      "start": 904.92975
     },
     {
+      "from_t": 905.172637,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 905.172637
+      "start": 905.168406
     },
     {
       "label": "Dentate Spike",
@@ -1707,54 +1578,55 @@
       "start": 906.597636
     },
     {
+      "align_flag": "contested",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 906.853636
     },
     {
+      "from_t": 906.972636,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 906.972636
+      "start": 906.971567
     },
     {
+      "from_t": 907.511636,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 907.511636
+      "start": 907.508399
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 907.811636
-    },
-    {
+      "from_t": 911.528634,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 911.528634
+      "start": 911.530297
     },
     {
+      "align_flag": "outlier",
+      "from_t": 916.176632,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 916.176632
+      "start": 916.042198
     },
     {
+      "align_flag": "outlier",
+      "from_t": 916.920632,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 916.920632
+      "start": 917.068525
     },
     {
+      "align_flag": "contested",
+      "from_t": 917.778632,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 917.778632
+      "start": 917.783462
     },
     {
+      "from_t": 917.949632,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 917.949632
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 918.337631
+      "start": 917.944131
     },
     {
       "label": "Dentate Spike",
@@ -1762,19 +1634,22 @@
       "start": 918.667631
     },
     {
+      "from_t": 920.178631,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 920.178631
+      "start": 920.176945
     },
     {
+      "from_t": 926.787628,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 926.787628
+      "start": 926.788902
     },
     {
+      "from_t": 929.856627,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 929.856627
+      "start": 929.855172
     },
     {
       "label": "Dentate Spike",
@@ -1782,49 +1657,22 @@
       "start": 934.803625
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 938.250623
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 939.901623
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 940.292623
-    },
-    {
+      "from_t": 940.487623,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 940.487623
+      "start": 940.484638
     },
     {
+      "from_t": 940.790622,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 940.790622
+      "start": 940.794632
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 940.897622
-    },
-    {
+      "from_t": 941.473622,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 941.473622
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 941.651622
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 941.828622
+      "start": 941.450552
     },
     {
       "label": "Dentate Spike",
@@ -1832,29 +1680,18 @@
       "start": 941.863622
     },
     {
+      "align_flag": "outlier",
+      "from_t": 945.105621,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 945.105621
+      "start": 945.199983
     },
     {
+      "align_flag": "contested",
+      "from_t": 945.318621,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 945.318621
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 949.435619
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 951.184618
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 952.011618
+      "start": 945.321688
     },
     {
       "label": "Dentate Spike",
@@ -1862,44 +1699,23 @@
       "start": 952.385618
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 952.729618
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 952.817618
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 952.916618
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 953.021617
-    },
-    {
+      "from_t": 953.451617,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 953.451617
+      "start": 953.454547
     },
     {
+      "align_flag": "outlier",
+      "from_t": 956.975616,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 956.975616
+      "start": 957.07116
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 957.648616
-    },
-    {
+      "from_t": 957.836616,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 957.836616
+      "start": 957.843053
     },
     {
       "label": "Dentate Spike",
@@ -1912,9 +1728,10 @@
       "start": 958.974615
     },
     {
+      "from_t": 959.726615,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 959.726615
+      "start": 959.723247
     },
     {
       "label": "Dentate Spike",
@@ -1922,59 +1739,55 @@
       "start": 960.327615
     },
     {
+      "from_t": 961.203614,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 961.203614
+      "start": 961.193404
     },
     {
+      "align_flag": "outlier",
+      "from_t": 961.732614,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 961.732614
+      "start": 961.591782
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 961.780614
-    },
-    {
+      "from_t": 961.999614,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 961.999614
+      "start": 961.990568
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 962.089614
-    },
-    {
+      "from_t": 962.490614,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 962.490614
+      "start": 962.479124
     },
     {
+      "from_t": 963.717613,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 963.717613
+      "start": 963.71322
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 964.718613
-    },
-    {
+      "align_flag": "outlier",
+      "from_t": 974.790609,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 974.790609
+      "start": 974.743173
     },
     {
+      "align_flag": "outlier",
+      "from_t": 975.222609,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 975.222609
+      "start": 975.096633
     },
     {
+      "from_t": 980.868606,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 980.868606
+      "start": 980.864608
     },
     {
       "label": "Dentate Spike",
@@ -1982,16 +1795,7 @@
       "start": 981.733606
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 989.119603
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 990.674602
-    },
-    {
+      "align_flag": "outlier",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 992.245602
@@ -2002,49 +1806,40 @@
       "start": 995.7016
     },
     {
+      "from_t": 996.4556,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 996.4556
+      "start": 996.449758
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 997.1306
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 997.3696
-    },
-    {
+      "align_flag": "edge",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 998.113599
     },
     {
+      "from_t": 998.309599,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 998.309599
+      "start": 998.335745
     },
     {
+      "from_t": 998.547599,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 998.547599
+      "start": 998.543658
     },
     {
+      "from_t": 998.781599,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 998.781599
+      "start": 998.794469
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 999.113599
-    },
-    {
+      "from_t": 999.924599,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 999.924599
+      "start": 999.923424
     },
     {
       "label": "Dentate Spike",
@@ -2052,9 +1847,10 @@
       "start": 1000.372598
     },
     {
+      "from_t": 1008.764595,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1008.764595
+      "start": 1008.762317
     },
     {
       "label": "Dentate Spike",
@@ -2062,19 +1858,16 @@
       "start": 1012.401594
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1014.358593
-    },
-    {
+      "from_t": 1017.308592,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1017.308592
+      "start": 1017.321432
     },
     {
+      "from_t": 1021.43359,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1021.43359
+      "start": 1021.431303
     },
     {
       "label": "Dentate Spike",
@@ -2082,9 +1875,10 @@
       "start": 1027.736588
     },
     {
+      "from_t": 1029.235587,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1029.235587
+      "start": 1029.232766
     },
     {
       "label": "Dentate Spike",
@@ -2092,34 +1886,41 @@
       "start": 1030.942586
     },
     {
+      "from_t": 1031.216586,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1031.216586
+      "start": 1031.213664
     },
     {
+      "from_t": 1039.251583,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1039.251583
+      "start": 1039.249468
     },
     {
+      "from_t": 1039.786583,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1039.786583
+      "start": 1039.782768
     },
     {
+      "from_t": 1040.276582,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1040.276582
+      "start": 1040.305531
     },
     {
+      "align_flag": "contested",
+      "from_t": 1040.501582,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1040.501582
+      "start": 1040.499231
     },
     {
+      "from_t": 1042.838581,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1042.838581
+      "start": 1042.840384
     },
     {
       "label": "Dentate Spike",
@@ -2127,44 +1928,22 @@
       "start": 1047.66158
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1049.639579
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1051.654578
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1053.426577
-    },
-    {
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 1056.689576
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1060.305574
-    },
-    {
+      "align_flag": "edge",
+      "from_t": 1060.827574,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1060.827574
+      "start": 1061.010101
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1060.947574
-    },
-    {
+      "from_t": 1061.050574,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1061.050574
+      "start": 1061.049234
     },
     {
       "label": "Dentate Spike",
@@ -2172,19 +1951,16 @@
       "start": 1062.145574
     },
     {
+      "from_t": 1065.398572,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1065.398572
+      "start": 1065.394216
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1065.735572
-    },
-    {
+      "from_t": 1065.855572,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1065.855572
+      "start": 1065.863788
     },
     {
       "label": "Dentate Spike",
@@ -2197,99 +1973,79 @@
       "start": 1067.706571
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1067.719571
-    },
-    {
+      "from_t": 1068.214571,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1068.214571
+      "start": 1068.212605
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1069.078571
-    },
-    {
+      "from_t": 1069.549571,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1069.549571
+      "start": 1069.547196
     },
     {
+      "from_t": 1100.068558,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1100.068558
+      "start": 1100.065706
     },
     {
+      "from_t": 1124.352549,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1124.352549
+      "start": 1124.351398
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1127.463547
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1127.500547
-    },
-    {
+      "from_t": 1132.536545,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1132.536545
+      "start": 1132.535537
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1135.277544
-    },
-    {
+      "from_t": 1135.446544,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1135.446544
+      "start": 1135.471854
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1137.214544
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1138.042543
-    },
-    {
+      "align_flag": "edge",
+      "from_t": 1139.945542,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1139.945542
+      "start": 1139.778934
     },
     {
+      "from_t": 1143.227541,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1143.227541
+      "start": 1143.226229
     },
     {
+      "from_t": 1144.88154,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1144.88154
+      "start": 1144.877524
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1148.260539,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1148.260539
+      "start": 1148.293365
     },
     {
+      "from_t": 1148.490539,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1148.490539
+      "start": 1148.520475
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1149.286539,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1149.286539
+      "start": 1149.143211
     },
     {
       "label": "Dentate Spike",
@@ -2297,24 +2053,24 @@
       "start": 1152.194538
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1162.104534,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1162.104534
+      "start": 1162.13818
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1167.369531,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1167.369531
+      "start": 1167.321821
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1167.664531
-    },
-    {
+      "from_t": 1167.820531,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1167.820531
+      "start": 1167.818798
     },
     {
       "label": "Dentate Spike",
@@ -2322,59 +2078,34 @@
       "start": 1172.349529
     },
     {
+      "from_t": 1173.453529,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1173.453529
+      "start": 1173.451143
     },
     {
+      "from_t": 1177.568527,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1177.568527
+      "start": 1177.593454
     },
     {
+      "from_t": 1177.853527,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1177.853527
+      "start": 1177.881613
     },
     {
+      "from_t": 1179.784526,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1179.784526
+      "start": 1179.770011
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1183.750525
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1188.066523
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1189.927522
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1190.914522
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1191.415522
-    },
-    {
+      "from_t": 1192.033522,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1192.033522
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1193.821521
+      "start": 1192.057517
     },
     {
       "label": "Dentate Spike",
@@ -2382,14 +2113,10 @@
       "start": 1194.390521
     },
     {
+      "from_t": 1208.829515,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1208.829515
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1209.136515
+      "start": 1208.81176
     },
     {
       "label": "Dentate Spike",
@@ -2397,9 +2124,10 @@
       "start": 1212.153513
     },
     {
+      "from_t": 1216.780512,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1216.780512
+      "start": 1216.777947
     },
     {
       "label": "Dentate Spike",
@@ -2407,209 +2135,187 @@
       "start": 1219.74051
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1233.487505
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1238.316503
-    },
-    {
+      "from_t": 1238.542503,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1238.542503
+      "start": 1238.555557
     },
     {
+      "from_t": 1239.680502,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1239.680502
+      "start": 1239.678633
     },
     {
+      "from_t": 1239.990502,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1239.990502
+      "start": 1239.987349
     },
     {
+      "from_t": 1241.652502,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1241.652502
+      "start": 1241.64705
     },
     {
+      "from_t": 1256.677496,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1256.677496
+      "start": 1256.679401
     },
     {
+      "from_t": 1263.098493,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1263.098493
+      "start": 1263.105841
     },
     {
+      "from_t": 1269.417491,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1269.417491
+      "start": 1269.418548
     },
     {
+      "from_t": 1277.359487,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1277.359487
+      "start": 1277.344771
     },
     {
+      "from_t": 1282.046485,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1282.046485
+      "start": 1282.045039
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1295.81748
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1299.401478
-    },
-    {
+      "from_t": 1299.854478,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1299.854478
+      "start": 1299.83091
     },
     {
+      "from_t": 1300.163478,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1300.163478
+      "start": 1300.160764
     },
     {
+      "from_t": 1302.209477,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1302.209477
+      "start": 1302.229745
     },
     {
+      "from_t": 1307.596475,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1307.596475
+      "start": 1307.594198
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1310.751474
-    },
-    {
+      "align_flag": "outlier",
+      "from_t": 1312.548473,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1312.548473
+      "start": 1312.449846
     },
     {
+      "from_t": 1318.869471,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1318.869471
+      "start": 1318.866291
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1321.864469,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1321.864469
+      "start": 1321.753465
     },
     {
+      "align_flag": "contested",
+      "from_t": 1324.380468,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1324.380468
+      "start": 1324.362102
     },
     {
+      "from_t": 1324.447468,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1324.447468
+      "start": 1324.44566
     },
     {
+      "from_t": 1327.155467,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1327.155467
+      "start": 1327.141084
     },
     {
+      "from_t": 1332.703465,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1332.703465
+      "start": 1332.729506
     },
     {
+      "from_t": 1333.249465,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1333.249465
+      "start": 1333.236181
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1333.547465
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1333.574465
-    },
-    {
+      "from_t": 1342.080461,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1342.080461
+      "start": 1342.110636
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1342.323461
-    },
-    {
+      "from_t": 1345.64346,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1345.64346
+      "start": 1345.640285
     },
     {
+      "from_t": 1354.801456,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1354.801456
+      "start": 1354.79933
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1355.064456
-    },
-    {
+      "from_t": 1358.559455,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1358.559455
+      "start": 1358.557914
     },
     {
+      "from_t": 1361.592454,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1361.592454
+      "start": 1361.590095
     },
     {
+      "from_t": 1367.717451,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1367.717451
+      "start": 1367.719774
     },
     {
+      "from_t": 1368.350451,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1368.350451
+      "start": 1368.348916
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1371.791449
-    },
-    {
+      "from_t": 1377.994447,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1377.994447
+      "start": 1377.993082
     },
     {
+      "from_t": 1382.582445,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1382.582445
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1382.614445
+      "start": 1382.56722
     },
     {
       "label": "Dentate Spike",
@@ -2622,34 +2328,29 @@
       "start": 1392.584441
     },
     {
+      "from_t": 1394.43444,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1394.43444
+      "start": 1394.431365
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1409.256434
-    },
-    {
+      "from_t": 1409.374434,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1409.374434
+      "start": 1409.376607
     },
     {
+      "from_t": 1428.245427,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1428.245427
+      "start": 1428.24689
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1436.953423
-    },
-    {
+      "align_flag": "edge",
+      "from_t": 1439.796422,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1439.796422
+      "start": 1439.984124
     },
     {
       "label": "Dentate Spike",
@@ -2657,79 +2358,86 @@
       "start": 1489.287402
     },
     {
+      "from_t": 1497.913399,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1497.913399
+      "start": 1497.898925
     },
     {
+      "from_t": 1505.330396,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1505.330396
+      "start": 1505.326006
     },
     {
+      "from_t": 1567.108371,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1567.108371
+      "start": 1567.106056
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1578.332367
-    },
-    {
+      "from_t": 1582.618365,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1582.618365
+      "start": 1582.600009
     },
     {
+      "from_t": 1587.788363,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1587.788363
+      "start": 1587.787291
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1588.229363,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1588.229363
+      "start": 1588.113905
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1590.256362,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1590.256362
+      "start": 1590.290531
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1591.075361,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1591.075361
+      "start": 1591.221464
     },
     {
+      "from_t": 1593.020361,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1593.020361
+      "start": 1593.035169
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1609.877354,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1609.877354
+      "start": 1609.759581
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1611.678353
-    },
-    {
+      "from_t": 1615.373352,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1615.373352
+      "start": 1615.370113
     },
     {
+      "from_t": 1615.617352,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1615.617352
+      "start": 1615.616167
     },
     {
+      "from_t": 1615.857351,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1615.857351
+      "start": 1615.854414
     },
     {
       "label": "Dentate Spike",
@@ -2737,19 +2445,23 @@
       "start": 1618.65935
     },
     {
+      "align_flag": "outlier",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 1619.22635
     },
     {
+      "from_t": 1619.56935,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1619.56935
+      "start": 1619.566542
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1624.597348,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1624.597348
+      "start": 1624.649327
     },
     {
       "label": "Dentate Spike",
@@ -2757,29 +2469,22 @@
       "start": 1633.095345
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1636.074343
-    },
-    {
+      "from_t": 1637.198343,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1637.198343
+      "start": 1637.19643
     },
     {
+      "align_flag": "outlier",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 1637.954343
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1639.142342
-    },
-    {
+      "from_t": 1639.191342,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1639.191342
+      "start": 1639.189164
     },
     {
       "label": "Dentate Spike",
@@ -2787,14 +2492,10 @@
       "start": 1649.479338
     },
     {
+      "from_t": 1651.935337,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1651.935337
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1652.357337
+      "start": 1651.963219
     },
     {
       "label": "Dentate Spike",
@@ -2802,9 +2503,10 @@
       "start": 1653.039337
     },
     {
+      "from_t": 1654.011336,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1654.011336
+      "start": 1654.027215
     },
     {
       "label": "Dentate Spike",
@@ -2812,54 +2514,54 @@
       "start": 1656.117335
     },
     {
+      "from_t": 1658.797334,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1658.797334
+      "start": 1658.795964
     },
     {
+      "from_t": 1662.022333,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1662.022333
+      "start": 1662.024243
     },
     {
+      "align_flag": "outlier",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 1664.819332
     },
     {
+      "from_t": 1665.375332,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1665.375332
+      "start": 1665.377592
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1666.061331
-    },
-    {
+      "from_t": 1666.226331,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1666.226331
+      "start": 1666.213016
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1668.001331
-    },
-    {
+      "from_t": 1669.27533,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1669.27533
+      "start": 1669.272765
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1671.581329,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1671.581329
+      "start": 1671.461292
     },
     {
+      "align_flag": "edge",
+      "from_t": 1673.179328,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1673.179328
+      "start": 1672.989165
     },
     {
       "label": "Dentate Spike",
@@ -2867,64 +2569,56 @@
       "start": 1676.013327
     },
     {
+      "from_t": 1681.823325,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1681.823325
+      "start": 1681.819865
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1685.493324,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1685.493324
+      "start": 1685.370651
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1685.848323,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1685.848323
+      "start": 1685.890535
     },
     {
+      "from_t": 1686.152323,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1686.152323
+      "start": 1686.14954
     },
     {
+      "from_t": 1689.778322,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1689.778322
+      "start": 1689.775517
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1690.738321,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1690.738321
+      "start": 1690.640969
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1690.934321
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1691.320321
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1691.334321
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1691.465321
-    },
-    {
+      "from_t": 1691.690321,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1691.690321
+      "start": 1691.691462
     },
     {
+      "align_flag": "contested",
+      "from_t": 1693.53132,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1693.53132
+      "start": 1693.476952
     },
     {
       "label": "Dentate Spike",
@@ -2932,34 +2626,27 @@
       "start": 1693.56732
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1696.873319
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1699.320318
-    },
-    {
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 1699.347318
     },
     {
+      "from_t": 1699.740318,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1699.740318
+      "start": 1699.736489
     },
     {
+      "from_t": 1700.008318,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1700.008318
+      "start": 1700.035157
     },
     {
+      "from_t": 1700.814317,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1700.814317
+      "start": 1700.812668
     },
     {
       "label": "Dentate Spike",
@@ -2967,39 +2654,31 @@
       "start": 1704.666316
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1704.777316
-    },
-    {
+      "align_flag": "contested",
+      "from_t": 1704.940316,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1704.940316
+      "start": 1704.835686
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1705.088316,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1705.088316
+      "start": 1705.134342
     },
     {
+      "align_flag": "contested",
+      "from_t": 1705.203316,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1705.203316
+      "start": 1705.395076
     },
     {
+      "from_t": 1706.313315,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1706.313315
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1711.328313
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1711.826313
+      "start": 1706.315174
     },
     {
       "label": "Dentate Spike",
@@ -3012,74 +2691,54 @@
       "start": 1714.405312
     },
     {
+      "from_t": 1717.402311,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1717.402311
+      "start": 1717.400631
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1717.530311
-    },
-    {
+      "from_t": 1719.16131,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1719.16131
+      "start": 1719.159809
     },
     {
+      "from_t": 1738.200302,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1738.200302
+      "start": 1738.199216
     },
     {
+      "align_flag": "outlier",
+      "from_t": 1763.250292,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1763.250292
+      "start": 1763.191423
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1768.75829
-    },
-    {
+      "align_flag": "outlier",
+      "from_t": 1768.77929,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1768.77929
+      "start": 1768.728205
     },
     {
+      "from_t": 1771.737289,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1771.737289
+      "start": 1771.748179
     },
     {
+      "from_t": 1776.187287,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1776.187287
+      "start": 1776.185211
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1778.544286
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1778.553286
-    },
-    {
+      "from_t": 1780.192285,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1780.192285
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1786.720283
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1788.742282
+      "start": 1780.190757
     },
     {
       "label": "Dentate Spike",
@@ -3087,29 +2746,10 @@
       "start": 1788.792282
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1789.097282
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1789.234282
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1791.029281
-    },
-    {
+      "from_t": 1791.161281,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1791.161281
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1800.662277
+      "start": 1791.148033
     },
     {
       "label": "Dentate Spike",
@@ -3122,89 +2762,59 @@
       "start": 1804.676276
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1805.870275
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1806.675275
-    },
-    {
+      "from_t": 1807.110275,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1807.110275
+      "start": 1807.10922
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1808.856274
-    },
-    {
+      "from_t": 1810.877273,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1810.877273
+      "start": 1810.878577
     },
     {
+      "from_t": 1811.942273,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1811.942273
+      "start": 1811.958181
     },
     {
+      "from_t": 1812.227273,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1812.227273
+      "start": 1812.229741
     },
     {
+      "from_t": 1813.586272,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1813.586272
+      "start": 1813.615232
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1813.703272
-    },
-    {
+      "from_t": 1814.301272,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1814.301272
+      "start": 1814.297729
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1814.759272
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1817.89927
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1820.894269
-    },
-    {
+      "align_flag": "edge",
+      "from_t": 1821.119269,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1821.119269
+      "start": 1820.926468
     },
     {
+      "from_t": 1823.630268,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1823.630268
+      "start": 1823.628752
     },
     {
+      "from_t": 1823.931268,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1823.931268
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1824.015268
+      "start": 1823.932944
     },
     {
       "label": "Dentate Spike",
@@ -3212,29 +2822,10 @@
       "start": 1824.371268
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1825.582267
-    },
-    {
+      "align_flag": "outlier",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 1829.789266
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1829.994266
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1830.097265
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1830.249265
     },
     {
       "label": "Dentate Spike",
@@ -3242,19 +2833,10 @@
       "start": 1830.325265
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1831.988265
-    },
-    {
+      "from_t": 1832.650264,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1832.650264
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1834.932264
+      "start": 1832.648114
     },
     {
       "label": "Dentate Spike",
@@ -3262,49 +2844,39 @@
       "start": 1835.205263
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1835.662263
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1835.990263
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1838.696262
-    },
-    {
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 1847.195259
     },
     {
+      "from_t": 1847.396259,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1847.396259
+      "start": 1847.401005
     },
     {
+      "from_t": 1851.438257,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1851.438257
+      "start": 1851.436267
     },
     {
+      "from_t": 1855.075255,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1855.075255
+      "start": 1855.074081
     },
     {
+      "align_flag": "outlier",
       "label": "Dentate Spike",
       "label_id": "spike",
       "start": 1863.871252
     },
     {
+      "from_t": 1871.547249,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1871.547249
+      "start": 1871.54584
     }
   ],
   "gid": "s38b9e61c5684",
@@ -3374,7 +2946,7 @@
     "spike": "Dentate Spike"
   },
   "mouse": 13,
-  "n": 619,
+  "n": 431,
   "name": "PTEN m13 s2 2023-08-01  \u00b7  Incisor CSC1\u2013CSC64",
   "note": "",
   "project": "PTEN",
@@ -3624,7 +3196,7 @@
   "type": "ds",
   "type_name": "ds",
   "units": "seconds relative to the start of the recording",
-  "version": 7,
+  "version": 8,
   "versions": [
     {
       "at": "2026-09-02T19:00:02-04:00",
@@ -16606,14 +16178,175 @@
       "v": 6
     },
     {
+      "aligned": {
+        "band": [
+          5.0,
+          100.0
+        ],
+        "cand_dist_ms": 12.0,
+        "cand_height_sd": 0.0,
+        "channels": [
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49
+        ],
+        "csd_smooth": true,
+        "dist_ms": 100.0,
+        "estimator": "mad",
+        "flagged": {
+          "contested": 22,
+          "edge": 15,
+          "outlier": 56
+        },
+        "invert": true,
+        "left_out": [
+          55,
+          59
+        ],
+        "lfp_fs": 1000.0,
+        "line_hz": 60.0,
+        "measure": "csd",
+        "n_channels": 16,
+        "n_moved": 337,
+        "n_unmoved": 282,
+        "order": 3,
+        "order_held": true,
+        "profile": {
+          "33": 0.150725,
+          "34": 0.233477,
+          "35": 0.379392,
+          "36": 0.405128,
+          "37": 0.196411,
+          "38": -0.00145,
+          "39": -0.117921,
+          "40": -0.219718,
+          "41": -0.361588,
+          "42": -0.450375,
+          "43": -0.347985,
+          "44": -0.154915,
+          "45": 0.025125,
+          "46": 0.110721,
+          "47": 0.114057,
+          "48": 0.096782
+        },
+        "request": {
+          "channels": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            56,
+            57,
+            58,
+            60,
+            61,
+            62,
+            63,
+            64
+          ],
+          "depth_band": 16,
+          "entry_id": "46fd29a77cc7",
+          "from_version": "vk-e012eec00756",
+          "kind": "ds",
+          "stamps": "03b8cf6c1849"
+        },
+        "request_hash": "25927247838151d6",
+        "resorted": 0,
+        "screened": {
+          "55": "not ticked",
+          "59": "dead (0.5 uV against a median of 130)"
+        },
+        "shift_max_ms": 191.76,
+        "shift_median_ms": 3.556,
+        "shift_min_ms": -192.801,
+        "smooth_ms": 0.0,
+        "source_version": 6,
+        "source_version_id": null,
+        "spacing_um": 30.0,
+        "tool": "jarvis.braces/1",
+        "window_ms": 200.0
+      },
       "at": "2026-10-15T11:22:30-04:00",
       "by": "Shahriar Tafti",
       "by_label": {
         "Dentate Spike": 431
       },
+      "changed": 0,
+      "from_id": null,
+      "from_v": null,
+      "gained": 0,
+      "id": "br-e4a68e40cf",
+      "lost": 0,
       "machine": "DESKTOP-4H65AI7",
+      "moves": {},
       "n": 431,
       "note": "Aligned to the mean magnitude over 16 channels, \u00b1200 ms, reading v6. 337 stamp(s) moved by -192.8 to 191.8 ms; 282 left where they were. No labels changed.",
+      "shifted": 337,
       "snap": [
         [
           4.714998,
@@ -18341,6 +18074,991 @@
         ]
       ],
       "v": 7
+    },
+    {
+      "at": "2026-10-20T14:54:14-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "spike": 243
+      },
+      "machine": "DESKTOP-4H65AI7",
+      "n": 243,
+      "note": "Root Canal: 188 hidden IED(s) taken out of 431 dentate spikes read from the live set; 243 kept as DS. The cluster whose centre has more 500\u20131000 Hz power is called IED: +21.1 dB against +12.1 dB for the other, which is called DS (243 DS, 188 IED). measured on DS filter, 5\u2013100 Hz, 60 Hz mains out, amplitude window \u00b125 ms, half-width search \u00b1100 ms, 500\u20131000 Hz power. IEDs banked to entry aa63b568bddb.  Numbers and figures: results bank rootcanal/s38b9e61c5684__f4ae75ce0ff5. JA Management",
+      "snap": [
+        [
+          4.714998,
+          "spike"
+        ],
+        [
+          10.434272,
+          "spike"
+        ],
+        [
+          15.244531,
+          "spike"
+        ],
+        [
+          19.899992,
+          "spike"
+        ],
+        [
+          31.087751,
+          "spike"
+        ],
+        [
+          41.151427,
+          "spike"
+        ],
+        [
+          41.45837,
+          "spike"
+        ],
+        [
+          41.617107,
+          "spike"
+        ],
+        [
+          42.889766,
+          "spike"
+        ],
+        [
+          47.723706,
+          "spike"
+        ],
+        [
+          64.884405,
+          "spike"
+        ],
+        [
+          65.039858,
+          "spike"
+        ],
+        [
+          69.314543,
+          "spike"
+        ],
+        [
+          70.17945,
+          "spike"
+        ],
+        [
+          70.966836,
+          "spike"
+        ],
+        [
+          74.476417,
+          "spike"
+        ],
+        [
+          77.384765,
+          "spike"
+        ],
+        [
+          95.369975,
+          "spike"
+        ],
+        [
+          101.067455,
+          "spike"
+        ],
+        [
+          106.936957,
+          "spike"
+        ],
+        [
+          112.923085,
+          "spike"
+        ],
+        [
+          118.340606,
+          "spike"
+        ],
+        [
+          129.745948,
+          "spike"
+        ],
+        [
+          131.380119,
+          "spike"
+        ],
+        [
+          144.2486,
+          "spike"
+        ],
+        [
+          145.653174,
+          "spike"
+        ],
+        [
+          159.687721,
+          "spike"
+        ],
+        [
+          162.733694,
+          "spike"
+        ],
+        [
+          172.647444,
+          "spike"
+        ],
+        [
+          178.906341,
+          "spike"
+        ],
+        [
+          178.997928,
+          "spike"
+        ],
+        [
+          181.492505,
+          "spike"
+        ],
+        [
+          182.721832,
+          "spike"
+        ],
+        [
+          183.617926,
+          "spike"
+        ],
+        [
+          189.291464,
+          "spike"
+        ],
+        [
+          337.321375,
+          "spike"
+        ],
+        [
+          345.674581,
+          "spike"
+        ],
+        [
+          348.951308,
+          "spike"
+        ],
+        [
+          350.990088,
+          "spike"
+        ],
+        [
+          353.558858,
+          "spike"
+        ],
+        [
+          356.725706,
+          "spike"
+        ],
+        [
+          361.176506,
+          "spike"
+        ],
+        [
+          404.944733,
+          "spike"
+        ],
+        [
+          449.977893,
+          "spike"
+        ],
+        [
+          450.226028,
+          "spike"
+        ],
+        [
+          465.950813,
+          "spike"
+        ],
+        [
+          475.474148,
+          "spike"
+        ],
+        [
+          485.607623,
+          "spike"
+        ],
+        [
+          504.175798,
+          "spike"
+        ],
+        [
+          532.944603,
+          "spike"
+        ],
+        [
+          538.238282,
+          "spike"
+        ],
+        [
+          538.645784,
+          "spike"
+        ],
+        [
+          553.039743,
+          "spike"
+        ],
+        [
+          557.289543,
+          "spike"
+        ],
+        [
+          566.759172,
+          "spike"
+        ],
+        [
+          567.751643,
+          "spike"
+        ],
+        [
+          575.236833,
+          "spike"
+        ],
+        [
+          575.775338,
+          "spike"
+        ],
+        [
+          576.493769,
+          "spike"
+        ],
+        [
+          579.338675,
+          "spike"
+        ],
+        [
+          592.677263,
+          "spike"
+        ],
+        [
+          592.831259,
+          "spike"
+        ],
+        [
+          595.969896,
+          "spike"
+        ],
+        [
+          596.060988,
+          "spike"
+        ],
+        [
+          630.455485,
+          "spike"
+        ],
+        [
+          633.935201,
+          "spike"
+        ],
+        [
+          637.770744,
+          "spike"
+        ],
+        [
+          641.390242,
+          "spike"
+        ],
+        [
+          646.164936,
+          "spike"
+        ],
+        [
+          657.382736,
+          "spike"
+        ],
+        [
+          665.072387,
+          "spike"
+        ],
+        [
+          671.965081,
+          "spike"
+        ],
+        [
+          673.592097,
+          "spike"
+        ],
+        [
+          681.131681,
+          "spike"
+        ],
+        [
+          717.349712,
+          "spike"
+        ],
+        [
+          718.98654,
+          "spike"
+        ],
+        [
+          724.45717,
+          "spike"
+        ],
+        [
+          726.765708,
+          "spike"
+        ],
+        [
+          731.822173,
+          "spike"
+        ],
+        [
+          741.118703,
+          "spike"
+        ],
+        [
+          743.804287,
+          "spike"
+        ],
+        [
+          749.776582,
+          "spike"
+        ],
+        [
+          749.931887,
+          "spike"
+        ],
+        [
+          751.015699,
+          "spike"
+        ],
+        [
+          751.862432,
+          "spike"
+        ],
+        [
+          759.177675,
+          "spike"
+        ],
+        [
+          771.29869,
+          "spike"
+        ],
+        [
+          779.273557,
+          "spike"
+        ],
+        [
+          781.877852,
+          "spike"
+        ],
+        [
+          784.379852,
+          "spike"
+        ],
+        [
+          786.088519,
+          "spike"
+        ],
+        [
+          800.108993,
+          "spike"
+        ],
+        [
+          800.994612,
+          "spike"
+        ],
+        [
+          801.831678,
+          "spike"
+        ],
+        [
+          802.450931,
+          "spike"
+        ],
+        [
+          803.159298,
+          "spike"
+        ],
+        [
+          807.73126,
+          "spike"
+        ],
+        [
+          815.401861,
+          "spike"
+        ],
+        [
+          817.457672,
+          "spike"
+        ],
+        [
+          826.169752,
+          "spike"
+        ],
+        [
+          829.516954,
+          "spike"
+        ],
+        [
+          834.501103,
+          "spike"
+        ],
+        [
+          834.654226,
+          "spike"
+        ],
+        [
+          839.590863,
+          "spike"
+        ],
+        [
+          840.180663,
+          "spike"
+        ],
+        [
+          840.459663,
+          "spike"
+        ],
+        [
+          841.328728,
+          "spike"
+        ],
+        [
+          878.870647,
+          "spike"
+        ],
+        [
+          881.845813,
+          "spike"
+        ],
+        [
+          884.719645,
+          "spike"
+        ],
+        [
+          891.185361,
+          "spike"
+        ],
+        [
+          906.853636,
+          "spike"
+        ],
+        [
+          907.508399,
+          "spike"
+        ],
+        [
+          911.530297,
+          "spike"
+        ],
+        [
+          917.068525,
+          "spike"
+        ],
+        [
+          918.667631,
+          "spike"
+        ],
+        [
+          934.803625,
+          "spike"
+        ],
+        [
+          941.450552,
+          "spike"
+        ],
+        [
+          945.321688,
+          "spike"
+        ],
+        [
+          953.454547,
+          "spike"
+        ],
+        [
+          957.07116,
+          "spike"
+        ],
+        [
+          957.843053,
+          "spike"
+        ],
+        [
+          961.193404,
+          "spike"
+        ],
+        [
+          961.591782,
+          "spike"
+        ],
+        [
+          961.990568,
+          "spike"
+        ],
+        [
+          962.479124,
+          "spike"
+        ],
+        [
+          963.71322,
+          "spike"
+        ],
+        [
+          974.743173,
+          "spike"
+        ],
+        [
+          975.096633,
+          "spike"
+        ],
+        [
+          981.733606,
+          "spike"
+        ],
+        [
+          992.245602,
+          "spike"
+        ],
+        [
+          995.7016,
+          "spike"
+        ],
+        [
+          998.113599,
+          "spike"
+        ],
+        [
+          998.335745,
+          "spike"
+        ],
+        [
+          998.794469,
+          "spike"
+        ],
+        [
+          1017.321432,
+          "spike"
+        ],
+        [
+          1029.232766,
+          "spike"
+        ],
+        [
+          1030.942586,
+          "spike"
+        ],
+        [
+          1039.782768,
+          "spike"
+        ],
+        [
+          1042.840384,
+          "spike"
+        ],
+        [
+          1061.010101,
+          "spike"
+        ],
+        [
+          1061.049234,
+          "spike"
+        ],
+        [
+          1065.863788,
+          "spike"
+        ],
+        [
+          1067.101572,
+          "spike"
+        ],
+        [
+          1067.706571,
+          "spike"
+        ],
+        [
+          1069.547196,
+          "spike"
+        ],
+        [
+          1135.471854,
+          "spike"
+        ],
+        [
+          1139.778934,
+          "spike"
+        ],
+        [
+          1144.877524,
+          "spike"
+        ],
+        [
+          1148.293365,
+          "spike"
+        ],
+        [
+          1149.143211,
+          "spike"
+        ],
+        [
+          1152.194538,
+          "spike"
+        ],
+        [
+          1162.13818,
+          "spike"
+        ],
+        [
+          1167.321821,
+          "spike"
+        ],
+        [
+          1172.349529,
+          "spike"
+        ],
+        [
+          1173.451143,
+          "spike"
+        ],
+        [
+          1177.593454,
+          "spike"
+        ],
+        [
+          1177.881613,
+          "spike"
+        ],
+        [
+          1179.770011,
+          "spike"
+        ],
+        [
+          1192.057517,
+          "spike"
+        ],
+        [
+          1208.81176,
+          "spike"
+        ],
+        [
+          1216.777947,
+          "spike"
+        ],
+        [
+          1219.74051,
+          "spike"
+        ],
+        [
+          1256.679401,
+          "spike"
+        ],
+        [
+          1263.105841,
+          "spike"
+        ],
+        [
+          1269.418548,
+          "spike"
+        ],
+        [
+          1277.344771,
+          "spike"
+        ],
+        [
+          1282.045039,
+          "spike"
+        ],
+        [
+          1299.83091,
+          "spike"
+        ],
+        [
+          1300.160764,
+          "spike"
+        ],
+        [
+          1307.594198,
+          "spike"
+        ],
+        [
+          1312.449846,
+          "spike"
+        ],
+        [
+          1318.866291,
+          "spike"
+        ],
+        [
+          1321.753465,
+          "spike"
+        ],
+        [
+          1324.362102,
+          "spike"
+        ],
+        [
+          1327.141084,
+          "spike"
+        ],
+        [
+          1332.729506,
+          "spike"
+        ],
+        [
+          1333.236181,
+          "spike"
+        ],
+        [
+          1345.640285,
+          "spike"
+        ],
+        [
+          1358.557914,
+          "spike"
+        ],
+        [
+          1367.719774,
+          "spike"
+        ],
+        [
+          1382.56722,
+          "spike"
+        ],
+        [
+          1392.584441,
+          "spike"
+        ],
+        [
+          1409.376607,
+          "spike"
+        ],
+        [
+          1428.24689,
+          "spike"
+        ],
+        [
+          1439.984124,
+          "spike"
+        ],
+        [
+          1489.287402,
+          "spike"
+        ],
+        [
+          1497.898925,
+          "spike"
+        ],
+        [
+          1582.600009,
+          "spike"
+        ],
+        [
+          1588.113905,
+          "spike"
+        ],
+        [
+          1590.290531,
+          "spike"
+        ],
+        [
+          1591.221464,
+          "spike"
+        ],
+        [
+          1593.035169,
+          "spike"
+        ],
+        [
+          1615.370113,
+          "spike"
+        ],
+        [
+          1615.616167,
+          "spike"
+        ],
+        [
+          1618.65935,
+          "spike"
+        ],
+        [
+          1619.22635,
+          "spike"
+        ],
+        [
+          1624.649327,
+          "spike"
+        ],
+        [
+          1633.095345,
+          "spike"
+        ],
+        [
+          1637.954343,
+          "spike"
+        ],
+        [
+          1649.479338,
+          "spike"
+        ],
+        [
+          1653.039337,
+          "spike"
+        ],
+        [
+          1656.117335,
+          "spike"
+        ],
+        [
+          1658.795964,
+          "spike"
+        ],
+        [
+          1662.024243,
+          "spike"
+        ],
+        [
+          1664.819332,
+          "spike"
+        ],
+        [
+          1665.377592,
+          "spike"
+        ],
+        [
+          1666.213016,
+          "spike"
+        ],
+        [
+          1671.461292,
+          "spike"
+        ],
+        [
+          1672.989165,
+          "spike"
+        ],
+        [
+          1685.370651,
+          "spike"
+        ],
+        [
+          1686.14954,
+          "spike"
+        ],
+        [
+          1689.775517,
+          "spike"
+        ],
+        [
+          1690.640969,
+          "spike"
+        ],
+        [
+          1691.691462,
+          "spike"
+        ],
+        [
+          1693.476952,
+          "spike"
+        ],
+        [
+          1699.347318,
+          "spike"
+        ],
+        [
+          1700.035157,
+          "spike"
+        ],
+        [
+          1700.812668,
+          "spike"
+        ],
+        [
+          1704.666316,
+          "spike"
+        ],
+        [
+          1704.835686,
+          "spike"
+        ],
+        [
+          1705.395076,
+          "spike"
+        ],
+        [
+          1712.395313,
+          "spike"
+        ],
+        [
+          1714.405312,
+          "spike"
+        ],
+        [
+          1717.400631,
+          "spike"
+        ],
+        [
+          1738.199216,
+          "spike"
+        ],
+        [
+          1763.191423,
+          "spike"
+        ],
+        [
+          1776.185211,
+          "spike"
+        ],
+        [
+          1780.190757,
+          "spike"
+        ],
+        [
+          1791.148033,
+          "spike"
+        ],
+        [
+          1800.928277,
+          "spike"
+        ],
+        [
+          1804.676276,
+          "spike"
+        ],
+        [
+          1807.10922,
+          "spike"
+        ],
+        [
+          1811.958181,
+          "spike"
+        ],
+        [
+          1812.229741,
+          "spike"
+        ],
+        [
+          1814.297729,
+          "spike"
+        ],
+        [
+          1820.926468,
+          "spike"
+        ],
+        [
+          1823.932944,
+          "spike"
+        ],
+        [
+          1829.789266,
+          "spike"
+        ],
+        [
+          1835.205263,
+          "spike"
+        ],
+        [
+          1847.195259,
+          "spike"
+        ],
+        [
+          1851.436267,
+          "spike"
+        ],
+        [
+          1863.871252,
+          "spike"
+        ]
+      ],
+      "v": 8
     }
   ]
 }
