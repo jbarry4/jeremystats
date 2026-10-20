@@ -245,9 +245,14 @@ BARRY.junction = (function () {
         text: 'Nothing here matches “' + q.find + '”.' }));
       return list;
     }
+    /* Counts are of the live entries: an archived one is kept, and is not
+       one more of anything to choose from (2026-10-20). */
+    const liveOf = (xs) => (xs || []).filter((x) => !x.archived);
     for (const r of rows) {
       // The newest of each, which is what picking the row starts from.
-      const pool = (r.pooled || [])[0];
+      const pool = liveOf(r.pooled)[0];
+      const nDs = liveOf(r.ds).length, nIed = liveOf(r.ied).length;
+      const nPool = liveOf(r.pooled).length;
       list.appendChild(el('button', {
         class: 'jn-rec' + (q.gid === r.gid ? ' on' : ''),
         onclick: () => choose(r.gid),
@@ -257,19 +262,18 @@ BARRY.junction = (function () {
           title: r.ds[0] && r.ds[0].aligned
             ? 'Braces has put the newest Incisor entry’s stamps on their peaks'
             : 'Braces has not lined up the newest Incisor entry' }, [
-          el('span', { text: 'Incisor' + (r.ds.length > 1 ? ' ×' + r.ds.length : '') }),
+          el('span', { text: 'Incisor' + (nDs > 1 ? ' ×' + nDs : '') }),
           alignWord(r.ds[0]),
         ]),
         el('span', { class: 'jn-tag d',
           title: r.ied[0] && r.ied[0].aligned
             ? 'Eye has put the newest Doppler entry’s stamps on their peaks'
             : 'Eye has not lined up the newest Doppler entry' }, [
-          el('span', { text: 'Doppler' + (r.ied.length > 1 ? ' ×' + r.ied.length : '') }),
+          el('span', { text: 'Doppler' + (nIed > 1 ? ' ×' + nIed : '') }),
           alignWord(r.ied[0]),
         ]),
-        r.pooled.length
-          ? BARRY.ui.chip(r.pooled.length === 1 ? 'pooled'
-                          : 'pooled ×' + r.pooled.length,
+        nPool
+          ? BARRY.ui.chip(nPool === 1 ? 'pooled' : 'pooled ×' + nPool,
                           { flag: true, kind: 'ok' })
           : null,
         pool && pool.aligned
@@ -369,23 +373,37 @@ BARRY.junction = (function () {
       ]),
     ]);
     if (entries.length > 1) {
-      side.appendChild(el('div', { class: 'jn-ents' }, entries.map((x) =>
-        el('button', {
-          class: 'jn-ent' + (x.id === ent.id ? ' on' : ''),
-          title: (x.pipeline || '') + (x.at ? ' · ' + x.at.slice(0, 10) : ''),
-          onclick: () => {
-            if (kind === 'ds') { q.ds = x.id; q.dsV = null; }
-            else { q.ied = x.id; q.iedV = null; }
-            landed = null; paint();
-          },
-        }, [el('span', { text: x.name || x.id }),
-            /* Two entries on one recording often share a name -- a re-run
-               of the same detector -- so each says how far it has got and
-               when it was last worked on. */
-            el('span', { class: 'hint quiet',
-              text: BARRY.ui.versionLabel(x.tip) + ' · ' + num(x.n)
-                  + (x.at ? ' · ' + String(x.at).slice(0, 10) : '') }),
-            alignWord(x)]))));
+      const row = (x) => el('button', {
+        class: 'jn-ent' + (x.id === ent.id ? ' on' : '')
+               + (x.archived ? ' is-archived' : ''),
+        title: (x.pipeline || '') + (x.at ? ' · ' + x.at.slice(0, 10) : ''),
+        onclick: () => {
+          if (kind === 'ds') { q.ds = x.id; q.dsV = null; }
+          else { q.ied = x.id; q.iedV = null; }
+          landed = null; paint();
+        },
+      }, [el('span', { text: x.name || x.id }),
+          /* Two entries on one recording often share a name -- a re-run
+             of the same detector -- so each says how far it has got and
+             when it was last worked on. */
+          el('span', { class: 'hint quiet',
+            text: BARRY.ui.versionLabel(x.tip) + ' · ' + num(x.n)
+                + (x.at ? ' · ' + String(x.at).slice(0, 10) : '') }),
+          alignWord(x)]);
+      /* Archived entries sink below the live ones, behind one toggle
+         (the user's rule, 2026-10-20): kept, not offered first. The
+         server sends them last and flagged (`archived`). */
+      const [liveEnts, goneEnts] = BARRY.ui.splitArchived(
+        entries, (x) => !!x.archived);
+      side.appendChild(el('div', { class: 'jn-ents' }, liveEnts.map(row)));
+      const tail = BARRY.ui.archivedTail({
+        key: 'jn-' + kind + '-' + (q.gid || ''), items: goneEnts,
+        noun: ['entry', 'entries'],
+        forceOpen: goneEnts.some((x) => x.id === ent.id),
+        render: (xs) => el('div', { class: 'jn-ents' }, xs.map(row)),
+        onToggle: () => paint(),
+      });
+      if (tail) side.appendChild(tail);
     } else {
       side.appendChild(el('div', { class: 'jn-ent-one' }, [
         el('span', { text: ent.name || ent.id }),

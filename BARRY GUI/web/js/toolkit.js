@@ -1391,7 +1391,7 @@ BARRY.views.toolkit = (function () {
   /* The sets on the shelf that match what is being asked for. Everything
      not on the bench, which includes the finished ones -- being done is not
      a reason to be hidden, only a reason not to be in the way. */
-  function curationRows() {
+  function curationRows(arch) {
     const all = wbSets();
     const q = curQ.text.trim().toLowerCase();
     const words = q ? q.split(/\s+/) : [];
@@ -1399,21 +1399,21 @@ BARRY.views.toolkit = (function () {
 
     let rows = all.filter((st) => {
       if (st.open) return false;
+      /* Archived sets sink (2026-10-20): never among the shelf's own rows,
+         and listed apart, under the toggle at the bottom (`arch`), where
+         only the search narrows them -- the pills are about live work. */
+      if (!!st.archived !== !!arch) return false;
       const pr = st.progress || {};
-      if (curQ.show === 'left' && !(pr.left > 0)) return false;
-      if (curQ.show === 'flagged' && !(by(st).flag > 0)) return false;
-      if (curQ.show === 'done' && !(pr.left === 0 && pr.total > 0)) return false;
-      if (curQ.show === 'demo' && !String(st.gid || '').startsWith('demo-')) {
+      const pill = arch ? 'all' : curQ.show;
+      if (pill === 'left' && !(pr.left > 0)) return false;
+      if (pill === 'flagged' && !(by(st).flag > 0)) return false;
+      if (pill === 'done' && !(pr.left === 0 && pr.total > 0)) return false;
+      if (pill === 'demo' && !String(st.gid || '').startsWith('demo-')) {
         return false;
       }
-      /* Archived sessions are out of the way unless asked for. Archiving
-         still means what it meant -- "I am done thinking about this at all"
-         -- which is a stronger statement than closing it. */
-      if (curQ.show === 'archived') {
-        if (!st.archived) return false;
-      } else if (st.archived) {
-        return false;
-      }
+      /* Archiving still means what it meant -- "I am done thinking about
+         this at all" -- a stronger statement than closing it; the drawer
+         at the bottom of the shelf is where those sets are found again. */
       if (!words.length) return true;
       const hay = [st.name, st.kind_name, st.kind, st.gid, st.assignee,
                    st.session && st.session.label,
@@ -1664,7 +1664,9 @@ BARRY.views.toolkit = (function () {
     }
 
     /* ---- the banked runs not started ---- */
-    const nFresh = fresh.filter((e) => !e.test
+    // Current ones only: archived runs are listed apart, under their own
+    // toggle at the bottom of the list.
+    const nFresh = fresh.filter((e) => !e.test && !e.archived
       && (w.startable.mine.test(e.pipeline || ''))).length;
     host.appendChild(el('div', { class: 'cur-shelf-head' }, [
       el('button', {
@@ -2183,7 +2185,8 @@ BARRY.views.toolkit = (function () {
     }).length;
     const nDemo = down.filter(
       (s) => String(s.gid || '').startsWith('demo-')).length;
-    const nArch = sets.filter((s) => s.archived).length;
+    // The archived ones are the drawer at the bottom of the list now.
+    if (curQ.show === 'archived') curQ.show = 'all';
 
     const search = el('input', {
       type: 'text', class: 'cur-search', value: curQ.text,
@@ -2210,7 +2213,6 @@ BARRY.views.toolkit = (function () {
       chip('left', 'Unfinished', nLeft),
       chip('flagged', 'Has flagged', nFlag),
       chip('done', 'Done', nDone),
-      nArch ? chip('archived', 'Archived', nArch) : null,
       nDemo ? chip('demo', 'Demo', nDemo) : null,
       el('div', { class: 'spacer', style: 'flex:1' }),
       el('span', { class: 'hint', id: 'curCount' }),
@@ -2241,22 +2243,33 @@ BARRY.views.toolkit = (function () {
     const count = document.getElementById('curCount');
     if (count) {
       count.textContent = rows.length === total
-        ? rows.length + ' set(s)'
+        ? rows.length + (rows.length === 1 ? ' set' : ' sets')
         : rows.length + ' of ' + total;
     }
     if (!rows.length) {
       list.appendChild(el('div', { class: 'hint',
         text: 'Nothing matches that. Clear the search, or pick All.' }));
-      return;
     }
-    for (const st of rows) {
+    for (const st of rows) list.appendChild(shelfRow(st));
+    const tail = BARRY.ui.archivedTail({
+      key: 'shelf-' + wb().tool, items: curationRows(true),
+      noun: ['set', 'sets'],
+      render: (xs) => xs.map(shelfRow),
+      onToggle: () => paintShelfList(),
+    });
+    if (tail) list.appendChild(tail);
+  }
+
+  function shelfRow(st) {
+    {
       const pr = st.progress || {};
       const done = pr.left === 0 && pr.total > 0;
       const rr = openReach(st.gid, st.session, wb().tool);
       const reach = rr.ok;
       const when = curWhen(st.opened_at) || curWhen((st.updated || {}).at);
-      list.appendChild(el('div', {
-        class: 'cur-shelf-row' + (done ? ' done' : ''),
+      return el('div', {
+        class: 'cur-shelf-row' + (done ? ' done' : '')
+               + (st.archived ? ' is-archived' : ''),
       }, [
         el('span', { class: 'csr-name', text: st.name }),
         el('span', { class: 'csr-sess',
@@ -2296,7 +2309,7 @@ BARRY.views.toolkit = (function () {
           onclick: () => pickUpSet(st, true),
         }),
         ].filter(Boolean)),
-      ]));
+      ]);
     }
   }
 

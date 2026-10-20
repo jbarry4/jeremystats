@@ -202,6 +202,9 @@ def load_config(logs_dir):
         "enabled": bool(cfg.get("enabled", True)),
         "needs_netid": not netid,
         "configured": bool(netid and host and cfg.get("enabled", True)),
+        # When `sign_in` last proved a key, so the app can tell "signed in
+        # during Setup, since I last looked" and come up signed in.
+        "signed_in_at": cfg.get("signed_in_at") or None,
     }
 
 
@@ -286,6 +289,11 @@ def ssh_cmd(cfg, remote_command):
     cmd = ["ssh"] + list(SSH_OPTS)
     if cfg.get("key_path"):
         cmd += ["-i", cfg["key_path"], "-o", "IdentitiesOnly=yes"]
+    # A pinned login node (see `sign_in`): connect to one address, but check
+    # it against the host key known under the cluster's name, so pinning
+    # adds no second known_hosts entry and weakens no check.
+    if cfg.get("host_alias"):
+        cmd += ["-o", "HostKeyAlias=%s" % cfg["host_alias"]]
     cmd += ["%s@%s" % (cfg["netid"], cfg["host"]), remote_command]
     return cmd
 
@@ -628,7 +636,7 @@ def _askpass_shim(tmpdir):
 
 
 def _password_ssh(netid, host, password, remote_command, timeout=120,
-                  duo="1"):
+                  duo="1", alias=None):
     """One ssh run authenticated by password, with Duo answered by push.
 
     The only function in the app that handles a password, and it holds it
@@ -652,6 +660,7 @@ def _password_ssh(netid, host, password, remote_command, timeout=120,
         env["JARVIS_VACC_DUO"] = str(duo or "1")
 
         cmd = (["ssh"] + list(INSTALL_OPTS)
+               + (["-o", "HostKeyAlias=%s" % alias] if alias else [])
                + ["%s@%s" % (netid, host), remote_command])
         try:
             proc = subprocess.Popen(
@@ -735,7 +744,7 @@ def install_script(pub):
         + _INSTALL.strip() + "\n}"
 
 
-def install_key(netid, password, host=None, duo="1"):
+def install_key(netid, password, host=None, duo="1", alias=None):
     """Put this machine's public key on the cluster, once.
 
     Returns what the far side said about itself, so the caller can write the
@@ -782,7 +791,7 @@ def install_key(netid, password, host=None, duo="1"):
     # assumed to be well formed.
     script = install_script(pub)
     out = _password_ssh(netid, host or DEFAULT_HOST, password, script,
-                        duo=duo)
+                        duo=duo, alias=alias)
     said = {}
     for line in (out or "").splitlines():
         if "=" in line:
@@ -793,6 +802,132 @@ def install_key(netid, password, host=None, duo="1"):
         "netid": said.get("netid") or netid,
         "home": said.get("home") or "",
     }
+
+
+# --------------------------------------------------------------------------
+# Signing in: one implementation, for Setup and for the app
+# --------------------------------------------------------------------------
+# There used to be two, and both were wrong in a way that made people sign
+# in twice (2026-10-20):
+#
+#   * The console one (start.py) never made a key. `install_key` reads the
+#     public key, finds none on a machine that has never been set up, and
+#     raises "There is no key to install yet" -- so the first sign-in on a
+#     fresh computer could not succeed, and the app asked again.
+#   * Both proved the new key with ONE key-only `whoami` straight after
+#     installing it. When that one connection was refused or dropped --
+#     another login node behind the same name that had not seen the new
+#     authorized_keys line yet, a busy node, a reset -- they said "Nothing
+#     was saved", and the next attempt passed through `working_key` because
+#     the key had in fact gone in.
+#
+# So the proof is retried, and install and proof go to ONE address when the
+# name resolves to several. Every attempt is reported to `note`, so if it
+# still takes two tries the activity log says why.
+PROOF_WAITS = (0.0, 2.0, 4.0, 8.0)
+
+
+def _pin_host(host):
+    """One address for `host` when its name resolves to several, else None.
+
+    None means "use the name": a single address, or a lookup that failed,
+    gives nothing to pin, and the name is what every later call uses.
+    """
+    import socket
+    try:
+        infos = socket.getaddrinfo(host, 22, socket.AF_INET,
+                                   socket.SOCK_STREAM)
+    except OSError:
+        return None
+    addrs = sorted({i[4][0] for i in infos})
+    return addrs[0] if len(addrs) > 1 else None
+
+
+def prove_key(netid, key_path, host=None, pin=None, note=None,
+              waits=PROOF_WAITS):
+    """`whoami` with the key alone, the way every later call connects.
+
+    Retried through refusals and silences, because a key appended a second
+    ago can be refused once and accepted the next time. Problems that no
+    retry fixes -- no ssh, a changed host key -- are raised at once.
+    """
+    host = host or DEFAULT_HOST
+    last = None
+    for i, wait in enumerate(waits):
+        if wait:
+            time.sleep(wait)
+        cfg = {"netid": netid, "host": pin or host, "key_path": key_path}
+        if pin:
+            cfg["host_alias"] = host
+        try:
+            return _ssh(cfg, "whoami", timeout=30).strip()
+        except SSHError as exc:
+            last = exc
+            if note is not None:
+                try:
+                    note({"attempt": i + 1, "kind": exc.kind,
+                          "pinned": bool(pin)})
+                except Exception:                        # noqa: BLE001
+                    pass
+            if exc.kind in ("no-ssh", "host-key", "unconfigured"):
+                raise
+    raise last
+
+
+def sign_in(logs_dir, netid, password=None, use_key=None, duo="1",
+            note=None):
+    """Get this machine onto the cluster and write it down. Raises SSHError.
+
+    1. a key this machine already has that the account accepts -- no
+       password asked for (or the key the person nominated, `use_key`);
+    2. otherwise make Jarvis's key if it is not there, and install it with
+       the password, Duo answered by push;
+    3. prove it with the key alone, retried (`prove_key`);
+    4. only then save the config, with `enabled` and `signed_in_at`, so the
+       app opens signed in rather than asking again.
+
+    The password is used for the one install connection and dropped.
+    """
+    netid = (netid or "").strip()
+    if not NETID_RE.match(netid):
+        raise SSHError(
+            "That does not look like a UVM netid. It is the name in front "
+            "of the @ in your UVM email -- letters and digits, no spaces.",
+            "bad-netid")
+    host = load_config(logs_dir).get("host") or DEFAULT_HOST
+    made = {"created": False}
+    already = True
+    pin = None
+    if use_key:
+        key_path = use_key
+    else:
+        key_path = working_key(netid, host=host)
+        if not key_path:
+            if not password:
+                raise SSHError(
+                    "No key on this computer works for %s yet, so a "
+                    "password is needed once to install one." % netid,
+                    "need-password")
+            made = make_key()
+            key_path = key_paths()[0]
+            pin = _pin_host(host)
+            try:
+                got = install_key(netid, password, host=pin or host,
+                                  duo=duo, alias=host if pin else None)
+            finally:
+                password = None
+            netid = got.get("netid") or netid
+            already = bool(got.get("already"))
+    who = prove_key(netid, key_path, host=host, pin=pin, note=note)
+    if who and who != netid:
+        raise SSHError(
+            "The key works, but the cluster says that account is %r rather "
+            "than %r. Check the netid." % (who, netid), "mismatch")
+    save_config(logs_dir, netid=netid, key_path=key_path, enabled=True,
+                signed_in_at=time.time())
+    return {"netid": netid, "key_path": key_path,
+            "made_key": bool(made.get("created")),
+            "already_installed": already}
 
 
 # --------------------------------------------------------------------------
@@ -1690,7 +1825,7 @@ def _shared_checks(cfg):
 # has it, `-u $USER` where it does not -- the same list either way. sacct is
 # bounded, because a slow accounting database must not slow the probe.
 _JOBS = r"""
-( squeue --me -h -o '%i|%j|%T|%M|%R' 2>/dev/null   || squeue -u "$USER" -h -o '%i|%j|%T|%M|%R' 2>/dev/null )   | head -200 | sed 's/^/job=/'
+( squeue --me -h -o '%i|%j|%T|%M|%R|%k' 2>/dev/null   || squeue -u "$USER" -h -o '%i|%j|%T|%M|%R|%k' 2>/dev/null )   | head -200 | sed 's/^/job=/'
 timeout 8 sacct -X -n -P -S now-1days -s F,TO,OOM,NF,CA   -o JobID,JobName,State,End 2>/dev/null | head -50 | sed 's/^/fail=/'
 """
 
@@ -1722,12 +1857,15 @@ def _parse_probe(raw):
 def _jobs_of(lines):
     out = []
     for line in lines or []:
-        bits = (line.split("|") + ["", "", "", "", ""])[:5]
+        bits = (line.split("|") + ["", "", "", "", "", ""])[:6]
         if not bits[0].strip():
             continue
         out.append({"id": bits[0].strip(), "name": bits[1].strip(),
                     "state": bits[2].strip(), "elapsed": bits[3].strip(),
-                    "reason": bits[4].strip()})
+                    "reason": bits[4].strip(),
+                    # Jarvis's own Slurm comment (flights.py): which tool,
+                    # which question, which computer. Empty for any other job.
+                    "comment": bits[5].strip()})
     return out
 
 
@@ -1891,6 +2029,7 @@ def status():
         "checked_at": st.get("at") or None,
         "host": cfg.get("host"),
         "netid": cfg.get("netid"),
+        "signed_in_at": cfg.get("signed_in_at"),
         "partition": cfg.get("partition"),
         "workspace": cfg.get("workspace"),
         "scratch": cfg.get("scratch"),

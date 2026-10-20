@@ -11,7 +11,7 @@
     "mouse": "2026-10-19T19:53:57.338459+00:00",
     "n": "2026-10-19T19:53:57.338459+00:00",
     "name": "2026-10-19T19:53:57.338459+00:00",
-    "note": "2026-10-19T19:53:57.338459+00:00",
+    "note": "2026-10-20T16:10:15.556149+00:00",
     "project": "2026-10-19T19:53:57.338459+00:00",
     "recording_start": "2026-10-19T19:53:57.338459+00:00",
     "schema": "2026-10-19T19:53:57.338459+00:00",
@@ -28,19 +28,29 @@
     "version": "2026-10-19T19:53:57.338459+00:00"
   },
   "_keys": {
+    "history": {
+      "{\"at\": \"2026-10-20T11:32:59-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": [\"note\"]}": [
+        "set",
+        "2026-10-20T15:32:59.402030+00:00"
+      ],
+      "{\"at\": \"2026-10-20T12:10:15-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": [\"note\"]}": [
+        "set",
+        "2026-10-20T16:10:15.556149+00:00"
+      ]
+    },
     "versions": {
       "654ce9978492": [
         "set",
-        "2026-10-19T19:53:57.338459+00:00"
+        "2026-10-20T15:11:18.668847+00:00"
       ],
       "v0-d8055e7b": [
         "set",
-        "2026-10-19T19:53:57.338459+00:00"
+        "2026-10-20T15:11:15.288630+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-19T19:53:57.338459+00:00",
+    "at": "2026-10-20T16:10:15.556149+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -4404,12 +4414,28 @@
     }
   ],
   "gid": "s8d7f397b9708",
+  "history": [
+    {
+      "at": "2026-10-20T11:32:59-04:00",
+      "by": "Shahriar Tafti",
+      "changed": [
+        "note"
+      ]
+    },
+    {
+      "at": "2026-10-20T12:10:15-04:00",
+      "by": "Shahriar Tafti",
+      "changed": [
+        "note"
+      ]
+    }
+  ],
   "id": "96ccc0c35b19",
   "label_names": {},
   "mouse": 60,
   "n": 633,
   "name": "PTEN m60 s1 2025-07-10 \u2014 pooled (Incisor + Doppler, 5 ms)",
-  "note": "",
+  "note": "Archived 2026-10-20 by Shahriar Tafti: pooled from Doppler run e2fedada93af, which was deleted because it was made before the gap fix (2026.10.19.6) on a recording in 9 segments, so events after a short segment could be stamped early. Doppler was rerun on this recording as 59c6e38bd367; pool again from that. Kept for the record, not to be used. Rain Younger's Panning set on this recording (and the Spotter set started from e2fedada93af) live on Rain's computer only; archive them there.",
   "project": "PTEN",
   "recording_start": "2025-07-10T15:41:45+00:00",
   "schema": 1,
@@ -4452,12 +4478,22 @@
   "version": 1,
   "versions": [
     {
+      "archived": true,
       "at": "2026-10-19T15:53:57-04:00",
       "by": "Rain Younger",
       "by_label": {
         "unspecified": 633
       },
       "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-20T11:11:15-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "gained": 0,
       "id": "v0-d8055e7b",
       "imported": true,
@@ -7004,6 +7040,7 @@
       "v": 0
     },
     {
+      "archived": true,
       "at": "2026-10-19T15:53:57-04:00",
       "by": "Rain Younger",
       "by_label": {
@@ -7011,6 +7048,15 @@
         "Spike": 547
       },
       "changed": 633,
+      "edits": [
+        {
+          "at": "2026-10-20T11:11:18-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "from_id": null,
       "from_v": 0,
       "gained": 0,

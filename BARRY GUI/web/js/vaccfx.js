@@ -49,6 +49,10 @@ BARRY.vaccfx = (function () {
   let want = { x: -9999, y: -9999 };
   let have = { x: -9999, y: -9999 };
   let wired = false;
+  let glowQuiet = false;     // the pointer is over data, so the patch dims
+  /* What counts as data rather than chrome, for the lit patch. */
+  const DATA_SURFACES = '.view .pad, .card, .bank-tree, .bank-detail, '
+    + '.tk-result, .pane, table, canvas, .modal, .big-modal';
 
   function reduced() {
     return !!(window.matchMedia
@@ -126,6 +130,19 @@ BARRY.vaccfx = (function () {
       if (!glow) return;
       stats.moves += 1;
       moveTo(e.clientX, e.clientY);
+      /* Quiet over the data (2026-10-20). The lit patch follows the
+         pointer, and the pointer is usually over what somebody is reading
+         -- so the traces were drawn brightest exactly across a list's
+         names or a table's numbers. Over the chrome (the rail, a view's
+         header, the gutters) it stays lit; over a list, a card, a table or
+         a canvas it dims to a whisper. A class toggle only when it
+         changes, so a move costs one `closest`. */
+      const t = e.target;
+      const quiet = !!(t && t.closest && t.closest(DATA_SURFACES));
+      if (quiet !== glowQuiet) {
+        glowQuiet = quiet;
+        glow.classList.toggle('vcx-quiet', quiet);
+      }
     }, { passive: true });
 
     /* Leaving the window parks the glow rather than leaving it stuck

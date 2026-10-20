@@ -93,6 +93,13 @@ PREFS_SPEC = {
     # because putting one back has to sync too, and an artifact's soft
     # delete only ever travels one way.
     "rootcanal_border_archive": shards.MAPLWW,
+    # Root Canal's folders for saved pools and pools of pools (2026-10-20):
+    # the folders, {id: {name, at, by, gone}}, and which folder each pool is
+    # in, {pool id: folder id or ""}. Merged per key for the same reason as
+    # the archive: two people filing different pools both keep theirs, and
+    # renaming one folder does not undo somebody else's new one.
+    "rootcanal_pool_folders": shards.MAPLWW,
+    "rootcanal_pool_in": shards.MAPLWW,
 }
 
 # Settings that describe this screen rather than this project. Merging them
@@ -110,7 +117,13 @@ PREFS_LOCAL = ("theme", "density", "panes", "last_view", "last_session",
                "spotter_span", "panning_span",
                "chrome", "fullscreen", "zoom",
                "recent_scripts", "recent_bookmarks", "pipeline_folders",
-               "scratch_draft")
+               "scratch_draft",
+               # The VACC sign-in this machine's app has already greeted
+               # (2026-10-20): a newer `signed_in_at` in .vacc.json -- a
+               # sign-in done in Setup -- turns VACC Mode on once.
+               "vacc_signed_ack",
+               # Motion: "lively" (default) or "calm" (2026-10-20).
+               "motion")
 
 TRIAGE_SPEC = {"marks": shards.MAPLWW}
 TRIAGE_BASE = "resolved"

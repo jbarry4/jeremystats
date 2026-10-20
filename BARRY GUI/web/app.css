@@ -1223,6 +1223,14 @@ body.aid-window #vaccMorph { display: none; }
   mask-image: radial-gradient(circle,
     rgba(0,0,0,1) 0%, rgba(0,0,0,.5) 38%, rgba(0,0,0,0) 70%);
 }
+/* Over the data -- a list, a card, a table, a canvas -- the patch dims to a
+   whisper (vaccfx.js), so the wiring never lights up across the names and
+   numbers somebody is reading. It eases rather than snaps. */
+#vaccCircuit .vcx-glow { transition: opacity var(--ease-dur) var(--ease-out); }
+#vaccCircuit .vcx-glow.vcx-quiet { opacity: 0.12; }
+@media (prefers-reduced-motion: reduce) {
+  #vaccCircuit .vcx-glow { transition: none; }
+}
 /* Held still while the window over it moves, so the traces read as wiring
    being lit rather than as a texture being dragged. */
 #vaccCircuit .vcx-glow-in {
@@ -2234,6 +2242,39 @@ code { font-family: var(--mono); }
 .step-head {
   display: flex; align-items: baseline; flex-wrap: wrap;
   gap: var(--sp-8); padding: 2px 0 var(--sp-6);
+}
+/* ---------- archived things sink (ui.archivedTail, 2026-10-20) ----------
+   At the bottom of the list they belong to, behind one toggle that says how
+   many. The toggle is the same everywhere: a quiet full-width row with the
+   house caret, never a pill or a button that competes with the list. */
+.arch-tail {
+  flex: 1 0 100%;        /* a row of its own, in a flex list of chips */
+  margin: var(--sp-8) 0 var(--sp-4);
+  border-top: 1px dashed var(--line-soft); padding-top: var(--sp-6);
+}
+.arch-toggle {
+  display: flex; align-items: center; gap: var(--sp-6); width: 100%;
+  padding: var(--sp-4) var(--sp-8); border: 0; border-radius: var(--r-5);
+  background: transparent; color: var(--text-3); cursor: pointer;
+  font: inherit; font-size: var(--fs-11); text-align: left;
+}
+.arch-toggle:hover { background: var(--bg-3); color: var(--text-2); }
+.arch-toggle:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 1px; }
+.arch-toggle .caret {
+  width: 0; height: 0; flex: none;
+  border-left: 4px solid currentColor;
+  border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+  transition: transform var(--ease-dur) var(--ease-out);
+}
+.arch-tail.open .arch-toggle .caret { transform: rotate(90deg); }
+.arch-body { margin-top: var(--sp-4); }
+/* An archived row anywhere: quieter than the live ones, itself again when
+   pointed at or chosen. */
+.is-archived { opacity: .66; }
+.is-archived:hover, .is-archived.on, .is-archived.active,
+.is-archived:focus-visible { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .arch-toggle .caret { transition: none; }
 }
 .step-head strong { font-size: var(--fs-14); flex: none; }
 .step-head .step-n {
@@ -4480,8 +4521,10 @@ select {
 .bank-row-top {
   display: flex; align-items: baseline; gap: var(--sp-8); min-width: 0;
 }
-.bank-row-top > strong { min-width: 0; overflow: hidden;
-                         text-overflow: ellipsis; white-space: nowrap; }
+/* Wraps, never clips: the part an ellipsis cuts is the part that tells one
+   sheet from the next. */
+.bank-row-top > strong { min-width: 0; white-space: normal;
+                         overflow-wrap: anywhere; }
 .bank-row-sub {
   display: flex; align-items: baseline; gap: var(--sp-8); flex-wrap: wrap;
   font-size: var(--fs-105); color: var(--text-3); margin-top: 2px;
@@ -13732,6 +13775,35 @@ h3.art-nick { font-size: var(--fs-15); margin: 0; }
                        "type  src  src";
 }
 .bank-row .sync-mark { grid-area: sync; justify-self: end; }
+/* The second line is ONE cell, spanning the row (2026-10-20). As two cells
+   -- the type, then the producer spanning the count's and the mark's
+   columns -- the producer sized those auto columns to its whole width, and
+   a grid grows auto columns BEFORE it gives the flexible one anything: a
+   long producer ("The Confluence: Junction (Incisor + Doppler, 20 ms)")
+   left the name a sliver, wrapped a word a line. A cell that spans the
+   flexible column is sized with it instead. */
+.bank-row {
+  grid-template-areas: "name  n    sync"
+                       "meta  meta meta";
+}
+.bank-meta {
+  grid-area: meta; min-width: 0;
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  justify-content: space-between; gap: 1px var(--sp-8);
+}
+.bank-meta .bank-type, .bank-meta .bank-src { grid-area: auto; }
+.bank-meta .bank-src { margin-left: auto; min-width: 0; }
+/* Archived, under its toggle at the bottom of the list (ui.archivedTail):
+   quieter than the live ones, and itself again when picked. */
+.bank-row.is-archived { opacity: .66; }
+.bank-row.is-archived:hover, .bank-row.is-archived.active { opacity: 1; }
+/* An entry's note, under its tags: a sentence, wrapped, in sentence case. */
+.detail-head-main { min-width: 0; }
+.bank-note {
+  margin: var(--sp-8) 0 0; max-width: 72ch;
+  font-size: var(--fs-12); line-height: 1.45; color: var(--text-2);
+  overflow-wrap: anywhere;
+}
 /* The rail chip, by where the shared copy stands. */
 .chip-btn.sync-ok svg { color: var(--ok); }
 .chip-btn.sync-busy svg { color: var(--accent); }
@@ -15097,3 +15169,91 @@ div.tf-tile { cursor: default; }
 }
 /* The auto-bank switch in Spotter's and Panning's bars. */
 .mini.spot-auto.on { border-color: var(--accent-line); color: var(--accent); }
+
+/* ==========================================================================
+   Root Canal: ALREADY THROUGH ROOT CANAL (2026-10-20). Checkup's shelf
+   (`.cur-shelf-*`), with a column for what Root Canal left on each set.
+   ========================================================================== */
+.rc-donelist { margin: 0 0 var(--sp-10); }
+.rc-donelist[hidden] { display: none; }
+.rc-donelist > .rc-done-shelf { margin-top: 0; }
+/* Its toggle, on the set card's first line: the Recording label's, or the
+   folded card's beside Change set. */
+.rc-choose-top { display: flex; flex-wrap: wrap; align-items: center;
+                 gap: var(--sp-4) var(--sp-8); }
+.rc-choose-top .section-label { margin: 0; }
+.rc-choose .rc-done-toggle { flex: none; padding-top: 2px; padding-bottom: 2px; }
+.rc-done-shelf .cur-shelf-row.rc-done-row,
+.rc-done-shelf .cur-shelf-cols.rc-done-cols {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.8fr)
+                         minmax(0, 160px) 112px auto;
+}
+.rc-done-shelf .rc-bulk-chips { margin: 0 0 var(--sp-6); }
+.rc-done-filter { margin-top: 2px; }
+.rc-done-filter .search-wrap { flex: 1; min-width: 0; }
+/* Wide enough for what it says: `.rc-in` is a 64 px number box. */
+.rc-done-filter .rc-in.rc-done-sort { flex: none; width: auto;
+                                      font-family: inherit; }
+.rc-done-count { margin: 0 0 2px; font-variant-numeric: tabular-nums; }
+/* A scroll box of its own: forty sets are forty rows, and the chooser and
+   the picture are under them. */
+.rc-done-list { max-height: min(440px, 52vh); overflow-y: auto; }
+.csr-did { display: flex; flex-wrap: wrap; gap: 3px var(--sp-4);
+           min-width: 0; }
+/* Wrapped, never cut: a nickname is how a version is told apart. */
+.csr-did .flagchip { white-space: normal; overflow-wrap: anywhere;
+                     line-height: 1.45; }
+.flagchip.rc-done-saved { color: var(--text-2); border: 1px solid var(--line); }
+.flagchip.rc-done-read.here { color: var(--ok); }
+.rc-done-row.on { background: var(--bg-3);
+                  box-shadow: inset 2px 0 0 var(--accent); }
+.rc-done-row .csr-when { display: flex; flex-wrap: wrap; gap: 2px var(--sp-4);
+                         align-items: center; }
+@media (max-width: 900px) {
+  .rc-done-shelf .cur-shelf-row.rc-done-row { grid-template-columns: 1fr auto; }
+  .rc-done-shelf .cur-shelf-cols.rc-done-cols { display: none; }
+  .csr-did { grid-column: 1; }
+}
+
+/* ==========================================================================
+   Root Canal: FOLDERS FOR SAVED POOLS (2026-10-20). One set of folders for
+   both shelves; a pool is dragged onto one, or moved from its row.
+   ========================================================================== */
+.rc-folders-bar { display: flex; flex-wrap: wrap; align-items: center;
+                  gap: var(--sp-6) var(--sp-8); }
+.rc-folders-bar .hint { margin: 0; }
+.rc-in.rc-folder-input { width: 240px; max-width: 100%; font-family: inherit; }
+.rc-folders { display: flex; flex-direction: column; gap: var(--sp-6); }
+.rc-folder { border: 1px solid var(--line); border-radius: var(--radius-sm);
+             background: var(--bg-2); padding: var(--sp-4) var(--sp-6);
+             transition: border-color .12s, background .12s; }
+.rc-folder.loose { border-style: dashed; background: transparent; }
+.rc-folder.rc-drop-on { border-color: var(--accent);
+                        background: var(--accent-soft); }
+.rc-folder-head { display: flex; flex-wrap: wrap; align-items: center;
+                  gap: var(--sp-4) var(--sp-6); min-height: 26px; }
+.rc-folder-head .spacer { flex: 1; }
+.rc-folder-twist { display: inline-flex; align-items: center;
+                   gap: var(--sp-6); border: 0; background: transparent;
+                   color: var(--text); font: inherit; font-size: var(--fs-125);
+                   font-weight: 600; cursor: pointer; padding: 2px 4px;
+                   border-radius: var(--r-4); text-align: left; }
+.rc-folder-twist:hover { background: var(--bg-3); }
+.rc-folder.loose .rc-folder-twist { color: var(--text-2); font-weight: 500; }
+.rc-bulk-ico.rc-folder-ico { width: 15px; height: 15px; color: var(--text-2); }
+.rc-folder-name { overflow-wrap: anywhere; }
+.flagchip.rc-folder-n { flex: none; }
+/* A folder shows its pools; only a very full one scrolls (a `.bm-list`
+   stops at 180 px, which cut a folder of eighteen off at six). */
+.rc-folder-body.bm-list { margin: var(--sp-4) 0 var(--sp-2);
+                          max-height: min(62vh, 620px); }
+.rc-folder-empty { margin: var(--sp-2) var(--sp-4); }
+.rc-shelf-row[draggable="true"] { cursor: grab; }
+.rc-shelf-row.rc-dragging { opacity: .45; }
+.rc-grip { color: var(--text-3); font-size: var(--fs-115); flex: none;
+           line-height: 1; user-select: none; }
+.rc-in.rc-move-folder, .rc-in.rc-save-folder { flex: none; width: auto;
+                                               font-family: inherit; }
+.rc-save-folder-row { display: flex; flex-wrap: wrap; align-items: center;
+                      gap: var(--sp-4) var(--sp-8); margin-top: var(--sp-8); }
+.rc-save-folder-row .section-label { margin: 0; }

@@ -92,24 +92,34 @@ BARRY.setPicker = (function () {
                        's' + e.session, e.by, e.pipeline, e.gid]);
         return words.every((w) => h.indexOf(w) >= 0);
       });
+      /* Archived runs sink (2026-10-20): counted and listed apart, at the
+         bottom behind one toggle -- kept, and not offered first. The
+         server sends them last, flagged `archived`. */
+      const isGone = (e) => !!e.archived;
+      const livePool = pool.filter((e) => !isGone(e));
+      const [live, gone] = BARRY.ui.splitArchived(rows, isGone);
       const count = host.querySelector('.sp-count');
       if (count) {
-        count.textContent = rows.length === pool.length
-          ? pool.length + ' run' + (pool.length === 1 ? '' : 's')
-          : rows.length + ' of ' + pool.length;
+        count.textContent = live.length === livePool.length
+          ? livePool.length + ' run' + (livePool.length === 1 ? '' : 's')
+          : live.length + ' of ' + livePool.length;
       }
-      if (!rows.length) {
+      if (!live.length) {
         list.appendChild(el('p', { class: 'hint quiet sp-none',
-          text: pool.length ? 'None of them match.'
+          text: livePool.length ? 'None of them match.'
             : 'Every banked run already has a set.' }));
-        return;
       }
-      for (const e of rows) list.appendChild(row(e));
+      for (const e of live) list.appendChild(row(e));
+      const tail = BARRY.ui.archivedTail({
+        key: 'sp-' + cfg.kind, items: gone, noun: ['run', 'runs'],
+        render: (xs) => xs.map(row), onToggle: () => paint(),
+      });
+      if (tail) list.appendChild(tail);
     };
 
     const row = (e) => {
       const mine = isMine(e);
-      return el('div', { class: 'sp-row fresh' }, [
+      return el('div', { class: 'sp-row fresh' + (e.archived ? ' is-archived' : '') }, [
         el('div', { class: 'sp-row-main' }, [
           el('strong', { text: e.name || recOf(e) }),
           el('span', { class: 'sp-row-sub', text: [
@@ -127,6 +137,12 @@ BARRY.setPicker = (function () {
                  + 'it keeps them.' }) : null,
         ].filter(Boolean)),
         el('div', { class: 'sp-row-acts' }, [
+          /* Shown, and not startable, with the reason on it (§6e): an
+             archived run is kept for the record, not worked from. */
+          e.archived ? el('button', { class: 'btn ghost sm', text: 'Archived',
+            disabled: 'disabled',
+            title: 'Archived in the Event Bank, so it is not started from. '
+                 + 'Unarchive one of its versions there to work from it.' }) :
           el('button', { class: 'btn sm', text: 'Start…',
             title: e.set_name
               ? 'This recording already has a set, “' + e.set_name

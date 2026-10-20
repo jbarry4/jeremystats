@@ -1106,7 +1106,116 @@ BARRY.ui = (function () {
     setTimeout(() => { over = true; node.textContent = fmt(to); }, ms + 60);
   }
 
+  /* ---------- archived things sink ---------- */
+
+  /* The user's rule (2026-10-20), for every list that has archived things
+     in it: they go to the bottom, behind one toggle that says how many.
+     Never mixed in among what somebody is working from -- an archived pool
+     sitting between two live ones was offered as though it were current --
+     and never dropped from view either, because archiving is putting away,
+     not deleting, and a thing nobody can find again cannot be unarchived.
+
+       key       which list, so its open state survives a repaint
+       items     the archived ones (the caller has already split them off)
+       render    (items) => a node, or nodes, for them, drawn as the live
+                 ones are
+       noun      ['entry', 'entries'] -- what the count counts
+       onToggle  (open) => the caller repaints
+       forceOpen true when what is CHOSEN is archived: a choice is never
+                 hidden behind a closed drawer
+
+     Returns null when nothing is archived: no toggle for an empty drawer. */
+  const archOpen = Object.create(null);
+
+  function archivedTail(o) {
+    const opt = o || {};
+    const items = opt.items || [];
+    if (!items.length) return null;
+    const open = !!archOpen[opt.key] || !!opt.forceOpen;
+    const noun = opt.noun || ['item', 'items'];
+    const word = items.length === 1 ? noun[0] : noun[1];
+    const wrap = el('div', { class: 'arch-tail' + (open ? ' open' : '') });
+    wrap.appendChild(el('button', {
+      class: 'arch-toggle', type: 'button',
+      'aria-expanded': open ? 'true' : 'false',
+      title: open ? 'Put the archived ' + noun[1] + ' away again'
+                  : 'Archived ' + noun[1] + ' are kept, not deleted. '
+                    + 'Show them to look at one or unarchive it.',
+      onclick: () => {
+        archOpen[opt.key] = !open;
+        if (typeof opt.onToggle === 'function') opt.onToggle(!open);
+      },
+    }, [
+      el('span', { class: 'caret', 'aria-hidden': 'true' }),
+      el('span', { text: (open ? 'Hide ' : 'Show ') + items.length
+                         + ' archived ' + word }),
+    ]));
+    if (open && typeof opt.render === 'function') {
+      const body = el('div', { class: 'arch-body' });
+      [].concat(opt.render(items) || []).filter(Boolean)
+        .forEach((n) => body.appendChild(n));
+      wrap.appendChild(body);
+    }
+    return wrap;
+  }
+
+  /* ---------- one submit per click; a duplicate is followed ---------- */
+
+  /* The VACC rule (2026-10-20): the same job is never submitted twice.
+     The server refuses a duplicate (backend/flights.py); this is the page's
+     half. `submitOnce(key, send)` runs `send(submitId)` once per key at a
+     time -- a second click while the first is still on its way gets the
+     SAME promise, not a second POST -- and mints the `submit_id` the
+     server remembers, so even a retried request lands on the first job.
+     `duplicateOf(err)` reads a refusal: the running job's flight (with
+     `job_id` when this computer is following it, or `where` it runs), or
+     null for any other error. */
+  const sending = Object.create(null);
+  let sids = 0;
+
+  function submitOnce(key, send) {
+    if (sending[key]) return sending[key];
+    sids += 1;
+    const sid = Date.now().toString(36) + '-' + sids.toString(36) + '-'
+      + Math.floor(Math.random() * 1e9).toString(36);
+    const p = Promise.resolve().then(() => send(sid));
+    sending[key] = p;
+    const done = () => { if (sending[key] === p) delete sending[key]; };
+    p.then(done, done);
+    return p;
+  }
+
+  function isSending(key) { return !!sending[key]; }
+
+  function duplicateOf(err) {
+    const d = err && err.data;
+    return d && d.kind === 'duplicate' ? (d.duplicate || {}) : null;
+  }
+
+  /* The sentence for a refused duplicate, the same in every tool. */
+  function duplicateWords(dup) {
+    const where = dup.where || 'another computer';
+    return 'This exact job is already '
+      + (dup.state === 'claimed' ? 'being submitted' : 'running')
+      + ' on the VACC' + (where === 'this computer' ? '' : ', from ' + where)
+      + (dup.job_id ? ' — following it.' : '. Its answer arrives when it '
+         + 'lands there; nothing new was started.');
+  }
+
+  /* Split a list into [live, archived] by `isArchived`, keeping order. */
+  function splitArchived(list, isArchived) {
+    const live = [], gone = [];
+    for (const x of list || []) (isArchived(x) ? gone : live).push(x);
+    return [live, gone];
+  }
+
   return {
+    archivedTail: archivedTail,
+    splitArchived: splitArchived,
+    submitOnce: submitOnce,
+    isSending: isSending,
+    duplicateOf: duplicateOf,
+    duplicateWords: duplicateWords,
     sections: sections,
     countUp: countUp,
     reducedMotion: reducedMotion,
