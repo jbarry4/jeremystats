@@ -15,6 +15,47 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.20.5 - A title screen to start on, and the first of the new look
+
+A page reload is enough for the look. The start menu shows from the next
+start.
+
+### Added
+
+- **A title screen and a menu, the way a game starts.** Once the catalogue
+  is read, the start-up screen turns into a title instead of fading away.
+  The mark springs in and the name forms a letter at a time, with the
+  scope still sweeping behind them. Underneath is a menu:
+  - **Continue**
+  - **Open a recording**
+  - **ToolKit**
+  - **Settings**
+  - **Patch notes**
+
+  ↑ ↓ choose, Enter starts, and Esc or any other key goes straight in. Each
+  choice makes one soft note, under the usual mute switch. Untick *Show
+  this at start* to skip it. It never appears in a pop-out, for a link that
+  opens somewhere specific, or under the harnesses.
+
+### Changed
+
+- **The first pass of the new look.** It is the same layout and density,
+  with surfaces that sit on the page instead of being boxed in:
+  - cards have a softer edge and a little depth;
+  - dialogs, popovers, toasts and the command palette float on frosted
+    glass;
+  - one radius each for controls, cards and overlays;
+  - one focus ring for the keyboard;
+  - buttons lift a pixel on hover and give a little when pressed.
+- **Things move when something happens.** The chosen part of every
+  two-or-three-way switch slides to the new choice. A view rises slightly
+  when you switch to it. Dialogs, popovers and toasts arrive on a gentle
+  spring. Nothing moves on its own while you are reading, and the system's
+  reduced-motion setting turns all of it off.
+- **Facts are drawn one way.** The upper-case pill some panels used for a
+  status now matches the other chips: mono and sentence case, coloured by
+  what it means.
+
 ## 2026.10.20.4 - Root Canal: every set already done, pools in folders, and the dot you pick is the one Xplorefinder shows
 
 **Restart Jarvis on every machine.** The server has a new list of the sets
@@ -72,6 +113,10 @@ Root Canal has done, and a read that only opens a cached one.
 - **Pooled's "Open in Xplorefinder" was greyed out** for a member whose
   read is on another machine, even when its recording is on this one. It
   now depends only on whether the recording is reachable.
+- **The list of sets already done could be one change behind.** A bank or
+  a save while it was still loading did not refresh it. It now reads again
+  once that load lands. Switching between The Dentist and The Confluence
+  no longer shows the other bundle's list for a moment.
 
 ### Checked
 
