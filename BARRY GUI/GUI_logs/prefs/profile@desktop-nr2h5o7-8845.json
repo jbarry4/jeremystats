@@ -1,0 +1,17 @@
+{
+  "_at": {
+    "email": "2026-10-19T14:53:16.703331+00:00",
+    "initials": "2026-10-19T14:53:16.703331+00:00",
+    "name": "2026-10-19T14:53:16.703331+00:00",
+    "role": "2026-10-19T14:53:16.703331+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-19T14:53:16.703331+00:00",
+    "machine": "desktop-nr2h5o7-8845",
+    "schema": 1
+  },
+  "email": "asullenb@uvm.edu",
+  "initials": "AS",
+  "name": "Avery Sullenberger",
+  "role": "Undergraduate Student"
+}

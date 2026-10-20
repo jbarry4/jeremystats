@@ -1,0 +1,63 @@
+{
+  "_at": {
+    "created": "2026-10-14T19:14:03.299601+00:00",
+    "gid": "2026-10-19T15:04:27.783578+00:00",
+    "key": "2026-10-14T19:16:06.184175+00:00",
+    "label": "2026-10-19T15:04:27.783578+00:00",
+    "loose_key": "2026-10-14T19:16:06.184175+00:00",
+    "mouse": "2026-10-14T19:16:06.184175+00:00",
+    "project": "2026-10-14T19:16:06.184175+00:00",
+    "project_source": "2026-10-14T19:16:06.184175+00:00",
+    "retired": "2026-10-14T19:16:06.184175+00:00",
+    "schema": "2026-10-14T19:16:06.184175+00:00",
+    "session": "2026-10-14T19:16:06.184175+00:00",
+    "start": "2026-10-14T19:16:06.184175+00:00",
+    "updated": "2026-10-19T15:04:27.783578+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con4\\Multi_spcon_con4_FP2\\2025-09-19_14-09-32": [
+        "set",
+        "2026-10-14T19:16:41.192436+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-19T15:04:27.783578+00:00",
+    "machine": "desktop-nr2h5o7-8845",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.14.5",
+    "at": "2026-10-14T15:14:03-04:00",
+    "commit": "8d0daabe",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s29d8aa6c1077",
+  "key": "r002_s014_2025-09-19_12-27-28",
+  "label": "DEWEY r2 s14 Con4 FP1 2025-09-19",
+  "loose_key": "r002_s014",
+  "mouse": 2,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con4\\Multi_spcon_con4_FP2\\2025-09-19_14-09-32"
+  ],
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 14,
+  "start": "2025-09-19T16:27:28+00:00",
+  "updated": {
+    "app_version": "2026.10.15.1",
+    "at": "2026-10-19T11:04:27-04:00",
+    "commit": "db630f57",
+    "email": "asullenb@uvm.edu",
+    "machine": "DESKTOP-NR2H5O7",
+    "os": "Windows",
+    "user": "Avery Sullenberger"
+  }
+}
