@@ -1,0 +1,392 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>bracessee: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Braces' review: every spike SEEN, n / p only to the ones needing a
+   decision (2026-10-19).
+
+   WHAT WAS ASKED: "we should be able to SEE all spikes, but only go
+   next/previous to the ones needing a decision." The review's "Show:
+   Needing a decision | All of them" decided both at once: on the first,
+   every stamp Braces was sure of was a short tick at the bottom of the
+   pane, drawn quieter still -- on a raster, under the curve, nothing at
+   all -- and the only way to see them properly was "All of them", which
+   made the arrows walk every one.
+
+   In a REAL review, on a real set with flags:
+     - every stamp in the window is drawn at full strength, from the top
+       and from the bottom, stop or not; the stops wear a cap;
+     - n / p visit exactly the stops, in order, both ways;
+     - "Every stamp" visits every one; it is called "Step through" now;
+     - a press on another stamp, away from the one in view, goes to it;
+       from there the arrows go on to the stops either side;
+     - an answer on the last one waiting goes back round to one skipped.
+
+   IT WRITES NOTHING. Decisions go to a stub that keeps them in the page
+   (they are never sent), preferences and session writes are held. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(150);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  await until(() => ev('!!(BARRY.prefs && BARRY.braces)'), 10000, 'the modules');
+  const get = (u) => ev('api(' + JSON.stringify(u) + ')');
+  const BR = 'BARRY.braces';
+  ev('(function(){ var P = BARRY.prefs; window.__bsGet = P.get; window.__bsMem = {};'
+     + ' P.set = function(k, v) { window.__bsMem[k] = v; return v; };'
+     + ' P.get = function(k, d) { if (k in window.__bsMem) return window.__bsMem[k];'
+     + '   return window.__bsGet.apply(P, arguments); }; })()');
+  ev('(function(){ window.open = function() { return null; }; })()');
+  /* Decisions are kept in the page and never sent: the stub answers the
+     way the route does, from the set already loaded. */
+  ev('(function(){ var W = window; var f = W.fetch; W.__bsDecides = 0;'
+     + ' var hold = ["state", "events", "note", "bookmarks", "bad", "bad-for-path"];'
+     + ' var json = function(o, st) { return Promise.resolve(new Response(JSON.stringify(o),'
+     + '   { status: st || 200, headers: { "Content-Type": "application/json" } })); };'
+     + ' W.fetch = function(u, o) { var s = String(u).split("?")[0];'
+     + '  if (/\\/api\\/braces\\/set\\/[^/]+\\/(commit|discard)$/.test(s))'
+     + '    return json({ ok: false, error: "harness: no writes" }, 400);'
+     + '  if (/\\/api\\/braces\\/set\\/[^/]+\\/decide$/.test(s)) {'
+     + '    W.__bsDecides += 1;'
+     + '    var st = BARRY.braces._state().set; var b = JSON.parse(o.body || "{}");'
+     + '    var calls = Object.assign({}, st.set.calls || {});'
+     + '    if (b.calls) Object.keys(b.calls).forEach(function(k) {'
+     + '      if (b.calls[k] == null) delete calls[k]; else calls[k] = b.calls[k]; });'
+     + '    else calls[String(b.row)] = b.t == null ? { call: b.call } : { call: b.call, t: b.t };'
+     + '    var waiting = 0; (st.set.rows || []).forEach(function(r, i) {'
+     + '      if (r.flag && !calls[String(i)]) waiting += 1; });'
+     + '    var counts = Object.assign({}, st.counts || {}, { waiting: waiting });'
+     + '    return json({ ok: true, calls: calls, counts: counts,'
+     + '      would_move: st.would_move, overlaps: st.overlaps || [] }); }'
+     + '  var at = "/api/session/"; var i = s.indexOf(at);'
+     + '  var tail = i >= 0 ? s.slice(i + at.length) : null;'
+     + '  if (tail !== null && hold.indexOf(tail) >= 0 && o && o.method === "POST")'
+     + '    return json({ ok: true, saved: false });'
+     + '  return f.apply(this, arguments); }; })()');
+
+  const V = () => ev(BR + '._view()');
+  const at = () => ev(BR + '._view().at');
+  const wanted = () => ev(BR + '._wanted()');
+  const rowsOf = () => ev(BR + '._state().set.set.rows');
+  const reach = () => ((ev(BR + '._state().set.set.params') || {}).window_ms || 100) / 1000;
+  const barT = () => (D().getElementById('brViewBar') || {}).textContent || '';
+  const win = () => ev('(function(){ var XF = BARRY.views.xplore.state;'
+    + ' var p = (XF.panes || [])[0]; var v = ' + BR + '._view();'
+    + ' var s = (XF.linkMode === "none" && p && p.t0 != null) ? p : (v && v.sess);'
+    + ' return s ? { t0: s.t0, span: s.span } : null; })()');
+  /* Every mark in the window, and what the real painter put in its column
+     on a 2000 x 200 canvas of our own: the strongest alpha in the top band
+     (below where a cap sits) and in the bottom band, and whether a cap is
+     there -- ink 4 px either side of the line, on the top edge, where a
+     line alone has none. */
+  const inkOf = (w) => ev('(function(){ var c = document.createElement("canvas");'
+    + ' c.width = 2000; c.height = 200; var g = c.getContext("2d");'
+    + ' var sess = ' + BR + '._view().sess; var t0 = ' + w.t0 + ', sp = ' + w.span + ';'
+    + ' ' + BR + '.draw(g, sess, { t0: t0, t1: t0 + sp }, 0, 2000, 0, 200, {});'
+    + ' var img = g.getImageData(0, 0, 2000, 200).data;'
+    + ' var A = function(x, y) { return (x < 0 || x >= 2000) ? 0 : img[(y * 2000 + x) * 4 + 3]; };'
+    + ' var band = function(x, y0, y1) { var m = 0; for (var dx = -1; dx <= 1; dx++)'
+    + '   for (var y = y0; y < y1; y++) m = Math.max(m, A(x + dx, y)); return m; };'
+    + ' var evs = sess.curationMarks.events.filter(function(e) {'
+    + '   return e.start >= t0 && e.start <= t0 + sp; });'
+    + ' return evs.map(function(e) { var x = Math.round((e.start - t0) / sp * 2000);'
+    + '   var cap = A(x - 3, 2) > 200 && A(x + 3, 2) > 200;'
+    + '   var q = (3 * 2000 + x - 2) * 4; var px = [img[q], img[q + 1], img[q + 2]];'
+    + '   return { r: e.r, k: e.k, o: e.o, f: e.f, st: e.st, start: e.start, x: x,'
+    + '     top: band(x, 12, 45), bottom: band(x, 160, 196), cap: cap, capRgb: px }; }); })()');
+
+  /* One stamp's own picture: the painter on a 1 s window centred on time
+     `t`, 2000 px across, so a neighbour a few milliseconds away is
+     pixels away. Whether a cap is there -- ink 3 px either side of the
+     line on the top edge, where a line alone has none -- and its colour. */
+  const capOf = (t) => ev('(function(){ var c = document.createElement("canvas");'
+    + ' c.width = 2000; c.height = 200; var g = c.getContext("2d");'
+    + ' var sess = ' + BR + '._view().sess; var t0 = ' + (t - 0.5) + ';'
+    + ' ' + BR + '.draw(g, sess, { t0: t0, t1: t0 + 1 }, 0, 2000, 0, 200, {});'
+    + ' var img = g.getImageData(0, 0, 2000, 200).data;'
+    + ' var A = function(x, y) { return img[(y * 2000 + x) * 4 + 3]; };'
+    + ' var q = (3 * 2000 + 998) * 4;'
+    + ' return { cap: A(997, 2) > 200 && A(1003, 2) > 200,'
+    + '   rgb: [img[q], img[q + 1], img[q + 2]] }; })()');
+
+  let entered = false;
+  try {
+    head('A REAL OPEN PROPOSAL WITH FLAGS');
+    const sets = await get('/api/braces/sets');
+    const open = (sets.sets || []).filter((s) => !s.committed
+                                            && ((s.counts || {}).waiting || 0) > 1);
+    for (const s of open.slice(0, 8)) {
+      await ev(BR + '._open(' + JSON.stringify(s.set_id) + ')');
+      await until(() => (ev(BR + '._state()').set || {}).set, 9000, 'the proposal');
+      const st = ev(BR + '._state()').set || {};
+      if (!st.session_path) continue;
+      say('       entering ' + s.set_id + ', ' + st.set.rows.length + ' stamps, '
+          + (st.counts || {}).waiting + ' waiting', 'dim');
+      if (!(await ev(BR + '._enter()'))) continue;
+      entered = true;
+      break;
+    }
+    if (!entered) {
+      ok('precondition: an open proposal with two or more flags waiting and its '
+         + 'recording here', false, 'none found; nothing below is checked');
+    } else {
+      await until(() => V() && V().spanSet && ev(BR + '._view().sess.curationMarks'),
+                  60000, 'the review');
+      const rows = rowsOf();
+      const W0 = wanted();
+      const stops = W0.map((w, i) => (w ? i : -1)).filter((i) => i >= 0);
+      const waitingRows = rows.map((r, i) => (r.flag && !((ev(BR
+        + '._state().set.set.calls') || {})[String(i)]) ? i : -1)).filter((i) => i >= 0);
+      say('       ' + rows.length + ' stamps, ' + stops.length + ' stops, '
+          + waitingRows.length + ' waiting', 'dim');
+      ok('precondition: it opens stepping through the ones needing a decision, '
+         + 'on the first one waiting', V().only === 'flag' && at() === waitingRows[0],
+         JSON.stringify([V().only, at(), waitingRows[0]]));
+      ok('precondition: there are stamps that are not stops',
+         stops.length < rows.length, stops.length + ' of ' + rows.length);
+
+      head('THE BAR SAYS WHAT THE TOGGLE DOES');
+      const seg = Array.from(D().querySelectorAll('#brViewBar .br-step-seg button'))
+        .map((b) => b.textContent);
+      ok('it is “Step through”, not “Show”: Needing a decision | Every stamp',
+         /Step through/.test(barT()) && !/Show/.test(barT())
+         && JSON.stringify(seg) === JSON.stringify(['Needing a decision', 'Every stamp']),
+         JSON.stringify(seg));
+      ok('the legend says what the cap is',
+         /▼\s*n \/ p stop here/.test(barT()), barT().slice(-160));
+      ok('the count says where this one is among the stops and in the set',
+         new RegExp('decision 1 of ' + stops.length + '\\s+·\\s+stamp ' + (at() + 1)
+                    + ' of ' + rows.length).test(barT()),
+         (D().querySelector('#brViewBar .cur-count') || {}).textContent);
+      ok('and the mode’s banner says it',
+         /n \/ p stop at the ones needing a decision/.test(
+           (D().getElementById('modeWhat') || {}).textContent || ''),
+         (D().getElementById('modeWhat') || {}).textContent);
+
+      head('EVERY STAMP SEEN, STOP OR NOT');
+      /* On the two stops closest together, wide enough to hold both and
+         the stamps around them: stops are a few in a set, so a window on
+         one alone usually holds no other. */
+      let pairAt = 0;
+      for (let k = 1; k < stops.length - 1; k++) {
+        if (rows[stops[k + 1]].was - rows[stops[k]].was
+            < rows[stops[pairAt + 1]].was - rows[stops[pairAt]].was) pairAt = k;
+      }
+      const tA = rows[stops[pairAt]].was, tB = rows[stops[pairAt + 1]].was;
+      const spanW = Math.max(30, tB - tA + 12);
+      ev(BR + '._goTo(' + stops[pairAt] + ')');
+      await sleep(300);
+      ev('BARRY.views.xplore.setWindow(0, ' + Math.max(0, (tA + tB) / 2 - spanW / 2)
+         + ', ' + spanW + ')');
+      await until(() => Math.abs((win() || {}).span - spanW) < 0.05, 5000, 'the zoom');
+      const w = win();
+      const ink = inkOf(w);
+      const nb = ink.filter((m) => !m.f);
+      say('       ' + nb.length + ' neighbour mark(s) in ' + w.span.toFixed(1) + ' s, '
+          + nb.filter((m) => m.o).length + ' of them not stops', 'dim');
+      ok('precondition: neighbours on screen, stops and others', nb.some((m) => m.o)
+         && nb.some((m) => !m.o), JSON.stringify(nb.map((m) => [m.r, m.o])));
+      const solid = (m) => m.k === 'now' ? 200 : 160;
+      const weak = nb.filter((m) => m.top < solid(m) || m.bottom < solid(m));
+      ok('every neighbour is drawn from the top and from the bottom, at full '
+         + 'strength', !weak.length, JSON.stringify(weak.slice(0, 6)));
+      const outs = nb.filter((m) => m.o && m.k === 'now');
+      const ins = nb.filter((m) => !m.o && m.k === 'now');
+      const minA = (xs_) => Math.min(...xs_.map((m) => Math.min(m.top, m.bottom)));
+      ok('one that is not a stop is not drawn quieter than a stop',
+         outs.length && ins.length && minA(outs) >= minA(ins) - 10,
+         JSON.stringify([minA(outs), minA(ins)]));
+      /* The caps, each stamp in a picture of its own: every stop but the
+         one in view, and as many that are not stops. Only marks with no
+         other within 4 ms, so what is read is that stamp's. */
+      const allM = ev(BR + '._view().sess.curationMarks.events');
+      const clear = (m) => allM.every((q) => q === m || Math.abs(q.start - m.start) > 0.004
+        || (q.r === m.r && Math.abs(q.start - m.start) < 1e-9));
+      const stopM = allM.filter((m) => !m.o && !m.f && m.k === 'now' && clear(m));
+      const bareM = allM.filter((m) => m.o && m.k === 'now' && clear(m))
+        .slice(0, Math.max(6, stopM.length));
+      const capS = stopM.map((m) => Object.assign({ r: m.r, st: m.st }, capOf(m.start)));
+      const capB = bareM.map((m) => Object.assign({ r: m.r }, capOf(m.start)));
+      say('       caps read on ' + capS.length + ' stop(s) and ' + capB.length
+          + ' other(s)', 'dim');
+      ok('every stop wears a cap', capS.length > 0 && capS.every((m) => m.cap),
+         JSON.stringify(capS.filter((m) => !m.cap).slice(0, 6)));
+      const amber = capS.filter((m) => m.st === 'flagged');
+      ok('in amber while it waits', amber.length > 0 && amber.every((m) => m.rgb[0] > 200
+         && m.rgb[1] > 110 && m.rgb[1] < 170 && m.rgb[2] < 90),
+         JSON.stringify(amber.map((m) => [m.r, m.rgb]).slice(0, 6)));
+      ok('and one that is not a stop wears none', capB.length > 0
+         && capB.every((m) => !m.cap), JSON.stringify(capB.filter((m) => m.cap).slice(0, 6)));
+
+      head('n / p VISIT EXACTLY THE STOPS');
+      ev(BR + '._goTo(' + stops[0] + ')');
+      const fwd = [at()];
+      for (let k = 0; k < stops.length + 2; k++) {
+        ev(BR + '._step(1)');
+        if (at() !== fwd[fwd.length - 1]) fwd.push(at());
+      }
+      ok('forward, every stop in order and nothing else', JSON.stringify(fwd)
+         === JSON.stringify(stops), JSON.stringify([fwd.slice(0, 12), stops.slice(0, 12)]));
+      const back = [at()];
+      for (let k = 0; k < stops.length + 2; k++) {
+        ev(BR + '._step(-1)');
+        if (at() !== back[back.length - 1]) back.push(at());
+      }
+      ok('and back', JSON.stringify(back) === JSON.stringify(stops.slice().reverse()),
+         JSON.stringify(back.slice(0, 12)));
+      ok('past the end it says it is the first one needing a decision',
+         Array.from(D().querySelectorAll('#toasts .toast')).some((n) =>
+           n.textContent === 'That is the first one needing a decision.'));
+
+      head('“EVERY STAMP” STEPS EVERY ONE');
+      const segBtn = (label) => Array.from(D().querySelectorAll('#brViewBar .br-step-seg button'))
+        .find((b) => b.textContent === label);
+      segBtn('Every stamp').click();
+      await until(() => V().only === 'all', 3000, 'the toggle');
+      ev(BR + '._goTo(0)');
+      ev(BR + '._step(1)');
+      const a1 = at();
+      ev(BR + '._step(1)');
+      ok('one stamp at a time', a1 === 1 && at() === 2, JSON.stringify([a1, at()]));
+      ok('its count is the stamp among all of them, and the cap’s legend goes',
+         new RegExp('stamp 3 of ' + rows.length).test(barT()) && !/decision \d+ of/.test(barT())
+         && !/n \/ p stop here/.test(barT()), (D().querySelector('#brViewBar .cur-count') || {}).textContent);
+      ok('nothing is a stop to skip, so nothing is capped as one',
+         ev(BR + '._view().sess.curationMarks.events').every((e) => !e.o));
+      segBtn('Needing a decision').click();
+      await until(() => V().only === 'flag', 3000, 'the toggle back');
+
+      head('A PRESS ON ANOTHER STAMP GOES TO IT');
+      ev(BR + '._goTo(' + stops[0] + ')');
+      await sleep(300);
+      ev('BARRY.views.xplore.setWindow(0, ' + Math.max(0, rows[stops[0]].was - 15) + ', 30)');
+      await until(() => Math.abs((win() || {}).span - 30) < 0.05, 5000, 'the zoom');
+      await sleep(600);
+      const w2 = win();
+      const R = reach();
+      const focusT = rows[stops[0]].was;
+      const focusNow = rows[stops[0]].now == null ? focusT : rows[stops[0]].now;
+      const target = rows.map((r, i) => ({ r, i })).find((x) => !W0[x.i]
+        && x.r.was > w2.t0 + 0.5 && x.r.was < w2.t0 + w2.span - 0.5
+        && Math.abs(x.r.was - focusT) > R + 0.3);
+      ok('precondition: a stamp that is not a stop, on screen, away from the one '
+         + 'in view', !!target);
+      if (target) {
+        const nDec = ev('window.__bsDecides');
+        const G = 'BARRY.views.xplore.state.grabTime';
+        const claimed = ev(G + '.onStart(' + target.r.was + ', 0)');
+        ev(G + '.onEnd(' + target.r.was + ', 0)');
+        ok('pressed on, it is the one in view', claimed === true && at() === target.i,
+           JSON.stringify([claimed, at(), target.i]));
+        ok('and nothing was decided by the press', ev('window.__bsDecides') === nDec
+           && !V().drag);
+        ok('the bar says no decision is needed here, and which stamp it is',
+           new RegExp('no decision needed here\\s+·\\s+stamp ' + (target.i + 1)
+                      + ' of ' + rows.length).test(barT()),
+           (D().querySelector('#brViewBar .cur-count') || {}).textContent);
+        const after = stops.find((i) => i > target.i);
+        const before = stops.slice().reverse().find((i) => i < target.i);
+        if (after != null) {
+          ev(BR + '._step(1)');
+          ok('n from there goes to the next stop after it', at() === after,
+             JSON.stringify([at(), after]));
+          ev(BR + '._goTo(' + target.i + ')');
+        }
+        if (before != null) {
+          ev(BR + '._step(-1)');
+          ok('and p to the stop before it', at() === before, JSON.stringify([at(), before]));
+        }
+        // A press on nothing, away from the one in view, is left to the pane.
+        ev(BR + '._goTo(' + stops[0] + ')');
+        await sleep(300);
+        const empty = (() => {
+          const ts = rows.flatMap((r) => [r.was, r.now == null ? r.was : r.now]);
+          for (let t = w2.t0 + 0.5; t < w2.t0 + w2.span - 0.5; t += 0.05) {
+            if (Math.abs(t - focusT) > R + 0.3 && ts.every((x) => Math.abs(x - t) > 0.4)) return t;
+          }
+          return null;
+        })();
+        if (empty != null) {
+          ok('a press on empty trace away from it is left to the pane (it pans)',
+             ev(G + '.onStart(' + empty + ', 0)') === false && at() === stops[0]);
+        }
+        ok('within reach of the one in view a press still drags it',
+           ev(G + '.onStart(' + (focusNow + R / 4) + ', 0)') === true && !!V().drag);
+        ev(BR + '._view().drag = null');
+        ev(BR + '._goTo(' + stops[0] + ')');
+        // Not while something is being asked about the one in view.
+        ev(BR + '._view().pending = { row: ' + stops[0] + ', t: ' + focusNow + ' }');
+        ok('not while a question about the one in view is up',
+           ev(G + '.onStart(' + target.r.was + ', 0)') === false && at() === stops[0]);
+        ev(BR + '._view().pending = null');
+      }
+
+      head('AN ANSWER ON THE LAST ONE WAITING GOES BACK ROUND TO ONE SKIPPED');
+      const wr = waitingRows;
+      ok('precondition: two or more waiting', wr.length >= 2, String(wr.length));
+      if (wr.length >= 2) {
+        const last = wr[wr.length - 1];
+        ev(BR + '._goTo(' + last + ')');
+        await sleep(200);
+        const nDec = ev('window.__bsDecides');
+        const leave = Array.from(D().querySelectorAll('#brViewBar .br-acts .cur-cat'))
+          .find((b) => /Leave it/.test(b.textContent));
+        leave.click();
+        await until(() => ev('window.__bsDecides') > nDec && at() !== last, 5000, 'the answer');
+        ok('to the first one still waiting', at() === wr[0], JSON.stringify([at(), wr[0]]));
+        ok('and says so', Array.from(D().querySelectorAll('#toasts .toast')).some((n) =>
+          /^Back round to the first one still waiting, at /.test(n.textContent)));
+        ok('the answer went to the stub, not the set', ev('window.__bsDecides') === nDec + 1);
+        // Taken back, in the page.
+        ev(BR + '._goTo(' + last + ')');
+        const undo = Array.from(D().querySelectorAll('#brViewBar .br-acts .cur-cat'))
+          .find((b) => /Undo/.test(b.textContent));
+        undo.click();
+        await until(() => ev('window.__bsDecides') === nDec + 2, 5000, 'the undo');
+      }
+    }
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+  } finally {
+    try { if (entered || ev(BR + '._view()')) ev(BR + '._exitView()'); } catch (e) { /* gone */ }
+    await sleep(2000);
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'bracessee: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

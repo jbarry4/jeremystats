@@ -97,7 +97,11 @@ function quantile(sorted, q) {
 
   /* Shared prefs and the activity log are not this suite's to write. */
   ev('(function(){ var W = window; if (W.__rcbPrefSet) return;'
-     + ' W.__rcbPrefSet = BARRY.prefs.set; BARRY.prefs.set = function(k, v) { return v; };'
+     + ' W.__rcbPrefSet = BARRY.prefs.set; W.__rcbPrefGet = BARRY.prefs.get; W.__rcbMem = {};'
+     + ' BARRY.prefs.set = function(k, v) { W.__rcbMem[k] = v; return v; };'
+     + ' BARRY.prefs.get = function(k, d) { if (k in W.__rcbMem) return W.__rcbMem[k];'
+     + '   if (k === "rootcanal_border_archive") return d;'
+     + '   return W.__rcbPrefGet.apply(BARRY.prefs, arguments); };'
      + ' W.__rcbLog = BARRY.activity.log; BARRY.activity.log = function(){}; })()');
 
   /* Every border request, and any fit while a reply is set, answered from
@@ -152,17 +156,24 @@ function quantile(sorted, q) {
   /* The members are put in through the panel's own hooks, not its table:
      choosing them is rootcanalpool.html's to check, and this suite is
      about what happens once there is a picture. The three it pools are
-     the three smallest NOT BANKED, of three recordings: an unbanked one is
-     measured at the settings bar, so the three agree and the pool asks no
-     one-measurement question (whose answer would measure saved singles
-     again as new versions -- stubbed here, and never pressed). */
+     NOT BANKED, of three recordings: an unbanked one is measured at the
+     settings bar, so the three agree and the pool asks no one-measurement
+     question (whose answer would measure saved singles again as new
+     versions -- stubbed here, and never pressed). The smallest with 150 or
+     more events each: with fewer, pulling the box in by any quantile puts
+     the six extreme events out at once, and no grace under 10% can leave
+     anything out (measured on a pool of 70). */
   await ev(RC + '._poolLoad()');
   const cands = (await get('/api/rootcanal/pool/candidates')).singles || [];
   const seenLab = {};
-  const picks = cands.filter((c) => c.here !== false && !c.banked).slice()
+  const unb = cands.filter((c) => c.here !== false && !c.banked).slice()
     .sort((a, b) => (a.n || 0) - (b.n || 0))
-    .filter((c) => (seenLab[c.session_label] ? false : (seenLab[c.session_label] = true)))
-    .slice(0, 3);
+    .filter((c) => (seenLab[c.session_label] ? false : (seenLab[c.session_label] = true)));
+  let picks = unb.filter((c) => c.n >= 150 && c.n <= 600).slice(0, 3);
+  if (picks.length < 3) {
+    note('fewer than three unbanked singles of 150–600 events here; taking the largest');
+    picks = unb.slice(-3);
+  }
   ok('three singles to pool, not banked, of three recordings', picks.length === 3,
      cands.length + ' candidates');
   say('       ' + picks.map((c) => c.session_label + ' (' + c.n + ')').join(', '), 'dim');
@@ -182,6 +193,11 @@ function quantile(sorted, q) {
   if (!f0 || !f0.ok) throw new Error('no pool: ' + (f0 && f0.error));
   const filt = ((f0.params || {}).measure || {}).filter_label;
   ok('it says how it was measured', !!filt, JSON.stringify((f0.params || {}).measure));
+  /* The four event charts as soon as the pool is up (2026-10-19): an
+     event is picked without a click -- one whose read is here. */
+  await until(() => P().picked != null, 8000, 'an event picked');
+  ok('an event is picked at once, so its four charts draw without a click',
+     P().picked != null && !!D().querySelector('.rc-event'), String(P().picked));
   say('       ' + f0.n + ' events, measured on ' + filt, 'dim');
 
   /* ---- the border's numbers, from this pool's own events ----
@@ -327,9 +343,11 @@ function quantile(sorted, q) {
        .test(txt(items()[1], '.rc-border-what')), txt(items()[0], '.rc-border-what'));
   eq('the measurement it was made under, and that it is this pool’s',
      txt(items()[0], '.rc-border-meas'), 'Measured on ' + filt + ': the same filter as this pool.');
-  ok('and when it is not, that it would be refused here',
+  ok('and when it is not, a warning -- and that it can still be applied',
      txt(items()[2], '.rc-border-meas') === 'Measured on ' + otherFilt + '. This pool is '
-       + 'measured on ' + filt + ', so it would be refused here.'
+       + 'measured on ' + filt + '. It can still be applied: its cut-offs are '
+       + 'numbers of the measurement it was drawn under, so here they ask a '
+       + 'slightly different question.'
      && items()[2].querySelector('.rc-border-meas').classList.contains('rc-border-no'),
      txt(items()[2], '.rc-border-meas'));
   eq('where each came from', items().map((r) => txt(r, '.rc-border-from')),
@@ -525,6 +543,38 @@ function quantile(sorted, q) {
      .textContent || ''));
 
   /* ================================================================== */
+  head('OUTSIDE THE BORDER: ITS OWN COLOUR, FADED');
+  {
+    const pe = ev(RC + '._pool().evs') || [];
+    const jA = pe.findIndex((e) => e.border === 'amb' && (e.cls_pool === 'ds' || e.cls_pool === 'ied'));
+    const jS = pe.findIndex((e) => e.border === 'ds' || e.border === 'ied');
+    const grey = ev('BARRY.token("--text-3")');
+    if (jA < 0) {
+      note('no event outside the box at this grace; skipped');
+    } else {
+      const fa = ev(RC + '._poolFillOf(' + jA + ')');
+      const fs = jS >= 0 ? ev(RC + '._poolFillOf(' + jS + ')') : null;
+      ok('an event outside the box is not plain grey: it keeps a tint of its own call',
+         !!fa && fa !== grey && /^rgb\(/.test(fa), fa + ' vs grey ' + grey);
+      ok('and it is not the full colour of a solid one either', !fs || fa !== fs, fa + ' / ' + fs);
+    }
+    const lg = Array.from(D().querySelectorAll('.rc-legend .rc-lg, .rc-pool-legend .rc-lg'))
+      .map((n) => n.textContent);
+    ok('the legend says what the faded ones are',
+       lg.some((t) => /outside, pooled as DS/.test(t)) && lg.some((t) => /outside, pooled as IED/.test(t)),
+       JSON.stringify(lg));
+  }
+
+  head('THE ENVELOPE IN THE 3D VIEW');
+  ev(RC + '._draw()');
+  await sleep(150);
+  const b3 = ev(RC + '._border3d()');
+  ok('the 3D view outlines it: one box', !!b3 && b3.kind === 'envelope'
+     && (b3.boxes || []).length === 1, JSON.stringify(b3));
+  ok('each of its sides a real range, lo below hi', !!b3 && (b3.boxes || [])
+     .every((bx) => bx.r.every(([a, b]) => isFinite(a) && isFinite(b) && a < b)),
+     JSON.stringify(b3));
+
   head('THE ENVELOPE ON THE FLAT VIEWS');
 
   await sleep(150);
@@ -578,21 +628,36 @@ function quantile(sorted, q) {
   };
   const like = (p, c, tol) => Math.abs(p[0] - c[0]) + Math.abs(p[1] - c[1])
     + Math.abs(p[2] - c[2]) <= (tol || 90);
-  const clear = (fl, x, y, b) => fl.pts.every((p) => Math.hypot(p.x - x, p.y - y) > 7)
-    && fl.centres.every((c) => Math.hypot(c.x - x, c.y - y) > 14)
+  /* Away from every dot and the ring a switched one wears, the centres and
+     their names, the border's label, and the line along the top that
+     counts the dots on the edge. */
+  const clear = (fl, x, y, b) => fl.pts.every((p) => Math.hypot(p.x - x, p.y - y) > 10)
+    && fl.centres.every((c) => Math.hypot(c.x - x, c.y - y) > 16
+                               && !(x > c.x && x < c.x + 60 && Math.abs(y - c.y) < 9))
+    && y > fl.box.y0 + 16
     && !(b.label && x >= b.label.x - 3 && x <= b.label.x + b.label.w + 3
          && y >= b.label.y - 3 && y <= b.label.y + b.label.h + 3);
   {
     const id = 'rcFlatAH', fl = g.flats[id], b = bg[id];
     if (b && b.rect) {
       const r = b.rect;
+      /* All four sides, densely: which recordings this pools depends on
+         what is read on this machine today, and a dense cloud can cover
+         most of the top and bottom (2026-10-19: one clear sample of 22). */
       let edgeN = 0, edgeHit = 0;
-      for (let j = 1; j < 12; j++) {
-        const x = r.x0 + ((r.x1 - r.x0) * j) / 12;
+      for (let j = 1; j < 40; j++) {
+        const x = r.x0 + ((r.x1 - r.x0) * j) / 40;
         for (const y of [r.y0, r.y1]) {
           if (!clear(fl, x, y, b)) continue;
           edgeN += 1;
           const p = pixel(id, x, y, 'y');
+          if (p[3] > 150 && like(p, accent)) edgeHit += 1;
+        }
+        const y = r.y0 + ((r.y1 - r.y0) * j) / 40;
+        for (const x2 of [r.x0, r.x1]) {
+          if (!clear(fl, x2, y, b)) continue;
+          edgeN += 1;
+          const p = pixel(id, x2, y, 'x');
           if (p[3] > 150 && like(p, accent)) edgeHit += 1;
         }
       }
@@ -604,9 +669,23 @@ function quantile(sorted, q) {
           const x = fl.box.x0 + ((fl.box.x1 - fl.box.x0) * ix) / 24;
           const y = fl.box.y0 + ((fl.box.y1 - fl.box.y0) * iy) / 16;
           if (!clear(fl, x, y, b)) continue;
-          const inside = x > r.x0 + 3 && x < r.x1 - 3 && y > r.y0 + 3 && y < r.y1 - 3;
-          const outside = x < r.x0 - 3 || x > r.x1 + 3 || y < r.y0 - 3 || y > r.y1 + 3;
-          if (inside) inS.push(pixel(id, x, y)); else if (outside) outS.push(pixel(id, x, y));
+          if (x > r.x0 + 3 && x < r.x1 - 3 && y > r.y0 + 3 && y < r.y1 - 3) {
+            inS.push(pixel(id, x, y));
+          }
+        }
+      }
+      /* Outside, in the gap between the box and the plot's edge on each
+         side wide enough to sample: down its middle. */
+      const gaps = [
+        [r.x0 - fl.box.x0, (t) => [(fl.box.x0 + r.x0) / 2, r.y0 + (r.y1 - r.y0) * t]],
+        [fl.box.x1 - r.x1, (t) => [(fl.box.x1 + r.x1) / 2, r.y0 + (r.y1 - r.y0) * t]],
+        [r.y0 - fl.box.y0, (t) => [r.x0 + (r.x1 - r.x0) * t, (fl.box.y0 + r.y0) / 2]],
+        [fl.box.y1 - r.y1, (t) => [r.x0 + (r.x1 - r.x0) * t, (fl.box.y1 + r.y1) / 2]]];
+      for (const [gap, at] of gaps) {
+        if (gap < 8) continue;
+        for (let j = 1; j < 16; j++) {
+          const [x, y] = at(j / 16);
+          if (clear(fl, x, y, b)) outS.push(pixel(id, x, y));
         }
       }
       const washed = outS.filter((p) => p[3] >= 8 && p[3] <= 60 && like(p, accent, 120));
@@ -671,23 +750,74 @@ function quantile(sorted, q) {
        && b.label.x >= 0 && b.label.x + b.label.w <= fl.w);
   }
   {
-    const id = 'rcFlatAP', fl = g.flats[id], b = bg[id];
+    /* Along both IED cut-offs of every view, clear of the dots themselves
+       (a dot is 3.2 px; the ring a switched one wears is another colour,
+       so it can only lower the count). Dashed 5 on, 4 off: about half. */
     const ied = JSON.parse(ev('(function(){ var c = document.createElement("canvas");'
       + ' c.width = c.height = 1; var x = c.getContext("2d");'
       + ' x.fillStyle = BARRY.token("--err"); x.fillRect(0, 0, 1, 1);'
       + ' return JSON.stringify(Array.from(x.getImageData(0, 0, 1, 1).data)); })()'));
-    if (b && b.lines) {
-      const xI = b.lines[0].ied;
-      let n = 0, hit = 0;
-      for (let j = 1; j < 40; j++) {
-        const y = fl.box.y0 + ((fl.box.y1 - fl.box.y0) * j) / 40;
-        if (!clear(fl, xI, y, b)) continue;
-        n += 1;
-        const p = pixel(id, xI, y, 'x');
-        if (p[3] > 150 && like(p, ied)) hit += 1;
+    let n = 0, hit = 0;
+    for (const [id] of FL) {
+      const fl = g.flats[id], b = bg[id];
+      if (!b || !b.lines) continue;
+      const free = (x, y) => fl.pts.every((p) => Math.hypot(p.x - x, p.y - y) > 5)
+        && fl.centres.every((c) => Math.hypot(c.x - x, c.y - y) > 16
+                                   && !(x > c.x && x < c.x + 60 && Math.abs(y - c.y) < 9))
+        && y > fl.box.y0 + 16
+        && !(x >= b.label.x - 3 && x <= b.label.x + b.label.w + 3
+             && y >= b.label.y - 3 && y <= b.label.y + b.label.h + 3);
+      for (const ln of b.lines) {
+        const other = b.lines.find((o) => o !== ln);
+        for (let j = 1; j < 60; j++) {
+          const t = j / 60;
+          const x = ln.axis === 'x' ? ln.ied : fl.box.x0 + (fl.box.x1 - fl.box.x0) * t;
+          const y = ln.axis === 'y' ? ln.ied : fl.box.y0 + (fl.box.y1 - fl.box.y0) * t;
+          // Not where the other axis' lines cross it.
+          if (other && [other.ied, other.ds].some((v) =>
+            Math.abs((other.axis === 'x' ? x : y) - v) < 4)) continue;
+          if (!free(x, y)) continue;
+          n += 1;
+          const p = pixel(id, x, y, ln.axis);
+          if (p[3] > 150 && like(p, ied)) hit += 1;
+        }
       }
-      ok('the IED cut-off reads back dashed, in the IED colour',
-         n >= 8 && hit >= n * 0.25 && hit <= n * 0.85, hit + ' of ' + n + ' samples');
+    }
+    ok('the IED cut-offs read back dashed, in the IED colour',
+       n >= 12 && hit >= n * 0.25 && hit <= n * 0.85, hit + ' of ' + n + ' samples');
+  }
+
+  head('THE TWO-IDENTITY BORDER IN THE 3D VIEW');
+  ev(RC + '._draw()');
+  await sleep(150);
+  const b3b = ev(RC + '._border3d()');
+  ok('the 3D view outlines both solid regions, DS and IED',
+     !!b3b && b3b.kind === 'between'
+     && JSON.stringify((b3b.boxes || []).map((x) => x.cls).sort())
+        === JSON.stringify(['ds', 'ied']), JSON.stringify(b3b));
+
+  head('ARCHIVING A BORDER, AND PUTTING IT BACK');
+  {
+    const rowsN = () => D().querySelectorAll('.rc-borders .rc-border-item').length;
+    const n0 = rowsN();
+    const btn = D().querySelector('.rc-borders .rc-border-item .rc-border-archive');
+    ok('each saved border can be archived from its row', !!btn && n0 > 0, n0 + ' rows');
+    if (btn) {
+      const id = btn.closest('.rc-border-item').getAttribute('data-id');
+      btn.click();
+      await until(() => rowsN() === n0 - 1, 4000, 'the row to go');
+      ok('archived, it leaves the list', rowsN() === n0 - 1, rowsN() + ' of ' + n0);
+      const fold = D().querySelector('.rc-borders .rc-border-archived');
+      ok('and is listed under Archived borders, with a way back',
+         !!fold && /Archived borders \(1\)/.test(fold.textContent)
+         && !!fold.querySelector('.rc-border-arch-row[data-id="' + id + '"] .rc-border-unarchive'),
+         fold && fold.textContent.slice(0, 120));
+      ok('kept in the shared archive list, by its id (in memory here)',
+         !!(ev('window.__rcbMem.rootcanal_border_archive') || {})[id]);
+      fold.querySelector('.rc-border-unarchive').click();
+      await until(() => rowsN() === n0, 4000, 'the row back');
+      ok('put back, it is in the list again', rowsN() === n0
+         && !D().querySelector('.rc-borders .rc-border-archived'), rowsN() + ' of ' + n0);
     }
   }
 
@@ -746,7 +876,8 @@ function quantile(sorted, q) {
         ev('(function(){ var W = window; if (W.__rcbFetch) { W.fetch = W.__rcbFetch;'
            + ' delete W.__rcbFetch; } if (W.__rcbLog) { BARRY.activity.log ='
            + ' W.__rcbLog; delete W.__rcbLog; } if (W.__rcbPrefSet) {'
-           + ' BARRY.prefs.set = W.__rcbPrefSet; delete W.__rcbPrefSet; } })()');
+           + ' BARRY.prefs.set = W.__rcbPrefSet; delete W.__rcbPrefSet;'
+           + ' if (W.__rcbPrefGet) { BARRY.prefs.get = W.__rcbPrefGet; delete W.__rcbPrefGet; } } })()');
         ev('try { closeModal(); } catch (e) {}');
         ev('BARRY.rootcanal._poolClose()');
         ev('(function(v){ try { if (v == null) localStorage.removeItem('

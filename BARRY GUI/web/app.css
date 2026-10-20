@@ -11578,6 +11578,8 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   width: 11px; height: 3px; border-radius: 1px; display: inline-block;
   flex: none;
 }
+/* The cap a stop wears on the traces (2026-10-19). */
+.br-stop-sw b { font-size: var(--fs-105); line-height: 1; flex: none; }
 .br-nudge { display: inline-flex; gap: 3px; }
 .br-nudge .mini {
   min-width: 30px; font-variant-numeric: tabular-nums;
@@ -13087,6 +13089,12 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
 .rc-lg-m.rc-lg-ds { background: var(--ok); }
 .rc-lg-m.rc-lg-ied { background: var(--err); }
 .rc-lg-m.rc-lg-amb { background: var(--text-3); }
+/* Outside a border, in its own call's colour, faded, with a dotted edge
+   (2026-10-19): the dots on the plots are drawn the same way. */
+.rc-lg-m.rc-lg-amb-ds { background: color-mix(in srgb, var(--ok) 55%, var(--text-3)); }
+.rc-lg-m.rc-lg-amb-ied { background: color-mix(in srgb, var(--err) 55%, var(--text-3)); }
+.rc-lg-m.rc-lg-amb-ds, .rc-lg-m.rc-lg-amb-ied { outline: 1px dotted var(--text-3);
+  outline-offset: 0; }
 .rc-lg-m.rc-lg-square { border-radius: 0; background: var(--text-2);
                         border: 1px solid var(--text); }
 .rc-lg-m.rc-lg-wide { outline: 1px dashed var(--text); outline-offset: 1px; }
@@ -13415,6 +13423,7 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
 .rc-shelf-head { display: flex; flex-wrap: wrap; align-items: center;
                  gap: var(--sp-6) var(--sp-12); }
 .rc-shelf-head .section-label { margin: 0; }
+.rc-shelf-head .rc-new-pool { margin-left: auto; }
 .rc-carry { display: flex; flex-wrap: wrap; align-items: center;
             gap: var(--sp-6) var(--sp-10); padding: var(--sp-8) var(--sp-10);
             background: var(--bg-2); border: 1px solid var(--accent-line);
@@ -13423,11 +13432,14 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
                 color: var(--text); overflow-wrap: anywhere; }
 .cur-set.rc-build-card { flex: none; }
 .rc-build-say { margin: 0; max-width: 90ch; }
-/* One row per recording: its choice of answer, and what that answer is. */
+/* One row per recording: its choice of answer, and what that answer is.
+   The table scrolls across inside its own box on a narrow panel. */
+.rc-pool-cands-wrap { max-width: 100%; min-width: 0; overflow-x: auto; }
 .rc-pool-cands td.rc-rec-answer { min-width: 0; }
-/* Wide enough for "read here, not banked" on one line; a long nickname
-   wraps rather than being cut. */
-.rc-in.rc-rec-src { min-width: 14rem; max-width: 24rem; white-space: normal; }
+/* As wide as its longest answer where the table has the room, narrower --
+   wrapping, never cut -- where it has not: a select's percentage width
+   lets the column give way on a narrow panel. */
+.rc-in.rc-rec-src { width: max-content; max-width: 100%; white-space: normal; }
 .rc-rec-chips { display: inline-flex; flex-wrap: wrap; gap: var(--sp-4);
                 margin-left: var(--sp-4); vertical-align: middle; }
 .rc-rec-chips .flagchip { margin-right: 0; }
@@ -13458,13 +13470,12 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
 .btn.rc-redo-go { white-space: normal; text-align: left; max-width: 100%; }
 /* The click panel's words about a trace read elsewhere: above the
    pictures, wrapping, never inside a canvas. */
-.rc-ev-note { display: flex; flex-wrap: wrap; align-items: center;
-              gap: var(--sp-4) var(--sp-8); }
+.rc-ev-note { display: flex; flex-direction: column; align-items: flex-start;
+              gap: var(--sp-4); }
 .rc-ev-note:empty { display: none; }
-.rc-ev-note .rc-ev-why { flex: 1 1 100%; }
-.rc-ev-progress { margin: 0; flex: 1 1 260px; min-width: 0;
-                  font-size: var(--fs-12); color: var(--text-2);
-                  overflow-wrap: anywhere; }
+.rc-ev-note .rc-ev-why { max-width: 100%; }
+.rc-ev-progress { margin: 0; max-width: 100%; font-size: var(--fs-12);
+                  color: var(--text-2); overflow-wrap: anywhere; }
 /* Save as singles. */
 .rc-singles-tools { display: flex; flex-wrap: wrap; align-items: center;
                     gap: var(--sp-6) var(--sp-12); margin: var(--sp-6) 0; }
@@ -14071,6 +14082,11 @@ div.tf-tile { cursor: default; }
 .rc-border-pickg { display: inline-flex; align-items: center; gap: var(--sp-4);
   cursor: pointer; }
 .rc-border-custom { width: 6em; }
+/* In the dialog the modal's own input rule stretched it across the whole
+   dialog, its label and button on lines of their own (2026-10-19). */
+.rc-border-dlg .rc-border-custom-row { display: flex; flex-wrap: wrap;
+  align-items: center; gap: var(--sp-6); }
+.rc-border-dlg .rc-border-custom-row .rc-border-custom { width: 6em; flex: none; }
 .rc-border-strict { margin: 0; font-weight: 600; }
 
 /* The deep dive: events whose identity does not sit still (2026-10-06) */
@@ -14468,6 +14484,24 @@ div.tf-tile { cursor: default; }
 }
 .jn-tag.i { color: var(--o-incisor); }
 .jn-tag.d { color: var(--o-doppler); }
+/* Aligned or not, said on every input (2026-10-19). */
+.jn-tag { display: inline-flex; align-items: center; gap: 6px; }
+.jn-al-w { font-size: var(--fs-10); color: var(--text-3); white-space: nowrap; }
+.jn-al-w.on { color: var(--ok, var(--accent)); font-weight: 600; }
+.jn-tag .jn-al-w::before { content: '·'; margin-right: 5px; color: var(--text-3);
+  font-weight: 400; }
+.jn-ent-one .hint, .jn-ent .hint { white-space: nowrap; }
+.jn-ent, .jn-ent-one { flex-wrap: wrap; }
+.jn-side-hd .jn-al { margin-left: auto; }
+.stat-chip.jn-al.on { color: var(--ok, var(--accent)); }
+/* In Many, on a line of its own under the entry: beside the count it ran
+   into the number on a narrow row. */
+.jn-mside { flex-wrap: wrap; }
+.jn-mside .jn-al-w { order: 3; flex-basis: 100%; padding-left: 15px; }
+.jn-aligned { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px;
+  margin: 0 0 8px; }
+.jn-aligned .section-label { margin: 0; }
+.jn-aligned .hint { flex: 1 1 260px; min-width: 0; }
 .jn-inputs {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-12); margin-bottom: var(--sp-12);
@@ -14565,6 +14599,43 @@ div.tf-tile { cursor: default; }
                                             var(--o-doppler) 50%); }
 .cur-cat.pan-merge { --cat: var(--accent); }
 .cur-cat.pan-merge.armed { border-style: dashed; border-color: var(--accent); }
+/* Merge to Incisor's time (M) or to Doppler's (D), each in its colour. */
+.cur-cat.pan-merge.incisor { --cat: var(--o-incisor); }
+.cur-cat.pan-merge.doppler { --cat: var(--o-doppler); }
+.cur-cat.pan-merge .pan-od { width: 8px; height: 8px; }
+
+/* Label many (2026-10-19). */
+.pan-bulk-modal { width: min(640px, 94vw); }
+.pan-bulk { display: flex; flex-direction: column; gap: 6px; }
+.pan-bulk .section-label { margin-top: 6px; }
+.pan-bulk-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.pan-bulk-opt {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 4px 10px; border-radius: var(--r-4); font-size: var(--fs-12);
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text-2);
+}
+.pan-bulk-opt.on { border-color: var(--accent-line); background: var(--accent-soft);
+  color: var(--text); }
+.pan-bulk-opt.none { opacity: .55; }
+.pan-bulk-opt input { margin: 0; }
+.pan-bulk-say { margin-top: 8px; }
+
+/* The list of a pool (2026-10-19): Checkup's, with where each came from. */
+.pan-list-modal { width: min(940px, 94vw); }
+.pan-list-o { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.pill.pan-o { display: inline-flex; align-items: center; gap: 5px; }
+.pill.pan-o:not(.active) { opacity: .55; }
+.pan-list-from { display: inline-flex; align-items: center; gap: 5px;
+  flex: none; width: 168px; font-size: var(--fs-11); color: var(--text-2); }
+.pan-list-gap { flex: none; width: 104px; font-family: var(--mono);
+  font-size: var(--fs-10); color: var(--text-3); }
+@media (max-width: 700px) {
+  .pan-list-row { flex-wrap: wrap; }
+  .pan-list-from, .pan-list-gap { width: auto; }
+}
+.pan-list-bulk { display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  margin-top: 8px; }
+.pan-list-bulk:empty { display: none; }
 
 /* Root Canal's legend, coloured by origin. */
 .rc-lg-m.rc-lg-oi { background: var(--o-incisor); }
@@ -14956,3 +15027,73 @@ div.tf-tile { cursor: default; }
 :root[data-density="compact"] .modal.big .mh { padding: 8px 12px; }
 :root[data-density="compact"] .modal.big .mb { padding: 10px 12px; }
 :root[data-density="compact"] .modal.big .mf { padding: 8px 12px; }
+
+/* Root Canal's archived borders (2026-10-19): folded under the list, each
+   with "Put back". */
+.rc-border-archived { margin-top: var(--sp-8); }
+.rc-border-archived > summary { cursor: pointer; color: var(--text-2);
+  font-size: var(--fs-12); }
+.rc-border-arch-list { display: flex; flex-direction: column;
+  gap: var(--sp-4); margin-top: var(--sp-6); }
+.rc-border-arch-row { display: flex; align-items: baseline; flex-wrap: wrap;
+  gap: var(--sp-8); }
+.rc-border-arch-name { flex: 1 1 30ch; min-width: 0; color: var(--text-2);
+  font-size: var(--fs-115); overflow-wrap: anywhere; }
+
+/* Root Canal Pooled's category and name chips, pressed (2026-10-19): they
+   carry `.on` and nothing drew it, so a pressed filter looked like every
+   other chip. */
+.rc-sel .mini.on, .rc-sel-chip.on, .rc-name-chip.on {
+  background: var(--accent-soft); color: var(--accent);
+  border-color: var(--accent-line);
+}
+
+/* ---------- The way into Spotter and Panning (setpicker.js) ---------- */
+.sp-search { margin: 4px 0 10px; }
+.sp-search input { width: 100%; max-width: 460px; }
+.sp-lists { display: flex; flex-direction: column; gap: 6px; }
+.sp-group-hd {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 8px; padding-bottom: 2px;
+  border-bottom: 1px solid var(--line-soft, var(--line));
+}
+.sp-group-hd strong { font-size: var(--fs-12); }
+.sp-none { margin: 4px 0; }
+.sp-row {
+  display: grid; align-items: center; gap: 6px 12px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: 8px 12px; border-radius: var(--r-8);
+  border: 1px solid var(--line); background: var(--bg-2);
+}
+.sp-row.done { border-color: var(--accent-line); }
+.sp-row.fresh { background: transparent; }
+@media (max-width: 900px) {
+  .sp-row { grid-template-columns: minmax(0, 1fr); }
+}
+.sp-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sp-row-main strong { font-weight: 600; overflow-wrap: anywhere; }
+.sp-row-sub { font-size: var(--fs-11); color: var(--text-2);
+  overflow-wrap: anywhere; }
+.sp-row-chips, .sp-row-acts { display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap; }
+
+/* --------------------------------------------------------------------------
+   Xplorefinder: a pane on a filter of its own (xplore.js, filtOf)
+   -------------------------------------------------------------------------- */
+/* Said on the pane, in the second accent, so it is not read as the probe
+   column tag beside it. */
+.pane-filt-tag {
+  flex: none; font-family: var(--mono); font-size: var(--fs-95);
+  padding: 0 6px; border-radius: var(--r-3); white-space: nowrap;
+  background: var(--accent-2-soft); color: var(--accent-2);
+}
+.ctl-pop select.filt-target { max-width: 100%; }
+.filt-own-line { display: flex; align-items: center; gap: var(--sp-6);
+                 flex-wrap: wrap; margin-top: 2px; }
+/* A channel pick that is on. The same pressed look as any active mini
+   button, said again here so a pick reads as a switch. */
+.mini.pick[aria-pressed="true"] {
+  background: var(--accent); color: var(--on-accent); border-color: var(--accent);
+}
+/* The auto-bank switch in Spotter's and Panning's bars. */
+.mini.spot-auto.on { border-color: var(--accent-line); color: var(--accent); }

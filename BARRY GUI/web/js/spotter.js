@@ -52,6 +52,11 @@ BARRY.spotter = (function () {
      hidden until it lands, and the keys wait until it has. */
   let arriving = null;
   let forging = false;
+  /* What the bank holds of this set, and whether anything was decided
+     since that was read -- the chip in the bar, the same one the step page
+     shows (setpicker.js). */
+  let banked = null;
+  let bankDirty = false;
 
   /* How strongly the channels an event was found on are tinted: 'lit',
      'faint' or 'off'. Remembered per person, because it is about how
@@ -145,6 +150,8 @@ BARRY.spotter = (function () {
     }
     set_ = data.set;
     kind = { id: set_.kind, labels: set_.labels || [] };
+    banked = data.banked || null;
+    bankDirty = false;
 
     /* Through `BARRY.vacc.reach`, not `here[0]` on its own: a drive path
        when this computer has one, else the cluster's copy over the link.
@@ -198,7 +205,7 @@ BARRY.spotter = (function () {
       const was = review;
       review = back.review;
       if (!nWanted()) review = was;
-      goTo(back.index, true);
+      goTo(back.index, true, true);
       const at = events().slice(0, index + 1).filter(wanted).length;
       toast(back.gone
         ? 'Back where you were — that one is no longer in this set, so '
@@ -206,7 +213,7 @@ BARRY.spotter = (function () {
         : 'Back where you left off: ' + at + ' of ' + nWanted() + '.',
         null, 5000);
     } else {
-      goTo(firstWanted(), true);
+      goTo(firstWanted(), true, true);
     }
     render();
 
@@ -351,6 +358,16 @@ BARRY.spotter = (function () {
 
   function exit() {
     if (!set_) return;
+    /* Leaving with decisions the bank does not have: banked on the way out,
+       when that is on. After the set is let go, so it cannot hold up the
+       leaving; quietBank waits for any save still in flight. */
+    {
+      const decided = events().filter((e) => e.label).length;
+      if (autoOn() && decided
+          && (bankDirty || !banked || banked.changed)) {
+        quietBank(set_.gid, 'Banked on leaving Spotter.');
+      }
+    }
     /* Written now rather than in 350 ms. Preference writes are coalesced,
        and leaving is exactly the moment somebody is about to do something
        else -- the whole point is that it survives a tab switch. */
@@ -509,13 +526,43 @@ BARRY.spotter = (function () {
     return i < 0 ? 0 : i;
   }
 
-  function goTo(i, quiet) {
+  /* The span, written down per machine (`spotter_span` is in PREFS_LOCAL),
+     and read back off the pane before every jump -- Checkup's rule. It was
+     read once, when the mode opened, and never written: a span typed into
+     the field or zoomed to was put back to 1 s by the next event. */
+  function setSpan(v) {
+    const want = Math.max(0.05, parseFloat(v) || 1);
+    if (Math.abs(want - span) < 1e-6) return;
+    span = want;
+    try { BARRY.prefs.set('spotter_span', span); } catch (e) { /* later */ }
+  }
+
+  function paneSpan() {
+    try {
+      const XF = BARRY.views.xplore.state;
+      const pane = (XF.panes || [])[0];
+      const s = (XF.linkMode === 'none' && pane && pane.t0 != null)
+        ? pane.span : (sess ? sess.span : null);
+      return (s > 0) ? s : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function goTo(i, quiet, ownSpan) {
     const n = events().length;
     if (!n) return;
     index = Math.max(0, Math.min(n - 1, i));
     const ev = current();
     if (!ev || !sess) return;
     publishMarks();
+    // The window somebody set is the window they want.
+    // Not on the way in: the pane then still shows whatever the recording
+    // was last looked at with, and the span this mode remembers wins.
+    const shown = ownSpan ? null : paneSpan();
+    if (shown && Math.abs(shown - span) > Math.max(0.02, span * 0.02)) {
+      setSpan(shown);
+    }
     // Centred, so the thing is where the eye already is.
     BARRY.views.xplore.setWindow(0, Math.max(0, ev.start - span / 2), span);
     // The channels this one is on -- published to the panes as a set of
@@ -598,6 +645,7 @@ BARRY.spotter = (function () {
        history entry, or `Z` later "undoes" a decision that never saved and
        writes the old value over the server's. */
     ev.label = labelId;
+    bankDirty = true;
     const step_ = { id: ev.id, from: was };
     history.push(step_);
     markRev += 1;
@@ -614,6 +662,10 @@ BARRY.spotter = (function () {
         '/api/curation/' + encodeURIComponent(set_.gid) + '/ied/label',
         { event: ev.id, label: labelId });
       if (res.progress) set_._progress = res.progress;
+      // The last one decided: bank it, if banking without asking is on.
+      if (set_ && autoOn() && !left()) {
+        quietBank(set_.gid, 'Every candidate decided in Spotter.');
+      }
       if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
         BARRY.views.toolkit.curationChanged();
       }
@@ -651,6 +703,7 @@ BARRY.spotter = (function () {
   async function assignRaw(ev, labelId) {
     const was = ev.label || null;
     ev.label = labelId;
+    bankDirty = true;
     history.push({ id: ev.id, from: was });
     markRev += 1;
     lastChange = { index: events().indexOf(ev), label: labelId };
@@ -676,6 +729,7 @@ BARRY.spotter = (function () {
     if (at < 0) return;
     const was = events()[at].label || null;
     events()[at].label = last.from;
+    bankDirty = true;
     markRev += 1;
     lastChange = { index: at, label: last.from };
     goTo(at);
@@ -762,6 +816,13 @@ BARRY.spotter = (function () {
       ev && ev.channel != null
         ? el('span', { class: 'cur-sub', text: 'CSC' + ev.channel }) : null,
       el('span', { class: 'cur-count', text: at + ' / ' + nWanted() }),
+      // Whether the work is in the bank -- the step page says the same.
+      BARRY.setPicker ? BARRY.setPicker._bankChip({
+        banked: banked ? Object.assign({}, banked,
+                                       { changed: banked.changed || bankDirty })
+                       : null,
+        progress: { specified: events().filter((e) => e.label).length },
+      }) : null,
       beatOthers.length
         ? BARRY.ui.chip(beatOthers.length + ' also here', { kind: 'warn' })
         : null,
@@ -844,6 +905,19 @@ BARRY.spotter = (function () {
       el('button', { class: 'btn ghost sm', text: 'Bank the results\u2026',
         title: 'Write these decisions as a new version of the banked run',
         onclick: bank }),
+      el('button', {
+        class: 'mini spot-auto' + (autoOn() ? ' on' : ''),
+        text: 'Auto-bank: ' + (autoOn() ? 'on' : 'off'),
+        title: autoOn()
+          ? 'The decisions are banked as a new version without asking: when '
+            + 'the last undecided one is decided, and when you leave with '
+            + 'decisions the bank does not have yet. Click to turn it off.'
+          : 'Off: nothing is banked until you press Bank the results. '
+            + 'Click to turn it on.',
+        onclick: () => {
+          try { BARRY.prefs.set(AUTO_KEY, !autoOn()); } catch (e) { /* later */ }
+          render();
+        } }),
       el('button', { class: 'btn ghost sm', text: 'Line them up…',
         title: 'Take the confirmed ones to Eye',
         onclick: () => {
@@ -856,15 +930,83 @@ BARRY.spotter = (function () {
     ensureRaster();
   }
 
-  function bank() {
+  /* ==================================================================
+     Banking without being asked (2026-10-19)
+     ==================================================================
+     When the last undecided candidate is decided, and on leaving with
+     decisions the bank does not have yet, the set is banked as a new
+     version of its entry -- the same route the dialog uses, so a bank that
+     would hold nothing new writes nothing. On by default, off by the switch
+     in the bar, remembered per person. */
+  const AUTO_KEY = 'spotter_autobank';
+  function autoOn() {
+    try { return BARRY.prefs.get(AUTO_KEY, true) !== false; }
+    catch (e) { return true; }
+  }
+
+  async function quietBank(gid, why) {
+    for (let i = 0; i < 60 && saving > 0; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    let res;
+    try {
+      res = await apiPost('/api/curation/' + encodeURIComponent(gid) + '/ied/bank', {
+        note: why,
+        added_by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
+                  || undefined,
+      });
+    } catch (e) {
+      toast('Could not bank automatically: ' + e.message
+            + ' Bank the results by hand to keep them.', 'warn', 9000);
+      return;
+    }
+    const it = (res.entries || [])[0] || {};
+    const v = BARRY.ui.versionLabel(it.version);
+    if (it.replaced && !it.new_version) return;          // nothing new
+    toast('Banked automatically as ' + v + ': ' + (it.n || 0) + ' decided.',
+          'ok', 6000);
+    if (set_ && set_.gid === gid) {
+      try {
+        const got = await api('/api/curation/' + encodeURIComponent(gid) + '/ied');
+        if (set_ && set_.gid === gid) {
+          banked = got.banked || null; bankDirty = false; render();
+        }
+      } catch (e) { /* the chip keeps what it had */ }
+    }
+    if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
+      BARRY.views.toolkit.curationChanged();
+    }
+    // The workbench, if it is the page on screen, shows the new version.
+    if (BARRY.views.toolkit && BARRY.views.toolkit.refresh
+        && BARRY.state.view === 'toolkit') {
+      BARRY.views.toolkit.refresh();
+    }
+  }
+
+  async function bank() {
     if (!set_ || !BARRY.curate || !BARRY.curate.bankAt) return;
+    // Every decision on the server first, or the version is one short.
+    for (let i = 0; i < 60 && saving > 0; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    if (!set_) return;
     const t = {};
     for (const e of events()) if (e.label) t[e.label] = (t[e.label] || 0) + 1;
-    return BARRY.curate.bankAt({
+    const gid = set_.gid;
+    await BARRY.curate.bankAt({
       gid: set_.gid, kind: set_.kind, name: set_.name,
       labels: (kind && kind.labels) || set_.labels || [],
       progress: { by_label: t, left: left() },
     });
+    // What the bank holds now, read back rather than assumed.
+    if (!set_ || set_.gid !== gid) return;
+    try {
+      const got = await api('/api/curation/' + encodeURIComponent(gid) + '/ied');
+      if (!set_ || set_.gid !== gid) return;
+      banked = got.banked || null;
+      bankDirty = false;
+      render();
+    } catch (e) { /* the chip keeps what it had */ }
   }
 
   const flagged = () => events().filter(
@@ -1292,11 +1434,15 @@ BARRY.spotter = (function () {
     render();
   }
 
+  /* Called by xplore's setWindow after a zoom: the event back in the
+     middle, at the span the window is now on, which is the span from then
+     on. */
   function recentre() {
     const ev = current();
-    if (!ev || !sess) return;
-    const p = (BARRY.views.xplore.state.panes || [])[0];
-    if (p && p.span) span = p.span;
+    if (!ev || !sess || !set_) return;
+    const shown = paneSpan();
+    if (shown) setSpan(shown);
+    goTo(index, true);
   }
 
   return {

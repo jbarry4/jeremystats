@@ -3195,11 +3195,15 @@
       "session:sfe674ed8637d": [
         "set",
         "2026-09-18T19:17:22.651038+00:00"
+      ],
+      "session:sffb69199221e": [
+        "set",
+        "2026-10-19T20:41:44.430524+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-19T15:37:32.951252+00:00",
+    "at": "2026-10-19T20:41:44.430524+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -9748,6 +9752,15 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-18T15:17:22-0400"
+    },
+    "session:sffb69199221e": {
+      "at": "2026-10-19T16:40:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sffb69199221e",
+      "kind": "session",
+      "note": "retired: no data in the folder",
+      "synced": true,
+      "synced_at": "2026-10-19T16:41:44-0400"
     }
   },
   "schema": 1

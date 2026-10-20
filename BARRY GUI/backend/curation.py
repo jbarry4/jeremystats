@@ -172,6 +172,17 @@ KINDS = {
 ORIGINS = ("incisor", "doppler", "both")
 
 
+def _stamp_of(ev):
+    """Whose stamp a pooled candidate's `start` is -- 'incisor', 'doppler',
+    or None when its origin is not known. One both detectors found is filed
+    under Incisor's unless it carries `stamp: "doppler"` (confluence.KEEPS).
+    """
+    o = (ev or {}).get("origin")
+    if o == "both":
+        return "doppler" if ev.get("stamp") == "doppler" else "incisor"
+    return o if o in ("incisor", "doppler") else None
+
+
 # Labels a set may still carry in the vocabulary it copied in, and that are
 # shown only where a candidate actually holds one. See the DS vocabulary.
 RETIRED = frozenset({"ds3", "ds4", "ds5"})
@@ -587,6 +598,13 @@ class Curation:
             "opened_by": rec.get("opened_by"),
             "closed_at": rec.get("closed_at"),
             "progress": self.progress(rec),
+            # When two candidates were last made one (Panning). A merge can
+            # change what a banked version would hold without changing a
+            # single count, so "is the bank up to date" has to know it.
+            "last_merge": max([str(e.get("merged_at")) for e in
+                               (rec.get("events") or [])
+                               if e.get("merged_at")] or [None],
+                              key=lambda v: v or ""),
         }
 
     def summaries(self):
@@ -659,9 +677,10 @@ class Curation:
             }
             if isinstance(ev, dict):
                 # `origin` and `pair_t` for a pooled spike: which detector
-                # found it, and where the other one put it.
+                # found it, and where the other one put it -- and `stamp`,
+                # whose of its two times `start` is.
                 for k in ("end", "channel", "amplitude", "note", "origin",
-                          "pair_t"):
+                          "pair_t", "stamp"):
                     if ev.get(k) is not None:
                         item[k] = ev[k]
                 # An import that already carries a decision keeps it --
@@ -1248,10 +1267,17 @@ class Curation:
         return out
 
     @shards.atomic
-    def merge_events(self, gid, kind, keep_id, drop_id):
+    def merge_events(self, gid, kind, keep_id, drop_id, stamp=None):
         """Two candidates that are one event, made one -- Panning's merge.
 
         Returns (survivor, progress, dropped_id).
+
+        `stamp` is whose time the merged event is filed under, "incisor"
+        (the default, and the rule below) or "doppler" (2026-10-19: "allow
+        the user to choose merge to Doppler or to Incisor"). Doppler's
+        means the survivor is the one carrying Doppler's time; it is refused
+        when neither does, rather than quietly keeping Incisor's. Either way
+        it is a choice of which candidate survives, so still no time moves.
 
         The SURVIVOR is whichever of the two carries Incisor's time -- a
         dentate-spike detector stamps the spike's own peak -- and otherwise
@@ -1273,15 +1299,24 @@ class Curation:
         if not a or not b or a is b:
             raise CurationError("Pick two different candidates in this set.")
         oa, ob = a.get("origin"), b.get("origin")
+        want = str(stamp or "incisor").strip().lower()
+        if want not in ("incisor", "doppler"):
+            raise CurationError("A merge keeps Incisor's time or Doppler's.")
 
-        def has(o, src):
-            return o == src or o == "both"
-        if has(ob, "incisor") and not has(oa, "incisor"):
+        def has(e, src):
+            # Whether this candidate's own time is `src`'s stamp.
+            return _stamp_of(e) == src
+        ha, hb = has(a, want), has(b, want)
+        if want == "doppler" and not (ha or hb):
+            raise CurationError("Neither of those two carries Doppler's time, "
+                                "so there is no Doppler stamp to keep.")
+        if hb and not ha:
             lead, other = b, a
-        elif has(oa, "incisor") or float(a["start"]) <= float(b["start"]):
+        elif ha or float(a["start"]) <= float(b["start"]):
             lead, other = a, b
         else:
             lead, other = b, a
+        lead_stamp = _stamp_of(lead)
         srcs = set()
         for o in (oa, ob):
             if o == "both":
@@ -1295,6 +1330,9 @@ class Curation:
         lead["pair_t"] = round(float(other["start"]), 6)
         if srcs:
             lead["origin"] = "both" if len(srcs) > 1 else next(iter(srcs))
+        # Which of its two times `start` is, once it has two detectors'.
+        if lead.get("origin") == "both" and lead_stamp:
+            lead["stamp"] = lead_stamp
         if lead.get("channel") is None and other.get("channel") is not None:
             lead["channel"] = other["channel"]
         lead["merged_by"] = (self.store.provenance() if self.store
@@ -1308,10 +1346,10 @@ class Curation:
     #: What an undone merge may put back on the survivor, and what the
     #: candidate it took in may come back with. Whitelisted: these arrive
     #: from the page, which held them from before the merge.
-    _UNMERGE_KEEP = ("origin", "pair_t", "label", "by", "at", "channel",
-                     "merged_by", "merged_at")
+    _UNMERGE_KEEP = ("origin", "pair_t", "stamp", "label", "by", "at",
+                     "channel", "merged_by", "merged_at")
     _UNMERGE_BACK = ("start", "end", "channel", "amplitude", "origin",
-                     "pair_t", "label", "by", "at", "note")
+                     "pair_t", "stamp", "label", "by", "at", "note")
 
     @shards.atomic
     def unmerge(self, gid, kind, keep_id, before, dropped):
@@ -1764,7 +1802,7 @@ class Curation:
             # A pooled spike says where it came from in every version, so
             # Root Canal can still tell Incisor's from Doppler's after
             # Panning has banked it (and after a merge made it "both").
-            for k in ("origin", "pair_t"):
+            for k in ("origin", "pair_t", "stamp"):
                 if e.get(k) is not None:
                     item[k] = e[k]
             item["label"] = names.get(lab, lab) if lab else "unspecified"

@@ -406,10 +406,15 @@ const ENTRY = '46fd29a77cc7';
   head('WHERE THE HALF-WIDTH SEARCH STRUGGLED, EVERY EVENT IS MARKED');
 
   /* On this recording, at v1's 50 ms search, two events never come back
-     to half amplitude: i=21 (DS) and i=246 (IED). They are placed on the
-     two axes they have. Widened to 80 ms both are found (56.6 and 59.7 ms)
-     and both are flagged as found only that way. Measured by the backend
-     agent on the same read; checked here as what the panel shows. */
+     to half amplitude. They are placed on the two axes they have; widened
+     to 80 ms both are found and flagged as found only that way.
+
+     FOUND, NOT NAMED (2026-10-19). These checks named the two by index --
+     i=21 (DS) and i=246 (IED), from the 296-stamp version -- and the set's
+     default version is now 431 stamps, where i=21 is an ordinary IED and
+     the two partial events are others. Ten checks failed on what was a
+     renumbering. They now take whichever events the fit itself says are
+     partial, and check those. */
   const crossIn = D().querySelector('.rc-controls input.rc-in-cross');
   ok('there is a half-width search control, from 10 to 200 ms',
      !!crossIn && crossIn.min === '10' && crossIn.max === '200');
@@ -418,12 +423,15 @@ const ENTRY = '46fd29a77cc7';
   const f50 = st().fit;
   eq('two events are placed on 2 of 3 axes, none by a widened search',
      [f50.counts.partial, f50.counts.wide], [2, 0]);
-  const ev21 = f50.events.find((e) => e.i === 21) || {};
-  const ev246 = f50.events.find((e) => e.i === 246) || {};
-  ok('i=21 is a DS placed without its half-width',
-     ev21.partial && ev21.cls === 'ds' && JSON.stringify(ev21.missing)
-     === '["hw_ms"]' && ev21.z && ev21.z[1] === null, JSON.stringify(ev21));
-  ok('i=246 is an IED placed the same way', ev246.partial && ev246.cls === 'ied');
+  const parts = f50.events.filter((e) => e.partial);
+  const pI = parts.map((e) => e.i);
+  const p0 = parts[0] || {};
+  say('       the partial events: ' + JSON.stringify(parts.map((e) =>
+    [e.i, e.cls, e.missing])), 'dim');
+  ok('each is placed without its half-width, and has a class',
+     parts.length === 2 && parts.every((e) => JSON.stringify(e.missing)
+       === '["hw_ms"]' && e.z && e.z[1] === null
+       && (e.cls === 'ds' || e.cls === 'ied')), JSON.stringify(parts));
   ok('both have a class, so the classified count includes them',
      f50.n_placed === f50.n_used + 2, [f50.n_used, f50.n_placed].join(' / '));
 
@@ -433,14 +441,15 @@ const ENTRY = '46fd29a77cc7';
     .concat(['rcFlatAH', 'rcFlatAP', 'rcFlatHP']
       .map((id) => gg.flats[id].pts.find((p) => p.i === i)));
   ok('a partial event is a square in all four views',
-     [21, 246].every((i) => markIn(gp, i).every((p) => p && p.mark === 'square')),
-     JSON.stringify(markIn(gp, 21).map((p) => p && p.mark)));
+     pI.length === 2 && pI.every((i) => markIn(gp, i).every((p) => p
+                                                          && p.mark === 'square')),
+     JSON.stringify(markIn(gp, p0.i).map((p) => p && p.mark)));
+  const flatOf = (id) => gp.flats[id].pts.find((p) => p.i === p0.i) || {};
   ok('on the edge of the views whose axis it lacks, and in place in the other',
-     gp.flats.rcFlatAH.pts.find((p) => p.i === 21).edge
-     && gp.flats.rcFlatHP.pts.find((p) => p.i === 21).edge
-     && !gp.flats.rcFlatAP.pts.find((p) => p.i === 21).edge);
+     flatOf('rcFlatAH').edge && flatOf('rcFlatHP').edge
+     && !flatOf('rcFlatAP').edge);
   ok('and a complete one is still a dot',
-     gp.space.pts.filter((p) => ![21, 246].includes(p.i) && !p.hollow)
+     gp.space.pts.filter((p) => !pI.includes(p.i) && !p.hollow)
        .every((p) => p.mark === 'dot'));
   const lgd = Array.from(D().querySelectorAll('.rc-legend .rc-lg'))
     .map((n2) => n2.textContent);
@@ -456,8 +465,9 @@ const ENTRY = '46fd29a77cc7';
      (D().querySelector('.rc-bank') || {}).textContent || ''),
      (D().querySelector('.rc-bank') || {}).textContent);
 
-  ev(RC + '._pick(21)');
-  await until(() => st().evData && st().evData.i === 21, 20000, 'event 21');
+  ev(RC + '._pick(' + p0.i + ')');
+  await until(() => st().evData && st().evData.i === p0.i, 20000,
+              'event ' + p0.i);
   await sleep(150);
   const why21 = (D().querySelector('.rc-ev-why') || {}).textContent || '';
   ok('the click panel says why, in words',
@@ -488,20 +498,30 @@ const ENTRY = '46fd29a77cc7';
      [f80.counts.partial, f80.counts.wide], [0, 2]);
   await sleep(150);
   gp = geom();
+  ok('they are the same two events',
+     JSON.stringify(f80.events.filter((e) => e.wide).map((e) => e.i))
+     === JSON.stringify(pI), JSON.stringify(f80.events.filter((e) => e.wide)
+       .map((e) => e.i)));
   ok('a widened event is its class dot with the dashed outline, in all four',
-     [21, 246].every((i) => markIn(gp, i).every((p) => p && p.mark === 'dot'
-                                                       && p.wide)),
-     JSON.stringify(markIn(gp, 21)));
+     pI.length === 2 && pI.every((i) => markIn(gp, i).every((p) => p
+                                                          && p.mark === 'dot'
+                                                          && p.wide)),
+     JSON.stringify(markIn(gp, p0.i)));
   ok('the why-line and Bank count them',
      /2 by the widened search/.test((D().querySelector('.rc-why') || {}).textContent)
      && /\(2 by the widened search\)/.test(
        (D().querySelector('.rc-bank') || {}).textContent || ''));
-  ev(RC + '._pick(21)');
-  await until(() => st().evData && st().evData.i === 21
-                    && (geom().ev.trace || {}).hasW, 20000, 'event 21 at 80 ms');
+  ev(RC + '._pick(' + p0.i + ')');
+  await until(() => st().evData && st().evData.i === p0.i
+                    && (geom().ev.trace || {}).hasW, 20000,
+              'event ' + p0.i + ' at 80 ms');
   const why80 = (D().querySelector('.rc-ev-why') || {}).textContent || '';
+  // The half-width it says is the one the fit found, to a tenth of a ms.
+  const hw80 = (f80.events.find((e) => e.i === p0.i) || {}).hw_ms;
+  const said80 = /widened to 80 ms: ([\d.]+) ms/.exec(why80);
   ok('its panel says the search was widened, and to what',
-     /widened to 80 ms: 56\.6 ms/.test(why80), why80);
+     !!said80 && hw80 != null && Math.abs(Number(said80[1]) - hw80) < 0.051,
+     why80 + ' (the fit: ' + hw80 + ' ms)');
   ok('and the trace has its half-width back', geom().ev.trace.hasW === true);
 
   ev(RC + '._setParam("cross_ms", 50)');
@@ -1200,9 +1220,14 @@ const ENTRY = '46fd29a77cc7';
                 20000, 'the dragged centre');
     const raw1 = st().fit.centres[k0].raw, raw0 = geom().flats.rcFlatAP.xr;
     ok('dragging a centre sets it by hand', !!st().q.centres);
+    /* Where the pointer put it: the request. The refit's own centre is
+       k-means started from there, and on a set as large as this one is now
+       (431 stamps) it can settle a few µV back towards where it began
+       (2026-10-19: 1522 → 1520 µV), which is k-means, not the drag. */
+    const zq = (st().q.centres || [])[k0] || [];
     ok('up and to the right, in µV and dB',
-       st().fit.centres[k0].raw[0] > cD.raw[0] - 1e-9 && raw1[2] > cD.raw[2],
-       JSON.stringify([cD.raw, raw1, raw0]));
+       zq[0] > cD.z[0] && zq[2] > cD.z[2] && raw1[2] > cD.raw[2],
+       JSON.stringify([cD.z, zq, cD.raw, raw1, raw0]));
     ok('and it did not pick a dot on the way', st().picked === target);
     ev(RC + '._resetCentres()');
     await until(() => !st().q.centres && !st().fitting, 20000, 'the reset');
@@ -1238,7 +1263,9 @@ const ENTRY = '46fd29a77cc7';
         branch is named v2.1, not the tip plus one. */
      new RegExp('^Bank: ' + (c1.ds + c1.unmeasured) + ' DS as (v[\\d.]+|a new '
                 + 'version), ' + c1.ied + ' IED as ').test(lab), lab);
-  const acts = D().querySelector('.rc-why .head-actions');
+  /* The card's own row of actions, not the Borders card's inside it
+     (2026-10-19). */
+  const acts = D().querySelector('.rc-why > .head-actions');
   ok('and it is the one primary, at the right, last',
      !!acts && acts.lastElementChild === D().querySelector('.rc-bank')
      && D().querySelectorAll('.rc-work .btn:not(.ghost)').length === 1);
@@ -2070,13 +2097,33 @@ const ENTRY = '46fd29a77cc7';
   ok('the call shown is the border’s: the seg says so and the legend has '
      + 'ambiguous', Array.from(D().querySelectorAll('.rc-why .rc-colour-by button'))
        .some((b) => b.textContent === 'by border')
-     && /solid DS\s*solid IED\s*ambiguous/.test(D().querySelector('.rc-legend')
-       .textContent));
-  const sFills = new Set(geom().space.pts.filter((p) => !p.hollow)
+     && /solid DS\s*solid IED\s*outside, called DS\s*outside, called IED/
+       .test(D().querySelector('.rc-legend').textContent),
+     D().querySelector('.rc-legend').textContent.slice(0, 120));
+
+  /* SOLID IN FULL, OUTSIDE FADED (2026-10-19). Outside the border a dot
+     keeps its own call's colour, faded, with a dotted edge -- it was one
+     grey for all of them. */
+  const solidF = new Set(geom().space.pts.filter((p) => !p.hollow && !p.outside)
                          .map((p) => p.fill));
-  eq('three colours on the picture, one per class', sFills.size, 3);
-  ok('the Borders card opens with the border’s counts',
-     D().querySelector('.rc-why .rc-borders').open
+  const outF = new Set(geom().space.pts.filter((p) => !p.hollow && p.outside)
+                       .map((p) => p.fill));
+  const greyF = (function () { const g = D().createElement('canvas').getContext('2d');
+    g.fillStyle = W.getComputedStyle(D().documentElement)
+      .getPropertyValue('--text-3').trim(); return String(g.fillStyle); })();
+  const norm = (c) => { const g = D().createElement('canvas').getContext('2d');
+    g.fillStyle = c; return String(g.fillStyle); };
+  const outCls = new Set(st().fit.events.filter((e) => e.border === 'amb')
+    .map((e) => e.cls).filter((c) => c === 'ds' || c === 'ied'));
+  eq('solid DS and solid IED in two full colours', solidF.size, 2);
+  eq('outside it, one faded colour per call it had', outF.size, outCls.size);
+  ok('none of them the plain grey, nor a solid colour',
+     outF.size > 0 && Array.from(outF).every((c) => norm(c) !== greyF
+       && !solidF.has(c)), JSON.stringify([Array.from(outF), greyF]));
+  /* Folded in Single (it sits above the pictures), its line saying it. */
+  ok('the Borders card’s folded line says the border and what it made of '
+     + 'the set', /^Borders · Classified by ‘single border’ at grace 5%: \d+ solid DS · \d+ solid IED · \d+ ambiguous$/
+       .test(D().querySelector('.rc-why .rc-border-sum').textContent)
      && /solid DS · \d+ solid IED · \d+ ambiguous/.test(
        D().querySelector('.rc-why .rc-border-on').textContent));
   ev(RC + '._setBorder(null)');
