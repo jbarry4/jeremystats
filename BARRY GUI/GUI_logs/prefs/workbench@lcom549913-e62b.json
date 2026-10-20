@@ -1,8 +1,8 @@
 {
   "_at": {
     "braces_curve": "2026-10-19T16:52:32.986134+00:00",
-    "braces_span": "2026-10-16T16:08:52.612624+00:00",
-    "curate_at": "2026-10-15T14:53:57.026814+00:00",
+    "braces_span": "2026-10-19T15:21:48.933670+00:00",
+    "curate_at": "2026-10-16T18:43:33.541991+00:00",
     "curate_span": "2026-10-14T17:36:49.834684+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "panning_at": "2026-10-14T23:31:27.850104+00:00",
@@ -10,9 +10,9 @@
     "radio": "2026-10-13T19:54:21.520703+00:00",
     "recent_scripts": "2026-10-12T15:37:32.641324+00:00",
     "result_group": "2026-09-28T20:50:31.306822+00:00",
-    "spotter_at": "2026-10-14T23:36:25.404389+00:00",
-    "spotter_light": "2026-09-25T22:03:51.166243+00:00",
-    "updated": "2026-10-19T16:56:32.110615+00:00"
+    "spotter_at": "2026-10-16T17:30:37.286380+00:00",
+    "spotter_light": "2026-10-16T17:21:44.827873+00:00",
+    "updated": "2026-10-19T17:16:42.714857+00:00"
   },
   "_keys": {
     "jarvis": {
@@ -32,7 +32,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-06T21:04:41.842988+00:00"
+        "2026-10-19T15:22:42.213249+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -48,7 +48,7 @@
       ],
       "LCOM549913": [
         "set",
-        "2026-10-09T14:33:01.566491+00:00"
+        "2026-10-19T16:57:51.196643+00:00"
       ]
     },
     "vacc": {
@@ -58,7 +58,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-14T20:28:40.651441+00:00"
+        "2026-10-19T15:22:41.068586+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -75,12 +75,12 @@
     }
   },
   "_shard": {
-    "at": "2026-10-19T16:56:32.110615+00:00",
+    "at": "2026-10-19T17:16:42.714857+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
   "braces_curve": true,
-  "braces_span": 0.7,
+  "braces_span": 1,
   "curate_at": {
     "demo-ds-tutorial:ds": {
       "at": 1790615198941,
@@ -251,11 +251,11 @@
       "t": 31.451987
     },
     "s503339c95a67:ds": {
-      "at": 1792076036995,
-      "id": "ea0e0cd8865",
+      "at": 1792176213533,
+      "id": "e0512705e05",
       "n": 867,
-      "review": "flag",
-      "t": 1793.484977
+      "review": "all",
+      "t": 86.134663
     },
     "s5b932a8e933d:ds": {
       "at": 1791557841641,
@@ -521,20 +521,20 @@
     "IED/05_Session_Pipeline/stages/EventStacks_ampWidth_Avg_Pipeline.m"
   ],
   "result_group": "",
-  "spotter_at": "{\"s45965a6b13d3:ied\":{\"review\":\"all\",\"index\":49,\"id\":\"e4c9f7bba8b\",\"t\":943.472121,\"at\":1792001370071},\"sddf3e5010ff2:ied\":{\"review\":\"left\",\"index\":7,\"id\":\"eb9bd781841\",\"t\":17.209561,\"at\":1790372908151},\"s9a8f6138b49e:ied\":{\"review\":\"left\",\"index\":162,\"id\":\"ef8f3715329\",\"t\":1248.283006,\"at\":1791910611232},\"s91039ecb8aa9:ied\":{\"review\":\"left\",\"index\":38,\"id\":\"ea4af54247d\",\"t\":334.640772,\"at\":1791915271213},\"s96884739a6ff:ied\":{\"review\":\"left\",\"index\":8,\"id\":\"e246138cb5b\",\"t\":86.9387,\"at\":1792020966917}}",
+  "spotter_at": "{\"s45965a6b13d3:ied\":{\"review\":\"all\",\"index\":49,\"id\":\"e4c9f7bba8b\",\"t\":943.472121,\"at\":1792001370071},\"sddf3e5010ff2:ied\":{\"review\":\"left\",\"index\":7,\"id\":\"eb9bd781841\",\"t\":17.209561,\"at\":1790372908151},\"s9a8f6138b49e:ied\":{\"review\":\"left\",\"index\":162,\"id\":\"ef8f3715329\",\"t\":1248.283006,\"at\":1791910611232},\"s91039ecb8aa9:ied\":{\"review\":\"left\",\"index\":38,\"id\":\"ea4af54247d\",\"t\":334.640772,\"at\":1791915271213},\"s96884739a6ff:ied\":{\"review\":\"left\",\"index\":8,\"id\":\"e246138cb5b\",\"t\":86.9387,\"at\":1792020966917},\"s14510e30e1bd:ied\":{\"review\":\"left\",\"index\":0,\"id\":\"e2ac027895e\",\"t\":6.722965,\"at\":1792171837275}}",
   "spotter_light": "lit",
   "themes": {
     "BarryLab": "horizon-night",
-    "DESKTOP-4H65AI7": "jirai-yami",
+    "DESKTOP-4H65AI7": "halloween",
     "DESKTOP-AH45FAE": "horizon-night",
     "DESKTOP-NR2H5O7": "horizon-night",
     "Home": "dark",
-    "LCOM549913": "horizon-night"
+    "LCOM549913": "halloween"
   },
-  "updated": "2026-10-19T12:56:32-04:00",
+  "updated": "2026-10-19T13:16:42-04:00",
   "vacc": {
     "BarryLab": true,
-    "DESKTOP-4H65AI7": true,
+    "DESKTOP-4H65AI7": false,
     "DESKTOP-AH45FAE": true,
     "Home": true,
     "LCOM549913": true
