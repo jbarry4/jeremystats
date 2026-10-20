@@ -370,7 +370,15 @@ BARRY.rootcanal = (function () {
          click away. */
       singleColour = ctx === 'pooled' ? 'origin' : 'call';
     }
-    render();
+    /* NOT A SECOND TIME (2026-10-20). The ToolKit calls this on every
+       refresh it runs, and each call rebuilt the whole page: in Pooled the
+       table being ticked was replaced mid-press ("it keeps reloading").
+       Painted once for this bundle and this view, it is left alone; what
+       is still missing is loaded, and repaints only the part it fills. */
+    const box = host();
+    const mine = !!(box && box.dataset.rcPainted === ctx + ':' + viewMode
+                    && box.querySelector('.rc-viewbar'));
+    if (!mine) render();
     if (viewMode === 'pooled') { await loadPool(); return; }
     loadDone();
     if (!cands) await loadCandidates();
@@ -394,6 +402,16 @@ BARRY.rootcanal = (function () {
                  || cands.find((c) => c.readable !== false);
       if (first) { pickSet(first.entry_id); return; }
     }
+    singleRender();
+  }
+
+  /* SINGLE'S OWN ARRIVALS REPAINT SINGLE ONLY (2026-10-20). The sets, a
+     set's saved versions and the first pick land a few seconds after Root
+     Canal opens; somebody who has gone on to Pooled by then had the whole
+     Pooled page rebuilt under them -- the table they were ticking replaced
+     mid-press. Single draws them when it is shown. */
+  function singleRender() {
+    if (viewMode === 'pooled') return;
     render();
   }
 
@@ -462,7 +480,7 @@ BARRY.rootcanal = (function () {
     forget();
     single = null;
     loadSingle();
-    render();
+    singleRender();
   }
 
   /* Everything that belongs to one read, dropped together. */
@@ -964,6 +982,7 @@ BARRY.rootcanal = (function () {
   function paint_() {
     const box = host();
     if (!box) return;
+    box.dataset.rcPainted = (inConfluence() ? 'pooled' : 'ds') + ':' + viewMode;
     /* The list of sets already done is one node kept across these rebuilds;
        emptying the page takes the caret out of its search and its list
        back to the top. Both are put back once it is in again. */
@@ -1135,16 +1154,22 @@ BARRY.rootcanal = (function () {
     const ctx = inConfluence() ? 'pooled' : 'ds';
     /* Asked again while a read of it is out (a bank, a save): read again
        once that one lands, or the list stays one change behind. */
-    if (doneQ.loading) { if (force || doneQ.ctx !== ctx) doneQ.again = true; return; }
+    /* Compared with the bundle being READ, not the one last shown: while
+       the first read is out `ctx` still names the old list (or none), so a
+       second ordinary call would have queued a pointless re-read. */
+    if (doneQ.loading) { if (force || doneQ.loadingCtx !== ctx) doneQ.again = true; return; }
     if (doneQ.rows && doneQ.ctx === ctx && !force) return;
     doneQ.loading = true;
+    doneQ.loadingCtx = ctx;
     doneQ.again = false;
     try {
       const got = await api('/api/rootcanal/done?type=' + ctx);
       doneQ.rows = got.sets || [];
       doneQ.err = null;
     } catch (e) {
-      doneQ.rows = doneQ.rows || [];
+      // A failed read keeps this bundle's rows, never the other bundle's
+      // under this one's name.
+      doneQ.rows = (doneQ.ctx === ctx && doneQ.rows) || [];
       doneQ.err = e.message;
     }
     doneQ.ctx = ctx;
@@ -1234,8 +1259,8 @@ BARRY.rootcanal = (function () {
 
   function doneOrder(a, b) {
     if (doneQ.sort === 'name') {
-      return bulkOrder(Object.assign({ label: doneLabel(a) }, a),
-                       Object.assign({ label: doneLabel(b) }, b));
+      return natural(a.project || '~', b.project || '~')
+        || natural(doneLabel(a), doneLabel(b));
     }
     if (doneQ.sort === 'events') {
       return (b.n || 0) - (a.n || 0) || natural(doneLabel(a), doneLabel(b));
@@ -1600,8 +1625,7 @@ BARRY.rootcanal = (function () {
         reachable: c.readable !== false,
       });
     }
-    rows.sort((x, y) => String(x.label || '').localeCompare(
-      String(y.label || '')));
+    rows.sort((x, y) => natural(x.label || '', y.label || ''));
     if (!q.gid || !seen.has(q.gid)) {
       q.gid = (cur && cur.gid) || (rows[0] || {}).gid || null;
     }
@@ -1819,7 +1843,7 @@ BARRY.rootcanal = (function () {
     if (mine !== singleGen || q.entry !== entry) return;
     single = (got.singles || [])[0] || null;
     singleBanked = got.banked || [];
-    render();
+    singleRender();
   }
 
   /* A banked result kept as the next version: from its read where it is
@@ -1908,24 +1932,45 @@ BARRY.rootcanal = (function () {
     const dirty = isDirty();
     const out = [];
     if (vs.length) {
-      out.push(el('select', {
-        class: 'rc-in rc-ver-pick',
-        title: cur ? versionHover(cur) + (dirty ? '\n(changed since)' : '')
-                   : 'Saved versions of this set. Pick one to open it.',
-        onchange: (ev2) => {
-          const v = Number(ev2.target.value);
-          if (!v) return;
-          const go = () => openVersion(single.artifact_id, v);
-          if (isDirty()) nudgeThen(go); else go();
-        },
-      }, [el('option', { value: '', text: cur
-          ? 'v' + cur.v + ' · ' + (cur.nickname || 'no nickname')
-            + (dirty ? ' (changed)' : '')
-          : (dirty ? 'not saved: changed' : 'not saved as a version'),
-          selected: 'selected', disabled: 'disabled' })]
-        .concat(vs.map((x) => el('option', { value: String(x.v),
+      /* A MENU, NOT A SELECT (2026-10-20). A select is as wide as its
+         longest option, and a version saved from a pool is named for it
+         ("v2 · from pool ‘PTEN ALL PTEN Baseline Full Incisor’ v1"): the
+         row of counts wrapped to a third line round it, and the picked
+         event's bar went below the fold (952 px down on a 908 screen). The
+         closed menu says which version is up, short; open, it lists every
+         version by its whole name, wrapped, with its hover. */
+      const det = el('details', { class: 'rc-ver-pick' }, [
+        el('summary', {
+          class: 'rc-ver-sum',
+          title: cur ? versionHover(cur) + (dirty ? '\n(changed since)' : '')
+                     : 'Saved versions of this set. Pick one to open it.',
+          text: (cur ? 'v' + cur.v + (dirty ? ' (changed)' : '')
+                     : (dirty ? 'not saved: changed' : 'not saved as a version'))
+                + '  ·  ' + vs.length + ' saved ▾',
+        }),
+        el('div', { class: 'rc-ver-pop' }, vs.map((x) => el('button', {
+          type: 'button',
+          class: 'rc-ver-opt' + (cur && cur.v === x.v ? ' on' : ''),
           title: versionHover(x),
-          text: 'v' + x.v + ' · ' + (x.nickname || 'no nickname') })))));
+          'data-v': String(x.v),
+          text: 'v' + x.v + ' · ' + (x.nickname || 'no nickname'),
+          onclick: () => {
+            det.open = false;
+            const go = () => openVersion(single.artifact_id, x.v);
+            if (isDirty()) nudgeThen(go); else go();
+          },
+        }))),
+      ]);
+      // Shut by a press anywhere else, as the mode bar's More is.
+      if (!versionStrip.wired) {
+        versionStrip.wired = true;
+        document.addEventListener('mousedown', (e) => {
+          for (const d of document.querySelectorAll('details.rc-ver-pick[open]')) {
+            if (!d.contains(e.target)) d.open = false;
+          }
+        });
+      }
+      out.push(det);
       if (BARRY.syncState) {
         out.push(BARRY.syncState.mark('artifacts', single.artifact_id));
       }
@@ -4177,7 +4222,10 @@ BARRY.rootcanal = (function () {
     /* A commit that changed nothing wrote nothing, and says so -- pressing
        it twice on one answer must not read as two versions. */
     if (rep.already) {
-      toast(rep.already, 'warn', 9000);
+      /* Information, not a failure (2026-10-20): the bank already holds
+         this set, nothing at all was written, and the sentence says how to
+         keep these numbers if they are wanted. */
+      toast(rep.already, null, 12000);
       return rep;
     }
     /* A pooled set is named, not split (app.py, `_rootcanal_commit_pooled`):
@@ -4321,8 +4369,11 @@ BARRY.rootcanal = (function () {
 
   const numOr = (v) => (v == null || v === '' || !isFinite(Number(v))
     ? Infinity : Number(v));
-  const natural = (a, b) => String(a).localeCompare(String(b), undefined,
-                                                     { numeric: true });
+  /* Names in natural order, the page's one rule (ui.js `natCompare`,
+     2026-10-20): m1, m3, m5, m12 -- numbers by value, case ignored. */
+  const natural = (a, b) => (BARRY.ui && BARRY.ui.natCompare
+    ? BARRY.ui.natCompare(a, b)
+    : String(a).localeCompare(String(b), undefined, { numeric: true }));
   /* Project, then mouse and session as NUMBERS: as strings m13 came
      before m2. */
   function bulkOrder(a, b) {
@@ -7141,7 +7192,9 @@ BARRY.rootcanal = (function () {
     }
     if (!pool.shelf) jobs.push(loadShelf(true));
     await Promise.all(jobs);
-    if (viewMode === 'pooled') render();
+    // Only when something arrived: a call with everything loaded is not a
+    // reason to rebuild the page.
+    if (jobs.length && viewMode === 'pooled') render();
   }
 
   async function loadShelf(quiet) {
@@ -7224,6 +7277,21 @@ BARRY.rootcanal = (function () {
       if (r.keys.has(a.key)) return;     // offered twice is one answer
       r.answers.push(a); r.keys.add(a.key); byKey.set(a.key, r);
     };
+    /* ONE ENTRY PER ANSWER (2026-10-20: "so many different versions, all
+       with different amounts"). Banking keeps a version of the single
+       too, and importing a banked result makes one -- the SAME numbers as
+       the banked result, which was then listed twice. A saved version that
+       is a listed banked result joins it: the banked answer says it is
+       also saved, and the version is not offered again. */
+    const bankedPh = new Map();          // recording -> {params_hash: banked}
+    for (const c of cs) {
+      if (c.banked && c.kind !== 'single' && c.params_hash) {
+        const m = bankedPh.get(recOf(c)) || new Map();
+        m.set(c.params_hash, c);
+        bankedPh.set(recOf(c), m);
+      }
+    }
+    const savedAs = new Map();           // banked key -> [saved versions]
     for (const c of cs) {
       const r = recFor(recOf(c), c);
       if (c.kind === 'single') {
@@ -7232,24 +7300,56 @@ BARRY.rootcanal = (function () {
           .sort((a, b) => b.v - a.v);
         if (!vs.length) vs.push({ v: c.version, nickname: c.nickname });
         for (const x of vs) {
+          const imp = (((x.inputs || [])[0]) || {}).imported_from;
+          const twin = imp && (bankedPh.get(recOf(c)) || new Map()).get(imp);
+          if (twin) {
+            const l = savedAs.get(twin.key) || [];
+            l.push(x);
+            savedAs.set(twin.key, l);
+            continue;
+          }
           const ns = x.n_summary || {};
           add(r, { key: 's:' + c.artifact_id + ':' + x.v, kind: 'single', cand: c,
                    ver: x, n: ns.events != null ? ns.events : c.n,
+                   filt: (x.measure || {}).filter_label || null, k: x.k,
                    words: 'saved v' + x.v + (x.nickname ? ' · ' + x.nickname : ''),
                    title: versionHover(x) });
         }
       } else if (c.banked) {
         add(r, { key: c.key, kind: 'banked', cand: c, n: c.n,
+                 filt: c.filter_label || null, k: c.k, older: !!c.older,
                  words: 'banked' + (c.version ? ' v' + c.version : ''),
                  title: 'Its banked result' + (c.version ? ', v' + c.version
-                   + ' of the set' : '') + ': the numbers are in the bank, so '
-                   + 'it reads no recording.' });
+                   + ' of the set' : '') + (c.filter_label ? ', measured on '
+                   + c.filter_label : '') + (c.k != null ? ', k = ' + c.k : '')
+                   + (c.from_name ? ', read from v' + c.from_name : '')
+                   + ': the numbers are in the bank, so it reads no recording.'
+                   + (c.older ? ' It is about an earlier version of the set '
+                     + 'than the one the bank holds now.' : '') });
       } else {
-        add(r, { key: c.key, kind: 'read', cand: c, n: c.n,
-                 words: 'read here, not banked',
-                 title: 'The read cached on this machine, not banked: fitted '
-                      + 'at Single’s settings as they stand when it is ticked.' });
+        /* Which version of the set's stamps it read: its events alone did
+           not say -- "37 events" and "53 events" were two reads of two
+           versions, and only the counts told them apart. */
+        const of = c.live ? 'of v' + c.from_name + ', the set as it is'
+          : c.from_name ? 'of v' + c.from_name : 'of an earlier version';
+        add(r, { key: c.key, kind: 'read', cand: c, n: c.n, older: !!c.older,
+                 words: 'read here, not banked · ' + of,
+                 title: 'The read cached on this machine, not banked ('
+                      + of + (c.n != null ? ', ' + c.n + ' events' : '')
+                      + '): fitted at Single’s settings as they stand when '
+                      + 'it is ticked.' });
       }
+    }
+    // The banked answers that are saved as versions too, said on them.
+    for (const [key, xs] of savedAs) {
+      const r = byKey.get(key);
+      const a = r && r.answers.find((x) => x.key === key);
+      if (!a) continue;
+      xs.sort((p, q) => p.v - q.v);
+      a.saved = xs;
+      a.title += ' Also kept as saved ' + xs.map((x) => 'v' + x.v
+        + (x.nickname ? ' ‘' + x.nickname + '’' : '')).join(', ')
+        + ': the same numbers, offered once.';
     }
     /* A member of the opened pool that this machine does not offer: read
        on another machine, its numbers in the save. It joins its
@@ -7270,28 +7370,53 @@ BARRY.rootcanal = (function () {
                     + 'exactly as they were saved, so it pools as saved. '
                     + 'Measuring it another way needs its read.' });
     }
-    /* Two answers of one kind -- two reads here made from two versions of
-       the set's stamps, say -- are told apart by their events, and failing
-       that by the read's own name. */
+    /* Two answers that read the same are told apart by WHAT DIFFERS
+       (2026-10-20): the filter they were measured on, then how many
+       clusters, then their events -- and only failing all three by a name
+       nobody reads ("result 794f36" was two measurements, LFP and DS). */
     const twins = (r) => r.answers.filter((a, j) => r.answers.some(
       (b, i) => i !== j && b.words === a.words));
+    const differ = (xs, f) => new Set(xs.map(f)).size > 1;
     for (const r of byId.values()) {
-      for (const a of twins(r)) {
-        if (a.n != null) a.words += ' · ' + a.n + ' events';
+      let tw = twins(r);
+      if (tw.length && differ(tw, (a) => a.filt || '')) {
+        for (const a of tw) if (a.filt) a.words += ' · ' + a.filt;
+      }
+      tw = twins(r);
+      if (tw.length && differ(tw, (a) => a.k)) {
+        for (const a of tw) if (a.k != null) a.words += ' · k = ' + a.k;
+      }
+      tw = twins(r);
+      if (tw.length && differ(tw, (a) => a.n)) {
+        for (const a of tw) if (a.n != null) a.words += ' · ' + a.n + ' events';
       }
       for (const a of twins(r)) {
         const tail = String(a.key).split(':').pop();
         a.words += (a.kind === 'banked' ? ' · result ' : ' · read ') + tail.slice(0, 6);
       }
+      for (const a of r.answers) {
+        if (a.saved) {
+          a.words += ' · saved as ' + a.saved.map((x) => 'v' + x.v).join(', ');
+        }
+      }
     }
     for (const r of byId.values()) {
-      r.answers.sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind]);
-      r.def = (r.answers.find((a) => a.kind === 'banked')
-               || r.answers.find((a) => a.kind === 'single')
-               || r.answers.find((a) => a.kind === 'read')
-               || r.answers[0]).key;
+      // The ones about earlier versions of the set last, under their fold.
+      r.answers.sort((a, b) => (a.older ? 1 : 0) - (b.older ? 1 : 0)
+        || KIND_ORDER[a.kind] - KIND_ORDER[b.kind]);
+      const now = r.answers.filter((a) => !a.older);
+      r.def = (now.find((a) => a.kind === 'banked')
+               || now.find((a) => a.kind === 'single')
+               || now.find((a) => a.kind === 'read')
+               || now[0] || r.answers[0]).key;
     }
-    recMemo = { sig, list: Array.from(byId.values()), byKey, byId, byArt };
+    /* By project, then recording, in natural order (2026-10-20): they came
+       in the server's string order, PTEN m2, m21, m22, m26, m51, m59, m6. */
+    const lab = (r) => (r.facts[0] || {}).session_label || r.id;
+    const list = Array.from(byId.values()).sort((a, b) =>
+      natural((a.facts[0] || {}).project || '~', (b.facts[0] || {}).project || '~')
+      || natural(lab(a), lab(b)));
+    recMemo = { sig, list, byKey, byId, byArt };
     return recMemo.list;
   }
 
@@ -7418,7 +7543,7 @@ BARRY.rootcanal = (function () {
 
   function facetValues(cs, f) {
     return Array.from(new Set(cs.map(f).filter((v) => v != null && v !== '')))
-      .sort((a, b) => String(a).localeCompare(String(b)));
+      .sort(natural);
   }
 
   /* A recording is shown when ANY of its answers fits each category
@@ -7624,14 +7749,22 @@ BARRY.rootcanal = (function () {
     const pick = cell && cell.querySelector('.rc-rec-src');
     if (cell && (!pick || tr.__opts !== optsSig)) {
       cell.innerHTML = '';
+      const opt = (x) => el('option', { value: x.key, title: x.title || null,
+                                        text: x.words });
+      const now = as.filter((x) => !x.older);
+      const old = as.filter((x) => x.older);
+      /* Answers about earlier versions of the set -- banked from an older
+         version, a read of older stamps -- under a fold of their own at the
+         bottom (2026-10-20), so the ones about the set as it is come first. */
       cell.appendChild(as.length > 1
         ? el('select', {
             class: 'rc-in rc-rec-src',
             'aria-label': 'Which answer about '
                           + ((rec.facts[0] || {}).session_label || rec.id),
             onchange: (ev2) => setRecAnswer(rec, ev2.target.value),
-          }, as.map((x) => el('option', { value: x.key, title: x.title || null,
-                                          text: x.words })))
+          }, now.map(opt).concat(old.length ? [el('optgroup', {
+            label: 'Older: about earlier versions of the set' },
+            old.map(opt))] : []))
         : el('span', { class: 'rc-rec-one' }, [answerChip(a)]));
       cell.appendChild(el('span', { class: 'rc-rec-chips' }));
     }
@@ -7689,6 +7822,13 @@ BARRY.rootcanal = (function () {
         ? BARRY.ui.chip(String(vv.measure.filter_label || '').split(',')[0],
             { flag: true, extra: 'rc-cand-filter',
               title: vv.measure.filter_label }) : null,
+      a.kind === 'banked' && c && c.filter_label
+        ? BARRY.ui.chip(String(c.filter_label).split(',')[0],
+            { flag: true, extra: 'rc-cand-filter', title: c.filter_label })
+        : null,
+      a.older
+        ? BARRY.ui.chip('older version', { flag: true, kind: 'warn',
+            extra: 'rc-cand-older', title: a.title }) : null,
       c && c.here === false
         ? BARRY.ui.chip('read elsewhere', { flag: true,
             title: 'Its numbers can be pooled; its traces are on another '
@@ -8248,7 +8388,7 @@ BARRY.rootcanal = (function () {
     } else {
       const seen = new Set();
       for (const e of poolEvents()) seen.add(catKey(e, mode));
-      list = Array.from(seen).sort((a, b) => String(a).localeCompare(String(b)));
+      list = Array.from(seen).sort(natural);
     }
     catMemo = { fit: pool.fit, mode, list,
                 at: new Map(list.map((k2, j) => [k2, j])) };
@@ -10205,9 +10345,9 @@ BARRY.rootcanal = (function () {
         .map(([id, nm]) => el('option', { value: id, text: nm,
         selected: pool.colour === id ? 'selected' : null })));
     const mice = Array.from(new Set(poolEvents().map((e) => e.mouse_key)
-      .filter(Boolean))).sort();
+      .filter(Boolean))).sort(natural);
     const types = Array.from(new Set(poolEvents().map((e) => e.mouse_type)
-      .filter(Boolean))).sort();
+      .filter(Boolean))).sort(natural);
     const cur = pool.focus ? (pool.focus.mouse_key ? 'mouse_key:' + pool.focus.mouse_key
       : pool.focus.mouse_type ? 'mouse_type:' + pool.focus.mouse_type
       : 'member:' + pool.focus.member) : '';

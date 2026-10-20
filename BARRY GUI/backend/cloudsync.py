@@ -2036,7 +2036,12 @@ class Sync:
             if table == "sessions":
                 values["retired"] = True
             else:
-                values["deleted_at"] = stamp
+                # When it was deleted, not when this push got through:
+                # the pull compares it with a curation set's start, and a
+                # set started again before a late push must not read as
+                # older than its own deletion. `updated_at` stays now(), so
+                # the newest-wins trigger still takes the PATCH.
+                values["deleted_at"] = cloud.ts(row.get("at")) or stamp
             try:
                 # PATCH, not upsert: there is nothing to insert, and an
                 # insert would need a primary key this does not have.
@@ -2969,16 +2974,20 @@ class Sync:
                                   # its own import, not through a sync
             if s.get("deleted_at"):
                 # Deleted somewhere else (see `_apply_bank`). A set's id is
-                # its recording and kind, so one started again here after
-                # the deletion shares it: only a set made before the
-                # deletion is the one that was deleted.
-                if tombsmod.newer(s.get("deleted_at"),
-                                  _prov(rec, "created").get("at")):
-                    if self.curate.delete(gid, kind):
-                        self._note_gone("curation", s.get("id"),
-                                        s.get("deleted_at"))
-                        n += 1
-                continue
+                # its recording and kind, so one started again after the
+                # deletion shares it -- and the cloud row keeps deleted_at,
+                # since no push clears it. Only the copies made before the
+                # deletion go, judged shard by shard
+                # (`Curation.delete_made_before`); a set started again
+                # falls through and takes its decisions like any live set.
+                if self.curate.delete_made_before(gid, kind,
+                                                  s.get("deleted_at")):
+                    self._note_gone("curation", s.get("id"),
+                                    s.get("deleted_at"))
+                    n += 1
+                rec = self.curate.get(gid, kind)
+                if not rec:
+                    continue
             mine = {e["id"]: e for e in (rec.get("events") or [])}
             touched = False
             for e in by_set.get(s["id"], []):

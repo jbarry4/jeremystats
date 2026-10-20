@@ -786,7 +786,7 @@ BARRY.toothFairy = (function () {
      THE BATCH (asked for 2026-10-09: "add a Toothfairy batch option")
      ================================================================== */
   let batchSets = [];          // every DS set, for the chooser
-  let batchPick = new Set();   // the gids chosen
+  let batchPick = new Set();   // the sets chosen, as "gid/kind"
 
   async function openBatch(o) {
     ctx = Object.assign({}, o || {});
@@ -800,39 +800,45 @@ BARRY.toothFairy = (function () {
       return;
     }
     batchSets = (got.sets || [])
-      .filter((x) => x.kind === 'ds' && !x.archived
+      .filter((x) => BARRY.ui.kindBase(x.kind) === 'ds' && !x.archived
                      && ((x.progress || {}).total || 0) > 0)
       .map((x) => ({
         gid: x.gid,
-        name: x.session_label || x.name || x.gid,
+        kind: x.kind,
+        // A set is one bank entry's since 2026-10-20, and a recording can
+        // hold several: each is chosen by recording AND kind, and named
+        // with its own name beside the recording's.
+        key: x.gid + '/' + x.kind,
+        name: (x.session_label || x.gid)
+              + (x.entry && x.name ? ' · ' + x.name : ''),
         total: (x.progress || {}).total || 0,
         left: (x.progress || {}).left || 0,
         open: !!x.open,
       }))
       .sort((a, b) => (b.open - a.open) || (b.left - a.left)
-                      || a.name.localeCompare(b.name));
+                      || BARRY.ui.natCompare(a.name, b.name));
     // To start with: what is on the bench and still has something to decide.
     batchPick = new Set(batchSets.filter((x) => x.open && x.left > 0)
-                                 .map((x) => x.gid));
+                                 .map((x) => x.key));
     batchDialog();
   }
 
   function batchDialog(replace) {
-    const chosen = batchSets.filter((x) => batchPick.has(x.gid));
+    const chosen = batchSets.filter((x) => batchPick.has(x.key));
     const n = chosen.reduce((a, x) => a + x.total, 0);
     const mins = Math.max(1, Math.round(n * SEC_PER_CANDIDATE / 60));
     const pickAll = (pred) => {
-      batchPick = new Set(batchSets.filter(pred).map((x) => x.gid));
+      batchPick = new Set(batchSets.filter(pred).map((x) => x.key));
       batchDialog(true);
     };
     const list = el('div', { class: 'tf-pick' }, batchSets.length
       ? batchSets.map((x) => el('label', {
-          class: 'tf-pick-row' + (batchPick.has(x.gid) ? ' on' : ''),
+          class: 'tf-pick-row' + (batchPick.has(x.key) ? ' on' : ''),
         }, [
-          el('input', { type: 'checkbox', checked: batchPick.has(x.gid),
+          el('input', { type: 'checkbox', checked: batchPick.has(x.key),
             onchange: (ev) => {
-              if (ev.target.checked) batchPick.add(x.gid);
-              else batchPick.delete(x.gid);
+              if (ev.target.checked) batchPick.add(x.key);
+              else batchPick.delete(x.key);
               batchDialog(true);
             } }),
           el('span', { class: 'tf-pick-name', text: x.name }),
@@ -891,6 +897,7 @@ BARRY.toothFairy = (function () {
     let got;
     try {
       got = await apiPost('/api/toothfairy/batch', {
+        sets: chosen.map((x) => ({ gid: x.gid, kind: x.kind })),
         gids: chosen.map((x) => x.gid),
         ds_loss: (st.tolerances || []).length ? tol : null });
     } catch (e) {

@@ -140,14 +140,17 @@ BARRY.cfc = (function () {
     let b = document.getElementById('cfcBar');
     if (!b) {
       b = el('div', { class: 'cfc-bar', id: 'cfcBar' });
-      const body = document.getElementById('xfBody');
-      if (body) body.appendChild(b); else document.body.appendChild(b);
+      // In the middle of the one mode bar (core.js `BARRY.modeSlot`).
+      BARRY.modeSlot().appendChild(b);
     }
     b.innerHTML = '';
 
     const chan = firstChannel();
+    /* No name of its own and no Leave of its own: the one bar says Braid
+       on its left and ends with Leave (core.js). Leaving still closes the
+       panels and the comodulogram window -- nothing here was written down,
+       so there is nothing to save. */
     b.appendChild(el('div', { class: 'cfc-bar-row' }, [
-      el('strong', { text: 'Braid' }),
       el('span', { class: 'hint',
         text: 'Band-resolved theta power and the spectrogram are in the '
             + 'second window.' }),
@@ -169,14 +172,6 @@ BARRY.cfc = (function () {
              + 'before it runs anything.',
         onclick: openMap,
       }),
-      /* Last on the right, where DS curation and StrataScope put theirs.
-         A mode that takes over the panes, the keyboard and a second window
-         has to say how to give them back. */
-      el('button', { class: 'btn ghost sm', text: 'Leave',
-                     title: 'Close the panels and the comodulogram window '
-                          + 'and hand the panes back. Nothing here was '
-                          + 'written down, so there is nothing to save.',
-                     onclick: exit }),
     ]));
     // The banner already says the mode; this says the part that is a promise.
     b.appendChild(el('p', { class: 'hint cfc-note',
@@ -194,7 +189,9 @@ BARRY.cfc = (function () {
 
        Measured, not assumed: the bar wraps to two rows on a narrow window,
        which is the same reason StrataScope measures its own. */
-    const h = Math.ceil(b.getBoundingClientRect().height);
+    // The whole one bar, which this bar now sits inside (core.js).
+    const whole = document.getElementById('modeBanner') || b;
+    const h = Math.ceil(whole.getBoundingClientRect().height);
     if (h) document.documentElement.style.setProperty('--bottom-bar',
                                                       h + 'px');
   }

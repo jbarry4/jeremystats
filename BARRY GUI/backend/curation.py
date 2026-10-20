@@ -203,6 +203,49 @@ def _usable_keys(keys):
     return [k for k in (keys or []) if k.lower() not in RESERVED_KEYS]
 
 
+# --------------------------------------------------------------------------
+# A set's identity: its recording, its kind -- and, for a new set, its bank
+# entry (2026-10-20)
+# --------------------------------------------------------------------------
+# The user's ruling: working sets are purely bank-identity based. A set used
+# to be one per (recording, kind), so two Doppler runs on one recording
+# shared one set: starting from the second replaced the first, and the
+# decisions of one run were on the bench while another run's versions were
+# being chosen -- which is how flags appeared to carry across M3S2's
+# versions. A NEW set belongs to one bank entry. Its kind says so,
+# `<kind>.e<entry id>` ("ied.e3b3111be3118"): the routes keep their shape
+# (/api/curation/<gid>/<kind>/...), every caller already passes a set's kind
+# through, and only what MEANS a kind -- the vocabulary, the bank type --
+# reads the base. The sets made before stay `ds`/`ied`/`pooled` (the user
+# chose new sets only).
+ENTRY_SEP = ".e"
+
+
+def kind_of(kind):
+    """The base kind: "ied" for "ied.e3b3111be3118", and for "ied"."""
+    return str(kind or "").split(".", 1)[0]
+
+
+def entry_of(kind):
+    """The bank entry a per-entry set belongs to; None for an older set."""
+    k = str(kind or "")
+    if ENTRY_SEP not in k:
+        return None
+    entry = k.split(ENTRY_SEP, 1)[1]
+    return entry or None
+
+
+def set_kind(kind, entry):
+    """The kind of the set for one bank entry: "ied" + entry -> "ied.e..."."""
+    base = kind_of(kind)
+    if not entry:
+        return base
+    entry = str(entry)
+    if not entry.isalnum() or len(entry) > 40:
+        raise CurationError("%r is not a bank entry id." % entry)
+    return base + ENTRY_SEP + entry
+
+
 def vocabulary(kind):
     """A kind's categories, with any key the mode needs stripped out.
 
@@ -214,6 +257,7 @@ def vocabulary(kind):
     The built-in ones first, in their order, then every category somebody
     added to this kind (`Categories`), in the order they were added.
     """
+    kind = kind_of(kind)
     out = []
     for lab in KINDS[kind]["labels"]:
         out.append(dict(lab, keys=_usable_keys(lab.get("keys"))))
@@ -254,6 +298,7 @@ def _slug(name):
 def custom_labels(kind):
     """Every category added to `kind`: the store's, then any a set carries
     that the store has not got (one that arrived through the cloud sync)."""
+    kind = kind_of(kind)
     if _CURATE is None or kind not in KINDS:
         return []
     return _CURATE.customs(kind)
@@ -433,6 +478,7 @@ class Curation:
         holds: those are the vocabulary's own."""
         # A second's memo: the workbench summarises forty sets at once, and
         # each asks. Cleared the moment a category is added.
+        kind = kind_of(kind)
         now = time.time()
         hit = self._custom_memo.get(kind)
         if hit and now - hit[0] < 1.0:
@@ -444,7 +490,7 @@ class Curation:
                 seen.add(lab["id"])
                 out.append(dict(lab, keys=_usable_keys(lab.get("keys"))))
         for rec in self.all():
-            if rec.get("kind") != kind:
+            if kind_of(rec.get("kind")) != kind:
                 continue
             for lab in rec.get("labels") or []:
                 if (isinstance(lab, dict) and lab.get("custom")
@@ -459,6 +505,7 @@ class Curation:
     def add_category(self, kind, name, color, good=False):
         """A new category for every set of `kind`. Refuses a name already in
         use and a colour that is not one."""
+        kind = kind_of(kind)
         if kind not in KINDS:
             raise CurationError("Unknown kind %r." % kind)
         name = " ".join(str(name or "").split())
@@ -516,7 +563,7 @@ class Curation:
     # Reading
     # ------------------------------------------------------------------
     def get(self, gid, kind):
-        if kind not in KINDS:
+        if kind_of(kind) not in KINDS:
             raise CurationError("Unknown kind %r." % kind)
         rec = self._read(gid, kind)
         if rec:
@@ -574,10 +621,14 @@ class Curation:
         }
 
     def summary(self, rec):
-        kind = KINDS.get(rec.get("kind")) or {}
+        kind = KINDS.get(kind_of(rec.get("kind"))) or {}
         return {
             "gid": rec.get("gid"),
             "kind": rec.get("kind"),
+            # The base kind, for whatever filters or names by kind, and the
+            # bank entry a per-entry set belongs to (None for an older one).
+            "kind_base": kind_of(rec.get("kind")),
+            "entry": entry_of(rec.get("kind")),
             "kind_name": kind.get("name") or rec.get("kind"),
             "name": rec.get("name"),
             "session_label": rec.get("session_label"),
@@ -586,7 +637,7 @@ class Curation:
             "updated": rec.get("updated") or {},
             "labels": _with_customs(live_labels(rec) or kind.get("labels")
                                     or [], rec.get("kind"))
-                      if rec.get("kind") in KINDS
+                      if kind_of(rec.get("kind")) in KINDS
                       else (live_labels(rec) or kind.get("labels") or []),
             "archived": bool(rec.get("archived")),
             # The workbench facts. A set is either something somebody is
@@ -623,7 +674,7 @@ class Curation:
         curation says what they actually are. Conflating the two is how a
         detector's guesses end up in a figure as findings.
         """
-        if kind not in KINDS:
+        if kind_of(kind) not in KINDS:
             raise CurationError("Unknown kind %r." % kind)
         if not gid:
             raise CurationError(
@@ -766,7 +817,7 @@ class Curation:
             "schema": SCHEMA,
             "gid": gid,
             "kind": kind,
-            "name": name or (KINDS[kind]["name"] + " candidates"),
+            "name": name or (KINDS[kind_of(kind)]["name"] + " candidates"),
             "session_label": session_label,
             # A set arrives closed. It joins the workbench when somebody
             # opens it, not merely because it exists.
@@ -874,7 +925,7 @@ class Curation:
                 "overruled": 0,    # we disagreed and hers is newer
                 "kept": 0,         # we disagreed and ours stands
                 "disagreed": [], "unchanged": 0}
-        if not gid or kind not in KINDS:
+        if not gid or kind_of(kind) not in KINDS:
             line["error"] = "That set says it is a %r set, which this Jarvis " \
                             "does not know about." % (kind,)
             return line
@@ -887,7 +938,7 @@ class Curation:
             rec = {
                 "schema": SCHEMA, "gid": gid, "kind": kind,
                 "name": incoming.get("name")
-                        or (KINDS[kind]["name"] + " candidates"),
+                        or (KINDS[kind_of(kind)]["name"] + " candidates"),
                 "session_label": incoming.get("session_label"),
                 "labels": incoming.get("labels") or vocabulary(kind),
                 "source": incoming.get("source") or {},
@@ -1500,7 +1551,7 @@ class Curation:
         return out
 
     def _label_ids(self, kind):
-        return {l["id"] for l in KINDS[kind]["labels"]}
+        return {l["id"] for l in KINDS[kind_of(kind)]["labels"]}
 
     @shards.atomic
     def archive(self, gid, kind, on=True):
@@ -1743,6 +1794,30 @@ class Curation:
 
     def delete(self, gid, kind):
         return bool(self.book.erase(self.base(gid, kind)))
+
+    def delete_made_before(self, gid, kind, gone_at):
+        """Erase the copies of a set made before `gone_at` -- a deletion
+        that came back -- and keep any copy of a set started again since.
+
+        Judged shard by shard (`Book.erase_if`), because a set's id is its
+        recording and kind and is reused: a merge can put a deleted set's
+        old shard beside a new set's, and the merged record carries the old
+        one's `created` (FIRST), which a later write then copies into the new
+        shard too. So a shard is stale only when it was created before the
+        deletion AND nothing was imported into it after: an import's own
+        stamp is the start that came later. A stamp that cannot be read is
+        no evidence, and nothing is erased on it. Returns how many shards
+        went.
+        """
+        from . import tombs
+
+        def stale(shard):
+            if not tombs.newer(gone_at, (shard.get("created") or {}).get("at")):
+                return False
+            return not any(tombs.newer((i or {}).get("at"), gone_at)
+                           for i in (shard.get("imports") or [])
+                           if isinstance(i, dict))
+        return self.book.erase_if(self.base(gid, kind), stale)
 
     # ------------------------------------------------------------------
     # Out

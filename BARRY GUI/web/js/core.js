@@ -1055,7 +1055,7 @@ BARRY.refreshSync = async function refreshSync() {
      than only at boot and only again when the Errors view is opened. An
      error recorded while you are somewhere else is exactly the case the
      badge exists for, and it was the one case it missed. */
-  BARRY.setErrorCount(((data.index || {}).counts || {}).errors || 0);
+  BARRY.setErrorCount(BARRY.errorBadgeCount(data));
   /* The chip says where the shared database stands (syncstate.js); the
      git state of GUI_logs, which it used to say alone, is in its title. */
   if (BARRY.syncState) BARRY.syncState.paintRail();
@@ -1678,10 +1678,25 @@ BARRY.notes = (function () {
 
 BARRY.setErrorCount = function setErrorCount(n) {
   const b = $('#errBadge');
-  if (!b) return;
+  if (!b || n == null) return;
   n = Number(n) || 0;
   b.textContent = String(n);
   b.classList.toggle('hidden', !n);
+  b.title = (n === 1 ? 'One fault' : n + ' faults')
+    + ' from the last week still open. The Errors view lists every one.';
+};
+
+/* The badge counts distinct faults still open from the last week -- what
+   the Errors view lists as unresolved, without a test's faults and without
+   archived computers -- not every row ever written. It read 5,233
+   (2026-10-20), and a number that only grows is not read. `errors_open`
+   comes from the server (app.py `_errors_open`); an older server sends only
+   the raw count. */
+BARRY.errorBadgeCount = function errorBadgeCount(data) {
+  const open = data && data.errors_open;
+  // Not counted yet (the server counts beside the poll): leave the badge.
+  if (open) return open.faults != null ? open.faults : null;
+  return (((data || {}).index || {}).counts || {}).errors || 0;
 };
 
 /* ==========================================================================
@@ -1825,12 +1840,32 @@ function wireRail() {
    different keys, dragging means something else. Announced here rather than
    in each mode, so the two cannot drift apart, and so leaving is always the
    same button in the same place.
+
+   ONE BAR, AT THE BOTTOM (2026-10-20). A mode used to be announced twice:
+   a banner across the top with "Leave this mode", and the mode's own bar
+   at the bottom with a Leave of its own -- two exits, five shapes of bar.
+   Now there is one compact bar, `#modeBanner`, docked at the bottom of the
+   workspace. The shell owns both ends of it: on the left which mode this
+   is, on the right Simplify, ? (what the mode does, and its keys) and
+   Leave -- always the last thing, far right, and Esc does the same. The
+   mode puts its own tools in the middle (`BARRY.modeSlot()`).
+
+   `what` is what the ? says; `keys` the keys it lists after it. Every mode
+   is here, so every mode gets a name, a colour and the same bar.
    ========================================================================== */
 const MODES = {
+  spotter: {
+    name: 'Spotter',
+    what: 'One discharge at a time: solid, sputter, or neither · the '
+        + 'channels it was found on are lit',
+    keys: 'Each category\u2019s key is on its button · \u2190 \u2192 step · '
+        + 'C clears · Z undoes',
+  },
   strata: {
     name: 'StrataScope',
     what: 'Labelling layers · drag on the rail to set a boundary '
         + '· the aids are in the second window',
+    keys: '1\u20139 paint a layer · 0 unlabels',
   },
   cfc: {
     name: 'Braid',
@@ -1850,6 +1885,8 @@ const MODES = {
         + '\u00b7 n / p stop at the ones needing a decision (\u25bc) '
         + '\u00b7 press any stamp to go to it '
         + '\u00b7 [ and ] to move it a millisecond',
+    keys: 'n p or \u2190 \u2192 step \u00b7 Enter moves it \u00b7 k leaves it '
+        + '\u00b7 g garbage \u00b7 [ ] nudge 1 ms \u00b7 u undo \u00b7 l the list',
   },
   arcconfirm: {
     name: 'Confirm cue pairs',
@@ -1857,12 +1894,15 @@ const MODES = {
        as the ones that were kept, and somebody who did not know that would
        count the dashed ones and think the pairing had missed them. */
     what: 'Every pulse drawn, dropped ones dashed · the four analysis '
-        + 'windows shaded · n / p to step',
+        + 'windows shaded',
+    keys: '\u2190 \u2192 or n p step pairs',
   },
   arcclean: {
     name: 'Clean cue pairs',
     what: 'Saturated stretches marked on the channels that saturated '
         + '· nothing here is saved until you file the pairs',
+    keys: '\u2190 \u2192 or n p step pairs · \u2191 \u2193 pick a channel · '
+        + 'k keeps · x drops · t state / transition · Esc calls off a drag',
   },
   coupling: {
     name: 'Coupling',
@@ -1881,9 +1921,14 @@ const MODES = {
     what: 'Each event in the colour of the detector that found it '
         + '· shift-click a second one on the strip, M to merge '
         + '· Z undoes',
+    keys: 'Each category\u2019s key is on its button · \u2190 \u2192 step · '
+        + 'M merges · Z undoes',
   },
   curate: {
-    name: 'DS curation',
+    /* Called what its step is called (2026-10-20): the button that opens it
+       says Checkup, and the bar said "DS curation". */
+    name: 'Checkup',
+    keys: 'Each category\u2019s key is on its button · n / p step · u undoes',
     /* No `what`. It said "Y keeps, N rejects", and neither key does
        anything: a set carries its own vocabulary and its own keys, which
        the mode's own bar shows next to each category. A banner that
@@ -1942,8 +1987,12 @@ function setMode(kind, leave) {
   for (const k of Object.keys(MODES)) app.classList.toggle('mode-' + k, k === kind);
   modeLeaveFn = kind ? (leave || null) : null;
   const m = MODES[kind];
+  // One class for "an add-on is on", so the bar and the frame are one rule
+  // rather than a list of modes that the newest one is missing from.
+  app.classList.toggle('in-mode', !!m);
   const name = document.getElementById('modeName');
   const what = document.getElementById('modeWhat');
+  const keys = document.getElementById('modeKeys');
   const out = document.getElementById('modeLeave');
   if (name) name.textContent = m ? m.name : '';
   if (what) {
@@ -1951,14 +2000,136 @@ function setMode(kind, leave) {
     // Not merely empty: an empty span still takes its margins.
     what.hidden = !(m && m.what);
   }
-  if (out) out.style.display = (m && modeLeaveFn) ? '' : 'none';
-  // Every canvas just changed height by the banner's worth.
+  if (keys) {
+    keys.textContent = m ? [m.keys, 'Esc leaves.'].filter(Boolean).join(' · ')
+                         : '';
+  }
+  if (out) {
+    out.style.display = (m && modeLeaveFn) ? '' : 'none';
+    out.title = m ? 'Leave ' + m.name + '. Everything decided is already '
+                    + 'saved.  (Esc)' : '';
+  }
+  modeHelp(false);
+  modeSimplify(kind, null);
+  modeReserve(!!m);
+  // The mode's own tools leave with it.
+  if (!m) {
+    const slot = document.getElementById('modeSlot');
+    if (slot) slot.innerHTML = '';
+  }
+  // Every canvas just changed height by the bar's worth.
   window.dispatchEvent(new Event('resize'));
+}
+
+/* Where a mode puts its own tools: the middle of the one bar. Falls back to
+   the workspace for a page that has no bar (a harness frame, an old page). */
+BARRY.modeSlot = function modeSlot() {
+  return document.getElementById('modeSlot')
+    || document.getElementById('xfBody') || document.body;
+};
+
+/* SIMPLIFY (2026-10-20): the traces fill the window -- the channel list,
+   Xplorefinder's header and the pane header strips go -- in the mode it was
+   pressed in, and remembered per add-on. `on` null reads what was
+   remembered; true or false sets it. */
+function modeSimplify(kind, on) {
+  const app = document.getElementById('app');
+  const btn = document.getElementById('modeSimplify');
+  const key = 'xf_simplify_' + (kind || '');
+  let want = false;
+  if (kind && MODES[kind]) {
+    if (on === null || on === undefined) {
+      try { want = !!BARRY.prefs.get(key, false); } catch (e) { want = false; }
+    } else {
+      want = !!on;
+      try { BARRY.prefs.set(key, want); } catch (e) { /* this session only */ }
+    }
+  }
+  if (app) app.classList.toggle('xf-simple', want);
+  if (btn) {
+    btn.setAttribute('aria-pressed', want ? 'true' : 'false');
+    btn.classList.toggle('on', want);
+    btn.title = want
+      ? 'Showing the traces only. Press to bring back the channel list and '
+        + 'the headers.'
+      : 'Let the traces fill the window: hides the channel list, the '
+        + 'Xplorefinder header and the pane headers. Remembered for this '
+        + 'add-on.';
+  }
+  return want;
+}
+
+/* Room for the bar: toasts and side drawers sit above it (`--bottom-bar`),
+   measured -- it wraps to two rows on a narrow window -- and kept measured
+   while the mode is on. */
+let _modeRO = null;
+function modeReserve(on) {
+  const bar = document.getElementById('modeBanner');
+  const root = document.documentElement;
+  if (!on || !bar) {
+    if (_modeRO) { _modeRO.disconnect(); _modeRO = null; }
+    root.style.removeProperty('--bottom-bar');
+    return;
+  }
+  const set = () => {
+    const h = Math.ceil(bar.getBoundingClientRect().height);
+    if (h) root.style.setProperty('--bottom-bar', h + 'px');
+  };
+  set();
+  requestAnimationFrame(set);
+  if (!_modeRO && typeof ResizeObserver !== 'undefined') {
+    _modeRO = new ResizeObserver(set);
+    _modeRO.observe(bar);
+  }
+}
+
+/* The ? beside Leave: what the mode does, and its keys, in one place. */
+function modeHelp(open) {
+  const pop = document.getElementById('modeHelpPop');
+  const btn = document.getElementById('modeHelp');
+  if (!pop || !btn) return;
+  const want = open === undefined ? pop.hidden : !!open;
+  pop.hidden = !want;
+  btn.setAttribute('aria-expanded', want ? 'true' : 'false');
 }
 
 function wireMode() {
   const out = document.getElementById('modeLeave');
   if (out) out.addEventListener('click', () => {
+    const fn = modeLeaveFn;
+    if (fn) fn();
+  });
+  const simple = document.getElementById('modeSimplify');
+  if (simple) simple.addEventListener('click', () => {
+    if (!modeNow) return;
+    modeSimplify(modeNow, !document.getElementById('app')
+      .classList.contains('xf-simple'));
+    // The panes just changed size.
+    window.dispatchEvent(new Event('resize'));
+  });
+  const help = document.getElementById('modeHelp');
+  if (help) help.addEventListener('click', (e) => {
+    e.stopPropagation();
+    modeHelp();
+  });
+  document.addEventListener('mousedown', (e) => {
+    const pop = document.getElementById('modeHelpPop');
+    if (pop && !pop.hidden && !e.target.closest('.mode-help')) modeHelp(false);
+  });
+  /* Esc leaves the mode -- after anything nearer has had it: a field being
+     typed in, an open dialog or popover, the ?'s own panel, and a mode's
+     own handler (dragging, editing), which marks the press handled. */
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || !modeLeaveFn) return;
+    if (BARRY.state && BARRY.state.view && BARRY.state.view !== 'xplore') return;
+    const t = e.target;
+    if (t && (t.isContentEditable
+              || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''))) return;
+    if (document.querySelector('#bigModal:not(.hidden), #pathModal:not(.hidden)')
+        || _openPop) return;
+    const pop = document.getElementById('modeHelpPop');
+    if (pop && !pop.hidden) { modeHelp(false); e.preventDefault(); return; }
+    e.preventDefault();
     const fn = modeLeaveFn;
     if (fn) fn();
   });
@@ -3930,8 +4101,7 @@ BARRY.init = async function init() {
 
   // One call gives both the sync state and the error count for the badge.
   BARRY.refreshSync().then(() => {
-    const n = ((BARRY.sync.index || {}).counts || {}).errors || 0;
-    BARRY.setErrorCount(n);
+    BARRY.setErrorCount(BARRY.errorBadgeCount(BARRY.sync));
   });
 
   /* A window opened for one thing should not offer to navigate away from

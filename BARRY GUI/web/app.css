@@ -3314,6 +3314,20 @@ select { color-scheme: inherit; }
 .bm-row:hover { background: var(--bg-3); color: var(--text); }
 .bm-row .t { font-family: var(--mono); font-size: var(--fs-10); color: var(--text-3); }
 .bm-row .x { margin-left: auto; opacity: .5; }
+/* The add-a-set dialog's datasets (toolkit.js newSetDialog, 2026-10-20):
+   the same rows, allowed to wrap -- a dataset's name is long and is the
+   answer -- with the chosen one lit and an archived one dimmed. */
+.ncs .bm-list { max-height: 260px; }
+.ncs .bm-row { flex-wrap: wrap; row-gap: 2px; font-size: var(--fs-12);
+  border: 1px solid transparent; }
+.ncs .bm-row.on { background: var(--accent-soft); border-color: var(--accent-line);
+  color: var(--text); }
+.ncs .bm-row.is-archived { opacity: .7; }
+.ncs .bm-row .mk-name { font-weight: 600; overflow-wrap: anywhere; }
+.ncs .bm-row .person-what { flex-basis: 100%; padding-left: 22px;
+  color: var(--text-3); font-size: var(--fs-11); }
+.ncs .pick-rec { margin-bottom: var(--sp-10); }
+.cur-entry { font-family: var(--mono); }
 /* The marks list: bookmarks, events and spikes in one table. A fixed column
    layout rather than a flex row, so the times line up down the list and a
    long detail cannot push the kind chip off the end. */
@@ -3711,6 +3725,17 @@ select {
    while a contextual override such as `.tk-pills .pill` still wins, as §7
    intends. Nothing here moves a box: padding, borders and font sizes are
    untouched, so the ui_baseline diff is radii, shadows and colours only. */
+
+/* Numbers right, words left, in every table (2026-10-20: "all the text
+   results are right aligned"). ui.js `alignTable` reads each column and
+   marks its cells; a rule that right-aligns every column but the first
+   cannot put a mouse or a verdict on the right any more. Important on
+   purpose: this is the one rule for table text, and a table that wants
+   its own says data-al="off" on the table. */
+html td[data-al="text"], html th[data-al="text"] { text-align: left !important; }
+html td[data-al="num"], html th[data-al="num"] {
+  text-align: right !important; font-variant-numeric: tabular-nums;
+}
 
 /* One ring for the keyboard, never for the mouse. */
 html .btn:focus-visible, html .mini:focus-visible, html .pill:focus-visible,
@@ -6412,6 +6437,35 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
   .cur-shelf-cols { display: none; }
   .csr-sess, .csr-who, .csr-when { grid-column: 1; }
 }
+/* The shelf as ONE grid (toolkit.js paintShelf, 2026-10-20): the header,
+   the list, every row and the archived drawer are subgrids of it, so a
+   column is as wide as its widest cell in every row at once, and nothing
+   runs off the right edge -- the name and recording columns give way and
+   wrap instead. */
+.cur-shelf-grid {
+  display: grid; column-gap: var(--sp-10);
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.1fr) max-content
+                         minmax(84px, max-content) max-content max-content;
+}
+.cur-shelf-grid > .cur-shelf-cols, .cur-shelf-grid > .cur-shelf-list,
+.cur-shelf-grid .cur-shelf-list > .cur-shelf-row,
+.cur-shelf-grid .cur-shelf-list > .arch-tail,
+.cur-shelf-grid .cur-shelf-list > .arch-tail > .arch-body,
+.cur-shelf-grid .arch-body > .cur-shelf-row {
+  grid-column: 1 / -1; display: grid; grid-template-columns: subgrid;
+}
+.cur-shelf-grid .cur-shelf-list { margin-top: 0; }
+.cur-shelf-grid .cur-shelf-list > .hint,
+.cur-shelf-grid .arch-toggle { grid-column: 1 / -1; }
+/* "12 days ago  ● shared" on one line in every row, not two in some. */
+.cur-shelf-grid .csr-when {
+  display: flex; align-items: center; gap: var(--sp-6); white-space: nowrap;
+}
+.cur-shelf-grid .csr-when .sync-mark { margin-left: 0; }
+.cur-shelf-grid .csr-n { text-align: right; }
+@media (max-width: 900px) {
+  .cur-shelf-grid { grid-template-columns: minmax(0, 1fr) auto; }
+}
 /* ==========================================================================
    StrataScope -- the layer rail beside the rasters.
 
@@ -7177,6 +7231,19 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
    mode's colour, the mode is named across the top of it, and the frame
    carries into the aid window so the two windows read as one thing.
    ========================================================================== */
+/* Every mode's colour is a token (2026-10-20), set once here and open to a
+   theme, and every mode is in the list -- Spotter, Panning and Braid had
+   no frame and no banner because the rules named the others only. */
+:root {
+  --mode-strata: #ffb81c; --mode-curate: #4bc7f0; --mode-braces: #7FE3B0;
+  --mode-coupling: #C08CF0; --mode-arcconfirm: #E5A823;
+  --mode-arcclean: #E8705A; --mode-spotter: #F59FB4;
+  --mode-panning: #E5C07B; --mode-cfc: #6FD3C4;
+}
+#app.mode-spotter { --mode: var(--mode-spotter); }
+#app.mode-panning { --mode: var(--mode-panning); }
+#app.mode-cfc { --mode: var(--mode-cfc); }
+#app.in-mode { --mode-soft: color-mix(in srgb, var(--mode, var(--accent)) 13%, transparent); }
 #app.mode-strata { --mode: #ffb81c; --mode-soft: rgba(255, 184, 28, 0.13); }
 #app.mode-curate { --mode: #4bc7f0; --mode-soft: rgba(75, 199, 240, 0.13); }
 /* Braces is a step of the same job as curation and sits next to it in the
@@ -7192,41 +7259,113 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
    data that is gone. */
 #app.mode-arcconfirm { --mode: #E5A823; --mode-soft: rgba(229, 168, 35, 0.13); }
 #app.mode-arcclean { --mode: #E8705A; --mode-soft: rgba(232, 112, 90, 0.13); }
-#app.mode-strata #xfBody,
-#app.mode-braces #xfBody,
-#app.mode-coupling #xfBody,
-#app.mode-arcconfirm #xfBody,
-#app.mode-arcclean #xfBody,
-#app.mode-curate #xfBody {
-  box-shadow: inset 0 0 0 2px var(--mode);
+#app.in-mode #xfBody {
+  box-shadow: inset 0 0 0 2px var(--mode, var(--accent));
   border-radius: var(--radius);
 }
-/* The banner. Ahead of the panes in the flow, so it is the first thing in
-   the workspace rather than something floating over the data. */
+/* THE MODE BAR (2026-10-20): one compact row docked at the bottom of the
+   workspace, wrapping only when it must. Left: which mode. Middle: the
+   mode's own tools (#modeSlot). Right: Simplify, ?, Leave -- always last.
+   "Make recommendations/bar at the bottom more compact." */
 .mode-banner { display: none; }
-#app.mode-strata .mode-banner,
-#app.mode-braces .mode-banner,
-#app.mode-coupling .mode-banner,
-#app.mode-arcconfirm .mode-banner,
-#app.mode-arcclean .mode-banner,
-#app.mode-curate .mode-banner {
-  display: flex; align-items: center; gap: var(--sp-10);
-  padding: 4px 10px; flex: none;
-  background: var(--mode-soft);
-  border-bottom: 1px solid var(--mode);
-  font-size: var(--fs-11); letter-spacing: 0.06em; text-transform: uppercase;
+#app.in-mode .mode-banner {
+  display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap;
+  /* Docked at the bottom whatever is above it -- a recording's panes, or
+     the drop zone before one is open. */
+  flex: none; margin-top: auto; padding: 5px 10px;
+  background: var(--bg-2);
+  border-top: 2px solid var(--mode, var(--accent));
+  font-size: var(--fs-12);
 }
-.mode-banner b { color: var(--mode); font-weight: 700; letter-spacing: 0.08em; }
-.mode-banner .mode-what { color: var(--text-2); text-transform: none;
-                          letter-spacing: 0; font-size: var(--fs-11); }
-.mode-banner .spacer { flex: 1; }
-.mode-banner button {
-  font: inherit; font-size: var(--fs-11); padding: 2px 9px;
-  border: 1px solid var(--mode); border-radius: var(--r-pill);
-  background: transparent; color: var(--mode); cursor: pointer;
-  text-transform: none; letter-spacing: 0;
+.mode-id { display: flex; align-items: center; gap: 7px; flex: none; }
+.mode-id b { color: var(--mode, var(--accent)); font-weight: 700;
+  font-size: var(--fs-12); white-space: nowrap; }
+.mode-dot { width: 8px; height: 8px; border-radius: 50%; flex: none;
+  background: var(--mode, var(--accent));
+  box-shadow: 0 0 0 3px var(--mode-soft, transparent); }
+.mode-slot { flex: 1 1 auto; min-width: 0; display: flex; align-items: center;
+  flex-wrap: wrap; gap: 6px 12px; }
+.mode-slot:empty { display: none; }
+.mode-end { display: flex; align-items: center; gap: 6px; flex: none;
+  margin-left: auto; }
+.mode-end > button, .mode-end .mode-q {
+  font: inherit; font-size: var(--fs-115); line-height: 1.2; cursor: pointer;
+  padding: 3px 10px; border-radius: var(--radius-control, 8px);
+  border: 1px solid var(--line); background: var(--bg); color: var(--text);
 }
-.mode-banner button:hover { background: var(--mode); color: #0b0e13; }
+.mode-end > button:hover, .mode-end .mode-q:hover { background: var(--bg-hover); }
+.mode-end .mode-q { padding: 3px 8px; font-weight: 700; }
+.mode-simplify.on { background: var(--mode-soft, var(--accent-soft));
+  border-color: var(--mode, var(--accent)); }
+/* Leave: the same word and the same place in every mode. */
+.mode-end .mode-leave { border-color: var(--mode, var(--accent));
+  color: var(--text); font-weight: 600; }
+.mode-end .mode-leave:hover { background: var(--mode, var(--accent)); color: #0b0e13; }
+.mode-help { position: relative; display: inline-flex; }
+.mode-help-pop {
+  position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 40;
+  width: min(420px, 80vw); padding: 10px 12px; display: flex;
+  flex-direction: column; gap: 6px;
+  background: var(--glass-bg, var(--bg-2)); border: 1px solid var(--line);
+  border-radius: var(--radius-overlay, 12px); box-shadow: var(--elev-3, var(--shadow));
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  font-size: var(--fs-12); color: var(--text-2); line-height: 1.45;
+}
+.mode-help-pop[hidden] { display: none; }
+.mode-help-pop .mode-what { color: var(--text); }
+.mode-help-pop .mode-keys { font-family: var(--mono); font-size: var(--fs-11);
+  color: var(--text-3); }
+/* A mode's own bar, inside the one bar: no second frame, no second row of
+   padding -- its pieces sit in the row. */
+#modeSlot > .cur-bar, #modeSlot > .strata-bar, #modeSlot > .cfc-bar,
+#modeSlot > .br-bar, #modeSlot > .arc-mbar {
+  flex: 1 1 auto; min-width: 0; padding: 0; margin: 0; border: 0;
+  background: none; box-shadow: none; gap: 6px 12px;
+}
+#modeSlot .cur-where strong { font-size: var(--fs-12); }
+#modeSlot .cur-prog { height: 14px; min-width: 110px; max-width: 200px;
+  flex: 0 1 160px; }
+#modeSlot .cur-cat { padding: 3px 8px 3px 5px; font-size: var(--fs-115); }
+#modeSlot .cur-nav { flex: 1 1 auto; gap: 6px; flex-wrap: wrap; }
+/* The mode's own end: More, then the next step, then Bank -- right before
+   the shell's Simplify, ? and Leave. */
+.mode-own-end { display: flex; align-items: center; gap: 6px; flex: none;
+  margin-left: auto; }
+/* More: the controls a sitting reaches for now and then, folded into one
+   button so the row stays one row. */
+.mode-more { position: relative; display: inline-flex; }
+.mode-more > summary { list-style: none; cursor: pointer; font-size: var(--fs-115);
+  padding: 3px 10px; border-radius: var(--radius-control, 8px);
+  border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.mode-more > summary::-webkit-details-marker { display: none; }
+.mode-more[open] > summary { background: var(--bg-hover); }
+.mode-more-pop {
+  position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 40;
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+  min-width: 240px; padding: 10px 12px;
+  background: var(--glass-bg, var(--bg-2)); border: 1px solid var(--line);
+  border-radius: var(--radius-overlay, 12px); box-shadow: var(--elev-3, var(--shadow));
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+}
+.mode-more-pop > * { justify-content: flex-start; }
+/* SIMPLIFY: the traces fill the window. The channel list, Xplorefinder's
+   header and the pane header strips go, in the mode it was pressed in. */
+#app.in-mode.xf-simple #view-xplore > .view-head,
+#app.in-mode.xf-simple .pane-head,
+#app.in-mode.xf-simple .pane-ctl,
+#app.in-mode.xf-simple .pane-chans { display: none !important; }
+/* One row, not four: a mode's own bar gives up its box, so its pieces --
+   where, progress, categories, steps, More / Next / Bank -- flow in the one
+   bar's row between the mode's name and Simplify / ? / Leave, and wrap only
+   when the window is too narrow for them. */
+#modeSlot { display: contents; }
+#modeSlot > .cur-bar, #modeSlot > .cur-bar > .cur-nav { display: contents; }
+#modeSlot > .cfc-bar { flex: 1 1 auto; }
+#modeSlot > .strata-bar, #modeSlot > .arc-panel { flex: 1 1 100%; }
+/* The mode's own end pushes right; the shell's end follows it directly. */
+#modeBanner:has(.mode-own-end) .mode-end { margin-left: 0; }
 /* The aid window. Framed the same way, and labelled, so it is never mistaken
    for the window you are supposed to be reading. */
 body.aid-window #xfBody { box-shadow: inset 0 0 0 2px var(--accent); }
@@ -10460,6 +10599,12 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   max-height: 46vh; overflow-y: auto;
   background: var(--bg-2); border-top: 2px solid var(--mode);
 }
+/* In the one mode bar (2026-10-20): the panel takes the bar's whole middle,
+   with no second frame of its own. */
+#modeSlot > .arc-panel { flex: 1 1 100%; min-width: 0; border-top: 0;
+  background: none; }
+#modeSlot > .arc-panel > .arc-bar { padding: 0; background: none;
+  border-bottom: 0; }
 .arc-bar {
   display: flex; align-items: center; gap: var(--sp-8) var(--sp-12); flex: none;
   flex-wrap: wrap;
@@ -12094,32 +12239,24 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
               transform var(--ease-dur) var(--ease-out),
               box-shadow var(--ease-dur) var(--ease-out);
 }
-/* The banner slides down rather than appearing. It is the thing that pushes
-   every canvas below it, so it is the single biggest jump of the five. */
-#app.mode-strata .mode-banner,
-#app.mode-braces .mode-banner,
-#app.mode-coupling .mode-banner,
-#app.mode-arcconfirm .mode-banner,
-#app.mode-arcclean .mode-banner,
-#app.mode-curate .mode-banner {
+/* The bar rises into place rather than appearing. It is the thing that
+   pushes every canvas above it, so it is the single biggest jump of the
+   five. */
+#app.in-mode .mode-banner {
   animation: modeBannerIn var(--ease-dur) var(--ease-out) both;
 }
+/* A fade, not a move: geometry that depends on an animation having run is
+   wrong wherever it has not (a harness's virtual clock stalls it), and the
+   panes above size themselves from where this bar is. */
 @keyframes modeBannerIn {
-  from { opacity: 0; transform: translateY(-100%); }
-  to   { opacity: 1; transform: none; }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 /* Somebody who has asked for less motion gets the mode without the move. */
 @media (prefers-reduced-motion: reduce) {
   #xfBody { transition: none; }
   #app.mode-settling #xfBody { opacity: 1; transform: none; }
-  #app.mode-strata .mode-banner,
-  #app.mode-braces .mode-banner,
-  #app.mode-coupling .mode-banner,
-  #app.mode-arcconfirm .mode-banner,
-  #app.mode-arcclean .mode-banner,
-#app.mode-arcconfirm .mode-banner,
-#app.mode-arcclean .mode-banner,
-  #app.mode-curate .mode-banner { animation: none; }
+  #app.in-mode .mode-banner { animation: none; }
 }
 /* ---- Braces: many sets at once -------------------------------------- */
 .br-mode { display: flex; align-items: center; gap: var(--sp-12); }
@@ -13751,7 +13888,26 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
 /* A Single's saved versions: the picker beside Bank, and the list a set
    that has not been read here can open from. Long nicknames wrap rather
    than being cut (constitution: never truncate). */
-.rc-ver-pick { max-width: 22rem; white-space: normal; }
+/* Single's saved versions (2026-10-20): short when shut, every whole name
+   when open, over what is below rather than pushing it down. */
+details.rc-ver-pick { position: relative; flex: none; }
+.rc-ver-sum { list-style: none; cursor: pointer; font-size: var(--fs-115);
+              padding: 2px var(--sp-6); border: 1px solid var(--line);
+              border-radius: var(--r-4); background: var(--bg);
+              color: var(--text); white-space: nowrap; }
+.rc-ver-sum::-webkit-details-marker { display: none; }
+.rc-ver-pop { position: absolute; z-index: 40; top: calc(100% + 4px); left: 0;
+              display: flex; flex-direction: column; gap: 2px;
+              min-width: 14rem; max-width: min(30rem, 80vw);
+              padding: var(--sp-4); border: 1px solid var(--line);
+              border-radius: var(--radius-sm); background: var(--bg);
+              box-shadow: 0 6px 20px rgba(0, 0, 0, .18); }
+.rc-ver-opt { text-align: left; white-space: normal; overflow-wrap: anywhere;
+              border: 0; background: transparent; color: var(--text);
+              font: inherit; font-size: var(--fs-115); cursor: pointer;
+              padding: 4px var(--sp-6); border-radius: var(--r-4); }
+.rc-ver-opt:hover { background: var(--bg-3); }
+.rc-ver-opt.on { font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .rc-saved-versions { display: flex; flex-direction: column; gap: var(--sp-6);
                      margin-bottom: var(--sp-10); }
 .rc-saved-only { margin: var(--sp-6) 0 0; }
@@ -14346,7 +14502,10 @@ table.ai-rep-tbl tr.ai-rep-chosen td:first-child { color: var(--accent);
   letter-spacing: .32em; color: var(--accent);
 }
 .tf-sep { font-family: var(--mono); color: var(--text-3); }
-.tf-what {
+/* Scoped to Tooth Fairy's own head (2026-10-20): the activity feed
+   (toolfeed.js) has a `.tf-what` too, and this rule, later in the file,
+   spaced every verb in the feed out as "i m p o r t e d  e v e n t s". */
+.tf-top .tf-what {
   font-family: var(--mono); font-size: var(--fs-13); letter-spacing: .24em;
   color: var(--text-2);
 }
@@ -15071,6 +15230,17 @@ div.tf-tile { cursor: default; }
   color: var(--text); }
 .jn-mres { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .jn-mnum { font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Many at once: a search, and which version each side pools from
+   (2026-10-20). The version is a small select on the row; one with a single
+   version is plain text. */
+.jn-many-find { display: flex; align-items: center; gap: var(--sp-10);
+  flex-wrap: wrap; margin: 6px 0 2px; }
+.jn-many-find .search-wrap { flex: 1 1 260px; }
+.jn-mver { flex: none; font: inherit; font-size: var(--fs-11);
+  font-family: var(--mono); color: var(--text); padding: 1px 4px;
+  border: 1px solid var(--line); border-radius: var(--radius-inner, 6px);
+  background: var(--bg); width: auto; min-width: max-content; }
+.jn-mver.one { border-color: transparent; background: none; padding: 1px 0; }
 .jn-mrow.ok { border-color: var(--accent-line); }
 .jn-mrow.bad { border-color: var(--err); }
 .jn-mrow.landing { animation: jnRow 420ms var(--ease-out, ease-out); }

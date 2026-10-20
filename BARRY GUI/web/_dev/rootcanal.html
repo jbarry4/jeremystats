@@ -1531,8 +1531,14 @@ const ENTRY = '46fd29a77cc7';
 
   const bp = await get('/api/rootcanal/batch/plan');
   ok('the batch plan answers', !!(bp && bp.ok));
-  ok('and PTEN m13 s2 is already read in it',
-     (bp.done || []).some((r) => r.entry_id === ENTRY),
+  /* Real data moves on (2026-10-20): once somebody banks Root Canal's
+     answer on it, the set is left out of a batch -- rightly, its live set
+     is Root Canal's own output -- and saying so is the right answer too. */
+  const cleaned = (bp.blocked || []).find((r) => r.entry_id === ENTRY
+    && /already taken the IEDs out/.test(r.why || ''));
+  ok('and PTEN m13 s2 is already read in it' + (cleaned
+       ? ' -- or, banked since, left out because Root Canal has cleaned it' : ''),
+     (bp.done || []).some((r) => r.entry_id === ENTRY) || !!cleaned,
      JSON.stringify((bp.done || []).map((r) => r.entry_id)).slice(0, 160));
 
   /* ================================================================== */
@@ -1797,10 +1803,11 @@ const ENTRY = '46fd29a77cc7';
      + '   { status: 200, headers: { "Content-Type": "application/json" } }));'
      + ' return W.__rsFetch.apply(this, arguments); }; })()');
   await ev(RC + '._loadSingle()');
-  await until(() => D().querySelector('.rc-why .rc-ver-pick'), 8000, 'the picker');
-  const sPick = D().querySelector('.rc-why .rc-ver-pick');
-  const sOpts = Array.from(sPick.querySelectorAll('option')).slice(1);
-  eq('the set’s saved versions are offered beside Bank, newest first',
+  await until(() => D().querySelector('.rc-ver-pick'), 8000, 'the picker');
+  const sPick = D().querySelector('.rc-ver-pick');
+  // A menu since 2026-10-20 (a select was as wide as its longest name).
+  const sOpts = Array.from(sPick.querySelectorAll('.rc-ver-opt'));
+  eq('the set’s saved versions are offered beside Save, newest first',
      sOpts.map((o2) => o2.textContent),
      ['v2 · three clusters', 'v1 · two clusters']);
   ok('each one’s hover says its settings, counts, and who, where and when',
@@ -1810,7 +1817,7 @@ const ENTRY = '46fd29a77cc7';
      sOpts[0].title);
   ok('the set’s sync state is marked beside them',
      !!D().querySelector('.rc-why .sync-mark'));
-  const sSave = () => D().querySelector('.rc-why .rc-save-ver');
+  const sSave = () => D().querySelector('.rc-save-ver');
   eq('Save offers the next version', sSave() && sSave().textContent,
      'Save as v3…');
 
@@ -1848,7 +1855,7 @@ const ENTRY = '46fd29a77cc7';
   await until(() => !st().fitting && st().fit && st().fit.k === sK, 20000, 'k');
   ok('a change after saving is a change', ev(RC + '._dirty()') === true);
   ok('and the picker says so', /\(changed\)/.test(
-    (D().querySelector('.rc-why .rc-ver-pick option') || {}).textContent || ''));
+    (D().querySelector('.rc-ver-pick .rc-ver-sum') || {}).textContent || ''));
   ev(RC + '._leaveTo("harness-elsewhere")');
   await until(() => D().querySelector('#bigModal:not(.hidden) .rc-nudge'),
               5000, 'the nudge');
@@ -1933,7 +1940,7 @@ const ENTRY = '46fd29a77cc7';
      && Math.abs(stGo().getBoundingClientRect().top
                  - D().querySelector('.rc-why .rc-clu').getBoundingClientRect()
                    .top) < 4, stGo().getBoundingClientRect().top);
-  const v1opt = Array.from(D().querySelectorAll('.rc-why .rc-ver-pick option'))
+  const v1opt = Array.from(D().querySelectorAll('.rc-ver-pick .rc-ver-opt'))
     .find((o2) => /^v1 · /.test(o2.textContent));
   ok('a version’s hover says whether its clusters were tested',
      !!v1opt && /Are the clusters different\? not tested/.test(v1opt.title),

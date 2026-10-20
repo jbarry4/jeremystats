@@ -102,9 +102,13 @@ const errs = [];
       + "+Math.round(q.width)+'w';});return m.join(' | ');})()");
     say('note', '  buttons: ' + btn);
     ck('a Comodulogram button is there', /Comodulogram/.test(btn), btn);
-    /* And a way out, in the place the other two modes put theirs. */
-    ck('and a Leave button, like curation and StrataScope',
-       /Leave/.test(btn), btn);
+    /* And a way out, in the place every mode has it: the last thing on the
+       one mode bar this bar sits inside (2026-10-20). */
+    const out = W().eval("(function(){var l=document.getElementById('modeLeave');"
+      + "var m=document.getElementById('modeBanner');return !!(l&&m&&m.contains("
+      + "document.getElementById('cfcBar'))&&l.getBoundingClientRect().width>0);})()");
+    ck('and the one bar it sits in ends with Leave, like every mode', out === true,
+       String(out));
   }
 
   /* Does it SURVIVE?

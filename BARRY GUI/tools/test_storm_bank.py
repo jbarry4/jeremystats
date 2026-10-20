@@ -127,8 +127,13 @@ def main():
         ids = {e["id"]: e for e in st.get("entries", [])}
         check("the entry the set was started from is not offered again",
               got["id"] not in ids, sorted(ids))
-        check("another run on that recording is, saying the set is there",
-              other["id"] in ids and ids[other["id"]].get("set_name") == "the set",
+        # Since 2026-10-20 a set belongs to one bank entry, so starting the
+        # other run makes a set of its own and replaces nothing: no
+        # `set_name` to warn about, and the set already there is named in
+        # `on_recording`.
+        check("another run on that recording is, replacing nothing",
+              other["id"] in ids and ids[other["id"]].get("set_name") is None
+              and ids[other["id"]].get("on_recording") == ["the set"],
               ids.get(other["id"]))
         check("so is an import on a recording with no set, with its pipeline",
               imp["id"] in ids and ids[imp["id"]].get("set_name") is None

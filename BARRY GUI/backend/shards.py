@@ -727,6 +727,31 @@ class Book:
                 _changed(self)
             return gone
 
+    def erase_if(self, base, stale):
+        """Remove only the shards of `base` that `stale(shard)` picks.
+
+        For a deletion that must not take a later record with it. One base
+        can hold an old machine's copy of something deleted and a new
+        machine's copy of something started again under the same name, and
+        the merged record cannot tell them apart: FIRST hands it the oldest
+        shard's birth stamp. Each shard is judged on its own.
+        """
+        with _LOCK:
+            gone = 0
+            for _m, path in self.shard_files(base):
+                if not stale(_read_json(path) or {}):
+                    continue
+                try:
+                    os.remove(path)
+                    gone += 1
+                    if self.store:
+                        self.store._stage(path)
+                except OSError:
+                    pass
+            if gone:
+                _changed(self)
+            return gone
+
     # -- migration ------------------------------------------------------
     def absorb_legacy(self):
         """Turn every pre-sharding file into this machine's shard.

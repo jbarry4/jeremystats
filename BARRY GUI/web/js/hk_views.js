@@ -90,8 +90,7 @@ BARRY.hk = (function () {
     }));
     // "Not set" last: it is a to-do list, not a category.
     out.sort((a, b) => (a.key === '\u0000unset') - (b.key === '\u0000unset')
-                    || a.label.localeCompare(b.label, undefined,
-                                             { numeric: true }));
+                    || BARRY.ui.natCompare(a.label, b.label));
     return out;
   }
 
@@ -169,9 +168,7 @@ BARRY.hk = (function () {
       const x = col.get(a);
       const y = col.get(b);
       if (col.num) return dir * ((Number(x) || 0) - (Number(y) || 0));
-      return dir * String(x == null ? '' : x)
-        .localeCompare(String(y == null ? '' : y), undefined,
-                       { numeric: true });
+      return dir * BARRY.ui.natCompare(x, y);
     });
   }
 

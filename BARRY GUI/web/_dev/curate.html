@@ -69,7 +69,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
      2026-10-13: KCNT1 m2 s2's leftover "spotter harness" entries did
      exactly that, and "it lands on the bench" failed). */
   const othersBanked = (g) => (bankList0.entries || []).some(
-    (e) => e.gid === g && (e.curation_label || e.type === 'ied'));
+    (e) => e.gid === g && (e.curation_label || e.type === 'ds'));
   const target = rows.find((s) => s.reachable && !othersCurated(s.gid)
                                   && !othersBanked(s.gid));
   check('there is a reachable recording nobody has curated', !!target,
@@ -85,6 +85,17 @@ const post = (u, b) => fetch(u, { method: 'POST',
   /* Deletes our set and nothing else: by name, so a set of somebody
      else's that arrived since the target was chosen is left alone. */
   const dropOurs = async () => {
+    /* And where Checkup remembers this run's set was left: the set is made
+       again with the same times, so a spot remembered from a run that
+       stopped part way would open it there, not on the first one. Only our
+       own key goes; everybody else's places stay. */
+    try {
+      const at = Object.assign({}, ev("BARRY.prefs.get('curate_at', {})") || {});
+      for (const k of Object.keys(at)) {
+        if (k.indexOf(gid + ':') === 0) delete at[k];
+      }
+      ev('BARRY.prefs.set("curate_at", ' + JSON.stringify(at) + ')');
+    } catch (e) { /* the spot is a convenience; the run goes on */ }
     const now = await (await fetch('/api/curation')).json();
     for (const s of (now.sets || [])) {
       if (s.gid === gid && s.name === OURS) {
@@ -110,7 +121,9 @@ const post = (u, b) => fetch(u, { method: 'POST',
   const times = [];
   for (let i = 0; i < 10; i++) times.push({ start: 12 + i * 0.9, channel: 8 });
   const made = await post('/api/curation/create', {
-    gid, kind: 'ied', name: 'curate harness', events: times,
+    /* Dentate spikes: Checkup's own kind since each door shows its own
+       (2026-10-20) -- an IED set opens in Spotter. */
+    gid, kind: 'ds', name: 'curate harness', events: times,
     source: { from: 'harness' },
   });
   check('a set can be created', made.ok === true, made.error || '');
@@ -204,7 +217,11 @@ const post = (u, b) => fetch(u, { method: 'POST',
         (inCard('.cur-set-n') || {}).textContent);
   const tally = allInCard('.cur-tally').map((n) => n.textContent.trim());
   say('  tally: ' + tally.join(' | '), 'note');
-  check('it shows one tally per category', tally.length === 4, tally.join(' | '));
+  // One per category of the set's own vocabulary (a DS set has six, two of
+  // them computed by X-ray).
+  const nCats = ((made.set || {}).labels || []).length;
+  check('it shows one tally per category', tally.length === nCats,
+        tally.join(' | ') + ' (of ' + nCats + ')');
   /* Banking lives behind More… now, so it has to be opened first. The
      check is the same one and worth keeping: it is the guard against
      publishing a version in which nothing was decided. */
@@ -291,22 +308,22 @@ const post = (u, b) => fetch(u, { method: 'POST',
     await sleep(900);
   };
 
-  await press('1');          // solid
+  await press('1');          // spike
   check('pressing 1 decides it and moves on', st().index === 1,
         JSON.stringify(st()));
   check('one fewer left', st().left === 9, String(st().left));
-  await press('2');          // sputter
-  await press('3');          // garbage
+  await press('2');          // garbage
+  await press('3');          // flag
   check('three decided', st().left === 7, String(st().left));
 
   // It has to have reached the server, not just the screen.
   await sleep(900);
-  const onDisk = await (await fetch('/api/curation/' + gid + '/ied')).json();
+  const onDisk = await (await fetch('/api/curation/' + gid + '/ds')).json();
   check('the decisions are on the server',
         onDisk.progress.specified === 3, JSON.stringify(onDisk.progress));
   const by = onDisk.progress.by_label || {};
   check('and they are the right ones',
-        by.solid === 1 && by.sputter === 1 && by.garbage === 1,
+        by.spike === 1 && by.garbage === 1 && by.flag === 1,
         JSON.stringify(by));
 
   say('');
@@ -317,7 +334,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
         wasAt + ' -> ' + st().index);
   check('and that one is undecided again', st().left === 8, String(st().left));
   await sleep(900);
-  const afterUndo = await (await fetch('/api/curation/' + gid + '/ied')).json();
+  const afterUndo = await (await fetch('/api/curation/' + gid + '/ds')).json();
   check('the undo reached the server too',
         afterUndo.progress.specified === 2,
         JSON.stringify(afterUndo.progress));
@@ -345,7 +362,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
 
   say('');
   say('=== banking the results ===', 'hd');
-  const bankRes = await post('/api/curation/' + gid + '/ied/bank',
+  const bankRes = await post('/api/curation/' + gid + '/ds/bank',
                              { added_by: 'curate@harness' });
   check('the curated events bank', bankRes.ok === true, bankRes.error || '');
   say('  entries: ' + JSON.stringify(bankRes.entries), 'note');
@@ -362,7 +379,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
     by_label: one.by_label }), 'note');
   check('it is written as a new version',
         one.new_version === true || one.version >= 1, String(one.version));
-  /* Two decided at this point -- one solid, one sputter, after the undo --
+  /* Two decided at this point -- one spike, one garbage, after the undo --
      so the version has to carry two, and say which. */
   check('the version carries the decided events and no others',
         one.n === 2, String(one.n));

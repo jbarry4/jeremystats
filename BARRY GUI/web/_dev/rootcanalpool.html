@@ -274,7 +274,11 @@ const NL = String.fromCharCode(10);
   ok('the rows are ticked where they stand: the table is the same table',
      D().querySelector('.rc-pool-cands') === tbl0
      && rows().every((r) => r.querySelector('.rc-pool-pick').checked
-                            && r.classList.contains('on')));
+                            && r.classList.contains('on')),
+     JSON.stringify([D().querySelector('.rc-pool-cands') === tbl0,
+       rows().filter((r) => !(r.querySelector('.rc-pool-pick').checked
+                              && r.classList.contains('on')))
+         .map((r) => r.dataset.rec + ' ' + r.textContent.slice(0, 80))]));
   ok('and none is warned of being in twice', !D().querySelector('.rc-rec-dup'));
   D().querySelector('.rc-sel-none').click();
   await sleep(120);

@@ -467,8 +467,8 @@ BARRY.strata = (function () {
     let b = $('#strataBar');
     if (!b) {
       b = el('div', { class: 'strata-bar', id: 'strataBar' });
-      const body = $('#xfBody');
-      if (body) body.appendChild(b); else document.body.appendChild(b);
+      // In the middle of the one mode bar (core.js `BARRY.modeSlot`).
+      BARRY.modeSlot().appendChild(b);
       document.addEventListener('keydown', keys, true);
     }
     b.innerHTML = '';
@@ -575,13 +575,15 @@ BARRY.strata = (function () {
         }))),
       ]),
       el('span', { class: 'cur-saving', id: 'strataSaving', text: '' }),
-      el('div', { style: 'flex:1' }),
-      el('button', {
-        class: 'btn ghost sm', text: 'Export CSV',
-        onclick: () => window.open('/api/layers/' + encodeURIComponent(gid)
-                                   + '/export', '_blank'),
+      // The end (ui.modeEnd): Export CSV under More -- then the shell's
+      // Simplify, ? and Leave, the last thing on the right.
+      BARRY.ui.modeEnd({
+        more: [el('button', {
+          class: 'btn ghost sm', text: 'Export CSV',
+          onclick: () => window.open('/api/layers/' + encodeURIComponent(gid)
+                                     + '/export', '_blank'),
+        })],
       }),
-      el('button', { class: 'btn ghost sm', text: 'Leave', onclick: exit }),
     ]));
   }
 
@@ -836,7 +838,8 @@ BARRY.strata = (function () {
        bottom:0 covers the bar's left edge, which is where the brushes live.
        Measured rather than assumed, because the bar wraps to two rows on a
        narrow window. */
-    const barEl = $('#strataBar');
+    // The whole one bar, which this bar now sits inside (core.js).
+    const barEl = $('#modeBanner') || $('#strataBar');
     const barH = barEl ? Math.ceil(barEl.getBoundingClientRect().height) : 0;
     r.style.bottom = barH + 'px';
     /* Toasts sit bottom-right at z-index 60; without this one covers Export

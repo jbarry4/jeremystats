@@ -848,8 +848,8 @@ BARRY.curate = (function () {
     let bar = $('#curBar');
     if (!bar) {
       bar = el('div', { class: 'cur-bar', id: 'curBar' });
-      const body = $('#xfBody');
-      if (body) body.appendChild(bar); else document.body.appendChild(bar);
+      // In the middle of the one mode bar (core.js `BARRY.modeSlot`).
+      BARRY.modeSlot().appendChild(bar);
       document.addEventListener('keydown', keys, true);
     }
     bar.innerHTML = '';
@@ -964,37 +964,53 @@ BARRY.curate = (function () {
             : ''),
         }))),
       ]),
-      el('div', { class: 'ctl' }, [
-        el('label', { text: 'Window s' }),
-        el('input', {
-          type: 'number', step: '0.1', value: String(span),
-          style: 'width:56px',
-          onchange: (e) => {
-            setSpan(Math.max(0.05, parseFloat(e.target.value) || 1));
-            goTo(index);
-          },
-        }),
-      ]),
       el('span', { class: 'cur-saving', id: 'curSaving', text: '' }),
-      el('div', { style: 'flex:1' }),
-      /* Tooth Fairy, AI Beta's best model: sorts the whole set, asks
-         before it starts, and writes nothing unless its summary is
-         accepted (toothfairy.js). */
-      (set_.kind === 'ds' && BARRY.toothFairy) ? el('button', {
-        class: 'btn ghost sm tf-btn',
-        title: 'Let Tooth Fairy read every candidate and call each one DS, '
-             + 'Flag for Deep Review, Flag or Garbage. It asks first, and '
-             + 'nothing changes unless you accept its summary.',
-        onclick: toothFairySweep,
-      }, [BARRY.toothFairy.icon(), 'Tooth Fairy\u2026']) : null,
-      el('button', { class: 'btn ghost sm', text: 'List all\u2026',
-                     title: 'Every candidate in this set, by time or by '
-                          + 'category. Click one to go to it.',
-                     onclick: listAll }),
-      el('button', { class: 'btn ghost sm', text: 'Bank the results…',
-                     onclick: bank }),
-      el('button', { class: 'btn ghost sm', text: 'Leave', onclick: exit }),
     ]));
+
+    /* The bar's end (ui.modeEnd): the occasional controls under More, the
+       next step of The Dentist, and Bank -- then the shell's Simplify, ?
+       and Leave, the last thing on the right. */
+    bar.appendChild(BARRY.ui.modeEnd({
+      more: [
+        el('div', { class: 'ctl' }, [
+          el('label', { text: 'Window s' }),
+          el('input', {
+            type: 'number', step: '0.1', value: String(span),
+            style: 'width:56px',
+            onchange: (e) => {
+              setSpan(Math.max(0.05, parseFloat(e.target.value) || 1));
+              goTo(index);
+            },
+          }),
+        ]),
+        el('button', { class: 'btn ghost sm', text: 'List all\u2026',
+                       title: 'Every candidate in this set, by time or by '
+                            + 'category. Click one to go to it.',
+                       onclick: listAll }),
+        /* Tooth Fairy, AI Beta's best model: sorts the whole set, asks
+           before it starts, and writes nothing unless its summary is
+           accepted (toothfairy.js). */
+        (BARRY.ui.kindBase(set_.kind) === 'ds' && BARRY.toothFairy) ? el('button', {
+          class: 'btn ghost sm tf-btn',
+          title: 'Let Tooth Fairy read every candidate and call each one DS, '
+               + 'Flag for Deep Review, Flag or Garbage. It asks first, and '
+               + 'nothing changes unless you accept its summary.',
+          onclick: toothFairySweep,
+        }, [BARRY.toothFairy.icon(), 'Tooth Fairy\u2026']) : null,
+      ],
+      next: {
+        text: 'Next: Braces \u2014 line them up \u2192',
+        title: 'Step 3 of The Dentist: Braces lines the stamps up on their '
+             + 'peaks. Your decisions stay as they are.',
+        onclick: () => {
+          if (BARRY.views.toolkit) BARRY.views.toolkit.pick('braces', 'dentist');
+          setView('toolkit');
+        },
+      },
+      bank: { text: 'Bank the results\u2026', onclick: bank,
+              title: 'Write these decisions as a new version of the banked '
+                   + 'entry' },
+    }));
 
     // Only the overlay changed, so repaint rather than refetch. The window
     // move in goTo() is what asks the server for new samples, and it does

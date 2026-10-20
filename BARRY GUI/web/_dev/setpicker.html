@@ -97,7 +97,8 @@ const getj = (u) => fetch(u).then((r) => r.json());
             .test(c.textContent)));
     check('each can be put down',
           cards.every((c) => Array.from(c.querySelectorAll('button'))
-            .some((b) => /Put it down/.test(b.textContent))));
+            // "Close" since 2026-10-20 (the lexicon's word for it).
+            .some((b) => /^(Close|Put it down)$/.test(b.textContent.trim()))));
     const kindName = (sets[0] || {}).kind_name;
     check('no set of another kind is on it',
           cards.every((c) => !kindName
@@ -151,7 +152,9 @@ const getj = (u) => fetch(u).then((r) => r.json());
           freshRows().length === freshMine.length,
           freshRows().length + ' of ' + freshMine.length);
     check('each can be started', freshRows().every((r) =>
-      Array.from(r.querySelectorAll('button')).some((b) => /Start/.test(b.textContent))));
+      // "Add to the bench" since 2026-10-20: a run goes onto the bench,
+      // not straight into the mode.
+      Array.from(r.querySelectorAll('button')).some((b) => /Add to the bench|Start/.test(b.textContent))));
     const goneBtn = $('#curFresh .arch-toggle');
     if (goneMine.length) {
       check('the archived ones are not among them, and one toggle at the '

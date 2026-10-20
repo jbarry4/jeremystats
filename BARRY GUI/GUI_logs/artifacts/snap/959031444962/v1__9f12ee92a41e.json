@@ -1,0 +1,194 @@
+{
+ "axes": [
+  {
+   "key": "amp_uV",
+   "label": "max amplitude",
+   "unit": "µV"
+  },
+  {
+   "key": "hf_db",
+   "label": "HF power",
+   "unit": "dB"
+  },
+  {
+   "key": "hw_ms",
+   "label": "half-width",
+   "unit": "ms"
+  }
+ ],
+ "fit": {
+  "group": "ds",
+  "n_group": 1475,
+  "n_other": 0
+ },
+ "gids": [
+  "s016e132432c8",
+  "s0a9e96cf1739",
+  "s37c7c8edfe10",
+  "s43b16cd74bcb",
+  "s79ba9ba163c4",
+  "s8d7f397b9708",
+  "s9eb56573e0b4",
+  "sd42a6992b76c",
+  "sd94396e874c7"
+ ],
+ "grace_default": 0.05,
+ "group": "ds",
+ "identity": "cls_single",
+ "ied_above": {
+  "amp_uV": true,
+  "hf_db": true,
+  "hw_ms": true
+ },
+ "kind": "envelope",
+ "level": "pool",
+ "levels": [
+  {
+   "counts": {
+    "amb": 0,
+    "ds": 1475,
+    "ied": 0,
+    "none": 2
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 3611.5571,
+     "lo": 257.8189
+    },
+    "hf_db": {
+     "hi": 25.814,
+     "lo": -4.3046
+    },
+    "hw_ms": {
+     "hi": 63.4237,
+     "lo": 6.1426
+    }
+   },
+   "grace": 0.0,
+   "outside": 0,
+   "outside_rate": 0.0,
+   "reached": true,
+   "switch_rate": 0.0,
+   "trim": 0.0,
+   "wrong": 0
+  },
+  {
+   "counts": {
+    "amb": 12,
+    "ds": 1463,
+    "ied": 0,
+    "none": 2
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 3062.290600021639,
+     "lo": 282.7840999999636
+    },
+    "hf_db": {
+     "hi": 25.220400000003313,
+     "lo": -3.3605000000412346
+    },
+    "hw_ms": {
+     "hi": 53.217100000159604,
+     "lo": 6.460199999985422
+    }
+   },
+   "grace": 0.01,
+   "outside": 12,
+   "outside_rate": 0.008135593220338983,
+   "reached": true,
+   "switch_rate": 0.0,
+   "trim": 0.001357,
+   "wrong": 0
+  },
+  {
+   "counts": {
+    "amb": 71,
+    "ds": 1404,
+    "ied": 0,
+    "none": 2
+   },
+   "edges": {
+    "amp_uV": {
+     "hi": 2510.200000005311,
+     "lo": 345.41459999808905
+    },
+    "hf_db": {
+     "hi": 22.069300000031166,
+     "lo": -0.2103000002265864
+    },
+    "hw_ms": {
+     "hi": 47.54710000012058,
+     "lo": 7.009299999979263
+    }
+   },
+   "grace": 0.05,
+   "outside": 71,
+   "outside_rate": 0.04813559322033898,
+   "reached": true,
+   "switch_rate": 0.0,
+   "trim": 0.008141,
+   "wrong": 0
+  }
+ ],
+ "made_from": [
+  "s:4d6fea9f0d53:2",
+  "s:5e2b01269161:1",
+  "s:6ffd9785706d:1",
+  "s:08994c0181de:1",
+  "s:ff8ff015efe6:1",
+  "s:deb6a2b3a4b0:1",
+  "s:72a0f7928dfc:1",
+  "s:2416047cb6cb:1",
+  "s:bdeb87febb92:1"
+ ],
+ "measure": {
+  "band_hi": 1000.0,
+  "band_lo": 500.0,
+  "cross_ms": 100.0,
+  "filt": "ds",
+  "filter_label": "DS filter, 5–100 Hz, 60 Hz mains out",
+  "hi_hz": 100.0,
+  "lo_hz": 5.0,
+  "mains_out": true,
+  "order": 3,
+  "win_ms": 25.0
+ },
+ "n": 1477,
+ "n_complete": 1475,
+ "n_identity": 1475,
+ "n_mice": 9,
+ "n_recordings": 9,
+ "rules": {
+  "0.0": "Solid DS: inside max amplitude 258 to 3612 µV, HF power -4.3 to 25.8 dB, half-width 6.1 to 63.4 ms. Outside it on any axis is ambiguous (grace none: the box wraps every DS event).",
+  "0.01": "Solid DS: inside max amplitude 283 to 3062 µV, HF power -3.4 to 25.2 dB, half-width 6.5 to 53.2 ms. Outside it on any axis is ambiguous (grace 1%: the box leaves out the outermost 1% of the DS events).",
+  "0.05": "Solid DS: inside max amplitude 345 to 2510 µV, HF power -0.2 to 22.1 dB, half-width 7.0 to 47.5 ms. Outside it on any axis is ambiguous (grace 5%: the box leaves out the outermost 5% of the DS events)."
+ },
+ "schema": 1,
+ "source": {
+  "kind": "pool",
+  "unsaved": true
+ },
+ "strict": {
+  "amp_uV": {
+   "hi": 3611.5571,
+   "lo": 257.8189
+  },
+  "hf_db": {
+   "hi": 25.814,
+   "lo": -4.3046
+  },
+  "hw_ms": {
+   "hi": 63.4237,
+   "lo": 6.1426
+  }
+ },
+ "strict_counts": {
+  "amb": 0,
+  "ds": 1475,
+  "ied": 0,
+  "none": 2
+ },
+ "strict_rate": 0.0,
+ "strict_wrong": 0
+}

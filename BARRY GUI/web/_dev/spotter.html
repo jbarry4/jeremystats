@@ -257,7 +257,9 @@ const post = (u, b) => fetch(u, { method: 'POST',
   const marks = ev('JSON.stringify(BARRY.views.xplore.current()'
                    + '.curationMarks || null)');
   check('the session carries the marks, which is how the aid window draws',
-        marks !== 'null' && /"kind":"ied"/.test(marks), marks.slice(0, 120));
+        // The set's own kind: "ied", or "ied.e<entry>" for one bank
+        // entry's set (2026-10-20).
+        marks !== 'null' && /"kind":"ied(\.e\w+)?"/.test(marks), marks.slice(0, 120));
   check('every label has a colour in them',
         /"color"/.test(marks));
 
@@ -285,8 +287,19 @@ const post = (u, b) => fetch(u, { method: 'POST',
          + " delete BARRY.prefs.__spotGet; } 'ok'");
     } catch (e) {}
     if (gid) {
-      try { await post('/api/curation/' + gid + '/ied/delete', {}); }
-      catch (e) { say('  note  could not remove the set', 'note'); }
+      /* Every set of ours on the recording, by its own kind: since
+         2026-10-20 the set of a bank entry is "ied.e<entry>", and deleting
+         ".../ied" left it behind. */
+      try {
+        const all = await (await fetch('/api/curation')).json();
+        const ours = (all.sets || []).filter((s) => s.gid === gid
+          && String(s.kind).split('.')[0] === 'ied'
+          && (s.kind === 'ied' || (entryId && s.entry === entryId)));
+        for (const s of ours) {
+          await post('/api/curation/' + gid + '/' + encodeURIComponent(s.kind)
+                     + '/delete', {});
+        }
+      } catch (e) { say('  note  could not remove the set', 'note'); }
     }
     if (entryId) {
       try { await post('/api/bank/' + entryId + '/delete', {}); }

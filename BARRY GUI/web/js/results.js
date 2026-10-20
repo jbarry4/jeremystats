@@ -184,10 +184,9 @@ BARRY.views.results = (function () {
   function sorter(a, b) {
     switch (sortBy) {
       case 'title':
-        return String(a.title || a.name).localeCompare(String(b.title || b.name));
+        return BARRY.ui.natCompare(a.title || a.name, b.title || b.name);
       case 'session':
-        return String(a.session_label || '').localeCompare(
-                 String(b.session_label || ''))
+        return BARRY.ui.natCompare(a.session_label || '', b.session_label || '')
                || String(b.created || '').localeCompare(String(a.created || ''));
       case 'bytes':
         return (b.bytes || 0) - (a.bytes || 0);
@@ -441,7 +440,7 @@ BARRY.views.results = (function () {
 
     bar.appendChild(el('span', { class: 'res-folders-label', text: 'Folders' }));
     bar.appendChild(chip('', 'All', items.length));
-    for (const f of folders) {
+    for (const f of BARRY.ui.natSort(folders.slice(), (x) => x.path.split('/'))) {
       bar.appendChild(chip(
         f.path,
         (f.depth ? '\u00b7 '.repeat(f.depth) : '') + f.name,
@@ -526,7 +525,7 @@ BARRY.views.results = (function () {
       },
     }, [
       el('option', { value: '', text: 'Move to\u2026' }),
-      ...folders.map((f) => el('option', {
+      ...BARRY.ui.natSort(folders.slice(), (x) => x.path.split('/')).map((f) => el('option', {
         value: f.path,
         text: (f.depth ? '\u00a0\u00a0'.repeat(f.depth) : '') + f.name,
       })),
@@ -690,7 +689,7 @@ BARRY.views.results = (function () {
         title: 'Filter by session',
         onchange: (e) => { sessionFilter = e.target.value; render(); },
       }, [el('option', { value: '', text: 'All sessions' })].concat(
-        facets.sessions.map(([key, label]) => el('option', {
+        BARRY.ui.natSort(facets.sessions.slice(), (s) => s[1]).map(([key, label]) => el('option', {
           value: key, text: label, selected: sessionFilter === key ? 'selected' : null,
         })))));
     }
@@ -806,8 +805,7 @@ BARRY.views.results = (function () {
       rooms.get(k).push(r);
     }
     const out = Array.from(rooms, ([name, rows]) => ({ name, rows }));
-    out.sort((a, b) => String(a.name).localeCompare(String(b.name),
-                                                    undefined, { numeric: true }));
+    BARRY.ui.natSort(out, (r) => r.name);
     if (rest.length) {
       out.push({ name: g.id === 'animal' ? 'Not about one animal' : 'Everything else',
                  rows: rest, aside: true });
@@ -1228,7 +1226,7 @@ BARRY.views.results = (function () {
     /* The settings, as a table. This is what a rebuild reads back, and what
        tells two figures of the same recording apart. */
     const p = r.parameters || {};
-    const keys = Object.keys(p).sort();
+    const keys = BARRY.ui.natSort(Object.keys(p));
     if (keys.length) {
       box.appendChild(el('div', { class: 'section-label', text: 'Settings' }));
       box.appendChild(el('table', { class: 'prov-params' }, [
