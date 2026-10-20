@@ -172,6 +172,91 @@
   --fire-wash: transparent;   /* a tint under a chrome surface */
   --fire-rule: 1px;           /* hairline weight */
   --fire-beat: 0s;            /* pulse period, while a job is actually live */
+
+  /* ---- Look v2 (2026-10-20): roles over the value scale ------------------
+
+     The user's ruling: evolve the look -- same identity, every theme, same
+     density -- with layered surfaces and soft elevation instead of boxed
+     borders, one radius rhythm, crisp focus, springy hover and press. The
+     value tokens above stay what they are; these name what a size is FOR,
+     so a control, a card and an overlay are each decided once. A theme
+     sets only the shadow colours below; everything else is shared. */
+  --radius-inner:   6px;      /* a segment inside a group, a mini */
+  --radius-control: 8px;      /* button, field, select, segmented group */
+  --radius-card:    12px;     /* cards, panels, lists that are surfaces */
+  --radius-overlay: 16px;     /* modals, the palette */
+  --radius-chip:    var(--r-pill);
+
+  /* Elevation, from the theme's own shadow colours. A card sits ON the
+     ground, a hover rises a little, an overlay floats. */
+  --shadow-c:        rgba(0, 0, 0, .42);
+  --shadow-c-soft:   rgba(0, 0, 0, .24);
+  --shadow-c-strong: rgba(0, 0, 0, .58);
+  --hairline-hi:     rgba(255, 255, 255, .045);
+  --elev-btn: inset 0 1px 0 var(--hairline-hi), 0 1px 2px var(--shadow-c-soft);
+  --elev-1: inset 0 1px 0 var(--hairline-hi), 0 1px 2px var(--shadow-c-soft),
+            0 6px 16px -10px var(--shadow-c);
+  --elev-2: inset 0 1px 0 var(--hairline-hi), 0 3px 8px var(--shadow-c-soft),
+            0 14px 30px -12px var(--shadow-c);
+  --elev-3: 0 2px 8px var(--shadow-c-soft), 0 18px 48px -10px var(--shadow-c-strong);
+
+  /* Glass, for what floats over the work: modals, popovers, toasts, the
+     palette. The ground shows through, blurred, so an overlay reads as
+     being above the page rather than a page of its own. */
+  --glass-bg: color-mix(in srgb, var(--bg-2) 86%, transparent);
+  --glass-blur: blur(14px) saturate(1.25);
+
+  /* One focus ring for everything a keyboard can reach. */
+  --focus-ring: 2px solid var(--accent-line);
+  --focus-offset: 2px;
+
+  /* Stacking, named. The raw numbers in the file move onto these. */
+  --z-pane: 1;
+  --z-bar: 10;
+  --z-rail: 20;
+  --z-popover: 80;
+  --z-modal: 120;
+  --z-toast: 200;
+  --z-palette: 400;
+  --z-fx: 500;
+
+  /* ---- Motion v2 (2026-10-20): "lively everywhere" ------------------------
+     Durations by what moves, easings by how. `--motion-pace` stretches all
+     of them at once: a screenshot run sets it to 5 to catch frames. */
+  --motion-pace: 1;
+  --dur-1: calc(90ms * var(--motion-pace));    /* press */
+  --dur-2: calc(160ms * var(--motion-pace));   /* hover, toggle */
+  --dur-3: calc(240ms * var(--motion-pace));   /* small enter or exit */
+  --dur-4: calc(420ms * var(--motion-pace));   /* a part arriving */
+  --dur-5: calc(700ms * var(--motion-pace));   /* a count running up */
+  --dur-6: calc(1900ms * var(--motion-pace));  /* the longest landing */
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+  /* A spring that overshoots a touch and settles. */
+  --ease-spring: cubic-bezier(.2, 1.35, .4, 1);
+  /* Braces' glove: a snap that arrives a little past and comes back. */
+  --ease-snap: cubic-bezier(.2, 1.5, .4, 1);
+  --stagger: calc(45ms * var(--motion-pace));
+
+  /* Each mode's own colour, as a token so every theme can retune it. */
+  --mode-curate: #4bc7f0;
+  --mode-spotter: #ff8a7a;
+  --mode-panning: #e5a823;
+  --mode-strata: #ffb81c;
+  --mode-braid: #7fb8ff;
+  --mode-braces: #7fe3b0;
+  --mode-arcconfirm: #e5a823;
+  --mode-arcclean: #e8705a;
+  --mode-coupling: #c08cf0;
+}
+/* The light families cast lighter, cooler shadows, and their glass needs
+   more of the ground in it to stay readable. */
+:root[data-theme="light"], :root[data-theme="parchment"],
+:root[data-theme="horizon"], :root[data-theme="jirai-shiro"] {
+  --shadow-c:        rgba(16, 32, 24, .14);
+  --shadow-c-soft:   rgba(16, 32, 24, .08);
+  --shadow-c-strong: rgba(16, 32, 24, .22);
+  --hairline-hi:     rgba(255, 255, 255, .7);
+  --glass-bg: color-mix(in srgb, var(--bg-2) 90%, transparent);
 }
 :root[data-theme="light"] {
   --bg:        #ffffff;
@@ -1223,6 +1308,14 @@ body.aid-window #vaccMorph { display: none; }
   mask-image: radial-gradient(circle,
     rgba(0,0,0,1) 0%, rgba(0,0,0,.5) 38%, rgba(0,0,0,0) 70%);
 }
+/* Over the data -- a list, a card, a table, a canvas -- the patch dims to a
+   whisper (vaccfx.js), so the wiring never lights up across the names and
+   numbers somebody is reading. It eases rather than snaps. */
+#vaccCircuit .vcx-glow { transition: opacity var(--ease-dur) var(--ease-out); }
+#vaccCircuit .vcx-glow.vcx-quiet { opacity: 0.12; }
+@media (prefers-reduced-motion: reduce) {
+  #vaccCircuit .vcx-glow { transition: none; }
+}
 /* Held still while the window over it moves, so the traces read as wiring
    being lit rather than as a texture being dragged. */
 #vaccCircuit .vcx-glow-in {
@@ -2234,6 +2327,39 @@ code { font-family: var(--mono); }
 .step-head {
   display: flex; align-items: baseline; flex-wrap: wrap;
   gap: var(--sp-8); padding: 2px 0 var(--sp-6);
+}
+/* ---------- archived things sink (ui.archivedTail, 2026-10-20) ----------
+   At the bottom of the list they belong to, behind one toggle that says how
+   many. The toggle is the same everywhere: a quiet full-width row with the
+   house caret, never a pill or a button that competes with the list. */
+.arch-tail {
+  flex: 1 0 100%;        /* a row of its own, in a flex list of chips */
+  margin: var(--sp-8) 0 var(--sp-4);
+  border-top: 1px dashed var(--line-soft); padding-top: var(--sp-6);
+}
+.arch-toggle {
+  display: flex; align-items: center; gap: var(--sp-6); width: 100%;
+  padding: var(--sp-4) var(--sp-8); border: 0; border-radius: var(--r-5);
+  background: transparent; color: var(--text-3); cursor: pointer;
+  font: inherit; font-size: var(--fs-11); text-align: left;
+}
+.arch-toggle:hover { background: var(--bg-3); color: var(--text-2); }
+.arch-toggle:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 1px; }
+.arch-toggle .caret {
+  width: 0; height: 0; flex: none;
+  border-left: 4px solid currentColor;
+  border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+  transition: transform var(--ease-dur) var(--ease-out);
+}
+.arch-tail.open .arch-toggle .caret { transform: rotate(90deg); }
+.arch-body { margin-top: var(--sp-4); }
+/* An archived row anywhere: quieter than the live ones, itself again when
+   pointed at or chosen. */
+.is-archived { opacity: .66; }
+.is-archived:hover, .is-archived.on, .is-archived.active,
+.is-archived:focus-visible { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .arch-toggle .caret { transition: none; }
 }
 .step-head strong { font-size: var(--fs-14); flex: none; }
 .step-head .step-n {
@@ -3574,6 +3700,343 @@ select {
    changed whenever a control appeared. The strip above it is deliberately one
    stable row that scrolls sideways; that is the version to keep. */
 
+/* ==========================================================================
+   Look v2 -- the primitives (2026-10-20)
+   ==========================================================================
+   "Evolve the current look": same geometry, same density, every theme --
+   but surfaces that sit ON the ground instead of being drawn round, one
+   radius per role, one focus ring, and controls that answer a hover and a
+   press. Written as `html .x` so it outranks the base rules wherever they
+   sit in this file (the base `.ctl-pop` is 2,000 lines further down)
+   while a contextual override such as `.tk-pills .pill` still wins, as §7
+   intends. Nothing here moves a box: padding, borders and font sizes are
+   untouched, so the ui_baseline diff is radii, shadows and colours only. */
+
+/* One ring for the keyboard, never for the mouse. */
+html .btn:focus-visible, html .mini:focus-visible, html .pill:focus-visible,
+html .seg button:focus-visible, html .track-switch button:focus-visible,
+html .chip-btn:focus-visible, html .nav-item:focus-visible,
+html .close-x:focus-visible, html .linkish:focus-visible,
+html .tk-tool:focus-visible, html .tk-step:focus-visible,
+html .toggle:focus-within {
+  outline: var(--focus-ring); outline-offset: var(--focus-offset);
+}
+html input:focus-visible, html select:focus-visible,
+html textarea:focus-visible {
+  outline: none; border-color: var(--accent-line);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Buttons: a lift on hover, a squish on press, a soft shadow at rest. */
+html .btn {
+  border-radius: var(--radius-control);
+  box-shadow: var(--elev-btn);
+  transition: transform var(--dur-1) var(--ease-out),
+              box-shadow var(--dur-2) var(--ease-out),
+              background-color var(--dur-2) var(--ease-out),
+              border-color var(--dur-2) var(--ease-out),
+              color var(--dur-2) var(--ease-out),
+              filter var(--dur-2) var(--ease-out);
+}
+html .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--elev-2); }
+html .btn:active:not(:disabled) {
+  transform: translateY(0) scale(.97); box-shadow: var(--elev-btn);
+}
+html .btn.ghost { box-shadow: none; }
+html .btn.ghost:hover:not(:disabled) {
+  box-shadow: var(--elev-1); border-color: var(--accent-line);
+}
+html .btn:disabled { box-shadow: none; transform: none; }
+html .mini {
+  border-radius: var(--radius-inner);
+  transition: background-color var(--dur-2) var(--ease-out),
+              color var(--dur-2) var(--ease-out),
+              transform var(--dur-1) var(--ease-out);
+}
+html .mini:active:not(:disabled) { transform: scale(.95); }
+html .pill {
+  transition: background-color var(--dur-2) var(--ease-out),
+              border-color var(--dur-2) var(--ease-out),
+              color var(--dur-2) var(--ease-out),
+              transform var(--dur-1) var(--ease-out);
+}
+html .pill:active:not(:disabled) { transform: scale(.95); }
+html .pill.active { box-shadow: var(--elev-btn); }
+
+/* Segmented: one radius outside, one inside; the chosen one floats. */
+html .seg, html .track-switch { border-radius: var(--radius-control); }
+html .seg button, html .track-switch button {
+  border-radius: var(--radius-inner);
+  transition: background-color var(--dur-2) var(--ease-out),
+              color var(--dur-2) var(--ease-out),
+              box-shadow var(--dur-2) var(--ease-out);
+}
+html .seg button.active, html .track-switch button.active {
+  box-shadow: var(--elev-1);
+}
+html .toggle {
+  border-radius: var(--radius-inner);
+  transition: background-color var(--dur-2) var(--ease-out),
+              border-color var(--dur-2) var(--ease-out),
+              color var(--dur-2) var(--ease-out);
+}
+
+/* Fields: one radius, and a soft ring of the accent when they have focus. */
+html input[type="search"], html input[type="text"],
+html input[type="number"], html select, html textarea {
+  border-radius: var(--radius-control);
+  transition: border-color var(--dur-2) var(--ease-out),
+              box-shadow var(--dur-2) var(--ease-out);
+}
+
+/* Surfaces sit on the ground: a softer edge and a little depth, so a card
+   reads as a thing lying on the page rather than a box drawn on it. */
+html .card {
+  border-color: var(--line-soft); border-radius: var(--radius-card);
+  box-shadow: var(--elev-1);
+}
+
+/* What floats over the work floats: glass, a softer edge, real depth. */
+html .modal, html .pal-box {
+  border-radius: var(--radius-overlay); border-color: var(--line-soft);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--elev-3);
+}
+html .ctl-pop {
+  border-radius: var(--radius-card); border-color: var(--line-soft);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--elev-3);
+}
+html .toast {
+  border-radius: var(--radius-control);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--elev-3);
+}
+html .toast:not(.err):not(.ok) { border-color: var(--line-soft); }
+
+/* Chips: one family. A chip is a fact -- mono, sentence case, a pill -- in
+   two sizes: `.stat-chip` beside a heading or in a toolbar, `.flagchip` on
+   a dense card or row. `.tag` was a third shape, upper case and bold, so
+   the same word read as a shout in one panel and a label in the next; it
+   joins the family at the larger size, still coloured by its kind. */
+html .tag {
+  text-transform: none; letter-spacing: 0; font-weight: 500;
+  font-family: var(--mono); font-size: var(--fs-105);
+}
+html .stat-chip, html .flagchip, html .tag { line-height: 1.5; }
+
+/* Fields stacked in a card or a parameter group keep one rhythm. */
+html .card > .ui-field + .ui-field,
+html .ui-fields > .ui-field + .ui-field { margin-top: var(--sp-12); }
+
+/* ==========================================================================
+   Motion v2 (js/motion.js, 2026-10-20) -- "lively everywhere"
+   ==========================================================================
+   The moments every surface shares. Each animation names its component,
+   each has a reduced-motion stop at the end of this block, and none plays
+   on a redraw of something already on screen: a view rises when it is
+   switched to, a dialog springs when it opens, a result's edge lights once
+   when it lands. The Calm switch (data-motion="calm") keeps the moments
+   and drops the ambient life. */
+
+/* The segmented thumb (motion.js `slideSeg`): it slides from the old
+   choice to the new, under the buttons. */
+.seg, .track-switch { position: relative; }
+.seg > button, .track-switch > button { position: relative; z-index: 1; }
+.seg-thumb {
+  position: absolute; z-index: 0; pointer-events: none;
+  border-radius: var(--radius-inner); background: var(--bg);
+  box-shadow: var(--elev-1); transform-origin: left center;
+}
+.seg.sliding > button.active,
+.track-switch.sliding > button.active { background: transparent; box-shadow: none; }
+
+/* A view arriving: a short rise, so switching reads as moving somewhere
+   rather than a page repainting. Only on the switch: a view that is
+   already showing never replays it. */
+.view.active > .pad, .view.active > .split, .view.active > .xf-body {
+  animation: moRise var(--dur-3) var(--ease-out) both;
+}
+@keyframes moRise { from { opacity: 0; transform: translateY(6px); } }
+
+/* A result landing (motion.land): the edge lights once and fades. */
+.mo-land { position: relative; }
+.mo-land::after {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px var(--accent),
+              0 0 26px -4px color-mix(in srgb, var(--accent) 70%, transparent);
+  animation: moLand var(--dur-6) var(--ease-out) both;
+}
+@keyframes moLand { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
+
+/* New since you looked (motion.pulse). */
+.mo-pulse { animation: moPulse 2.4s ease-in-out infinite; }
+@keyframes moPulse {
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+}
+
+/* Life at rest (motion.ambient): only while on screen, under a budget. */
+.mo-amb-breathe { animation: moBreathe 3.2s ease-in-out infinite; }
+@keyframes moBreathe { 50% { opacity: .55; transform: scale(.9); } }
+.mo-amb-float { animation: moFloat 5s ease-in-out infinite; }
+@keyframes moFloat { 50% { transform: translateY(-4px); } }
+
+/* What floats arrives on a spring rather than a fade. */
+html .ctl-pop { animation: moPop var(--dur-3) var(--ease-spring) both;
+                transform-origin: top center; }
+html .modal { animation: moPop var(--dur-4) var(--ease-spring) both; }
+@keyframes moPop { from { opacity: 0; transform: scale(.94) translateY(6px); } }
+html .toast { animation: moToast var(--dur-4) var(--ease-spring) both; }
+@keyframes moToast { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+
+:root[data-motion="calm"] .mo-amb-breathe,
+:root[data-motion="calm"] .mo-amb-float,
+:root[data-motion="calm"] .mo-pulse { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .view.active > .pad, .view.active > .split, .view.active > .xf-body,
+  .mo-land::after, .mo-pulse, .mo-amb-breathe, .mo-amb-float,
+  html .ctl-pop, html .modal, html .toast { animation: none; }
+  .seg-thumb { display: none; }
+}
+
+/* ==========================================================================
+   The start menu (js/startmenu.js, 2026-10-20) -- a title, like a game's
+   ==========================================================================
+   The boot overlay, once the catalogue is read, becomes the title: the mark
+   springs in, the name forms a letter at a time, the scope keeps sweeping
+   behind them as an attract loop, and the menu rises underneath. The
+   loading lines are hidden; everything here is scoped to `#boot.boot-menu`
+   so it outranks the overlay's own first-paint styles in index.html. */
+#boot.boot-menu {
+  background:
+    radial-gradient(60% 46% at 50% 36%,
+      color-mix(in srgb, var(--accent) 13%, transparent), transparent 72%),
+    var(--bg);
+}
+#boot.boot-menu .boot-name, #boot.boot-menu .boot-what,
+#boot.boot-menu .boot-track, #boot.boot-menu .boot-slow { display: none; }
+/* The scope becomes the attract loop: the same live trace, scaled up into
+   a soft band behind the title, borderless, still sweeping. Scaled rather
+   than resized, so its sweep and its waveform keep their own geometry. */
+#boot.boot-menu .boot-scope {
+  position: fixed; left: 50%; top: 31%; z-index: 0; pointer-events: none;
+  transform: translate(-50%, -50%) scale(3.4);
+  border-color: transparent; background: transparent; opacity: .26;
+}
+#boot.boot-menu .boot-in { position: relative; z-index: 1; }
+#boot .sm-panel {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column; align-items: center; gap: 28px;
+}
+#boot .sm-title { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+#boot .sm-mark {
+  width: 88px; height: 88px;
+  filter: drop-shadow(0 0 24px color-mix(in srgb, var(--accent) 45%, transparent));
+  animation: smMark var(--dur-6) var(--ease-out) both;
+}
+#boot .sm-mark svg { width: 100%; height: 100%; display: block; }
+#boot .sm-name {
+  margin: 0; padding-left: .42em;
+  font-family: var(--sans); font-size: 46px; font-weight: 300;
+  letter-spacing: .42em; text-transform: uppercase; color: var(--text);
+}
+#boot .sm-letter {
+  display: inline-block;
+  animation: smLetter var(--dur-4) var(--ease-spring) both;
+  animation-delay: calc((140ms + var(--i) * 70ms) * var(--motion-pace));
+}
+#boot .sm-tag {
+  font-family: var(--mono); font-size: var(--fs-11); letter-spacing: .16em;
+  text-transform: uppercase; color: var(--text-3);
+  animation: smFade var(--dur-4) var(--ease-out) both;
+  animation-delay: calc(600ms * var(--motion-pace));
+}
+#boot .sm-menu { display: flex; flex-direction: column; gap: 4px; min-width: 340px; }
+#boot .sm-item {
+  display: grid; grid-template-columns: 14px auto 1fr; align-items: baseline;
+  gap: 12px; padding: 10px 16px;
+  border: 1px solid transparent; border-radius: var(--radius-control);
+  background: transparent; color: var(--text-2);
+  font: inherit; text-align: left; cursor: pointer;
+  animation: smItem var(--dur-4) var(--ease-out) both;
+  animation-delay: calc((720ms + var(--i) * 60ms) * var(--motion-pace));
+  transition: background-color var(--dur-2) var(--ease-out),
+              color var(--dur-2) var(--ease-out),
+              border-color var(--dur-2) var(--ease-out),
+              box-shadow var(--dur-2) var(--ease-out),
+              transform var(--dur-2) var(--ease-spring);
+}
+#boot .sm-item .sm-label {
+  font-family: var(--sans); font-size: var(--fs-15); font-weight: 500;
+}
+#boot .sm-item .sm-sub {
+  font-family: var(--mono); font-size: var(--fs-105); color: var(--text-3);
+  justify-self: end;
+}
+#boot .sm-item .sm-caret {
+  align-self: center; width: 0; height: 0;
+  border-left: 7px solid var(--accent);
+  border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+  opacity: 0; transform: translateX(-6px);
+  transition: opacity var(--dur-2) var(--ease-out),
+              transform var(--dur-2) var(--ease-spring);
+}
+#boot .sm-item.on {
+  background: var(--glass-bg); border-color: var(--accent-line);
+  color: var(--text); box-shadow: var(--elev-2); transform: translateX(4px);
+}
+#boot .sm-item.on .sm-caret {
+  opacity: 1; transform: none; animation: smCaret 1.2s ease-in-out infinite;
+}
+#boot .sm-item:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+#boot .sm-foot {
+  display: flex; align-items: center; flex-wrap: wrap; justify-content: center;
+  gap: 10px 20px; font-size: var(--fs-105); color: var(--text-3);
+  animation: smFade var(--dur-4) var(--ease-out) both;
+  animation-delay: calc(1100ms * var(--motion-pace));
+}
+#boot .sm-keys { display: inline-flex; align-items: center; gap: 6px; }
+#boot .sm-keys kbd {
+  font-family: var(--mono); font-size: var(--fs-95); padding: 1px 6px;
+  border: 1px solid var(--line); border-radius: var(--r-4); background: var(--bg-2);
+}
+#boot .sm-keep { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+#boot .sm-keep input { accent-color: var(--accent); margin: 0; }
+@keyframes smLetter {
+  from { opacity: 0; transform: translateY(18px) scale(.8); filter: blur(6px); }
+}
+@keyframes smMark {
+  0%   { opacity: 0; transform: scale(.6) rotate(-12deg); }
+  60%  { opacity: 1; transform: scale(1.06) rotate(2deg); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes smFade { from { opacity: 0; } }
+@keyframes smItem { from { opacity: 0; transform: translateY(10px); } }
+@keyframes smCaret { 50% { transform: translateX(3px); } }
+#boot.still .sm-mark, #boot.still .sm-letter, #boot.still .sm-tag,
+#boot.still .sm-item, #boot.still .sm-foot,
+#boot.still .sm-item.on .sm-caret { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  #boot .sm-mark, #boot .sm-letter, #boot .sm-tag, #boot .sm-item,
+  #boot .sm-foot, #boot .sm-item.on .sm-caret { animation: none; }
+  #boot .sm-item, #boot .sm-item .sm-caret { transition: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html .btn, html .mini, html .pill, html .seg button,
+  html .track-switch button, html .toggle,
+  html input, html select, html textarea { transition: none; }
+  html .btn:hover:not(:disabled), html .btn:active:not(:disabled),
+  html .mini:active:not(:disabled), html .pill:active:not(:disabled) {
+    transform: none;
+  }
+}
+
 /* ---------- loading state ---------- */
 .loader {
   display: flex; flex-direction: column; align-items: center; gap: var(--sp-8);
@@ -4480,8 +4943,10 @@ select {
 .bank-row-top {
   display: flex; align-items: baseline; gap: var(--sp-8); min-width: 0;
 }
-.bank-row-top > strong { min-width: 0; overflow: hidden;
-                         text-overflow: ellipsis; white-space: nowrap; }
+/* Wraps, never clips: the part an ellipsis cuts is the part that tells one
+   sheet from the next. */
+.bank-row-top > strong { min-width: 0; white-space: normal;
+                         overflow-wrap: anywhere; }
 .bank-row-sub {
   display: flex; align-items: baseline; gap: var(--sp-8); flex-wrap: wrap;
   font-size: var(--fs-105); color: var(--text-3); margin-top: 2px;
@@ -13732,6 +14197,35 @@ h3.art-nick { font-size: var(--fs-15); margin: 0; }
                        "type  src  src";
 }
 .bank-row .sync-mark { grid-area: sync; justify-self: end; }
+/* The second line is ONE cell, spanning the row (2026-10-20). As two cells
+   -- the type, then the producer spanning the count's and the mark's
+   columns -- the producer sized those auto columns to its whole width, and
+   a grid grows auto columns BEFORE it gives the flexible one anything: a
+   long producer ("The Confluence: Junction (Incisor + Doppler, 20 ms)")
+   left the name a sliver, wrapped a word a line. A cell that spans the
+   flexible column is sized with it instead. */
+.bank-row {
+  grid-template-areas: "name  n    sync"
+                       "meta  meta meta";
+}
+.bank-meta {
+  grid-area: meta; min-width: 0;
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  justify-content: space-between; gap: 1px var(--sp-8);
+}
+.bank-meta .bank-type, .bank-meta .bank-src { grid-area: auto; }
+.bank-meta .bank-src { margin-left: auto; min-width: 0; }
+/* Archived, under its toggle at the bottom of the list (ui.archivedTail):
+   quieter than the live ones, and itself again when picked. */
+.bank-row.is-archived { opacity: .66; }
+.bank-row.is-archived:hover, .bank-row.is-archived.active { opacity: 1; }
+/* An entry's note, under its tags: a sentence, wrapped, in sentence case. */
+.detail-head-main { min-width: 0; }
+.bank-note {
+  margin: var(--sp-8) 0 0; max-width: 72ch;
+  font-size: var(--fs-12); line-height: 1.45; color: var(--text-2);
+  overflow-wrap: anywhere;
+}
 /* The rail chip, by where the shared copy stands. */
 .chip-btn.sync-ok svg { color: var(--ok); }
 .chip-btn.sync-busy svg { color: var(--accent); }
@@ -15097,3 +15591,91 @@ div.tf-tile { cursor: default; }
 }
 /* The auto-bank switch in Spotter's and Panning's bars. */
 .mini.spot-auto.on { border-color: var(--accent-line); color: var(--accent); }
+
+/* ==========================================================================
+   Root Canal: ALREADY THROUGH ROOT CANAL (2026-10-20). Checkup's shelf
+   (`.cur-shelf-*`), with a column for what Root Canal left on each set.
+   ========================================================================== */
+.rc-donelist { margin: 0 0 var(--sp-10); }
+.rc-donelist[hidden] { display: none; }
+.rc-donelist > .rc-done-shelf { margin-top: 0; }
+/* Its toggle, on the set card's first line: the Recording label's, or the
+   folded card's beside Change set. */
+.rc-choose-top { display: flex; flex-wrap: wrap; align-items: center;
+                 gap: var(--sp-4) var(--sp-8); }
+.rc-choose-top .section-label { margin: 0; }
+.rc-choose .rc-done-toggle { flex: none; padding-top: 2px; padding-bottom: 2px; }
+.rc-done-shelf .cur-shelf-row.rc-done-row,
+.rc-done-shelf .cur-shelf-cols.rc-done-cols {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.8fr)
+                         minmax(0, 160px) 112px auto;
+}
+.rc-done-shelf .rc-bulk-chips { margin: 0 0 var(--sp-6); }
+.rc-done-filter { margin-top: 2px; }
+.rc-done-filter .search-wrap { flex: 1; min-width: 0; }
+/* Wide enough for what it says: `.rc-in` is a 64 px number box. */
+.rc-done-filter .rc-in.rc-done-sort { flex: none; width: auto;
+                                      font-family: inherit; }
+.rc-done-count { margin: 0 0 2px; font-variant-numeric: tabular-nums; }
+/* A scroll box of its own: forty sets are forty rows, and the chooser and
+   the picture are under them. */
+.rc-done-list { max-height: min(440px, 52vh); overflow-y: auto; }
+.csr-did { display: flex; flex-wrap: wrap; gap: 3px var(--sp-4);
+           min-width: 0; }
+/* Wrapped, never cut: a nickname is how a version is told apart. */
+.csr-did .flagchip { white-space: normal; overflow-wrap: anywhere;
+                     line-height: 1.45; }
+.flagchip.rc-done-saved { color: var(--text-2); border: 1px solid var(--line); }
+.flagchip.rc-done-read.here { color: var(--ok); }
+.rc-done-row.on { background: var(--bg-3);
+                  box-shadow: inset 2px 0 0 var(--accent); }
+.rc-done-row .csr-when { display: flex; flex-wrap: wrap; gap: 2px var(--sp-4);
+                         align-items: center; }
+@media (max-width: 900px) {
+  .rc-done-shelf .cur-shelf-row.rc-done-row { grid-template-columns: 1fr auto; }
+  .rc-done-shelf .cur-shelf-cols.rc-done-cols { display: none; }
+  .csr-did { grid-column: 1; }
+}
+
+/* ==========================================================================
+   Root Canal: FOLDERS FOR SAVED POOLS (2026-10-20). One set of folders for
+   both shelves; a pool is dragged onto one, or moved from its row.
+   ========================================================================== */
+.rc-folders-bar { display: flex; flex-wrap: wrap; align-items: center;
+                  gap: var(--sp-6) var(--sp-8); }
+.rc-folders-bar .hint { margin: 0; }
+.rc-in.rc-folder-input { width: 240px; max-width: 100%; font-family: inherit; }
+.rc-folders { display: flex; flex-direction: column; gap: var(--sp-6); }
+.rc-folder { border: 1px solid var(--line); border-radius: var(--radius-sm);
+             background: var(--bg-2); padding: var(--sp-4) var(--sp-6);
+             transition: border-color .12s, background .12s; }
+.rc-folder.loose { border-style: dashed; background: transparent; }
+.rc-folder.rc-drop-on { border-color: var(--accent);
+                        background: var(--accent-soft); }
+.rc-folder-head { display: flex; flex-wrap: wrap; align-items: center;
+                  gap: var(--sp-4) var(--sp-6); min-height: 26px; }
+.rc-folder-head .spacer { flex: 1; }
+.rc-folder-twist { display: inline-flex; align-items: center;
+                   gap: var(--sp-6); border: 0; background: transparent;
+                   color: var(--text); font: inherit; font-size: var(--fs-125);
+                   font-weight: 600; cursor: pointer; padding: 2px 4px;
+                   border-radius: var(--r-4); text-align: left; }
+.rc-folder-twist:hover { background: var(--bg-3); }
+.rc-folder.loose .rc-folder-twist { color: var(--text-2); font-weight: 500; }
+.rc-bulk-ico.rc-folder-ico { width: 15px; height: 15px; color: var(--text-2); }
+.rc-folder-name { overflow-wrap: anywhere; }
+.flagchip.rc-folder-n { flex: none; }
+/* A folder shows its pools; only a very full one scrolls (a `.bm-list`
+   stops at 180 px, which cut a folder of eighteen off at six). */
+.rc-folder-body.bm-list { margin: var(--sp-4) 0 var(--sp-2);
+                          max-height: min(62vh, 620px); }
+.rc-folder-empty { margin: var(--sp-2) var(--sp-4); }
+.rc-shelf-row[draggable="true"] { cursor: grab; }
+.rc-shelf-row.rc-dragging { opacity: .45; }
+.rc-grip { color: var(--text-3); font-size: var(--fs-115); flex: none;
+           line-height: 1; user-select: none; }
+.rc-in.rc-move-folder, .rc-in.rc-save-folder { flex: none; width: auto;
+                                               font-family: inherit; }
+.rc-save-folder-row { display: flex; flex-wrap: wrap; align-items: center;
+                      gap: var(--sp-4) var(--sp-8); margin-top: var(--sp-8); }
+.rc-save-folder-row .section-label { margin: 0; }

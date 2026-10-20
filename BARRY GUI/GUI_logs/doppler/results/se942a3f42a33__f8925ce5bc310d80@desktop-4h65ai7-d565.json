@@ -1,39 +1,39 @@
 {
   "_at": {
-    "computed": "2026-10-15T14:58:22.325285+00:00",
-    "computed_on": "2026-10-15T14:58:22.325285+00:00",
-    "created": "2026-10-15T14:58:22.325285+00:00",
-    "duration_s": "2026-10-15T14:58:22.325285+00:00",
-    "gid": "2026-10-15T14:58:22.325285+00:00",
-    "n": "2026-10-15T14:58:22.325285+00:00",
-    "n_channels": "2026-10-15T14:58:22.325285+00:00",
-    "n_events": "2026-10-15T14:58:22.325285+00:00",
-    "ok": "2026-10-15T14:58:22.325285+00:00",
-    "params": "2026-10-15T14:58:22.325285+00:00",
-    "params_hash": "2026-10-15T14:58:22.325285+00:00",
-    "path_used": "2026-10-15T14:58:22.325285+00:00",
-    "per_channel": "2026-10-15T14:58:22.325285+00:00",
-    "profile": "2026-10-15T14:58:22.325285+00:00",
-    "request_hash": "2026-10-15T14:58:22.325285+00:00",
-    "session_label": "2026-10-15T14:58:22.325285+00:00",
-    "spec": "2026-10-15T14:58:22.325285+00:00",
-    "spec_channels": "2026-10-15T14:58:22.325285+00:00",
-    "spec_excluded": "2026-10-15T14:58:22.325285+00:00",
-    "time_basis": "2026-10-15T14:58:22.325285+00:00",
-    "tool": "2026-10-15T14:58:22.325285+00:00",
-    "units": "2026-10-15T14:58:22.325285+00:00",
-    "updated": "2026-10-15T14:58:22.325285+00:00",
-    "warnings": "2026-10-15T14:58:22.325285+00:00"
+    "computed": "2026-10-20T15:18:14.478166+00:00",
+    "computed_on": "2026-10-20T15:18:14.478166+00:00",
+    "created": "2026-10-20T15:18:14.478166+00:00",
+    "duration_s": "2026-10-20T15:18:14.478166+00:00",
+    "gid": "2026-10-20T15:18:14.478166+00:00",
+    "n": "2026-10-20T15:18:14.478166+00:00",
+    "n_channels": "2026-10-20T15:18:14.478166+00:00",
+    "n_events": "2026-10-20T15:18:14.478166+00:00",
+    "ok": "2026-10-20T15:18:14.478166+00:00",
+    "params": "2026-10-20T15:18:14.478166+00:00",
+    "params_hash": "2026-10-20T15:18:14.478166+00:00",
+    "path_used": "2026-10-20T15:18:14.478166+00:00",
+    "per_channel": "2026-10-20T15:18:14.478166+00:00",
+    "profile": "2026-10-20T15:18:14.478166+00:00",
+    "request_hash": "2026-10-20T15:18:14.478166+00:00",
+    "session_label": "2026-10-20T15:18:14.478166+00:00",
+    "spec": "2026-10-20T15:18:14.478166+00:00",
+    "spec_channels": "2026-10-20T15:18:14.478166+00:00",
+    "spec_excluded": "2026-10-20T15:18:14.478166+00:00",
+    "time_basis": "2026-10-20T15:18:14.478166+00:00",
+    "tool": "2026-10-20T15:18:14.478166+00:00",
+    "units": "2026-10-20T15:18:14.478166+00:00",
+    "updated": "2026-10-20T15:18:14.478166+00:00",
+    "warnings": "2026-10-20T15:18:14.478166+00:00"
   },
   "_shard": {
-    "at": "2026-10-15T14:58:22.325285+00:00",
+    "at": "2026-10-20T15:18:14.478166+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "computed": {
-    "app_version": "2026.10.14.8",
-    "at": "2026-10-15T10:58:22-04:00",
-    "commit": "8d0daabe",
+    "app_version": "2026.10.20.1",
+    "at": "2026-10-20T11:18:14-04:00",
+    "commit": "ec1d394a",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -41,20 +41,20 @@
     "user": "Shahriar Tafti"
   },
   "computed_on": {
-    "file": "result_35.json",
+    "file": "result_10.json",
     "host": "login.vacc.uvm.edu",
     "kind": "vacc",
     "max_rss": null,
     "netid": "sakhava1",
     "partition": "general",
-    "rid": "8482ba54aa63",
-    "slurm_id": "5859002_35",
-    "workspace": "/users/s/a/sakhava1/jarvis/runs/8482ba54aa63"
+    "rid": "63ea0ba02bae",
+    "slurm_id": "5960879_10",
+    "workspace": "/users/s/a/sakhava1/jarvis/runs/63ea0ba02bae"
   },
   "created": {
-    "app_version": "2026.10.14.8",
-    "at": "2026-10-15T10:58:22-04:00",
-    "commit": "8d0daabe",
+    "app_version": "2026.10.20.1",
+    "at": "2026-10-20T11:18:14-04:00",
+    "commit": "ec1d394a",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -202,7 +202,7 @@
       64
     ],
     "stamp": "peak",
-    "threshold": 1369.366513
+    "threshold": 1369.359736
   },
   "params_hash": "f8925ce5bc310d80",
   "path_used": "D:\\PTEN\\CTL\\PTENDKOM59\\m59s11jul8\\2025-07-09_12-19-54",
@@ -26722,9 +26722,9 @@
   "tool": "doppler",
   "units": "microvolts",
   "updated": {
-    "app_version": "2026.10.14.8",
-    "at": "2026-10-15T10:58:22-04:00",
-    "commit": "8d0daabe",
+    "app_version": "2026.10.20.1",
+    "at": "2026-10-20T11:18:14-04:00",
+    "commit": "ec1d394a",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -26736,6 +26736,7 @@
     "CSC38 took part in 100% of events, which is what a broken channel looks like rather than a busy one.",
     "CSC40 took part in 100% of events, which is what a broken channel looks like rather than a busy one.",
     "CSC42 took part in 100% of events, which is what a broken channel looks like rather than a busy one.",
-    "CSC44 took part in 98% of events, which is what a broken channel looks like rather than a busy one."
+    "CSC44 took part in 98% of events, which is what a broken channel looks like rather than a busy one.",
+    "1 segment read short of what the recording's records say (segment 9 by 43 ms; 43 ms in all). The missing stretch is held flat, so it cannot produce an event and every time after it is still on the recording's own clock."
   ]
 }

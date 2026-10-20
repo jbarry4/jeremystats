@@ -11,7 +11,7 @@
     "mouse": "2026-10-19T19:55:22.302340+00:00",
     "n": "2026-10-19T19:55:22.302340+00:00",
     "name": "2026-10-19T19:55:22.302340+00:00",
-    "note": "2026-10-19T19:55:22.302340+00:00",
+    "note": "2026-10-20T15:30:48.310518+00:00",
     "project": "2026-10-19T19:55:22.302340+00:00",
     "recording_start": "2026-10-19T19:55:22.302340+00:00",
     "schema": "2026-10-19T19:55:22.302340+00:00",
@@ -28,15 +28,21 @@
     "version": "2026-10-19T19:55:22.302340+00:00"
   },
   "_keys": {
+    "history": {
+      "{\"at\": \"2026-10-20T11:30:48-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": [\"note\"]}": [
+        "set",
+        "2026-10-20T15:30:48.310518+00:00"
+      ]
+    },
     "versions": {
       "d24e5051a765": [
         "set",
-        "2026-10-19T19:55:22.302340+00:00"
+        "2026-10-20T15:30:42.238386+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-19T19:55:22.302340+00:00",
+    "at": "2026-10-20T15:30:48.310518+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -2351,12 +2357,21 @@
     }
   ],
   "gid": "sba57286bdee3",
+  "history": [
+    {
+      "at": "2026-10-20T11:30:48-04:00",
+      "by": "Shahriar Tafti",
+      "changed": [
+        "note"
+      ]
+    }
+  ],
   "id": "9f269d624f95",
   "label_names": {},
   "mouse": 8,
   "n": 442,
   "name": "PTEN m8 s2 2024-02-06 \u2014 pooled (Incisor + Doppler, 20 ms)",
-  "note": "",
+  "note": "Archived 2026-10-20 by Shahriar Tafti: pooled from Doppler run c402f4a1ec4e, which was deleted because it was made before the gap fix (2026.10.19.6) on a recording in 6 segments, so events after a short segment could be stamped early. Doppler was rerun on this recording as 0d6a2f6efce8; pool again from that. Kept for the record, not to be used.",
   "project": "PTEN",
   "recording_start": "2024-02-06T22:52:07+00:00",
   "schema": 1,
@@ -2399,12 +2414,22 @@
   "version": 0,
   "versions": [
     {
+      "archived": true,
       "at": "2026-10-19T15:55:22-04:00",
       "by": "Rain Younger",
       "by_label": {
         "unspecified": 442
       },
       "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-20T11:30:40-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "from_id": null,
       "from_v": null,
       "gained": 0,

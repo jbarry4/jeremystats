@@ -11,7 +11,7 @@
     "mouse": "2026-10-19T19:55:00.300078+00:00",
     "n": "2026-10-19T19:55:00.300078+00:00",
     "name": "2026-10-19T19:55:00.300078+00:00",
-    "note": "2026-10-19T19:55:00.300078+00:00",
+    "note": "2026-10-20T15:31:44.701796+00:00",
     "project": "2026-10-19T19:55:00.300078+00:00",
     "recording_start": "2026-10-19T19:55:00.300078+00:00",
     "schema": "2026-10-19T19:55:00.300078+00:00",
@@ -28,15 +28,21 @@
     "version": "2026-10-19T19:55:00.300078+00:00"
   },
   "_keys": {
+    "history": {
+      "{\"at\": \"2026-10-20T11:31:44-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": [\"note\"]}": [
+        "set",
+        "2026-10-20T15:31:44.701796+00:00"
+      ]
+    },
     "versions": {
       "434356c9a413": [
         "set",
-        "2026-10-19T19:55:00.300078+00:00"
+        "2026-10-20T15:31:39.877917+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-19T19:55:00.300078+00:00",
+    "at": "2026-10-20T15:31:44.701796+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -4989,12 +4995,21 @@
     }
   ],
   "gid": "sef04f3b4eb4d",
+  "history": [
+    {
+      "at": "2026-10-20T11:31:44-04:00",
+      "by": "Shahriar Tafti",
+      "changed": [
+        "note"
+      ]
+    }
+  ],
   "id": "6949b9dc9581",
   "label_names": {},
   "mouse": 59,
   "n": 793,
   "name": "PTEN m59 s10 2025-07-07 \u2014 pooled (Incisor + Doppler, 20 ms)",
-  "note": "",
+  "note": "Archived 2026-10-20 by Shahriar Tafti: pooled from Doppler run ebd7e0c826c2, which was deleted because it was made before the gap fix (2026.10.19.6) on a recording in 3 segments, so events after a short segment could be stamped early. Doppler was rerun on this recording as 5d6f241f2cc2; pool again from that. Kept for the record, not to be used.",
   "project": "PTEN",
   "recording_start": null,
   "schema": 1,
@@ -5037,12 +5052,22 @@
   "version": 0,
   "versions": [
     {
+      "archived": true,
       "at": "2026-10-19T15:55:00-04:00",
       "by": "Rain Younger",
       "by_label": {
         "unspecified": 793
       },
       "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-20T11:31:39-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "from_id": null,
       "from_v": null,
       "gained": 0,

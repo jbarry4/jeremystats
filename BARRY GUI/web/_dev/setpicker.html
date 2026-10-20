@@ -66,8 +66,12 @@ const getj = (u) => fetch(u).then((r) => r.json());
     const sets = (cur.sets || []).filter((s) => s.kind === kind && !s.test);
     const open = sets.filter((s) => s.open && !s.archived);
     const down = sets.filter((s) => !s.open && !s.archived);
-    const fresh = (st.entries || []).filter((e) => !e.test);
+    // Archived runs are sent too, flagged, and drawn apart under a toggle
+    // at the bottom (2026-10-20), so the listed ones are the current ones.
+    const fresh = (st.entries || []).filter((e) => !e.test && !e.archived);
     const freshMine = fresh.filter((e) => mine.test(e.pipeline || ''));
+    const goneMine = (st.entries || []).filter((e) => !e.test && e.archived
+                                                     && mine.test(e.pipeline || ''));
     say('  note  ' + open.length + ' on the bench, ' + down.length + ' put down, '
         + fresh.length + ' banked and not started (' + freshMine.length
         + ' the bundle’s own)', 'note');
@@ -141,12 +145,39 @@ const getj = (u) => fetch(u).then((r) => r.json());
           freshBtn ? freshBtn.textContent : 'no toggle');
     if (freshBtn && !freshBtn.classList.contains('on')) freshBtn.click();
     await until(() => $('#curFresh'), 4000);
-    const freshRows = () => $$('#curFresh .sp-row.fresh');
+    const freshRows = () => $$('#curFresh .sp-row.fresh:not(.is-archived)');
+    const goneRows = () => $$('#curFresh .sp-row.fresh.is-archived');
     check('every one of the bundle’s own is listed',
           freshRows().length === freshMine.length,
           freshRows().length + ' of ' + freshMine.length);
     check('each can be started', freshRows().every((r) =>
       Array.from(r.querySelectorAll('button')).some((b) => /Start/.test(b.textContent))));
+    const goneBtn = $('#curFresh .arch-toggle');
+    if (goneMine.length) {
+      check('the archived ones are not among them, and one toggle at the '
+            + 'bottom says how many',
+            !goneRows().length && !!goneBtn
+              && new RegExp('\\b' + goneMine.length + ' archived').test(goneBtn.textContent),
+            goneBtn ? goneBtn.textContent : 'no toggle');
+      if (goneBtn) {
+        goneBtn.click();
+        await until(() => goneRows().length === goneMine.length, 4000);
+        check('opened, every archived one is there',
+              goneRows().length === goneMine.length,
+              goneRows().length + ' of ' + goneMine.length);
+        check('and none can be started: each says Archived, disabled',
+              goneRows().every((r) => {
+                const bs = Array.from(r.querySelectorAll('button'));
+                return !bs.some((b) => /Start/.test(b.textContent))
+                  && bs.some((b) => /Archived/.test(b.textContent) && b.disabled);
+              }));
+        const again = $('#curFresh .arch-toggle');
+        if (again) again.click();   // put it back the way it was
+        await until(() => !goneRows().length, 4000);
+      }
+    } else {
+      check('no archived toggle when nothing is archived', !goneBtn);
+    }
     const all = $$('#curFresh .seg button').find((b) => /Everything/.test(b.textContent));
     if (fresh.length > freshMine.length) {
       check('imports are one click away', !!all);

@@ -15,6 +15,196 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.20.4 - Root Canal: every set already done, pools in folders, and the dot you pick is the one Xplorefinder shows
+
+**Restart Jarvis on every machine.** The server has a new list of the sets
+Root Canal has done, and a read that only opens a cached one.
+
+### Added
+
+- **"Already through Root Canal", in Single.** A list of every set Root
+  Canal has been run on, built like Checkup's shelf:
+  - one row per set, with what Root Canal left on it: saved versions (the
+    newest by its nickname), a banked call (its version and its DS and IED
+    counts), and a read, here or on another machine;
+  - who last touched it, on which machine, and when, with its shared
+    mark;
+  - a search, an order (last touched, recording, most events), and chips
+    with counts: what was done (saved, banked, read but nothing kept, read
+    on this machine) and the project, mouse type, group, subgroup and
+    condition;
+  - **Open**, which puts the set in front of you the way it was left. A
+    saved version opens as saved. A read on this machine opens at once.
+    It never starts a new read: when its read is on another machine, it
+    says so.
+  The list is open while you choose a set and folds itself to one line,
+  beside Change set, once a picture is up.
+- **Folders for saved pools and pools of pools.**
+  - Every pool saved so far is in **Preliminary analysis**.
+  - **New folder** makes one. A pool is dragged onto a folder to file it,
+    or moved with the folder menu on its row. "Not in a folder" takes one
+    out.
+  - Folders can be renamed, folded shut and deleted. Deleting a folder
+    deletes no pool: its pools are just out of it.
+  - The same folders are on both shelves.
+  - A new pool is filed as it is saved: the save dialog asks which folder.
+  - Folders are shared, and merged per pool, so two people filing
+    different pools both keep theirs.
+- **Open a dot in Xplorefinder from the 3D view.** Double-click a dot, or
+  pick it and press **Open in Xplorefinder** in the 3D view's header.
+  Double-click empty space still resets the view. This works in the flat
+  views too.
+
+### Fixed
+
+- **Xplorefinder could show the wrong event.**
+  - In Pooled, the picked dot was never found in the window's list. The
+    window was not moved to it, and its mark said the recording's first
+    event, so a second dot opened showed the first one.
+  - A dot from another recording (another pool member, or a set picked
+    since) had its marks and its time put on whatever recording the
+    window already showed. The window is now sent to the dot's own
+    recording, at the dot.
+  - A dot picked while the window was still opening the last one was
+    dropped. The window now ends on the newest pick.
+  - Opening a dot waited for the recording registry to be read again
+    whenever a minute had passed. The rows already read are used first.
+- **Pooled's "Open in Xplorefinder" was greyed out** for a member whose
+  read is on another machine, even when its recording is on this one. It
+  now depends only on whether the recording is reachable.
+
+### Checked
+
+- `tools/check_rootcanal.py`: 451 ok, 0 fail. New checks:
+  - a cached-only read starts nothing;
+  - a set is listed as done once read, and its saved versions are
+    listed.
+- New browser tests, all on real data, with every write held:
+  - `_dev/rootcanaldone.html` (24): the list, its counts, chips, search
+    and order, and Open on a set read here and on one read elsewhere.
+  - `_dev/rootcanalfolders.html` (32): Preliminary analysis, making,
+    dragging, moving, renaming, folding, deleting, both shelves, and a
+    new pool filed where its dialog said.
+  - `_dev/rootcanalxplore.html` (14): with a stand-in recording window,
+    the right recording, time and mark for a picked dot, a
+    double-clicked dot, a dot of another pool member, two picks in a
+    row, and a recording not on this machine.
+- To test the tests, each fix was undone on purpose: 5, 3 and 6 checks
+  failed. The files were then restored byte for byte.
+- rootcanal (356), rootcanalpool (294), rootcanalborder (103) and
+  confluence (56) all pass.
+
+---
+
+## 2026.10.20.3 - VACC: one job per question, and signing in lands first time; archived things sink
+
+**Run Setup once, then restart Jarvis.** The changes are on the server, and
+the accounts have moved into Setup.
+
+### Changed
+
+- **The Supabase key and the VACC sign-in are asked for in Setup, not when
+  Jarvis is activated.** `Setup Windows.bat` / `Setup Mac.command` has a new
+  step 6, *Accounts*. It shows how each account stands, offers to change
+  it, and every question can be skipped. Activating Jarvis now just opens
+  it, with one line each saying how the accounts stand.
+- **Signing in to VACC lands the first time.** Setup and the app now share
+  one sign-in, and the app opens signed in, with VACC Mode on. It used to
+  take two tries for three reasons:
+  - the console sign-in never made a key, so on a fresh computer it could
+    not work;
+  - the new key was tested with one connection straight after it was
+    installed. `login.vacc.uvm.edu` is four login nodes, and one that has
+    not yet seen the new key says no. The test is now retried, and the
+    install and the test go to the same node;
+  - a sign-in did not turn VACC Mode on, so the app looked signed out.
+- **The same VACC job is never submitted twice.** "The same" means the same
+  tool, recording(s) and settings.
+  - A second click, a second tab, or a second computer asking while the
+    first is queued or running is refused with a sentence saying where the
+    running job is. A batch skips those members and names them on their
+    rows.
+  - Already landed still opens the answer, as before.
+  - Every submit takes a lock on the cluster in the same connection as its
+    `sbatch`. Jobs now carry a Slurm comment naming the tool and the
+    computer.
+- **Archived things sink.** In every list that has archived things in it,
+  they go to the bottom, behind one *Show N archived* toggle. They are
+  never mixed in among current ones and never dropped from view. This
+  covers:
+  - the Event Bank's list, and an entry's version history;
+  - Junction's entries;
+  - Spotter's and Panning's *Start from a banked run* (archived runs are
+    shown and say why they cannot be started);
+  - the workbench shelf;
+  - the people in Profile;
+  - the Explorer's sections, and Misc's archived scripts.
+
+### Fixed
+
+- **A long producer no longer squeezes a bank entry's name to one word a
+  line.** The type and the producer now share the row's second line.
+- **An entry's note reads as a sentence** under its tags, not as an
+  upper-case pill, and an archived entry carries an *archived* tag.
+- **With VACC Mode on, the lit wiring dims over lists, cards, tables and
+  traces.** It stays lit over the rail and the gutters, so it no longer
+  lights up across the names and numbers under the pointer.
+
+## 2026.10.20.2 - An archived bank entry says so everywhere, the Data Bank included
+
+**Restart Jarvis.** The change is on the server.
+
+### Changed
+
+- **Archiving every version of a banked entry now puts the entry away.**
+  The Event Bank archives versions, not entries, so an entry whose every
+  version is archived counts as archived. Unarchive in its history brings it
+  back.
+  - The lists that offer entries to start from still send it, marked
+    archived and placed after every current entry. These lists are
+    Junction's, Spotter's and Panning's *Start from a banked run*, and Root
+    Canal's. The newest entry a list offers is always a current one.
+  - Pooling the same inputs again makes a new pool rather than handing back
+    the archived one.
+- **The Data Bank says what is archived.** An archived entry's files are
+  named `ARCHIVED - <type> - <name>.csv` / `.json`, and its JSON says
+  `"archived": true`. `_index.csv` has two new columns at the end:
+  - `archived`, yes or no;
+  - `note`, the entry's note, which says why.
+- **A Doppler run from before the gap fix is not an answer on a recording in
+  pieces.** This means a run made before 2026.10.19.6 on a recording the
+  health check found in more than one segment. It stays on the landed list
+  and can still be opened.
+  - The landed list marks it *before the gap fix*.
+  - Its report will not bank it, and says why.
+  - Many counts the recording as not run, and a batch runs it again.
+
+  A recording nobody has checked for gaps is not judged.
+- **Doppler no longer shows an earlier run's events under a later run.** The
+  run's key is the question, so asking the same question again files the new
+  answer under the old key. Another computer's cache could still hold the old
+  answer's events and show them. A cached run older than the run on record
+  is now fetched again from the cluster.
+
+### Data
+
+- **Everything built from the Doppler runs made before the gap fix
+  (2026.10.19.6) on recordings in more than one segment is archived.** Those
+  14 runs, on 13 recordings, were deleted and Doppler was rerun on each.
+  Archived:
+  - the 13 Junction pools made from them, every version. This includes PTEN
+    m60 s1's 5 ms pool and the Panning decisions banked into it;
+  - the Spotter set on KCNT1 m1606 s1, which had nothing decided.
+
+  Each pool's note names the run it came from and the new run to pool from
+  instead.
+
+  Archives, deletions and notes reach other computers through a commit and a
+  pull, not through the cloud sync, which carries neither an archived
+  version nor a removed entry. Rain Younger's Panning and Spotter sets on
+  PTEN m60 s1, and the Spotter set on PTEN m8 s2, are on Rain's computer
+  only. Archive them there.
+
 ## 2026.10.20.1 - Braces: every spike seen, and the arrows stop only where a decision is needed
 
 A page reload is enough: nothing on the server changed.

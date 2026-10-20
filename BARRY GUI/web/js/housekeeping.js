@@ -914,7 +914,14 @@ BARRY.views.housekeeping = (function () {
       fact('First seen', (s.created || {}).at || '—'),
       fact('Last touched', (s.updated || {}).at || '—'),
       fact('Last found', (s.last_seen || {}).at || 'never by a scan'),
-      fact('Channels', s.n_channels || '—'),
+      // The copy this computer opens, when it has read it; every count on
+      // record when the copies disagree (registry per-copy facts, 2026-10-20).
+      fact('Channels', (s.n_channels_here || s.n_channels || '—')
+        + ((s.copy_channels || []).length > 1
+          ? '  (copies disagree: ' + s.copy_channels.map((c) => c.n + ' in '
+              + c.paths.length + ' cop' + (c.paths.length === 1 ? 'y' : 'ies'))
+              .join(', ') + ')'
+          : '')),
     ]));
 
     // ---- project --------------------------------------------------------

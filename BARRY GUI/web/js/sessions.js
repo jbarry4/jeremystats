@@ -230,7 +230,12 @@ BARRY.views.sessions = (function () {
         run: r.run || null,
         repeat: r.repeat || null,
       },
-      channels: r.n_channels || 0,
+      /* The copy this machine opens, when it has read it (the registry's
+         per-copy facts, 2026-10-20) -- the record's one stored count can
+         come from another copy entirely. */
+      channels: r.n_channels_here || r.n_channels || 0,
+      channels_here: r.n_channels_here || null,
+      copy_channels: r.copy_channels || null,
       fs: r.fs || null,
       duration_s: r.duration_s || 0,
       converted: !!r.converted,
@@ -1585,6 +1590,27 @@ BARRY.views.sessions = (function () {
     return (s.here || []).length > 0 || !!s._reachable;
   }
 
+  /* When the copies of a recording disagree about how many channels they
+     hold, the card says so beside the count it shows (2026-10-20): "128 in
+     another copy" under a card reading 64 ch. The title names every count
+     and the paths that hold it, so which copy is which can be checked. */
+  function copyChannelsChip(s) {
+    const all = s.copy_channels || [];
+    if (all.length < 2) return null;
+    const shown = s.channels || 0;
+    const others = all.filter((c) => c.n !== shown);
+    if (!others.length) return null;
+    return el('span', {
+      class: 'flagchip warn copy-ch',
+      title: (s.channels_here ? 'The copy this computer opens holds '
+                                + s.channels_here + ' channels.\n'
+                              : 'This computer has not read its copy yet; '
+                                + 'run Health to count its channels.\n')
+        + all.map((c) => c.n + ' ch: ' + c.paths.join(', ')).join('\n'),
+      text: others.map((c) => c.n).join(' / ') + ' in another copy',
+    });
+  }
+
   function sessionCard(s) {
     const i = s.identity;
     const badN = s.stored ? (s.stored.bad_channels || []).length : 0;
@@ -1659,6 +1685,7 @@ BARRY.views.sessions = (function () {
         + (s.fs ? Math.round(s.fs) + ' Hz · ' : '')
         + (s.duration_s ? fmtTime(s.duration_s) : '') }),
       el('div', { class: 'sc-flags' }, [
+        copyChannelsChip(s),
         /* Which hippocampus. On the card rather than behind a click,
            because pooling a left and a right recording without noticing is
            the kind of mistake that survives into a figure. */

@@ -183,12 +183,28 @@ BARRY.incisor = (function () {
   async function scan(force, where) {
     if (!q.path || job) return;
     let started;
+    /* One submit per click (ui.submitOnce): the button used to stay live
+       while the server pushed code over ssh, and a second click in those
+       seconds submitted a second job. A duplicate the server refuses is
+       followed, not reported as a failure (backend/flights.py). */
+    const key = 'incisor:' + q.path + ':' + (where || 'here');
     try {
-      started = await apiPost('/api/incisor/scan',
-                              body(where ? { where: where } : null));
+      const p = BARRY.ui.submitOnce(key, (sid) => apiPost('/api/incisor/scan',
+        body(Object.assign(where ? { where: where } : {},
+                           { submit_id: sid }))));
+      paint();
+      started = await p;
     } catch (e) {
-      toast(e.message, 'err', 9000);
-      return;
+      const dup = BARRY.ui.duplicateOf(e);
+      if (dup && dup.job_id) {
+        toast(BARRY.ui.duplicateWords(dup), null, 7000);
+        started = { job: { id: dup.job_id, status: 'running' } };
+      } else {
+        toast(dup ? BARRY.ui.duplicateWords(dup) : e.message,
+              dup ? 'warn' : 'err', 9000);
+        paint();
+        return;
+      }
     }
     // A result already in hand, from either machine. The cluster's answers
     // go into the same cache under the same key, so this branch does not
@@ -847,9 +863,12 @@ BARRY.incisor = (function () {
     const gids = Array.from(picked);
     let started;
     try {
-      started = await apiPost('/api/incisor/batch',
-                              Object.assign({ gids, force: !!force },
-                                            paramsBody()));
+      // One batch per click (ui.submitOnce); members already running on
+      // the VACC are skipped by the server and named on their rows.
+      started = await BARRY.ui.submitOnce('incisor:batch', (sid) =>
+        apiPost('/api/incisor/batch',
+                Object.assign({ gids, force: !!force, submit_id: sid },
+                              paramsBody())));
     } catch (e) {
       toast(e.message, 'err', 9000);
       return;
@@ -1203,8 +1222,13 @@ BARRY.incisor = (function () {
     /* One primary, for where the bar says this runs. */
     box.appendChild(el('div', { class: 'tk-actions' }, [
       q.where === 'vacc' ? vaccButton() : el('button', {
-        class: 'btn', text: job ? 'Scanning…' : 'Scan',
-        disabled: job ? 'disabled' : null, onclick: scan,
+        class: 'btn',
+        text: job ? 'Scanning…'
+          : BARRY.ui.isSending('incisor:' + q.path + ':here') ? 'Submitting…'
+          : 'Scan',
+        disabled: (job || BARRY.ui.isSending('incisor:' + q.path + ':here'))
+          ? 'disabled' : null,
+        onclick: () => scan(false),
       }),
       el('span', { class: 'hint quiet',
         text: est.cached ? 'Already scanned — this will be instant.'
@@ -1238,10 +1262,11 @@ BARRY.incisor = (function () {
   function vaccButton() {
     if (!vaccOn()) return null;
     const v = (est && est.vacc) || {};
-    const busy = !!job;
+    const sendingNow = BARRY.ui.isSending('incisor:' + q.path + ':vacc');
+    const busy = !!job || sendingNow;
     return el('button', {
       class: 'btn',
-      text: busy ? 'Scanning…' : 'Scan on VACC',
+      text: job ? 'Scanning…' : sendingNow ? 'Submitting…' : 'Scan on VACC',
       // Disabled with the reason ON it rather than hidden. A control that
       // vanishes teaches nothing; `canOpen` in sessions.js carries the same
       // note about reading an absent answer as a "no".

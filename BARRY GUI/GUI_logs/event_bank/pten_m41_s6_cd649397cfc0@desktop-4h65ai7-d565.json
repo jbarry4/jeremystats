@@ -11,7 +11,7 @@
     "mouse": "2026-10-19T19:54:40.677920+00:00",
     "n": "2026-10-19T19:54:40.677920+00:00",
     "name": "2026-10-19T19:54:40.677920+00:00",
-    "note": "2026-10-19T19:54:40.677920+00:00",
+    "note": "2026-10-20T15:32:27.304729+00:00",
     "project": "2026-10-19T19:54:40.677920+00:00",
     "recording_start": "2026-10-19T19:54:40.677920+00:00",
     "schema": "2026-10-19T19:54:40.677920+00:00",
@@ -28,15 +28,21 @@
     "version": "2026-10-19T19:54:40.677920+00:00"
   },
   "_keys": {
+    "history": {
+      "{\"at\": \"2026-10-20T11:32:26-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": [\"note\"]}": [
+        "set",
+        "2026-10-20T15:32:27.304729+00:00"
+      ]
+    },
     "versions": {
       "53d511f62a4d": [
         "set",
-        "2026-10-19T19:54:40.677920+00:00"
+        "2026-10-20T15:32:21.250835+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-19T19:54:40.677920+00:00",
+    "at": "2026-10-20T15:32:27.304729+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -3767,12 +3773,21 @@
     }
   ],
   "gid": "se4e5efda72ba",
+  "history": [
+    {
+      "at": "2026-10-20T11:32:26-04:00",
+      "by": "Shahriar Tafti",
+      "changed": [
+        "note"
+      ]
+    }
+  ],
   "id": "cd649397cfc0",
   "label_names": {},
   "mouse": 41,
   "n": 820,
   "name": "PTEN_DKO m41 s6 2024-11-26 \u2014 pooled (Incisor + Doppler, 20 ms)",
-  "note": "",
+  "note": "Archived 2026-10-20 by Shahriar Tafti: pooled from Doppler run 148da87e6da1, which was deleted because it was made before the gap fix (2026.10.19.6) on a recording in 13 segments, so events after a short segment could be stamped early. Doppler was rerun on this recording as 1ad30b64bc16; pool again from that. Kept for the record, not to be used.",
   "project": "PTEN",
   "recording_start": "2024-11-26T21:16:02+00:00",
   "schema": 1,
@@ -3815,12 +3830,22 @@
   "version": 0,
   "versions": [
     {
+      "archived": true,
       "at": "2026-10-19T15:54:40-04:00",
       "by": "Rain Younger",
       "by_label": {
         "unspecified": 820
       },
       "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-20T11:32:20-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "from_id": null,
       "from_v": null,
       "gained": 0,

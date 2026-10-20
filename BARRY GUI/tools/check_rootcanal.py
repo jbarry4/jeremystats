@@ -878,6 +878,19 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
     ck("a fit before any read is refused with a sentence, 400",
        r.status_code == 400 and not r.get_json()["ok"]
        and "Read it first" in r.get_json()["error"], r.get_json())
+    # Opening a set from the list of the ones done (2026-10-20) asks for a
+    # cached read only: never a new one.
+    r = c.post("/api/rootcanal/read", json={"entry_id": "rcchk000001",
+                                            "only_cached": True})
+    oc = r.get_json()
+    ck("a cached-only read with nothing cached starts nothing, and says so",
+       r.status_code == 200 and oc["ok"] and oc["cached"] is False
+       and oc["job"] is None and oc.get("not_here") is True, oc)
+    r = c.get("/api/rootcanal/done?type=ds")
+    ck("and before any read the set is not among the ones done",
+       r.status_code == 200 and not any(
+           x["entry_id"] == "rcchk000001" for x in r.get_json()["sets"]),
+       r.get_json().get("error"))
     r = c.post("/api/rootcanal/read", json={"entry_id": "rcchk000001"})
     js = r.get_json()
     ck("a read starts a job", r.status_code == 200 and js["ok"]
@@ -898,6 +911,25 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
     ck("asked again, it is cached, with no job",
        js2["cached"] is True and js2["job"] is None
        and js2["read"] == js["read"], js2)
+    r = c.post("/api/rootcanal/read", json={"entry_id": "rcchk000001",
+                                            "only_cached": True})
+    ck("and asked cached-only, it is the same read",
+       r.get_json()["cached"] is True and r.get_json()["read"] == js["read"],
+       r.get_json())
+    r = c.get("/api/rootcanal/done?type=ds")
+    dn = [x for x in (r.get_json().get("sets") or [])
+          if x["entry_id"] == "rcchk000001"]
+    ck("read, the set is listed among the ones Root Canal has done: its read "
+       "here, nothing saved or banked yet, and the read as the last thing",
+       r.status_code == 200 and len(dn) == 1
+       and (dn[0].get("reads") or {}).get("here", 0) >= 1
+       and dn[0].get("saved") is None and dn[0].get("banked") is None
+       and dn[0]["last"]["what"] == "read"
+       and dn[0]["session_label"] == "CHECK m0 s0",
+       dn or r.get_json().get("error"))
+    ck("and a pooled-type list does not list it",
+       not any(x["entry_id"] == "rcchk000001" for x in
+               c.get("/api/rootcanal/done?type=pooled").get_json()["sets"]))
     r = c.post("/api/rootcanal/fit", json={"entry_id": "rcchk000001"})
     fit = r.get_json()
     ck("the fit answers in the contract's shape",
@@ -1768,6 +1800,15 @@ def _cluster_stats_routes(A, c, unbanked):
     pay2 = A.ARTIFACTS.payload(sv2["artifact_id"], sv2["version"])
     ck("an answer a browser sends is not saved: only the server's, for that "
        "picture", sv2.get("ok") and "stats" not in pay2, pay2.get("stats"))
+    dn = [x for x in (c.get("/api/rootcanal/done?type=ds").get_json()
+                      .get("sets") or []) if x["entry_id"] == body["entry_id"]]
+    sv_ = (dn[0].get("saved") or {}) if dn else {}
+    ck("kept as versions, the list of sets done says so: how many, the "
+       "newest by its nickname, and saving as the last thing done",
+       len(dn) == 1 and sv_.get("artifact_id") == sv2["artifact_id"]
+       and sv_.get("n_versions", 0) >= 2
+       and (sv_.get("last") or {}).get("nickname") == "untested"
+       and dn[0]["last"]["what"] == "saved", dn)
 
     # ENOUGH EVENTS FOR AN ANSWER: saved singles of 300 events whose shape
     # is known -- two blobs, and one cloud -- read on another machine, so

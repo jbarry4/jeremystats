@@ -372,6 +372,7 @@ BARRY.rootcanal = (function () {
     }
     render();
     if (viewMode === 'pooled') { await loadPool(); return; }
+    loadDone();
     if (!cands) await loadCandidates();
   }
 
@@ -386,6 +387,8 @@ BARRY.rootcanal = (function () {
                         String(e && e.stack));
       cands = [];
     }
+    // What was done is asked again whenever the sets are: a bank, a save.
+    if (doneQ.rows) loadDone(true);
     if (!q.entry && cands.length) {
       const first = cands.find((c) => c.readable !== false && c.aligned)
                  || cands.find((c) => c.readable !== false);
@@ -464,6 +467,7 @@ BARRY.rootcanal = (function () {
 
   /* Everything that belongs to one read, dropped together. */
   function forget() {
+    doneQ.pinned = null;
     q.read = null;
     q.flips = [];
     q.centres = null;
@@ -536,6 +540,7 @@ BARRY.rootcanal = (function () {
       job = null;
       q.read = hash;
       chooserOpen = false;
+      loadDone(true);
       render();
       refit();
     }, 700);
@@ -641,7 +646,7 @@ BARRY.rootcanal = (function () {
     }
     render();
     loadEvent();
-    pushXplore();
+    followXplore();
     if (bankAfterFit) {
       bankAfterFit = false;
       // After the pictures are drawn, so the figures filed are real.
@@ -959,6 +964,14 @@ BARRY.rootcanal = (function () {
   function paint_() {
     const box = host();
     if (!box) return;
+    /* The list of sets already done is one node kept across these rebuilds;
+       emptying the page takes the caret out of its search and its list
+       back to the top. Both are put back once it is in again. */
+    const act = document.activeElement;
+    const keep = doneNode && act && doneNode.contains(act) ? {
+      el: act, a: act.selectionStart, b: act.selectionEnd } : null;
+    const dl = doneNode && doneNode.querySelector('.rc-done-list');
+    const dScroll = dl ? dl.scrollTop : 0;
     box.innerHTML = '';
     box.appendChild(intro());
     box.appendChild(viewBar());
@@ -967,6 +980,13 @@ BARRY.rootcanal = (function () {
     if (!cands.length) { box.appendChild(nothing()); return; }
     box.appendChild(modeSwitch());
     if (bulk.on) { box.appendChild(bulkCard()); return; }
+    box.appendChild(doneCard());
+    if (keep && keep.el.isConnected && document.activeElement !== keep.el) {
+      keep.el.focus();
+      try { if (keep.a != null) keep.el.setSelectionRange(keep.a, keep.b); } catch (e) { /* not text */ }
+    }
+    const dl2 = doneNode.querySelector('.rc-done-list');
+    if (dl2 && dScroll) dl2.scrollTop = dScroll;
     box.appendChild(chooser());
     if (job) { box.appendChild(progress()); return; }
     if (!q.read) { box.appendChild(readCard()); return; }
@@ -1081,6 +1101,455 @@ BARRY.rootcanal = (function () {
     ].filter(Boolean));
   }
 
+  /* ==================================================================
+     ALREADY THROUGH ROOT CANAL (2026-10-20)
+
+     "Root Canal in the single view needs a way to see every session with
+     Root Canal already ran. Similar to the Checkup view." Checkup's shelf,
+     in Checkup's own classes: a toggle saying how many, a search, chips
+     with counts, named columns, and a row per set -- what Root Canal left
+     on it (versions kept, a banked call, a read and where it is), whose
+     hands it was last in and when, and whether it is shared.
+
+     Open puts it in front of you the way it was left: its newest saved
+     version as saved; else its read, if the read is on this machine, at
+     once (never a new read -- the server is asked for a cached one only);
+     else it is picked, and the toast says where its read is. The shelf
+     folds itself once something is open, to one line.
+
+     Kept as one node across the page's redraws (the page is rebuilt
+     whole), its parts through `BARRY.ui.sections`, so a press on a chip or
+     a word typed changes the list and nothing else.
+     ================================================================== */
+  /* `pinned` is a press on the toggle; until there is one the list is open
+     while a set is being chosen and folds itself to its line once a set's
+     picture is up -- the picture's own controls stay on the first screen.
+     Picking another set hands it back (`forget`). */
+  const doneQ = { pinned: null, filt: { q: '' }, show: 'all', sort: 'recent',
+                  rows: null, err: null, ctx: null, loading: false, rev: 0 };
+  const doneOpen = () => (doneQ.pinned != null ? doneQ.pinned
+                                                : !(q.read || job));
+  let doneNode = null;
+
+  async function loadDone(force) {
+    const ctx = inConfluence() ? 'pooled' : 'ds';
+    /* Asked again while a read of it is out (a bank, a save): read again
+       once that one lands, or the list stays one change behind. */
+    if (doneQ.loading) { if (force || doneQ.ctx !== ctx) doneQ.again = true; return; }
+    if (doneQ.rows && doneQ.ctx === ctx && !force) return;
+    doneQ.loading = true;
+    doneQ.again = false;
+    try {
+      const got = await api('/api/rootcanal/done?type=' + ctx);
+      doneQ.rows = got.sets || [];
+      doneQ.err = null;
+    } catch (e) {
+      doneQ.rows = doneQ.rows || [];
+      doneQ.err = e.message;
+    }
+    doneQ.ctx = ctx;
+    doneQ.loading = false;
+    doneQ.rev += 1;
+    if (doneQ.again) { doneQ.again = false; loadDone(true); }
+    if (viewMode !== 'pooled' && !bulk.on) {
+      if (doneNode && doneNode.isConnected) doneFill();
+      else render();
+    }
+  }
+
+  /* Each mark stroked on `currentColor` at 16 px, as the Many view's are. */
+  const DONE_ICO = {
+    all: 'M2.5 4h11M2.5 8h11M2.5 12h11',
+    saved: 'M4 1.8h8v12.4l-4-3-4 3z',
+    banked: 'M1.8 6L8 2.3 14.2 6M3.2 6.6v5.6M6.4 6.6v5.6M9.6 6.6v5.6M12.8 '
+            + '6.6v5.6M1.8 13.4h12.4',
+    read: 'M8 4.2C6.6 3 4.6 2.6 2 2.8v9.6c2.6-.2 4.6.2 6 1.4 1.4-1.2 3.4-1.6 '
+          + '6-1.4V2.8c-2.6-.2-4.6.2-6 1.4zM8 4.2v9.6',
+    here: 'M2 3h12v8H2zM5.5 14h5M8 11v3',
+    tick: 'M3.5 8.5l3 3 6-7',
+  };
+  const doneIco = (d, extra) => el('svg', {
+    class: 'rc-bulk-ico' + (extra ? ' ' + extra : ''), viewBox: '0 0 16 16',
+    'aria-hidden': 'true', html: '<path d="' + d + '" />' });
+
+  /* What was done, as a chip: [id, words, test, mark, what it means]. */
+  const DONE_SHOW = [
+    ['all', 'All', () => true, DONE_ICO.all,
+     'Every set Root Canal has been run on.'],
+    ['saved', 'Saved versions', (r) => !!r.saved, DONE_ICO.saved,
+     'Kept as versions: they reopen, and pool, on any machine.'],
+    ['banked', 'Banked', (r) => !!r.banked, DONE_ICO.banked,
+     'Its call is in the Event Bank, as the set’s next version.'],
+    ['readonly', 'Read, nothing kept',
+     (r) => !!r.reads && !r.saved && !r.banked, DONE_ICO.read,
+     'Read, and neither saved as a version nor banked yet.'],
+    ['here', 'Read on this machine', (r) => !!(r.reads && r.reads.here),
+     DONE_ICO.here, 'Its read is on this computer, so it opens at once.'],
+  ];
+  const DONE_SORTS = [['recent', 'Last touched'], ['name', 'Recording'],
+                      ['events', 'Most events']];
+  const DONE_DID = { read: 'read', banked: 'banked', saved: 'saved' };
+
+  const doneLabel = (r) => r.session_label || r.gid || r.entry_id;
+  /* The entry's own name less the recording it repeats, as the folded
+     chooser says it. */
+  function doneSetName(r) {
+    const title = doneLabel(r);
+    let nm = String(r.name || '');
+    if (nm.indexOf(title) === 0 && nm.length > title.length) {
+      nm = nm.slice(title.length).replace(/^\s*[·:–-]\s*/, '');
+    }
+    return nm || 'set ' + r.entry_id;
+  }
+
+  function doneHay(r) {
+    const sv = r.saved && r.saved.last;
+    const b = r.banked && r.banked.last;
+    const last = r.last || {};
+    return [doneLabel(r), r.name, r.project, r.mouse_type, r.group,
+            r.subgroup, r.condition,
+            r.mouse != null ? 'm' + r.mouse : '',
+            r.session != null ? 's' + r.session : '',
+            sv && sv.nickname, sv && sv.filter, sv && sv.by, sv && sv.machine,
+            b && b.by, b && b.machine, last.by, last.machine,
+            ((r.reads && r.reads.machines) || []).join(' '),
+            r.saved ? 'saved version' : '', r.banked ? 'banked' : '',
+            r.reads ? 'read' : '']
+      .filter(Boolean).join(' ').toLowerCase();
+  }
+
+  function doneShown(r) {
+    const sh = DONE_SHOW.find((x) => x[0] === doneQ.show) || DONE_SHOW[0];
+    if (!sh[2](r)) return false;
+    for (const [key, , get] of BULK_CATS) {
+      const want = doneQ.filt[key] || [];
+      if (want.length && want.indexOf(String(get(r))) < 0) return false;
+    }
+    const words = String(doneQ.filt.q || '').trim().toLowerCase()
+      .split(/\s+/).filter(Boolean);
+    if (!words.length) return true;
+    const hay = doneHay(r);
+    return words.every((w) => hay.indexOf(w) >= 0);
+  }
+
+  function doneOrder(a, b) {
+    if (doneQ.sort === 'name') {
+      return bulkOrder(Object.assign({ label: doneLabel(a) }, a),
+                       Object.assign({ label: doneLabel(b) }, b));
+    }
+    if (doneQ.sort === 'events') {
+      return (b.n || 0) - (a.n || 0) || natural(doneLabel(a), doneLabel(b));
+    }
+    return ((b.last || {}).t || 0) - ((a.last || {}).t || 0);
+  }
+
+  /* The list itself, above the set card; folded, it is nothing at all --
+     its toggle sits on the card's own first line (`doneToggle`), so a set's
+     picture is not pushed a line further down by it (the controls stay on
+     the first screen). */
+  function doneCard() {
+    if (!doneNode) {
+      doneNode = el('div', { class: 'rc-donelist' }, [
+        el('div', { class: 'cur-shelf rc-done-shelf' }),
+      ]);
+    }
+    doneFill();
+    return doneNode;
+  }
+
+  function doneToggle() {
+    const n = doneQ.rows && doneQ.ctx === (inConfluence() ? 'pooled' : 'ds')
+      ? doneQ.rows.length : null;
+    const open = doneOpen();
+    return el('button', {
+      type: 'button',
+      class: 'cur-shelf-toggle rc-done-toggle' + (open ? ' on' : ''),
+      'aria-expanded': open ? 'true' : 'false',
+      title: open ? 'Fold the list away.'
+        : 'Every set Root Canal has been run on: read, kept as versions, or '
+          + 'banked -- here or on another machine.',
+      text: (open ? '▾  ' : '▸  ') + 'Already through Root Canal'
+        + (n == null ? '  ·  reading…'
+           : '  ·  ' + n + ' set' + (n === 1 ? '' : 's')),
+      onclick: () => { doneQ.pinned = !open; doneFill(); },
+    });
+  }
+
+  function doneFill() {
+    for (const t of Array.from(document.querySelectorAll('.rc-done-toggle'))) {
+      t.replaceWith(doneToggle());
+    }
+    if (!doneNode) return;
+    const shelf = doneNode.querySelector('.rc-done-shelf');
+    const open = doneOpen();
+    doneNode.hidden = !open;
+    shelf.hidden = !open;
+    if (open) BARRY.ui.sections(shelf, doneParts());
+  }
+
+  function doneParts() {
+    // Another bundle's list is never shown under this one's name.
+    const rows = doneQ.ctx === (inConfluence() ? 'pooled' : 'ds')
+      ? doneQ.rows : null;
+    const say = (key, text, cls) => [{ key: key, enter: false, sig: text,
+      build: () => el('p', { class: 'hint' + (cls ? ' ' + cls : ''),
+                             text: text }) }];
+    if (!rows) return say('wait', 'Reading what Root Canal has done…');
+    if (!rows.length) {
+      return say(doneQ.err ? 'err' : 'none', doneQ.err
+        ? 'The list could not be read: ' + doneQ.err
+        : 'Root Canal has not been run on any set yet. Pick one below and '
+          + 'read it; it is listed here from then on.',
+        doneQ.err ? 'rc-warn' : null);
+    }
+    const shown = rows.filter(doneShown).sort(doneOrder);
+    const fs = JSON.stringify([doneQ.filt, doneQ.show, doneQ.sort]);
+    return [
+      { key: 'find', enter: false, sig: 'find', build: doneFind },
+      { key: 'show', enter: false, sig: [doneQ.rev, doneQ.show],
+        build: () => doneShowChips(rows) },
+      { key: 'chips', enter: false, sig: [doneQ.rev, fs],
+        build: () => bulkChips(rows, doneQ.filt, doneFill) },
+      { key: 'count', enter: false, sig: [shown.length, rows.length],
+        build: () => el('div', { class: 'hint rc-done-count', text:
+          shown.length === rows.length
+            ? rows.length + ' set' + (rows.length === 1 ? '' : 's')
+            : shown.length + ' of ' + rows.length }) },
+      { key: 'cols', enter: false, sig: 'cols', build: doneCols },
+      { key: 'list', enter: false,
+        sig: [doneQ.rev, fs, q.entry || '', viewing ? viewing.v : null],
+        build: () => doneList(shown) },
+    ];
+  }
+
+  function doneFind() {
+    const f = BARRY.ui.searchField({
+      placeholder: 'Type a set, mouse, session, person, machine or nickname',
+      value: doneQ.filt.q, width: '30rem',
+      title: 'Every word has to match: the set’s name, the mouse (m13), the '
+           + 'session (s2), the project, group or condition, who touched it '
+           + 'and on which machine, or a saved version’s nickname.',
+      oninput: (e) => { doneQ.filt.q = e.target.value; doneFill(); },
+    });
+    f.classList.add('rc-done-find');
+    f.input.setAttribute('data-fk', 'rc-done-search');
+    f.input.setAttribute('aria-label', 'Search the sets Root Canal has done');
+    const sort = el('select', {
+      class: 'rc-in rc-done-sort', title: 'Order',
+      'aria-label': 'Order',
+      onchange: (e) => { doneQ.sort = e.target.value; doneFill(); },
+    }, DONE_SORTS.map(([v, t]) => el('option', {
+      value: v, text: t, selected: doneQ.sort === v ? 'selected' : null })));
+    return el('div', { class: 'cur-filter rc-done-filter' }, [f, sort]);
+  }
+
+  /* One of them at a time: pressed again, back to All. */
+  function doneShowChips(rows) {
+    return el('div', { class: 'rc-bulk-chips rc-done-show' }, [
+      el('div', { class: 'rc-bulk-cat', 'data-cat': 'done' }, [
+        el('span', { class: 'rc-bulk-k', text: 'what was done' }),
+        el('div', { class: 'rc-bulk-vals' }, DONE_SHOW.map(
+          ([id, words, test, d, tip]) => {
+            const n = rows.filter(test).length;
+            const lit = doneQ.show === id;
+            const b = BARRY.ui.button({ kind: 'mini', on: lit,
+              extra: 'rc-bulk-chip rc-done-chip',
+              disabled: !n && id !== 'all',
+              title: tip + ' ' + n + ' set' + (n === 1 ? '' : 's') + '.'
+                     + (lit && id !== 'all' ? ' Press again for all of them.'
+                                            : ''),
+              onclick: () => {
+                doneQ.show = lit && id !== 'all' ? 'all' : id;
+                doneFill();
+              },
+              children: [
+                doneIco(lit ? DONE_ICO.tick : d, lit ? 'rc-bulk-lit' : null),
+                el('span', { class: 'rc-bulk-chip-v', text: words }),
+                el('span', { class: 'rc-bulk-chip-n', text: String(n) }),
+              ] });
+            b.type = 'button';
+            b.setAttribute('aria-pressed', lit ? 'true' : 'false');
+            b.dataset.v = id;
+            return b;
+          })),
+      ]),
+    ]);
+  }
+
+  /* Named columns, sharing the row's grid, and not a row themselves. */
+  function doneCols() {
+    return el('div', { class: 'cur-shelf-cols rc-done-cols' }, [
+      el('span', { class: 'csr-name', text: 'Set' }),
+      el('span', { class: 'csr-sess', text: 'Recording' }),
+      el('span', { class: 'csr-did', text: 'What Root Canal left' }),
+      el('span', { class: 'csr-who', text: 'Last by' }),
+      el('span', { class: 'csr-when', text: 'Last touched' }),
+      el('span', {}),
+    ]);
+  }
+
+  function doneList(shown) {
+    const box = el('div', { class: 'cur-shelf-list rc-done-list' });
+    if (!shown.length) {
+      box.appendChild(el('div', { class: 'hint', text:
+        'Nothing matches that. Clear the search, or press All.' }));
+      return box;
+    }
+    for (const r of shown) box.appendChild(doneRow(r));
+    return box;
+  }
+
+  const doneStamp = (at) => (at ? String(at).replace('T', ' ').slice(0, 16)
+                                : '');
+  function doneAgo(at) {
+    const w = BARRY.ui.when(at);
+    if (!w) return '';
+    return (w === 'just now' || /^\d{4}-/.test(w)) ? w : w + ' ago';
+  }
+
+  /* What Open will do with it, said before it is pressed. */
+  function doneOpenWhat(r) {
+    const sv = r.saved && r.saved.last;
+    if (sv) {
+      return 'Open v' + sv.v + (sv.nickname ? ' ‘' + sv.nickname + '’' : '')
+        + ' as it was saved' + (sv.here === false
+          ? ', drawn from its numbers (its read is not on this machine)' : '')
+        + '.';
+    }
+    const rd = r.reads || {};
+    if (rd.here || (r.banked && r.banked.last.here)) {
+      return 'Open its read, which is on this machine, at once, at the '
+           + 'settings on now.';
+    }
+    return 'Pick it. Its read is on ' + ((rd.machines || []).join(', ')
+      || 'another machine') + ', so it would be read again here.';
+  }
+
+  function doneRow(r) {
+    const on = r.entry_id === q.entry;
+    const sv = r.saved && r.saved.last;
+    const b = r.banked && r.banked.last;
+    const rd = r.reads;
+    const did = [];
+    if (sv) {
+      did.push(el('span', { class: 'flagchip rc-done-saved',
+        title: r.saved.n_versions + ' version' + (r.saved.n_versions === 1
+          ? '' : 's') + ' kept. The newest, v' + sv.v + ': '
+          + [sv.k != null ? 'k = ' + sv.k : null, sv.filter,
+             sv.ds != null ? sv.ds + ' DS, ' + (sv.ied || 0) + ' IED' : null,
+             'saved by ' + (sv.by || 'someone')
+               + (sv.machine ? ' on ' + sv.machine : '')
+               + (sv.at ? ', ' + doneStamp(sv.at) : '')]
+            .filter(Boolean).join(' · '),
+        text: (r.saved.n_versions > 1 ? r.saved.n_versions + ' versions · '
+                                      : '') + 'v' + sv.v
+          + (sv.nickname ? ' ‘' + sv.nickname + '’' : '') }));
+    }
+    if (b) {
+      did.push(el('span', { class: 'flagchip rc-done',
+        title: 'Banked into the set as v' + b.ds_version
+          + (b.k != null ? ', k = ' + b.k : '') + ', by ' + (b.by || 'someone')
+          + (b.machine ? ' on ' + b.machine : '')
+          + (b.at ? ', ' + doneStamp(b.at) : '')
+          + (r.banked.n > 1 ? '. Banked ' + r.banked.n + ' times.' : '.'),
+        text: 'banked v' + b.ds_version + (b.ds != null
+          ? ' · ' + b.ds + ' DS · ' + (b.ied || 0) + ' IED' : '') }));
+    }
+    if (rd) {
+      const where = rd.here ? 'read here'
+        : 'read on ' + ((rd.machines || []).join(', ') || 'another machine');
+      did.push(el('span', { class: 'flagchip rc-done-read'
+                                    + (rd.here ? ' here' : ''),
+        title: 'Read ' + rd.n + ' time' + (rd.n === 1 ? '' : 's')
+          + (rd.machines && rd.machines.length ? ', on ' + rd.machines.join(
+            ', ') : '') + '. ' + (rd.here
+            ? rd.here + ' of the reads ' + (rd.here === 1 ? 'is' : 'are')
+              + ' on this machine.'
+            : 'None of the reads is on this machine.'),
+        text: where }));
+    }
+    const last = r.last || {};
+    const can = !!sv || r.readable !== false;
+    return el('div', {
+      class: 'cur-shelf-row rc-done-row' + (on ? ' on' : ''),
+      'data-entry': r.entry_id,
+    }, [
+      el('span', { class: 'csr-name', text: doneSetName(r) }),
+      el('span', { class: 'csr-sess', text: doneLabel(r) }),
+      el('span', { class: 'csr-did' }, did),
+      el('span', { class: 'csr-who' + (last.by ? '' : ' none'),
+                   text: (last.by || '—')
+                         + (last.machine ? ' · ' + last.machine : '') }),
+      el('span', { class: 'csr-when', title: doneStamp(last.at) }, [
+        (DONE_DID[last.what] ? DONE_DID[last.what] + ' ' : '')
+          + (doneAgo(last.at) || '—'),
+        BARRY.syncState
+          ? (r.saved ? BARRY.syncState.mark('artifacts', r.saved.artifact_id)
+             : r.banked ? BARRY.syncState.mark('bank', r.entry_id) : null)
+          : null,
+      ].filter(Boolean)),
+      el('div', { class: 'csr-acts' }, [
+        BARRY.ui.button({ kind: 'ghost', size: 'sm', extra: 'rc-done-open',
+          text: on ? 'Open again' : 'Open',
+          disabled: !can,
+          title: can ? doneOpenWhat(r)
+                     : (r.why_not || 'It cannot be read on this machine.'),
+          onclick: () => openDone(r) }),
+      ]),
+    ]);
+  }
+
+  async function openDone(r) {
+    const go = async () => {
+      if (!setOf(r.entry_id)) {
+        toast('‘' + doneLabel(r) + '’ is not one of the sets offered here '
+              + 'any more (it may have been archived).', 'warn', 8000);
+        return;
+      }
+      pickSetNow(r.entry_id);
+      // Folded for what was opened, whatever it turns out to need.
+      doneQ.pinned = false;
+      const sv = r.saved && r.saved.last;
+      if (sv) {
+        await openVersion(r.saved.artifact_id, sv.v);
+        return;
+      }
+      /* The version its newest read here was made from, where it is still
+         in the list: the same stamps make the same read. */
+      const rd = (r.reads && r.reads.last_here)
+        || (r.banked && r.banked.last.here ? r.banked.last : null);
+      const fv = rd ? rd.from_version : null;
+      if (fv != null && versionOf(setOf(), fv)) q.from_version = fv;
+      if (rd) {
+        let got = null;
+        try {
+          got = await apiPost('/api/rootcanal/read', {
+            entry_id: q.entry, from_version: q.from_version,
+            only_cached: true });
+        } catch (e) {
+          toast(e.message, 'err', 9000);
+        }
+        if (got && got.cached && q.entry === r.entry_id) {
+          q.read = got.read;
+          chooserOpen = false;
+          render();
+          refit();
+          return;
+        }
+      }
+      const elsewhere = ((r.reads && r.reads.machines) || []).join(', ');
+      toast(rd ? 'Its read here was made with other settings, so it is not '
+                 + 'opened by itself: press Read to read it again.'
+               : 'Its read is on ' + (elsewhere || 'another machine')
+                 + ', not this one. Press Read to read it here'
+                 + (r.banked ? ', or keep its banked call as a version.'
+                             : '.'), null, 9000);
+      render();
+    };
+    if (r.entry_id !== q.entry && isDirty()) nudgeThen(go);
+    else go();
+  }
+
   /* ---------- 1. the set, and which version to read ----------
 
      The same three controls every other step in the bundle uses, in the
@@ -1106,6 +1575,8 @@ BARRY.rootcanal = (function () {
           + '  ·  ' + ((v && v.n) || cur.n) + ' events'
           + (v && v.aligned ? '  ·  aligned' : '') }),
         el('span', { class: 'spacer' }),
+        // What has been done already (2026-10-20); its list opens above.
+        doneToggle(),
         BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Change set',
           title: 'Show the recording, entry and version lists again. The '
                + 'read and the answer stay until you pick something else.',
@@ -1135,7 +1606,12 @@ BARRY.rootcanal = (function () {
       q.gid = (cur && cur.gid) || (rows[0] || {}).gid || null;
     }
 
-    box.appendChild(el('div', { class: 'section-label', text: 'Recording' }));
+    box.appendChild(el('div', { class: 'rc-choose-top' }, [
+      el('div', { class: 'section-label', text: 'Recording' }),
+      el('span', { class: 'spacer' }),
+      // What has been done already (2026-10-20); its list opens above.
+      doneToggle(),
+    ]));
     box.appendChild(BARRY.pickSession({
       rows,
       value: q.gid,
@@ -1364,6 +1840,7 @@ BARRY.rootcanal = (function () {
           + ' of this set.', rep.confirmed ? 'warn' : 'ok', 8000);
     BARRY.activity.log('rootcanal.single_import', {
       artifact: rep.artifact_id, version: rep.version, entry: q.entry });
+    loadDone(true);
     render();
     return rep;
   }
@@ -1520,6 +1997,7 @@ BARRY.rootcanal = (function () {
       BARRY.activity.log('rootcanal.single_save', {
         artifact: rep.artifact_id, version: rep.version,
         confirmed: rep.confirmed, entry: q.entry });
+      loadDone(true);
       render();
       return rep;
     });
@@ -3256,8 +3734,15 @@ BARRY.rootcanal = (function () {
         viewMode === 'pooled' ? poolChip() : null,
         el('span', { class: 'hint', text:
           'z-scored · drag to turn · Shift-drag to lasso · wheel to zoom · '
-          + 'double-click to reset' }),
+          + 'double-click a dot to open it in Xplorefinder · double-click '
+          + 'elsewhere to reset' }),
         el('span', { class: 'spacer' }),
+        BARRY.ui.button({ kind: 'ghost', size: 'sm',
+          text: 'Open in Xplorefinder', extra: 'rc-space-xplore',
+          title: 'The dot you picked, in its recording, at its time, in a '
+               + 'window of its own that follows every dot you pick. Or '
+               + 'double-click a dot.',
+          onclick: openPickedInXplore }),
         BARRY.ui.button({ kind: 'ghost', size: 'sm',
           text: lassoMode ? 'Lasso: on' : 'Lasso',
           extra: 'rc-lasso-toggle' + (lassoMode ? ' on' : ''),
@@ -3441,7 +3926,7 @@ BARRY.rootcanal = (function () {
     swap('.rc-event', eventPane());
     drawAll();
     loadEvent();
-    pushXplore();
+    followXplore();
   }
 
   function step(d) {
@@ -3978,8 +4463,9 @@ BARRY.rootcanal = (function () {
     return rows.every((r) => String(a(r)) === String(b(r)));
   }
 
-  function bulkChips(rows) {
-    const f = bulk.filt;
+  function bulkChips(rows, filt, again) {
+    const f = filt || bulk.filt;
+    const refresh = again || bulkRefresh;
     const cats = [];
     const offered = [];
     for (const [key, words, get, d] of BULK_CATS) {
@@ -4012,7 +4498,7 @@ BARRY.rootcanal = (function () {
                   + ' pressed too): ' + n + ' set' + (n === 1 ? '' : 's') + '.',
               onclick: () => {
                 f[key] = lit ? on.filter((x) => x !== v) : on.concat([v]);
-                bulkRefresh();
+                refresh();
               },
               children: [
                 bulkIco(lit ? BULK_ICO.tick : d, lit ? 'rc-bulk-lit' : null),
@@ -6228,9 +6714,51 @@ BARRY.rootcanal = (function () {
     if (live && !fitting) { live = null; drawMain(); }
   });
   document.addEventListener('wheel', onWheel, { passive: false });
+  /* A DOUBLE-CLICK ON A DOT opens it in Xplorefinder (2026-10-20); on
+     empty space it still puts the view back. The first click of the two
+     has already picked it, so this opens the dot under the pointer. */
   document.addEventListener('dblclick', (e) => {
-    if (e.target && e.target.id === 'rcSpace') resetView();
+    const cv = e.target;
+    if (!cv || !cv.id) return;
+    const flat = FLATS.some(([id]) => id === cv.id);
+    if (cv.id !== 'rcSpace' && !flat) return;
+    const at = local(e, cv);
+    const i = cv.id === 'rcSpace' ? pickSpace(at.x, at.y)
+                                  : pickFlat(cv.id, at.x, at.y);
+    const S = scene();
+    if (i != null && S) {
+      S.onPick(i);
+      openPickedInXplore();
+      return;
+    }
+    if (cv.id === 'rcSpace') resetView();
   });
+
+  /* The picked dot in Xplorefinder, or why not. */
+  function openPickedInXplore() {
+    const e = pickedEvent();
+    if (!e) {
+      toast('Pick a dot first: click one, then press this -- or double-click '
+            + 'it.', null, 5000);
+      return Promise.resolve(false);
+    }
+    return openInXplore();
+  }
+
+  /* Whether a recording can be opened from here, as far as the registry
+     already read says: the recording window needs the recording, not the
+     member's read (a member read on another machine is still a recording
+     on this one). Before the registry is read, yes; opening it says if it
+     is not. */
+  function recordingHere(gid) {
+    const tk = BARRY.views.toolkit;
+    const rows = tk && tk.registryRows ? tk.registryRows() : [];
+    if (!rows.length || !gid) return true;
+    const row = rows.find((r) => r.gid === gid);
+    // Read, and not in it: not a recording this machine knows.
+    if (!row) return false;
+    try { return !!BARRY.vacc.reachFor(row, 'rootcanal').path; } catch (e) { return true; }
+  }
   document.addEventListener('keydown', onKey);
 
   /* ==================================================================
@@ -6316,10 +6844,20 @@ BARRY.rootcanal = (function () {
   async function recordingPath(gid) {
     const tk = BARRY.views.toolkit;
     if (!tk) return null;
-    try { if (tk.loadRegistry) await tk.loadRegistry(); } catch (e) { /* below */ }
     const want = gid || q.gid;
-    const row = (tk.registryRows ? tk.registryRows() : [])
+    const find = () => (tk.registryRows ? tk.registryRows() : [])
       .find((r) => r.gid === want);
+    /* The rows already read first (2026-10-20). The registry is held for a
+       minute and takes seconds to read again, so every dot opened after
+       that minute sat waiting on it before the window moved -- long
+       enough to look like the wrong event was showing. A recording's
+       paths do not change mid-sitting; read again only for one not in
+       them. */
+    let row = find();
+    if (!row) {
+      try { if (tk.loadRegistry) await tk.loadRegistry(); } catch (e) { /* below */ }
+      row = find();
+    }
     return row ? BARRY.vacc.reachFor(row, 'rootcanal').path : null;
   }
 
@@ -6374,8 +6912,8 @@ BARRY.rootcanal = (function () {
     if (!e) return false;
     if (xOpen()) {
       try { xWin.focus(); } catch (err) { /* not important */ }
-      pushXplore();
-      return true;
+      if (pushXplore() === true) return true;
+      return chaseXplore();
     }
     const path = await recordingPath(xt.gid);
     if (!path) {
@@ -6390,17 +6928,90 @@ BARRY.rootcanal = (function () {
             + 'then press “Open in Xplorefinder” again.', 'err', 9000);
       return false;
     }
+    xNav = { gid: xt.gid, path: path, at: Date.now() };
     BARRY.activity.log('rootcanal.xplore', { gid: xt.gid, t: e.t, cls: e.cls,
                                              pooled: viewMode === 'pooled' });
     /* WAITED FOR, not assumed. The window is a whole application booting
-       and reading the recording before it has anything to put a mark on. */
+       and reading the recording before it has anything to put a mark on --
+       and whatever is picked while it does is what it shows once it has. */
+    return chaseXplore();
+  }
+
+  /* THE PICKED DOT, WHEREVER IT IS (2026-10-20: "select a dot and open that
+     specific event in Xplorefinder -- make sure it pulls out the right
+     one"). The window follows every pick. A dot from another recording --
+     another member of a pool, or a set picked since -- used to have its
+     marks and its time pushed onto whatever recording the window already
+     showed. Now the window is sent to the dot's own recording, at the dot,
+     and the marks go on once it has opened it. Only the newest pick is
+     followed if several land while it is opening. */
+  let xGen = 0;
+  let xSaid = { gid: null, at: 0 };
+  /* Where the window was last sent: the recording, and the path it was
+     opened by -- a folder registered under two ids is still the folder it
+     was sent to. */
+  let xNav = null;
+  function followXplore() {
+    if (!xOpen()) return;
+    if (pushXplore() !== true) chaseXplore();
+  }
+
+  /* Until the window shows the CURRENT pick: asked afresh every turn, so a
+     dot picked while the window is still opening the last one is the one
+     it ends on. Sent to the pick's recording when it is on another one and
+     has not already been sent there. One chase at a time; the newest
+     takes over. */
+  async function chaseXplore() {
+    const mine = ++xGen;
     const until = Date.now() + 60000;
-    while (Date.now() < until) {
+    while (Date.now() < until && mine === xGen) {
       if (!xOpen()) return false;
-      if (pushXplore()) return true;
-      await new Promise((r) => setTimeout(r, 250));
+      const xt = xTarget();
+      const e = xt && xt.now;
+      if (!e) return false;
+      const r = pushXplore();
+      if (r === true) return true;
+      // Sent there already and still opening it: wait, rather than send
+      // it again (and again) while it boots.
+      const going = xNav && xNav.gid === xt.gid && Date.now() - xNav.at < 45000;
+      if (r === 'elsewhere' && !going) {
+        const path = await recordingPath(xt.gid);
+        if (mine !== xGen) return false;
+        if (!path) {
+          // Said once for a pick, though the pick and the press both ask.
+          if (xSaid.gid !== xt.gid || Date.now() - xSaid.at > 4000) {
+            toast('That dot’s recording is not reachable from this machine, '
+                  + 'so the recording window cannot show it.', 'err', 9000);
+          }
+          xSaid = { gid: xt.gid, at: Date.now() };
+          return false;
+        }
+        try {
+          xWin.location.href = xUrl(path, e.t);
+        } catch (err) {
+          return false;
+        }
+        xNav = { gid: xt.gid, path: path, at: Date.now() };
+        BARRY.activity.log('rootcanal.xplore', { gid: xt.gid, t: e.t,
+          cls: e.cls, pooled: viewMode === 'pooled', moved: true });
+      }
+      await new Promise((res) => setTimeout(res, 250));
     }
     return false;
+  }
+
+  /* Where the picked event is in the window's list. By its number as well
+     as by identity: in Pooled the picked event is a COPY (it carries its
+     trace's contact), so `indexOf` never found it -- the window was never
+     moved to it and the mark said the member's first event. A second dot
+     opened showed the first one. */
+  function xIndex(xt) {
+    const n = xt && xt.now;
+    if (!n) return -1;
+    const at = xt.evs.indexOf(n);
+    if (at >= 0) return at;
+    return xt.evs.findIndex((x) => x.i === n.i
+      && (n.m == null || x.m === n.m));
   }
 
   /* Every event in the set, coloured by class, the current one marked and
@@ -6415,9 +7026,16 @@ BARRY.rootcanal = (function () {
     let sess = null;
     try { sess = xf.current(); } catch (e) { return false; }
     if (!sess) return false;
+    /* Another recording in the window: nothing is put on it. The folder it
+       was sent to counts as the recording asked for, whatever id the
+       registry gives that folder. */
+    const shown = (sess.identity || {}).gid;
+    const sent = xNav && xNav.gid === xt.gid && sess.path
+      && String(sess.path) === String(xNav.path);
+    if (shown && xt.gid && shown !== xt.gid && !sent) return 'elsewhere';
     const evs = xt.evs;
-    const at = evs.indexOf(xt.now);
-    const now = at >= 0 ? evs[at] : null;
+    const at = xIndex(xt);
+    const now = at >= 0 ? xt.now : null;
     try {
       sess.curationMarks = {
         kind: 'rootcanal',
@@ -7772,7 +8390,7 @@ BARRY.rootcanal = (function () {
     swap('.rc-event', eventPane());
     drawAll();
     loadPoolEvent();
-    pushXplore();
+    followXplore();
   }
 
   function poolStep(d) {
@@ -8376,22 +8994,23 @@ BARRY.rootcanal = (function () {
                       + 'pools, pool them, and save that under a label.' }),
       ]));
     } else {
-      kids.push(el('div', { class: 'bm-list rc-dshelf-list' }, list.map((p) => {
+      kids.push(foldersBar());
+      kids.push(folderedList(list, 'rc-dshelf-list', (p, folders) => {
         const id = p.artifact_id || p.id;
         const cur = p.current || {};
-        const on = !!(pool.open && pool.open.artifact_id === id);
-        return el('div', { class: 'bm-row rc-shelf-row' + (on ? ' on' : '') }, [
+        return shelfRow(p, folders, [
           el('span', { class: 'mk-name', text: p.nickname || p.name || id }),
           p.version != null ? el('span', { class: 'flagchip',
                                            text: 'v' + p.version }) : null,
           el('span', { class: 'flagchip', text: ((cur.n_summary || {}).pools
                                                  || 0) + ' pools' }),
           BARRY.syncState ? BARRY.syncState.mark('artifacts', id) : null,
+          moveSelect(id, folders),
           BARRY.ui.button({ kind: 'mini', text: 'Open', extra: 'rc-shelf-open',
             title: 'Open its picture as it was saved. Nothing is refitted.',
             onclick: () => openSaved(id) }),
-        ].filter(Boolean));
-      })));
+        ]);
+      }));
     }
     return el('div', { class: 'card rc-shelf rc-dshelf' }, kids);
   }
@@ -8562,6 +9181,339 @@ BARRY.rootcanal = (function () {
     ]), { replace: true });
   }
 
+  /* ==================================================================
+     FOLDERS FOR SAVED POOLS (2026-10-20)
+
+     "To the pools of recordings and pools of pools add a folder structure
+     where we can create new folders and drag all our pools into it. For
+     every existing one, put them in a folder called Preliminary analysis."
+
+     One set of folders for both shelves: a folder made on one is there on
+     the other, each shelf showing its own kind of pool inside. A pool is
+     dragged onto a folder -- or moved with the folder menu on its row,
+     which is the same thing without a mouse -- and "Not in a folder" takes
+     one out. Folders are made, renamed and deleted here; deleting one
+     deletes no pool, its pools are simply out of it.
+
+     Kept in two shared preferences merged key by key (backend/store.py
+     PREFS_SPEC), so they travel to every machine and two people filing
+     different pools both keep theirs:
+       rootcanal_pool_folders   {folder id: {name, at, by, gone}}
+       rootcanal_pool_in        {pool id: folder id, or "" for none}
+
+     A pool nobody has filed was saved before folders existed: it is in
+     Preliminary analysis. That is the rule rather than a move written for
+     each one, so a pool saved on a machine that has not pulled this yet
+     lands there too, and nothing is written until somebody files one. A
+     pool saved from here is filed as it is saved (the dialog asks where).
+     ================================================================== */
+  const FOLD_KEY = 'rootcanal_pool_folders';
+  const IN_KEY = 'rootcanal_pool_in';
+  const PRELIM = { id: 'prelim', name: 'Preliminary analysis' };
+  const DRAG_TYPE = 'text/x-rc-pool';
+  const foldShut = {};          // folders folded shut, this sitting
+  let foldEdit = null;          // { id: null for a new one, text }
+
+  function prefMap(k) {
+    try {
+      return (BARRY.prefs && BARRY.prefs.get(k, {})) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  /* Every folder, by name; Preliminary analysis unless it was deleted. */
+  function poolFolders() {
+    const m = prefMap(FOLD_KEY);
+    const out = [];
+    for (const id of Object.keys(m)) {
+      const f = m[id];
+      if (!f || f.gone) continue;
+      out.push({ id: id, name: f.name || 'Untitled folder', at: f.at,
+                 by: f.by });
+    }
+    if (!m[PRELIM.id]) out.push({ id: PRELIM.id, name: PRELIM.name });
+    out.sort((a, b) => natural(a.name, b.name));
+    return out;
+  }
+
+  /* Where a saved pool is: where it was put, else -- saved before folders
+     -- Preliminary analysis. In a folder since deleted, it is in none. */
+  function folderOf(id, folders) {
+    const fs = folders || poolFolders();
+    const inm = prefMap(IN_KEY);
+    const has = (fid) => !!fid && fs.some((f) => f.id === fid);
+    if (Object.prototype.hasOwnProperty.call(inm, id)) {
+      return has(inm[id]) ? inm[id] : '';
+    }
+    return has(PRELIM.id) ? PRELIM.id : '';
+  }
+
+  function folderName(fid, folders) {
+    if (!fid) return 'Not in a folder';
+    const f = (folders || poolFolders()).find((x) => x.id === fid);
+    return f ? f.name : 'Not in a folder';
+  }
+
+  function putInFolder(id, fid, quiet) {
+    const m = Object.assign({}, prefMap(IN_KEY));
+    m[id] = fid || '';
+    BARRY.prefs.set(IN_KEY, m);
+    BARRY.activity.log('rootcanal.pool_folder', { artifact: id,
+                                                  folder: fid || null });
+    if (!quiet) {
+      const p = (pool.shelf || []).concat(pool.dshelf || [])
+        .find((x) => (x.artifact_id || x.id) === id) || {};
+      toast('‘' + (p.nickname || p.name || id) + '’ '
+            + (fid ? 'is in ‘' + folderName(fid) + '’ now.'
+                   : 'is out of its folder now.'), 'ok', 4000);
+    }
+  }
+
+  function writeFolder(id, fields) {
+    const m = Object.assign({}, prefMap(FOLD_KEY));
+    m[id] = Object.assign({}, m[id] || {}, fields, {
+      at: new Date().toISOString(),
+      by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
+          || null });
+    BARRY.prefs.set(FOLD_KEY, m);
+  }
+
+  function newFolderId() {
+    return 'f' + Date.now().toString(36)
+      + Math.floor(Math.random() * 1679616).toString(36);
+  }
+
+  /* Made or renamed from the line it is typed on. A name already taken is
+     refused: two folders called the same are one folder said twice. */
+  function finishFolder() {
+    const ed = foldEdit;
+    if (!ed) return;
+    const name = String(ed.text || '').trim().replace(/\s+/g, ' ');
+    if (!name) { toast('A folder needs a name.', 'warn', 4000); return; }
+    if (name.length > 80) {
+      toast('A folder name is a name, not a note: keep it under 80 '
+            + 'characters.', 'warn', 5000);
+      return;
+    }
+    const clash = poolFolders().find((f) => f.id !== ed.id
+      && f.name.toLowerCase() === name.toLowerCase());
+    if (clash) {
+      toast('There is a folder called ‘' + clash.name + '’ already.', 'warn',
+            5000);
+      return;
+    }
+    const id = ed.id || newFolderId();
+    writeFolder(id, { name: name, gone: false });
+    BARRY.activity.log('rootcanal.pool_folder_' + (ed.id ? 'rename' : 'new'),
+                       { folder: id, name: name });
+    foldEdit = null;
+    delete foldShut[id];
+    toast(ed.id ? 'Renamed to ‘' + name + '’.'
+                : 'Made ‘' + name + '’. Drag pools onto it, or move them '
+                  + 'with the folder menu on their row.', 'ok', 5000);
+    render();
+  }
+
+  async function deleteFolder(f, n) {
+    const ok = await BARRY.confirm('Delete the folder ‘' + f.name + '’?',
+      (n ? 'The ' + n + ' saved pool' + (n === 1 ? '' : 's') + ' in it '
+           + (n === 1 ? 'is' : 'are') + ' taken out of it, to Not in a '
+           + 'folder. ' : 'It is empty. ')
+      + 'No pool is deleted, on this shelf or the other one.',
+      'Delete folder', true);
+    if (!ok) return;
+    writeFolder(f.id, { name: f.name, gone: true });
+    BARRY.activity.log('rootcanal.pool_folder_delete', { folder: f.id,
+                                                         name: f.name });
+    toast('Deleted the folder ‘' + f.name + '’.', 'ok', 4000);
+    render();
+  }
+
+  /* Above the folders: making one. */
+  function foldersBar() {
+    const typing = foldEdit && !foldEdit.id;
+    return el('div', { class: 'rc-folders-bar' }, [
+      typing ? folderInput('Name the new folder') : null,
+      typing ? BARRY.ui.button({ kind: 'mini', text: 'Make it',
+        extra: 'rc-folder-make', onclick: finishFolder }) : null,
+      typing ? BARRY.ui.button({ kind: 'mini', text: 'Cancel',
+        onclick: () => { foldEdit = null; render(); } }) : null,
+      typing ? null : BARRY.ui.button({ kind: 'ghost', size: 'sm',
+        text: 'New folder', extra: 'rc-folder-new',
+        title: 'A folder for saved pools, on this shelf and the pools-of-'
+             + 'pools one. Drag pools onto it.',
+        onclick: () => { foldEdit = { id: null, text: '' }; render(); } }),
+      el('span', { class: 'hint', text: typing ? ''
+        : 'Drag a pool onto a folder to file it.' }),
+    ].filter(Boolean));
+  }
+
+  function folderInput(placeholder) {
+    const inp = el('input', {
+      type: 'text', class: 'rc-in rc-folder-input', value: foldEdit.text,
+      placeholder: placeholder, maxlength: '80',
+      'aria-label': placeholder,
+      oninput: (e) => { if (foldEdit) foldEdit.text = e.target.value; },
+      onkeydown: (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); finishFolder(); }
+        if (e.key === 'Escape') { e.preventDefault(); foldEdit = null; render(); }
+      },
+    });
+    const focusIt = () => {
+      if (inp.isConnected && document.activeElement !== inp) {
+        inp.focus();
+        inp.setSelectionRange(inp.value.length, inp.value.length);
+      }
+    };
+    // On the next frame, and on a timer too: a frame can be held back.
+    requestAnimationFrame(focusIt);
+    setTimeout(focusIt, 0);
+    return inp;
+  }
+
+  const FOLDER_SVG = '<path d="M1.5 3.5h4.5l1.5 1.5h7v7.5h-13z" />';
+  const FOLDER_OPEN_SVG = '<path d="M1.5 3.5h4.5l1.5 1.5h6v2M1.5 3.5v9h11.2'
+    + 'l2-5.5H3.7l-2.2 5.5" />';
+
+  /* A shelf's pools, in their folders, and the ones in none last. */
+  function folderedList(list, cls, rowOf) {
+    const folders = poolFolders();
+    const groups = new Map(folders.map((f) => [f.id, []]));
+    const loose = [];
+    for (const p of list) {
+      const fid = folderOf(p.artifact_id || p.id, folders);
+      (fid && groups.has(fid) ? groups.get(fid) : loose).push(p);
+    }
+    const box = el('div', { class: 'rc-folders ' + cls });
+    for (const f of folders) {
+      box.appendChild(folderBox(f, groups.get(f.id), rowOf, folders));
+    }
+    box.appendChild(folderBox({ id: '', name: 'Not in a folder' }, loose,
+                              rowOf, folders));
+    return box;
+  }
+
+  function folderBox(f, items, rowOf, folders) {
+    const shut = !!foldShut[f.id];
+    const editing = foldEdit && foldEdit.id && foldEdit.id === f.id;
+    const n = items.length;
+    const head = el('div', { class: 'rc-folder-head' }, [
+      el('button', {
+        class: 'rc-folder-twist', type: 'button',
+        'aria-expanded': shut ? 'false' : 'true',
+        title: shut ? 'Open the folder' : 'Fold it shut',
+        onclick: () => { foldShut[f.id] = !shut; render(); },
+      }, [el('svg', { class: 'rc-bulk-ico rc-folder-ico', viewBox: '0 0 16 16',
+                      'aria-hidden': 'true',
+                      html: f.id ? (shut ? FOLDER_SVG : FOLDER_OPEN_SVG)
+                                 : '<path d="M2.5 8h11" />' }),
+          editing ? null : el('span', { class: 'rc-folder-name',
+                                        text: f.name })]),
+      editing ? folderInput('Rename ‘' + f.name + '’') : null,
+      editing ? BARRY.ui.button({ kind: 'mini', text: 'Rename',
+        extra: 'rc-folder-make', onclick: finishFolder }) : null,
+      editing ? BARRY.ui.button({ kind: 'mini', text: 'Cancel',
+        onclick: () => { foldEdit = null; render(); } }) : null,
+      el('span', { class: 'flagchip rc-folder-n',
+                   text: n + ' pool' + (n === 1 ? '' : 's') }),
+      el('span', { class: 'spacer' }),
+      f.id && !editing ? BARRY.ui.button({ kind: 'mini', text: 'Rename',
+        extra: 'rc-folder-rename', title: 'Rename this folder',
+        onclick: () => { foldEdit = { id: f.id, text: f.name }; render(); } })
+        : null,
+      f.id && !editing ? BARRY.ui.button({ kind: 'mini', text: 'Delete',
+        extra: 'rc-folder-delete',
+        title: 'Delete the folder. Its pools are taken out of it; no pool '
+             + 'is deleted.',
+        onclick: () => deleteFolder(f, n) }) : null,
+    ].filter(Boolean));
+    const body = shut ? null : el('div', { class: 'bm-list rc-folder-body' },
+      n ? items.map((p) => rowOf(p, folders))
+        : [el('p', { class: 'hint rc-folder-empty', text: f.id
+            ? 'Empty. Drag a pool here.'
+            : 'Every pool is in a folder. Drag one here to take it out.' })]);
+    const box = el('div', {
+      class: 'rc-folder' + (shut ? ' shut' : '') + (f.id ? '' : ' loose'),
+      'data-folder': f.id,
+    }, [head, body].filter(Boolean));
+    dropTarget(box, f.id);
+    return box;
+  }
+
+  /* Somewhere a dragged pool can be put down. */
+  function dropTarget(node, fid) {
+    const ours = (e) => Array.from((e.dataTransfer && e.dataTransfer.types)
+                                   || []).indexOf(DRAG_TYPE) >= 0;
+    node.addEventListener('dragover', (e) => {
+      if (!ours(e)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      node.classList.add('rc-drop-on');
+    });
+    node.addEventListener('dragleave', (e) => {
+      if (!e.relatedTarget || !node.contains(e.relatedTarget)) {
+        node.classList.remove('rc-drop-on');
+      }
+    });
+    node.addEventListener('drop', (e) => {
+      node.classList.remove('rc-drop-on');
+      if (!ours(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const id = e.dataTransfer.getData(DRAG_TYPE);
+      if (!id || folderOf(id) === (fid || '')) return;
+      putInFolder(id, fid);
+      render();
+    });
+  }
+
+  /* A row on a shelf: dragged by any part of it that is not a control. */
+  function shelfRow(p, folders, cells) {
+    const id = p.artifact_id || p.id;
+    const on = !!(pool.open && pool.open.artifact_id === id);
+    const row = el('div', {
+      class: 'bm-row rc-shelf-row' + (on ? ' on' : ''),
+      draggable: 'true', 'data-pool': id,
+      title: 'Drag it onto a folder to file it.',
+      ondragstart: (e) => {
+        if (e.target && e.target.closest
+            && e.target.closest('button, select, input')) {
+          e.preventDefault();
+          return;
+        }
+        e.dataTransfer.setData(DRAG_TYPE, id);
+        e.dataTransfer.effectAllowed = 'move';
+        row.classList.add('rc-dragging');
+      },
+      ondragend: () => {
+        row.classList.remove('rc-dragging');
+        const box = host();
+        if (box) {
+          for (const n of Array.from(box.querySelectorAll('.rc-drop-on'))) {
+            n.classList.remove('rc-drop-on');
+          }
+        }
+      },
+    }, [el('span', { class: 'rc-grip', 'aria-hidden': 'true', text: '⠿' })]
+       .concat(cells.filter(Boolean)));
+    return row;
+  }
+
+  /* The same move as a drag, from the row: for a keyboard, a touch screen,
+     or a folder scrolled out of reach. */
+  function moveSelect(id, folders) {
+    const here = folderOf(id, folders);
+    return el('select', {
+      class: 'rc-in rc-move-folder', title: 'Move it to another folder',
+      'aria-label': 'Folder',
+      onchange: (e) => { putInFolder(id, e.target.value); render(); },
+    }, folders.map((f) => el('option', { value: f.id, text: f.name,
+      selected: f.id === here ? 'selected' : null }))
+      .concat([el('option', { value: '', text: 'Not in a folder',
+                              selected: here ? null : 'selected' })]));
+  }
+
   /* The saved pools: the shelf. Opening one restores its members, its
      overrides and its focus, and draws what was saved -- no refit, no
      recording read. */
@@ -8586,10 +9538,10 @@ BARRY.rootcanal = (function () {
                       + 'label.' }),
       ]));
     } else {
-      kids.push(el('div', { class: 'bm-list rc-shelf-list' }, pool.shelf.map((p) => {
+      kids.push(foldersBar());
+      kids.push(folderedList(pool.shelf, 'rc-shelf-list', (p, folders) => {
         const id = p.artifact_id || p.id;
-        const on = !!(pool.open && pool.open.artifact_id === id);
-        return el('div', { class: 'bm-row rc-shelf-row' + (on ? ' on' : '') }, [
+        return shelfRow(p, folders, [
           el('span', { class: 'mk-name', text: p.nickname || p.name || id }),
           p.version != null ? el('span', { class: 'flagchip',
                                            text: 'v' + p.version }) : null,
@@ -8597,12 +9549,13 @@ BARRY.rootcanal = (function () {
                                                   : (p.n || 0)) + ' recordings' }),
           unbankedChip(p.n_unbanked || 0),
           el('span', { class: 'person-what', text: p.name || '' }),
+          moveSelect(id, folders),
           BARRY.ui.button({ kind: 'mini', text: 'Open', extra: 'rc-shelf-open',
             title: 'Open its picture as it was saved. Nothing is refitted and '
                  + 'no recording is read.',
             onclick: () => openSaved(id) }),
-        ].filter(Boolean));
-      })));
+        ]);
+      }));
     }
     return el('div', { class: 'card rc-shelf' }, kids);
   }
@@ -9337,11 +10290,12 @@ BARRY.rootcanal = (function () {
                           onclick: () => poolStep(+1) }),
         BARRY.ui.button({ kind: 'ghost', size: 'sm',
           text: 'Open in Xplorefinder',
-          disabled: !memberHere(m),
-          title: memberHere(m)
+          disabled: !recordingHere(m && m.gid),
+          title: recordingHere(m && m.gid)
             ? 'That recording at this event, in a window of its own that '
               + 'follows as you step.'
-            : awayText(m),
+            : 'None of this recording’s paths are reachable from this '
+              + 'machine, so there is nothing to look at.',
           onclick: openInXplore }),
       ], { extra: 'rc-acts' }),
     ].filter(Boolean));
@@ -10264,6 +11218,19 @@ BARRY.rootcanal = (function () {
      nothing is a confirmation, not a version. */
   function saveDialog() {
     if (!pool.sel.length) return Promise.resolve(null);
+    /* A NEW pool is filed as it is saved (2026-10-20): in the folder the
+       last pool opened was in, unless another is picked. A new version of
+       one stays where its pool is. */
+    const isNew = !pool.open;
+    const folders = isNew ? poolFolders() : [];
+    const hint = pool.folderHint != null && (pool.folderHint === ''
+      || folders.some((f) => f.id === pool.folderHint)) ? pool.folderHint : '';
+    const folderPick = isNew ? el('select', {
+      class: 'rc-in rc-save-folder', 'aria-label': 'Folder' },
+      folders.map((f) => el('option', { value: f.id, text: f.name,
+        selected: f.id === hint ? 'selected' : null }))
+        .concat([el('option', { value: '', text: 'Not in a folder',
+                                selected: hint ? null : 'selected' })])) : null;
     const members = pool.fit && pool.fit.ok ? (pool.fit.members || []) : [];
     const nUnb = members.length ? unbankedOf(members)
       : pool.sel.filter((m) => { const c = candOf(m.key); return c && !c.banked; }).length;
@@ -10286,8 +11253,12 @@ BARRY.rootcanal = (function () {
           + 'machine.' }) : null,
         el('li', { text: 'Nothing is written to the Event Bank.' }),
       ].filter(Boolean)),
-    ]);
+      folderPick ? el('label', { class: 'rc-save-folder-row' }, [
+        el('span', { class: 'section-label', text: 'Folder' }), folderPick,
+      ]) : null,
+    ].filter(Boolean));
     let rep = null;
+    let into = null;
     return BARRY.ui.bankDialog({
       kind: 'entry',
       title: pool.open ? 'Save v' + nextPoolVersion() + ' of ‘' + pool.open.nickname + '’'
@@ -10299,6 +11270,7 @@ BARRY.rootcanal = (function () {
       onBank: async ({ name, note }) => {
         const nick = String(name || '').trim();
         if (!nick) throw new Error('A pool needs a label to be saved under.');
+        into = folderPick ? folderPick.value : null;
         /* EVERYTHING THE PICTURE WAS MADE WITH. This sent the members,
            the types and the focus alone, and the server refitted at its
            defaults: a pool shown at k = 1 was saved at k = 2, and its
@@ -10334,6 +11306,15 @@ BARRY.rootcanal = (function () {
       }
       if (!ok || !rep) return null;
       pool.lastNick = '';
+      /* Filed before the shelf is read again, so it is drawn where it
+         goes. Only a pool this save made: one it confirmed already had a
+         place. */
+      if (isNew && into !== null && !rep.confirmed
+          && !Object.prototype.hasOwnProperty.call(prefMap(IN_KEY),
+                                                   rep.artifact_id)) {
+        putInFolder(rep.artifact_id, into, true);
+        pool.folderHint = into;
+      }
       afterSave(rep);
       if (!rep.confirmed) {
         if (pool.level === 'double') dpropagateDialog(rep);
@@ -10374,6 +11355,7 @@ BARRY.rootcanal = (function () {
   }
 
   async function openSaved(id, version) {
+    pool.folderHint = folderOf(id);
     let got;
     try {
       got = await api((pool.level === 'double' ? '/api/rootcanal/dpool/'
@@ -10744,6 +11726,14 @@ BARRY.rootcanal = (function () {
     _commit: commit,
     _defaultVersion: defaultVersion,
     _openXplore: openInXplore,
+    _openPicked: () => openPickedInXplore(),
+    _poolEvents: () => poolEvents(),
+    _recordingHere: (gid) => recordingHere(gid),
+    _xTarget: () => {
+      const xt = xTarget();
+      return xt ? { gid: xt.gid, t: xt.now.t, i: xt.now.i, m: xt.now.m,
+                    at: xIndex(xt), n: xt.evs.length } : null;
+    },
     _pushXplore: pushXplore,
     _xWin: () => (xOpen() ? xWin : null),
     _closeXplore: () => { try { if (xWin) xWin.close(); } catch (e) { /* ok */ }
@@ -10810,6 +11800,13 @@ BARRY.rootcanal = (function () {
     _statsPick: (ts) => { if (ts) statsPick = ts.slice(); return statsPick; },
     _propagateDialog: propagateDialog,
     _render: () => render(),
+    _done: () => doneQ,
+    _folders: () => poolFolders(),
+    _folderOf: (id) => folderOf(id),
+    _openDone: (id) => {
+      const r = (doneQ.rows || []).find((x) => x.entry_id === id);
+      return r ? openDone(r) : null;
+    },
     _nameDialog: nameDialog,
     _names: loadNames,
     _pickName: (nm) => pickName(nm, pool.cands || []),

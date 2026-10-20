@@ -105,6 +105,16 @@ const NL = String.fromCharCode(10);
       clientX: r.left + cv.clientLeft + x, clientY: r.top + cv.clientTop + y }));
   };
 
+  /* Shared prefs are not this suite's to write (2026-10-20): a pool saved
+     here is filed into a folder as it is saved, and that is a shared
+     preference. Held in the page, the folders read as they really are
+     until the suite files something, and put back in the finally. */
+  ev('(function(){ var W = window; if (W.__rcpPrefSet) return;'
+     + ' W.__rcpPrefSet = BARRY.prefs.set; W.__rcpPrefGet = BARRY.prefs.get; W.__rcpMem = {};'
+     + ' BARRY.prefs.set = function(k, v) { W.__rcpMem[k] = v; return v; };'
+     + ' BARRY.prefs.get = function(k, d) { if (k in W.__rcpMem) return W.__rcpMem[k];'
+     + '   return W.__rcpPrefGet.apply(BARRY.prefs, arguments); }; })()');
+
   /* Every request the panel makes for a pool fit, and the save and the
      reopen answered from here. Wrapped once, for the frame's fetch only,
      and put back in the finally. */
@@ -1949,7 +1959,9 @@ const NL = String.fromCharCode(10);
       if (ev) {
         ev('(function(){ var W = window; if (W.__rcpFetch) { W.fetch = W.__rcpFetch;'
            + ' delete W.__rcpFetch; } if (W.__rcpLog) { BARRY.activity.log ='
-           + ' W.__rcpLog; delete W.__rcpLog; } })()');
+           + ' W.__rcpLog; delete W.__rcpLog; } if (W.__rcpPrefSet) {'
+           + ' BARRY.prefs.set = W.__rcpPrefSet; BARRY.prefs.get = W.__rcpPrefGet;'
+           + ' delete W.__rcpPrefSet; delete W.__rcpPrefGet; } })()');
         ev('try { closeModal(); } catch (e) {}');
         ev('BARRY.rootcanal._poolClose()');
         ev('(function(v){ try { if (v == null) localStorage.removeItem('

@@ -2411,8 +2411,6 @@ BARRY.profile = (function () {
       }
     };
 
-    let showArchived = false;
-
     const paintKnown = () => {
       known.innerHTML = '';
       const all = (roster && roster.people) || [];
@@ -2505,22 +2503,19 @@ BARRY.profile = (function () {
 
       for (const p of rows) known.appendChild(chip(p));
 
-      /* The archived, folded away. Counted in the heading rather than
-         hidden without trace: "where did that name go" is the question a
-         silent filter creates. */
-      if (away.length) {
-        known.appendChild(el('button', {
-          class: 'prof-arch-toggle' + (showArchived ? ' on' : ''),
-          text: (showArchived ? '\u25be  ' : '\u25b8  ')
-                + away.length + ' archived',
-          title: 'Archived people are still on every record they are on, '
-               + 'and still counted. They are only kept out of the pickers.',
-          onclick: () => { showArchived = !showArchived; paintKnown(); },
-        }));
-        if (showArchived) {
-          for (const p of away) known.appendChild(chip(p));
-        }
-      }
+      /* The archived, folded away at the bottom behind the one toggle
+         every list uses (ui.archivedTail). Counted rather than hidden
+         without trace: "where did that name go" is the question a silent
+         filter creates. Archived people are still on every record they
+         are on; they are only kept out of the pickers. */
+      const tail = BARRY.ui && BARRY.ui.archivedTail
+        ? BARRY.ui.archivedTail({
+            key: 'people', items: away, noun: ['person', 'people'],
+            render: (xs) => xs.map(chip),
+            onToggle: () => paintKnown(),
+          })
+        : null;
+      if (tail) known.appendChild(tail);
     };
 
     const body = el('div', { class: 'prof-form' }, [
@@ -3464,10 +3459,25 @@ BARRY.boot = (function () {
     if (slowTimer) { clearTimeout(slowTimer); slowTimer = null; }
     const box = document.getElementById('boot');
     if (!box) return;
-    box.classList.add('gone');
-    // Out of the document once the fade is over, so it cannot take clicks.
-    setTimeout(() => { if (box.parentNode) box.parentNode.removeChild(box); },
-               420);
+    const finish = () => {
+      box.classList.add('gone');
+      // Out of the document once the fade is over, so it cannot take clicks.
+      setTimeout(() => { if (box.parentNode) box.parentNode.removeChild(box); },
+                 420);
+    };
+    /* A title screen and a menu, the way a game starts (2026-10-20): the
+       overlay becomes the title instead of fading, and goes when somebody
+       chooses. Never in a harness, a pop-out or a deep link -- see
+       startmenu.js `wanted`. */
+    try {
+      if (BARRY.startMenu && BARRY.startMenu.wanted()) {
+        BARRY.startMenu.take(box, finish);
+        return;
+      }
+    } catch (e) {
+      reportClientError('boot.startmenu', e.message, e.stack);
+    }
+    finish();
   }
 
   /* A hard limit, whatever happens.
