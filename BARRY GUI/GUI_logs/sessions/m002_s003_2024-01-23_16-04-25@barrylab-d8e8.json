@@ -25,8 +25,8 @@
     "schema": "2026-09-04T15:57:01.575589+00:00",
     "session": "2026-09-04T15:57:01.575589+00:00",
     "start": "2026-09-04T15:57:01.575589+00:00",
-    "updated": "2026-10-20T14:58:32.412619+00:00",
-    "view_state": "2026-10-19T19:26:32.552543+00:00"
+    "updated": "2026-10-20T16:50:41.728317+00:00",
+    "view_state": "2026-10-20T16:50:41.728317+00:00"
   },
   "_keys": {
     "channel_banks": {
@@ -76,7 +76,7 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-10-19T18:54:27.860111+00:00"
+        "2026-10-20T16:50:09.815346+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
@@ -89,7 +89,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-20T14:58:32.412619+00:00",
+    "at": "2026-10-20T16:50:41.728317+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -167,7 +167,7 @@
       "scan": null
     },
     "barrylab-d8e8": {
-      "at": "2026-10-19T14:54:27-04:00",
+      "at": "2026-10-20T12:50:09-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25",
@@ -194,9 +194,9 @@
   "session": 3,
   "start": "2024-01-23T16:04:25",
   "updated": {
-    "app_version": "2026.10.19.2",
-    "at": "2026-10-20T10:58:32-04:00",
-    "commit": "5d58e3d6",
+    "app_version": "2026.10.20.1",
+    "at": "2026-10-20T12:50:41-04:00",
+    "commit": "9451f7ba",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
@@ -238,21 +238,21 @@
       61,
       63
     ],
-    "clim": null,
+    "climBy": null,
     "fdefault": null,
     "flock": true,
     "gain": 2.5,
-    "hp": 5,
+    "hp": 1,
     "invert": true,
-    "lp": 100,
+    "lp": 70,
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 0.6,
+    "span": 0.5,
     "stft_mode": null,
-    "t0": 2709.476315,
+    "t0": 11.947434,
     "ylim": null
   }
 }
