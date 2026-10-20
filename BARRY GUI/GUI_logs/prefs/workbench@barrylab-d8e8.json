@@ -5,15 +5,15 @@
     "curate_at": "2026-10-19T21:11:47.004652+00:00",
     "curate_span": "2026-10-19T21:11:31.970054+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
-    "panning_at": "2026-10-20T16:51:09.657979+00:00",
-    "panning_span": "2026-10-20T14:35:45.248794+00:00",
+    "panning_at": "2026-10-20T17:31:44.206412+00:00",
+    "panning_span": "2026-10-20T17:30:04.234860+00:00",
     "pipeline_folders": "2026-09-23T13:26:19.592745+00:00",
     "radio": "2026-10-13T19:54:21.520703+00:00",
     "recent_scripts": "2026-10-12T15:37:32.641324+00:00",
     "result_group": "2026-09-28T20:50:31.306822+00:00",
     "spotter_at": "2026-10-19T20:54:28.107053+00:00",
     "spotter_light": "2026-10-16T17:21:44.827873+00:00",
-    "updated": "2026-10-20T16:51:09.657979+00:00"
+    "updated": "2026-10-20T17:31:44.206412+00:00"
   },
   "_keys": {
     "jarvis": {
@@ -84,7 +84,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-20T16:51:09.657979+00:00",
+    "at": "2026-10-20T17:31:44.206412+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -512,8 +512,8 @@
     "DESKTOP-4H65AI7": true,
     "LCOM549913": false
   },
-  "panning_at": "{\"s45965a6b13d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e9609fe60ed\",\"t\":39.066984,\"at\":1792507235815},\"s79ba9ba163c4:pooled\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e127b36b23c\",\"t\":12.197434,\"at\":1792515069651}}",
-  "panning_span": 0.5,
+  "panning_at": "{\"s45965a6b13d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e9609fe60ed\",\"t\":39.066984,\"at\":1792507235815},\"s79ba9ba163c4:pooled\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e127b36b23c\",\"t\":12.197434,\"at\":1792515069651},\"s83ce541881d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":0,\"id\":\"e1d7ee0ce9e\",\"t\":1.707999,\"at\":1792517280295},\"s45bae70722f2:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":1,\"id\":\"ebcaf65ba89\",\"t\":57.814477,\"at\":1792517504004}}",
+  "panning_span": 1,
   "pipeline_folders": {
     "session": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43"
   },
@@ -548,7 +548,7 @@
     "Home": "dark",
     "LCOM549913": "horizon-night"
   },
-  "updated": "2026-10-20T12:51:09-04:00",
+  "updated": "2026-10-20T13:31:44-04:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": true,
