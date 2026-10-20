@@ -251,6 +251,8 @@ def main():
     ap.add_argument("--name", default="custom")
     ap.add_argument("--settle", type=float, default=1.5)
     ap.add_argument("--query", default="", help="extra ?query for the page")
+    ap.add_argument("--menu", action="store_true",
+                    help="let the start menu show (and shoot it); off by default")
     ap.add_argument("--steps", default="",
                     help='JSON [[js, wait, settle], ...] run in order, then '
                          'one shot named --name')
@@ -301,9 +303,14 @@ def main():
             {"urlPattern": "*/api/prefs*", "requestStage": "Request"}]})
         cdp.call("Emulation.setDeviceMetricsOverride", {
             "width": w, "height": h, "deviceScaleFactor": 1, "mobile": False})
-        url = "http://127.0.0.1:%d/%s" % (port, ("?" + a.query) if a.query else "")
+        query = "&".join(x for x in (a.query, "" if a.menu else "menu=0") if x)
+        url = "http://127.0.0.1:%d/%s" % (port, ("?" + query) if query else "")
         cdp.call("Page.navigate", {"url": url})
-        if not cdp.until("!document.getElementById('boot') || "
+        if a.menu:
+            if not cdp.until("!!document.querySelector('#boot.boot-menu .sm-item')",
+                             limit=120):
+                print("the start menu never showed")
+        elif not cdp.until("!document.getElementById('boot') || "
                          "document.getElementById('boot').classList"
                          ".contains('gone') || (window.getComputedStyle("
                          "document.getElementById('boot')).display === 'none')",

@@ -3459,10 +3459,25 @@ BARRY.boot = (function () {
     if (slowTimer) { clearTimeout(slowTimer); slowTimer = null; }
     const box = document.getElementById('boot');
     if (!box) return;
-    box.classList.add('gone');
-    // Out of the document once the fade is over, so it cannot take clicks.
-    setTimeout(() => { if (box.parentNode) box.parentNode.removeChild(box); },
-               420);
+    const finish = () => {
+      box.classList.add('gone');
+      // Out of the document once the fade is over, so it cannot take clicks.
+      setTimeout(() => { if (box.parentNode) box.parentNode.removeChild(box); },
+                 420);
+    };
+    /* A title screen and a menu, the way a game starts (2026-10-20): the
+       overlay becomes the title instead of fading, and goes when somebody
+       chooses. Never in a harness, a pop-out or a deep link -- see
+       startmenu.js `wanted`. */
+    try {
+      if (BARRY.startMenu && BARRY.startMenu.wanted()) {
+        BARRY.startMenu.take(box, finish);
+        return;
+      }
+    } catch (e) {
+      reportClientError('boot.startmenu', e.message, e.stack);
+    }
+    finish();
   }
 
   /* A hard limit, whatever happens.

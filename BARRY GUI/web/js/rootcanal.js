@@ -1133,9 +1133,12 @@ BARRY.rootcanal = (function () {
 
   async function loadDone(force) {
     const ctx = inConfluence() ? 'pooled' : 'ds';
-    if (doneQ.loading) return;
+    /* Asked again while a read of it is out (a bank, a save): read again
+       once that one lands, or the list stays one change behind. */
+    if (doneQ.loading) { if (force || doneQ.ctx !== ctx) doneQ.again = true; return; }
     if (doneQ.rows && doneQ.ctx === ctx && !force) return;
     doneQ.loading = true;
+    doneQ.again = false;
     try {
       const got = await api('/api/rootcanal/done?type=' + ctx);
       doneQ.rows = got.sets || [];
@@ -1147,6 +1150,7 @@ BARRY.rootcanal = (function () {
     doneQ.ctx = ctx;
     doneQ.loading = false;
     doneQ.rev += 1;
+    if (doneQ.again) { doneQ.again = false; loadDone(true); }
     if (viewMode !== 'pooled' && !bulk.on) {
       if (doneNode && doneNode.isConnected) doneFill();
       else render();
@@ -1254,7 +1258,8 @@ BARRY.rootcanal = (function () {
   }
 
   function doneToggle() {
-    const n = doneQ.rows ? doneQ.rows.length : null;
+    const n = doneQ.rows && doneQ.ctx === (inConfluence() ? 'pooled' : 'ds')
+      ? doneQ.rows.length : null;
     const open = doneOpen();
     return el('button', {
       type: 'button',
@@ -1283,7 +1288,9 @@ BARRY.rootcanal = (function () {
   }
 
   function doneParts() {
-    const rows = doneQ.rows;
+    // Another bundle's list is never shown under this one's name.
+    const rows = doneQ.ctx === (inConfluence() ? 'pooled' : 'ds')
+      ? doneQ.rows : null;
     const say = (key, text, cls) => [{ key: key, enter: false, sig: text,
       build: () => el('p', { class: 'hint' + (cls ? ' ' + cls : ''),
                              text: text }) }];
