@@ -2,28 +2,64 @@
   "_at": {
     "braces_curve": "2026-10-19T16:52:32.986134+00:00",
     "braces_span": "2026-10-19T15:41:35.395792+00:00",
-    "curate_at": "2026-10-19T21:11:47.004652+00:00",
-    "curate_span": "2026-10-19T21:11:31.970054+00:00",
+    "curate_at": "2026-10-20T20:56:56.884908+00:00",
+    "curate_span": "2026-10-20T20:50:10.137863+00:00",
+    "density": "2026-10-20T20:39:07.822959+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
-    "panning_at": "2026-10-20T17:31:44.206412+00:00",
+    "panning_at": "2026-10-20T21:14:43.748003+00:00",
     "panning_span": "2026-10-20T17:30:04.234860+00:00",
     "pipeline_folders": "2026-09-23T13:26:19.592745+00:00",
     "radio": "2026-10-13T19:54:21.520703+00:00",
     "recent_scripts": "2026-10-12T15:37:32.641324+00:00",
     "result_group": "2026-09-28T20:50:31.306822+00:00",
-    "spotter_at": "2026-10-19T20:54:28.107053+00:00",
+    "spotter_at": "2026-10-20T20:58:38.591456+00:00",
     "spotter_light": "2026-10-16T17:21:44.827873+00:00",
-    "updated": "2026-10-20T17:31:44.206412+00:00"
+    "updated": "2026-10-20T21:17:27.188288+00:00",
+    "vacc_signed_ack": "2026-10-20T16:14:37.060022+00:00"
   },
   "_keys": {
     "jarvis": {
+      "BarryLab": [
+        "set",
+        "2026-10-20T20:39:15.797830+00:00"
+      ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-14T18:59:06.348928+00:00"
+        "2026-10-20T19:12:22.765559+00:00"
       ],
       "LCOM549913": [
         "set",
         "2026-10-14T17:30:51.445344+00:00"
+      ]
+    },
+    "rootcanal_border_archive": {
+      "15226fe7fabc": [
+        "set",
+        "2026-10-20T15:12:56.671308+00:00"
+      ],
+      "3c5b39973fb1": [
+        "set",
+        "2026-10-20T15:12:55.810540+00:00"
+      ],
+      "568cf6685aa5": [
+        "set",
+        "2026-10-20T15:12:57.760437+00:00"
+      ]
+    },
+    "rootcanal_pool_folders": {
+      "fmvh1dtmqhde4": [
+        "set",
+        "2026-10-20T18:48:32.425536+00:00"
+      ]
+    },
+    "rootcanal_pool_in": {
+      "292d870b84ff": [
+        "set",
+        "2026-10-20T18:48:36.059697+00:00"
+      ],
+      "f669e8c87dc9": [
+        "set",
+        "2026-10-20T19:17:24.556471+00:00"
       ]
     },
     "themes": {
@@ -49,7 +85,7 @@
       ],
       "LCOM549913": [
         "set",
-        "2026-10-09T14:33:01.566491+00:00"
+        "2026-10-19T16:57:51.196643+00:00"
       ],
       "MSI": [
         "set",
@@ -63,7 +99,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-19T20:42:09.732785+00:00"
+        "2026-10-20T19:17:12.891899+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -84,7 +120,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-20T17:31:44.206412+00:00",
+    "at": "2026-10-20T21:17:27.188288+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -92,11 +128,11 @@
   "braces_span": 0.8,
   "curate_at": {
     "demo-ds-tutorial:ds": {
-      "at": 1790615198941,
-      "id": "e7b1108a8e9",
+      "at": 1792512739285,
+      "id": "eacb27094b4",
       "n": 24,
-      "review": "flag",
-      "t": 33.9
+      "review": "all",
+      "t": 14.6
     },
     "s0159b3a9fcf7:ied": {
       "at": 1790109330543,
@@ -195,13 +231,6 @@
       "n": 619,
       "review": "flag",
       "t": 1823.931268
-    },
-    "s3cbe283bf5c8:ied": {
-      "at": 1789748432214,
-      "id": "eeae8586e05",
-      "n": 10,
-      "review": "left",
-      "t": 13.8
     },
     "s4187bdd4a184:ds": {
       "at": 1791583024966,
@@ -505,14 +534,16 @@
       "t": 1614.749398
     }
   },
-  "curate_span": 1,
+  "curate_span": 12.8,
+  "density": "compact",
   "digest_seen": "2026-09-08T02:30:43.952468+00:00",
   "fav_scripts": [],
   "jarvis": {
+    "BarryLab": true,
     "DESKTOP-4H65AI7": true,
     "LCOM549913": false
   },
-  "panning_at": "{\"s45965a6b13d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e9609fe60ed\",\"t\":39.066984,\"at\":1792507235815},\"s79ba9ba163c4:pooled\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e127b36b23c\",\"t\":12.197434,\"at\":1792515069651},\"s83ce541881d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":0,\"id\":\"e1d7ee0ce9e\",\"t\":1.707999,\"at\":1792517280295},\"s45bae70722f2:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":1,\"id\":\"ebcaf65ba89\",\"t\":57.814477,\"at\":1792517504004}}",
+  "panning_at": "{\"s45965a6b13d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e9609fe60ed\",\"t\":39.066984,\"at\":1792507235815},\"s79ba9ba163c4:pooled\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e127b36b23c\",\"t\":12.197434,\"at\":1792515069651},\"s45bae70722f2:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":257,\"id\":\"efb1cb85a58\",\"t\":57.814477,\"at\":1792530883739},\"sd0d0bded958b:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":2,\"id\":\"e4d8cec8ce8\",\"t\":25.35749,\"at\":1792519409404}}",
   "panning_span": 1,
   "pipeline_folders": {
     "session": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43"
@@ -538,7 +569,30 @@
     "IED/05_Session_Pipeline/stages/EventStacks_ampWidth_Avg_Pipeline.m"
   ],
   "result_group": "",
-  "spotter_at": "{\"s45965a6b13d3:ied\":{\"review\":\"all\",\"index\":49,\"id\":\"e4c9f7bba8b\",\"t\":943.472121,\"at\":1792001370071},\"sddf3e5010ff2:ied\":{\"review\":\"left\",\"index\":7,\"id\":\"eb9bd781841\",\"t\":17.209561,\"at\":1790372908151},\"s9a8f6138b49e:ied\":{\"review\":\"left\",\"index\":162,\"id\":\"ef8f3715329\",\"t\":1248.283006,\"at\":1791910611232},\"s91039ecb8aa9:ied\":{\"review\":\"left\",\"index\":38,\"id\":\"ea4af54247d\",\"t\":334.640772,\"at\":1791915271213}}",
+  "rootcanal_border_archive": {
+    "15226fe7fabc": {
+      "at": "2026-10-20T15:12:56.308Z"
+    },
+    "3c5b39973fb1": {
+      "at": "2026-10-20T15:12:55.447Z"
+    },
+    "568cf6685aa5": {
+      "at": "2026-10-20T15:12:57.392Z"
+    }
+  },
+  "rootcanal_pool_folders": {
+    "fmvh1dtmqhde4": {
+      "at": "2026-10-20T18:48:32.066Z",
+      "by": "Shahriar Tafti",
+      "gone": false,
+      "name": "Full Incisor JA Management"
+    }
+  },
+  "rootcanal_pool_in": {
+    "292d870b84ff": "fmvh1dtmqhde4",
+    "f669e8c87dc9": "fmvh1dtmqhde4"
+  },
+  "spotter_at": "{\"s45965a6b13d3:ied\":{\"review\":\"all\",\"index\":49,\"id\":\"e4c9f7bba8b\",\"t\":943.472121,\"at\":1792001370071},\"sddf3e5010ff2:ied\":{\"review\":\"left\",\"index\":7,\"id\":\"eb9bd781841\",\"t\":17.209561,\"at\":1790372908151},\"s9a8f6138b49e:ied\":{\"review\":\"left\",\"index\":162,\"id\":\"ef8f3715329\",\"t\":1248.283006,\"at\":1791910611232},\"s91039ecb8aa9:ied\":{\"review\":\"left\",\"index\":38,\"id\":\"ea4af54247d\",\"t\":334.640772,\"at\":1791915271213},\"s96884739a6ff:ied.e416ca89864b7\":{\"review\":\"left\",\"index\":2,\"id\":\"eed47a8fc9a\",\"t\":28.9797,\"at\":1792529201623},\"s96884739a6ff:ied.eb24519453878\":{\"review\":\"left\",\"index\":2,\"id\":\"e1fee148c8a\",\"t\":28.9797,\"at\":1792529475731},\"s96884739a6ff:ied.e4f29a49cd91b\":{\"review\":\"left\",\"index\":2,\"id\":\"eaa245ff8f4\",\"t\":28.9797,\"at\":1792529897037}}",
   "spotter_light": "lit",
   "themes": {
     "BarryLab": "horizon-night",
@@ -546,9 +600,9 @@
     "DESKTOP-AH45FAE": "horizon-night",
     "DESKTOP-NR2H5O7": "horizon-night",
     "Home": "dark",
-    "LCOM549913": "horizon-night"
+    "LCOM549913": "halloween"
   },
-  "updated": "2026-10-20T13:31:44-04:00",
+  "updated": "2026-10-20T17:17:27-04:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": true,
@@ -556,5 +610,6 @@
     "DESKTOP-NR2H5O7": true,
     "Home": true,
     "LCOM549913": true
-  }
+  },
+  "vacc_signed_ack": 1792512852.3774557
 }

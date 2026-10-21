@@ -1,0 +1,210 @@
+{
+  "_at": {
+    "added": "2026-10-20T20:31:55.462942+00:00",
+    "deleted": "2026-10-20T20:31:55.462942+00:00",
+    "id": "2026-10-20T20:31:55.462942+00:00",
+    "kind": "2026-10-20T20:31:55.462942+00:00",
+    "name": "2026-10-20T20:31:55.462942+00:00",
+    "nickname": "2026-10-20T20:31:55.462942+00:00",
+    "schema": "2026-10-20T20:31:55.462942+00:00",
+    "subject": "2026-10-20T20:31:55.462942+00:00",
+    "subject_key": "2026-10-20T20:31:55.462942+00:00",
+    "version": "2026-10-20T20:31:55.462942+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "c4053705e58d": [
+        "set",
+        "2026-10-20T20:31:55.462942+00:00"
+      ],
+      "c79f885c99ac": [
+        "set",
+        "2026-10-20T20:31:55.462942+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-20T20:31:55.462942+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-20T14:51:37-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "b4ec6a487d1d",
+  "kind": "rootcanal_single",
+  "name": "Root Canal single \u00b7 PTEN m1 s2 2023-10-02",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "entry_id": "852640a8846a",
+    "gid": "s45bae70722f2",
+    "mouse_key": "PTEN|m1",
+    "project": "PTEN",
+    "session_label": "PTEN m1 s2 2023-10-02"
+  },
+  "subject_key": "rootcanal_single|852640a8846a",
+  "version": 2,
+  "versions": [
+    {
+      "app_version": "2026.10.20.5",
+      "at": "2026-10-20T14:51:37-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "f729a289",
+      "digest": "f38973660b3b",
+      "id": "c4053705e58d",
+      "inputs": [
+        {
+          "entry_id": "852640a8846a",
+          "from_version": null,
+          "imported_from": "5eb88e8de1cd",
+          "read": "416ff3701c57",
+          "rows_digest": "ff8dd710928c"
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "ds": 33,
+        "events": 83,
+        "filter": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+        "ied": 50,
+        "k": 2,
+        "names": [],
+        "stats": null
+      },
+      "nickname": "banked as v18",
+      "nickname_at": "2026-10-20T14:51:37-04:00",
+      "note": "JA Management",
+      "params": {
+        "band_hi": 1000.0,
+        "band_lo": 500.0,
+        "centres": null,
+        "cluster_calls": {},
+        "cluster_names": {},
+        "complete_only": false,
+        "cross_ms": 100.0,
+        "drawn": [],
+        "filt": "ds",
+        "flank_ms": [
+          30.0,
+          60.0
+        ],
+        "flips": [],
+        "hi_hz": 100.0,
+        "k": 2,
+        "lo_hz": 5.0,
+        "mains_out": true,
+        "margin": null,
+        "measure": {
+          "band_hi": 1000.0,
+          "band_lo": 500.0,
+          "cross_ms": 100.0,
+          "filt": "ds",
+          "filter_label": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+          "hi_hz": 100.0,
+          "lo_hz": 5.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 25.0
+        },
+        "n_init": 10,
+        "order": 3,
+        "read": "416ff3701c57",
+        "retry": [],
+        "seed": 0,
+        "win_ms": 25.0
+      },
+      "params_hash": "10c59e5f39cf",
+      "v": 1
+    },
+    {
+      "app_version": "2026.10.20.5",
+      "at": "2026-10-20T15:09:33-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "f729a289",
+      "digest": "6518bf4eab4f",
+      "id": "c79f885c99ac",
+      "inputs": [
+        {
+          "entry_id": "852640a8846a",
+          "from_version": null,
+          "read": "416ff3701c57",
+          "rows_digest": "39d2723908e8"
+        },
+        {
+          "artifact_id": "f669e8c87dc9",
+          "kind": "pool",
+          "margin": {
+            "artifact_id": "7ab31fb47f0e",
+            "mode": "fixed",
+            "version": 1
+          },
+          "nickname": "PTEN ALL PTEN Baseline Full Incisor",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "ds": 80,
+        "events": 83,
+        "filter": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+        "ied": 3,
+        "k": 2,
+        "names": [],
+        "stats": null
+      },
+      "nickname": "from pool \u2018PTEN ALL PTEN Baseline Full Incisor\u2019 v1",
+      "nickname_at": "2026-10-20T15:09:33-04:00",
+      "note": "The pool's identity, as a margin applied fixed.",
+      "params": {
+        "band_hi": 1000.0,
+        "band_lo": 500.0,
+        "centres": null,
+        "cluster_calls": {},
+        "cluster_names": {},
+        "complete_only": false,
+        "cross_ms": 100.0,
+        "drawn": [],
+        "filt": "ds",
+        "flank_ms": [
+          30.0,
+          60.0
+        ],
+        "flips": [],
+        "hi_hz": 100.0,
+        "k": 2,
+        "lo_hz": 5.0,
+        "mains_out": true,
+        "margin": {
+          "artifact_id": "7ab31fb47f0e",
+          "mode": "fixed",
+          "version": 1
+        },
+        "measure": {
+          "band_hi": 1000.0,
+          "band_lo": 500.0,
+          "cross_ms": 100.0,
+          "filt": "ds",
+          "filter_label": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+          "hi_hz": 100.0,
+          "lo_hz": 5.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 25.0
+        },
+        "n_init": 10,
+        "order": 3,
+        "read": "416ff3701c57",
+        "retry": [],
+        "seed": 0,
+        "win_ms": 25.0
+      },
+      "params_hash": "4e411e409ecf",
+      "v": 2
+    }
+  ]
+}
