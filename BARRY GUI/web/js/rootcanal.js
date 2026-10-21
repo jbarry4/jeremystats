@@ -999,14 +999,13 @@ BARRY.rootcanal = (function () {
     if (!cands.length) { box.appendChild(nothing()); return; }
     box.appendChild(modeSwitch());
     if (bulk.on) { box.appendChild(bulkCard()); return; }
-    box.appendChild(doneCard());
+    box.appendChild(chooser());
     if (keep && keep.el.isConnected && document.activeElement !== keep.el) {
       keep.el.focus();
       try { if (keep.a != null) keep.el.setSelectionRange(keep.a, keep.b); } catch (e) { /* not text */ }
     }
-    const dl2 = doneNode.querySelector('.rc-done-list');
+    const dl2 = doneNode && doneNode.querySelector('.rc-done-list');
     if (dl2 && dScroll) dl2.scrollTop = dScroll;
-    box.appendChild(chooser());
     if (job) { box.appendChild(progress()); return; }
     if (!q.read) { box.appendChild(readCard()); return; }
     box.appendChild(workbench());
@@ -1268,10 +1267,9 @@ BARRY.rootcanal = (function () {
     return ((b.last || {}).t || 0) - ((a.last || {}).t || 0);
   }
 
-  /* The list itself, above the set card; folded, it is nothing at all --
-     its toggle sits on the card's own first line (`doneToggle`), so a set's
-     picture is not pushed a line further down by it (the controls stay on
-     the first screen). */
+  /* The list itself, in the set card under the line its toggle is on;
+     folded, it is nothing at all, so a set's picture is not pushed a line
+     further down by it (the controls stay on the first screen). */
   function doneCard() {
     if (!doneNode) {
       doneNode = el('div', { class: 'rc-donelist' }, [
@@ -1600,12 +1598,13 @@ BARRY.rootcanal = (function () {
           + '  ·  ' + ((v && v.n) || cur.n) + ' events'
           + (v && v.aligned ? '  ·  aligned' : '') }),
         el('span', { class: 'spacer' }),
-        // What has been done already (2026-10-20); its list opens above.
+        // What has been done already (2026-10-20); its list drops down here.
         doneToggle(),
         BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Change set',
           title: 'Show the recording, entry and version lists again. The '
                + 'read and the answer stay until you pick something else.',
           onclick: () => { chooserOpen = true; render(); } }),
+        doneCard(),
       ]);
     }
 
@@ -1633,9 +1632,13 @@ BARRY.rootcanal = (function () {
     box.appendChild(el('div', { class: 'rc-choose-top' }, [
       el('div', { class: 'section-label', text: 'Recording' }),
       el('span', { class: 'spacer' }),
-      // What has been done already (2026-10-20); its list opens above.
+      // What has been done already (2026-10-20); its list drops down here.
       doneToggle(),
     ]));
+    /* DROPPED DOWN WHERE IT WAS PRESSED (2026-10-21): it opened above the
+       set card, so the card -- and the toggle -- jumped down, and folding
+       it meant finding the toggle again somewhere else. */
+    box.appendChild(doneCard());
     box.appendChild(BARRY.pickSession({
       rows,
       value: q.gid,
@@ -1710,6 +1713,9 @@ BARRY.rootcanal = (function () {
          was a list of radios, oldest first. */
       box.appendChild(el('div', { class: 'rc-vers' }, [BARRY.ui.versionTree({
         versions: vers,
+        // What produced the set, as a chip above it (2026-10-20).
+        producer: (cur || {}).pipeline,
+        producerType: (cur || {}).type,
         idOf: versionRef,
         value: q.from_version,
         unit: 'stamps',
@@ -2492,21 +2498,15 @@ BARRY.rootcanal = (function () {
             title: 'Their half-width was found only with the search reaching '
                  + 'past v1’s ' + CROSS_V1 + ' ms. Drawn with a dashed '
                  + 'outline.' }) : null,
-          cs.length ? BARRY.ui.chip(
-            (fit.n_placed != null ? fit.n_placed : fit.n_used) + ' of '
-            + fit.n + ' classified') : null,
+          cs.length ? (() => {
+            const placed = fit.n_placed != null ? fit.n_placed : fit.n_used;
+            return BARRY.ui.chip(placed === fit.n ? 'all ' + fit.n + ' classified'
+                                 : placed + ' of ' + fit.n + ' classified');
+          })() : null,
           /* Its saved versions and Save, in the row of counts: beside Bank
              they made the card a line taller and put the picked event's
              bar below the fold (measured: 912 px down on a 908 screen). */
           ...versionStrip(),
-          BARRY.ui.seg([['call', fit.border_used ? 'by border' : 'by call'],
-                        ['cluster', 'by cluster'],
-                        // A pooled set says which detector found each one.
-                        hasOrigins() ? ['origin', 'by origin'] : null,
-                       ].filter(Boolean),
-            hasOrigins() || singleColour !== 'origin' ? singleColour : 'call',
-            (v) => { singleColour = v; render(); },
-            { extra: 'rc-colour-by' }),
         ].filter(Boolean)),
         clusterChips(fit.clusters,
           (rank, call) => {
@@ -2535,8 +2535,13 @@ BARRY.rootcanal = (function () {
                event's bar below the fold (measured: 910 on a 908 screen,
                882 without it). */
             tail: statsButton('single') }),
-        marginCard(singleMarginCtx()),
-        bordersCard(singleBorderCtx()),
+        /* Side by side while both are shut (2026-10-20): stacked, two
+           one-line folds were the line that put the picked event's bar
+           below the fold. An open one takes the width. */
+        el('div', { class: 'rc-folds' }, [
+          marginCard(singleMarginCtx()),
+          bordersCard(singleBorderCtx()),
+        ]),
       ]),
       savedOnly ? el('p', { class: 'hint rc-warn rc-saved-only', text:
         'Drawn from v' + (viewing ? viewing.v : '?') + '’s saved numbers. Its '
@@ -3291,9 +3296,9 @@ BARRY.rootcanal = (function () {
         text: 'Borders · ' + (bu ? 'Classified by ‘' + bu.nickname
           + '’ at grace ' + bu.grace_words + ': ' + borderShort(bu, c)
           : b.err ? 'not applied, said below'
+          // The archived ones are said inside, under their own fold.
           : 'No border applied' + (list.length ? ' · ' + list.length
-                                                 + ' saved' : '')
-            + (shelved.length ? ' · ' + shelved.length + ' archived' : '')) }),
+                                                 + ' saved' : '')) }),
       state,
       b.err ? el('p', { class: 'hint rc-warn rc-border-err',
                         text: 'Not applied: ' + b.err }) : null,
@@ -3907,6 +3912,21 @@ BARRY.rootcanal = (function () {
   }
 
   /* The legend for the marks, once, above the pictures. */
+  /* How the dots are coloured, at the head of the key it changes
+     (2026-10-20): in the row of counts it was the part that wrapped the
+     row to a third line and put the picked event's bar below the fold. */
+  function colourSeg() {
+    if (!fit) return null;
+    return BARRY.ui.seg([['call', fit.border_used ? 'by border' : 'by call'],
+                         ['cluster', 'by cluster'],
+                         // A pooled set says which detector found each one.
+                         hasOrigins() ? ['origin', 'by origin'] : null,
+                        ].filter(Boolean),
+      hasOrigins() || singleColour !== 'origin' ? singleColour : 'call',
+      (v) => { singleColour = v; render(); },
+      { extra: 'rc-colour-by' });
+  }
+
   function legend() {
     const item = (cls, text) => el('span', { class: 'rc-lg' }, [
       el('i', { class: 'rc-lg-m ' + cls }), el('span', { text })]);
@@ -3915,6 +3935,7 @@ BARRY.rootcanal = (function () {
       && !byOrigin;
     if (byOrigin) {
       return el('div', { class: 'rc-legend' }, [
+        colourSeg(),
         item('rc-lg-oi', 'found by Incisor'),
         item('rc-lg-od', 'found by Doppler'),
         item('rc-lg-ob', 'found by both'),
@@ -3926,6 +3947,7 @@ BARRY.rootcanal = (function () {
       ]);
     }
     return el('div', { class: 'rc-legend' }, [
+      colourSeg(),
       item('rc-lg-ds', byBorder ? 'solid DS' : 'DS'),
       item('rc-lg-ied', byBorder ? 'solid IED' : 'IED'),
       byBorder ? item('rc-lg-amb rc-lg-amb-ds', 'outside, called DS') : null,
@@ -7105,6 +7127,8 @@ BARRY.rootcanal = (function () {
       if (xf.setChannelLines) {
         xf.setChannelLines(sess, now && now.contact != null ? [{
           key: 'rootcanal-max',
+          // Faded and hidden with the marks (2026-10-21): it is one of them.
+          followsMarks: true,
           label: 'max amp' + (now.cls ? ' · ' + now.cls.toUpperCase() : ''),
           colour: colOf(now.cls), number: Number(now.contact),
         }] : []);

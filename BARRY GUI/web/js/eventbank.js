@@ -158,7 +158,9 @@ BARRY.views.eventbank = (function () {
 
     bar.appendChild(BARRY.ui.searchField({
       value: query,
-      placeholder: 'Search project, mouse, session, type, pipeline, who…',
+      // Short enough to be read whole in the box (nothing is cut short).
+      placeholder: 'Search the bank…',
+      title: 'Search by project, mouse, session, type, what produced it, or who',
       oninput: (e) => { query = e.target.value; keepFocus(render); },
     }));
 
@@ -588,6 +590,8 @@ BARRY.views.eventbank = (function () {
          (2026-10-20). A cell spanning the flexible column cannot do that. */
       el('div', { class: 'bank-meta' }, [
         el('span', { class: 'bank-type', text: typeName(e.type) }),
+        // What produced it, as a chip: "Incisor output" (2026-10-20).
+        BARRY.ui.producerChip(src, e.type),
         el('span', { class: 'bank-src', text: baseName(src.pipeline || ''),
                      title: src.pipeline || '' }),
       ]),
@@ -762,6 +766,7 @@ BARRY.views.eventbank = (function () {
        here can be opened -- its counts and note are on record even without
        a snapshot -- so none is disabled. */
     const strip = el('div', { class: 'ver-strip' }, [BARRY.ui.versionTree({
+      producer: (e.source || {}).pipeline, producerType: e.type,
       versions: shown,
       idOf: verKey,
       value: openVersion,
@@ -1263,6 +1268,7 @@ BARRY.views.eventbank = (function () {
                       + (e.session_label ? '  ·  ' + e.session_label : '') }),
         el('div', { class: 'detail-tags' }, [
           el('span', { class: 'tag lang', text: typeName(e.type) }),
+          BARRY.ui.producerChip(src, e.type),
           el('span', { class: 'tag opt', text: e.n + ' events' }),
           isArchived(e) ? el('span', { class: 'tag blocked', text: 'archived',
             title: 'Every version of this entry is archived: kept, and no '

@@ -180,6 +180,13 @@ async function until(fn, ms, what) {
       ok('another dot picked: the window follows to it', showing(xt2) && !near(xt2.t, xt1.t),
          JSON.stringify([xt2, lastWin()]));
       ok('in the same window, not a second one', fx().urls.length === 1);
+      // The max-amp line is one of the marks: faded and hidden with them
+      // by the window's Marks setting (2026-10-21).
+      const ln = ev('(function(){ var l = window.__fx.lines; var last = l[l.length - 1] || [];'
+        + ' return last.map(function(x){ return { key: x.key, follows: !!x.followsMarks }; }); })()');
+      ok('the max-amp line it draws follows the window’s Marks setting (faded, hidden)',
+         ln.length === 1 && ln[0].key === 'rootcanal-max' && ln[0].follows === true,
+         JSON.stringify(ln));
       // A double-click on a dot, away from the one picked.
       const pts = geomPts().filter((p) => !p.hollow && p.i !== e2.i);
       const target = pts.find((p) => pts.every((q) => q === p

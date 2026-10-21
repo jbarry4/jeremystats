@@ -437,6 +437,7 @@ BARRY.junction = (function () {
     const value = kind === 'ds' ? q.dsV : q.iedV;
     const onLine = new Set(ent.aligned_names || []);
     slot.appendChild(BARRY.ui.versionTree({
+      producer: ent.pipeline, producerType: kind,
       versions: vs,
       idOf: (v) => v.id,
       value: value,

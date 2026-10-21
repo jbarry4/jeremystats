@@ -4935,15 +4935,43 @@ def _doppler_remember(sess, spec, key, out, extra=None):
         return False
 
 
-def _doppler_banked_for(gid, key):
+def _doppler_banked_for(gid, key, run=None):
     """The bank entry a run was filed as, found by the run's key -- or None.
-    Every run banked since 2026-10-19 carries it as `run_key`."""
+    Every run banked since 2026-10-19 carries it as `run_key`.
+
+    With `run` (its vault record), a run banked by hand before then is
+    found too, by what it computed: the same threshold to four places, the
+    same gap map and the same number of events on the same recording. The
+    threshold is the 99.9th percentile of that recording's line length, so
+    two different runs do not share it. Only for saying whether a run is
+    banked -- 33 runs from 10-12 to 10-16 read "Bank them" while their
+    entries sat in the bank (2026-10-21) -- never for deciding whether to
+    bank one, which keeps to the key.
+    """
     if not gid or not key:
         return None
     for rec in BANK.all():
         if (rec.get("gid") == gid and (rec.get("type") or "") == "ied"
                 and ((rec.get("source") or {}).get("parameters") or {})
                 .get("run_key") == key):
+            return rec
+    if not run:
+        return None
+
+    def mark(p, n):
+        try:
+            thr = round(float((p or {}).get("threshold")), 4)
+        except (TypeError, ValueError):
+            return None
+        return (thr, (p or {}).get("gap_map_sha"), int(n or 0))
+    want = mark(run.get("params"), run.get("n_events"))
+    if want is None:
+        return None
+    for rec in BANK.all():
+        src = rec.get("source") or {}
+        if (rec.get("gid") == gid and (rec.get("type") or "") == "ied"
+                and str(src.get("pipeline") or "").startswith("Doppler")
+                and mark(src.get("parameters"), rec.get("n")) == want):
             return rec
     return None
 
@@ -5531,8 +5559,19 @@ def api_doppler_scan():
     if hit is None and not body.get("force"):
         hit = _doppler_recall(sess, key)
     if hit is not None and not body.get("force"):
+        # With its key and whether it is banked, as a run that has just
+        # landed comes back -- without them the panel offered "Bank them"
+        # for an answer the bank already had (2026-10-21).
+        on_file = DOPPLER_VAULT.get(sess.get("gid"), key) or None
+        done = _doppler_banked_for(sess.get("gid"), key, run=on_file)
         return jsonify({"ok": True, "cached": True,
-                        "result": _doppler_public(hit)})
+                        "result": dict(
+                            _doppler_public(hit), key=key,
+                            banked=({"id": done["id"],
+                                     "name": done.get("name"),
+                                     "n": done.get("n"), "auto": False}
+                                    if done else None),
+                            before_fix=_doppler_before_fix(on_file))})
 
     steps = _doppler_steps(plan)
 
@@ -5705,7 +5744,7 @@ def api_doppler_run():
         path = used
     else:
         path = _local_path_of(row) or incisorvaccmod.path_of(gid)
-    done = _doppler_banked_for(gid, key)
+    done = _doppler_banked_for(gid, key, run=rec)
     return jsonify({
         "ok": True, "key": key,
         "result": dict(_doppler_public(full), key=key,
@@ -5749,7 +5788,7 @@ def api_doppler_reviews():
                 pass
             row = by_gid.get(gid) or {}
             local = _local_path_of(row)
-            mine = _doppler_banked_for(gid, rec.get("params_hash"))
+            mine = _doppler_banked_for(gid, rec.get("params_hash"), run=rec)
             rows.append({
                 "gid": gid,
                 # This run's own entry, when it has been banked -- by the
@@ -6253,6 +6292,8 @@ def api_braces_plan():
         "entry": {"id": rec["id"], "name": rec.get("name"),
                   "n": rec.get("n"), "gid": rec.get("gid"),
                   "type": rec.get("type"),
+                  # What produced it, for the chip on the version tree.
+                  "pipeline": (rec.get("source") or {}).get("pipeline"),
                   "session_label": rec.get("session_label"),
                   "aligned": rec.get("aligned")},
         "session": {"path": sess.get("path"), "name": sess.get("name"),
@@ -7371,6 +7412,7 @@ def api_braces_candidates():
             "project": rec.get("project"), "mouse": rec.get("mouse"),
             "session": rec.get("session"),
             "session_label": rec.get("session_label"),
+            "type": rec.get("type") or want_type,
             "by_label": rec.get("by_label") or {},
             "current_version": max([v.get("v") or 0 for v in vers] or [0]),
             "current_name": versionsmod.tip_next(vers)[0],
@@ -9433,6 +9475,8 @@ def api_rootcanal_candidates():
             "newest_aligned_name": (versionsmod.newest(aligned_names)
                                     if aligned_names else None),
             "rootcanal": _rootcanal_state(rec, ied_by),
+            # What produced it, for the chip on its version tree.
+            "pipeline": (rec.get("source") or {}).get("pipeline"),
             "added": rec.get("added"),
             # Sent, not left out: the picker draws it under its archived
             # toggle (`_bank_archived`).
@@ -16728,6 +16772,9 @@ def _cur_history(gid, kind, summaries=None):
             "entry": rec.get("id"),
             "name": rec.get("name"),
             "n": rec.get("n"),
+            # What produced it, for the chip over its versions.
+            "pipeline": (rec.get("source") or {}).get("pipeline"),
+            "type": rec.get("type"),
             "versions": vers,
         })
     # Newest entry first, by its newest version.
@@ -25963,6 +26010,34 @@ def api_bank_update(entry_id):
 
     return jsonify({"ok": True, "entry": {k: v for k, v in rec.items()
                                           if k != "events"}})
+
+
+@app.route("/api/bank/<entry_id>/archive", methods=["POST"])
+def api_bank_archive_entry(entry_id):
+    """Archive (or unarchive) a whole entry: every version of it, which is
+    what makes an entry archived (`eventbank.entry_archived`). For the
+    workbench's "Pick up a set" list, which archives a dataset right there
+    (2026-10-20). Body: {archived: true|false}. Nothing is deleted."""
+    body = request.get_json(force=True, silent=True) or {}
+    want = bool(body.get("archived", True))
+    ent = BANK.get(entry_id)
+    if not ent:
+        return jsonify({"ok": False, "error": "No such bank entry."}), 404
+    n = 0
+    try:
+        for ver in list(ent.get("versions") or []):
+            if bool(ver.get("archived")) == want:
+                continue
+            BANK.edit_version(entry_id, BANK.version_key(ver),
+                              {"archived": want})
+            n += 1
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{"action": "bank.archive" if want else
+                            "bank.unarchive",
+                            "detail": {"entry": entry_id, "versions": n}}])
+    return jsonify({"ok": True, "archived": want, "changed": n,
+                    "entry": entry_id})
 
 
 @app.route("/api/bank/<entry_id>/version/<v>", methods=["POST"])

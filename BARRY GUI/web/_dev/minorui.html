@@ -199,16 +199,16 @@ async function untilN(fn, tries = 250, gap = 100) {
     check('the recording opened', !!sess, sessPath);
     if (sess) {
       await sleep(1200);
-      const sel = () => doc().querySelector('.pane-head select');
+      // The head names the panel; More › Shows changes it (2026-10-20).
+      const sel = () => doc().querySelector('.pane-head .pane-panel-name');
       const panelOf = (i) => val('BARRY.views.xplore.state.panes['
                              + i + '] || {}').panel;
 
       /* Put it on something that is plainly not a CSD, so a switch that
          forces one is unmistakable. */
       const s0 = sel();
-      check('a pane has a panel-type control', !!s0);
-      s0.value = 'traces';
-      s0.dispatchEvent(new (win().Event)('change', { bubbles: true }));
+      check('a pane says what it shows', !!s0);
+      run("BARRY.views.xplore.setPanel(0, 'traces')");
       await sleep(900);
       say('note', '  pane 0 is showing ' + panelOf(0));
       check('it is on the voltage traces', panelOf(0) === 'traces');
@@ -237,8 +237,7 @@ async function untilN(fn, tries = 250, gap = 100) {
         /* One change, all of them -- the six-clicks complaint. */
         const s1 = sel();
         if (s1 && kinds.length > 1) {
-          s1.value = 'csd';
-          s1.dispatchEvent(new (win().Event)('change', { bubbles: true }));
+          run("BARRY.views.xplore.setPanel(0, 'csd')");
           await sleep(1400);
           const spread = val('BARRY.views.xplore.state.panes'
                             + '.filter(Boolean).map(function(p){'

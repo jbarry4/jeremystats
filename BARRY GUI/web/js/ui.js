@@ -827,6 +827,19 @@ BARRY.ui = (function () {
       // Nothing matching clears the choice: another tree was chosen.
       if (i >= 0) mark(rowEls[i]); else mark(lead && ref == null ? lead : null);
     };
+    /* What produced this family of versions, as a chip above it --
+       "Incisor output" (2026-10-20). `producer` is the entry's pipeline
+       (or its source); `producerType` its kind, for a curation pass. */
+    if (opt.producer) {
+      const chip = producerChip(opt.producer, opt.producerType);
+      if (chip) {
+        const fam = el('div', { class: 'vtree-family' }, [
+          el('div', { class: 'vtree-made' }, [chip]), host]);
+        fam.redraw = host.redraw; fam.value = host.value;
+        fam.choose = host.choose;
+        return fam;
+      }
+    }
     return host;
   }
 
@@ -1243,6 +1256,106 @@ BARRY.ui = (function () {
     return [live, gone];
   }
 
+  /* ---------- what produced a dataset ---------- */
+
+  /* "Any time the version family is shown, indicate what produced it as a
+     little chip -- Incisor output, Checkup output, Doppler output -- and in
+     the data bank too" (2026-10-20). Read off the entry's pipeline (and its
+     type, for a curation pass); an import says Imported. */
+  const PRODUCERS = [
+    [/^Incisor/i, 'Incisor'], [/^Doppler/i, 'Doppler'],
+    [/curation \(ds/i, 'Checkup'], [/curation \(ied/i, 'Spotter'],
+    [/curation \(pooled/i, 'Panning'],
+    [/Confluence|Junction/i, 'Junction'], [/Root Canal/i, 'Root Canal'],
+    [/Braces/i, 'Braces'], [/^Eye\b/i, 'Eye'], [/^Lock\b/i, 'Lock'],
+    [/X-ray|DS1\/DS2/i, 'X-ray'], [/Tooth Fairy/i, 'Tooth Fairy'],
+    [/Spark|The Arc/i, 'Spark'],
+  ];
+  function producerOf(src, type) {
+    const p = String((src && typeof src === 'object' ? src.pipeline : src) || '');
+    if (/Jarvis curation/i.test(p) && !/\((ds|ied|pooled)/i.test(p)) {
+      return { name: type === 'ied' ? 'Spotter' : type === 'pooled' ? 'Panning'
+                                                                    : 'Checkup',
+               label: (type === 'ied' ? 'Spotter' : type === 'pooled'
+                 ? 'Panning' : 'Checkup') + ' output', raw: p };
+    }
+    for (const [re, name] of PRODUCERS) {
+      if (re.test(p)) return { name, label: name + ' output', raw: p };
+    }
+    if (!p) return null;
+    return { name: 'Imported', label: /import|export|hand-sort|ETS|sorted/i.test(p)
+      ? 'Imported' : p, raw: p };
+  }
+
+  function producerChip(src, type) {
+    const pr = producerOf(src, type);
+    if (!pr) return null;
+    return el('span', {
+      class: 'flagchip producer',
+      'data-producer': pr.name.toLowerCase().replace(/[^a-z]+/g, '-'),
+      text: pr.label,
+      title: 'Produced by ' + (pr.raw || pr.name),
+    });
+  }
+
+  /* ---------- the link to the next step ---------- */
+
+  /* Every bundle step ends the same way (2026-10-20): a row, right-aligned,
+     "Next: <Step> — <what it does> →", read off ToolKit's own bundle list,
+     so inserting a step renumbers and relinks every page. The last step of
+     a bundle has none. A step not in a bundle has none.
+
+       toolId     the step this page is
+       ready      true, or a sentence saying why the next step cannot use
+                  this yet (the button is shown, disabled, with it)
+       onclick    what going on does, when it is more than opening the
+                  next step (carrying a recording, putting a set on a
+                  bench); default: open the next step
+       note       a short line beside it, what carries over */
+  function nextStep(toolId) {
+    const tk = BARRY.views && BARRY.views.toolkit;
+    if (!tk || typeof tk.bundles !== 'function') return null;
+    const via = typeof tk.via === 'function' ? tk.via() : null;
+    const list = tk.bundles();
+    const order = via ? list.filter((b) => b.id === via).concat(list) : list;
+    for (const b of order) {
+      const i = (b.steps || []).findIndex((s) => s.id === toolId);
+      if (i < 0) continue;
+      const nx = b.steps[i + 1];
+      return nx ? { id: nx.id, name: nx.name, does: nx.does, soon: nx.soon,
+                    bundle: b.id, bundleName: b.name } : null;
+    }
+    return null;
+  }
+
+  function handoff(toolId, o) {
+    const opt = o || {};
+    const nx = nextStep(toolId);
+    if (!nx) return null;
+    const why = opt.ready === undefined || opt.ready === true ? null
+      : (typeof opt.ready === 'string' ? opt.ready : 'Not ready yet.');
+    const soon = nx.soon ? nx.name + ' is not built yet: ' + nx.soon : null;
+    const go = () => {
+      if (typeof opt.onclick === 'function') { opt.onclick(nx); return; }
+      const tk = BARRY.views.toolkit;
+      if (tk && tk.pick) tk.pick(nx.id, nx.bundle);
+      if (typeof setView === 'function' && BARRY.state.view !== 'toolkit') {
+        setView('toolkit');
+      }
+    };
+    return el('div', { class: 'handoff' }, [
+      opt.note ? el('span', { class: 'hint handoff-note', text: opt.note }) : null,
+      button({
+        kind: 'ghost', size: 'sm', extra: 'handoff-go',
+        text: 'Next: ' + nx.name + ' — ' + nx.does + ' →',
+        title: why || soon || (nx.bundleName + ': ' + nx.name + ', '
+                               + nx.does),
+        disabled: !!(why || soon),
+        onclick: go,
+      }),
+    ].filter(Boolean));
+  }
+
   /* ---------- a mode's own end of the one bar ---------- */
 
   /* Every add-on's bar ends the same way (2026-10-20): its occasional
@@ -1484,6 +1597,10 @@ BARRY.ui = (function () {
     natSort: natSort,
     alignTable: alignTable,
     modeEnd: modeEnd,
+    handoff: handoff,
+    producerOf: producerOf,
+    producerChip: producerChip,
+    nextStep: nextStep,
     kindBase: kindBase,
     kindEntry: kindEntry,
     setUrl: setUrl,

@@ -26,7 +26,18 @@ BARRY.views.xplore = (function () {
     chrome: { channels: true, strip: true, heads: true, tabs: true },
     // Pane sizes, as fractions of the grid. null means "share it evenly",
     // which is what a fresh layout should do.
-    split: { col: null, row: null },
+    split: { col: null, row: null, colB: null },
+    /* How the panes are arranged, per count (2026-10-20): two side by side
+       or stacked; three across, one large on top, or one large below; four
+       with the bottom row's widths tied to the top's or set apart. */
+    shape: (function () {
+      const d = { 2: 'cols', 3: 'cols', 4: 'linked' };
+      try {
+        const got = JSON.parse(localStorage.getItem('barry.xfShape') || '{}');
+        for (const k of Object.keys(d)) if (got[k]) d[k] = got[k];
+      } catch (e) { /* the defaults */ }
+      return d;
+    })(),
     zoomed: null,               // index of the pane filling the workspace
     /* The pane a single shared control strip speaks for, or -1 for none.
        Set by renderMasterStrip before the panes are built, because each one
@@ -827,15 +838,21 @@ BARRY.views.xplore = (function () {
      provisional when this is the most definite thing on the pane, and they
      break the horizontal continuity that makes a line findable at a glance
      across a wide plot. */
-  function drawChannelLines(ctx, rows, padL, plotW, padTop, plotH) {
+  /* `fade` is the pane's Marks setting (1 shown, faded, 0 hidden). A line
+     that says it is a mark (`followsMarks` -- Root Canal's max-amp line,
+     2026-10-21) fades and hides with the rest of them; a landmark somebody
+     drags does not. */
+  function drawChannelLines(ctx, rows, padL, plotW, padTop, plotH, fade) {
     if (!chanLines.length || !rows || !rows.length) return;
     const lane = plotH / rows.length;
     ctx.save();
     for (const line of chanLines) {
       if (line.number == null) continue;
+      const A = line.followsMarks && fade != null ? Number(fade) : 1;
+      if (A <= 0) continue;
       const i = laneOfNumber(rows, line.number);
       if (i < 0) {
-        drawHiddenMark(ctx, rows, line, padL, plotW, padTop, plotH);
+        drawHiddenMark(ctx, rows, line, padL, plotW, padTop, plotH, A);
         continue;
       }
       const y = Math.round(padTop + lane * (i + 0.5)) + 0.5;
@@ -866,7 +883,7 @@ BARRY.views.xplore = (function () {
 
       // A dark halo first, so the line holds against a bright trace
       // without having to be a colour that fights the palette.
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.55 * A;
       ctx.strokeStyle = 'rgba(0,0,0,0.85)';
       ctx.lineWidth = on ? 7 : 5.5;
       ctx.beginPath();
@@ -874,7 +891,7 @@ BARRY.views.xplore = (function () {
       ctx.lineTo(padL + plotW, y);
       ctx.stroke();
 
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = A;
       ctx.strokeStyle = col;
       ctx.fillStyle = col;
       ctx.lineWidth = on ? 4 : 3;
@@ -910,7 +927,8 @@ BARRY.views.xplore = (function () {
      the chosen one is then simply absent -- no line, no label, nothing. That
      reads as "the choice did not take". So it is marked at the edge nearest
      where it would sit, named, and said to be hidden. */
-  function drawHiddenMark(ctx, rows, line, padL, plotW, padTop, plotH) {
+  function drawHiddenMark(ctx, rows, line, padL, plotW, padTop, plotH, fade) {
+    const A = fade == null ? 1 : Number(fade);
     const nums = rows.map((x) => Number(x.number));
     const want = Number(line.number);
     const above = nums.every((n) => n > want);
@@ -931,7 +949,7 @@ BARRY.views.xplore = (function () {
     const label = line.label + '  ' + (line.numberLabel || ('CSC' + want))
                 + '  \u2014 hidden';
     ctx.save();
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = A;
     ctx.fillStyle = col;
     ctx.font = '700 11px ui-sans-serif, system-ui, sans-serif';
     ctx.textAlign = 'left';
@@ -939,9 +957,9 @@ BARRY.views.xplore = (function () {
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(padL + 8, y - 9, w, 18, 9);
     else ctx.rect(padL + 8, y - 9, w, 18);
-    ctx.globalAlpha = 0.9;
+    ctx.globalAlpha = 0.9 * A;
     ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = A;
     // A short dashed stub, because this one IS provisional: it says where
     // the channel would be, not where it is.
     ctx.strokeStyle = col;
@@ -1426,6 +1444,9 @@ BARRY.views.xplore = (function () {
       grid.appendChild(buildPane(i));
     }
     if (XF.zoomed == null) addSplitters(grid);
+    // Now the panes exist, each can be placed in the arrangement.
+    applySplit(grid);
+    paintShape();
 
     // Rebuilding the panes can change their height (the control strip wraps
     // differently), and a canvas keeps whatever size it was last drawn at. So
@@ -1462,7 +1483,8 @@ BARRY.views.xplore = (function () {
     }
 
     const box = el('div', {
-      class: 'pane' + (index === XF.focused ? ' focused' : ''),
+      class: 'pane' + (index === XF.focused ? ' focused' : '')
+             + (pane.noOverview ? ' no-overview' : ''),
       'data-pane-at': String(index),
       /* The probe control follows the recording, so a click into another
          recording's pane has to move it too -- renderTabs alone left it
@@ -1498,33 +1520,134 @@ BARRY.views.xplore = (function () {
   /* The grid's own proportions. Dragging a splitter writes a fraction here
      and nothing else changes -- the panes are still grid children, so the
      canvases resize through the ResizeObserver that is already watching. */
+  /* Where each pane sits, for the count and the arrangement: [column
+     start, column end, row start, row end] per pane, and the grid's tracks.
+     Four with the widths apart is three column tracks -- the top row's
+     split and the bottom row's -- with each pane spanning the ones its row
+     needs, so the top two can stay even while the bottom left is wider. */
+  function layoutOf() {
+    const n = XF.nPanes, s = XF.split, shape = XF.shape[n];
+    const pct = (f) => (f * 100).toFixed(3) + '%';
+    const c = s.col == null ? 0.5 : s.col, r = s.row == null ? 0.5 : s.row;
+    const two = pct(c) + ' ' + pct(1 - c), rows2 = pct(r) + ' ' + pct(1 - r);
+    // Stacked, any count; and four across (a support window's choices).
+    if (n >= 3 && shape === 'rows') {
+      return { cols: '1fr', rows: 'repeat(' + n + ', minmax(0, 1fr))',
+               at: Array.from({ length: n }, (x, i) => [1, 2, i + 1, i + 2]) };
+    }
+    if (n === 4 && shape === 'cols') {
+      return { cols: 'repeat(4, minmax(0, 1fr))', rows: '1fr',
+               at: Array.from({ length: 4 }, (x, i) => [i + 1, i + 2, 1, 2]) };
+    }
+    if (n === 2) {
+      return shape === 'rows'
+        ? { cols: '1fr', rows: rows2, at: [[1, 2, 1, 2], [1, 2, 2, 3]] }
+        : { cols: two, rows: '1fr', at: [[1, 2, 1, 2], [2, 3, 1, 2]] };
+    }
+    if (n === 3) {
+      if (shape === 'top1') {
+        return { cols: two, rows: rows2,
+                 at: [[1, 3, 1, 2], [1, 2, 2, 3], [2, 3, 2, 3]] };
+      }
+      if (shape === 'top2') {
+        return { cols: two, rows: rows2,
+                 at: [[1, 2, 1, 2], [2, 3, 1, 2], [1, 3, 2, 3]] };
+      }
+      return { cols: 'repeat(3, minmax(0, 1fr))', rows: '1fr',
+               at: [[1, 2, 1, 2], [2, 3, 1, 2], [3, 4, 1, 2]] };
+    }
+    // Four.
+    const b = shape === 'apart' && s.colB != null ? s.colB : c;
+    if (Math.abs(b - c) < 1e-4) {
+      return { cols: two, rows: rows2, colB: b,
+               at: [[1, 2, 1, 2], [2, 3, 1, 2], [1, 2, 2, 3], [2, 3, 2, 3]] };
+    }
+    const lo = Math.min(b, c), hi = Math.max(b, c);
+    const span = (x) => (x === lo ? [[1, 2], [2, 4]] : [[1, 3], [3, 4]]);
+    const t = span(c), u = span(b);
+    return { cols: pct(lo) + ' ' + pct(hi - lo) + ' ' + pct(1 - hi),
+             rows: rows2, colB: b,
+             at: [[t[0][0], t[0][1], 1, 2], [t[1][0], t[1][1], 1, 2],
+                  [u[0][0], u[0][1], 2, 3], [u[1][0], u[1][1], 2, 3]] };
+  }
+
   function applySplit(grid) {
     const c = XF.split.col, r = XF.split.row;
-    if (XF.zoomed != null || XF.nPanes === 1) {
-      grid.style.gridTemplateColumns = '';
-      grid.style.gridTemplateRows = '';
-      return;
-    }
     const pct = (f) => (f * 100).toFixed(3) + '%';
-    if (XF.nPanes >= 2) {
-      grid.style.gridTemplateColumns = c
-        ? pct(c) + ' ' + pct(1 - c) : '';
-    }
-    if (XF.nPanes === 4) {
-      grid.style.gridTemplateRows = r ? pct(r) + ' ' + pct(1 - r) : '';
-    }
-    if (XF.nPanes > 4) {
-      // Fixed 3x2 for six. The split handles are for comparing two or four
+    const unplace = () => {
+      for (const bx of grid.querySelectorAll(':scope > [data-pane-at]')) {
+        bx.style.gridColumn = ''; bx.style.gridRow = '';
+      }
+    };
+    if (XF.zoomed != null || XF.nPanes === 1 || XF.nPanes > 4) {
+      // Fixed 3x2 for six. The split handles are for comparing two to four
       // views of the same thing; six probe columns are peers and dragging
       // one boundary would just make the others lie about the geometry.
       grid.style.gridTemplateColumns = '';
       grid.style.gridTemplateRows = '';
+      unplace();
+      return;
+    }
+    const L = layoutOf();
+    grid.style.gridTemplateColumns = L.cols;
+    grid.style.gridTemplateRows = L.rows;
+    for (let i = 0; i < XF.nPanes; i++) {
+      const bx = paneBox(i);
+      const a = L.at[i];
+      if (!bx || !a) continue;
+      bx.style.gridColumn = a[0] + ' / ' + a[1];
+      bx.style.gridRow = a[2] + ' / ' + a[3];
     }
     // The divider has to follow the split it controls. Written as custom
     // properties so the CSS owns the hit-area geometry and this owns only
     // where the line is.
     grid.style.setProperty('--split-col', pct(c == null ? 0.5 : c));
     grid.style.setProperty('--split-row', pct(r == null ? 0.5 : r));
+    grid.style.setProperty('--split-colb',
+                           pct(L.colB == null ? (c == null ? 0.5 : c) : L.colB));
+  }
+
+  /* The arrangement control beside 1 / 2 / 3 / 4: only for the counts that
+     have more than one way to lay out. Remembered on this computer. */
+  const SHAPES = {
+    2: [['cols', 'Side by side', 'The two panes next to each other'],
+        ['rows', 'Stacked', 'One pane above the other']],
+    3: [['cols', 'Three across', 'Three panes side by side'],
+        ['top1', 'One on top', 'One large pane on top, two smaller below'],
+        ['top2', 'One below', 'Two smaller panes on top, one large below']],
+    4: [['linked', 'Widths together', 'The bottom row splits where the top does'],
+        ['apart', 'Widths apart', 'The top row and the bottom row each have '
+                                 + 'their own split -- drag either one']],
+  };
+
+  function paintShape() {
+    const host = document.getElementById('xfShapeSeg');
+    if (!host) return;
+    const opts = XF.zoomed == null ? SHAPES[XF.nPanes] : null;
+    host.hidden = !opts;
+    host.innerHTML = '';
+    if (!opts) return;
+    const cur = XF.shape[XF.nPanes];
+    for (const [id, label, tip] of opts) {
+      host.appendChild(el('button', {
+        class: id === cur ? 'active' : '', text: label, title: tip,
+        onclick: () => setShape(XF.nPanes, id),
+      }));
+    }
+  }
+
+  function setShape(n, id) {
+    if (XF.shape[n] === id) return;
+    XF.shape[n] = id;
+    try { localStorage.setItem('barry.xfShape', JSON.stringify(XF.shape)); }
+    catch (e) { /* this session only */ }
+    // Apart starts where the top row is, so nothing jumps.
+    if (n === 4 && id === 'apart' && XF.split.colB == null) {
+      XF.split.colB = XF.split.col;
+    }
+    BARRY.activity.log('panes.shape', { n: n, shape: id });
+    render();
+    refreshAll();
   }
 
   /* Draggable dividers, laid over the gaps between panes.
@@ -1535,11 +1658,16 @@ BARRY.views.xplore = (function () {
   function addSplitters(grid) {
     // Nothing to drag on the six-up: see applySplit.
     if (XF.nPanes < 2 || XF.nPanes > 4) return;
+    const n = XF.nPanes, shape = XF.shape[n];
+    // Three or four across, or three or four stacked, have no handle:
+    // peers, and one boundary would lie about the others.
+    if ((n === 3 && shape === 'cols') || (n >= 3 && shape === 'rows')
+        || (n === 4 && shape === 'cols')) return;
     const drag = (kind) => (e) => {
       e.preventDefault();
       const r = grid.getBoundingClientRect();
       const move = (ev) => {
-        const f = kind === 'col'
+        const f = kind !== 'row'
           ? (ev.clientX - r.left) / r.width
           : (ev.clientY - r.top) / r.height;
         // Never let a pane be dragged away to nothing -- a 0px pane cannot
@@ -1559,20 +1687,29 @@ BARRY.views.xplore = (function () {
       document.body.classList.add('splitting');
     };
 
-    grid.appendChild(el('div', {
-      class: 'pane-split col', title: 'Drag to resize \u00b7 double-click to even up',
-      onmousedown: drag('col'),
-      ondblclick: () => { XF.split.col = null; applySplit(grid);
-                          for (let i = 0; i < XF.nPanes; i++) redrawGeometry(i); },
+    const even = (kind) => () => {
+      XF.split[kind] = null;
+      if (kind === 'col' && n === 4 && shape === 'apart') XF.split.colB = null;
+      applySplit(grid);
+      for (let i = 0; i < XF.nPanes; i++) redrawGeometry(i);
+    };
+    const handle = (kind, cls) => grid.appendChild(el('div', {
+      class: 'pane-split ' + cls,
+      title: 'Drag to resize \u00b7 double-click to even up',
+      onmousedown: drag(kind), ondblclick: even(kind),
     }));
-    if (XF.nPanes === 4) {
-      grid.appendChild(el('div', {
-        class: 'pane-split row', title: 'Drag to resize \u00b7 double-click to even up',
-        onmousedown: drag('row'),
-        ondblclick: () => { XF.split.row = null; applySplit(grid);
-                            for (let i = 0; i < XF.nPanes; i++) redrawGeometry(i); },
-      }));
+    const stacked = n === 2 && shape === 'rows';
+    // Columns: the whole height, or the half of it that has two panes.
+    if (!stacked) {
+      if (n === 3 && shape === 'top1') handle('col', 'col lower');
+      else if (n === 3 && shape === 'top2') handle('col', 'col upper');
+      else if (n === 4 && shape === 'apart') {
+        handle('col', 'col upper');
+        handle('colB', 'col lower colb');
+      } else handle('col', 'col');
     }
+    // Rows: anything with two rows.
+    if (stacked || n === 4 || (n === 3 && shape !== 'cols')) handle('row', 'row');
   }
 
   /* One pane fills the workspace, and comes back. */
@@ -1633,18 +1770,17 @@ BARRY.views.xplore = (function () {
     for (const k of ['channels', 'strip', 'heads', 'tabs']) {
       v.classList.toggle('hide-' + k, !XF.chrome[k]);
     }
-    /* The tabs' own arrow goes away with the tabs, so the way back has to
-       live somewhere that stays -- the view header. Built once and shown
-       only when it is needed. */
-    const head = v.querySelector('.xf-head');
-    if (head) {
-      let back = head.querySelector('.unfold-tabs');
-      if (!XF.chrome.tabs && !back) {
-        back = unfoldStrip('tabs');
-        head.appendChild(back);
-      } else if (XF.chrome.tabs && back) {
-        back.remove();
-      }
+    /* The header's arrow folds the WHOLE top row away (2026-10-20: "should
+       collapse the entire top row rather than just what recordings are
+       available") -- the open recordings, the layout, the probe, Link time,
+       View and the figure builder -- so the way back is a sliver of its own
+       at the very top of the view, built once and shown only when needed. */
+    let back = v.querySelector(':scope > .unfold-row.unfold-top');
+    if (!XF.chrome.tabs && !back) {
+      back = el('div', { class: 'unfold-row unfold-top' }, [unfoldStrip('tabs')]);
+      v.insertBefore(back, v.firstChild);
+    } else if (XF.chrome.tabs && back) {
+      back.remove();
     }
   }
 
@@ -1710,8 +1846,9 @@ BARRY.views.xplore = (function () {
      'The window, scale and menu row above each pane'],
     ['heads', 'Pane headers',
      'The name, panel picker and pane buttons'],
-    ['tabs', 'Session tabs',
-     'The row of open recordings at the top'],
+    ['tabs', 'Top row',
+     'The open recordings, the layout, the probe, Link time, View and the '
+     + 'figure builder'],
   ];
 
   function viewMenu() {
@@ -1791,6 +1928,75 @@ BARRY.views.xplore = (function () {
     return ['traces', 'voltage', 'csd', 'theta'].includes(panel);
   }
 
+  /* Change what a pane shows. The pane head's picker used to do this
+     inline; it is More › Shows now (2026-10-20). */
+  function changePanel(index, want) {
+    const pane = XF.panes[index];
+    const sess = pane && sessionOf(pane);
+    if (!pane || !sess || pane.panel === want) return;
+    const prev = pane.panel;
+    pane.panel = want;
+    /* Whatever the last panel left on the pane is not this panel's:
+       its picture, its read in flight, and the scale control built
+       from them. Kept, a CSD's data stood in for the band-power map
+       until it arrived (the strip offered uV/mm2 for a dB map), and
+       a reply for the old panel could land after the new one. */
+    forgetPanelData(pane);
+    /* In a probe layout the panes are one view of one recording split
+       by column, so the panel type belongs to the view. Changing it
+       on one pane used to leave the other five behind: six clicks to
+       go from CSD to voltage raster, and six chances to miss one. */
+    const inProbeLayout = !!(sess && sess.probe && sess.probe !== 'h3'
+                             && pane.colTag);
+    /* Video and tracking have no channels, so a six-up has nothing to
+       spread them across: it produced six video panes, one playing
+       and five empty. Collapse to one instead of copying the panel
+       into all six. */
+    if (inProbeLayout && !isChannelPanel(want)) {
+      BARRY.activity.log('panel.change', { from: prev, to: want,
+                                           pane: index,
+                                           collapsed: true }, sess);
+      layoutProbe(sess, want);
+      return;
+    }
+    const spread = inProbeLayout
+      ? XF.panes.filter(
+          (p, i) => p && i !== index && p.colTag
+                    && p.sessionId === pane.sessionId)
+      : [];
+    for (const p of spread) { p.panel = want; forgetPanelData(p); }
+    BARRY.activity.log('panel.change', { from: prev, to: want,
+                                         pane: index,
+                                         alsoSet: spread.length }, sess);
+    render();
+    if (spread.length) refreshAll();
+    else refreshPane(index);
+  }
+
+  /* The panels a pane can show, for More › Shows. */
+  function panelChoices(sess) {
+    const opts = XF.panelDefs.length ? XF.panelDefs.slice()
+      : [{ id: 'traces', name: 'Voltage traces' }];
+    if (sess.media.videos && sess.media.videos.length) {
+      opts.push({ id: 'video', name: 'Video' });
+    }
+    if (sess.media.tracking && sess.media.tracking.length) {
+      opts.push({ id: 'tracking', name: 'Position tracking' });
+    }
+    return opts;
+  }
+
+  /* A fallback picker when the pane has no strip to open More from. */
+  function panelPicker(index, pane, sess, anchor) {
+    const sel = el('select', {
+      onchange: (e) => { changePanel(index, e.target.value); },
+    }, panelChoices(sess).map((p) => el('option', {
+      value: p.id, text: p.name,
+      selected: pane.panel === p.id ? 'selected' : null })));
+    anchor.replaceWith(sel);
+    sel.focus();
+  }
+
   function paneHead(index, pane, sess) {
     const panelOpts = XF.panelDefs.length ? XF.panelDefs
       : [{ id: 'traces', name: 'Voltage traces' }];
@@ -1841,51 +2047,22 @@ BARRY.views.xplore = (function () {
              + 'does not reach it. Filter \u203a Applies to gives it back.',
       }) : null,
       el('div', { class: 'spacer' }),
-      el('select', {
-        title: 'What this pane shows',
-        onchange: (e) => {
-          const prev = pane.panel;
-          const want = e.target.value;
-          pane.panel = want;
-          /* Whatever the last panel left on the pane is not this panel's:
-             its picture, its read in flight, and the scale control built
-             from them. Kept, a CSD's data stood in for the band-power map
-             until it arrived (the strip offered uV/mm2 for a dB map), and
-             a reply for the old panel could land after the new one. */
-          forgetPanelData(pane);
-          /* In a probe layout the panes are one view of one recording split
-             by column, so the panel type belongs to the view. Changing it
-             on one pane used to leave the other five behind: six clicks to
-             go from CSD to voltage raster, and six chances to miss one. */
-          const inProbeLayout = !!(sess && sess.probe && sess.probe !== 'h3'
-                                   && pane.colTag);
-          /* Video and tracking have no channels, so a six-up has nothing to
-             spread them across: it produced six video panes, one playing
-             and five empty. Collapse to one instead of copying the panel
-             into all six. */
-          if (inProbeLayout && !isChannelPanel(want)) {
-            BARRY.activity.log('panel.change', { from: prev, to: want,
-                                                 pane: index,
-                                                 collapsed: true }, sess);
-            layoutProbe(sess, want);
-            return;
-          }
-          const spread = inProbeLayout
-            ? XF.panes.filter(
-                (p, i) => p && i !== index && p.colTag
-                          && p.sessionId === pane.sessionId)
-            : [];
-          for (const p of spread) { p.panel = want; forgetPanelData(p); }
-          BARRY.activity.log('panel.change', { from: prev, to: want,
-                                               pane: index,
-                                               alsoSet: spread.length }, sess);
-          render();
-          if (spread.length) refreshAll();
-          else refreshPane(index);
+      /* What this pane shows, said -- and changed under More (2026-10-20):
+         a picker on every pane's head was four of them with four panes up,
+         for a choice made once. */
+      el('button', {
+        class: 'pane-panel-name',
+        text: (panelOpts.concat(extras).find((p) => p.id === pane.panel)
+               || {}).name || pane.panel,
+        title: 'What this pane shows \u2014 click to change it (also under '
+             + 'More \u203a Shows)',
+        onclick: (e) => {
+          e.stopPropagation();
+          const more = paneBox(index)
+            && paneBox(index).querySelector('.ctl-menu[data-menu="More"]');
+          if (more) more.click(); else panelPicker(index, pane, sess, e.currentTarget);
         },
-      }, panelOpts.concat(extras).map((p) =>
-        el('option', { value: p.id, text: p.name,
-                       selected: pane.panel === p.id ? 'selected' : null }))),
+      }),
       eventNav(index, pane, sess),
       el('button', {
         class: 'mini' + (XF.measure ? ' active' : ''), text: '\u2194',
@@ -3246,6 +3423,8 @@ BARRY.views.xplore = (function () {
       chrome: o.chrome || 'notabs,noheads',
       role: o.role || 'aids',
     });
+    // The arrangement chosen for the window (supportpanels.js).
+    if (o.shape) q.set('shape', o.shape);
     return location.origin + '/?' + q.toString() + '#xplore';
   }
 
@@ -4619,6 +4798,33 @@ BARRY.views.xplore = (function () {
         text: o.name, title: o.why,
         onclick: () => { if (value !== o.id) onpick(o.id); },
       })));
+
+    /* What this pane shows (2026-10-20): the view changes live here, per
+       pane, rather than as a picker on every pane's head. */
+    rows.push(popRow('Shows', [
+      el('div', { class: 'ctl-seg wrap' }, panelChoices(sess).map((o) =>
+        el('button', {
+          class: 'mini' + (pane.panel === o.id ? ' on' : ''), text: o.name,
+          onclick: () => { closeMenu(); changePanel(index, o.id); },
+        }))),
+    ]));
+    /* And whether this pane has the overview strip under it -- the
+       amplitude or band-power line through the whole recording. Per pane:
+       with four up, one strip is usually enough. */
+    rows.push(popRow('Overview strip on this pane', [
+      choose(pane.noOverview ? 'off' : 'on', [
+        { id: 'on', name: 'Shown', why: 'The line through the whole recording, '
+                                        + 'under this pane' },
+        { id: 'off', name: 'Hidden', why: 'No overview strip under this pane; '
+                                          + 'the others keep theirs' },
+      ], (v) => {
+        pane.noOverview = v === 'off';
+        BARRY.activity.log('pane.overview', { pane: index, on: v === 'on' }, sess);
+        closeMenu();
+        render();
+        refreshAll();
+      }),
+    ]));
 
     rows.push(popRow('Marks \u2014 bookmarks, events, spikes', [
       choose(marksView(sess), [
@@ -7697,7 +7903,8 @@ BARRY.views.xplore = (function () {
        backwards. The overlay already has the row geometry; it spans the
        full panel, with the labels drawn inside rather than in a gutter. */
     if (rows.length) {
-      drawChannelLines(ctx, rows, 0, w, 0, h);
+      drawChannelLines(ctx, rows, 0, w, 0, h,
+                       gsess ? marksAlpha(gsess) : 1);
     }
     /* The frequency axis belongs to a panel that has no channel rows --
        it was the `else` of the block above before the channel lines were
@@ -9485,7 +9692,7 @@ BARRY.views.xplore = (function () {
        the same marks from the same data. The curate module still gets a
        turn afterwards for the label text, which only makes sense in the
        window doing the deciding. */
-    drawChannelLines(ctx, win.series, padL, plotW, padTop, plotH);
+    drawChannelLines(ctx, win.series, padL, plotW, padTop, plotH, mAlpha);
     drawCurationMarks(ctx, sess, win.t0, win.t1, padL, plotW, padTop, plotH,
                       P, { alpha: mAlpha });
     if (BARRY.braces && BARRY.braces.draw) {
@@ -11098,6 +11305,10 @@ BARRY.views.xplore = (function () {
         if (Array.isArray(specs) && specs.length) {
           // Deferred: openSession is still in flight when this runs on a
           // cold load, and setPanes needs XF.active to exist.
+          // This window's arrangement, for this window only: not saved,
+          // so a support window never rearranges the main one.
+          const shapeAsked = params.get('shape');
+          if (shapeAsked) XF.shape[specs.length] = shapeAsked;
           const apply = () => {
             if (!XF.order.length) { setTimeout(apply, 120); return; }
             BARRY.views.xplore.setPanes(specs, { col: 0.5, row: 0.5 });
@@ -11465,6 +11676,8 @@ BARRY.views.xplore = (function () {
       render();
       refreshAll();
     },
+    // What one pane shows: More › Shows, for a caller (and a harness).
+    setPanel: (i, panel) => changePanel(i, panel),
     onShow: () => {
       if (!XF.order.length) return;
       render(); refreshAll();

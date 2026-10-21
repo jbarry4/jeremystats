@@ -119,10 +119,16 @@ BARRY.cfc = (function () {
 
   function openAids() {
     if (aidWin && !aidWin.closed) { try { aidWin.focus(); } catch (e) {} return; }
-    aidWin = BARRY.views.xplore.popOutPanes(sess, [
+    const defaults = [
       { panel: 'bandpower' },
       { panel: 'spectrogram', fmin: 1, fmax: 250 },
-    ], {
+    ];
+    // What this person chose (Profile › Support panel preferences).
+    const plan = BARRY.supportPanels
+      ? BARRY.supportPanels.plan('cfc', defaults) : { specs: defaults };
+    if (!plan) return;
+    aidWin = BARRY.views.xplore.popOutPanes(sess, plan.specs, {
+      shape: plan.shape,
       role: 'cfc', name: 'barry-cfc-aids', width: 720, height: 820,
       /* Headers and tabs folded away: both panes are the same recording and
          the labels would cost more of a short pane than they are worth. The
@@ -190,7 +196,7 @@ BARRY.cfc = (function () {
        Measured, not assumed: the bar wraps to two rows on a narrow window,
        which is the same reason StrataScope measures its own. */
     // The whole one bar, which this bar now sits inside (core.js).
-    const whole = document.getElementById('modeBanner') || b;
+    const whole = document.getElementById('modeBar') || b;
     const h = Math.ceil(whole.getBoundingClientRect().height);
     if (h) document.documentElement.style.setProperty('--bottom-bar',
                                                       h + 'px');

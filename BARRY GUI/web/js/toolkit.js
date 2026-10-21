@@ -277,11 +277,58 @@ BARRY.views.toolkit = (function () {
           // The Confluence pools banked entries and walks pooled sets; the
           // scope card would be about a question none of its steps asks.
           || CONFLUENCE.some(([id]) => id === q.tool))
-           ? [el('div', { class: 'tk-result', id: 'tkResult' })]
-           : [scopeCard(),
-              el('div', { class: 'tk-result', id: 'tkResult' })]),
+           ? [flatHead(), el('div', { class: 'tk-result', id: 'tkResult' }),
+              nextHost(), feedHost()].filter(Boolean)
+           : [flatHead(), scopeCard(),
+              el('div', { class: 'tk-result', id: 'tkResult' }), nextHost(),
+              feedHost()].filter(Boolean)),
     ]));
     renderResult();
+    paintNext();
+  }
+
+  /* EVERY STEP ENDS WITH THE NEXT ONE (2026-10-20): header, picker, run
+     bar, settings, result, Bank -- then "Next: <Step> — <what it does> →",
+     in the same place on every bundle step, below whatever the tool drew
+     (ui.handoff). Its own host, so a tool repainting its page cannot take
+     it away. A tool whose next step needs something carried -- a run onto
+     Spotter's bench -- says how with `setHandoff`. */
+  const handoffs = {};
+  function nextHost() { return el('div', { class: 'tk-next', id: 'tkNext' }); }
+  /* The header the flat tools without one of their own were missing
+     (2026-10-20): every tool page opens on its name and what it is for,
+     as every bundle step does (ui.stepHeader). Above the tool's host, so
+     the tool repainting cannot take it away. */
+  const FLAT_HEADS = {
+    bad: ['Bad channels', 'Which channels were marked bad: by session, mouse, '
+          + 'project or date range, as a table you can download.'],
+    kilosort: ['Kilosort', 'Check this machine can sort, sort a recording, '
+               + 'then open the sort in Phy.'],
+    snapshots: ['Import sorted snapshots', 'A folder of dentate-spike '
+                + 'images sorted by dragging them into folders, read back '
+                + 'into curation.'],
+  };
+  function flatHead() {
+    const h = FLAT_HEADS[q.tool];
+    if (!h) return null;
+    return el('div', { class: 'tk-head' }, [
+      BARRY.ui.stepHeader({ title: h[0], blurb: h[1] }),
+    ]);
+  }
+  /* The activity feed under the Next, in a host of its own: in the tool's
+     host it sat between the tool and its next step, and a tool repainting
+     its page took it with it. */
+  function feedHost() { return el('div', { class: 'tk-feed', id: 'tkFeed' }); }
+  function paintNext() {
+    const host = document.getElementById('tkNext');
+    if (!host) return;
+    host.innerHTML = '';
+    const h = BARRY.ui.handoff && BARRY.ui.handoff(q.tool, handoffs[q.tool]);
+    if (h) host.appendChild(h);
+  }
+  function setHandoff(toolId, opts) {
+    handoffs[toolId] = opts || null;
+    if (q.tool === toolId) paintNext();
   }
 
   /* ---------- bundles ----------
@@ -1264,7 +1311,9 @@ BARRY.views.toolkit = (function () {
   /* How the shelf is being looked at -- the shelf only, because the bench
      is not a query result and has no order to choose. Held here rather than
      read off the DOM so a re-render cannot lose a half-typed search. */
-  const curQ = { text: '', sort: 'recent', show: 'all', shelf: false,
+  /* The shelf is open by default (2026-10-20): it is the one way in -- every
+     set put down AND every banked dataset with no set yet, searchable. */
+  const curQ = { text: '', sort: 'recent', show: 'all', shelf: true,
                  fresh: true };
 
   /* ONE WORKBENCH, THREE DOORS (2026-10-19).
@@ -1295,6 +1344,7 @@ BARRY.views.toolkit = (function () {
       tool: 'curate', title: 'Checkup', kinds: ['ds'], kind: 'ds',
       noun: 'dentate spikes', from: 'Incisor banks them.',
       enter: (st) => BARRY.curate.enter(st.gid, st.kind),
+      startable: { kind: 'ds', noun: 'dentate spikes' },
     },
     spotter: {
       tool: 'spotter', title: 'Spotter', kinds: ['ied'], kind: 'ied',
@@ -1563,19 +1613,14 @@ BARRY.views.toolkit = (function () {
              + 'curator what garbage looks like.',
         onclick: showGarbageHall,
       }),
-      el('button', { class: 'btn', text: 'Add a set…',
-                     title: 'Recording, then dataset, then version: onto the '
-                          + 'bench, to look at before opening it.',
-                     onclick: () => newSetDialog({ door: 'curate' }) }),
+
     ].filter(Boolean)));
 
     if (!sets.length) {
       host.appendChild(el('div', { class: 'hint tk-empty',
-        text: 'Nothing to curate yet. Add a set: pick the recording, the '
-            + 'dataset banked for it and which version of it to work from. '
-            + 'Version 0 is the detector\u2019s list with nothing decided '
-            + 'yet.' }));
-      return;
+        text: 'Nothing to curate yet. Bank something from Incisor, and it '
+            + 'is offered under "Pick up a set": pick it up, choose which '
+            + 'version to work from, and it lands on the bench.' }));
     }
 
     /* ---- the bench ---- */
@@ -1601,7 +1646,8 @@ BARRY.views.toolkit = (function () {
         class: 'cur-shelf-toggle' + (curQ.shelf ? ' on' : ''),
         text: (curQ.shelf ? '▾  ' : '▸  ')
             + (open.length ? 'Pick up another set' : 'Pick up a set')
-            + '  ·  ' + nShelf + ' put down',
+            + '  ·  ' + nShelf + ' put down  ·  ' + freshOf(w).length
+            + ' not started',
         onclick: () => { curQ.shelf = !curQ.shelf; renderCuration(); },
       }),
     ]));
@@ -1649,10 +1695,7 @@ BARRY.views.toolkit = (function () {
              + 'archived, deleted or unbanked.',
         onclick: closeAllSets,
       }) : null,
-      el('button', { class: 'btn', text: 'Add a set…',
-                     title: 'Recording, then dataset, then version: onto the '
-                          + 'bench, to look at before opening it.',
-                     onclick: () => newSetDialog({ door: w.tool }) }),
+
     ].filter(Boolean)));
 
     /* ---- the bench ---- */
@@ -1674,37 +1717,22 @@ BARRY.views.toolkit = (function () {
 
     /* ---- the shelf ---- */
     const nShelf = sets.filter((s) => !s.open && !s.archived).length;
+    /* ONE WAY IN (2026-10-20): "make Pick up a set the only way to load
+       things in". The shelf holds every set put down AND every banked run
+       with no set yet, searchable together, each with Archive on its row. */
     host.appendChild(el('div', { class: 'cur-shelf-head' }, [
       el('button', {
         class: 'cur-shelf-toggle' + (curQ.shelf ? ' on' : ''),
         text: (curQ.shelf ? '\u25be  ' : '\u25b8  ')
             + (open.length ? 'Pick up another set' : 'Pick up a set')
-            + '  \u00b7  ' + nShelf + ' put down',
+            + '  \u00b7  ' + nShelf + ' put down  \u00b7  '
+            + freshOf(w).length + ' not started',
         onclick: () => { curQ.shelf = !curQ.shelf; renderCuration(); },
       }),
     ]));
     if (curQ.shelf) {
       host.appendChild(el('div', { class: 'cur-shelf', id: 'curShelf' }));
       paintShelf();
-    }
-
-    /* ---- the banked runs not started ---- */
-    // Current ones only: archived runs are listed apart, under their own
-    // toggle at the bottom of the list.
-    const nFresh = fresh.filter((e) => !e.test && !e.archived
-      && (w.startable.mine.test(e.pipeline || ''))).length;
-    host.appendChild(el('div', { class: 'cur-shelf-head' }, [
-      el('button', {
-        class: 'cur-shelf-toggle' + (curQ.fresh ? ' on' : ''),
-        text: (curQ.fresh ? '\u25be  ' : '\u25b8  ')
-            + 'Start from a banked run  \u00b7  ' + nFresh + ' not started',
-        onclick: () => { curQ.fresh = !curQ.fresh; renderCuration(); },
-      }),
-    ]));
-    if (curQ.fresh) {
-      const box = el('div', { class: 'cur-shelf sp-fresh', id: 'curFresh' });
-      host.appendChild(box);
-      BARRY.setPicker.fresh(box, fresh, w.startable);
     }
     if (tests) {
       host.appendChild(el('p', { class: 'hint quiet',
@@ -2207,8 +2235,9 @@ BARRY.views.toolkit = (function () {
     if (!id) return null;
     const v = src.version !== undefined && src.version !== null
       ? ' · from ' + BARRY.ui.versionLabel(src.version) : '';
-    return BARRY.ui.chip((src.pipeline || 'bank entry') + v, {
-      flag: true, extra: 'cur-entry',
+    const pr = BARRY.ui.producerOf(src.pipeline, BARRY.ui.kindBase(st.kind));
+    return BARRY.ui.chip(((pr && pr.label) || 'bank entry') + v, {
+      flag: true, extra: 'cur-entry producer',
       title: 'This set belongs to bank entry ' + id
            + (src.entry_name ? ' (\u201c' + src.entry_name + '\u201d)' : '')
            + (st.entry ? '. Its versions are that entry\u2019s, and nothing '
@@ -2308,13 +2337,92 @@ BARRY.views.toolkit = (function () {
         text: 'Nothing matches that. Clear the search, or pick All.' }));
     }
     for (const st of rows) list.appendChild(shelfRow(st));
+    /* And what is banked with no set yet: picking one up asks which version
+       to work from and puts it on the bench (2026-10-20). */
+    const fresh = freshRows(false);
+    if (fresh.length) {
+      list.appendChild(el('div', { class: 'cur-shelf-sub',
+        text: 'Banked, not started \u2014 ' + fresh.length }));
+      for (const e of fresh) list.appendChild(freshRow(e));
+    }
+    const gone = curationRows(true).map((st) => ({ st }))
+      .concat(freshRows(true).map((e) => ({ e })));
     const tail = BARRY.ui.archivedTail({
-      key: 'shelf-' + wb().tool, items: curationRows(true),
-      noun: ['set', 'sets'],
-      render: (xs) => xs.map(shelfRow),
+      key: 'shelf-' + wb().tool, items: gone,
+      noun: ['one', 'ones'],
+      render: (xs) => xs.map((x) => (x.st ? shelfRow(x.st) : freshRow(x.e))),
       onToggle: () => paintShelfList(),
     });
     if (tail) list.appendChild(tail);
+  }
+
+  /* The banked datasets of this door's kind that no set stands for. */
+  function freshOf(w, all) {
+    return ((curStart[w.kind] || []).filter((e) => !e.test
+                                            && (all || !e.archived)));
+  }
+
+  function freshRows(arch) {
+    const q = curQ.text.trim();
+    // The pills are about sets in progress; with one on, only sets show.
+    if (!arch && curQ.show !== 'all') return [];
+    return BARRY.ui.natSort(freshOf(wb(), true).filter((e) => !!e.archived === !!arch
+      && BARRY.ui.searchMatch([e.name, e.session_label, e.project, e.by,
+                               e.pipeline, e.gid], q,
+                              { mouse: e.mouse, session: e.session })),
+      (e) => [e.session_label || e.gid, e.name || '']);
+  }
+
+  function freshRow(e) {
+    const w = wb();
+    const when = curWhen(e.at);
+    return el('div', {
+      class: 'cur-shelf-row fresh' + (e.archived ? ' is-archived' : ''),
+    }, [
+      el('span', { class: 'csr-name', text: e.name || 'unnamed' }),
+      el('span', { class: 'csr-sess', text: e.session_label || e.gid }),
+      el('span', { class: 'csr-n', text: (e.n || 0).toLocaleString()
+                                       + ' to decide' }),
+      el('span', { class: 'csr-who' + (e.by ? '' : ' none'),
+                   text: e.by || '\u2014' }),
+      el('span', { class: 'csr-when', text: when || '' }),
+      el('div', { class: 'csr-acts' }, [
+        el('div', { class: 'csr-chips' }, [
+          BARRY.ui.producerChip(e.pipeline, w.kind),
+          BARRY.ui.chip('not started', { flag: true }),
+        ].filter(Boolean)),
+        e.archived ? el('span', { class: 'csr-slot' }) : el('button', {
+          class: 'btn ghost sm', text: 'Pick it up',
+          title: 'Choose which version to work from, and put it on the bench '
+               + 'as a set of its own',
+          onclick: () => newSetDialog({ door: w.tool,
+                                        preset: { gid: e.gid, entry: e.id },
+                                        quick: true }),
+        }),
+        el('button', {
+          class: 'btn ghost sm', text: e.archived ? 'Unarchive' : 'Archive',
+          title: e.archived
+            ? 'Offer it again'
+            : 'File it away: kept in the Event Bank, not offered here. '
+              + 'Nothing is deleted.',
+          onclick: () => archiveEntry(e, !e.archived),
+        }),
+        // No arrow: there is no set to open yet. The slot keeps the columns.
+        el('span', { class: 'csr-slot' }),
+      ]),
+    ]);
+  }
+
+  async function archiveEntry(e, on) {
+    try {
+      await apiPost('/api/bank/' + encodeURIComponent(e.id) + '/archive',
+                    { archived: !!on });
+      e.archived = !!on;
+      toast(on ? 'Archived \u201c' + (e.name || e.id) + '\u201d. It is kept '
+                 + 'in the Event Bank, and listed at the bottom here.'
+               : 'Back on the list.', 'ok', 5000);
+      paintShelfList();
+    } catch (err) { toast(err.message, 'err', 8000); }
   }
 
   function shelfRow(st) {
@@ -2344,14 +2452,24 @@ BARRY.views.toolkit = (function () {
             ? BARRY.syncState.mark('curation', st.gid + '__' + st.kind) : null,
         ].filter(Boolean)),
         el('div', { class: 'csr-acts' }, [
-        // Whether its work is in the bank, as on the bench cards.
-        BARRY.setPicker ? BARRY.setPicker.bankChip(st) : null,
+        // Whether its work is in the bank, as on the bench cards. The chips
+        // are one cell; each button is a cell of its own (app.css).
+        el('div', { class: 'csr-chips' }, [
+          BARRY.setPicker ? BARRY.setPicker.bankChip(st) : null,
+        ].filter(Boolean)),
         el('button', {
           class: 'btn ghost sm', text: 'Pick it up',
           title: 'Put it on the bench. Opening the recording is the '
                + 'next step, not this one — a set you cannot curate '
                + 'right now can still be claimed, named and exported.',
           onclick: () => pickUpSet(st),
+        }),
+        el('button', {
+          class: 'btn ghost sm', text: st.archived ? 'Unarchive' : 'Archive',
+          title: st.archived ? 'Put it back on the shelf'
+            : 'File it away. Nothing is deleted -- every candidate and '
+              + 'decision stays, and it is listed at the bottom here.',
+          onclick: () => archiveSet(st, !st.archived),
         }),
         el('button', {
           class: 'btn ghost sm icon-only',
@@ -2538,7 +2656,7 @@ BARRY.views.toolkit = (function () {
               entry = e; wantEntry = e.id; ver = firstUsable(e); paint();
             } }),
           el('span', { class: 'mk-name', text: e.name || 'unnamed' }),
-          e.source ? el('span', { class: 'flagchip', text: e.source }) : null,
+          BARRY.ui.producerChip(e.source, e.kind),
           el('span', { class: 'person-what',
                        text: (e.n || 0).toLocaleString() + ' ' + noun
                            + '  \u00b7  ' + nv + ' version'
@@ -2594,6 +2712,7 @@ BARRY.views.toolkit = (function () {
          machines both mint the next one, so `ver.v === v.v` lit two rows
          and sent an ambiguous number. */
       body.appendChild(el('div', { class: 'ncs-vers' }, [BARRY.ui.versionTree({
+        producer: entry.source, producerType: entry.kind,
         versions: entry.versions || [],
         idOf: (v) => (v.id != null ? v.id : 'v' + v.v),
         value: ver ? (ver.id != null ? ver.id : 'v' + ver.v) : undefined,
@@ -3937,6 +4056,7 @@ BARRY.views.toolkit = (function () {
     watchPanel(host);
     tryFeed(host, q.tool);
   }
+  const feedInto = (host) => document.getElementById('tkFeed') || host;
 
   /* Mount when there is a panel to mount under.
 
@@ -3946,8 +4066,9 @@ BARRY.views.toolkit = (function () {
   function tryFeed(host, tool) {
     if (!host || !tool || !BARRY.toolfeed) return;
     if (host.querySelector('.tk-loading')) return;
-    if (host.querySelector('.tf')) return;
-    BARRY.toolfeed.mount(host, tool);
+    const into = feedInto(host);
+    if (into.querySelector('.tf')) return;
+    BARRY.toolfeed.mount(into, tool);
   }
 
   /* Half the tools fetch before they draw, so the panel arrives after the
@@ -4191,6 +4312,8 @@ BARRY.views.toolkit = (function () {
        costs one request. */
     loadRegistry: registry,
     tool: () => q.tool, onShow, refresh,
+    /* How a tool's "Next" carries on (see paintNext). */
+    setHandoff,
     /* A banked run onto its door's bench, and the door on screen: what
        "Next: Spotter" from Doppler and "Pan them" from Junction do. Quick
        when there is nothing to choose (one version, no set yet); otherwise

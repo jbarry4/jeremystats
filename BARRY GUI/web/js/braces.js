@@ -932,6 +932,9 @@ BARRY.braces = (function () {
         el('label', { text: 'Read the stamps from' }),
         el('div', { class: 'br-vers' }, [BARRY.ui.versionTree({
           versions: plan.versions || [],
+          // What produced the set, as a chip above it (2026-10-20).
+          producer: (plan.entry || {}).pipeline,
+          producerType: (plan.entry || {}).type,
           idOf: (v) => v.ref,
           value: q.from_version,
           unit: 'stamps',

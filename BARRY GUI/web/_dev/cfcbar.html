@@ -102,13 +102,15 @@ const errs = [];
       + "+Math.round(q.width)+'w';});return m.join(' | ');})()");
     say('note', '  buttons: ' + btn);
     ck('a Comodulogram button is there', /Comodulogram/.test(btn), btn);
-    /* And a way out, in the place every mode has it: the last thing on the
-       one mode bar this bar sits inside (2026-10-20). */
+    /* And a way out, in the place every mode has it: the banner across the
+       top ends with Leave; this bar sits in the tools bar at the bottom
+       (2026-10-21). */
     const out = W().eval("(function(){var l=document.getElementById('modeLeave');"
-      + "var m=document.getElementById('modeBanner');return !!(l&&m&&m.contains("
-      + "document.getElementById('cfcBar'))&&l.getBoundingClientRect().width>0);})()");
-    ck('and the one bar it sits in ends with Leave, like every mode', out === true,
-       String(out));
+      + "var m=document.getElementById('modeBanner'),t=document.getElementById('modeBar');"
+      + "return !!(l&&m&&m.contains(l)&&t&&t.contains(document.getElementById('cfcBar'))"
+      + "&&l.getBoundingClientRect().width>0);})()");
+    ck('the banner ends with Leave, like every mode, and this bar is the tools bar',
+       out === true, String(out));
   }
 
   /* Does it SURVIVE?
