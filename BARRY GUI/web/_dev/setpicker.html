@@ -63,7 +63,9 @@ const getj = (u) => fetch(u).then((r) => r.json());
     head(title + ': the workbench');
     const [cur, st] = await Promise.all([getj('/api/curation'),
       getj('/api/curation/startable?kind=' + kind)]);
-    const sets = (cur.sets || []).filter((s) => s.kind === kind && !s.test);
+    // By base kind: a set of one bank entry is "ied.e<entry>" (2026-10-20).
+    const sets = (cur.sets || []).filter((s) => String(s.kind).split('.')[0] === kind
+                                                && !s.test);
     const open = sets.filter((s) => s.open && !s.archived);
     const down = sets.filter((s) => !s.open && !s.archived);
     // Archived runs are sent too, flagged, and drawn apart under a toggle
@@ -105,102 +107,57 @@ const getj = (u) => fetch(u).then((r) => r.json());
             || txt(c.querySelector('.hk-chip')) === kindName),
           cards.map((c) => txt(c.querySelector('.hk-chip'))).join(', '));
 
-    // The shelf: folded until asked for.
+    /* The shelf: the ONE way in (2026-10-20) -- every set put down and
+       every banked run with no set yet, searchable together, each with
+       Archive on its row. Open by default. */
     const shelfBtn = $$('#tkResult .cur-shelf-toggle')
       .find((b) => /Pick up/.test(b.textContent));
-    check('the shelf says how many are put down',
-          !!shelfBtn && new RegExp(down.length + ' put down').test(shelfBtn.textContent),
+    check('the shelf counts what is put down and what is not started',
+          !!shelfBtn && new RegExp(down.length + ' put down').test(shelfBtn.textContent)
+            && new RegExp(fresh.length + ' not started').test(shelfBtn.textContent),
           shelfBtn ? shelfBtn.textContent : 'no toggle');
+    check('there is no separate list of banked runs, and no Add a set',
+          !$$('#tkResult .cur-shelf-toggle').some((b) => /banked run/.test(b.textContent))
+            && !$$('#tkResult button').some((b) => /^Add a set/.test(txt(b))));
     if (shelfBtn && !shelfBtn.classList.contains('on')) shelfBtn.click();
     await until(() => $('#curShelfList'), 4000);
-    const shelfRows = () => $$('#curShelfList .cur-shelf-row');
-    const live = down.filter((s) => !s.archived);
-    check('the shelf lists every set put down', shelfRows().length === live.length,
-          shelfRows().length + ' of ' + live.length);
+    const setRows = () => $$('#curShelfList .cur-shelf-row:not(.fresh):not(.is-archived)');
+    const freshRows = () => $$('#curShelfList .cur-shelf-row.fresh:not(.is-archived)');
+    check('the shelf lists every set put down', setRows().length === down.length,
+          setRows().length + ' of ' + down.length);
+    check('and every banked run with no set', freshRows().length === fresh.length,
+          freshRows().length + ' of ' + fresh.length);
     check('with whose it is and when it was last touched',
           !!$('#curShelf .csr-who') && !!$('#curShelf .csr-when'));
-    check('and whether it is banked',
-          shelfRows().every((r) => !!r.querySelector('.sp-bank')));
+    check('each set says whether it is banked',
+          setRows().every((r) => !!r.querySelector('.sp-bank')));
+    check('each set can be archived right there',
+          setRows().every((r) => Array.from(r.querySelectorAll('button'))
+            .some((b) => /^Archive$/.test(txt(b)))));
+    check('each banked run can be picked up, and archived right there',
+          freshRows().every((r) => {
+            const bs = Array.from(r.querySelectorAll('button')).map(txt);
+            return bs.includes('Pick it up') && bs.includes('Archive');
+          }));
+    check('each banked run says what produced it',
+          freshRows().every((r) => !!r.querySelector('.producer')));
     const chips = $$('#curShelf .cur-chips .pill').map(txt).join(' | ');
-    check('filters: all, unfinished, flagged, done (and archived when any)',
+    check('filters: all, unfinished, flagged, done',
           /All/.test(chips) && /Unfinished/.test(chips) && /Has flagged/.test(chips)
             && /Done/.test(chips), chips);
     const shelfSearch = $('#curShelf .cur-search');
     check('the shelf has a search', !!shelfSearch);
-    if (shelfSearch && shelfRows().length) {
-      const w = (txt(shelfRows()[0].querySelector('.csr-name')).match(/\bm\d+\b/) || [])[0]
-        || txt(shelfRows()[0].querySelector('.csr-name')).split(/\s+/)[0];
+    const anyRow = setRows()[0] || freshRows()[0];
+    if (shelfSearch && anyRow) {
+      const w = (txt(anyRow.querySelector('.csr-sess')).match(/\bm\d+\b/) || [])[0]
+        || txt(anyRow.querySelector('.csr-name')).split(/\s+/)[0];
       await type(shelfSearch, w);
-      check('searching "' + w + '" keeps only sets that say it',
-            shelfRows().length >= 1 && shelfRows().every((r) =>
+      const shown = setRows().concat(freshRows());
+      check('searching "' + w + '" keeps only rows that say it, sets and runs alike',
+            shown.length >= 1 && shown.every((r) =>
               r.textContent.toLowerCase().indexOf(w.toLowerCase()) >= 0),
-            shelfRows().length + ' rows');
+            shown.length + ' rows');
       await type(shelfSearch, '');
-    }
-
-    // The banked runs not started.
-    const freshBtn = $$('#tkResult .cur-shelf-toggle')
-      .find((b) => /banked run/.test(b.textContent));
-    check('the banked runs not started are offered, counted',
-          !!freshBtn && new RegExp(freshMine.length + ' not started').test(freshBtn.textContent),
-          freshBtn ? freshBtn.textContent : 'no toggle');
-    if (freshBtn && !freshBtn.classList.contains('on')) freshBtn.click();
-    await until(() => $('#curFresh'), 4000);
-    const freshRows = () => $$('#curFresh .sp-row.fresh:not(.is-archived)');
-    const goneRows = () => $$('#curFresh .sp-row.fresh.is-archived');
-    check('every one of the bundle’s own is listed',
-          freshRows().length === freshMine.length,
-          freshRows().length + ' of ' + freshMine.length);
-    check('each can be started', freshRows().every((r) =>
-      // "Add to the bench" since 2026-10-20: a run goes onto the bench,
-      // not straight into the mode.
-      Array.from(r.querySelectorAll('button')).some((b) => /Add to the bench|Start/.test(b.textContent))));
-    const goneBtn = $('#curFresh .arch-toggle');
-    if (goneMine.length) {
-      check('the archived ones are not among them, and one toggle at the '
-            + 'bottom says how many',
-            !goneRows().length && !!goneBtn
-              && new RegExp('\\b' + goneMine.length + ' archived').test(goneBtn.textContent),
-            goneBtn ? goneBtn.textContent : 'no toggle');
-      if (goneBtn) {
-        goneBtn.click();
-        await until(() => goneRows().length === goneMine.length, 4000);
-        check('opened, every archived one is there',
-              goneRows().length === goneMine.length,
-              goneRows().length + ' of ' + goneMine.length);
-        check('and none can be started: each says Archived, disabled',
-              goneRows().every((r) => {
-                const bs = Array.from(r.querySelectorAll('button'));
-                return !bs.some((b) => /Start/.test(b.textContent))
-                  && bs.some((b) => /Archived/.test(b.textContent) && b.disabled);
-              }));
-        const again = $('#curFresh .arch-toggle');
-        if (again) again.click();   // put it back the way it was
-        await until(() => !goneRows().length, 4000);
-      }
-    } else {
-      check('no archived toggle when nothing is archived', !goneBtn);
-    }
-    const all = $$('#curFresh .seg button').find((b) => /Everything/.test(b.textContent));
-    if (fresh.length > freshMine.length) {
-      check('imports are one click away', !!all);
-      if (all) {
-        all.click();
-        await until(() => freshRows().length === fresh.length, 4000);
-        check('and then every run is listed', freshRows().length === fresh.length,
-              freshRows().length + ' of ' + fresh.length);
-      }
-    }
-    const fs = $('#curFresh .sp-search input');
-    if (fs && freshRows().length) {
-      const name = txt(freshRows()[0].querySelector('strong'));
-      const w = (name.match(/\bm\d+\b/) || [])[0] || name.split(/\s+/)[0];
-      await type(fs, w);
-      check('searching the runs for "' + w + '" keeps only runs that say it',
-            freshRows().length >= 1 && freshRows().every((r) =>
-              r.textContent.toLowerCase().indexOf(w.toLowerCase()) >= 0),
-            freshRows().length + ' rows');
-      await type(fs, '');
     }
     check('no harness leftover is offered anywhere',
           !$$('#tkResult .cur-set, #tkResult .cur-shelf-row, #tkResult .sp-row')

@@ -320,6 +320,7 @@ function makeAligner(cfg) {
     return el('div', { class: 'card eye-vers' }, [
       el('div', { class: 'section-label', text: 'Read the stamps from' }),
       BARRY.ui.versionTree({
+        producer: c && c.pipeline,
         versions: vs,
         idOf: (v) => v.ref,
         value: q.from_version,
@@ -704,9 +705,9 @@ function makeAligner(cfg) {
     const p = runs[q.measure].proposal;
     const s = counts(p);
     const box = el('div', { class: 'card' }, [
-      el('div', { class: 'section-label', text: '4. Write it' }),
+      el('div', { class: 'section-label', text: '4. Bank' }),
       el('p', { class: 'hint', style: 'max-width:80ch',
-        text: 'Committing writes a new version of the entry with the moved '
+        text: 'Banking writes a new version of the entry with the moved '
             + 'times on it. Every stamp that moves carries where it came '
             + 'from, so the version history reads as a set of moves rather '
             + 'than as everything lost and everything gained — which '
@@ -724,7 +725,8 @@ function makeAligner(cfg) {
         el('button', { class: 'btn ghost', text: 'Look at them first',
           title: 'Open the proposal on the bench, one at a time',
           onclick: () => openBench(p) }),
-        el('button', { class: 'btn', text: 'Commit the moves',
+        // The house verb for a new version (GUI-CONSTITUTION §8).
+        el('button', { class: 'btn', text: 'Bank as a new version…',
           onclick: () => commit(p) }),
       ]),
     ]);
@@ -758,7 +760,7 @@ function makeAligner(cfg) {
         el('p', { text: 'Stamps that found no peak stay exactly where they '
             + 'are, which is not an error — it is the aligner '
             + 'declining to guess.' }),
-      ]), 'Commit the moves');
+      ]), 'Bank as a new version');
     if (!ok) return;
     try {
       // Dry run first, always. The route defaults to it and the panel

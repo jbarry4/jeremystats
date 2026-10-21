@@ -107,7 +107,10 @@ async function until(fn, ms, what) {
     const N = (api.sets || []).length;
     say('       ' + N + ' set(s) Root Canal has been run on', 'dim');
     ok('precondition: Root Canal has been run on some sets here', N >= 3, String(N));
-    ok('the list sits above the chooser', !!D().querySelector('.rc-donelist + .rc-choose'));
+    // Under its toggle, in the set card (2026-10-21): it opened above the
+    // card, which moved the toggle away from the pointer.
+    ok('the list drops down under its toggle, inside the set card',
+       !!D().querySelector('.rc-choose .rc-choose-top + .rc-donelist'));
     ok('a toggle that says what it is and how many',
        toggle() && toggle().textContent === '▾  Already through Root Canal  ·  ' + N + ' sets',
        toggle() && toggle().textContent);

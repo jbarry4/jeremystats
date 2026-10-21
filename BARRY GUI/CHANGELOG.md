@@ -15,6 +15,103 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.21.1 - Root Canal: the list of sets done drops down where it is pressed; the max-amp line fades with the marks
+
+A page reload is enough: nothing on the server changed.
+
+### Fixed
+
+- **"Already through Root Canal" opened in the wrong place.** Pressing it
+  opened the list above the set card, so the card and the toggle jumped
+  down, and folding it meant finding the toggle again. The list now drops
+  down right under its toggle, inside the set card, and folds back the
+  same way.
+- **Root Canal's "max amp" line ignored Xplorefinder's Marks setting.** In
+  the recording window opened from a dot, Marks faded or hidden faded or
+  hid every mark but that line. It now fades and hides with them. A
+  landmark you drag, such as Incisor's, still does not.
+
+### Checked
+
+- rootcanal (356), rootcanaldone (24), rootcanalpool (295) and
+  rootcanalxplore (15, with a new check that the max-amp line follows the
+  Marks setting) all pass.
+
+## 2026.10.20.11 - Doppler: no Bank button, and Next goes straight to Spotter
+
+**Restart Jarvis.** Part of this is on the server.
+
+### Changed
+
+- **Doppler has no Bank button.** A run banks itself the moment it lands,
+  so step 4 now only says where the run is:
+  - **Banked:** the name it was banked under.
+  - **Not banked:** the run landed before runs banked themselves, and nobody
+    banked it. **Run it again** sends it back to the cluster. The new answer
+    is made by today's Doppler, with the gap fix, and banks itself as it
+    lands. 17 runs from 10-12 and 10-14 are in this state.
+- **Next: Spotter just opens Spotter.** It used to open the add-a-set
+  dialog and ask which session. The run is waiting in Spotter's *Pick up a
+  set*, under *Banked, not started*.
+
+### Fixed
+
+- **Older runs read "not banked" when they were banked.** 33 runs from 10-12
+  to 10-16 were banked by hand before a run carried its own key. Their
+  landed rows said *recording banked* and their reports offered *Bank them*.
+  - Such a run is now recognised by what it computed: the same threshold,
+    gap map and number of events on the same recording.
+  - This is only used to show that a run is banked. Whether to bank a run
+    still goes by its key.
+- **A run opened from the cache showed Bank them even when banked.** It now
+  carries its key and its bank entry, as a run that has just landed does.
+
+## 2026.10.20.9 - Pane layouts, support panels, one way to pick up a set, what produced it
+
+**Restart Jarvis on every machine.** The server changed.
+
+### Changed
+
+- **Xplorefinder layouts.**
+  - **Three panes:** three side by side, one large on top with two below, or
+    two on top with one large below.
+  - **Two panes:** side by side or stacked.
+  - **Four panes:** the top and bottom rows can keep separate widths
+    ("Widths apart"). Drag either row's divider.
+  - The arrangement sits beside 1 / 2 / 3 / 4 and is remembered on this
+    computer.
+- **What a pane shows** is chosen under that pane's **More › Shows**. The
+  picker on every pane's header is gone; the header now just names the panel,
+  and clicking the name opens More.
+- **The overview strip can be shown or hidden per pane** under More ›
+  Overview strip.
+- **The header arrow folds the whole top row**: the open recordings, the
+  layout, the probe, Link time, View and the figure builder. A sliver at the
+  top brings it back.
+- **The add-on bar folds** to one slim line (the arrow on its left). It is
+  remembered per add-on, and the keys still work.
+- **Profile › Support panel preferences.** For each add-on (Checkup, Spotter,
+  Panning, StrataScope, Braid) you choose:
+  - whether its second window opens;
+  - which panels it shows (up to four) and in what order;
+  - how they are arranged.
+- **"Pick up a set" is the only way in** for Checkup, Spotter and Panning.
+  - It lists every set put down and every banked dataset with no set yet,
+    searchable together.
+  - Every row has **Archive** on it.
+  - "Add a set" and the separate banked-runs list are gone.
+- **What produced it:** a chip such as "Incisor output", "Checkup output" or
+  "Doppler output". It appears on every family of versions (version trees,
+  bench cards, the shelf) and in the Event Bank.
+- **Every ToolKit step ends the same way:** "Next: <Step> — what it does →",
+  below the tool and its Bank. The activity feed now sits under it.
+- **Flat tools open on a header:** Bad channels, Kilosort and Import sorted
+  snapshots.
+- **Words:** Bank as a new version… / Bank as a new entry… (were Commit the
+  moves, Commit DS1/DS2…, Bank and vet…); Save to Results; Open folder;
+  Export CSV; Refresh; Open recording….
+- **Nothing is cut short:** every "…" truncation now wraps instead.
+
 ## 2026.10.20.8 - One mode bar at the bottom, sets by bank entry, number order, fewer phantom errors
 
 **Restart Jarvis on every machine.** The server changed.
@@ -99,7 +196,20 @@ This file is the only place the version is written. The app reads it.
   view's own loads (its sets, versions and first pick) no longer repaint
   Pooled.
 - **The saved-version menu in Single was cut to 64 px**, so a version's name
-  could not be read. It is now as wide as its text.
+  could not be read. It is now a short menu ("v2 · 2 saved ▾"). Open, it
+  lists every version by its whole name, with its hover.
+- **Single's controls fell below one screen on a set with saved versions.**
+  On a 908 px screen the picked event's bar was 952 px down, because the
+  row of counts wrapped to three lines.
+  - The "by call / by cluster" switch now leads the colour key it
+    changes.
+  - "431 of 431 classified" reads "all 431 classified" when every event
+    has a class.
+  - The Margins and Borders folds sit side by side while shut. An open
+    one takes the whole width.
+  - The Borders line no longer counts archived borders; they are listed
+    inside the card.
+  The bar is 890 px down now.
 
 ### Changed
 
@@ -114,6 +224,10 @@ This file is the only place the version is written. The app reads it.
 
 ### Checked
 
+- Browser tests: rootcanal (356), rootcanalpool (295), rootcanalborder
+  (103), rootcanaldone, rootcanalfolders, rootcanalxplore, confluence and
+  all nine Braces tests pass. The pool test's ticking check failed about
+  one run in three before the repaint fix, and passed every run after it.
 - `tools/check_rootcanal.py`: 455 ok, 0 fail. New checks:
   - the same set under other settings files no new result and saves no
     new version, and says so;

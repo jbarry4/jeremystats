@@ -302,6 +302,12 @@ BARRY.curate = (function () {
 
   function exit() {
     if (!set_) return;
+    /* Banked on the way out, always (2026-10-21), when there are decisions
+       the bank does not have: after the set is let go, so it cannot hold up
+       the leaving; quietBank waits for any save still in flight. */
+    if (events().some((e) => e.label)) {
+      quietBank(set_.gid, set_.kind, 'Banked on leaving Checkup.');
+    }
     /* The place, written now rather than in 350 ms. Preference writes are
        coalesced, and leaving is exactly the moment somebody is about to do
        something else -- the whole point is that it survives a tab switch,
@@ -366,9 +372,15 @@ BARRY.curate = (function () {
        and a stacked spectrogram -- and the CSD is the one a dentate spike
        is judged on, so it gets the whole window instead of a quarter of it.
        Each of the others is still a panel switch away in that window. */
-    aidWin = BARRY.views.xplore.popOutPanes(sess, [
-      { panel: 'csd' },
-    ], { role: 'aids', name: 'barry-curate-aids', width: 720, height: 1000,
+    // What this person chose for Checkup's window (Profile › Support panel
+    // preferences), or the CSD alone.
+    const plan = BARRY.supportPanels
+      ? BARRY.supportPanels.plan('curate', [{ panel: 'csd' }])
+      : { specs: [{ panel: 'csd' }] };
+    if (!plan) return;
+    aidWin = BARRY.views.xplore.popOutPanes(sess, plan.specs, {
+         shape: plan.shape,
+         role: 'aids', name: 'barry-curate-aids', width: 720, height: 1000,
          // Folded on arrival. It is for glancing at: the header, control
          // strip and channel list cost more of the pane than they are
          // worth, and each has a sliver to bring it back if you want it.
@@ -661,6 +673,10 @@ BARRY.curate = (function () {
       if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
         BARRY.views.toolkit.curationChanged();
       }
+      // The last one decided: banked, always (2026-10-21).
+      if (set_ === own && labelId && !left()) {
+        quietBank(own.gid, own.kind, 'Every candidate decided in Checkup.');
+      }
     } catch (e) {
       if (set_ !== own) {
         // Left, or onto another set, before this one answered: nothing on
@@ -696,6 +712,41 @@ BARRY.curate = (function () {
     } finally {
       saving -= 1;
       updateSaving();
+    }
+  }
+
+  /* ---------- banking without being asked ----------
+
+     The same route as the dialog, so a bank that would hold nothing new
+     writes nothing (the server answers `replaced`, no new version). Said in
+     a toast when a version was written; quiet otherwise. */
+  async function quietBank(gid, kind, why) {
+    // A harness's throwaway set is not banked (`BARRY.testNoAutobank`).
+    if (BARRY.testNoAutobank) return;
+    for (let i = 0; i < 60 && saving > 0; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    let res;
+    try {
+      res = await apiPost(BARRY.ui.setUrl(gid, kind, 'bank'), {
+        note: why,
+        added_by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
+                  || undefined,
+      });
+    } catch (e) {
+      // Nothing decided yet is not a failure worth a toast.
+      if (!/nothing has been curated/i.test(e.message || '')) {
+        toast('Could not bank automatically: ' + e.message
+              + ' Bank the results by hand to keep them.', 'warn', 9000);
+      }
+      return;
+    }
+    const it = (res.entries || [])[0] || {};
+    if (it.replaced && !it.new_version) return;          // nothing new
+    toast('Banked automatically as ' + BARRY.ui.versionLabel(it.version)
+          + ': ' + (it.n || 0) + ' decided.', 'ok', 6000);
+    if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
+      BARRY.views.toolkit.curationChanged();
     }
   }
 
@@ -2207,6 +2258,7 @@ BARRY.vers = (function () {
         };
       };
       const tree = BARRY.ui.versionTree({
+        producer: ent.pipeline, producerType: ent.type,
         versions: rows,
         idOf: (v) => keyOf.get(v),
         disabled: (v) => (v.has_snap ? null

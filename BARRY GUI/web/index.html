@@ -444,8 +444,13 @@
           <div class="seg" id="xfLayoutSeg" title="Pane layout">
             <button class="active" data-panes="1">1</button>
             <button data-panes="2">2</button>
+            <button data-panes="3">3</button>
             <button data-panes="4">4</button>
           </div>
+          <!-- How the panes are arranged, for the count chosen: two side by
+               side or stacked; three across, one on top or one below; four
+               with the top and bottom widths together or apart. -->
+          <div class="seg sm xf-shape" id="xfShapeSeg" title="How the panes are arranged" hidden></div>
           <!-- Probe geometry. An H10-D is six independent columns, and a CSD
                is only meaningful down one of them, so switching to it lays
                out six panes rather than changing a label. -->
@@ -465,50 +470,50 @@
             </select>
           </div>
           <button class="btn ghost sm" id="xfView">View…</button>
-          <button class="btn ghost sm" id="xfAddSession">Open session…</button>
+          <button class="btn ghost sm" id="xfAddSession">Open recording…</button>
           <button class="btn sm" id="xfFigure">Figure builder</button>
         </div>
       </header>
+
+      <!-- THE BANNER (back, 2026-10-21: "I really liked the banner for what
+           view you're in"): the mode named across the top of the workspace
+           in its colour, what it does beside it, then Simplify and Leave --
+           Leave always last, far right; Esc does the same. Hidden unless an
+           add-on is on; see .mode-banner in app.css. -->
+      <div class="mode-banner" id="modeBanner">
+        <b id="modeName"></b>
+        <span class="mode-what" id="modeWhat"></span>
+        <div class="spacer"></div>
+        <button type="button" class="mode-simplify" id="modeSimplify"
+                aria-pressed="false">Simplify</button>
+        <button type="button" class="mode-leave" id="modeLeave">Leave</button>
+      </div>
 
       <div class="xf-body" id="xfBody">
         <div class="dropzone tall" id="xfDrop">
           <div class="dz-inner">
             <svg viewBox="0 0 24 24" class="dz-icon"><path d="M2 12h3l2-7 3 14 3-11 2 6 2-2h5"/></svg>
             <div class="dz-text">
-              <strong>Drop a CSC session here</strong>
+              <strong>Drop a recording here</strong>
               <span>a folder of CSC*.ncs, a single .ncs, or a converted .mat</span>
             </div>
             <div class="dz-actions">
               <button class="btn" id="xfPickFolder">Browse folder…</button>
               <button class="btn ghost" id="xfPickFile">Open file…</button>
-              <button class="btn ghost" id="xfGoSessions">Browse all sessions</button>
+              <button class="btn ghost" id="xfGoSessions">Browse all recordings</button>
             </div>
           </div>
         </div>
         <div class="pane-grid hidden" id="paneGrid"></div>
-        <!-- THE MODE BAR (2026-10-20): one compact bar at the bottom of the
-             workspace whenever an add-on is on -- the duplicate banner that
-             sat on top is gone. The shell owns its two ends: which mode,
-             and Simplify / ? / Leave (always last, far right; Esc leaves).
-             The mode puts its own tools in the middle (#modeSlot,
-             BARRY.modeSlot()). Hidden otherwise; see .mode-banner in app.css.
-             The ids are the ones the harnesses already ask for. -->
-        <div class="mode-banner" id="modeBanner">
-          <div class="mode-id"><i class="mode-dot" aria-hidden="true"></i><b id="modeName"></b></div>
+        <!-- THE MODE'S OWN TOOLS (2026-10-20): one compact bar at the bottom
+             of the workspace whenever an add-on is on. The mode puts its
+             tools in it (#modeSlot, BARRY.modeSlot()); the fold arrow
+             shrinks it to one line. Which mode, Simplify and Leave are on the
+             banner across the top (#modeBanner). -->
+        <div class="mode-bar" id="modeBar">
+          <button type="button" class="mode-fold" id="modeFold" aria-expanded="true"
+                  title="Fold the bar to one line (the keys still work)"></button>
           <div class="mode-slot" id="modeSlot"></div>
-          <div class="mode-end">
-            <button type="button" class="mode-simplify" id="modeSimplify"
-                    aria-pressed="false">Simplify</button>
-            <span class="mode-help">
-              <button type="button" class="mode-q" id="modeHelp"
-                      aria-expanded="false" title="What this mode does, and its keys">?</button>
-              <span class="mode-help-pop" id="modeHelpPop" hidden>
-                <span class="mode-what" id="modeWhat"></span>
-                <span class="mode-keys" id="modeKeys"></span>
-              </span>
-            </span>
-            <button type="button" class="mode-leave" id="modeLeave">Leave</button>
-          </div>
         </div>
       </div>
     </section>
@@ -532,7 +537,7 @@
           </div>
           <button class="btn ghost sm" id="sessHealth" title="Validate every listed recording">Health check all</button>
           <button class="btn ghost sm" id="sessCompare" title="Side-by-side metadata">Compare</button>
-          <button class="btn ghost sm" id="sessReveal">Open root</button>
+          <button class="btn ghost sm" id="sessReveal" title="Open the data root in the file browser">Open folder</button>
           <button class="btn sm" id="sessScan">Scan a root…</button>
         </div>
       </header>
@@ -588,7 +593,7 @@
         <div class="head-actions">
           <button class="btn ghost sm active" id="histTimelineToggle" title="Show the activity timeline">Timeline</button>
           <button class="btn ghost sm" id="histExport" title="Export what is listed as CSV">Export CSV</button>
-          <button class="btn ghost sm" id="histReveal">Open GUI_logs</button>
+          <button class="btn ghost sm" id="histReveal" title="Open GUI_logs in the file browser">Open folder</button>
           <button class="btn ghost sm" id="histRefresh">Refresh</button>
         </div>
       </header>
@@ -630,9 +635,11 @@
           <p class="sub" id="errSub">Everything that failed, with full context — saved to GUI_logs/errors.</p>
         </div>
         <div class="head-actions">
+          <!-- A developer's check, so first and quiet, never in the
+               primary's place at the end (2026-10-20). -->
+          <button class="mini" id="errTest" title="Write one test entry, to check the log end to end">Write a test entry</button>
           <select id="errDay" class="mini-select"></select>
           <button class="btn ghost sm" id="errRefresh">Refresh</button>
-          <button class="btn ghost sm" id="errTest">Write test entry</button>
         </div>
       </header>
       <div class="pad" id="errBody"></div>
@@ -646,10 +653,10 @@
           <p class="sub" id="resultsSub">Everything the GUI has saved, in the repo's Results folder.</p>
         </div>
         <div class="head-actions">
-          <button class="btn ghost sm" id="resManifest" title="Export a CSV of what is listed">Manifest CSV</button>
-          <button class="btn ghost sm" id="resOpenDir">Open Results folder</button>
+          <button class="btn ghost sm" id="resManifest" title="Export a CSV of what is listed">Export CSV</button>
+          <button class="btn ghost sm" id="resOpenDir" title="Open the Results folder in the file browser">Open folder</button>
           <button class="btn ghost sm" id="resGithub">View on GitHub</button>
-          <button class="btn ghost sm" id="resRefresh">Rescan</button>
+          <button class="btn ghost sm" id="resRefresh" title="Read the Results folder again">Refresh</button>
         </div>
       </header>
       <div class="pad" id="resultsBody"></div>
@@ -663,8 +670,8 @@
           <p class="sub" id="bankSub">Detected events, filed by project, mouse, session and type.</p>
         </div>
         <div class="head-actions">
-          <button class="btn ghost sm" id="bankReveal">Open folder</button>
           <button class="btn ghost sm" id="bankExport">Export CSV</button>
+          <button class="btn ghost sm" id="bankReveal">Open folder</button>
           <button class="btn ghost sm" id="bankRefresh">Refresh</button>
         </div>
       </header>
@@ -787,6 +794,7 @@
 <script src="js/jarvisshow.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/motion.js"></script>
+<script src="js/supportpanels.js"></script>
 <script src="js/startmenu.js"></script>
 <script src="js/stash.js"></script>
 <script src="js/syncstate.js"></script>

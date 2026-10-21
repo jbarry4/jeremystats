@@ -1841,14 +1841,13 @@ function wireRail() {
    in each mode, so the two cannot drift apart, and so leaving is always the
    same button in the same place.
 
-   ONE BAR, AT THE BOTTOM (2026-10-20). A mode used to be announced twice:
-   a banner across the top with "Leave this mode", and the mode's own bar
-   at the bottom with a Leave of its own -- two exits, five shapes of bar.
-   Now there is one compact bar, `#modeBanner`, docked at the bottom of the
-   workspace. The shell owns both ends of it: on the left which mode this
-   is, on the right Simplify, ? (what the mode does, and its keys) and
-   Leave -- always the last thing, far right, and Esc does the same. The
-   mode puts its own tools in the middle (`BARRY.modeSlot()`).
+   THE BANNER AND THE BAR (2026-10-20, banner back 2026-10-21). A mode
+   used to be announced twice -- a banner with "Leave this mode", and the
+   mode's own bar with a Leave of its own: two exits, five shapes of bar.
+   Now the banner across the top names the mode in its colour, says what it
+   does, and ends with Simplify and Leave -- the one Leave, always last,
+   far right; Esc does the same. The mode's tools are one compact bar at
+   the bottom (`#modeBar`, `BARRY.modeSlot()`), which folds to one line.
 
    `what` is what the ? says; `keys` the keys it lists after it. Every mode
    is here, so every mode gets a name, a colour and the same bar.
@@ -2011,6 +2010,7 @@ function setMode(kind, leave) {
   }
   modeHelp(false);
   modeSimplify(kind, null);
+  modeFold(kind, null);
   modeReserve(!!m);
   // The mode's own tools leave with it.
   if (!m) {
@@ -2064,7 +2064,7 @@ function modeSimplify(kind, on) {
    while the mode is on. */
 let _modeRO = null;
 function modeReserve(on) {
-  const bar = document.getElementById('modeBanner');
+  const bar = document.getElementById('modeBar');
   const root = document.documentElement;
   if (!on || !bar) {
     if (_modeRO) { _modeRO.disconnect(); _modeRO = null; }
@@ -2083,6 +2083,32 @@ function modeReserve(on) {
   }
 }
 
+/* FOLDING THE BAR (2026-10-20): "this takes up A LOT of space for people
+   with small screens". Folded, the bar is one slim line -- the mode, where
+   you are in it, Leave -- and every key still works. Remembered per
+   add-on, on this computer. */
+function modeFold(kind, on) {
+  const bar = document.getElementById('modeBar');
+  const btn = document.getElementById('modeFold');
+  const key = 'barry.modeFold.' + (kind || '');
+  let want = false;
+  if (kind && MODES[kind]) {
+    if (on === null || on === undefined) {
+      try { want = localStorage.getItem(key) === '1'; } catch (e) { want = false; }
+    } else {
+      want = !!on;
+      try { localStorage.setItem(key, want ? '1' : '0'); } catch (e) { /* session */ }
+    }
+  }
+  if (bar) bar.classList.toggle('folded', want);
+  if (btn) {
+    btn.setAttribute('aria-expanded', want ? 'false' : 'true');
+    btn.title = want ? 'Unfold the bar: every tool back'
+                     : 'Fold the bar to one line (the keys still work)';
+  }
+  return want;
+}
+
 /* The ? beside Leave: what the mode does, and its keys, in one place. */
 function modeHelp(open) {
   const pop = document.getElementById('modeHelpPop');
@@ -2098,6 +2124,13 @@ function wireMode() {
   if (out) out.addEventListener('click', () => {
     const fn = modeLeaveFn;
     if (fn) fn();
+  });
+  const fold = document.getElementById('modeFold');
+  if (fold) fold.addEventListener('click', () => {
+    if (!modeNow) return;
+    modeFold(modeNow, !document.getElementById('modeBar')
+      .classList.contains('folded'));
+    window.dispatchEvent(new Event('resize'));
   });
   const simple = document.getElementById('modeSimplify');
   if (simple) simple.addEventListener('click', () => {
@@ -2875,7 +2908,12 @@ BARRY.profile = (function () {
         el('button', { class: 'close-x', onclick: closeModal,
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
       ]),
-      el('div', { class: 'mb' }, [body]),
+      el('div', { class: 'mb' }, [
+        body,
+        // Which support panels each Xplorefinder add-on opens, and how
+        // (supportpanels.js). Saved as it is changed, not by Save.
+        BARRY.supportPanels ? BARRY.supportPanels.section() : null,
+      ].filter(Boolean)),
       el('div', { class: 'mf' }, [
         /* On the left, away from Save: adding somebody is a different job
            from saving the form, and putting them together is how one gets

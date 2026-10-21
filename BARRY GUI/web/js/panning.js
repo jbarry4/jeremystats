@@ -298,6 +298,7 @@ BARRY.panning = (function () {
             + 'worked on before. v0 is Junction’s pool, nothing decided; '
             + 'a later one carries the decisions made in it.' }),
         BARRY.ui.versionTree({
+          producer: ent.source, producerType: ent.kind,
           versions: vs,
           idOf: (v) => (v.id != null ? v.id : 'v' + v.v),
           value: pick.id != null ? pick.id : 'v' + pick.v,
@@ -395,12 +396,20 @@ BARRY.panning = (function () {
     }
     const every8 = ((sess.info || {}).channels || [])
       .filter((c, i) => i % 8 === 0).map((c) => c.index);
-    aidWin = BARRY.views.xplore.popOutPanes(sess, [
+    const defaults = [
       { panel: 'csd' },
       { panel: 'voltage' },
       { panel: 'spectrogram', tfChannels: every8, tfMode: 'stack',
         fmin: 1, fmax: 250 },
-    ], { role: 'aids', name: 'barry-panning-aids', width: 720, height: 980,
+    ];
+    // What this person chose (Profile › Support panel preferences).
+    const plan = BARRY.supportPanels
+      ? BARRY.supportPanels.plan('panning', defaults)
+      : { specs: defaults };
+    if (!plan) return;
+    aidWin = BARRY.views.xplore.popOutPanes(sess, plan.specs, {
+         shape: plan.shape,
+         role: 'aids', name: 'barry-panning-aids', width: 720, height: 980,
          chrome: 'notabs,noheads,nostrip,nochannels' });
   }
 
@@ -1532,19 +1541,6 @@ BARRY.panning = (function () {
                + 'say, every merged and every Incisor-only one is a spike. One '
                + 'step of undo puts them all back.',
           onclick: () => bulkDialog() }),
-        el('button', {
-          class: 'mini spot-auto' + (autoOn() ? ' on' : ''),
-          text: 'Auto-bank: ' + (autoOn() ? 'on' : 'off'),
-          title: autoOn()
-            ? 'The decisions and merges are banked as a new version without '
-              + 'asking: when the last undecided event is decided, and when you '
-              + 'leave with work the bank does not have yet. Click to turn it off.'
-            : 'Off: nothing is banked until you press Bank the results. '
-              + 'Click to turn it on.',
-          onclick: () => {
-            try { BARRY.prefs.set(AUTO_KEY, !autoOn()); } catch (e) { /* later */ }
-            render();
-          } }),
       ],
       next: {
         text: 'Next: Lock \u2014 line them up \u2192',
@@ -1583,10 +1579,11 @@ BARRY.panning = (function () {
      not have. The dialog's own route, so a bank that would hold nothing new
      writes nothing. On by default, off by the switch in the bar. */
   const AUTO_KEY = 'panning_autobank';
-  function autoOn() {
-    try { return BARRY.prefs.get(AUTO_KEY, true) !== false; }
-    catch (e) { return true; }
-  }
+  /* Always on (2026-10-21: "autobank is a constant, and when you leave"):
+     the decisions are banked when the last one is made and on leaving with
+     work the bank does not have. No switch. */
+  // `BARRY.testNoAutobank` is for a harness's throwaway sets only.
+  function autoOn() { return !BARRY.testNoAutobank; }
 
   async function quietBank(gid, why, k) {
     // Its own kind, passed in: on leaving it runs after the set is let go.

@@ -347,6 +347,41 @@ be a worse lie than the inconsistency it replaced.
 That is the general rule when two surfaces differ: **unify the shape, keep the
 difference that is about what the thing can do.**
 
+### `handoff(toolId, { ready, onclick, note })` -- the next step
+
+Every bundle step ends with "**Next: <Step> — <what it does> →**",
+right-aligned, below the tool and its Bank, read off ToolKit's bundle list
+(so inserting a step relinks every page). ToolKit draws it in its own host
+(`#tkNext`) on every step; a tool never draws its own. When going on needs
+something carried -- a run onto Spotter's bench -- the tool says how:
+`BARRY.views.toolkit.setHandoff(toolId, { onclick, note, ready })`. The last
+step of a bundle has none. The order of every tool page is therefore:
+header, picker, run bar, settings, result, Bank, Next -- then the activity
+feed, in a host of its own (`#tkFeed`).
+
+### Adding a set: recording → dataset → version → bench
+
+Checkup, Spotter and Panning add a set the same way
+(`toolkit.js newSetDialog`): the recording, then the dataset banked for it,
+then the version (archived ones at the bottom), then **Put on the bench**.
+It never opens the mode; the bench card does. A working set belongs to ONE
+bank entry: its kind says which (`ied.e<entry>`), `BARRY.ui.kindBase` gives
+the door, `BARRY.ui.setUrl(gid, kind, what)` the route. Never hard-code a
+kind in a URL. Each door shows its own kind only.
+
+### Lists and tables
+
+- **Number order for names**: every list of recordings, mice, rats,
+  channels, sets is in number order -- m1, m3, m5, m12, never m1, m12, m3.
+  `BARRY.ui.natCompare` / `natSort` on the page, `backend/natsort.py`
+  (`natsortmod` in app.py) on the server. A list in time order or ranked by
+  a count keeps that order.
+- **Numbers right, words left**, in every table, decided from the column
+  (`ui.js alignTable`, `data-al`). A table that wants its own says
+  `data-al="off"`.
+- **Nothing is cut short.** No `text-overflow: ellipsis`, no `slice + '…'`:
+  wrap or shrink (2026-10-20, every rule swept).
+
 ### Still to come
 
 `analysisRun`. Comod, Incisor, Panorama and Spectrum share three dead
@@ -559,6 +594,38 @@ reachable") right after Incisor had banked it off the cluster.
 
 **`rebind` exists because reopening a recording replaces the session object.**
 A mode holding the old one keeps painting into a detached tree.
+
+**One bar, at the bottom (2026-10-20).** A mode used to announce itself twice
+-- a banner across the top with "Leave this mode", and its own bar at the
+bottom with a Leave of its own: two exits, five shapes of bar. Now there is
+one compact bar, `#modeBanner`, docked at the bottom of the workspace, and
+the shell owns both ends of it:
+
+```
+[⌄] ● Spotter  | the mode's own tools ...... More · Next: Eye → · Bank… | Simplify  ?  Leave
+```
+
+- Left: the fold arrow (one slim line, remembered per add-on; the keys still
+  work) and the mode's name in its colour (`--mode-<name>`, every mode has
+  one; `#app.in-mode` frames the workspace).
+- Middle: `BARRY.modeSlot().appendChild(yourBar)` -- never `#xfBody`. Build
+  your bar's end with `BARRY.ui.modeEnd({ more, next, bank })`: occasional
+  controls folded into More, then the next step, then Bank.
+- Right, drawn by the shell: **Simplify** (hides the channel list, the
+  Xplorefinder header, the pane strips; remembered per add-on), **?** (your
+  `MODES` entry's `what` and `keys`), **Leave** -- always the last thing,
+  far right. **Esc leaves**, after anything nearer has had it: a field being
+  typed in, a dialog or popover, or your own keydown that calls
+  `preventDefault` (cancelling a drag).
+- Never draw a Leave of your own. `_dev/modes.html` checks the bar is at the
+  bottom, that Leave is its last button, that there is one Leave, and that
+  Esc does the same.
+
+**Support panels are the person's choice.** A mode that opens a second
+window asks `BARRY.supportPanels.plan('<mode>', defaults)` for what to open
+-- whether it opens, which panels (up to four), in what order and
+arrangement -- and passes `plan.shape` to `popOutPanes`. With nothing
+chosen in Profile › Support panel preferences, the defaults stand.
 
 ### Bad channels
 
@@ -1302,6 +1369,20 @@ per object.
 | **VACC loaded** | on VACC, VACC can read it, Uploaded to VACC (as a mark) | the mark on a recording the cluster can read with this account now, whether in place on netfiles or as an uploaded copy; *how* goes in the title. "Uploaded" stays the word for the act |
 | **Recording** | Session, 1. Which recording | the label over the recording picker, in every tool |
 | **v4.1** | 4.1, version 4.1, v7 | a version, always by its derived name through `versionLabel` — never the stored integer |
+| **Leave** | Leave this mode, Back to Spark, Back to the proposal | going out of an Xplorefinder mode -- one button, the shell's |
+| **Close** | Put it down, Done | a dialog, a panel, a set on the bench |
+| **Bank as a new version…** / **Bank as a new entry…** | Commit, Commit the moves, Keep, Save as, Bank and vet | writing to the Event Bank |
+| **Save to Results** | Save into Results | writing to Results |
+| **Next: <Step> — <what it does> →** | Confirm them in Spotter, Pan them (as the page's next step), Line them up… | the link to the next step of a bundle |
+| **Refresh** | Rescan, Re-check | read it again |
+| **Export CSV** | Manifest CSV | a CSV of what is listed |
+| **Open folder** | Open GUI_logs, Open root, Open Results folder | the folder in the file browser |
+| **Open recording…** | Open session… | Xplorefinder's way in |
+| **Put on the bench** | Start on it | a set onto a workbench |
+
+View headers put their actions in one order: `[view switch] [filters]
+[Export CSV] [Open folder] [Refresh] [Primary]`; a developer's check (Write
+a test entry) goes first and quiet, never in the primary's place.
 
 Placeholders describe what you can type, not what the box is:
 *"Type a mouse, session or date…"*, not *"Search sessions"*.

@@ -1505,7 +1505,7 @@ code { font-family: var(--mono); }
 .brand-text strong { font-size: var(--fs-14); letter-spacing: 0.03em; }
 .brand-text span {
   font-size: var(--fs-105); color: var(--text-3);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow-wrap: anywhere; white-space: normal;
 }
 
 /* ==========================================================================
@@ -2122,8 +2122,7 @@ code { font-family: var(--mono); }
 .fbar-path { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; }
 .fbar-label { font-size: var(--fs-10); text-transform: uppercase; letter-spacing: 0.07em;
               color: var(--text-3); flex: none; }
-.fbar-path code { font-size: var(--fs-115); color: var(--text); overflow: hidden;
-                  text-overflow: ellipsis; white-space: nowrap; }
+.fbar-path code { font-size: var(--fs-115); color: var(--text); overflow-wrap: anywhere; white-space: normal; }
 .chip-row { display: flex; gap: var(--sp-6); flex-wrap: wrap; }
 .fbar-actions { display: flex; gap: var(--sp-6); }
 .stat-chip {
@@ -2274,7 +2273,7 @@ code { font-family: var(--mono); }
 }
 .tree-item:hover { background: var(--bg-3); color: var(--text); }
 .tree-item.active { background: var(--accent-soft); color: var(--accent); }
-.tree-item .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-item .nm { overflow-wrap: anywhere; white-space: normal; }
 .tree-item .lang-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
 .lang-dot.python { background: #4b8bbe; }
 .lang-dot.matlab { background: #e06c3b; }
@@ -2496,8 +2495,8 @@ code { font-family: var(--mono); }
 .list-row:hover { background: var(--bg-3); color: var(--text); border-color: var(--line); }
 .list-row .nm { font-size: var(--fs-125); }
 .list-row .pth { font-family: var(--mono); font-size: var(--fs-105); color: var(--text-3);
-                 margin-left: auto; overflow: hidden; text-overflow: ellipsis;
-                 white-space: nowrap; max-width: 46%; }
+                 margin-left: auto; overflow-wrap: anywhere;
+                 white-space: normal; max-width: 46%; }
 /* ---------- log dock ---------- */
 #logDock {
   grid-column: 2; grid-row: 2;
@@ -2631,7 +2630,7 @@ code { font-family: var(--mono); }
   background: var(--err); color: #fff; border-radius: var(--r-pill);
   font-size: var(--fs-9); padding: 1px 5px; font-family: var(--mono);
 }
-#syncLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#syncLabel { overflow-wrap: anywhere; white-space: normal; }
 .chip-btn.dirty { border-color: var(--accent-line); color: var(--accent); }
 /* ---------- segmented control ---------- */
 .seg { display: flex; background: var(--bg-3); border-radius: var(--radius-sm); padding: 2px; gap: var(--sp-2); }
@@ -2661,7 +2660,7 @@ code { font-family: var(--mono); }
 }
 .xf-tab:hover { background: var(--bg-3); color: var(--text); }
 .xf-tab.active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
-.xf-tab .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xf-tab .nm { overflow-wrap: anywhere; white-space: normal; }
 .xf-tab .x { opacity: 0.5; font-size: var(--fs-13); line-height: 1; }
 .xf-tab .x:hover { opacity: 1; color: var(--err); }
 .xf-tab .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
@@ -2754,8 +2753,7 @@ code { font-family: var(--mono); }
   border-bottom: 1px solid var(--line-soft); background: var(--bg-2); flex: none;
 }
 .pane-head .pane-name {
-  font-size: var(--fs-115); font-weight: 600; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-115); font-weight: 600; overflow-wrap: anywhere; white-space: normal;
 }
 .pane-head .pane-meta { font-family: var(--mono); font-size: var(--fs-95); color: var(--text-3); }
 .pane-head .spacer { flex: 1; }
@@ -2981,8 +2979,7 @@ body.strip-resizing canvas { pointer-events: none; }
   padding-top: 4px; min-width: 0; overflow: hidden;
 }
 .mouse-label strong { font-size: var(--fs-115); color: var(--text); }
-.mouse-label > * { max-width: 100%; overflow: hidden;
-                   text-overflow: ellipsis; white-space: nowrap; }
+.mouse-label > * { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
 @media (max-width: 760px) {
   /* Too narrow for a gutter: back to a label above its cards. */
   .mouse-row { grid-template-columns: 1fr; }
@@ -3084,7 +3081,7 @@ body.strip-resizing canvas { pointer-events: none; }
 .st.done { background: var(--ok); } .st.failed { background: var(--err); }
 .st.running { background: var(--accent); } .st.canceled { background: var(--warn); }
 .st.figure { background: var(--text-3); }
-.hist-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.hist-row .nm { overflow-wrap: anywhere; white-space: normal; flex: 1; }
 .hist-row .tm { font-family: var(--mono); font-size: var(--fs-95); color: var(--text-3); }
 .kv { display: grid; grid-template-columns: 130px 1fr; gap: 5px 12px; font-size: var(--fs-12); }
 .kv dt { color: var(--text-3); font-size: var(--fs-105); text-transform: uppercase;
@@ -3190,7 +3187,7 @@ body.strip-resizing canvas { pointer-events: none; }
 .preview-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: var(--fs-105); }
 .preview-table th, .preview-table td {
   padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--line-soft);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;
+  white-space: normal; overflow-wrap: anywhere; max-width: 150px;
 }
 .preview-table th { color: var(--text-3); font-weight: 600; }
 .preview-table td { color: var(--text-2); }
@@ -3318,6 +3315,30 @@ select { color-scheme: inherit; }
    the same rows, allowed to wrap -- a dataset's name is long and is the
    answer -- with the chosen one lit and an archived one dimmed. */
 .ncs .bm-list { max-height: 260px; }
+/* The next step, the same on every bundle step (ui.handoff, toolkit.js
+   paintNext): right-aligned, below the tool, after its Bank. */
+.tk-next:empty { display: none; }
+.handoff { display: flex; align-items: center; justify-content: flex-end;
+  gap: var(--sp-10); flex-wrap: wrap; margin-top: var(--sp-12);
+  padding-top: var(--sp-10); border-top: 1px solid var(--line-soft); }
+.handoff-note { margin: 0; }
+/* Profile › Support panel preferences (supportpanels.js). */
+.spp { margin-top: var(--sp-16); border-top: 1px solid var(--line-soft);
+  padding-top: var(--sp-10); }
+.spp > summary { cursor: pointer; list-style: revert; }
+.spp-list { display: flex; flex-direction: column; gap: var(--sp-10);
+  margin-top: var(--sp-8); }
+.spp-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-card, 10px);
+  background: var(--bg-2); }
+.spp-row.off { opacity: .75; }
+.spp-head { display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap; }
+.spp-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.spp-chip { display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 4px 2px 8px; border-radius: var(--r-pill);
+  border: 1px solid var(--line); background: var(--bg); font-size: var(--fs-115); }
+.spp-tools { display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap; }
+.spp-add { font: inherit; font-size: var(--fs-115); }
 .ncs .bm-row { flex-wrap: wrap; row-gap: 2px; font-size: var(--fs-12);
   border: 1px solid transparent; }
 .ncs .bm-row.on { background: var(--accent-soft); border-color: var(--accent-line);
@@ -3328,6 +3349,13 @@ select { color-scheme: inherit; }
   color: var(--text-3); font-size: var(--fs-11); }
 .ncs .pick-rec { margin-bottom: var(--sp-10); }
 .cur-entry { font-family: var(--mono); }
+/* What produced a dataset (ui.producerChip): "Incisor output". */
+.flagchip.producer { background: var(--accent-soft); color: var(--text);
+  border-color: var(--accent-line); white-space: nowrap; }
+/* The shelf's banked-not-started rows, after the sets (toolkit.js). */
+.vtree-made { display: flex; gap: 6px; margin: 0 0 6px; }
+.cur-shelf-sub { grid-column: 1 / -1; margin: 8px 0 2px; font-size: var(--fs-11);
+  color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; }
 /* The marks list: bookmarks, events and spikes in one table. A fixed column
    layout rather than a flex row, so the times line up down the list and a
    long detail cannot push the kind chip off the end. */
@@ -3375,10 +3403,10 @@ select { color-scheme: inherit; }
 .confirm-sub:empty { display: none; }
 .confirm-sub.warn { color: var(--warn); }
 .mk-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.mk-name { color: var(--text); overflow: hidden; text-overflow: ellipsis;
-           white-space: nowrap; }
+.mk-name { color: var(--text); overflow-wrap: anywhere;
+           white-space: normal; }
 .mk-detail { font-family: var(--mono); font-size: var(--fs-10); color: var(--text-3);
-             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+             overflow-wrap: anywhere; white-space: normal; }
 .mk-kind {
   font-family: var(--mono); font-size: 8.5px; text-transform: uppercase;
   letter-spacing: .05em; color: var(--text-3);
@@ -3585,7 +3613,7 @@ body.dragging-session .pane { transition: outline .1s; }
 }
 .ch-overlay .ch-lane:hover { background: var(--bg-3); color: var(--text); }
 .ch-overlay .ch-lane input { accent-color: var(--accent); margin: 0; flex: none; }
-.ch-overlay .ch-lane .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.ch-overlay .ch-lane .nm { flex: 1; overflow-wrap: anywhere; }
 .ch-overlay .ch-lane.marked-bad { color: var(--warn); }
 .ch-overlay .ch-lane.compact { height: 12px; font-size: 9px; gap: 4px; }
 /* Denser than a label can be drawn at. The row keeps its controls -- every
@@ -4113,8 +4141,8 @@ html .toast { animation: moToast var(--dur-4) var(--ease-spring) both; }
   font-family: var(--sans);
 }
 .ev-src { font-family: var(--mono); font-size: var(--fs-9); color: var(--text-3);
-          max-width: 180px; overflow: hidden; text-overflow: ellipsis;
-          white-space: nowrap; }
+          max-width: 180px; overflow-wrap: anywhere;
+          white-space: normal; }
 .ev-swatch {
   width: 14px; height: 14px; border-radius: var(--r-3); padding: 0;
   border: 1px solid transparent; cursor: pointer;
@@ -4272,7 +4300,7 @@ html .toast { animation: moToast var(--dur-4) var(--ease-spring) both; }
   width: 100%; height: 100%; word-break: break-word;
 }
 .sb-name { grid-column: 2; font-size: var(--fs-10); color: var(--text-2);
-           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+           overflow-wrap: anywhere; white-space: normal; }
 /* On a thumbnail, so it hides until the thumbnail is hovered and needs a
    ground of its own to sit on. Removing a slide is not marking a channel
    bad, which is why this one turns red rather than amber. */
@@ -4455,14 +4483,13 @@ html .toast { animation: moToast var(--dur-4) var(--ease-spring) both; }
 .pal-kind.action   { color: #d8b45a; }
 .pal-kind.bookmark { color: #b58fd6; }
 .pal-label {
-  font-size: var(--fs-13); color: var(--text); overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-13); color: var(--text); overflow-wrap: anywhere; white-space: normal;
 }
 .pal-fav { color: var(--accent); font-size: var(--fs-11); }
 .pal-sub {
   font-family: var(--mono); font-size: var(--fs-10); color: var(--text-3);
-  min-width: 0; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; text-align: right;
+  min-width: 0; overflow-wrap: anywhere;
+  white-space: normal; text-align: right;
 }
 /* A path is only recognizable by its tail, so those truncate from the left.
    Prose descriptions read from the start and must not. */
@@ -4719,8 +4746,8 @@ html .toast { animation: moToast var(--dur-4) var(--ease-spring) both; }
 .batch-row.done      .st { color: var(--ok); }
 .batch-row.failed    .st { color: var(--err); }
 .batch-row.canceled .st { color: var(--text-3); }
-.batch-row .nm { overflow: hidden; text-overflow: ellipsis;
-                 white-space: nowrap; color: var(--text-2); }
+.batch-row .nm { overflow-wrap: anywhere;
+                 white-space: normal; color: var(--text-2); }
 .batch-bar {
   height: 4px; border-radius: var(--r-3); background: var(--bg-3);
   overflow: hidden; margin: 8px 0 4px;
@@ -4783,7 +4810,7 @@ html .toast { animation: moToast var(--dur-4) var(--ease-spring) both; }
 /* The TEXT gives way, not the badge: a stamp that says DOWNSAMPLED is
    worthless if a long filter description pushes it out of the overflow. */
 .panel-input > span:first-child {
-  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0; overflow-wrap: anywhere;
 }
 .panel-input .ds-chip {
   pointer-events: auto; flex: none;
@@ -4891,10 +4918,10 @@ html .toast { animation: moToast var(--dur-4) var(--ease-spring) both; }
   transition: transform .12s;
 }
 .ev-twist.open svg { transform: rotate(90deg); }
-.ev-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev-label { overflow-wrap: anywhere; white-space: normal; }
 .ev-src {
   font-family: var(--mono); font-size: var(--fs-95); color: var(--text-3);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow-wrap: anywhere; white-space: normal;
   direction: rtl; text-align: left;
 }
 .ev-detail { font-family: var(--mono); font-size: var(--fs-10); color: var(--text-3); }
@@ -5256,12 +5283,10 @@ button.tag:hover { filter: brightness(1.25); }
 .trace-row.warn { color: var(--accent); }
 .trace-row .tt { color: var(--text-3); }
 .trace-row .tm { color: var(--text-3); }
-.trace-row .tp { color: var(--text); overflow: hidden;
-                 text-overflow: ellipsis; }
+.trace-row .tp { color: var(--text); overflow-wrap: anywhere; }
 .trace-row .ts { text-align: right; }
 .trace-row .td { text-align: right; color: var(--text-3); }
-.trace-row .tq { color: var(--text-3); overflow: hidden;
-                 text-overflow: ellipsis; }
+.trace-row .tq { color: var(--text-3); overflow-wrap: anywhere; }
 .video-status {
   font-family: var(--mono); font-size: var(--fs-105); color: var(--text-3);
   padding: 4px 10px; border-top: 1px solid var(--line-soft);
@@ -5364,7 +5389,7 @@ button.tag:hover { filter: brightness(1.25); }
 .err-group.resolved .err-count {
   background: transparent; color: var(--ok); border-color: var(--ok);
 }
-.err-gmsg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.err-gmsg { overflow-wrap: anywhere; white-space: normal;
             font-size: var(--fs-125); color: var(--text); }
 .err-gwhere { font-family: var(--mono); font-size: var(--fs-10); color: var(--text-3); }
 /* .caret only had a size inside .tree-head, so the same markup here rendered
@@ -5485,12 +5510,10 @@ button.tag:hover { filter: brightness(1.25); }
   align-items: baseline;
 }
 .grep-hit:hover { background: var(--bg-3); }
-.grep-hit .f { color: var(--text-2); overflow: hidden;
-               text-overflow: ellipsis; white-space: nowrap; direction: rtl;
+.grep-hit .f { color: var(--text-2); overflow-wrap: anywhere; white-space: normal; direction: rtl;
                text-align: left; }
 .grep-hit .ln { color: var(--text-3); text-align: right; }
-.grep-hit .tx { color: var(--text); overflow: hidden;
-                text-overflow: ellipsis; white-space: nowrap; }
+.grep-hit .tx { color: var(--text); overflow-wrap: anywhere; white-space: normal; }
 .grep-hit mark { background: var(--accent-soft); color: var(--accent);
                  border-radius: var(--r-2); }
 .scratch-wrap { display: flex; flex-direction: column; gap: 7px; }
@@ -5508,7 +5531,7 @@ button.tag:hover { filter: brightness(1.25); }
   border-bottom: 1px solid var(--line-soft);
 }
 .hk-row .p { font-family: var(--mono); font-size: var(--fs-105); color: var(--text-2);
-             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+             overflow-wrap: anywhere; white-space: normal;
              direction: rtl; text-align: left; }
 .hk-row .b { font-family: var(--mono); font-size: var(--fs-105);
              color: var(--text-3); text-align: right; }
@@ -5524,8 +5547,7 @@ button.tag:hover { filter: brightness(1.25); }
   cursor: pointer;
   -webkit-user-select: none; user-select: none;
 }
-.tree-item .nm { flex: 1; min-width: 0; overflow: hidden;
-                 text-overflow: ellipsis; white-space: nowrap; }
+.tree-item .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; white-space: normal; }
 /* Quality flags need room under the card body. */
 .sess-card .flag-set { margin-top: 6px; }
 /* The health pill and note chip share the flag row. */
@@ -5550,8 +5572,8 @@ button.tag:hover { filter: brightness(1.25); }
 .rb-fact { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--sp-8); }
 .rb-fact .k { color: var(--text-3); font-size: var(--fs-11); }
 .rb-fact .v {
-  font-size: var(--fs-12); overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: var(--fs-12); overflow-wrap: anywhere;
+  white-space: normal;
 }
 .rb-verdict {
   display: flex; flex-direction: column; gap: var(--sp-6);
@@ -5630,7 +5652,7 @@ button.tag:hover { filter: brightness(1.25); }
 .rb-step[data-state="failed"] .rb-state { color: var(--err); }
 .rb-what {
   font-size: var(--fs-115); color: var(--text-2); margin-top: 1px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow-wrap: anywhere; white-space: normal;
 }
 .rb-note { font-size: var(--fs-11); margin-top: 4px; line-height: 1.5; }
 .rb-note.warn { color: var(--warn); }
@@ -5753,7 +5775,7 @@ button.tag:hover { filter: brightness(1.25); }
 .ctl-menu-label { flex: none; }
 .ctl-menu-value {
   color: var(--accent); font-variant-numeric: tabular-nums;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow-wrap: anywhere; white-space: normal;
 }
 .ctl-menu.active .ctl-menu-value { color: inherit; }
 .ctl-menu-caret { flex: none; font-size: 8px; opacity: .6; margin-left: 1px; }
@@ -5988,7 +6010,21 @@ button.tag:hover { filter: brightness(1.25); }
   cursor: row-resize;
   top: var(--split-row, 50%);
 }
+/* A column handle over one row only (2026-10-20): three with one large
+   pane, and four with the top and bottom widths apart. */
+.pane-split.col.upper { top: 0; bottom: auto; height: var(--split-row, 50%); }
+.pane-split.col.lower { top: var(--split-row, 50%); bottom: 0; }
+.pane-split.col.colb { left: var(--split-colb, 50%); }
+.xf-shape[hidden] { display: none; }
 .pane-split:hover, body.splitting .pane-split { background: var(--accent-line); }
+/* A pane without its overview strip (More › Overview strip, 2026-10-20). */
+.pane.no-overview .pane-timebar { display: none; }
+/* What the pane shows, said on its head; changed under More › Shows. */
+.pane-panel-name { font: inherit; font-size: var(--fs-11); color: var(--text-2);
+  background: none; border: 1px solid transparent; border-radius: var(--r-4);
+  padding: 1px 6px; cursor: pointer; white-space: nowrap; }
+.pane-panel-name:hover { border-color: var(--line); color: var(--text); }
+.ctl-seg.wrap { flex-wrap: wrap; }
 /* While dragging, nothing else should be selecting text or catching the
    pointer -- a splitter drag that lands on a canvas starts a measurement. */
 body.splitting { cursor: col-resize; user-select: none; }
@@ -6002,6 +6038,10 @@ body.splitting .pane-split { pointer-events: auto !important; }
 #view-xplore.hide-strip .pane-ctl { display: none; }
 #view-xplore.hide-heads .pane-head { display: none; }
 #view-xplore.hide-tabs .xf-tabs { display: none; }
+/* Folded, the top row goes whole -- title, recordings and every control on
+   it -- and a sliver at the very top brings it back. */
+#view-xplore.hide-tabs > .view-head { display: none; }
+#view-xplore > .unfold-top { justify-content: center; }
 /* With the tabs gone the header is just a title, so give the row back too
    when everything else on it is hidden as well. */
 #view-xplore.hide-tabs.hide-heads .xf-head h1 { font-size: var(--fs-13); }
@@ -6066,8 +6106,8 @@ body.splitting .pane-split { pointer-events: auto !important; }
 }
 .hk-dot.on { background: var(--ok); }
 .hk-name {
-  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1; min-width: 0; overflow-wrap: anywhere;
+  white-space: normal;
 }
 .hk-gid {
   font-family: var(--mono); font-size: var(--fs-10); color: var(--text-3);
@@ -6096,8 +6136,8 @@ body.splitting .pane-split { pointer-events: auto !important; }
 .hk-fact { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: var(--sp-8); }
 .hk-fact .k { color: var(--text-3); font-size: var(--fs-105); }
 .hk-fact .v {
-  font-size: var(--fs-115); overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: var(--fs-115); overflow-wrap: anywhere;
+  white-space: normal;
 }
 .hk-proj { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
 .hk-proj .hint { flex-basis: 100%; margin: 0; font-size: var(--fs-105); }
@@ -6442,11 +6482,23 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
    column is as wide as its widest cell in every row at once, and nothing
    runs off the right edge -- the name and recording columns give way and
    wrap instead. */
+/* Every action in a column of its own (2026-10-21: "make sure the button
+   placements aren't wack across different lists"): the chips, then Pick it
+   up, then Archive, then the arrow, each column as wide as its widest
+   cell, so the buttons stand in straight lines down the shelf whatever the
+   chips beside them say. A row without one of them leaves its slot empty. */
 .cur-shelf-grid {
   display: grid; column-gap: var(--sp-10);
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.1fr) max-content
-                         minmax(84px, max-content) max-content max-content;
+                         minmax(84px, max-content) max-content
+                         max-content max-content max-content max-content;
 }
+.cur-shelf-grid .csr-acts { display: contents; }
+.cur-shelf-grid .csr-chips { display: flex; gap: var(--sp-4); flex-wrap: wrap;
+  align-items: center; justify-content: flex-end; }
+.cur-shelf-grid .csr-slot { display: block; }
+.cur-shelf-grid .cur-shelf-cols > span:last-child { grid-column: span 4; }
+.cur-shelf-grid .cur-shelf-row > * { align-self: center; }
 .cur-shelf-grid > .cur-shelf-cols, .cur-shelf-grid > .cur-shelf-list,
 .cur-shelf-grid .cur-shelf-list > .cur-shelf-row,
 .cur-shelf-grid .cur-shelf-list > .arch-tail,
@@ -6724,8 +6776,8 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
 }
 .sp-dot.on { background: var(--ok); }
 .sp-name {
-  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1; min-width: 0; overflow-wrap: anywhere;
+  white-space: normal;
 }
 .sp-tag {
   flex: none; font-size: var(--fs-95); padding: 0 5px; border-radius: var(--r-4);
@@ -6767,8 +6819,7 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
 .hk-arrow { margin-left: 4px; font-size: var(--fs-9); }
 .hk-table td {
   padding: 6px 10px; border-bottom: 1px solid var(--line-soft);
-  white-space: nowrap; max-width: 320px; overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal; max-width: 320px; overflow-wrap: anywhere;
 }
 .hk-table td.mono { font-family: var(--mono); font-size: var(--fs-105);
                     color: var(--text-3); }
@@ -6890,7 +6941,7 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
 .ks-fact { display: grid; grid-template-columns: 120px 1fr auto; gap: var(--sp-10);
            font-size: var(--fs-115); align-items: baseline; }
 .ks-fact .k { color: var(--text-3); }
-.ks-fact .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ks-fact .v { overflow-wrap: anywhere; white-space: normal; }
 .ks-fact .x { color: var(--text-3); font-size: var(--fs-105); }
 .ks-script {
   max-height: 340px; overflow: auto; background: var(--bg-3);
@@ -6930,8 +6981,8 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
 .ks-job-head { display: flex; align-items: center; gap: var(--sp-10);
                padding: 8px 12px; background: var(--bg-3); }
 .ks-job-head code { flex: 1; font-size: var(--fs-10); color: var(--text-3);
-                    overflow: hidden; text-overflow: ellipsis;
-                    white-space: nowrap; }
+                    overflow-wrap: anywhere;
+                    white-space: normal; }
 .ks-log {
   margin: 0; padding: 10px 12px; max-height: 300px; overflow: auto;
   font-size: var(--fs-105); background: var(--bg); white-space: pre-wrap;
@@ -7263,12 +7314,34 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
   box-shadow: inset 0 0 0 2px var(--mode, var(--accent));
   border-radius: var(--radius);
 }
-/* THE MODE BAR (2026-10-20): one compact row docked at the bottom of the
-   workspace, wrapping only when it must. Left: which mode. Middle: the
-   mode's own tools (#modeSlot). Right: Simplify, ?, Leave -- always last.
-   "Make recommendations/bar at the bottom more compact." */
+/* THE BANNER (back 2026-10-21): the mode named across the top of the
+   workspace -- C H E C K U P -- in its colour, what it does beside it, then
+   Simplify and Leave, always last. */
 .mode-banner { display: none; }
 #app.in-mode .mode-banner {
+  display: flex; align-items: center; gap: var(--sp-10);
+  padding: 4px 10px; flex: none;
+  background: var(--mode-soft);
+  border-bottom: 1px solid var(--mode, var(--accent));
+  font-size: var(--fs-11);
+}
+.mode-banner b { color: var(--mode, var(--accent)); font-weight: 700;
+  letter-spacing: 0.3em; text-transform: uppercase; white-space: nowrap; }
+.mode-banner .mode-what { color: var(--text-2); font-size: var(--fs-11);
+  min-width: 0; overflow-wrap: anywhere; }
+.mode-banner .mode-what[hidden] { display: none; }
+.mode-banner .spacer { flex: 1; }
+.mode-banner button {
+  font: inherit; font-size: var(--fs-11); padding: 2px 10px; cursor: pointer;
+  border: 1px solid var(--mode, var(--accent)); border-radius: var(--r-pill);
+  background: transparent; color: var(--text);
+}
+.mode-banner button:hover { background: var(--mode, var(--accent)); color: #0b0e13; }
+.mode-banner .mode-simplify.on { background: var(--mode, var(--accent)); color: #0b0e13; }
+/* THE MODE'S TOOLS: one compact row docked at the bottom of the workspace,
+   wrapping only when it must. "Make the bar at the bottom more compact." */
+.mode-bar { display: none; }
+#app.in-mode .mode-bar {
   display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap;
   /* Docked at the bottom whatever is above it -- a recording's panes, or
      the drop zone before one is open. */
@@ -7364,8 +7437,24 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
 #modeSlot > .cur-bar, #modeSlot > .cur-bar > .cur-nav { display: contents; }
 #modeSlot > .cfc-bar { flex: 1 1 auto; }
 #modeSlot > .strata-bar, #modeSlot > .arc-panel { flex: 1 1 100%; }
-/* The mode's own end pushes right; the shell's end follows it directly. */
-#modeBanner:has(.mode-own-end) .mode-end { margin-left: 0; }
+/* Folded: one slim line -- the fold arrow, the mode, where you are, and
+   Simplify / ? / Leave. Everything else waits, and the keys still work. */
+.mode-fold { width: 22px; height: 22px; flex: none; padding: 0; cursor: pointer;
+  border: 1px solid var(--line); border-radius: var(--radius-inner, 6px);
+  background: var(--bg); color: var(--text-2); position: relative; }
+.mode-fold::before { content: ''; position: absolute; left: 50%; top: 50%;
+  width: 6px; height: 6px; border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translate(-50%, -70%) rotate(45deg);
+  transition: transform var(--dur-2, .16s) var(--ease-out, ease-out); }
+.mode-bar.folded .mode-fold::before { transform: translate(-50%, -30%) rotate(-135deg); }
+.mode-fold:hover { background: var(--bg-hover); color: var(--text); }
+#modeBar.folded { padding-top: 3px; padding-bottom: 3px; flex-wrap: nowrap; }
+#modeBar.folded #modeSlot > *:not(.cur-bar),
+#modeBar.folded #modeSlot > .cur-bar > *:not(.cur-where),
+#modeBar.folded .mode-simplify { display: none !important; }
+#modeBar.folded .cur-where { min-width: 0; overflow-wrap: anywhere; }
+
 /* The aid window. Framed the same way, and labelled, so it is never mistaken
    for the window you are supposed to be reading. */
 body.aid-window #xfBody { box-shadow: inset 0 0 0 2px var(--accent); }
@@ -8521,8 +8610,8 @@ div.ss-more p { margin: 0; }
 .ecx-row:hover { background: var(--bg-3); }
 .ecx-at { color: var(--text-3); flex: none; }
 .ecx-action { color: var(--text); min-width: 150px; }
-.ecx-detail { color: var(--text-3); overflow: hidden; text-overflow: ellipsis;
-              white-space: nowrap; }
+.ecx-detail { color: var(--text-3); overflow-wrap: anywhere;
+              white-space: normal; }
 /* The error's own place in the sequence. Without it the list is a set of
    actions with no sign of which side of the failure each one is on. */
 .ecx-row.here {
@@ -8573,12 +8662,12 @@ div.ss-more p { margin: 0; }
    anybody opens a history. */
 .hist-who {
   font-size: var(--fs-105); color: var(--accent);
-  min-width: 96px; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 96px; overflow-wrap: anywhere;
+  white-space: normal;
 }
 .hist-what {
   font-family: var(--mono); font-size: var(--fs-10); color: var(--text-3);
-  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex: 1; overflow-wrap: anywhere; white-space: normal;
 }
 /* ==========================================================================
    Which device
@@ -8611,8 +8700,8 @@ div.ss-more p { margin: 0; }
 .dfr-what { color: var(--text); min-width: 150px; }
 .dev-feed-row.err .dfr-what { color: var(--err); }
 .dfr-detail {
-  color: var(--text-3); overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap;
+  color: var(--text-3); overflow-wrap: anywhere;
+  white-space: normal;
 }
 /* --------------------------------------------------------------------------
    What changed since you last looked
@@ -9706,11 +9795,11 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   font-family: var(--mono); font-size: var(--fs-95); color: var(--text-3);
   opacity: .8;
 }
-.tf-who { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; }
+.tf-who { color: var(--text-2); overflow-wrap: anywhere; }
 .tf-what { color: var(--text); }
 .tf-on {
   color: var(--text-3); font-family: var(--mono); font-size: var(--fs-10);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow-wrap: anywhere; white-space: normal;
 }
 .tf-extra { color: var(--accent); font-size: var(--fs-10); white-space: nowrap; }
 /* A row that has just arrived, for one beat. The feed is watched while
@@ -15722,17 +15811,21 @@ div.tf-tile { cursor: default; }
   border-bottom: 1px solid var(--line-soft, var(--line));
 }
 .sp-group-hd strong { font-size: var(--fs-12); }
-.sp-none { margin: 4px 0; }
-.sp-row {
+/* Scoped to the set picker's own lists (2026-10-21). Unscoped, these were
+   the recording picker's rules too -- it uses .sp-row and .sp-none in its
+   drop-down -- and its three columns put each recording's name on the
+   far right with the dot alone on the left (Incisor, Doppler, Horizon). */
+.sp-lists .sp-none { margin: 4px 0; }
+.sp-lists .sp-row {
   display: grid; align-items: center; gap: 6px 12px;
   grid-template-columns: minmax(0, 1fr) auto auto;
   padding: 8px 12px; border-radius: var(--r-8);
   border: 1px solid var(--line); background: var(--bg-2);
 }
-.sp-row.done { border-color: var(--accent-line); }
-.sp-row.fresh { background: transparent; }
+.sp-lists .sp-row.done { border-color: var(--accent-line); }
+.sp-lists .sp-row.fresh { background: transparent; }
 @media (max-width: 900px) {
-  .sp-row { grid-template-columns: minmax(0, 1fr); }
+  .sp-lists .sp-row { grid-template-columns: minmax(0, 1fr); }
 }
 .sp-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .sp-row-main strong { font-weight: 600; overflow-wrap: anywhere; }
@@ -15766,7 +15859,9 @@ div.tf-tile { cursor: default; }
    Root Canal: ALREADY THROUGH ROOT CANAL (2026-10-20). Checkup's shelf
    (`.cur-shelf-*`), with a column for what Root Canal left on each set.
    ========================================================================== */
-.rc-donelist { margin: 0 0 var(--sp-10); }
+.rc-donelist { margin: var(--sp-6) 0 var(--sp-10); }
+/* In the folded card it takes the line under the card's own. */
+.rc-folded > .rc-donelist { flex: 1 1 100%; margin-bottom: 0; }
 .rc-donelist[hidden] { display: none; }
 .rc-donelist > .rc-done-shelf { margin-top: 0; }
 /* Its toggle, on the set card's first line: the Recording label's, or the
@@ -15849,3 +15944,10 @@ div.tf-tile { cursor: default; }
 .rc-save-folder-row { display: flex; flex-wrap: wrap; align-items: center;
                       gap: var(--sp-4) var(--sp-8); margin-top: var(--sp-8); }
 .rc-save-folder-row .section-label { margin: 0; }
+
+/* Root Canal Single: the Margins and Borders folds side by side while shut
+   (2026-10-20); one that is open takes the whole width. */
+.rc-folds { display: flex; flex-wrap: wrap; align-items: flex-start;
+            gap: var(--sp-6); margin-top: var(--sp-6); }
+.rc-folds > details { margin-top: 0; flex: 0 1 auto; min-width: 0; }
+.rc-folds > details[open] { flex: 1 1 100%; }

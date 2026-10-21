@@ -224,10 +224,10 @@ const ENTRY = '46fd29a77cc7';
               'the progress card');
   ok('a running read draws the progress card, with a loader in it',
      !!D().querySelector('#tkResult .rc-job .loader'));
-  const gotFeed = await until(() => D().querySelector('#tkResult .tf'), 10000,
+  const gotFeed = await until(() => D().querySelector('#tkFeed .tf, #tkResult .tf'), 10000,
                               'the activity feed to mount');
   ok('the activity feed is mounted under it', gotFeed);
-  const feed0 = D().querySelector('#tkResult .tf');
+  const feed0 = D().querySelector('#tkFeed .tf, #tkResult .tf');
   /* The tick itself updates the card where it stands. Asked around one
      tick, synchronously: the ToolKit repaints the whole panel on its own
      schedule, and that is a different event from a tick. */
@@ -240,7 +240,7 @@ const ENTRY = '46fd29a77cc7';
     await sleep(90);
   }
   ok('fourteen ticks later it is the SAME feed, not a remount',
-     !!feed0 && D().querySelector('#tkResult .tf') === feed0);
+     !!feed0 && D().querySelector('#tkFeed .tf, #tkResult .tf') === feed0);
   const jobText = (D().querySelector('#tkResult .rc-job') || {}).textContent || '';
   ok('which says where it is up to', /15 of 296/.test(jobText),
      jobText.slice(0, 120));
@@ -459,7 +459,8 @@ const ENTRY = '46fd29a77cc7';
   ok('the why-line counts them', /2 on 2 of 3 axes/.test(
      (D().querySelector('.rc-why') || {}).textContent || ''));
   ok('and says how many were classified, placed ones included',
-     new RegExp(f50.n_placed + ' of ' + f50.n + ' classified').test(
+     new RegExp(f50.n_placed === f50.n ? 'all ' + f50.n + ' classified'
+                : f50.n_placed + ' of ' + f50.n + ' classified').test(
        (D().querySelector('.rc-why') || {}).textContent || ''));
   ok('Bank says so too', /\(2 on 2 of 3 axes\)/.test(
      (D().querySelector('.rc-bank') || {}).textContent || ''),
@@ -1311,6 +1312,15 @@ const ENTRY = '46fd29a77cc7';
                                + ' (' + above + '; ' + room + ')' : 'missing');
     if (what === 'Open in Xplorefinder') {
       say('       ' + (r ? b.toFixed(0) : '?') + ' of ' + vh + ' px; ' + room, 'dim');
+      // What the row of counts holds, and how wide each part is.
+      const cr = D().querySelector('.rc-why-t > .chip-row');
+      if (cr) {
+        say('       counts row: ' + Array.from(cr.children).map((c2) => {
+          const R2 = c2.getBoundingClientRect();
+          return '[' + (c2.textContent || '').trim().slice(0, 40) + ' ' + R2.width.toFixed(0)
+            + 'x' + R2.height.toFixed(0) + ' @' + (R2.top - cr.getBoundingClientRect().top).toFixed(0) + ']';
+        }).join(' '), 'dim');
+      }
     }
   }
   const pic = box('#rcSpace');
@@ -1519,11 +1529,11 @@ const ENTRY = '46fd29a77cc7';
   ok('one bar over them all', !!D().querySelector('.rc-bulk-card .br-fbar'));
   ok('there is a Stop', Array.from(D().querySelectorAll('.rc-bulk-card button'))
      .some((b) => b.textContent === 'Stop'));
-  const feedB = D().querySelector('#tkResult .tf');
+  const feedB = D().querySelector('#tkFeed .tf, #tkResult .tf');
   const runB = D().querySelector('.rc-bulk-card .rc-bulk-run');
   for (let k = 0; k < 6; k++) { ev(RC + '._tickBulk()'); await sleep(90); }
   ok('ticking the batch leaves the activity feed alone',
-     !feedB || D().querySelector('#tkResult .tf') === feedB);
+     !feedB || D().querySelector('#tkFeed .tf, #tkResult .tf') === feedB);
   ok('and leaves the rows where they are, when nothing in them changed',
      !!runB && D().querySelector('.rc-bulk-card .rc-bulk-run') === runB);
   ev(RC + '._endBulk()');
@@ -2102,7 +2112,7 @@ const ENTRY = '46fd29a77cc7';
   ok('the request carries the border', (ev(RC + '._lastBody()').border || {})
      .artifact_id === 'hb-s');
   ok('the call shown is the border’s: the seg says so and the legend has '
-     + 'ambiguous', Array.from(D().querySelectorAll('.rc-why .rc-colour-by button'))
+     + 'ambiguous', Array.from(D().querySelectorAll('.rc-colour-by button'))
        .some((b) => b.textContent === 'by border')
      && /solid DS\s*solid IED\s*outside, called DS\s*outside, called IED/
        .test(D().querySelector('.rc-legend').textContent),
@@ -2136,7 +2146,7 @@ const ENTRY = '46fd29a77cc7';
   ev(RC + '._setBorder(null)');
   await until(() => !st().fitting && !st().fit.border_used, 20000, 'the border off');
   ok('taken off, the call is k-means’ again',
-     Array.from(D().querySelectorAll('.rc-why .rc-colour-by button'))
+     Array.from(D().querySelectorAll('.rc-colour-by button'))
        .some((b) => b.textContent === 'by call'));
   ev('(function(){ var W = window; if (W.__bdFetch) { W.fetch = W.__bdFetch;'
      + ' delete W.__bdFetch; } })()');

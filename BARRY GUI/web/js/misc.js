@@ -563,9 +563,9 @@ BARRY.views.misc = (function () {
     host.appendChild(grid);
   }
 
+  /* Whole, never cut short (the house rule): the row wraps instead. */
   function shortPath(p) {
-    if (!p || p.length < 52) return p;
-    return p.slice(0, 22) + '…' + p.slice(-26);
+    return p;
   }
 
   function escapeHtml(s) {

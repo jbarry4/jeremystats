@@ -272,9 +272,12 @@ async function until(fn, ms) {
   ev("BARRY.views.toolkit.pick('panning', 'confluence')");
   await until(() => txt($('#tkResult .step-head strong')) === 'Panning', 15000);
   await until(() => $('#tkResult #curBench'), 60000);
-  check('its step page is the workbench: a bench, the shelf and the pools '
-        + 'not started', !!$('#tkResult #curBench')
-        && $$('#tkResult .cur-shelf-toggle').length === 2);
+  /* One shelf since 2026-10-20: the sets put down and the pools not
+     started are on it together ("Pick up a set" is the one way in). */
+  check('its step page is the workbench: a bench, and one shelf holding the '
+        + 'sets and the pools not started', !!$('#tkResult #curBench')
+        && $$('#tkResult .cur-shelf-toggle').length === 1
+        && /not started/.test(txt($('#tkResult .cur-shelf-toggle'))));
   check('it is a registered mode',
         ev("BARRY.modes.names().indexOf('panning') >= 0"));
   const lead = ev('JSON.stringify([BARRY.panning._leadOf({origin:"doppler",'

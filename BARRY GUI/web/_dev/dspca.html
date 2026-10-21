@@ -736,17 +736,17 @@ const NL = String.fromCharCode(10);
   const shown = (D().querySelector('#tkResult .dp-job .hint') || {}).textContent;
   ok('and it says where it is up to', /1 of 348/.test(shown || ''), shown);
 
-  const gotFeed = await until(() => D().querySelector('#tkResult .tf'), 10000,
+  const gotFeed = await until(() => D().querySelector('#tkFeed .tf, #tkResult .tf'), 10000,
                               'the activity feed to mount');
   ok('the activity feed is mounted under it', gotFeed);
   if (gotFeed) {
-    const before = D().querySelector('#tkResult .tf');
+    const before = D().querySelector('#tkFeed .tf, #tkResult .tf');
     /* Fourteen ticks at the real 700 ms is ten seconds of a read. */
     for (let i = 2; i <= 15; i++) {
       ev('BARRY.dspca._tick({ done: ' + i + ' })');
       await sleep(90);                    // past the watcher's 60 ms coalesce
     }
-    const after = D().querySelector('#tkResult .tf');
+    const after = D().querySelector('#tkFeed .tf, #tkResult .tf');
     ok('fourteen ticks later it is the SAME feed, not a remount',
        !!after && after === before,
        after ? 'a different element -- it was torn down and rebuilt'
@@ -788,7 +788,7 @@ const NL = String.fromCharCode(10);
      bar.indexOf('CSC' + newLo) >= 0, bar.slice(0, 90));
 
   /* The feed, across a real fit. Same element or it was torn down. */
-  const feedWas = D().querySelector('#tkResult .tf');
+  const feedWas = D().querySelector('#tkFeed .tf, #tkResult .tf');
   ok('the activity feed is up before the recompute', !!feedWas);
 
   /* The Recompute button, not the one BESIDE it.
@@ -809,7 +809,7 @@ const NL = String.fromCharCode(10);
      [st().fit.box.lo, st().fit.box.hi], [newLo, newHi]);
   ok('the bar has gone', !D().querySelector('.dp-applybar.on'));
   ok('and the feed came through the rebuild intact',
-     D().querySelector('#tkResult .tf') === feedWas,
+     D().querySelector('#tkFeed .tf, #tkResult .tf') === feedWas,
      'render() replaced it, so the ToolKit will remount and refetch');
 
   /* Back where we started, so anything added after this sees the box the
