@@ -81,9 +81,12 @@ async function until(fn, ms, what) {
   eq('named in the order they happen',
      steps.map((s) => s.querySelector('.tk-step-n').textContent),
      ['Incisor', 'Checkup', 'Braces', 'Root Canal', 'X-ray']);
-  ok('and numbered, because the order is a real dependency',
-     steps.map((s) => s.querySelector('.tk-step-i').textContent)
-       .join('') === '12345');
+  // In order on the rail, each step its tool's mark (no printed numbers
+  // since 2026-10-21); the order is kept on `data-n`.
+  ok('and in order, because the order is a real dependency',
+     steps.map((s) => s.querySelector('.tk-step-i').dataset.n)
+       .join('') === '12345'
+     && steps.every((s) => s.querySelector('.tk-step-i svg.tk-ico')));
 
   /* Pressing step 3 must open Braces, not merely highlight the step. */
   steps[2].click();

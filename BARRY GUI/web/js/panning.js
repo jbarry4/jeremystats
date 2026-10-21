@@ -404,11 +404,11 @@ BARRY.panning = (function () {
     ];
     // What this person chose (Profile › Support panel preferences).
     const plan = BARRY.supportPanels
-      ? BARRY.supportPanels.plan('panning', defaults)
+      ? BARRY.supportPanels.plan('panning', defaults, sess)
       : { specs: defaults };
     if (!plan) return;
     aidWin = BARRY.views.xplore.popOutPanes(sess, plan.specs, {
-         shape: plan.shape,
+         ...BARRY.supportPanels.opts(plan),
          role: 'aids', name: 'barry-panning-aids', width: 720, height: 980,
          chrome: 'notabs,noheads,nostrip,nochannels' });
   }

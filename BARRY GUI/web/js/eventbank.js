@@ -1224,19 +1224,15 @@ BARRY.views.eventbank = (function () {
       el('span', { class: 'hint', text: 'compared with' }),
       /* By name, as the strip is: the stored number repeats when two
          machines both mint it, and keyed on it this compared against
-         whichever came first. */
-      el('select', {
-        onchange: (ev) => {
-          against = others.find((o) => verKey(o) === ev.target.value)
-                 || against;
-          paint();
-        },
-      }, others.map((o) => el('option', {
-        value: verKey(o),
-        text: BARRY.ui.versionLabel(o) + '  ' + (o.by || '') + '  '
-            + BARRY.when(o.at, 'minute'),
-        selected: verKey(o) === verKey(against) ? 'selected' : null,
-      }))),
+         whichever came first. One button that opens the whole tree
+         (2026-10-21), not a drop-down of bare numbers. */
+      BARRY.ui.versionButton({
+        versions: others, idOf: verKey, value: verKey(against),
+        producer: (e.source || {}).pipeline, producerType: e.type,
+        heading: 'Compare ' + BARRY.ui.versionLabel(v) + ' with which version',
+        sub: e.name || '',
+        onpick: (o) => { if (o) { against = o; paint(); } },
+      }),
     ]));
     host.appendChild(rows);
     paint();

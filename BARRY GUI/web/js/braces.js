@@ -1283,21 +1283,27 @@ BARRY.braces = (function () {
             .slice(0, 10) + ' — sending it opens that one, nothing is read' })
           : null,
       ].filter(Boolean)),
-      /* The version, changeable before anything is sent. */
-      vs.length ? el('select', {
-        class: 'br-bulk-v', title: 'Which version of its stamps to align',
-        'aria-label': 'Which version of ' + rowLabel(c) + '’s stamps',
-        onchange: (e) => {
-          bulk.pick[c.id] = e.target.value || null;
+      /* The version, changeable before anything is sent: one button that
+         opens the whole tree (2026-10-21: "Braces still had the old drop
+         down version selection"), every version with who, when, what
+         processed it and its note. Only readable versions can be picked;
+         the rest are shown with why. */
+      vs.length ? BARRY.ui.versionButton({
+        versions: c.versions || [], idOf: (v) => v.ref,
+        value: bulk.pick[c.id] || null, unit: 'stamps',
+        producer: c.pipeline, producerType: c.type || 'ds',
+        disabled: null,
+        heading: 'Which version of ' + rowLabel(c) + '’s stamps to align',
+        sub: 'The newest one this computer can read is chosen unless you '
+           + 'pick another.',
+        state: (v) => (v === newestOf(c) ? ['newest readable here'] : []),
+        onpick: (v) => {
+          if (!v) return;
+          bulk.pick[c.id] = v.ref;
           bulk.rev += 1;
           render();
         },
-      }, vs.map((v) => el('option', {
-        value: v.ref,
-        selected: bulk.pick[c.id] === v.ref ? 'selected' : null,
-        text: BARRY.ui.versionLabel(v) + (v === newestOf(c) ? '  (newest)' : '')
-              + (v.n != null ? '  · ' + v.n + ' stamps' : ''),
-      }))) : el('span', { class: 'br-hint', text: 'no readable version' }),
+      }) : el('span', { class: 'br-hint', text: 'no readable version' }),
       /* The contacts this recording has marked bad, which the batch uses.
          Interpolated rather than dropped -- a second difference over an
          uneven grid is not a CSD -- so "which wires are not believed". */
@@ -1321,7 +1327,7 @@ BARRY.braces = (function () {
              + ' already. The newest: ' + setLine(had[0])
              + '. Opening it reads nothing.',
         onclick: () => { reused = null; openSet(had[0].set_id); } })
-        : el('span', {}),
+        : el('span', { class: 'br-bulk-none' }),
     ]);
     return row;
   }
@@ -2321,6 +2327,44 @@ BARRY.braces = (function () {
     return card;
   }
 
+  /* How many stamps a bank would move: a row moves if what it would land
+     on differs from where it started. Counted the way the write counts it. */
+  function pendingMoves() {
+    const s = set_ && set_.set;
+    if (!s) return 0;
+    return (s.rows || []).filter((r, i) => {
+      const said = callFor(i);
+      if (said === 'keep') return false;
+      const to = (said === 'move' && (s.calls || {})[String(i)])
+        ? (s.calls || {})[String(i)].t
+        : (r.now == null ? r.was : r.now);
+      return Math.abs(to - r.was) > 1e-9;
+    }).length;
+  }
+
+  /* Banked without being asked (2026-10-21: "autobank is a constant
+     everywhere, and when you leave"), as Checkup, Spotter and Panning do:
+     once every flagged stamp has its call, and on leaving the trace view.
+     The same write as Bank it, so nothing new writes nothing; a proposal
+     with calls still waiting is said, not banked half-decided. */
+  function autoBank(why) {
+    if (BARRY.testNoAutobank || busy || !set_ || !set_.set
+        || set_.set.committed) return;
+    if (!pendingMoves()) return;
+    const rows = set_.set.rows || [];
+    const waiting = rows.filter((r, i) => r.flag && !callFor(i)).length;
+    if (waiting) {
+      if (why === 'leave') {
+        toast('Not banked yet: ' + waiting + ' stamp'
+              + (waiting === 1 ? ' is' : 's are') + ' still waiting for a '
+              + 'call. Braces banks it by itself once they are decided.',
+              null, 7000);
+      }
+      return;
+    }
+    commit(true);
+  }
+
   function acceptBar(c) {
     const s = set_.set;
     const bar = el('div', { class: 'br-accept' });
@@ -2333,14 +2377,7 @@ BARRY.braces = (function () {
        back with "there is nothing to write", makes a finished set look
        like a failed one. Counted the way the write counts it: a row moves
        if what it would land on differs from where it started. */
-    const moves = (s.rows || []).filter((r, i) => {
-      const said = callFor(i);
-      if (said === 'keep') return false;
-      const to = (said === 'move' && (s.calls || {})[String(i)])
-        ? (s.calls || {})[String(i)].t
-        : (r.now == null ? r.was : r.now);
-      return Math.abs(to - r.was) > 1e-9;
-    }).length;
+    const moves = pendingMoves();
     bar.appendChild(el('button', {
       class: 'btn',
       disabled: moves ? null : 'disabled',
@@ -2650,6 +2687,8 @@ BARRY.braces = (function () {
       document.removeEventListener('keydown', vKeys, true);
       setMode(null);
       setView('toolkit');
+      // Banked on the way out, after the view has gone (autoBank).
+      setTimeout(() => autoBank('leave'), 0);
     }
   }
 
@@ -2993,7 +3032,7 @@ BARRY.braces = (function () {
       }
     }
     vBar();
-    if (passDone()) celebrate('pass');
+    if (passDone()) { celebrate('pass'); autoBank('done'); }
   }
 
   /* ENTER AFTER A DRAG (2026-10-14).
@@ -4279,7 +4318,7 @@ BARRY.braces = (function () {
     }
     bench = null;
     render();
-    if (passDone()) celebrate('pass');
+    if (passDone()) { celebrate('pass'); autoBank('done'); }
     else toast('That was the last one in this pass.', null, 4000);
   }
 

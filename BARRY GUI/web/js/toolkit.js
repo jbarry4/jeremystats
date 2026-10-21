@@ -400,8 +400,8 @@ BARRY.views.toolkit = (function () {
      and some of what each finds is the other's; Junction pools them,
      Panning sorts the pool (spike, or not -- prospectors pan a river for
      what is worth keeping), Lock lines it up (a canal lock is what levels
-     boats), and Root Canal teases it apart in its three axes, coloured by
-     which detector found each event.
+     boats), and Root Canal teases it apart in its three axes, each event
+     coloured by its DS / IED call.
 
      Root Canal is a step of The Dentist too. A tool in two bundles is one
      tool: the step you came in by is remembered (`q.via`), so its chip and
@@ -729,12 +729,18 @@ BARRY.views.toolkit = (function () {
         return el('button', {
           class: 'tk-step' + (q.tool === id ? ' now' : '')
                  + (soon ? ' off' : ''),
+          // Its colour (app.css --tool-*), the one its outputs' chips wear.
+          'data-tool': id,
           title: soon ? (name + ' — ' + does + '. ' + soon)
                       : (name + ' — ' + does),
           disabled: soon ? 'disabled' : null,
           onclick: soon ? null : (() => pickTool(id, bundle.id)),
         }, [
-          el('span', { class: 'tk-step-i', text: String(i + 1) }),
+          /* Its own mark in its own colour, on a rail down the bundle
+             (2026-10-21: "get rid of the numbering"). The order is the
+             rail's; `data-n` keeps it for anything that has to count. */
+          el('span', { class: 'tk-step-i', 'data-n': String(i + 1),
+                       'aria-hidden': 'true' }, [toolIcon(id)].filter(Boolean)),
           /* `strong`, like the flat tool buttons use, because the name of a
              tool is the same thing in both shapes. Several checks find a
              tool by reading the `strong` inside whatever was clicked, and
@@ -766,6 +772,13 @@ BARRY.views.toolkit = (function () {
     incisor: 'M4.2 3c1.7-1.3 5.9-1.3 7.6 0 1.1.9 1.1 2.6.7 4.1l-1.3 5.2c-.3 '
              + '1-1.4 1-1.7 0L8.6 8.6c-.2-.7-1-.7-1.2 0l-.9 3.7c-.3 1-1.4 1-'
              + '1.7 0L3.5 7.1C3.1 5.6 3.1 3.9 4.2 3z',
+    // A tooth with its roots showing: the canal is what is cleaned out.
+    rootcanal: 'M4.2 2.6c1.7-1.3 5.9-1.3 7.6 0 1.1.9 1.1 2.6.7 4.1l-1.3 5.2c-.3 '
+               + '1-1.4 1-1.7 0L8.6 8.2c-.2-.7-1-.7-1.2 0l-.9 3.7c-.3 1-1.4 1-'
+               + '1.7 0L3.5 6.7C3.1 5.2 3.1 3.5 4.2 2.6zM6.2 4.8v2.6M9.8 4.8v2.6',
+    // Two clouds of points with the line that tells them apart.
+    dspca: 'M3 4.5h.01M5.2 3h.01M4.6 6.6h.01M2.6 7.6h.01M11.4 9h.01'
+           + 'M13 11.6h.01M10.6 12.4h.01M12.8 8.4h.01M1.8 13.5L14.2 2.5',
     // A tooth with a wire across it, which is what braces are.
     braces: 'M4.2 2.6c1.7-1.3 5.9-1.3 7.6 0 1.1.9 1.1 2.6.7 4.1l-1.3 5.2c-.3 '
             + '1-1.4 1-1.7 0L8.6 8.2c-.2-.7-1-.7-1.2 0l-.9 3.7c-.3 1-1.4 1-'
@@ -853,6 +866,7 @@ BARRY.views.toolkit = (function () {
     if (BUNDLED.indexOf(id) >= 0) return null;
     return el('button', {
       class: 'tk-tool' + (q.tool === id ? ' on' : ''),
+      'data-tool': id,
       onclick: () => pickTool(id),
     }, [
       el('div', { class: 'tk-tool-head' }, [

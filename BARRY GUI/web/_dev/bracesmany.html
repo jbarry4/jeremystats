@@ -120,7 +120,13 @@ async function until(fn, ms, what) {
     const pick = [here[0], vacc[0] || here[1]].filter(Boolean)
       .map((r) => rows().find((x) => x.dataset.id === r.dataset.id));
     const ids = pick.map((r) => r.dataset.id);
-    const vers = pick.map((r) => (r.querySelector('select.br-bulk-v') || {}).value || null);
+    // The version on each row is a button now (ui.versionButton), its
+    // choice read from the button itself.
+    const vers = pick.map((r) => {
+      const b = r.querySelector('.vbtn');
+      const v = b && typeof b.version === 'function' ? b.version() : null;
+      return v ? v.ref : null;
+    });
     for (const r of pick) r.querySelector('input[type=checkbox]').click();
     await sleep(250);
     const go = () => D().querySelector('.br-many-go .btn');

@@ -1,0 +1,42 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-10-21
+computer    Bluebarry (desktop-4h65ai7-d565)
+person      Shahriar Tafti
+build       2026.10.21.4 9f425ed1
+written     2026-10-21T17:19:00-04:00
+faults      1 error(s), 1 distinct
+left out    42 test fault(s) (harness pages, the test client)
+activity    620 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x1    11:16:37-11:16:37  cloud.sync: POST /rest/v1/prefs timed out after 60s
+
+==========================================================================
+1/1  cloud.sync  x1
+==========================================================================
+first       2026-10-21T11:16:37-04:00
+latest      2026-10-21T11:16:37-04:00
+who         Shahriar Tafti
+signature   cloud.sync||POST /rest/vN/prefs timed out after Ns
+
+message
+    POST /rest/v1/prefs timed out after 60s
+
+--- around 2026-10-21T11:16:37-04:00 ---
+    11:12:04   -272.2s  link.scope  [pipeline]  {"scope":"session"}
+    11:14:46   -110.2s  link.scope  [pipeline]  {"scope":"session"}
+    11:15:18    -78.3s  panes.shape  [xplore]  {"n":3,"shape":"top1"}
+    11:15:20    -76.3s  panes.shape  [xplore]  {"n":3,"shape":"top2"}
+    11:15:25    -71.6s  panes.shape  [xplore]  {"n":4,"shape":"apart"}
+    11:15:28    -68.9s  panes.shape  [xplore]  {"n":2,"shape":"rows"}
+    11:16:37     +0.0s  >>> cloud.sync: POST /rest/v1/prefs timed out after 60s
+    11:17:05    +28.7s  link.scope  [pipeline]  {"scope":"session"}
+    11:18:33   +117.0s  session.open  [xplore]  rec=m061_s007_2025-07-11_15-53-22  {"channels":64,"duration_s":2218.154666666667,"fs":30000,"path":"D:\\PTEN\\CTL\\PTENDKOM61\\m61s7jul11\\2025-07-11_15-53-22","restored":["1 bad channel(s)","view restored"]}
+    11:18:33   +117.0s  window.change  [xplore]  rec=m053_s007_2025-03-04_17-03-31  {"scope":"session","span":1,"t0":2041.1633}
+    11:18:34   +117.0s  events.import  [xplore]  rec=m061_s007_2025-07-11_15-53-22  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}

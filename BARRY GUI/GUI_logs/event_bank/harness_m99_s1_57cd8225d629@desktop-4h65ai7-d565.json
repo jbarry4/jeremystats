@@ -1,49 +1,61 @@
 {
   "_at": {
-    "added": "2026-09-10T00:10:38.549395+00:00",
-    "by_label": "2026-09-10T00:10:38.549395+00:00",
+    "added": "2026-09-10T00:10:32.743983+00:00",
+    "by_label": "2026-09-13T16:41:46.913500+00:00",
     "curation_label": "2026-09-10T00:10:38.549395+00:00",
     "duration_s": "2026-09-10T00:10:38.549395+00:00",
-    "events": "2026-09-10T00:10:38.549395+00:00",
+    "events": "2026-09-13T16:41:46.913500+00:00",
     "gid": "2026-09-10T00:10:38.549395+00:00",
-    "id": "2026-09-10T00:10:38.549395+00:00",
-    "label_names": "2026-09-10T00:10:38.549395+00:00",
-    "mouse": "2026-09-10T00:10:38.549395+00:00",
-    "n": "2026-09-10T00:10:38.549395+00:00",
-    "name": "2026-09-10T00:10:38.549395+00:00",
-    "note": "2026-09-10T00:10:38.549395+00:00",
-    "project": "2026-09-10T00:10:38.549395+00:00",
+    "id": "2026-09-13T16:41:46.913500+00:00",
+    "label_names": "2026-09-13T16:41:46.913500+00:00",
+    "mouse": "2026-09-13T16:41:46.913500+00:00",
+    "n": "2026-09-13T16:41:46.913500+00:00",
+    "name": "2026-09-13T16:41:46.913500+00:00",
+    "note": "2026-09-13T16:41:46.913500+00:00",
+    "project": "2026-09-13T16:41:46.913500+00:00",
     "recording_start": "2026-09-10T00:10:38.549395+00:00",
-    "schema": "2026-09-10T00:10:38.549395+00:00",
-    "session": "2026-09-10T00:10:38.549395+00:00",
+    "schema": "2026-09-13T16:41:46.913500+00:00",
+    "session": "2026-09-13T16:41:46.913500+00:00",
     "session_key": "2026-09-10T00:10:38.549395+00:00",
-    "session_label": "2026-09-10T00:10:38.549395+00:00",
+    "session_label": "2026-09-13T16:41:46.913500+00:00",
     "session_loose_key": "2026-09-10T00:10:38.549395+00:00",
     "session_path": "2026-09-10T00:10:38.549395+00:00",
-    "source": "2026-09-10T00:10:38.549395+00:00",
-    "specified": "2026-09-10T00:10:38.549395+00:00",
-    "type": "2026-09-10T00:10:38.549395+00:00",
-    "type_name": "2026-09-10T00:10:38.549395+00:00",
-    "units": "2026-09-10T00:10:38.549395+00:00",
-    "version": "2026-09-10T00:10:38.549395+00:00"
+    "source": "2026-09-13T16:41:46.913500+00:00",
+    "specified": "2026-09-13T16:41:46.913500+00:00",
+    "type": "2026-09-13T16:41:46.913500+00:00",
+    "type_name": "2026-09-13T16:41:46.913500+00:00",
+    "units": "2026-09-13T16:41:46.913500+00:00",
+    "version": "2026-09-13T16:41:46.913500+00:00"
   },
   "_keys": {
     "versions": {
+      "720050ead78b": [
+        "set",
+        "2026-10-21T16:02:23.896963+00:00"
+      ],
+      "c37ccd08e390": [
+        "set",
+        "2026-10-21T16:02:15.300947+00:00"
+      ],
+      "e3e3c4fd87e7": [
+        "set",
+        "2026-10-21T16:02:20.539845+00:00"
+      ],
       "e6fdce6e0a7d": [
         "set",
-        "2026-09-10T00:10:38.549395+00:00"
+        "2026-10-21T16:02:17.939834+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-10T00:10:38.549395+00:00",
+    "at": "2026-10-21T16:02:23.896963+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": {
-    "at": "2026-09-09T20:10:38-04:00",
+    "at": "2026-09-09T20:10:32-04:00",
     "by": "harness@test",
-    "machine": "DESKTOP-4H65AI7"
+    "machine": "BarryLab"
   },
   "by_label": {
     "unspecified": 2
@@ -88,17 +100,138 @@
   "version": 0,
   "versions": [
     {
+      "archived": true,
+      "at": "2026-09-09T20:10:32-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "unspecified": 2
+      },
+      "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T12:02:15-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
+      "gained": 0,
+      "id": "c37ccd08e390",
+      "imported": true,
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 2,
+      "note": "Imported from harness: seed. 2 candidates, none decided yet.",
+      "snap": [
+        [
+          1.5,
+          null
+        ],
+        [
+          2.5,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "archived": true,
       "at": "2026-09-09T20:10:38-04:00",
       "by": "harness@test",
       "by_label": {
         "unspecified": 2
       },
       "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T12:02:17-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "gained": 0,
       "id": "e6fdce6e0a7d",
       "imported": true,
       "lost": 0,
       "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 2,
+      "note": "Imported from harness: seed. 2 candidates, none decided yet.",
+      "snap": [
+        [
+          1.5,
+          null
+        ],
+        [
+          2.5,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "archived": true,
+      "at": "2026-09-09T20:10:40-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "unspecified": 2
+      },
+      "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T12:02:20-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
+      "gained": 0,
+      "id": "e3e3c4fd87e7",
+      "imported": true,
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {},
+      "n": 2,
+      "note": "Imported from harness: seed. 2 candidates, none decided yet.",
+      "snap": [
+        [
+          1.5,
+          null
+        ],
+        [
+          2.5,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "archived": true,
+      "at": "2026-09-13T12:41:46-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "unspecified": 2
+      },
+      "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T12:02:23-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
+      "gained": 0,
+      "id": "720050ead78b",
+      "imported": true,
+      "lost": 0,
+      "machine": "MSI",
       "moves": {},
       "n": 2,
       "note": "Imported from harness: seed. 2 candidates, none decided yet.",

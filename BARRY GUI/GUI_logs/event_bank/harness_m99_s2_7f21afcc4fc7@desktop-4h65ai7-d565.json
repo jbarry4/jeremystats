@@ -24,15 +24,19 @@
     "versions": {
       "4ab98f9f4854": [
         "set",
-        "2026-09-22T20:48:11.296418+00:00"
+        "2026-10-21T15:53:40.648055+00:00"
       ],
       "v0-076140ac": [
         "set",
-        "2026-09-22T20:48:11.296418+00:00"
+        "2026-10-21T15:53:35.053290+00:00"
+      ],
+      "{\"archived\": true, \"at\": \"2026-09-22T16:48:43-04:00\", \"by\": \"harness@test\", \"by_label\": {\"Dentate Spike\": 2, \"Garbage\": 1, \"unspecified\": 1}, \"edits\": [{\"at\": \"2026-10-21T12:05:45-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": [\"archived\"]}], \"machine\": \"DESKTOP-4H65AI7\", \"n\": 4, \"note\": \"\", \"snap\": [[10.0, null], [10.0, \"spike\"], [10.0, \"garbage\"], [20.0, \"spike\"]], \"v\": 2}": [
+        "set",
+        "2026-10-21T16:05:45.696516+00:00"
       ],
       "{\"at\": \"2026-09-22T16:48:43-04:00\", \"by\": \"harness@test\", \"by_label\": {\"Dentate Spike\": 2, \"Garbage\": 1, \"unspecified\": 1}, \"machine\": \"DESKTOP-4H65AI7\", \"n\": 4, \"note\": \"\", \"snap\": [[10.0, null], [10.0, \"spike\"], [10.0, \"garbage\"], [20.0, \"spike\"]], \"v\": 2}": [
-        "set",
-        "2026-09-25T18:34:33.074511+00:00"
+        "gone",
+        "2026-10-21T16:05:45.696516+00:00"
       ],
       "{\"at\": \"2026-09-22T16:48:43-04:00\", \"by\": \"harness@test\", \"by_label\": {\"Dentate Spike\": 2, \"Garbage\": 1, \"unspecified\": 1}, \"machine\": \"DESKTOP-4H65AI7\", \"n\": 4, \"note\": \"\", \"snap_elsewhere\": true, \"v\": 2}": [
         "gone",
@@ -41,7 +45,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-25T18:34:33.074511+00:00",
+    "at": "2026-10-21T16:05:45.696516+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -99,12 +103,22 @@
   "version": 2,
   "versions": [
     {
+      "archived": true,
       "at": "2026-09-22T16:48:11-04:00",
       "by": "harness@test",
       "by_label": {
         "unspecified": 4
       },
       "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T11:53:35-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "gained": 0,
       "id": "v0-076140ac",
       "imported": true,
@@ -135,6 +149,7 @@
       "v": 0
     },
     {
+      "archived": true,
       "at": "2026-09-22T16:48:11-04:00",
       "by": "harness@test",
       "by_label": {
@@ -143,6 +158,15 @@
         "unspecified": 1
       },
       "changed": 3,
+      "edits": [
+        {
+          "at": "2026-10-21T11:53:40-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "from_v": 0,
       "gained": 0,
       "id": "4ab98f9f4854",
@@ -175,6 +199,7 @@
       "v": 1
     },
     {
+      "archived": true,
       "at": "2026-09-22T16:48:43-04:00",
       "by": "harness@test",
       "by_label": {
@@ -182,6 +207,15 @@
         "Garbage": 1,
         "unspecified": 1
       },
+      "edits": [
+        {
+          "at": "2026-10-21T12:05:45-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "machine": "DESKTOP-4H65AI7",
       "n": 4,
       "note": "",

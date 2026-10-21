@@ -1447,6 +1447,14 @@ BARRY.views.xplore = (function () {
     // Now the panes exist, each can be placed in the arrangement.
     applySplit(grid);
     paintShape();
+    placeGlobalStrip();
+    if (!grid._stripWired) {
+      grid._stripWired = true;
+      // A click into another pane moves the strip to it, once the pane's
+      // own handler has made it the focused one.
+      grid.addEventListener('mousedown', () => setTimeout(placeGlobalStrip, 0),
+                            true);
+    }
 
     // Rebuilding the panes can change their height (the control strip wraps
     // differently), and a canvas keeps whatever size it was last drawn at. So
@@ -1530,6 +1538,41 @@ BARRY.views.xplore = (function () {
     const pct = (f) => (f * 100).toFixed(3) + '%';
     const c = s.col == null ? 0.5 : s.col, r = s.row == null ? 0.5 : s.row;
     const two = pct(c) + ' ' + pct(1 - c), rows2 = pct(r) + ' ' + pct(1 - r);
+    /* Rows and widths in percent, as Profile › Support panel preferences
+       drew them (2026-10-21): each row its own height, each panel in a row
+       its own width. The column tracks are every boundary any row has, and
+       each panel spans the tracks between its own two. */
+    const cl = XF.customLayout;
+    if (cl && cl.n === n && Array.isArray(cl.rows)) {
+      const rows = cl.rows.filter((r) => r && Array.isArray(r.cols) && r.cols.length);
+      const count = rows.reduce((k, r) => k + r.cols.length, 0);
+      if (count === n) {
+        const hs = rows.map((r) => Math.max(1, Number(r.h) || 1));
+        const hsum = hs.reduce((a, b) => a + b, 0);
+        const bounds = new Set([0, 1]);
+        const rowEdges = rows.map((r) => {
+          const ws = r.cols.map((w) => Math.max(1, Number(w) || 1));
+          const wsum = ws.reduce((a, b) => a + b, 0);
+          let acc = 0;
+          const edges = [0];
+          for (const w of ws) { acc += w / wsum; edges.push(Math.round(acc * 1e4) / 1e4); }
+          edges[edges.length - 1] = 1;
+          edges.forEach((x) => bounds.add(x));
+          return edges;
+        });
+        const B = Array.from(bounds).sort((a, b) => a - b);
+        const cols = B.slice(1).map((x, i) => pct(x - B[i])).join(' ');
+        const at = [];
+        rowEdges.forEach((edges, ri) => {
+          for (let k = 0; k < edges.length - 1; k++) {
+            at.push([B.indexOf(edges[k]) + 1, B.indexOf(edges[k + 1]) + 1,
+                     ri + 1, ri + 2]);
+          }
+        });
+        return { cols, rows: hs.map((h) => pct(h / hsum)).join(' '), at,
+                 custom: true };
+      }
+    }
     // Stacked, any count; and four across (a support window's choices).
     if (n >= 3 && shape === 'rows') {
       return { cols: '1fr', rows: 'repeat(' + n + ', minmax(0, 1fr))',
@@ -1571,6 +1614,53 @@ BARRY.views.xplore = (function () {
                   [u[0][0], u[0][1], 2, 3], [u[1][0], u[1][1], 2, 3]] };
   }
 
+  /* One overview strip, not one per pane (2026-10-21: "when we have two or
+     more panes, it doesn't copy that for each pane. There should be a global
+     one just at the bottom.") Each pane still builds its strip; with two or
+     more up, the others are hidden (app.css .one-strip) and the focused
+     pane's own is moved into #xfStrip across the bottom of the workspace,
+     listeners and all. A click into another pane brings that pane's. */
+  function placeGlobalStrip() {
+    const host = $('#xfStrip'), grid = $('#paneGrid');
+    if (!host || !grid) return;
+    const many = XF.nPanes > 1 && XF.zoomed == null && XF.order.length > 0
+                 && !grid.classList.contains('hidden');
+    grid.classList.toggle('one-strip', many);
+    // Bars from a previous build go home, or away with their pane.
+    const goHome = (bar) => {
+      if (bar._home && bar._home.isConnected) bar._home.appendChild(bar);
+      else bar.remove();
+    };
+    if (!many) {
+      Array.from(host.querySelectorAll(':scope > .pane-timebar')).forEach(goHome);
+      host.hidden = true;
+      return;
+    }
+    let i = XF.panes[XF.focused] ? XF.focused : XF.panes.findIndex(Boolean);
+    const pane = XF.panes[i];
+    const bar = pane && pane._mini && pane._mini.parentNode;
+    if (!bar || !bar.classList.contains('pane-timebar')) {
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    if (bar.parentNode === host) return;
+    Array.from(host.querySelectorAll(':scope > .pane-timebar')).forEach(goHome);
+    bar._home = bar._home || bar.parentNode;
+    host.appendChild(bar);
+    /* Which pane it is speaking for, when the panes are not all one
+       recording: otherwise there is only one answer. */
+    const sess = sessionOf(pane);
+    const mixed = new Set(XF.panes.filter(Boolean).map((p) => p.sessionId)).size > 1;
+    let tag = host.querySelector('.xf-strip-tag');
+    if (!tag) { tag = el('span', { class: 'xf-strip-tag' }); host.appendChild(tag); }
+    tag.textContent = mixed && sess
+      ? 'Overview · pane ' + (i + 1) + ' · ' + (sess.name || baseName(sess.path || ''))
+      : '';
+    tag.hidden = !mixed;
+    requestAnimationFrame(() => drawMini(i, pane, sessionOf(pane)));
+  }
+
   function applySplit(grid) {
     const c = XF.split.col, r = XF.split.row;
     const pct = (f) => (f * 100).toFixed(3) + '%';
@@ -1579,7 +1669,10 @@ BARRY.views.xplore = (function () {
         bx.style.gridColumn = ''; bx.style.gridRow = '';
       }
     };
-    if (XF.zoomed != null || XF.nPanes === 1 || XF.nPanes > 4) {
+    // A drawn layout (Profile › Support panel preferences) places any count.
+    const drawn = XF.customLayout && XF.customLayout.n === XF.nPanes
+                  && XF.nPanes > 1;
+    if (XF.zoomed != null || XF.nPanes === 1 || (XF.nPanes > 4 && !drawn)) {
       // Fixed 3x2 for six. The split handles are for comparing two to four
       // views of the same thing; six probe columns are peers and dragging
       // one boundary would just make the others lie about the geometry.
@@ -1659,6 +1752,8 @@ BARRY.views.xplore = (function () {
     // Nothing to drag on the six-up: see applySplit.
     if (XF.nPanes < 2 || XF.nPanes > 4) return;
     const n = XF.nPanes, shape = XF.shape[n];
+    // A layout drawn in Profile has its sizes; there is nothing to drag.
+    if (XF.customLayout && XF.customLayout.n === n) return;
     // Three or four across, or three or four stacked, have no handle:
     // peers, and one boundary would lie about the others.
     if ((n === 3 && shape === 'cols') || (n >= 3 && shape === 'rows')
@@ -3423,8 +3518,21 @@ BARRY.views.xplore = (function () {
       chrome: o.chrome || 'notabs,noheads',
       role: o.role || 'aids',
     });
-    // The arrangement chosen for the window (supportpanels.js).
+    // The arrangement chosen for the window (supportpanels.js): a named
+    // shape, or rows and widths in percent; the gain; and a span of its own.
+    // A window with its own span still follows the main one -- centred on
+    // the same moment, showing more or less around it (applyRemote).
     if (o.shape) q.set('shape', o.shape);
+    if (o.layout) q.set('layout', JSON.stringify(o.layout));
+    if (o.gain) q.set('gain', String(o.gain));
+    if (o.span > 0) {
+      const mid = sess.t0 + sess.span / 2;
+      q.set('span', (+o.span).toFixed(4));
+      q.set('t0', Math.max(0, mid - o.span / 2).toFixed(4));
+      q.set('ownspan', String(o.span));
+    }
+    // A panel with a band of its own needs the recording's band lock off.
+    if (o.flock === 'off') q.set('flock', '0');
     return location.origin + '/?' + q.toString() + '#xplore';
   }
 
@@ -4809,9 +4917,9 @@ BARRY.views.xplore = (function () {
         }))),
     ]));
     /* And whether this pane has the overview strip under it -- the
-       amplitude or band-power line through the whole recording. Per pane:
-       with four up, one strip is usually enough. */
-    rows.push(popRow('Overview strip on this pane', [
+       amplitude or band-power line through the whole recording. With two
+       or more up there is one strip, at the bottom (placeGlobalStrip). */
+    if (XF.nPanes === 1) rows.push(popRow('Overview strip on this pane', [
       choose(pane.noOverview ? 'off' : 'on', [
         { id: 'on', name: 'Shown', why: 'The line through the whole recording, '
                                         + 'under this pane' },
@@ -9039,6 +9147,16 @@ BARRY.views.xplore = (function () {
 
   async function publishLink(t0, span, sess) {
     if (XF.linkMode === 'none') return;
+    if (XF.ownSpan > 0) {
+      /* Its own span stays its own (a zoom here changes it), and what goes
+         to the other windows is only where the centre is, at their span. */
+      XF.ownSpan = span;
+      if (XF.remoteSpan > 0) {
+        const mid = t0 + span / 2;
+        span = XF.remoteSpan;
+        t0 = Math.max(0, mid - span / 2);
+      }
+    }
     if (linkSending) {
       linkPending = { t0, span, sess };
       return;
@@ -9084,8 +9202,17 @@ BARRY.views.xplore = (function () {
 
   function applyRemote(sess, v) {
     const dur = sess.info.duration_s || 0;
-    sess.span = clamp(v.span, 0.001, Math.max(0.002, dur || 1e9));
-    sess.t0 = clamp(v.t0, 0, Math.max(0, dur - sess.span));
+    if (XF.ownSpan > 0) {
+      /* A support window with a span of its own: the same moment at its
+         centre, its own width around it. */
+      XF.remoteSpan = v.span;
+      const mid = v.t0 + v.span / 2;
+      sess.span = clamp(XF.ownSpan, 0.001, Math.max(0.002, dur || 1e9));
+      sess.t0 = clamp(mid - sess.span / 2, 0, Math.max(0, dur - sess.span));
+    } else {
+      sess.span = clamp(v.span, 0.001, Math.max(0.002, dur || 1e9));
+      sess.t0 = clamp(v.t0, 0, Math.max(0, dur - sess.span));
+    }
 
     // Gain, filters and a pinned axis are session properties too, so a linked
     // pane in another window should match on all of them, not just the window.
@@ -9750,7 +9877,10 @@ BARRY.views.xplore = (function () {
       const s = win.series[i];
       const mid = padTop + lane * (i + .5);
       const scale = sess.normalize === 'per' ? (localMax(s) || 1) : shared;
-      const k = (lane * .44) * sess.gain / scale;
+      // `pane.gain`: this pane's own multiple of the recording's gain (a
+      // support window's traces panel, Profile › Support panel preferences).
+      const k = (lane * .44) * sess.gain * (pane.gain > 0 ? pane.gain : 1)
+                / scale;
       const isBad = s.bad || sess.bad.has(s.number);
       const color = isBad ? P.warn : P.trace;
 
@@ -11309,6 +11439,14 @@ BARRY.views.xplore = (function () {
           // so a support window never rearranges the main one.
           const shapeAsked = params.get('shape');
           if (shapeAsked) XF.shape[specs.length] = shapeAsked;
+          const own = parseFloat(params.get('ownspan'));
+          if (own > 0) XF.ownSpan = own;
+          try {
+            const lay = JSON.parse(params.get('layout') || 'null');
+            if (lay && Array.isArray(lay.rows)) {
+              XF.customLayout = Object.assign({ n: specs.length }, lay);
+            }
+          } catch (e) { /* the named shape stands */ }
           const apply = () => {
             if (!XF.order.length) { setTimeout(apply, 120); return; }
             BARRY.views.xplore.setPanes(specs, { col: 0.5, row: 0.5 });

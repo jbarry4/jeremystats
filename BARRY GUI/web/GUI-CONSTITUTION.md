@@ -347,15 +347,20 @@ be a worse lie than the inconsistency it replaced.
 That is the general rule when two surfaces differ: **unify the shape, keep the
 difference that is about what the thing can do.**
 
-### `handoff(toolId, { ready, onclick, note })` -- the next step
+### `handoff(toolId, { ready, note })` -- the next step
 
 Every bundle step ends with "**Next: <Step> — <what it does> →**",
 right-aligned, below the tool and its Bank, read off ToolKit's bundle list
 (so inserting a step relinks every page). ToolKit draws it in its own host
-(`#tkNext`) on every step; a tool never draws its own. When going on needs
-something carried -- a run onto Spotter's bench -- the tool says how:
-`BARRY.views.toolkit.setHandoff(toolId, { onclick, note, ready })`. The last
-step of a bundle has none. The order of every tool page is therefore:
+(`#tkNext`) on every step; a tool never draws its own. **Next only goes to
+the next step's page** (2026-10-21: "Next links just take you to the next
+toolkit page, and not initiate opening any specific object or recording"):
+it never opens a set, a run or a recording, and `handoff` takes no
+`onclick`. What carries over waits there -- under Pick up a set, or in the
+step's picker -- and a tool may say so in a `note` through
+`BARRY.views.toolkit.setHandoff(toolId, { note, ready })`. A mode's own Next
+(`modeEnd({ next })`) is the same: `pick(step, bundle)` and `setView`,
+nothing else. The last step of a bundle has none. The order of every tool page is therefore:
 header, picker, run bar, settings, result, Bank, Next -- then the activity
 feed, in a host of its own (`#tkFeed`).
 
@@ -482,8 +487,10 @@ name, and a stream carrying "The Dentist" would be found as one.
 
 **Which detector found an event has one pair of colours: `--o-incisor` and
 `--o-doppler`,** taken from the categorical palette so every theme has its
-own. The stream, Junction, Panning and Root Canal all use them, and an event
-both found is drawn two-tone -- half each -- everywhere, never a third colour.
+own. The stream, Junction and Panning all use them, and an event both found
+is drawn two-tone -- half each -- everywhere, never a third colour. (Root
+Canal coloured its dots this way too until 2026-10-21; it now colours them by
+their call only.)
 
 #### Bundles fold
 
@@ -521,6 +528,31 @@ The same shape applies to anything else that is a heading over a list — the
 Explorer's tree sections and the Errors view's groups already work this way,
 with the same `.caret` and the same `.open` class on the parent. Copy that,
 not a new one.
+
+### A mode's support window, and the one overview strip
+
+**What an add-on's second window opens is the person's choice**
+(`supportpanels.js`, Profile › Support panel preferences). An add-on never
+hard-codes its window: it hands its defaults to
+`BARRY.supportPanels.plan(mode, defaults, sess)` and opens what comes back
+with `popOutPanes(sess, plan.specs, { ...BARRY.supportPanels.opts(plan), ... })`.
+`null` means the person turned the window off. A plan carries up to eight
+panels, the same kind more than once if chosen. Each panel can have its own
+`channels` (positions), `filt`, band (`fmin`/`fmax`), `tfMode`, `cmap`, and
+for traces a `gain` multiple. A plan also carries a named `shape` or a drawn
+`layout` (rows in percent of the height, widths in percent of each row) and
+an own `span`. A window with its own span still follows the main window,
+centred on the same moment (`XF.ownSpan`, `applyRemote`, `publishLink`). A
+panel with a band of its own turns the window's band lock off (`flock=0`).
+`_dev/supportpanels.html` checks all of it.
+
+**With two or more panes there is one overview strip, across the bottom**
+(2026-10-21: "it doesn't copy that for each pane. There should be a global
+one"). Each pane still builds its strip. `placeGlobalStrip` hides them
+(`.one-strip`) and moves the focused pane's own strip, listeners and all,
+into `#xfStrip`. A click into another pane brings that pane's strip. With
+one pane, the strip goes back under it. Never draw a second strip, and never
+look for a pane's strip inside its box: it may be at the bottom.
 
 ### An Xplorefinder mode
 
@@ -595,37 +627,50 @@ reachable") right after Incisor had banked it off the cluster.
 **`rebind` exists because reopening a recording replaces the session object.**
 A mode holding the old one keeps painting into a detached tree.
 
-**One bar, at the bottom (2026-10-20).** A mode used to announce itself twice
--- a banner across the top with "Leave this mode", and its own bar at the
-bottom with a Leave of its own: two exits, five shapes of bar. Now there is
-one compact bar, `#modeBanner`, docked at the bottom of the workspace, and
-the shell owns both ends of it:
+**The banner on top, the tools at the bottom (2026-10-21).** A mode used to
+announce itself twice: a banner across the top with "Leave this mode", and
+its own bar at the bottom with a Leave of its own. That made two exits and
+five shapes of bar. On 2026-10-20 the two became one bar at the bottom. The
+next day the banner came back by request ("like the old C H E C K U P
+(Leave), but for all the views"). Each half now has one job, and the shell
+owns both:
 
 ```
-[⌄] ● Spotter  | the mode's own tools ...... More · Next: Eye → · Bank… | Simplify  ?  Leave
+top     C H E C K U P   what the mode does ................ Simplify  Leave
+bottom  [⌄]  the mode's own tools ...... More · Next: Braces → · Bank…
 ```
 
-- Left: the fold arrow (one slim line, remembered per add-on; the keys still
-  work) and the mode's name in its colour (`--mode-<name>`, every mode has
-  one; `#app.in-mode` frames the workspace).
-- Middle: `BARRY.modeSlot().appendChild(yourBar)` -- never `#xfBody`. Build
-  your bar's end with `BARRY.ui.modeEnd({ more, next, bank })`: occasional
-  controls folded into More, then the next step, then Bank.
-- Right, drawn by the shell: **Simplify** (hides the channel list, the
-  Xplorefinder header, the pane strips; remembered per add-on), **?** (your
-  `MODES` entry's `what` and `keys`), **Leave** -- always the last thing,
-  far right. **Esc leaves**, after anything nearer has had it: a field being
-  typed in, a dialog or popover, or your own keydown that calls
-  `preventDefault` (cancelling a drag).
-- Never draw a Leave of your own. `_dev/modes.html` checks the bar is at the
-  bottom, that Leave is its last button, that there is one Leave, and that
-  Esc does the same.
+- **The banner (`#modeBanner`)** sits across the top of the workspace. It
+  shows the mode's name spaced out in its colour (`--mode-<name>`, and every
+  mode has one; `#app.in-mode` frames the workspace), then the `what` from
+  your `MODES` entry. At the right are **Simplify** (hides the channel list,
+  the Xplorefinder header and the pane strips; remembered per add-on) and
+  **Leave**, which is always the last thing, far right. **There is no ?**:
+  the keys are on their own buttons. **Esc leaves**, but only after anything
+  nearer has had it: a field being typed in, a dialog or popover, or your own
+  keydown that calls `preventDefault` (cancelling a drag).
+- **The tools bar (`#modeBar`)** is at the bottom. It has the fold arrow (one
+  slim line, remembered per add-on; the keys still work) and your tools:
+  `BARRY.modeSlot().appendChild(yourBar)`, never `#xfBody`. End your bar with
+  `BARRY.ui.modeEnd({ more, next, bank })`: occasional controls folded into
+  More, then the next step (navigation only, see `handoff`), then Bank.
+- **Banking needs no switch.** Every add-on banks by itself when the last
+  item is decided and on Leave with work the bank does not have:
+  - Checkup, Spotter and Panning bank their sets.
+  - Braces banks its alignment once every flagged stamp has a call (waiting
+    calls are said, not banked half-decided).
+  - The Arc's Clean files its decisions.
 
-**Support panels are the person's choice.** A mode that opens a second
-window asks `BARRY.supportPanels.plan('<mode>', defaults)` for what to open
--- whether it opens, which panels (up to four), in what order and
-arrangement -- and passes `plan.shape` to `popOutPanes`. With nothing
-chosen in Profile › Support panel preferences, the defaults stand.
+  A bank that would hold nothing new writes nothing. There is no Auto-bank
+  toggle. Check pages under `/_dev/` turn it off for the whole frame
+  (`BARRY.testNoAutobank`, core.js). StrataScope saves each accepted step as
+  it goes, Braid has nothing to bank, and Coupling is not built.
+- Never draw a Leave of your own. `_dev/modes.html` checks that the banner is
+  on top, that Leave is its last button, that there is one Leave and no ?,
+  and that Esc does the same.
+
+**Support panels are the person's choice.** See *A mode's support window*
+above.
 
 ### Bad channels
 
@@ -1222,6 +1267,29 @@ there), `unit` (*stamps*), `state` (*the detector*, *on the bench*,
 `readonly` (a history to read). `tree.choose(ref)` sets the choice without
 calling back; `choose(null)` clears it, for a picker with several trees.
 
+**A choice that is not the page's main business is `ui.versionButton`**
+(2026-10-21: "the drop down version picker is not the way to go... click
+version should bring the entire git like tree as a pop up"). A button
+saying the version chosen, its count and what made it; pressing it opens
+the whole tree (`ui.versionPop`) with notes, and picking a row chooses and
+closes. It takes everything `versionTree` takes, plus `heading` and `sub`.
+**A version is never an `<option>`** -- a row in a table of many entries
+gets the button, not a select.
+
+**Every row says what last processed that version** (`ui.versionProducer`,
+chip `.vtree-by`): the step that minted it (`tag`: Root Canal, Junction,
+Tooth Fairy), the aligner (`aligned.tool`: Braces, Eye, Lock), a re-time,
+the detector for v0, and otherwise the add-on for the entry's kind
+(Checkup, Spotter, Panning). Pass the entry's pipeline as `producer` and
+its kind as `producerType`; `producer: false` only where nothing produced
+it in that sense (an Arc artifact). Routes that send versions send `tag`,
+`aligned_tool` and `retimed` with them (`app.py _version_made`).
+
+**Producer chips wear the tool's colour.** One token per ToolKit tool,
+`--tool-<id>` (app.css, beside `--o-incisor`), set on `[data-tool]` and
+`[data-producer]` as `--tc`; ToolKit's step numbers and icons wear the same
+colour. A new tool gets a token and both selectors in the same change.
+
 ### Every version picker
 
 The register. **A new version picker is `ui.versionTree` and gets a row
@@ -1243,9 +1311,10 @@ by stored number. The register is how the next one is not missed.
 | Event Bank — lineage strip | the version opened | tree | name | `eventbank.js` `detail` | `lineage.html` |
 | Sessions — *Correct it again, from an earlier version* | the version a correction reads | tree, every version, the corrected ones disabled with why | id | `sessions.js` `pickVersion` | `vtreetools.html` |
 | Checkup — bank dialog's history | nothing (a history to read) | tree, `readonly`, notes | — | `curate.js` `bankParts` | `benchbank.html` |
-| Braces — *Many at once*, per row | the version each entry in the batch reads | `<select>` | ref | `braces.js` bulk rows | — *a row in a table of many entries: the tree is for choosing one, a table for comparing many* |
-| Event Bank — *compare with*, inside an open version | the version the open one is diffed against | `<select>` | name | `eventbank.js` `versionDetail` | `lineage.html` — *a second choice inside one already made; the tree is the choice of which version to open* |
-| Drift — each artifact's version, in its member row | the artifact version a drift pins | `<select>` | version id | `drift.js` `pickRow` | — *The Arc's; its builders move it with the rest of the Arc, and it is a row in a list of many* |
+| Braces — *Many at once*, per row | the version each entry in the batch reads | `<select>` | ref | `braces.js` bulk rows | — *still a select: Braces is jeremystats-c4's, asked 2026-10-21 to move it to `versionButton`* |
+| Junction — *Many at once*, per row | the set and version each side pools from | `versionButton` look, opening the recording's pop-up: every set on both sides, each with its tree | name | `junction.js` `manyVerPick`, `manyPop` | `confluence.html` |
+| Event Bank — *compare with*, inside an open version | the version the open one is diffed against | `versionButton` | name | `eventbank.js` `versionDetail` | `lineage.html` |
+| Drift — each artifact's version, in its member row | the artifact version a drift pins | `versionButton`, `producer: false` | version id | `drift.js` `pickRow` | `drift.html` |
 
 Every picker above sends the version by **id or ref**, never by the stored
 number alone, and every route it reaches resolves a ref:

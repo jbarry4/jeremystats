@@ -280,21 +280,22 @@ BARRY.strata = (function () {
     ];
     // What this person chose (Profile › Support panel preferences).
     const plan = BARRY.supportPanels
-      ? BARRY.supportPanels.plan('strata', defaults) : { specs: defaults };
+      ? BARRY.supportPanels.plan('strata', defaults, sess) : { specs: defaults };
     if (!plan) return;
     const specs = plan.specs;
     // The same first 64 as the labelling window's pane, read as an H3.
     if (h3Pane) {
       const all = sess.info.channels || [];
       const only = h3Channels(sess).map((c) => all.indexOf(c));
-      specs.forEach((sp) => { sp.channels = only; });
+      // Unless this person chose a panel's channels in Profile.
+      specs.forEach((sp) => { if (!sp.channels) sp.channels = only; });
     }
     // Folded on arrival. These four are for glancing at: the headers,
     // control strips and channel lists cost more of a short pane than
     // they are worth, and every one of them has a sliver to bring it
     // back if you want it.
     const paneOpts = { role: 'aids', chrome: 'notabs,noheads,nostrip,nochannels',
-                       shape: plan.shape };
+                       ...BARRY.supportPanels.opts(plan) };
     /* The steps' page, which IS the four live panes until a step is open and
        then swaps to that step's evidence (web/strata-aids.html). Without the
        steps module, the four panes on their own, as before. */

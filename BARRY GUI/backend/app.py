@@ -13,6 +13,7 @@ import datetime
 import io
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -47,6 +48,7 @@ from . import (aibeta as aibetamod,
                guides as guidesmod,
                versions as versionsmod,
                natsort as natsortmod,
+               dayreport as dayreportmod,
                panorama as panoramamod,
                panoramaset as pnsetmod,
                horizon as horizonmod,
@@ -7413,6 +7415,8 @@ def api_braces_candidates():
             "session": rec.get("session"),
             "session_label": rec.get("session_label"),
             "type": rec.get("type") or want_type,
+            # What produced it, for the chips on its version button.
+            "pipeline": (rec.get("source") or {}).get("pipeline"),
             "by_label": rec.get("by_label") or {},
             "current_version": max([v.get("v") or 0 for v in vers] or [0]),
             "current_name": versionsmod.tip_next(vers)[0],
@@ -7439,6 +7443,7 @@ def api_braces_candidates():
                  "by": ver.get("by"),
                  "note": ver.get("note"),
                  "aligned": bool(ver.get("aligned")),
+                 **_version_made(ver),
                  # A version with no snapshot on this machine cannot
                  # supply stamps, so it cannot be a starting point.
                  "usable": bool(ver.get("snap")),
@@ -7785,6 +7790,7 @@ def api_dspca_candidates():
                  "note": ver.get("note"),
                  "aligned": bool(ver.get("aligned")),
                  "usable": bool(ver.get("snap")),
+                 **_version_made(ver),
                  # Which step minted it -- "rootcanal" for a set Root
                  # Canal cleaned, which is what the picker defaults to.
                  "tag": ver.get("tag"),
@@ -11994,9 +12000,9 @@ def _rootcanal_margin_for(p):
         raise rootcanal.RootCanalError(
             "The margin ‘%s’ cannot be used here: %s. A margin is centres in "
             "µV, ms and dB, and those are only the same numbers under the "
-            "same measurement -- change these settings to match, or save a "
-            "margin from settings that do." % (used["nickname"],
-                                               "; ".join(diff)))
+            "same measurement -- set these settings back to the ones it was "
+            "measured with to keep its calls." % (used["nickname"],
+                                                  "; ".join(diff)))
     return margin, used
 
 
@@ -17244,6 +17250,9 @@ def api_curation_for_recording(gid):
                 # The version an alignment (Braces, Eye, Lock) wrote, which
                 # the version tree says on its row.
                 "aligned": bool(v.get("aligned")),
+                # What last worked on it, for the chip on its row
+                # (ui.versionProducer, 2026-10-21).
+                **_version_made(v),
                 # Whether a set can actually be built from it.
                 "usable": bool(v.get("snap")) or v.get("v") == newest,
                 # Archived versions are offered last, under a toggle.
@@ -17288,6 +17297,17 @@ def api_curation_for_recording(gid):
 # The rule is backend/confluence.py's.
 # ==========================================================================
 
+def _version_made(v):
+    """What last worked on one version, as the version itself records it:
+    the step that minted it (`tag`), the aligner (`aligned.tool`) and
+    whether it was moved onto another clock. The page names the tool from
+    these (ui.versionProducer) -- "v2 = Checkup" (2026-10-21)."""
+    al = v.get("aligned")
+    return {"tag": v.get("tag") or None,
+            "aligned_tool": (al.get("tool") if isinstance(al, dict) else None),
+            "retimed": bool(v.get("retimed"))}
+
+
 def _cf_entry_row(rec):
     vers = rec.get("versions") or []
     # When it was last worked on: its newest version, or when it was filed.
@@ -17314,7 +17334,12 @@ def _cf_entry_row(rec):
         named = versionsmod.label_rows(BANK.repaired(rec).get("versions")
                                        or [])
         row["versions"] = [{"name": nm, "id": v.get("id"), "n": v.get("n"),
-                            "at": v.get("at"),
+                            "at": v.get("at"), "by": v.get("by"),
+                            "note": v.get("note"),
+                            "from_v": v.get("from_v"),
+                            "imported": bool(v.get("imported")),
+                            "aligned": bool(v.get("aligned")),
+                            **_version_made(v),
                             "archived": bool(v.get("archived"))}
                            for v, nm in sorted(
                                named, key=lambda x: versionsmod.key(x[1]),
@@ -26028,8 +26053,13 @@ def api_bank_archive_entry(entry_id):
         for ver in list(ent.get("versions") or []):
             if bool(ver.get("archived")) == want:
                 continue
-            BANK.edit_version(entry_id, BANK.version_key(ver),
-                              {"archived": want})
+            # An id-less version is named by the id derived on read
+            # (`versions.stable_id`), which is what `_version_ref` resolves;
+            # `version_key`'s content hash is a different handle, and three
+            # test entries refused to archive on it (2026-10-21).
+            ref = (str(ver["id"]) if ver.get("id")
+                   else versionsmod.stable_id(entry_id, ver))
+            BANK.edit_version(entry_id, ref, {"archived": want})
             n += 1
     except eventbank.BankError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
@@ -27304,6 +27334,169 @@ def _sweep_loop():
 
 threading.Thread(target=_sweep_loop, daemon=True,
                  name="barry-tomb-sweep").start()
+
+
+# ==========================================================================
+# The end-of-day error report (backend/dayreport.py, 2026-10-21)
+# ==========================================================================
+REPORTS_DIR = os.path.join(LOGS_DIR, "error_reports")
+DAYREPORT_EVERY_S = 1200.0
+
+
+def _own_day(log, day):
+    """This computer's own records for one day, from its own file only: a
+    report is one computer's day, and another's errors that synced here are
+    theirs to report."""
+    out = []
+    try:
+        with open(log.path(day), "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    out.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        pass
+    return out
+
+
+def _dayreport_stamps_path():
+    return os.path.join(REPORTS_DIR, "stamps@%s.json" % shards.machine_id())
+
+
+def _dayreport_write(day, force=False):
+    """Write (or rewrite) this computer's report for `day`. Returns
+    {path, n, distinct, written} -- `written` False when it was up to date
+    and not forced. Never raises."""
+    try:
+        errs = _own_day(STORE.error_log, day)
+        tests = [r for r in errs if _is_test_error(r)]
+        errs = [r for r in errs if not _is_test_error(r)]
+        path = dayreportmod.path_for(REPORTS_DIR, day, shards.machine_id())
+        want = dayreportmod.stamp_of(errs)
+        try:
+            with open(_dayreport_stamps_path(), "r", encoding="utf-8") as fh:
+                stamps = json.load(fh) or {}
+        except (OSError, ValueError):
+            stamps = {}
+        if not force and stamps.get(day) == want and os.path.exists(path):
+            return {"path": path, "n": len(errs), "written": False}
+        d0 = datetime.date.fromisoformat(day)
+        acts = []
+        for dd in (d0 - datetime.timedelta(days=1), d0,
+                   d0 + datetime.timedelta(days=1)):
+            acts += _own_day(STORE.activity_log, dd.isoformat())
+        ver, commit = store._code_version()
+        prov = STORE.provenance() or {}
+        marks = {}
+        for k, v in (STORE.resolved_errors() or {}).items():
+            sig, _, mach = str(k).partition(extras.MARK_SEP)
+            if not mach or mach in (prov.get("machine"), shards.machine_id()):
+                marks[sig] = v
+        text = dayreportmod.build(
+            day, errs, acts, extras.signature,
+            machine="%s (%s)" % (prov.get("machine") or platform.node(),
+                                 shards.machine_id()),
+            user=prov.get("user"),
+            build_id=" ".join(x for x in (ver, commit) if x) or None,
+            tests_left_out=len(tests), resolved=marks)
+        os.makedirs(REPORTS_DIR, exist_ok=True)
+        with open(path + ".tmp", "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(text)
+        os.replace(path + ".tmp", path)
+        stamps[day] = want
+        # A month of stamps is plenty; older days are never rewritten.
+        keep = sorted(stamps)[-31:]
+        stamps = {k: stamps[k] for k in keep}
+        with open(_dayreport_stamps_path() + ".tmp", "w",
+                  encoding="utf-8") as fh:
+            json.dump(stamps, fh, indent=1, sort_keys=True)
+        os.replace(_dayreport_stamps_path() + ".tmp", _dayreport_stamps_path())
+        STORE._stage(path)
+        STORE._stage(_dayreport_stamps_path())
+        return {"path": path, "n": len(errs),
+                "distinct": len(dayreportmod.group(errs, extras.signature)),
+                "written": True}
+    except Exception as exc:                             # noqa: BLE001
+        try:
+            STORE.record_error("dayreport.write", exc, None, {"day": day})
+        except Exception:                                # noqa: BLE001
+            pass
+        return {"path": None, "n": 0, "written": False, "error": str(exc)}
+
+
+def _dayreport_tick():
+    """Today's after six, yesterday's once the day has turned -- each only
+    when its errors changed since it was last written."""
+    now = datetime.datetime.now()
+    today = now.date().isoformat()
+    yday = (now.date() - datetime.timedelta(days=1)).isoformat()
+    try:
+        with open(_dayreport_stamps_path(), "r", encoding="utf-8") as fh:
+            stamps = json.load(fh) or {}
+    except (OSError, ValueError):
+        stamps = {}
+    for day in (yday, today):
+        errs = [r for r in _own_day(STORE.error_log, day)
+                if not _is_test_error(r)]
+        if dayreportmod.due(day, today, now.hour, stamps.get(day),
+                            dayreportmod.stamp_of(errs)):
+            _dayreport_write(day)
+
+
+def _dayreport_loop():
+    time.sleep(90)
+    while True:
+        try:
+            _dayreport_tick()
+        except Exception:                                # noqa: BLE001
+            pass
+        time.sleep(DAYREPORT_EVERY_S)
+
+
+# Not on a harness server: its faults are all tests, and its days are
+# somebody else's.
+if not os.environ.get("BARRY_HARNESS_SERVER"):
+    threading.Thread(target=_dayreport_loop, daemon=True,
+                     name="barry-dayreport").start()
+
+
+@app.route("/api/errors/report", methods=["GET", "POST"])
+def api_errors_report():
+    """This computer's end-of-day error report. POST writes it now for
+    `day` (default today) and returns its text; GET lists the reports on
+    disk, every computer's, newest first."""
+    if request.method == "GET":
+        rows = []
+        for name in sorted(os.listdir(REPORTS_DIR)
+                           if os.path.isdir(REPORTS_DIR) else [],
+                           reverse=True):
+            if not name.endswith(".txt"):
+                continue
+            day, _, mach = name[:-4].partition("@")
+            full = os.path.join(REPORTS_DIR, name)
+            rows.append({"day": day, "machine": mach, "path": full,
+                         "bytes": os.path.getsize(full),
+                         "mine": mach == shards.machine_id()})
+        return jsonify({"ok": True, "dir": REPORTS_DIR, "reports": rows})
+    body = request.get_json(force=True, silent=True) or {}
+    day = str(body.get("day") or datetime.date.today().isoformat())[:10]
+    try:
+        datetime.date.fromisoformat(day)
+    except ValueError:
+        return jsonify({"ok": False, "error": "Not a day: %s" % day}), 400
+    got = _dayreport_write(day, force=True)
+    if not got.get("path"):
+        return jsonify({"ok": False, "error": got.get("error")
+                        or "The report could not be written."}), 500
+    with open(got["path"], "r", encoding="utf-8") as fh:
+        got["text"] = fh.read()
+    got["ok"] = True
+    got["dir"] = REPORTS_DIR
+    return jsonify(got)
 
 
 def _vacc_status_marked():

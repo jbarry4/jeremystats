@@ -67,9 +67,42 @@
   /* Which detector found an event (The Confluence): Incisor's, Doppler's.
      Categorical, so taken from the palette above -- and through var(), so
      every theme's own --c3/--c4 apply. One pair of names, used by the
-     ToolKit's stream, Junction, Panning and Root Canal alike. */
+     ToolKit's stream, Junction and Panning alike (Root Canal until
+     2026-10-21; its dots are coloured by their call now). */
   --o-incisor: var(--c3);
   --o-doppler: var(--c4);
+
+  /* One colour per ToolKit tool (2026-10-21: "make them matching colors
+     with the toolkits"). Its step number in ToolKit, its icon, and every
+     chip that says it made something -- a family's "Incisor output", a
+     version's "Checkup" -- wear it. The detectors keep their pair above;
+     the modes keep their frame colours; the rest are told apart within
+     their bundle. Chips tint with it rather than fill, so every theme's
+     own text colour stays readable on it. */
+  --tool-incisor: var(--o-incisor);
+  --tool-doppler: var(--o-doppler);
+  --tool-curate: var(--mode-curate, #4bc7f0);
+  --tool-spotter: var(--mode-spotter, #ff8a7a);
+  --tool-panning: var(--mode-panning, #e5a823);
+  --tool-braces: var(--mode-braces, #7fe3b0);
+  --tool-cfc: var(--mode-cfc, #6fd3c4);
+  --tool-coupling: var(--mode-coupling, #c08cf0);
+  --tool-rootcanal: #e889b5;
+  --tool-dspca: #9aa8ff;
+  --tool-toothfairy: #d6c8ff;
+  --tool-eye: #b5dd5f;
+  --tool-lock: #c9a86a;
+  --tool-junction: #b38cff;
+  --tool-horizon: #ff9f5a;
+  --tool-panorama: #f2c14e;
+  --tool-spark: #ffd166;
+  --tool-circuit: #5ec8e5;
+  --tool-drift: #f4978e;
+  --tool-strata: var(--mode-strata, #ffb81c);
+  --tool-bad: #ff8f7a;
+  --tool-kilosort: #8fd3ff;
+  --tool-snapshots: #a9b8c9;
+  --tool-other: var(--c5);
 
   --trace: #7FE3B0;
   --event: #FF8A7A;
@@ -946,7 +979,7 @@
 /* On a bundle step the mark gets its own column at the end, rather than
    landing in the one the name and blurb share and pushing the blurb onto a
    third row. `.tk-step` is 15px / 1fr, so this adds the third. */
-.tk-step { grid-template-columns: 15px 1fr auto; }
+.tk-step { grid-template-columns: 16px 1fr auto; }
 .tk-step .tk-vacc {
   grid-column: 3; grid-row: 1 / span 2; align-self: center; margin-left: 0;
 }
@@ -2835,6 +2868,18 @@ code { font-family: var(--mono); }
 .pane-timebar-grip:hover::after { background: var(--accent); }
 /* While dragging, nothing else takes the pointer or selects. */
 body.strip-resizing { cursor: ns-resize; user-select: none; }
+/* One overview strip for two or more panes (xplore.js placeGlobalStrip):
+   the panes' own are hidden, the focused pane's spans the bottom. */
+.pane-grid.one-strip .pane .pane-timebar { display: none; }
+.xf-strip { flex: none; position: relative; border-top: 1px solid var(--line-soft);
+  background: var(--bg-2); }
+.xf-strip[hidden] { display: none; }
+.xf-strip > .pane-timebar { display: flex; }
+.xf-strip-tag { position: absolute; right: 8px; top: 7px; z-index: 1;
+  font-size: var(--fs-11); color: var(--muted); pointer-events: none;
+  background: color-mix(in srgb, var(--bg-2) 80%, transparent);
+  padding: 0 6px; border-radius: var(--r-pill); }
+.xf-strip-tag[hidden] { display: none; }
 body.strip-resizing canvas { pointer-events: none; }
 .pane-timebar canvas { flex: 1 1 auto; min-height: 0; }
 .pane-timebar canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
@@ -3333,12 +3378,61 @@ select { color-scheme: inherit; }
   background: var(--bg-2); }
 .spp-row.off { opacity: .75; }
 .spp-head { display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap; }
-.spp-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.spp-chip { display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 4px 2px 8px; border-radius: var(--r-pill);
-  border: 1px solid var(--line); background: var(--bg); font-size: var(--fs-115); }
 .spp-tools { display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap; }
 .spp-add { font: inherit; font-size: var(--fs-115); }
+/* One card per panel: what it shows and its moves on top, how it starts
+   underneath, every field labelled, wrapping rather than cut. */
+.spp-panels { display: flex; flex-direction: column; gap: 6px; }
+.spp-panel { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-inner, 6px);
+  background: var(--bg); }
+.spp-ph { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.spp-n { min-width: 20px; height: 20px; display: inline-grid; place-items: center;
+  border-radius: var(--r-pill); background: var(--accent-soft); color: var(--text);
+  font-size: var(--fs-11); font-variant-numeric: tabular-nums; }
+.spp-pf { display: flex; gap: 6px var(--sp-12); flex-wrap: wrap; align-items: center; }
+.spp-f { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.spp-fl { font-size: var(--fs-11); color: var(--muted); text-transform: uppercase;
+  letter-spacing: .06em; }
+.spp-sel, .spp-num, .spp-text { font: inherit; font-size: var(--fs-115); }
+.spp-num { width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
+.spp-text { width: 120px; }
+.spp-check { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-115); }
+.spp-unit { color: var(--muted); font-size: var(--fs-115); }
+.spp-drawn { font-size: var(--fs-115); color: var(--text); }
+/* The arrangement editor: the support window, drawn small. */
+.spl .mb { display: flex; flex-direction: column; gap: var(--sp-10); }
+.spl-quick { display: flex; gap: 6px; flex-wrap: wrap; }
+.spl-canvas { display: flex; flex-direction: column; width: min(100%, 360px);
+  aspect-ratio: 3 / 4; align-self: center; padding: 4px;
+  border: 1px solid var(--line); border-radius: var(--radius-card, 10px);
+  background: var(--bg-2); touch-action: none; user-select: none; }
+.spl-row { display: flex; flex: 1 1 0; min-height: 0; }
+.spl-slot { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; gap: 4px; padding: 4px;
+  margin: 2px; border-radius: var(--radius-inner, 6px); cursor: grab;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg));
+  border: 1px solid var(--accent-line, var(--line));
+  transition: box-shadow var(--dur-2, .16s), outline-color var(--dur-2, .16s); }
+.spl-slot.lifted { cursor: grabbing; z-index: 2; position: relative;
+  box-shadow: var(--elev-3, 0 8px 24px rgba(0,0,0,.35)); opacity: .9; }
+.spl-slot.target { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.spl-name { font-size: var(--fs-115); text-align: center; overflow-wrap: anywhere; }
+.spl-sizes, .spl-moves { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.spl-sizes label { display: inline-flex; align-items: center; gap: 2px;
+  font-size: var(--fs-11); color: var(--muted); }
+.spl-pct { width: 46px; font: inherit; font-size: var(--fs-11); text-align: right;
+  font-variant-numeric: tabular-nums; }
+.spl-hbar, .spl-vbar { flex: 0 0 8px; position: relative; border-radius: 4px; }
+.spl-hbar { cursor: row-resize; }
+.spl-vbar { cursor: col-resize; }
+.spl-hbar::after, .spl-vbar::after { content: ''; position: absolute; inset: 0;
+  margin: auto; border-radius: 2px; background: var(--line); }
+.spl-hbar::after { height: 2px; width: 40%; }
+.spl-vbar::after { width: 2px; height: 40%; }
+.spl-hbar:hover::after, .spl-vbar:hover::after,
+.spl-hbar.dragging::after, .spl-vbar.dragging::after { background: var(--accent); }
+.spl-words { text-align: center; margin: 0; }
 .ncs .bm-row { flex-wrap: wrap; row-gap: 2px; font-size: var(--fs-12);
   border: 1px solid transparent; }
 .ncs .bm-row.on { background: var(--accent-soft); border-color: var(--accent-line);
@@ -3350,8 +3444,71 @@ select { color-scheme: inherit; }
 .ncs .pick-rec { margin-bottom: var(--sp-10); }
 .cur-entry { font-family: var(--mono); }
 /* What produced a dataset (ui.producerChip): "Incisor output". */
-.flagchip.producer { background: var(--accent-soft); color: var(--text);
-  border-color: var(--accent-line); white-space: nowrap; }
+[data-tool="incisor"], [data-producer="incisor"] { --tc: var(--tool-incisor); }
+[data-tool="doppler"], [data-producer="doppler"] { --tc: var(--tool-doppler); }
+[data-tool="curate"], [data-producer="checkup"] { --tc: var(--tool-curate); }
+[data-tool="spotter"], [data-producer="spotter"] { --tc: var(--tool-spotter); }
+[data-tool="panning"], [data-producer="panning"] { --tc: var(--tool-panning); }
+[data-tool="braces"], [data-producer="braces"] { --tc: var(--tool-braces); }
+[data-tool="cfc"], [data-producer="braid"] { --tc: var(--tool-cfc); }
+[data-tool="coupling"], [data-producer="coupling"] { --tc: var(--tool-coupling); }
+[data-tool="rootcanal"], [data-producer="root-canal"] { --tc: var(--tool-rootcanal); }
+[data-tool="dspca"], [data-producer="x-ray"] { --tc: var(--tool-dspca); }
+[data-tool="toothfairy"], [data-producer="tooth-fairy"] { --tc: var(--tool-toothfairy); }
+[data-tool="eye"], [data-producer="eye"] { --tc: var(--tool-eye); }
+[data-tool="lock"], [data-producer="lock"] { --tc: var(--tool-lock); }
+[data-tool="junction"], [data-producer="junction"] { --tc: var(--tool-junction); }
+[data-tool="horizon"], [data-producer="horizon"] { --tc: var(--tool-horizon); }
+[data-tool="panorama"], [data-producer="panorama"] { --tc: var(--tool-panorama); }
+[data-tool="spark"], [data-producer="spark"] { --tc: var(--tool-spark); }
+[data-tool="circuit"], [data-producer="circuit"] { --tc: var(--tool-circuit); }
+[data-tool="drift"], [data-producer="drift"] { --tc: var(--tool-drift); }
+[data-tool="strata"], [data-producer="stratascope"] { --tc: var(--tool-strata); }
+[data-tool="bad"] { --tc: var(--tool-bad); }
+[data-tool="kilosort"], [data-producer="kilosort"] { --tc: var(--tool-kilosort); }
+[data-tool="snapshots"] { --tc: var(--tool-snapshots); }
+.flagchip.producer { --tc-on: var(--tc, var(--tool-other));
+  background: color-mix(in srgb, var(--tc-on) 18%, transparent); color: var(--text);
+  border-color: color-mix(in srgb, var(--tc-on) 60%, transparent);
+  white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.flagchip.producer::before { content: ''; width: 6px; height: 6px; flex: none;
+  border-radius: 50%; background: var(--tc-on); }
+/* ToolKit wears the same colours: each step's number and each tool's icon. */
+.tk-tool[data-tool] .tk-ico { color: var(--tc); opacity: .8; }
+.tk-tool[data-tool]:hover .tk-ico, .tk-tool[data-tool].on .tk-ico { color: var(--tc); opacity: 1; }
+.tk-tool[data-tool].on { border-color: color-mix(in srgb, var(--tc) 55%, transparent); }
+/* A version choice: one button that opens the whole tree (ui.versionButton). */
+.vbtn { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 8px;
+  padding: 3px 8px; min-height: var(--h-control-sm, 26px); font: inherit;
+  font-size: var(--fs-115); color: var(--text); text-align: left; cursor: pointer;
+  border: 1px solid var(--line); border-radius: var(--radius-control, 8px);
+  background: var(--bg-2); transition: border-color var(--dur-2, .16s), background var(--dur-2, .16s); }
+.vbtn:hover { border-color: var(--accent-line); background: var(--bg-hover); }
+.vbtn-n { font-family: var(--mono); }
+.vbtn-c, .vbtn-more { color: var(--text-3); font-size: var(--fs-11);
+  font-variant-numeric: tabular-nums; }
+.vbtn-caret { color: var(--text-3); }
+.vpop .mb { display: flex; flex-direction: column; gap: var(--sp-8);
+  min-width: min(560px, 86vw); }
+.vpop-how { margin: 0; }
+/* The end-of-day error report, shown as written (logs.js dayReport). */
+.err-report-dlg .mb { display: flex; flex-direction: column; gap: var(--sp-8);
+  min-width: min(900px, 92vw); }
+.err-report { margin: 0; max-height: 62vh; overflow: auto; padding: 10px 12px;
+  font-family: var(--mono); font-size: var(--fs-11); line-height: 1.5;
+  white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-2);
+  background: var(--bg-2); border: 1px solid var(--line-soft);
+  border-radius: var(--radius-card, 10px); }
+/* Junction · Many at once: one recording's inputs, whole (junction.js manyPop). */
+.jn-ppop-wrap .mb { min-width: min(880px, 92vw); }
+.jn-ppop { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--sp-12); align-items: start; }
+.jn-ppop-col { display: flex; flex-direction: column; gap: var(--sp-8); }
+.jn-ppop-set { display: flex; flex-direction: column; gap: 6px; padding: 8px;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-card, 10px);
+  background: var(--bg-2); }
+.jn-ppop-set.on { border-color: var(--accent-line); }
+.jn-ppop-head { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; }
 /* The shelf's banked-not-started rows, after the sets (toolkit.js). */
 .vtree-made { display: flex; gap: 6px; margin: 0 0 6px; }
 .cur-shelf-sub { grid-column: 1 / -1; margin: 8px 0 2px; font-size: var(--fs-11);
@@ -10451,15 +10608,29 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   color: var(--text-2); font: inherit; font-size: var(--fs-12); cursor: pointer;
 }
 .tk-step:hover { background: var(--bg-hover); }
-.tk-step.now { background: var(--bg-3); border-color: var(--accent-line); }
+.tk-step.now { background: var(--bg-3); border-color: transparent;
+  box-shadow: inset 2px 0 0 var(--tc, var(--accent)); }
+/* Each step is its tool's mark, in its colour, on one rail down the bundle
+   (2026-10-21: no numbers -- the rail says the order). The rail runs in the
+   gaps between the marks, so it never crosses one. */
+.tk-step { position: relative; }
+.tk-step-i { grid-row: 1 / span 2; align-self: center; width: 16px; height: 16px;
+  display: grid; place-items: center; }
+.tk-step-i .tk-ico { color: var(--tc, var(--text-3)); opacity: .8;
+  transition: opacity var(--dur-2, .16s), transform var(--dur-2, .16s); }
+.tk-step:hover .tk-step-i .tk-ico, .tk-step.now .tk-step-i .tk-ico { opacity: 1; }
+.tk-step.now .tk-step-i .tk-ico { transform: scale(1.12); }
+.tk-step:not(:first-child)::before, .tk-step:not(:last-child)::after {
+  content: ''; position: absolute; left: calc(8px + 7.5px); width: 1px;
+  background: var(--line-soft); pointer-events: none; }
+.tk-step:not(:first-child)::before { top: calc(-1 * var(--sp-4) - 1px);
+  height: calc(50% - 11px + var(--sp-4) + 1px); }
+.tk-step:not(:last-child)::after { top: calc(50% + 11px); bottom: -1px; }
+.tk-bundle .tk-step.off .tk-step-i .tk-ico { opacity: .5; }
 /* It is a `strong` so that a tool's name has one shape wherever it is
    drawn; the weight is decided here rather than by the tag. */
 .tk-step-n { font-weight: 400; }
 .tk-step.now .tk-step-n { color: var(--text); font-weight: 600; }
-.tk-step-i {
-  font-size: var(--fs-105); color: var(--text-3);
-  font-variant-numeric: tabular-nums;
-}
 .tk-step.done .tk-step-n { color: var(--text); }
 .tk-step-s {
   grid-column: 2; font-size: var(--fs-105); color: var(--text-3);
@@ -12361,16 +12532,23 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .br-many .inc-pick-list { max-height: min(56vh, 560px); }
 /* Tick, the set (name over what it holds), version, bad contacts, where it
    runs, its alignments. Grid columns from `.inc-pick`, one more of them. */
-.br-many .br-bulk-row {
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
-}
+/* One grid for the whole list, each row a subgrid of it (2026-10-21: the
+   version, bad and Open columns zig-zagged row to row because each row
+   sized its own). A column is as wide as its widest cell, every row. */
+.br-many .br-many-list { display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto; }
+.br-many .br-many-list > .empty-state { grid-column: 1 / -1; }
+.br-many .br-bulk-row { grid-column: 1 / -1; grid-template-columns: subgrid;
+  content-visibility: visible; }
+.br-many .br-bulk-row > .vbtn { justify-self: end; }
+.br-many .br-bulk-row > .br-bulk-had, .br-many .br-bulk-row > .br-bulk-bad { justify-self: stretch; }
 .br-bulk-row .nm { font-weight: 600; }
 .br-bulk-row.done .ip-done { color: var(--ok); }
 /* As wide as its words: a capped select cuts "24 stamps" to "24 stamp". */
 .br-bulk-v { font: inherit; font-size: var(--fs-11); }
 @media (max-width: 900px) {
-  .br-many .br-bulk-row { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .br-many .br-bulk-row > .br-bulk-v { grid-column: 2 / -1; max-width: 100%; }
+  .br-many .br-many-list { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .br-many .br-bulk-row > .vbtn { grid-column: 2 / -1; justify-self: start; }
 }
 .br-many-go { justify-content: flex-end; }
 .br-flight-line { display: flex; flex-wrap: wrap; align-items: baseline;
@@ -13940,8 +14118,8 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
 }
 /* The fit filter's four choices, and what the chosen preset is in words. */
 .rc-filt { flex: none; }
-/* k, the cluster chips, the margins card and Pooled's own settings. */
-.rc-kseg, .rc-margin-mode, .rc-colour-by { flex: none; }
+/* k, the cluster chips and Pooled's own settings. */
+.rc-kseg { flex: none; }
 .rc-clusters { margin-top: var(--sp-6); }
 .rc-clu { display: inline-flex; align-items: center; gap: var(--sp-4);
           font: inherit; font-size: var(--fs-115); padding: 2px 8px;
@@ -13949,15 +14127,6 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
           background: var(--bg-2); color: var(--text); cursor: pointer; }
 .rc-clu.ied { border-color: var(--accent-line); }
 .rc-clu.hand { border-style: dashed; }
-.rc-margins { margin-top: var(--sp-6); padding: var(--sp-4) var(--sp-10); }
-.rc-margin-sum { cursor: pointer; font-size: var(--fs-115); color: var(--text-2); }
-.rc-margins[open] .rc-margin-sum { margin-bottom: var(--sp-6); }
-.rc-margin-row { display: flex; flex-wrap: wrap; align-items: center;
-                 gap: var(--sp-8); }
-.rc-margin-pick { font: inherit; font-size: var(--fs-115); max-width: 100%;
-                  padding: 2px 6px; border: 1px solid var(--line);
-                  border-radius: var(--radius-sm); background: var(--bg-2);
-                  color: var(--text); }
 .rc-pool-settings { display: flex; flex-wrap: wrap; align-items: center;
                     gap: var(--sp-8); margin: var(--sp-8) 0; }
 .rc-pool-band { width: 6em; }
@@ -14785,7 +14954,7 @@ div.tf-tile { cursor: default; }
 .rc-stats-verdict.warn { color: var(--warn); }
 
 /* A DS / IED border, drawn and applied (Root Canal, 2026-10-06) */
-/* THE BORDERS CARD (2026-10-19): a card of its own beside the margins, in
+/* THE BORDERS CARD (2026-10-19): a card of its own under the clusters, in
    Pooled's picture and in Single -- what is applied, the saved borders as a
    pick list in the house's shape (`.inc-pick`), the picked one's graces
    with what each means, then Clear, Draw and Apply. Every line wraps;
@@ -15319,17 +15488,14 @@ div.tf-tile { cursor: default; }
   color: var(--text); }
 .jn-mres { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .jn-mnum { font-weight: 700; font-variant-numeric: tabular-nums; }
-/* Many at once: a search, and which version each side pools from
-   (2026-10-20). The version is a small select on the row; one with a single
-   version is plain text. */
+/* Many at once: a search, and which set and version each side pools from.
+   Since 2026-10-21 the version is a button (ui.versionButton's look) that
+   opens the recording's pop-up of sets and their trees. */
 .jn-many-find { display: flex; align-items: center; gap: var(--sp-10);
   flex-wrap: wrap; margin: 6px 0 2px; }
 .jn-many-find .search-wrap { flex: 1 1 260px; }
-.jn-mver { flex: none; font: inherit; font-size: var(--fs-11);
-  font-family: var(--mono); color: var(--text); padding: 1px 4px;
-  border: 1px solid var(--line); border-radius: var(--radius-inner, 6px);
-  background: var(--bg); width: auto; min-width: max-content; }
-.jn-mver.one { border-color: transparent; background: none; padding: 1px 0; }
+.jn-mver.vbtn { flex: 0 1 auto; padding: 1px 6px; min-height: 0;
+  font-size: var(--fs-11); }
 .jn-mrow.ok { border-color: var(--accent-line); }
 .jn-mrow.bad { border-color: var(--err); }
 .jn-mrow.landing { animation: jnRow 420ms var(--ease-out, ease-out); }
@@ -15389,12 +15555,6 @@ div.tf-tile { cursor: default; }
 .pan-list-bulk { display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
   margin-top: 8px; }
 .pan-list-bulk:empty { display: none; }
-
-/* Root Canal's legend, coloured by origin. */
-.rc-lg-m.rc-lg-oi { background: var(--o-incisor); }
-.rc-lg-m.rc-lg-od { background: var(--o-doppler); }
-.rc-lg-m.rc-lg-ob { background: linear-gradient(90deg, var(--o-incisor) 50%,
-                                                 var(--o-doppler) 50%); }
 
 /* ---- Braces: a stamp put on top of another one (2026-10-15) --------------
    The page shakes, the question asks, and a glove can yank it back. */
@@ -15945,9 +16105,14 @@ div.tf-tile { cursor: default; }
                       gap: var(--sp-4) var(--sp-8); margin-top: var(--sp-8); }
 .rc-save-folder-row .section-label { margin: 0; }
 
-/* Root Canal Single: the Margins and Borders folds side by side while shut
-   (2026-10-20); one that is open takes the whole width. */
+/* Root Canal Single: the folds under the clusters, side by side while shut
+   (2026-10-20); one that is open takes the whole width. Only Borders is
+   left since Margins were taken out (2026-10-21). */
 .rc-folds { display: flex; flex-wrap: wrap; align-items: flex-start;
             gap: var(--sp-6); margin-top: var(--sp-6); }
 .rc-folds > details { margin-top: 0; flex: 0 1 auto; min-width: 0; }
 .rc-folds > details[open] { flex: 1 1 100%; }
+/* Where k would be, for a version carrying its own calls: the words and
+   "Fit afresh" (2026-10-21). */
+.rc-k-margin { display: inline-flex; flex-wrap: wrap; align-items: center;
+               gap: var(--sp-6); }

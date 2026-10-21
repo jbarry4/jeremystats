@@ -375,11 +375,11 @@ BARRY.curate = (function () {
     // What this person chose for Checkup's window (Profile › Support panel
     // preferences), or the CSD alone.
     const plan = BARRY.supportPanels
-      ? BARRY.supportPanels.plan('curate', [{ panel: 'csd' }])
+      ? BARRY.supportPanels.plan('curate', [{ panel: 'csd' }], sess)
       : { specs: [{ panel: 'csd' }] };
     if (!plan) return;
     aidWin = BARRY.views.xplore.popOutPanes(sess, plan.specs, {
-         shape: plan.shape,
+         ...BARRY.supportPanels.opts(plan),
          role: 'aids', name: 'barry-curate-aids', width: 720, height: 1000,
          // Folded on arrival. It is for glancing at: the header, control
          // strip and channel list cost more of the pane than they are

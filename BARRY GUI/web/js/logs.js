@@ -2550,8 +2550,52 @@ BARRY.views.errors = (function () {
     } catch (e) { toast(e.message, 'err'); }
   }
 
+  /* The end-of-day report (backend/dayreport.py): written now for the day
+     chosen, then shown, with where it is. Jarvis also writes it by itself
+     every evening; this is for "now", or for a day that was missed. */
+  async function dayReport() {
+    const want = (day && /^\d{4}-\d{2}-\d{2}$/.test(day)) ? day : null;
+    let res;
+    try {
+      res = await apiPost('/api/errors/report', want ? { day: want } : {});
+    } catch (e) {
+      // A server older than this page has already said so, once, with how
+      // to fix it (core.js staleServer): a second toast saying it again was
+      // the "error" beside a button that is there (2026-10-21).
+      if (!/older code/.test(e.message || '')) toast(e.message, 'err');
+      return;
+    }
+    const pre = el('pre', { class: 'err-report', text: res.text || '' });
+    showModal(el('div', { class: 'err-report-dlg' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'End-of-day report' }),
+        el('div', { class: 'spacer' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        el('p', { class: 'hint', text: (res.n || 0) + ' error(s), '
+          + (res.distinct || 0) + ' distinct, written to ' + res.path
+          + '. Jarvis writes this by itself every evening after six, and '
+          + 'again the next day if more went wrong.' }),
+        pre,
+      ]),
+      BARRY.ui.modalFoot([
+        BARRY.ui.button({ kind: 'ghost', text: 'Open folder',
+          onclick: () => apiPost('/api/reveal', { path: res.path })
+            .catch((e) => toast(e.message, 'err')) }),
+      ], [
+        BARRY.ui.button({ kind: 'ghost', text: 'Copy',
+          onclick: () => {
+            try { navigator.clipboard.writeText(res.text || ''); toast('Copied', 'ok'); }
+            catch (e) { toast('Could not copy: ' + e.message, 'err'); }
+          } }),
+        BARRY.ui.button({ kind: 'primary', text: 'Close', onclick: () => closeModal() }),
+      ]),
+    ]));
+  }
+
   function init() {
     $('#errRefresh').addEventListener('click', load);
+    $('#errReport').addEventListener('click', dayReport);
     $('#errDay').addEventListener('change', (e) => { day = e.target.value; load(); });
     $('#errTest').addEventListener('click', async () => {
       // A test entry is a test's fault, left out unless they are shown --

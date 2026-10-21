@@ -15,6 +15,197 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.21.4 - Root Canal: no margins, and the dots are coloured by their call only
+
+Restart Jarvis: two sentences the server writes changed (below). Everything
+else needs a page reload.
+
+### Removed
+
+- **Margins.** The Margins card is gone from Single and from Pooled, with
+  everything in it: picking a saved margin, applying it fixed or refined,
+  and saving the clusters on show as a new one (whole pool or one group).
+  The Borders card is the one fold left under the clusters.
+- **"by call / by cluster / by origin".** The switch at the head of
+  Single's key is gone, and Pooled's "Colour by" no longer offers
+  "cluster". Dots, centres and chips are coloured DS or IED by their call:
+  the border's call when a border is on, k-means' otherwise. Pooled's
+  other colourings (pooled call, single call, switches, recording, mouse,
+  mouse type, border) stay. In The Confluence, Root Canal's intro no
+  longer says the dots show which detector found each event.
+
+### Changed
+
+- **A single saved from a pool still keeps the pool's calls.** That is
+  done with a margin under the hood, so the server's margin routes stay.
+  Where k would be, such a version (or a saved pool that carries calls)
+  now says "k and the calls are this version's own, from '...'", with a
+  **Fit afresh** button that lets k-means find the clusters again. With
+  the version's read on another machine, Fit afresh says there is nothing
+  here to fit from and keeps the calls, as every other setting does.
+- **The word "margin" is gone from what you read.** Chips say "carried"
+  instead of "margin", the rule says "k = 2, by the calls it carries"
+  (server), the save prompt says "the calls it carried", and the version
+  hover says "calls carried from a pool". When the calls cannot be used
+  with the settings on screen, the message no longer tells you to save a
+  margin; it says to set the settings back to the ones they were measured
+  with (server).
+
+### Fixed
+
+Found by a review of the removal, each confirmed before it was fixed:
+
+- **Calls carried by one version followed you to the next set.** Opening
+  another set after a from-pool version fitted it with that version's
+  calls and called them its own. Picking a set now drops them.
+- **Any error dropped the calls.** A fit that failed for another reason
+  (a read that has gone, members read on another machine) took the
+  carried calls off for good and blamed them. Only a refusal of the calls
+  themselves does that now; other errors keep them.
+- **The k slot could show a 32-character id** instead of the calls' name
+  after a propagate made new ones. The name now comes from the fit's own
+  answer, and the saved list is asked again for an id it has not seen,
+  repainting only the controls bar rather than the whole page.
+
+### Checked
+
+- All 7 Root Canal and Confluence suites pass together: 879 checks.
+  rootcanal 355, rootcanalpool 294, rootcanalborder 103, rootcanaldone 24,
+  rootcanalfolders 32, rootcanalxplore 15 and confluence 56.
+- New checks:
+  - there is no margins card and no colour switch;
+  - Fit afresh in both views fits again without the calls, and not by
+    way of a refusal;
+  - calls the server refuses are taken off, a message says so, and the
+    set or pool is fitted afresh;
+  - another error keeps the calls;
+  - with the read elsewhere, Fit afresh keeps the calls, and they are
+    named from the version's answer;
+  - picking a set drops them.
+- Each fix was broken on purpose and its check failed (6 failures across
+  the two suites), then the file was restored byte for byte.
+- tools/check_rootcanal.py: 462 ok. The bank, artifacts and curation are
+  untouched by the runs.
+
+## 2026.10.21.3 - Support windows to the percent, one overview strip, versions as a tree, an end-of-day error report
+
+**Restart Jarvis.** `backend/app.py` changed, and `backend/dayreport.py` is
+new.
+
+### Added
+
+- **Support panel preferences, in detail** (Profile › Support panel
+  preferences). For each add-on's second window you can now:
+  - Hold up to eight panels, including the same kind more than once (three
+    voltage traces, say).
+  - Set how each panel opens: its channels (every one, even, odd, every 4th or
+    8th, the first 16/32/64, or a typed list such as `1-16, 33`); its own
+    filter (LFP, theta, gamma, ripple, spikes, a saved preset, or custom Hz,
+    with a 60 Hz notch); a spectrogram's or scalogram's band, stacked or
+    averaged, and its colours; a traces panel's gain.
+  - Give the window a span of its own. It still follows the main window,
+    centred on the same moment.
+  - Arrange the window with **Draw it…**, a small copy of the window. Drag the
+    lines between rows and panels, type widths and heights in percent, move a
+    panel between rows, or drag one panel onto another to swap them.
+- **One overview strip.** With two or more panes, the strip is no longer
+  repeated under each pane. One strip runs across the bottom and follows the
+  pane you last clicked. When the panes show different recordings, it says
+  which one it shows.
+- **End-of-day error report.** Each computer writes its own file,
+  `GUI_logs/error_reports/<day>@<computer>.txt`, every evening after six. It
+  rewrites the file the next day if more went wrong. Each distinct fault
+  appears once, with:
+  - how often it happened and when, and its full traceback;
+  - what that computer was doing in the five minutes before and the two
+    minutes after (the error is marked in place);
+  - the build it ran on.
+
+  Test faults are counted and left out. **End-of-day report** in Errors
+  writes the file now for the chosen day and shows it.
+- **Every version says what last processed it:** Incisor, Checkup, Braces,
+  Root Canal, Tooth Fairy, Junction and so on. The chip sits on every row of
+  every version tree.
+- **Tool colours.** Each ToolKit tool has a colour. Its icon wears it, and so
+  does every chip naming it as a producer ("Incisor output", or a version's
+  "Checkup"). A bundle's steps are no longer numbered: each step is its tool's
+  icon, in its colour, on a thin rail down the bundle that shows the order.
+  The open step gets a bar in its colour. X-ray and Root Canal have icons
+  now.
+
+### Changed
+
+- **Version drop-downs are gone.** A version choice is now one button that
+  shows the version, its count and what made it. Pressing it opens the whole
+  tree in a pop-up. This applies to Junction's Many at once, the Event Bank's
+  "compared with" and Drift's version.
+- **Junction · Many at once: the sets are no longer locked in.** A row's
+  version button opens that recording's pop-up. It shows every Incisor set and
+  every Doppler set the recording has, each with its version tree. Pick any
+  set at any version.
+- **Next only goes to the next step's page.** It never opens a set or a
+  recording for you.
+- **Braces' Many at once:** each row's version is a version button, and the
+  columns (version, bad contacts, where, Open the newest) line up down the
+  list.
+- **Every add-on that has something to bank now banks by itself:**
+  - **Checkup, Spotter, Panning:** when the last item is decided, and on Leave.
+  - **Braces:** once every flagged stamp has its call, and on leaving the
+    review. If calls are still waiting, it says so and waits.
+  - **The Arc's Clean:** files its decisions on Leave.
+
+  Inside check pages nothing banks by itself (`BARRY.testNoAutobank` is set
+  for any page framed by `/_dev/`).
+
+### Fixed
+
+- Archiving a whole bank entry refused some old entries ("That entry has no
+  version vk-…"). Versions from before ids are now named the way the bank
+  looks them up. All 167 test entries in the Event Bank are archived.
+
+## 2026.10.21.2 - Tab 8 says L POR-SUB, as the Monolith does; the script check keeps its last answer when it can't read the recordings
+
+From Shahriar: "I see POR in results, which tells me it was calculated on an
+older version of the data." It wasn't. Tab 8 was already computed under
+histology v2, the newest (`tools/check_histo.py`: all 96 cells match the
+workbook of 2026-10-05):
+- Right POR is left out of every rat.
+- The left POR channel group is used only in rats 4, 6, 7 and 10, whose
+  left POR probe histology v2 found in subiculum.
+
+What was old was the name. The Monolith calls that region Left POR-SUB; tab
+8 still printed the channel group's own name, L POR. No number changed. The
+rat-days were not measured again. **Restart Jarvis** (`backend/joe.py`
+changed).
+
+### Changed
+
+- **Tab 8 names it L POR-SUB everywhere:** the lights' pictures, the pairs,
+  the follow-ups, the SPSS files and their labels, the README and the
+  results summary. The definitions and the README say why, and which rats
+  have it.
+- **The standalone script takes the same names** from its inputs (a new
+  `labels` entry in `joe_inputs.json`), so its files still line up with
+  tab 8's.
+- **The script check keeps its last answer when it can't read the
+  recordings.**
+  - The script now writes into a fresh folder. A run that could not read
+    some rat-days is refused with a sentence, for example "The script could
+    not read 16 of the 16 rat-days (is the data drive connected?)", and the
+    last comparison stands.
+  - Today E: was not connected. Before this change, the run left empty
+    files behind and every file read as "differs".
+  - The comparison has to be run again with E: connected, because the pair
+    names changed. Until then the tab says the script has not been run on
+    these.
+
+### Checked
+
+- `tools/check_joe.py`: 38 passed.
+- `web/_dev/monolith.html`: 538 passed.
+- `tools/check_review.py`: 54 passed.
+- The refusal was tested with E: missing.
+
 ## 2026.10.21.1 - Root Canal: the list of sets done drops down where it is pressed; the max-amp line fades with the marks
 
 A page reload is enough: nothing on the server changed.

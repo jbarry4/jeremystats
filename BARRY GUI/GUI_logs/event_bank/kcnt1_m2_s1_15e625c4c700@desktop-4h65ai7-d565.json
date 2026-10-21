@@ -1,6 +1,6 @@
 {
   "_at": {
-    "added": "2026-10-12T13:34:10.934766+00:00",
+    "added": "2026-10-12T13:16:59.572818+00:00",
     "by_label": "2026-10-12T13:34:10.934766+00:00",
     "curation_label": "2026-10-12T13:34:10.934766+00:00",
     "duration_s": "2026-10-12T13:34:10.934766+00:00",
@@ -31,19 +31,23 @@
     "versions": {
       "463ddc19e590": [
         "set",
-        "2026-10-12T13:34:10.934766+00:00"
+        "2026-10-21T18:43:29.708037+00:00"
+      ],
+      "666ff26960d3": [
+        "set",
+        "2026-10-21T18:43:27.132128+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-12T13:34:10.934766+00:00",
+    "at": "2026-10-21T18:43:29.708037+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": {
-    "at": "2026-10-12T09:34:10-04:00",
+    "at": "2026-10-12T09:16:59-04:00",
     "by": "harness@test",
-    "machine": "DESKTOP-4H65AI7"
+    "machine": "BarryLab"
   },
   "by_label": {
     "unspecified": 1
@@ -84,12 +88,57 @@
   "version": 0,
   "versions": [
     {
+      "archived": true,
+      "at": "2026-10-12T09:16:59-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "unspecified": 1
+      },
+      "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T14:43:27-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
+      "from_id": null,
+      "from_v": null,
+      "gained": 0,
+      "id": "666ff26960d3",
+      "imported": true,
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 1,
+      "note": "Imported from harness: BARRY threshold detector. 1 candidates, none decided yet.",
+      "snap": [
+        [
+          925.620912,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "archived": true,
       "at": "2026-10-12T09:34:10-04:00",
       "by": "harness@test",
       "by_label": {
         "unspecified": 1
       },
       "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T14:43:29-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "from_id": null,
       "from_v": null,
       "gained": 0,

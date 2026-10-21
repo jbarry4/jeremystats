@@ -719,7 +719,12 @@ BARRY.arc = (function () {
      or stepping back out shows the counts as they were before. Only when
      Spark is the tool on screen: painting into a pane another tool owns is
      the fault `paint()` guards against at the top of this module. */
+  /* Decisions made in Clean that have not been filed: what leaving files
+     by itself (2026-10-21, autobank everywhere). */
+  let unfiled = false;
+
   function afterDecision() {
+    unfiled = true;
     try {
       if (BARRY.views.toolkit && BARRY.views.toolkit.tool
           && BARRY.views.toolkit.tool() === 'spark'
@@ -3631,10 +3636,12 @@ BARRY.arc = (function () {
       /* File from inside Clean, through the panel's own route rather than
          a second copy of it: one place knows what an entry has to carry.
          Returns what was filed so the mode can say so. */
+      unfiled: () => unfiled,
       file: async () => {
         const res = await apiPost(
           '/api/arc/spark/' + encodeURIComponent(q.gid) + '/bank',
           { excluded: excluded, kept: keptAll() });
+        unfiled = false;
         const t = dropTally();
         BARRY.activity.log('arc.spark.bank', {
           gid: q.gid, n: res.n, excluded: t.n, channels: t.chans,
@@ -3826,6 +3833,19 @@ BARRY.arcmode = (function () {
 
   function exit() {
     document.removeEventListener('keydown', keys, true);
+    /* Filed on the way out, always (2026-10-21: "autobank is a constant,
+       and when you leave"), when Clean has decisions the bank does not:
+       the same route as Save and return, after the mode has gone. */
+    const C = BARRY.arc && BARRY.arc.clean;
+    if (kind === 'clean' && !saving && C && C.unfiled && C.unfiled()
+        && !BARRY.testNoAutobank) {
+      C.file().then((res) => toast('Filed ' + res.n + ' cue pairs with their '
+                                   + 'clipping decisions on the way out.',
+                                   'ok', 6000))
+        .catch((e) => toast('Could not file on the way out: ' + e.message
+                            + ' Open Clean again and use Save and return.',
+                            'warn', 9000));
+    }
     /* Hand the pointer back. A mode that keeps `grabTime` after it has
        gone owns every press on the pane and the traces stop panning, with
        nothing on screen to say why. */

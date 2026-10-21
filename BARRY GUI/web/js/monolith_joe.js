@@ -725,6 +725,8 @@ window.MONO_JOE = (function () {
           'Bands: theta 5–12 Hz and gamma 30–90 Hz, from the proposal. Mains and its harmonics are notched; the notch’s own 59–61 Hz bins are left out of gamma.',
           'Coherence: Dickson 2022, Jeremy’s MATLAB: a 59–61 Hz Butterworth notch, then mscohere with hanning(1024), 512 overlap, 2048 points. Welch, the circuits’ way (1 s Hann segments, half overlapping, FFT twice as long), is computed too, only to say whether it agrees.',
           'Pairs: every pair of the ' + (D.regions || []).length + ' regions, kept in a model when at least ' + D.min_rats + ' rats have it at every level on both days.',
+          'Regions: histology v2, probes scored “y” only. No probe aimed at POR is in POR; the left ones sit in subiculum, so that region is L POR-SUB'
+            + ((D.por_sub_rats || []).length ? ' (rats ' + D.por_sub_rats.join(', ') + ')' : '') + '. Right POR-SUB is left out.',
           'Clipping: measured here for every window (the rail, or a flat top, for 16 samples or more), as Spark measures it; a clipped wire gives way to its region’s next.',
           'Models: a mixed model, Day × factor × Pair, each term tested against the rats’ own spread in it (the rat random), a rat missing a pair keeping its others. No repeated-measures ANOVA: it would keep only the rats with every pair (see Every test).',
         ];

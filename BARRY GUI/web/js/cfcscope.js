@@ -125,10 +125,10 @@ BARRY.cfc = (function () {
     ];
     // What this person chose (Profile › Support panel preferences).
     const plan = BARRY.supportPanels
-      ? BARRY.supportPanels.plan('cfc', defaults) : { specs: defaults };
+      ? BARRY.supportPanels.plan('cfc', defaults, sess) : { specs: defaults };
     if (!plan) return;
     aidWin = BARRY.views.xplore.popOutPanes(sess, plan.specs, {
-      shape: plan.shape,
+      ...BARRY.supportPanels.opts(plan),
       role: 'cfc', name: 'barry-cfc-aids', width: 720, height: 820,
       /* Headers and tabs folded away: both panes are the same recording and
          the labels would cost more of a short pane than they are worth. The

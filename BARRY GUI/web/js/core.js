@@ -4199,6 +4199,11 @@ BARRY.init = async function init() {
       if (isFinite(hp)) sess.hp = hp;
       if (isFinite(lp)) sess.lp = lp;
       if (isFinite(nt)) sess.notch = nt;
+      // A support window's own gain (Profile › Support panel preferences).
+      const gn = parseFloat(params.get('gain'));
+      if (isFinite(gn) && gn > 0) sess.gain = gn;
+      // Panels with bands of their own: the recording's band lock off.
+      if (params.get('flock') === '0') sess.flock = false;
       const panel = params.get('panel');
       if (panel && BARRY.views.xplore.state.panes[0]) {
         BARRY.views.xplore.state.panes[0].panel = panel;
@@ -4293,3 +4298,15 @@ BARRY.modes = (function () {
 
   return { register, leaveAllBut, active, names: () => Object.keys(known) };
 })();
+
+/* Inside a check page (web/_dev), nothing banks by itself (2026-10-21).
+   Every add-on now banks without being asked -- Checkup, Spotter, Panning,
+   Braces, the Arc's Clean -- and a harness entering and leaving a review
+   on a real proposal would otherwise write a real version. A harness that
+   means to test it sets `BARRY.testNoAutobank = false` itself. */
+try {
+  if (window.top !== window
+      && /\/_dev\//.test(window.top.location.pathname)) {
+    BARRY.testNoAutobank = true;
+  }
+} catch (e) { /* a cross-origin top is not a check page */ }

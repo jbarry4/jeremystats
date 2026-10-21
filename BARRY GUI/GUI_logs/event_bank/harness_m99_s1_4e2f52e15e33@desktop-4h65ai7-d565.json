@@ -1,45 +1,65 @@
 {
   "_at": {
-    "added": "2026-09-23T17:55:37.111548+00:00",
-    "by_label": "2026-09-23T17:55:37.111548+00:00",
+    "added": "2026-09-23T17:53:18.764444+00:00",
+    "by_label": "2026-09-23T17:58:03.279247+00:00",
     "curation_label": "2026-09-23T17:55:37.111548+00:00",
     "duration_s": "2026-09-23T17:55:37.111548+00:00",
-    "events": "2026-09-23T17:55:37.111548+00:00",
+    "events": "2026-09-23T17:58:03.279247+00:00",
     "gid": "2026-09-23T17:55:37.111548+00:00",
-    "id": "2026-09-23T17:55:37.111548+00:00",
-    "label_names": "2026-09-23T17:55:37.111548+00:00",
-    "mouse": "2026-09-23T17:55:37.111548+00:00",
-    "n": "2026-09-23T17:55:37.111548+00:00",
-    "name": "2026-09-23T17:55:37.111548+00:00",
-    "note": "2026-09-23T17:55:37.111548+00:00",
-    "project": "2026-09-23T17:55:37.111548+00:00",
+    "id": "2026-09-23T17:58:03.279247+00:00",
+    "label_names": "2026-09-23T17:58:03.279247+00:00",
+    "mouse": "2026-09-23T17:58:03.279247+00:00",
+    "n": "2026-09-23T17:58:03.279247+00:00",
+    "name": "2026-09-23T17:58:03.279247+00:00",
+    "note": "2026-09-23T17:58:03.279247+00:00",
+    "project": "2026-09-23T17:58:03.279247+00:00",
     "recording_start": "2026-09-23T17:55:37.111548+00:00",
-    "schema": "2026-09-23T17:55:37.111548+00:00",
-    "session": "2026-09-23T17:55:37.111548+00:00",
+    "schema": "2026-09-23T17:58:03.279247+00:00",
+    "session": "2026-09-23T17:58:03.279247+00:00",
     "session_key": "2026-09-23T17:55:37.111548+00:00",
-    "session_label": "2026-09-23T17:55:37.111548+00:00",
+    "session_label": "2026-09-23T17:58:03.279247+00:00",
     "session_loose_key": "2026-09-23T17:55:37.111548+00:00",
     "session_path": "2026-09-23T17:55:37.111548+00:00",
-    "source": "2026-09-23T17:55:37.111548+00:00",
-    "specified": "2026-09-23T17:55:37.111548+00:00",
-    "type": "2026-09-23T17:55:37.111548+00:00",
-    "type_name": "2026-09-23T17:55:37.111548+00:00",
-    "units": "2026-09-23T17:55:37.111548+00:00",
-    "version": "2026-09-23T17:55:37.519002+00:00"
+    "source": "2026-09-23T17:58:03.279247+00:00",
+    "specified": "2026-09-23T17:58:03.279247+00:00",
+    "type": "2026-09-23T17:58:03.279247+00:00",
+    "type_name": "2026-09-23T17:58:03.279247+00:00",
+    "units": "2026-09-23T17:58:03.279247+00:00",
+    "version": "2026-09-23T17:58:03.746720+00:00"
   },
   "_keys": {
     "versions": {
+      "0b36f3b5a9be": [
+        "set",
+        "2026-10-21T16:05:31.703470+00:00"
+      ],
       "8b0e9fd7b377": [
         "set",
-        "2026-09-23T17:55:37.111548+00:00"
+        "2026-10-21T16:05:24.568515+00:00"
+      ],
+      "9446d04fc4be": [
+        "set",
+        "2026-10-21T15:49:09.844214+00:00"
       ],
       "v0-65d87e77": [
         "set",
-        "2026-09-23T17:55:37.111548+00:00"
+        "2026-10-21T16:05:21.104627+00:00"
+      ],
+      "v0-a51a5af8": [
+        "set",
+        "2026-10-21T15:49:06.145002+00:00"
+      ],
+      "v0-cdcea5b5": [
+        "set",
+        "2026-10-21T16:05:27.618193+00:00"
+      ],
+      "{\"archived\": true, \"at\": \"2026-09-23T13:54:32-04:00\", \"by\": \"harness@test\", \"by_label\": {\"Dentate Spike\": 4, \"Flag\": 1, \"Garbage\": 2, \"unspecified\": 1}, \"edits\": [{\"at\": \"2026-10-21T12:05:17-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": [\"archived\"]}], \"machine\": \"DESKTOP-4H65AI7\", \"n\": 8, \"note\": \"\", \"snap\": [[1.0, \"spike\"], [2.0, \"spike\"], [2.0, \"garbage\"], [3.0, \"spike\"], [3.0, \"spike\"], [4.0, null], [4.0, \"flag\"], [5.0, \"garbage\"]], \"v\": 2}": [
+        "set",
+        "2026-10-21T16:05:17.860919+00:00"
       ],
       "{\"at\": \"2026-09-23T13:54:32-04:00\", \"by\": \"harness@test\", \"by_label\": {\"Dentate Spike\": 4, \"Flag\": 1, \"Garbage\": 2, \"unspecified\": 1}, \"machine\": \"DESKTOP-4H65AI7\", \"n\": 8, \"note\": \"\", \"snap\": [[1.0, \"spike\"], [2.0, \"spike\"], [2.0, \"garbage\"], [3.0, \"spike\"], [3.0, \"spike\"], [4.0, null], [4.0, \"flag\"], [5.0, \"garbage\"]], \"v\": 2}": [
-        "set",
-        "2026-09-23T17:55:38.551977+00:00"
+        "gone",
+        "2026-10-21T16:05:17.860919+00:00"
       ],
       "{\"at\": \"2026-09-23T13:54:32-04:00\", \"by\": \"harness@test\", \"by_label\": {\"Dentate Spike\": 4, \"Flag\": 1, \"Garbage\": 2, \"unspecified\": 1}, \"machine\": \"DESKTOP-4H65AI7\", \"n\": 8, \"note\": \"\", \"snap_elsewhere\": true, \"v\": 2}": [
         "gone",
@@ -48,14 +68,14 @@
     }
   },
   "_shard": {
-    "at": "2026-09-23T17:55:38.551977+00:00",
+    "at": "2026-10-21T16:05:31.703470+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": {
-    "at": "2026-09-23T13:55:37-04:00",
+    "at": "2026-09-23T13:53:18-04:00",
     "by": "harness@test",
-    "machine": "DESKTOP-4H65AI7"
+    "machine": "LCOM549913"
   },
   "by_label": {
     "Dentate Spike": 4,
@@ -134,12 +154,210 @@
   "version": 2,
   "versions": [
     {
+      "archived": true,
+      "at": "2026-09-23T13:58:03-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "unspecified": 8
+      },
+      "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T11:49:06-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
+      "gained": 0,
+      "id": "v0-a51a5af8",
+      "imported": true,
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 8,
+      "note": "Imported from harness: duplicate times. 8 candidates, none decided yet.",
+      "snap": [
+        [
+          1.0,
+          null
+        ],
+        [
+          2.0,
+          null
+        ],
+        [
+          2.0,
+          null
+        ],
+        [
+          3.0,
+          null
+        ],
+        [
+          3.0,
+          null
+        ],
+        [
+          4.0,
+          null
+        ],
+        [
+          4.0,
+          null
+        ],
+        [
+          5.0,
+          null
+        ]
+      ],
+      "synthesized": true,
+      "v": 0
+    },
+    {
+      "archived": true,
+      "at": "2026-09-23T13:58:03-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "Dentate Spike": 4,
+        "Flag": 1,
+        "Garbage": 2,
+        "unspecified": 1
+      },
+      "changed": 7,
+      "edits": [
+        {
+          "at": "2026-10-21T11:49:09-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
+      "from_v": 0,
+      "gained": 0,
+      "id": "9446d04fc4be",
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {
+        "undecided \u2192 flag": 1,
+        "undecided \u2192 garbage": 2,
+        "undecided \u2192 spike": 4
+      },
+      "n": 8,
+      "note": "",
+      "snap": [
+        [
+          1.0,
+          "spike"
+        ],
+        [
+          2.0,
+          "spike"
+        ],
+        [
+          2.0,
+          "garbage"
+        ],
+        [
+          3.0,
+          "spike"
+        ],
+        [
+          3.0,
+          "spike"
+        ],
+        [
+          4.0,
+          null
+        ],
+        [
+          4.0,
+          "flag"
+        ],
+        [
+          5.0,
+          "garbage"
+        ]
+      ],
+      "v": 1
+    },
+    {
+      "archived": true,
+      "at": "2026-09-23T13:54:32-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "Dentate Spike": 4,
+        "Flag": 1,
+        "Garbage": 2,
+        "unspecified": 1
+      },
+      "edits": [
+        {
+          "at": "2026-10-21T12:05:17-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
+      "machine": "DESKTOP-4H65AI7",
+      "n": 8,
+      "note": "",
+      "snap": [
+        [
+          1.0,
+          "spike"
+        ],
+        [
+          2.0,
+          "spike"
+        ],
+        [
+          2.0,
+          "garbage"
+        ],
+        [
+          3.0,
+          "spike"
+        ],
+        [
+          3.0,
+          "spike"
+        ],
+        [
+          4.0,
+          null
+        ],
+        [
+          4.0,
+          "flag"
+        ],
+        [
+          5.0,
+          "garbage"
+        ]
+      ],
+      "v": 2
+    },
+    {
+      "archived": true,
       "at": "2026-09-23T13:55:37-04:00",
       "by": "harness@test",
       "by_label": {
         "unspecified": 8
       },
       "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T12:05:21-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "gained": 0,
       "id": "v0-65d87e77",
       "imported": true,
@@ -186,6 +404,7 @@
       "v": 0
     },
     {
+      "archived": true,
       "at": "2026-09-23T13:55:37-04:00",
       "by": "harness@test",
       "by_label": {
@@ -195,6 +414,15 @@
         "unspecified": 1
       },
       "changed": 7,
+      "edits": [
+        {
+          "at": "2026-10-21T12:05:24-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "from_v": 0,
       "gained": 0,
       "id": "8b0e9fd7b377",
@@ -244,7 +472,70 @@
       "v": 1
     },
     {
-      "at": "2026-09-23T13:54:32-04:00",
+      "archived": true,
+      "at": "2026-09-23T13:53:18-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "unspecified": 8
+      },
+      "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T12:05:27-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
+      "gained": 0,
+      "id": "v0-cdcea5b5",
+      "imported": true,
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {},
+      "n": 8,
+      "note": "Imported from harness: duplicate times. 8 candidates, none decided yet.",
+      "snap": [
+        [
+          1.0,
+          null
+        ],
+        [
+          2.0,
+          null
+        ],
+        [
+          2.0,
+          null
+        ],
+        [
+          3.0,
+          null
+        ],
+        [
+          3.0,
+          null
+        ],
+        [
+          4.0,
+          null
+        ],
+        [
+          4.0,
+          null
+        ],
+        [
+          5.0,
+          null
+        ]
+      ],
+      "synthesized": true,
+      "v": 0
+    },
+    {
+      "archived": true,
+      "at": "2026-09-23T13:53:18-04:00",
       "by": "harness@test",
       "by_label": {
         "Dentate Spike": 4,
@@ -252,7 +543,26 @@
         "Garbage": 2,
         "unspecified": 1
       },
-      "machine": "DESKTOP-4H65AI7",
+      "changed": 7,
+      "edits": [
+        {
+          "at": "2026-10-21T12:05:31-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
+      "from_v": 0,
+      "gained": 0,
+      "id": "0b36f3b5a9be",
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {
+        "undecided \u2192 flag": 1,
+        "undecided \u2192 garbage": 2,
+        "undecided \u2192 spike": 4
+      },
       "n": 8,
       "note": "",
       "snap": [
@@ -289,7 +599,7 @@
           "garbage"
         ]
       ],
-      "v": 2
+      "v": 1
     }
   ]
 }

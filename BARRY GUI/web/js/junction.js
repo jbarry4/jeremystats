@@ -45,6 +45,7 @@ BARRY.junction = (function () {
     sel: null,            // Many: the gids ticked (a Set), null until listed
     manyFind: '',         // Many: what is typed in its search
     manyV: {},            // Many: gid -> { ds, ied } version names chosen
+    manyE: {},            // Many: gid -> { ds, ied } entry ids chosen
   };
 
   let recs = null;        // /api/confluence/recordings
@@ -92,9 +93,14 @@ BARRY.junction = (function () {
 
   /* The inputs Many would use for a recording: the newest entry of each
      kind at its newest version. */
+  /* The entries a recording pools from in Many at once: the ones chosen
+     in its pop-up (2026-10-21: "the sets are locked in"), else the first
+     the server offers on each side. */
   function defaultsFor(r) {
-    const ds = (r.ds || [])[0], ied = (r.ied || [])[0];
-    return { ds, ied };
+    const m = q.manyE[r.gid] || {};
+    const pick = (list, id) => (id && (list || []).find((x) => x.id === id))
+                               || (list || [])[0];
+    return { ds: pick(r.ds, m.ds), ied: pick(r.ied, m.ied) };
   }
 
   /* Whether a pool from exactly these inputs is already banked. A pool from
@@ -1232,41 +1238,99 @@ BARRY.junction = (function () {
     return row;
   }
 
-  /* Which version a side pools from, out of every version its entry has
-     -- shown, so what is available is seen, and choosable. Archived ones
-     are offered last, and said. */
+  /* Which set and version a side pools from: one button saying both --
+     the set's name, its version, what made that version -- that opens the
+     recording's pop-up (2026-10-21: "the sets are locked in... versions are
+     so undescriptive... if it's by recording, pop up, see the sets and
+     their versions"). */
   function manyVerPick(r, side) {
     const ent = defaultsFor(r)[side] || {};
-    const vs = (ent.versions || []).slice();
+    const vs = ent.versions || [];
     const cur = manyVer(r, side);
-    if (vs.length <= 1) {
-      return el('span', { class: 'jn-mver one',
-        text: BARRY.ui.versionLabel(cur),
-        title: vs.length ? 'Its only version' : '' });
-    }
-    const live = vs.filter((v) => !v.archived);
-    const gone = vs.filter((v) => v.archived);
-    const opt = (v) => el('option', {
-      value: v.name, selected: String(v.name) === String(cur) ? 'selected' : null,
-      text: BARRY.ui.versionLabel(v.name)
-          + (v.n != null ? ' \u00b7 ' + num(v.n) : '')
-          + (String(v.name) === String(ent.tip) ? ' \u00b7 newest' : '')
-          + (v.archived ? ' \u00b7 archived' : ''),
-    });
-    return el('select', {
-      class: 'jn-mver',
-      title: vs.length + ' versions of this entry. The pool is made from the '
-           + 'one chosen here.',
+    const v = vs.find((x) => String(x.name) === String(cur)) || null;
+    const others = ((side === 'ds' ? r.ds : r.ied) || []).length - 1;
+    return el('button', {
+      type: 'button', class: 'vbtn jn-mver',
       disabled: merging ? 'disabled' : null,
-      'aria-label': 'Version of ' + (ent.name || side),
-      onchange: (e) => {
-        const m = q.manyV[r.gid] || (q.manyV[r.gid] = {});
-        m[side] = e.target.value === String(ent.tip) ? null : e.target.value;
-        batch = null;
-        paint();
-      },
-    }, live.map(opt).concat(gone.length
-      ? [el('optgroup', { label: 'Archived' }, gone.map(opt))] : []));
+      title: 'The sets this recording has on each side and every version of '
+           + 'them, as trees. Click to see them and choose.',
+      onclick: () => manyPop(r, side),
+    }, [
+      el('strong', { class: 'vbtn-n', text: BARRY.ui.versionLabel(cur) }),
+      v ? BARRY.ui.versionChip(v, ent.pipeline, side) : null,
+      el('span', { class: 'vbtn-more',
+        text: (vs.length > 1 ? vs.length + ' versions' : 'its only version')
+            + (others > 0 ? ' · ' + others + ' other set'
+                            + (others === 1 ? '' : 's') : '') }),
+      el('span', { class: 'vbtn-caret', 'aria-hidden': 'true', text: '▾' }),
+    ].filter(Boolean));
+  }
+
+  /* One recording's inputs, whole: every Incisor set and every Doppler set
+     it has, each with its version tree. Choosing a set's version chooses
+     the set and the version together; Done keeps it. */
+  function manyPop(r, focus) {
+    const card = (side, ent) => {
+      const d = defaultsFor(r)[side] || {};
+      const on = d.id === ent.id;
+      const chosenV = on ? manyVer(r, side) : ent.tip;
+      return el('div', { class: 'jn-ppop-set' + (on ? ' on' : '') }, [
+        el('div', { class: 'jn-ppop-head' }, [
+          el('strong', { text: ent.name || ent.id }),
+          BARRY.ui.producerChip(ent.pipeline, side),
+          alignWord(ent),
+          on ? BARRY.ui.chip('pools from this', { flag: true, kind: 'ok' }) : null,
+          ent.archived ? BARRY.ui.chip('archived', { flag: true }) : null,
+        ].filter(Boolean)),
+        BARRY.ui.versionTree({
+          versions: ent.versions || [], value: on ? chosenV : null,
+          idOf: (v) => v.name, notes: true, family: false,
+          producer: ent.pipeline, producerType: side,
+          onpick: (v) => {
+            if (!v) return;
+            (q.manyE[r.gid] = q.manyE[r.gid] || {})[side] = ent.id;
+            (q.manyV[r.gid] = q.manyV[r.gid] || {})[side] =
+              String(v.name) === String(ent.tip) ? null : v.name;
+            batch = null;
+            redraw();
+          },
+        }),
+      ]);
+    };
+    const col = (side, label) => {
+      // Archived sets last (the user's rule): kept, not offered first.
+      const [liveE, goneE] = BARRY.ui.splitArchived(
+        (side === 'ds' ? r.ds : r.ied) || [], (x) => !!x.archived);
+      const ents = liveE.concat(goneE);
+      return el('div', { class: 'jn-ppop-col' + (focus === side ? ' focus' : '') }, [
+        el('div', { class: 'section-label', text: label }),
+        ents.length ? null : el('p', { class: 'hint', text: 'None banked.' }),
+      ].concat(ents.map((ent) => card(side, ent))).filter(Boolean));
+    };
+    const body = el('div', { class: 'jn-ppop' });
+    function redraw() {
+      body.innerHTML = '';
+      body.appendChild(col('ds', 'Incisor’s dentate spikes'));
+      body.appendChild(col('ied', 'Doppler’s IEDs'));
+      requestAnimationFrame(() => body.querySelectorAll('.vtree')
+        .forEach((t) => t.redraw && t.redraw()));
+    }
+    redraw();
+    showModal(el('div', { class: 'vpop jn-ppop-wrap' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: nameOf(r) + ': what it pools from' }),
+        el('div', { class: 'spacer' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        el('p', { class: 'hint', text: 'Every set this recording has on each '
+          + 'side, with every version of it: who made it, when, what processed '
+          + 'it and its note. Click a version to pool from that set at that '
+          + 'version.' }),
+        body,
+      ]),
+      BARRY.ui.modalFoot([], [BARRY.ui.button({ kind: 'primary', text: 'Done',
+        onclick: () => { closeModal(); paint(); } })]),
+    ]));
   }
 
   function resultBits(res, r) {

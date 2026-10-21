@@ -1142,11 +1142,19 @@ def code(name):
     return short(name).replace(" ", "").replace("-", "")
 
 
+def say(name):
+    """A region as people read it: the Monolith's name (histology v2: the
+    left POR probes are in subiculum, so that channel group is Left
+    POR-SUB), shortened."""
+    from . import monolith as MO
+    return short(MO.label(name))
+
+
 def build(day_data, names, progress=None, check=None):
     """The models, their gates, post hocs and follow-ups, from the loaded
     day files {(rat, day): (arrs, fp, meta)}."""
     pr = pairs_of(len(names))
-    pair_names = ["%s – %s" % (short(names[a]), short(names[b])) for a, b in pr]
+    pair_names = ["%s – %s" % (say(names[a]), say(names[b])) for a, b in pr]
     bil = set(bilateral(names))
     results, n_done = [], 0
     jobs = [(mdl, bi, mi) for mdl in MODELS for bi in range(len(BANDS))
@@ -1159,7 +1167,7 @@ def build(day_data, names, progress=None, check=None):
             progress(n_done, len(jobs), "%s · %s%s" % (mdl[1], BAND_SAY[BANDS[bi][0]],
                                                       " · " + METHOD_SAY[METHODS[mi]] if mdl[5] == "pair" else ""))
         n_done += 1
-        units = pair_names if mdl[5] == "pair" else [short(n) for n in names]
+        units = pair_names if mdl[5] == "pair" else [say(n) for n in names]
         tab_all = model_table(day_data, mdl, bi, mi, units, days=DAYS)
         tab = {r: {d: per[d] for d in TESTED} for r, per in tab_all.items()}
         keep = included_units(tab, mdl, units)
@@ -1204,13 +1212,13 @@ def build(day_data, names, progress=None, check=None):
                 pi = pair_names.index(r["unit"])
                 a, bb = pr[pi]
                 meas = {k: follow_test(day_data, mdl, bi, pi, a, bb, k) for k in FOLLOW_KEYS}
-                fol.append({"pair": r["unit"], "a": short(names[a]), "b": short(names[bb]),
+                fol.append({"pair": r["unit"], "a": say(names[a]), "b": say(names[bb]),
                             "bilateral": (a, bb) in bil, "measures": meas})
             res["follow"] = {"basis": basis, "pairs": fol}
         results.append(res)
     # Bilateral coherence, gated on any first-pass coherence model passing.
     bl = [pair_names[pr.index(p)] for p in sorted(bil)]
-    return {"schema": SCHEMA, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "regions": [short(n) for n in names],
+    return {"schema": SCHEMA, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "regions": [say(n) for n in names],
             "pairs": pair_names, "bilateral": bl, "bands": [{"id": b, "low": lo, "high": hi, "label": BAND_SAY[b]}
                                                             for b, lo, hi in BANDS],
             "methods": [{"id": m, "label": METHOD_SAY[m]} for m in METHODS],
@@ -1531,6 +1539,9 @@ def readme_text(out, positive, welch, rows_summary):
     w("  One value per rat, day, window and pair: the mean over that day's trials (16 cue pairs).")
     w("  Comparison 8 is power instead: log10 power in each region.")
     w("  Precon2 and Precon3 are drawn on the tab but never tested, so they are not in these files.")
+    w("  Regions: histology v2, probes scored 'y' only. No probe aimed at POR is in POR; the left")
+    w("  ones sit in subiculum, so that region is L POR-SUB (rats %s). Right POR-SUB is left out." % (
+        ", ".join(str(r) for r in D.get("por_sub_rats") or []) or "none"))
     w("")
     w("THE TEST")
     w("  A mixed model: day (Precon1, Precon4) x phase (the comparison's two windows) x pair,")
@@ -1786,6 +1797,7 @@ def inputs_of(man, names, chan_map):
     folders, which trials were kept, which wires are marked bad, which
     regions histology rules out, what each rat heard, and the seed. Plain
     JSON a person can read."""
+    from . import monolith as MO
     days = []
     for d in man.get("days") or []:
         days.append({
@@ -1801,6 +1813,9 @@ def inputs_of(man, names, chan_map):
         "about": "Inputs for tools/joe_standalone.py: the decisions behind tab 8 (which trials, wires and regions), "
                  "not its numbers. The script reads the recordings and works out everything else itself.",
         "schema": SCHEMA, "regions": list(names), "channels": {k: list(v) for k, v in chan_map.items()},
+        # The names people read (Left POR is Left POR-SUB, histology v2); the
+        # script names its pairs with them, so its files match tab 8's.
+        "labels": {n: MO.label(n) for n in names if MO.label(n) != n},
         "identity": {str(r): ratidentity.identity(r) for r in sorted({int(d["rat"]) for d in man.get("days") or []})},
         "bands": [list(b) for b in BANDS], "skip_hz": list(SKIP_HZ), "fp": {"seed": FP_SEED, "lengths": list(FP_LENGTHS),
                                                                           "edge_s": FP_EDGE_S},
@@ -1874,6 +1889,9 @@ def joe_work(worker, workers=None):
     out["n_days"] = len(day_data)
     out["notes"] = notes
     out["histology"] = man.get("histology")
+    # Which rats' left POR probe is in subiculum: the rats Left POR-SUB has.
+    out["por_sub_rats"] = sorted({int(d["rat"]) for d in man.get("days") or []
+                                  if d["day"] in TESTED and "Left POR" not in (d.get("blocked") or [])})
     out["trial_counts"] = {"r%d %s" % k: len(v[2]["trials"]) for k, v in day_data.items()}
     got = write_exports(out, joe_dir("export"))
     out["exports"] = got["downloads"]
@@ -1996,19 +2014,27 @@ def agreement(tol=1e-6):
 
 
 def script_work(worker):
-    """Run the standalone script here, on the same recordings, into
-    joe_dir("script"), and compare."""
+    """Run the standalone script here, on the same recordings, and compare.
+
+    It writes into a fresh folder first. Only a run that read every rat-day
+    replaces joe_dir("script"): a run that could not reach the recordings
+    (the data drive not connected, say) would otherwise leave empty files
+    behind and the agreement would read as the script disagreeing
+    (2026-10-21: E: was unplugged and every file "differed")."""
+    import shutil
     import subprocess
     import sys
     inp = joe_dir("joe_inputs.json")
     if not os.path.isfile(inp):
         raise JoeError("Work tab 8 out first: the script reads the inputs it writes.", 409)
     out = joe_dir("script")
-    os.makedirs(out, exist_ok=True)
+    tmp = joe_dir("script.new")
+    shutil.rmtree(tmp, ignore_errors=True)
+    os.makedirs(tmp)
     worker.note(phase="joe-script", item="running tools/joe_standalone.py")
     log = open(joe_dir("script.log"), "w", encoding="utf-8")
     try:
-        p = subprocess.Popen([sys.executable, script_path(), "--inputs", inp, "--out", out, "--jobs", "4"],
+        p = subprocess.Popen([sys.executable, script_path(), "--inputs", inp, "--out", tmp, "--jobs", "4"],
                              stdout=log, stderr=subprocess.STDOUT)
         while p.poll() is None:
             if worker.stopping():
@@ -2019,6 +2045,20 @@ def script_work(worker):
         log.close()
     if p.returncode != 0:
         raise JoeError("The script stopped with an error; its log is %s." % joe_dir("script.log"), 500)
+    # A rat-day the script could not read is a note "rN PrecondX: <error>".
+    with open(inp, encoding="utf-8") as fh:
+        days = [d for d in json.load(fh)["days"] if d["day"] in TESTED]
+    notes_path = os.path.join(tmp, "notes.txt")
+    notes = open(notes_path, encoding="utf-8").read().splitlines() if os.path.isfile(notes_path) else []
+    unread = [n for n in notes if any(n.startswith("r%d %s: " % (int(d["rat"]), d["day"])) for d in days)]
+    if unread:
+        shutil.rmtree(tmp, ignore_errors=True)
+        missing = "cannot find the path" in unread[0] or "No such file" in unread[0]
+        raise JoeError(("The script could not read %d of the %d rat-days%s, so nothing was compared and the last "
+                        "comparison stands. First: %s") % (
+            len(unread), len(days), " (is the data drive connected?)" if missing else "", unread[0]), 409)
+    shutil.rmtree(out, ignore_errors=True)
+    os.replace(tmp, out)
     agree = agreement()
     got = result()
     if got is not None:
