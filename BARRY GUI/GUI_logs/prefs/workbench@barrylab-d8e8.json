@@ -6,15 +6,15 @@
     "curate_span": "2026-10-20T20:50:10.137863+00:00",
     "density": "2026-10-20T20:39:07.822959+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
-    "panning_at": "2026-10-20T21:14:43.748003+00:00",
-    "panning_span": "2026-10-20T17:30:04.234860+00:00",
+    "panning_at": "2026-10-21T15:34:20.154832+00:00",
+    "panning_span": "2026-10-21T14:28:52.824434+00:00",
     "pipeline_folders": "2026-09-23T13:26:19.592745+00:00",
     "radio": "2026-10-13T19:54:21.520703+00:00",
     "recent_scripts": "2026-10-12T15:37:32.641324+00:00",
     "result_group": "2026-09-28T20:50:31.306822+00:00",
     "spotter_at": "2026-10-20T20:58:38.591456+00:00",
     "spotter_light": "2026-10-16T17:21:44.827873+00:00",
-    "updated": "2026-10-20T21:17:27.188288+00:00",
+    "updated": "2026-10-21T15:35:37.626800+00:00",
     "vacc_signed_ack": "2026-10-20T16:14:37.060022+00:00"
   },
   "_keys": {
@@ -120,7 +120,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-20T21:17:27.188288+00:00",
+    "at": "2026-10-21T15:35:37.626800+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -543,8 +543,8 @@
     "DESKTOP-4H65AI7": true,
     "LCOM549913": false
   },
-  "panning_at": "{\"s45965a6b13d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e9609fe60ed\",\"t\":39.066984,\"at\":1792507235815},\"s79ba9ba163c4:pooled\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e127b36b23c\",\"t\":12.197434,\"at\":1792515069651},\"s45bae70722f2:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":257,\"id\":\"efb1cb85a58\",\"t\":57.814477,\"at\":1792530883739},\"sd0d0bded958b:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":2,\"id\":\"e4d8cec8ce8\",\"t\":25.35749,\"at\":1792519409404}}",
-  "panning_span": 1,
+  "panning_at": "{\"s45965a6b13d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e9609fe60ed\",\"t\":39.066984,\"at\":1792507235815},\"s79ba9ba163c4:pooled\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e127b36b23c\",\"t\":12.197434,\"at\":1792595619389},\"s45bae70722f2:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":257,\"id\":\"efb1cb85a58\",\"t\":57.814477,\"at\":1792530883739},\"sd0d0bded958b:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":2,\"id\":\"e4d8cec8ce8\",\"t\":25.35749,\"at\":1792519409404},\"s45bae70722f2:pooled.ebfa98498290b\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":246,\"id\":\"efc21024109\",\"t\":1708.491514,\"at\":1792595576524},\"s38b9e61c5684:pooled.eafa70b62f372\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":473,\"id\":\"e6bf584fe41\",\"t\":1842.81976,\"at\":1792596663805},\"s0a9e96cf1739:pooled.e43a2cfedde17\":{\"review\":\"left\",\"origin\":\"incisor\",\"index\":299,\"id\":\"e1a03dd021b\",\"t\":1697.422592,\"at\":1792596782301},\"sc74c98b2495d:pooled.eb60578899091\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":141,\"id\":\"ea703fce3c9\",\"t\":598.605732,\"at\":1792596857989}}",
+  "panning_span": 0.819672131147541,
   "pipeline_folders": {
     "session": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43"
   },
@@ -602,7 +602,7 @@
     "Home": "dark",
     "LCOM549913": "halloween"
   },
-  "updated": "2026-10-20T17:17:27-04:00",
+  "updated": "2026-10-21T11:35:37-04:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": true,
