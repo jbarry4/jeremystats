@@ -112,9 +112,15 @@
      ------------------------------------------------------------------------ */
   const realMM = window.matchMedia ? window.matchMedia.bind(window) : null;
   let wrapper = null;
+  /* The system's own answer, never Light's. Through whatever matchMedia is
+     installed when it is not this file's wrapper, so a harness that stands
+     in a matchMedia of its own still decides it. */
   function osReducedMotion() {
-    try { return !!(realMM && realMM('(prefers-reduced-motion: reduce)').matches); }
-    catch (e) { return false; }
+    try {
+      const mm = (wrapper && window.matchMedia === wrapper) ? realMM
+        : (window.matchMedia ? window.matchMedia.bind(window) : realMM);
+      return !!(mm && mm('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) { return false; }
   }
   function wrapOn() {
     if (wrapper || !realMM) return;

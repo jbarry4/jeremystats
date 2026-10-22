@@ -59,7 +59,9 @@ BARRY.views.toolkit = (function () {
        time's replaces it when it lands. */
     const asking = BARRY.data.get('/api/toolkit/scopes');
     if (!scopes) {
-      const was = await BARRY.data.stale('/api/toolkit/scopes', 250);
+      // As long as the browser's store takes, never longer than this time's.
+      const was = await Promise.race([BARRY.data.stale('/api/toolkit/scopes', 4000),
+                                      asking.then(() => null, () => null)]);
       if (was && was.value) {
         scopes = was.value;
         seedAll();

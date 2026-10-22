@@ -2583,7 +2583,16 @@ BARRY.braces = (function () {
   let aidWin = null;
 
   function vLayout() {
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    /* The main window as Profile › Support panel preferences laid it out
+       (2026-10-22), or the traces alone; the traces stay first. */
+    const mp = BARRY.supportPanels
+      ? BARRY.supportPanels.applyMain('braces', [{ panel: 'traces' }], view.sess,
+                                      { col: 0.5, row: 0.5 })
+      : (BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 }), null);
+    // Profile's span, on every entry (a zoom here still changes it after).
+    if (mp && mp.span) {
+      try { BARRY.prefs.set(SPAN_KEY, mp.span); } catch (e) { /* session */ }
+    }
     if (!vAids()) {
       /* The second window was blocked, and a blocked pop-up is how this
          mode ends up looking like it did nothing at all: the traces open,
@@ -2591,12 +2600,14 @@ BARRY.braces = (function () {
          So the aids come into THIS window instead. Cramped, and it says so
          -- but cramped is a thing somebody can work with and absent is
          not. */
-      BARRY.views.xplore.setPanes([
-        { panel: 'traces' },
-        { panel: 'csd' },
-        { panel: 'theta' },
-        { panel: 'voltage' },
-      ], { col: 0.5, row: 0.5 });
+      /* The main window's own choice is undone first, so its drawn layout
+         does not land on a different set of panes; the fallback is then
+         the traces and the second window's panels, as chosen. */
+      if (BARRY.supportPanels) BARRY.supportPanels.restoreMain(true);
+      const aidSpecs = (vAids.lastSpecs || [{ panel: 'csd' }, { panel: 'theta' },
+                                           { panel: 'voltage' }]).slice(0, 7);
+      BARRY.views.xplore.setPanes([{ panel: 'traces' }].concat(aidSpecs),
+                                  { col: 0.5, row: 0.5 });
       toast('The second window was blocked, so the aid panels are in this '
             + 'one. Allow pop-ups for 127.0.0.1 and re-enter for the '
             + 'roomier layout.', 'warn', 11000);
@@ -2617,13 +2628,23 @@ BARRY.braces = (function () {
     }
     const chans = ((view.sess.info || {}).channels || []);
     const every8 = chans.filter((c, i) => i % 8 === 0).map((c) => c.index);
-    aidWin = BARRY.views.xplore.popOutPanes(view.sess, [
+    const defaults = [
       { panel: 'csd' },
       { panel: 'theta' },
       { panel: 'voltage' },
       { panel: 'spectrogram', tfChannels: every8, tfMode: 'stack',
         fmin: 1, fmax: 250 },
-    ], { role: 'aids', name: 'barry-braces-aids', width: 720, height: 1000,
+    ];
+    // What this person chose (Profile › Support panel preferences); off is
+    // off, and nothing is crammed into the main window for it.
+    const plan = BARRY.supportPanels
+      ? BARRY.supportPanels.plan('braces', defaults, view.sess)
+      : { specs: defaults };
+    if (!plan) return true;
+    vAids.lastSpecs = plan.specs;
+    aidWin = BARRY.views.xplore.popOutPanes(view.sess, plan.specs, {
+         ...(BARRY.supportPanels ? BARRY.supportPanels.opts(plan) : {}),
+         role: 'aids', name: 'barry-braces-aids', width: 720, height: 1000,
          // Folded on arrival, as Checkup's are: these four are for glancing
          // at, and the headers and control strips cost more of a short pane
          // than they are worth.
@@ -2685,6 +2706,8 @@ BARRY.braces = (function () {
       closeCrowded();
       view = null;
       document.removeEventListener('keydown', vKeys, true);
+      // A main window laid out from Profile goes back to its one pane.
+      if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
       setMode(null);
       setView('toolkit');
       // Banked on the way out, after the view has gone (autoBank).
@@ -3881,6 +3904,8 @@ BARRY.braces = (function () {
      Read off `sess.curationMarks` like everything else, so the pop-out
      windows get it without knowing what Braces is. */
   function drawStrip(ctx, sess, w, h, dur) {
+    // The marks' strength, handed in by the pane (Marks > Faded).
+    const A = ctx.globalAlpha;
     const marks = sess && sess.curationMarks;
     if (!marks || marks.kind !== 'braces' || !dur) return false;
     const evs = marks.events || [];
@@ -3905,7 +3930,7 @@ BARRY.braces = (function () {
         // Full height, and drawn last would be better still -- but there
         // are only two of them and forty of everything else, so a wider
         // line is enough to find them.
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = A;
         ctx.lineWidth = 2;
         ctx.setLineDash(e.k === 'now' ? [] : [3, 2]);
         ctx.strokeStyle = colour;
@@ -3915,7 +3940,7 @@ BARRY.braces = (function () {
         ctx.stroke();
         continue;
       }
-      ctx.globalAlpha = 0.72;
+      ctx.globalAlpha = (0.72) * A;
       ctx.lineWidth = 1;
       ctx.setLineDash([]);
       ctx.strokeStyle = colour;
@@ -3930,12 +3955,14 @@ BARRY.braces = (function () {
       ctx.stroke();
     }
     ctx.restore();
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = A;
     ctx.setLineDash([]);
     return true;
   }
 
   function draw(ctx, sess, win, x0, plotW, y0, plotH, P) {
+    // The marks' strength, handed in by the pane (Marks > Faded).
+    const A = ctx.globalAlpha;
     const marks = sess && sess.curationMarks;
     if (!marks || marks.kind !== 'braces') return;
     const evs = marks.events || [];
@@ -3967,7 +3994,7 @@ BARRY.braces = (function () {
     if (home) {
       const xa = X(home.start - reach), xb = X(home.start + reach);
       const la = Math.max(x0, xa), lb = Math.min(x0 + plotW, xb);
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = A;
       /* Strong enough to survive a raster.
 
          At five per cent over a CSD image this read as a rendering
@@ -4040,7 +4067,7 @@ BARRY.braces = (function () {
              outline; the bright line goes inside it. The same trick the
              marks and the gridlines use, one step heavier because a
              curve is thinner than a rule and crosses more of the image.  */
-          ctx.globalAlpha = 1;
+          ctx.globalAlpha = A;
           ctx.lineJoin = 'round';
           ctx.lineWidth = 3.4;
           ctx.strokeStyle = 'rgba(0,0,0,0.72)';
@@ -4050,7 +4077,7 @@ BARRY.braces = (function () {
           ctx.stroke();
         }
         ctx.restore();
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = A;
       }
     }
 
@@ -4101,7 +4128,7 @@ BARRY.braces = (function () {
       for (const [top, bottom] of spans) {
         ctx.setLineDash([]);
         ctx.lineWidth = focus ? 1.5 : 1;
-        ctx.globalAlpha = 0.55;
+        ctx.globalAlpha = (0.55) * A;
         ctx.strokeStyle = 'rgba(0,0,0,0.9)';
         ctx.beginPath(); ctx.moveTo(x - 1, top); ctx.lineTo(x - 1, bottom);
         ctx.stroke();
@@ -4116,7 +4143,7 @@ BARRY.braces = (function () {
       /* Not quieter for being outside the pass, nor for nobody having
          looked: where it goes solid and nearly opaque, where it was
          dashed and a little less. */
-      ctx.globalAlpha = focus ? 1 : (dashed ? 0.8 : 0.92);
+      ctx.globalAlpha = (focus ? 1 : (dashed ? 0.8 : 0.92)) * A;
       ctx.setLineDash(dashed ? [4, 3] : []);
       ctx.lineWidth = focus ? 2.5 : 1.8;
       ctx.strokeStyle = colour;
@@ -4136,7 +4163,7 @@ BARRY.braces = (function () {
         const capCol = e.st === 'garbage' ? DRAW.bin
           : (e.st === 'confirmed' || e.st === 'kept') ? DRAW.ok : DRAW.ask;
         ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = A;
         ctx.beginPath();
         ctx.moveTo(x - 6, y0 + 1);
         ctx.lineTo(x + 6, y0 + 1);
@@ -4160,7 +4187,7 @@ BARRY.braces = (function () {
       const xa = X(a.start), xb = X(b.start);
       const y = y0 + Math.min(plotH - 6, 16);
       ctx.setLineDash([]);
-      ctx.globalAlpha = 0.9;
+      ctx.globalAlpha = (0.9) * A;
       ctx.lineWidth = 1;
       ctx.strokeStyle = DRAW.now;
       ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke();
@@ -4178,10 +4205,10 @@ BARRY.braces = (function () {
       ctx.font = '10px ui-monospace, Consolas, monospace';
       const w = ctx.measureText(txt).width;
       const mx = (xa + xb) / 2;
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = (0.85) * A;
       ctx.fillStyle = 'rgba(0,0,0,0.65)';
       ctx.fillRect(mx - w / 2 - 3, y - 14, w + 6, 11);
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = A;
       ctx.fillStyle = DRAW.now;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'alphabetic';

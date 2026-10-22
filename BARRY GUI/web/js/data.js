@@ -255,6 +255,39 @@ BARRY.data = (function () {
     return BARRY.stash.forget(stashKey(url));
   }
 
+  /* Last time's lists, into memory before anybody asks.
+
+     Measured 2026-10-22 on a 4x-slowed CPU: the browser's store took longer
+     than the 300-400 ms a view will wait for it, so the Event Bank drew its
+     skeleton for 2.8 s on a second start although last time's list was
+     sitting in the store. Read them once, when the page is first idle, and
+     the views find them in memory -- `stale` then answers at once. Only the
+     lists every session opens; each is a read of one stored value, and the
+     live answer still replaces it. */
+  const HYDRATE = ['/api/registry', '/api/bank', '/api/toolkit/scopes',
+                   '/api/vacc/knows', '/api/people'];
+  function hydrate() {
+    for (const url of HYDRATE) {
+      if (mem.has(url)) continue;
+      BARRY.stash.get(stashKey(url), 10000).then((was) => {
+        if (mem.has(url) || !was || !was.value || was.value.body === undefined) return;
+        mem.set(url, { value: was.value.body, at: was.at || 0,
+                       etag: was.value.etag || null, live: false });
+      }).catch(() => { /* nothing kept */ });
+    }
+  }
+  try {
+    // The main window -- or a frame whose address asks (`?hydrate=1`, for
+    // _dev/perf.html, which measures the page as a person meets it).
+    // Other harness frames start cold, as their checks expect.
+    if (window.top === window || /[?&]hydrate=1(?:&|$)/.test(location.search)) {
+      const later = window.requestIdleCallback
+        ? (fn) => window.requestIdleCallback(fn, { timeout: 1500 })
+        : (fn) => setTimeout(fn, 200);
+      later(hydrate);
+    }
+  } catch (e) { /* a frame of another origin: nothing kept here anyway */ }
+
   /* The two answers views kept by hand before this existed ('registry',
      'vacc-knows'). Kept here now, under their address; the old copies are
      two and a half megabytes nobody reads, so they go -- later, when the

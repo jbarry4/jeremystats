@@ -82,7 +82,7 @@ async function frameLite(src) {
   let wasLocal = null;
   const written = [];
   try {
-    await until(() => W().BARRY && W().BARRY.lite && W().BARRY.state.catalog
+    await until(() => ev('typeof BARRY === "object" && !!BARRY.lite && !!BARRY.state.catalog')
                       && D().querySelector('#rail .nav-item'), 30000);
     B = ev('BARRY');
     wasTheme = B.state.theme;

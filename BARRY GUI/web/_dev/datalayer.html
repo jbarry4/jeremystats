@@ -1,0 +1,219 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — BARRY.data: one copy, last time's first, a 304 when unchanged</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* web/js/data.js (BARRY.data) and the background slots in core.js's api().
+
+   What is promised (GUI-CONSTITUTION §10, "Lists: one copy, last time's
+   first, sent only when changed"):
+     - five readers of one list make one request and hold one copy;
+     - an unchanged list is a 304 with no body, and readers keep the very
+       same object;
+     - a write under /api/<thing> makes every kept answer under it ask again;
+     - requests nobody waits for take at most three connections, and one
+       somebody asked for goes straight out;
+     - after a restart, the first request sends last time's tag, and a 304
+       is answered out of this browser's store;
+     - `?hydrate=1` reads the common lists into memory when the page is idle.
+
+   Nothing is written to the server: the one write is answered by a stub in
+   the frame's `fetch`, as are the slow requests the slots are measured on.
+   The registry is only read. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || d === undefined ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 200, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+const URL_ = '/api/registry';
+const TAG = 'barry.etag:' + URL_;
+
+(async () => { const f = document.getElementById('app'); try {
+  const loaded = () => new Promise((r) => f.addEventListener('load', r, { once: true }));
+  await loaded();
+  const W = () => f.contentWindow;
+  const B = () => W().eval('BARRY');    // a const in the frame, not a property
+  const up = () => untilN(() => typeof W().setView === 'function'
+                                && W().eval('BARRY.data && BARRY.stash && BARRY.requestSlots'));
+  check('the application loads, with BARRY.data', !!(await up()));
+
+  /* Every request the frame makes: what it sent, what came back. A request
+     whose address starts with one of `stubs` is answered here instead. */
+  let seen = [];
+  const stubs = [];
+  const answer = (body) => new (W().Response)(JSON.stringify(body),
+    { status: 200, headers: { 'Content-Type': 'application/json' } });
+  const tap = () => {
+    const real = W().fetch;
+    W().fetch = async (input, init) => {
+      const url = String((input && input.url) || input);
+      const hdrs = (init && init.headers) || {};
+      const rec = { url, method: (init && init.method) || 'GET',
+                    inm: hdrs['If-None-Match'] || null, status: null,
+                    t0: performance.now() };
+      seen.push(rec);
+      const stub = stubs.find((s) => url.indexOf(s.prefix) === 0);
+      if (stub) return stub.answer(rec);
+      const res = await real.call(W(), input, init);
+      rec.status = res.status;
+      return res;
+    };
+  };
+  tap();
+  const gets = () => seen.filter((r) => r.url.split('?')[0] === URL_ && r.method === 'GET');
+
+  head('one copy, however many ask');
+  seen = [];
+  const D = B().data;
+  const asks = [D.get(URL_, { fresh: true })];
+  for (let i = 0; i < 4; i++) asks.push(D.get(URL_));
+  const got = await Promise.all(asks);
+  check('five readers, one request', gets().length === 1, gets().length);
+  check('every reader holds the same copy',
+        got.every((g) => g === got[0]) && !!(got[0] && got[0].tree));
+  const size = JSON.stringify(got[0]).length;
+  seen = [];
+  const young = await D.get(URL_, { maxAge: 60000 });
+  check('a reader within maxAge asks nothing and gets the same copy',
+        gets().length === 0 && young === got[0], gets().length);
+
+  head('unchanged is a 304, and readers keep the same object');
+  const tag = W().localStorage.getItem(TAG);
+  check('the tag of the live answer is kept', !!tag, String(tag));
+  seen = [];
+  const re = await D.get(URL_, { fresh: true });
+  const r0 = gets()[0] || {};
+  check('asking again sends the tag', !!tag && r0.inm === tag, r0.inm + ' vs ' + tag);
+  check('the server answers 304, with nothing to read', r0.status === 304, r0.status);
+  check('and the readers keep the very same object', re === got[0]);
+
+  head('a write under /api/registry asks again');
+  const heard = [];
+  const off = D.watch(URL_, (v, meta) =>
+    heard.push(Object.assign({ identical: v === got[0] }, meta)));
+  check('a new watcher hears what is in hand, at once',
+        heard.length === 1 && heard[0].held && heard[0].identical,
+        JSON.stringify(heard[0]));
+  stubs.push({ prefix: '/api/registry/__harness', answer: (rec) => {
+    rec.status = 200; return answer({ ok: true });
+  } });
+  seen = [];
+  await W().api('/api/registry/__harness', { method: 'POST', body: '{}' });
+  await untilN(() => heard.length >= 2, 100, 50);
+  const h1 = heard[1] || {};
+  check('the watcher hears the list again after the write', heard.length >= 2,
+        heard.length);
+  check('one request, a 304', gets().length === 1 && gets()[0].status === 304,
+        gets().map((r) => r.status).join(','));
+  check('so it is the same list, and says so', h1.stale === false && h1.same === true
+        && h1.identical, JSON.stringify(h1));
+  off();
+
+  head('requests nobody waits for take at most three connections');
+  let inBg = 0, maxBg = 0, maxLive = 0;
+  stubs.push({ prefix: '/api/__harness_slow', answer: (rec) => new Promise((resolve) => {
+    const bg = rec.url.indexOf('bg=1') >= 0;
+    if (bg) { inBg += 1; maxBg = Math.max(maxBg, inBg); }
+    maxLive = Math.max(maxLive, B().requestSlots.live);
+    setTimeout(() => {
+      if (bg) inBg -= 1;
+      rec.status = 200;
+      resolve(answer({ ok: true }));
+    }, 400);
+  }) });
+  seen = [];
+  const bgs = [];
+  for (let i = 0; i < 8; i++) {
+    bgs.push(W().api('/api/__harness_slow?bg=1&i=' + i, { priority: 'background' }));
+  }
+  await sleep(50);
+  const queued = B().requestSlots.queued;
+  const fg = W().api('/api/__harness_slow?fg=1');
+  const fgSent = seen.some((r) => r.url.indexOf('/api/__harness_slow?fg=1') === 0);
+  check('with eight waiting, some are queued', queued >= 5, queued + ' queued');
+  check('a request somebody made goes straight out, past the queue', fgSent);
+  const answers = await Promise.all(bgs.concat([fg]));
+  check('every one of them is answered', answers.every((a) => a && a.ok),
+        answers.filter((a) => a && a.ok).length + ' of ' + answers.length);
+  check('never more than three background requests at once',
+        maxBg >= 1 && maxBg <= 3 && maxLive <= 3, maxBg + ' / slots ' + maxLive);
+
+  head('after a restart, an unchanged list is a 304 answered from this browser');
+  let kept = null;
+  for (let i = 0; i < 40 && !kept; i++) {
+    const raw = await W().eval("BARRY.stash.get('data:/api/registry', 1000)");
+    if (raw && raw.value && raw.value.etag && raw.value.body) kept = raw.value;
+    else await sleep(250);
+  }
+  check('this browser keeps the answer with its tag',
+        !!kept && kept.etag === W().localStorage.getItem(TAG),
+        kept ? kept.etag : 'nothing kept');
+  let l = loaded();
+  W().history.replaceState(null, '', '/?linkhold=0');
+  W().location.reload();
+  await l;
+  await up();
+  tap();
+  seen = [];
+  if (B().data.peek(URL_)) {
+    say('note', '  the app read the list on its way up, so the restart is not cold here');
+  } else {
+    const t = W().localStorage.getItem(TAG);
+    const v = await B().data.get(URL_);
+    const r = gets()[0] || {};
+    check('the first request after a restart sends last time’s tag',
+          !!t && r.inm === t, r.inm + ' vs ' + t);
+    check('it is answered 304', r.status === 304, r.status);
+    check('and the list comes out of this browser, whole',
+          !!(v && v.tree) && JSON.stringify(v).length === size,
+          v ? JSON.stringify(v).length + ' vs ' + size : String(v));
+  }
+
+  head('?hydrate=1 reads last time’s lists into memory when the page is idle');
+  l = loaded();
+  W().location.replace('/?linkhold=0&hydrate=1');
+  await l;
+  await up();
+  const hyd = await untilN(() => W().eval("BARRY.data.peek('/api/registry')"), 80, 100);
+  check('the list is in memory before anybody asks', !!(hyd && hyd.value && hyd.value.tree));
+  if (hyd && hyd.stale === false) {
+    say('note', '  the app asked for it on its way up, so it is live already');
+  } else {
+    check('marked as last time’s until it is asked for', !!hyd && hyd.stale === true,
+          hyd ? 'stale ' + hyd.stale : 'none');
+  }
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.stack || e));
+}
+  head(bad === 0 ? 'one copy, last time’s first, a 304 when unchanged' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad + ': ' + Array.from(
+    out.querySelectorAll('.bad')).map((d) => d.textContent).join(' | ');
+  // The app polls; a frame left on it pins the runner's virtual time.
+  f.src = 'about:blank';
+})();
+</script>

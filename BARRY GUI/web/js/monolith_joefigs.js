@@ -13,11 +13,16 @@
    ========================================================================== */
 'use strict';
 
-window.MONO_FIGS = (function () {
+// window.MONO_FIGS is the figure library (js/monolith_figs.js); this is
+// tab 9's own.
+window.MONO_JOEFIGS = (function () {
   const M = () => window.MONO;
   const X = () => window.MONO_EXPLAIN;
   const NS = 'http://www.w3.org/2000/svg';
-  const P = { data: null, err: null, loading: false, seq: 0, making: false, makeNote: '', makeErr: null, open: new Set() };
+  // nullPick: which null each connectome shows, by figure id ('rats', the
+  // main one, or 'trials'); a toggle on its card (2026-10-22).
+  const P = { data: null, err: null, loading: false, seq: 0, making: false, makeNote: '', makeErr: null, open: new Set(),
+              nullPick: {} };
   const $ = (id) => document.getElementById(id);
   const el = (...a) => M().el(...a);
   function sv(tag, attrs, text) {
@@ -59,15 +64,17 @@ window.MONO_FIGS = (function () {
     P.loading = false;
     render();
   }
-  async function make() {
+  // onVacc: read the PAC profiles from the VACC's copies of the recordings
+  // first (the data drive need not be connected), then draw.
+  async function make(onVacc) {
     if (P.making) return;
-    P.making = true; P.makeErr = null; P.makeNote = '';
+    P.making = onVacc ? 'vacc' : 'here'; P.makeErr = null; P.makeNote = '';
     render();
     try {
-      await M().runHere('/joefigs', { confirm: true }, (note) => {
+      await M().runHere('/joefigs', onVacc ? { confirm: true, vacc: true } : { confirm: true }, (note) => {
         P.makeNote = note;
-        const b = $('figsmake');
-        if (b) b.textContent = 'Drawing: ' + note;
+        const b = onVacc ? ($('figsvacc') || $('figsvaccagain')) : $('figsmake');
+        if (b) b.textContent = (onVacc ? 'Reading on the VACC: ' : 'Drawing: ') + note;
       });
     } catch (e) {
       P.makeErr = /404|not found/i.test(e.message) ? 'Jarvis is running older code without this button: restart it, then press it again.'
@@ -87,6 +94,13 @@ window.MONO_FIGS = (function () {
       code: 'backend/joefigs.py, connectome(): for every session (a rat on a day), the mean over its trials of each window’s coherence, pair by pair (numpy.nanmean, so a trial that lost a wire to clipping is left out of that pair only); the change, second window minus first; the mean of those changes over the rats. The statistic of a ring is the sum of its edges: of the positive ones, of the negative ones, or of all. Drawn with matplotlib (a quadratic Bézier per edge).',
       means: 'A ring full of thick orange lines on Precon4 but not on Precon1 says the cue raised coherence across many pairs at once by Precon4. The sum is a single number for the whole network, so it can be significant when no single pair is.',
       toy: 'connectome',
+    },
+    ratflip: {
+      title: 'Flipping each rat\u2019s sign (the main test)',
+      what: 'The question tab 8\u2019s light answers is whether the rats changed together, so the rat is the unit. If nothing changed, each rat\u2019s change would be as likely to point up as down. So every one of the ways of flipping the sign of each rat\u2019s change is tried \u2014 with 8 rats, each up or down, 2\u2078 = 256 of them, the real one among them \u2014 and the ring\u2019s statistic computed for each. The share at least as extreme as the real one is its P.',
+      code: 'backend/joefigs.py, rat_signs() and connectome(): itertools.product((+1, \u22121), repeat=rats) lists every sign pattern (sampled past 14 rats); each rat\u2019s per-pair change, multiplied by its sign, averaged over the rats (numpy.nanmean, so a rat without a pair is left out of that pair only), and summed into the ring\u2019s statistic; exact_p(): the share of patterns at least as extreme (no +1: the real one is already counted). Increases one-sided upward, decreases downward, both two-sided. Nothing is corrected.',
+      means: 'With 8 rats the P comes in steps of 1/256 (0.004), and the smallest a two-sided P can be is 2/256, because flipping every rat gives the mirror image. This is the same unit as the mixed model behind tab 8\u2019s light, so the two agree when they should. The within-session shuffle, the other choice on the card, asks a different question: whether the change is bigger than trial-to-trial noise inside the sessions.',
+      toy: 'ratflip',
     },
     permutation: {
       title: 'The within-session shuffle',
@@ -126,7 +140,7 @@ window.MONO_FIGS = (function () {
     xcorr: {
       title: 'Amplitude cross-correlation',
       what: 'Take each region’s gamma loudness over time (its envelope). Slide one envelope past the other and correlate them at each shift. The best correlation is the peak; the shift where it happens is the lag, and a negative lag means the pair’s first region leads.',
-      code: 'backend/joe.py, xcorr_lags(): the envelopes (|analytic signal|, sweep.analytic), mean removed; their correlation at every lag within ±100 ms through the FFT (numpy.fft, zero-padded so it is linear, not circular), normalised as MATLAB’s xcorr(…, ’coeff’); the peak and its lag (Adhikari et al. 2010, the lab’s Dickson method).',
+      code: 'backend/joe.py, xcorr_lags(): the envelopes (|analytic signal|, sweep.analytic), mean removed; their correlation at every lag within ±100 ms through the FFT (numpy.fft, zero-padded so it is linear, not circular), normalised as MATLAB’s xcorr(x, y, ’coeff’); the peak and its lag (Adhikari et al. 2010, the lab’s Dickson method).',
       means: 'A higher peak says the two regions’ gamma bursts rise and fall together more; a lag that shifts says which one moves first has changed.',
       toy: 'xcorr',
     },
@@ -149,6 +163,7 @@ window.MONO_FIGS = (function () {
   // The toys. Each draws into `host` and returns { play } when it moves.
   const TOYS = {
     permutation: (host, f) => permToy(host, f),
+    ratflip: (host, f) => ratToy(host, f),
     connectome: (host, f) => connToy(host, f),
     'phasor-coh': (host) => phasorToy(host, 'coh'),
     'phasor-pli': (host) => phasorToy(host, 'pli'),
@@ -274,12 +289,105 @@ window.MONO_FIGS = (function () {
     return pl;
   }
 
+  // The rat-level test: each rat's change, its sign flipped every way.
+  // The rats are made up; the null it lands in is the figure's own.
+  function ratToy(host, f) {
+    host.innerHTML = '';
+    const VW = 360, VH = 230;
+    const N = f && f.n ? f.n : 256;
+    const svg = sv('svg', { viewBox: '0 0 ' + VW + ' ' + VH, width: '100%', class: 'mfig fgrat', role: 'img', style: 'max-width:' + VW + 'px',
+                            'aria-label': 'Each rat’s change with its sign flipped every way, and the distribution that gives' });
+    const ch = [0.042, 0.031, 0.055, -0.012, 0.026, 0.038, 0.019, 0.047];
+    const R = ch.length;
+    svg.appendChild(sv('text', { x: 8, y: 14, 'font-size': 11, fill: css('--ink-3') }, 'each rat’s change (made up): their mean is the ring’s'));
+    const Z = 66, K = 600;
+    svg.appendChild(sv('line', { x1: 8, x2: VW - 8, y1: Z, y2: Z, stroke: css('--line-2') }));
+    const bars = ch.map((_v, r) => {
+      const b = sv('rect', { x: 18 + r * 42, width: 22, class: 'fgratbar' });
+      svg.appendChild(b);
+      svg.appendChild(sv('text', { x: 29 + r * 42, y: 116, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-3') }, 'rat ' + (r + 1)));
+      return b;
+    });
+    const setBars = (sg) => bars.forEach((b, r) => {
+      const v = ch[r] * sg[r];
+      b.setAttribute('y', (v >= 0 ? Z - v * K : Z).toFixed(1));
+      b.setAttribute('height', Math.abs(v * K).toFixed(1));
+      b.setAttribute('fill', v >= 0 ? C.up : C.down);
+    });
+    const out = sv('text', { x: 8, y: 134, 'font-size': 11, fill: css('--ink') }, '');
+    svg.appendChild(out);
+    const HB = 214, HT = 150;
+    svg.appendChild(sv('line', { x1: 8, x2: VW - 8, y1: HB, y2: HB, stroke: css('--line-2') }));
+    const hist = sv('g', { class: 'fghist' });
+    svg.appendChild(hist);
+    const real = sv('line', { y1: HT - 6, y2: HB, stroke: css('--ink'), 'stroke-width': 2, opacity: 0 });
+    svg.appendChild(real);
+    const say = sv('text', { x: VW - 8, y: HT - 10, 'text-anchor': 'end', 'font-size': 11, fill: css('--ink') }, '');
+    svg.appendChild(say);
+    const nul = f && f.null ? f.null : null;
+    const lo = nul ? Math.min(nul.edges[0], f.obs) : -0.05, hi = nul ? Math.max(nul.edges[nul.edges.length - 1], f.obs) : 0.05;
+    const HX = (v) => 8 + (v - lo) / ((hi - lo) || 1) * (VW - 16);
+    const mean = (sg) => ch.reduce((a, v, r) => a + v * sg[r], 0) / R;
+    const sgn = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(3);
+    const drawHist = (cs) => {
+      hist.innerHTML = '';
+      const mx = Math.max(1, ...cs);
+      cs.forEach((c, i) => {
+        const x0 = 8 + i * (VW - 16) / cs.length;
+        const h = (HB - HT) * c / mx;
+        hist.appendChild(sv('rect', { x: x0.toFixed(1), y: (HB - h).toFixed(1), width: ((VW - 16) / cs.length - 0.6).toFixed(1), height: h.toFixed(1), fill: C.nul }));
+      });
+    };
+    // Every one of the toy's own 2^8 patterns, for when the figure has no null.
+    const own = () => {
+      const cs = new Array(30).fill(0);
+      for (let m = 0; m < (1 << R); m++) {
+        const v = mean(ch.map((_x, r) => ((m >> r) & 1 ? -1 : 1)));
+        cs[Math.max(0, Math.min(29, Math.floor((v + 0.05) / 0.1 * 30)))]++;
+      }
+      return cs;
+    };
+    const steps = [
+      { name: 'Each rat', say: 'Each rat has its own change, up (orange) or down (purple). Their mean is what the ring shows.' },
+      { name: 'Flip some', say: 'If nothing changed, each rat’s change was as likely to point the other way. Flip some rats’ signs and take the mean again.' },
+      { name: 'Every way', say: 'With 8 rats, each up or down, there are 2⁸ = 256 ways to flip them, the real one among them. Every one is tried, and their values pile up.' },
+      { name: 'Where it lands', say: 'The real value lands among them: its rank, and P, the share of the ' + fmtN(N) + ' at least as extreme.' },
+    ];
+    let seed = 11;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const pl = player(host, steps, async (k, quick) => {
+      real.setAttribute('opacity', 0); say.textContent = '';
+      if (k === 0) { const one = ch.map(() => 1); setBars(one); out.textContent = 'mean over the rats: ' + sgn(mean(one)); drawHist(new Array(30).fill(0)); }
+      if (k === 1) {
+        for (let i = 0; i < (quick ? 1 : 4); i++) {
+          const sg = ch.map(() => (rnd() < 0.5 ? -1 : 1));
+          setBars(sg); out.textContent = 'flipped: ' + sg.filter((x) => x < 0).length + ' rats, mean ' + sgn(mean(sg));
+          await wait(450);
+        }
+      }
+      if (k >= 2) {
+        setBars(ch.map(() => 1));
+        drawHist(nul ? nul.counts : own());
+        out.textContent = nul ? 'the figure’s own ' + fmtN(N) + ' sign patterns' : 'all 256 sign patterns of these rats';
+      }
+      if (k === 3 && f) {
+        const x = HX(f.obs);
+        real.setAttribute('x1', x.toFixed(1)); real.setAttribute('x2', x.toFixed(1));
+        if (!quick) await X().tween(400, (t) => real.setAttribute('opacity', t.toFixed(2)), 'out'); else real.setAttribute('opacity', 1);
+        say.textContent = 'rank ' + fmtN(f.rank) + ' of ' + fmtN(f.n) + ', ' + pSay(f.p) + (stars(f.p) ? ' ' + stars(f.p) : '');
+      }
+    });
+    host.appendChild(el('div', { class: 'xplayer fgtoy', 'data-toy': 'ratflip' }, [svg, pl.cap, pl.ctl]));
+    return pl;
+  }
+
   // The connectome's statistic: the figure's own edges, split and summed.
   function connToy(host, fig) {
     host.innerHTML = '';
     const st = (fig && fig.stats) || {};
     const regions = (P.data && P.data.regions) || [];
-    const VW = 360, VH = 260, CX = 130, CY = 128, RR = 96;
+    // The ring small enough that its right-hand names stop short of the sums.
+    const VW = 360, VH = 260, CX = 130, CY = 128, RR = 80;
     const svg = sv('svg', { viewBox: '0 0 ' + VW + ' ' + VH, width: '100%', class: 'mfig fgconn', role: 'img', style: 'max-width:' + VW + 'px',
                             'aria-label': 'The connectome’s edges, split into increases and decreases and summed' });
     const pos = regions.map((_r, i) => { const a = -Math.PI / 2 + (i + 0.5) * 2 * Math.PI / regions.length; return [CX + RR * Math.cos(a), CY + RR * Math.sin(a)]; });
@@ -505,7 +613,7 @@ window.MONO_FIGS = (function () {
         sec.appendChild(host);
         // The permutation toy plays the figure's own null where there is one.
         let feed = null;
-        if (key === 'permutation') {
+        if (key === 'permutation' || key === 'ratflip') {
           if (f.kind === 'connectome') {
             const g = (f.stats.graphs || []).find((x) => x.row === 'delta' && x.kind === 'pos') || (f.stats.graphs || [])[0];
             feed = g ? { null: g.null, obs: g.stat, rank: g.rank, n: g.n, p: g.p } : null;
@@ -524,23 +632,59 @@ window.MONO_FIGS = (function () {
   }
 
   /* ---------------- the figures ---------------- */
-  function figCard(f) {
+  // A follow-up measure's name, with its pair's regions (as the figure says it).
+  function measureSay(k, f) {
+    const a = f.a, b = f.b;
+    return { pli: 'PLI', icoh: 'Imaginary coherence', gc_ab: 'Granger ' + a + ' → ' + b, gc_ba: 'Granger ' + b + ' → ' + a,
+             xlag: 'Amplitude lag', xpeak: 'Amplitude cross-correlation peak', pac_ab: 'PAC ' + a + ' θ → ' + b + ' γ',
+             pac_ba: 'PAC ' + b + ' θ → ' + a + ' γ', pac_aa: 'PAC within ' + a, pac_bb: 'PAC within ' + b }[k] || k;
+  }
+  /* A connectome as its picked null shows it: the main one (the rats'
+     sign flips, what lit tab 8's light) or `alt` (the trials swapped
+     within each session). Everything else about the figure is shared. */
+  function viewOf(f0) {
+    if (f0.kind !== 'connectome' || !f0.alt || P.nullPick[f0.id] !== 'trials') return f0;
+    return Object.assign({}, f0, { files: f0.alt.files, legend: f0.alt.legend, methods: f0.alt.methods || f0.methods,
+                                   null: f0.alt.null, null_say: f0.alt.null_say, null_why: f0.alt.null_why,
+                                   stats: Object.assign({}, f0.stats, f0.alt.stats) });
+  }
+
+  function figCard(f0, into) {
+    const f = viewOf(f0);
     const label = f.kind === 'connectome' ? 'Figure ' + f.no : 'Figure ' + f.no;
-    const card = el('div', { class: 'card fgcard', id: 'fig-' + f.id.replace('.', '_'), 'data-fig': f.id, 'data-kind': f.kind });
+    const card = into || el('div', { class: 'card fgcard', id: 'fig-' + f.id.replace('.', '_'), 'data-fig': f.id, 'data-kind': f.kind });
+    card.innerHTML = '';
     card.appendChild(el('div', { class: 'hrow' }, [el('h3', {}, [el('span', { class: 'fgno', text: label + ' | ' }), f.legend.title])]));
+    /* Which null the rings are tested against (2026-10-22: "a flip-flop
+       option between these two, and make what got the light green the
+       main one"). */
+    if (f0.kind === 'connectome' && f0.alt) {
+      const pick = P.nullPick[f0.id] === 'trials' ? 'trials' : 'rats';
+      const opt = (id, text, why) => el('button', { type: 'button', class: pick === id ? 'active' : null, 'data-null': id,
+        'aria-pressed': String(pick === id), title: why, text,
+        onclick: () => { if (pick !== id) { P.nullPick[f0.id] = id; figCard(f0, card); } } });
+      card.appendChild(el('div', { class: 'hrow fgnull' }, [
+        el('span', { class: 'small muted', text: 'Tested against' }),
+        el('div', { class: 'seg', role: 'group', 'aria-label': 'Which null the rings are tested against' }, [
+          opt('rats', (f0.null_say || 'Rats flipped') + ' (the light\u2019s test)', f0.null_why || ''),
+          opt('trials', f0.alt.null_say || 'Trials swapped', f0.alt.null_why || ''),
+        ]),
+      ]));
+    }
     card.appendChild(el('div', { class: 'fgimg' }, [el('img', { src: FILE(f.files.svg), alt: f.legend.title, loading: 'lazy', class: 'fgsvg' })]));
     // The numbers that matter, said once more under the picture.
     const chips = el('div', { class: 'fgstats' });
     if (f.kind === 'connectome') {
       for (const g of f.stats.graphs) {
         chips.appendChild(el('span', { class: 'fgchip' + (g.p < 0.05 ? ' sig' : ''), 'data-row': g.row, 'data-kind': g.kind,
-          text: g.row_say + ' · ' + g.kind_say.toLowerCase() + ': ' + pSay(g.p) + (stars(g.p) ? ' ' + stars(g.p) : '') + ' (rank ' + fmtN(g.rank) + ')' }));
+          text: g.row_say + ' · ' + g.kind_say.toLowerCase() + ': ' + pSay(g.p) + (stars(g.p) ? ' ' + stars(g.p) : '') + ' (rank ' + fmtN(g.rank)
+            + (g.n ? ' of ' + fmtN(g.n) : '') + ')' }));
       }
     } else {
       for (const k of f.keys) {
         const ms = f.stats.measures[k] || {}, nl = f.stats.nulls[k] || {};
         chips.appendChild(el('span', { class: 'fgchip' + (ms.p < 0.05 ? ' sig' : ''), 'data-key': k,
-          text: k + ': t(' + ms.df + ') = ' + (ms.t != null ? ms.t.toFixed(2) : '—') + ', ' + pSay(ms.p) + (stars(ms.p) ? ' ' + stars(ms.p) : '') }));
+          text: measureSay(k, f) + ': t(' + ms.df + ') = ' + (ms.t != null ? ms.t.toFixed(2) : '—') + ', ' + pSay(ms.p) + (stars(ms.p) ? ' ' + stars(ms.p) : '') }));
         chips.appendChild(el('span', { class: 'fgchip' + (nl.p < 0.05 ? ' sig' : ''), 'data-key': k + '-perm',
           text: 'shuffles: ' + pSay(nl.p) + (stars(nl.p) ? ' ' + stars(nl.p) : '') + ' (rank ' + fmtN(nl.rank) + ' of ' + fmtN(nl.n) + ')' }));
       }
@@ -548,7 +692,8 @@ window.MONO_FIGS = (function () {
     card.appendChild(chips);
     card.appendChild(el('p', { class: 'small fglegend' }, [el('b', { text: 'Fig. ' + f.no + ' | ' + f.legend.title + ' ' }), f.legend.body]));
     if ((f.pac_missing || []).length) {
-      card.appendChild(el('p', { class: 'small warn fgpacnote', text: 'The phase–amplitude roses and comodulogram for this PAC need the recordings, which were not readable when this was drawn (is the data drive connected?). Connect it and press Draw again.' }));
+      card.appendChild(el('p', { class: 'small warn fgpacnote', text: 'The phase–amplitude roses and comodulogram for this PAC need the recordings, which were not readable when this was drawn. Read them on the VACC ('
+        + (P.data && P.data.recordings_read ? 'the link at the foot of the page' : 'the button at the top') + '), or connect the data drive and press Draw again.' }));
     }
     const tools = el('div', { class: 'hrow fgtools' }, [
       el('a', { class: 'more-btn', href: FILE(f.files.pdf, true), download: f.files.pdf, text: 'PDF' }),
@@ -571,6 +716,21 @@ window.MONO_FIGS = (function () {
     return card;
   }
 
+  // Where the PAC roses were read, and the proof that it was the same wire
+  // of the same recording: every trial's modulation index against tab 8's.
+  function readLine(D) {
+    const c = D.pac_check, v = D.vacc_run || {};
+    if (!c && D.recordings_where !== 'vacc') return null;
+    const within = (x) => (x < 1e-9 ? 'a billionth' : x < 1e-6 ? 'a millionth' : Number(x).toPrecision(2));
+    return el('p', { class: 'small muted', id: 'figsread', text: 'The PAC roses and comodulograms were read '
+      + (D.recordings_where === 'vacc' ? 'on the VACC, from its copies of the recordings' + (v.slurm_id ? ' (job ' + v.slurm_id + (v.at ? ', ' + v.at.replace('T', ' ').slice(0, 16) : '') + ')' : '') : 'here, from the recordings')
+      + (c ? (c.ok ? '. Every trial’s modulation index read there matched tab 8’s own to within ' + within(c.worst) + ' (' + fmtN(c.compared) + ' trials and windows), so it is the same wire of the same recording.'
+              : c.matched ? '. Every trial read there matched tab 8’s own to within ' + within(c.worst) + ' (' + fmtN(c.compared) + ' trials and windows), but '
+                + fmtN(c.only_tab) + ' that tab 8 measured were not read (the notes below say why), so the roses average fewer of them.'
+              : '. Not every trial’s modulation index read there matched tab 8’s (largest difference ' + Number(c.worst).toPrecision(2) + '; ' + (c.only_tab + c.only_read) + ' trials in one only): draw tab 8 again before trusting the roses.')
+           : '.') });
+  }
+
   function intro() {
     const D = P.data;
     const conn = D.figures.filter((f) => f.kind === 'connectome');
@@ -582,7 +742,11 @@ window.MONO_FIGS = (function () {
     return section('figsintro', '9 · Joe’s figures', 'figs', [
       el('p', { class: 'takeaway', id: 'figssay', text: conn.length + ' result' + (conn.length === 1 ? '' : 's') + ' that changed, each as a connectome (' + sig + ' of ' + (conn.length * 9)
         + ' graphs beyond their shuffles), then ' + fol.length + ' follow-up figure' + (fol.length === 1 ? '' : 's') + ', broad to narrow. Each is ready for Nature: Arial, 5–8 pt, 183 mm wide, vector.' }),
-      D.recordings_read ? null : el('p', { class: 'small warn', id: 'figsrec', text: 'The recordings could not be read when these were drawn, so the PAC figures show each rat’s modulation index but not yet the phase–amplitude roses or comodulograms. Connect the data drive and press Draw again.' }),
+      D.recordings_read ? readLine(D) : el('div', { class: 'small warn', id: 'figsrec' }, [
+        el('p', { text: 'The recordings could not be read when these were drawn, so the PAC figures show each rat’s modulation index but not yet the phase–amplitude roses or comodulograms. Every recording has a copy on the VACC: read them there, or connect the data drive and press Draw again.' }),
+        window.MONO_STATIC ? null : el('button', { type: 'button', class: 'more-btn', id: 'figsvacc', disabled: P.making ? 'disabled' : null,
+          text: P.making === 'vacc' ? 'Reading on the VACC: ' + (P.makeNote || 'starting') : 'Read them on the VACC (about 2 minutes)', onclick: () => make(true) }),
+        P.makeErr ? el('p', { text: P.makeErr }) : null]),
       toc,
       el('p', { class: 'small muted', text: 'Drawn ' + (D.at || '') + ' from tab 8’s numbers of ' + (D.from || '') + '; ' + fmtN(D.n_perm) + ' within-session shuffles per graph (seed ' + D.seed + ').' }),
     ]);
@@ -616,7 +780,11 @@ window.MONO_FIGS = (function () {
     if (!window.MONO_STATIC) {
       pane.appendChild(el('p', { class: 'small muted' }, ['Drawn ' + (P.data.at || '') + '. ',
         el('button', { type: 'button', class: 'linkish', id: 'figsmake', disabled: P.making ? 'disabled' : null,
-                       text: P.making ? 'Drawing: ' + (P.makeNote || 'starting') : 'Draw again', onclick: () => make() })]));
+                       text: P.making === 'here' ? 'Drawing: ' + (P.makeNote || 'starting') : 'Draw again', onclick: () => make() }),
+        P.data.recordings_read ? el('span', { text: ' · ' }) : null,
+        P.data.recordings_read ? el('button', { type: 'button', class: 'linkish', id: 'figsvaccagain', disabled: P.making ? 'disabled' : null,
+                       text: P.making === 'vacc' ? 'Reading on the VACC: ' + (P.makeNote || 'starting') : 'read the PAC on the VACC and draw again', onclick: () => make(true) }) : null,
+        P.makeErr && P.data.recordings_read ? el('span', { class: 'warn', id: 'figsmakeerr', text: ' ' + P.makeErr }) : null]));
     }
   }
   function show() {

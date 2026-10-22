@@ -23,7 +23,8 @@ BARRY.views.xplore = (function () {
     nPanes: 1,
     // What is put away. Kept on the workspace rather than per pane: hiding
     // the channel column on one pane and not the other looks like a bug.
-    chrome: { channels: true, strip: true, heads: true, tabs: true },
+    chrome: { channels: true, strip: true, heads: true, tabs: true,
+              overview: true },
     // Pane sizes, as fractions of the grid. null means "share it evenly",
     // which is what a fresh layout should do.
     split: { col: null, row: null, colB: null },
@@ -176,6 +177,7 @@ BARRY.views.xplore = (function () {
     if (vs.flock !== undefined && vs.flock !== null) sess.flock = !!vs.flock;
     if (vs.stft_mode) sess.stftMode = vs.stft_mode;
     if (vs.marks_view) sess.marksView = vs.marks_view;
+    if (Number(vs.marks_fade) > 0) sess.marksFade = Number(vs.marks_fade);
     if (Array.isArray(vs.channels) && vs.channels.length) {
       sess.sel = new Set(vs.channels.filter((i) => i < info.channels.length));
     }
@@ -698,9 +700,26 @@ BARRY.views.xplore = (function () {
     return (got === 'dim' || got === 'hide') ? got : 'show';
   }
 
+  /* How faint Faded is (2026-10-22: "when faded is clicked allow the user to
+     select the opacity on a sliding bar from 0.1 to 0.9, no numbers"). Kept
+     per recording (`sess.marksFade`, saved with its view and shared with its
+     other windows), and the last level chosen is this person's default for
+     a recording that has none. Always between the two ends, so Faded never
+     reads as Hidden or as Show. */
+  const MARKS_FADE_MIN = 0.1, MARKS_FADE_MAX = 0.9, MARKS_FADE_DEFAULT = 0.2;
+  const clampFade = (v) => Math.max(MARKS_FADE_MIN, Math.min(MARKS_FADE_MAX, v));
+  function marksFade(sess) {
+    const own = Number(sess && sess.marksFade);
+    if (own > 0) return clampFade(own);
+    let kept = MARKS_FADE_DEFAULT;
+    try { kept = Number(BARRY.prefs.get('marks_fade', MARKS_FADE_DEFAULT)); }
+    catch (e) { kept = MARKS_FADE_DEFAULT; }
+    return clampFade(kept > 0 ? kept : MARKS_FADE_DEFAULT);
+  }
+
   function marksAlpha(sess) {
     const v = marksView(sess);
-    return v === 'hide' ? 0 : (v === 'dim' ? 0.22 : 1);
+    return v === 'hide' ? 0 : (v === 'dim' ? marksFade(sess) : 1);
   }
 
   /* Every channel this pane draws: the ones that are selected.
@@ -867,7 +886,9 @@ BARRY.views.xplore = (function () {
          strength the caller asks for, with no grips, no pill and no label
          beside the row's own (which is how "CSC37  CSC37" happened). */
       if (line.style === 'mark') {
-        const a = line.alpha == null ? 0.18 : Number(line.alpha);
+        // A lane is a mark: it fades and hides with the marks (2026-10-22).
+        const a = (line.alpha == null ? 0.18 : Number(line.alpha))
+                  * (fade != null ? Number(fade) : 1);
         if (a <= 0) continue;
         ctx.globalAlpha = a;
         ctx.fillStyle = col;
@@ -1249,7 +1270,7 @@ BARRY.views.xplore = (function () {
     host.innerHTML = '';
     // The tabs fold too, and the arrow sits with them rather than in a
     // menu -- same rule as every other bar.
-    if (XF.order.length) host.appendChild(collapseArrow('tabs'));
+    // The top row's arrow is the header's own now (applyChrome).
     for (const id of XF.order) {
       const s = XF.sessions[id];
       /* A recording read off the cluster is marked on its tab.
@@ -1491,8 +1512,7 @@ BARRY.views.xplore = (function () {
     }
 
     const box = el('div', {
-      class: 'pane' + (index === XF.focused ? ' focused' : '')
-             + (pane.noOverview ? ' no-overview' : ''),
+      class: 'pane' + (index === XF.focused ? ' focused' : ''),
       'data-pane-at': String(index),
       /* The probe control follows the recording, so a click into another
          recording's pane has to move it too -- renderTabs alone left it
@@ -1639,6 +1659,8 @@ BARRY.views.xplore = (function () {
     let i = XF.panes[XF.focused] ? XF.focused : XF.panes.findIndex(Boolean);
     const pane = XF.panes[i];
     const bar = pane && pane._mini && pane._mini.parentNode;
+    // Put away for this window: the panes' own stay hidden too (.one-strip).
+    if (!XF.chrome.overview) { host.hidden = true; return; }
     if (!bar || !bar.classList.contains('pane-timebar')) {
       host.hidden = true;
       return;
@@ -1858,6 +1880,15 @@ BARRY.views.xplore = (function () {
         BARRY.prefs.set('xf_chan_column', XF.chrome.channels ? 'full' : 'folded');
       } catch (e) { /* this session only */ }
     }
+    /* The overview strip, remembered per kind of window: the main one, and
+       the support windows the add-ons open (2026-10-22). */
+    if (what === 'overview') {
+      try {
+        BARRY.prefs.set(document.body.classList.contains('aid-window')
+                          ? 'xf_overview_aid' : 'xf_overview_main',
+                        XF.chrome.overview ? 'shown' : 'hidden');
+      } catch (e) { /* this session only */ }
+    }
     applyChrome();
     render();
     // The plot got bigger or smaller, so the canvases have to be remeasured.
@@ -1870,8 +1901,18 @@ BARRY.views.xplore = (function () {
     PAD_TRACES_L = XF.chrome.channels ? PAD_TRACES_FULL : PAD_TRACES_SLIM;
     const v = document.getElementById('view-xplore');
     if (!v) return;
-    for (const k of ['channels', 'strip', 'heads', 'tabs']) {
+    for (const k of ['channels', 'strip', 'heads', 'tabs', 'overview']) {
       v.classList.toggle('hide-' + k, !XF.chrome[k]);
+    }
+    /* The top row's fold arrow, beside the title (2026-10-22). It lived in
+       the tab strip, which a support window hides -- so a support window's
+       header, once shown, had no way to fold away again. Here it is the
+       header's own, in every window. Once, however often this runs. */
+    const xh = v.querySelector(':scope > .view-head .xf-head');
+    if (xh && !xh.querySelector(':scope > .fold-tabs')) {
+      const arrow = collapseArrow('tabs');
+      arrow.classList.add('fold-tabs');
+      xh.insertBefore(arrow, xh.querySelector('#xfTabs'));
     }
     /* The header's arrow folds the WHOLE top row away (2026-10-20: "should
        collapse the entire top row rather than just what recordings are
@@ -1954,6 +1995,9 @@ BARRY.views.xplore = (function () {
     ['tabs', 'Top row',
      'The open recordings, the layout, the probe, Link time, View and the '
      + 'figure builder'],
+    ['overview', 'Overview strip',
+     'The line through the whole recording: under the pane, or one across '
+     + 'the bottom with two or more'],
   ];
 
   function viewMenu() {
@@ -3618,6 +3662,9 @@ BARRY.views.xplore = (function () {
     }
     // A panel with a band of its own needs the recording's band lock off.
     if (o.flock === 'off') q.set('flock', '0');
+    // The overview strip, as Profile › Support panel preferences chose it.
+    if (o.overview === 'off') q.set('overview', '0');
+    else if (o.overview === 'on') q.set('overview', '1');
     return location.origin + '/?' + q.toString() + '#xplore';
   }
 
@@ -4675,6 +4722,35 @@ BARRY.views.xplore = (function () {
     return w ? w.alpha : 0;
   }
 
+  /* PER PANEL, not per window (2026-10-22: "it shows up on EVERY support
+     panel. Make it so it's per panel"). A pane's own choice (`pane.layerWash`,
+     set from its own More menu) wins; a pane that has not chosen follows
+     what is driving the labelling -- StrataScope open in this window, or
+     the labelling window this one follows -- as every pane did before. A
+     pane switched Off stays off whatever the labelling does. */
+  function paneLayerWash(pane, sess) {
+    const own = pane && pane.layerWash;
+    if (own) return layerWashes().some((w) => w.id === own) ? own : 'off';
+    const st = BARRY.strata;
+    if (st && st.active) {
+      let id = null;
+      try { id = typeof st.washId === 'function' ? st.washId() : null; }
+      catch (e) { id = null; }
+      return id || 'faint';
+    }
+    if (sess && sess._strataFromLink) return layerWash(sess);
+    return 'off';
+  }
+
+  function paneLayerAlpha(pane, sess) {
+    const w = layerWashes().find((x) => x.id === paneLayerWash(pane, sess));
+    return w ? w.alpha : 0;
+  }
+
+  /* The pane whose canvas is being painted, for the overlay hook below:
+     set around each call into it (drawPane, drawOverlayMarks). */
+  let layerPaneNow = null;
+
   /* What strength to come on at: whatever the labelling mode is set to,
      when it will say.
 
@@ -4753,6 +4829,8 @@ BARRY.views.xplore = (function () {
   }
 
   function layerInfoOn(sess) {
+    // The pane being painted decides, when there is one (paneLayerWash).
+    if (layerPaneNow) return paneLayerAlpha(layerPaneNow, sess) > 0;
     if (sess && sess.layerView) return layerWashAlpha(sess) > 0;
     // The labelling mode's own setting, when that is what is driving.
     try {
@@ -4826,8 +4904,10 @@ BARRY.views.xplore = (function () {
         drawLayerTag(ctx, s, panelRes, x0, plotW, y0, plotH);
         return;
       }
-      // While the mode is open it owns the overlay, untouched.
+      // While the mode is open it owns the overlay -- except on a pane
+      // switched off in its own menu.
       if (BARRY.strata.active) {
+        if (layerPaneNow && paneLayerWash(layerPaneNow, s) === 'off') return;
         return real.call(BARRY.strata, ctx, s, win, x0, plotW, y0, plotH,
                          P, panelRes, opts);
       }
@@ -4837,7 +4917,7 @@ BARRY.views.xplore = (function () {
          them. Without the stamp the wash would land back on top of the very
          marks it is meant to sit behind. */
       if (ctx.canvas && ctx.canvas.__layerBandsDrawn) return;
-      const a = layerWashAlpha(s);
+      const a = layerPaneNow ? paneLayerAlpha(layerPaneNow, s) : layerWashAlpha(s);
       if (a <= 0) return;
       return real.call(BARRY.strata, ctx, s, win, x0, plotW, y0, plotH,
                        P, panelRes, { alpha: a });
@@ -4856,17 +4936,32 @@ BARRY.views.xplore = (function () {
 
   function setLayerWash(index, sess, id) {
     const gid = (sess.identity || {}).gid;
-    sess.layerWash = id;
+    // This pane's, not the window's (paneLayerWash).
+    const pane = XF.panes[index];
+    if (pane) pane.layerWash = id;
+    // Off has to reach the painter too (StrataScope's own bands go through it).
+    installLayerHook();
+    const anyOn = XF.panes.some((p) => p && p.sessionId === sess.id
+                                       && p.layerWash && p.layerWash !== 'off');
     if (id === 'off') {
-      delete sess.layerView;
-      /* Only ours to remove. While the labelling mode is open sess.strata
-         is its flag, and deleting it there blanks the overlay it is in the
-         middle of drawing. */
-      if (!(BARRY.strata && BARRY.strata.active)) delete sess.strata;
+      /* The sheet stays loaded while another pane of this recording, or
+         the labelling this window follows, still shows it. */
+      if (!anyOn && !sess._strataFromLink) {
+        sess.layerWash = 'off';
+        delete sess.layerView;
+        /* Only ours to remove. While the labelling mode is open sess.strata
+           is its flag, and deleting it there blanks the overlay it is in
+           the middle of drawing. */
+        if (!(BARRY.strata && BARRY.strata.active)) delete sess.strata;
+      }
     } else {
       const got = layerCache.get(gid);
       // Nothing to show: leave the switch off rather than on and blank.
-      if (!got || got.state !== 'ready') { sess.layerWash = 'off'; return; }
+      if (!got || got.state !== 'ready') {
+        if (pane) pane.layerWash = 'off';
+        return;
+      }
+      if (!sess._strataFromLink) sess.layerWash = id;
       sess.layerView = got.sheet;
       /* The same object shape strata.js sets (strata.js:144), because the
          image-panel overlay is gated on this flag and nothing else. */
@@ -4876,7 +4971,7 @@ BARRY.views.xplore = (function () {
       }
       installLayerHook();
     }
-    BARRY.activity.log('display.layers', { wash: sess.layerWash,
+    BARRY.activity.log('display.layers', { wash: id, pane: index,
                                            gid: gid || null }, sess);
     repaintLayers(sess);
   }
@@ -4900,7 +4995,8 @@ BARRY.views.xplore = (function () {
       const st = (got && got.state) || 'loading';
 
       if (st === 'ready') {
-        const on = layerWash(sess) !== 'off';
+        const pn = XF.panes[index];
+        const on = paneLayerWash(pn, sess) !== 'off';
         row.appendChild(el('label', {
           class: 'toggle sm' + (on ? ' on' : ''),
           title: 'Draw the layer sheet behind the data. Viewing only \u2014 '
@@ -4915,21 +5011,22 @@ BARRY.views.xplore = (function () {
               closeMenu();
             },
           }),
-          el('span', { text: 'Show layer bands' }),
+          el('span', { text: 'Show layer bands on this panel' }),
         ]));
         if (on) {
-          row.appendChild(choose(layerWash(sess),
+          row.appendChild(choose(paneLayerWash(pn, sess),
             layerWashes().filter((w) => w.id !== 'off'),
             (v) => { setLayerWash(index, sess, v); closeMenu(); }));
         }
         const n = Object.keys(got.sheet.labels).length;
         const total = (sess.info.channels || []).length;
         note.textContent = on
-          ? 'On, behind the traces and the rasters. Read-only: clicking a '
-            + 'band does nothing and nothing here is ever saved. Labelling '
-            + 'is StrataScope, from the ToolKit.'
+          ? 'On for this panel, behind its data; each panel has its own '
+            + 'switch. Read-only: clicking a band does nothing and nothing '
+            + 'here is ever saved. Labelling is StrataScope, from the ToolKit.'
           : n + ' of ' + total + ' channels are labelled on this recording. '
-            + 'The bands draw behind the data; nothing here can change them.';
+            + 'The bands draw behind this panel\u2019s data when it is on; '
+            + 'each panel has its own switch.';
         /* The key only while the bands are on. It names colours that are on
            screen; with the bands off it is a list of regions next to
            nothing, and on a sheet using eleven of the vocabulary it is the
@@ -5004,18 +5101,20 @@ BARRY.views.xplore = (function () {
     /* And whether this pane has the overview strip under it -- the
        amplitude or band-power line through the whole recording. With two
        or more up there is one strip, at the bottom (placeGlobalStrip). */
-    if (XF.nPanes === 1) rows.push(popRow('Overview strip on this pane', [
-      choose(pane.noOverview ? 'off' : 'on', [
-        { id: 'on', name: 'Shown', why: 'The line through the whole recording, '
-                                        + 'under this pane' },
-        { id: 'off', name: 'Hidden', why: 'No overview strip under this pane; '
-                                          + 'the others keep theirs' },
+    /* The overview strip, for this window -- with any number of panes, in
+       the main window and in a support window alike (2026-10-22: "no way
+       to hide the overview strip on the support panel"). One switch for
+       the window: with two or more panes there is one strip anyway. */
+    rows.push(popRow('Overview strip', [
+      choose(XF.chrome.overview ? 'on' : 'off', [
+        { id: 'on', name: 'Shown', why: XF.nPanes > 1
+          ? 'One strip across the bottom, for the pane you last clicked'
+          : 'The line through the whole recording, under the pane' },
+        { id: 'off', name: 'Hidden', why: 'No overview strip in this window; '
+                                          + 'nothing is lost, and View brings it back' },
       ], (v) => {
-        pane.noOverview = v === 'off';
-        BARRY.activity.log('pane.overview', { pane: index, on: v === 'on' }, sess);
         closeMenu();
-        render();
-        refreshAll();
+        if ((v === 'on') !== XF.chrome.overview) toggleChrome('overview');
       }),
     ]));
 
@@ -5031,12 +5130,43 @@ BARRY.views.xplore = (function () {
       ], (v) => {
         sess.marksView = v;
         BARRY.activity.log('display.marksView', { mode: v }, sess);
-        closeMenu();
         publishFacts(sess);
         queueSaveState(sess);
         render();
         refreshAll();
+        // Faded keeps the menu open: its slider is the next thing to touch.
+        if (v === 'dim') repaintMenu(); else closeMenu();
       }),
+      /* How faint, when Faded: a slider and no numbers, fainter to the
+         left. Drawn live while it moves (a repaint, not a re-read); kept
+         and shared when it is let go. */
+      marksView(sess) === 'dim' ? el('label', { class: 'marks-fade-wrap',
+        title: 'How faint faded marks are drawn' }, [
+        el('span', { class: 'marks-fade-end', text: 'Fainter' }),
+        el('input', {
+          type: 'range', class: 'scale-slider marks-fade',
+          min: String(MARKS_FADE_MIN), max: String(MARKS_FADE_MAX), step: '0.05',
+          value: String(marksFade(sess)),
+          'aria-label': 'How faint faded marks are. Left is fainter, right is '
+                        + 'stronger',
+          'aria-valuetext': marksFade(sess) < 0.35 ? 'faint'
+            : (marksFade(sess) < 0.65 ? 'medium' : 'strong'),
+          oninput: (e) => {
+            sess.marksFade = clampFade(Number(e.target.value));
+            e.target.setAttribute('aria-valuetext', sess.marksFade < 0.35
+              ? 'faint' : (sess.marksFade < 0.65 ? 'medium' : 'strong'));
+            repaintLayers(sess);
+          },
+          onchange: () => {
+            BARRY.activity.log('display.marksFade', { alpha: sess.marksFade }, sess);
+            try { BARRY.prefs.set('marks_fade', sess.marksFade); }
+            catch (err) { /* this session only */ }
+            publishFacts(sess);
+            queueSaveState(sess);
+          },
+        }),
+        el('span', { class: 'marks-fade-end', text: 'Stronger' }),
+      ]) : null,
     ]));
     /* The disclaimer. A mark you cannot see is indistinguishable from a mark
        that is not there, and that is how somebody concludes a recording has
@@ -5050,7 +5180,8 @@ BARRY.views.xplore = (function () {
               + 'unchanged \u2014 but this recording will look as though it '
               + 'has no events in it. The pane header says so while this is on.'
             : 'Marks are FADED. They are all still there, and still in the '
-              + 'counts \u2014 just quiet enough to be missed.') }));
+              + 'counts \u2014 just quiet enough to be missed. The slider sets '
+              + 'how faint.') }));
 
     /* Under Marks, because it is the same kind of switch: what this pane
        draws over the data rather than what the data is. */
@@ -7706,6 +7837,29 @@ BARRY.views.xplore = (function () {
     drawMini(index, pane, sess);
   }
 
+  /* How many rows a pane opening onto nothing asks for first (fetchTraces). */
+  const EARLY_ROWS = 16;
+
+  /* The first rows' answer, laid out as the whole window will be: one lane
+     per channel the pane asked for, in the same order, the ones not here yet
+     empty (`pending`). Lanes, labels and the channel column are then where
+     they will stay when the whole answer lands. */
+  function earlyWin(early, chans, sess) {
+    const got = new Map(early.series.map((s) => [s.number, s]));
+    const n = early.n_points || 0;
+    const info = (sess.info && sess.info.channels) || [];
+    const series = chans.map((i) => {
+      const c = (info[i] && info[i].index === i) ? info[i]
+        : (info.find((x) => x.index === i) || { index: i, number: i, label: 'CSC' + i });
+      return got.get(c.number) || {
+        label: c.label, number: c.number, index: c.index, bad: !!c.bad,
+        min: new Array(n).fill(null), max: new Array(n).fill(null),
+        pending: true,
+      };
+    });
+    return Object.assign({}, early, { series, early: true });
+  }
+
   async function fetchTraces(index, pane, sess) {
     if (!sess.sel.size) { sess.win = null; drawPane(index); return; }
     // A column with nothing in it draws nothing, rather than falling through
@@ -7724,18 +7878,57 @@ BARRY.views.xplore = (function () {
     if (pane._loading) pane._loading.classList.remove('hidden');
     sayLoading(pane, sess);
     const px = Math.max(200, Math.floor((pane._canvas ? pane._canvas.clientWidth : 900) - 70));
+    const chans = paneChans(pane, sess);
+    const ask = {
+      path: sess.path, invert: sess.invert,
+      t0: sess.t0, t1: sess.t0 + sess.span,
+      channels: chans,
+      px, highpass: filtOf(pane, sess).hp, lowpass: filtOf(pane, sess).lp,
+      notch: filtOf(pane, sess).notch,
+      mode: 'voltage', spacing_um: sess.spacing,
+      bad_channels: Array.from(sess.bad),
+      ylim: sess.ylim,
+      full_rate: !!pane.fullRate,
+    };
+    /* A pane opening onto nothing: its first rows first (2026-10-22).
+
+       A window costs the server per channel. Measured on a 128-channel
+       recording: 16 channels in 0.24-0.4 s, all 128 in 2-3.5 s. So a big
+       recording opened onto an empty pane and nothing at all for those
+       seconds, and then every trace at once. When this pane has nothing on
+       it, its first EARLY_ROWS channels are asked for as well, next to the
+       whole read, and drawn the moment they land -- every lane in place, the
+       rest empty until the whole answer replaces the lot. The whole answer
+       is the same request as always, so what is left on screen is exactly
+       what it was.
+
+       Only onto nothing. Once traces are showing, a pan or a filter change
+       keeps them until the new window is whole, rather than trading a full
+       picture for a mostly empty one. */
+    let whole = false;
+    // A whole window on screen, for this pane. First rows alone do not count.
+    const shown = () => {
+      const w = paneWin(pane, sess);
+      return w && !w.early ? w : null;
+    };
+    const heldWin = pane._win && pane._win.early ? null : pane._win;
+    if (!pane.fullRate && chans.length > EARLY_ROWS + 8 && !shown()) {
+      apiPost('/api/csc/window', Object.assign({}, ask,
+                                               { channels: chans.slice(0, EARLY_ROWS) }))
+        .then((early) => {
+          if (whole || id !== pane._req || XF.panes[index] !== pane
+              || !XF.sessions[sess.id] || shown()) return;
+          if (!early || !early.series || !early.series.length) return;
+          pane._win = earlyWin(early, chans, sess);
+          if (pane._loading) pane._loading.classList.add('hidden');
+          try { drawPane(index); }
+          catch (err) { reportClientError('drawPane', err.message, err.stack); }
+        })
+        .catch(() => { /* the whole read reports what went wrong */ });
+    }
     try {
-      const win = await apiPost('/api/csc/window', {
-        path: sess.path, invert: sess.invert,
-        t0: sess.t0, t1: sess.t0 + sess.span,
-        channels: paneChans(pane, sess),
-        px, highpass: filtOf(pane, sess).hp, lowpass: filtOf(pane, sess).lp,
-        notch: filtOf(pane, sess).notch,
-        mode: 'voltage', spacing_um: sess.spacing,
-        bad_channels: Array.from(sess.bad),
-        ylim: sess.ylim,
-        full_rate: !!pane.fullRate,
-      });
+      const win = await apiPost('/api/csc/window', ask);
+      whole = true;
       if (id !== pane._req) return;
       /* The pane can have been replaced while this was in flight -- a
          layout change, a tab switch -- and the recording closed. Then
@@ -7781,7 +7974,16 @@ BARRY.views.xplore = (function () {
         reportClientError('drawPane', err.message, err.stack);
       }
     } catch (e) {
-      if (id === pane._req) toast(e.message, 'err');
+      whole = true;
+      if (id === pane._req) {
+        // The first rows alone are not left standing as if they were the
+        // window: back to what was there (nothing, or another pane's).
+        if (pane._win && pane._win.early) {
+          pane._win = heldWin;
+          try { drawPane(index); } catch (err) { /* reported on the next draw */ }
+        }
+        toast(e.message, 'err');
+      }
     } finally {
       if (pane._loading) pane._loading.classList.add('hidden');
     }
@@ -8298,12 +8500,15 @@ BARRY.views.xplore = (function () {
        Before the marks: a layer band is background, and an event line
        drawn under it would be a mark you cannot see. */
     if (BARRY.strata && BARRY.strata.draw && sess.strata) {
+      layerPaneNow = pane;
       try {
         BARRY.strata.draw(ctx, sess, { t0: t0, t1: t0 + span },
                           0, w, 0, h, P, res);
       } catch (e) {
         // A decoration must never take the panel down with it.
         reportClientError('strata.draw', e.message, e.stack);
+      } finally {
+        layerPaneNow = null;
       }
     }
     /* The candidate being curated, on the CSD and the rasters too. These
@@ -8327,8 +8532,11 @@ BARRY.views.xplore = (function () {
        On a strip this short the "focus full height, everything else a tick"
        rule still reads: it is the only thing that says which of forty
        alignments you are looking at. */
-    if (BARRY.braces && BARRY.braces.draw) {
+    if (BARRY.braces && BARRY.braces.draw && mAlpha > 0) {
+      ctx.save();
+      ctx.globalAlpha = mAlpha;
       BARRY.braces.draw(ctx, sess, { t0: t0, t1: t0 + span }, 0, w, 0, h, P);
+      ctx.restore();
     }
     if (BARRY.panning && BARRY.panning.draw && mAlpha > 0) {
       ctx.save();
@@ -8344,7 +8552,7 @@ BARRY.views.xplore = (function () {
       if (ev.start < t0 || ev.start > t0 + span) continue;
       if (!eventVisible(sess, ev)) continue;
       ctx.strokeStyle = eventColor(sess, ev, P);
-      ctx.globalAlpha = 0.75;
+      ctx.globalAlpha = 0.75 * mAlpha;
       ctx.lineWidth = 1.2;
       ctx.setLineDash([4, 3]);
       const x = X(ev.start);
@@ -9169,6 +9377,17 @@ BARRY.views.xplore = (function () {
       // take that away from them.
       if (!sess._strataFromLink) return false;
       delete sess._strataFromLink;
+      /* A pane switched on by hand here keeps its bands: the sheet comes
+         back from this window's own lookup (per panel, 2026-10-22). */
+      const gid = (sess.identity || {}).gid;
+      const mine = layerCache.get(gid);
+      const handOn = XF.panes.some((p) => p && p.sessionId === sess.id
+                                          && p.layerWash && p.layerWash !== 'off');
+      if (handOn && mine && mine.state === 'ready') {
+        sess.layerView = mine.sheet;
+        sess.strata = { gid, labels: mine.sheet.labels, regions: mine.sheet.regions };
+        return true;
+      }
       delete sess.layerView;
       delete sess.strata;
       sess.layerWash = 'off';
@@ -9211,6 +9430,7 @@ BARRY.views.xplore = (function () {
           // the marks are, are facts about this recording's display that
           // every pane and every window showing it should agree on.
           marksView: marksView(sess),
+          marksFade: marksFade(sess),
         },
       });
       if (res.slot) linkSeen = Math.max(linkSeen, res.slot.version);
@@ -9417,6 +9637,12 @@ BARRY.views.xplore = (function () {
         sess.marksView = v.marksView;
         touched = true;
       }
+      // The level, with a tolerance, so two windows do not echo it.
+      if (Number(v.marksFade) > 0
+          && Math.abs(Number(v.marksFade) - marksFade(sess)) > 0.01) {
+        sess.marksFade = Number(v.marksFade);
+        touched = true;
+      }
     }
 
     /* Curation, always -- like the facts above, and for the same reason.
@@ -9582,6 +9808,7 @@ BARRY.views.xplore = (function () {
           // recording; forgetting them on reopen makes the choice feel like
           // it did not take.
           marks_view: marksView(sess),
+          marks_fade: Number(sess.marksFade) > 0 ? clampFade(Number(sess.marksFade)) : null,
           probe: sess.probe || null,
           fdefault: sess.fdefault || null,
           flock: sess.flock !== false,
@@ -9866,9 +10093,12 @@ BARRY.views.xplore = (function () {
          one lane per TICKED channel, so the sheet's own channel list
          would be off by however many are unticked. */
       if (BARRY.strata && BARRY.strata.draw) {
-        BARRY.strata.draw(
-          ctx, sess, win, padL, plotW, padTop, plotH, P,
-          { rows: win.series.map((x) => ({ number: x.number })) });
+        layerPaneNow = pane;
+        try {
+          BARRY.strata.draw(
+            ctx, sess, win, padL, plotW, padTop, plotH, P,
+            { rows: win.series.map((x) => ({ number: x.number })) });
+        } finally { layerPaneNow = null; }
       }
     }
     /* After the call above, not before it: the stamp is what tells the
@@ -9916,18 +10146,24 @@ BARRY.views.xplore = (function () {
     drawChannelLines(ctx, win.series, padL, plotW, padTop, plotH, mAlpha);
     drawCurationMarks(ctx, sess, win.t0, win.t1, padL, plotW, padTop, plotH,
                       P, { alpha: mAlpha });
+    /* At the marks' strength, like everything above: each reads the alpha
+       it is handed as its base (2026-10-22). */
+    const faded = (fn) => {
+      if (mAlpha <= 0) return;
+      ctx.save(); ctx.globalAlpha = mAlpha; fn(); ctx.restore();
+    };
     if (BARRY.braces && BARRY.braces.draw) {
-      BARRY.braces.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
+      faded(() => BARRY.braces.draw(ctx, sess, win, padL, plotW, padTop, plotH, P));
     }
     if (BARRY.curate && BARRY.curate.draw) {
-      BARRY.curate.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
+      faded(() => BARRY.curate.draw(ctx, sess, win, padL, plotW, padTop, plotH, P));
     }
     /* Spotter draws the same shape as Checkup and for the same reason. It
        reads `sess.curationMarks` rather than its own module state, so the
        aid window -- a separate page with no Spotter in it -- draws the same
        mark from the same data. */
     if (BARRY.spotter && BARRY.spotter.draw) {
-      BARRY.spotter.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
+      faded(() => BARRY.spotter.draw(ctx, sess, win, padL, plotW, padTop, plotH, P));
     }
     /* Panning draws every pooled event itself, in its detector's colour;
        the generic painter above steps aside for it. From the session, so
@@ -9944,8 +10180,11 @@ BARRY.views.xplore = (function () {
          every channel of the recording over the drawn lanes, so with the
          even channels ticked each band sat on a lane twice its width
          (web/_dev/strataalign.html). */
-      BARRY.strata.draw(ctx, sess, win, padL, plotW, padTop, plotH, P,
-                        { rows: win.series.map((x) => ({ number: x.number })) });
+      layerPaneNow = pane;
+      try {
+        BARRY.strata.draw(ctx, sess, win, padL, plotW, padTop, plotH, P,
+                          { rows: win.series.map((x) => ({ number: x.number })) });
+      } finally { layerPaneNow = null; }
     }
     /* The Arc's two verify modes share one drawing function -- they differ
        in what they highlight, not in how they reach the canvas. */
@@ -10016,6 +10255,8 @@ BARRY.views.xplore = (function () {
 
   function drawEventMarks(ctx, sess, win, x0, plotW, y0, plotH, P) {
     if (!sess.events.length) return;
+    // The alpha it is handed is the marks' strength (marksAlpha).
+    const A = ctx.globalAlpha;
     const span = win.t1 - win.t0;
     let shown = 0;
     for (const ev of sess.events) {
@@ -10026,15 +10267,15 @@ BARRY.views.xplore = (function () {
       const x = x0 + ((s - win.t0) / span) * plotW;
       if (ev.end && ev.end > s) {
         const xe = x0 + ((Math.min(ev.end, win.t1) - win.t0) / span) * plotW;
-        ctx.fillStyle = color; ctx.globalAlpha = .14;
+        ctx.fillStyle = color; ctx.globalAlpha = .14 * A;
         ctx.fillRect(x, y0, Math.max(1, xe - x), plotH);
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = A;
       }
-      ctx.strokeStyle = color; ctx.globalAlpha = .6;
+      ctx.strokeStyle = color; ctx.globalAlpha = .6 * A;
       ctx.setLineDash([4, 3]);
       ctx.beginPath(); ctx.moveTo(Math.round(x) + .5, y0);
       ctx.lineTo(Math.round(x) + .5, y0 + plotH); ctx.stroke();
-      ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.setLineDash([]); ctx.globalAlpha = A;
       if (++shown > 900) break;
     }
   }
@@ -10182,10 +10423,11 @@ BARRY.views.xplore = (function () {
      screen has been saved. */
   function drawSpikeMarks(ctx, sess, win, x0, plotW, y0, plotH, P) {
     const span = win.t1 - win.t0;
+    const A = ctx.globalAlpha;
     const draw = (events, committed) => {
       ctx.save();
       ctx.strokeStyle = committed ? P.accent : P.warn;
-      ctx.globalAlpha = committed ? 0.85 : 0.4;
+      ctx.globalAlpha = (committed ? 0.85 : 0.4) * A;
       ctx.lineWidth = committed ? 1.4 : 1;
       if (!committed) ctx.setLineDash([3, 3]);
       const tick = Math.min(26, plotH * 0.18);
@@ -10209,6 +10451,7 @@ BARRY.views.xplore = (function () {
   function drawBookmarkMarks(ctx, sess, win, x0, plotW, y0, plotH, P) {
     if (!sess.bookmarks || !sess.bookmarks.length) return;
     const span = win.t1 - win.t0;
+    const A = ctx.globalAlpha;
     ctx.save();
     ctx.font = '9px ' + MONO;
     for (const bm of sess.bookmarks) {
@@ -10216,11 +10459,11 @@ BARRY.views.xplore = (function () {
       const x = Math.round(x0 + ((bm.t - win.t0) / span) * plotW) + 0.5;
       const col = bmColor(bm, P);
       ctx.strokeStyle = col;
-      ctx.globalAlpha = 0.7;
+      ctx.globalAlpha = 0.7 * A;
       ctx.beginPath();
       ctx.moveTo(x, y0); ctx.lineTo(x, y0 + plotH);
       ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = A;
       ctx.fillStyle = col;
       const label = ' ⚑ ' + bm.name;
       const flip = (x + ctx.measureText(label).width + 4) > (x0 + plotW);
@@ -10414,6 +10657,8 @@ BARRY.views.xplore = (function () {
   function drawMini(index, pane, sess) {
     const c = pane._mini;
     if (!c) return;
+    // Put away (View › Overview strip): nothing to size or paint.
+    if (!XF.chrome.overview) return;
     /* And a session that is still there.
 
        This is called from three timers -- a resize debounce, a settle after
@@ -10496,21 +10741,27 @@ BARRY.views.xplore = (function () {
        because at this size the point is the distribution rather than any
        one of them. */
     const cm = curationMarks(sess);
+    // Marks on the strip at the marks' strength too; none when hidden.
+    const mA = marksAlpha(sess);
     /* An alignment has its own scheme and its own idea of which mark is
        the one you are on, so it draws itself -- the same reason the panes
        hand it the canvas. Everything below is the curation scheme: one
        mark per candidate, coloured by its label. */
     if (cm && cm.kind === 'braces' && BARRY.braces
         && BARRY.braces.drawStrip) {
-      BARRY.braces.drawStrip(ctx, sess, w, h, dur);
-    } else if (cm && (cm.events || []).length) {
+      if (mA > 0) {
+        ctx.save(); ctx.globalAlpha = mA;
+        BARRY.braces.drawStrip(ctx, sess, w, h, dur);
+        ctx.restore();
+      }
+    } else if (mA > 0 && cm && (cm.events || []).length) {
       ctx.save();
       const bw2 = Math.max(1, w / Math.max(1, cm.events.length));
       for (let i = 0; i < cm.events.length; i++) {
         const e = cm.events[i];
         const x = (e.start / dur) * w;
         const isNow = i === cm.index;
-        ctx.globalAlpha = isNow ? 1 : (e.label ? 0.55 : 0.3);
+        ctx.globalAlpha = (isNow ? 1 : (e.label ? 0.55 : 0.3)) * mA;
         ctx.fillStyle = curationColor(cm, e.label, P);
         ctx.fillRect(x, isNow ? 2 : h - 20,
                      isNow ? 2 : Math.max(1, Math.min(2, bw2)),
@@ -10520,8 +10771,8 @@ BARRY.views.xplore = (function () {
       ctx.globalAlpha = 1;
     }
 
-    if (sess.events.length) {
-      ctx.globalAlpha = .6;
+    if (mA > 0 && sess.events.length) {
+      ctx.globalAlpha = .6 * mA;
       for (const ev of sess.events) {
         if (!eventVisible(sess, ev)) continue;
         ctx.fillStyle = eventColor(sess, ev, P);
@@ -10532,26 +10783,27 @@ BARRY.views.xplore = (function () {
 
     // Committed sets, drafts and bookmarks belong on the overview strip too --
     // that is where you go looking for the next thing to inspect.
-    for (const st of (sess.spikeSets || [])) {
-      ctx.fillStyle = P.accent; ctx.globalAlpha = 0.5;
+    for (const st of (mA > 0 ? (sess.spikeSets || []) : [])) {
+      ctx.fillStyle = P.accent; ctx.globalAlpha = 0.5 * mA;
       for (const ev of (st.events || [])) ctx.fillRect((ev.start / dur) * w, h - 12, 1, 7);
       ctx.globalAlpha = 1;
     }
-    if (sess.spikeDraft) {
-      ctx.fillStyle = P.warn; ctx.globalAlpha = 0.45;
+    if (mA > 0 && sess.spikeDraft) {
+      ctx.fillStyle = P.warn; ctx.globalAlpha = 0.45 * mA;
       for (const ev of (sess.spikeDraft.events || [])) {
         ctx.fillRect((ev.start / dur) * w, h - 12, 1, 7);
       }
       ctx.globalAlpha = 1;
     }
-    for (const bm of (sess.bookmarks || [])) {
+    for (const bm of (mA > 0 ? (sess.bookmarks || []) : [])) {
       const bx = (bm.t / dur) * w;
-      ctx.fillStyle = P.accent;
+      ctx.fillStyle = P.accent; ctx.globalAlpha = mA;
       ctx.beginPath();
       ctx.moveTo(bx, 2); ctx.lineTo(bx + 4, 6); ctx.lineTo(bx, 10);
       ctx.closePath(); ctx.fill();
     }
 
+    ctx.globalAlpha = 1;
     const wnow = winOf(pane, sess);
     const x0 = (wnow.t0 / dur) * w, x1 = ((wnow.t0 + wnow.span) / dur) * w;
     ctx.fillStyle = P.accent; ctx.globalAlpha = .2;
@@ -11625,13 +11877,37 @@ BARRY.views.xplore = (function () {
     const chrome = params.get('chrome');
     if (chrome) {
       const off = chrome === 'none'
-        ? ['channels', 'strip', 'heads', 'tabs']
+        ? ['channels', 'strip', 'heads', 'tabs', 'overview']
         : chrome.split(',').map((k) => k.replace(/^no/, ''));
       for (const k of off) {
         if (k in XF.chrome) XF.chrome[k] = false;
       }
     }
     applyChrome();
+    /* The overview strip: what the add-on's Profile choice asked for
+       (`overview` in the address), else how this kind of window was last
+       left. */
+    {
+      const ov = params.get('overview');
+      const setOv = (on) => {
+        if (on === XF.chrome.overview) return;
+        XF.chrome.overview = on;
+        applyChrome();
+        render();
+        requestAnimationFrame(() => {
+          for (let i = 0; i < XF.nPanes; i++) redrawGeometry(i);
+        });
+      };
+      if (ov === '0' || ov === '1') setOv(ov === '1');
+      else if (XF.chrome.overview && BARRY.prefs && BARRY.prefs.load) {
+        BARRY.prefs.load().then(() => {
+          const kept = BARRY.prefs.get(
+            document.body.classList.contains('aid-window')
+              ? 'xf_overview_aid' : 'xf_overview_main', 'shown');
+          setOv(kept !== 'hidden');
+        }).catch(() => { /* shown, as by default */ });
+      }
+    }
     // The channel column as this computer last left it.
     if (!chrome && BARRY.prefs && BARRY.prefs.load) {
       BARRY.prefs.load().then(() => {
@@ -11990,6 +12266,13 @@ BARRY.views.xplore = (function () {
     },
     // What one pane shows: More › Shows, for a caller (and a harness).
     setPanel: (i, panel) => changePanel(i, panel),
+    /* One pane's layer bands: More › Layers' switch, for a caller (and a
+       harness). `id` is a wash ('faint', 'clear', ...) or 'off'. */
+    paneLayers: (i, id) => {
+      const p = XF.panes[i];
+      const s = p && sessionOf(p);
+      if (s) setLayerWash(i, s, id);
+    },
     onShow: () => {
       if (!XF.order.length) return;
       render(); refreshAll();

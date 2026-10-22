@@ -3821,7 +3821,14 @@ BARRY.arcmode = (function () {
     /* One pane. These modes are about time, not about geometry: what is
        being checked is where a pulse fell, and six region panes would give
        six copies of the same answer in a sixth of the height. */
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    /* Profile › Support panel preferences can add panes beside it
+       (2026-10-22); the traces stay first, which this mode reads. */
+    if (BARRY.supportPanels) {
+      BARRY.supportPanels.applyMain('arcmode', [{ panel: 'traces' }], sess,
+                                    { col: 0.5, row: 0.5 });
+    } else {
+      BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    }
     if (which === 'clean') grab();
     render();
     document.addEventListener('keydown', keys, true);
@@ -3846,6 +3853,7 @@ BARRY.arcmode = (function () {
                             + ' Open Clean again and use Save and return.',
                             'warn', 9000));
     }
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     /* Hand the pointer back. A mode that keeps `grabTime` after it has
        gone owns every press on the pane and the traces stop panning, with
        nothing on screen to say why. */

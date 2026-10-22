@@ -93,6 +93,8 @@ BARRY.cfc = (function () {
     if (mapWin && !mapWin.closed) { try { mapWin.close(); } catch (e) {} }
     aidWin = null;
     mapWin = null;
+    // A main window laid out from Profile goes back to its one pane.
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     setMode(null);
     const b = document.getElementById('cfcBar');
     if (b) b.remove();
@@ -113,7 +115,18 @@ BARRY.cfc = (function () {
      and this is the layout people build by hand; one monitor and you
      alt-tab, which still beats four squares. */
   function layout() {
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 1, row: 1 });
+    /* The main window as this person laid it out in Profile › Support panel
+       preferences (2026-10-22), or the traces alone, as always. Its first
+       pane is always the traces, which everything below reads. */
+    const mp = BARRY.supportPanels
+      ? BARRY.supportPanels.applyMain('cfc', [{ panel: 'traces' }], sess,
+                                      { col: 1, row: 1 })
+      : (BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 1, row: 1 }), null);
+    // A span of its own: the same moment at the centre, that much around it.
+    if (mp && mp.span && sess) {
+      BARRY.views.xplore.setWindow(sess,
+        Math.max(0, sess.t0 + sess.span / 2 - mp.span / 2), mp.span);
+    }
     openAids();
   }
 

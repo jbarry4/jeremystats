@@ -127,7 +127,9 @@ BARRY.views.housekeeping = (function () {
       : BARRY.data.get('/api/registry'))
       .finally(() => { liveDone = true; });
     if (!data) {
-      const was = await BARRY.data.stale('/api/registry');
+      // However long the browser's store takes, never longer than the live.
+      const was = await Promise.race([BARRY.data.stale('/api/registry', 4000),
+                                      live.then(() => null, () => null)]);
       if (was && was.value && !liveDone) {
         data = was.value;
         staleAt = was.live ? null : (was.at || 0);

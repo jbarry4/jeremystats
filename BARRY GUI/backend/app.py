@@ -1506,7 +1506,9 @@ def api_sync_reindex():
 # ==========================================================================
 # Presets
 # ==========================================================================
-VALID_PRESETS = {"filters", "imports", "layouts"}
+# `support_panels`: one person's support panel preferences, named and
+# attributed, for anyone to copy (web/js/supportpanels.js, 2026-10-22).
+VALID_PRESETS = {"filters", "imports", "layouts", "support_panels"}
 
 
 @app.route("/api/presets/<kind>", methods=["GET", "POST", "DELETE"])
@@ -5043,7 +5045,7 @@ def _braces_spec(body, sess, kind=None):
 
 
 def _braces_vacc_parts(rec, spec, use_chans, events, stamp_times, align_ids,
-                       left_out, depth_n, push=True):
+                       left_out, depth_n, push=True, pinned=None):
     """Where one set runs on the cluster, what the node is sent, and what
     it costs. A single run builds a `VaccRun` from this; a batch makes it a
     task of one array (`_braces_vacc_task`).
@@ -5075,7 +5077,9 @@ def _braces_vacc_parts(rec, spec, use_chans, events, stamp_times, align_ids,
         stamp_times=[float(t) for t in stamp_times],
         align_ids=sorted(str(a) for a in align_ids),
         left_out=[int(n) for n in left_out],
-        depth_n=int(depth_n))
+        depth_n=int(depth_n),
+        # Lock's held stamps, by event index into `events`.
+        pinned=[int(i) for i in (pinned or [])])
     return {"cfg": cfg, "place": place, "where": where, "job_spec": job_spec,
             "seconds": seconds,
             # What a node holds: a few seconds of the contacts around a stamp.
@@ -5084,11 +5088,11 @@ def _braces_vacc_parts(rec, spec, use_chans, events, stamp_times, align_ids,
 
 
 def _braces_vacc_run(rec, spec, use_chans, events, stamp_times, align_ids,
-                     left_out, depth_n, steps):
+                     left_out, depth_n, steps, pinned=None):
     """A `VaccRun` of `braces.align` for one entry, and the `where` its rates
     belong to."""
     p = _braces_vacc_parts(rec, spec, use_chans, events, stamp_times,
-                           align_ids, left_out, depth_n)
+                           align_ids, left_out, depth_n, pinned=pinned)
     run = vaccrunmod.VaccRun(
         p["cfg"], "braces", p["job_spec"], p["place"]["remote"],
         plan={"seconds": p["seconds"]}, megasamples=p["megasamples"],
@@ -6523,8 +6527,22 @@ def api_braces_plan():
         })
     versions.sort(key=lambda r: versionsmod.key(r["name"]))
     _cur_name, _next_name = versionsmod.tip_next(rec.get("versions") or [])
+    # Lock: how many of the spikes in the version asked about Braces placed.
+    braced = None
+    if (rec.get("type") or "") == "pooled":
+        try:
+            src_v = body.get("from_version")
+            evs = (rec.get("events") or [] if src_v is None
+                   else BANK.events_at(rec, src_v)[0])
+            idx, info = _lock_braced_good(rec, evs)
+            braced = dict(info or {}, n=len(idx), of=sum(
+                1 for e in evs
+                if (e.get("label_id") or e.get("label")) in _good_ids(rec)))
+        except Exception:                                # noqa: BLE001
+            braced = None
     return jsonify({
         "ok": True,
+        "braced": braced,
         "entry": {"id": rec["id"], "name": rec.get("name"),
                   "n": rec.get("n"), "gid": rec.get("gid"),
                   "type": rec.get("type"),
@@ -6584,7 +6602,8 @@ def api_braces_plan():
 _BRACES_NOT_QUESTION = ("path", "excluded", "probe_name", "channel_pick")
 
 
-def _braces_question(rec, src_v, spec, want, depth_n, stamp_times):
+def _braces_question(rec, src_v, spec, want, depth_n, stamp_times,
+                     pinned_times=None):
     """(hash, question) of one alignment request."""
     import hashlib
     stamps = hashlib.sha1(json.dumps(
@@ -6596,6 +6615,14 @@ def _braces_question(rec, src_v, spec, want, depth_n, stamp_times):
                   if k not in _BRACES_NOT_QUESTION},
          "channels": sorted(int(x) for x in want),
          "depth_band": int(depth_n)}
+    # Lock with Braces' stamps held is a different question from Lock
+    # without. Only said when it is asked, so every question asked before
+    # this existed keeps its hash.
+    if pinned_times:
+        q["pinned"] = hashlib.sha1(json.dumps(
+            [round(float(t), 6) for t in sorted(pinned_times)]).encode()
+        ).hexdigest()[:12]
+        q["n_pinned"] = len(pinned_times)
     h = hashlib.sha1(json.dumps(q, sort_keys=True, default=str)
                      .encode()).hexdigest()[:16]
     return h, q
@@ -6752,8 +6779,23 @@ def _braces_prepare(body):
     stamp_times = [float(e["start"]) for e in events
                    if e.get("start") is not None]
     depth_n = int(body.get("depth_band") or bracesmod.DEPTH_BAND)
-    rq_hash, rq = _braces_question(rec, src_v, spec, want, depth_n,
-                                   stamp_times)
+    # LOCK KEEPS BRACES' WORK (2026-10-22). A pooled set's Incisor stamps
+    # that Braces already put on their peaks stay where they are when Lock
+    # is asked to keep them (`pin_braces`, on by default in the panel): a
+    # second aligner with a different measure is not a better answer to a
+    # question the protocol already answered.
+    pinned = []
+    if body.get("pin_braces") and (rec.get("type") or "") == "pooled":
+        held, _info = _lock_braced_good(rec, events)
+        pinned = sorted(held)
+        if pinned and len(pinned) >= n_good:
+            raise _BracesRefusal(
+                "Every spike in this set is one Braces already placed, and "
+                "Braces' stamps are being kept, so there is nothing left for "
+                "Lock to move. Nothing was read.")
+    rq_hash, rq = _braces_question(
+        rec, src_v, spec, want, depth_n, stamp_times,
+        [float(events[i]["start"]) for i in pinned])
     steps = [("ds depth", len(use_chans)),
              ("ds windows", max(1, len(bracesmod.spans(
                  stamp_times, spec["window_ms"]))))]
@@ -6763,7 +6805,7 @@ def _braces_prepare(body):
             "use_chans": use_chans, "left_out": left_out,
             "stamp_times": stamp_times, "depth_n": depth_n,
             "rq_hash": rq_hash, "rq": rq, "span": span, "steps": steps,
-            "who": _braces_who(body)}
+            "pinned": pinned, "who": _braces_who(body)}
 
 
 def _braces_file_parts(entry_id, gid, name, src_v, rq_hash, request, who,
@@ -6847,7 +6889,8 @@ def api_braces_run():
         try:
             run, vwhere = _braces_vacc_run(
                 rec, spec, use_chans, prep["events"], prep["stamp_times"],
-                prep["align_ids"], prep["left_out"], prep["depth_n"], steps)
+                prep["align_ids"], prep["left_out"], prep["depth_n"], steps,
+                pinned=prep["pinned"])
         except Exception as exc:                         # noqa: BLE001
             return fail("braces/run-vacc", exc, 400,
                         {"entry_id": body.get("entry_id")})
@@ -6864,7 +6907,7 @@ def api_braces_run():
             return _braces_file(prep, bracesmod.align(
                 prep["sess"], use_chans, spec, prep["events"],
                 prep["stamp_times"], prep["align_ids"], prep["left_out"],
-                prep["depth_n"], job))
+                prep["depth_n"], job, pinned=prep["pinned"]))
 
         job = cfcmod.start(spec, steps, work, max(0.001, prep["span"] / 60.0))
     STORE.record_activity([{
@@ -6919,7 +6962,8 @@ def _braces_vacc_task(prep):
     parts = _braces_vacc_parts(rec, prep["spec"], prep["use_chans"],
                                prep["events"], prep["stamp_times"],
                                prep["align_ids"], prep["left_out"],
-                               prep["depth_n"], push=False)
+                               prep["depth_n"], push=False,
+                               pinned=prep["pinned"])
     job_spec = parts["job_spec"]
     return {
         # The member is the SET: one recording can hold several sets, and
@@ -7067,7 +7111,8 @@ def api_braces_batch():
                 got = bracesmod.align(
                     prep["sess"], prep["use_chans"], prep["spec"],
                     prep["events"], prep["stamp_times"], prep["align_ids"],
-                    prep["left_out"], prep["depth_n"], _MemberJob(job, mid))
+                    prep["left_out"], prep["depth_n"], _MemberJob(job, mid),
+                    pinned=prep["pinned"])
                 filed = _braces_file(prep, got)
                 summ = filed["summary"] or {}
                 tally["done"] += 1
@@ -7443,6 +7488,96 @@ def _n_good(rec):
     return n
 
 
+def _lock_braced(rec, events=None):
+    """Which of a pooled set's events sit exactly where Braces put them.
+
+    Lock (2026-10-22) keeps those where they are rather than moving them a
+    second time by a different measure. An event is one when all of:
+
+      * the pool was made from a dentate-spike version Braces had aligned
+        (`ds_aligned`, which Junction records on the pool),
+      * its time is Incisor's stamp -- an Incisor-only event, or one both
+        found that kept Incisor's time (`curation._stamp_of`), and
+      * that time is one of the aligned version's own stamps, read back from
+        the dentate-spike entry, so an Incisor stamp something has moved
+        since is not claimed for Braces. Where the entry is not in this
+        bank, the first two decide.
+
+    `events` defaults to the entry's own; a version's snapshot carries no
+    origin, so the origin is looked up by time in the live events (and by
+    where an alignment moved a stamp from), as Root Canal does. Returns
+    (indices, info) -- info is None for anything that is not a pooled set.
+    """
+    if (rec.get("type") or "") != "pooled":
+        return set(), None
+    events = (rec.get("events") or []) if events is None else events
+    p = (rec.get("source") or {}).get("parameters") or {}
+    info = {"ds_aligned": bool(p.get("ds_aligned")),
+            "ds_entry": p.get("ds_entry"), "ds_name": p.get("ds_name"),
+            "ds_version": p.get("ds_version")}
+    if not p.get("ds_aligned"):
+        return set(), info
+    whose = {}
+    for ev in (rec.get("events") or []):
+        st = curation._stamp_of(ev)
+        if not st:
+            continue
+        for t in (ev.get("start"), ev.get("from_t")):
+            k = curation._tkey(t)
+            if k is not None:
+                whose.setdefault(k, st)
+    ds_times = None
+    ds = BANK.get(p.get("ds_entry") or "") if p.get("ds_entry") else None
+    if ds:
+        try:
+            ref = None
+            want = str(p.get("ds_version"))
+            for v, name in versionsmod.label_rows(list(ds.get("versions")
+                                                       or [])):
+                if name == want:
+                    ref = BANK.version_key(v)
+            got, _ver = _cf_version_events(ds, ref)
+            ds_times = {curation._tkey(e.get("start")) for e in got}
+        except Exception:                                # noqa: BLE001
+            ds_times = None
+    out = set()
+    for i, ev in enumerate(events or []):
+        k = curation._tkey(ev.get("start"))
+        if k is None:
+            continue
+        st = curation._stamp_of(ev) or whose.get(k)
+        if st != "incisor":
+            continue
+        if ds_times is not None and k not in ds_times:
+            continue
+        out.add(i)
+    return out, info
+
+
+def _good_ids(rec):
+    """The labels that name a real event for this entry's kind, by id and
+    by display name -- the set Braces aligns."""
+    goods = [lab for lab
+             in (curation.KINDS.get(rec.get("type") or "ds")
+                 or curation.KINDS["ds"])["labels"]
+             if lab.get("good")]
+    want = {lab["id"] for lab in goods} | {lab["name"] for lab in goods}
+    for lid, name in (rec.get("label_names") or {}).items():
+        if lid in want:
+            want.add(name)
+    return want
+
+
+def _lock_braced_good(rec, events=None):
+    """(indices of good events Braces placed, info) -- `_lock_braced`
+    narrowed to the events Lock would align at all."""
+    events = (rec.get("events") or []) if events is None else events
+    idx, info = _lock_braced(rec, events)
+    want = _good_ids(rec)
+    return {i for i in idx
+            if (events[i].get("label_id") or events[i].get("label")) in want}, info
+
+
 def _tip_usable(vers):
     """The newest version whose stamps can be read back on this machine.
 
@@ -7642,7 +7777,17 @@ def api_braces_candidates():
         if not _n_good(rec):
             continue
         vers = rec.get("versions") or []
+        # Lock (2026-10-22): for a pooled set, how many of its spikes Braces
+        # already placed, so the list can say so and Lock can keep them.
+        braced = None
+        if want_type == "pooled":
+            try:
+                idx, info = _lock_braced_good(rec)
+                braced = dict(info or {}, n=len(idx))
+            except Exception:                            # noqa: BLE001
+                braced = None
         out.append({
+            "braced": braced,
             "id": rec["id"], "name": rec.get("name"),
             "gid": rec.get("gid"), "n": rec.get("n"),
             "project": rec.get("project"), "mouse": rec.get("mouse"),
@@ -25969,17 +26114,19 @@ def api_arc_monolith_joe():
     """Tab 8, Joe's data, here, from the recordings: `what` "joe" (measure
     every rat-day not measured yet, fit the models, write the SPSS files)
     or "script" (run tools/joe_standalone.py on the same recordings and
-    compare its files with these). Refused without `confirm`."""
+    compare its files with these), or "script_vacc" (the same, run on the
+    VACC's copies of the recordings). Refused without `confirm`."""
     body = request.get_json(silent=True) or {}
     if body.get("confirm") is not True:
         return jsonify({"ok": False, "error": "Say confirm: true."}), 400
     what = body.get("what") or "joe"
-    if what not in ("joe", "script"):
-        return jsonify({"ok": False, "error": "what is joe or script."}), 400
+    if what not in ("joe", "script", "script_vacc"):
+        return jsonify({"ok": False, "error": "what is joe, script or script_vacc."}), 400
     try:
         from . import joe as joemod
-        w = monolithmod.start_work("joe" if what == "joe" else "joescript",
-                                   joemod.work_safe if what == "joe" else joemod.script_safe)
+        w = monolithmod.start_work({"joe": "joe", "script": "joescript", "script_vacc": "joescriptvacc"}[what],
+                                   {"joe": joemod.work_safe, "script": joemod.script_safe,
+                                    "script_vacc": joemod.script_vacc_safe}[what])
     except monolithmod.MonolithError as exc:
         return _mono_refused(exc)
     except Exception as exc:                                 # noqa: BLE001
@@ -26016,18 +26163,21 @@ def api_arc_monolith_joe_file(name):
 def api_arc_monolith_joefigs():
     """Tab 9, Joe's figures: every figure drawn again from tab 8's own
     rat-days (and the PAC profiles from the recordings, where they can be
-    read). Refused without `confirm`."""
+    read). With `vacc: true`, the PAC profiles are read first from the
+    VACC's copies of the recordings. Refused without `confirm`."""
     body = request.get_json(silent=True) or {}
     if body.get("confirm") is not True:
         return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    on_vacc = body.get("vacc") is True
     try:
         from . import joefigs as figsmod
-        w = monolithmod.start_work("joefigs", figsmod.work_safe)
+        w = monolithmod.start_work("joefigsvacc" if on_vacc else "joefigs",
+                                   (lambda wk: figsmod.work_safe(wk, on_vacc=True)) if on_vacc else figsmod.work_safe)
     except monolithmod.MonolithError as exc:
         return _mono_refused(exc)
     except Exception as exc:                                 # noqa: BLE001
         return fail("arc/monolith/joefigs", exc, 500)
-    STORE.record_activity([{"action": "arc.monolith.joefigs", "detail": {}}])
+    STORE.record_activity([{"action": "arc.monolith.joefigs", "detail": {"vacc": on_vacc}}])
     return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
 
 

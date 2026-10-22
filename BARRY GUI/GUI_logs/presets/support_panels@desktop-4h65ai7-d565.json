@@ -1,0 +1,104 @@
+{
+  "_at": {},
+  "_keys": {
+    "presets": {
+      "sp-rain-younger-uvm-edu": [
+        "set",
+        "2026-10-22T15:03:04.284596+00:00"
+      ],
+      "sp-sakhava1-uvm-edu": [
+        "set",
+        "2026-10-22T16:20:16.773459+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-22T16:20:16.773459+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "presets": [
+    {
+      "addons": {
+        "panning": {
+          "open": true,
+          "panels": [
+            "csd",
+            "theta",
+            "traces",
+            "spectrogram"
+          ],
+          "shape": "linked"
+        },
+        "strata": {
+          "open": true,
+          "panels": [
+            "csd",
+            "theta",
+            "voltage",
+            "spectrogram"
+          ],
+          "shape": "linked"
+        }
+      },
+      "at": "2026-10-21T17:58:49.680510+00:00",
+      "id": "sp-rain-younger-uvm-edu",
+      "label": "current",
+      "name": "Rain Younger \u2014 current",
+      "note": "From the lab rig (barrylab-d8e8), as Rain left them on 2026-10-21.",
+      "owner": "Rain Younger",
+      "owner_email": "rain.younger@uvm.edu",
+      "saved": {
+        "app_version": "2026.10.21.5",
+        "at": "2026-10-22T11:03:04-04:00",
+        "commit": "724bccbc",
+        "email": "sakhava1@uvm.edu",
+        "host": "DESKTOP-4H65AI7",
+        "machine": "Bluebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      }
+    },
+    {
+      "addons": {
+        "panning": {
+          "open": true,
+          "panels": [
+            "csd",
+            "theta",
+            "traces",
+            "spectrogram"
+          ],
+          "shape": "linked"
+        },
+        "strata": {
+          "open": true,
+          "panels": [
+            "csd",
+            "theta",
+            "voltage",
+            "spectrogram"
+          ],
+          "shape": "linked"
+        }
+      },
+      "at": "2026-10-22T16:20:16.760Z",
+      "auto": true,
+      "id": "sp-sakhava1-uvm-edu",
+      "label": "current",
+      "name": "Shahriar Tafti \u2014 current",
+      "owner": "Shahriar Tafti",
+      "owner_email": "sakhava1@uvm.edu",
+      "saved": {
+        "app_version": "2026.10.22.3",
+        "at": "2026-10-22T12:20:16-04:00",
+        "commit": "724bccbc",
+        "email": "sakhava1@uvm.edu",
+        "host": "DESKTOP-4H65AI7",
+        "machine": "Bluebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      }
+    }
+  ]
+}

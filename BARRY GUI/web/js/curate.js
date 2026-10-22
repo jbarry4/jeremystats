@@ -194,7 +194,7 @@ BARRY.curate = (function () {
       const was = review;
       review = back.review;
       if (!nWanted()) review = was;
-      goTo(back.index, true);
+      goTo(back.index, true, true);
       /* Said out loud. Landing in the middle of a set with no explanation
          reads as a bug, and the whole point is to be able to trust it -- so
          it names the number, and says when the candidate itself has gone
@@ -207,7 +207,7 @@ BARRY.curate = (function () {
         : 'Back where you left off: ' + at + ' of ' + total + '.',
         null, 5000);
     } else {
-      goTo(firstWanted(), true);
+      goTo(firstWanted(), true, true);
     }
     render();
 
@@ -333,6 +333,7 @@ BARRY.curate = (function () {
     }
     if (aidWin && !aidWin.closed) { try { aidWin.close(); } catch (e) {} }
     aidWin = null;
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     setMode(null);
     /* What the sitting came to, on the way out -- but only if there was a
        sitting. `quiet` makes it say nothing for a set somebody opened,
@@ -362,7 +363,14 @@ BARRY.curate = (function () {
     // Same reasoning as StrataScope: what you are deciding -- is this
     // deflection a dentate spike or one bad wire -- is read off the traces,
     // so they get the window and the aids get their own.
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    /* The main window as this person laid it out in Profile › Support panel
+       preferences (2026-10-22), or the traces alone, as always. Its first
+       pane is always the traces, which everything below reads. */
+    const mp = BARRY.supportPanels
+      ? BARRY.supportPanels.applyMain('curate', [{ panel: 'traces' }], sess,
+                                      { col: 0.5, row: 0.5 })
+      : (BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 }), null);
+    if (mp && mp.span) span = mp.span;
     openAids();
   }
 
@@ -577,7 +585,7 @@ BARRY.curate = (function () {
              || all[i].id !== got.id };
   }
 
-  function goTo(i, quiet) {
+  function goTo(i, quiet, ownSpan) {
     const n = events().length;
     if (!n) return;
     index = Math.max(0, Math.min(n - 1, i));
@@ -588,7 +596,10 @@ BARRY.curate = (function () {
     // Somebody zoomed the pane: that is the window they want, so take it
     // rather than putting it back. Only a real change counts -- the
     // centring below sets the span itself, so every jump reports one.
-    const shown = paneSpan();
+    // Not on the way in (Spotter's rule): the pane then still shows what
+    // the recording was last looked at with, and the span this mode chose
+    // -- its own, or Profile's -- wins.
+    const shown = ownSpan ? null : paneSpan();
     if (shown && Math.abs(shown - span) > Math.max(0.02, span * 0.02)) {
       setSpan(shown);
     }
@@ -1865,6 +1876,8 @@ BARRY.curate = (function () {
   let lastDraw = null;
 
   function draw(ctx, s, win, x0, plotW, y0, plotH, P) {
+    // The marks' strength, handed in by the pane (Marks › Faded).
+    const A = ctx.globalAlpha;
     if (!s || !s.curation || !set_) {
       lastDraw = { ok: false, why: !s ? 'no session'
                    : (!s.curation ? 'session has no curation'
@@ -1899,7 +1912,7 @@ BARRY.curate = (function () {
 
       // The one being decided gets a full-height line; the others get a tick,
       // so the candidate in question is never ambiguous.
-      ctx.globalAlpha = isNow ? 0.95 : (e.label ? 0.55 : 0.4);
+      ctx.globalAlpha = (isNow ? 0.95 : (e.label ? 0.55 : 0.4)) * A;
       ctx.strokeStyle = isNow ? (e.label ? c : P.accent) : c;
       ctx.lineWidth = isNow ? 2 : 1;
       if (!isNow && !e.label) ctx.setLineDash([3, 3]); else ctx.setLineDash([]);
@@ -1912,7 +1925,7 @@ BARRY.curate = (function () {
 
       if (isNow) {
         ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = A;
         ctx.fillStyle = e.label ? c : P.accent;
         ctx.beginPath();
         ctx.arc(x, y0 + 7, 4.5, 0, Math.PI * 2);

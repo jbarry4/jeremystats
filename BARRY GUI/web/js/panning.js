@@ -344,6 +344,8 @@ BARRY.panning = (function () {
     if (sess && BARRY.views.xplore.setChannelLines) {
       BARRY.views.xplore.setChannelLines(sess, []);
     }
+    // A main window laid out from Profile goes back to its one pane.
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     setMode(null);
     receipt(set_.gid, { quiet: true });
     if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
@@ -356,7 +358,15 @@ BARRY.panning = (function () {
       if (n) n.remove();
     }
     document.removeEventListener('keydown', keys, true);
+    window.removeEventListener('barry:modefold', onFold);
     if (BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
+  }
+
+  /* The bar folded or unfolded (core.js modeFold): the strips are sized from
+     their box, which was nothing while they were put away, so they are drawn
+     again once they are back, or the ticks and the clicks disagree. */
+  function onFold() {
+    requestAnimationFrame(() => { if (set_) drawStrips(); });
   }
 
   /* Through the IED band, for the reason Spotter gives: a pooled set holds
@@ -385,7 +395,14 @@ BARRY.panning = (function () {
   }
 
   function layout() {
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    /* The main window as this person laid it out in Profile › Support panel
+       preferences (2026-10-22), or the traces alone, as always. Its first
+       pane is always the traces, which everything below reads. */
+    const mp = BARRY.supportPanels
+      ? BARRY.supportPanels.applyMain('panning', [{ panel: 'traces' }], sess,
+                                      { col: 0.5, row: 0.5 })
+      : (BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 }), null);
+    if (mp && mp.span) span = mp.span;
     openAids();
   }
 
@@ -1384,6 +1401,7 @@ BARRY.panning = (function () {
       // In the middle of the one mode bar (core.js `BARRY.modeSlot`).
       BARRY.modeSlot().appendChild(bar);
       document.addEventListener('keydown', keys, true);
+      window.addEventListener('barry:modefold', onFold);
     }
     bar.innerHTML = '';
     const ev = current();
@@ -1656,14 +1674,14 @@ BARRY.panning = (function () {
     const bar = $('#panBar');
     if (!bar || !bar.parentNode) return;
     if (!$('#panWin')) {
-      const w = el('canvas', { id: 'panWin', class: 'pan-win',
+      const w = el('canvas', { id: 'panWin', class: 'pan-win mode-strip',
         title: 'Click an event to go to it. Shift-click another to pick it '
              + 'for a merge, then press M.',
         onclick: winClick });
       bar.parentNode.insertBefore(w, bar);
     }
     if (!$('#panAll')) {
-      const a = el('canvas', { id: 'panAll', class: 'pan-all',
+      const a = el('canvas', { id: 'panAll', class: 'pan-all mode-strip',
         onclick: allClick });
       bar.parentNode.insertBefore(a, $('#panWin'));
     }

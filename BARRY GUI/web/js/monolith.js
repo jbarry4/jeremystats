@@ -552,7 +552,7 @@ window.MONO = (function () {
     if (st.tab === 'phys' && window.MONO_PHYS) window.MONO_PHYS.show();
     if (st.tab === 'narrow' && window.MONO_NARROW) window.MONO_NARROW.show();
     if (st.tab === 'joe' && window.MONO_JOE) window.MONO_JOE.show();
-    if (st.tab === 'figs' && window.MONO_FIGS) window.MONO_FIGS.show();
+    if (st.tab === 'figs' && window.MONO_JOEFIGS) window.MONO_JOEFIGS.show();
     if (st.tab === 'main' || st.tab === 'c21') renderTrail();
     try { scrollTo(0, 0); } catch (e) { /* none */ }
   }
@@ -3770,7 +3770,7 @@ window.MONO = (function () {
     if (st.tab === 'phys' && window.MONO_PHYS) window.MONO_PHYS.show();
     if (st.tab === 'narrow' && window.MONO_NARROW) window.MONO_NARROW.show();
     if (st.tab === 'joe' && window.MONO_JOE) window.MONO_JOE.show();
-    if (st.tab === 'figs' && window.MONO_FIGS) window.MONO_FIGS.show();
+    if (st.tab === 'figs' && window.MONO_JOEFIGS) window.MONO_JOEFIGS.show();
     document.dispatchEvent(new CustomEvent('monolith:ready'));
   }
 

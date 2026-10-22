@@ -68,7 +68,10 @@ BARRY.views.eventbank = (function () {
       .finally(() => { liveDone = true; });
     let dim = null;
     if (!entries.length) {
-      const was = await BARRY.data.stale('/api/bank', 300);
+      // Wait for the browser's store as long as it takes -- it took 2.8 s on
+      // a 4x-slowed CPU -- but never longer than this time's answer.
+      const was = await Promise.race([BARRY.data.stale('/api/bank', 4000),
+                                      asking.then(() => null, () => null)]);
       if (was && was.value && !liveDone) {
         take(was.value);
         if (bones) bones();
