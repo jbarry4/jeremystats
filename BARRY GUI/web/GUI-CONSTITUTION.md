@@ -589,13 +589,34 @@ centred on the same moment (`XF.ownSpan`, `applyRemote`, `publishLink`). A
 panel with a band of its own turns the window's band lock off (`flock=0`).
 `_dev/supportpanels.html` checks all of it.
 
+**An add-on's MAIN window is the person's choice too** (2026-10-22). Lay it
+out with `BARRY.supportPanels.applyMain(mode, defaults, sess, split, fill)`,
+never with your own `setPanes` call. It returns the main plan (use
+`plan.span` as your starting span) or null, meaning the defaults stand
+exactly as before. Call `restoreMain()` on leaving: it clears the drawn
+layout and the shape override, puts back the band lock, and returns the
+window to one traces pane. Pane 0 is always the traces; every add-on reads
+it.
+
+**Layer bands are per panel** (`pane.layerWash`, `paneLayerWash`,
+`paneLayerAlpha`). A pane that has not chosen follows whatever is driving
+the labelling (StrataScope here, or the labelling window it follows). Every
+call into `BARRY.strata.draw` names its pane through `layerPaneNow`.
+
+**Marks › Faded has a level** (`sess.marksFade`, 0.1 to 0.9, `marksAlpha`).
+Every painter of marks multiplies by the `ctx.globalAlpha` it is handed,
+never assigning an absolute one, so wrapping a call in the marks' alpha
+fades it. A new painter does the same.
+
 **With two or more panes there is one overview strip, across the bottom**
 (2026-10-21: "it doesn't copy that for each pane. There should be a global
 one"). Each pane still builds its strip. `placeGlobalStrip` hides them
 (`.one-strip`) and moves the focused pane's own strip, listeners and all,
 into `#xfStrip`. A click into another pane brings that pane's strip. With
 one pane, the strip goes back under it. Never draw a second strip, and never
-look for a pane's strip inside its box: it may be at the bottom.
+look for a pane's strip inside its box: it may be at the bottom. Putting it
+away is window-level chrome (`XF.chrome.overview`, View and More › Overview
+strip), remembered separately for the main window and for support windows.
 
 ### An Xplorefinder mode
 
@@ -693,7 +714,10 @@ bottom  [⌄]  the mode's own tools ...... More · Next: Braces → · Bank…
   nearer has had it: a field being typed in, a dialog or popover, or your own
   keydown that calls `preventDefault` (cancelling a drag).
 - **The tools bar (`#modeBar`)** is at the bottom. It has the fold arrow (one
-  slim line, remembered per add-on; the keys still work) and your tools:
+  slim line, remembered per add-on; the keys still work). A MODES entry
+  with `foldStages: 3` folds in stages: tick bars first (`.mode-strip`
+  canvases, `.fold-ticks`), then everything, then back. Panning uses this,
+  and listens for `barry:modefold` to redraw its strips and your tools:
   `BARRY.modeSlot().appendChild(yourBar)`, never `#xfBody`. End your bar with
   `BARRY.ui.modeEnd({ more, next, bank })`: occasional controls folded into
   More, then the next step (navigation only, see `handoff`), then Bank.
@@ -1711,6 +1735,21 @@ What that found, and the rule each one became:
 - **A library's threads are memory.** numpy and scipy each reserved a buffer
   per CPU thread: 867 MB committed before the first request. backend/
   __init__.py caps their pools at four: 160 MB.
+- **A poll that re-derives everything pays for all of it, every time.**
+  `/api/cloud/items` parsed the time of every curation decision (143,000)
+  on each five-second poll: 1.36 s. Kept against the store's signature it
+  is 11 ms. Whatever a poll works out from records is kept until their
+  shards change (`Book.signature()`), never on a timer alone.
+- **Light, measured** (`perf_profile.py --throttle 4 --theme dark`, a view
+  open and nobody touching it): ToolKit 96 % of the main thread → 48 %,
+  Root Canal 74 % → 19 %, Storyboard 28 % → 6 %, Sessions in its first
+  seconds 60 % → 1 %. What is left in Light is the work itself, not the
+  look.
+
+  Measure in a fixed theme. Halloween's yard and VACC's board are their
+  own loops, and before 2026-10-22 `?theme=` lost to the machine's own
+  theme a second after start-up, so a run that asked for dark could be
+  measuring Halloween.
 
 ### Lists: one copy, last time's first, sent only when changed
 
@@ -1728,6 +1767,12 @@ megabytes, and Sessions showed nothing for 4.3 s on a first open.
 - **A write under `/api/<thing>`** marks every kept answer under it as needing
   a fresh look (`api()` does this; nothing to remember).
 - **Read-only.** A kept answer is shared: copy before changing it.
+- **Wait for the browser's store, but never past the live answer.** On a
+  CPU slowed four times IndexedDB took 2–3 s to hand back last time's Event
+  Bank, so a fixed 300 ms wait drew the skeleton for the whole read. Race
+  it: `Promise.race([BARRY.data.stale(url, 4000), live.then(() => null,
+  () => null)])`. The main window also reads the common lists into memory
+  when it is first idle, so `stale` usually answers at once.
 
 ### Requests nobody waits for yield
 
@@ -1744,6 +1789,12 @@ all. Now:
   (`nlx.read_ncs_ranges`), never one `read_ncs_range` each.
 - **Ask for many things a few at a time**, drawing each as it lands, never
   all at once (Xplorefinder's band strips: two at a time).
+- **Onto an empty pane, the first rows first.** A trace window costs the
+  server per channel. A traces pane with nothing on it asks for its first
+  16 rows alongside the whole window and draws them with every lane in
+  place (`earlyWin`, xplore.js). The whole answer then replaces them, so
+  the end state is the plain read. Never onto traces already showing: a
+  full picture is not traded for a mostly empty one.
 - **Stream an answer whose items each cost something real**
   (backend/streamjson.py, `BARRY.data.stream`): a head line, one line per
   item as it is ready, a closing line. Not for an answer that comes out of

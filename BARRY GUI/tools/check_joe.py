@@ -491,13 +491,66 @@ def main():
             e = c0["stats"]["edges"][d][k]
             worst = max(worst, abs(float(np.mean(ch)) - e) if ch and e is not None else 0.0)
     check("its edges are the rats' mean changes from tab 8's own per-rat values", worst < 1e-9, worst)
-    nets = [g for f in conn for g in f["stats"]["graphs"] if g["kind"] == "net"]
+    nets = [g for f in conn for g in f["alt"]["stats"]["graphs"] if g["kind"] == "net"]
     check("the within-session shuffles of the sums are centred on nothing",
           all(abs(g["null"]["mean"]) < 0.1 * g["null"]["sd"] for g in nets), [(round(g["null"]["mean"], 4), round(g["null"]["sd"], 4)) for g in nets][:4])
     cm2 = next((f for f in conn if f["model"] == "m2" and f["band"] == "theta"), None)
-    g2 = cm2 and next(g for g in cm2["stats"]["graphs"] if g["row"] == "delta" and g["kind"] == "pos")
+    g2 = cm2 and next(g for g in cm2["alt"]["stats"]["graphs"] if g["row"] == "delta" and g["kind"] == "pos")
     check("the planted theta change in cue 1 stands out of its shuffles (Precon4 − Precon1, increases)",
           bool(g2) and g2["p"] < 0.05 and g2["stars"], g2 and (g2["p"], g2["rank"]))
+
+    # The main test (2026-10-22): the rats' signs flipped every way, the rat
+    # the unit as in the mixed model behind tab 8's light; the trials'
+    # shuffle is the alternative, a toggle away.
+    n_r = len(c0["stats"]["rats"])
+    check("the rings' main test is the rats' sign flips, all 2^%d = %d of them; the trials' shuffle the alternative, in its own files"
+          % (n_r, 2 ** n_r),
+          all(f["null"] == "rats" and f["stats"]["rat_exact"] and f["stats"]["n_signs"] == 2 ** n_r
+              and all(g["null_kind"] == "rats" and g["n"] == 2 ** n_r for g in f["stats"]["graphs"])
+              and f["alt"]["null"] == "trials" and len(f["alt"]["stats"]["graphs"]) == 9
+              and all(g["null_kind"] == "trials" and g["n"] == joefigs.N_PERM + 1 for g in f["alt"]["stats"]["graphs"])
+              and f["alt"]["files"]["svg"] != f["files"]["svg"] and all(os.path.isfile(joefigs.figs_dir(f["alt"]["files"][x])) for x in ("svg", "pdf", "png"))
+              and "ratflip" in f["methods"] and "permutation" in f["alt"]["methods"] for f in conn), [f["null"] for f in conn])
+    # Every one by hand, from tab 8's own per-rat table: each rat's change,
+    # its sign flipped all 2^n ways, the rats' mean per pair, the ring's sum.
+    import itertools
+    lv0 = [x for x, _l in joe.MODEL_BY_ID[r0["model"]][4]]
+    ui0 = [r0["all_units"].index(u) for u in c0["stats"]["pairs"]]
+    def per_rat_change(per, d):
+        return [np.nan if per[d][lv0[1]][i] is None or per[d][lv0[0]][i] is None else per[d][lv0[1]][i] - per[d][lv0[0]][i] for i in ui0]
+    X = {"Precon1": [], "Precon4": []}
+    for rat in c0["stats"]["rats"]:
+        per = r0["table"].get(str(rat)) or r0["table"].get(rat)
+        for d in X:
+            X[d].append(per_rat_change(per, d) if per else [np.nan] * len(ui0))
+    X = {d: np.array(v, float) for d, v in X.items()}
+    X["delta"] = X["Precon4"] - X["Precon1"]
+    signs = np.array(list(itertools.product((1.0, -1.0), repeat=n_r)))
+    worst = 0.0
+    for g in c0["stats"]["graphs"]:
+        with np.errstate(invalid="ignore"), __import__("warnings").catch_warnings():
+            __import__("warnings").simplefilter("ignore", RuntimeWarning)
+            m = np.nanmean(signs[:, :, None] * X[g["row"]][None], axis=1)
+        m = np.where(np.isfinite(m), m, 0.0)
+        tot = {"pos": np.clip(m, 0, None).sum(1), "neg": np.clip(m, None, 0).sum(1), "net": m.sum(1)}[g["kind"]]
+        o = tot[0]
+        k = {"up": (tot >= o - 1e-12).sum(), "down": (tot <= o + 1e-12).sum(), "two": (np.abs(tot) >= abs(o) - 1e-12).sum()}[g["side"]]
+        worst = max(worst, abs(k / len(tot) - g["p"]), abs(o - g["stat"]))
+    check("its P, every one of the nine, is the share of all 2^%d sign patterns of tab 8's own per-rat changes at least as extreme" % n_r,
+          worst < 1e-9, worst)
+    rg = [g for f in conn for g in f["stats"]["graphs"]]
+    check("P in steps of 1/%d: never under 1/%d one-sided nor 2/%d for both (flipping every rat is the mirror image)" % ((2 ** n_r,) * 3),
+          all(abs(g["p"] * 2 ** n_r - round(g["p"] * 2 ** n_r)) < 1e-9 for g in rg)
+          and all(g["p"] >= (2 if g["side"] == "two" else 1) / 2 ** n_r - 1e-12 for g in rg), min(g["p"] for g in rg))
+    gr2 = cm2 and next(g for g in cm2["stats"]["graphs"] if g["row"] == "delta" and g["kind"] == "pos")
+    check("the planted theta change stands out of the rats' flips too (Precon4 − Precon1, increases)",
+          bool(gr2) and gr2["p"] < 0.05 and gr2["stars"], gr2 and (gr2["p"], gr2["rank"]))
+    lg0, la0 = c0["legend"]["body"], c0["alt"]["legend"]["body"]
+    check("each test's legend says its own: the rats' with 1/%d one-sided and 2/%d for both; the trials' its %s shuffles"
+          % (2 ** n_r, 2 ** n_r, format(joefigs.N_PERM, ",")),
+          ("smallest possible is 1/%d for the increases or the decreases and 2/%d for both" % (2 ** n_r, 2 ** n_r)) in lg0
+          and "sign patterns" in lg0 and "shuffles" in la0 and format(joefigs.N_PERM, ",") in la0 and "sign patterns" not in la0,
+          (lg0[:120], la0[:120]))
     fol = [f for f in figs["figures"] if f["kind"] == "follow"]
     worst = 0.0
     for f in fol:
@@ -514,8 +567,225 @@ def main():
     wpt = float(_re.search(r'width="([0-9.]+)pt"', svg0).group(1))
     check("Nature's format: 183 mm wide, Arial, text kept as text", abs(wpt - 183 / 25.4 * 72) < 0.5 and "Arial" in open(joefigs.figs_dir(c0["files"]["svg"]), encoding="utf-8").read(),
           wpt)
+    check("PAC: every trial's MI read for the roses is tab 8's own (%s trials and windows)" % (figs["pac_check"] or {}).get("compared"),
+          bool(figs["pac_check"]) and figs["pac_check"]["ok"] and figs["recordings_where"] == "here", figs["pac_check"])
+
+    print("\nOn the VACC (its entry point, run here on these recordings)")
+    import copy
+    import shlex
+    items9 = joefigs.follow_items(R9)
+    # The manifest names each folder's copy on the cluster; here the "copy"
+    # is the folder itself, so the cluster's entry point can run on it.
+    sizes = lambda f: {n: os.path.getsize(os.path.join(f, n)) for n in os.listdir(f)}          # noqa: E731
+    man_days = [{"folders": [{"local": f["local"], "remote": {"scratch": f["local"]}, "files": sizes(f["local"])}
+                             for f in d["folders"]]} for d in days]
+    real_manifest = MO.manifest
+    MO.manifest = lambda: {"days": man_days}
+    try:
+        spec = joefigs.pac_spec(R9, day_data, inputs, items9)
+    finally:
+        MO.manifest = real_manifest
+    tested = sorted((d["rat"], d["day"]) for d in days if d["day"] in joe.TESTED)
+    check("the spec: every tested rat-day's copy, its trials and wires, and its .ncs/.nev sizes; only the PAC follow-ups",
+          sorted((d["rat"], d["day"]) for d in spec["days"]) == tested and not spec["missing"]
+          and all(spec["sizes"][d["folders"][0][1]] and all(n.endswith((".ncs", ".nev")) for n in spec["sizes"][d["folders"][0][1]])
+                  for d in spec["inputs"]["days"])
+          and all(k.startswith("pac_") for it in spec["items"] for k in it["keys"]) and spec["items"],
+          (len(spec["days"]), spec["missing"][:2]))
+    sp, so9 = os.path.join(root, "pac_spec.json"), os.path.join(root, "pac_result.json")
+    json.dump(spec, open(sp, "w", encoding="utf-8"))
+    p9 = subprocess.run([sys.executable, "-m", "backend.joefigs", "pac", sp, so9], cwd=APP, capture_output=True, text=True)
+    got9 = json.load(open(so9, encoding="utf-8")) if p9.returncode == 0 else {}
+    here9, _n9 = joefigs.pac_profiles(R9, day_data, inputs, items9)
+    worst = max((abs(np.asarray(here9[k]["per_rat"][r][d][w]["profile"]) - np.asarray(v["per_rat"][r][d][w]["profile"])).max()
+                 for k, v in (got9.get("profiles") or {}).items() for r in v["per_rat"] for d in v["per_rat"][r]
+                 for w in v["per_rat"][r][d]), default=None)
+    check("the cluster's entry point (python -m backend.joefigs pac): the same profiles as reading here, every rat-day read",
+          p9.returncode == 0 and sorted(got9["profiles"]) == sorted(here9) and worst is not None and worst < 1e-12
+          and len(got9["rat_days"]) == len(tested) and not got9["notes"] and got9["key"] == spec["key"],
+          (p9.stderr[-300:], worst))
+    bad = copy.deepcopy(spec)
+    f0 = bad["inputs"]["days"][0]["folders"][0][1]
+    n0 = sorted(x for x in bad["sizes"][f0] if x.endswith(".ncs"))[0]
+    bad["sizes"][f0][n0] += 1
+    json.dump(bad, open(sp, "w", encoding="utf-8"))
+    p9b = subprocess.run([sys.executable, "-m", "backend.joefigs", "pac", sp, so9], cwd=APP, capture_output=True, text=True)
+    gb = json.load(open(so9, encoding="utf-8")) if p9b.returncode == 0 else {}
+    d0 = bad["inputs"]["days"][0]
+    check("a copy whose size is not the recording tab 8 read: that rat-day is said and left out, the others read",
+          p9b.returncode == 0 and len(gb["rat_days"]) == len(tested) - 1 and "r%d %s" % (d0["rat"], d0["day"]) not in gb["rat_days"]
+          and any(n.startswith("r%d %s: the cluster's copy is not the recording tab 8 read (%s" % (d0["rat"], d0["day"], n0)) for n in gb["notes"]),
+          gb.get("notes", [])[:2])
+    # Drawn where the recordings are not: the VACC's reading of this very tab 8 is used, and one of another is not.
+    gone = dict(inputs, days=[dict(d, folders=[[r, f + "_not_here"] for r, f in d["folders"]]) for d in inputs["days"]])
+    joe._write(joe.joe_dir(joefigs.PAC_VACC), dict(got9, at="2026-10-22T11:38:10", slurm_id="5979834",
+                                                   where="/users/s/a/sakhava1/jarvis/joefigs/made-up"))
+    figs2 = joefigs.build(R=R9, days=day_data, inputs=gone)
+    pac2 = [f for f in figs2["figures"] if any(k.startswith("pac_") for k in f.get("keys") or [])]
+    check("drawn without the recordings: the VACC's reading of this tab 8, every PAC figure with its roses, every trial tab 8's own",
+          figs2["recordings_where"] == "vacc" and figs2["pac_check"]["ok"] and figs2["vacc_run"]["slurm_id"] == "5979834"
+          and pac2 and all(f["pac_profiles"] and not f["pac_missing"] for f in pac2), (figs2["recordings_where"], figs2["pac_check"]))
+    joe._write(joe.joe_dir(joefigs.PAC_VACC), dict(got9, key="0" * 16))
+    figs3 = joefigs.build(R=R9, days=day_data, inputs=gone)
+    check("a reading made from another tab 8 is not used: no roses, and the figures say so",
+          not figs3["recordings_read"] and all(f["pac_missing"] for f in figs3["figures"] if any(k.startswith("pac_") for k in f.get("keys") or [])),
+          figs3["recordings_where"])
+    os.remove(joe.joe_dir(joefigs.PAC_VACC))
+
+    # The size check: what find answers, parsed; the folders go as data on stdin, never on the command line.
+    from backend import vacc as V
+    seen = {}
+    def fake_ssh(cfg, cmd, stdin=None, timeout=45):
+        seen.update(cmd=cmd, stdin=stdin)
+        return "10\t/gpfs/x/J3 Precon 1/a b/CSC1.ncs\n5\t/gpfs/x/J3 Precon 1/a b/Events.nev\n8\t/gpfs/x/J3 Precon 1/a b/CSC2.ncs\n"
+    real_ssh = V._ssh
+    V._ssh = fake_ssh
+    try:
+        sb = joe.vacc_sizes({}, {"/gpfs/x/J3 Precon 1/a b": {"CSC1.ncs": 10, "Events.nev": 5, "CSC2.ncs": 7, "CSC3.ncs": 4}})
+    finally:
+        V._ssh = real_ssh
+    check("the copies' sizes from one find: a file of another size and a missing one said; the folder sent only as data",
+          sb == ["/gpfs/x/J3 Precon 1/a b/CSC2.ncs is 8 bytes, not 7 bytes", "/gpfs/x/J3 Precon 1/a b/CSC3.ncs is missing, not 4 bytes"]
+          and seen["cmd"] == "bash -s" and "J3 Precon 1" in seen["stdin"], sb)
+
+    # Tab 8's script on the VACC: the job stood in for by a run here, the rest as it is.
+    so_here = joe.joe_dir("script")
+    jd = joe.joe_dir()
+    os.makedirs(jd, exist_ok=True)
+    json.dump(inputs, open(joe.joe_dir("joe_inputs.json"), "w", encoding="utf-8"))
+    shutil.copytree(cmp_dir, joe.joe_dir("export", "compare"), dirs_exist_ok=True)
+    runs = {}
+    def fake_job(files, command, cpus=4, mem="8G", wall="01:00:00", progress=None, check=None, kind="joe"):
+        ws = tempfile.mkdtemp(dir=root, prefix="vacc_ws_")
+        for name, data in files.items():
+            with open(os.path.join(ws, name), "wb") as fh:
+                fh.write(data)
+        argv = shlex.split(command)
+        argv = argv[1:] if argv[0] == "exec" else argv
+        argv[0] = sys.executable
+        pj = subprocess.run(argv, cwd=ws, capture_output=True, text=True)
+        open(os.path.join(ws, "job_1.out"), "w", encoding="utf-8").write(pj.stdout + pj.stderr)
+        runs.update(files=files, command=command, cpus=cpus, mem=mem, kind=kind, rc=pj.returncode)
+        if pj.returncode:
+            raise joe.JoeError("the job failed: " + pj.stderr[-300:], 502)
+        return {}, ws, "1"
+    class Wk:
+        def note(self, **kw):
+            pass
+        def check(self):
+            pass
+    stand = {k: getattr(joe, k) for k in ("vacc_copies", "vacc_config", "vacc_sizes", "vacc_job", "vacc_tree", "vacc_text")}
+    copies = lambda: {joe._norm(f["local"]): (f["local"], sizes(f["local"])) for d in days for f in d["folders"]}     # noqa: E731
+    joe.vacc_copies = copies
+    joe.vacc_config = lambda: {}
+    joe.vacc_sizes = lambda cfg, want: []
+    joe.vacc_job = fake_job
+    joe.vacc_tree = lambda cfg, ws, name, dest, timeout=600: shutil.copytree(os.path.join(ws, name), dest, dirs_exist_ok=True)
+    joe.vacc_text = lambda cfg, ws, name, timeout=120: open(os.path.join(ws, name), encoding="utf-8").read()
+    try:
+        ag = joe.script_vacc_work(Wk())
+        sent = json.loads(runs["files"]["joe_inputs.json"])
+        check("tab 8's script on the VACC: sent with its inputs (every tested folder its copy), run as one job, compared as a run here is",
+              ag["ok"] and ag["where"] == "vacc" and ag["slurm_id"] == "1" and runs["kind"] == "joescript"
+              and "--jobs %d" % runs["cpus"] in runs["command"] and "joe_standalone.py" in runs["files"]
+              and sorted((d["rat"], d["day"]) for d in sent["days"]) == tested
+              and all(len(d["folders"]) == 3 for d in sent["days"]), (ag.get("where"), runs.get("command")))
+        before = sorted(os.listdir(so_here))
+        joe.vacc_copies = lambda: {}
+        try:
+            joe.script_vacc_work(Wk())
+            r1 = None
+        except joe.JoeError as exc:
+            r1 = str(exc)
+        joe.vacc_copies = copies
+        joe.vacc_sizes = lambda cfg, want: ["/gpfs/x/a/CSC1.ncs is 1 bytes, not 2 bytes"]
+        try:
+            joe.script_vacc_work(Wk())
+            r2 = None
+        except joe.JoeError as exc:
+            r2 = str(exc)
+        check("refused, and the last comparison kept, when a folder has no copy there or a copy differs from what tab 8 read",
+              r1 and "no copy on the VACC" in r1 and r2 and "differ from the recordings tab 8 read" in r2
+              and sorted(os.listdir(so_here)) == before, (r1, r2))
+    finally:
+        for k, v in stand.items():
+            setattr(joe, k, v)
+
+    # vacc_job against a stand-in cluster: only a Stop (or a submit gone
+    # wrong) cancels; a login node that does not answer is waited out, and
+    # past the limit let go of without cancelling (the review of 10-22).
+    from backend import vaccrun as VR
+    calls = []
+    was = {"ssh": V._ssh, "poll": V.poll_states, "cancel": V.cancel, "cfg": joe.vacc_config, "poll_s": joe.VACC_POLL_S,
+            "sleep": VR.SLEEP, "clock": VR.CLOCK, "grace": V.LAG_GRACE_S}
+    def run_job(polls, submit_ok=True, stop_at=None, ws="/users/x/jarvis"):
+        calls.clear()
+        seq = list(polls)
+        def ssh(cfg, cmd, stdin=None, timeout=45):
+            calls.append(("ssh", cmd.split(" ")[0]))
+            if "sbatch" in cmd:
+                if not submit_ok:
+                    raise V.SSHError("The cluster did not answer within 300s.", "timeout")
+                return "4242\n"
+            return ""
+        def poll(cfg, ids, timeout=30, ssh=None):
+            calls.append(("poll",))
+            x = seq.pop(0) if seq else {"state": "COMPLETED"}
+            if isinstance(x, Exception):
+                raise x
+            return {"4242": x} if x else {}
+        def cancel(cfg, slurm_id=None, rid=None, timeout=25, ssh=None):
+            calls.append(("cancel", slurm_id, bool(rid)))
+        n_check = [0]
+        def chk():
+            n_check[0] += 1
+            if stop_at and n_check[0] >= stop_at:
+                raise RuntimeError("Stopped.")
+        V._ssh, V.poll_states, V.cancel = ssh, poll, cancel
+        joe.vacc_config = lambda: {"workspace": ws, "partition": "general", "modules": []}
+        joe.VACC_POLL_S = 0
+        VR.SLEEP = lambda s_: None
+        try:
+            return joe.vacc_job({"a.txt": b"x"}, "exec true", kind="checkjob", check=chk), None
+        except Exception as exc:                         # noqa: BLE001
+            return None, exc
+    fail = V.SSHError("The cluster did not answer within 30s.", "timeout")
+    try:
+        gj, err = run_job([fail, fail, {"state": "RUNNING"}, {"state": "COMPLETED"}])
+        r1 = (err is None and gj[2] == "4242" and not any(c[0] == "cancel" for c in calls) and not joe.vacc_runs().get("checkjob"))
+        gj, err = run_job([{"state": "RUNNING"}, {"state": "RUNNING"}], stop_at=3)
+        r2 = (err is not None and ("cancel", "4242", True) in calls and not joe.vacc_runs().get("checkjob"))
+        gj, err = run_job([], submit_ok=False)
+        r3 = (err is not None and any(c[0] == "cancel" and c[2] for c in calls) and not joe.vacc_runs().get("checkjob"))
+        t_ = [0.0]
+        VR.CLOCK = lambda: t_.__setitem__(0, t_[0] + 400.0) or t_[0]
+        gj, err = run_job([fail] * 50)
+        r4 = (isinstance(err, joe.JoeError) and "nothing was cancelled" in str(err) and "4242" in str(err)
+              and not any(c[0] == "cancel" for c in calls) and joe.vacc_runs().get("checkjob", {}).get("slurm_id") == "4242")
+        VR.CLOCK = was["clock"]
+        gj, err = run_job([{"state": "RUNNING"}])
+        r5 = err is None and ("cancel", "4242", True) in calls[:3]       # the one left behind, cancelled first
+        V.LAG_GRACE_S = 0.0
+        gj, err = run_job([{}] * 500)
+        r6 = err is None and gj[2] == "4242" and sum(c[0] == "poll" for c in calls) < 100
+        V.LAG_GRACE_S = was["grace"]
+        gj, err = run_job([], ws="/users/x/my jarvis")
+        r7 = isinstance(err, joe.JoeError) and "not a plain absolute path" in str(err) and not any(c[0] == "ssh" for c in calls)
+    finally:
+        V._ssh, V.poll_states, V.cancel, joe.vacc_config = was["ssh"], was["poll"], was["cancel"], was["cfg"]
+        joe.VACC_POLL_S, VR.SLEEP, VR.CLOCK, V.LAG_GRACE_S = was["poll_s"], was["sleep"], was["clock"], was["grace"]
+        joe.vacc_runs(drop=["checkjob"])
+    check("a VACC job waits out a login node that does not answer, and finishes without cancelling anything", r1, calls)
+    check("a Stop cancels it (by its id and its name), and nothing is left on the record", r2)
+    check("a submit whose answer was lost cancels by the job's name", r3)
+    check("past half an hour of no answer it lets go, says the job and where, and cancels nothing; the record keeps it", r4)
+    check("the next job of that kind cancels the one left behind first", r5)
+    check("a job in neither squeue nor sacct past the grace is taken as finished (its answer then decides)", r6)
+    check("a workspace with a space (sbatch would cut it) is refused before anything is sent", r7)
+
     if "--figs-fixture" in sys.argv:
-        joe._write(sys.argv[sys.argv.index("--figs-fixture") + 1], figs)
+        # The page's fixture: the figures as drawn from the VACC's reading.
+        joe._write(sys.argv[sys.argv.index("--figs-fixture") + 1], figs2)
         print("tab 9 fixture written")
 
     if "--fixture" in sys.argv:
@@ -530,7 +800,7 @@ def main():
                    histology="made up", at="2026-10-09T12:00:00",
                    agreement={"files": [{"file": f, "ok": True, "cells": 100, "worst": 0.0, "missing_differs": 0}
                                         for f in sorted(os.listdir(cmp_dir))], "ok": True, "tol": 1e-6,
-                              "ran_at": "2026-10-09T12:30:00"})
+                              "ran_at": "2026-10-09T12:30:00", "where": "vacc", "slurm_id": "5979928"})
         joe._write(fx, out)
         print("fixture written to", fx)
     print("\n%d passed, %d failed" % (N["ok"], N["bad"]))

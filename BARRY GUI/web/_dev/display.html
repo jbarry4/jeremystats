@@ -181,9 +181,23 @@ const hd = (t) => p('\n== ' + t + ' ==');
     + 'return real.apply(g, arguments); };'
     + 'BARRY.views.xplore._drawCuration(g, s, 0, 10, 0, 400, 0, 120);'
     + 'return { n: n, alpha: hits }; })()');
+  // Faded at a known level (2026-10-22: Faded has a slider, 0.1 to 0.9).
+  run('(function () { ' + sessExpr + '.marksFade = 0.2; })()');
   const shown = drawn('show');
   const dimmed = drawn('dim');
   const hidden = drawn('hide');
+  run('(function () { ' + sessExpr + '.marksFade = 0.8; })()');
+  const stronger = drawn('dim');
+  run('(function () { ' + sessExpr + '.marksFade = 5; })()');
+  const clamped = drawn('dim');
+  run('(function () { ' + sessExpr + '.marksFade = 0.2; })()');
+  ck('the Faded slider sets how faint: stronger is stronger, still below shown',
+     stronger.alpha > dimmed.alpha * 2 && stronger.alpha < shown.alpha,
+     dimmed.alpha.toFixed(2) + ' < ' + stronger.alpha.toFixed(2) + ' < '
+     + shown.alpha.toFixed(2));
+  ck('and a level out of range is held at its end, never solid',
+     clamped.alpha <= stronger.alpha * (0.9 / 0.8) + 1e-6 && clamped.alpha < shown.alpha,
+     clamped.alpha.toFixed(2));
   p('  strokes — shown ' + shown.n + ', faded ' + dimmed.n
     + ', hidden ' + hidden.n);
   ck('dentate-spike marks are drawn when marks are shown', shown.n > 0,

@@ -15,6 +15,385 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.22.4 - Tab 9's rings are tested the way tab 8's light is: each rat's change flipped every way, with the trials' shuffle a toggle away
+
+Shahriar asked why tab 8's light for comparison 1 (gamma) is green when
+Figure 1's rings showed nothing. **Restart Jarvis**: `backend/joefigs.py`
+changed. Then press **Draw again** on tab 9; the copy here is drawn already.
+
+### Why they disagreed
+
+They answered different questions.
+
+- **The light** is a mixed model with the rat as the unit: did the rats
+  change together? Day × Phase P = 0.018, and 7 of 8 rats moved the same
+  way.
+- **The rings** were tested against the trials' two windows swapped inside
+  each session: is the change bigger than trial-to-trial noise? That noise
+  is about 1.7 times wider than the spread between rats, so the same sum
+  gave P = 0.187.
+
+### Changed
+
+- **The rings' main test is now the rats'.** Every way of flipping the
+  sign of each rat's change: 2⁸ = 256 for 8 rats, the real one among them,
+  all listed (sampled past 14 rats). P is the share at least as extreme, so
+  it moves in steps of 1/256. The smallest possible is 1/256 for the
+  increases or decreases and 2/256 for both, since flipping every rat gives
+  the mirror image. The legend says so.
+- **A toggle on Figures 1 and 2 swaps in the other test**, the 10,000
+  within-session shuffles. Each test has its own figure files
+  (`fig_N_trials` for the shuffle), chips, legend and downloads; the card
+  changes in place.
+- **Methods? follows the test shown.** The rats' test has an animation of
+  its own: eight rats' changes, some flipped, then every way, landing on the
+  figure's own 256 patterns. The shuffle keeps its own.
+- The follow-up figures are unchanged: they keep the trials' shuffle beside
+  their t-test.
+- **Built from jeremystats-31's start** (the rat null, the alternate block
+  and the toggle). Finished here:
+  - the legend's 1/256 and 2/256;
+  - the toggle showing which test is pressed (it set only `aria-pressed`,
+    and the house buttons light `.active`);
+  - the rats' own animation (it replayed the trial shuffle's story);
+  - the rat null ranking its own real pattern;
+  - the review site copying the toggle's files;
+  - the checks.
+
+### On the real data
+
+- **Figure 1 (comparison 1, gamma), Precon4 − Precon1:**
+  - increases P = 0.012 (rank 254 of 256), against 0.085 for the trials'
+    shuffle;
+  - both P = 0.023, against 0.187;
+  - agreeing with the light.
+- **Figure 2 (comparison 2, gamma), Precon4 − Precon1:**
+  - increases P = 0.027 (0.030 for the trials');
+  - both P = 0.062 (0.058).
+  - Precon1's decreases are P = 0.090 by the rats and 0.039 by the trials:
+    the one ring the trials' shuffle passes and the rats' does not.
+- The real arrangement's value is what gets ranked. On this data no rat has
+  a pair on one day only, so it equals the drawn edges (to 10⁻¹⁷); where a
+  rat did, the change row's mean of differences would not equal the
+  difference of means.
+
+### Checked
+
+- `tools/check_joe.py`:
+  - the main test is the rats', all 2⁸ patterns, and the shuffle is the
+    alternative in its own files;
+  - every one of the nine P values equals, by hand, the share of all 256
+    sign patterns of tab 8's own per-rat changes;
+  - P comes in steps of 1/256, never under 1/256 one-sided or 2/256 for
+    both;
+  - the planted change passes both tests;
+  - each legend describes its own test.
+- `web/_dev/monolith.html`:
+  - the toggle has two buttons, with the rats' (the light's test) pressed;
+  - pressing it changes the same card's picture, chips (of 10,000), legend
+    and downloads;
+  - Methods? plays the shuffle on its own 10,000, then the rats' flips on
+    the figure's own 256 with eight rats;
+  - pressing again goes back.
+- `tools/check_review.py`: the copy carries both tests' files.
+
+## 2026.10.22.3 - Tabs 8 and 9 read the recordings on the VACC: the PAC roses are drawn, and the standalone script agrees to the last digit
+
+From Shahriar: "they are all on VACC". Every DEWEY recording has a copy in
+the lab's scratch (`Jarvis Data/DEWEY`), and the Monolith's manifest already
+named each folder's copy. So the two things that needed the data drive now
+run there when it is not connected. **Restart Jarvis**: `backend/joe.py`,
+`backend/joefigs.py`, `backend/app.py` and `backend/monolith.py` changed.
+
+### Added
+
+- **Tab 9: Read them on the VACC.** When the recordings could not be read,
+  the warning at the top of tab 9 has a button that reads the PAC
+  phase–amplitude profiles from the VACC's copies, then draws every figure
+  again. It takes about 2 minutes, most of it the drawing.
+  - It runs as one slurm job on a compute node, never the login node, with
+    one process per PAC measure. Only the numbers come home, a few
+    kilobytes, to `joe/pac_vacc.json`.
+  - A drawing uses that reading only when it was made from this very tab 8:
+    the same regions, follow-ups, trials and wires. A reading of another is
+    ignored and the figures say the recordings were not read.
+  - The line at the top says where the roses were read: here, or the VACC
+    with its job number.
+- **Tab 8: Run it on the VACC and compare.** A button beside "Run it here".
+  It runs `tools/joe_standalone.py` on the VACC's copies of every SPC, FP1
+  and FP2 folder (8 rat-days at once), brings its CSVs home and compares
+  them exactly as a run here is compared. The agreement line says where it
+  ran and the job.
+- **Before anything is read there, each copy is checked.** Every .ncs and
+  .nev file's size on the cluster must match the size of the recording tab
+  8 read, from one `find`.
+  - The script is refused if any copy differs or has none, and the last
+    comparison stands.
+  - For PAC, the rat-day whose copy differs is left out and named.
+- **Each run gets its own folder** under the workspace (`joefigs/<id>`,
+  `joescript/<id>`), with its own copy of the backend. Not the shared
+  `code` folder: a job running from that one imports as it goes, and
+  swapping it underneath would break it. The spec, the script, the log and
+  the answer stay there to be read; nothing is written beside a recording.
+
+### On the real data
+
+- **The PAC figures (1.3, 1.7, 2.5, 2.8 and 2.11) now have their rose plots
+  and comodulograms.** The job read all 16 tested rat-days in 33–41 s on
+  node307/node328.
+- **Every trial's modulation index read on the VACC is tab 8's own.**
+  - All 1,594 trial-windows agree to within 1.7 × 10⁻¹⁰. That is library
+    rounding: numpy 2.5.3 there, 2.4.6 here.
+  - Not one trial is in one and not the other.
+  - Tab 9 checks this on every drawing and says it under the title.
+- **The standalone script on the VACC agrees with tab 8 in every value.**
+  - 46 files and 73,856 values, identical to all ten decimals written.
+  - Every one of the 16 rat-days was read; 48 folders were checked.
+  - 7.5 minutes on 8 CPUs, job 5979928.
+  - This is what "nothing vibe-coded hallucinated a number" was waiting
+    for, and it replaces the comparison that could not run while E: was
+    unplugged.
+
+### Fixed
+
+- **The first rose's title sat on top of its 90° label.** The roses moved
+  3 mm down, and the empty band under each PAC figure is gone.
+- **Trials where tab 8 had no wire in one of the two regions** are no
+  longer sent to the reader. Before, each one failed with "Every one of
+  the 4 channels these regions need is invalidated for this event" and filled the notes with 118 lines that
+  meant nothing. Tab 8 measured nothing there either, which the trial check
+  above confirms.
+
+### Fixed after a review of the VACC code (two reviewers, 2026-10-22)
+
+- **A single poll the login node did not answer cancelled a healthy job.**
+  Polls now go through `vaccrun.retrying`, as every other VACC run's do,
+  for up to half an hour. Past that, Jarvis lets go without cancelling and
+  says the job and its folder. Only Stop, or a submit whose answer was
+  lost (cancelled by the job's name), cancels.
+- **A Jarvis restart mid-wait orphaned the job.** Each kind's job is
+  written to `joe/vacc_runs.json` at submit, and the next of its kind
+  cancels a leftover first.
+- **A job in neither squeue nor sacct was polled forever.** After the grace
+  period, whether it wrote its answer decides.
+- **A workspace with a space** would have cut `#SBATCH --output`; it is
+  refused before anything is sent.
+- **"Read the PAC on the VACC and draw again" read E: instead** when the
+  drive was connected. A reading just made on the VACC is now the one drawn.
+- **A partial reading said "draw tab 8 again".** A copy left out by the
+  size check is now said as trials not read (the notes say which), apart
+  from trials that did not match.
+- The progress of a second VACC reading now shows on its link.
+- The PAC note points at the control that is actually on the page.
+- With no manifest under the current rules, both routes now say so
+  instead of failing with `AttributeError`.
+
+### Checked
+
+- `tools/check_joe.py`: the new checks, on made-up recordings:
+  - the spec names every tested rat-day's copy, its trials, wires and file
+    sizes;
+  - the cluster's own entry point, `python -m backend.joefigs pac`, gives
+    the same profiles as reading here;
+  - a copy one byte off is named and left out;
+  - drawn without the recordings, the VACC's reading of this tab 8 is used
+    and a reading of another is not;
+  - every trial's MI is tab 8's own;
+  - the size check's parsing (a different size, a missing file, the folders
+    sent only as data);
+  - the script on the VACC, with the job stood in for by a run here: sent
+    with every folder's copy, compared as a run here is, and refused with
+    the last comparison kept when a copy is missing or differs.
+  - `vacc_job` against a stand-in cluster: polls that fail are waited out
+    and cancel nothing; Stop cancels by id and name; a lost submit cancels
+    by name; past the limit it lets go and keeps the record; the next job
+    cancels the one left behind; a vanished job is taken as finished; a
+    workspace with a space is refused.
+- `web/_dev/monolith.html`:
+  - tab 8 says where the script ran and posts `script_vacc`;
+  - tab 9 says where the roses were read, with the trial check;
+  - not read, it offers the VACC at the top and on each PAC figure, and
+    posts `vacc: true`.
+
+## 2026.10.22.2 - Main windows as well as support windows, copy someone's panels, layer bands per panel, a fade you can set
+
+**Restart Jarvis.** `backend/app.py`, `backend/store.py` and
+`backend/cloudsync.py` changed.
+
+### Added
+
+- **The main window, set up per add-on.** Support panel preferences now have
+  a Main window section above the Second window section for each add-on:
+  Checkup, Spotter, Panning, StrataScope, Braid, the Braces review and the
+  Arc's review. You get the same choices: extra panels (the same kind more
+  than once is fine), each panel's channels, filter, band and colours, gain,
+  a starting span, and a layout you can drag and set in percentages.
+  - The first panel is always the traces, because every add-on reads its
+    window from them.
+  - Nothing chosen means nothing changes.
+  - Leaving the add-on returns the window to one traces pane.
+- **The Braces review's second window** is now set from the same section,
+  rather than always opening the same four panels.
+- **Copy someone else's support panels.** A "Copy from someone…" list shows
+  presets grouped by person. You can copy all of a preset or one add-on's
+  part.
+  - Your own preferences are published by themselves a moment after you
+    change them, as "Your Name — current".
+  - **Save mine as a preset** keeps a named copy besides.
+  - Rain's panels from the lab rig (Panning and StrataScope) are already
+    there as "Rain Younger — current".
+  - Presets travel like the filter presets, in `GUI_logs/presets`.
+- **Faded has a slider.** Choosing Marks › Faded keeps the menu open and
+  shows a slider from fainter to stronger (0.1 to 0.9, no numbers). Each
+  recording keeps its own level; the last one you set is your default; its
+  other windows follow it.
+- **The overview strip can be hidden from More with any number of panes**,
+  in the main window and in support windows. It is also in View. The main
+  window and support windows each remember their own choice, and Support
+  panel preferences can set it per add-on.
+- **A support window's header folds.** The fold arrow now sits beside the
+  title in every window. A support window opens with the header folded, the
+  sliver brings it back, and the arrow folds it again.
+
+### Changed
+
+- **Layer bands are per panel, not per window.** Each panel's More › Layers
+  switch turns bands on for that panel only. While StrataScope is open, or in
+  a window following it, panels show the bands as before, and any one panel
+  can be switched off.
+- **Panning's fold arrow works in stages:** the first click hides the tick
+  bars, the second also hides the labelling, the third brings it all back.
+  Other add-ons still fold in two.
+- **Faded now fades everything it should:** events, spikes and bookmarks on
+  the traces, events on the rasters, Checkup, Braces and Spotter marks,
+  Panning's and Spotter's channel lanes, and the marks on the overview strip.
+  Before, several of these stayed at full strength.
+- **Hiding the channel column:** the arrow to bring it back stays at the
+  bottom where the hide arrow was.
+- **Support panel preferences belong to each computer.** Whoever changed
+  theirs last used to change everyone's. Copying a preset is now how one
+  person's reach another.
+
+## 2026.10.22.1 - Tab 9, Joe's figures: publication figures in Nature's format, broad to narrow, each with its shuffles and a Methods button
+
+From Shahriar: "create a section 9 called Joe's Figures… cohesive and
+publication ready… in Nature's format… starting with broader level and
+zooming in bit by bit." **Restart Jarvis**: `backend/joefigs.py` is new, and
+`app.py` and `monolith.py` changed.
+
+### Added
+
+- **Tab 9 on the Monolith page, and on the review site.** It has a line, a
+  contents list, then a card per figure in order, the broad figures first.
+  - Each card shows the figure, its numbers as chips (starred below
+    P = 0.05) and a Nature legend.
+  - PDF, SVG and 600 dpi PNG download buttons.
+  - A **Methods?** button that opens, for every method behind the figure,
+    what it is, how the code does it (the functions and libraries) and
+    what it means, each with something to play with.
+- **The connectome of each result that changed (Figures 1 and 2).**
+  - A ring of the regions in the Monolith's order, with a curved edge per
+    pair tested. The edge's width is the mean change in coherence (Dickson)
+    from the first window to the second; orange is an increase, purple a
+    decrease.
+  - Nine rings: Precon1, Precon4 and Precon4 − Precon1, each as increases,
+    decreases and both.
+  - Under every ring, its sum against **10,000 within-session shuffles**:
+    in every session, each trial's two windows are swapped at random,
+    which flips the sign of that trial's change. Each ring shows its rank
+    and permutation P, starred when below 0.05.
+  - The tests are one-sided for increases and decreases and two-sided for
+    both; nothing is corrected.
+- **A figure per follow-up that changed (1.1–1.7 and 2.1–2.13)**, one per
+  pair and family of measures, as tab 8's face groups them:
+  - a: the pair on the ring, with an arrow for a direction and a loop for
+    PAC within a region;
+  - b: each rat's four values;
+  - c: each rat's change between the days with its mean ± 95% CI and the
+    t-test;
+  - d: the same within-session shuffles.
+  - The lag says which region leads. P and t print with true minus signs.
+- **PAC is never a line.**
+  - The modulation index is shown as each rat's dots.
+  - Where the recordings can be read, two more panels are drawn through
+    the very wires tab 8 chose:
+    - rose plots of gamma amplitude by theta phase, for Precon1 and
+      Precon4 in each window;
+    - the comodulogram's change.
+  - Today the data drive was not connected, so the PAC figures say so and
+    show the dots only. Connect it and press **Draw again**. The rose plots
+    and comodulograms are checked on made-up recordings.
+- **Nature's format:**
+  - Arial, 5–8 pt with bold lowercase panel letters, 183 mm wide;
+  - vector SVG and PDF with fonts embedded (type 42) and a 600 dpi PNG;
+  - a colour-blind-safe purple–orange for direction of change, the days
+    in greyscale;
+  - n, error bars and tests are stated in each legend.
+- **The animations behind Methods?** Each one plays on the figure's own
+  numbers where it has them:
+  - the within-session shuffle, landing on the figure's own null;
+  - the connectome's edges being summed;
+  - phase-difference arrows for coherence, PLI and imaginary coherence
+    (wandering, locked with a lag, locked at zero lag);
+  - Granger as a prediction getting better;
+  - the amplitude cross-correlation sliding to its peak;
+  - the PAC toy.
+
+### On the real data
+
+- **Comparison 2 (baseline → cue 1, gamma):**
+  - Precon1's decreases ring stands out of its shuffles (P = 0.039).
+  - Its Precon4 − Precon1 increases ring stands out too (P = 0.030).
+  - "Both" is just short (P = 0.058).
+- **Comparison 1 (baseline → both cues, gamma):** no ring stands out. The
+  nearest are Precon1's decreases (P = 0.056) and the change's increases
+  (P = 0.085).
+- **The follow-ups:** 20 figures holding 21 measures, all lit by the
+  t-test (that is why they are there). The within-session shuffles agree
+  for 12 of the 21.
+  For example, R PER – L DHC's peak has t-test P = 0.003 but shuffle
+  P = 0.26. Both are on every figure.
+- There are 20 follow-up figures, not the 19 lines in the request.
+  R ACC – L ACC in comparison 2 is lit for both imaginary coherence and the
+  amplitude peak, and each family gets its own figure.
+
+### Fixed
+
+- **A cold server could deadlock on tab 9's first request.** Two requests
+  importing scipy at once hit Python's module locks. The tab's data and
+  file routes now read straight off the disk and import nothing heavy.
+- **Tab 9's script first took the name `MONO_FIGS`**, which the figure
+  library behind every ? already uses. That broke the help pictures. It is
+  `MONO_JOEFIGS` now, and the harness caught it.
+
+### Checked
+
+- `tools/check_joe.py`: 45 passed. The figure checks:
+  - a connectome per result that changed, nine graphs each, in all three
+    formats;
+  - its edges are the rats' mean changes from tab 8's own per-rat values;
+  - the shuffles of the sums are centred on zero;
+  - the planted theta change stands out of its shuffles;
+  - each follow-up's shuffle starts from tab 8's own change;
+  - the PAC roses and comodulogram are read from (made-up) recordings
+    through tab 8's wires;
+  - 183 mm wide, Arial, text kept as text.
+- `web/_dev/monolith.html`: 558 passed, 20 of them new for tab 9:
+  - nine tabs, and a card per figure in order;
+  - the line's counts;
+  - the chips' P and rank, starred;
+  - the Nature legend;
+  - the downloads;
+  - Methods opening and closing with a section per method;
+  - the shuffle and connectome toys on the figure's own numbers;
+  - coherence's toy (wandering cancels, zero lag adds up);
+  - the Methods pictures' words, at desktop and at 390 px;
+  - the 390 px page;
+  - the not-drawn state posting `/joefigs` confirmed.
+- `driftmono.html` 77 and `monolithrank.html` 5 passed.
+- `tools/check_review.py`: 55 passed. The copy opens tab 9 with its
+  figures, legends and files, and nothing to draw.
+
 ## 2026.10.21.5 - Jarvis Light, and a Jarvis that loads, caches and remembers
 
 **Restart Jarvis on every machine.** The server changed a great deal.
@@ -66,6 +445,14 @@ This file is the only place the version is written. The app reads it.
   choose from (3.4 s on a cold start).
 - **Xplorefinder's band strips arrive one by one**, two at a time, instead
   of all together after the slowest.
+- **A big recording's traces show their first rows at once.** Reading a
+  window costs the server per channel (on a 128-channel recording, 16
+  channels in about 0.3 s and all 128 in 2–3.5 s), so a pane opening onto
+  nothing stayed empty for those seconds. Now the first 16 rows are drawn
+  as soon as they arrive, with every other lane already in place, and the
+  whole window replaces them when it lands. What is left on screen is
+  exactly what it was before. Panning and filter changes are unchanged:
+  traces already on screen stay until the new window is whole.
 - **A recording's overview strip is read in one pass and kept on disk.**
   It was 900 separate opens of the file (10.6 s on this morning's
   recording); now one, and a restart no longer reads it again. The band
@@ -74,7 +461,9 @@ This file is the only place the version is written. The app reads it.
   sync state, VACC's catalogue check and the tool feeds use at most three
   of the browser's six connections, so a click never queues behind them.
 - **The page's own files are kept by the browser until they change.**
-  Every start used to ask about all 66 scripts and the stylesheet again.
+  Every start used to ask again about every script and the stylesheet; a
+  second start now takes all 67 scripts from the browser without asking
+  (0 kB over the wire).
 
 ### Fixed
 
@@ -88,6 +477,20 @@ This file is the only place the version is written. The app reads it.
 - **The server reserved 867 MB of memory before its first request.** The
   numerical libraries reserved a buffer for every one of the computer's
   threads; they are capped at four (160 MB).
+- **On a slow computer the Event Bank showed its skeleton for the whole
+  read on a second start**, although last time's list was in the browser:
+  the browser's store took 2–3 s to answer and the view gave up on it after
+  0.3 s. The common lists are now read into memory as soon as the page is
+  first idle, and every view waits for last time's list for as long as the
+  live answer is still coming.
+- **`?theme=` in the address lost to this computer's theme** a moment after
+  start-up. The address wins again, and is still not remembered.
+- **The cloud sync state cost the server 1.4 s every five seconds** while
+  anything was waiting to go up: it re-read the time of every curation
+  decision and review (143,000 of them) on every poll. The newest time of
+  each set is now kept until a curation set changes, and the answer takes
+  about 160 ms instead. The answer itself is unchanged; this is checked
+  record for record.
 
 ### Checked
 
@@ -99,6 +502,31 @@ This file is the only place the version is written. The app reads it.
   900 separate reads give, sample for sample.
 - `tools/check_derived_cache.py`, `tools/check_membudget.py`: the disk
   cache and the memory budget.
+- `web/_dev/datalayer.html` (new, 22 checks): five readers of one list
+  make one request; an unchanged list is a 304 and readers keep the very
+  same object; a write asks again; background requests never take more
+  than three connections; after a restart the first request is a 304
+  answered from the browser.
+- `web/_dev/progressive.html` (new, 18 checks): the overview strip
+  arrives coarse to fine and is whole at the end; band strips run at most
+  two at a time; a traces pane opening onto nothing draws its first 16
+  rows before the whole window, every lane in place, and ends on exactly
+  what a plain read returns.
+- `tools/check_cloud_items.py` (new): the kept curation times give the
+  same sync state as before, record for record.
+- **Measured on a computer slowed four times** (`tools/perf_profile.py
+  --throttle 4`, dark theme): the share of the main thread spent with a
+  view open and nobody touching it, full → Light. ToolKit 96 % → 48 %,
+  Root Canal 74 % → 19 %, Storyboard 28 % → 6 %, Sessions in its first
+  seconds 60 % → 1 %. Sessions once loaded is 4 % in full.
+- A second start takes all 67 scripts from the browser: 0 kB over the
+  wire.
+- The harnesses for Light, the warm-up, loading, themes, the Event Bank,
+  ToolKit, Sessions and the VACC catalogue: 26 pages and 819 checks
+  passing. Four pages were already failing and still fail, for reasons
+  outside this change: `housekeeping.html` (87 gids appear twice in the
+  registry tree), `bankimport.html` and `banklayers.html` (the server's
+  version routes), and `vacccat.html` (depends on this machine's data).
 
 ## 2026.10.21.4 - Root Canal: no margins, and the dots are coloured by their call only
 

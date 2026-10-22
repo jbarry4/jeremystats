@@ -82,7 +82,9 @@ BARRY.vacc = (function () {
     const live = BARRY.data.get('/api/vacc/knows', { fresh: !!force })
       .finally(() => { liveDone = true; });
     if (!knows) {
-      const was = await BARRY.data.stale('/api/vacc/knows');
+      // However long the browser's store takes, never longer than the live.
+      const was = await Promise.race([BARRY.data.stale('/api/vacc/knows', 4000),
+                                      live.then(() => null, () => null)]);
       if (was && was.value && !liveDone && !knows) take(was.value);
     }
     try {

@@ -293,7 +293,9 @@ const COLS = [
                    boot: null, idle: null, views: [], warm: [], tools: [] };
 
   head('boot' + (LITE ? ' (Jarvis Light)' : ''));
-  f.src = '/?linkhold=0' + (LITE ? '&lite=on' : '');
+  // hydrate=1: last time's lists into memory when idle, as the app does in
+  // its own window (web/js/data.js), so a framed start is measured as met.
+  f.src = '/?linkhold=0&hydrate=1' + (LITE ? '&lite=on' : '');
   await new Promise((r) => f.addEventListener('load', r, { once: true }));
   const kind = watchLongTasks();
   say('note', '  long-task signal: ' + kind);

@@ -369,7 +369,10 @@ BARRY.views.sessions = (function () {
     const clear = () => { if (!cleared) { cleared = true; done(); } };
     let drawnLive = null;
     if (!sessions.length && !quiet) {
-      const was = await BARRY.data.stale('/api/registry');
+      // A few milliseconds usually; 2-3 s on a 4x-slowed CPU (2026-10-22),
+      // so wait for it -- but never longer than the live answer.
+      const was = await Promise.race([BARRY.data.stale('/api/registry', 4000),
+                                      live.then(() => null, () => null)]);
       if (was && was.value && !liveDone) {
         clear();
         if (was.live) {

@@ -2874,6 +2874,12 @@ code { font-family: var(--mono); }
 .pane-ctl .ctl input[type=text] { width: 90px; }
 /* Only on the strip -- the popovers have room for a comfortable field. */
 .pane-ctl .scale-slider { width: 64px; }
+/* Marks › Faded: how faint, a slider with words at its ends and no numbers
+   (xplore.js morePop, 2026-10-22). */
+.marks-fade-wrap { display: inline-flex; align-items: center; gap: 6px;
+  flex-wrap: wrap; }
+.marks-fade-wrap .marks-fade { width: 120px; }
+.marks-fade-end { font-size: var(--fs-11); color: var(--text-3); }
 .pane-ctl .scale-num { width: 52px; }
 .pane-ctl .ctl-group { gap: var(--sp-4); }
 .pane-main { flex: 1; display: grid; grid-template-columns: 132px 1fr; overflow: hidden; }
@@ -3443,6 +3449,26 @@ select { color-scheme: inherit; }
 .spp-row.off { opacity: .75; }
 .spp-head { display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap; }
 .spp-tools { display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap; }
+/* Two windows per add-on, its main one first (2026-10-22). */
+.spp-row > .spp-head strong { font-size: var(--fs-125); }
+.spp-block { display: flex; flex-direction: column; gap: 6px; padding: 6px 0 2px;
+  border-top: 1px dashed var(--line-soft); }
+.spp-block.off > :not(.spp-bhead) { display: none; }
+.spp-block.off .spp-bname { color: var(--text-3); }
+.spp-bhead { display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap; }
+.spp-bname { font-weight: 600; font-size: var(--fs-115); }
+.spp-fixed { font-size: var(--fs-115); padding: 2px 8px; border-radius: var(--r-pill);
+  background: var(--bg-2); border: 1px solid var(--line-soft); color: var(--text-2); }
+/* Someone else's, and mine for them. */
+.spp-share { display: flex; flex-direction: column; gap: 6px; margin: var(--sp-8) 0;
+  padding: 8px 10px; border-radius: var(--radius-card, 10px);
+  border: 1px solid var(--accent-line, var(--line)); background: var(--accent-soft); }
+.spp-share-row { display: flex; align-items: center; gap: var(--sp-8); flex-wrap: wrap; }
+.spp-share .spp-from { min-width: 220px; max-width: 100%; }
+.spp-share .spp-name { width: 160px; }
+.spp-mine-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 4px 1px 8px;
+  border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--bg);
+  font-size: var(--fs-115); }
 .spp-add { font: inherit; font-size: var(--fs-115); }
 /* One card per panel: what it shows and its moves on top, how it starts
    underneath, every field labelled, wrapping rather than cut. */
@@ -3864,8 +3890,10 @@ body.dragging-session .pane { transition: outline .1s; }
 .ch-overlay .ch-fold:hover { color: var(--text); background: var(--bg-3);
   border-color: var(--line); }
 .ch-overlay.folded { background: color-mix(in srgb, var(--bg-2) 60%, transparent); }
-.ch-overlay.folded .ch-fold { left: 0; top: 4px; bottom: auto; width: 100%;
-  height: 22px; }
+/* Folded, the arrow back stays exactly where the arrow that folded it was
+   -- the corner at the bottom -- rather than jumping to the top
+   (2026-10-22: "it starts at the bottom, but jumps up to unhide it"). */
+.ch-overlay.folded .ch-fold { left: 0; width: 100%; }
 .ch-hover-tag { position: absolute; z-index: 4; pointer-events: none;
   padding: 0 4px; border-radius: 3px; white-space: nowrap;
   font: 10.5px/13px var(--mono); color: rgba(255, 255, 255, 0.86);
@@ -6347,7 +6375,11 @@ button.tag:hover { filter: brightness(1.25); }
 .xf-shape[hidden] { display: none; }
 .pane-split:hover, body.splitting .pane-split { background: var(--accent-line); }
 /* A pane without its overview strip (More › Overview strip, 2026-10-20). */
-.pane.no-overview .pane-timebar { display: none; }
+/* The overview strip put away for the window (View, or More › Overview
+   strip; xplore.js XF.chrome.overview), under the pane or across the
+   bottom alike. */
+#view-xplore.hide-overview .pane-timebar,
+#view-xplore.hide-overview .xf-strip { display: none !important; }
 /* What the pane shows, said on its head; changed under More › Shows. */
 .pane-panel-name { font: inherit; font-size: var(--fs-11); color: var(--text-2);
   background: none; border: 1px solid transparent; border-radius: var(--r-4);
@@ -6370,6 +6402,8 @@ body.splitting .pane-split { pointer-events: auto !important; }
 /* Folded, the top row goes whole -- title, recordings and every control on
    it -- and a sliver at the very top brings it back. */
 #view-xplore.hide-tabs > .view-head { display: none; }
+/* The top row's own fold arrow, beside the title (applyChrome). */
+.xf-head > .fold-tabs { align-self: center; }
 #view-xplore > .unfold-top { justify-content: center; }
 /* With the tabs gone the header is just a title, so give the row back too
    when everything else on it is hidden as well. */
@@ -7777,6 +7811,10 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
   transform: translate(-50%, -70%) rotate(45deg);
   transition: transform var(--dur-2, .16s) var(--ease-out, ease-out); }
 .mode-bar.folded .mode-fold::before { transform: translate(-50%, -30%) rotate(-135deg); }
+/* The stage between (Panning, core.js modeFold): the tick bars put away,
+   every tool still there; the chevron points sideways, halfway. */
+.mode-bar.fold-ticks .mode-fold::before { transform: translate(-60%, -50%) rotate(-45deg); }
+#modeBar.fold-ticks #modeSlot > .mode-strip { display: none !important; }
 .mode-fold:hover { background: var(--bg-hover); color: var(--text); }
 #modeBar.folded { padding-top: 3px; padding-bottom: 3px; flex-wrap: nowrap; }
 #modeBar.folded #modeSlot > *:not(.cur-bar),

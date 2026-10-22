@@ -1928,6 +1928,16 @@ def script_safe(worker):
         raise MO.MonolithError(str(exc), exc.status)
 
 
+def script_vacc_safe(worker):
+    from . import monolith as MO, vacc
+    try:
+        return script_vacc_work(worker)
+    except JoeError as exc:
+        raise MO.MonolithError(str(exc), exc.status)
+    except vacc.SSHError as exc:
+        raise MO.MonolithError("The VACC: %s" % exc, 502)
+
+
 def _write(path, obj):
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
@@ -2009,8 +2019,13 @@ def agreement(tol=1e-6):
                     worst = max(worst, abs(fx - fy))
         rows.append({"file": f, "ok": miss == 0 and worst <= tol, "cells": n, "worst": worst, "missing_differs": miss})
     st = os.path.getmtime(sd)
+    ran = {}
+    if os.path.isfile(os.path.join(sd, "ran.json")):
+        with open(os.path.join(sd, "ran.json"), encoding="utf-8") as fh:
+            ran = json.load(fh)
     return {"files": rows, "ok": bool(rows) and all(r["ok"] for r in rows), "tol": tol,
-            "ran_at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(st))}
+            "ran_at": ran.get("at") or time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(st)),
+            "where": ran.get("where") or "here", "slurm_id": ran.get("slurm_id")}
 
 
 def script_work(worker):
@@ -2027,7 +2042,6 @@ def script_work(worker):
     inp = joe_dir("joe_inputs.json")
     if not os.path.isfile(inp):
         raise JoeError("Work tab 8 out first: the script reads the inputs it writes.", 409)
-    out = joe_dir("script")
     tmp = joe_dir("script.new")
     shutil.rmtree(tmp, ignore_errors=True)
     os.makedirs(tmp)
@@ -2045,6 +2059,14 @@ def script_work(worker):
         log.close()
     if p.returncode != 0:
         raise JoeError("The script stopped with an error; its log is %s." % joe_dir("script.log"), 500)
+    return _take_script(tmp, inp)
+
+
+def _take_script(tmp, inp, where=None):
+    """The script's output in `tmp` becomes joe_dir("script") only if it
+    read every rat-day; then the comparison. `where` says where it ran."""
+    import shutil
+    out = joe_dir("script")
     # A rat-day the script could not read is a note "rN PrecondX: <error>".
     with open(inp, encoding="utf-8") as fh:
         days = [d for d in json.load(fh)["days"] if d["day"] in TESTED]
@@ -2056,7 +2078,9 @@ def script_work(worker):
         missing = "cannot find the path" in unread[0] or "No such file" in unread[0]
         raise JoeError(("The script could not read %d of the %d rat-days%s, so nothing was compared and the last "
                         "comparison stands. First: %s") % (
-            len(unread), len(days), " (is the data drive connected?)" if missing else "", unread[0]), 409)
+            len(unread), len(days), " (is the data drive connected?)" if missing and not where else "", unread[0]), 409)
+    with open(os.path.join(tmp, "ran.json"), "w", encoding="utf-8") as fh:
+        json.dump(dict(where or {"where": "here"}, at=time.strftime("%Y-%m-%dT%H:%M:%S")), fh)
     shutil.rmtree(out, ignore_errors=True)
     os.replace(tmp, out)
     agree = agreement()
@@ -2065,3 +2089,304 @@ def script_work(worker):
         got["agreement"] = agree
         _write(joe_dir("joe.json"), got)
     return agree
+
+
+# --------------------------------------------------------------------------
+# On the VACC: the recordings' copies there, when E: is not plugged in
+# --------------------------------------------------------------------------
+# Every DEWEY recording was uploaded to the lab's scratch (Jarvis Data/DEWEY),
+# and the Monolith's manifest names each folder's copy and the sizes of its
+# files (Shahriar, 2026-10-22: "they are all on VACC"). A job here sends what
+# it needs to a run folder of its own under the workspace, runs as ONE slurm
+# job on a compute node (never on the login node), and only its answer comes
+# home. Nothing is written beside a recording, and a copy whose .ncs/.nev
+# sizes differ from the ones tab 8 read is refused before it is used.
+VACC_POLL_S = 15.0
+
+
+def logs_dir():
+    from . import monolith as MO, vacc
+    return vacc.LOGS_DIR or os.path.dirname(os.path.dirname(MO._path()))
+
+
+def vacc_copies():
+    """{local folder (normalised): (its copy on the VACC's scratch, {.ncs/.nev file: bytes})}."""
+    from . import monolith as MO
+    man = MO.manifest()
+    if man is None:
+        raise JoeError("There is no Monolith manifest under the current rules: make it again (Drift, then Monolith).", 409)
+    out = {}
+    for d in man.get("days") or []:
+        for f in d.get("folders") or []:
+            r = (f.get("remote") or {}).get("scratch")
+            if f.get("local") and r:
+                out[_norm(f["local"])] = (r, {n: b for n, b in (f.get("files") or {}).items()
+                                              if n.lower().endswith((".ncs", ".nev"))})
+    return out
+
+
+def _norm(p):
+    return os.path.normcase(os.path.normpath(p))
+
+
+def vacc_config():
+    from . import vacc
+    cfg = vacc.load_config(logs_dir())
+    if not cfg.get("netid"):
+        raise JoeError("Sign in to the VACC first.", 409)
+    return cfg
+
+
+def vacc_sizes(cfg, want):
+    """What differs between the copies on the cluster and the sizes tab 8
+    read: `want` is {remote folder: {file: bytes}}; [] when nothing does.
+    One connection, the folders sent as data on stdin."""
+    from . import vacc
+    folders = sorted(want)
+    script = ("while IFS= read -r f; do find \"$f\" -maxdepth 1 -type f \\( -name '*.ncs' -o -name '*.nev' \\) "
+              "-printf '%s\\t%p\\n'; done <<'JARVIS_DIRS_EOF'\n" + "\n".join(folders) + "\nJARVIS_DIRS_EOF\n")
+    raw = vacc._ssh(cfg, "bash -s", stdin=script, timeout=180)
+    have = {}
+    for line in (raw or "").splitlines():
+        size, _t, path = line.partition("\t")
+        if size.isdigit() and "/" in path:
+            folder, _s, name = path.rpartition("/")
+            have.setdefault(folder, {})[name] = int(size)
+    bad = []
+    for folder in folders:
+        got = have.get(folder.rstrip("/")) or {}
+        for name, size in sorted(want[folder].items()):
+            if got.get(name) != size:
+                bad.append("%s/%s is %s, not %d bytes" % (folder, name, "missing" if name not in got else "%d bytes" % got[name], size))
+    return bad
+
+
+VACC_RUNS = "vacc_runs.json"
+
+
+def vacc_runs(update=None, drop=()):
+    """joe/vacc_runs.json: the job of each kind tabs 8 and 9 have on the
+    VACC, written at submit. A Jarvis that stops mid-wait would otherwise
+    orphan it; the next job of its kind cancels it first, by its name
+    (it would only be answering for an old press). Machine-local."""
+    path = joe_dir(VACC_RUNS)
+    runs = {}
+    if os.path.isfile(path):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                runs = json.load(fh)
+        except (OSError, ValueError):
+            runs = {}
+    if update or drop:
+        runs.update(update or {})
+        for k in drop:
+            runs.pop(k, None)
+        _write(path, runs)
+    return runs
+
+
+def _ws_root(cfg):
+    """The workspace, refused unless it is a plain absolute path: it goes
+    unquoted into `#SBATCH --output`, which sbatch splits at whitespace."""
+    root = str(cfg.get("workspace") or "")
+    if not root.startswith("/") or any(c in root for c in " \t\n'\"$`\\"):
+        raise JoeError("The VACC workspace %r is not a plain absolute path; set it again from the VACC panel." % root, 409)
+    return root
+
+
+def vacc_job(files, command, cpus=4, mem="8G", wall="01:00:00", progress=None, check=None, kind="joe"):
+    """Send `files` ({path in the run folder: bytes}) to a run folder of
+    their own, run `command` there as one slurm job with the lab's Python,
+    and wait for it. Returns (cfg, run folder, slurm id).
+
+    Only a Stop (or a submit that went wrong) cancels the job. A poll the
+    login node does not answer is retried for half an hour
+    (vaccrun.retrying, as every other VACC run is), and past that Jarvis
+    lets go without cancelling and says where the job is: one dropped
+    connection used to scancel a healthy job."""
+    import io
+    import tarfile
+    from . import vacc, vaccrun
+    say = progress or (lambda s: None)
+    cfg = vacc_config()
+    root = _ws_root(cfg)
+    old = vacc_runs().get(kind)
+    if old:
+        try:
+            vacc.cancel(cfg, slurm_id=old.get("slurm_id"), rid=old.get("rid"))
+        except Exception:                                    # noqa: BLE001
+            pass
+        vacc_runs(drop=[kind])
+    rid = vacc.new_rid()
+    ws = vacc._remote_path(root, kind, rid)
+    sh = ("#!/bin/bash\n"
+          "#SBATCH --job-name=%(rid)s\n"
+          "%(acct)s"
+          "#SBATCH --partition=%(part)s\n"
+          "#SBATCH --time=%(wall)s\n"
+          "#SBATCH --mem=%(mem)s\n"
+          "#SBATCH --cpus-per-task=%(cpus)d\n"
+          "#SBATCH --nodes=1\n"
+          "#SBATCH --ntasks=1\n"
+          "#SBATCH --output=%(ws)s/job_%%j.out\n"
+          "#SBATCH --mail-type=NONE\n"
+          "%(pre)s\n"
+          "cd %(wsq)s\n"
+          "%(cmd)s\n") % {
+        "rid": rid, "acct": vacc.sbatch_account(cfg), "part": cfg.get("partition") or "general", "wall": wall,
+        "mem": mem, "cpus": cpus, "ws": ws, "wsq": vacc.q(ws), "pre": vacc.activate(cfg), "cmd": command}
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w", format=tarfile.GNU_FORMAT) as tar:
+        for name, data in sorted(dict(files, **{"submit.sh": sh.encode("utf-8")}).items()):
+            info = tarfile.TarInfo(name)
+            info.size, info.mode, info.mtime = len(data), 0o644, int(time.time())
+            tar.addfile(info, io.BytesIO(data))
+    say("sending it to the VACC")
+    rec = {"rid": rid, "ws": ws, "slurm_id": None, "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    vacc_runs(update={kind: rec})
+    jid = None
+    try:
+        got = vacc._ssh(cfg, "mkdir -p %s && cd %s && tar -xf - && sbatch --parsable submit.sh" % (vacc.q(ws), vacc.q(ws)),
+                        stdin=buf.getvalue(), timeout=300)
+        jid = next((ln.split(";")[0].strip() for ln in reversed((got or "").strip().splitlines())
+                    if ln.split(";")[0].strip().isdigit()), None)
+        if not jid:
+            raise JoeError("The VACC did not take the job: %s" % (got or "no answer").strip()[:300], 502)
+    except BaseException:
+        # The answer may have been lost after sbatch took it: the job is
+        # named after the run, so it is cancelled by name.
+        try:
+            vacc.cancel(cfg, rid=rid)
+        except Exception:                                    # noqa: BLE001
+            pass
+        vacc_runs(drop=[kind])
+        raise
+    vacc_runs(update={kind: dict(rec, slurm_id=jid)})
+
+    class _Watch:                       # what retrying calls between tries
+        stopped = False
+
+        def check(self):
+            if check:
+                try:
+                    check()
+                except BaseException:
+                    self.stopped = True
+                    raise
+
+    watch = _Watch()
+    gone_since = None
+    try:
+        while True:
+            watch.check()
+            try:
+                st = vaccrun.retrying(lambda: vacc.poll_states(cfg, [jid]), job=watch, what="job %s" % jid,
+                                      note=say).get(str(jid)) or {}
+            except vaccrun.Detached as exc:
+                raise JoeError("%s The job is %s, in %s; nothing was cancelled." % (exc, jid, ws), 502)
+            if not st:
+                # In neither squeue nor sacct: usually the accounting
+                # database catching up. After the grace, the answer (or its
+                # absence) decides.
+                gone_since = gone_since or time.time()
+                if time.time() - gone_since > vacc.LAG_GRACE_S:
+                    break
+            else:
+                gone_since = None
+                outcome = vacc.outcome_for(st.get("state"))
+                if outcome is not None:
+                    if outcome[0] != "done":
+                        try:
+                            tail = vacc._ssh(cfg, "tail -n 5 %s/job_%s.out 2>/dev/null || true" % (vacc.q(ws), jid), timeout=30)
+                        except vacc.SSHError:
+                            tail = ""
+                        vacc_runs(drop=[kind])                   # it has ended: nothing to cancel
+                        raise JoeError("The VACC job %s ended %s. %s %s" % (jid, st.get("state"), outcome[1],
+                                                                            (tail or "").strip()[-600:]), 502)
+                    break
+            try:                                             # what the job last said: for the eye only
+                last = vacc._ssh(cfg, "tail -n 1 %s/job_%s.out 2>/dev/null || true" % (vacc.q(ws), jid), timeout=30).strip()
+            except vacc.SSHError:
+                last = ""
+            say("VACC job %s %s%s" % (jid, (st.get("state") or "submitted").lower(), (": " + last[-120:]) if last else ""))
+            time.sleep(VACC_POLL_S)
+    except BaseException:
+        if watch.stopped:
+            try:
+                vacc.cancel(cfg, slurm_id=jid, rid=rid)
+            except Exception:                                # noqa: BLE001
+                pass
+            vacc_runs(drop=[kind])
+        raise
+    vacc_runs(drop=[kind])                                   # it has ended: nothing left to cancel
+    return cfg, ws, jid
+
+
+def vacc_text(cfg, ws, name, timeout=120):
+    """One file of the run's, as text; a JoeError naming the run's log when
+    the job did not write it."""
+    from . import vacc
+    raw = vacc._ssh(cfg, "f=%s; if [ -f \"$f\" ]; then cat \"$f\"; else echo __JARVIS_NO_FILE__; fi" % vacc.q(ws + "/" + name),
+                    timeout=timeout)
+    if raw.strip() == "__JARVIS_NO_FILE__":
+        raise JoeError("The VACC job finished but wrote no %s; its log is in %s." % (name, ws), 502)
+    return raw
+
+
+def vacc_tree(cfg, ws, name, dest, timeout=600):
+    """A folder of the run's, home into `dest` (a gzipped tar, as text)."""
+    import base64
+    import io
+    import tarfile
+    from . import vacc
+    raw = vacc._ssh(cfg, "cd %s && tar -czf - . | base64 -w0" % vacc.q(ws + "/" + name), timeout=timeout)
+    with tarfile.open(fileobj=io.BytesIO(base64.b64decode(raw.strip())), mode="r:gz") as tar:
+        tar.extractall(dest, filter="data")
+
+
+def script_vacc_work(worker):
+    """The standalone script, run on the VACC's copies of the recordings,
+    then compared exactly as a run here is (`_take_script`)."""
+    import shutil
+    inp = joe_dir("joe_inputs.json")
+    if not os.path.isfile(inp):
+        raise JoeError("Work tab 8 out first: the script reads the inputs it writes.", 409)
+    say = lambda s: worker.note(phase="joe-script", item=s)          # noqa: E731
+    with open(inp, encoding="utf-8") as fh:
+        inputs = json.load(fh)
+    copies = vacc_copies()
+    days, want, none = [], {}, []
+    for d in inputs["days"]:
+        if d["day"] not in TESTED:
+            continue
+        fl = []
+        for role, path in d.get("folders") or []:
+            c = copies.get(_norm(path))
+            if c is None:
+                none.append("r%d %s %s" % (int(d["rat"]), d["day"], role))
+                continue
+            fl.append([role, c[0]])
+            want[c[0]] = c[1]
+        days.append(dict(d, folders=fl))
+    if none:
+        raise JoeError("The Monolith knows of no copy on the VACC of %d folders (first: %s), so the script was not run "
+                       "there." % (len(none), none[0]), 409)
+    cfg = vacc_config()
+    say("checking the VACC's copies against the recordings tab 8 read")
+    bad = vacc_sizes(cfg, want)
+    if bad:
+        raise JoeError("%d files on the VACC differ from the recordings tab 8 read, so the script was not run there. "
+                       "First: %s" % (len(bad), bad[0]), 409)
+    cpus = 8
+    files = {"joe_standalone.py": open(script_path(), "rb").read(),
+             "joe_inputs.json": json.dumps(dict(inputs, days=days), indent=1).encode("utf-8")}
+    cfg, ws, jid = vacc_job(files, "exec python joe_standalone.py --inputs joe_inputs.json --out out --jobs %d" % cpus,
+                            cpus=cpus, mem="32G", wall="03:00:00", progress=say, check=worker.check, kind="joescript")
+    say("bringing the script's CSVs home")
+    tmp = joe_dir("script.new")
+    shutil.rmtree(tmp, ignore_errors=True)
+    os.makedirs(tmp)
+    vacc_tree(cfg, ws, "out", tmp)
+    with open(joe_dir("script.log"), "w", encoding="utf-8") as fh:
+        fh.write(vacc_text(cfg, ws, "job_%s.out" % jid))
+    return _take_script(tmp, inp, where={"where": "vacc", "slurm_id": jid, "run": ws})

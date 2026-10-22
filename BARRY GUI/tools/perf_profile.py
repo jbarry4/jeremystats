@@ -51,6 +51,11 @@ def main():
                          "the boot screen going, instead of a stretch of idle")
     ap.add_argument("--warm-browser", action="store_true",
                     help="load once first, then profile the second load")
+    ap.add_argument("--theme", default="",
+                    help="a theme for this run only (?theme=), e.g. dark")
+    ap.add_argument("--eval", default="",
+                    help="the page's own JavaScript to run after --view, e.g. "
+                         "\"BARRY.views.toolkit.pick('rootcanal')\"")
     a = ap.parse_args()
 
     import logging
@@ -98,7 +103,8 @@ def main():
         cdp.call("Emulation.setDeviceMetricsOverride", {
             "width": 1600, "height": 1000, "deviceScaleFactor": 1.5,
             "mobile": False})
-        q = "menu=0&warm=0" + ("&lite=on" if a.lite else "")
+        q = "menu=0&warm=0" + ("&lite=on" if a.lite else "") \
+            + (("&theme=" + a.theme) if a.theme else "")
         ready = ("typeof setView === 'function' && typeof BARRY === 'object'"
                  " && BARRY.state.catalog"
                  " && (!document.getElementById('boot') || "
@@ -134,6 +140,8 @@ def main():
             return _report(a, prof)
         if a.view:
             cdp.js("setView(%s)" % json.dumps(a.view))
+        if a.eval:
+            cdp.js(a.eval)
         if a.css:
             cdp.js("(function(){var s=document.createElement('style');"
                    "s.textContent=%s;document.head.appendChild(s);})()"

@@ -375,6 +375,8 @@ BARRY.spotter = (function () {
     if (sess && BARRY.views.xplore.setChannelLines) {
       BARRY.views.xplore.setChannelLines(sess, []);
     }
+    // A main window laid out from Profile goes back to its one pane.
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     setMode(null);
     receipt(set_.gid, { quiet: true });
     if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
@@ -433,7 +435,14 @@ BARRY.spotter = (function () {
      which between them are how an IED is told from an artefact on one
      wire. */
   function layout() {
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    /* The main window as this person laid it out in Profile › Support panel
+       preferences (2026-10-22), or the traces alone, as always. Its first
+       pane is always the traces, which everything below reads. */
+    const mp = BARRY.supportPanels
+      ? BARRY.supportPanels.applyMain('spotter', [{ panel: 'traces' }], sess,
+                                      { col: 0.5, row: 0.5 })
+      : (BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 }), null);
+    if (mp && mp.span) span = mp.span;
     openAids();
   }
 

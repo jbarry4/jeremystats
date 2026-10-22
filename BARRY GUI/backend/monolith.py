@@ -3779,6 +3779,8 @@ _WORK_SAY = {"upload": "uploading", "fetch": "fetching and building the "
              "narrow": "narrowing down: corrections and the permutation tests",
              "joe": "working out tab 8 (Joe's data) from the recordings",
              "joescript": "running tab 8's standalone script",
+             "joescriptvacc": "running tab 8's standalone script on the VACC",
+             "joefigsvacc": "reading tab 9's PAC on the VACC, then drawing the figures",
              "joefigs": "drawing tab 9's figures"}
 
 

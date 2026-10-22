@@ -143,6 +143,16 @@ def fake_monolith(work):
     for f in ["joe_tab8_spss.zip"] + list(JO.result().get("exports") or []):
         with open(JO.joe_dir("export", f), "w", encoding="utf-8") as fh:
             fh.write("stand-in for %s\n" % f)
+    # Tab 9, as drawn: the harness's made-up figures (tools/check_joe.py
+    # --figs-fixture), and a stand-in for each file they name.
+    figs_dir = os.path.join(JO.joe_dir(), "figs")
+    os.makedirs(figs_dir, exist_ok=True)
+    shutil.copyfile(os.path.join(APP, "web", "_dev", "joefigs_fixture.json"), os.path.join(figs_dir, "figs.json"))
+    with open(os.path.join(figs_dir, "figs.json"), encoding="utf-8") as fh:
+        for fg in json.load(fh)["figures"]:
+            for f in list(fg["files"].values()) + list(((fg.get("alt") or {}).get("files") or {}).values()):
+                with open(os.path.join(figs_dir, f), "w", encoding="utf-8") as out:
+                    out.write('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>' if f.endswith(".svg") else "stand-in")
     MO.save_manifest(man)
     MO.save_state(run=t, built={"rid": t["rid"], "at": MO.now_iso(),
                                 "artifact_id": "zz", "version": 1,
@@ -165,7 +175,9 @@ def build_checks(work, port):
             "js/monolith.js", "js/monolith_progress.js", "js/monolith_physical.js", "css/site.css",
             "data/summary.json", "data/damage.json", "data/review.json", "data/physical.json",
             "data/narrow.json", "js/monolith_narrow.js", "js/monolith_explain.js", "js/monolith_joe.js",
-            "data/joe.json", "data/joe/joe_tab8_spss.zip", "data/joe/joe_standalone.py"]
+            "data/joe.json", "data/joe/joe_tab8_spss.zip", "data/joe/joe_standalone.py",
+            "js/monolith_joefigs.js", "data/joefigs.json", "data/joefigs/fig_1.svg", "data/joefigs/fig_1.pdf",
+            "data/joefigs/fig_1_trials.svg", "data/joefigs/fig_1_trials.pdf"]
     missing = [f for f in must if not os.path.isfile(os.path.join(out, f))]
     check("every file the site needs (%d)" % len(must), not missing, missing)
     pk = json.load(open(os.path.join(out, "package.json"), encoding="utf-8"))
@@ -335,6 +347,12 @@ def page_checks(work, site, S):
           and 'class="mfig jplot"' in jo and re.search(r'id="joezip"[^>]*href="data/joe/joe_tab8_spss\.zip"', jo) is not None
           and 'id="joemake"' not in jo and 'id="joescriptrun"' not in jo,
           re.findall(r"(?:Could not read|not in this copy)[^<]*", jo)[:2])
+    fg = dom("monolith.html#tab=figs")
+    check("tab 9 opens by its link, from the copy: the figures, their legends and files, and nothing to draw",
+          re.search(r'id="tab-figs"[^>]*aria-selected="true"', fg) is not None and 'id="figsintro"' in fg
+          and 'src="data/joefigs/fig_1.svg"' in fg
+          and 'class="small fglegend"' in fg and 'id="figsmake"' not in fg,
+          re.findall(r"(?:Could not read|not in this copy|could not be read)[^<]*", fg)[:2])
     srv.shutdown()
 
 

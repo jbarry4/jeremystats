@@ -1215,7 +1215,7 @@ REASONS = {
 
 
 def propose(events, peaks, window_ms=WINDOW_MS, edge_frac=EDGE_FRAC,
-            same_ms=SAME_MS, align_ids=None):
+            same_ms=SAME_MS, align_ids=None, pinned=None):
     """One row per event: where it was, where it goes, and whether to ask.
 
     `events` is the banked list -- dicts with a `start` -- and is NOT
@@ -1241,8 +1241,18 @@ def propose(events, peaks, window_ms=WINDOW_MS, edge_frac=EDGE_FRAC,
 
     `align_ids=None` means align everything, which is what the rule's own
     checks use -- they are about the arithmetic and have no labels at all.
+
+    LOCKED STAMPS (Lock, 2026-10-22). `pinned` is a set of event indices
+    whose stamps another aligner already placed -- in a pooled set, the
+    Incisor stamps Braces put on their peaks -- and that are not to be
+    moved again. Each still gets a row, so the review shows it, but the row
+    never moves (`locked: "braces"`, `now == was`, no flag). And it owns its
+    peak: every candidate within `cand_dist_ms` of a locked stamp is taken
+    out before the rest are assigned, so a free stamp beside it cannot be
+    moved onto the event it already marks.
     """
-    rows, skipped = [], {}
+    pinned = {int(i) for i in (pinned or ())}
+    rows, skipped, locked = [], {}, []
     for i, ev in enumerate(events or []):
         try:
             t = float(ev.get("start"))
@@ -1256,15 +1266,37 @@ def propose(events, peaks, window_ms=WINDOW_MS, edge_frac=EDGE_FRAC,
                 key = lab or "undecided"
                 skipped[key] = skipped.get(key, 0) + 1
                 continue
+        if i in pinned:
+            locked.append({"i": i, "was": t, "now": t, "peak": None,
+                           "shift_ms": 0.0, "peak_uv": None, "flag": None,
+                           "moved": False, "same": True, "locked": "braces"})
+            continue
         rows.append({"i": i, "was": t})
     if not rows:
-        return dict(summarize([], peaks, window_ms, edge_frac, same_ms),
-                    skipped=skipped, n_skipped=sum(skipped.values()))
+        out = dict(summarize([], peaks, window_ms, edge_frac, same_ms),
+                   skipped=skipped, n_skipped=sum(skipped.values()))
+        return _with_locked(out, locked)
 
     rows.sort(key=lambda r: r["was"])
     stamps = [r["was"] for r in rows]
     p_times = list(peaks.get("times") or [])
     p_amps = list(peaks.get("amps") or [])
+    if locked and p_times:
+        # A locked stamp's own peak is not on offer to anybody else.
+        near = float(peaks.get("cand_dist_ms") or CAND_DIST_MS) / 1000.0
+        held = sorted(r["was"] for r in locked)
+        keep_t, keep_a = [], []
+        for j, pt in enumerate(p_times):
+            k = bisect.bisect_left(held, pt)
+            gap = min([abs(pt - held[x]) for x in (k - 1, k)
+                       if 0 <= x < len(held)] or [float("inf")])
+            if gap < near:
+                continue
+            keep_t.append(pt)
+            if j < len(p_amps):
+                keep_a.append(p_amps[j])
+        p_times = keep_t
+        p_amps = keep_a if len(keep_a) == len(keep_t) else []
     thr_uv = float(peaks.get("thr_uv") or 0.0)
 
     # WHICH RULE. The largest peak in the window where the candidates come
@@ -1365,9 +1397,22 @@ def propose(events, peaks, window_ms=WINDOW_MS, edge_frac=EDGE_FRAC,
     # What the rule bought, counted rather than asserted.
     stranded = sum(1 for n in range(len(rows))
                    if naive[n] is None and taken[n] is not None)
-    return dict(summarize(rows, peaks, window_ms, edge_frac, same_ms,
-                          greedy_stranded=stranded),
-                skipped=skipped, n_skipped=sum(skipped.values()))
+    out = dict(summarize(rows, peaks, window_ms, edge_frac, same_ms,
+                         greedy_stranded=stranded),
+               skipped=skipped, n_skipped=sum(skipped.values()))
+    return _with_locked(out, locked)
+
+
+def _with_locked(out, locked):
+    """The locked rows added to a proposal, in time order with the rest.
+
+    Counted apart (`n_locked`): `n` and every count beside it are about the
+    stamps this run measured, and a locked one was not measured."""
+    out["n_locked"] = len(locked)
+    if locked:
+        out["rows"] = sorted(list(out.get("rows") or []) + list(locked),
+                             key=lambda r: r["was"])
+    return out
 
 
 def summarize(rows, peaks, window_ms, edge_frac, same_ms,
@@ -1494,7 +1539,7 @@ def params_of(spec, peaks):
 
 
 def align(session, use_chans, spec, events, stamp_times, align_ids,
-          left_out, depth_n=DEPTH_BAND, job=None):
+          left_out, depth_n=DEPTH_BAND, job=None, pinned=None):
     """One whole alignment: screen, find the depth, read the windows, propose.
 
     Everything `/api/braces/run` does between choosing the channels and
@@ -1566,9 +1611,12 @@ def align(session, use_chans, spec, events, stamp_times, align_ids,
                   window_ms=spec["window_ms"],
                   edge_frac=spec["edge_frac"],
                   same_ms=spec["same_ms"],
-                  align_ids=set(align_ids or ()))
+                  align_ids=set(align_ids or ()),
+                  pinned=pinned)
     params = params_of(spec, peaks)
     params["left_out"] = list(left_out)
+    # Which stamps were held where Braces put them (Lock), for the record.
+    params["pinned"] = len(pinned or ())
     rows = out.pop("rows")
     # Into the set, not only into the job's result: the job is gone by
     # tomorrow, and somebody opening this proposal then still has to be able

@@ -18,8 +18,13 @@ iframe{position:fixed;left:560px;top:0;width:1366px;height:768px;border:0}</styl
    2. The band strips are asked for two at a time, never all at once.
    3. The server's streamed answer is well formed: a head, one line per
       bin with the first sixteen-apart, and a closing line with the whole.
+   4. A traces pane opening onto nothing draws its first sixteen rows
+      before the whole window, every lane already in place, and the whole
+      window then replaces them with exactly what a plain read returns
+      (2026-10-22). The whole read is held here until the first rows have
+      been seen, so the order is the harness's, not the network's.
 
-   Reads only. The demo recording, so it runs on any machine. */
+   Reads only. The demo recording (64 channels), so it runs on any machine. */
 const L = document.getElementById('log');
 let fails = 0, checks = 0;
 const say = (s, c) => { const n = document.createElement('span');
@@ -37,6 +42,16 @@ async function until(fn, ms) {
   return null;
 }
 const DEMO = 'demo:long-session';
+/* Waiting on something the SERVER is doing: under the runner's virtual time
+   a timer-based wait races ahead of a read that takes real seconds, so each
+   turn of this loop waits on a real (cheap) request instead. */
+async function realUntil(fn, turns) {
+  for (let i = 0; i < (turns || 4000); i++) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    try { await fetch('/api/warm/state'); } catch (e) { await sleep(20); }
+  }
+  return null;
+}
 
 (async () => {
   const frame = document.getElementById('app');
@@ -44,8 +59,11 @@ const DEMO = 'demo:long-session';
   const W = () => frame.contentWindow;
   let realFetch = null;
   try {
-    await until(() => W().BARRY && W().BARRY.state.catalog && W().BARRY.views.xplore, 30000);
-    const B = W().BARRY;
+    // BARRY is a const in the frame, not a property of its window: eval.
+    const bOf = () => { try { return W().eval('typeof BARRY === "object" ? BARRY : null'); }
+                        catch (e) { return null; } };
+    await until(() => { const b = bOf(); return b && b.state.catalog && b.views.xplore; }, 30000);
+    const B = bOf();
 
     say('=== 3. the streamed answer, from the server ===');
     const r = await fetch('/api/csc/open', { method: 'POST',
@@ -85,26 +103,57 @@ const DEMO = 'demo:long-session';
     realFetch = W().fetch;
     const asked = [];
     let bandLive = 0, bandPeak = 0;
+    // Trace windows: how many channels each asked for, and the whole read
+    // held at the gate until the first rows have been seen on the pane.
+    const windows = [];
+    let gateOpen = null;
+    const gate = new Promise((r) => { gateOpen = r; });
     W().fetch = function (u, o) {
       const url = String(u);
       const isBand = /\/api\/csc\/overview/.test(url) && o && o.body
         && /"profile":"band"/.test(o.body);
       asked.push(url);
+      if (/\/api\/csc\/window/.test(url) && o && o.body) {
+        let n = 0;
+        try { n = (JSON.parse(o.body).channels || []).length; } catch (e) { /* not ours */ }
+        windows.push({ n, body: o.body });
+        if (n > 16) {
+          const self = this, args = arguments;
+          return Promise.race([gate, sleep(30000)]).then(() => realFetch.apply(self, args));
+        }
+      }
       if (isBand) { bandLive += 1; bandPeak = Math.max(bandPeak, bandLive); }
       const p = realFetch.apply(this, arguments);
       if (isBand) p.finally(() => { bandLive -= 1; });
       return p;
     };
+    // Watched from the moment the recording opens: the first rows are only
+    // on screen until the whole window lands.
+    let early = null;
+    const watchEarly = (async () => {
+      const panes = () => (B.views.xplore.state && B.views.xplore.state.panes) || [];
+      const p = await until(() => panes().find((q) => q && q._win && q._win.early), 30000);
+      if (p) {
+        const s = p._win.series;
+        early = { pane: p, n: s.length,
+                  pending: s.filter((x) => x.pending).length,
+                  firstFilled: s.slice(0, 16).every((x) => !x.pending
+                    && x.max.some((v) => v !== null)),
+                  lanes: p._geom ? p._geom.n : null,
+                  overlayHidden: !p._loading || p._loading.classList.contains('hidden') };
+      }
+      gateOpen();
+    })();
     W().setView('xplore');
     const sess = await B.views.xplore.open(DEMO);
     check('the recording opens in Xplorefinder', !!sess);
     const ss = B.views.xplore.state.sessions;
     const live = Object.values(ss || {}).find((x) => x && x.path === DEMO) || sess;
     let sawPartial = false;
-    await until(() => {
+    await realUntil(() => {
       if (live.overview && live.overview._partial) sawPartial = true;
       return live.overview && !live.overview._partial;
-    }, 30000);
+    });
     check('the strip is asked for as a stream',
           asked.some((u) => /\/api\/csc\/overview\?stream=1/.test(u)), asked.slice(-4).join(' '));
     check('and arrives whole in the end', !!(live.overview && !live.overview._partial
@@ -122,6 +171,38 @@ const DEMO = 'demo:long-session';
     } else {
       say('  (no harness handle to choose band channels: concurrency checked by reading '
           + 'loadOverviewBand -- a two-worker pump)', 'note');
+    }
+
+    say('');
+    say('=== 4. traces: the first rows, then the whole window ===');
+    await watchEarly;
+    const big = windows.filter((w) => w.n > 24);
+    check('a pane opening onto nothing asks for its first 16 rows as well',
+          windows.some((w) => w.n === 16) && big.length > 0,
+          windows.map((w) => w.n).join(','));
+    check('the first rows are drawn before the whole window', !!early,
+          early ? '' : 'no early window seen');
+    if (early) {
+      const N = big.length ? big[0].n : 0;
+      check('with a lane for every channel from the start',
+            early.n === N && early.lanes === N, early.n + ' lanes, ' + early.lanes
+            + ' laid out, of ' + N);
+      check('the first sixteen drawn, the rest waiting',
+            early.firstFilled && early.pending === N - 16,
+            early.pending + ' waiting');
+      check('and the loading cover lifted for them', early.overlayHidden);
+      const pane = early.pane;
+      const done = await realUntil(() => pane._win && !pane._win.early
+        && pane._win.series.length === N ? pane._win : null);
+      check('the whole window replaces them', !!done && done.series.every((x) => !x.pending),
+            done ? done.series.length + ' rows' : 'never whole');
+      if (done && big.length) {
+        const again = await (await realFetch.call(W(), '/api/csc/window', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: big[big.length - 1].body })).json();
+        const sig = (w) => JSON.stringify(w.series.map((x) => [x.number, x.min, x.max]));
+        check('exactly what a plain read returns', sig(done) === sig(again));
+      }
     }
   } catch (e) {
     check('the harness ran', false, (e && e.stack) || String(e));

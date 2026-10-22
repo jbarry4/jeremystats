@@ -1990,6 +1990,9 @@ const MODES = {
   },
   panning: {
     name: 'Panning',
+    /* Its bar folds in stages (2026-10-22): the tick bars first, then the
+       labelling too, then back. See modeFold. */
+    foldStages: 3,
     /* Worth a `what`: merging is the one thing here that is not on a
        button you can see until you need it, and two events a few
        milliseconds apart look like one line on the traces. */
@@ -2163,26 +2166,61 @@ function modeReserve(on) {
    with small screens". Folded, the bar is one slim line -- the mode, where
    you are in it, Leave -- and every key still works. Remembered per
    add-on, on this computer. */
+/* The tools bar's fold, kept per add-on in localStorage
+   ('barry.modeFold.<kind>'): '0' open, '1' folded to one line. An add-on
+   whose MODES entry says `foldStages: 3` (Panning, 2026-10-22: "first click
+   just the tick bars, second the labelling as well, third it returns") has
+   a stage between: 't', its tick bars put away (`.fold-ticks`, which hides
+   `.mode-strip` canvases) with every tool still showing. `on` is null to
+   read back what was kept, true/false for folded/open, or a stage name
+   ('open' | 'ticks' | 'folded'). Returns the stage now in force. */
 function modeFold(kind, on) {
   const bar = document.getElementById('modeBar');
   const btn = document.getElementById('modeFold');
   const key = 'barry.modeFold.' + (kind || '');
-  let want = false;
+  const staged = !!(kind && MODES[kind] && MODES[kind].foldStages === 3);
+  let stage = 'open';
   if (kind && MODES[kind]) {
     if (on === null || on === undefined) {
-      try { want = localStorage.getItem(key) === '1'; } catch (e) { want = false; }
+      let v = '0';
+      try { v = localStorage.getItem(key) || '0'; } catch (e) { v = '0'; }
+      stage = v === '1' ? 'folded' : (v === 't' && staged ? 'ticks' : 'open');
     } else {
-      want = !!on;
-      try { localStorage.setItem(key, want ? '1' : '0'); } catch (e) { /* session */ }
+      stage = on === true ? 'folded' : on === false ? 'open'
+        : (on === 'ticks' && !staged ? 'folded' : String(on));
+      try {
+        localStorage.setItem(key, stage === 'folded' ? '1'
+                                  : stage === 'ticks' ? 't' : '0');
+      } catch (e) { /* session */ }
     }
   }
-  if (bar) bar.classList.toggle('folded', want);
-  if (btn) {
-    btn.setAttribute('aria-expanded', want ? 'false' : 'true');
-    btn.title = want ? 'Unfold the bar: every tool back'
-                     : 'Fold the bar to one line (the keys still work)';
+  if (bar) {
+    bar.classList.toggle('folded', stage === 'folded');
+    bar.classList.toggle('fold-ticks', stage === 'ticks');
   }
-  return want;
+  if (btn) {
+    btn.setAttribute('aria-expanded', stage === 'folded' ? 'false' : 'true');
+    btn.dataset.stage = stage;
+    btn.title = stage === 'folded' ? 'Unfold the bar: every tool back'
+      : stage === 'ticks' ? 'Fold the bar to one line (the keys still work)'
+      : staged ? 'Put the tick bars away; click again to fold the bar to one '
+                 + 'line, and again to bring it all back'
+      : 'Fold the bar to one line (the keys still work)';
+  }
+  return stage;
+}
+
+/* The next stage on a click: open → folded → open, or, staged,
+   open → ticks → folded → open. */
+function modeFoldNext(kind) {
+  const bar = document.getElementById('modeBar');
+  const now = bar && bar.classList.contains('folded') ? 'folded'
+    : (bar && bar.classList.contains('fold-ticks') ? 'ticks' : 'open');
+  const staged = !!(MODES[kind] && MODES[kind].foldStages === 3);
+  const next = staged
+    ? ({ open: 'ticks', ticks: 'folded', folded: 'open' })[now]
+    : (now === 'open' ? 'folded' : 'open');
+  return modeFold(kind, next);
 }
 
 /* The ? beside Leave: what the mode does, and its keys, in one place. */
@@ -2204,9 +2242,11 @@ function wireMode() {
   const fold = document.getElementById('modeFold');
   if (fold) fold.addEventListener('click', () => {
     if (!modeNow) return;
-    modeFold(modeNow, !document.getElementById('modeBar')
-      .classList.contains('folded'));
+    const stage = modeFoldNext(modeNow);
     window.dispatchEvent(new Event('resize'));
+    // An add-on drawing into the bar (Panning's strips) redraws on this.
+    window.dispatchEvent(new CustomEvent('barry:modefold',
+      { detail: { kind: modeNow, stage } }));
   });
   const simple = document.getElementById('modeSimplify');
   if (simple) simple.addEventListener('click', () => {
@@ -4158,9 +4198,15 @@ BARRY.init = async function init() {
 
   // Preferences and the catalog are both in hand now, so the per-machine
   // choice can be honored -- it may differ from what localStorage had.
-  const mine = themeForThisMachine();
-  if (mine && mine !== BARRY.state.theme) applyTheme(mine);
-  else applyTheme(BARRY.state.theme, true);   // records it for this machine
+  // Not when the address named a theme: `?theme=` wins and is not
+  // remembered, and this reconcile used to put this machine's own theme
+  // straight back over it a second later (found 2026-10-22: a measuring
+  // run asked for `dark` and got Halloween's visitors).
+  if (!new URLSearchParams(location.search).get('theme')) {
+    const mine = themeForThisMachine();
+    if (mine && mine !== BARRY.state.theme) applyTheme(mine);
+    else applyTheme(BARRY.state.theme, true);   // records it for this machine
+  }
 
   // Same reconciliation for VACC Mode, and skipped entirely when the URL
   // asked for a particular state -- a pop-out must keep what it was handed

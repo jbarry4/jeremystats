@@ -228,6 +228,8 @@ BARRY.strata = (function () {
     document.documentElement.style.removeProperty('--bottom-bar');
     window.removeEventListener('resize', alignRail);
     document.removeEventListener('keydown', keys, true);
+    // A main window laid out from Profile goes back to its one pane.
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     // The pane read as an H3 (layout) gets every channel back.
     if (h3Pane) {
       h3Pane = false;
@@ -261,7 +263,28 @@ BARRY.strata = (function () {
       spec.colLabel = 'Read as an H3: CSC ' + first[0].number + '\u2013'
         + first[first.length - 1].number;
     }
-    BARRY.views.xplore.setPanes([spec], { col: 0.5, row: 0.5 });
+    /* The main window as this person laid it out in Profile › Support panel
+       preferences (2026-10-22), or the traces alone, as always. Its first
+       pane is always the traces, which everything below reads. */
+    const lanes = ['traces', 'voltage', 'csd', 'theta'];
+    const mp = BARRY.supportPanels
+      ? BARRY.supportPanels.applyMain('strata', [spec], sess, { col: 0.5, row: 0.5 },
+          (specs) => {
+            // The same first 64, read as an H3, on every lane panel that
+            // was not given channels of its own.
+            if (!asH3) return;
+            specs.forEach((sp) => {
+              if (lanes.indexOf(sp.panel) >= 0 && !sp.channels) {
+                sp.channels = spec.channels.slice();
+                if (sp.panel === 'traces') sp.colLabel = spec.colLabel;
+              }
+            });
+          })
+      : (BARRY.views.xplore.setPanes([spec], { col: 0.5, row: 0.5 }), null);
+    if (mp && mp.span && sess) {
+      BARRY.views.xplore.setWindow(sess,
+        Math.max(0, sess.t0 + sess.span / 2 - mp.span / 2), mp.span);
+    }
     openAids();
   }
 
