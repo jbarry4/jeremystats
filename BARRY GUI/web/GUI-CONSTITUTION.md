@@ -172,6 +172,16 @@ twelve, and the house pattern is to **name the component and stop its
 animation**, not a blanket `* { animation: none }` — reduced motion should
 keep the contrast and lose the movement, not flatten the page.
 
+That block is now worn by two kinds of computer: the one whose system asks
+for reduced motion, and **every computer in Jarvis Light** (below), which
+switches all of them on. A loop with no stop is a loop a slow laptop runs
+for as long as the view is open — the ToolKit stream alone kept a 4×-slowed
+CPU at 100 % (measured 2026-10-21). Ask about motion through
+`window.matchMedia('(prefers-reduced-motion: reduce)')` or
+`BARRY.ui.reducedMotion()`: Light answers both. Only the Jarvis reveal asks
+the system alone (`BARRY.lite.osReducedMotion()`), because it plays in full
+even in Light.
+
 ### A theme with visitors
 
 Halloween is the one theme with more than a palette: [spooky.js](js/spooky.js)
@@ -216,6 +226,39 @@ What it must not do:
 A new header or bar checks how it looks with the switch on.
 `web/_dev/compact.html` measures the headers both ways at 1366x768 and
 fails any that do not get smaller.
+
+### Jarvis Light
+
+The picker's third switch: `data-lite="on"` on the root, for a **slower
+computer**. A speed setting, **never a colour**: UVM Light is the colour
+theme; this changes no colour token, and `web/_dev/lite.html` checks all of
+them in all eleven themes. [lite.js](js/lite.js) does four things while it is
+on:
+
+- **Motion stops.** Every `prefers-reduced-motion` rule in the page is
+  switched on (its media list gains `all`), so each component's own stop is
+  what draws. Nothing is copied: a stop written tomorrow is honoured too.
+- **Scripts hear it.** `matchMedia` answers the reduced-motion question
+  with yes, so `BARRY.ui.reducedMotion()`, `BARRY.motion`, the start menu,
+  VACC's power-up and board and Halloween's visitors all take their still
+  path without being edited.
+- **Plots draw at 1×.** `devicePixelRatio` reads 1, so every canvas fills
+  one pixel per CSS pixel — 2.25× fewer on a laptop at 150 %. Read the ratio
+  at draw time, never cache it at load.
+- **The rest goes flat** (app.css, *Jarvis Light*): `--glass-blur` none,
+  `--glass-bg` the theme's own `--bg-2`, the `--elev-*` shadows none, no
+  transitions, the title screen still.
+
+It never hides a control, a label or a result. It is remembered per
+computer like Compact (`lite` in PREFS_LOCAL), `?lite=on|off` wins and is
+not remembered, and a frame inside a `/_dev/` page starts **off** so no
+harness measures it by accident. The server halves its cache budget while
+it is on. `BARRY.lite.suspend()` lifts all of it for a moment somebody asked
+for — the reveal.
+
+A new surface checks itself in Light: no glass of its own (use
+`--glass-blur`), no shadow of its own (use `--elev-*`), and a reduced-motion
+stop for anything that moves.
 
 ### Fire mode
 
@@ -1508,8 +1551,11 @@ around it — start-up, switching views, opening a tool — which is what people
 mean when they call the app lethargic, and which nothing had measured until
 `tools/perf_baseline.py`.
 
-There is no lite mode. Every rule below makes the app faster on every
-machine, so it is fine on a laptop over a VPN and better on a lab computer.
+Every rule below makes the app faster on every machine, so it is fine on a
+laptop over a VPN and better on a lab computer. For a computer that is
+still too slow there is **Jarvis Light** (§4): the same app, cheaper to
+draw. The rules below are not excused by it — Light is for the computer,
+not for the code.
 
 ### Measure it, in real time
 
@@ -1639,28 +1685,120 @@ Results and Misc make **61–66 requests per visit**, one per thumbnail.
   about 230 ms repainting 400+ cards it could not show at once anyway.
 - A change repaints the row that changed, not the whole view.
 
-### What is still to be measured
+### A slower computer, measured (2026-10-21)
 
-Two suspects cannot be tested on the lab machine, and are written here so
-they are not forgotten:
+`python tools/perf_baseline.py --throttle 4` runs the same page with the CPU
+slowed four times and the screen scaled 1.5× — a lab laptop, roughly.
+`--warm-browser` measures the second start in one browser (what somebody who
+opened Jarvis yesterday meets), and `--lite` measures Jarvis Light.
+`python tools/perf_profile.py --view toolkit` says WHERE a view's time goes:
+DevTools' sampling profiler over a stretch of doing nothing, by function and
+by file, with every running animation listed.
 
-- **GPU effects.** Six `backdrop-filter` and four `blur()` rules, and eleven
-  infinite animations, are near-free on a lab GPU and paid on every repaint on
-  a laptop's integrated one. Headless Edge draws without a GPU, so only a run
-  of `_dev/perf.html` on a real laptop can say. Until then: **no new
-  `backdrop-filter`**, and an infinite animation pauses when it is off screen.
-- **The VPN.** Every number above was taken on the lab LAN. The laptop run on
-  and off the VPN sets the budgets; they are not guessed.
+What that found, and the rule each one became:
+
+- **One loop can own the machine.** ToolKit's stream animation kept a
+  throttled CPU at 100 % for as long as ToolKit was open; turning that one
+  animation off took it to 3 %. Every loop needs its reduced-motion stop
+  (§4), and Light switches them all on.
+- **A poll is paid every time.** `/api/sync/status` ran a conflict audit that
+  asked git about two hundred files one process at a time: 8.7 s of server
+  for every poll (now one `git check-ignore --stdin`, 0.7 s, kept 2 min). A
+  route a page polls is measured on its own, warm, and kept under 100 ms.
+- **The first importer pays, again.** A module-level `from sklearn.cluster`
+  in rootcanalpool.py was 2.07 s of a 3.4 s server start. Every heavy import
+  goes through lazyimp.py (above).
+- **A library's threads are memory.** numpy and scipy each reserved a buffer
+  per CPU thread: 867 MB committed before the first request. backend/
+  __init__.py caps their pools at four: 160 MB.
+
+### Lists: one copy, last time's first, sent only when changed
+
+The registry was fetched by five views, each keeping its own copy of two
+megabytes, and Sessions showed nothing for 4.3 s on a first open.
+
+- **Read a list through `BARRY.data`** (web/js/data.js), never a bare
+  `api()`: `get(url)` hands every caller one copy and shares a request
+  already in flight; `stale(url)` gives last time's from this browser to draw
+  at once; `watch(url, cb)` hears each answer. A view draws last time's
+  dimmed (`BARRY.skeleton.stale`) or marked *as of …*, then this time's.
+- **The server tags every GET answer** with an ETag (backend/gzipjson.py) and
+  answers 304 with no body when the tag the page sends still matches. A list
+  that has not changed costs nothing to send, parse or redraw.
+- **A write under `/api/<thing>`** marks every kept answer under it as needing
+  a fresh look (`api()` does this; nothing to remember).
+- **Read-only.** A kept answer is shared: copy before changing it.
+
+### Requests nobody waits for yield
+
+A browser opens six connections to Jarvis. The polls and roll-ups nobody is
+waiting on (`BACKGROUND_PATHS` in core.js, or `priority: 'background'`) take
+at most three of them, one after another, so a click never queues behind
+them.
+
+### What costs per item arrives per item
+
+A strip of 900 bins, or a line per channel, used to arrive whole or not at
+all. Now:
+- **Read many windows of one file through one open**
+  (`nlx.read_ncs_ranges`), never one `read_ncs_range` each.
+- **Ask for many things a few at a time**, drawing each as it lands, never
+  all at once (Xplorefinder's band strips: two at a time).
+- **Stream an answer whose items each cost something real**
+  (backend/streamjson.py, `BARRY.data.stream`): a head line, one line per
+  item as it is ready, a closing line. Not for an answer that comes out of
+  one shared read — those are kept and drawn from last time instead.
+
+### What is worked out from a file is kept on disk
+
+`backend/derived.py`: the overview strip and the band surface of a channel,
+in `GUI_logs/.cache/derived/`, keyed on the file's path, size and mtime — a
+changed file is a different key, so a kept answer can never describe data
+that is no longer there. Capped at 1 GB, oldest-used first. A restart no
+longer reads a recording through again to draw its strip.
+
+### One memory budget
+
+`backend/membudget.py`: every cache registers (`register`, or `watch_dict`
+for a plain dict-and-order cache) and one least-recently-used policy keeps
+all of them together under about 6 % of the machine's memory, at most 1 GB
+(half in Light). `/api/debug/memory` shows the process, the budget and each
+cache. A new cache registers.
+
+### The start screen gets things ready
+
+`web/js/warmup.js`: from the moment the preferences are in, one step at a
+time at background priority — every list into its kept copy, the last
+recording opened on the server with its strip, the analysis libraries
+imported, recent recordings' strips written to disk. The start screen shows
+each step tick off; Continue and every key go straight in at any point, and
+a line in the rail says how far it has got until it is done. Never in a
+frame, a pop-out or under automation.
+
+### The page's own files
+
+`index()` (app.py) serves the page with every script and stylesheet address
+carrying its file's mtime (`js/core.js?v=…`), and an address with a version
+is cached for a year, never re-checked. Editing a file changes its address,
+so the edit shows on refresh with no build step. `JARVIS_ASSET_VERSIONS=0`
+turns it off, to measure it or rule it out.
 
 ### When you add something
 
 - [ ] Heavy imports inside the function that uses them
 - [ ] Nothing fetched at boot that the first screen does not draw
-- [ ] Pollers stop in `onHide` and in a background window
+- [ ] Pollers stop in `onHide` and in a background window; a polled route is
+      under 100 ms warm
 - [ ] No cloud call on the path to drawing the view (§11)
 - [ ] One request per question; long lists draw what is visible
-- [ ] No new `backdrop-filter`
-- [ ] `perf_baseline.py` before and after, and the number moved
+- [ ] A list is read through `BARRY.data`, and drawn from last time first
+- [ ] Many things are asked for a few at a time, each drawn as it lands
+- [ ] Derived data kept on disk keyed on the file; a new cache registers
+      with membudget
+- [ ] Glass through `--glass-blur`, shadow through `--elev-*`; checked in
+      Jarvis Light
+- [ ] `perf_baseline.py` before and after (and `--throttle 4`), and the
+      number moved
 
 ---
 

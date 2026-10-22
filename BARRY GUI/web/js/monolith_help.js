@@ -359,6 +359,15 @@ window.MONO_HELP = (function () {
       look: 'How much of the uncorrected circuit each method keeps.',
       traps: 'Frequency runs keep a band because its neighbours passed with it; read the run, not the band.',
     },
+    figs: {
+      title: 'Joe’s figures',
+      plain: 'Publication figures, in Nature’s format, for what tab 8 found, broad first and then zooming in. Each result that changed is drawn as a connectome: a ring of the regions, a line per pair whose width is the change in coherence, for Precon1, Precon4 and the change between them, split into the increases, the decreases and both. Each of those nine graphs is set against 10,000 within-session shuffles. Then each follow-up that changed has a figure of its own.',
+      steps: ['Each session: the mean over its trials of each window, pair by pair.', 'Each graph: the mean change over the rats, summed over its edges.',
+              'The shuffles: inside each session, each trial’s two windows swapped at random, 10,000 times; the real value’s rank among them is its P.',
+              'Each figure: its legend, its files (PDF, SVG, 600 dpi PNG) and a Methods button with the words, the code and something to play with.'],
+      look: 'A starred graph (P < 0.05 against its shuffles), and follow-ups whose dots mostly move the same way.',
+      traps: 'Nothing here is corrected across the figures. The follow-ups come from pairs that did not survive correction on their own: they are leads.',
+    },
     joe: {
       title: 'Joe’s data: did coherence change?',
       plain: 'The comparisons Joe’s proposal names, and nothing more: coherence between regions (how much two regions’ rhythms rise and fall together), in theta (5–12 Hz) and gamma (30–90 Hz), Precon1 against Precon4. Each row is one comparison, numbered as in the SPSS files; each light is one band. Green: the change between the two days is unlikely to be chance (less than 1 in 20). Grey: no sign of a change. Coherence is computed as Dickson 2022 does it (Jeremy’s mscohere); the circuits’ Welch way is computed too, and the line above the lights says whether it agrees.',

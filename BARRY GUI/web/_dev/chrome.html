@@ -131,7 +131,9 @@ async function until(fn, ms) {
   const labels = $$('.ctl-pop .toggle span').map((n) => n.textContent);
   say('  offers: ' + labels.join(' | '), 'note');
   check('all four pieces are offered',
-        ['Channel list', 'Control strip', 'Pane headers', 'Session tabs']
+        // Renamed: the tabs became the whole top row (2026-10-20), the
+        // channel list the traces' channel column (2026-10-21).
+        ['Channel column', 'Control strip', 'Pane headers', 'Top row']
           .every((t) => labels.includes(t)), labels.join(' | '));
 
   const plotH = () => $('.pane-canvas-host').getBoundingClientRect().height;

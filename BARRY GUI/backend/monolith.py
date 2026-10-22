@@ -3778,7 +3778,8 @@ _WORK_SAY = {"upload": "uploading", "fetch": "fetching and building the "
              "physical": "comparing the physical cues with the balanced ones",
              "narrow": "narrowing down: corrections and the permutation tests",
              "joe": "working out tab 8 (Joe's data) from the recordings",
-             "joescript": "running tab 8's standalone script"}
+             "joescript": "running tab 8's standalone script",
+             "joefigs": "drawing tab 9's figures"}
 
 
 def work_now():

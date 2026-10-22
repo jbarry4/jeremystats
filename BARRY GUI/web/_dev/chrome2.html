@@ -202,8 +202,10 @@ async function until(fn, ms = 40000) {
   check('all four can be off at once',
         Object.values(allOff).every((v) => v === false),
         JSON.stringify(allOff));
-  const rows = D.querySelectorAll('.unfold-row .unfold').length;
-  check('and each one still has a sliver', rows >= 3, rows + ' slivers');
+  // The channel column's way back is in its own gutter (2026-10-21).
+  const rows = D.querySelectorAll('.unfold-row .unfold').length
+             + (D.querySelector('.ch-overlay.folded .ch-fold') ? 1 : 0);
+  check('and each one still has a way back', rows >= 3, rows + ' ways back');
   W.eval('(function(){var c=BARRY.views.xplore.state.chrome;'
     + 'Object.keys(c).forEach(function(k){c[k]=true;});})()');
   W.eval('BARRY.views.xplore.render()');

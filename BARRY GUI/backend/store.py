@@ -123,7 +123,12 @@ PREFS_LOCAL = ("theme", "density", "panes", "last_view", "last_session",
                # sign-in done in Setup -- turns VACC Mode on once.
                "vacc_signed_ack",
                # Motion: "lively" (default) or "calm" (2026-10-20).
-               "motion")
+               "motion",
+               # Jarvis Light, "on" or "off" (2026-10-21): a speed setting
+               # for a slower computer, so about this machine and nobody
+               # else's (web/js/lite.js). The server reads it too, to halve
+               # its cache budget (backend/membudget.py).
+               "lite")
 
 TRIAGE_SPEC = {"marks": shards.MAPLWW}
 TRIAGE_BASE = "resolved"

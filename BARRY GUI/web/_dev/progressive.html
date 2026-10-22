@@ -1,0 +1,137 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>progressive: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:560px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:560px;top:0;width:1366px;height:768px;border:0}</style></head>
+<body><pre id="log"></pre>
+<iframe id="app" src="/?linkhold=0&menu=0"></iframe>
+<script>
+/* "Load in serially instead of nothing... and then BAM everything"
+   (2026-10-21). On a recording opened in Xplorefinder:
+
+   1. The overview strip arrives a bin at a time, coarse to fine: the
+      streamed form is asked for, a partial strip is drawn before the whole
+      one, and the whole one matches the plain answer exactly.
+   2. The band strips are asked for two at a time, never all at once.
+   3. The server's streamed answer is well formed: a head, one line per
+      bin with the first sixteen-apart, and a closing line with the whole.
+
+   Reads only. The demo recording, so it runs on any machine. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(40);
+  }
+  return null;
+}
+const DEMO = 'demo:long-session';
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow;
+  let realFetch = null;
+  try {
+    await until(() => W().BARRY && W().BARRY.state.catalog && W().BARRY.views.xplore, 30000);
+    const B = W().BARRY;
+
+    say('=== 3. the streamed answer, from the server ===');
+    const r = await fetch('/api/csc/open', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: DEMO }) });
+    check('the demo recording opens', r.ok);
+    const s = await fetch('/api/csc/overview?stream=1', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: DEMO, channel: 1, bins: 300 }) });
+    check('it answers as a stream', /x-ndjson/.test(s.headers.get('Content-Type') || ''),
+          s.headers.get('Content-Type'));
+    const lines = (await s.text()).split('\n').filter(Boolean).map((x) => JSON.parse(x));
+    const items = lines.filter((x) => x.item).map((x) => x.item);
+    const tail = lines[lines.length - 1] || {};
+    check('a head first', !!lines[0] && lines[0].head !== undefined);
+    check('a closing line with the whole answer', tail.done && tail.result && tail.result.ok,
+          JSON.stringify(tail).slice(0, 120));
+    if (items.length) {
+      check('one line per bin', items.length === tail.result.bins,
+            items.length + ' of ' + tail.result.bins);
+      check('coarse to fine: every sixteenth bin first',
+            items.slice(0, 5).map((x) => x[0]).join(',') === '0,16,32,48,64',
+            items.slice(0, 5).map((x) => x[0]).join(','));
+      check('each bin says what the whole answer says',
+            items.every((x) => tail.result.lo[x[0]] === x[1] && tail.result.hi[x[0]] === x[2]));
+    } else {
+      say('  (kept from an earlier read: arrived whole, with no bins before it)', 'note');
+      check('a kept answer arrives whole', tail.result && tail.result.lo.length === tail.result.bins);
+    }
+    const plain = await (await fetch('/api/csc/overview', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: DEMO, channel: 1, bins: 300 }) })).json();
+    check('the plain answer is the same strip', JSON.stringify(plain.lo) === JSON.stringify(tail.result.lo));
+
+    say('');
+    say('=== 1 and 2. in Xplorefinder ===');
+    // Watch what the page asks for, and how many band strips at once.
+    realFetch = W().fetch;
+    const asked = [];
+    let bandLive = 0, bandPeak = 0;
+    W().fetch = function (u, o) {
+      const url = String(u);
+      const isBand = /\/api\/csc\/overview/.test(url) && o && o.body
+        && /"profile":"band"/.test(o.body);
+      asked.push(url);
+      if (isBand) { bandLive += 1; bandPeak = Math.max(bandPeak, bandLive); }
+      const p = realFetch.apply(this, arguments);
+      if (isBand) p.finally(() => { bandLive -= 1; });
+      return p;
+    };
+    W().setView('xplore');
+    const sess = await B.views.xplore.open(DEMO);
+    check('the recording opens in Xplorefinder', !!sess);
+    const ss = B.views.xplore.state.sessions;
+    const live = Object.values(ss || {}).find((x) => x && x.path === DEMO) || sess;
+    let sawPartial = false;
+    await until(() => {
+      if (live.overview && live.overview._partial) sawPartial = true;
+      return live.overview && !live.overview._partial;
+    }, 30000);
+    check('the strip is asked for as a stream',
+          asked.some((u) => /\/api\/csc\/overview\?stream=1/.test(u)), asked.slice(-4).join(' '));
+    check('and arrives whole in the end', !!(live.overview && !live.overview._partial
+          && live.overview.lo.length === live.overview.bins));
+    say('  a partial strip was ' + (sawPartial ? '' : 'not ') + 'seen (a kept or quick '
+        + 'answer arrives whole, which is right too)', 'note');
+
+    // Band strips: several channels at once, read two at a time.
+    if (B.views.xplore.setStripChans && B.views.xplore.setStripMode) {
+      B.views.xplore.setStripMode(live, 'band');
+      B.views.xplore.setStripChans(0, live, [0, 1, 2, 3, 4, 5]);
+      await until(() => bandPeak > 0 && bandLive === 0, 30000);
+      check('band strips are read at most two at a time', bandPeak <= 2 && bandPeak > 0,
+            'peak ' + bandPeak);
+    } else {
+      say('  (no harness handle to choose band channels: concurrency checked by reading '
+          + 'loadOverviewBand -- a two-worker pump)', 'note');
+    }
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  } finally {
+    try { if (realFetch) W().fetch = realFetch; } catch (e) { /* going anyway */ }
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'progressive: ' + fails + ' FAILED' : 'progressive: passed';
+  frame.src = 'about:blank';
+})();
+</script>
+</body></html>

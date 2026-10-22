@@ -18,10 +18,18 @@
     "schema": "2026-09-02T23:21:29.173760+00:00",
     "session": "2026-09-02T23:21:29.173760+00:00",
     "start": "2026-09-02T23:21:29.173760+00:00",
-    "updated": "2026-09-03T13:40:45.205958+00:00"
+    "updated": "2026-10-21T22:59:39.122740+00:00"
   },
   "_keys": {
     "paths": {
+      "D:\\EEG-Wheel_data\\ACTIVE DATA\\KCNT1_hom306_s2_2026-02-24": [
+        "set",
+        "2026-10-21T22:59:39.122740+00:00"
+      ],
+      "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s2_feb24\\2026-02-24_18-22-22": [
+        "set",
+        "2026-10-01T16:30:00.205145+00:00"
+      ],
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s2_feb24\\2026-02-24_18-22-22": [
         "set",
         "2026-09-02T23:21:29.173760+00:00"
@@ -31,11 +39,19 @@
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-02T23:21:29.173760+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-10-01T16:30:00.205145+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-10-21T22:59:39.122740+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-03T13:40:45.205958+00:00",
+    "at": "2026-10-21T22:59:39.122740+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -57,7 +73,9 @@
   "mouse": 306,
   "n_channels": 64,
   "paths": [
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s2_feb24\\2026-02-24_18-22-22"
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s2_feb24\\2026-02-24_18-22-22",
+    "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s2_feb24\\2026-02-24_18-22-22",
+    "D:\\EEG-Wheel_data\\ACTIVE DATA\\KCNT1_hom306_s2_2026-02-24"
   ],
   "project": "KCNT1",
   "project_source": "guessed",
@@ -70,14 +88,34 @@
       "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s2_feb24\\2026-02-24_18-22-22",
       "root": "//netfiles03.uvm.edu/bigdata_jbarry/Jeremy3/KCNT1",
       "scan": "scan_94ff1eb81c"
+    },
+    "barrylab-d8e8": {
+      "at": "2026-10-01T12:30:00-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_hom306\\KCNT1_hom306_s2_feb24\\2026-02-24_18-22-22",
+      "root": "Y:/Jeremy3/KCNT1",
+      "scan": "scan_22235c040e"
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-10-21T18:59:38-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\EEG-Wheel_data\\ACTIVE DATA\\KCNT1_hom306_s2_2026-02-24",
+      "root": null,
+      "scan": null
     }
   },
   "session": 2,
   "start": "2026-02-24T18:22:22",
   "updated": {
-    "at": "2026-09-03T09:40:45-04:00",
-    "machine": "DESKTOP-4H65AI7",
+    "app_version": "2026.10.21.5",
+    "at": "2026-10-21T18:59:39-04:00",
+    "commit": "7b5f52b1",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Shahriar Tafti"
   }
 }

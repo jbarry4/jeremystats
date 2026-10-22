@@ -76,17 +76,19 @@ BARRY.vacc = (function () {
        are there while the live answer comes -- only when there is nothing
        yet, and never waited on. `knowsAt` stays 0, so the live answer is
        still asked for and replaces it. */
+    // Kept by BARRY.data now (web/js/data.js, 2026-10-21), shared with the
+    // Sessions view's own read of it, and a 304 when nothing has changed.
     let liveDone = false;
-    const live = api('/api/vacc/knows').finally(() => { liveDone = true; });
+    const live = BARRY.data.get('/api/vacc/knows', { fresh: !!force })
+      .finally(() => { liveDone = true; });
     if (!knows) {
-      const was = await BARRY.stash.get('vacc-knows');
+      const was = await BARRY.data.stale('/api/vacc/knows');
       if (was && was.value && !liveDone && !knows) take(was.value);
     }
     try {
       const got = await live;
       take(got);
       knowsAt = Date.now();
-      BARRY.stash.put('vacc-knows', got);
     } catch (e) {
       knows = knows || {};
     }

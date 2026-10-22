@@ -53,12 +53,31 @@ BARRY.views.eventbank = (function () {
     const alsoSheets = api('/api/layers')
       .then((r) => { sheets = (r && r.sheets) || []; })
       .catch(() => { sheets = []; });
-    try {
-      const res = await api('/api/bank');
+    const take = (res) => {
       tree = res.tree || [];
       entries = res.entries || [];
       types = res.types || [];
       meta = res;
+    };
+    /* Through BARRY.data (web/js/data.js, 2026-10-21): one copy of the bank
+       list for the Event Bank, ToolKit and Xplorefinder, and last time's
+       drawn at once -- dimmed until this time's lands -- instead of a
+       skeleton for the whole read. */
+    let liveDone = false;
+    const asking = BARRY.data.get('/api/bank', { fresh: !!mine })
+      .finally(() => { liveDone = true; });
+    let dim = null;
+    if (!entries.length) {
+      const was = await BARRY.data.stale('/api/bank', 300);
+      if (was && was.value && !liveDone) {
+        take(was.value);
+        if (bones) bones();
+        render();
+        if (!was.live) dim = BARRY.skeleton.stale(host);
+      }
+    }
+    try {
+      take(await asking);
     } catch (e) {
       toast('Could not read the event bank: ' + e.message, 'err');
       tree = []; entries = [];
@@ -66,6 +85,7 @@ BARRY.views.eventbank = (function () {
       try { await alsoSheets; } catch (e) { /* the events still render */ }
       // In a finally, so a failed read does not leave the bones behind.
       if (bones) bones();
+      if (dim) dim();
     }
     render();
   }

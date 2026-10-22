@@ -21,6 +21,22 @@
     }
   } catch (e) { /* private window: the name shows, which is the default */ }
 </script>
+<!-- Jarvis Light (js/lite.js): a speed setting for a slower computer, on
+     before the first paint so the boot screen is already still. `?lite=` in
+     the address wins; a frame inside a /_dev/ harness starts without it. -->
+<script>
+  try {
+    var liteQ = (location.search.match(/[?&]lite=(on|off|1|0)(?:&|$)/) || [])[1];
+    var liteDev = false;
+    try {
+      liteDev = window.top !== window && /\/_dev\//.test(parent.location.pathname);
+    } catch (e) { /* another origin's frame: not a harness */ }
+    if (liteQ ? (liteQ === 'on' || liteQ === '1')
+              : (!liteDev && localStorage.getItem('barry.lite') === 'on')) {
+      document.documentElement.dataset.lite = 'on';
+    }
+  } catch (e) { /* the full drawing, which is the default */ }
+</script>
 <link rel="stylesheet" href="app.css">
 <!-- The boot overlay's own styles, inline and before app.css, so the first
      paint has them. Deliberately duplicating a few colours rather than using
@@ -139,6 +155,15 @@
     .boot-sweep { opacity: 0; }
     #boot { transition: none; }
   }
+  /* Jarvis Light: the same stops, from the first paint. The boot screen is
+     on for as long as the scripts take to arrive, which on a slow computer
+     is the longest it is ever up. */
+  :root[data-lite="on"] .boot-fill, :root[data-lite="on"] .boot-wave,
+  :root[data-lite="on"] .boot-sweep { animation: none; }
+  :root[data-lite="on"] .boot-fill { width: 100%; }
+  :root[data-lite="on"] .boot-wave.live { stroke-dashoffset: 0; }
+  :root[data-lite="on"] .boot-sweep { opacity: 0; filter: none; }
+  :root[data-lite="on"] #boot { transition: none; }
 </style>
 </head>
 <body>
@@ -794,6 +819,7 @@
 </div>
 
 <script src="js/core.js"></script>
+<script src="js/lite.js"></script>
 <script src="js/jarvisfx.js"></script>
 <script src="js/jarvis.js"></script>
 <script src="js/jarvisshow.js"></script>
@@ -802,6 +828,8 @@
 <script src="js/supportpanels.js"></script>
 <script src="js/startmenu.js"></script>
 <script src="js/stash.js"></script>
+<script src="js/data.js"></script>
+<script src="js/warmup.js"></script>
 <script src="js/syncstate.js"></script>
 <script src="js/features.js"></script>
 <script src="js/activity.js"></script>

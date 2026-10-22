@@ -511,16 +511,77 @@ const BUSY = (function () {
   };
 }());
 
+/* Background requests yield (2026-10-21).
+
+   A browser opens at most six connections to Jarvis. Measured at start-up
+   on the lab desktop: the sync roll-up (19 s), the cloud sync states (6 s),
+   VACC's catalogue check (4 s) and the tool feed held four of them at once,
+   so whatever the person had just clicked queued behind work nobody was
+   waiting for -- "nothing, then everything".
+
+   So the requests nobody is waiting on take at most three of the six, one
+   after another as each frees up, and anything a person asked for never
+   waits behind them. Background is: an explicit `priority: 'background'`
+   (the warm-up, prefetching), and the roll-ups and pollers listed here.
+   The job dock's and the link's polls stay foreground: they are short, and
+   their whole point is to feel live. */
+const BACKGROUND_PATHS = [
+  '/api/sync/status', '/api/cloud/items', '/api/vacc/knows', '/api/presence',
+  '/api/toolfeed', '/api/warm/state', '/api/health/summary', '/api/devices',
+  '/api/digest', '/api/notes',
+];
+const SLOTS = (function () {
+  const MAX = 3;
+  let live = 0;
+  const queue = [];
+  function take() {
+    return new Promise((resolve) => {
+      const go = () => {
+        live += 1;
+        let done = false;
+        resolve(() => {
+          if (done) return;
+          done = true;
+          live -= 1;
+          const next = queue.shift();
+          if (next) next();
+        });
+      };
+      if (live < MAX) go(); else queue.push(go);
+    });
+  }
+  return { take, get live() { return live; }, get queued() { return queue.length; } };
+}());
+BARRY.requestSlots = SLOTS;
+
 /* A wrapper rather than a `finally` threaded through the body: the real api()
    below has five ways out, four of them throws, and counting down on each one
    is exactly the kind of bookkeeping that gets a new exit path added past it
-   later and leaves the bar stuck on. */
+   later and leaves the bar stuck on.
+
+   opts.priority  'background' to wait for one of the background slots
+   opts.etag      sent as If-None-Match; a 304 answers null, and
+   opts.meta      (an object) is filled in with {status, etag, notModified}
+   -- both for BARRY.data (web/js/data.js), which keeps lists between visits. */
 async function api(path, opts) {
-  const counted = BUSY.start(path.split('?')[0]);
+  const route = path.split('?')[0];
+  const pri = opts && opts.priority;
+  const bg = pri === 'background'
+    || (!pri && BACKGROUND_PATHS.some((p) => route.startsWith(p)));
+  const release = bg ? await SLOTS.take() : null;
+  const counted = BUSY.start(route);
   try {
-    return await apiCall(path, opts);
+    const out = await apiCall(path, opts);
+    // A write under /api/<thing> means every kept answer under it needs a
+    // fresh look; a 304 makes that look nearly free.
+    const method = (opts && opts.method) || 'GET';
+    if (method !== 'GET' && BARRY.data && BARRY.data.invalidate) {
+      try { BARRY.data.invalidate(route); } catch (e) { /* kept answers only */ }
+    }
+    return out;
   } finally {
     BUSY.stop(counted);
+    if (release) release();
   }
 }
 
@@ -533,14 +594,29 @@ async function apiCall(path, opts) {
   });
 
   let res;
+  const o = opts || {};
+  const init = Object.assign({ headers: { 'Content-Type': 'application/json' } }, o);
+  // api()'s own options are not fetch's.
+  delete init.priority; delete init.etag; delete init.meta;
+  if (o.etag) {
+    init.headers = Object.assign({}, init.headers, { 'If-None-Match': o.etag });
+  }
   try {
-    res = await fetch(path, Object.assign({
-      headers: { 'Content-Type': 'application/json' },
-    }, opts || {}));
+    res = await fetch(path, init);
   } catch (e) {
     // The request never completed -- server gone, or the tab went offline.
     record(0, e.message);
     throw new Error('Could not reach the server: ' + e.message);
+  }
+  if (o.meta) {
+    o.meta.status = res.status;
+    o.meta.etag = res.headers.get('ETag');
+  }
+  // Unchanged since the tag that was sent: nothing to read.
+  if (res.status === 304) {
+    record(304);
+    if (o.meta) o.meta.notModified = true;
+    return null;
   }
 
   /* 404 or 405 on an /api/ route means the route is not there -- which
@@ -2247,7 +2323,11 @@ BARRY.profile = (function () {
 
   async function people() {
     try {
-      roster = await api('/api/people');
+      // Kept by BARRY.data (web/js/data.js): asked every time, and a 304
+      // when nobody has been added -- so the start screen's "Who's
+      // working?" and this dialog read one copy.
+      roster = BARRY.data ? await BARRY.data.get('/api/people')
+                          : await api('/api/people');
     } catch (e) {
       roster = { people: [], me: null };
     }
@@ -3593,6 +3673,9 @@ function showThemePicker() {
       // the picker open, because what changed is easiest to judge from
       // the picker you are still looking at.
       densityRow(),
+      // Jarvis Light: a speed setting for a slower computer, not a colour
+      // (js/lite.js). Leaves the picker open, like Compact.
+      BARRY.lite ? BARRY.lite.pickerRow() : null,
       // The name and the mark, off or back on with the reveal. Here because
       // it is how this screen looks, remembered the same way a theme is.
       BARRY.jarvis ? BARRY.jarvis.pickerRow(closeThemePicker) : null,
@@ -4096,6 +4179,9 @@ BARRY.init = async function init() {
       catch (e) { /* ignore */ }
     }
   }
+  // Jarvis Light, the same way (js/lite.js keeps the rules: the URL wins,
+  // and a harness frame is left alone).
+  if (BARRY.lite) BARRY.lite.reconcile();
   // And whether the name is hidden here: the same per-host map, which may
   // know better than this browser's localStorage. Quietly -- the reveal is
   // for a person pressing the switch, not for a morning boot.
@@ -4163,6 +4249,18 @@ BARRY.init = async function init() {
   setView(location.hash.slice(1) || 'pipeline');
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
   LOG.refreshJobList();
+
+  /* Everything Jarvis will want, got ready one thing at a time at
+     background priority -- the lists into their kept copies, the last
+     recording, the analysis engines (web/js/warmup.js). The start screen
+     shows it; nothing waits for it. A beat after the first view's own
+     requests, so they go first. */
+  if (BARRY.warmup && BARRY.warmup.wanted()) {
+    setTimeout(() => {
+      BARRY.warmup.start().catch((e) =>
+        reportClientError('warmup', e.message, e.stack));
+    }, 600);
+  }
 
   /* Everything still in flight that MOVES THE PAGE. The overlay stays up
      until these land.

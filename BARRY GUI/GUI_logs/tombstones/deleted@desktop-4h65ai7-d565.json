@@ -320,6 +320,10 @@
         "set",
         "2026-09-25T21:03:37.460019+00:00"
       ],
+      "deck:deck_3c28fa6e": [
+        "set",
+        "2026-10-21T23:00:58.223625+00:00"
+      ],
       "deck:deck_3c7334bf": [
         "set",
         "2026-09-03T14:59:20.336733+00:00"
@@ -1148,9 +1152,13 @@
         "set",
         "2026-10-07T22:34:38.484221+00:00"
       ],
+      "person:Avery (AI)": [
+        "set",
+        "2026-10-21T22:51:40.403010+00:00"
+      ],
       "person:Harness Probe Person": [
         "set",
-        "2026-09-29T18:04:01.736652+00:00"
+        "2026-10-21T22:51:41.202713+00:00"
       ],
       "person:Rain": [
         "set",
@@ -1166,7 +1174,7 @@
       ],
       "person:zz edit probe": [
         "set",
-        "2026-09-29T18:04:05.866627+00:00"
+        "2026-10-21T22:51:56.007696+00:00"
       ],
       "person:zz edit probe renamed": [
         "set",
@@ -3327,7 +3335,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-20T17:58:42.922968+00:00",
+    "at": "2026-10-21T23:00:58.223625+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -4042,6 +4050,14 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-25T17:03:37-0400"
+    },
+    "deck:deck_3c28fa6e": {
+      "at": "2026-10-21T19:00:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_3c28fa6e",
+      "kind": "deck",
+      "note": null,
+      "synced": false
     },
     "deck:deck_3c7334bf": {
       "at": "2026-09-03T10:59:20-0400",
@@ -5906,8 +5922,16 @@
       "synced": true,
       "synced_at": "2026-10-07T18:34:38-0400"
     },
+    "person:Avery (AI)": {
+      "at": "2026-10-21T18:51:40-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Avery (AI)",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
     "person:Harness Probe Person": {
-      "at": "2026-09-29T14:04:01-0400",
+      "at": "2026-10-21T18:51:41-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "Harness Probe Person",
       "kind": "person",
@@ -5931,7 +5955,7 @@
       "synced": false
     },
     "person:zz edit probe": {
-      "at": "2026-09-29T14:04:05-0400",
+      "at": "2026-10-21T18:51:56-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "zz edit probe",
       "kind": "person",

@@ -72,6 +72,18 @@ const VIEWS = ['pipeline', 'sessions', 'explorer', 'xplore', 'toolkit',
                'errors'];
 const QUIET_MS = 400;
 const MAX_SETTLE_MS = 30000;
+/* The rows a list view draws, for "time to first row" and "time to last
+   row" (2026-10-21, Jarvis Light plan, phase 0). A list that shows nothing
+   until all of it has arrived has first == last; one that fills in has the
+   first row long before the last. */
+const ROWS = {
+  sessions: '.sess-card', eventbank: '.bank-row', results: '.res-card',
+  history: '.hist-row', errors: '.err-group, .err-row',
+};
+/* `?lite=on` measures Jarvis Light, `?idle=0` skips the idle minute. */
+const OWN = new URLSearchParams(location.search);
+const LITE = OWN.get('lite') === 'on';
+const IDLE_MS = OWN.get('idle') === '0' ? 0 : 10000;
 
 const f = document.getElementById('app');
 const W = () => f.contentWindow;
@@ -149,14 +161,58 @@ const frames = (n) => new Promise((r) => {
   W().requestAnimationFrame(step);
 });
 
+/* The page's own memory, as Edge reports it to the page: the JS heap in use
+   and how many elements the document holds. Rough, and enough to see a view
+   that keeps megabytes it no longer shows. */
+function memory() {
+  const m = W().performance.memory;
+  return {
+    heapMB: m ? m.usedJSHeapSize / 1048576 : null,
+    nodes: D().getElementsByTagName('*').length,
+  };
+}
+
+/* Watch a list fill in: when its first row appeared, when the count last
+   changed, and how many rows it ended with. Polled from here every 25 ms
+   while `settle` waits. */
+function watchRows(sel, t0) {
+  const st = { first: null, last: null, rows: 0, on: true };
+  if (!sel) return st;
+  (async () => {
+    while (st.on) {
+      let n = 0;
+      try { n = D().querySelectorAll(sel).length; } catch (e) { n = 0; }
+      const now = W().performance.now() - t0;
+      if (n > 0 && st.first === null) st.first = now;
+      if (n !== st.rows) { st.rows = n; st.last = now; }
+      await sleep(25);
+    }
+  })();
+  return st;
+}
+
 async function measure(label, act) {
   phase = label;
   const before = resources().length;
   const t0 = W().performance.now();
+  const rows = watchRows(ROWS[label], t0);
   act();
   await frames(2);
   const painted = W().performance.now() - t0;
-  const s = await settle(t0);
+  let s = await settle(t0);
+  /* A list view that went quiet with no rows on it has not finished: it is
+     waiting on something before it even asks (the stash, a timer), and
+     "quiet" fired in the gap. Wait for its first row, then for quiet again.
+     A list that really is empty times out here and says so. */
+  if (ROWS[label] && rows.first === null) {
+    const t1 = W().performance.now();
+    while (rows.first === null && W().performance.now() - t1 < 15000) {
+      await sleep(25);
+    }
+    if (rows.first !== null) s = await settle(t0);
+  }
+  rows.on = false;
+  const mem = memory();
   const reqs = resources().slice(before);
   const api = reqs.filter((e) => /\/api\//.test(e.name));
   const gaps = gapsSince(t0).filter((g) => g[0] <= t0 + s.settled);
@@ -170,6 +226,32 @@ async function measure(label, act) {
       .map((e) => ({ url: new URL(e.name).pathname, ms: r1(e.duration),
                      kb: r1((e.transferSize || e.encodedBodySize || 0) / 1024) })),
     blocked,
+    firstRow: rows.first, lastRow: rows.last, rows: rows.rows,
+    heapMB: mem.heapMB, nodes: mem.nodes,
+  };
+}
+
+/* What the page costs while nobody touches it: animations still running,
+   and how long the main thread was busy over `ms` of doing nothing. */
+async function idle(ms) {
+  const t0 = W().performance.now();
+  await sleep(ms);
+  let anims = [];
+  try {
+    anims = D().getAnimations().filter((a) => a.playState === 'running');
+  } catch (e) { anims = []; }
+  const gaps = gapsSince(t0);
+  return {
+    ms,
+    animations: anims.length,
+    infinite: anims.filter((a) => {
+      try { return a.effect.getTiming().iterations === Infinity; }
+      catch (e) { return false; }
+    }).length,
+    names: Array.from(new Set(anims.map((a) => a.animationName
+      || (a.effect && a.effect.target && a.effect.target.className) || '?')))
+      .slice(0, 12).map(String),
+    blocked: gaps.reduce((a, g) => a + g[1], 0),
   };
 }
 
@@ -196,16 +278,22 @@ const COLS = [
   ['api', (r) => r.api],
   ['kB', (r) => r1(r.bytes / 1024)],
   ['blocked ms', (r) => r1(r.blocked)],
+  ['first row', (r) => r.firstRow == null ? '' : r1(r.firstRow)],
+  ['last row', (r) => r.lastRow == null ? '' : r1(r.lastRow)],
+  ['rows', (r) => r.rows || ''],
+  ['heap MB', (r) => r.heapMB == null ? '' : r1(r.heapMB)],
+  ['nodes', (r) => r.nodes],
   ['slowest request', (r) => r.slowest[0]
      ? r.slowest[0].url + ' ' + r.slowest[0].ms + 'ms' : ''],
 ];
 
 (async () => { try {
   const report = { at: new Date().toISOString(), ua: navigator.userAgent,
-                   boot: null, views: [], warm: [], tools: [] };
+                   lite: LITE, dpr: window.devicePixelRatio,
+                   boot: null, idle: null, views: [], warm: [], tools: [] };
 
-  head('boot');
-  f.src = '/?linkhold=0';
+  head('boot' + (LITE ? ' (Jarvis Light)' : ''));
+  f.src = '/?linkhold=0' + (LITE ? '&lite=on' : '');
   await new Promise((r) => f.addEventListener('load', r, { once: true }));
   const kind = watchLongTasks();
   say('note', '  long-task signal: ' + kind);
@@ -265,6 +353,19 @@ const COLS = [
   say('note', '  slowest boot requests:\n' + b.apiSlowest.map(
     (e) => '    ' + String(e.ms).padStart(6) + ' ms  ' + String(e.kb).padStart(5)
            + ' kB  starts ' + String(e.start).padStart(5) + '  ' + e.url).join('\n'));
+  Object.assign(b, memory());
+  say('note', '  heap ' + (b.heapMB == null ? '?' : r1(b.heapMB)) + ' MB, '
+    + b.nodes + ' elements');
+
+  if (IDLE_MS) {
+    head('idle, ' + (IDLE_MS / 1000) + ' s on the first screen');
+    phase = 'idle';
+    report.idle = await idle(IDLE_MS);
+    const i = report.idle;
+    say('note', '  running animations ' + i.animations + ' (' + i.infinite
+      + ' infinite)  ' + (i.names.length ? i.names.join(' ') : '')
+      + '\n  main thread blocked ' + r1(i.blocked) + ' ms');
+  }
 
   head('views, first visit');
   for (const v of VIEWS) {

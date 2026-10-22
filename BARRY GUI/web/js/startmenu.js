@@ -60,7 +60,7 @@ BARRY.startMenu = (function () {
     ['continue', 'Continue', 'Where you left off'],
     ['sessions', 'Open a recording', 'Every recording Jarvis knows'],
     ['toolkit', 'ToolKit', 'The bundles and every tool'],
-    ['settings', 'Settings', 'Theme, density and motion'],
+    ['settings', 'Settings', 'Theme, density, motion and Jarvis Light'],
     ['notes', 'Patch notes', 'What changed, and when'],
   ];
 
@@ -178,6 +178,17 @@ BARRY.startMenu = (function () {
       el('span', { text: 'Show this at start' }),
     ]);
 
+    /* Who is working, and what is being got ready while they choose
+       (web/js/warmup.js, 2026-10-21). Beside the menu, never in front of
+       it: Continue and every key work exactly as before. */
+    const W = BARRY.warmup || null;
+    let who = null, ready = null, tip = null;
+    try {
+      if (W) { who = W.whoBlock(); ready = W.panel(); tip = W.prompts(); }
+    } catch (e) {
+      reportClientError('startmenu.warmup', e.message, e.stack);
+    }
+
     const panel = el('div', { class: 'sm-panel', role: 'dialog',
                               'aria-label': 'Start' }, [
       el('div', { class: 'sm-title' }, [
@@ -187,7 +198,13 @@ BARRY.startMenu = (function () {
                                            + (versionText() ? '  ·  '
                                               + versionText() : '') }),
       ]),
-      el('div', { class: 'sm-menu', role: 'listbox' }, items),
+      el('div', { class: 'sm-body' }, [
+        el('div', { class: 'sm-col' }, [
+          el('div', { class: 'sm-menu', role: 'listbox' }, items),
+        ]),
+        who || ready || tip
+          ? el('div', { class: 'sm-col sm-side' }, [who, ready, tip]) : null,
+      ]),
       el('div', { class: 'sm-foot' }, [
         el('span', { class: 'sm-keys' }, [
           el('kbd', { text: '↑' }), el('kbd', { text: '↓' }),
@@ -200,7 +217,12 @@ BARRY.startMenu = (function () {
     ]);
     box.appendChild(panel);
 
-    open = { box, items, at: 0, finish: () => finish() };
+    open = { box, items, at: 0, finish: () => {
+      finish();
+      // The warming carries on behind: a quiet line in the rail says so.
+      try { if (ready && ready._off) ready._off(); if (W) W.railLine(); }
+      catch (e) { /* the line is a courtesy */ }
+    } };
     window.addEventListener('keydown', onKey, true);
     // After the letters have landed, so the first key press is not lost to
     // the animation, and focus is on Continue for Enter.

@@ -1851,6 +1851,13 @@ BARRY.views.xplore = (function () {
   function toggleChrome(what) {
     XF.chrome[what] = !XF.chrome[what];
     BARRY.activity.log('panes.chrome', { what, on: XF.chrome[what] });
+    /* The channel column is remembered on this computer (a support window,
+       which is opened with it folded, does not write it). */
+    if (what === 'channels' && !document.body.classList.contains('aid-window')) {
+      try {
+        BARRY.prefs.set('xf_chan_column', XF.chrome.channels ? 'full' : 'folded');
+      } catch (e) { /* this session only */ }
+    }
     applyChrome();
     render();
     // The plot got bigger or smaller, so the canvases have to be remeasured.
@@ -1860,6 +1867,7 @@ BARRY.views.xplore = (function () {
   }
 
   function applyChrome() {
+    PAD_TRACES_L = XF.chrome.channels ? PAD_TRACES_FULL : PAD_TRACES_SLIM;
     const v = document.getElementById('view-xplore');
     if (!v) return;
     for (const k of ['channels', 'strip', 'heads', 'tabs']) {
@@ -1935,8 +1943,10 @@ BARRY.views.xplore = (function () {
 
   /* What can be put away, and how to say it. */
   const CHROME_BITS = [
-    ['channels', 'Channel list',
-     'The column of channel names beside a raster'],
+    ['channels', 'Channel column',
+     'Beside the traces: each channel\u2019s checkbox, number and ok/bad '
+     + 'button. Folded away, the traces get the room and a channel\u2019s '
+     + 'number shows when you hover its trace'],
     ['strip', 'Control strip',
      'The window, scale and menu row above each pane'],
     ['heads', 'Pane headers',
@@ -2454,17 +2464,71 @@ BARRY.views.xplore = (function () {
   async function loadOverview(sess) {
     if (sess.overview || sess.overviewReq) return;
     sess.overviewReq = true;
+    const body = { path: sess.path, invert: sess.invert,
+                   channel: firstSel(sess), bins: 700 };
     try {
-      const res = await apiPost('/api/csc/overview', {
-        path: sess.path, invert: sess.invert,
-        channel: firstSel(sess), bins: 700,
-      });
-      if (res.ok) sess.overview = res;
+      let res = null;
+      if (BARRY.data && BARRY.data.stream) {
+        res = await streamOverview(sess, body);
+      } else {
+        res = await apiPost('/api/csc/overview', body);
+      }
+      if (res && res.ok) sess.overview = res;
+      else if (sess.overview && sess.overview._partial) sess.overview = null;
     } catch (e) {
       sess.overview = null;   // a slow share must not look like a failure
     }
     sess.overviewReq = false;
     refreshSession(sess);
+  }
+
+  /* The strip a bin at a time, coarse to fine (2026-10-21; the server's
+     `_overview_streamed`): every sixteenth bin first, then the ones
+     between, so the whole recording shows at low resolution almost at
+     once and sharpens -- instead of an empty strip until the last of 700
+     reads. Each bin not yet read borrows the nearest one that has been,
+     and only the strip is redrawn, at most every 150 ms. An answer the
+     server already kept arrives whole, in the closing line. */
+  async function streamOverview(sess, body) {
+    const n = body.bins;
+    const cols = { lo: [], hi: [], rms: [], mabs: [] };
+    const known = new Uint8Array(n);
+    const filled = () => {
+      const out = { ok: true, bins: n, _partial: true };
+      for (const k of Object.keys(cols)) {
+        const src = cols[k];
+        const arr = new Array(n);
+        let last = null;
+        for (let i = 0; i < n; i++) {
+          if (known[i]) last = src[i];
+          arr[i] = last;
+        }
+        // Leading bins before the first known one take the first known.
+        let first = null;
+        for (let i = 0; i < n && first === null; i++) if (known[i]) first = src[i];
+        for (let i = 0; i < n && arr[i] === null; i++) arr[i] = first;
+        out[k] = arr.map((v) => (v === null ? 0 : v));
+      }
+      return out;
+    };
+    let lastPaint = 0;
+    const paint = () => {
+      sess.overview = filled();
+      for (const i of panesOf(sess)) {
+        const p = XF.panes[i];
+        if (p) drawMini(i, p, sess);
+      }
+    };
+    const end = await BARRY.data.stream('/api/csc/overview', body, (row) => {
+      const i = row[0];
+      if (!(i >= 0 && i < n)) return;
+      cols.lo[i] = row[1]; cols.hi[i] = row[2];
+      cols.rms[i] = row[3]; cols.mabs[i] = row[4];
+      known[i] = 1;
+      const now = performance.now();
+      if (now - lastPaint > 150) { lastPaint = now; paint(); }
+    });
+    return (end && end.tail && end.tail.result) || null;
   }
 
   /* ----------------------------------------------------------------------
@@ -2591,16 +2655,20 @@ BARRY.views.xplore = (function () {
        has failed for good stays missing -- so refreshing unconditionally
        at the end would repaint, find it missing, call back here, and
        refresh again, at frame rate, forever. */
-    let changed = false;
-    await Promise.all(stripChans(sess).map(async (ch) => {
+    /* Two at a time, each line drawn as it lands (2026-10-21). All of them
+       at once was one whole-channel read per line, every one on the server
+       together and each holding one of the browser's six connections -- so
+       the strip showed nothing until the slowest was done, and everything
+       else on the page queued behind it. */
+    const one = async (ch) => {
       const key = bandKeyFor(sess, ch);
       const got = sess.overviewBands[ch];
-      if (got && got._key === key) return;
-      if (sess.bandReq[ch] === key) return;
+      if (got && got._key === key) return false;
+      if (sess.bandReq[ch] === key) return false;
       /* A failure sticks to the request that caused it, for the same
          reason. Changing the band or the channel changes the key, which
          is what makes a retry deliberate. */
-      if (sess.bandErrKey[ch] === key) return;
+      if (sess.bandErrKey[ch] === key) return false;
       sess.bandReq[ch] = key;
       try {
         const res = await apiPost('/api/csc/overview', {
@@ -2627,15 +2695,32 @@ BARRY.views.xplore = (function () {
         sess.bandErrKey[ch] = key;
       }
       if (sess.bandReq[ch] === key) delete sess.bandReq[ch];
-      changed = true;
-    }));
-    if (changed) {
-      refreshSession(sess);
-      /* The panel says what the line cost and what its units are, and
-         says "reading the recording" until this lands. Without this it
-         goes on saying it with the answer already drawn behind it. */
-      repaintMenu();
-    }
+      return true;
+    };
+    const worker = async (todo) => {
+      while (todo.length) {
+        const ch = todo.shift();
+        if (await one(ch)) {
+          refreshSession(sess);
+          /* The panel says what the line cost and what its units are, and
+             says "reading the recording" until this lands. Without this it
+             goes on saying it with the answer already drawn behind it. */
+          repaintMenu();
+        }
+      }
+    };
+    /* One pump per recording. Each line that lands repaints, and the paint
+       asks for the lines still missing -- which must not start a second
+       pair of readers beside this one, so it only says "look again". */
+    if (sess._bandPump) { sess._bandAgain = true; return sess._bandPump; }
+    sess._bandPump = (async () => {
+      do {
+        sess._bandAgain = false;
+        const todo = stripChans(sess).slice();
+        await Promise.all([worker(todo), worker(todo)]);
+      } while (sess._bandAgain);
+    })().finally(() => { sess._bandPump = null; });
+    return sess._bandPump;
   }
 
   /* Set the channels the line is read from, and go and get them. */
@@ -5841,7 +5926,8 @@ BARRY.views.xplore = (function () {
     let types = [];
     let me = '';
     try {
-      const d = await api('/api/bank');
+      // The shared copy (web/js/data.js): only its types and user are read.
+      const d = await BARRY.data.get('/api/bank', { maxAge: 60000 });
       types = d.types || [];
       me = d.user || '';
     } catch (e) { /* the dialog still works without the menu */ }
@@ -7285,8 +7371,10 @@ BARRY.views.xplore = (function () {
     /* Slivers for whatever has been folded away. Inside the pane, so it is
        obvious which bar each one brings back -- and only present when there
        is something to restore, so an untouched pane has none of them. */
-    const folded = ['heads', 'strip', 'channels'].filter(
-      (k) => !XF.chrome[k]);
+    /* Not the channel column: its way back is in its own gutter, where it
+       folded to (alignChannelRows), and a second arrow up here was two
+       ways back to one thing. */
+    const folded = ['heads', 'strip'].filter((k) => !XF.chrome[k]);
     if (folded.length) {
       host.appendChild(el('div', { class: 'unfold-row' },
                           folded.map(unfoldStrip)));
@@ -9548,7 +9636,13 @@ BARRY.views.xplore = (function () {
   // Trace panes reserve a wider left gutter: the channel checkboxes live
   // inside it, right next to the trace each one controls.
   const PAD = { l: 58, r: 12, t: 8, b: 24 };
-  const PAD_TRACES_L = 112;
+  /* The traces' left gutter: the channel column (checkbox, name, ok/bad)
+     when it is shown, a sliver when it is folded away (2026-10-21: "a
+     channel collapse option that hides the check and ok/bad buttons, and
+     shows the channel number on hover, as the rasters do"). Set by
+     applyChrome from `XF.chrome.channels`; read at draw time everywhere. */
+  const PAD_TRACES_FULL = 112, PAD_TRACES_SLIM = 18;
+  let PAD_TRACES_L = PAD_TRACES_FULL;
 
   /* Height of the channel-column header, fixed in CSS as .ch-top.
 
@@ -9969,6 +10063,26 @@ BARRY.views.xplore = (function () {
     const rows = labels.map((num) => byNumber.get(num)).filter(Boolean);
     if (!rows.length) { host.innerHTML = ''; return; }
 
+    /* Folded: no rows at all, just the way back, and the channel numbers
+       come up on hover instead (hoverTraces). */
+    if (!XF.chrome.channels) {
+      host.innerHTML = '';
+      host.style.width = PAD_TRACES_L + 'px';
+      host.style.paddingTop = host.style.paddingBottom = '0';
+      host.style.gridTemplateRows = '';
+      host.classList.add('folded');
+      host.appendChild(el('button', {
+        type: 'button', class: 'ch-fold open-it',
+        title: 'Show the channel column: each channel\u2019s checkbox, number '
+             + 'and ok/bad button',
+        'aria-label': 'Show the channel column',
+        text: '\u203a',
+        onclick: (e) => { e.stopPropagation(); toggleChrome('channels'); },
+      }));
+      return;
+    }
+    host.classList.remove('folded');
+
     // The rows are a grid of equal fractions inside the same top and bottom
     // insets the canvas draws with, rather than a list of absolute pixel
     // offsets. Absolute offsets were computed once per draw and went stale the
@@ -10047,6 +10161,16 @@ BARRY.views.xplore = (function () {
       }
       host.appendChild(laneEl);
     }
+    /* The way to fold it, in the corner under the column where the time
+       axis leaves room. */
+    host.appendChild(el('button', {
+      type: 'button', class: 'ch-fold',
+      title: 'Fold the channel column away: the traces get the room, and a '
+           + 'channel\u2019s number shows when you hover its trace',
+      'aria-label': 'Fold the channel column away',
+      text: '\u2039',
+      onclick: (e) => { e.stopPropagation(); toggleChrome('channels'); },
+    }));
     // Now that there is a gutter, the caption can be moved off it.
     placeCaption(pane);
   }
@@ -10545,7 +10669,10 @@ BARRY.views.xplore = (function () {
     };
     onPane(pane, window, 'mousemove', move);
     onPane(pane, window, 'mouseup', up);
-    canvas.addEventListener('mouseleave', () => readout.classList.remove('on'));
+    canvas.addEventListener('mouseleave', () => {
+      readout.classList.remove('on');
+      laneTag(canvas, false);
+    });
     // Registered last, in the capture phase, so a measure drag can swallow
     // the event before the pan handler above sees it.
     wireMeasure(index, pane, sess, canvas);
@@ -10565,17 +10692,50 @@ BARRY.views.xplore = (function () {
     toast('Marked an event at ' + fmtTime(t) + ' (alt-click)', 'ok', 2200);
   }
 
+  /* With the channel column folded, the channel under the cursor says
+     which it is in a small label at the start of its lane -- the same dark
+     box a raster labels its rows with (drawRasterGrid). */
+  function laneTag(canvas, show, text, bad, left, top) {
+    const host = canvas.parentNode;
+    if (!host) return;
+    let tag = host.querySelector(':scope > .ch-hover-tag');
+    if (!show) { if (tag) tag.classList.remove('on'); return; }
+    if (!tag) {
+      tag = el('span', { class: 'ch-hover-tag', 'aria-hidden': 'true' });
+      host.appendChild(tag);
+    }
+    tag.textContent = text;
+    tag.classList.toggle('bad', !!bad);
+    tag.style.left = Math.round(left) + 'px';
+    tag.style.top = Math.round(top) + 'px';
+    tag.classList.add('on');
+  }
+
   function hoverTraces(pane, sess, canvas, readout, e) {
     const win = paneWin(pane, sess);
-    if (!win || !win.series.length) { readout.classList.remove('on'); return; }
+    if (!win || !win.series.length) {
+      readout.classList.remove('on'); laneTag(canvas, false); return;
+    }
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left, y = e.clientY - rect.top;
     const padTop = PAD.t;
     const padL = PAD_TRACES_L;
     const plotW = rect.width - padL - PAD.r, plotH = rect.height - padTop - PAD.b;
-    if (x < padL || x > padL + plotW || y < padTop || y > padTop + plotH) {
-      readout.classList.remove('on'); return;
+    if (x < 0 || x > padL + plotW || y < padTop || y > padTop + plotH) {
+      readout.classList.remove('on'); laneTag(canvas, false); return;
     }
+    if (!XF.chrome.channels) {
+      const ln = plotH / win.series.length;
+      const k = clamp(Math.floor((y - padTop) / ln), 0, win.series.length - 1);
+      const sk = win.series[k];
+      laneTag(canvas, true, sk.label + ((sk.bad || sess.bad.has(sk.number))
+                                        ? '  (bad)' : ''),
+              sk.bad || sess.bad.has(sk.number), padL + 3,
+              padTop + k * ln + Math.max(0, Math.min(ln - 13, ln / 2 - 7)));
+    } else {
+      laneTag(canvas, false);
+    }
+    if (x < padL) { readout.classList.remove('on'); return; }
     const frac = (x - padL) / plotW;
     const t = win.t0 + frac * (win.t1 - win.t0);
     const lane = plotH / win.series.length;
@@ -11472,6 +11632,20 @@ BARRY.views.xplore = (function () {
       }
     }
     applyChrome();
+    // The channel column as this computer last left it.
+    if (!chrome && BARRY.prefs && BARRY.prefs.load) {
+      BARRY.prefs.load().then(() => {
+        if (BARRY.prefs.get('xf_chan_column', 'full') === 'folded'
+            && XF.chrome.channels) {
+          XF.chrome.channels = false;
+          applyChrome();
+          render();
+          requestAnimationFrame(() => {
+            for (let i = 0; i < XF.nPanes; i++) redrawGeometry(i);
+          });
+        }
+      }).catch(() => { /* shown, as by default */ });
+    }
     if (params.get('full')) {
       const once = () => {
         document.removeEventListener('click', once);

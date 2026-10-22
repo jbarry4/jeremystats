@@ -467,6 +467,57 @@ def main():
     notes = open(os.path.join(so, "notes.txt"), encoding="utf-8").read().strip()
     check("and it found every trial in the TTLs itself, on the same boundaries", notes == "", notes[:200])
 
+    print("\nThe figures (tab 9)")
+    from backend import monolith as MO, joefigs
+    MO.configure(os.path.join(root, "logs"))
+    R9 = dict(out, at="made up")
+    figs = joefigs.build(R=R9, days=day_data, inputs=inputs)
+    shown = [r for r in out["results"] if r["model"] in joefigs.WINDOWS and r["method"] == "dickson" and r["gate"].get("passed")]
+    conn = [f for f in figs["figures"] if f["kind"] == "connectome"]
+    check("a connectome for every result that changed (%d), nine graphs each, as SVG, PDF and 600 dpi PNG" % len(shown),
+          len(conn) == len(shown) and all(len(f["stats"]["graphs"]) == 9 for f in conn)
+          and all(os.path.isfile(joefigs.figs_dir(f["files"][x])) for f in figs["figures"] for x in ("svg", "pdf", "png")),
+          (len(conn), len(shown)))
+    # Its edges are the rats' mean changes, from tab 8's own per-rat table.
+    c0 = conn[0]
+    r0 = next(r for r in shown if r["model"] == c0["model"] and r["band"] == c0["band"])
+    lv = [x for x, _l in joe.MODEL_BY_ID[r0["model"]][4]]
+    worst = 0.0
+    for d in ("Precon1", "Precon4"):
+        for k, u in enumerate(c0["stats"]["pairs"]):
+            ui = r0["all_units"].index(u)
+            ch = [per[d][lv[1]][ui] - per[d][lv[0]][ui] for per in r0["table"].values()
+                  if per[d][lv[1]][ui] is not None and per[d][lv[0]][ui] is not None]
+            e = c0["stats"]["edges"][d][k]
+            worst = max(worst, abs(float(np.mean(ch)) - e) if ch and e is not None else 0.0)
+    check("its edges are the rats' mean changes from tab 8's own per-rat values", worst < 1e-9, worst)
+    nets = [g for f in conn for g in f["stats"]["graphs"] if g["kind"] == "net"]
+    check("the within-session shuffles of the sums are centred on nothing",
+          all(abs(g["null"]["mean"]) < 0.1 * g["null"]["sd"] for g in nets), [(round(g["null"]["mean"], 4), round(g["null"]["sd"], 4)) for g in nets][:4])
+    cm2 = next((f for f in conn if f["model"] == "m2" and f["band"] == "theta"), None)
+    g2 = cm2 and next(g for g in cm2["stats"]["graphs"] if g["row"] == "delta" and g["kind"] == "pos")
+    check("the planted theta change in cue 1 stands out of its shuffles (Precon4 − Precon1, increases)",
+          bool(g2) and g2["p"] < 0.05 and g2["stars"], g2 and (g2["p"], g2["rank"]))
+    fol = [f for f in figs["figures"] if f["kind"] == "follow"]
+    worst = 0.0
+    for f in fol:
+        res9 = next(r for r in out["results"] if r["model"] == f["model"] and r["band"] == f["band"] and r["method"] == "dickson")
+        pr = next(x for x in res9["follow"]["pairs"] if x["pair"] == f["pair"])
+        for k in f["keys"]:
+            worst = max(worst, abs(f["stats"]["nulls"][k]["obs"] - pr["measures"][k]["delta"]))
+    check("a figure per follow-up that changed (%d), its shuffles' real value the tab's own change" % len(fol), bool(fol) and worst < 1e-9, worst)
+    pacf = [f for f in fol if any(k.startswith("pac_") for k in f["keys"])]
+    check("PAC: the roses and the comodulogram read from the recordings, through tab 8's wires (made-up recordings here)",
+          figs["recordings_read"] and (not pacf or all(f["pac_profiles"] and not f["pac_missing"] for f in pacf)), [f["id"] for f in pacf])
+    svg0 = open(joefigs.figs_dir(c0["files"]["svg"]), encoding="utf-8").read(4000)
+    import re as _re
+    wpt = float(_re.search(r'width="([0-9.]+)pt"', svg0).group(1))
+    check("Nature's format: 183 mm wide, Arial, text kept as text", abs(wpt - 183 / 25.4 * 72) < 0.5 and "Arial" in open(joefigs.figs_dir(c0["files"]["svg"]), encoding="utf-8").read(),
+          wpt)
+    if "--figs-fixture" in sys.argv:
+        joe._write(sys.argv[sys.argv.index("--figs-fixture") + 1], figs)
+        print("tab 9 fixture written")
+
     if "--fixture" in sys.argv:
         # The harness's tab 8 fixture: these made-up numbers, as the page reads them.
         fx = sys.argv[sys.argv.index("--fixture") + 1]

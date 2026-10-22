@@ -42,17 +42,35 @@ BARRY.views.toolkit = (function () {
   }
 
   async function loadScopes() {
-    try {
-      scopes = await api('/api/toolkit/scopes');
-      // Fill in every scope's default up front, so the fields are never
-      // empty by the time one of them is shown -- including the date range,
-      // which otherwise opens as two blank boxes that look broken.
+    // Fill in every scope's default up front, so the fields are never
+    // empty by the time one of them is shown -- including the date range,
+    // which otherwise opens as two blank boxes that look broken.
+    const seedAll = () => {
       const was = q.scope;
       for (const sc of ['session', 'mouse', 'group', 'range']) {
         q.scope = sc;
         seedScope();
       }
       q.scope = was;
+    };
+    /* Through BARRY.data (2026-10-21). ToolKit used to wait for this -- a
+       registry read, 3.4 s cold -- before drawing the tool at all. Last
+       time's answer is drawn from at once when there is one, and this
+       time's replaces it when it lands. */
+    const asking = BARRY.data.get('/api/toolkit/scopes');
+    if (!scopes) {
+      const was = await BARRY.data.stale('/api/toolkit/scopes', 250);
+      if (was && was.value) {
+        scopes = was.value;
+        seedAll();
+        asking.then((v) => { scopes = v; }).catch(() => { /* keep last time's */ });
+        render();
+        return;
+      }
+    }
+    try {
+      scopes = await asking;
+      seedAll();
     } catch (e) {
       toast('Could not read the session list: ' + e.message, 'err', 8000);
       scopes = { sessions: [], mice: [], groups: [] };
@@ -115,7 +133,8 @@ BARRY.views.toolkit = (function () {
     if (regCache.inflight) return regCache.inflight;
     regCache.inflight = (async () => {
       try {
-        const got = await api('/api/registry');
+        // The shared copy (web/js/data.js): one registry for every view.
+        const got = await BARRY.data.get('/api/registry', { fresh: !!force });
         regCache = { at: Date.now(), data: got, inflight: null };
         return got;
       } catch (e) {
@@ -2555,7 +2574,8 @@ BARRY.views.toolkit = (function () {
       e.name || '', e.pipeline || ((e.source || {}).pipeline || '')].join(' '));
     const has = new Set();
     try {
-      const b = await api('/api/bank');
+      // The shared copy (web/js/data.js), revalidated: a 304 when unchanged.
+      const b = await BARRY.data.get('/api/bank');
       for (const e of (b.entries || [])) {
         if (e.gid && e.type === base && !harness(e)) has.add(e.gid);
       }
@@ -3088,7 +3108,8 @@ BARRY.views.toolkit = (function () {
   async function people(force) {
     if (roster && !force) return roster;
     try {
-      roster = await api('/api/people');
+      // The same kept copy as the profile dialog's (web/js/data.js).
+      roster = await BARRY.data.get('/api/people', { fresh: !!force });
     } catch (e) {
       roster = { people: [], not_people: [], me: null };
     }

@@ -795,6 +795,81 @@ def read_ncs_range(path: str, t0: float, t1: float, invert: bool = True,
     return data, float(actual_t0), float(fs)
 
 
+def read_ncs_ranges(path, spans, invert=True):
+    """`read_ncs_range` for many short windows of one file, through ONE open.
+
+    The recording's overview strip reads 900 short probes, one per bin. Done
+    with `read_ncs_range` that is 900 opens, 900 stats and 900 parses of the
+    16 KB header -- on network storage, ten seconds (measured 2026-10-21)
+    for what is a few megabytes of reading. Here the file is opened once,
+    the header read once, and each window costs one seek and one read.
+
+    Yields `(i, samples, actual_t0)` for `spans[i] = (t0, t1)`, in order, as
+    each is read -- so a caller can hand the first bins on before the last
+    are done. Samples are exactly what `read_ncs_range(path, t0, t1, invert)`
+    returns for the same window; `tools/check_ncs_ranges.py` holds it to
+    that, sample for sample.
+    """
+    size = os.path.getsize(path)
+    n_rec = max(0, (size - HEADER_BYTES) // RECORD_DTYPE.itemsize)
+    if n_rec == 0:
+        for i, _span in enumerate(spans):
+            yield i, np.empty(0, dtype=np.float32), 0.0
+        return
+
+    memo_key = _block_key(path)
+    memo = _BLOCK_MEMO.get(memo_key) if memo_key else None
+
+    with open(path, "rb") as fh:
+        hdr = parse_header(fh.read(HEADER_BYTES))
+        adbv = _header_float(hdr, "ADBitVolts") or FALLBACK_ADBITVOLTS
+        fs = _header_float(hdr, "SamplingFrequency")
+        first = None
+        if memo is None or fs is None or fs <= 0:
+            first = _fields_at(fh, 0)
+            if fs is None or fs <= 0:
+                fs = float(first[2]) if first and first[2] > 0 else DEFAULT_FS
+        if memo is None:
+            last = _fields_at(fh, n_rec - 1) if n_rec > 1 else first
+            flat = bool(n_rec > 1 and _single_block(fs, first, last, n_rec))
+            memo = (flat, int(first[0]) if first else 0)
+            _memo_put(memo_key, memo)
+        flat, t_start = memo
+        block = SAMPLES_PER_RECORD / fs
+        scale = np.float32((-adbv if invert else adbv) * 1e6)
+
+        for i, (t0, t1) in enumerate(spans):
+            if flat:
+                r0 = max(0, int(np.floor(t0 / block)))
+                r1 = min(n_rec, int(np.ceil(t1 / block)) + 1)
+                actual_t0 = r0 * block
+            else:
+                r0 = _seek_record(fh, n_rec, t_start + int(t0 * 1e6))
+                r1 = min(n_rec,
+                         _seek_record(fh, n_rec, t_start + int(t1 * 1e6), lo=r0)
+                         + 2)
+                rec0 = _fields_at(fh, r0)
+                actual_t0 = ((int(rec0[0]) - t_start) / 1e6) if rec0 else 0.0
+            if r1 <= r0:
+                yield i, np.empty(0, dtype=np.float32), 0.0
+                continue
+            fh.seek(HEADER_BYTES + r0 * RECORD_DTYPE.itemsize)
+            recs = np.fromfile(fh, dtype=RECORD_DTYPE, count=(r1 - r0))
+            if recs.size == 0:
+                yield i, np.empty(0, dtype=np.float32), 0.0
+                continue
+            nvalid = np.minimum(recs["nvalid"], SAMPLES_PER_RECORD).astype(np.int64)
+            if np.all(nvalid == SAMPLES_PER_RECORD):
+                data = recs["samples"].reshape(-1).astype(np.float32)
+            else:
+                keep = np.zeros(recs["samples"].shape, dtype=bool)
+                for j, n in enumerate(nvalid):
+                    keep[j, :n] = True
+                data = recs["samples"][keep].astype(np.float32)
+            data *= scale
+            yield i, data, float(actual_t0)
+
+
 def _window_gaps(report, recs, fs, t_start, actual_t0):
     """Which discontinuities fall inside the window that was just read.
 

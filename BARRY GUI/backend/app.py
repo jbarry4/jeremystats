@@ -10,10 +10,12 @@ code runs on Windows and macOS.
 from __future__ import annotations
 
 import datetime
+import hashlib
 import io
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -114,6 +116,156 @@ rootcanal.register_stages(cfcmod)
 aibetamod.register_stages(cfcmod)
 stratamod.register_stages(cfcmod)
 cfcmod.configure(LOGS_DIR)
+# Answers worked out from a recording (its overview strip, its band surface),
+# kept on disk keyed on the file's size and mtime: a restart used to read
+# them all over again (backend/derived.py, 2026-10-21).
+from . import derived as derivedmod  # noqa: E402
+derivedmod.configure(LOGS_DIR)
+
+# One memory budget for every cache in this process (backend/membudget.py,
+# 2026-10-21): measured at 1.3 GB private with one recording open, from
+# fifteen caches that each bounded only themselves. Registered here, in one
+# place, without changing how any of them keeps its entries.
+from . import membudget as membudgetmod  # noqa: E402
+
+
+def _budget_caches():
+    membudgetmod.register("panels", prewarm.budget_items, prewarm.budget_drop)
+    for name, mod, cache, order, lock in (
+            ("cfc", cfcmod, "_CACHE", "_CACHE_ORDER", "_CACHE_LOCK"),
+            ("spectrum", spectrummod, "_CACHE", "_CACHE_ORDER", "_CACHE_LOCK"),
+            ("incisor", incisormod, "_CACHE", "_CACHE_ORDER", "_CACHE_LOCK"),
+            ("doppler", dopplermod, "_CACHE", "_CACHE_ORDER", "_CACHE_LOCK"),
+            ("panorama", panoramamod, "_CACHE", "_CACHE_ORDER", "_CACHE_LOCK"),
+            ("horizon", horizonmod, "_CACHE", "_ORDER", None),
+            ("overview", extras, "_OVERVIEW_CACHE", None, None),
+            ("bandgram", extras, "_BANDGRAM_CACHE", "_BANDGRAM_ORDER", None),
+            # Not csc's `_MAT_CACHE`: it holds the ONE recording somebody has
+            # open, read whole from a .mat -- evicting it to make room would
+            # read the whole file again on the next pan.
+            ("storyboard", storyboard, "_IMG_CACHE", None, None)):
+        d = getattr(mod, cache, None)
+        if isinstance(d, dict):
+            membudgetmod.watch_dict(
+                name, d, getattr(mod, order, None) if order else None,
+                getattr(mod, lock, None) if lock else None)
+    # Light on this computer halves the budget: its own prefs shard says.
+    membudgetmod.light_from(
+        lambda: (storemod_own_prefs() or {}).get("lite") == "on")
+
+
+def storemod_own_prefs():
+    from . import shards as _shards
+    try:
+        return _shards._read_json(STORE._prefs_path())
+    except Exception:                                    # noqa: BLE001
+        return None
+
+
+_budget_caches()
+
+
+# What the start screen gets ready (backend/warmup.py, 2026-10-21).
+from . import warmup as warmupmod  # noqa: E402
+from . import streamjson  # noqa: E402
+
+# A recording being read for somebody: the background overview filler
+# stands aside until there are none.
+_FOREGROUND_READS = ("/api/csc/", "/api/panel")
+
+
+@app.before_request
+def _foreground_begin():
+    if request.path.startswith(_FOREGROUND_READS):
+        warmupmod.foreground_begin()
+        request.environ["_barry_fg"] = True
+
+
+@app.teardown_request
+def _foreground_end(_exc=None):
+    try:
+        if request.environ.get("_barry_fg"):
+            warmupmod.foreground_end()
+    except Exception:                                    # noqa: BLE001
+        pass
+
+
+@app.route("/api/warmup/engines")
+def api_warmup_engines():
+    """Import the analysis libraries now, one by one, each reported as it is
+    ready (streamed with ?stream=1). Tools would otherwise pay this on their
+    first run; start-up keeps them out on purpose (lazyimp.py)."""
+    if streamjson.wants_stream(request):
+        return streamjson.stream({"of": len(warmupmod.ENGINES)},
+                                 warmupmod.engines())
+    return jsonify({"ok": True, "engines": list(warmupmod.engines())})
+
+
+@app.route("/api/warmup/last", methods=["POST"])
+def api_warmup_last():
+    """The recording this machine opened last, opened now and kept, with its
+    overview strip read (or found on disk) -- so opening it again later is
+    immediate. Reads only: no identity is written, no registry touched; the
+    real open does those when somebody actually opens it."""
+    paths = warmupmod.recent_paths(STORE, limit=1)
+    if not paths:
+        return jsonify({"ok": True, "path": None})
+    path = paths[0]
+    t0 = time.time()
+    try:
+        if not _scheme_path(path) and not os.path.isdir(path):
+            return jsonify({"ok": True, "path": path, "here": False})
+        sess, err = _session_for(path, True)
+        if err:
+            return jsonify({"ok": True, "path": path, "opened": False,
+                            "error": err.get("error")})
+        ov = extras.overview(sess, channel=0, bins=700)
+        return jsonify({"ok": True, "path": path, "opened": True,
+                        "name": os.path.basename(path.rstrip("\\/")),
+                        "overview": bool(ov and ov.get("ok")),
+                        "cached": (ov or {}).get("cached"),
+                        "ms": round((time.time() - t0) * 1000)})
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": True, "path": path, "opened": False,
+                        "error": str(exc)[:200]})
+
+
+@app.route("/api/warmup/overviews", methods=["GET", "POST"])
+def api_warmup_overviews():
+    """POST starts writing the overview strips of the recordings this
+    machine opened most recently to disk (derived.py), one at a time in the
+    background; GET says how far it has got."""
+    if request.method == "POST":
+        body = request.get_json(silent=True) or {}
+        limit = max(1, min(int(body.get("limit") or 30), 100))
+        paths = warmupmod.recent_paths(STORE, limit=limit)
+
+        def make(p):
+            # Opened for this and let go, not kept in _SESSIONS: thirty
+            # background opens must not push out the recordings somebody
+            # has open.
+            if _scheme_path(p) or not os.path.isdir(p):
+                return None
+            sess = csc.open_session(p, invert=True)
+            return sess if sess.get("ok") else None
+
+        started = warmupmod.fill_overviews(paths, make, extras.overview)
+        return jsonify(dict({"ok": True, "started": started,
+                             "recordings": len(paths)},
+                            **warmupmod.fill_state()))
+    return jsonify(dict({"ok": True}, **warmupmod.fill_state()))
+
+
+@app.after_request
+def _settle_memory(resp):
+    """At most every two seconds, drop the oldest-used cache entries until
+    every cache together is under the budget. Here, after an answer has
+    been sent on its way, rather than inside each cache's own put."""
+    try:
+        membudgetmod.settle_soon()
+    except Exception:                                    # noqa: BLE001
+        pass
+    return resp
 # Whether a recording is one continuous block or several, keyed on the
 # reference file's size and mtime. A clean folder is decided by two records
 # per channel, so the check runs on every health report rather than being a
@@ -228,14 +380,67 @@ def unhandled(exc):
 # ==========================================================================
 # Static
 # ==========================================================================
+# The page's own files, named by their modification time (2026-10-21).
+#
+# Every start asked about all 66 of the page's scripts and its stylesheet
+# again -- "no-cache" means keep it but check first, and checking is a round
+# trip each, over the same six connections everything else needs. So the
+# page is served with each of its files' addresses carrying the file's mtime
+# (`js/core.js?v=1a2b3c`), and an address that carries one is cached for a
+# year, never checked. Editing a file changes its mtime, so the next load asks
+# for a different address -- the edit still shows on refresh, with no build
+# step, which is the rule `no_cache` below was written to keep. The page
+# itself stays "no-cache": it is what knows the current addresses.
+_ASSET_RE = re.compile(r'(\s(?:src|href)=")((?:js|img)/[^"?#]+|app\.css)(")')
+_INDEX = {"key": None, "html": None, "etag": None}
+
+
+def _versioned_index():
+    path = os.path.join(WEB_DIR, "index.html")
+    with open(path, "rb") as fh:
+        raw = fh.read().decode("utf-8")
+    found = sorted(set(m.group(2) for m in _ASSET_RE.finditer(raw)))
+    stamps = {}
+    for rel in found:
+        try:
+            stamps[rel] = "%x" % os.stat(os.path.join(WEB_DIR, rel)).st_mtime_ns
+        except OSError:
+            stamps[rel] = None
+    key = (hashlib.sha1(raw.encode("utf-8")).hexdigest(),
+           tuple(sorted(stamps.items())))
+    if _INDEX["key"] != key:
+        html = _ASSET_RE.sub(
+            lambda m: m.group(1) + m.group(2)
+            + (("?v=" + stamps[m.group(2)]) if stamps.get(m.group(2)) else "")
+            + m.group(3), raw)
+        _INDEX.update(key=key, html=html,
+                      etag=hashlib.sha1(html.encode("utf-8")).hexdigest()[:20])
+    return _INDEX["html"], _INDEX["etag"]
+
+
 @app.route("/")
 def index():
-    return send_from_directory(WEB_DIR, "index.html")
+    # JARVIS_ASSET_VERSIONS=0 serves the page exactly as written -- to
+    # measure what the versions are worth, or to rule them out.
+    if os.environ.get("JARVIS_ASSET_VERSIONS", "1") == "0":
+        return send_from_directory(WEB_DIR, "index.html")
+    try:
+        html, etag = _versioned_index()
+    except OSError:
+        return send_from_directory(WEB_DIR, "index.html")
+    resp = Response(html, mimetype="text/html")
+    resp.set_etag(etag)
+    return resp.make_conditional(request)
 
 
 @app.route("/<path:filename>")
 def static_files(filename):
-    return send_from_directory(WEB_DIR, filename)
+    resp = send_from_directory(WEB_DIR, filename)
+    # Asked for by its versioned address: that address will never mean
+    # anything else, so it is kept without asking again.
+    if request.args.get("v") and resp.status_code == 200:
+        resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return resp
 
 
 @app.before_request
@@ -1190,9 +1395,38 @@ def conflict_audit():
     conflicts.py. This one had its own, which did not know feedback overlays
     (`<id>~<machine>.json`) and listed seven of them as conflicts.
     """
+    # Asked on every sync poll, and a walk of eleven thousand files is most
+    # of a second even with git asked once (it was 9 s asked per file,
+    # measured 2026-10-21). The answer only changes when a file appears
+    # that nobody tagged, and saying so two minutes late is fine: kept for
+    # 120 s, recounted beside the poll rather than in it.
+    now = time.time()
+    if _CONFLICTS["out"] is not None and now - _CONFLICTS["at"] < 120:
+        return _CONFLICTS["out"]
+    if _CONFLICTS["out"] is not None:
+        with _CONFLICTS_LOCK:
+            if not _CONFLICTS["busy"]:
+                _CONFLICTS["busy"] = True
+                threading.Thread(target=_conflicts_recount, daemon=True,
+                                 name="conflict-audit").start()
+        return _CONFLICTS["out"]
+    _conflicts_recount()
+    return _CONFLICTS["out"]
+
+
+_CONFLICTS = {"out": None, "at": 0.0, "busy": False}
+_CONFLICTS_LOCK = threading.Lock()
+
+
+def _conflicts_recount():
+    """The audit itself (conflicts.py)."""
     from . import conflicts as conflictsmod
-    return conflictsmod.audit(LOGS_DIR,
-                              git=storemod_git() or "git")
+    try:
+        _CONFLICTS["out"] = conflictsmod.audit(LOGS_DIR,
+                                               git=storemod_git() or "git")
+        _CONFLICTS["at"] = time.time()
+    finally:
+        _CONFLICTS["busy"] = False
 
 
 # ==========================================================================
@@ -22386,11 +22620,50 @@ def api_csc_overview():
             return fail("csc/overview band", exc, 400,
                         {"path": body.get("path"), "band": band})
         return jsonify(res)
+    if streamjson.wants_stream(request):
+        return _overview_streamed(sess, body.get("channel"), bins)
     try:
         res = extras.overview(sess, channel=body.get("channel"), bins=bins)
     except Exception as exc:
         return fail("csc/overview", exc, 400, {"path": body.get("path")})
     return jsonify(res)
+
+
+def _overview_streamed(sess, channel, bins):
+    """The amplitude strip a bin at a time, coarse to fine (2026-10-21), so
+    the page can draw the whole recording at low resolution almost at once
+    and watch it sharpen, instead of nothing until the 900th read. The read
+    runs on its own thread and hands each bin over as it lands; the closing
+    line carries the whole answer, which is also what an answer already kept
+    in memory or on disk arrives as -- at once, with no bins before it."""
+    import queue
+    q = queue.Queue()
+    final = {}
+
+    def work():
+        try:
+            res = extras.overview(sess, channel=channel, bins=bins,
+                                  on_bin=lambda i, lo, hi, rms, mabs:
+                                  q.put(("bin", [i, lo, hi, rms, mabs])))
+            q.put(("done", res))
+        except Exception as exc:                         # noqa: BLE001
+            q.put(("error", str(exc) or type(exc).__name__))
+
+    threading.Thread(target=work, daemon=True, name="overview-stream").start()
+
+    def items():
+        while True:
+            kind, val = q.get()
+            if kind == "bin":
+                yield val
+            elif kind == "done":
+                final["result"] = val
+                return
+            else:
+                raise RuntimeError(val)
+
+    return streamjson.stream({"bins": bins, "fields": ["i", "lo", "hi", "rms", "mabs"]},
+                             items(), tail=lambda: {"result": final.get("result")})
 
 
 # ==========================================================================
@@ -24410,6 +24683,15 @@ def api_debug_trace():
     })
 
 
+@app.route("/api/debug/memory")
+def api_debug_memory():
+    """What this process holds: its resident and private memory, the one
+    budget every cache shares, and each cache's entries and bytes
+    (backend/membudget.py). Read-only."""
+    from . import membudget
+    return jsonify(dict({"ok": True}, **membudget.report()))
+
+
 @app.route("/api/debug/clear", methods=["POST"])
 def api_debug_clear():
     extras.TRACE.clear()
@@ -25344,6 +25626,15 @@ def api_arc_monolith_data(name):
         if got is None:
             return jsonify({"ok": False, "error": "Tab 8 has not been worked out yet."}), 404
         return jsonify(got)
+    if name == "joefigs":
+        # Read straight off the disk: importing backend/joefigs.py pulls in
+        # scipy, and two page requests importing it at once deadlocked on
+        # its module locks (2026-10-21, a cold server opening tab 9).
+        path = os.path.join(monolithmod._path("joe"), "figs", "figs.json")
+        if not os.path.isfile(path):
+            return jsonify({"ok": False, "error": "Tab 9's figures have not been drawn yet."}), 404
+        with open(path, encoding="utf-8") as fh:
+            return app.response_class(fh.read(), mimetype="application/json")
     d = monolithmod.data_dir()
     if not d:
         return jsonify({"ok": False, "error": "The Monolith has not been "
@@ -25719,6 +26010,41 @@ def api_arc_monolith_joe_file(name):
     if not os.path.isfile(path):
         return jsonify({"ok": False, "error": "No such file."}), 404
     return send_file(path, mimetype=types[os.path.splitext(base)[1]], as_attachment=True, download_name=base)
+
+
+@app.route("/api/arc/monolith/joefigs", methods=["POST"])
+def api_arc_monolith_joefigs():
+    """Tab 9, Joe's figures: every figure drawn again from tab 8's own
+    rat-days (and the PAC profiles from the recordings, where they can be
+    read). Refused without `confirm`."""
+    body = request.get_json(silent=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    try:
+        from . import joefigs as figsmod
+        w = monolithmod.start_work("joefigs", figsmod.work_safe)
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/joefigs", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.joefigs", "detail": {}}])
+    return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/joefigs/file/<path:name>")
+def api_arc_monolith_joefigs_file(name):
+    """Tab 9's figure files: SVG and PNG shown in the page, and with
+    ?download=1, those or the PDF saved."""
+    types = {".svg": "image/svg+xml", ".png": "image/png", ".pdf": "application/pdf"}
+    base = os.path.basename(name)
+    ext = os.path.splitext(base)[1]
+    if base != name or ext not in types:
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    path = os.path.join(monolithmod._path("joe"), "figs", base)     # no import of joefigs: see data/joefigs
+    if not os.path.isfile(path):
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    save = request.args.get("download") == "1" or ext == ".pdf"
+    return send_file(path, mimetype=types[ext], as_attachment=save, download_name=base)
 
 
 @app.route("/api/arc/monolith/narrow", methods=["POST"])

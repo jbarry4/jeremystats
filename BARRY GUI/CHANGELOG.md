@@ -15,6 +15,91 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.21.5 - Jarvis Light, and a Jarvis that loads, caches and remembers
+
+**Restart Jarvis on every machine.** The server changed a great deal.
+
+### Added
+
+- **Jarvis Light**, in the Theme picker under Compact, and in Ctrl+K as
+  "Toggle Jarvis Light". It is a speed setting for a slower computer, **not
+  a colour scheme**: every theme looks exactly as it did, in every colour.
+  It is remembered for this computer only. While it is on:
+  - **Nothing moves.** Every animation shows its final state, the way it
+    does for somebody whose system asks for reduced motion: no springs, no
+    hover lift, no sweeping loaders, no flowing ToolKit stream, a still
+    title screen.
+  - **No glass and no shadows.** Dialogs, popovers and toasts are the
+    theme's own panel colour instead of blurred glass, and nothing casts a
+    shadow.
+  - **Plots draw at 1×** instead of the screen's 1.25–2×. Text on a plot is
+    a little softer; panning has far less to draw.
+  - **VACC Mode keeps its colours** but not its circuit board, and
+    **Halloween keeps its colours** but not its visitors.
+  - The server keeps half as much in memory.
+  - The Jarvis reveal still plays in full when somebody presses Activate.
+  - With the name hidden it is called Workbench Light.
+- **The start screen gets everything ready while you choose.** Beside the
+  menu, "Getting ready" ticks off each thing as it is fetched and kept:
+  recordings, the Event Bank, ToolKit's choices, the VACC catalogue,
+  people, the patch notes, your last recording (opened, with its overview
+  strip), the analysis libraries, and the overview strips of the
+  recordings you opened recently. Continue, or any key, still goes straight
+  in; the rest carries on behind, and one quiet line in the rail says how
+  far it has got until it is done. Under it, a line of tips changes every
+  few seconds, led by the newest patch note.
+- **"Who's working?"** on the start screen, when nobody is set on this
+  computer or the last answer is more than eight hours old: the people who
+  have used this computer first, then everyone else. Otherwise it says
+  "Working as …" with a way to change it.
+
+### Changed
+
+- **Lists draw at once, from last time, and are sent only when they
+  change.** The recordings list, the Event Bank, ToolKit's choices, the
+  VACC catalogue and the people list are now one copy each, shared by
+  every view that reads them and kept in this browser between visits. A
+  view draws last time's straight away, dimmed or marked "as of …", and
+  this time's replaces it. When nothing has changed, the server says so
+  in one short answer instead of sending the whole list again.
+- **ToolKit draws its tool without waiting** for the list of recordings to
+  choose from (3.4 s on a cold start).
+- **Xplorefinder's band strips arrive one by one**, two at a time, instead
+  of all together after the slowest.
+- **A recording's overview strip is read in one pass and kept on disk.**
+  It was 900 separate opens of the file (10.6 s on this morning's
+  recording); now one, and a restart no longer reads it again. The band
+  surface behind the strip is kept the same way.
+- **Requests nobody is waiting for take turns.** The sync check, the cloud
+  sync state, VACC's catalogue check and the tool feeds use at most three
+  of the browser's six connections, so a click never queues behind them.
+- **The page's own files are kept by the browser until they change.**
+  Every start used to ask about all 66 scripts and the stylesheet again.
+
+### Fixed
+
+- **The sync check took 9–19 seconds, every time.** It asked git about two
+  hundred files one at a time to make sure none could cause a merge
+  conflict. It asks once now, and keeps the answer for two minutes: the
+  check answers in about a quarter of a second.
+- **The server took 3.4 s to start; it takes 1.4 s.** Root Canal's pool
+  comparison was loading scikit-learn at start-up (2.07 s); it loads it the
+  first time a pool is compared.
+- **The server reserved 867 MB of memory before its first request.** The
+  numerical libraries reserved a buffer for every one of the computer's
+  threads; they are capped at four (160 MB).
+
+### Checked
+
+- `web/_dev/lite.html` (new): Jarvis Light changes no colour token in any
+  of the eleven themes, and everything listed above.
+- `web/_dev/warmup.html` (new): a harness frame does not warm up; with
+  `?warm=1` every step finishes, in order, with words beside it.
+- `tools/check_ncs_ranges.py`: the one-pass strip reader gives exactly what
+  900 separate reads give, sample for sample.
+- `tools/check_derived_cache.py`, `tools/check_membudget.py`: the disk
+  cache and the memory budget.
+
 ## 2026.10.21.4 - Root Canal: no margins, and the dots are coloured by their call only
 
 Restart Jarvis: two sentences the server writes changed (below). Everything
@@ -108,6 +193,14 @@ new.
   - Arrange the window with **Draw it…**, a small copy of the window. Drag the
     lines between rows and panels, type widths and heights in percent, move a
     panel between rows, or drag one panel onto another to swap them.
+- **Fold the channel column away.** The small ‹ in the corner under the
+  traces' channel column (or View › Channel column) folds it:
+  - the checkboxes and ok/bad buttons go, and the traces get the room;
+  - hovering a trace names its channel in a small dark label at the start of
+    its lane, the way rasters label their rows (bad channels in amber);
+  - the › in the sliver brings the column back.
+
+  This computer remembers the choice. Support windows open with it folded.
 - **One overview strip.** With two or more panes, the strip is no longer
   repeated under each pane. One strip runs across the bottom and follows the
   pane you last clicked. When the panes show different recordings, it says

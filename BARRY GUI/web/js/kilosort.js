@@ -71,7 +71,8 @@ BARRY.kilosort = (function () {
     if (!settings) settings = ((env.settings || [])[0] || {}).path || null;
     if (!sessions.length) {
       try {
-        const reg = await api('/api/registry');
+        // The shared copy (web/js/data.js), read only here.
+        const reg = await BARRY.data.get('/api/registry', { maxAge: 60000 });
         sessions = BARRY.hk.flatten(reg).filter((s) => s.reachable);
       } catch (e) { sessions = []; }
     }
