@@ -169,13 +169,16 @@ async function until(fn, ms, what) {
       ev('(function(){ var s = ' + BR + '._state().q; s.entry = null; s.channels = null;'
          + ' s.gid = ' + JSON.stringify(c.gid) + '; })()');
       ev(BR + '.paint()');
-      await until(() => [...D().querySelectorAll('.bm-row input[type=radio]')]
-        .some((r) => !r.disabled), 10000, 'its entries');
-      const radio = [...D().querySelectorAll('.bm-row')]
-        .find((r) => (r.querySelector('.mk-name') || {}).textContent === (c.name || c.id));
-      const inp = radio && radio.querySelector('input[type=radio]');
-      if (!inp || inp.disabled) continue;
-      inp.click();
+      /* The set is chosen from the picker's Set tile (2026-10-22): its
+         menu, opened and pressed, as somebody would. */
+      const btnQ = () => D().querySelector('.br-pick .br-setbtn');
+      if (!(await until(btnQ, 10000, 'the set button'))) continue;
+      btnQ().click();
+      const optQ = () => [...D().querySelectorAll('.br-setmenu .br-setopt')]
+        .find((o) => (o.querySelector('.br-set-name') || {}).textContent
+                     === (c.name || c.id));
+      if (!(await until(optQ, 4000, 'its card in the menu'))) continue;
+      optQ().click();
       await until(() => D().querySelector('.br-chan-grid')
                         || (ev(BR + '._state().plan') || {}).ok === false, 45000, 'its plan');
       grid = D().querySelector('.br-chan-grid');

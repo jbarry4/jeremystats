@@ -712,8 +712,11 @@ BARRY.views.xplore = (function () {
     const own = Number(sess && sess.marksFade);
     if (own > 0) return clampFade(own);
     let kept = MARKS_FADE_DEFAULT;
-    try { kept = Number(BARRY.prefs.get('marks_fade', MARKS_FADE_DEFAULT)); }
-    catch (e) { kept = MARKS_FADE_DEFAULT; }
+    // A check page starts from the default (core.js BARRY.inCheckPage).
+    if (!BARRY.inCheckPage) {
+      try { kept = Number(BARRY.prefs.get('marks_fade', MARKS_FADE_DEFAULT)); }
+      catch (e) { kept = MARKS_FADE_DEFAULT; }
+    }
     return clampFade(kept > 0 ? kept : MARKS_FADE_DEFAULT);
   }
 
@@ -11899,7 +11902,7 @@ BARRY.views.xplore = (function () {
         });
       };
       if (ov === '0' || ov === '1') setOv(ov === '1');
-      else if (XF.chrome.overview && BARRY.prefs && BARRY.prefs.load) {
+      else if (XF.chrome.overview && !BARRY.inCheckPage && BARRY.prefs && BARRY.prefs.load) {
         BARRY.prefs.load().then(() => {
           const kept = BARRY.prefs.get(
             document.body.classList.contains('aid-window')
@@ -11908,8 +11911,9 @@ BARRY.views.xplore = (function () {
         }).catch(() => { /* shown, as by default */ });
       }
     }
-    // The channel column as this computer last left it.
-    if (!chrome && BARRY.prefs && BARRY.prefs.load) {
+    // The channel column as this computer last left it (not in a check
+    // page, which starts from the defaults: core.js BARRY.inCheckPage).
+    if (!chrome && !BARRY.inCheckPage && BARRY.prefs && BARRY.prefs.load) {
       BARRY.prefs.load().then(() => {
         if (BARRY.prefs.get('xf_chan_column', 'full') === 'folded'
             && XF.chrome.channels) {

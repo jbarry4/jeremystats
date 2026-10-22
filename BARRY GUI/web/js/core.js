@@ -1963,6 +1963,18 @@ const MODES = {
     keys: 'n p or \u2190 \u2192 step \u00b7 Enter moves it \u00b7 k leaves it '
         + '\u00b7 g garbage \u00b7 [ ] nudge 1 ms \u00b7 u undo \u00b7 l the list',
   },
+  /* Lock's review is Braces' review on a pooled set (braces.js
+     `makeBraces`, 2026-10-22), with one more thing worth the banner: the
+     stamps Braces placed are drawn in their own colour and do not move. */
+  lock: {
+    name: 'Lock',
+    what: 'Every stamp drawn where it was and where it goes '
+        + '\u00b7 Braces\u2019 stamps are locked (blue) and stay put '
+        + '\u00b7 n / p stop at the ones needing a decision (\u25bc) '
+        + '\u00b7 [ and ] to move one a millisecond',
+    keys: 'n p or \u2190 \u2192 step \u00b7 Enter moves it \u00b7 k leaves it '
+        + '\u00b7 g garbage \u00b7 [ ] nudge 1 ms \u00b7 u undo \u00b7 l the list',
+  },
   arcconfirm: {
     name: 'Confirm cue pairs',
     /* Worth a `what`: the drawing shows pulses that were DROPPED as well
@@ -4452,5 +4464,11 @@ try {
   if (window.top !== window
       && /\/_dev\//.test(window.top.location.pathname)) {
     BARRY.testNoAutobank = true;
+    /* And it starts from the defaults, not from how this computer's
+       Xplorefinder was last left (a folded channel column, a hidden
+       overview strip, a fade level): a check page asserts on what it
+       sets up, and a preference it did not set made chan64 and curmarks
+       fail on one machine only (2026-10-22). */
+    BARRY.inCheckPage = true;
   }
 } catch (e) { /* a cross-origin top is not a check page */ }

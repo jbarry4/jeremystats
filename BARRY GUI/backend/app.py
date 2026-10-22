@@ -6628,6 +6628,24 @@ def _braces_question(rec, src_v, spec, want, depth_n, stamp_times,
     return h, q
 
 
+def _braces_set_kind(rec):
+    """The kind of set an alignment was made of: what its question says,
+    else what the bank entry is now."""
+    k = ((rec.get("params") or {}).get("request") or {}).get("kind")
+    if k:
+        return k
+    return (BANK.get(rec.get("entry_id") or "") or {}).get("type") or "ds"
+
+
+def _braces_tool_of(members):
+    """'lock' for a batch of pooled sets, else 'braces'."""
+    for m in (members or []):
+        rec = BANK.get((m or {}).get("id") or "")
+        if rec and (rec.get("type") or "") == "pooled":
+            return "lock"
+    return "braces"
+
+
 def _braces_set_row(rec):
     """One alignment as the lists show it."""
     _moves, _flags, counts, _rej = brsetmod.resolve(rec)
@@ -6643,6 +6661,9 @@ def _braces_set_row(rec):
         "n": len(rec.get("rows") or []),
         "counts": counts,
         "request_hash": p.get("request_hash"),
+        "kind": _braces_set_kind(rec),
+        # How many stamps were held where Braces put them (Lock).
+        "n_locked": int((rec.get("summary") or {}).get("n_locked") or 0),
     }
 
 
@@ -6946,10 +6967,13 @@ _BRACES_INFLIGHT_LOCK = threading.Lock()
 BRACES_INFLIGHT_KEEP_S = 3600.0
 
 
-def _braces_track(job, members, settings=None, resumed=False):
+def _braces_track(job, members, settings=None, resumed=False, tool=None):
     with _BRACES_INFLIGHT_LOCK:
         _BRACES_INFLIGHT[job.id] = {
             "id": job.id, "kind": "many", "members": list(members or []),
+            # Which panel sent it -- Braces, or Lock (Braces' engine on
+            # pooled sets) -- so each finds only its own batches again.
+            "tool": tool or _braces_tool_of(members),
             "settings": dict(settings or {}), "started": time.time(),
             "by": (STORE.provenance() or {}).get("user"),
             "resumed": bool(resumed)}
@@ -7002,7 +7026,9 @@ def api_braces_batch():
         rec = BANK.get(it["id"])
         members.append({"id": it["id"], "gid": (rec or {}).get("gid"),
                         "label": _braces_label(rec) if rec else it["id"],
-                        "from_version": it.get("from_version")})
+                        "from_version": it.get("from_version"),
+                        # Lock: keep Braces' stamps where they are, per set.
+                        "pin_braces": bool(it.get("pin_braces"))})
     force = bool(body.get("force"))
     settings = {k: body.get(k) for k in
                 ("measure", "window_ms", "estimator", "line_hz",
@@ -7025,7 +7051,8 @@ def api_braces_batch():
             job.member(mid, status="waiting", step="opening the recording")
             try:
                 prep = _braces_prepare(dict(settings, entry_id=mid, by=who,
-                                            from_version=m["from_version"]))
+                                            from_version=m["from_version"],
+                                            pin_braces=m["pin_braces"]))
             except Exception as exc:                     # noqa: BLE001
                 tally["failed"] += 1
                 job.member(mid, status="failed", step=None,
@@ -7144,7 +7171,8 @@ def api_braces_batch():
                        1.0, "here")
     _braces_track(job, [{"id": m["id"], "gid": m["gid"], "label": m["label"]}
                         for m in members],
-                  dict(settings, force=force, all_vacc=all_vacc))
+                  dict(settings, force=force, all_vacc=all_vacc),
+                  tool=str(body.get("tool") or "") or None)
     STORE.record_activity([{"action": "braces.batch",
                             "detail": {"n": len(members), "force": force,
                                        "settings": settings}}])
@@ -7157,10 +7185,13 @@ def api_braces_inflight():
     each with its job's own snapshot: what the panel finds again when it is
     opened, reloaded, or come back to."""
     now = time.time()
+    want_tool = (request.args.get("tool") or "").strip()
     with _BRACES_INFLIGHT_LOCK:
         items = list(_BRACES_INFLIGHT.values())
     out, gone = [], []
     for it in items:
+        if want_tool and (it.get("tool") or "braces") != want_tool:
+            continue
         job = cfcmod.get(it["id"])
         if job is None:
             gone.append(it["id"])
@@ -7201,11 +7232,17 @@ def api_braces_sets():
     panel lists every one made of it."""
     gid = request.args.get("gid")
     entry_id = request.args.get("entry_id")
+    # `type` narrows it to alignments of those kinds of set, comma
+    # separated: Lock lists its pooled ones, Braces everything else.
+    kinds = {k.strip() for k in (request.args.get("type") or "").split(",")
+             if k.strip()}
     out = []
     for rec in BRACES.all():
         if gid and rec.get("gid") != gid:
             continue
         if entry_id and rec.get("entry_id") != entry_id:
+            continue
+        if kinds and _braces_set_kind(rec) not in kinds:
             continue
         out.append(_braces_set_row(rec))
     return jsonify({"ok": True, "sets": out, "n": len(out)})
@@ -7529,17 +7566,31 @@ def _lock_braced(rec, events=None):
     ds_times = None
     ds = BANK.get(p.get("ds_entry") or "") if p.get("ds_entry") else None
     if ds:
+        # Through `events_at`, whose resolver takes the `vk-` key a version
+        # with no id is given; `_cf_version_events` does not.
+        want = str(p.get("ds_version"))
+        hit = None
+        for v, name in versionsmod.label_rows(list(ds.get("versions") or [])):
+            if name == want:
+                hit = v
+        got = None
         try:
-            ref = None
-            want = str(p.get("ds_version"))
-            for v, name in versionsmod.label_rows(list(ds.get("versions")
-                                                       or [])):
-                if name == want:
-                    ref = BANK.version_key(v)
-            got, _ver = _cf_version_events(ds, ref)
-            ds_times = {curation._tkey(e.get("start")) for e in got}
+            if hit is not None and hit.get("snap"):
+                got = BANK.events_at(ds, BANK.version_key(hit))[0]
+            elif want == str(versionsmod.tip_next(ds.get("versions")
+                                                  or [])[0]):
+                got = ds.get("events") or []    # the tip, as it stands
         except Exception:                                # noqa: BLE001
-            ds_times = None
+            got = None
+        if got is None:
+            # The entry is here but that version cannot be read back, so
+            # nothing can be shown to still sit where Braces put it. Lock
+            # nothing rather than lock a stamp that has since moved.
+            info["why"] = ("v%s of the dentate-spike set cannot be read back "
+                           "on this computer, so no stamp can be shown to be "
+                           "Braces'." % want)
+            return set(), info
+        ds_times = {curation._tkey(e.get("start")) for e in got}
     out = set()
     for i, ev in enumerate(events or []):
         k = curation._tkey(ev.get("start"))
