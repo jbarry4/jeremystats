@@ -2,23 +2,24 @@
   "_at": {
     "braces_curve": "2026-10-19T16:52:32.986134+00:00",
     "braces_span": "2026-10-19T15:41:35.395792+00:00",
-    "curate_at": "2026-10-21T15:09:22.381661+00:00",
+    "curate_at": "2026-10-21T21:43:23.498128+00:00",
     "curate_span": "2026-10-20T21:51:24.532171+00:00",
-    "density": "2026-10-20T20:39:07.822959+00:00",
+    "density": "2026-10-21T17:07:20.712462+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
-    "panning_at": "2026-10-22T14:10:15.364986+00:00",
-    "panning_span": "2026-10-21T20:32:55.672768+00:00",
+    "panning_at": "2026-10-22T17:43:43.976790+00:00",
+    "panning_span": "2026-10-22T14:33:27.710295+00:00",
     "pipeline_folders": "2026-09-23T13:26:19.592745+00:00",
     "radio": "2026-10-13T19:54:21.520703+00:00",
     "recent_scripts": "2026-10-12T15:37:32.641324+00:00",
     "result_group": "2026-09-28T20:50:31.306822+00:00",
     "spotter_at": "2026-10-21T14:48:33.060772+00:00",
     "spotter_light": "2026-10-16T17:21:44.827873+00:00",
-    "support_panels": "2026-10-21T17:58:49.680510+00:00",
-    "updated": "2026-10-22T14:10:15.364986+00:00",
+    "support_panels": "2026-10-22T14:25:27.296113+00:00",
+    "updated": "2026-10-22T17:43:43.600526+00:00",
     "vacc_signed_ack": "2026-10-20T16:14:37.060022+00:00",
-    "xf_simplify_curate": "2026-10-21T14:53:55.489527+00:00",
-    "xf_simplify_panning": "2026-10-22T14:09:01.147620+00:00",
+    "xf_chan_column": "2026-10-22T14:33:18.151050+00:00",
+    "xf_simplify_curate": "2026-10-21T21:43:37.927942+00:00",
+    "xf_simplify_panning": "2026-10-22T17:43:43.600526+00:00",
     "xf_simplify_spotter": "2026-10-21T14:46:13.790670+00:00"
   },
   "_keys": {
@@ -29,7 +30,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-20T19:12:22.765559+00:00"
+        "2026-10-21T22:31:31.264877+00:00"
       ],
       "LCOM549913": [
         "set",
@@ -73,7 +74,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-20T13:51:12.813074+00:00"
+        "2026-10-21T22:30:39.081597+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -103,7 +104,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-20T19:17:12.891899+00:00"
+        "2026-10-21T22:30:33.260152+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -124,7 +125,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-22T14:10:15.364986+00:00",
+    "at": "2026-10-22T17:43:43.976790+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -293,7 +294,7 @@
       "t": 31.451987
     },
     "s503339c95a67:ds": {
-      "at": 1792595356246,
+      "at": 1792619002321,
       "id": "e0512705e05",
       "n": 867,
       "review": "all",
@@ -532,16 +533,16 @@
     }
   },
   "curate_span": 1,
-  "density": "compact",
+  "density": "comfortable",
   "digest_seen": "2026-09-08T02:30:43.952468+00:00",
   "fav_scripts": [],
   "jarvis": {
     "BarryLab": true,
-    "DESKTOP-4H65AI7": true,
+    "DESKTOP-4H65AI7": false,
     "LCOM549913": false
   },
-  "panning_at": "{\"s45965a6b13d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e9609fe60ed\",\"t\":39.066984,\"at\":1792507235815},\"s79ba9ba163c4:pooled\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e127b36b23c\",\"t\":12.197434,\"at\":1792595619389},\"s45bae70722f2:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":257,\"id\":\"efb1cb85a58\",\"t\":57.814477,\"at\":1792530883739},\"sd0d0bded958b:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":2,\"id\":\"e4d8cec8ce8\",\"t\":25.35749,\"at\":1792519409404},\"s45bae70722f2:pooled.ebfa98498290b\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":246,\"id\":\"efc21024109\",\"t\":1708.491514,\"at\":1792595576524},\"s38b9e61c5684:pooled.eafa70b62f372\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":473,\"id\":\"e6bf584fe41\",\"t\":1842.81976,\"at\":1792596663805},\"s0a9e96cf1739:pooled.e43a2cfedde17\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":298,\"id\":\"e1e7de501d3\",\"t\":1795.854179,\"at\":1792607037393},\"sc74c98b2495d:pooled.eb60578899091\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":141,\"id\":\"ea703fce3c9\",\"t\":598.605732,\"at\":1792596857989},\"s016e132432c8:pooled.ef4c18a9a8bd4\":{\"review\":\"flag\",\"origin\":\"doppler\",\"index\":74,\"id\":\"e73f8386728\",\"t\":698.684753,\"at\":1792605263217},\"s4a67210fc7ac:pooled.e35c325a44d44\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":477,\"id\":\"e7c844f1bfc\",\"t\":2912.134277,\"at\":1792678141047},\"sd0d0bded958b:pooled.edb66d3c694fd\":{\"review\":\"left\",\"origin\":\"all\",\"index\":0,\"id\":\"e07db231b6f\",\"t\":6.740997,\"at\":1792678215136}}",
-  "panning_span": 0.8,
+  "panning_at": "{\"s45965a6b13d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e9609fe60ed\",\"t\":39.066984,\"at\":1792507235815},\"s79ba9ba163c4:pooled\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e127b36b23c\",\"t\":12.197434,\"at\":1792595619389},\"s45bae70722f2:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":257,\"id\":\"efb1cb85a58\",\"t\":57.814477,\"at\":1792530883739},\"sd0d0bded958b:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":2,\"id\":\"e4d8cec8ce8\",\"t\":25.35749,\"at\":1792519409404},\"s45bae70722f2:pooled.ebfa98498290b\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":246,\"id\":\"efc21024109\",\"t\":1708.491514,\"at\":1792595576524},\"s38b9e61c5684:pooled.eafa70b62f372\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":473,\"id\":\"e6bf584fe41\",\"t\":1842.81976,\"at\":1792596663805},\"s0a9e96cf1739:pooled.e43a2cfedde17\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":298,\"id\":\"e1e7de501d3\",\"t\":1795.854179,\"at\":1792607037393},\"sc74c98b2495d:pooled.eb60578899091\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":141,\"id\":\"ea703fce3c9\",\"t\":598.605732,\"at\":1792596857989},\"s016e132432c8:pooled.ef4c18a9a8bd4\":{\"review\":\"flag\",\"origin\":\"doppler\",\"index\":74,\"id\":\"e73f8386728\",\"t\":698.684753,\"at\":1792605263217},\"s4a67210fc7ac:pooled.e35c325a44d44\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":477,\"id\":\"e7c844f1bfc\",\"t\":2912.134277,\"at\":1792678141047},\"sd0d0bded958b:pooled.edb66d3c694fd\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":198,\"id\":\"e27e7cf868e\",\"t\":1976.560206,\"at\":1792683443922},\"s6cdd64d005c4:pooled.ea62d1b78448b\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":333,\"id\":\"e96f39238ed\",\"t\":1929.003175,\"at\":1792691023965}}",
+  "panning_span": 1,
   "pipeline_folders": {
     "session": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43"
   },
@@ -593,14 +594,53 @@
   "spotter_light": "lit",
   "support_panels": {
     "panning": {
+      "layout": {
+        "rows": [
+          {
+            "cols": [
+              50,
+              50
+            ],
+            "h": 50
+          },
+          {
+            "cols": [
+              74,
+              26
+            ],
+            "h": 50
+          }
+        ]
+      },
       "open": true,
       "panels": [
-        "csd",
-        "theta",
-        "traces",
-        "spectrogram"
+        {
+          "filter": "p:ds",
+          "notch": true,
+          "panel": "csd"
+        },
+        {
+          "filter": "p:none",
+          "notch": true,
+          "panel": "csd"
+        },
+        {
+          "filter": "p:none",
+          "gain": 2.5,
+          "notch": true,
+          "panel": "traces"
+        },
+        {
+          "band": "custom",
+          "filter": "raw",
+          "fmax": 800,
+          "fmin": 1,
+          "notch": true,
+          "panel": "spectrogram"
+        }
       ],
-      "shape": "linked"
+      "shape": "linked",
+      "span": null
     },
     "strata": {
       "open": true,
@@ -615,13 +655,13 @@
   },
   "themes": {
     "BarryLab": "horizon-night",
-    "DESKTOP-4H65AI7": "light",
+    "DESKTOP-4H65AI7": "halloween",
     "DESKTOP-AH45FAE": "horizon-night",
     "DESKTOP-NR2H5O7": "horizon-night",
     "Home": "dark",
     "LCOM549913": "halloween"
   },
-  "updated": "2026-10-22T10:10:15-04:00",
+  "updated": "2026-10-22T13:43:43-04:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": true,
@@ -631,7 +671,8 @@
     "LCOM549913": true
   },
   "vacc_signed_ack": 1792512852.3774557,
+  "xf_chan_column": "folded",
   "xf_simplify_curate": false,
-  "xf_simplify_panning": false,
+  "xf_simplify_panning": true,
   "xf_simplify_spotter": false
 }
