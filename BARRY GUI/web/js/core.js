@@ -2462,6 +2462,25 @@ BARRY.profile = (function () {
       creating = false;
       paintMode();
       paintKnown();
+      markClean();
+    };
+
+    /* Unsaved changes ask before the form goes (2026-10-23: "your changes
+       are unsaved, are you sure you want to close?"). What the form held
+       when it was opened or last filled is the baseline. */
+    let clean = null;
+    const formNow = () => JSON.stringify(Object.keys(f).sort()
+      .map((k) => [k, f[k] && f[k].value]));
+    function markClean() { clean = formNow(); }
+    const askClose = async () => {
+      if (clean !== null && formNow() !== clean && BARRY.confirm) {
+        const ok = await BARRY.confirm('Close without saving?',
+          'Your changes to this profile are not saved. Support panel '
+          + 'preferences save as you go, so those are kept either way.',
+          'Close without saving');
+        if (!ok) return;
+      }
+      closeModal();
     };
 
     /* Start a new one. Clears the form rather than inheriting whoever was
@@ -2471,6 +2490,8 @@ BARRY.profile = (function () {
       for (const k of ['name', 'email', 'role', 'initials']) {
         if (f[k]) f[k].value = '';
       }
+      // An empty new form is nothing unsaved yet.
+      markClean();
       editing = null;
       creating = true;
       paintMode();
@@ -3037,7 +3058,7 @@ BARRY.profile = (function () {
         el('h3', { text: 'Profile' }),
         el('span', { class: 'sub', text: 'who this work is credited to' }),
         el('div', { class: 'spacer' }),
-        el('button', { class: 'close-x', onclick: closeModal,
+        el('button', { class: 'close-x', onclick: askClose, 'aria-label': 'Close',
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
       ]),
       el('div', { class: 'mb' }, [
@@ -3063,11 +3084,12 @@ BARRY.profile = (function () {
         }) : null,
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn ghost', text: 'Cancel',
-                       onclick: closeModal }),
+                       onclick: askClose }),
         save,
       ].filter(Boolean)),
     ]));
     paintMode();
+    markClean();
     setTimeout(() => { try { f.name.focus(); } catch (e) {} }, 0);
     /* After the modal is up, so the chips land in a box that exists. */
     people().then(paintKnown);

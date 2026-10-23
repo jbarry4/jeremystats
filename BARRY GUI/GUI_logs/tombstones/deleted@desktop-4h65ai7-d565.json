@@ -1154,11 +1154,11 @@
       ],
       "person:Avery (AI)": [
         "set",
-        "2026-10-21T22:51:40.403010+00:00"
+        "2026-10-23T13:17:35.330007+00:00"
       ],
       "person:Harness Probe Person": [
         "set",
-        "2026-10-21T22:51:41.202713+00:00"
+        "2026-10-23T13:17:35.931790+00:00"
       ],
       "person:Rain": [
         "set",
@@ -1174,7 +1174,7 @@
       ],
       "person:zz edit probe": [
         "set",
-        "2026-10-21T22:51:56.007696+00:00"
+        "2026-10-23T13:17:42.928836+00:00"
       ],
       "person:zz edit probe renamed": [
         "set",
@@ -3343,7 +3343,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-22T16:18:33.416597+00:00",
+    "at": "2026-10-23T13:17:42.928836+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -5932,7 +5932,7 @@
       "synced_at": "2026-10-07T18:34:38-0400"
     },
     "person:Avery (AI)": {
-      "at": "2026-10-21T18:51:40-0400",
+      "at": "2026-10-23T09:17:35-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "Avery (AI)",
       "kind": "person",
@@ -5940,7 +5940,7 @@
       "synced": false
     },
     "person:Harness Probe Person": {
-      "at": "2026-10-21T18:51:41-0400",
+      "at": "2026-10-23T09:17:35-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "Harness Probe Person",
       "kind": "person",
@@ -5964,7 +5964,7 @@
       "synced": false
     },
     "person:zz edit probe": {
-      "at": "2026-10-21T18:51:56-0400",
+      "at": "2026-10-23T09:17:42-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "zz edit probe",
       "kind": "person",

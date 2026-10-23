@@ -24998,6 +24998,11 @@ CURATE = curation.Curation(LOGS_DIR, STORE)
 LAYERS = layers.Layers(LOGS_DIR, STORE)
 GUIDES = guidesmod.Guides(LOGS_DIR, STORE)
 
+# The figure builder, v2: every tool's plots as panels (figkit), one
+# recording a figure, versions kept frozen. Its routes live in figroutes.py.
+from . import figroutes as figroutesmod                       # noqa: E402
+FIGURES = figroutesmod.install(app, sys.modules[__name__])
+
 # X-ray's vault: one record per (recording, question), and the read cached
 # beside it.
 #

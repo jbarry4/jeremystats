@@ -735,6 +735,57 @@ BARRY.supportPanels = (function () {
     ]));
   }
 
+  /* ---------- icons ----------
+
+     2026-10-23: "less words, more icons -- or icons and words, more nicely
+     arranged; see all the applicable toolkits, with their icons and colour
+     codes." Each add-on wears its ToolKit tool's mark and colour (toolkit.js
+     TOOL_ICONS, app.css --tool-<id> through [data-tool]); each panel kind
+     and each setting has a small mark of its own, its word in the tooltip. */
+  const ADDON_TOOL = { curate: 'curate', spotter: 'spotter', panning: 'panning',
+                       strata: 'strata', cfc: 'cfc', braces: 'braces', arcmode: 'spark' };
+  const PANEL_ICON = {
+    traces: 'M1 4.5h2.2l1.2-2 1.8 4 1.3-2H15M1 8.5h3l1-1.5 1.8 3 1.4-1.5H15M1 12.5h2.2l1.2-2 1.8 4 1.3-2H15',
+    csd: 'M2 2.5h12v11H2zM2 6.2h12M2 9.8h12M5.5 2.5v11',
+    theta: 'M1 8c1.7-4.5 3.3-4.5 5 0s3.3 4.5 5 0 2.3-3 4-3',
+    voltage: 'M2 3h12M2 5.6h12M2 8.2h12M2 10.8h12M2 13.4h12',
+    spectrogram: 'M2 1.5v12.5h12.5M5 12V8.5M8 12V4.5M11 12V7',
+    scalogram: 'M2 14h12.5M2.5 13c1.8-6 3.6-9 5.5-9s3.7 3 5.5 9',
+    bandpower: 'M2 14h12.5M4 14V9.5M7 14V4.5M10 14V7.5M13 14V10.5',
+  };
+  const SET_ICON = {
+    channels: 'M2 3.5h12M2 6.5h12M2 9.5h12M2 12.5h12M4.5 2v13',
+    filter: 'M2 3h12l-4.5 5.5V13l-3 1.5V8.5z',
+    band: 'M1 9c1.2-3 2.4-3 3.6 0s2.4 3 3.6 0 2.4-3 3.6 0 1.6 2 3.2 2',
+    tf: 'M2 4h12M2 8h12M2 12h12',
+    colours: 'M8 2a6 6 0 1 0 0 12c1 0 1.5-.6 1.5-1.4 0-1.2-1-1.3-1-2.3 0-.8.7-1.3 1.6-1.3H12a2 2 0 0 0 2-2C14 4.6 11.3 2 8 2zM5 7.2h.01M7.5 4.8h.01M10.5 5.2h.01',
+    gain: 'M8 1.5v13M4.5 5L8 1.5 11.5 5M4.5 11L8 14.5 11.5 11',
+    span: 'M1.5 8h13M1.5 5v6M14.5 5v6M4 8l-2-2M4 8l-2 2M12 8l2-2M12 8l2 2',
+    overview: 'M1.5 10.5h13v3.5h-13zM3 12.2h1.5l1-1.2 1.2 2 1.3-1.5 1 .9H13',
+    copy: 'M5.5 5.5h8v8h-8zM2.5 10.5v-8h8',
+    up: 'M8 13V3M4 7l4-4 4 4',
+    down: 'M8 3v10M4 9l4 4 4-4',
+    remove: 'M4 4l8 8M12 4l-8 8',
+    share: 'M11 5a2 2 0 1 0 0-.01M5 10a2 2 0 1 0 0-.01M11 15a2 2 0 1 0 0-.01M6.8 9l2.4-2.8M6.8 11l2.4 2.8',
+    save: 'M3 2.5h8l2.5 2.5v8.5h-10.5zM5.5 2.5v3.5h5v-3.5M5.5 13.5v-4h5v4',
+    main: 'M1.5 3h13v9h-13zM6 14.5h4M8 12v2.5',
+    second: 'M1 4h9v7H1zM6 2h9v7h-1.5M4 13h3',
+    reset: 'M3 8a5 5 0 1 0 1.5-3.5M3 2.5V5h2.5',
+  };
+  function svgIcon(d, cls) {
+    return el('svg', { class: 'spp-ico' + (cls ? ' ' + cls : ''), viewBox: '0 0 16 16',
+                       'aria-hidden': 'true', html: '<path d="' + d + '" />' });
+  }
+  function toolMark(mode) {
+    const tk = BARRY.views && BARRY.views.toolkit;
+    const got = tk && tk.toolIcon ? tk.toolIcon(ADDON_TOOL[mode] || mode) : null;
+    return got || svgIcon(SET_ICON.main);
+  }
+  const panelIcon = (id) => svgIcon(PANEL_ICON[id] || SET_ICON.tf, 'spp-pico');
+  const iconBtn = (name, title, onclick, extra) => el('button', {
+    type: 'button', class: 'spp-ibtn' + (extra ? ' ' + extra : ''), title, 'aria-label': title,
+    onclick }, [svgIcon(SET_ICON[name])]);
+
   /* ---------- someone else's, and mine for them ----------
 
      "Add an option to copy someone else's preset. Make sure we are able to
@@ -785,8 +836,7 @@ BARRY.supportPanels = (function () {
                                    + 'preset says whose it is.');
     const res = await apiPost('/api/presets/' + PKIND, { preset: {
       id: id || ('sp-' + slug(who.email || who.name) + '-' + slug(label)),
-      // The owner in the name: the store treats two presets with one name
-      // as the same preset, and two people's "Default" are not.
+      // The owner in the name, so two people's presets read apart.
       name: who.name + ' — ' + label,
       label, owner: who.name, owner_email: who.email,
       addons: JSON.parse(JSON.stringify(all())),
@@ -839,6 +889,7 @@ BARRY.supportPanels = (function () {
     return true;
   }
 
+  /* The sharing bar: quiet, one line on a wide screen. */
   function shareBar(host) {
     const box = el('div', { class: 'spp-share' });
     const paintBar = () => {
@@ -858,9 +909,9 @@ BARRY.supportPanels = (function () {
       const fillInto = () => {
         into.innerHTML = '';
         const keys = pick ? Object.keys(pick.addons || {}).filter((k) => addon(k)) : [];
-        into.appendChild(el('option', { value: '', text: 'All its add-ons' }));
+        into.appendChild(el('option', { value: '', text: 'every add-on' }));
         for (const k of keys) {
-          into.appendChild(el('option', { value: k, text: 'Only ' + addon(k).name }));
+          into.appendChild(el('option', { value: k, text: 'only ' + addon(k).name }));
         }
         into.disabled = !pick;
       };
@@ -872,7 +923,7 @@ BARRY.supportPanels = (function () {
           go.disabled = !pick;
         },
       }, [el('option', { value: '', text: theirs.length
-        ? 'Copy from someone…' : 'Nobody else has shared theirs yet' })]
+        ? 'Copy someone’s…' : 'Nobody else has shared theirs yet' })]
         .concat(people.map((who) => el('optgroup', { label: who },
           byWho[who].map((p) => el('option', { value: p.id,
             text: (p.label || p.name) + (p.at ? '  ·  '
@@ -886,17 +937,17 @@ BARRY.supportPanels = (function () {
         } });
       fillInto();
       const nm = el('input', { type: 'text', class: 'spp-text spp-name',
-        placeholder: 'Name for mine', title: 'A name for a preset of your own '
+        placeholder: 'Name mine', title: 'A name for a preset of your own '
           + 'support panel preferences, as they are now' });
-      const keep = el('button', { type: 'button', class: 'btn ghost sm',
-        text: 'Save mine as a preset',
+      const keep = el('button', { type: 'button', class: 'btn ghost sm spp-keep',
+        title: 'Save mine as a preset anyone can copy',
         onclick: async () => {
           const label = nm.value.trim();
           if (!label) { nm.focus(); toast('Give it a name first.', null, 3000); return; }
           // "current" is the one kept up to date by itself.
           if (/^current$/i.test(label)) {
             nm.focus();
-            toast('\u201ccurrent\u201d is the one Jarvis keeps up to date for you; '
+            toast('“current” is the one Jarvis keeps up to date for you; '
                   + 'give this one another name.', null, 5000);
             return;
           }
@@ -905,14 +956,14 @@ BARRY.supportPanels = (function () {
             toast('Saved as “' + label + '”. Anyone can copy it now.', 'ok', 4000);
             paintBar();
           } catch (e) { toast(e.message, 'err', 6000); }
-        } });
+        } }, [svgIcon(SET_ICON.save), el('span', { text: 'Save mine' })]);
       box.appendChild(el('div', { class: 'spp-share-row' }, [
-        el('span', { class: 'spp-fl', text: 'Someone else’s' }), from, into, go,
-      ]));
-      box.appendChild(el('div', { class: 'spp-share-row' }, [
-        el('span', { class: 'spp-fl', text: 'Mine' }), nm, keep,
+        el('span', { class: 'spp-share-ico', title: 'Someone else’s' }, [svgIcon(SET_ICON.share)]),
+        from, into, go,
+        el('span', { class: 'spp-share-gap' }),
+        nm, keep,
       ].concat(mine.filter((p) => !p.auto && p.label !== 'current').map((p) =>
-        el('span', { class: 'spp-mine-chip' }, [
+        el('span', { class: 'spp-mine-chip', title: 'Shared by you' }, [
           el('span', { text: p.label || p.name }),
           el('button', { type: 'button', class: 'mini', text: '×',
             title: 'Stop sharing “' + (p.label || p.name) + '”',
@@ -934,20 +985,47 @@ BARRY.supportPanels = (function () {
   /* ---------- the Profile's section ---------- */
 
   const sel = (opts2, value, title, onPick) => el('select', {
-    class: 'spp-sel', title,
+    class: 'spp-sel', title, 'aria-label': title,
     onchange: (ev) => onPick(ev.target.value),
   }, opts2.map(([v, label]) => el('option', {
     value: v, text: label, selected: v === value ? 'selected' : null,
   })));
   const num = (value, title, onSet, o) => el('input', Object.assign({
     type: 'number', class: 'spp-num', value: value == null ? '' : String(value),
-    title, onchange: (ev) => onSet(ev.target.value === '' ? null : +ev.target.value),
+    title, 'aria-label': title,
+    onchange: (ev) => onSet(ev.target.value === '' ? null : +ev.target.value),
   }, o || {}));
-  const fld = (label, kids) => el('label', { class: 'spp-f' },
-    [el('span', { class: 'spp-fl', text: label })].concat(kids.filter(Boolean)));
+  /* A setting: its mark, its word kept for screen readers and tooltips
+     (and for anything that reads the field by name), then its control. */
+  const fld = (label, kids, icon) => el('label', { class: 'spp-f', title: label }, [
+    el('span', { class: 'spp-fl' }, [icon ? svgIcon(SET_ICON[icon]) : null,
+                                     el('span', { class: 'spp-fl-t', text: label })].filter(Boolean)),
+  ].concat(kids.filter(Boolean)));
 
-  /* One window's block: the add-on's second window ('aid') or its main
-     window ('main'). The same cards, tools and arrangement either way. */
+  /* The window drawn small: its rows and panels, each panel's mark in its
+     box. Pressing it opens the arrangement editor. */
+  function preview(c, onDraw) {
+    const lay = c.layout || shapeLayout(c.shape, c.panels.length);
+    let k = 0;
+    const win = el('button', { type: 'button', class: 'spp-win', title: c.layout
+      ? 'Drawn: ' + layoutWords(c.layout) + '. Press to change it.'
+      : 'Press to draw it: drag the sizes, type percentages, move panels between rows',
+      onclick: onDraw }, lay.rows.map((r) => {
+      const row = el('span', { class: 'spp-win-row' });
+      row.style.flexGrow = String(r.h);
+      for (const w of r.cols) {
+        const e = c.panels[k++] || {};
+        const cell = el('span', { class: 'spp-win-cell', title: nameOf(e.panel) }, [panelIcon(e.panel)]);
+        cell.style.flexGrow = String(w);
+        row.appendChild(cell);
+      }
+      return row;
+    }));
+    return win;
+  }
+
+  /* One window's editor: the add-on's second window ('aid') or its main
+     window ('main'). The same pieces either way. */
   function block(a, host, which) {
     const isMain = which === 'main';
     const c = isMain ? choiceMain(a.mode) : choice(a.mode);
@@ -1021,6 +1099,12 @@ BARRY.supportPanels = (function () {
     };
     // The main window's first panel is its traces, fixed in place.
     const fixed = (i) => isMain && i === 0;
+    const draw = () => drawEditor({ name: a.name, firstFixed: isMain,
+      title: 'Arrange ' + a.name + (isMain ? '’s main window' : '’s second window') },
+      c, (got) => {
+        if (got) set({ panels: got.panels, layout: got.layout });
+        else set({ layout: null });
+      });
 
     const panelCard = (e, i) => {
       const tf = isTF(e.panel);
@@ -1028,24 +1112,21 @@ BARRY.supportPanels = (function () {
       const filters = FILTERS.slice(0, -1).concat(savedFilters(), [FILTERS[FILTERS.length - 1]]);
       return el('div', { class: 'spp-panel' }, [
         el('div', { class: 'spp-ph' }, [
-          el('span', { class: 'spp-n', text: String(i + 1) }),
+          el('span', { class: 'spp-pmark', title: nameOf(e.panel) }, [panelIcon(e.panel)]),
           fixed(i)
             ? el('span', { class: 'spp-fixed', text: nameOf('traces'),
                 title: 'The main window’s first panel is always the traces: '
                      + 'the add-on reads its window, its keys and its marks from it' })
             : sel(catalog().map((p) => [p.id, p.name]), e.panel, 'What this panel shows',
                   (v) => keepField(i, { panel: v }, true)),
-          el('div', { class: 'spacer' }),
-          c.panels.length < MAX ? el('button', { class: 'mini', type: 'button',
-            text: 'Copy', title: 'Another ' + nameOf(e.panel) + ' with these settings, '
-              + 'right after this one', onclick: () => copyPanel(i) }) : null,
-          i > 0 && !fixed(i - 1) ? el('button', { class: 'mini', type: 'button', text: '↑',
-            title: 'Earlier in the window', onclick: () => swap(i, i - 1) }) : null,
-          i < c.panels.length - 1 && !fixed(i) ? el('button', { class: 'mini', type: 'button',
-            text: '↓', title: 'Later in the window', onclick: () => swap(i, i + 1) }) : null,
-          c.panels.length > 1 && !fixed(i) ? el('button', { class: 'mini', type: 'button', text: '×',
-            title: 'Take this ' + nameOf(e.panel) + ' out of the window',
-            onclick: () => dropPanel(i) }) : null,
+          el('span', { class: 'spacer' }),
+          c.panels.length < MAX ? iconBtn('copy', 'Another ' + nameOf(e.panel)
+            + ' with these settings, right after this one', () => copyPanel(i)) : null,
+          i > 0 && !fixed(i - 1) ? iconBtn('up', 'Earlier in the window', () => swap(i, i - 1)) : null,
+          i < c.panels.length - 1 && !fixed(i) ? iconBtn('down', 'Later in the window',
+            () => swap(i, i + 1)) : null,
+          c.panels.length > 1 && !fixed(i) ? iconBtn('remove', 'Take this '
+            + nameOf(e.panel) + ' out of the window', () => dropPanel(i), 'danger') : null,
         ].filter(Boolean)),
         el('div', { class: 'spp-pf' }, [
           fld('Channels', [
@@ -1053,9 +1134,9 @@ BARRY.supportPanels = (function () {
                 (v) => keepField(i, { channels: v }, true)),
             e.channels === 'custom' ? el('input', {
               type: 'text', class: 'spp-text', value: e.chText || '',
-              placeholder: 'e.g. 1-16, 33', title: 'Channel numbers, ranges allowed',
+              placeholder: '1-16, 33', title: 'Channel numbers, ranges allowed',
               onchange: (ev) => keepField(i, { chText: ev.target.value }) }) : null,
-          ]),
+          ], 'channels'),
           fld('Filter', [
             sel(filters, fil, isMain
                 ? 'The band-pass this panel reads with; the window’s filter is the '
@@ -1067,13 +1148,12 @@ BARRY.supportPanels = (function () {
               (v) => keepField(i, { hp: v }), { min: '0', step: '0.5', placeholder: 'HP' }) : null,
             fil === 'custom' ? num(e.lp, 'Low-pass, Hz (0 = open)',
               (v) => keepField(i, { lp: v }), { min: '0', step: '1', placeholder: 'LP' }) : null,
-            fil !== 'window' ? el('span', { class: 'spp-check' }, [
+            fil !== 'window' ? el('span', { class: 'spp-check', title: 'Take out 60 Hz mains' }, [
               el('input', { type: 'checkbox', checked: e.notch ? 'checked' : null,
-                title: 'Take out 60 Hz mains',
                 onchange: (ev) => keepField(i, { notch: ev.target.checked }) }),
-              el('span', { text: '60 Hz notch' }),
+              el('span', { text: '60 Hz' }),
             ]) : null,
-          ]),
+          ], 'filter'),
           tf ? fld('Band', [
             sel(BANDS, e.band || 'default', 'The frequencies it computes',
                 (v) => keepField(i, { band: v }, true)),
@@ -1081,114 +1161,176 @@ BARRY.supportPanels = (function () {
               (v) => keepField(i, { fmin: v }), { min: '0', step: '1', placeholder: 'from' }) : null,
             e.band === 'custom' ? num(e.fmax, 'Highest frequency, Hz',
               (v) => keepField(i, { fmax: v }), { min: '1', step: '1', placeholder: 'to' }) : null,
-          ]) : null,
+          ], 'band') : null,
           tf ? fld('Several channels', [
             sel(TFMODES, e.tfMode || 'default', 'One picture per channel, or their average',
                 (v) => keepField(i, { tfMode: v })),
-          ]) : null,
+          ], 'tf') : null,
           e.panel !== 'traces' ? fld('Colours', [
             sel([['default', 'As the add-on sets them']]
                   .concat(cmaps().map((m) => [m.id, m.name])),
                 e.cmap || 'default', 'The colour map',
                 (v) => keepField(i, { cmap: v })),
-          ]) : null,
+          ], 'colours') : null,
           e.panel === 'traces' ? fld('Gain', [
-            num(e.gain != null ? e.gain : 1, 'Times the window’s gain; 1 is the same',
+            num(e.gain != null ? e.gain : 1, 'Gain: times the window’s; 1 is the same',
                 (v) => keepField(i, { gain: v }), { min: '0.05', step: '0.25' }),
             el('span', { class: 'spp-unit', text: '×' }),
-          ]) : null,
+          ], 'gain') : null,
         ].filter(Boolean)),
       ]);
     };
 
     const n = c.panels.length;
     const shapes = shapesFor(n);
-    const addable = catalog();
     // The Arc moves its own window to each cue pair, so a span would not hold.
     const spanOk = !(isMain && a.mode === 'arcmode');
     return el('div', { class: 'spp-block ' + which + (c.open ? '' : ' off') }, [
       el('div', { class: 'spp-bhead' }, [
-        el('span', { class: 'spp-bname', text: isMain ? 'Main window'
-                                                      : 'Second window' }),
-        isMain ? el('span', { class: 'hint', text: c.custom
-          ? 'Laid out as chosen here when the add-on opens'
-          : 'As the add-on lays it out: the traces' })
-          : BARRY.ui.seg([['on', 'Opens'], ['off', 'Does not open']],
-              c.open ? 'on' : 'off', (v) => set({ open: v === 'on' })),
-        el('div', { class: 'spacer' }),
-        c.custom ? el('button', { class: 'linkish', type: 'button',
-          text: 'Back to its defaults',
-          onclick: () => { put(null); paint(host); } }) : null,
+        el('span', { class: 'spp-bname' }, [svgIcon(SET_ICON[isMain ? 'main' : 'second']),
+          el('span', { text: isMain ? 'Main window' : 'Second window' })]),
+        isMain ? el('span', { class: 'spp-bsay', text: c.custom ? 'as chosen here'
+                                                                 : 'as the add-on lays it out' })
+          : BARRY.ui.seg([['on', 'Opens'], ['off', 'Off']],
+              c.open ? 'on' : 'off', (v) => set({ open: v === 'on' }), { extra: 'sm' }),
+        el('span', { class: 'spacer' }),
+        c.custom ? el('button', { class: 'linkish spp-reset', type: 'button',
+          title: 'Back to the add-on’s own', onclick: () => { put(null); paint(host); } },
+          [svgIcon(SET_ICON.reset), el('span', { text: 'Defaults' })]) : null,
       ].filter(Boolean)),
-      c.open ? el('div', { class: 'spp-panels' }, c.panels.map(panelCard)) : null,
-      c.open ? el('div', { class: 'spp-tools' }, [
-        n < MAX ? el('select', {
-          class: 'spp-add', title: 'Add a panel to this window (up to ' + MAX
-            + '; the same kind more than once is fine)',
-          onchange: (ev) => { if (ev.target.value) addPanel(ev.target.value); },
-        }, [el('option', { value: '', text: '+ Add a panel' })]
-          .concat(addable.map((p) => el('option', { value: p.id, text: p.name }))))
-          : null,
-        spanOk ? fld('Span', [
-          num(c.span, isMain
-              ? 'Seconds the main window starts at. Empty: as the add-on '
-                + 'remembers it'
-              : 'Seconds the window shows. Empty: it follows the main window',
-              (v) => { c.span = v > 0 ? v : null;
-                       put(Object.assign({}, c)); },
-              { min: '0.05', step: '0.5', placeholder: isMain ? 'as kept' : 'follows' }),
-          el('span', { class: 'spp-unit', text: 's' }),
-        ]) : null,
-        !isMain ? fld('Overview strip', [
-          sel([['default', 'As it was last left'], ['on', 'Shown'], ['off', 'Hidden']],
-              c.overview == null ? 'default' : (c.overview ? 'on' : 'off'),
-              'The line through the whole recording, across the bottom of the '
-              + 'window', (v) => {
-                c.overview = v === 'default' ? null : v === 'on';
-                put(Object.assign({}, c));
-              }),
-        ]) : null,
-      ].filter(Boolean)) : null,
-      c.open ? el('div', { class: 'spp-tools spp-arr' }, [
-        el('span', { class: 'spp-fl', text: 'Arrangement' }),
-        c.layout
-          ? el('span', { class: 'spp-drawn', text: 'Drawn — ' + layoutWords(c.layout) })
-          : (shapes.length > 1 ? BARRY.ui.seg(shapes, c.shape,
-              (v) => set({ shape: v, layout: null }), { extra: 'sm' })
-            : el('span', { class: 'hint', text: n > 4 ? 'A grid, unless you draw one'
-                                                      : 'The whole window' })),
-        el('button', { class: 'btn sm spp-draw', type: 'button',
-          text: c.layout ? 'Edit the drawing…' : 'Draw it…',
-          title: 'A small copy of the window: drag the sizes, type percentages, '
-               + 'move panels between rows',
-          onclick: () => drawEditor({ name: a.name, firstFixed: isMain,
-              title: 'Arrange ' + a.name
-              + (isMain ? '’s main window' : '’s second window') },
-            c, (got) => {
-              if (got) {
-                // The traces stay first in a main window, wherever dragged.
-                if (isMain && got.panels[0].panel !== 'traces') {
-                  toast('The traces stay the first panel of the main window.',
-                        null, 4000);
-                  return;
-                }
-                set({ panels: got.panels, layout: got.layout });
-              } else set({ layout: null });
-            }) }),
+      c.open ? el('div', { class: 'spp-body' }, [
+        // Left: the window, drawn small, and its whole-window settings.
+        el('div', { class: 'spp-side' }, [
+          preview(c, draw),
+          el('div', { class: 'spp-arr' }, [
+            c.layout
+              ? el('span', { class: 'spp-drawn', text: 'Drawn' })
+              /* Each named arrangement as a tiny picture of itself, its name
+                 on hover: four words wrapped and overlapped in this column
+                 (2026-10-23). */
+              : (shapes.length > 1 ? el('div', { class: 'spp-shapes', role: 'group',
+                  'aria-label': 'Arrangement' }, shapes.map(([id, say]) => {
+                  const lay = shapeLayout(id, n);
+                  return el('button', { type: 'button', class: 'spp-shape' + (c.shape === id ? ' on' : ''),
+                    title: say, 'aria-label': say, 'aria-pressed': String(c.shape === id),
+                    onclick: () => { if (c.shape !== id) set({ shape: id, layout: null }); } },
+                    lay.rows.map((r) => {
+                      const rw = el('span', { class: 'spp-shape-row' });
+                      rw.style.flexGrow = String(r.h);
+                      for (const w of r.cols) {
+                        const cell = el('span', { class: 'spp-shape-cell' });
+                        cell.style.flexGrow = String(w);
+                        rw.appendChild(cell);
+                      }
+                      return rw;
+                    }));
+                })) : null),
+            el('button', { class: 'btn ghost sm spp-draw', type: 'button',
+              text: c.layout ? 'Edit drawing' : 'Draw it',
+              title: 'A small copy of the window: drag the sizes, type percentages, '
+                   + 'move panels between rows', onclick: draw }),
+          ].filter(Boolean)),
+          el('div', { class: 'spp-tools' }, [
+            spanOk ? fld('Span', [
+              num(c.span, isMain
+                  ? 'Span: seconds the main window starts at. Empty: as the add-on '
+                    + 'remembers it'
+                  : 'Span: seconds the window shows. Empty: it follows the main window',
+                  (v) => { c.span = v > 0 ? v : null;
+                           put(Object.assign({}, c)); },
+                  { min: '0.05', step: '0.5', placeholder: isMain ? 'kept' : 'follows' }),
+              el('span', { class: 'spp-unit', text: 's' }),
+            ], 'span') : null,
+            !isMain ? fld('Overview strip', [
+              sel([['default', 'as last left'], ['on', 'shown'], ['off', 'hidden']],
+                  c.overview == null ? 'default' : (c.overview ? 'on' : 'off'),
+                  'The line through the whole recording, across the bottom of the '
+                  + 'window', (v) => {
+                    c.overview = v === 'default' ? null : v === 'on';
+                    put(Object.assign({}, c));
+                  }),
+            ], 'overview') : null,
+          ].filter(Boolean)),
+        ]),
+        // Right: the panels, then the marks to add another.
+        el('div', { class: 'spp-main' }, [
+          el('div', { class: 'spp-panels' }, c.panels.map(panelCard)),
+          n < MAX ? el('div', { class: 'spp-addbar', role: 'group',
+            'aria-label': 'Add a panel to this window' }, [
+            el('span', { class: 'spp-add-t', text: 'Add' }),
+          ].concat(catalog().map((p) => el('button', {
+            type: 'button', class: 'spp-addp', 'data-add': p.id,
+            title: 'Add ' + p.name + ' (the same kind more than once is fine; up to ' + MAX + ')',
+            onclick: () => addPanel(p.id) }, [panelIcon(p.id), el('span', { text: p.name })])))) : null,
+        ].filter(Boolean)),
       ]) : null,
     ].filter(Boolean));
   }
 
+  /* Which add-on is open in the editor (this computer's convenience). */
+  const PICK_KEY = 'barry.spp.pick';
+  let picked = null;
+  function pickedMode() {
+    if (picked && addon(picked)) return picked;
+    try { picked = localStorage.getItem(PICK_KEY); } catch (e) { picked = null; }
+    if (!picked || !addon(picked)) picked = ADDONS[0].mode;
+    return picked;
+  }
+
+  /* One add-on's row: its own block per window. All are in the page; only
+     the picked one shows. */
   function row(a, host) {
-    return el('div', { class: 'spp-row' }, [
-      el('div', { class: 'spp-head' }, [el('strong', { text: a.name })]),
-      block(a, host, 'main'),
-      a.aid === false ? null : block(a, host, 'aid'),
-    ].filter(Boolean));
+    return el('div', { class: 'spp-row', 'data-mode': a.mode,
+                       hidden: a.mode === pickedMode() ? null : 'hidden' }, [
+      el('div', { class: 'spp-head' }, [
+        el('span', { class: 'spp-tmark', 'data-tool': ADDON_TOOL[a.mode] || a.mode }, [toolMark(a.mode)]),
+        el('strong', { text: a.name }),
+      ]),
+      el('div', { class: 'spp-blocks' }, [
+        block(a, host, 'main'),
+        a.aid === false ? null : block(a, host, 'aid'),
+      ].filter(Boolean)),
+    ]);
+  }
+
+  /* The add-ons as tiles in their ToolKit colours: the mark, the name, and
+     what each window holds, as panel marks. */
+  function tiles(host) {
+    const box = el('div', { class: 'spp-tiles', role: 'tablist', 'aria-label': 'Add-ons' });
+    for (const a of ADDONS) {
+      const m = choiceMain(a.mode), s = a.aid === false ? null : choice(a.mode);
+      const custom = m.custom || (s && s.custom);
+      const on = a.mode === pickedMode();
+      const marks = (c) => el('span', { class: 'spp-tile-ps' },
+        c.panels.slice(0, 6).map((e) => panelIcon(e.panel))
+          .concat(c.panels.length > 6 ? [el('span', { text: '+' + (c.panels.length - 6) })] : []));
+      box.appendChild(el('button', {
+        type: 'button', role: 'tab', class: 'spp-tile' + (on ? ' on' : '') + (custom ? ' custom' : ''),
+        'aria-selected': String(on), 'data-tool': ADDON_TOOL[a.mode] || a.mode, 'data-mode': a.mode,
+        title: a.name + (custom ? ' · set up by you' : ' · the add-on’s own'),
+        onclick: () => {
+          picked = a.mode;
+          try { localStorage.setItem(PICK_KEY, a.mode); } catch (e) { /* this view only */ }
+          paint(host);
+        },
+      }, [
+        el('span', { class: 'spp-tile-head' }, [el('span', { class: 'spp-tmark' }, [toolMark(a.mode)]),
+          el('span', { class: 'spp-tile-name', text: a.name }),
+          custom ? el('span', { class: 'spp-tile-dot', title: 'Set up by you' }) : null].filter(Boolean)),
+        el('span', { class: 'spp-tile-wins' }, [
+          el('span', { class: 'spp-tile-win', title: 'Main window' }, [svgIcon(SET_ICON.main), marks(m)]),
+          s ? el('span', { class: 'spp-tile-win' + (s.open ? '' : ' off'), title: s.open
+            ? 'Second window' : 'No second window' }, [svgIcon(SET_ICON.second), s.open ? marks(s)
+              : el('span', { class: 'spp-tile-off', text: 'off' })]) : null,
+        ].filter(Boolean)),
+      ]));
+    }
+    return box;
   }
 
   function paint(host) {
     host.innerHTML = '';
+    host.appendChild(tiles(host));
     for (const a of ADDONS) host.appendChild(row(a, host));
   }
 
@@ -1196,13 +1338,11 @@ BARRY.supportPanels = (function () {
     const list = el('div', { class: 'spp-list' });
     const wrap = el('details', { class: 'spp' }, [
       el('summary', { class: 'section-label', text: 'Support panel preferences' }),
-      el('p', { class: 'hint', text: 'For each add-on, its main window and the '
-          + 'second window it opens: which panels each holds (up to ' + MAX
-          + ', the same kind more than once if you like), how each one starts '
-          + '-- channels, filter, band, colours and gain -- the span, and how '
-          + 'they are arranged, to the percent. Saved as you change it; it '
-          + 'applies the next time the add-on opens. Yours are shared as a '
-          + 'preset anyone can copy, and you can copy anyone’s.' }),
+      el('p', { class: 'hint spp-lede', title: 'Up to ' + MAX + ' panels a window, the same kind '
+          + 'more than once if you like; each with its channels, filter, band, colours and gain; '
+          + 'the span; and the arrangement, to the percent. Saved as you change it, used the next '
+          + 'time the add-on opens. Yours are shared as a preset anyone can copy.',
+        text: 'What each add-on’s windows open with. Pick an add-on; changes save as you go.' }),
       shareBar(list),
       list,
     ]);

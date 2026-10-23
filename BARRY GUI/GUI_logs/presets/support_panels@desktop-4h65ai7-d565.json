@@ -8,12 +8,12 @@
       ],
       "sp-sakhava1-uvm-edu": [
         "set",
-        "2026-10-22T16:20:16.773459+00:00"
+        "2026-10-23T13:14:59.110729+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-22T16:20:16.773459+00:00",
+    "at": "2026-10-23T13:14:59.110729+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -61,6 +61,24 @@
     },
     {
       "addons": {
+        "curate": {
+          "layout": null,
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "panel": "csd"
+            },
+            {
+              "panel": "traces"
+            },
+            {
+              "panel": "traces"
+            }
+          ],
+          "shape": "top1",
+          "span": null
+        },
         "panning": {
           "open": true,
           "panels": [
@@ -82,7 +100,7 @@
           "shape": "linked"
         }
       },
-      "at": "2026-10-22T16:20:16.760Z",
+      "at": "2026-10-23T13:14:58.515Z",
       "auto": true,
       "id": "sp-sakhava1-uvm-edu",
       "label": "current",
@@ -90,9 +108,9 @@
       "owner": "Shahriar Tafti",
       "owner_email": "sakhava1@uvm.edu",
       "saved": {
-        "app_version": "2026.10.22.3",
-        "at": "2026-10-22T12:20:16-04:00",
-        "commit": "724bccbc",
+        "app_version": "2026.10.22.5",
+        "at": "2026-10-23T09:14:58-04:00",
+        "commit": "b13e5f6c",
         "email": "sakhava1@uvm.edu",
         "host": "DESKTOP-4H65AI7",
         "machine": "Bluebarry",

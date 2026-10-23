@@ -3437,59 +3437,151 @@ select { color-scheme: inherit; }
   gap: var(--sp-10); flex-wrap: wrap; margin-top: var(--sp-12);
   padding-top: var(--sp-10); border-top: 1px solid var(--line-soft); }
 .handoff-note { margin: 0; }
-/* Profile › Support panel preferences (supportpanels.js). */
+/* Profile › Support panel preferences (supportpanels.js), laid out again
+   2026-10-23: "less words, more icons, more nicely arranged". The add-ons
+   are tiles in their ToolKit colours; the picked one opens below, each
+   window as the window drawn small beside its panels. Controls are the
+   compact size everywhere -- `.modal input`'s full-width text field was
+   what blew the number boxes up and pushed their units onto a line of
+   their own -- hence the `.spp` scope on every control rule. */
 .spp { margin-top: var(--sp-16); border-top: 1px solid var(--line-soft);
   padding-top: var(--sp-10); }
 .spp > summary { cursor: pointer; list-style: revert; }
-.spp-list { display: flex; flex-direction: column; gap: var(--sp-10);
-  margin-top: var(--sp-8); }
-.spp-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px;
-  border: 1px solid var(--line-soft); border-radius: var(--radius-card, 10px);
-  background: var(--bg-2); }
-.spp-row.off { opacity: .75; }
-.spp-head { display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap; }
-.spp-tools { display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap; }
-/* Two windows per add-on, its main one first (2026-10-22). */
-.spp-row > .spp-head strong { font-size: var(--fs-125); }
-.spp-block { display: flex; flex-direction: column; gap: 6px; padding: 6px 0 2px;
-  border-top: 1px dashed var(--line-soft); }
-.spp-block.off > :not(.spp-bhead) { display: none; }
-.spp-block.off .spp-bname { color: var(--text-3); }
-.spp-bhead { display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap; }
-.spp-bname { font-weight: 600; font-size: var(--fs-115); }
-.spp-fixed { font-size: var(--fs-115); padding: 2px 8px; border-radius: var(--r-pill);
-  background: var(--bg-2); border: 1px solid var(--line-soft); color: var(--text-2); }
-/* Someone else's, and mine for them. */
-.spp-share { display: flex; flex-direction: column; gap: 6px; margin: var(--sp-8) 0;
-  padding: 8px 10px; border-radius: var(--radius-card, 10px);
-  border: 1px solid var(--accent-line, var(--line)); background: var(--accent-soft); }
-.spp-share-row { display: flex; align-items: center; gap: var(--sp-8); flex-wrap: wrap; }
-.spp-share .spp-from { min-width: 220px; max-width: 100%; }
-.spp-share .spp-name { width: 160px; }
+.spp-lede { margin: 6px 0 0; }
+.spp-ico { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor;
+  stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.spp-list { display: flex; flex-direction: column; gap: var(--sp-12); margin-top: var(--sp-10); }
+
+/* Controls, compact and the same everywhere in the section. */
+.spp select, .spp .spp-sel, .spp input.spp-num, .spp input.spp-text {
+  width: auto; min-width: 0; height: var(--h-control-sm, 26px); padding: 0 8px;
+  font-family: inherit; font-size: var(--fs-115); border-radius: var(--radius-inner, 6px);
+  border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.spp input.spp-num { width: 64px; text-align: right; font-variant-numeric: tabular-nums;
+  padding: 0 6px; }
+.spp input.spp-text { width: 120px; }
+.spp input.spp-num::placeholder, .spp input.spp-text::placeholder { color: var(--text-3); }
+
+/* The sharing bar: quiet, one line on a wide screen. */
+.spp-share { margin: var(--sp-10) 0 0; padding: 6px 8px; border-radius: var(--radius-card, 10px);
+  border: 1px solid var(--line-soft); background: var(--bg-2); }
+.spp-share-row { display: flex; align-items: center; gap: 6px var(--sp-8); flex-wrap: wrap; }
+.spp-share-ico { color: var(--text-3); display: inline-flex; }
+.spp-share-gap { flex: 1 1 12px; }
+.spp-share .spp-from { min-width: 200px; max-width: 100%; }
+.spp-share .spp-name { width: 130px; }
+.spp-keep { display: inline-flex; align-items: center; gap: 5px; }
 .spp-mine-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 4px 1px 8px;
   border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--bg);
   font-size: var(--fs-115); }
-.spp-add { font: inherit; font-size: var(--fs-115); }
-/* One card per panel: what it shows and its moves on top, how it starts
-   underneath, every field labelled, wrapping rather than cut. */
+
+/* The add-ons, as tiles in their tool's colour. */
+.spp-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--sp-8); }
+.spp-tile { --tc-on: var(--tc, var(--accent)); display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 10px; text-align: left; font: inherit; color: var(--text-2); cursor: pointer;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-card, 10px);
+  background: var(--bg-2); box-shadow: inset 3px 0 0 color-mix(in srgb, var(--tc-on) 55%, transparent);
+  transition: border-color var(--dur-2, .16s), background var(--dur-2, .16s), transform var(--dur-1, .09s); }
+.spp-tile:hover { border-color: color-mix(in srgb, var(--tc-on) 50%, transparent); color: var(--text); }
+.spp-tile:active { transform: scale(.98); }
+.spp-tile.on { color: var(--text); border-color: var(--tc-on);
+  background: color-mix(in srgb, var(--tc-on) 12%, var(--bg-2));
+  box-shadow: inset 3px 0 0 var(--tc-on); }
+.spp-tile-head { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.spp-tile-name { font-weight: 600; font-size: var(--fs-12); overflow-wrap: anywhere; }
+.spp-tile-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tc-on);
+  margin-left: auto; flex: none; }
+.spp-tmark { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none;
+  border-radius: 6px; background: color-mix(in srgb, var(--tc, var(--accent)) 16%, transparent);
+  color: var(--tc, var(--accent)); }
+.spp-tmark .tk-ico, .spp-tmark .spp-ico { color: inherit; width: 15px; height: 15px; }
+.spp-tile-wins { display: flex; flex-direction: column; gap: 3px; }
+.spp-tile-win { display: flex; align-items: center; gap: 6px; color: var(--text-3); min-width: 0; }
+.spp-tile-win.off { opacity: .6; }
+.spp-tile-ps { display: inline-flex; flex-wrap: wrap; gap: 3px; color: var(--text-2);
+  font-size: var(--fs-11); align-items: center; }
+.spp-tile-ps .spp-ico { width: 13px; height: 13px; }
+.spp-tile-off { font-size: var(--fs-11); }
+
+/* The picked add-on: its name, then its two windows. */
+.spp-row { display: flex; flex-direction: column; gap: var(--sp-10); padding: 10px 12px;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-card, 10px); background: var(--bg-2); }
+.spp-row[hidden] { display: none; }
+.spp-head { display: flex; align-items: center; gap: 8px; }
+.spp-row > .spp-head strong { font-size: var(--fs-125); }
+.spp-blocks { display: flex; flex-direction: column; gap: var(--sp-12); }
+.spp-block { display: flex; flex-direction: column; gap: 8px; }
+.spp-block + .spp-block { border-top: 1px solid var(--line-soft); padding-top: var(--sp-12); }
+.spp-block.off > :not(.spp-bhead) { display: none; }
+.spp-bhead { display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap; }
+.spp-bname { display: inline-flex; align-items: center; gap: 6px; font-weight: 600;
+  font-size: var(--fs-12); color: var(--text); }
+.spp-bsay { font-size: var(--fs-115); color: var(--text-3); }
+.spp-block.off .spp-bname { color: var(--text-3); }
+.spp-reset { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-115); }
+
+/* A window's editor: the window drawn small (and its whole-window settings)
+   beside its panels; stacked when the profile is narrow. */
+.spp-body { display: grid; grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+  gap: var(--sp-12); align-items: start; }
+@media (max-width: 720px) { .spp-body { grid-template-columns: 1fr; } }
+.spp-side { display: flex; flex-direction: column; gap: 8px; }
+.spp-win { display: flex; flex-direction: column; gap: 3px; width: 100%; aspect-ratio: 4 / 3;
+  padding: 4px; cursor: pointer; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg); transition: border-color var(--dur-2, .16s); }
+.spp-win:hover { border-color: var(--accent-line); }
+.spp-win-row { display: flex; gap: 3px; flex: 1 1 0; min-height: 0; }
+.spp-win-cell { flex: 1 1 0; min-width: 0; display: grid; place-items: center;
+  border-radius: 4px; color: var(--text-2);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-2)); }
+.spp-arr { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.spp-drawn { font-size: var(--fs-115); color: var(--text-2); }
+.spp-shapes { display: flex; gap: 4px; flex-wrap: wrap; }
+.spp-shape { display: flex; flex-direction: column; gap: 2px; width: 30px; height: 24px; padding: 3px;
+  cursor: pointer; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); }
+.spp-shape:hover { border-color: var(--accent-line); }
+.spp-shape.on { border-color: var(--accent); background: var(--accent-soft); }
+.spp-shape-row { display: flex; gap: 2px; flex: 1 1 0; min-height: 0; }
+.spp-shape-cell { flex: 1 1 0; border-radius: 1.5px; background: var(--text-3); }
+.spp-shape.on .spp-shape-cell { background: var(--accent); }
+.spp-tools { display: flex; flex-direction: column; gap: 6px; }
+.spp-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
+/* A panel: its mark and kind, its moves as icon buttons, then its settings
+   as marked controls in one wrapping line. */
 .spp-panels { display: flex; flex-direction: column; gap: 6px; }
 .spp-panel { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px;
-  border: 1px solid var(--line-soft); border-radius: var(--radius-inner, 6px);
-  background: var(--bg); }
-.spp-ph { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.spp-n { min-width: 20px; height: 20px; display: inline-grid; place-items: center;
-  border-radius: var(--r-pill); background: var(--accent-soft); color: var(--text);
-  font-size: var(--fs-11); font-variant-numeric: tabular-nums; }
-.spp-pf { display: flex; gap: 6px var(--sp-12); flex-wrap: wrap; align-items: center; }
-.spp-f { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.spp-fl { font-size: var(--fs-11); color: var(--muted); text-transform: uppercase;
-  letter-spacing: .06em; }
-.spp-sel, .spp-num, .spp-text { font: inherit; font-size: var(--fs-115); }
-.spp-num { width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
-.spp-text { width: 120px; }
-.spp-check { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-115); }
-.spp-unit { color: var(--muted); font-size: var(--fs-115); }
-.spp-drawn { font-size: var(--fs-115); color: var(--text); }
+  border: 1px solid var(--line-soft); border-radius: 8px; background: var(--bg); }
+.spp-ph { display: flex; align-items: center; gap: 6px; }
+.spp-pmark { display: inline-grid; place-items: center; width: 24px; height: 24px; flex: none;
+  border-radius: 6px; color: var(--text); background: var(--bg-3); }
+.spp-fixed { font-size: var(--fs-115); padding: 3px 9px; border-radius: var(--r-pill);
+  background: var(--bg-2); border: 1px solid var(--line-soft); color: var(--text-2); }
+.spp-ibtn { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0;
+  border-radius: 6px; border: 1px solid transparent; background: transparent;
+  color: var(--text-3); cursor: pointer; }
+.spp-ibtn:hover { color: var(--text); background: var(--bg-3); border-color: var(--line-soft); }
+.spp-ibtn.danger:hover { color: var(--err); }
+.spp-pf { display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; padding-left: 30px; }
+.spp-f { display: inline-flex; align-items: center; gap: 5px; }
+.spp-fl { display: inline-flex; color: var(--text-3); }
+.spp-fl-t { position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; }
+.spp-check { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-115);
+  color: var(--text-2); }
+.spp-unit { color: var(--text-3); font-size: var(--fs-115); }
+
+/* Adding a panel: a mark per kind, its name beside it. */
+.spp-addbar { display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; }
+.spp-add-t { font-size: var(--fs-11); color: var(--text-3); text-transform: uppercase;
+  letter-spacing: .06em; margin-right: 2px; }
+.spp-addp { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px;
+  font: inherit; font-size: var(--fs-115); color: var(--text-2); cursor: pointer;
+  border: 1px dashed var(--line); border-radius: var(--r-pill); background: transparent; }
+.spp-addp:hover { color: var(--text); border-style: solid; border-color: var(--accent-line);
+  background: var(--accent-soft); }
+.spp-addp .spp-ico { width: 13px; height: 13px; }
 /* The arrangement editor: the support window, drawn small. */
 .spl .mb { display: flex; flex-direction: column; gap: var(--sp-10); }
 .spl-quick { display: flex; gap: 6px; flex-wrap: wrap; }
