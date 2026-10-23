@@ -933,6 +933,10 @@ BARRY.ui = (function () {
     const chosen = () => vs.find(match) || null;
     const btn = el('button', { type: 'button', class: 'vbtn',
                                'aria-haspopup': 'dialog' });
+    /* `disabled` closes the whole choice when it is a string (the reason);
+       a function is a reason per version, as versionTree takes it, and
+       leaves the choice open (2026-10-22, Lock greys Junction's). */
+    const closed = typeof opt.disabled === 'string' ? opt.disabled : null;
     function face() {
       const v = chosen();
       btn.innerHTML = '';
@@ -951,14 +955,14 @@ BARRY.ui = (function () {
         text: vs.length > 1 ? vs.length + ' versions' : 'its only version' }));
       kids.push(el('span', { class: 'vbtn-caret', 'aria-hidden': 'true', text: '▾' }));
       kids.filter(Boolean).forEach((k) => btn.appendChild(k));
-      btn.title = (opt.disabled ? opt.disabled + '\n' : '')
+      btn.title = (closed ? closed + '\n' : '')
         + 'Every version of this, as a tree: who made each, when, what '
         + 'processed it, and its note. Click to see it'
-        + (opt.disabled || opt.readonly ? '.' : ' and choose.');
+        + (closed || opt.readonly ? '.' : ' and choose.');
     }
     btn.onclick = () => versionPop(Object.assign({}, opt, {
       value: cur,
-      readonly: !!(opt.readonly || opt.disabled),
+      readonly: !!(opt.readonly || closed),
       onpick: (v) => {
         cur = v ? idOf(v) : null;
         face();
@@ -986,7 +990,8 @@ BARRY.ui = (function () {
       ]),
       el('div', { class: 'mb' }, [
         opt.sub ? el('p', { class: 'hint', text: opt.sub }) : null,
-        opt.disabled ? el('p', { class: 'hint warn-line', text: opt.disabled }) : null,
+        typeof opt.disabled === 'string'
+          ? el('p', { class: 'hint warn-line', text: opt.disabled }) : null,
         el('p', { class: 'hint vpop-how', text: opt.readonly
           ? 'Newest at the top; a branch sits in a lane of its own, joined to '
             + 'the version it was worked from.'

@@ -57,17 +57,16 @@ async function until(fn, ms = 30000) {
   await until(() => W.eval('BARRY'));
   const ev = (c) => W.eval(c);
 
-  // A reachable recording.
-  let path = null;
-  const reg = await (await fetch('/api/registry')).json();
-  outer: for (const p of (reg.tree || [])) {
-    for (const m of p.mice) {
-      for (const s of m.sessions) {
-        if ((s.here || []).length) { path = s.here[0]; break outer; }
-      }
-    }
-  }
-  if (!path) { say('bad', 'no reachable recording'); return; }
+  /* The demo recording, which is checked in and the same everywhere.
+     This took the registry's first reachable recording, which is whatever
+     the machine happens to list first: on 2026-10-22 that became a
+     128-channel KCNT1 day, whose every-8 stack outlasted the waits below,
+     so the page timed out on one machine and passed on others. */
+  const path = 'demo:long-session';
+  // Its view is answered here, not written: this page moves the window.
+  const realApi = W.api;
+  W.api = async (pth, opts) => (pth === '/api/session/state'
+    ? { ok: true } : realApi(pth, opts));
   say('note', '  ' + path.slice(-52));
 
   ev("setView('xplore')");

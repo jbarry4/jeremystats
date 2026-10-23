@@ -345,6 +345,26 @@ out = braces.propose([{"start": 50.010, "label_id": "flag"}],
                      one_peak, 100, align_ids={"spike"})
 check("a flagged candidate is not aligned either", len(out["rows"]), 0)
 
+# LOCK (2026-10-22): a stamp Braces already placed is held where it is, and
+# owns its peak -- a free stamp beside it cannot be moved onto that event.
+evs = [{"start": 1.000, "label_id": "spike"},   # Braces placed it: held
+       {"start": 1.050, "label_id": "spike"},   # free, nearest peak is 1.004
+       {"start": 3.000, "label_id": "spike"}]   # free, its own peak
+pk = {"times": [1.004, 1.056, 3.010], "amps": [9.0, 4.0, 6.0],
+      "cand_dist_ms": 12.0}
+out = braces.propose(evs, pk, 100, align_ids={"spike"}, pinned={0})
+by_i = {r["i"]: r for r in out["rows"]}
+check("a locked stamp still gets a row", 0 in by_i, True)
+check("...that does not move", (by_i[0]["now"], by_i[0]["flag"]),
+      (1.000, None))
+check("...marked as Braces'", by_i[0].get("locked"), "braces")
+check("its peak is not given to the stamp beside it",
+      round(by_i[1]["now"], 3), 1.056)
+check("the others align as before", round(by_i[2]["now"], 3), 3.010)
+check("the locked one is counted apart", (out["n"], out["n_locked"]), (2, 1))
+check("rows stay in time order",
+      [r["i"] for r in out["rows"]], [0, 1, 2])
+
 print("\n" + "=" * 68)
 if FAIL:
     print("%d FAILED: %s" % (len(FAIL), ", ".join(FAIL)))

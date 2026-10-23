@@ -1963,6 +1963,18 @@ const MODES = {
     keys: 'n p or \u2190 \u2192 step \u00b7 Enter moves it \u00b7 k leaves it '
         + '\u00b7 g garbage \u00b7 [ ] nudge 1 ms \u00b7 u undo \u00b7 l the list',
   },
+  /* Lock's review is Braces' review on a pooled set (braces.js
+     `makeBraces`, 2026-10-22), with one more thing worth the banner: the
+     stamps Braces placed are drawn in their own colour and do not move. */
+  lock: {
+    name: 'Lock',
+    what: 'Every stamp drawn where it was and where it goes '
+        + '\u00b7 Braces\u2019 stamps are locked (blue) and stay put '
+        + '\u00b7 n / p stop at the ones needing a decision (\u25bc) '
+        + '\u00b7 [ and ] to move one a millisecond',
+    keys: 'n p or \u2190 \u2192 step \u00b7 Enter moves it \u00b7 k leaves it '
+        + '\u00b7 g garbage \u00b7 [ ] nudge 1 ms \u00b7 u undo \u00b7 l the list',
+  },
   arcconfirm: {
     name: 'Confirm cue pairs',
     /* Worth a `what`: the drawing shows pulses that were DROPPED as well
@@ -2450,6 +2462,25 @@ BARRY.profile = (function () {
       creating = false;
       paintMode();
       paintKnown();
+      markClean();
+    };
+
+    /* Unsaved changes ask before the form goes (2026-10-23: "your changes
+       are unsaved, are you sure you want to close?"). What the form held
+       when it was opened or last filled is the baseline. */
+    let clean = null;
+    const formNow = () => JSON.stringify(Object.keys(f).sort()
+      .map((k) => [k, f[k] && f[k].value]));
+    function markClean() { clean = formNow(); }
+    const askClose = async () => {
+      if (clean !== null && formNow() !== clean && BARRY.confirm) {
+        const ok = await BARRY.confirm('Close without saving?',
+          'Your changes to this profile are not saved. Support panel '
+          + 'preferences save as you go, so those are kept either way.',
+          'Close without saving');
+        if (!ok) return;
+      }
+      closeModal();
     };
 
     /* Start a new one. Clears the form rather than inheriting whoever was
@@ -2459,6 +2490,8 @@ BARRY.profile = (function () {
       for (const k of ['name', 'email', 'role', 'initials']) {
         if (f[k]) f[k].value = '';
       }
+      // An empty new form is nothing unsaved yet.
+      markClean();
       editing = null;
       creating = true;
       paintMode();
@@ -3025,7 +3058,7 @@ BARRY.profile = (function () {
         el('h3', { text: 'Profile' }),
         el('span', { class: 'sub', text: 'who this work is credited to' }),
         el('div', { class: 'spacer' }),
-        el('button', { class: 'close-x', onclick: closeModal,
+        el('button', { class: 'close-x', onclick: askClose, 'aria-label': 'Close',
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
       ]),
       el('div', { class: 'mb' }, [
@@ -3051,11 +3084,12 @@ BARRY.profile = (function () {
         }) : null,
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn ghost', text: 'Cancel',
-                       onclick: closeModal }),
+                       onclick: askClose }),
         save,
       ].filter(Boolean)),
     ]));
     paintMode();
+    markClean();
     setTimeout(() => { try { f.name.focus(); } catch (e) {} }, 0);
     /* After the modal is up, so the chips land in a box that exists. */
     people().then(paintKnown);
@@ -4452,5 +4486,11 @@ try {
   if (window.top !== window
       && /\/_dev\//.test(window.top.location.pathname)) {
     BARRY.testNoAutobank = true;
+    /* And it starts from the defaults, not from how this computer's
+       Xplorefinder was last left (a folded channel column, a hidden
+       overview strip, a fade level): a check page asserts on what it
+       sets up, and a preference it did not set made chan64 and curmarks
+       fail on one machine only (2026-10-22). */
+    BARRY.inCheckPage = true;
   }
 } catch (e) { /* a cross-origin top is not a check page */ }

@@ -4375,6 +4375,9 @@ BARRY.views.toolkit = (function () {
     },
     /* The bundle the open tool is being worked in (see `bundleOf`). */
     via: () => (bundleOf(q.tool) || {}).id || null,
+    /* A tool's own mark (an svg.tk-ico, or null), for anywhere else that
+       names a tool: Profile's support panel preferences wear them. */
+    toolIcon: (id) => toolIcon(id),
     /* Which tools are steps of a bundle, and of which. `_dev/arc.html`
        checks the bundle renders its steps and keeps them out of the flat
        list; nothing else should need this. */

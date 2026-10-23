@@ -31,13 +31,9 @@
    ========================================================================== */
 'use strict';
 
-/* LOCK IS THE SAME PANEL, POINTED AT A POOLED SET (2026-10-14)
-   The Confluence's third step lines up Incisor's and Doppler's events
-   pooled into one set, and it is this panel with a different `cfg`: the
-   kind of set it offers, the words, and where a set "of its own" comes
-   from. One panel rather than a copy, so a fix to the wait or the commit
-   reaches both (constitution §6c). Both look through the IED band: a pooled
-   set holds IEDs, and the backend reads the same preset for it. */
+/* ONE PANEL, BUILT FROM A `cfg` (2026-10-14). Lock was built from it too,
+   until 2026-10-22, when it became a copy of Braces instead (braces.js
+   `makeBraces`): "the set up should be very similar to Braces". */
 function makeAligner(cfg) {
   const q = {
     entry: null,          // the bank entry being aligned
@@ -840,25 +836,6 @@ BARRY.eye = makeAligner({
   bandWhy: '',
 });
 
-BARRY.lock = makeAligner({
-  tool: 'lock', title: 'Lock', step: 'step 3 of The Confluence',
-  type: 'pooled',
-  blurb: 'Put every pooled spike \u2014 Incisor\u2019s and Doppler\u2019s, '
-       + 'sorted in Panning \u2014 on the same part of itself, so Root '
-       + 'Canal measures each one at the same instant.',
-  mine: {
-    id: 'junction', label: 'From Junction', chip: 'Junction',
-    test: (p) => /^The Confluence/.test(p),
-    empty: 'No pooled set has been sorted yet. Pool a recording in Junction, '
-         + 'sort it in Panning and bank the results \u2014 an unsorted pool '
-         + 'has nothing worth moving yet.',
-  },
-  otherLabel: 'Other pooled sets',
-  order: ['Spike', 'spike', 'Flag', 'flag', 'Garbage', 'garbage'],
-  good: /spike/i,
-  nextOne: 'two events in a pool can be a few milliseconds apart, which is '
-         + 'what Panning\u2019s merge is for.',
-  bandWhy: ': a pooled set holds discharges as well as dentate spikes, and '
-         + 'a dentate spike keeps its shape in this band where a discharge '
-         + 'would lose its slow wave in the other',
-});
+/* Lock was a second `makeAligner` here until 2026-10-22. It is now Braces
+   built a second time (braces.js `makeBraces`), so it has Braces' picker,
+   Many, Alignments and review, and keeps the stamps Braces placed. */

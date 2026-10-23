@@ -15,6 +15,47 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.22.5 - Lock is Braces for pooled sets, takes only what Panning sorted, and keeps Braces' stamps locked
+
+**Restart Jarvis**: `backend/app.py`, `backend/braces.py` and
+`backend/bracesset.py` changed.
+
+### Lock
+
+- **It is Braces now, on pooled sets.** It was Eye's panel. It now has
+  everything Braces has: One and Many, the Alignments list, alignments of
+  the set you picked, the plan, the channel grid, the proposal, the bench
+  and the review on the recording. It still offers Slope as a third
+  measure, and it still aligns through the IED band.
+- **Panning's results only.** A pooled set nobody has sorted in Panning is
+  not offered, and the list says how many were left out. In the version
+  tree, Junction's own versions are greyed with the reason.
+- **Braces' stamps stay where Braces put them.** A pooled event counts as
+  Braces' when its time is Incisor's stamp and that stamp is in the aligned
+  dentate-spike version the pool was made from. Each set says whether
+  Braces has been run on it (**Braces ✓ 431**, or **no Braces**). The
+  *Braces' stamps stay locked* switch turns on by itself wherever there are
+  any, and you can turn it off. Locked stamps are read around but never
+  moved, and no other stamp can take their peak.
+- **Many has a lock on every row**, between the version and the bad
+  contacts. A set where Braces placed every spike has nothing to move, so
+  it is not sent.
+- **In the review, a locked stamp is drawn in blue and won't move.** Drag
+  it, nudge it, or call it garbage, and it says so: *No second-guessing.
+  Follow the protocol as well as you can, then move on. If the result isn't
+  up to par, the fix is a better protocol, not a nudge by hand.* The server
+  refuses the same move with the same words.
+
+### Braces and Lock: picking a set
+
+- **Recording, then set, then version**, as three tiles in a row instead of
+  a list of radio buttons. Pick the recording, then pick the set from a
+  menu of cards showing what each holds and whether it was aligned before.
+  The version opens the whole version tree.
+- Braces' Alignments list no longer shows Lock's alignments.
+
+---
+
 ## 2026.10.22.4 - Tab 9's rings are tested the way tab 8's light is: each rat's change flipped every way, with the trials' shuffle a toggle away
 
 Shahriar asked why tab 8's light for comparison 1 (gamma) is green when
@@ -59,6 +100,48 @@ They answered different questions.
   - the rat null ranking its own real pattern;
   - the review site copying the toggle's files;
   - the checks.
+
+### Fixed: three things tab 9's legends said wrong
+
+A review of the deck for Joe (below) caught these. They are in the PDFs.
+
+- **Trials per session:** "16 trials per session" became "12–16" (the
+  real range, from tab 8's rat-days).
+- **Why a pair was followed up:** "because it moved most in its comparison"
+  was not how pairs were picked. The legend now says each pair had its own
+  P < 0.05 (uncorrected; no pair survives correction), and that the
+  measures shown are the ones whose t-test passed. They are leads, chosen
+  by that test.
+- **PAC:** "each rat's two windows joined" was wrong for PAC, which is
+  dots only.
+
+### Added: the figures as a Morph deck for Joe
+
+- `Joe figures explained 2026-10-22.pptx` (99 slides, beside
+  `Ferall 2024.pptx` and, like it, untracked) walks Joe through tabs 8 and
+  9 one idea per slide, in the Ferall deck's grammar:
+  - a black title bar that is the section card made small;
+  - the figure zooming and panning under a light-blue focus box, its
+    neighbours dimmed;
+  - black notes sliding in from the right, the newest big and red.
+- Every number is read from `joe.json` and `figs.json`.
+- Two reviewers checked it before it went out, one for accuracy and one
+  reading the slides as Joe would. The first draft overclaimed in four
+  places, all fixed:
+  - Precon4 on its own is about even (23 pairs up, 21 down). What changed
+    is the swing away from Precon1's dip (31 of 44 pairs down).
+  - The change row's sign flips test whether the cues' effect was the same
+    on both days.
+  - Each light has two ways to pass, so about 2 of 24 light by chance;
+    3 lit.
+  - The follow-ups were picked from 190 t-tests, of which 21 passed and
+    about 10 would by chance. A follow-up that passes both tests is now
+    called a "stronger lead" rather than a "solid" one.
+- `tools/joe_deck` makes it again: `illustrations.py`, `plan.py` (the
+  words are in `story.py`), then `build.ps1`. It drives PowerPoint itself,
+  so every transition is PowerPoint's own Morph. It reports any text that
+  does not fit its box and renders every slide to a PNG, all under the
+  git-ignored `GUI_logs/.cache/joe_deck`.
 
 ### On the real data
 
@@ -522,11 +605,17 @@ zooming in bit by bit." **Restart Jarvis**: `backend/joefigs.py` is new, and
 - A second start takes all 67 scripts from the browser: 0 kB over the
   wire.
 - The harnesses for Light, the warm-up, loading, themes, the Event Bank,
-  ToolKit, Sessions and the VACC catalogue: 26 pages and 819 checks
-  passing. Four pages were already failing and still fail, for reasons
-  outside this change: `housekeeping.html` (87 gids appear twice in the
-  registry tree), `bankimport.html` and `banklayers.html` (the server's
-  version routes), and `vacccat.html` (depends on this machine's data).
+  ToolKit, Sessions, sync, the VACC catalogue and Xplorefinder: 45 pages
+  and 1,312 checks passing. Four fail for reasons outside this change:
+  - `housekeeping.html`: 87 gids appear twice in the registry tree.
+  - `bankimport.html` and `banklayers.html`: the server's version routes.
+  - `vacccat.html`: depends on this machine's data.
+
+  `chan64.html`, `curmarks.html` and `panesync.html` failed here too, the
+  same way with the first-rows path switched off. They had inherited this
+  machine's own Xplorefinder settings, a recording's saved "marks faded",
+  and whichever recording the registry listed first. All three pass now
+  that check pages start from the defaults and use the demo recording.
 
 ## 2026.10.21.4 - Root Canal: no margins, and the dots are coloured by their call only
 

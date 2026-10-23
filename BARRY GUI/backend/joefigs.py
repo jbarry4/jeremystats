@@ -301,6 +301,7 @@ def connectome(R, days, res):
     return {"model": mid, "band": res["band"], "method": res["method"], "pairs": [R["pairs"][i] for i in keep],
             "pair_index": keep, "edges": {k: [None if not np.isfinite(x) else float(x) for x in v] for k, v in e.items()},
             "graphs": graphs, "graphs_trials": graphs_t, "null": "rats", "rat_exact": bool(exact),
+            "trials": [int(min(v[0].shape[0] for v in sessions.values())), int(max(v[0].shape[0] for v in sessions.values()))],
             "n_signs": int(S.shape[0]), "rats": rats, "n_perm": N_PERM}
 
 
@@ -1085,8 +1086,11 @@ def connectome_legend(R, C, null="rats"):
                  "2,048 points, averaged over 30–90 Hz without 59–61 Hz), orange for an increase and purple for a decrease. Left "
                  "column, the increases; middle, the decreases; right, both. Under each ring, its statistic (the summed increases, "
                  "the summed decreases, or the sum of all) %s; *P < 0.05, **P < 0.01, ***P < 0.001; uncorrected). n = %d rats, "
-                 "16 trials per session. Significant: %s.")
-        % (len(R["regions"]), R.get("min_rats", 4), len(C["pairs"]), la, lb, how, len(C["rats"]), sig_say)}
+                 "%s trials per session. Significant: %s.")
+        % (len(R["regions"]), R.get("min_rats", 4), len(C["pairs"]), la, lb, how, len(C["rats"]),
+           # 2026-10-22: it said 16; sessions had 12 to 16 (a review of Joe's deck)
+           ("%d" % C["trials"][0]) if C.get("trials") and C["trials"][0] == C["trials"][1]
+           else ("%d–%d" % tuple(C["trials"]) if C.get("trials") else "up to 16"), sig_say)}
 
 
 def follow_legend(R, item, nulls, levels):
@@ -1102,13 +1106,17 @@ def follow_legend(R, item, nulls, levels):
     return {
         "title": "%s, %s, %s: %s." % (title, item["band"], item["pair"], item["family_say"].lower()),
         "body": ("a, the pair on the ring of regions%s. Then, for each measure: its value for each rat at %s and %s on Precon1 "
-                 "(grey) and Precon4 (black), each rat's two windows joined, the mean ± s.e.m. beside them; each rat's change "
+                 "(grey) and Precon4 (black), %s, the mean ± s.e.m. beside them; each rat's change "
                  "between the days, (Precon4 %s − %s) − (Precon1 %s − %s), with the mean ± 95%% confidence interval; and that "
                  "mean against %s shuffles in which each session's trials had their two windows swapped at random. "
-                 "The pair was followed up because it moved most in its comparison, but it does not survive correction across "
-                 "the pairs on its own: these are leads. %s.")
+                 # 2026-10-22: it said the pair "moved most"; it was followed up for
+                 # its own uncorrected P, and the measures shown were picked by theirs.
+                 "The pair was followed up because its own change in coherence had P < 0.05 (uncorrected; no pair survives "
+                 "correction on its own), and of the measures run on it these are the ones whose t-test had P < 0.05: they "
+                 "are leads, chosen by that test. %s.")
         % (" (the arrow, the direction measured)" if any(k in ("gc_ab", "gc_ba", "pac_ab", "pac_ba") for k in item["keys"]) else "",
-           la, lb, lb, la, lb, la, format(N_PERM, ","), "; ".join(parts))}
+           la, lb, "each rat's values as dots (PAC is never drawn as lines)" if all(k.startswith("pac_") for k in item["keys"])
+           else "each rat's two windows joined", lb, la, lb, la, format(N_PERM, ","), "; ".join(parts))}
 
 
 # --------------------------------------------------------------------------

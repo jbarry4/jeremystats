@@ -99,7 +99,8 @@ async function until(fn, ms = 20000) {
       selEl.value = value;
       selEl.dispatchEvent(new (W().Event)('change', { bubbles: true }));
     };
-    for (let k = 0; k < 3; k++) pick(row().querySelector('.spp-add'), 'traces');
+    // Added by its mark (2026-10-23), the same kind three times.
+    for (let k = 0; k < 3; k++) row().querySelector('button.spp-addp[data-add="traces"]').click();
     check('three voltage traces added, the same kind three times', cards().length === 6,
           cards().length);
     let plan = SP.plan('spotter', [{ panel: 'csd' }], sess);

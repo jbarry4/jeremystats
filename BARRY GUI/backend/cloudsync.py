@@ -1996,6 +1996,11 @@ class Sync:
             path, rel = r.get("path"), (r.get("rel") or r.get("key"))
             if not path or not rel or not os.path.isfile(path):
                 continue
+            # The figure builder's files travel by git only; the cloud gets
+            # the catalogue row and never the picture (asked 2026-10-22).
+            if str(rel).replace("\\", "/").lower().startswith("figures/"):
+                skipped += 1
+                continue
             try:
                 sig = "%d:%d" % (os.path.getsize(path),
                                  int(os.path.getmtime(path)))
