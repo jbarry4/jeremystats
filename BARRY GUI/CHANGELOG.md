@@ -15,6 +15,276 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.23.4 - Tab 9 tests every result against FP too: fake trials at random moments of FP1 and FP2
+
+From Shahriar: "add another statistical test to everything... a FP
+comparison... take random intervals of FP1/FP2 and see what the data set's
+rank is." **Restart Jarvis**: `backend/joe.py`, `backend/joefigs.py`,
+`backend/app.py` and `backend/monolith.py` changed. The figures here are
+drawn already.
+
+### Added
+
+- **The FP pool: fake trials in FP1 and FP2.** For every tested rat-day, a
+  fake cue-1 onset every 10 s of each FP recording (at least 10 s from its
+  ends), with a real trial's seven windows round it.
+  - Each window is measured exactly as a trial's is: the same wire rule,
+    clipping measured the same way, every measure. There are 1,017 fake
+    trials in all.
+  - It was measured on the VACC's copies of the FP recordings, checked
+    against the sizes tab 8 read, in 5.4 minutes on 32 CPUs (job 6000771).
+  - It is kept in `joe/fp_pool/`, one file a rat-day.
+  - Tab 9 offers "Measure them on the VACC" when it has not been made.
+- **The FP test, on every ring and every follow-up.**
+  - In each of 10,000 sets, every session gets as many fake trials as it
+    had real ones, drawn at random with replacement. Each is taken with its
+    two windows in random order: FP has no cue, so either window can stand
+    for it.
+  - Each fake trial also loses the windows the matching real trial lost to
+    clipping.
+  - The ring or the follow-up's change is then made exactly as the real one
+    is, and the real value's rank among the sets is its P.
+  - Rings: a third choice on the toggle ("FP intervals"), with its own
+    figure files (`fig_N_fp`) and legend.
+  - Follow-ups: panel d shows both second opinions on one axis, the
+    shuffles grey and FP blue, each with its own P. There is an FP chip
+    beside each shuffle chip, and FP is in the legend.
+  - Methods? has an FP section with its own animation: fake trials dropped
+    into FP, then the figure's own FP sets.
+- **The deck for Joe has it too:** `Joe figures explained 2026-10-23.pptx`,
+  102 slides. Each follow-up's verdict now weighs both second opinions.
+
+### Two things the checks caught in the first version
+
+- **The null was centred on the pool's own average, not on nothing.**
+  Drawing from a few minutes of FP centres the sets on that pool's average
+  change, which is chance; check_joe caught a ring 2.3 SDs off zero. The
+  random window order centres it exactly.
+- **FP looked cleaner than it is.** The cues lose far more windows to
+  clipping than FP does: in rat 6's Precon1, 21% of trial windows are
+  usable against 94% of FP's. So an FP set averaged more windows than the
+  real session and its null came out too narrow; four follow-ups passed FP
+  but not the shuffle.
+  - Each fake trial now loses its real trial's windows.
+  - The FP spread now matches the trial shuffle's: Figure 1's change has an
+    SD of 0.283 against 0.275.
+
+### On the real data
+
+- **Figure 1 (comparison 1), Precon4 − Precon1:** FP does not confirm it.
+  Increases: rats P = 0.012, trials P = 0.085, FP P = 0.100. Both: rats
+  P = 0.023, trials P = 0.187, FP P = 0.199.
+- **Figure 2 (comparison 2), Precon4 − Precon1:** the increases pass all
+  three (rats P = 0.027, trials P = 0.030, FP P = 0.037). Both: P = 0.062,
+  0.058 and 0.074.
+- **Follow-ups:**
+  - 9 of the 20 pass both second opinions: 1.2, 1.3, 1.4, 2.1, 2.3, 2.4,
+    2.9, 2.12 and 2.13.
+  - 5 pass one: 1.5 and 2.7 the shuffle only; 2.2, 2.10 and 2.11 FP only.
+  - 6 pass neither: 1.1, 1.6, 1.7, 2.5, 2.6 and 2.8.
+
+### Checked
+
+- `tools/check_joe.py`, the new checks:
+  - the pool's fake trials (a trial's seven windows round each onset,
+    every measure, every tested rat-day);
+  - one FP set by hand;
+  - FP on every ring with its own files and legend;
+  - FP's sets of a change sit round zero;
+  - the planted change stands out of FP;
+  - FP beside every follow-up, from the same observed change.
+- `web/_dev/monolith.html`:
+  - the three-way toggle, with FP's picture, chips, legend, downloads and
+    animation;
+  - the FP chips and the FP line;
+  - not measured: said, with the button posting `fp_vacc`.
+- `tools/check_review.py`: the copy carries every test's files.
+
+## 2026.10.23.3 - Braces and Lock look ±200 ms either way by default
+
+A stamp may now move up to 200 ms by default (it was 100). The *Window ±ms*
+box still changes it, for one set and for Many. Alignments made at ±100 ms
+are kept, and they still open under the settings they were made with.
+Reload the page; nothing on the server changed.
+
+---
+
+## 2026.10.23.2 - The figure builder, rebuilt: grab what you see
+
+**Restart Jarvis**: `backend/figkit/`, `backend/figures.py`,
+`backend/figroutes.py`, `backend/compose.py`, `backend/cloudsync.py` and
+`backend/app.py` changed.
+
+### Grab what you see
+
+- **Figure builder**, at the top right of Xplorefinder, grabs every pane on
+  screen, as it sits, into a figure. The same button is now at the top
+  right of every ToolKit tool.
+  - Root Canal's button grabs the 3D space and the three flat views.
+  - Tools whose figures are not built yet show the button greyed, with the
+    reason.
+- **A figure is one recording.** Panes of another recording are left out,
+  and the builder says so. Plots a tool pooled across recordings (Root
+  Canal's Pooled view) cannot be grabbed.
+- **A grab is a draft.** It saves itself as you work and waits in
+  **Results › Figures** until you export it. Close the builder and come
+  back to it any time.
+
+### The builder
+
+- A big dialog in three columns:
+  - **left:** shapes, the grid, the panels;
+  - **middle:** the page;
+  - **right:** the journal, the size, the words, and the panel you chose.
+- **Journals:** Nature (89, 120 or 183 mm, Arial, 5-8 pt), J Neurosci,
+  Cell, Poster or slide, and the lab pages every figure used before.
+- **Click the thing to change it.** Click a panel's title, an axis, the
+  colour bar or the letter on the page, and a small editor opens for just
+  that.
+- **Units are never typed.** An axis offers only the units its numbers can
+  be shown in: s, ms, µs; µV, mV; Hz, kHz; µm, mm. Picking one rescales the
+  numbers. The words in front of the unit are yours.
+- **Every axis has From and To**, and a choice: cut to the data, or extend
+  past it.
+- **Panels of the same kind share their scales**: the same seconds across,
+  the same colour range. The chain on a panel gives it its own.
+- **Labels:**
+  - panel letters (a, b, c for Nature; A, B, C for the others), which
+    re-letter when panels move;
+  - scale bars in place of the axes on traces;
+  - layer names from the recording's layer sheet.
+- **The footer is always there and never cut.** It names the recording,
+  then one line per panel saying where its numbers came from, then the
+  Jarvis version and commit, who made it, the computer and the date.
+- **Shapes** to start from (two across, one big with two beside it, and
+  so on). Then drag panels and drag their edges, as before.
+- **Right-click a panel** to duplicate it, share or separate its scales,
+  put its labels back, open it in its tool, or take it out.
+- **Keys:** Ctrl+Z and Ctrl+Shift+Z, Delete, the arrow keys to move a
+  panel, Ctrl+E to export, Esc to close.
+- **Only what changed is redrawn.** Change one word and that panel
+  redraws; the old picture stays, dimmed, until the new one arrives.
+
+### Versions, frozen
+
+- **Export** makes the figure's next version: PNG, SVG and PDF, plus the
+  numbers each panel plotted. They are filed under
+  `Results/Figures/<recording>/`.
+- **A version never changes once it is made.** It is never redrawn on
+  newer data. Editing and exporting again makes the next version beside
+  it.
+- The **version tree** in the builder's header opens any version.
+- A figure's files travel by git. Supabase gets the catalogue row and
+  **never the picture**.
+
+### The walk-through (it was "Rebuild")
+
+- **Walk through…** on a figure in Results:
+  1. checks what the figure needs before doing anything;
+  2. opens the recording;
+  3. sets each panel's tool up the way the panel was grabbed;
+  4. **reads back what is actually on screen** and compares it with the
+     figure's record;
+  5. shows the original and a fresh drawing of the screen **side by side**,
+     with what moved in plain words.
+- **Keep the redraw as the next version** is offered, never done for you.
+- Root Canal panels are walked through in Root Canal. They need the banked
+  set, not the recording's folder.
+- The old Rebuild drove the app step by step, then waited a fixed 2.2 s and
+  hoped nothing had moved. Late writes kept undoing it, and it sent Root
+  Canal's 66 figures into an Xplorefinder replay that could not work.
+  Reading back what is on screen is what makes a late write a reported
+  difference rather than a silent one.
+
+### Results
+
+- **Results › Figures**, a third view beside Files and Artifacts. It lists
+  every figure by recording: drafts, versions, **Open**, **Walk through…**
+  and **Archive** (nothing is deleted).
+- A figure file in Results has **Open** (into the builder) and **Walk
+  through…** where Rebuild was.
+
+### For later
+
+- `tools/migrate_figures_v2.py` brings the 75 figures made before this
+  (9 by the old builder, 66 by Root Canal) into the figure store, and
+  archives the 77 a harness made. It changes nothing until it is run with
+  `--apply`.
+- Figures from the other ToolKit tools come next. Each needs its own panel
+  drawing, grab and walk-through.
+
+### Tests
+
+- `tools/test_figkit.py` covers:
+  - units, ranges, shared scales and letters;
+  - refusing a second recording or a pooled plot;
+  - the footer never cut;
+  - tile against page;
+  - png, svg and pdf;
+  - old recipes;
+  - the walk-through's plan;
+  - the store.
+- `_dev/figv2.html` (50 checks): grab, click-to-edit, units, shapes,
+  links, right-click, undo, export, the walk-through, Results › Figures,
+  and the ToolKit button.
+- `_dev/figrc.html` (20 checks): Root Canal grab, draw, a pair panel in mV,
+  export and walk-through.
+- The old builder's harnesses are retired, along with `figrebuild.js`:
+  `figgrid.html`, `figtf.html`, `figh10.html`, `rebuild.html` and
+  `gridgeo.html`.
+
+## 2026.10.23.1 - A welcome for a new computer, and the test names folded into Debug_Bot
+
+**Restart Jarvis**: `backend/people.py`, `backend/app.py`, `backend/vacc.py`
+and the new `backend/livefeed.py` changed.
+
+### Welcome
+
+- **A computer that's new to Jarvis gets a welcome screen** instead of the
+  start menu. It goes through three steps:
+  1. **You.** Fill in your name, email, role and initials. If you've used
+     Jarvis on another computer, pick yourself from the people already
+     here and your details are filled in for you.
+  2. **Your VACC account.** Sign in with your NetID and password, then
+     **Confirm connection** checks that the cluster answers.
+  3. **Your recordings.** **Find everything on VACC** and **Find
+     everything on netfiles**, then **Add N recordings found**.
+- Your name is required, because it goes on everything you do. The VACC and
+  recordings steps can be skipped, and **Not now** gets you straight in.
+  The welcome comes back the next time until a name has been given.
+- **The VACC and Recordings steps show what is happening as it happens.**
+  Each one has a console. Bars at the top show each task, and below them
+  every step streams past: each key tried, each answer from the cluster
+  (who you are, the login node, partitions, jobs, which shares you can
+  read), and every recording folder a walk of scratch or netfiles finds.
+  When a walk finishes, the console lists everything new, everything that
+  needs a person, and every folder that names no mouse and session. A walk
+  is measured against the last walk of the same place, shown with a "~"
+  because it's an estimate. When the cluster goes quiet, the console says
+  for how long. Nothing is printed just to look busy: every line is
+  something that happened (`/api/vacc/feed`).
+- **Set up this computer**, a new item on the start menu, opens the same
+  steps whenever you want them. Sign-in under Profile and the two buttons
+  in Sessions › VACC are unchanged.
+
+### People
+
+- **Every test harness name is now Debug_Bot.** That covers harness@test,
+  eye harness, spotter harness, bankback@harness, curate@harness,
+  spikeflow@harness, harness and TEST. 1,329 credits in the Event Bank were
+  changed, plus 2 in curation and 1 on a session record.
+  Debug_Bot is listed apart from the people, so it's never offered as
+  someone to give work to. Anything a harness banks from now on is credited
+  to Debug_Bot as well, and is still hidden from the tools as a test
+  leftover.
+- **Fatima and "a colleague" have been removed.** Their work (2 Event Bank
+  versions) is credited to Shahriar Tafti.
+- Each old name was retired, so another computer's copy can't bring it
+  back. The activity and error logs still show the old names, because
+  those logs are never edited.
+
+---
+
 ## 2026.10.22.5 - Lock is Braces for pooled sets, takes only what Panning sorted, and keeps Braces' stamps locked
 
 **Restart Jarvis**: `backend/app.py`, `backend/braces.py` and

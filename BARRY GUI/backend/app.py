@@ -168,6 +168,7 @@ _budget_caches()
 # What the start screen gets ready (backend/warmup.py, 2026-10-21).
 from . import warmup as warmupmod  # noqa: E402
 from . import streamjson  # noqa: E402
+from . import livefeed as livefeedmod  # noqa: E402
 
 # A recording being read for somebody: the background overview filler
 # stands aside until there are none.
@@ -6814,6 +6815,19 @@ def _braces_prepare(body):
                 "Every spike in this set is one Braces already placed, and "
                 "Braces' stamps are being kept, so there is nothing left for "
                 "Lock to move. Nothing was read.")
+    if pinned:
+        # Each locked stamp fills the one peak it occupies, looked for
+        # within the pool's own merge window (`braces.propose`, 2026-10-23).
+        # On the spec, so it is part of the question -- an alignment made
+        # under the older rule is not opened as this one's answer -- and so
+        # it travels to a compute node with everything else.
+        pp = (rec.get("source") or {}).get("parameters") or {}
+        try:
+            reach_ms = float(pp.get("window_ms") or bracesmod.LOCK_REACH_MS)
+        except (TypeError, ValueError):
+            reach_ms = bracesmod.LOCK_REACH_MS
+        spec["lock_reach_ms"] = reach_ms
+        spec["lock_rule"] = "fills-its-peak"
     rq_hash, rq = _braces_question(
         rec, src_v, spec, want, depth_n, stamp_times,
         [float(events[i]["start"]) for i in pinned])
@@ -7562,7 +7576,7 @@ def _lock_braced(rec, events=None):
         for t in (ev.get("start"), ev.get("from_t")):
             k = curation._tkey(t)
             if k is not None:
-                whose.setdefault(k, st)
+                whose.setdefault(k, (st, ev.get("pair_t")))
     ds_times = None
     ds = BANK.get(p.get("ds_entry") or "") if p.get("ds_entry") else None
     if ds:
@@ -7596,10 +7610,22 @@ def _lock_braced(rec, events=None):
         k = curation._tkey(ev.get("start"))
         if k is None:
             continue
-        st = curation._stamp_of(ev) or whose.get(k)
-        if st != "incisor":
+        st, pair = whose.get(k) or (None, None)
+        st = curation._stamp_of(ev) or st
+        if ev.get("pair_t") is not None:
+            pair = ev.get("pair_t")
+        if st == "incisor":
+            at = k
+        elif st == "doppler" and pair is not None:
+            # One both found, filed under Doppler's time: its Incisor half
+            # is `pair_t`, and if that is where Braces put it, the event is
+            # locked too (2026-10-23) -- at its own time, which never moves.
+            at = curation._tkey(pair)
+        else:
             continue
-        if ds_times is not None and k not in ds_times:
+        if ds_times is not None and at not in ds_times:
+            continue
+        if ds_times is None and st != "incisor":
             continue
         out.add(i)
     return out, info
@@ -17833,9 +17859,12 @@ def _cf_ver_aligned(ent, ver):
 def _cf_is_test(rec):
     """A set a harness banked and left behind -- offered nowhere, as Eye
     does not offer them either."""
-    who = "%s %s" % ((rec.get("added") or {}).get("by") or "",
-                     rec.get("name") or "")
-    return "harness" in who.lower()
+    by = (rec.get("added") or {}).get("by") or ""
+    who = "%s %s" % (by, rec.get("name") or "")
+    # Debug_Bot too: the harness names were re-credited to it (2026-10-23,
+    # tools/collapse_people.py), and a seed that stopped saying "harness"
+    # would otherwise start being offered as somebody's dataset.
+    return "harness" in who.lower() or peoplemod.is_test_name(by)
 
 
 def _bank_archived(rec):
@@ -26220,20 +26249,26 @@ def api_arc_monolith_joefigs():
     """Tab 9, Joe's figures: every figure drawn again from tab 8's own
     rat-days (and the PAC profiles from the recordings, where they can be
     read). With `vacc: true`, the PAC profiles are read first from the
-    VACC's copies of the recordings. Refused without `confirm`."""
+    VACC's copies of the recordings; with `fp_vacc: true`, the FP
+    comparison's fake trials are measured there first. Refused without
+    `confirm`."""
     body = request.get_json(silent=True) or {}
     if body.get("confirm") is not True:
         return jsonify({"ok": False, "error": "Say confirm: true."}), 400
     on_vacc = body.get("vacc") is True
+    fp_vacc = body.get("fp_vacc") is True
     try:
         from . import joefigs as figsmod
-        w = monolithmod.start_work("joefigsvacc" if on_vacc else "joefigs",
-                                   (lambda wk: figsmod.work_safe(wk, on_vacc=True)) if on_vacc else figsmod.work_safe)
+        if fp_vacc:
+            w = monolithmod.start_work("joefigsfp", lambda wk: figsmod.work_safe(wk, fp_vacc=True))
+        else:
+            w = monolithmod.start_work("joefigsvacc" if on_vacc else "joefigs",
+                                       (lambda wk: figsmod.work_safe(wk, on_vacc=True)) if on_vacc else figsmod.work_safe)
     except monolithmod.MonolithError as exc:
         return _mono_refused(exc)
     except Exception as exc:                                 # noqa: BLE001
         return fail("arc/monolith/joefigs", exc, 500)
-    STORE.record_activity([{"action": "arc.monolith.joefigs", "detail": {"vacc": on_vacc}}])
+    STORE.record_activity([{"action": "arc.monolith.joefigs", "detail": {"vacc": on_vacc, "fp_vacc": fp_vacc}}])
     return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
 
 
@@ -29016,6 +29051,19 @@ def api_vacc_found():
     return jsonify(got)
 
 
+@app.route("/api/vacc/feed")
+def api_vacc_feed():
+    """What the VACC work is doing right now, line by line (livefeed.py):
+    the sign-in, the probe, every folder a walk finds, every recording
+    added. `since` is the last line the page has; -1 asks only where the
+    feed is up to. Memory only, never connects."""
+    try:
+        since = int(request.args.get("since", "-1"))
+    except ValueError:
+        since = -1
+    return jsonify(dict(livefeedmod.read(since), ok=True))
+
+
 @app.route("/api/vacc/found/look", methods=["POST"])
 def api_vacc_found_look():
     """Find what is on the cluster, in the background, and answer at once.
@@ -29050,6 +29098,10 @@ def api_vacc_found_look():
                 continue
             if which == "netfiles" and not is_native:
                 continue
+            if vaccmod.inventory_busy(root):
+                livefeedmod.say("%s is already being looked through" % root, "dim")
+            else:
+                livefeedmod.say("starting a walk of %s" % root, "")
             vaccmod.inventory_soon(cfg, root)
             started.append(root)
         got, _new = _vacc_found_body()
@@ -29094,10 +29146,27 @@ def api_vacc_found_add():
                 "error": "The list changed since it was shown -- %d new now. "
                          "Look at it again before adding."
                          % (got.get("n_new") or 0)}), 409
+        # Said in the live feed as well (livefeed.py): the welcome's
+        # Recordings step shows each one going in.
+        livefeedmod.task("add", restart=True, state="run", done=0,
+                         of=len(new_rows), label="Adding to the catalogue")
+        livefeedmod.say("adding %d recording%s to the catalogue"
+                        % (len(new_rows), "" if len(new_rows) == 1 else "s"),
+                        "hot", "add")
+        for r in new_rows:
+            livefeedmod.say("+ %s  %s" % (r.get("label") or r.get("key") or "?",
+                                          r.get("where") or r.get("path") or ""),
+                            "", "add")
         try:
             added, joined = vaccfindmod.register(REG, new_rows)
         except Exception as exc:                         # noqa: BLE001
+            livefeedmod.say("stopped: %s" % exc, "warn", "add")
+            livefeedmod.task("add", state="fail")
             return fail("vacc/found/add", exc, 400, {"n": len(new_rows)})
+        livefeedmod.task("add", state="done", done=len(new_rows))
+        livefeedmod.say("%d added, each with a permanent id%s" % (
+            added, ("; %d already known learned their netfiles path" % joined)
+            if joined else ""), "ok", "add")
     STORE.record_activity([{
         "action": "vacc.found.add",
         "detail": {"added": added, "joined": joined,

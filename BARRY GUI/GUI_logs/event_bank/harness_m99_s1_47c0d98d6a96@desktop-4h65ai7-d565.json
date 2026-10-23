@@ -50,7 +50,7 @@
   },
   "added": {
     "at": "2026-09-15T17:50:11-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "LCOM549913"
   },
   "by_label": {
@@ -98,7 +98,7 @@
     {
       "archived": true,
       "at": "2026-09-15T17:53:36-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },
@@ -135,7 +135,7 @@
     {
       "archived": true,
       "at": "2026-09-15T17:50:17-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },
@@ -172,7 +172,7 @@
     {
       "archived": true,
       "at": "2026-09-15T17:50:11-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },

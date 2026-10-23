@@ -304,6 +304,18 @@ BARRY.views.toolkit = (function () {
               el('div', { class: 'tk-result', id: 'tkResult' }), nextHost(),
               feedHost()].filter(Boolean)),
     ]));
+    /* The Figure builder, top right of every tool page (2026-10-22): it
+       grabs what the tool is showing. Disabled, with the reason, for a tool
+       whose figures are not built yet (figure.js `source`). */
+    const main = $('#tkMain');
+    if (main && BARRY.figure && BARRY.figure.grabButton) {
+      const step = BUNDLES.reduce((got, bd) => got
+        || bd.steps.find(([id]) => id === q.tool), null);
+      main.insertBefore(el('div', { class: 'tk-figbar' }, [
+        BARRY.figure.grabButton({ source: q.tool,
+                                  name: step ? step[1] : q.tool }),
+      ]), main.firstChild);
+    }
     renderResult();
     paintNext();
   }
@@ -2572,7 +2584,7 @@ BARRY.views.toolkit = (function () {
 
     // Which recordings have a dataset of this kind banked -- not counting
     // what a test harness left behind, which is offered nowhere.
-    const harness = (e) => /harness/i.test([((e.added || {}).by || ''),
+    const harness = (e) => /harness|debug_bot/i.test([((e.added || {}).by || ''),
       e.name || '', e.pipeline || ((e.source || {}).pipeline || '')].join(' '));
     const has = new Set();
     try {

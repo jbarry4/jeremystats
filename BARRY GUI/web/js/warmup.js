@@ -270,7 +270,7 @@ BARRY.warmup = (function () {
       || (p.sources || []).some((s) => s === 'profile' || s === 'added by hand'));
     const people = ((roster && roster.people) || [])
       .filter((p) => p && p.name && p.is_person !== false && described(p)
-              && !/\(AI\)|harness|@test\b|^import_/i.test(p.name));
+              && !/\(AI\)|harness|@test\b|^import_|^debug_bot$/i.test(p.name));
     const local = (p) => (p.machines || []).some((m) => here.indexOf(
       String(m).toLowerCase()) >= 0);
     return people.sort((a, b) => (local(b) - local(a))

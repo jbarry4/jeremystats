@@ -62,7 +62,7 @@
   },
   "added": {
     "at": "2026-09-16T12:15:33-04:00",
-    "by": "curate@harness",
+    "by": "Debug_Bot",
     "machine": "LCOM549913"
   },
   "by_label": {
@@ -116,7 +116,7 @@
     {
       "archived": true,
       "at": "2026-09-16T12:29:04-04:00",
-      "by": "curate@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },
@@ -154,7 +154,7 @@
     {
       "archived": true,
       "at": "2026-09-16T12:29:04-04:00",
-      "by": "curate@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "Solid": 1,
         "Sputter": 1
@@ -194,7 +194,7 @@
     {
       "archived": true,
       "at": "2026-09-16T12:15:48-04:00",
-      "by": "curate@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },
@@ -232,7 +232,7 @@
     {
       "archived": true,
       "at": "2026-09-16T12:15:48-04:00",
-      "by": "curate@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "Solid": 1,
         "Sputter": 1
@@ -272,7 +272,7 @@
     {
       "archived": true,
       "at": "2026-09-16T12:15:33-04:00",
-      "by": "curate@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },
@@ -310,7 +310,7 @@
     {
       "archived": true,
       "at": "2026-09-16T12:15:33-04:00",
-      "by": "curate@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "Solid": 1,
         "Sputter": 1

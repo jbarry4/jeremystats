@@ -150,7 +150,7 @@ def fake_monolith(work):
     shutil.copyfile(os.path.join(APP, "web", "_dev", "joefigs_fixture.json"), os.path.join(figs_dir, "figs.json"))
     with open(os.path.join(figs_dir, "figs.json"), encoding="utf-8") as fh:
         for fg in json.load(fh)["figures"]:
-            for f in list(fg["files"].values()) + list(((fg.get("alt") or {}).get("files") or {}).values()):
+            for f in list(fg["files"].values()) + [x for a in fg.get("alts") or [] for x in (a.get("files") or {}).values()]:
                 with open(os.path.join(figs_dir, f), "w", encoding="utf-8") as out:
                     out.write('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>' if f.endswith(".svg") else "stand-in")
     MO.save_manifest(man)
@@ -177,7 +177,7 @@ def build_checks(work, port):
             "data/narrow.json", "js/monolith_narrow.js", "js/monolith_explain.js", "js/monolith_joe.js",
             "data/joe.json", "data/joe/joe_tab8_spss.zip", "data/joe/joe_standalone.py",
             "js/monolith_joefigs.js", "data/joefigs.json", "data/joefigs/fig_1.svg", "data/joefigs/fig_1.pdf",
-            "data/joefigs/fig_1_trials.svg", "data/joefigs/fig_1_trials.pdf"]
+            "data/joefigs/fig_1_trials.svg", "data/joefigs/fig_1_trials.pdf", "data/joefigs/fig_1_fp.svg"]
     missing = [f for f in must if not os.path.isfile(os.path.join(out, f))]
     check("every file the site needs (%d)" % len(must), not missing, missing)
     pk = json.load(open(os.path.join(out, "package.json"), encoding="utf-8"))

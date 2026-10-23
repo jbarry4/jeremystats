@@ -12,6 +12,8 @@
        ToolKit            the bundles and tools
        Settings           theme, density, motion
        Patch notes        what changed
+       Set up this        the welcome a new computer gets (welcome.js):
+       computer           you, the VACC, the recordings
 
    Arrows (or W / S) move, Enter or Space chooses, Escape or any other key
    is Continue. Each choice is one soft note through jarvisfx, under the
@@ -62,6 +64,7 @@ BARRY.startMenu = (function () {
     ['toolkit', 'ToolKit', 'The bundles and every tool'],
     ['settings', 'Settings', 'Theme, density, motion and Jarvis Light'],
     ['notes', 'Patch notes', 'What changed, and when'],
+    ['setup', 'Set up this computer', 'You, your VACC account, your recordings'],
   ];
 
   function act(id) {
@@ -72,6 +75,9 @@ BARRY.startMenu = (function () {
         setTimeout(() => showThemePicker(), 420);
       } else if (id === 'notes' && BARRY.notes && BARRY.notes.open) {
         setTimeout(() => BARRY.notes.open(), 420);
+      } else if (id === 'setup' && BARRY.welcome) {
+        // The welcome a new computer gets (welcome.js), again on purpose.
+        setTimeout(() => BARRY.welcome.open(), 420);
       }
     } catch (e) {
       reportClientError('startmenu.act', e.message, e.stack);

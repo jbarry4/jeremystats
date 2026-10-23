@@ -62,7 +62,12 @@ import tempfile
 import threading
 import time
 
+from . import livefeed
 from . import sysinfo
+
+# What a person watching sees (livefeed.py, `/api/vacc/feed`): the sign-in,
+# the probe and the walks say each thing they do, as they do it.
+_say = livefeed.say
 
 # How long an answer about the cluster is worth believing. Short enough that a
 # queue that emptied shows as empty, long enough that a page rendering the chip
@@ -303,7 +308,7 @@ def popen_kwargs():
     return _popen_kwargs()
 
 
-def _ssh(cfg, remote_command, stdin=None, timeout=45):
+def _ssh(cfg, remote_command, stdin=None, timeout=45, on_line=None):
     """Run one command on the cluster and return its stdout.
 
     The ONLY place this module starts a process. Everything else goes through
@@ -317,6 +322,8 @@ def _ssh(cfg, remote_command, stdin=None, timeout=45):
     out of it altogether.
     """
     cmd = ssh_cmd(cfg, remote_command)
+    if on_line is not None:
+        return _ssh_stream(cmd, stdin, timeout, on_line)
 
     try:
         # BINARY pipes, and the encoding done here by hand.
@@ -353,17 +360,108 @@ def _ssh(cfg, remote_command, stdin=None, timeout=45):
                        "timeout")
 
     if proc.returncode != 0:
-        kind = "failed"
-        low = (err or "").lower()
-        if "permission denied" in low or "publickey" in low:
-            kind = "auth"
-        elif "host key verification failed" in low:
-            kind = "host-key"
-        elif ("could not resolve" in low or "connection timed out" in low
-              or "connection refused" in low or "network is unreachable" in low):
-            kind = "unreachable"
-        raise SSHError(_why(kind, err), kind, err)
+        _raise_for(err)
     return out
+
+
+def _ssh_watched(cfg, remote_command, stdin=None, timeout=45, on_line=None):
+    """`_ssh` with `on_line`, or -- when a check has swapped `_ssh` for a
+    fake that does not take it -- the fake's whole answer, replayed through
+    `on_line` afterwards, so the watcher still sees every line."""
+    import inspect
+    fn = _ssh
+    try:
+        takes = "on_line" in inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        takes = False
+    if takes or on_line is None:
+        return fn(cfg, remote_command, stdin=stdin, timeout=timeout,
+                  **({"on_line": on_line} if takes else {}))
+    out = fn(cfg, remote_command, stdin=stdin, timeout=timeout)
+    for line in (out or "").splitlines():
+        try:
+            on_line(line)
+        except Exception:                                # noqa: BLE001
+            pass
+    return out
+
+
+def _raise_for(err):
+    kind = "failed"
+    low = (err or "").lower()
+    if "permission denied" in low or "publickey" in low:
+        kind = "auth"
+    elif "host key verification failed" in low:
+        kind = "host-key"
+    elif ("could not resolve" in low or "connection timed out" in low
+          or "connection refused" in low or "network is unreachable" in low):
+        kind = "unreachable"
+    raise SSHError(_why(kind, err), kind, err)
+
+
+def _ssh_stream(cmd, stdin, timeout, on_line):
+    """`_ssh`, handing each line of stdout to `on_line` as it arrives.
+
+    For the two long answers a person watches (the probe, and a walk of
+    scratch or netfiles -- 141 s for netfiles): `communicate` holds every
+    line until the far side is finished, so the page could only say
+    "waiting". Same binary pipes and the same timeout-kills-the-tree as
+    `_ssh`; the input goes in from a thread and stderr is drained by
+    another, so neither pipe can fill and stall the other.
+    """
+    try:
+        proc = subprocess.Popen(
+            cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, **_popen_kwargs())
+    except OSError as exc:
+        raise SSHError("Could not start ssh: %s" % exc, "no-ssh")
+    payload = stdin.encode("utf-8") if isinstance(stdin, str) else stdin
+    err_parts, late = [], [False]
+
+    def put():
+        try:
+            if payload:
+                proc.stdin.write(payload)
+            proc.stdin.close()
+        except OSError:
+            pass
+
+    def drain():
+        try:
+            err_parts.append(proc.stderr.read() or b"")
+        except OSError:
+            pass
+
+    def expire():
+        late[0] = True
+        sysinfo.kill_tree(proc)
+
+    threading.Thread(target=put, daemon=True).start()
+    errt = threading.Thread(target=drain, daemon=True)
+    errt.start()
+    timer = threading.Timer(timeout, expire)
+    timer.daemon = True
+    timer.start()
+    out = []
+    try:
+        for raw in iter(proc.stdout.readline, b""):
+            line = raw.decode("utf-8", "replace")
+            out.append(line)
+            try:
+                on_line(line.rstrip("\r\n"))
+            except Exception:                            # noqa: BLE001
+                pass                         # a watcher never breaks the read
+        proc.wait()
+    finally:
+        timer.cancel()
+    errt.join(5)
+    if late[0]:
+        raise SSHError("The cluster did not answer within %ds." % timeout,
+                       "timeout")
+    err = b"".join(err_parts).decode("utf-8", "replace")
+    if proc.returncode != 0:
+        _raise_for(err)
+    return "".join(out)
 
 
 def _why(kind, err):
@@ -553,14 +651,26 @@ def working_key(netid, host=None, keys=None, timeout=25):
     if not NETID_RE.match(netid) or not have_ssh():
         return None
     cfg = {"netid": netid, "host": host or DEFAULT_HOST}
-    for k in (keys if keys is not None else existing_keys()):
+    found = keys if keys is not None else existing_keys()
+    _say("%d key%s on this computer to try before asking for a password"
+         % (len(found), "" if len(found) == 1 else "s"), "dim", "signin")
+    for k in found:
         path = k["path"] if isinstance(k, dict) else k
+        name = os.path.basename(path)
+        _say("trying %s  ->  ssh %s@%s whoami" % (name, netid, cfg["host"]),
+             "", "signin")
         try:
             out = _ssh(dict(cfg, key_path=path), "whoami", timeout=timeout)
-        except Exception:                                # noqa: BLE001
+        except Exception as exc:                         # noqa: BLE001
+            _say("%s: refused (%s)" % (name, getattr(exc, "kind", "failed")),
+                 "dim", "signin")
             continue
         if (out or "").strip() == netid:
+            _say("%s works: the cluster answered %r" % (name, netid), "ok",
+                 "signin")
             return path
+        _say("%s: answered as %r, not %r" % (name, (out or "").strip(),
+                                              netid), "dim", "signin")
     return None
 
 
@@ -790,13 +900,23 @@ def install_key(netid, password, host=None, duo="1", alias=None):
     # `bash -n`, so the thing that is sent is checked rather than
     # assumed to be well formed.
     script = install_script(pub)
+    _say("connecting to %s with your password" % (alias or host
+                                                 or DEFAULT_HOST), "", "signin")
+    _say("Duo: a push is on its way to your phone -- approve it", "hot",
+         "signin")
     out = _password_ssh(netid, host or DEFAULT_HOST, password, script,
                         duo=duo, alias=alias)
+    _say("password accepted; the password is dropped now", "ok", "signin")
     said = {}
     for line in (out or "").splitlines():
         if "=" in line:
             k, _, v = line.partition("=")
             said[k.strip()] = v.strip()
+    _say("key %s ~/.ssh/authorized_keys on the cluster"
+         % ("was already in" if said.get("already") == "1"
+            else "appended to"), "ok", "signin")
+    if said.get("home"):
+        _say("your home there is %s" % said["home"], "dim", "signin")
     return {
         "already": said.get("already") == "1",
         "netid": said.get("netid") or netid,
@@ -859,10 +979,17 @@ def prove_key(netid, key_path, host=None, pin=None, note=None,
         cfg = {"netid": netid, "host": pin or host, "key_path": key_path}
         if pin:
             cfg["host_alias"] = host
+        _say("proving the key alone, the way every later call connects "
+             "(try %d of %d)" % (i + 1, len(waits)), "", "signin")
         try:
-            return _ssh(cfg, "whoami", timeout=30).strip()
+            who = _ssh(cfg, "whoami", timeout=30).strip()
+            _say("the key alone works: whoami -> %s" % who, "ok", "signin")
+            return who
         except SSHError as exc:
             last = exc
+            _say("not yet (%s)%s" % (exc.kind, "; trying again in %gs"
+                                     % waits[i + 1] if i + 1 < len(waits)
+                                     else ""), "warn", "signin")
             if note is not None:
                 try:
                     note({"attempt": i + 1, "kind": exc.kind,
@@ -876,6 +1003,29 @@ def prove_key(netid, key_path, host=None, pin=None, note=None,
 
 def sign_in(logs_dir, netid, password=None, use_key=None, duo="1",
             note=None):
+    """`_sign_in`, said line by line in the live feed as it goes."""
+    livefeed.task("signin", restart=True, label="Signing in to the VACC",
+                  state="run")
+    _say("signing in as %s" % ((netid or "").strip() or "?"), "hot", "signin")
+    try:
+        got = _sign_in(logs_dir, netid, password=password, use_key=use_key,
+                       duo=duo, note=note)
+    except SSHError as exc:
+        _say("stopped: %s" % exc, "warn", "signin")
+        livefeed.task("signin", state="fail")
+        raise
+    except Exception as exc:                             # noqa: BLE001
+        _say("stopped: %s" % exc, "warn", "signin")
+        livefeed.task("signin", state="fail")
+        raise
+    _say("signed in as %s -- saved, so this computer stays signed in"
+         % got.get("netid"), "ok", "signin")
+    livefeed.task("signin", state="done")
+    return got
+
+
+def _sign_in(logs_dir, netid, password=None, use_key=None, duo="1",
+             note=None):
     """Get this machine onto the cluster and write it down. Raises SSHError.
 
     1. a key this machine already has that the account accepts -- no
@@ -908,9 +1058,16 @@ def sign_in(logs_dir, netid, password=None, use_key=None, duo="1",
                     "No key on this computer works for %s yet, so a "
                     "password is needed once to install one." % netid,
                     "need-password")
+            _say("no key here works yet: making Jarvis's own", "", "signin")
             made = make_key()
             key_path = key_paths()[0]
+            _say(("made %s" if made.get("created") else "using %s, made "
+                  "before") % key_path, "dim", "signin")
+            _say("looking up %s" % host, "dim", "signin")
             pin = _pin_host(host)
+            if pin:
+                _say("%s has several addresses: install and proof both go "
+                     "to %s" % (host, pin), "dim", "signin")
             try:
                 got = install_key(netid, password, host=pin or host,
                                   duo=duo, alias=host if pin else None)
@@ -1071,7 +1228,42 @@ def inventory(cfg, root=None, timeout=180):
     root = root or cfg.get("scratch_root") or cfg.get("scratch") or ""
     if not root:
         return []
-    raw = _ssh(cfg, "bash -s", stdin=_INVENTORY % q(root), timeout=timeout)
+    # Said as it goes: every folder the walk finds is a line, and the bar
+    # runs against the last walk of the same place (an estimate, and said
+    # to be one). netfiles takes minutes; this is what fills them.
+    name = "walk:" + root.rstrip("/")
+    prior = len(_inv(root).get("list") or []) or None
+    t0 = time.time()
+    livefeed.task(name, restart=True, state="run", done=0, of=prior,
+                  estimate=bool(prior),
+                  label=("Looking through netfiles " if is_native_root(cfg, root)
+                         else "Looking through ") + root)
+    _say("find %s for CSC1.ncs, seven folders deep" % root, "hot", name)
+    seen_live = set()
+
+    def found(line):
+        bits = line.split("\t", 4)
+        if len(bits) < 4 or bits[0] != "rec":
+            return
+        path = bits[-1]
+        if path in seen_live:
+            return
+        seen_live.add(path)
+        livefeed.bump(name)
+        tail = path[len(root.rstrip("/")):].lstrip("/") or path
+        _say("found %s  (%s ch)" % (tail, bits[1]), "", name)
+
+    try:
+        raw = _ssh_watched(cfg, "bash -s", stdin=_INVENTORY % q(root),
+                           timeout=timeout, on_line=found)
+    except SSHError as exc:
+        _say("the walk of %s stopped: %s" % (root, exc), "warn", name)
+        livefeed.task(name, state="fail")
+        raise
+    _say("%d recording folder%s under %s, in %.0f s"
+         % (len(seen_live), "" if len(seen_live) == 1 else "s", root,
+            time.time() - t0), "ok", name)
+    livefeed.task(name, state="done", of=len(seen_live), estimate=False)
     out, done, seen = [], False, set()
     for line in (raw or "").splitlines():
         if line.strip() == "end=1":
@@ -1097,6 +1289,8 @@ def inventory(cfg, root=None, timeout=180):
         out.append({"path": path, "n_channels": n_ch,
                     "first_ncs_bytes": first, "header": header.strip()})
     if not done:
+        _say("the listing of %s was cut short" % root, "warn", name)
+        livefeed.task(name, state="fail")
         raise SSHError("The listing was cut short.", "garbled", raw)
     return out
 
@@ -1900,6 +2094,52 @@ def _root_checks(cfg):
     return "\n".join(out)
 
 
+def _probe_said(line):
+    """One line of the probe's answer, in words, into the live feed."""
+    line = (line or "").strip()
+    if "=" not in line:
+        return
+    k, _, v = line.partition("=")
+    k, v = k.strip(), v.strip()
+    say = lambda text, kind="": _say(text, kind, "probe")  # noqa: E731
+    if k == "whoami":
+        say("the cluster says you are %s" % v, "ok")
+    elif k == "host":
+        say("answered by login node %s" % v)
+    elif k == "queued":
+        say("%s of your jobs waiting in the queue" % v, "dim")
+    elif k == "running":
+        say("%s of your jobs running" % v, "dim")
+    elif k == "partitions":
+        say("partitions: %s" % ", ".join(p for p in v.split(",") if p), "dim")
+    elif k == "home":
+        say("home: %s" % v, "dim")
+    elif re.match(r"^root\d+$", k):
+        path, _, verdict = v.partition("|")
+        if verdict == "ok":
+            say("can read %s" % path, "ok")
+        elif verdict == "denied":
+            say("%s is there, and this account cannot read it" % path, "warn")
+        else:
+            say("%s: %s" % (path, verdict or "unknown"), "dim")
+    elif k == "shared":
+        say("the lab's shared space: %s" % v, "ok" if v == "ok" else "warn")
+    elif k == "jdata":
+        say("Jarvis Data: %s" % {"ok": "writable", "nowrite": "read only",
+                                 "creatable": "not made yet, can be",
+                                 "missing": "missing"}.get(v, v),
+            "ok" if v == "ok" else "dim")
+    elif k == "job":
+        bits = (v.split("|") + [""] * 5)[:5]
+        say("job %s  %s  %s  %s" % (bits[0], bits[1], bits[2], bits[3]), "dim")
+    elif k == "fail":
+        bits = (v.split("|") + [""] * 4)[:4]
+        say("ended badly in the last day: %s %s (%s)" % (bits[0], bits[1],
+                                                         bits[2]), "dim")
+    elif k == "end":
+        say("answer complete", "ok")
+
+
 def probe(cfg, timeout=90):
     """Ask the cluster everything the interface wants, in one connection."""
     # The root checks go BEFORE the `end=1` line, so a connection cut halfway
@@ -1907,7 +2147,19 @@ def probe(cfg, timeout=90):
     script = _PROBE.replace('echo "end=1"',
                             _root_checks(cfg) + "\n" + _shared_checks(cfg)
                             + "\n" + _JOBS + '\necho "end=1"')
-    raw = _ssh(cfg, "bash -s", stdin=script, timeout=timeout)
+    livefeed.task("probe", restart=True, state="run",
+                  label="Asking the cluster how it is")
+    _say("ssh %s@%s  (one connection: who, partitions, jobs, shares)"
+         % (cfg.get("netid") or "?", cfg.get("host") or DEFAULT_HOST),
+         "", "probe")
+    try:
+        raw = _ssh_watched(cfg, "bash -s", stdin=script, timeout=timeout,
+                           on_line=_probe_said)
+    except SSHError as exc:
+        _say("no answer: %s" % exc, "warn", "probe")
+        livefeed.task("probe", state="fail")
+        raise
+    livefeed.task("probe", state="done")
     got = _parse_probe(raw)
     # `end=1` is the last line the script writes, so its presence is how a
     # complete answer is told from one cut short by a dropped connection --

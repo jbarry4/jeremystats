@@ -3200,8 +3200,14 @@ window.MONO_FIXTURE = {
   check('a follow-up figure: each lit measure’s t-test and its shuffles, by name, in its chips',
         f9.keys.every((k) => /^(PLI|Imaginary|Granger|Amplitude|PAC)/.test(txt(fc9.querySelector('.fgchip[data-key="' + k + '"]')))
                        && txt(fc9.querySelector('.fgchip[data-key="' + k + '"]')).indexOf('t(' + f9.stats.measures[k].df + ')') >= 0
-                       && txt(fc9.querySelector('.fgchip[data-key="' + k + '-perm"]')).indexOf('rank ' + f9.stats.nulls[k].rank.toLocaleString('en-US')) >= 0),
+                       && txt(fc9.querySelector('.fgchip[data-key="' + k + '-perm"]')).indexOf('rank ' + f9.stats.nulls[k].rank.toLocaleString('en-US')) >= 0
+                       && /^FP intervals: P/.test(txt(fc9.querySelector('.fgchip[data-key="' + k + '-fp"]')))
+                       && txt(fc9.querySelector('.fgchip[data-key="' + k + '-fp"]')).indexOf('rank ' + f9.stats.nulls_fp[k].rank.toLocaleString('en-US')) >= 0),
         txt(fc9.querySelector('.fgstats')));
+  check('the FP comparison said at the top: how many fake trials, from how many rat-days',
+        new RegExp('^FP comparison: ' + FIGS.fp.fake_trials.toLocaleString('en-US') + ' fake trials \\(a fake cue every ' + FIGS.fp.step_s + ' s of FP1 and FP2\\) from '
+                   + FIGS.fp.rat_days + ' of the ' + FIGS.fp.of + ' rat-days').test(txt(D().getElementById('figsfpread'))) && !D().getElementById('figsfpnone'),
+        txt(D().getElementById('figsfpread')));
   // Methods: a button, and behind it the words, the code and something to play with.
   const mb9 = c9.querySelector('.fgmbtn');
   check('Methods is a button, closed to begin with', !!mb9 && mb9.getAttribute('aria-expanded') === 'false' && !c9.querySelector('.fgmethods'));
@@ -3247,11 +3253,11 @@ window.MONO_FIXTURE = {
   // The test the rings are held to: the rats' flips (what lit tab 8's
   // light), or the trials' shuffle within each session, a toggle away.
   const segs9 = () => Array.from(c9.querySelectorAll('.fgnull .seg button'));
-  check('a toggle of two tests over the rings, the rats’ flips (the light’s test) pressed to begin with',
-        segs9().length === 2 && segs9()[0].dataset.null === 'rats' && segs9()[0].classList.contains('active')
+  check('a toggle of three tests over the rings: the rats’ flips (the light’s test, pressed to begin with), the trials’ shuffle, FP intervals',
+        segs9().length === 3 && segs9().map((b) => b.dataset.null).join() === 'rats,trials,fp' && segs9()[0].classList.contains('active')
         && segs9()[0].getAttribute('aria-pressed') === 'true' && !segs9()[1].classList.contains('active')
         && /the light’s test/.test(txt(segs9()[0])), segs9().map((b) => txt(b)).join(' | '));
-  const t9 = conn9[0].alt;
+  const t9 = conn9[0].alts.find((a) => a.null === 'trials');
   segs9()[1].click();
   await sleep(60);
   check('pressed: the same card, now the trials’ shuffle: its own picture, chips (of 10,000), legend and downloads',
@@ -3273,6 +3279,33 @@ window.MONO_FIXTURE = {
         !c9.querySelector('.fgmethod[data-method="ratflip"]')
         && txt(perm9).indexOf('rank ' + gt9.rank.toLocaleString('en-US') + ' of ' + gt9.n.toLocaleString('en-US')) >= 0
         && perm9.querySelectorAll('.fghist rect').length === gt9.null.counts.length, txt(perm9).slice(-160));
+  c9.querySelector('.fgmbtn').click();
+  await sleep(40);
+  // The third test: the same rings against fake trials from FP1 and FP2.
+  const fp9 = conn9[0].alts.find((a) => a.null === 'fp');
+  segs9()[2].click();
+  await sleep(60);
+  check('pressed FP: the same card against fake trials from FP1 and FP2: its own picture, chips, legend and downloads',
+        card9(conn9[0]) === c9 && segs9()[2].classList.contains('active')
+        && /joefigs\/file\/fig_1_fp\.svg$/.test(c9.querySelector('img.fgsvg').getAttribute('src'))
+        && fp9.stats.graphs.every((g) => txt(c9.querySelector('.fgchip[data-row="' + g.row + '"][data-kind="' + g.kind + '"]'))
+          .indexOf('rank ' + g.rank.toLocaleString('en-US') + ' of ' + g.n.toLocaleString('en-US')) >= 0)
+        && /FP1 and FP2/.test(txt(c9.querySelector('.fglegend')))
+        && ['pdf', 'svg', 'png'].every((x) => Array.from(c9.querySelectorAll('.fgtools a')).some((a) => a.getAttribute('download') === fp9.files[x])),
+        txt(c9.querySelector('.fgstats')).slice(0, 160));
+  c9.querySelector('.fgmbtn').click();
+  await until(() => c9.querySelector('.fgmethods'), 40);
+  const fpt9 = c9.querySelector('.fgmethod[data-method="fpnull"] .fgtoy');
+  Array.from(fpt9.querySelectorAll('.xstep')).find((b) => txt(b) === 'A fake trial').click();
+  await sleep(1600);
+  const fakes9 = fpt9.querySelectorAll('rect.fgfakecue').length;
+  Array.from(fpt9.querySelectorAll('.xstep')).find((b) => txt(b) === 'Where it lands').click();
+  await sleep(500);
+  const gf9 = fp9.stats.graphs.find((g) => g.row === 'delta' && g.kind === 'pos');
+  check('its Methods: FP, played: a fake trial dropped into FP, then the figure’s own FP sets, and the real value lands with its rank and P',
+        !c9.querySelector('.fgmethod[data-method="ratflip"]') && fakes9 >= 1
+        && txt(fpt9).indexOf('rank ' + gf9.rank.toLocaleString('en-US') + ' of ' + gf9.n.toLocaleString('en-US')) >= 0
+        && fpt9.querySelectorAll('.fghist rect').length === gf9.null.counts.length, txt(fpt9).slice(-160));
   c9.querySelector('.fgmbtn').click();
   await sleep(40);
   segs9()[0].click();
@@ -3321,6 +3354,22 @@ window.MONO_FIXTURE = {
   await until(() => !JF.state.making && D().getElementById('figsintro'), 120);
   check('read again: the line says where, and Draw again sits beside reading the PAC on the VACC again',
         !!D().getElementById('figsread') && !!D().getElementById('figsmake') && !!D().getElementById('figsvaccagain'));
+  // Drawn before FP was measured: said, with a button to measure it on the VACC.
+  FIGS = Object.assign({}, FIGS_READ, { fp: { read: false, rat_days: 0, fake_trials: 0, step_s: 10, of: FIGS_READ.fp.of },
+    figures: FIGS_READ.figures.map((x) => Object.assign({}, x, x.kind === 'connectome' ? { alts: (x.alts || []).filter((a) => a.null !== 'fp') }
+      : { stats: Object.assign({}, x.stats, { nulls_fp: {} }) })) });
+  await JF.load();
+  const segsN = Array.from(D().querySelectorAll('#figspane .fgcard .fgnull .seg button')).filter((b) => b.dataset.null === 'fp').length;
+  check('FP not measured yet: said at the top with a button to measure it on the VACC, no FP on the toggle or the chips',
+        !!D().getElementById('figsfp') && !D().getElementById('figsfpread') && segsN === 0
+        && !D().querySelector('#figspane .fgchip.fgfp'), txt(D().getElementById('figsfpnone')));
+  figsPosted = [];
+  D().getElementById('figsfp').click();
+  await until(() => figsPosted.length, 80);
+  FIGS = FIGS_READ;
+  check('pressed: measuring FP on the VACC is asked of Jarvis, confirmed', figsPosted.length === 1 && figsPosted[0].confirm === true
+        && figsPosted[0].fp_vacc === true, JSON.stringify(figsPosted));
+  await until(() => !JF.state.making && D().getElementById('figsintro'), 120);
   FIGS_MISSING = true; figsPosted = [];
   await JF.load();
   check('not drawn yet: said, with a button to draw them here', !!D().getElementById('figsmake') && !D().getElementById('figsintro'));

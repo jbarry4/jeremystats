@@ -39,6 +39,10 @@
    ========================================================================== */
 'use strict';
 
+/* How far a stamp may move, either way, unless somebody changes it: the
+   baseline for Braces and Lock alike (100 until 2026-10-23). */
+const WINDOW_MS = 200;
+
 function makeBraces(cfg) {
   /* The words that differ, said once. */
   const W = cfg.words;
@@ -52,7 +56,8 @@ function makeBraces(cfg) {
     gid: null,          // the chosen recording
     find: '',           // kept so the harness can still drive the old box
     finding: false,
-    window_ms: 100,
+    // ±200 ms by default (2026-10-23: "make the baseline window 200").
+    window_ms: WINDOW_MS,
     estimator: 'sd',
     // Lock: keep the stamps Braces placed where they are. Ticked by itself
     // whenever the set has any (`pinFor`); null until somebody changes it.
@@ -723,8 +728,8 @@ function makeBraces(cfg) {
       + 'every ticked channel into one trace, and the stamp goes to the '
       + 'highest point of THAT inside the window. One noisy wire cannot '
       + 'carry it and a dead one cannot sink it — and nothing is '
-      + 'thresholded, because a peak is already the largest thing within a '
-      + 'hundred milliseconds of itself.' }));
+      + 'thresholded, because a peak is already the largest thing within '
+      + 'its window.' }));
     box.appendChild(set);
 
     /* Go. */
@@ -1166,7 +1171,7 @@ function makeBraces(cfg) {
         type: 'number', step: '10', min: '5', value: String(q.window_ms),
         class: 'br-window', disabled: off,
         onchange: (e) => {
-          q.window_ms = Math.max(5, parseFloat(e.target.value) || 100);
+          q.window_ms = Math.max(5, parseFloat(e.target.value) || WINDOW_MS);
           render();
         },
       }), 'how far a stamp may move'),
@@ -2606,6 +2611,9 @@ function makeBraces(cfg) {
     contested: 'not the nearest peak',
     weak: 'weak peak',
     outlier: 'unlike the others',
+    // Lock (2026-10-23): its own peak is one a locked Braces stamp fills,
+    // and more than one other was left to choose from.
+    locked_peak: 'pushed off a Braces stamp’s peak, several left',
     // Not one of the proposal's. Raised by the review and cleared by the
     // review -- see `overlapping`.
     overlap: 'shares a time with another stamp',
@@ -4030,6 +4038,8 @@ function makeBraces(cfg) {
            one, a tenth of a millisecond away, where nothing on the trace
            can tell them apart. */
         + (r.locked ? '   ·   ' + REASONS.locked
+             + (r.fills != null ? ', holding the peak at ' + clock(r.fills)
+                                : ', no peak under it')
            : overlapping(view.at)
            ? '   ·   ' + REASONS.overlap
              + (overlapMate(view.at) != null
@@ -5683,7 +5693,7 @@ BARRY.braces = makeBraces({
                            + 'run on'],
   ],
   words: {
-    blurb: 'Every stamp onto the peak it belongs to. A ±100 ms window, the '
+    blurb: 'Every stamp onto the peak it belongs to. A ±200 ms window, the '
          + 'DS-filtered magnitude, and one peak per stamp — so a spike '
          + 'that drifted early is not corrected by stealing the next '
          + 'one’s. Nothing is written until you accept it.',

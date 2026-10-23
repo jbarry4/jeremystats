@@ -39,7 +39,7 @@
   },
   "added": {
     "at": "2026-09-15T19:51:33-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "LCOM549913"
   },
   "by_label": {
@@ -80,7 +80,7 @@
     {
       "archived": true,
       "at": "2026-09-15T19:57:58-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },
@@ -117,7 +117,7 @@
     {
       "archived": true,
       "at": "2026-09-15T19:51:33-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },

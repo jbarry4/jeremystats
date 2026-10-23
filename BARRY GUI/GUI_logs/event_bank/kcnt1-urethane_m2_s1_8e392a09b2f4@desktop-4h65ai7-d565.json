@@ -62,7 +62,7 @@
   },
   "added": {
     "at": "2026-09-29T13:07:31-04:00",
-    "by": "eye harness",
+    "by": "Debug_Bot",
     "machine": "BarryLab"
   },
   "by_label": {
@@ -140,7 +140,7 @@
     {
       "archived": true,
       "at": "2026-09-29T13:07:31-04:00",
-      "by": "eye harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 6
       },
@@ -194,7 +194,7 @@
     {
       "archived": true,
       "at": "2026-09-29T13:07:31-04:00",
-      "by": "eye harness",
+      "by": "Debug_Bot",
       "by_label": {
         "Garbage": 1,
         "Solid": 5
@@ -251,7 +251,7 @@
     {
       "archived": true,
       "at": "2026-09-29T13:08:32-04:00",
-      "by": "eye harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 6
       },
@@ -305,7 +305,7 @@
     {
       "archived": true,
       "at": "2026-09-29T13:08:32-04:00",
-      "by": "eye harness",
+      "by": "Debug_Bot",
       "by_label": {
         "Garbage": 1,
         "Solid": 5
@@ -363,7 +363,7 @@
     {
       "archived": true,
       "at": "2026-09-29T13:10:08-04:00",
-      "by": "eye harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 6
       },
@@ -417,7 +417,7 @@
     {
       "archived": true,
       "at": "2026-09-29T13:10:08-04:00",
-      "by": "eye harness",
+      "by": "Debug_Bot",
       "by_label": {
         "Garbage": 1,
         "Solid": 5

@@ -3101,7 +3101,7 @@ BARRY.profile = (function () {
     load();
   }
 
-  return { load, get, who, open, wire, paintChip };
+  return { load, get, who, open, wire, paintChip, roles: () => ROLES.slice() };
 })();
 
 
@@ -3835,15 +3835,27 @@ BARRY.boot = (function () {
        overlay becomes the title instead of fading, and goes when somebody
        chooses. Never in a harness, a pop-out or a deep link -- see
        startmenu.js `wanted`. */
-    try {
-      if (BARRY.startMenu && BARRY.startMenu.wanted()) {
-        BARRY.startMenu.take(box, finish);
-        return;
+    const menu = () => {
+      try {
+        if (BARRY.startMenu && BARRY.startMenu.wanted()) {
+          BARRY.startMenu.take(box, finish);
+          return;
+        }
+      } catch (e) {
+        reportClientError('boot.startmenu', e.message, e.stack);
       }
+      finish();
+    };
+    /* A computer nobody has said who they are on gets the welcome first
+       (welcome.js, 2026-10-23): who you are, the VACC, the recordings --
+       then straight in. Everywhere else it answers false at once and the
+       start menu is exactly as it was. */
+    try {
+      if (BARRY.welcome && BARRY.welcome.maybe(box, finish, menu)) return;
     } catch (e) {
-      reportClientError('boot.startmenu', e.message, e.stack);
+      reportClientError('boot.welcome', e.message, e.stack);
     }
-    finish();
+    menu();
   }
 
   /* A hard limit, whatever happens.

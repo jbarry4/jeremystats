@@ -214,7 +214,12 @@ ROWS = (("Precon1", "Precon1"), ("Precon4", "Precon4"), ("delta", "Precon4 − P
 #: noise inside each session; it answers a different question ("bigger
 #: than trial-to-trial noise?") and is kept for comparison.
 NULLS = (("rats", "Rats flipped", "every way of flipping the sign of each rat\u2019s change, the rat as the unit, as tab 8\u2019s light"),
-         ("trials", "Trials swapped", "each session\u2019s trials with their two windows swapped at random, trial-to-trial noise inside each session"))
+         ("trials", "Trials swapped", "each session\u2019s trials with their two windows swapped at random, trial-to-trial noise inside each session"),
+         ("fp", "FP intervals", "the same change made from fake trials at random moments of the same rats\u2019 FP1 and FP2, with no cues"))
+#: Where the FP null's fake trials are drawn (2026-10-23, "take random
+#: intervals of FP1/FP2 and see what the data set's rank is").
+FP_NULL_SEED = SEED + 7
+C_FP = "#0072B2"
 #: More rats than this and the sign patterns are sampled, not all listed.
 RAT_EXACT_MAX = 14
 
@@ -256,7 +261,60 @@ def _graph_stat(kind, edges):
         return np.nansum(edges, axis=-1)
 
 
-def connectome(R, days, res):
+def fp_per_rat(pools, days, rats, getter, wa, wb, seed, n=N_PERM):
+    """The FP null of each session's change: {day: (rats, n, K)}, laid out
+    as per_rat_changes lays out its shuffles. In each of the n sets, every
+    session gets as many fake trials as it had real ones, drawn at random
+    (with replacement) from its rat-day's pool of fake trials in FP1 and
+    FP2, each with its two windows in random order; its change is the mean
+    of the second windows minus the mean of the first, as a real session's
+    is. A rat-day with no pool is NaN.
+
+    The random order (2026-10-23): FP has no cue, so either window can
+    stand for it, and every comparison here is of two windows the same
+    length. Without it the null was centred on the pool's own average
+    change, which is chance from a few minutes of FP (check_joe caught one
+    2.3 of its own SDs off zero), not on nothing.
+
+    The real session's own losses (2026-10-23): wherever its trial k lost
+    a window to clipping (a pair or region not measured), the k-th fake
+    trial drawn loses it too. The cues lose far more windows than FP does,
+    so without this each fake session averaged more windows than the real
+    one and the null came out too narrow."""
+    import warnings
+    rng = np.random.default_rng(seed)
+    out = {}
+    for day in joe.TESTED:
+        rows, K = [], None
+        for r in rats:
+            pool, ses = pools.get((r, day)), days.get((r, day))
+            if pool is None or ses is None:
+                rows.append(None)
+                continue
+            base = np.asarray(getter(pool[0], wa), np.float32)
+            cue = np.asarray(getter(pool[0], wb), np.float32)
+            # the real session's windows, for which were lost (same layout)
+            ok_a = np.isfinite(np.asarray(getter(ses[0], wa), np.float64))
+            ok_b = np.isfinite(np.asarray(getter(ses[0], wb), np.float64))
+            T = ok_a.shape[0]
+            if T == 0:
+                rows.append(None)
+                continue
+            idx = rng.integers(0, base.shape[0], size=(n, T))
+            flip = (rng.random((n, T)) < 0.5)[:, :, None]
+            b_, c_ = base[idx], cue[idx]
+            first = np.where(ok_a[None], np.where(flip, c_, b_), np.nan)
+            second = np.where(ok_b[None], np.where(flip, b_, c_), np.nan)
+            with warnings.catch_warnings(), np.errstate(invalid="ignore"):
+                warnings.simplefilter("ignore", RuntimeWarning)
+                ch = np.nanmean(second, axis=1) - np.nanmean(first, axis=1)
+            rows.append(ch.astype(np.float64))
+            K = ch.shape[1]
+        out[day] = None if K is None else np.stack([x if x is not None else np.full((n, K), np.nan) for x in rows])
+    return out
+
+
+def connectome(R, days, res, pools=None):
     """The nine graphs of one result, with their nulls."""
     mid = res["model"]
     b = [x for x, _l, _h in joe.BANDS].index(res["band"])
@@ -281,7 +339,15 @@ def connectome(R, days, res):
                "delta": obs["Precon4"] - obs["Precon1"]}
     S, exact = rat_signs(len(rats))
     nr = {row: _nanmean0(np.moveaxis(S[:, :, None] * X[None], 1, 0)) for row, X in per_rat.items()}
-    graphs, graphs_t = [], []
+    # The FP null: the same rings made from fake trials in FP1 and FP2.
+    nf = None
+    if pools:
+        get = lambda pool, w: pool["coh"][_wi(w), :, b, m, :][:, keep]          # noqa: E731
+        fpr = fp_per_rat(pools, days, rats, get, *WINDOWS[mid], seed=FP_NULL_SEED + list(WINDOWS).index(mid))
+        if fpr["Precon1"] is not None and fpr["Precon4"] is not None:
+            nf = {"Precon1": _nanmean0(fpr["Precon1"]), "Precon4": _nanmean0(fpr["Precon4"])}
+            nf["delta"] = nf["Precon4"] - nf["Precon1"]
+    graphs, graphs_t, graphs_f = [], [], []
     for row, row_say in ROWS:
         for kind, kind_say, side in GRAPHS:
             o = float(_graph_stat(kind, e[row]))
@@ -298,9 +364,13 @@ def connectome(R, days, res):
             nn = _graph_stat(kind, ne[row])
             p, rank, n = perm_p(o, nn, side)
             graphs_t.append(dict(base, p=p, rank=rank, n=n, stars=stars(p), null=_hist(nn), null_kind="trials"))
+            if nf is not None:
+                nn = _graph_stat(kind, nf[row])
+                p, rank, n = perm_p(o, nn, side)
+                graphs_f.append(dict(base, p=p, rank=rank, n=n, stars=stars(p), null=_hist(nn), null_kind="fp"))
     return {"model": mid, "band": res["band"], "method": res["method"], "pairs": [R["pairs"][i] for i in keep],
             "pair_index": keep, "edges": {k: [None if not np.isfinite(x) else float(x) for x in v] for k, v in e.items()},
-            "graphs": graphs, "graphs_trials": graphs_t, "null": "rats", "rat_exact": bool(exact),
+            "graphs": graphs, "graphs_trials": graphs_t, "graphs_fp": graphs_f, "null": "rats", "rat_exact": bool(exact),
             "trials": [int(min(v[0].shape[0] for v in sessions.values())), int(max(v[0].shape[0] for v in sessions.values()))],
             "n_signs": int(S.shape[0]), "rats": rats, "n_perm": N_PERM}
 
@@ -343,6 +413,38 @@ def follow_null(R, days, item, key):
     null = per_rat_changes(sessions, rats, flips)
     dl = obs["Precon4"][:, 0] - obs["Precon1"][:, 0]                  # per rat
     nd = null["Precon4"][:, :, 0] - null["Precon1"][:, :, 0]           # rats x N
+    ok = np.isfinite(dl)
+    o = float(np.mean(dl[ok]))
+    nn = _nanmean0(nd[ok])
+    pv, rank, n = perm_p(o, nn, "two")
+    return {"obs": o, "p": pv, "rank": rank, "n": n, "stars": stars(pv), "null": _hist(nn), "n_rats": int(ok.sum())}
+
+
+def fp_follow_null(R, days, pools, item, key):
+    """One follow-up's FP null: the same statistic (the mean over rats of
+    each rat's Precon4 change minus its Precon1 change), each session made
+    of fake trials from its rat-day's FP pool."""
+    mid = item["model"]
+    b = [x for x, _l, _h in joe.BANDS].index(item["band"])
+    p = R["pairs"].index(item["pair"])
+    a, bb = joe.pairs_of(len(R["regions"]))[p]
+    rats = sorted({r for r, d in days if d in joe.TESTED})
+    sessions = {}
+    for (r, d), (arrs, _fp, _meta) in days.items():
+        if d in joe.TESTED:
+            sessions[(r, d)] = session_measure(arrs, mid, key, b, p, a, bb)
+    obs = per_rat_changes(sessions, rats)
+    if key.startswith("pac_"):
+        i, j = {"pac_ab": (a, bb), "pac_ba": (bb, a), "pac_aa": (a, a), "pac_bb": (bb, bb)}[key]
+        get = lambda pool, w: pool["pac"][_wi(w), :, i, j][:, None]           # noqa: E731
+    else:
+        get = lambda pool, w: pool[key][_wi(w), :, b, p][:, None]             # noqa: E731
+    fpr = fp_per_rat(pools, days, rats, get, *WINDOWS[mid],
+                     seed=FP_NULL_SEED + 100 + p * 16 + joe.FOLLOW_KEYS.index(key))
+    if fpr["Precon1"] is None or fpr["Precon4"] is None:
+        return None
+    dl = obs["Precon4"][:, 0] - obs["Precon1"][:, 0]
+    nd = fpr["Precon4"][:, :, 0] - fpr["Precon1"][:, :, 0]
     ok = np.isfinite(dl)
     o = float(np.mean(dl[ok]))
     nn = _nanmean0(nd[ok])
@@ -767,20 +869,34 @@ def draw_ring(ax, regions, edges, vmax, present=None, focus=None, arrow=None, se
                     va="center", color="#1A1A1A" if on else "#A6A6A6")
 
 
-def draw_null(ax, hist, obs, p, rank, n, label=True, xlabel=None, what="shuffles"):
+def draw_null(ax, hist, obs, p, rank, n, label=True, xlabel=None, what="shuffles", fp=None):
+    """A null as grey bars, the observed value as a black line; with `fp`
+    (a second null: {"null", "p", "rank", "n"}), that one as a blue outline
+    on the same axis, each with its own P."""
     c, e = np.array(hist["counts"]), np.array(hist["edges"])
-    ax.bar(e[:-1], c, width=np.diff(e), align="edge", color=C_NULL, lw=0)
+    ax.bar(e[:-1], c / max(1, c.max()), width=np.diff(e), align="edge", color=C_NULL, lw=0)
+    lo, hi = min(e[0], obs), max(e[-1], obs)
+    if fp is not None:
+        c2, e2 = np.array(fp["null"]["counts"]), np.array(fp["null"]["edges"])
+        ax.stairs(c2 / max(1, c2.max()), e2, color=C_FP, lw=0.7)
+        lo, hi = min(lo, e2[0]), max(hi, e2[-1])
     ax.axvline(obs, color="#1A1A1A", lw=0.8)
     ax.set_yticks([])
     ax.spines["left"].set_visible(False)
-    lo, hi = min(e[0], obs), max(e[-1], obs)
     pad = (hi - lo) * 0.05
     ax.set_xlim(lo - pad, hi + pad)
     ax.tick_params(axis="x", labelsize=5)
     ax.locator_params(axis="x", nbins=3)
     if xlabel:
         ax.set_xlabel(xlabel, fontsize=5, labelpad=1)
-    if label:
+    if label and fp is not None:
+        for yy, (who, pp, col) in ((1.50, ("Shuffles", p, "#1A1A1A")), (1.27, ("FP", fp["p"], C_FP))):
+            st = stars(pp)
+            ax.text(0.0, yy, "%s %s%s" % (who, p_say(pp), (" " + st) if st else ""), transform=ax.transAxes, fontsize=5.5,
+                    fontweight="bold" if st else "normal", va="bottom", ha="left", color=col)
+        ax.text(0.0, 1.04, "ranks %s and %s of %s" % (format(rank, ","), format(fp["rank"], ","), format(n, ",")),
+                transform=ax.transAxes, fontsize=5, va="bottom", ha="left", color="#4D4D4D")
+    elif label:
         st = stars(p)
         ax.text(0.0, 1.30, "%s%s" % (p_say(p), (" " + st) if st else ""), transform=ax.transAxes, fontsize=5.5,
                 fontweight="bold" if st else "normal", va="bottom", ha="left")
@@ -800,9 +916,9 @@ def _save(fig, name):
 
 def connectome_figure(C, regions, title_no, null="rats"):
     """Nine rings (Precon1, Precon4, the change; increases, decreases, both)
-    with a null under each: the rats' (the main figure) or the trials'
-    (`<name>_trials`). Double column."""
-    gs = C["graphs"] if null == "rats" else C["graphs_trials"]
+    with a null under each: the rats' (the main figure), the trials'
+    (`<name>_trials`) or FP's (`<name>_fp`). Double column."""
+    gs = {"rats": C["graphs"], "trials": C["graphs_trials"], "fp": C.get("graphs_fp")}[null]
     plt = _plt()
     W, H = WIDTH["double"], 206.0
     fig = plt.figure(figsize=(W * MM, H * MM))
@@ -837,7 +953,7 @@ def connectome_figure(C, regions, title_no, null="rats"):
             hx = _ax(fig, col_x[ci] + 9.0, row_y[ri] + ring_h + 6.0, ring_w - 18.0, hist_h, H, W)
             draw_null(hx, g["null"], g["stat"], g["p"], g["rank"], g["n"],
                       xlabel="Summed Δ coherence" if ri == 2 else None,
-                      what="sign flips" if null == "rats" else "shuffles")
+                      what={"rats": "sign flips", "trials": "shuffles", "fp": "FP sets"}[null])
             _letter(fig, col_x[ci] - 2.0, row_y[ri], letters[k], H, W)
             k += 1
     # The key: edge widths and colours.
@@ -852,7 +968,7 @@ def connectome_figure(C, regions, title_no, null="rats"):
     kx.text(106, 3, "increase", va="center", fontsize=5)
     kx.plot([124, 132], [3, 3], lw=1.5, color=C_DOWN, solid_capstyle="round")
     kx.text(134, 3, "decrease", va="center", fontsize=5)
-    files = _save(fig, "fig_%s" % title_no if null == "rats" else "fig_%s_trials" % title_no)
+    files = _save(fig, "fig_%s" % title_no if null == "rats" else "fig_%s_%s" % (title_no, null))
     plt.close(fig)
     return files
 
@@ -888,7 +1004,7 @@ def _sci(ax):
     ax.yaxis.get_offset_text().set_fontsize(5)
 
 
-def follow_figure(item, nulls, regions, levels, title_no, profile=None):
+def follow_figure(item, nulls, regions, levels, title_no, profile=None, nulls_fp=None):
     """One follow-up that changed: the pair on the ring; each rat's four
     values; each rat's change between the days with its t-test; the
     within-session null. One row per lit measure; PAC adds the
@@ -970,7 +1086,9 @@ def follow_figure(item, nulls, regions, levels, title_no, profile=None):
         nl = nulls[key]
         _letter(fig, 152.0, y, next(letters), H, W)
         dx = _ax(fig, 156.0, y + 12.0, 25.0, row_h - 26.0, H, W)
-        draw_null(dx, nl["null"], nl["obs"], nl["p"], nl["rank"], nl["n"], xlabel="Shuffled within sessions")
+        nf = (nulls_fp or {}).get(key)
+        draw_null(dx, nl["null"], nl["obs"], nl["p"], nl["rank"], nl["n"], fp=nf,
+                  xlabel="Shuffles (grey), FP (blue)" if nf is not None else "Shuffled within sessions")
         y += row_h
     for key in pac_rows:
         y = _pac_panels(fig, plt, profile[key], levels, y, H, W, letters, item, key)
@@ -1059,7 +1177,7 @@ def _model_title(R, mid):
 def connectome_legend(R, C, null="rats"):
     no, title, m = _model_title(R, C["model"])
     la, lb = [lv["label"] for lv in m["levels"]]
-    gs = C["graphs"] if null == "rats" else C["graphs_trials"]
+    gs = {"rats": C["graphs"], "trials": C["graphs_trials"], "fp": C.get("graphs_fp")}[null]
     sig = [g for g in gs if g["p"] < 0.05]
     if null == "rats":
         n_s = format(C["n_signs"], ",")
@@ -1072,6 +1190,14 @@ def connectome_legend(R, C, null="rats"):
             how += ("; with %d rats P moves in steps of 1/%s, so the smallest possible is 1/%s for the increases or the "
                     "decreases and 2/%s for both" % (len(C["rats"]), n_s, n_s, n_s))
         how += "; increases one-sided upward, decreases downward, both two-sided"
+    elif null == "fp":
+        how = ("against %s sets of fake trials from the same rats\u2019 FP1 and FP2 recordings, where there were no cues: "
+               "a fake cue onset every %g s of FP, the trial\u2019s own windows round it, measured as a trial\u2019s are; in "
+               "each set every session gets as many fake trials as it had real ones, drawn at random with replacement, each "
+               "with its two windows in random order (with no cue, either can stand for it) and losing the windows the matching "
+               "real trial lost to clipping, and its "
+               "change is made as the real one is. The vertical line is the observed value, with its rank among the sets and "
+               "its P (increases one-sided upward, decreases downward, both two-sided" % (format(C["n_perm"], ","), joe.FP_POOL_STEP))
     else:
         how = ("against %s shuffles in which each session\u2019s trials had their two windows swapped at random (the sign of "
                "that trial\u2019s change flipped: trial-to-trial noise inside each session), the vertical line the observed "
@@ -1093,22 +1219,24 @@ def connectome_legend(R, C, null="rats"):
            else ("%d–%d" % tuple(C["trials"]) if C.get("trials") else "up to 16"), sig_say)}
 
 
-def follow_legend(R, item, nulls, levels):
+def follow_legend(R, item, nulls, levels, nulls_fp=None):
     no, title, _m = _model_title(R, item["model"])
     la, lb = levels
     parts = []
     for key in item["keys"]:
         ms = item["measures"][key]
         nl = nulls[key]
-        parts.append("%s: t(%d) = %s, %s (one-sample t-test of each rat's change, uncorrected); within-session shuffles %s, rank %s of %s"
+        nf = (nulls_fp or {}).get(key)
+        parts.append("%s: t(%d) = %s, %s (one-sample t-test of each rat's change, uncorrected); within-session shuffles %s, rank %s of %s%s"
                      % (_measure_say(key, item), ms.get("df") or 0, num(ms.get("t") or float("nan")), p_say(ms.get("p")), p_say(nl["p"]),
-                        format(nl["rank"], ","), format(nl["n"], ",")))
+                        format(nl["rank"], ","), format(nl["n"], ","),
+                        ("; FP intervals %s, rank %s of %s" % (p_say(nf["p"]), format(nf["rank"], ","), format(nf["n"], ","))) if nf else ""))
     return {
         "title": "%s, %s, %s: %s." % (title, item["band"], item["pair"], item["family_say"].lower()),
         "body": ("a, the pair on the ring of regions%s. Then, for each measure: its value for each rat at %s and %s on Precon1 "
                  "(grey) and Precon4 (black), %s, the mean ± s.e.m. beside them; each rat's change "
                  "between the days, (Precon4 %s − %s) − (Precon1 %s − %s), with the mean ± 95%% confidence interval; and that "
-                 "mean against %s shuffles in which each session's trials had their two windows swapped at random. "
+                 "mean against %s shuffles in which each session's trials had their two windows swapped at random%s. "
                  # 2026-10-22: it said the pair "moved most"; it was followed up for
                  # its own uncorrected P, and the measures shown were picked by theirs.
                  "The pair was followed up because its own change in coherence had P < 0.05 (uncorrected; no pair survives "
@@ -1116,7 +1244,10 @@ def follow_legend(R, item, nulls, levels):
                  "are leads, chosen by that test. %s.")
         % (" (the arrow, the direction measured)" if any(k in ("gc_ab", "gc_ba", "pac_ab", "pac_ba") for k in item["keys"]) else "",
            la, lb, "each rat's values as dots (PAC is never drawn as lines)" if all(k.startswith("pac_") for k in item["keys"])
-           else "each rat's two windows joined", lb, la, lb, la, format(N_PERM, ","), "; ".join(parts))}
+           else "each rat's two windows joined", lb, la, lb, la, format(N_PERM, ","),
+           (" (grey) and against %s sets of fake trials from the same rats' FP1 and FP2, where there were no cues, each "
+            "session as many as it had real trials, in random order, losing the windows its real trials lost (blue)"
+            % format(N_PERM, ",")) if nulls_fp else "", "; ".join(parts))}
 
 
 # --------------------------------------------------------------------------
@@ -1168,6 +1299,13 @@ def build(progress=None, check=None, read_recordings=True, R=None, days=None, in
             profiles, notes = pac_profiles(R, days, inputs, items,
                                            progress=(lambda i, n, s: progress(i, n, "reading the recordings for PAC: " + s)) if progress else None)
             where = "here" if profiles else None
+    # The FP comparison's pools (joe.fp_pool_*): fake trials in FP1 and FP2,
+    # one file a tested rat-day; used only when made for these regions.
+    pools = {}
+    if R is not None:
+        for k, (pa, pm) in joe.fp_pools().items():
+            if k[1] in joe.TESTED and [joe.say(x) for x in pm.get("regions") or []] == list(regions) and k in days:
+                pools[k] = (pa, pm)
     figures = []
     for ri, res in enumerate(lit):
         if check:
@@ -1175,25 +1313,28 @@ def build(progress=None, check=None, read_recordings=True, R=None, days=None, in
         no = models[res["model"]].get("no")
         if progress:
             progress(ri, len(lit), "the connectome of %d, %s" % (no, res["band"]))
-        C = connectome(R, days, res)
+        C = connectome(R, days, res, pools=pools)
         fid = "%d" % (ri + 1)
         files = connectome_figure(C, regions, fid, "rats")
-        files_t = connectome_figure(C, regions, fid, "trials")
         gkeys = ("row", "row_say", "kind", "kind_say", "side", "stat", "p", "rank", "n", "stars", "null", "null_kind")
         # The main figure is the rats' null (what lit tab 8's light); the
-        # trials' is `alt`, a toggle away on tab 9.
+        # trials' and FP's are `alts`, a toggle away on tab 9.
+        alts = []
+        for nk, gkey, meth in (("trials", "graphs_trials", "permutation"), ("fp", "graphs_fp", "fpnull")):
+            if not C.get(gkey):
+                continue
+            ns = next(x for x in NULLS if x[0] == nk)
+            alts.append({"null": nk, "null_say": ns[1], "null_why": ns[2], "files": connectome_figure(C, regions, fid, nk),
+                         "legend": connectome_legend(R, C, nk),
+                         "stats": {"graphs": [{k: g[k] for k in gkeys} for g in C[gkey]], "n_perm": C["n_perm"]},
+                         "methods": ["connectome", meth, "coherence"]})
         figures.append({"id": fid, "no": fid, "kind": "connectome", "model": res["model"], "band": res["band"],
                         "comparison": no, "files": files, "legend": connectome_legend(R, C, "rats"),
                         "null": "rats", "null_say": NULLS[0][1], "null_why": NULLS[0][2],
                         "stats": {"graphs": [{k: g[k] for k in gkeys} for g in C["graphs"]], "pairs": C["pairs"],
                                   "edges": C["edges"], "rats": C["rats"], "n_perm": C["n_perm"],
                                   "n_signs": C["n_signs"], "rat_exact": C["rat_exact"]},
-                        "alt": {"null": "trials", "null_say": NULLS[1][1], "null_why": NULLS[1][2], "files": files_t,
-                                "legend": connectome_legend(R, C, "trials"),
-                                "stats": {"graphs": [{k: g[k] for k in gkeys} for g in C["graphs_trials"]],
-                                          "n_perm": C["n_perm"]},
-                                "methods": ["connectome", "permutation", "coherence"]},
-                        "methods": ["connectome", "ratflip", "coherence"]})
+                        "alts": alts, "methods": ["connectome", "ratflip", "coherence"]})
         mine = [it for it in items if it["model"] == res["model"] and it["band"] == res["band"]]
         for si, it in enumerate(mine):
             if check:
@@ -1202,27 +1343,30 @@ def build(progress=None, check=None, read_recordings=True, R=None, days=None, in
                 progress(si, len(mine), "%s · %s" % (it["pair"], it["family_say"]))
             levels = [lv["label"] for lv in models[it["model"]]["levels"]]
             nulls = {k: follow_null(R, days, it, k) for k in it["keys"]}
+            nulls_fp = {k: v for k, v in ((k, fp_follow_null(R, days, pools, it, k)) for k in it["keys"]) if v} if pools else {}
             prof = {}
             for k in it["keys"]:
                 pk = "%s|%s|%s|%s" % (it["model"], it["band"], it["pair"], k)
                 if pk in profiles:
                     prof[k] = profiles[pk]
             sid = "%s.%d" % (fid, si + 1)
-            files = follow_figure(it, nulls, regions, levels, sid.replace(".", "_"), profile=prof)
+            files = follow_figure(it, nulls, regions, levels, sid.replace(".", "_"), profile=prof, nulls_fp=nulls_fp)
             pac_missing = [k for k in it["keys"] if k.startswith("pac_") and k not in prof]
             figures.append({"id": sid, "no": sid, "kind": "follow", "family": it["family"], "model": it["model"],
                             "band": it["band"], "comparison": no, "pair": it["pair"], "a": it["a"], "b": it["b"],
-                            "keys": it["keys"], "files": files, "legend": follow_legend(R, it, nulls, levels),
+                            "keys": it["keys"], "files": files, "legend": follow_legend(R, it, nulls, levels, nulls_fp),
                             "pac_profiles": sorted(prof), "pac_missing": pac_missing,
                             "stats": {"measures": {k: {x: it["measures"][k].get(x) for x in ("delta", "t", "df", "p", "n")}
                                                    for k in it["keys"]},
-                                      "nulls": nulls},
-                            "methods": ["follow", "permutation"] + sorted({{"pli": "pli", "icoh": "icoh", "gc_ab": "granger",
+                                      "nulls": nulls, "nulls_fp": nulls_fp},
+                            "methods": ["follow", "permutation"] + (["fpnull"] if nulls_fp else []) + sorted({{"pli": "pli", "icoh": "icoh", "gc_ab": "granger",
                                                                            "gc_ba": "granger", "xlag": "xcorr", "xpeak": "xcorr"}
                                                                           .get(k, "pac") for k in it["keys"]})})
     out = {"schema": 1, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "from": R.get("at"), "n_perm": N_PERM, "seed": SEED,
            "regions": regions, "figures": figures, "notes": notes,
            "recordings_read": bool(profiles), "recordings_where": where, "vacc_run": vacc_run,
+           "fp": {"read": bool(pools), "rat_days": len(pools), "fake_trials": int(sum(len(m["onsets"]) for _a, m in pools.values())),
+                  "step_s": joe.FP_POOL_STEP, "of": len([k for k in days if k[1] in joe.TESTED])},
            "pac_check": pac_agrees(R, days, profiles) if profiles else None,
            "format": {"widths_mm": WIDTH, "font": "Arial", "sizes_pt": [5, 8]}}
     joe._write(figs_dir("figs.json"), out)
@@ -1237,20 +1381,25 @@ def result():
         return json.load(fh)
 
 
-def figs_work(worker, on_vacc=False):
+def figs_work(worker, on_vacc=False, fp_vacc=False):
     """The Monolith's work runner: every figure, here; with `on_vacc`, the
-    PAC profiles read on the VACC first."""
+    PAC profiles read on the VACC first; with `fp_vacc`, the FP
+    comparison's fake trials measured there first."""
     note = lambda i, n, s: worker.note(phase="joefigs", i=i, of=n, item=s)       # noqa: E731
+    if fp_vacc:
+        joe.fp_pool_vacc_work(worker)
     if on_vacc:
         pac_on_vacc(progress=lambda i, n, s: note(i, n, "PAC on the VACC: " + s), check=worker.check)
     return build(progress=note, check=worker.check, prefer_vacc=on_vacc)
 
 
-def work_safe(worker, on_vacc=False):
+def work_safe(worker, on_vacc=False, fp_vacc=False):
     from . import monolith as MO, vacc
     try:
-        out = figs_work(worker, on_vacc=on_vacc)
+        out = figs_work(worker, on_vacc=on_vacc, fp_vacc=fp_vacc)
     except FigError as exc:
+        raise MO.MonolithError(str(exc), exc.status)
+    except joe.JoeError as exc:
         raise MO.MonolithError(str(exc), exc.status)
     except vacc.SSHError as exc:
         raise MO.MonolithError("The VACC: %s" % exc, 502)

@@ -16658,3 +16658,385 @@ div.tf-tile { cursor: default; }
    "Fit afresh" (2026-10-21). */
 .rc-k-margin { display: inline-flex; flex-wrap: wrap; align-items: center;
                gap: var(--sp-6); }
+
+/* ==========================================================================
+   Figure builder v2 (figure.js, 2026-10-22)
+
+   A big dialog in three columns: the grid and the panels on the left, the
+   page in the middle, the page's settings and the chosen panel on the right.
+   The page is the server's frame with each panel laid over it as a tile of
+   its own; a tile being redrawn stays, dimmed, until the new one lands.
+   Everything on a tile that can be clicked has a box over it.
+   ========================================================================== */
+#bigModalBox.fx-box { width: min(1500px, 97vw); max-height: 94vh; }
+.fx .fx-headrow { display: flex; align-items: center; gap: var(--sp-10);
+                  width: 100%; min-width: 0; }
+.fx .fx-headrow .sub { overflow-wrap: anywhere; }
+.fx .fx-body { padding: 14px 16px; }
+.fx-cols {
+  display: grid; gap: var(--sp-16); align-items: start;
+  grid-template-columns: 270px minmax(320px, 1fr) 280px;
+}
+.fx-col { display: flex; flex-direction: column; gap: var(--sp-12);
+          min-width: 0; }
+.fx-col > * { min-width: 0; }
+@media (max-width: 1280px) {
+  .fx-cols { grid-template-columns: 240px minmax(300px, 1fr) 250px; }
+}
+@media (max-width: 980px) {
+  .fx-cols { grid-template-columns: minmax(0, 1fr); }
+  .fx-mid { order: -1; }
+}
+
+/* The page. */
+.fx-stage {
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: 8px; border-radius: var(--radius); background: var(--bg-3);
+  min-height: 280px;
+}
+.fx-sheet {
+  position: relative; background: #fff; box-shadow: var(--shadow);
+  width: 640px; height: 420px; max-width: 100%;
+}
+.fx-frame { position: absolute; inset: 0; width: 100%; height: 100%;
+            display: block; user-select: none; pointer-events: none; }
+.fx-wait {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; gap: var(--sp-10); color: #5f6b66;
+  font-size: var(--fs-12); padding: 16px; text-align: center;
+}
+.fx-tile { position: absolute; transition: opacity .18s ease; }
+.fx-tile > img { position: absolute; inset: 0; width: 100%; height: 100%;
+                 display: block; user-select: none; -webkit-user-drag: none; }
+.fx-tile.stale > img { opacity: .5; transition: opacity .2s ease; }
+.fx-tile.failed { outline: 1px dashed var(--bad, #dc2626); }
+.fx-tile.sel { outline: 1px solid var(--accent-line); outline-offset: 1px; }
+.fx-hits { position: absolute; inset: 0; }
+.fx-hit {
+  position: absolute; cursor: pointer; border-radius: 3px;
+  transition: background-color .12s ease, box-shadow .12s ease;
+}
+.fx-hit:hover, .fx-hit.on {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: 0 0 0 1px var(--accent-line);
+}
+/* The plot box is the biggest target; it only shows its edge. */
+.fx-hit-plot:hover, .fx-hit-plot.on {
+  background: transparent; box-shadow: 0 0 0 1px var(--accent-line) inset;
+}
+.fx-probs { min-height: 0; }
+
+/* Click editors and the right-click menu. */
+.fx-pop {
+  position: fixed; z-index: 1300; width: 300px; max-width: calc(100vw - 24px);
+  max-height: 80vh; overflow-y: auto;
+  padding: 12px 14px; border-radius: var(--radius); background: var(--bg-2);
+  border: 1px solid var(--line); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: var(--sp-8);
+}
+.fx-pop .section-label { margin: 0; }
+.fx-pop input[type=text], .fx-pop input[type=number], .fx-pop textarea {
+  width: 100%; box-sizing: border-box;
+}
+.fx-menu { width: auto; min-width: 190px; padding: 6px; gap: 2px; }
+.fx-menu .btn { justify-content: flex-start; width: 100%; }
+.fx-preview-line { font-family: var(--mono); color: var(--text-2); }
+
+/* Shapes: a little picture of each grid. */
+.fx-shapes { display: grid; grid-template-columns: repeat(auto-fill,
+             minmax(74px, 1fr)); gap: 6px; }
+.fx-shape {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 4px; border: 1px solid var(--line); border-radius: var(--r-6);
+  background: var(--bg); color: var(--text-2); cursor: pointer; font: inherit;
+}
+.fx-shape:hover { border-color: var(--accent-line); color: var(--text); }
+.fx-shape.active { border-color: var(--accent); background: var(--accent-soft);
+                   color: var(--accent); }
+.fx-shape-mini { display: grid; gap: 2px; width: 40px; height: 28px; }
+.fx-shape-mini i { background: currentColor; opacity: .45; border-radius: 2px; }
+.fx-shape-n { font-size: var(--fs-95); line-height: 1.2; text-align: center;
+              overflow-wrap: anywhere; }
+
+.fx-seg { flex-wrap: wrap; }
+.fx-seg button { flex: 1 1 auto; white-space: normal; }
+.fx-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fx-pair input { width: 100%; box-sizing: border-box; }
+.fx-letter { font-weight: 700; min-width: 1.2em; color: var(--accent); }
+.fx-say { margin: 0; font-size: var(--fs-12); overflow-wrap: anywhere; }
+.fx-line { overflow-wrap: anywhere; }
+.fx-toggles, .fx-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.fx-toggles .toggle span { white-space: normal; }
+.fx-links { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.fx-chain {
+  display: inline-flex; align-items: center; gap: 5px; font: inherit;
+  font-size: var(--fs-105); padding: 3px 9px; border-radius: var(--r-pill);
+  border: 1px solid var(--line); background: var(--bg); color: var(--text-3);
+  cursor: pointer;
+}
+.fx-chain.on { border-color: var(--accent-line); background: var(--accent-soft);
+               color: var(--accent); }
+.fx-more summary { cursor: pointer; font-size: var(--fs-11); color: var(--text-2); }
+.fx-more dl { margin-top: 6px; }
+.fx-footrow { display: flex; align-items: center; gap: var(--sp-8);
+              width: 100%; flex-wrap: wrap; }
+.fx-state { font-size: var(--fs-115); color: var(--text-3); }
+.btn.danger { color: var(--bad, #dc2626); }
+
+/* The Figure builder button, top right of every ToolKit tool page. */
+.tk-figbar { display: flex; justify-content: flex-end; margin-bottom: -6px; }
+.fig-grab:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ==========================================================================
+   The welcome (js/welcome.js, 2026-10-23) -- a new computer's first start
+   ==========================================================================
+   The boot overlay becomes this instead of the start menu while nobody has
+   said who they are on this computer; the start menu's "Set up this
+   computer" opens the same panel in `.wl-overlay`. One column, one step at a
+   time, a rail of three numbered steps across the top. */
+#boot.boot-welcome { place-items: start center; overflow-y: auto; }
+#boot.boot-welcome .boot-in { display: none; }
+.wl-overlay {
+  position: fixed; inset: 0; z-index: 310; overflow-y: auto;
+  display: grid; place-items: start center;
+  background:
+    radial-gradient(60% 46% at 50% 30%,
+      color-mix(in srgb, var(--accent) 12%, transparent), transparent 72%),
+    var(--bg);
+  animation: smFade var(--dur-3) var(--ease-out) both;
+  transition: opacity .34s ease;
+}
+.wl-overlay.gone { opacity: 0; pointer-events: none; }
+.wl-panel {
+  position: relative; z-index: 2; box-sizing: border-box;
+  width: min(640px, calc(100vw - 32px)); margin: auto 0; padding: 32px 0 24px;
+  display: flex; flex-direction: column; gap: 22px;
+  color: var(--text); font-family: var(--sans); font-size: var(--fs-13);
+  line-height: 1.5;
+}
+.wl-rail {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 6px 22px; justify-content: center;
+}
+.wl-rail[hidden] { display: none; }
+.wl-step {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--text-3); font-size: var(--fs-12);
+}
+.wl-step[data-state="on"] { color: var(--text); font-weight: 600; }
+.wl-step[data-state="done"] { color: var(--text-2); }
+.wl-dot {
+  flex: none; width: 22px; height: 22px; border-radius: 50%;
+  display: inline-grid; place-items: center;
+  border: 1.5px solid var(--line); color: var(--text-3);
+  font-family: var(--mono); font-size: var(--fs-105); line-height: 1;
+}
+.wl-step[data-state="on"] .wl-dot {
+  border-color: var(--accent); color: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.wl-step[data-state="done"] .wl-dot,
+.wl-sum[data-state="done"] .wl-dot { background: var(--ok); border-color: var(--ok); color: var(--bg); }
+.wl-step[data-state="skipped"] .wl-dot { border-style: dashed; }
+.wl-body {
+  padding: 24px 26px; border: 1px solid var(--line-soft);
+  border-radius: var(--radius-card); background: var(--glass-bg);
+  box-shadow: var(--elev-2);
+}
+.wl-page { display: flex; flex-direction: column; gap: 16px;
+           animation: smItem var(--dur-4) var(--ease-out) both; }
+.wl-head { display: flex; flex-direction: column; gap: 4px; }
+.wl-title { margin: 0; font-size: var(--fs-20); font-weight: 600; }
+.wl-sub { margin: 0; color: var(--text-2); max-width: 62ch; }
+.wl-hint { color: var(--text-3); font-size: var(--fs-115); }
+.wl-hello { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+.wl-hello .wl-sub { text-align: center; }
+.wl-mark {
+  width: 76px; height: 76px;
+  filter: drop-shadow(0 0 22px color-mix(in srgb, var(--accent) 45%, transparent));
+  animation: smMark var(--dur-6) var(--ease-out) both;
+}
+.wl-mark svg { width: 100%; height: 100%; display: block; }
+.wl-big { margin: 0; font-size: 34px; font-weight: 300; letter-spacing: .02em; }
+.wl-plan {
+  list-style: none; margin: 4px 0; padding: 0; width: 100%; max-width: 480px;
+  display: flex; flex-direction: column; gap: 10px; text-align: left;
+}
+.wl-plan-item, .wl-sum { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; }
+.wl-plan-text { display: flex; flex-direction: column; color: var(--text-2); }
+.wl-plan-text strong { color: var(--text); font-weight: 600; }
+.wl-sum strong { font-weight: 600; }
+.wl-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.wl-hello .wl-actions { justify-content: center; }
+.wl-actions [hidden] { display: none; }
+.btn.wl-go { min-width: 120px; }
+.wl-form { display: flex; flex-direction: column; gap: 14px; }
+.wl-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.wl-label {
+  font-size: var(--fs-11); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-2);
+}
+.wl-field input, .wl-field select {
+  box-sizing: border-box; width: 100%; padding: 9px 12px;
+  border: 1px solid var(--line); border-radius: var(--radius-control);
+  background: var(--bg); color: var(--text); font: inherit;
+}
+.wl-field input:focus, .wl-field select:focus {
+  outline: none; border-color: var(--accent-line);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.wl-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 12em); gap: 14px; }
+@media (max-width: 520px) { .wl-pair { grid-template-columns: minmax(0, 1fr); } }
+.wl-known { display: flex; flex-direction: column; gap: 6px; }
+.wl-known[hidden] { display: none; }
+.wl-known .wl-hint { margin: 0; }
+.wl-people { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.wl-person {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 10px;
+  align-items: center; text-align: left; padding: 7px 10px; cursor: pointer;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-control);
+  background: var(--bg-2); color: var(--text); font: inherit;
+  transition: border-color var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-spring);
+}
+.wl-person:hover { border-color: var(--accent-line); transform: translateY(-1px); }
+.wl-person.on { border-color: var(--accent-line); background: var(--accent-soft); }
+.wl-person:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.wl-initials {
+  grid-row: span 2; width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--bg-3); color: var(--accent);
+  font-family: var(--mono); font-size: var(--fs-105);
+}
+.wl-pname { font-size: var(--fs-125); overflow-wrap: anywhere; }
+.wl-prole { font-size: var(--fs-105); color: var(--text-3); overflow-wrap: anywhere; }
+.wl-msg { margin: 0; min-height: 1.5em; font-size: var(--fs-12); color: var(--text-3); }
+.wl-msg[data-kind="warn"], .wl-state[data-kind="warn"] { color: var(--warn); }
+.wl-msg[data-kind="ok"], .wl-state[data-kind="ok"] { color: var(--ok); }
+.wl-state { margin: 0; color: var(--text-2); }
+.wl-state[data-kind="busy"]::before, .wl-msg[data-kind="busy"]::before {
+  content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 8px;
+  vertical-align: -1px; border-radius: 50%;
+  border: 1.5px solid var(--accent); border-top-color: transparent;
+  animation: spin .9s linear infinite;
+}
+.wl-vacc, .wl-find { display: flex; flex-direction: column; gap: 14px; }
+.wl-signed { display: flex; align-items: center; gap: 12px; }
+.wl-signed .wl-initials { grid-row: auto; background: var(--ok-soft); color: var(--ok); }
+.wl-places { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.wl-place {
+  display: flex; flex-direction: column; gap: 8px; padding: 12px 14px;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-control); background: var(--bg-2);
+}
+.wl-place p { margin: 0; }
+.wl-place .btn { align-self: flex-start; }
+.wl-place-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.wl-mark-dot {
+  width: 9px; height: 9px; border-radius: 50%; align-self: center;
+  border: 1.5px solid var(--line);
+}
+.wl-place[data-state="busy"] .wl-mark-dot {
+  border-color: var(--accent); border-top-color: transparent; animation: spin .9s linear infinite;
+}
+.wl-place[data-state="done"] .wl-mark-dot { background: var(--ok); border-color: var(--ok); }
+.wl-tally { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.wl-num {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 12px;
+  border-radius: var(--radius-control); background: var(--bg-2); color: var(--text-3);
+  font-size: var(--fs-11);
+}
+.wl-num strong { color: var(--text); font-family: var(--mono); font-size: var(--fs-20); font-weight: 500; }
+.wl-num[data-hot] { background: var(--accent-soft); }
+.wl-num[data-hot] strong { color: var(--accent); }
+.wl-foot { display: flex; justify-content: center; }
+.wl-later { color: var(--text-3); font-size: var(--fs-115); }
+#boot.still .wl-page, #boot.still .wl-mark { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .wl-page, .wl-mark, .wl-overlay { animation: none; }
+  .wl-person { transition: none; }
+  .wl-state[data-kind="busy"]::before, .wl-msg[data-kind="busy"]::before,
+  .wl-place[data-state="busy"] .wl-mark-dot { animation: none; }
+}
+
+/* Results › Figures, and the walk-through's side by side (2026-10-22). */
+.fx-list-bar { display: flex; align-items: center; gap: var(--sp-10);
+               flex-wrap: wrap; margin-bottom: 8px; }
+.fx-list-row {
+  display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap;
+  padding: 8px 10px; margin-bottom: 6px; border-radius: var(--radius-sm);
+  background: var(--bg-2); border: 1px solid var(--line);
+}
+.fx-list-row.archived { opacity: .6; }
+.fx-list-thumb { width: 96px; height: 60px; object-fit: contain; flex: none;
+                 background: #fff; border-radius: var(--r-5); }
+.fx-list-thumb.none { display: grid; place-items: center; color: var(--text-3);
+                      background: var(--bg-3); font-size: var(--fs-105); }
+.fx-list-what { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fx-list-what strong { overflow-wrap: anywhere; }
+.res-figacts { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.fr-compare { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.fr-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fr-pair figure { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.fr-pair img { width: 100%; background: #fff; box-shadow: var(--shadow);
+               border-radius: var(--r-5); }
+.fr-pair figcaption { font-size: var(--fs-105); color: var(--text-3); }
+.fr-none { display: grid; place-items: center; min-height: 120px;
+           background: var(--bg-3); color: var(--text-3); }
+@media (max-width: 760px) { .fr-pair { grid-template-columns: 1fr; } }
+/* The welcome's console (js/welcome.js `terminal`): a bar per task above,
+   the live lines below, a heartbeat at the foot. Lines wrap, never clip. */
+.wl-console {
+  display: flex; flex-direction: column; gap: 8px; padding: 12px;
+  border: 1px solid var(--line-soft); border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--bg) 82%, #000);
+  font-family: var(--mono); font-size: var(--fs-105);
+}
+.wl-console[hidden] { display: none; }
+.wl-bars { display: flex; flex-direction: column; gap: 8px; }
+.wl-bars:empty { display: none; }
+.wl-barrow { display: flex; flex-direction: column; gap: 4px; }
+.wl-bar-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; }
+.wl-bar-label { color: var(--text); overflow-wrap: anywhere; }
+.wl-bar-count { color: var(--text-3); }
+.wl-bar {
+  position: relative; height: 6px; border-radius: 3px; overflow: hidden;
+  background: var(--bg-3);
+}
+.wl-bar-fill {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+  border-radius: 3px; background: var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
+  transition: width .25s var(--ease-out);
+}
+/* Nothing to count against: a stripe that keeps moving, so "working" never
+   looks like "stuck". */
+.wl-barrow[data-state="run"]:not([data-known="1"]) .wl-bar-fill {
+  width: 34%; animation: wlSweep 1.3s ease-in-out infinite;
+}
+.wl-barrow[data-state="done"] .wl-bar-fill { width: 100%; background: var(--ok); box-shadow: none; }
+.wl-barrow[data-state="fail"] .wl-bar-fill { background: var(--warn); box-shadow: none; }
+.wl-barrow[data-state="done"] .wl-bar-count { color: var(--ok); }
+@keyframes wlSweep { from { left: -34%; } to { left: 100%; } }
+.wl-term {
+  height: 210px; overflow-y: auto; overscroll-behavior: contain;
+  line-height: 1.45; color: var(--text-2);
+}
+.wl-term:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.wl-ln { display: grid; grid-template-columns: auto 1fr; gap: 10px; }
+.wl-ts { color: var(--text-3); opacity: .7; white-space: pre; }
+.wl-tx { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.wl-ln[data-kind="ok"] .wl-tx { color: var(--ok); }
+.wl-ln[data-kind="warn"] .wl-tx { color: var(--warn); }
+.wl-ln[data-kind="hot"] .wl-tx { color: var(--accent); }
+.wl-ln[data-kind="dim"] .wl-tx { color: var(--text-3); }
+.wl-ln[data-kind="me"] .wl-tx { color: var(--text); }
+.wl-ln[data-kind="me"] .wl-tx::before { content: "› "; color: var(--accent); }
+.wl-term-foot {
+  display: flex; align-items: baseline; gap: 8px; color: var(--text-3);
+  border-top: 1px solid var(--line-soft); padding-top: 6px;
+}
+.wl-term-n { margin-left: auto; }
+.wl-spin { width: 1ch; color: var(--text-3); }
+.wl-spin.on { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) {
+  .wl-bar-fill { transition: none; }
+  .wl-barrow[data-state="run"]:not([data-known="1"]) .wl-bar-fill { animation: none; width: 100%; opacity: .45; }
+}

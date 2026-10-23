@@ -133,7 +133,7 @@ function makeAligner(cfg) {
      many were hidden rather than pretending they are not there. */
   function originOf(c) {
     const who = ((c.added || {}).by || '') + ' ' + (c.name || '');
-    if (/harness/i.test(who)) return 'test';
+    if (/harness|debug_bot/i.test(who)) return 'test';
     if (cfg.mine.test(c.pipeline || '')) return cfg.mine.id;
     return 'import';
   }

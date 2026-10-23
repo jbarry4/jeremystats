@@ -315,7 +315,8 @@ def run_tool(tool, spec, bundle, job, csc):
                             spec.get("align_ids") or [],
                             spec.get("left_out") or [],
                             int(spec.get("depth_n") or braces.DEPTH_BAND),
-                            job, pinned=spec.get("pinned") or None)
+                            job, pinned=spec.get("pinned") or None,
+                            lock_reach_ms=spec.get("lock_reach_ms"))
 
     if tool == "doppler":
         from backend import doppler

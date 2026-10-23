@@ -54,7 +54,7 @@
   },
   "added": {
     "at": "2026-09-09T20:12:09-04:00",
-    "by": "bankback@harness",
+    "by": "Debug_Bot",
     "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
@@ -216,7 +216,7 @@
     {
       "archived": true,
       "at": "2026-09-10T00:17:21-04:00",
-      "by": "bankback@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 40
       },
@@ -405,7 +405,7 @@
     {
       "archived": true,
       "at": "2026-09-09T20:12:09-04:00",
-      "by": "bankback@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 40
       },
@@ -413,7 +413,7 @@
       "confirmed": [
         {
           "at": "2026-09-09T20:12:09-04:00",
-          "by": "bankback@harness"
+          "by": "Debug_Bot"
         }
       ],
       "edits": [
@@ -600,7 +600,7 @@
     {
       "archived": true,
       "at": "2026-09-09T20:13:46-04:00",
-      "by": "bankback@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 40
       },
@@ -789,7 +789,7 @@
     {
       "archived": true,
       "at": "2026-09-13T12:41:47-04:00",
-      "by": "bankback@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 40
       },

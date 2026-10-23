@@ -66,15 +66,17 @@ window.MONO_JOEFIGS = (function () {
   }
   // onVacc: read the PAC profiles from the VACC's copies of the recordings
   // first (the data drive need not be connected), then draw.
-  async function make(onVacc) {
+  // mode: undefined (draw here), true (PAC on the VACC first) or 'fp' (the
+  // FP comparison's fake trials measured on the VACC first).
+  async function make(mode) {
     if (P.making) return;
-    P.making = onVacc ? 'vacc' : 'here'; P.makeErr = null; P.makeNote = '';
+    P.making = mode === 'fp' ? 'fp' : mode ? 'vacc' : 'here'; P.makeErr = null; P.makeNote = '';
     render();
     try {
-      await M().runHere('/joefigs', onVacc ? { confirm: true, vacc: true } : { confirm: true }, (note) => {
+      await M().runHere('/joefigs', mode === 'fp' ? { confirm: true, fp_vacc: true } : mode ? { confirm: true, vacc: true } : { confirm: true }, (note) => {
         P.makeNote = note;
-        const b = onVacc ? ($('figsvacc') || $('figsvaccagain')) : $('figsmake');
-        if (b) b.textContent = (onVacc ? 'Reading on the VACC: ' : 'Drawing: ') + note;
+        const b = mode === 'fp' ? $('figsfp') : mode ? ($('figsvacc') || $('figsvaccagain')) : $('figsmake');
+        if (b) b.textContent = (mode === 'fp' ? 'Measuring FP on the VACC: ' : mode ? 'Reading on the VACC: ' : 'Drawing: ') + note;
       });
     } catch (e) {
       P.makeErr = /404|not found/i.test(e.message) ? 'Jarvis is running older code without this button: restart it, then press it again.'
@@ -101,6 +103,13 @@ window.MONO_JOEFIGS = (function () {
       code: 'backend/joefigs.py, rat_signs() and connectome(): itertools.product((+1, \u22121), repeat=rats) lists every sign pattern (sampled past 14 rats); each rat\u2019s per-pair change, multiplied by its sign, averaged over the rats (numpy.nanmean, so a rat without a pair is left out of that pair only), and summed into the ring\u2019s statistic; exact_p(): the share of patterns at least as extreme (no +1: the real one is already counted). Increases one-sided upward, decreases downward, both two-sided. Nothing is corrected.',
       means: 'With 8 rats the P comes in steps of 1/256 (0.004), and the smallest a two-sided P can be is 2/256, because flipping every rat gives the mirror image. This is the same unit as the mixed model behind tab 8\u2019s light, so the two agree when they should. The within-session shuffle, the other choice on the card, asks a different question: whether the change is bigger than trial-to-trial noise inside the sessions.',
       toy: 'ratflip',
+    },
+    fpnull: {
+      title: 'FP intervals: the same change, with no cues',
+      what: 'FP1 and FP2 are the same rats on the same days, recorded with no cues. A fake cue onset is put every 10 s of them, and round each the trial’s own windows (the baselines, cue 1, cue 2) are measured exactly as a real trial’s are. To make one fake data set, every session gets as many fake trials as it had real ones, drawn at random, each with its two windows in random order (with no cue, either can stand for it) and losing the windows the matching real trial lost to clipping, and the ring (or the follow-up’s change) is made from them exactly as the real one is. 10,000 such sets show what the rats’ coherence does between random moments when nothing happens; the real value’s rank among them is its P.',
+      code: 'backend/joe.py, fp_pool_part(): the fake onsets (fp_onsets, every FP_POOL_STEP s, the windows at least 10 s from the recording’s ends), clipping measured with spark.clipping_windows, the wires and signals from coupling._signals_for_windows, every measure from measure(), as for a trial; run on the VACC’s copies of FP1 and FP2 (fp_pool_vacc_work). backend/joefigs.py, fp_per_rat(): each session’s fake trials drawn with replacement (numpy.random.default_rng, seeded), each in random order and masked with the real session’s own lost windows, the mean of the second windows minus the mean of the first, per rat and day; then the ring sums or the follow-up statistic, and perm_p() with its +1.',
+      means: 'It asks whether the change at the cues is bigger than what happens between random moments of the same rats with no cues: a stricter yardstick than flipping signs, because it carries the brain’s own slow drift and moment-to-moment swings. FP was recorded before and after the cued session, so a slow change in state across the day also lands in it.',
+      toy: 'fpnull',
     },
     permutation: {
       title: 'The within-session shuffle',
@@ -164,6 +173,7 @@ window.MONO_JOEFIGS = (function () {
   const TOYS = {
     permutation: (host, f) => permToy(host, f),
     ratflip: (host, f) => ratToy(host, f),
+    fpnull: (host, f) => fpToy(host, f),
     connectome: (host, f) => connToy(host, f),
     'phasor-coh': (host) => phasorToy(host, 'coh'),
     'phasor-pli': (host) => phasorToy(host, 'pli'),
@@ -378,6 +388,98 @@ window.MONO_JOEFIGS = (function () {
       }
     });
     host.appendChild(el('div', { class: 'xplayer fgtoy', 'data-toy': 'ratflip' }, [svg, pl.cap, pl.ctl]));
+    return pl;
+  }
+
+  // The FP comparison: fake trials at random moments of FP1 and FP2 (no
+  // cues), measured as trials are. The null it lands in is the figure's own.
+  function fpToy(host, f) {
+    host.innerHTML = '';
+    const VW = 360, VH = 230;
+    const svg = sv('svg', { viewBox: '0 0 ' + VW + ' ' + VH, width: '100%', class: 'mfig fgfptoy', role: 'img', style: 'max-width:' + VW + 'px',
+                            'aria-label': 'Fake trials at random moments of FP1 and FP2, and the distribution they give' });
+    const recs = [{ name: 'FP1', x0: 40, x1: 190 }, { name: 'FP2', x0: 200, x1: 350 }];
+    const Y0 = 34, BH = 14;
+    for (const r of recs) {
+      svg.appendChild(sv('rect', { x: r.x0, y: Y0, width: r.x1 - r.x0, height: BH, fill: '#E6E6E6' }));
+      svg.appendChild(sv('text', { x: r.x0, y: Y0 - 5, 'font-size': 10, fill: css('--ink-3') }, r.name + ', no cues'));
+    }
+    const fake = sv('g', {});
+    svg.appendChild(fake);
+    const out = sv('text', { x: 8, y: 84, 'font-size': 11, fill: css('--ink') }, '');
+    svg.appendChild(out);
+    const sub = sv('text', { x: 8, y: 100, 'font-size': 10, fill: css('--ink-3') }, '');
+    svg.appendChild(sub);
+    const HB = 214, HT = 150;
+    svg.appendChild(sv('line', { x1: 8, x2: VW - 8, y1: HB, y2: HB, stroke: css('--line-2') }));
+    const hist = sv('g', { class: 'fghist' });
+    svg.appendChild(hist);
+    const real = sv('line', { y1: HT - 6, y2: HB, stroke: css('--ink'), 'stroke-width': 2, opacity: 0 });
+    svg.appendChild(real);
+    const say = sv('text', { x: VW - 8, y: HT - 10, 'text-anchor': 'end', 'font-size': 11, fill: css('--ink') }, '');
+    svg.appendChild(say);
+    const nul = f && f.null ? f.null : null;
+    const lo = nul ? Math.min(nul.edges[0], f.obs) : -0.05, hi = nul ? Math.max(nul.edges[nul.edges.length - 1], f.obs) : 0.05;
+    const HX = (v) => 8 + (v - lo) / ((hi - lo) || 1) * (VW - 16);
+    const drawHist = (cs) => {
+      hist.innerHTML = '';
+      const mx = Math.max(1, ...cs);
+      cs.forEach((c, i) => {
+        const x0 = 8 + i * (VW - 16) / cs.length;
+        const h = (HB - HT) * c / mx;
+        hist.appendChild(sv('rect', { x: x0.toFixed(1), y: (HB - h).toFixed(1), width: ((VW - 16) / cs.length - 0.6).toFixed(1), height: h.toFixed(1), fill: '#0072B2', opacity: 0.55 }));
+      });
+    };
+    let seed = 5;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const drop = (n) => {
+      fake.innerHTML = '';
+      const got = [];
+      for (let i = 0; i < n; i++) {
+        const r = recs[rnd() < 0.5 ? 0 : 1];
+        const x = r.x0 + 12 + rnd() * (r.x1 - r.x0 - 24);
+        fake.appendChild(sv('rect', { x: (x - 10).toFixed(1), y: Y0, width: 10, height: BH, fill: '#9A9A9A', class: 'fgfakebase' }));
+        fake.appendChild(sv('rect', { x: x.toFixed(1), y: Y0, width: 10, height: BH, fill: '#E66101', class: 'fgfakecue' }));
+        got.push(0.02 * (rnd() - 0.5));
+      }
+      return got;
+    };
+    const steps = [
+      { name: 'FP', say: 'FP1 and FP2 are the same rats on the same days, with no cues.' },
+      { name: 'A fake trial', say: 'Pretend a cue started at a random moment: the trial’s own windows round it, measured as a real trial is. Its “change” is pure chance.' },
+      { name: 'A set', say: 'Each session gets as many fake trials as it had real ones; the set’s ring (or change) is made exactly as the real one is.' },
+      { name: '10,000 sets', say: 'Do that 10,000 times: what the same rats’ coherence does without cues piles up into a distribution.' },
+      { name: 'Where it lands', say: 'The real value lands among them: its rank, and P, the share of sets at least as extreme.' },
+    ];
+    const pl = player(host, steps, async (k, quick) => {
+      real.setAttribute('opacity', 0); say.textContent = '';
+      if (k === 0) { fake.innerHTML = ''; out.textContent = ''; sub.textContent = ''; drawHist(new Array(30).fill(0)); }
+      if (k === 1) {
+        for (let i = 0; i < (quick ? 1 : 3); i++) {
+          const g = drop(1);
+          out.textContent = 'fake trial: change ' + (g[0] >= 0 ? '+' : '−') + Math.abs(g[0]).toFixed(3);
+          sub.textContent = 'grey: its baseline; orange: its “cue”';
+          await wait(500);
+        }
+      }
+      if (k === 2) {
+        const g = drop(12);
+        const m = g.reduce((a, b) => a + b, 0) / g.length;
+        out.textContent = 'one set: 12 fake trials, mean change ' + (m >= 0 ? '+' : '−') + Math.abs(m).toFixed(3);
+        sub.textContent = '';
+      }
+      if (k >= 3) {
+        drawHist(nul ? nul.counts : new Array(30).fill(0).map((_c, i) => Math.round(100 * Math.exp(-((i - 14.5) ** 2) / 30))));
+        out.textContent = nul ? 'the figure’s own ' + fmtN(f.n - 1) + ' FP sets' : '10,000 FP sets';
+      }
+      if (k === 4 && f) {
+        const x = HX(f.obs);
+        real.setAttribute('x1', x.toFixed(1)); real.setAttribute('x2', x.toFixed(1));
+        if (!quick) await X().tween(400, (t) => real.setAttribute('opacity', t.toFixed(2)), 'out'); else real.setAttribute('opacity', 1);
+        say.textContent = 'rank ' + fmtN(f.rank) + ' of ' + fmtN(f.n) + ', ' + pSay(f.p) + (stars(f.p) ? ' ' + stars(f.p) : '');
+      }
+    });
+    host.appendChild(el('div', { class: 'xplayer fgtoy', 'data-toy': 'fpnull' }, [svg, pl.cap, pl.ctl]));
     return pl;
   }
 
@@ -613,13 +715,13 @@ window.MONO_JOEFIGS = (function () {
         sec.appendChild(host);
         // The permutation toy plays the figure's own null where there is one.
         let feed = null;
-        if (key === 'permutation' || key === 'ratflip') {
+        if (key === 'permutation' || key === 'ratflip' || key === 'fpnull') {
           if (f.kind === 'connectome') {
             const g = (f.stats.graphs || []).find((x) => x.row === 'delta' && x.kind === 'pos') || (f.stats.graphs || [])[0];
             feed = g ? { null: g.null, obs: g.stat, rank: g.rank, n: g.n, p: g.p } : null;
           } else {
             const k = (f.keys || [])[0];
-            const nl = k && f.stats.nulls ? f.stats.nulls[k] : null;
+            const nl = k ? (key === 'fpnull' ? (f.stats.nulls_fp || {})[k] : (f.stats.nulls || {})[k]) : null;
             feed = nl ? { null: nl.null, obs: nl.obs, rank: nl.rank, n: nl.n, p: nl.p } : null;
           }
         }
@@ -643,10 +745,12 @@ window.MONO_JOEFIGS = (function () {
      sign flips, what lit tab 8's light) or `alt` (the trials swapped
      within each session). Everything else about the figure is shared. */
   function viewOf(f0) {
-    if (f0.kind !== 'connectome' || !f0.alt || P.nullPick[f0.id] !== 'trials') return f0;
-    return Object.assign({}, f0, { files: f0.alt.files, legend: f0.alt.legend, methods: f0.alt.methods || f0.methods,
-                                   null: f0.alt.null, null_say: f0.alt.null_say, null_why: f0.alt.null_why,
-                                   stats: Object.assign({}, f0.stats, f0.alt.stats) });
+    const pick = P.nullPick[f0.id];
+    const a = f0.kind === 'connectome' && pick && pick !== 'rats' ? (f0.alts || []).find((x) => x.null === pick) : null;
+    if (!a) return f0;
+    return Object.assign({}, f0, { files: a.files, legend: a.legend, methods: a.methods || f0.methods,
+                                   null: a.null, null_say: a.null_say, null_why: a.null_why,
+                                   stats: Object.assign({}, f0.stats, a.stats) });
   }
 
   function figCard(f0, into) {
@@ -658,8 +762,8 @@ window.MONO_JOEFIGS = (function () {
     /* Which null the rings are tested against (2026-10-22: "a flip-flop
        option between these two, and make what got the light green the
        main one"). */
-    if (f0.kind === 'connectome' && f0.alt) {
-      const pick = P.nullPick[f0.id] === 'trials' ? 'trials' : 'rats';
+    if (f0.kind === 'connectome' && (f0.alts || []).length) {
+      const pick = f0.alts.some((x) => x.null === P.nullPick[f0.id]) ? P.nullPick[f0.id] : 'rats';
       const opt = (id, text, why) => el('button', { type: 'button', class: pick === id ? 'active' : null, 'data-null': id,
         'aria-pressed': String(pick === id), title: why, text,
         onclick: () => { if (pick !== id) { P.nullPick[f0.id] = id; figCard(f0, card); } } });
@@ -667,8 +771,7 @@ window.MONO_JOEFIGS = (function () {
         el('span', { class: 'small muted', text: 'Tested against' }),
         el('div', { class: 'seg', role: 'group', 'aria-label': 'Which null the rings are tested against' }, [
           opt('rats', (f0.null_say || 'Rats flipped') + ' (the light\u2019s test)', f0.null_why || ''),
-          opt('trials', f0.alt.null_say || 'Trials swapped', f0.alt.null_why || ''),
-        ]),
+        ].concat(f0.alts.map((a) => opt(a.null, a.null_say, a.null_why || '')))),
       ]));
     }
     card.appendChild(el('div', { class: 'fgimg' }, [el('img', { src: FILE(f.files.svg), alt: f.legend.title, loading: 'lazy', class: 'fgsvg' })]));
@@ -687,6 +790,11 @@ window.MONO_JOEFIGS = (function () {
           text: measureSay(k, f) + ': t(' + ms.df + ') = ' + (ms.t != null ? ms.t.toFixed(2) : '—') + ', ' + pSay(ms.p) + (stars(ms.p) ? ' ' + stars(ms.p) : '') }));
         chips.appendChild(el('span', { class: 'fgchip' + (nl.p < 0.05 ? ' sig' : ''), 'data-key': k + '-perm',
           text: 'shuffles: ' + pSay(nl.p) + (stars(nl.p) ? ' ' + stars(nl.p) : '') + ' (rank ' + fmtN(nl.rank) + ' of ' + fmtN(nl.n) + ')' }));
+        const nf = (f.stats.nulls_fp || {})[k];
+        if (nf) {
+          chips.appendChild(el('span', { class: 'fgchip fgfp' + (nf.p < 0.05 ? ' sig' : ''), 'data-key': k + '-fp',
+            text: 'FP intervals: ' + pSay(nf.p) + (stars(nf.p) ? ' ' + stars(nf.p) : '') + ' (rank ' + fmtN(nf.rank) + ' of ' + fmtN(nf.n) + ')' }));
+        }
       }
     }
     card.appendChild(chips);
@@ -731,6 +839,19 @@ window.MONO_JOEFIGS = (function () {
            : '.') });
   }
 
+  // The FP comparison: how much FP it was made from, or a button to make it.
+  function fpLine(D) {
+    const fp = D.fp || {};
+    if (fp.read) {
+      return el('p', { class: 'small muted', id: 'figsfpread', text: 'FP comparison: ' + fmtN(fp.fake_trials) + ' fake trials (a fake cue every '
+        + fp.step_s + ' s of FP1 and FP2) from ' + fp.rat_days + ' of the ' + fp.of + ' rat-days; on every ring as a third test, and beside every follow-up’s shuffles.' });
+    }
+    return el('div', { class: 'small warn', id: 'figsfpnone' }, [
+      el('p', { text: 'The FP comparison (each result against random moments of FP1 and FP2, with no cues) needs the FP recordings measured as fake trials.' }),
+      window.MONO_STATIC ? null : el('button', { type: 'button', class: 'more-btn', id: 'figsfp', disabled: P.making ? 'disabled' : null,
+        text: P.making === 'fp' ? 'Measuring FP on the VACC: ' + (P.makeNote || 'starting') : 'Measure them on the VACC (about 15 minutes)', onclick: () => make('fp') })]);
+  }
+
   function intro() {
     const D = P.data;
     const conn = D.figures.filter((f) => f.kind === 'connectome');
@@ -742,6 +863,7 @@ window.MONO_JOEFIGS = (function () {
     return section('figsintro', '9 · Joe’s figures', 'figs', [
       el('p', { class: 'takeaway', id: 'figssay', text: conn.length + ' result' + (conn.length === 1 ? '' : 's') + ' that changed, each as a connectome (' + sig + ' of ' + (conn.length * 9)
         + ' graphs beyond their shuffles), then ' + fol.length + ' follow-up figure' + (fol.length === 1 ? '' : 's') + ', broad to narrow. Each is ready for Nature: Arial, 5–8 pt, 183 mm wide, vector.' }),
+      fpLine(D),
       D.recordings_read ? readLine(D) : el('div', { class: 'small warn', id: 'figsrec' }, [
         el('p', { text: 'The recordings could not be read when these were drawn, so the PAC figures show each rat’s modulation index but not yet the phase–amplitude roses or comodulograms. Every recording has a copy on the VACC: read them there, or connect the data drive and press Draw again.' }),
         window.MONO_STATIC ? null : el('button', { type: 'button', class: 'more-btn', id: 'figsvacc', disabled: P.making ? 'disabled' : null,

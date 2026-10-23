@@ -50,7 +50,7 @@
   },
   "added": {
     "at": "2026-09-25T18:01:54-04:00",
-    "by": "spotter harness",
+    "by": "Debug_Bot",
     "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
@@ -145,7 +145,7 @@
     {
       "archived": true,
       "at": "2026-09-25T18:04:45-04:00",
-      "by": "spotter harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 10
       },
@@ -215,7 +215,7 @@
     {
       "archived": true,
       "at": "2026-09-25T18:01:54-04:00",
-      "by": "spotter harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 10
       },
@@ -285,7 +285,7 @@
     {
       "archived": true,
       "at": "2026-09-25T18:05:19-04:00",
-      "by": "spotter harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 10
       },

@@ -11624,6 +11624,168 @@ BARRY.rootcanal = (function () {
     flip: (i) => flipEvent(i),
   };
 
+  /* ==================================================================
+     The figure builder (figure.js, 2026-10-22)
+
+     "Grab what you see": the space and the three flat views, as two
+     panels, with the settings they were fitted at. A picture that IS a
+     saved version (opened and not changed since) is grabbed as that
+     version, whose numbers open on any machine; anything else as the fit's
+     own question, which this machine can ask its read. Pooled is several
+     recordings, and a figure is one.
+     ================================================================== */
+  function figureParams() {
+    const params = fitBody({});
+    delete params.border;
+    if (viewing && viewing.artifact_id && !isDirty()) {
+      params.artifact = { artifact_id: viewing.artifact_id, v: viewing.v };
+    }
+    // The turn of the 3D view, in matplotlib's terms (degrees).
+    params.view = { elev: Math.round(view.pitch * 180 / Math.PI),
+                    azim: Math.round(-90 - view.yaw * 180 / Math.PI) };
+    return params;
+  }
+
+  if (BARRY.figure && BARRY.figure.source) {
+    BARRY.figure.source('rootcanal', {
+      label: 'Root Canal',
+      grab: () => {
+        if (viewMode === 'pooled') {
+          return { why: 'The pooled view is several recordings, and a figure '
+                      + 'is one. Switch to Single to grab a recording.' };
+        }
+        if (!q.entry || !fit || !fit.ok) {
+          return { why: 'Pick a set and fit it first, then grab it.' };
+        }
+        const cur = setOf() || {};
+        const params = figureParams();
+        return {
+          recording: { gid: q.gid || cur.gid || null,
+                       label: cur.session_label || cur.gid || q.entry,
+                       identity: { gid: q.gid || cur.gid || null,
+                                   label: cur.session_label || null } },
+          title: 'Root Canal — ' + (cur.session_label || q.entry),
+          panels: [
+            { tool: 'rootcanal', plot: 'space', row: 0, col: 0, params },
+            { tool: 'rootcanal', plot: 'flat', row: 0, col: 1,
+              params: JSON.parse(JSON.stringify(params)) },
+          ],
+        };
+      },
+      palette: (lay) => (lay.panels.some((p) => p.tool === 'rootcanal')
+        ? [['flat', 'The three flat views'], ['amp_hw', 'Amplitude against half-width'],
+           ['amp_hf', 'Amplitude against HF power'], ['hw_hf', 'Half-width against HF power'],
+           ['space', 'The three numbers, in 3D']]
+          .map(([plot, name]) => ({ tool: 'rootcanal', plot, name }))
+        : []),
+      panelFor: (tool, plot, lay) => {
+        const near = lay.panels.find((p) => p.tool === 'rootcanal');
+        return near ? { tool: 'rootcanal', plot,
+                        params: JSON.parse(JSON.stringify(near.params)) } : null;
+      },
+      openPanel: async (p) => {
+        const want = p.params || {};
+        if (BARRY.views.toolkit && BARRY.views.toolkit.pick) {
+          setView('toolkit');
+          BARRY.views.toolkit.pick('rootcanal');
+        }
+        if (want.entry_id && want.entry_id !== q.entry) await pickSetNow(want.entry_id);
+        if (want.from_version !== undefined) q.from_version = want.from_version;
+        for (const k of PKEYS) {
+          if (want[k] !== undefined) { q[k] = want[k]; pend[k] = want[k]; }
+        }
+        q.flips = (want.flips || []).slice();
+        q.centres = want.centres ? want.centres.map((c) => c.slice()) : null;
+        q.cluster_calls = Object.assign({}, want.cluster_calls);
+        q.cluster_names = JSON.parse(JSON.stringify(want.cluster_names || {}));
+        if (want.read) q.read = want.read;
+        await refit();
+        return 'Root Canal is open on set ' + want.entry_id
+          + ', with the panel’s settings.';
+      },
+    });
+  }
+
+  /* The walk-through (figreplay.js): Root Canal opened on the panel's set
+     with its settings, then what Root Canal is showing read back. A panel
+     that is a saved version is opened as that version. */
+  if (BARRY.figreplay && BARRY.figreplay.register) {
+    const WALK_KEYS = ['filt', 'lo_hz', 'hi_hz', 'mains_out', 'win_ms',
+                       'band_lo', 'band_hi', 'cross_ms', 'k'];
+    BARRY.figreplay.register('rootcanal', {
+      async open() { return 'Root Canal opens on each panel’s set.'; },
+      async setup(p) {
+        const want = p.params || {};
+        setView('toolkit');
+        BARRY.views.toolkit.pick('rootcanal');
+        if (viewMode === 'pooled') {
+          viewMode = 'single';
+          try { localStorage.setItem(VIEW_KEY, 'single'); } catch (e) { /* blocked */ }
+        }
+        if (want.entry_id && want.entry_id !== q.entry) await pickSetNow(want.entry_id);
+        if (want.artifact && want.artifact.artifact_id) {
+          await openVersion(want.artifact.artifact_id, want.artifact.v);
+          return 'Root Canal shows saved version v' + (want.artifact.v || '?')
+            + ' of set ' + want.entry_id + '.';
+        }
+        q.from_version = want.from_version === undefined ? q.from_version
+                                                          : want.from_version;
+        for (const k of PKEYS) {
+          if (want[k] !== undefined) { q[k] = want[k]; pend[k] = want[k]; }
+        }
+        q.flips = (want.flips || []).slice();
+        q.centres = want.centres ? want.centres.map((c) => c.slice()) : null;
+        q.cluster_calls = Object.assign({}, want.cluster_calls);
+        q.cluster_names = JSON.parse(JSON.stringify(want.cluster_names || {}));
+        if (want.read) q.read = want.read;
+        await refit();
+        return 'Root Canal is fitted on set ' + want.entry_id
+          + ' with the panel’s settings.';
+      },
+      async ready() {
+        let last = null;
+        for (let i = 0; i < 120; i++) {
+          await new Promise((r) => setTimeout(r, 150));
+          const now = fit && fit.ok && !fitting ? sigOf() : null;
+          if (now && now === last) return true;
+          last = now;
+        }
+        return false;
+      },
+      async readback() {
+        if (!fit || !fit.ok) return null;
+        const got = figureParams();
+        delete got.view;
+        return got;
+      },
+      differences(want, got) {
+        const out = [];
+        const say = (v) => (v === null || v === undefined ? 'none' : String(v));
+        if (want.entry_id !== got.entry_id) out.push('it is a different set');
+        if (say(want.from_version) !== say(got.from_version)) {
+          out.push('it is version ' + say(got.from_version) + ', not '
+                   + say(want.from_version));
+        }
+        for (const k of WALK_KEYS) {
+          if (want[k] === undefined) continue;
+          if (String(want[k]) !== String(got[k])) {
+            out.push(k.replace(/_/g, ' ') + ' is ' + say(got[k]) + ', not '
+                     + say(want[k]));
+          }
+        }
+        if (!BARRY.figreplay.sameSet(want.flips, got.flips)) {
+          out.push((got.flips || []).length + ' events are flipped by hand, not '
+                   + (want.flips || []).length);
+        }
+        if (!!want.artifact !== !!got.artifact) {
+          out.push(got.artifact ? 'it is now a saved version'
+                                : 'it is not the saved version any more');
+        }
+        return out;
+      },
+    });
+  }
+
   return {
     paint,
     /* For web/_dev/rootcanal.html, which drives the real panel rather than
@@ -11635,6 +11797,9 @@ BARRY.rootcanal = (function () {
     // Straight to the set, as the harness's own steps mean it; the nudge
     // a person gets on leaving a changed picture is `_leaveTo`.
     _pickSet: pickSetNow,
+    // A saved single version, opened as the Versions card opens it.
+    _openVersion: openVersion,
+    _figureParams: () => figureParams(),
     _leaveTo: pickSet,
     _read: startRead,
     _fit: refit,

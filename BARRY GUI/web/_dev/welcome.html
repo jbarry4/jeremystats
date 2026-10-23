@@ -1,0 +1,199 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>welcome: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:560px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:560px;top:0;width:1366px;height:768px;border:0}</style></head>
+<body><pre id="log"></pre>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The welcome a new computer gets (web/js/welcome.js, 2026-10-23).
+
+   1. A harness frame never gets it: the boot overlay goes, no panel.
+   2. Who gets it: a profile that is not set; never one that is.
+   3. On demand (the start menu's "Set up this computer"): Start -> You.
+      The people offered are people -- no harness, AI or Debug_Bot names.
+      Continue with no name says so and sends nothing.
+   4. A name -> VACC -> Recordings -> Done -> Open: each step reached, the
+      rail ticking, and the overlay gone at the end. Escape closes it.
+
+   NOTHING IS WRITTEN. Every POST the frame makes while the welcome is up
+   is answered here by a stub on the frame's fetch (memory: apiPost is a
+   const; stub fetch) -- the profile, the VACC, the activity log -- and the
+   harness checks that the stub, not the server, answered them. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(100);
+  }
+  return null;
+}
+
+(async () => {
+  const fr = document.getElementById('app');
+  let realFetch = null;
+  const W = () => fr.contentWindow;
+  const D = () => fr.contentDocument;
+  try {
+    await new Promise((r) => fr.addEventListener('load', r, { once: true }));
+    const bOf = (w) => { try { return w.eval('typeof BARRY === "object" ? BARRY : null'); }
+                         catch (e) { return null; } };
+    await until(() => { const b = bOf(W()); return b && b.state.catalog && b.welcome; }, 30000);
+    const B = bOf(W());
+
+    say('=== 1. a harness frame never gets it ===');
+    const gone = await until(() => { const b = D().getElementById('boot');
+      return !b || b.classList.contains('gone'); }, 20000);
+    check('the boot overlay went', !!gone);
+    check('with no welcome in it', !D().querySelector('#boot .wl-panel'));
+    check('maybe() says no inside a frame', B.welcome.maybe(D().createElement('div'),
+          () => {}, () => {}) === false);
+
+    say('');
+    say('=== 2. who gets it ===');
+    check('a profile that is not set', B.welcome.needs({ set: false }) === true);
+    check('never one that is', B.welcome.needs({ set: true }) === false);
+
+    say('');
+    say('=== 3. on demand: Start, then You ===');
+    /* The stub, probed before it is trusted: a GET goes through, a POST to
+       the profile is answered here. */
+    const answered = [];
+    realFetch = W().fetch;
+    W().fetch = function (url, opts) {
+      const m = String((opts && opts.method) || 'GET').toUpperCase();
+      const u = String(url);
+      if (m !== 'GET' && /\/api\/(profile|vacc\/|activity|people|prefs)/.test(u)) {
+        answered.push(m + ' ' + u.replace(/^.*\/api\//, '/api/'));
+        let body = { ok: true };
+        if (/\/api\/profile/.test(u)) {
+          const got = JSON.parse((opts && opts.body) || '{}');
+          body = { ok: true, profile: Object.assign({}, got, { set: true,
+            effective: { user: got.name, email: got.email } }) };
+        }
+        return Promise.resolve(new (W().Response)(JSON.stringify(body),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      }
+      return realFetch.apply(this, arguments);
+    };
+    // apiPost is a const in the frame, not a property of its window.
+    await W().eval('apiPost')('/api/profile', { probe: 1 }).catch(() => null);
+    check('the stub answers a profile POST (probe)', answered.length === 1, answered.join(' '));
+    answered.length = 0;
+    /* The profile reload after a save would read the real one back: keep it
+       from the server for the length of the run. */
+    const realLoad = B.profile.load;
+    let fakeProf = null;
+    B.profile.load = async () => fakeProf || realLoad();
+
+    const live = B.welcome.open();
+    const panel = await until(() => D().querySelector('.wl-overlay .wl-panel'), 5000);
+    check('the overlay opens', !!panel);
+    check('on the welcome page', !!D().querySelector('.wl-hello .wl-big'),
+          (D().querySelector('.wl-big') || {}).textContent);
+    check('the step rail is hidden on it', D().querySelector('.wl-rail').hidden === true);
+    D().querySelector('.wl-hello .wl-go').click();
+    const form = await until(() => D().querySelector('.wl-form input'), 5000);
+    check('Start goes to "Who are you?"', !!form
+          && /Who are you/.test(D().querySelector('.wl-title').textContent));
+    check('the rail shows step 1 as the current one',
+          (D().querySelector('.wl-step[data-state="on"]') || {}).textContent === '1You');
+    await until(() => D().querySelectorAll('.wl-person').length, 10000);
+    const names = Array.from(D().querySelectorAll('.wl-pname')).map((n) => n.textContent);
+    say('  offered: ' + (names.join(' | ') || '(nobody)'), 'note');
+    check('no harness, test, AI or Debug_Bot names offered',
+          !names.some((n) => /harness|@test|\(AI\)|^import_|debug_bot|^test$|^zz /i.test(n)),
+          names.join(' | '));
+    const nameIn = D().querySelector('.wl-form input');
+    nameIn.value = '';
+    D().querySelector('.wl-page > .wl-actions .wl-go').click();
+    await sleep(200);
+    check('Continue with no name says why', /name is needed/i.test(
+      (D().querySelector('.wl-msg') || {}).textContent || ''));
+    check('and sends nothing', !answered.some((a) => /\/api\/profile/.test(a)),
+          answered.join(' '));
+
+    say('');
+    say('=== 4. through to the end ===');
+    // Opened on demand, the form starts from this computer's profile, whose
+    // initials are its own: emptied first, so they follow the name again.
+    const iniIn = D().querySelectorAll('.wl-form input')[2];
+    iniIn.value = '';
+    iniIn.dispatchEvent(new (W().Event)('input'));
+    nameIn.value = 'zz welcome probe';
+    nameIn.dispatchEvent(new (W().Event)('input'));
+    check('initials follow the name', D().querySelectorAll('.wl-form input')[2].value === 'ZWP',
+          D().querySelectorAll('.wl-form input')[2].value);
+    fakeProf = { name: 'zz welcome probe', set: true,
+                 effective: { user: 'zz welcome probe' } };
+    D().querySelector('.wl-page > .wl-actions .wl-go').click();
+    const vacc = await until(() => D().querySelector('.wl-vacc'), 8000);
+    check('the name goes to VACC', !!vacc);
+    check('the profile POST was answered by the stub',
+          answered.some((a) => /POST \/api\/profile/.test(a)), answered.join(' '));
+    check('You is ticked on the rail',
+          !!D().querySelector('.wl-step[data-state="done"]'));
+    await until(() => !D().querySelector('.wl-vacc .wl-state[data-kind="busy"]'), 15000);
+    const vaccSays = vacc.textContent;
+    check('VACC says how this computer stands',
+          /Signed in as|NetID|ssh client|Could not read/.test(vaccSays), vaccSays.slice(0, 90));
+    const skip = Array.from(D().querySelectorAll('.wl-page > .wl-actions button'))
+      .find((b) => !b.hidden);
+    check('and offers a way on (Skip, or Continue once connected)', !!skip,
+          skip && skip.textContent);
+    skip.click();
+    const find = await until(() => D().querySelector('.wl-find'), 8000);
+    check('on to Recordings', !!find);
+    await sleep(600);
+    const btns = Array.from(D().querySelectorAll('.wl-find button')).map((b) => b.textContent);
+    check('the two finding buttons are there, or the step says to sign in first',
+          (btns.some((t) => /on VACC/.test(t)) && btns.some((t) => /on netfiles/.test(t)))
+          || /needs the VACC/.test(find.textContent), btns.join(' | '));
+    const on = Array.from(D().querySelectorAll('.wl-page > .wl-actions button'))
+      .find((b) => !b.hidden);
+    on.click();
+    const done = await until(() => D().querySelector('.wl-sum'), 8000);
+    check('on to Done', !!done && /set/.test(D().querySelector('.wl-big').textContent),
+          D().querySelector('.wl-big') && D().querySelector('.wl-big').textContent);
+    Array.from(D().querySelectorAll('.wl-page button')).find((b) => /^Open/.test(b.textContent))
+      .click();
+    const shut = await until(() => !D().querySelector('.wl-overlay')
+      || D().querySelector('.wl-overlay').classList.contains('gone'), 3000);
+    check('Open closes the overlay', !!shut);
+    await sleep(500);
+
+    B.welcome.open();
+    await until(() => D().querySelector('.wl-overlay:not(.gone) .wl-panel'), 3000);
+    W().dispatchEvent(new (W().KeyboardEvent)('keydown', { key: 'Escape', bubbles: true }));
+    const esc = await until(() => !D().querySelector('.wl-overlay:not(.gone)'), 3000);
+    check('Escape closes the on-demand one', !!esc);
+    check('every write went to the stub, none to the server',
+          answered.every((a) => /\/api\/(profile|vacc\/|activity|people|prefs)/.test(a)),
+          answered.join(' '));
+    B.profile.load = realLoad;
+    await realLoad();
+    check('the real profile is read back after', !B.profile.get()
+          || B.profile.who() !== 'zz welcome probe', B.profile.who());
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  } finally {
+    try { if (realFetch) W().fetch = realFetch; } catch (e) { /* going anyway */ }
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'welcome: ' + fails + ' FAILED' : 'welcome: passed';
+  fr.src = 'about:blank';
+})();
+</script>
+</body></html>

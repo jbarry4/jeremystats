@@ -35,7 +35,7 @@
   },
   "added": {
     "at": "2026-09-22T14:16:20-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "Home"
   },
   "by_label": {
@@ -76,7 +76,7 @@
     {
       "archived": true,
       "at": "2026-09-22T14:16:20-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },

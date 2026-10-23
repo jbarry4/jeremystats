@@ -29,7 +29,8 @@ from PIL import Image, ImageFont
 APP = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HERE = os.path.join(APP, "GUI_logs", ".cache", "joe_deck")      # what it writes (git-ignored)
 FIGS = os.path.join(APP, "GUI_logs", ".cache", "monolith", "joe", "figs")
-OUT_PPTX = os.path.join(APP, "Joe figures explained 2026-10-22.pptx")
+# Dated by the day it is made: a deck someone has open cannot be written over.
+OUT_PPTX = os.path.join(APP, "Joe figures explained %s.pptx" % __import__("time").strftime("%Y-%m-%d"))
 sys.path.insert(0, APP)
 
 def _find_fonts():

@@ -39,7 +39,7 @@
   },
   "added": {
     "at": "2026-09-22T15:00:28-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "BarryLab"
   },
   "by_label": {
@@ -149,7 +149,7 @@
     {
       "archived": true,
       "at": "2026-09-22T15:00:28-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 15
       },
@@ -239,7 +239,7 @@
     {
       "archived": true,
       "at": "2026-09-22T15:00:28-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "Dentate Spike": 10,
         "Flag": 1,

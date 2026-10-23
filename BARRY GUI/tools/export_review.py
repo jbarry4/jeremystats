@@ -279,7 +279,7 @@ def build(args):
         os.makedirs(fd, exist_ok=True)
         for fg in J9.get("figures") or []:
             # A connectome's other test (the trials' shuffle) is a toggle away: its files too.
-            for f in list((fg.get("files") or {}).values()) + list(((fg.get("alt") or {}).get("files") or {}).values()):
+            for f in list((fg.get("files") or {}).values()) + [x for a in fg.get("alts") or [] for x in (a.get("files") or {}).values()]:
                 write(os.path.join(fd, f), J.raw("/joefigs/file/" + urllib.parse.quote(f)))
     except Exception as exc:                             # noqa: BLE001
         say("  tab 9 not copied (draw the figures in Jarvis first): %s" % exc)

@@ -62,7 +62,7 @@
   },
   "added": {
     "at": "2026-09-23T13:42:03-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
@@ -123,7 +123,7 @@
     {
       "archived": true,
       "at": "2026-09-23T13:47:08-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 4
       },
@@ -169,7 +169,7 @@
     {
       "archived": true,
       "at": "2026-09-23T13:47:08-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "Dentate Spike": 2,
         "Garbage": 1,
@@ -219,7 +219,7 @@
     {
       "archived": true,
       "at": "2026-09-23T13:42:03-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 4
       },
@@ -265,7 +265,7 @@
     {
       "archived": true,
       "at": "2026-09-23T13:42:03-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "Dentate Spike": 2,
         "Garbage": 1,
@@ -315,7 +315,7 @@
     {
       "archived": true,
       "at": "2026-09-23T13:53:17-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 4
       },
@@ -361,7 +361,7 @@
     {
       "archived": true,
       "at": "2026-09-23T13:53:17-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "Dentate Spike": 2,
         "Garbage": 1,

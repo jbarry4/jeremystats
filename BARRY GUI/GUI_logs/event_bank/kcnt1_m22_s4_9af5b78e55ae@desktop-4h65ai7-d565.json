@@ -46,7 +46,7 @@
   },
   "added": {
     "at": "2026-10-12T09:16:44-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "BarryLab"
   },
   "by_label": {
@@ -90,7 +90,7 @@
     {
       "archived": true,
       "at": "2026-10-12T09:16:44-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 1
       },
@@ -125,7 +125,7 @@
     {
       "archived": true,
       "at": "2026-10-12T09:34:04-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 1
       },

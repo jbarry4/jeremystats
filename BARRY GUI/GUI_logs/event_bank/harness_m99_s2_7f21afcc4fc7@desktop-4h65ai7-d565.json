@@ -51,7 +51,7 @@
   },
   "added": {
     "at": "2026-09-22T16:48:11-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "Home"
   },
   "by_label": {
@@ -105,7 +105,7 @@
     {
       "archived": true,
       "at": "2026-09-22T16:48:11-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 4
       },
@@ -151,7 +151,7 @@
     {
       "archived": true,
       "at": "2026-09-22T16:48:11-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "Dentate Spike": 2,
         "Garbage": 1,
@@ -201,7 +201,7 @@
     {
       "archived": true,
       "at": "2026-09-22T16:48:43-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "Dentate Spike": 2,
         "Garbage": 1,

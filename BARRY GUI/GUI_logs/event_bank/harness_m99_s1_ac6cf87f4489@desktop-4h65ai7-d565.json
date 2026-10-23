@@ -46,7 +46,7 @@
   },
   "added": {
     "at": "2026-09-23T09:58:16-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
@@ -167,7 +167,7 @@
     {
       "archived": true,
       "at": "2026-09-23T09:58:16-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 15
       },
@@ -257,7 +257,7 @@
     {
       "archived": true,
       "at": "2026-09-23T09:58:16-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "Dentate Spike": 10,
         "Flag": 1,

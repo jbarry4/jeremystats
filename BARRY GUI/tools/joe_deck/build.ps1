@@ -10,8 +10,13 @@ $P = Get-Content -Raw -Encoding UTF8 $Plan | ConvertFrom-Json
 function F($x) { return [single][double]$x }
 function RGB($c) { if ($null -eq $c) { return $null }; return [int]$c[0] + 256 * [int]$c[1] + 65536 * [int]$c[2] }
 
+# PowerPoint's automation object IS the running PowerPoint when one is open
+# (2026-10-23: a build quit it, with whatever the person had open). So a
+# PowerPoint that was already running is left running; only ours is closed.
+$wasRunning = [bool](Get-Process POWERPNT -ErrorAction SilentlyContinue)
 $app = New-Object -ComObject PowerPoint.Application
 $overflow = New-Object System.Collections.ArrayList
+$pres = $null
 try {
     $pres = $app.Presentations.Add(0)
     $pres.PageSetup.SlideWidth = (F $P.width)
@@ -82,8 +87,10 @@ try {
         foreach ($s in $pres.Slides) { $s.Export((Join-Path $P.png_dir ('s{0:000}.png' -f $s.SlideIndex)), 'PNG', 1280, 720) }
     }
     $pres.Close()
+    $pres = $null
 } finally {
-    $app.Quit()
+    if ($null -ne $pres) { try { $pres.Close() } catch {} }
+    if (-not $wasRunning) { $app.Quit() }
 }
 'slides: ' + $i
 'overflow: ' + $overflow.Count

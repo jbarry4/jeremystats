@@ -50,7 +50,7 @@
   },
   "added": {
     "at": "2026-10-09T12:14:15-04:00",
-    "by": "spotter harness",
+    "by": "Debug_Bot",
     "machine": "LCOM549913"
   },
   "by_label": {
@@ -145,7 +145,7 @@
     {
       "archived": true,
       "at": "2026-10-09T12:14:49-04:00",
-      "by": "spotter harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 10
       },
@@ -216,7 +216,7 @@
     {
       "archived": true,
       "at": "2026-10-09T12:14:23-04:00",
-      "by": "spotter harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 10
       },
@@ -287,7 +287,7 @@
     {
       "archived": true,
       "at": "2026-10-09T12:14:15-04:00",
-      "by": "spotter harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 10
       },

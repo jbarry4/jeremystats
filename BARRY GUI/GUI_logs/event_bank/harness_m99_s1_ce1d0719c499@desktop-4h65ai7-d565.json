@@ -39,7 +39,7 @@
   },
   "added": {
     "at": "2026-09-21T11:06:50-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "LCOM549913"
   },
   "by_label": {
@@ -114,7 +114,7 @@
     {
       "archived": true,
       "at": "2026-09-21T11:06:50-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 8
       },
@@ -176,7 +176,7 @@
     {
       "archived": true,
       "at": "2026-09-21T11:06:50-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "Dentate Spike": 4,
         "Flag": 1,

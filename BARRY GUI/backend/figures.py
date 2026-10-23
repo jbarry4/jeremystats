@@ -122,7 +122,8 @@ class Figures:
         raise FigureError("Figure %s has no version %s." % (fid, v), 404)
 
     # -- writing ----------------------------------------------------------
-    def create(self, layout, prov, legacy=None):
+    def create(self, layout, prov, legacy=None, created=None,
+               archived=False):
         """A new figure, as a draft holding this layout."""
         with _LOCK:
             fid = "f" + uuid.uuid4().hex[:10]
@@ -131,10 +132,10 @@ class Figures:
                 "gid": (layout.get("recording") or {}).get("gid"),
                 "recording": _recording_of(layout),
                 "title": layout.get("title") or "Figure",
-                "status": "draft", "created": _now(),
+                "status": "draft", "created": created or _now(),
                 "by": (prov or {}).get("user"),
                 "draft": _strip(layout, fid), "draft_at": _now(),
-                "versions": [], "archived": False,
+                "versions": [], "archived": bool(archived),
             }
             if legacy:
                 rec["legacy"] = legacy
@@ -169,7 +170,8 @@ class Figures:
                 "data": "%s/%s/%s.v%d.npz" % (base, DATA_DIR, rec["id"], v)}
 
     def add_version(self, fid, layout, blobs, numbers, lineage, prov,
-                    note=None, from_v=None, source="builder", files=None):
+                    note=None, from_v=None, source="builder", files=None,
+                    at=None):
         """File the rendered bytes and the plotted numbers, then the row.
 
         `blobs` is {fmt: bytes}. `files` is for a version whose files are
@@ -196,7 +198,7 @@ class Figures:
             lay["v"] = v
             row = {
                 "id": "%s.%s" % (fid, uuid.uuid4().hex[:8]), "v": v,
-                "at": _now(), "by": (prov or {}).get("user"),
+                "at": at or _now(), "by": (prov or {}).get("user"),
                 "machine": (prov or {}).get("machine"),
                 "app_version": (prov or {}).get("app_version"),
                 "commit": (prov or {}).get("commit"),

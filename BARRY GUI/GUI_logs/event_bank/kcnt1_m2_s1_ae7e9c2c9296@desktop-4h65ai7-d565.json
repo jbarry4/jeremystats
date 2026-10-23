@@ -46,7 +46,7 @@
   },
   "added": {
     "at": "2026-09-21T12:46:42-04:00",
-    "by": "spikeflow@harness",
+    "by": "Debug_Bot",
     "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
@@ -137,7 +137,7 @@
     {
       "archived": true,
       "at": "2026-09-21T12:48:04-04:00",
-      "by": "spikeflow@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 10
       },
@@ -207,7 +207,7 @@
     {
       "archived": true,
       "at": "2026-09-21T12:46:42-04:00",
-      "by": "spikeflow@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 10
       },

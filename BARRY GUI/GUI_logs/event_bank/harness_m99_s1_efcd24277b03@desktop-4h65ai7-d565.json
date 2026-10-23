@@ -50,7 +50,7 @@
   },
   "added": {
     "at": "2026-09-29T10:29:09-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "BarryLab"
   },
   "by_label": {
@@ -98,7 +98,7 @@
     {
       "archived": true,
       "at": "2026-09-29T10:29:09-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },
@@ -136,7 +136,7 @@
     {
       "archived": true,
       "at": "2026-09-29T10:29:48-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },
@@ -175,7 +175,7 @@
     {
       "archived": true,
       "at": "2026-09-29T10:33:33-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },

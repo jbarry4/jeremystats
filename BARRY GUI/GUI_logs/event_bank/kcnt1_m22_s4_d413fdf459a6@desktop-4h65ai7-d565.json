@@ -46,7 +46,7 @@
   },
   "added": {
     "at": "2026-09-10T00:15:35-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "DESKTOP-NR2H5O7"
   },
   "by_label": {
@@ -90,7 +90,7 @@
     {
       "archived": true,
       "at": "2026-10-12T09:16:37-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 1
       },
@@ -125,7 +125,7 @@
     {
       "archived": true,
       "at": "2026-10-12T09:34:06-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 1
       },

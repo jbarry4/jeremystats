@@ -62,7 +62,8 @@ PARAMS = ("t0", "t1", "highpass", "lowpass", "notch", "channels",
           "normalize", "tf_channels", "tf_mode", "fmin", "fmax", "fview_min",
           "fview_max", "stft_mode", "probe", "probe_view", "probe_columns",
           "channel", "smooth", "band_scale", "dyn_range_db", "clim_pct",
-          "events")
+          "band_lo", "band_hi", "band_step", "band_bw", "max_cols",
+          "full_rate", "events", "events_source")
 
 MAX_EVENTS = 4000
 
@@ -153,6 +154,10 @@ class Xplore(Adapter):
                                "window.")
             out["win"] = win
             out["lim"] = {"x": [float(win["t0"]), float(win["t1"])]}
+            out["ytick_chars"] = _label_chars(
+                [(s["label"], s.get("bad") or s["number"] in set(
+                    int(b) for b in (p.get("bad_channels") or [])))
+                 for s in win["series"]])
             return out
 
         panel = analysis.render_panel(sess, p)
@@ -160,6 +165,9 @@ class Xplore(Adapter):
             raise FigError(panel.get("error") or "That panel would not draw.")
         ext = panel["extent"]
         out["panel"] = panel
+        if panel.get("rows"):
+            out["ytick_chars"] = _label_chars(
+                [(r.get("label") or "", r.get("bad")) for r in panel["rows"]])
         out["clim_used"] = list(panel["clim"])
         out["cmap"] = panel.get("cmap") or p.get("cmap") or "jet"
         out["lim"] = {"x": [float(ext[0]), float(ext[1])],
@@ -402,6 +410,11 @@ class Xplore(Adapter):
                     "extent": np.array(panel["extent"], dtype=float),
                     "clim": np.array(panel["clim"], dtype=float)}
         return {}
+
+
+def _label_chars(rows):
+    """How long the longest channel label will print, " (bad)" and all."""
+    return max([len(str(lab)) + (6 if bad else 0) for lab, bad in rows] or [5])
 
 
 def _row_numbers(prep):

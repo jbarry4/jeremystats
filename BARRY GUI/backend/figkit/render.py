@@ -181,6 +181,10 @@ def _with_axes(pl, prep):
     power panel in linear units is not in dB, so a prepared panel may say
     so (`prep["axes"]`) and that wins for this panel alone.
     """
+    if isinstance(prep, dict) and prep.get("ytick_chars"):
+        # The labels' real length, which the box's left pad is cut to.
+        pl = dict(pl, ytick_chars=max(float(pl.get("ytick_chars") or 0),
+                                      float(prep["ytick_chars"])))
     over = (prep or {}).get("axes") if isinstance(prep, dict) else None
     if not over:
         return pl
@@ -545,8 +549,24 @@ def _draw_one(fig, origin, g, spec, entry, ctx, st, res, letter):
     spec_eff = dict(spec)
     spec_eff["_resolved"] = res
     before = list(fig.axes)
-    got = ad.draw(fig, _frac(g["axes"], origin, fig), spec_eff, prep, ctx,
-                  st) or {}
+    try:
+        got = ad.draw(fig, _frac(g["axes"], origin, fig), spec_eff, prep,
+                      ctx, st) or {}
+    except Exception as exc:                              # noqa: BLE001
+        # One panel failing to draw is that panel's problem, said on it;
+        # the rest of the figure is still drawn.
+        for a in [a for a in fig.axes if a not in before]:
+            a.remove()
+        entry["error"] = (str(exc) if isinstance(exc, FigError)
+                          else "%s: %s" % (type(exc).__name__, exc))
+        ax = fig.add_axes(_frac(g["box"], origin, fig))
+        ax.set_axis_off()
+        ax.text(0.5, 0.5, "This panel could not be drawn.\n\n"
+                + _wrap(entry["error"], 48), ha="center", va="center",
+                fontsize=st.sizes["small"], color=st.event,
+                transform=ax.transAxes, family=st.font)
+        arts["plot"] = ax
+        return arts
     main = got.get("main")
     new_axes = [a for a in fig.axes if a not in before]
     if main is None and new_axes:
@@ -555,7 +575,8 @@ def _draw_one(fig, origin, g, spec, entry, ctx, st, res, letter):
     if main is None:
         return arts
 
-    for a in (got.get("axes") or [main]):
+    styled = got.get("axes")
+    for a in ([main] if styled is None else styled):
         if a is not got.get("cbar"):
             _style_axes(a, st)
     arts["x"] = _apply_axis(main, "x", spec, pl, res.get("x"), st) and main
@@ -698,13 +719,57 @@ def render_frame(layout, ctx, dpi=110):
             arts["fig_subtitle"] = t
     hits = _hits(fig, arts, dpi)
     png = _png(fig, dpi)
-    boxes = {}
+    boxes, sigs, about = {}, {}, {}
+    page_keys = {k: layout.get(k) for k in ("profile", "width", "height_mm",
+                                             "rows", "cols", "gap_mm")}
     for g in P["geo"]["panels"]:
         x0, y0, x1, y1 = g["box"]
-        boxes[g["uid"]] = [x0 / w, 1 - y1 / h, x1 / w, 1 - y0 / h]
+        uid = g["uid"]
+        boxes[uid] = [x0 / w, 1 - y1 / h, x1 / w, 1 - y0 / h]
+        spec = next(p for p in layout["panels"] if p["uid"] == uid)
+        entry = P["prepared"].get(uid) or {}
+        # Everything a tile's picture depends on. The same sig is the same
+        # picture, so the page asks again only for tiles whose sig moved.
+        sigs[uid] = digest({"spec": {k: v for k, v in spec.items()
+                                     if not str(k).startswith("_")},
+                            "res": P["res"].get(uid), "box": g["box"],
+                            "axes": g["axes"],
+                            "letter": P["letters"].get(uid),
+                            "page": page_keys, "err": entry.get("error")})
+        about[uid] = _about(spec, entry, ctx)
     return {"image": png, "page_in": [w, h], "boxes": boxes, "hits": hits,
+            "sigs": sigs, "about": about,
             "letters": P["letters"], "footer": P["foot"]["lines"],
             "problems": _problems(P)}
+
+
+def _about(spec, entry, ctx):
+    """One panel in plain words, for the builder's side column: what it is,
+    and the lineage phrases the footer prints for it."""
+    ad, pl = entry.get("ad"), entry.get("pl")
+    if not ad or not pl:
+        return {"error": entry.get("error")}
+    try:
+        lin = ad.lineage(spec, entry.get("prep"), ctx) or {}
+    except Exception as exc:                              # noqa: BLE001
+        lin = {"phrases": ["lineage unavailable: %s" % exc]}
+    from . import units as U
+    axes = {}
+    for k, decl in (pl.get("axes") or {}).items():
+        q = decl.get("quantity")
+        axes[k] = {"quantity": q, "unit": U.norm_unit(decl.get("unit")),
+                   "words": decl.get("words"),
+                   "units": U.choices(q, decl.get("unit")),
+                   "convertible": q in U.QUANTITIES,
+                   "linkable": q not in NOLINK,
+                   "lim": ((entry.get("prep") or {}).get("lim") or {}).get(k)}
+    return {"tool": ad.tool, "tool_name": ad.name, "plot": pl["id"],
+            "plot_name": pl.get("name"), "axes": axes,
+            "scalebar": bool(pl.get("scalebar")),
+            "anatomy": bool(pl.get("anatomy")),
+            "stats": bool(pl.get("stats")),
+            "phrases": lin.get("phrases") or [],
+            "fields": lin.get("fields") or {}}
 
 
 def render_tile(layout, uid, ctx, dpi=110):

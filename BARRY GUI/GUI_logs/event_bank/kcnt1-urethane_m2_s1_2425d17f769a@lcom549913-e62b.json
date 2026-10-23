@@ -46,7 +46,7 @@
   },
   "added": {
     "at": "2026-09-25T17:48:46-04:00",
-    "by": "eye harness",
+    "by": "Debug_Bot",
     "machine": "LCOM549913"
   },
   "by_label": {
@@ -123,7 +123,7 @@
   "versions": [
     {
       "at": "2026-09-25T17:48:46-04:00",
-      "by": "eye harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 6
       },
@@ -167,7 +167,7 @@
     },
     {
       "at": "2026-09-25T17:48:46-04:00",
-      "by": "eye harness",
+      "by": "Debug_Bot",
       "by_label": {
         "Garbage": 1,
         "Solid": 5

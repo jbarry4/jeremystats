@@ -44,7 +44,7 @@ _ADAPTERS = {}
 #: Every tool that has an adapter, by module. Imported on first use rather
 #: than at start-up: an adapter reaches into its tool, and the tool's heavy
 #: imports should be paid by the first figure, not by every boot.
-ADAPTER_MODULES = ("xplore",)
+ADAPTER_MODULES = ("xplore", "rootcanal")
 _LOADED = False
 
 

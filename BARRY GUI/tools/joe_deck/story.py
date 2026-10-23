@@ -90,14 +90,14 @@ def main():
         D.slide(title="Figure %s · %s · gamma" % (fid, cmp_title), view_=view(im),
                 card=("Figure %s" % fid, "Comparison %d, %s: the whole network" % (cmp_no, cmp_title)), clear=True)
         f = figs[fid]
-        return (f, im, {(x["row"], x["kind"]): x for x in f["stats"]["graphs"]},
-                {(x["row"], x["kind"]): x for x in f["alt"]["stats"]["graphs"]})
+        alt = {a["null"]: {(x["row"], x["kind"]): x for x in a["stats"]["graphs"]} for a in f.get("alts") or []}
+        return f, im, {(x["row"], x["kind"]): x for x in f["stats"]["graphs"]}, alt.get("trials", {}), alt.get("fp", {})
 
     def counts(f, rowk):
         e = [x for x in f["stats"]["edges"][rowk] if x is not None]
         return sum(x > 0 for x in e), sum(x < 0 for x in e), len(e)
 
-    f, im, g, gt = card("1", 1, "baseline → both cues")
+    f, im, g, gt, gf = card("1", 1, "baseline → both cues")
     full = view(im)
     nsig, nr = f["stats"]["n_signs"], len(f["stats"]["rats"])
     D.slide(view_=full, focus=None,
@@ -138,20 +138,43 @@ def main():
             note="Same ring, a second test (the toggle on tab 9): in every session, each trial’s baseline and cue swapped at random, 10,000 times. Single trials vary a lot, so the hill is much wider: %s (the rats’ test: %s)." % (
                 p_say(gti["p"]), p_say(gi["p"])),
             speaker="Trial-to-trial noise inside a session is about 1.7 times wider than the spread between rats.")
-    D.slide(view_=vt, focus=hist(2, 2),
-            note="The rats moved together, the test that matches tab 8’s light; single trials are too noisy to confirm it. Figure 1 is a lead, not a finding.")
+    gfi, gfp = gf.get(("delta", "net")), gf.get(("delta", "pos"))
+    if gfi:
+        vf = view(fig_img("1_fp"), cell(2, 2))
+        D.slide(view_=vf, focus=hist(2, 2), clear=True,
+                note="A third test, FP: the same rats in FP1 and FP2, with no cues. Fake trials at random moments, measured as real ones are; in each of 10,000 sets every session gets as many as it had real trials, losing the same windows its real trials lost.",
+                speaker="A fake cue onset every 10 s of FP1 and FP2 (%s fake trials in all), the trial's own windows round it, measured with the same wires, clipping and measures; each set draws each session's fake trials at random, with replacement." % format(F["fp"]["fake_trials"], ","))
+        D.slide(view_=vf, focus=hist(2, 2),
+                note="Against FP, Figure 1’s change: %s (increases %s). %s" % (
+                    p_say(gfi["p"]), p_say(gfp["p"]),
+                    "It does not stand out of what the rats do with no cues." if min(gfi["p"], gfp["p"]) >= 0.05 else
+                    "It stands out of what the rats do with no cues."))
+        gti_p = gt[("delta", "net")]["p"]
+        both_no = gfi["p"] >= 0.05 and gti_p >= 0.05
+        D.slide(view_=vf, focus=hist(2, 2), clear=True,
+                note=("So: the rats moved together, the test that matches tab 8’s light, but neither the trial shuffle nor FP confirms it. Figure 1 is a lead, not a finding."
+                      if both_no else "So: the rats moved together, the test that matches tab 8’s light, and %s confirms it." % (
+                          "FP" if gfi["p"] < 0.05 and gti_p >= 0.05 else "the trial shuffle" if gti_p < 0.05 and gfi["p"] >= 0.05 else "each other test")))
+    else:
+        D.slide(view_=vt, focus=hist(2, 2),
+                note="The rats moved together, the test that matches tab 8’s light; single trials are too noisy to confirm it. Figure 1 is a lead, not a finding.")
 
-    f2, im2, g2, gt2 = card("2", 2, "baseline → cue 1")
+    f2, im2, g2, gt2, gf2 = card("2", 2, "baseline → cue 1")
     D.slide(view_=view(im2), focus=row(2), note="Same layout, comparison 2: the 10 s baseline against cue 1.")
     gp2, gi2, gtp2 = g2[("delta", "pos")], g2[("delta", "net")], gt2[("delta", "pos")]
+    gfp2, gfi2, gti2 = gf2.get(("delta", "pos")), gf2.get(("delta", "net")), gt2[("delta", "net")]
     D.slide(view_=view(im2, cell(2, 0)), focus=hist(2, 0),
-            note="The change’s increases: only %d of %d sums reach it: %s. The trial shuffle agrees (%s): the one network result that passes both tests." % (
-                int(round(gp2["p"] * gp2["n"])), gp2["n"], p_say(gp2["p"]), p_say(gtp2["p"])))
-    D.slide(view_=view(im2, cell(2, 2)), focus=hist(2, 2), note="Ups and downs together: %s, just short." % p_say(gi2["p"]))
+            note="The change’s increases: only %d of %d sums reach it: %s. The trial shuffle agrees (%s)%s: the one network result that passes every test." % (
+                int(round(gp2["p"] * gp2["n"])), gp2["n"], p_say(gp2["p"]), p_say(gtp2["p"]), (", and so does FP (%s)" % p_say(gfp2["p"])) if gfp2 else ""))
+    D.slide(view_=view(im2, cell(2, 2)), focus=hist(2, 2),
+            note="Ups and downs together: rats %s, trials %s%s." % (p_say(gi2["p"]), p_say(gti2["p"]),
+                                                                    (", FP %s: only FP passes" % p_say(gfi2["p"])) if gfi2 and gfi2["p"] < 0.05 else
+                                                                    (", FP %s" % p_say(gfi2["p"])) if gfi2 else ""))
     gn1, gtn1 = g2[("Precon1", "neg")], gt2[("Precon1", "neg")]
+    gfn1 = gf2.get(("Precon1", "neg"))
     D.slide(view_=view(im2, cell(0, 1)), focus=hist(0, 1), clear=True,
-            note="One ring splits the other way: on Precon1 alone, the decreases pass the trial shuffle (%s) but not the rats’ test (%s). It is one day, not the change, so it does not answer the question." % (
-                p_say(gtn1["p"]), p_say(gn1["p"])))
+            note="One ring splits the other way: on Precon1 alone, the decreases pass the trial shuffle (%s)%s but not the rats’ test (%s). It is one day, not the change, so it does not answer the question." % (
+                p_say(gtn1["p"]), (" and FP (%s)" % p_say(gfn1["p"])) if gfn1 and gfn1["p"] < 0.05 else "", p_say(gn1["p"])))
 
     # ---- the follow-ups --------------------------------------------------------
     fam = ill["families"]
@@ -203,14 +226,20 @@ def main():
             D.slide(view_=view(im, bx["cd"](0)), focus=bx["c"](0),
                     note="c: each rat’s change, Precon4 − Precon1, with the mean and its 95% range. The t-test asks if the mean is away from 0.")
             D.slide(view_=view(im, bx["cd"](0)), focus=bx["d"](0),
-                    note="d: the same change against 10,000 within-session shuffles: a second opinion on the same data.")
+                    note="d: the same change against two second opinions: 10,000 within-session shuffles (grey) and 10,000 sets of fake trials from FP (blue).")
             tx = "Tab 8 ran %d of these t-tests (%d pairs × 10 measures); %d passed, where about %d would by chance. Those %d are the measures in these %d figures." % (
                 n_tests, n_pairs, n_pass, round(0.05 * n_tests), n_pass, len(follows))
             D.slide(view_=full, focus=None, clear=True, note=tx, runs=bold_runs(tx, "about %d would by chance" % round(0.05 * n_tests)))
         for ki, k in enumerate(fg["keys"]):
             ms, nl = fg["stats"]["measures"][k], fg["stats"]["nulls"][k]
-            both = ms["p"] < 0.05 and nl["p"] < 0.05
-            word = "Both agree: a stronger lead." if both else "The shuffles do not agree: a weaker lead."
+            nf = (fg["stats"].get("nulls_fp") or {}).get(k)
+            ok2 = [nl["p"] < 0.05] + ([nf["p"] < 0.05] if nf else [])
+            if all(ok2):
+                word = "Both second opinions agree: a stronger lead." if nf else "The shuffles agree: a stronger lead."
+            elif any(ok2):
+                word = "Only %s agrees: a middling lead." % ("FP" if nf and nf["p"] < 0.05 else "the shuffle")
+            else:
+                word = "Neither second opinion agrees: a weaker lead." if nf else "The shuffles do not agree: a weaker lead."
             if k == "xlag":
                 lead = fg["a"] if ms["delta"] < 0 else fg["b"]
                 sent = ("Gamma-burst lag, %s with %s: how the cue shifted it differs between the days by %.0f ms, toward %s leading on Precon4 compared with Precon1." % (
@@ -219,10 +248,12 @@ def main():
                 sent = measure_sentence(k, fg["a"], fg["b"], ms["delta"])
             D.slide(title=title, view_=full, focus=bx["c"](ki), clear=(ki == 0), note=sent,
                     speaker=(fg["legend"]["title"] + " " + fg["legend"]["body"]) if ki == 0 else "")
-            txt = "t-test %s (%d rats). Shuffles %s. %s" % (p_say(ms["p"]), ms["df"] + 1, p_say(nl["p"]), word)
+            txt = "t-test %s (%d rats). Shuffles %s.%s %s" % (p_say(ms["p"]), ms["df"] + 1, p_say(nl["p"]),
+                                                              (" FP %s." % p_say(nf["p"])) if nf else "", word)
             D.slide(view_=view(im, bx["cd"](ki)), focus=bx["c"](ki), focus2=bx["d"](ki), note=txt, runs=bold_runs(txt, word),
-                    speaker="t(%d) = %.2f, %s; mean change %.4g. Shuffles: rank %d of %d, %s." % (
-                        ms["df"], ms["t"], p_say(ms["p"]), ms["delta"], nl["rank"], nl["n"], p_say(nl["p"])))
+                    speaker="t(%d) = %.2f, %s; mean change %.4g. Shuffles: rank %d of %d, %s.%s" % (
+                        ms["df"], ms["t"], p_say(ms["p"]), ms["delta"], nl["rank"], nl["n"], p_say(nl["p"]),
+                        (" FP: rank %d of %d, %s." % (nf["rank"], nf["n"], p_say(nf["p"]))) if nf else ""))
         if fg.get("pac_profiles"):
             k = fg["pac_profiles"][0]
             pf = {"pac_ab": (fg["a"], fg["b"]), "pac_ba": (fg["b"], fg["a"]), "pac_aa": (fg["a"], fg["a"]), "pac_bb": (fg["b"], fg["b"])}[k]
@@ -243,13 +274,16 @@ def main():
         follow(fid)
 
     # ---- the end ------------------------------------------------------------
-    solid = []
+    solid, middling = [], []
     for fg in follows:
+        best = 0
         for k in fg["keys"]:
-            ms, nl = fg["stats"]["measures"][k], fg["stats"]["nulls"][k]
-            if ms["p"] < 0.05 and nl["p"] < 0.05:
-                solid.append(fg["id"])
-                break
+            nl, nf = fg["stats"]["nulls"][k], (fg["stats"].get("nulls_fp") or {}).get(k)
+            best = max(best, int(nl["p"] < 0.05) + int(bool(nf) and nf["p"] < 0.05))
+        if best == 2:
+            solid.append(fg["id"])
+        elif best == 1:
+            middling.append(fg["id"])
     u1, d1, n_ = counts(f, "Precon1")
     u4, d4, _n = counts(f, "Precon4")
     bottom = (1, 129, 183, 196)
@@ -257,13 +291,16 @@ def main():
             note="From Precon1 to Precon4 the cues’ effect on gamma coherence swung across the network: on Precon1 they lowered it in %d of %d pairs; on Precon4, about even (%d up, %d down)." % (
                 d1, n_, u4, d4))
     D.slide(view_=view(im, bottom), focus=hist(2, 0), focus2=hist(2, 2),
-            note="The rats agreed on that swing: Figure 1, increases %s, ups and downs together %s. The trial shuffle does not confirm Figure 1 (%s)." % (
-                p_say(gp["p"]), p_say(gi["p"]), p_say(gti["p"])))
+            note="The rats agreed on that swing: Figure 1, increases %s, ups and downs together %s. Neither the trial shuffle (%s) nor FP (%s) confirms Figure 1." % (
+                p_say(gp["p"]), p_say(gi["p"]), p_say(gti["p"]), p_say(gfi["p"]) if gfi else "not measured"))
     D.slide(view_=view(im2, bottom), focus=hist(2, 0),
-            note="Figure 2 (cue 1): the increases pass both tests (%s by the rats, %s by the trials)." % (p_say(gp2["p"]), p_say(gtp2["p"])))
+            note="Figure 2 (cue 1): the increases pass every test (rats %s, trials %s, FP %s)." % (
+                p_say(gp2["p"]), p_say(gtp2["p"]), p_say(gfp2["p"]) if gfp2 else "not measured"))
     D.slide(view_=view(fam), focus=None, clear=True,
-            note="%d of the %d follow-up figures also pass the trial shuffle: %s. They were picked from %d t-tests, %d of which passed where about %d would by chance." % (
-                len(solid), len(follows), ", ".join(solid), n_tests, n_pass, round(0.05 * n_tests)))
+            note="Of the %d follow-up figures, %d pass both second opinions (%s) and %d pass one (%s). They were picked from %d t-tests, %d of which passed where about %d would by chance." % (
+                len(follows), len(solid), ", ".join(solid), len(middling), ", ".join(middling), n_tests, n_pass, round(0.05 * n_tests)))
+    D.slide(view_=view(fam), focus=None,
+            note="FP is the most physiological of the three yardsticks: it carries what these rats’ brains do with no cues, with every session’s own lost windows. A result it passes and the shuffle does not is still worth a second look.")
     tx = "Nothing is corrected across tests, and the rings re-test the data that lit the light. All of this is leads to test again, not findings yet."
     D.slide(view_=view(fam), focus=None, note=tx, runs=bold_runs(tx, "leads to test again"))
     D.slide(view_=view(fam), focus=None, clear=True,

@@ -243,6 +243,59 @@ def main():
     check("the raster keeps its picture and its scale",
           "b.rgb" in nums and "b.clim" in nums, list(nums))
 
+    print("figures from the old builder")
+    from backend import rebuild
+    from backend.figkit import legacy
+    old_layout = {
+        "title": "Old figure", "page": "letter_landscape", "rows": 1,
+        "cols": 2, "t0": 3.0, "t1": 4.0, "highpass": 1, "lowpass": 300,
+        "channels": list(range(8)), "bad_channels": [17],
+        "identity": {"gid": "demo-ds-tutorial", "label": "DEMO m1 s1"},
+        "metadata": {"notes": "made by hand"},
+        "events": [{"start": 3.4}],
+        "panels": [{"panel": "traces", "title": "T", "row": 0, "col": 0},
+                   {"panel": "csd", "title": "C", "row": 0, "col": 1,
+                    "cmap": "RdBu_r"}],
+    }
+    recipe = rebuild.pack_recipe(old_layout, {"default": {
+        "path": "demo:ds-tutorial", "invert": True}})
+    lay = legacy.from_recipe(recipe, {"id": "run1"})
+    check("an old recipe becomes a lab-page figure of the same page",
+          lay["profile"] == "lab" and lay["width"] == "letter_landscape")
+    check("its page settings move onto each panel",
+          lay["panels"][0]["params"]["t0"] == 3.0
+          and lay["panels"][1]["params"]["cmap"] == "RdBu_r"
+          and lay["panels"][0]["params"]["events"] == [{"start": 3.4}])
+    check("it keeps the recording and the note",
+          lay["recording"]["path"] == "demo:ds-tutorial"
+          and lay["footer"]["notes"] == "made by hand")
+    blob, probs, _P = R.render_page(lay, Ctx(lay), "png", dpi=60)
+    check("and it draws", blob[:4] == b"\x89PNG" and not probs, probs)
+
+    print("the walk-through's plan")
+    from backend.figkit import replay
+    lay = demo_layout()
+    got = replay.plan(lay, Ctx(lay), [])
+    ids = [s["id"] for s in got["steps"]]
+    check("find, open, a step per panel, read back, compare",
+          ids == ["locate", "open", "panel", "panel", "readback", "compare"],
+          ids)
+    check("a demo recording is all here", got["verdict"] == "ok",
+          got["problems"])
+    far = demo_layout()
+    far["panels"][0]["params"]["t1"] = 9999.0
+    got = replay.plan(far, Ctx(far), [])
+    check("a window past the end is a warning, said in words",
+          got["verdict"] == "warn" and any("past the end" in p
+                                           for p in got["problems"]),
+          got["problems"])
+    gone = demo_layout()
+    gone["recording"]["path"] = "Z:/nowhere/at/all"
+    got = replay.plan(gone, Ctx(gone), [])
+    check("a missing folder stops it before anything is done",
+          got["verdict"] == "missing" and got["steps"][0]["status"]
+          == "missing")
+
     print("the store")
     tmp = tempfile.mkdtemp(prefix="jarvis-figkit-")
     try:

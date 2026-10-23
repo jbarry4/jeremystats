@@ -2344,6 +2344,267 @@ def vacc_tree(cfg, ws, name, dest, timeout=600):
         tar.extractall(dest, filter="data")
 
 
+# --------------------------------------------------------------------------
+# Fake trials in FP: the pool the FP comparison draws from
+# --------------------------------------------------------------------------
+# Shahriar, 2026-10-23: "take random intervals of FP1/FP2 and see what the
+# data set's rank is", for every test of tab 9. A fake cue-1 onset every
+# FP_POOL_STEP s of each FP recording, a real trial's seven windows round it
+# (the 20 s and 10 s baselines before it, cue 1 and cue 2 after it, both
+# cues, the switch), each measured exactly as a real trial's window is: the
+# same wires rule, clipping measured the same way, the same measures. The
+# FP nulls (joefigs) build sessions of these fake trials. The recordings are
+# short (5-11 minutes), so neighbouring fake trials overlap; a null draws
+# them with replacement rather than pretending they are independent slots.
+FP_POOL_STEP = 10.0
+FP_POOL_SCHEMA = 1
+
+
+def fake_windows(t):
+    """A trial's seven windows round a fake cue-1 onset at t (each cue 10 s)."""
+    return trial_windows({"opener_t": t, "closer_t": t + 10.0, "offset_t": t + 20.0})
+
+
+def fp_onsets(d, step=FP_POOL_STEP):
+    """[(role, folder, t)]: every fake onset with all seven windows inside
+    the recording and FP_EDGE_S from its ends."""
+    out = []
+    for f in d.get("folders") or []:
+        if f.get("role") not in ("FP1", "FP2") or not f.get("local") or not os.path.isdir(f["local"]):
+            continue
+        dur = duration_s(f["local"])
+        if not dur:
+            continue
+        t = FP_EDGE_S + 20.0
+        while t + 20.0 <= dur - FP_EDGE_S + 1e-9:
+            out.append((f["role"], f["local"], round(t, 3)))
+            t += step
+    return out
+
+
+def fp_pool_part(d, names, chan_map, part=(0, 1), step=FP_POOL_STEP, check=None):
+    """Every `part[1]`-th fake trial from `part[0]` of one rat-day, measured.
+    Returns (indices, {measure: (7, n, ...)}, notes)."""
+    R = len(names)
+    P = len(pairs_of(R))
+    bad = [int(c) for c in d.get("bad") or []]
+    blocked = d.get("blocked") or {}
+    only = sorted({int(c) for nm, cs in chan_map.items() if nm not in blocked for c in cs})
+    onsets = fp_onsets(d, step)
+    idx = [i for i in range(len(onsets)) if i % part[1] == part[0]]
+    arrs = _empty(len(idx), R, P)
+    notes = []
+    for folder in sorted({onsets[i][1] for i in idx}):
+        mine = [(j, i) for j, i in enumerate(idx) if onsets[i][1] == folder]
+        spans = [{"pair_id": "f%04d" % i, "windows": fake_windows(onsets[i][2])} for _j, i in mine]
+        cl = spark.clipping_windows(folder, spans, skip=bad, only=only)
+        for j, i in mine:
+            if check:
+                check()
+            role, _f, t = onsets[i]
+            wins = fake_windows(t)
+            per = ((cl or {}).get("by_pair") or {}).get("f%04d" % i) or {}
+            unm = ((cl or {}).get("unmeasured") or {}).get("f%04d" % i) or {}
+            drop = {}
+            for wn, _a, _b in wins:
+                lost = set(bad) | {int(c) for c in unm}
+                lost |= {int(c) for c, rec in per.items() if wn in (rec.get("windows") or [])}
+                drop[wn] = sorted(lost)
+            try:
+                got = coupling._signals_for_windows(folder, chan_map, wins, drop, FS, blocked=blocked)
+            except coupling.CouplingError as exc:
+                notes.append("r%d %s %s fake trial at %.0f s: %s" % (d["rat"], d["day"], role, t, exc))
+                continue
+            for wi, (wn, _a, _b) in enumerate(wins):
+                w = got[wn]
+                sigs = [w["regions"][nm]["signal"] if w["regions"][nm]["usable"] else None for nm in names]
+                wires = [w["regions"][nm].get("channel") if w["regions"][nm].get("channel") is not None else -1 for nm in names]
+                _put(arrs, wi, j, measure(sigs), wires)
+    return idx, arrs, notes
+
+
+def fp_pool_key(d, names, chan_map, step=FP_POOL_STEP):
+    """What a rat-day's pool depends on: its FP folders (by name, not by
+    machine), its bad and blocked wires, the regions and wires map, the step."""
+    blob = json.dumps({"schema": FP_POOL_SCHEMA, "rat": d["rat"], "day": d["day"], "bad": d.get("bad"),
+                       "blocked": sorted((d.get("blocked") or {}).keys()), "names": list(names),
+                       "chan": {k: list(v) for k, v in chan_map.items()}, "step": step, "edge": FP_EDGE_S,
+                       "fp": sorted(os.path.basename(os.path.normpath(f.get("local") or "")) for f in d.get("folders") or []
+                                    if f.get("role") in ("FP1", "FP2")),
+                       "bands": BANDS, "skip": SKIP_HZ}, sort_keys=True, default=str)
+    return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:16]
+
+
+def fp_pool_path(rat, day):
+    return joe_dir("fp_pool", "r%d_%s.npz" % (int(rat), day))
+
+
+def fp_pool_save(path, d, names, chan_map, parts, step=FP_POOL_STEP):
+    """Put a rat-day's parts together and keep them (float32: a null needs no more)."""
+    onsets = fp_onsets(d, step)
+    R, P = len(names), len(pairs_of(len(names)))
+    arrs = _empty(len(onsets), R, P)
+    notes = []
+    for idx, a, nn in parts:
+        for k in arrs:
+            arrs[k][:, idx] = a[k]
+        notes += nn
+    meta = {"schema": FP_POOL_SCHEMA, "key": fp_pool_key(d, names, chan_map, step), "rat": d["rat"], "day": d["day"],
+            "step": step, "windows": list(WINDOWS), "regions": list(names),
+            "onsets": [[r, t] for r, _f, t in onsets], "notes": notes}
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp.npz"
+    np.savez_compressed(tmp, meta=np.array(json.dumps(meta, default=str)),
+                        **{"p_" + k: (v.astype(np.float32) if v.dtype == np.float64 else v) for k, v in arrs.items()})
+    os.replace(tmp, path)
+
+
+def fp_pool_load(path):
+    z = np.load(path, allow_pickle=False)
+    return {k[2:]: z[k] for k in z.files if k.startswith("p_")}, json.loads(str(z["meta"]))
+
+
+def fp_pools():
+    """{(rat, day): (arrays, meta)} of every pool kept here."""
+    d = joe_dir("fp_pool")
+    out = {}
+    for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        if f.endswith(".npz") and not f.endswith(".tmp.npz"):
+            a, m = fp_pool_load(os.path.join(d, f))
+            out[(int(m["rat"]), m["day"])] = (a, m)
+    return out
+
+
+def _fp_part_job(args):
+    d, names, chan_map, part, step = args
+    return d["rat"], d["day"], fp_pool_part(d, names, chan_map, part, step)
+
+
+def fp_pool_run(spec_path, out_dir, cpus=None):
+    """What a compute node runs (`python -m backend.joe fppool SPEC OUT`):
+    every tested rat-day's pool, in parts across the node's CPUs, one .npz
+    a rat-day."""
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    with open(spec_path, encoding="utf-8") as fh:
+        spec = json.load(fh)
+    names, chan_map, step = spec["names"], {k: [int(c) for c in v] for k, v in spec["chan_map"].items()}, spec["step"]
+    n = int(cpus or os.environ.get("SLURM_CPUS_PER_TASK") or os.cpu_count() or 1)
+    jobs = []
+    for d in spec["days"]:
+        k = max(1, min(8, len(fp_onsets(d, step)) // 12))
+        jobs += [(d, names, chan_map, (i, k), step) for i in range(k)]
+    got = {}
+    print("%d rat-days in %d parts, %d at a time" % (len(spec["days"]), len(jobs), n), flush=True)
+    with ProcessPoolExecutor(n) as ex:
+        futs = [ex.submit(_fp_part_job, j) for j in jobs]
+        for i, f in enumerate(as_completed(futs)):
+            rat, day, part = f.result()
+            got.setdefault((rat, day), []).append(part)
+            print("%d/%d r%d %s" % (i + 1, len(jobs), rat, day), flush=True)
+    os.makedirs(out_dir, exist_ok=True)
+    for d in spec["days"]:
+        fp_pool_save(os.path.join(out_dir, "r%d_%s.npz" % (int(d["rat"]), d["day"])), d, names, chan_map,
+                     got.get((d["rat"], d["day"])) or [], step)
+    print("done", flush=True)
+
+
+def _pool_days(names, chan_map):
+    """The tested rat-days as the Monolith's manifest has them, and the keys their pools must carry."""
+    from . import monolith as MO
+    man = MO.manifest()
+    if man is None:
+        raise JoeError("There is no Monolith manifest under the current rules: make it again (Drift, then Monolith).", 409)
+    return [d for d in man.get("days") or [] if d.get("day") in TESTED]
+
+
+def fp_pool_work(worker):
+    """The pools, here, from the recordings (when the data drive is connected)."""
+    from . import monolith as MO, sweep
+    man = MO.manifest() or {}
+    names = list(man.get("regions") or sweep.regions())
+    chan_map = {k: v for k, v in coupling.dewey_map().items() if k in names}
+    days = _pool_days(names, chan_map)
+    for i, d in enumerate(days):
+        worker.note(phase="joe-fppool", i=i, of=len(days), item="r%d %s · fake trials in FP" % (d["rat"], d["day"]))
+        if not fp_onsets(d):
+            raise JoeError("r%d %s: its FP recordings cannot be opened here (is the data drive connected?)." % (d["rat"], d["day"]), 409)
+        part = fp_pool_part(d, names, chan_map, check=worker.check)
+        fp_pool_save(fp_pool_path(d["rat"], d["day"]), d, names, chan_map, [part])
+    return {"days": len(days)}
+
+
+def fp_pool_vacc_work(worker):
+    """The pools on the VACC, from its copies of the FP recordings (checked
+    against the sizes tab 8 read), one job across a node's CPUs."""
+    import shutil
+    from . import monolith as MO, sweep, vacc
+    say = lambda s: worker.note(phase="joe-fppool", item=s)          # noqa: E731
+    man = MO.manifest() or {}
+    names = list(man.get("regions") or sweep.regions())
+    chan_map = {k: [int(c) for c in v] for k, v in coupling.dewey_map().items() if k in names}
+    copies = vacc_copies()
+    days, want, none = [], {}, []
+    for d in _pool_days(names, chan_map):
+        fl = []
+        for f in d.get("folders") or []:
+            if f.get("role") not in ("FP1", "FP2"):
+                continue
+            c = copies.get(_norm(f.get("local") or ""))
+            if c is None:
+                none.append("r%d %s %s" % (d["rat"], d["day"], f.get("role")))
+                continue
+            fl.append(dict(f, local=c[0]))
+            want[c[0]] = c[1]
+        days.append({"rat": d["rat"], "day": d["day"], "bad": d.get("bad") or [], "blocked": d.get("blocked") or {}, "folders": fl,
+                     "_key": fp_pool_key(d, names, chan_map)})
+    if none:
+        raise JoeError("The Monolith knows of no copy on the VACC of %d FP folders (first: %s)." % (len(none), none[0]), 409)
+    cfg = vacc_config()
+    say("checking the VACC's copies of the FP recordings")
+    bad = vacc_sizes(cfg, want)
+    if bad:
+        raise JoeError("%d FP files on the VACC differ from the recordings tab 8 read. First: %s" % (len(bad), bad[0]), 409)
+    app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    files = {}
+    for rel in vacc._code_files(app_dir):
+        if rel.startswith("backend"):
+            with open(os.path.join(app_dir, rel), "rb") as fh:
+                files["code/" + rel.replace(os.sep, "/")] = fh.read()
+    files["spec.json"] = json.dumps({"names": names, "chan_map": chan_map, "step": FP_POOL_STEP, "days": days}).encode("utf-8")
+    cpus = 32
+    cfg, ws, jid = vacc_job(files, "cd code && exec python -m backend.joe fppool ../spec.json ../pool %d" % cpus,
+                            cpus=cpus, mem="64G", wall="04:00:00", progress=say, check=worker.check, kind="joefppool")
+    say("bringing the FP pools home")
+    tmp = joe_dir("fp_pool.new")
+    shutil.rmtree(tmp, ignore_errors=True)
+    os.makedirs(tmp)
+    vacc_tree(cfg, ws, "pool", tmp, timeout=1200)
+    # The key a pool carries was made from the cluster's paths; this
+    # machine's (made from the same folder names) is the one kept.
+    for d in days:
+        p = os.path.join(tmp, "r%d_%s.npz" % (int(d["rat"]), d["day"]))
+        if not os.path.isfile(p):
+            raise JoeError("The VACC wrote no pool for r%d %s." % (d["rat"], d["day"]), 502)
+    dst = joe_dir("fp_pool")
+    shutil.rmtree(dst, ignore_errors=True)
+    os.replace(tmp, dst)
+    try:
+        vacc._ssh(cfg, "rm -rf %s/code %s/pool" % (vacc.q(ws), vacc.q(ws)), timeout=120)
+    except Exception:                                    # noqa: BLE001
+        pass
+    return {"days": len(days), "slurm_id": jid}
+
+
+def fp_pool_vacc_safe(worker):
+    from . import monolith as MO, vacc
+    try:
+        return fp_pool_vacc_work(worker)
+    except JoeError as exc:
+        raise MO.MonolithError(str(exc), exc.status)
+    except vacc.SSHError as exc:
+        raise MO.MonolithError("The VACC: %s" % exc, 502)
+
+
 def script_vacc_work(worker):
     """The standalone script, run on the VACC's copies of the recordings,
     then compared exactly as a run here is (`_take_script`)."""
@@ -2390,3 +2651,9 @@ def script_vacc_work(worker):
     with open(joe_dir("script.log"), "w", encoding="utf-8") as fh:
         fh.write(vacc_text(cfg, ws, "job_%s.out" % jid))
     return _take_script(tmp, inp, where={"where": "vacc", "slurm_id": jid, "run": ws})
+
+
+if __name__ == "__main__":
+    import sys as _sys
+    if _sys.argv[1:2] == ["fppool"]:
+        fp_pool_run(_sys.argv[2], _sys.argv[3], int(_sys.argv[4]) if len(_sys.argv) > 4 else None)

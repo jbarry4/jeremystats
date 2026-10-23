@@ -51,7 +51,7 @@
   },
   "added": {
     "at": "2026-09-16T09:01:06-04:00",
-    "by": "curate@harness",
+    "by": "Debug_Bot",
     "machine": "LCOM549913"
   },
   "by_label": {
@@ -102,7 +102,7 @@
     {
       "archived": true,
       "at": "2026-09-16T09:07:18-04:00",
-      "by": "curate@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },
@@ -140,7 +140,7 @@
     {
       "archived": true,
       "at": "2026-09-16T09:07:18-04:00",
-      "by": "curate@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "Solid": 1,
         "Sputter": 1
@@ -180,7 +180,7 @@
     {
       "archived": true,
       "at": "2026-09-16T09:01:06-04:00",
-      "by": "curate@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },
@@ -218,7 +218,7 @@
     {
       "archived": true,
       "at": "2026-09-16T09:01:06-04:00",
-      "by": "curate@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "Solid": 1,
         "Sputter": 1

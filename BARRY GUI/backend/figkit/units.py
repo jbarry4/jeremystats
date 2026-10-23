@@ -137,5 +137,9 @@ def axis_text(words, q, unit):
 def describe():
     """Everything the builder needs to offer the pick-lists."""
     return {q: {"name": v["name"], "words": v["words"],
-                "units": [u for u, _f in v["units"]]}
+                "units": [u for u, _f in v["units"]],
+                # To the quantity's SI unit, so the page can say a range in
+                # whichever unit is showing. Converting is still only ever
+                # between units listed here.
+                "factors": {u: f for u, f in v["units"]}}
             for q, v in QUANTITIES.items()}

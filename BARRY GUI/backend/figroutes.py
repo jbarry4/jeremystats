@@ -162,6 +162,19 @@ def install(app, A):
                         "version": _public(row), "problems": problems,
                         "run_id": (run or {}).get("id")})
 
+    @app.route("/api/figkit/legacy", methods=["POST"])
+    def api_figkit_legacy():
+        """An old builder recipe, as a figkit layout (figkit/legacy.py)."""
+        from .figkit import legacy
+        body = request.get_json(force=True, silent=True) or {}
+        try:
+            lay = legacy.from_recipe(body.get("recipe") or {},
+                                     body.get("run") or {})
+            figrender.check_layout(lay)
+        except (figkit.FigError, ValueError) as exc:
+            return err(exc)
+        return jsonify({"ok": True, "layout": lay})
+
     @app.route("/api/figures")
     def api_figures():
         store = book()
@@ -212,6 +225,57 @@ def install(app, A):
         except figuresmod.FigureError as exc:
             return err(exc)
         return jsonify({"ok": True, "figure": store.summary(rec)})
+
+    @app.route("/api/figures/<fid>/v/<int:v>/plan")
+    def api_figure_plan(fid, v):
+        """The walk-through's plan for a version, checked before anything is
+        done (figkit/replay.py)."""
+        from .figkit import replay
+        try:
+            store = book()
+            rec, row = store.version(fid, v)
+            lay = row.get("layout") or {}
+            got = replay.plan(lay, Ctx(A, lay), A.STORE.all_sessions())
+        except (figkit.FigError, figuresmod.FigureError) as exc:
+            return err(exc)
+        except Exception as exc:                          # noqa: BLE001
+            return A.fail("figures/plan", exc, 400, {"figure": fid, "v": v})
+        return jsonify(dict(got, ok=True, figure=store.summary(rec),
+                            version=dict(_public(row), layout=lay)))
+
+    @app.route("/api/figkit/page", methods=["POST"])
+    def api_figkit_page():
+        """The whole page as one PNG -- the walk-through's redraw."""
+        from .figkit import replay
+        try:
+            body, layout = body_layout()
+            blob, problems = replay.page_png(layout, Ctx(A, layout),
+                                             dpi=int(body.get("dpi", 110)))
+        except (figkit.FigError, ValueError) as exc:
+            return err(exc)
+        except Exception as exc:                          # noqa: BLE001
+            return A.fail("figkit/page", exc, 400)
+        return jsonify({"ok": True, "image": _uri(blob), "problems": problems})
+
+    @app.route("/api/figures/for-run/<run_id>")
+    def api_figure_for_run(run_id):
+        """Which figure version a Results file is: from the run's own
+        parameters, or -- for a figure made before v2 -- the figure the
+        migration made of it."""
+        store = book()
+        run = A.STORE.get_run(run_id) or {}
+        prm = run.get("parameters") or {}
+        if prm.get("figure_id"):
+            return jsonify({"ok": True, "figure_id": prm["figure_id"],
+                            "v": prm.get("v") or 1})
+        for rec in store.book.all():
+            leg = rec.get("legacy") or {}
+            if leg.get("run") == run_id:
+                return jsonify({"ok": True, "figure_id": rec["id"], "v": 1,
+                                "archived": bool(rec.get("archived"))})
+        return jsonify({"ok": False, "error": "This file was made before "
+                        "figures kept versions, and has not been brought "
+                        "across yet."}), 404
 
     @app.route("/api/figures/<fid>/v/<int:v>/file/<fmt>")
     def api_figure_file(fid, v, fmt):

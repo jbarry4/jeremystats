@@ -187,6 +187,11 @@ def _measure_day(d):
     return joe.day_compute(d, REGIONS, CHAN)
 
 
+def _fp_part(args):
+    d, step = args
+    return joe.fp_pool_part(d, REGIONS, CHAN, step=step)
+
+
 def main():
     import pickle
     keep = "--keep" in sys.argv
@@ -471,6 +476,16 @@ def main():
     from backend import monolith as MO, joefigs
     MO.configure(os.path.join(root, "logs"))
     R9 = dict(out, at="made up")
+    # The FP comparison's pools: fake trials in each tested rat-day's FP1
+    # and FP2 (every 30 s here, to keep the check quick; tab 9 uses 10 s).
+    from concurrent.futures import ProcessPoolExecutor
+    tested = [d for d in days if d["day"] in joe.TESTED]
+    t0 = time.time()
+    with ProcessPoolExecutor(max_workers=max(1, min(6, (os.cpu_count() or 2) - 1))) as ex:
+        parts = list(ex.map(_fp_part, [(d, 30.0) for d in tested]))
+    for d, part in zip(tested, parts):
+        joe.fp_pool_save(joe.fp_pool_path(d["rat"], d["day"]), d, REGIONS, CHAN, [part], step=30.0)
+    print("FP pools made in %.0f s" % (time.time() - t0))
     figs = joefigs.build(R=R9, days=day_data, inputs=inputs)
     shown = [r for r in out["results"] if r["model"] in joefigs.WINDOWS and r["method"] == "dickson" and r["gate"].get("passed")]
     conn = [f for f in figs["figures"] if f["kind"] == "connectome"]
@@ -491,11 +506,12 @@ def main():
             e = c0["stats"]["edges"][d][k]
             worst = max(worst, abs(float(np.mean(ch)) - e) if ch and e is not None else 0.0)
     check("its edges are the rats' mean changes from tab 8's own per-rat values", worst < 1e-9, worst)
-    nets = [g for f in conn for g in f["alt"]["stats"]["graphs"] if g["kind"] == "net"]
+    alt = lambda f, k: next(a for a in f.get("alts") or [] if a["null"] == k)      # noqa: E731
+    nets = [g for f in conn for g in alt(f, "trials")["stats"]["graphs"] if g["kind"] == "net"]
     check("the within-session shuffles of the sums are centred on nothing",
           all(abs(g["null"]["mean"]) < 0.1 * g["null"]["sd"] for g in nets), [(round(g["null"]["mean"], 4), round(g["null"]["sd"], 4)) for g in nets][:4])
     cm2 = next((f for f in conn if f["model"] == "m2" and f["band"] == "theta"), None)
-    g2 = cm2 and next(g for g in cm2["alt"]["stats"]["graphs"] if g["row"] == "delta" and g["kind"] == "pos")
+    g2 = cm2 and next(g for g in alt(cm2, "trials")["stats"]["graphs"] if g["row"] == "delta" and g["kind"] == "pos")
     check("the planted theta change in cue 1 stands out of its shuffles (Precon4 − Precon1, increases)",
           bool(g2) and g2["p"] < 0.05 and g2["stars"], g2 and (g2["p"], g2["rank"]))
 
@@ -507,10 +523,11 @@ def main():
           % (n_r, 2 ** n_r),
           all(f["null"] == "rats" and f["stats"]["rat_exact"] and f["stats"]["n_signs"] == 2 ** n_r
               and all(g["null_kind"] == "rats" and g["n"] == 2 ** n_r for g in f["stats"]["graphs"])
-              and f["alt"]["null"] == "trials" and len(f["alt"]["stats"]["graphs"]) == 9
-              and all(g["null_kind"] == "trials" and g["n"] == joefigs.N_PERM + 1 for g in f["alt"]["stats"]["graphs"])
-              and f["alt"]["files"]["svg"] != f["files"]["svg"] and all(os.path.isfile(joefigs.figs_dir(f["alt"]["files"][x])) for x in ("svg", "pdf", "png"))
-              and "ratflip" in f["methods"] and "permutation" in f["alt"]["methods"] for f in conn), [f["null"] for f in conn])
+              and alt(f, "trials")["null"] == "trials" and len(alt(f, "trials")["stats"]["graphs"]) == 9
+              and all(g["null_kind"] == "trials" and g["n"] == joefigs.N_PERM + 1 for g in alt(f, "trials")["stats"]["graphs"])
+              and alt(f, "trials")["files"]["svg"] != f["files"]["svg"]
+              and all(os.path.isfile(joefigs.figs_dir(alt(f, "trials")["files"][x])) for x in ("svg", "pdf", "png"))
+              and "ratflip" in f["methods"] and "permutation" in alt(f, "trials")["methods"] for f in conn), [f["null"] for f in conn])
     # Every one by hand, from tab 8's own per-rat table: each rat's change,
     # its sign flipped all 2^n ways, the rats' mean per pair, the ring's sum.
     import itertools
@@ -545,7 +562,7 @@ def main():
     gr2 = cm2 and next(g for g in cm2["stats"]["graphs"] if g["row"] == "delta" and g["kind"] == "pos")
     check("the planted theta change stands out of the rats' flips too (Precon4 − Precon1, increases)",
           bool(gr2) and gr2["p"] < 0.05 and gr2["stars"], gr2 and (gr2["p"], gr2["rank"]))
-    lg0, la0 = c0["legend"]["body"], c0["alt"]["legend"]["body"]
+    lg0, la0 = c0["legend"]["body"], alt(c0, "trials")["legend"]["body"]
     check("each test's legend says its own: the rats' with 1/%d one-sided and 2/%d for both; the trials' its %s shuffles"
           % (2 ** n_r, 2 ** n_r, format(joefigs.N_PERM, ",")),
           ("smallest possible is 1/%d for the increases or the decreases and 2/%d for both" % (2 ** n_r, 2 ** n_r)) in lg0
@@ -569,6 +586,63 @@ def main():
           wpt)
     check("PAC: every trial's MI read for the roses is tab 8's own (%s trials and windows)" % (figs["pac_check"] or {}).get("compared"),
           bool(figs["pac_check"]) and figs["pac_check"]["ok"] and figs["recordings_where"] == "here", figs["pac_check"])
+
+    print("\nThe FP comparison (tab 9's third test)")
+    pools = joe.fp_pools()
+    pa, pm = pools[(tested[0]["rat"], tested[0]["day"])]
+    ons = joe.fp_onsets(tested[0], 30.0)
+    w7 = joe.fake_windows(ons[0][2])
+    check("the pool: a fake cue every 30 s of FP1 and FP2, a trial's seven windows round it, every measure, every tested rat-day",
+          len(pools) == len(tested) and pa["coh"].shape[:2] == (7, len(ons)) and len(pm["onsets"]) == len(ons)
+          and [w[0] for w in w7] == list(joe.WINDOWS) and w7[0][1] == ons[0][2] - 20 and w7[4][2] == ons[0][2] + 20
+          and all(k in pa for k in ("coh", "pac") + joe.FOLLOW)
+          and np.isfinite(pa["coh"][joe.WINDOWS.index("pair"), :, 0, 1, :]).mean() > 0.9,
+          (len(pools), pa["coh"].shape, len(ons)))
+    # By hand: one FP null, drawn the same way, from the same seed.
+    res_c0 = next(r for r in shown if r["model"] == c0["model"] and r["band"] == c0["band"])
+    bi, mi = [x for x, _l, _h in joe.BANDS].index(res_c0["band"]), joe.METHODS.index("dickson")
+    keep0 = [R9["pairs"].index(u) for u in res_c0["units"]]
+    wa, wb = joefigs.WINDOWS[c0["model"]]
+    get = lambda pool, w: pool["coh"][joe.WINDOWS.index(w), :, bi, mi, :][:, keep0]     # noqa: E731
+    rats9 = sorted({r for r, d in day_data if d in joe.TESTED})
+    fpr = joefigs.fp_per_rat(pools, day_data, rats9, get, wa, wb, seed=11, n=7)
+    rng = np.random.default_rng(11)
+    worst = 0.0
+    for day in joe.TESTED:
+        for ri, r in enumerate(rats9):
+            a_, _m = pools[(r, day)]
+            bs, cs = get(a_, wa).astype(np.float32), get(a_, wb).astype(np.float32)
+            real = day_data[(r, day)][0]
+            oka, okb = np.isfinite(get(real, wa)), np.isfinite(get(real, wb))
+            T = oka.shape[0]
+            idx = rng.integers(0, bs.shape[0], size=(7, T))
+            flip = rng.random((7, T)) < 0.5
+            for k in range(7):
+                sec = np.array([np.where(okb[t], bs[i] if fl else cs[i], np.nan) for t, (i, fl) in enumerate(zip(idx[k], flip[k]))])
+                fst = np.array([np.where(oka[t], cs[i] if fl else bs[i], np.nan) for t, (i, fl) in enumerate(zip(idx[k], flip[k]))])
+                want_ = np.nanmean(sec, axis=0) - np.nanmean(fst, axis=0)
+                worst = max(worst, float(np.nanmax(np.abs(want_ - fpr[day][ri, k]))))
+    check("one FP null set by hand: each session as many fake trials as it had real ones, drawn with replacement, each in random order, losing the windows its real trial lost",
+          worst < 1e-6, worst)
+    fps = [alt(f, "fp") for f in conn]
+    check("on every ring as a third test, with its own figure files and legend",
+          all(len(a["stats"]["graphs"]) == 9 and all(g["null_kind"] == "fp" and g["n"] == joefigs.N_PERM + 1 for g in a["stats"]["graphs"])
+              and all(os.path.isfile(joefigs.figs_dir(a["files"][x])) for x in ("svg", "pdf", "png")) and "fpnull" in a["methods"]
+              and "FP1 and FP2" in a["legend"]["body"] for a in fps) and figs["fp"]["read"] and figs["fp"]["rat_days"] == len(tested),
+          figs["fp"])
+    fnet = [g for a in fps for g in a["stats"]["graphs"] if g["kind"] == "net"]
+    check("FP's sets of a ring's change sit round nothing (no cues, no change)",
+          all(abs(g["null"]["mean"]) < 0.25 * g["null"]["sd"] for g in fnet if g["row"] == "delta"),
+          [(round(g["null"]["mean"], 4), round(g["null"]["sd"], 4)) for g in fnet if g["row"] == "delta"][:4])
+    gf2 = cm2 and next(g for g in alt(cm2, "fp")["stats"]["graphs"] if g["row"] == "delta" and g["kind"] == "pos")
+    check("the planted theta change in cue 1 stands out of FP too", bool(gf2) and gf2["p"] < 0.05, gf2 and (gf2["p"], gf2["rank"]))
+    worst = 0.0
+    for f in fol:
+        for k in f["keys"]:
+            worst = max(worst, abs(f["stats"]["nulls_fp"][k]["obs"] - f["stats"]["nulls"][k]["obs"]))
+    check("every follow-up has FP beside its shuffles, from the same observed change, in its legend and its methods",
+          all(set(f["stats"]["nulls_fp"]) == set(f["keys"]) and "fpnull" in f["methods"] and "FP1 and FP2" in f["legend"]["body"]
+              for f in fol) and worst < 1e-12, worst)
 
     print("\nOn the VACC (its entry point, run here on these recordings)")
     import copy

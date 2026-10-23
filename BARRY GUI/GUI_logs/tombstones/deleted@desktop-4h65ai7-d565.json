@@ -1154,11 +1154,15 @@
       ],
       "person:Avery (AI)": [
         "set",
-        "2026-10-23T13:17:35.330007+00:00"
+        "2026-10-23T13:41:57.014058+00:00"
+      ],
+      "person:Fatima": [
+        "set",
+        "2026-10-23T13:29:53.800026+00:00"
       ],
       "person:Harness Probe Person": [
         "set",
-        "2026-10-23T13:17:35.931790+00:00"
+        "2026-10-23T13:41:57.568365+00:00"
       ],
       "person:Rain": [
         "set",
@@ -1168,13 +1172,49 @@
         "gone",
         "2026-09-09T16:09:16.429262+00:00"
       ],
+      "person:TEST": [
+        "set",
+        "2026-10-23T13:29:51.778158+00:00"
+      ],
+      "person:a colleague": [
+        "set",
+        "2026-10-23T13:29:54.079528+00:00"
+      ],
+      "person:bankback@harness": [
+        "set",
+        "2026-10-23T13:29:50.091582+00:00"
+      ],
+      "person:curate@harness": [
+        "set",
+        "2026-10-23T13:29:50.835396+00:00"
+      ],
+      "person:eye harness": [
+        "set",
+        "2026-10-23T13:29:49.582391+00:00"
+      ],
+      "person:harness": [
+        "set",
+        "2026-10-23T13:29:51.480847+00:00"
+      ],
+      "person:harness@test": [
+        "set",
+        "2026-10-23T13:29:49.257565+00:00"
+      ],
+      "person:spikeflow@harness": [
+        "set",
+        "2026-10-23T13:29:51.185211+00:00"
+      ],
+      "person:spotter harness": [
+        "set",
+        "2026-10-23T13:29:49.945787+00:00"
+      ],
       "person:zz autosync probe": [
         "set",
         "2026-09-09T17:43:06.158198+00:00"
       ],
       "person:zz edit probe": [
         "set",
-        "2026-10-23T13:17:42.928836+00:00"
+        "2026-10-23T13:38:13.968403+00:00"
       ],
       "person:zz edit probe renamed": [
         "set",
@@ -3343,7 +3383,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-23T13:17:42.928836+00:00",
+    "at": "2026-10-23T13:41:57.568365+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -5932,15 +5972,23 @@
       "synced_at": "2026-10-07T18:34:38-0400"
     },
     "person:Avery (AI)": {
-      "at": "2026-10-23T09:17:35-0400",
+      "at": "2026-10-23T09:41:57-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "Avery (AI)",
       "kind": "person",
       "note": "merged away or removed from the roster",
       "synced": false
     },
+    "person:Fatima": {
+      "at": "2026-10-23T09:29:53-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Fatima",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
     "person:Harness Probe Person": {
-      "at": "2026-10-23T09:17:35-0400",
+      "at": "2026-10-23T09:41:57-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "Harness Probe Person",
       "kind": "person",
@@ -5955,6 +6003,78 @@
       "note": "merged away or removed from the roster",
       "synced": false
     },
+    "person:TEST": {
+      "at": "2026-10-23T09:29:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "TEST",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:a colleague": {
+      "at": "2026-10-23T09:29:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "a colleague",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:bankback@harness": {
+      "at": "2026-10-23T09:29:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "bankback@harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:curate@harness": {
+      "at": "2026-10-23T09:29:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "curate@harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:eye harness": {
+      "at": "2026-10-23T09:29:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "eye harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:harness": {
+      "at": "2026-10-23T09:29:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:harness@test": {
+      "at": "2026-10-23T09:29:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "harness@test",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:spikeflow@harness": {
+      "at": "2026-10-23T09:29:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "spikeflow@harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:spotter harness": {
+      "at": "2026-10-23T09:29:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "spotter harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
     "person:zz autosync probe": {
       "at": "2026-09-09T13:43:06-0400",
       "by": "desktop-4h65ai7-d565",
@@ -5964,7 +6084,7 @@
       "synced": false
     },
     "person:zz edit probe": {
-      "at": "2026-10-23T09:17:42-0400",
+      "at": "2026-10-23T09:38:13-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "zz edit probe",
       "kind": "person",

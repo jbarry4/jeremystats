@@ -42,7 +42,7 @@
   },
   "added": {
     "at": "2026-10-22T12:33:00-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
@@ -85,7 +85,7 @@
   "versions": [
     {
       "at": "2026-10-22T12:33:00-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 1
       },
