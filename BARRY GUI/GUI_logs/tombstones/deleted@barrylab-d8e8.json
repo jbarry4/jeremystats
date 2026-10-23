@@ -64,6 +64,10 @@
         "set",
         "2026-10-15T14:04:29.390985+00:00"
       ],
+      "bank:8c6f45c963a9": [
+        "set",
+        "2026-10-23T17:36:37.292193+00:00"
+      ],
       "bank:96ccc0c35b19": [
         "set",
         "2026-10-20T17:58:42.922968+00:00"
@@ -322,7 +326,7 @@
       ],
       "deck:deck_3c28fa6e": [
         "set",
-        "2026-10-22T14:22:26.954895+00:00"
+        "2026-10-22T14:36:49.423066+00:00"
       ],
       "deck:deck_3c7334bf": [
         "set",
@@ -1154,15 +1158,55 @@
       ],
       "person:Avery (AI)": [
         "set",
-        "2026-10-21T22:51:40.403010+00:00"
+        "2026-10-23T13:41:57.014058+00:00"
+      ],
+      "person:Fatima": [
+        "set",
+        "2026-10-23T13:29:53.800026+00:00"
       ],
       "person:Harness Probe Person": [
         "set",
-        "2026-10-21T22:51:41.202713+00:00"
+        "2026-10-23T13:41:57.568365+00:00"
       ],
       "person:Rain": [
         "set",
         "2026-09-09T16:16:59.837538+00:00"
+      ],
+      "person:TEST": [
+        "set",
+        "2026-10-23T13:29:51.778158+00:00"
+      ],
+      "person:a colleague": [
+        "set",
+        "2026-10-23T13:29:54.079528+00:00"
+      ],
+      "person:bankback@harness": [
+        "set",
+        "2026-10-23T13:29:50.091582+00:00"
+      ],
+      "person:curate@harness": [
+        "set",
+        "2026-10-23T13:29:50.835396+00:00"
+      ],
+      "person:eye harness": [
+        "set",
+        "2026-10-23T13:29:49.582391+00:00"
+      ],
+      "person:harness": [
+        "set",
+        "2026-10-23T13:29:51.480847+00:00"
+      ],
+      "person:harness@test": [
+        "set",
+        "2026-10-23T13:29:49.257565+00:00"
+      ],
+      "person:spikeflow@harness": [
+        "set",
+        "2026-10-23T13:29:51.185211+00:00"
+      ],
+      "person:spotter harness": [
+        "set",
+        "2026-10-23T13:29:49.945787+00:00"
       ],
       "person:zz autosync probe": [
         "set",
@@ -1170,7 +1214,7 @@
       ],
       "person:zz edit probe": [
         "set",
-        "2026-10-21T22:51:56.007696+00:00"
+        "2026-10-23T13:38:13.968403+00:00"
       ],
       "person:zz edit probe renamed": [
         "set",
@@ -2256,6 +2300,10 @@
         "set",
         "2026-09-09T21:40:46.375301+00:00"
       ],
+      "session:s4e2327029138": [
+        "set",
+        "2026-10-22T16:07:40.978554+00:00"
+      ],
       "session:s5083cd98d7f6": [
         "set",
         "2026-09-11T15:22:41.799041+00:00"
@@ -2932,6 +2980,10 @@
         "set",
         "2026-09-10T02:01:46.776186+00:00"
       ],
+      "session:se0b562c0fa29": [
+        "set",
+        "2026-10-22T16:18:33.416597+00:00"
+      ],
       "session:se169051f46a9": [
         "set",
         "2026-09-18T17:25:31.878595+00:00"
@@ -3055,7 +3107,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-22T14:22:26.954895+00:00",
+    "at": "2026-10-23T17:36:37.292193+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -3194,6 +3246,15 @@
       "note": "banked by the confluence.html harness by mistake",
       "synced": true,
       "synced_at": "2026-10-15T10:04:29-0400"
+    },
+    "bank:8c6f45c963a9": {
+      "at": "2026-10-23T13:36:29-0400",
+      "by": "barrylab-d8e8",
+      "id": "8c6f45c963a9",
+      "kind": "bank",
+      "note": "deleted in the Event Bank",
+      "synced": true,
+      "synced_at": "2026-10-23T13:36:37-0400"
     },
     "bank:96ccc0c35b19": {
       "at": "2026-10-20T13:57:58-0400",
@@ -3778,7 +3839,7 @@
       "kind": "deck",
       "note": null,
       "synced": true,
-      "synced_at": "2026-10-22T10:22:26-0400"
+      "synced_at": "2026-10-22T10:36:49-0400"
     },
     "deck:deck_3c7334bf": {
       "at": "2026-09-03T10:59:20-0400",
@@ -5644,15 +5705,23 @@
       "synced_at": "2026-10-07T18:34:38-0400"
     },
     "person:Avery (AI)": {
-      "at": "2026-10-21T18:51:40-0400",
+      "at": "2026-10-23T09:41:57-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "Avery (AI)",
       "kind": "person",
       "note": "merged away or removed from the roster",
       "synced": false
     },
+    "person:Fatima": {
+      "at": "2026-10-23T09:29:53-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Fatima",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
     "person:Harness Probe Person": {
-      "at": "2026-10-21T18:51:41-0400",
+      "at": "2026-10-23T09:41:57-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "Harness Probe Person",
       "kind": "person",
@@ -5667,6 +5736,78 @@
       "note": "merged away or removed from the roster",
       "synced": false
     },
+    "person:TEST": {
+      "at": "2026-10-23T09:29:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "TEST",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:a colleague": {
+      "at": "2026-10-23T09:29:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "a colleague",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:bankback@harness": {
+      "at": "2026-10-23T09:29:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "bankback@harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:curate@harness": {
+      "at": "2026-10-23T09:29:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "curate@harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:eye harness": {
+      "at": "2026-10-23T09:29:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "eye harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:harness": {
+      "at": "2026-10-23T09:29:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:harness@test": {
+      "at": "2026-10-23T09:29:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "harness@test",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:spikeflow@harness": {
+      "at": "2026-10-23T09:29:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "spikeflow@harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:spotter harness": {
+      "at": "2026-10-23T09:29:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "spotter harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
     "person:zz autosync probe": {
       "at": "2026-09-09T13:43:06-0400",
       "by": "desktop-4h65ai7-d565",
@@ -5676,7 +5817,7 @@
       "synced": false
     },
     "person:zz edit probe": {
-      "at": "2026-10-21T18:51:56-0400",
+      "at": "2026-10-23T09:38:13-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "zz edit probe",
       "kind": "person",
@@ -8119,6 +8260,15 @@
       "synced": true,
       "synced_at": "2026-09-09T17:40:46-0400"
     },
+    "session:s4e2327029138": {
+      "at": "2026-10-22T12:07:37-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s4e2327029138",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-10-22T12:07:40-0400"
+    },
     "session:s5083cd98d7f6": {
       "at": "2026-09-11T11:22:29-0400",
       "by": "desktop-4h65ai7-d565",
@@ -9639,6 +9789,15 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-09T22:01:46-0400"
+    },
+    "session:se0b562c0fa29": {
+      "at": "2026-10-22T12:18:28-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se0b562c0fa29",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-10-22T12:18:33-0400"
     },
     "session:se169051f46a9": {
       "at": "2026-09-18T13:25:30-0400",
