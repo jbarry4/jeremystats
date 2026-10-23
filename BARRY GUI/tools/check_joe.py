@@ -488,14 +488,17 @@ def main():
     print("FP pools made in %.0f s" % (time.time() - t0))
     figs = joefigs.build(R=R9, days=day_data, inputs=inputs)
     shown = [r for r in out["results"] if r["model"] in joefigs.WINDOWS and r["method"] == "dickson" and r["gate"].get("passed")]
+    want_groups = [(m, b) for m in joefigs.RING_MODELS for b in joefigs.BAND_ORDER
+                   if any(r["model"] == m and r["band"] == b and r["method"] == "dickson" and r.get("units") for r in out["results"])]
     conn = [f for f in figs["figures"] if f["kind"] == "connectome"]
-    check("a connectome for every result that changed (%d), nine graphs each, as SVG, PDF and 600 dpi PNG" % len(shown),
-          len(conn) == len(shown) and all(len(f["stats"]["graphs"]) == 9 for f in conn)
+    check("a connectome for comparisons 1, 2 and 5 in theta and in gamma (%d), lit or not, nine graphs each, as SVG, PDF and 600 dpi PNG"
+          % len(want_groups),
+          [(f["model"], f["band"]) for f in conn] == want_groups and all(len(f["stats"]["graphs"]) == 9 for f in conn)
           and all(os.path.isfile(joefigs.figs_dir(f["files"][x])) for f in figs["figures"] for x in ("svg", "pdf", "png")),
-          (len(conn), len(shown)))
+          ([(f["model"], f["band"]) for f in conn], want_groups))
     # Its edges are the rats' mean changes, from tab 8's own per-rat table.
     c0 = conn[0]
-    r0 = next(r for r in shown if r["model"] == c0["model"] and r["band"] == c0["band"])
+    r0 = next(r for r in out["results"] if r["model"] == c0["model"] and r["band"] == c0["band"] and r["method"] == "dickson")
     lv = [x for x, _l in joe.MODEL_BY_ID[r0["model"]][4]]
     worst = 0.0
     for d in ("Precon1", "Precon4"):
@@ -506,7 +509,8 @@ def main():
             e = c0["stats"]["edges"][d][k]
             worst = max(worst, abs(float(np.mean(ch)) - e) if ch and e is not None else 0.0)
     check("its edges are the rats' mean changes from tab 8's own per-rat values", worst < 1e-9, worst)
-    alt = lambda f, k: next(a for a in f.get("alts") or [] if a["null"] == k)      # noqa: E731
+    # a test's view of a ring: the figure itself when it opens on that test
+    alt = lambda f, k: f if f["null"] == k else next(a for a in f.get("alts") or [] if a["null"] == k)      # noqa: E731
     nets = [g for f in conn for g in alt(f, "trials")["stats"]["graphs"] if g["kind"] == "net"]
     check("the within-session shuffles of the sums are centred on nothing",
           all(abs(g["null"]["mean"]) < 0.1 * g["null"]["sd"] for g in nets), [(round(g["null"]["mean"], 4), round(g["null"]["sd"], 4)) for g in nets][:4])
@@ -519,15 +523,16 @@ def main():
     # the unit as in the mixed model behind tab 8's light; the trials'
     # shuffle is the alternative, a toggle away.
     n_r = len(c0["stats"]["rats"])
-    check("the rings' main test is the rats' sign flips, all 2^%d = %d of them; the trials' shuffle the alternative, in its own files"
+    check("the rings open on FP, then the trials' shuffle and the rats' sign flips (all 2^%d = %d), each in its own files"
           % (n_r, 2 ** n_r),
-          all(f["null"] == "rats" and f["stats"]["rat_exact"] and f["stats"]["n_signs"] == 2 ** n_r
-              and all(g["null_kind"] == "rats" and g["n"] == 2 ** n_r for g in f["stats"]["graphs"])
+          all(f["null"] == "fp" and [a["null"] for a in f["alts"]] == ["trials", "rats"] and f["stats"]["rat_exact"]
+              and f["stats"]["n_signs"] == 2 ** n_r
+              and all(g["null_kind"] == "rats" and g["n"] == 2 ** n_r for g in alt(f, "rats")["stats"]["graphs"])
               and alt(f, "trials")["null"] == "trials" and len(alt(f, "trials")["stats"]["graphs"]) == 9
               and all(g["null_kind"] == "trials" and g["n"] == joefigs.N_PERM + 1 for g in alt(f, "trials")["stats"]["graphs"])
               and alt(f, "trials")["files"]["svg"] != f["files"]["svg"]
               and all(os.path.isfile(joefigs.figs_dir(alt(f, "trials")["files"][x])) for x in ("svg", "pdf", "png"))
-              and "ratflip" in f["methods"] and "permutation" in alt(f, "trials")["methods"] for f in conn), [f["null"] for f in conn])
+              and "ratflip" in alt(f, "rats")["methods"] and "permutation" in alt(f, "trials")["methods"] for f in conn), [f["null"] for f in conn])
     # Every one by hand, from tab 8's own per-rat table: each rat's change,
     # its sign flipped all 2^n ways, the rats' mean per pair, the ring's sum.
     import itertools
@@ -544,7 +549,7 @@ def main():
     X["delta"] = X["Precon4"] - X["Precon1"]
     signs = np.array(list(itertools.product((1.0, -1.0), repeat=n_r)))
     worst = 0.0
-    for g in c0["stats"]["graphs"]:
+    for g in alt(c0, "rats")["stats"]["graphs"]:
         with np.errstate(invalid="ignore"), __import__("warnings").catch_warnings():
             __import__("warnings").simplefilter("ignore", RuntimeWarning)
             m = np.nanmean(signs[:, :, None] * X[g["row"]][None], axis=1)
@@ -555,14 +560,14 @@ def main():
         worst = max(worst, abs(k / len(tot) - g["p"]), abs(o - g["stat"]))
     check("its P, every one of the nine, is the share of all 2^%d sign patterns of tab 8's own per-rat changes at least as extreme" % n_r,
           worst < 1e-9, worst)
-    rg = [g for f in conn for g in f["stats"]["graphs"]]
+    rg = [g for f in conn for g in alt(f, "rats")["stats"]["graphs"]]
     check("P in steps of 1/%d: never under 1/%d one-sided nor 2/%d for both (flipping every rat is the mirror image)" % ((2 ** n_r,) * 3),
           all(abs(g["p"] * 2 ** n_r - round(g["p"] * 2 ** n_r)) < 1e-9 for g in rg)
           and all(g["p"] >= (2 if g["side"] == "two" else 1) / 2 ** n_r - 1e-12 for g in rg), min(g["p"] for g in rg))
-    gr2 = cm2 and next(g for g in cm2["stats"]["graphs"] if g["row"] == "delta" and g["kind"] == "pos")
+    gr2 = cm2 and next(g for g in alt(cm2, "rats")["stats"]["graphs"] if g["row"] == "delta" and g["kind"] == "pos")
     check("the planted theta change stands out of the rats' flips too (Precon4 − Precon1, increases)",
           bool(gr2) and gr2["p"] < 0.05 and gr2["stars"], gr2 and (gr2["p"], gr2["rank"]))
-    lg0, la0 = c0["legend"]["body"], alt(c0, "trials")["legend"]["body"]
+    lg0, la0 = alt(c0, "rats")["legend"]["body"], alt(c0, "trials")["legend"]["body"]
     check("each test's legend says its own: the rats' with 1/%d one-sided and 2/%d for both; the trials' its %s shuffles"
           % (2 ** n_r, 2 ** n_r, format(joefigs.N_PERM, ",")),
           ("smallest possible is 1/%d for the increases or the decreases and 2/%d for both" % (2 ** n_r, 2 ** n_r)) in lg0
@@ -644,6 +649,61 @@ def main():
           all(set(f["stats"]["nulls_fp"]) == set(f["keys"]) and "fpnull" in f["methods"] and "FP1 and FP2" in f["legend"]["body"]
               for f in fol) and worst < 1e-12, worst)
 
+    print("\nThe expansion (2026-10-23): order, rows, Prism, S1")
+    figs_ = figs["figures"]
+    check("Supplementary Figure S1 first: how a ring's rows are made, on one pair's real numbers",
+          figs_[0]["kind"] == "schematic" and figs_[0]["id"] == "S1"
+          and abs(figs_[0]["stats"]["change"] - (figs_[0]["stats"]["effect4"] - figs_[0]["stats"]["effect1"])) < 1e-12
+          and all(os.path.isfile(joefigs.figs_dir(figs_[0]["files"][x])) for x in ("svg", "pdf", "png")), figs_[0].get("kind"))
+    order_ok, last = True, None
+    for f in figs_[1:]:
+        gk = (f["model"], f["band"])
+        if gk != last:
+            order_ok &= f["kind"] == "connectome" and want_groups.index(gk) == (want_groups.index(last) + 1 if last else 0)
+            last, prev = gk, None
+            continue
+        key = (-f["passes"]["n"], not f["passes"]["fp"], not f["passes"]["shuffle"], not f["passes"]["t"])
+        order_ok &= prev is None or key >= prev
+        prev = key
+    check("grouped by window, then band (theta, gamma); each group's ring on top, then its follow-ups by tests passed (FP, P, T)",
+          order_ok, [f["id"] for f in figs_][:12])
+    check("each ring's rows say what they are: the Precon1 and Precon4 cue effects and the change in cue effect",
+          all([r[1] for r in f["stats"]["rows"]][0].startswith("Precon1 ") and "effect" in f["stats"]["rows"][2][1]
+              and f["stats"]["rows"][0][2] for f in conn)
+          and "Precon1 cue effect" in alt(next(f for f in conn if f["model"] == "m1"), "fp")["legend"]["body"],
+          [f["stats"]["rows"] for f in conn][:1])
+    from openpyxl import load_workbook
+    import xml.etree.ElementTree as ET
+    NS = "{http://graphpad.com/prism/Prism.htm}"
+    ok_files, worst = True, 0.0
+    for f in figs_[1:]:
+        xl, pz = joefigs.figs_dir(f["files"]["xlsx"]), joefigs.figs_dir(f["files"]["pzfx"])
+        wb = load_workbook(xl, read_only=True)
+        tables = ET.parse(pz).getroot().findall(NS + "Table")
+        ok_files &= wb.sheetnames[0] == "About" and len(wb.sheetnames) - 1 == len(tables) > 0
+        if f["kind"] == "follow":
+            k = f["keys"][0]
+            ms = f["stats"]["measures"][k]
+            sh = wb[wb.sheetnames[1]]
+            rows = list(sh.iter_rows(values_only=True))
+            ok_files &= rows[0][0] == "Rat" and len(rows[0]) == 5
+            ch = [r for r in wb.sheetnames if r.startswith("c ")]
+            crow = list(wb[ch[0]].iter_rows(values_only=True))
+            vals = [r[1] for r in crow[1:] if r[1] is not None]
+            worst = max(worst, abs(float(np.mean(vals)) - ms["delta"]))
+            dsh = [r for r in wb.sheetnames if r.startswith("d ")][0]
+            drow = list(wb[dsh].iter_rows(values_only=True))
+            ok_files &= drow[0][0] == "FP sets" and len(drow) - 1 == joefigs.N_PERM
+        wb.close()
+    check("every figure's numbers for Prism: an .xlsx (a sheet a table) and a .pzfx with the same tables; each rat's change (c) "
+          "averages to the figure's own, the nulls (d) every one of the 10,000 sets, FP first",
+          ok_files and worst < 1e-5, worst)
+    fol_t = [f for f in figs_ if f["kind"] == "follow"]
+    within = [f for f in fol_t if set(f["keys"]) <= {"pac_aa", "pac_bb"}]
+    check("a follow-up's title says how it was found and what it shows (PAC within a region said so)",
+          all("followed up from the %s coherence of %s" % (f["band"], f["pair"]) in f["legend"]["title"] for f in fol_t)
+          and all("coupling within" in f["legend"]["title"] for f in within), [f["legend"]["title"] for f in fol_t][:1])
+
     print("\nOn the VACC (its entry point, run here on these recordings)")
     import copy
     import shlex
@@ -698,7 +758,8 @@ def main():
     pac2 = [f for f in figs2["figures"] if any(k.startswith("pac_") for k in f.get("keys") or [])]
     check("drawn without the recordings: the VACC's reading of this tab 8, every PAC figure with its roses, every trial tab 8's own",
           figs2["recordings_where"] == "vacc" and figs2["pac_check"]["ok"] and figs2["vacc_run"]["slurm_id"] == "5979834"
-          and pac2 and all(f["pac_profiles"] and not f["pac_missing"] for f in pac2), (figs2["recordings_where"], figs2["pac_check"]))
+          and pac2 and all(f["pac_profiles"] and not f["pac_missing"] for f in pac2),
+          (figs2["recordings_where"], (figs2["vacc_run"] or {}).get("slurm_id"), [(f["id"], f["keys"], f["pac_profiles"], f["pac_missing"]) for f in pac2]))
     joe._write(joe.joe_dir(joefigs.PAC_VACC), dict(got9, key="0" * 16))
     figs3 = joefigs.build(R=R9, days=day_data, inputs=gone)
     check("a reading made from another tab 8 is not used: no roses, and the figures say so",

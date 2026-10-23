@@ -26276,7 +26276,9 @@ def api_arc_monolith_joefigs():
 def api_arc_monolith_joefigs_file(name):
     """Tab 9's figure files: SVG and PNG shown in the page, and with
     ?download=1, those or the PDF saved."""
-    types = {".svg": "image/svg+xml", ".png": "image/png", ".pdf": "application/pdf"}
+    types = {".svg": "image/svg+xml", ".png": "image/png", ".pdf": "application/pdf",
+             # the numbers behind the panels, for GraphPad Prism (2026-10-23)
+             ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".pzfx": "application/xml"}
     base = os.path.basename(name)
     ext = os.path.splitext(base)[1]
     if base != name or ext not in types:
@@ -29173,6 +29175,207 @@ def api_vacc_found_add():
                    "by_project": got.get("new_by_project")},
     }])
     return jsonify({"ok": True, "added": added, "joined": joined})
+
+
+# --------------------------------------------------------------------------
+# Keeping the paths true (backend/pathtidy.py, 2026-10-23)
+# --------------------------------------------------------------------------
+# A plan is made, shown, and applied only by its digest: the share can be
+# walked again between the two, and an apply must change exactly what the
+# person was shown.
+from . import pathtidy as pathtidymod                            # noqa: E402
+
+_TIDY = {"plan": None, "at": 0.0, "running": False, "result": None}
+_TIDY_LOCK = threading.Lock()
+_TIDY_MAX_AGE_S = 1800
+
+
+def _tidy_records():
+    return [r for r in (REG.all() or []) if r.get("gid")]
+
+
+def _tidy_public(plan, n=400):
+    """The plan without its every row: counts, and the first `n` rows."""
+    out = {k: v for k, v in plan.items() if k != "rows"}
+    out["rows"] = plan["rows"][:n]
+    out["n_rows"] = len(plan["rows"])
+    return out
+
+
+@app.route("/api/vacc/found/tidy")
+def api_vacc_found_tidy_get():
+    """The last plan, and whether an apply is running or what it did."""
+    with _TIDY_LOCK:
+        plan = _TIDY["plan"]
+        return jsonify({
+            "ok": True, "running": _TIDY["running"],
+            "result": _TIDY["result"],
+            "plan": _tidy_public(plan) if plan else None,
+            "age_s": (time.time() - _TIDY["at"]) if plan else None})
+
+
+@app.route("/api/vacc/found/tidy/plan", methods=["POST"])
+def api_vacc_found_tidy_plan():
+    """What a tidy would change. One read-only connection: the cluster is
+    asked whether each netfiles path on record that the walk did not list
+    is still there. Needs a walk of netfiles from the last day."""
+    cfg = vaccmod.load_config(LOGS_DIR)
+    root = pathtidymod.ROOT
+    if root not in [r.rstrip("/") for r in vaccmod.native_roots(cfg)]:
+        return jsonify({"ok": False, "error": "netfiles is not set up for "
+                        "the cluster here (vacc.json path_map)."}), 400
+    age = vaccmod.inventory_age(cfg, root)
+    if vaccmod.inventory_busy(root):
+        return jsonify({"ok": False, "walking": True,
+                        "error": "netfiles is being looked through right now "
+                                 "-- the plan is made from the finished walk."}), 409
+    if age is None or age > vaccmod.INV_TTL_NATIVE_S:
+        return jsonify({"ok": False, "stale": True,
+                        "error": "Look through netfiles first: the plan is "
+                                 "made against a walk from the last day."}), 409
+    inv = vaccmod.inventory_held(root)
+    recs = _tidy_records()
+    livefeedmod.task("tidy-plan", restart=True, state="run",
+                     label="Comparing every path Jarvis knows with netfiles")
+    livefeedmod.say("%d recordings on record, %d recording folders on "
+                    "netfiles (walked %d min ago)"
+                    % (len(recs), len(inv), round(age / 60)), "hot", "tidy-plan")
+    tails = pathtidymod.to_check(recs, inv)
+    try:
+        gone, archives = vaccmod.missing(
+            cfg, [pathtidymod.remote_of(t) for t in tails], root)
+    except vaccmod.SSHError as exc:
+        livefeedmod.task("tidy-plan", state="fail")
+        return fail("vacc/found/tidy/plan", exc, 400)
+    base = root.rstrip("/") + "/"
+    gone_t = [g[len(base):].replace("/", "\\") for g in gone
+              if g.startswith(base)]
+    arch_t = [a[len(base):].replace("/", "\\") for a in archives
+              if a.startswith(base)]
+    by_key, by_loose = _match_index()
+
+    def match(row):
+        rec, _how, _why = _cluster_match(row["path"], by_key, by_loose,
+                                         header_time=_found_time(row))
+        return rec
+
+    plan = pathtidymod.plan(recs, inv, match, gone=gone_t, archives=arch_t)
+    for r in plan["rows"]:
+        for u in r["add"]:
+            livefeedmod.say("+ %s  learns %s" % (r["label"], u), "ok",
+                            "tidy-plan")
+        for p, why in r["drop"]:
+            livefeedmod.say("- %s  drops %s  (%s)" % (
+                r["label"], p, pathtidymod.REASONS.get(why, why)), "warn",
+                "tidy-plan")
+    livefeedmod.say("plan: %d recordings change -- %d paths added, %d "
+                    "dropped" % (plan["records"], plan["add"], plan["drop"]),
+                    "hot", "tidy-plan")
+    livefeedmod.task("tidy-plan", state="done")
+    with _TIDY_LOCK:
+        _TIDY.update(plan=plan, at=time.time())
+    return jsonify(dict(_tidy_public(plan), ok=True))
+
+
+def _tidy_write(plan):
+    """Apply a plan. In a thread: a few hundred records, each one shard
+    write, said line by line in the live feed."""
+    t0 = time.time()
+    index = {r.get("gid"): r for r in _tidy_records()}
+    rows = plan.get("rows") or []
+    livefeedmod.task("tidy", restart=True, state="run", done=0, of=len(rows),
+                     label="Updating the paths of %d recordings" % len(rows))
+    done = added = dropped = 0
+    failed = []
+    for row in rows:
+        rec = index.get(row["gid"])
+        if not rec:
+            failed.append(row["gid"])
+            continue
+        drops = {p for p, _w in row["drop"]}
+        paths = [p for p in (rec.get("paths") or []) if p not in drops]
+        for u in row["add"]:
+            if u not in paths:
+                paths.append(u)
+        patch = {"paths": paths}
+        if row.get("archived_in"):
+            patch["archived_in"] = sorted(set(rec.get("archived_in") or [])
+                                          | set(row["archived_in"]))
+        ident = {k: rec.get(k) for k in ("key", "loose_key", "mouse",
+                                         "session", "start", "label")}
+        # By key when the key's own shard holds this record -- one read --
+        # and by gid otherwise, which is right but merges the whole store.
+        mine = STORE.sessions.read(STORE.session_base(rec.get("key"))) \
+            if rec.get("key") else None
+        if not (mine and mine.get("gid") == rec["gid"]):
+            ident["gid"] = rec["gid"]
+        try:
+            STORE.upsert_session(ident, patch)
+        except Exception as exc:                         # noqa: BLE001
+            failed.append(row["gid"])
+            livefeedmod.say("could not update %s: %s" % (row["label"], exc),
+                            "warn", "tidy")
+            continue
+        for p, why in row["drop"]:
+            try:
+                RESULTS.tombs.add("path", "%s|%s" % (row["gid"], p),
+                                  note=pathtidymod.REASONS.get(why, why))
+            except Exception:                            # noqa: BLE001
+                pass
+        done += 1
+        added += len(row["add"])
+        dropped += len(row["drop"])
+        livefeedmod.task("tidy", done=done)
+        livefeedmod.say("%s  +%d -%d" % (row["label"], len(row["add"]),
+                                         len(row["drop"])), "", "tidy")
+    result = {"records": done, "added": added, "dropped": dropped,
+              "failed": failed, "seconds": round(time.time() - t0, 1),
+              "digest": plan.get("digest")}
+    livefeedmod.say("done: %d recordings, %d paths added, %d dropped, in "
+                    "%.0f s" % (done, added, dropped, time.time() - t0), "ok",
+                    "tidy")
+    livefeedmod.task("tidy", state="done" if not failed else "fail")
+    STORE.record_activity([{"action": "vacc.paths.tidy", "detail": dict(
+        result, failed=len(failed), by_reason=plan.get("by_reason"),
+        archives=plan.get("archives"))}])
+    return result
+
+
+@app.route("/api/vacc/found/tidy", methods=["POST"])
+def api_vacc_found_tidy():
+    """Apply the plan the page was shown (by its digest). Answers at once;
+    the work goes on in a thread and says itself in the live feed."""
+    body = request.get_json(force=True) or {}
+    if not body.get("confirm"):
+        return jsonify({"ok": False, "error": "Nothing changed: the request "
+                        "did not confirm it."}), 400
+    with _TIDY_LOCK:
+        plan = _TIDY["plan"]
+        if _TIDY["running"]:
+            return jsonify({"ok": False, "running": True,
+                            "error": "Already updating."}), 409
+        if not plan or body.get("digest") != plan.get("digest"):
+            return jsonify({"ok": False, "changed": True,
+                            "error": "That plan is not the one in hand -- "
+                                     "make it again."}), 409
+        if time.time() - _TIDY["at"] > _TIDY_MAX_AGE_S:
+            return jsonify({"ok": False, "stale": True,
+                            "error": "That plan is more than half an hour "
+                                     "old -- make it again."}), 409
+        _TIDY.update(running=True, result=None)
+
+    def go():
+        try:
+            res = _tidy_write(plan)
+        except Exception as exc:                         # noqa: BLE001
+            res = {"error": str(exc)[:300]}
+            livefeedmod.say("stopped: %s" % exc, "warn", "tidy")
+            livefeedmod.task("tidy", state="fail")
+        with _TIDY_LOCK:
+            _TIDY.update(running=False, result=res, plan=None)
+
+    threading.Thread(target=go, daemon=True, name="barry-path-tidy").start()
+    return jsonify({"ok": True, "started": True, "n": len(plan["rows"])})
 
 
 # --------------------------------------------------------------------------

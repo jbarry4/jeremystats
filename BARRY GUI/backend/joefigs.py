@@ -204,6 +204,25 @@ def _hist(null, bins=40):
 # --------------------------------------------------------------------------
 GRAPHS = (("pos", "Increases", "up"), ("neg", "Decreases", "down"), ("net", "Both", "two"))
 ROWS = (("Precon1", "Precon1"), ("Precon4", "Precon4"), ("delta", "Precon4 − Precon1"))
+#: The rings drawn (2026-10-23, Shahriar): comparisons 1, 2 and 5 (cue 1 ->
+#: cue 2, pooled over A/B/C/D), each in theta and gamma, whether or not tab
+#: 8's light passed; grouped by window, then band, in this order.
+RING_MODELS = ("m1", "m2", "m5")
+BAND_ORDER = ("theta", "gamma")
+#: The windows in plain words, and what each comparison's effect is called
+#: (no deltas on the figures: "Precon1 cue effect = Cues - Baseline").
+WSAY = {"base20": "Baseline", "base10": "Baseline", "pair": "Cues", "cue1": "Cue 1", "cue2": "Cue 2",
+        "swa": "End of cue 1", "swb": "Start of cue 2"}
+EFFECT = {"m1": "cue effect", "m2": "cue-1 effect", "m3": "cue-2 effect", "m4": "switch effect", "m5": "cue 1→2 effect"}
+
+
+def row_names(mid):
+    """[(row, what it is called, how it is made)] for one comparison."""
+    wa, wb = WINDOWS[mid]
+    eff = EFFECT.get(mid, "effect")
+    how = "%s − %s" % (WSAY[wb], WSAY[wa])
+    return [("Precon1", "Precon1 %s" % eff, how), ("Precon4", "Precon4 %s" % eff, how),
+            ("delta", "Change in %s" % eff, "Precon4’s − Precon1’s")]
 
 
 #: Each connectome has two nulls (2026-10-22), shown one at a time with a
@@ -348,7 +367,8 @@ def connectome(R, days, res, pools=None):
             nf = {"Precon1": _nanmean0(fpr["Precon1"]), "Precon4": _nanmean0(fpr["Precon4"])}
             nf["delta"] = nf["Precon4"] - nf["Precon1"]
     graphs, graphs_t, graphs_f = [], [], []
-    for row, row_say in ROWS:
+    rows = row_names(mid)
+    for row, row_say, _how in rows:
         for kind, kind_say, side in GRAPHS:
             o = float(_graph_stat(kind, e[row]))
             base = {"row": row, "row_say": row_say, "kind": kind, "kind_say": kind_say, "side": side, "stat": o}
@@ -360,17 +380,21 @@ def connectome(R, days, res, pools=None):
             # (on the real data no rat does; they agree to 1e-17).
             o_r = float(nn[0])
             p, rank, n = exact_p(o_r, nn, side) if exact else perm_p(o_r, nn[1:], side)
-            graphs.append(dict(base, stat=o_r, p=p, rank=rank, n=n, stars=stars(p), null=_hist(nn), null_kind="rats"))
+            graphs.append(dict(base, stat=o_r, p=p, rank=rank, n=n, stars=stars(p), null=_hist(nn), null_kind="rats",
+                               raw=np.asarray(nn, np.float32)))
             nn = _graph_stat(kind, ne[row])
             p, rank, n = perm_p(o, nn, side)
-            graphs_t.append(dict(base, p=p, rank=rank, n=n, stars=stars(p), null=_hist(nn), null_kind="trials"))
+            graphs_t.append(dict(base, p=p, rank=rank, n=n, stars=stars(p), null=_hist(nn), null_kind="trials",
+                                 raw=np.asarray(nn, np.float32)))
             if nf is not None:
                 nn = _graph_stat(kind, nf[row])
                 p, rank, n = perm_p(o, nn, side)
-                graphs_f.append(dict(base, p=p, rank=rank, n=n, stars=stars(p), null=_hist(nn), null_kind="fp"))
+                graphs_f.append(dict(base, p=p, rank=rank, n=n, stars=stars(p), null=_hist(nn), null_kind="fp",
+                                     raw=np.asarray(nn, np.float32)))
     return {"model": mid, "band": res["band"], "method": res["method"], "pairs": [R["pairs"][i] for i in keep],
             "pair_index": keep, "edges": {k: [None if not np.isfinite(x) else float(x) for x in v] for k, v in e.items()},
             "graphs": graphs, "graphs_trials": graphs_t, "graphs_fp": graphs_f, "null": "rats", "rat_exact": bool(exact),
+            "rows": rows,
             "trials": [int(min(v[0].shape[0] for v in sessions.values())), int(max(v[0].shape[0] for v in sessions.values()))],
             "n_signs": int(S.shape[0]), "rats": rats, "n_perm": N_PERM}
 
@@ -417,7 +441,8 @@ def follow_null(R, days, item, key):
     o = float(np.mean(dl[ok]))
     nn = _nanmean0(nd[ok])
     pv, rank, n = perm_p(o, nn, "two")
-    return {"obs": o, "p": pv, "rank": rank, "n": n, "stars": stars(pv), "null": _hist(nn), "n_rats": int(ok.sum())}
+    return {"obs": o, "p": pv, "rank": rank, "n": n, "stars": stars(pv), "null": _hist(nn), "n_rats": int(ok.sum()),
+            "raw": np.asarray(nn, np.float32)}
 
 
 def fp_follow_null(R, days, pools, item, key):
@@ -449,7 +474,8 @@ def fp_follow_null(R, days, pools, item, key):
     o = float(np.mean(dl[ok]))
     nn = _nanmean0(nd[ok])
     pv, rank, n = perm_p(o, nn, "two")
-    return {"obs": o, "p": pv, "rank": rank, "n": n, "stars": stars(pv), "null": _hist(nn), "n_rats": int(ok.sum())}
+    return {"obs": o, "p": pv, "rank": rank, "n": n, "stars": stars(pv), "null": _hist(nn), "n_rats": int(ok.sum()),
+            "raw": np.asarray(nn, np.float32)}
 
 
 # --------------------------------------------------------------------------
@@ -857,7 +883,7 @@ def draw_ring(ax, regions, edges, vmax, present=None, focus=None, arrow=None, se
                                    fill=False, lw=1.1, ec="#1A1A1A", zorder=2))
     if self_loop is not None:
         x, y = pos[self_loop]
-        ax.add_patch(Circle((x * 1.17, y * 1.17), 0.15, fill=False, lw=1.0, ec="#1A1A1A", zorder=2))
+        ax.add_patch(Circle((x * 0.85, y * 0.85), 0.09, fill=False, lw=1.0, ec="#1A1A1A", zorder=2))     # inside, touching its node: clear of its name
     for k, (x, y) in enumerate(pos):
         on = present is None or k in present
         hot = focus is not None and k in focus or self_loop == k
@@ -890,11 +916,11 @@ def draw_null(ax, hist, obs, p, rank, n, label=True, xlabel=None, what="shuffles
     if xlabel:
         ax.set_xlabel(xlabel, fontsize=5, labelpad=1)
     if label and fp is not None:
-        for yy, (who, pp, col) in ((1.50, ("Shuffles", p, "#1A1A1A")), (1.27, ("FP", fp["p"], C_FP))):
+        for yy, (who, pp, col) in ((1.50, ("FP", fp["p"], C_FP)), (1.27, ("Shuffles", p, "#1A1A1A"))):
             st = stars(pp)
             ax.text(0.0, yy, "%s %s%s" % (who, p_say(pp), (" " + st) if st else ""), transform=ax.transAxes, fontsize=5.5,
                     fontweight="bold" if st else "normal", va="bottom", ha="left", color=col)
-        ax.text(0.0, 1.04, "ranks %s and %s of %s" % (format(rank, ","), format(fp["rank"], ","), format(n, ",")),
+        ax.text(0.0, 1.04, "ranks %s and %s of %s" % (format(fp["rank"], ","), format(rank, ","), format(n, ",")),
                 transform=ax.transAxes, fontsize=5, va="bottom", ha="left", color="#4D4D4D")
     elif label:
         st = stars(p)
@@ -934,8 +960,11 @@ def connectome_figure(C, regions, title_no, null="rats"):
                  ha="center", va="top", fontsize=6.5, fontweight="bold")
     letters = "abcdefghi"
     k = 0
-    for ri, (row, row_say) in enumerate(ROWS):
-        fig.text(4.0 / W, 1 - (row_y[ri] + ring_h / 2) / H, row_say, rotation=90, ha="center", va="center", fontsize=6.5, fontweight="bold")
+    for ri, (row, row_say, how) in enumerate(C.get("rows") or [(r, s, "") for r, s in ROWS]):
+        fig.text(3.0 / W, 1 - (row_y[ri] + ring_h / 2) / H, row_say, rotation=90, ha="center", va="center", fontsize=6.5, fontweight="bold")
+        if how:
+            fig.text(6.6 / W, 1 - (row_y[ri] + ring_h / 2) / H, "= " + how, rotation=90, ha="center", va="center", fontsize=5.5,
+                     color="#4D4D4D")
         vals = C["edges"][row]
         vmax = vmax_d if row == "delta" else vmax_day
         for ci, (kind, _say, _side) in enumerate(GRAPHS):
@@ -952,7 +981,7 @@ def connectome_figure(C, regions, title_no, null="rats"):
             draw_ring(ax, regions, ed, vmax, present=present)
             hx = _ax(fig, col_x[ci] + 9.0, row_y[ri] + ring_h + 6.0, ring_w - 18.0, hist_h, H, W)
             draw_null(hx, g["null"], g["stat"], g["p"], g["rank"], g["n"],
-                      xlabel="Summed Δ coherence" if ri == 2 else None,
+                      xlabel="Summed change in coherence" if ri == 2 else None,
                       what={"rats": "sign flips", "trials": "shuffles", "fp": "FP sets"}[null])
             _letter(fig, col_x[ci] - 2.0, row_y[ri], letters[k], H, W)
             k += 1
@@ -961,7 +990,7 @@ def connectome_figure(C, regions, title_no, null="rats"):
     kx.axis("off")
     kx.set_xlim(0, 168)
     kx.set_ylim(0, 6)
-    for x0, v, say in ((0, vmax_day, "Δ coherence %.3f (Precon rows)" % vmax_day), (52, vmax_d, "%.3f (change row)" % vmax_d)):
+    for x0, v, say in ((0, vmax_day, "change in coherence %.3f (cue-effect rows)" % vmax_day), (52, vmax_d, "%.3f (change-in-effect row)" % vmax_d)):
         kx.plot([x0, x0 + 8], [3, 3], lw=0.3 + 2.4, color="#1A1A1A", solid_capstyle="round")
         kx.text(x0 + 10, 3, say, va="center", fontsize=5)
     kx.plot([96, 104], [3, 3], lw=1.5, color=C_UP, solid_capstyle="round")
@@ -1046,7 +1075,12 @@ def follow_figure(item, nulls, regions, levels, title_no, profile=None, nulls_fp
         # (PAC: dots only -- its modulation index is never drawn as lines)
         _letter(fig, 50.0, y, next(letters), H, W)
         fig.text(56.0 / W, 1 - (y + 0.4) / H, _measure_say(key, item), fontsize=6, fontweight="bold", va="top", ha="left")
-        bx = _ax(fig, 62.0, y + 7.0, 46.0, row_h - 19.0, H, W)
+        if key.startswith("pac_"):
+            # what the number is (2026-10-23: "modulation index? is it the
+            # average of the entire block?")
+            fig.text(56.0 / W, 1 - (y + 3.3) / H, "Tort MI: θ 5–12 Hz phase × γ 30–90 Hz amplitude,\nover each trial’s whole window, then the mean of trials", fontsize=4.6,
+                     va="top", ha="left", color="#4D4D4D")
+        bx = _ax(fig, 62.0, y + (10.5 if pac else 7.0), 46.0, row_h - (22.5 if pac else 19.0), H, W)     # PAC: room for its line and the ×10⁻ⁿ
         xs = (0.0, 1.0, 2.4, 3.4)
         if not pac:
             for r in range(v.shape[0]):
@@ -1061,7 +1095,8 @@ def follow_figure(item, nulls, regions, levels, title_no, profile=None, nulls_fp
         bx.set_xticks(xs)
         bx.set_xticklabels([_short_level(la), _short_level(lb), _short_level(la), _short_level(lb)], fontsize=5)
         bx.set_xlim(-0.5, 3.9)
-        bx.set_ylabel(YLABEL[key] if key != "xlag" else "Lag (ms); below 0, %s leads" % item["a"], fontsize=5.5, labelpad=1.5)
+        bx.set_ylabel("Modulation index" if key.startswith("pac_") else
+                      YLABEL[key] if key != "xlag" else "Lag (ms); below 0, %s leads" % item["a"], fontsize=5.5, labelpad=1.5)
         _sci(bx)
         bx.text(0.5, -0.16, "Precon1", transform=bx.get_xaxis_transform(), ha="center", va="top", fontsize=5.5, color=C_P1, fontweight="bold")
         bx.text(2.9, -0.16, "Precon4", transform=bx.get_xaxis_transform(), ha="center", va="top", fontsize=5.5, color=C_P4, fontweight="bold")
@@ -1088,7 +1123,7 @@ def follow_figure(item, nulls, regions, levels, title_no, profile=None, nulls_fp
         dx = _ax(fig, 156.0, y + 12.0, 25.0, row_h - 26.0, H, W)
         nf = (nulls_fp or {}).get(key)
         draw_null(dx, nl["null"], nl["obs"], nl["p"], nl["rank"], nl["n"], fp=nf,
-                  xlabel="Shuffles (grey), FP (blue)" if nf is not None else "Shuffled within sessions")
+                  xlabel="FP (blue), shuffles (grey)" if nf is not None else "Shuffled within sessions")
         y += row_h
     for key in pac_rows:
         y = _pac_panels(fig, plt, profile[key], levels, y, H, W, letters, item, key)
@@ -1136,8 +1171,9 @@ def _pac_panels(fig, plt, pf, levels, y, H, W, letters, item, key):
                  "%s · %s" % (day, _short_level({"base20": "Baseline (20 s)", "base10": "Baseline (10 s)", "pair": "Cue 1 + Cue 2 (20 s)",
                                                  "cue1": "Cue 1", "cue2": "Cue 2", "swa": "8–10 s", "swb": "10–12 s"}[w])),
                  fontsize=5.5, ha="center", va="top", fontweight="bold", color=C_P1 if day == "Precon1" else C_P4)
-    fig.text(8.0 / W, 1 - (y + 36.0) / H, "%s gamma amplitude at each %s theta phase: how far above (orange) or below (purple) its "
-             "mean over the cycle; the mean over rats" % (pf["amp_region"], pf["phase_region"]), fontsize=5, va="top", ha="left", color="#4D4D4D")
+    fig.text(8.0 / W, 1 - (y + 36.0) / H, "%s gamma amplitude at each %s theta phase, over each trial’s whole window:\nhow far above "
+             "(orange) or below (purple) its mean over the cycle; the mean over trials, then rats" % (pf["amp_region"], pf["phase_region"]),
+             fontsize=5, va="top", ha="left", color="#4D4D4D")
     # the comodulogram's change
     _letter(fig, 132.0, y, next(letters), H, W)
     def comod(day, w):
@@ -1165,6 +1201,240 @@ def _pac_panels(fig, plt, pf, levels, y, H, W, letters, item, key):
         ax.set_title("Comodulogram: the change\nbetween the days", fontsize=5.5, pad=3, loc="left")
     return y + PAC_ROW_H
 
+
+
+# --------------------------------------------------------------------------
+# Order, Prism and the supplement (2026-10-23)
+# --------------------------------------------------------------------------
+def _follow_rank(ms, nl, nf):
+    """A sort key: more tests passed first (3, 2, 1); among equals FP counts
+    most, then the shuffle (P), then the t-test (T); then the smaller Ps."""
+    fp = bool(nf) and nf["p"] < 0.05
+    sh = nl["p"] < 0.05
+    t = (ms.get("p") if ms.get("p") is not None else 1.0) < 0.05
+    return (-(int(fp) + int(sh) + int(t)), 0 if fp else 1, 0 if sh else 1, 0 if t else 1,
+            nf["p"] if nf else 1.0, nl["p"], ms.get("p") if ms.get("p") is not None else 1.0)
+
+
+def _ring_passes(views):
+    """Which of a ring figure's tests its change-in-effect rings pass."""
+    out = {}
+    for v in views:
+        gs = [g for g in v["raw"] if g["row"] == "delta"]
+        out[v["null"]] = any(g["p"] < 0.05 for g in gs)
+    return out
+
+
+def _col(vals):
+    return [None if v is None or not np.isfinite(v) else float("%.6g" % v) for v in vals]
+
+
+def ring_tables(C, views, mdl):
+    """Prism tables of a ring figure: each test's null (every set, one column
+    a graph, for Prism's frequency distribution) and the observed values."""
+    out = []
+    say = {"fp": "FP sets", "trials": "Within-session shuffles", "rats": "Rat sign flips"}
+    for v in views:
+        cols = [("%s · %s" % (g["row_say"], g["kind_say"].lower()), _col(g["raw"])) for g in v["raw"]]
+        out.append({"title": "%s null" % say[v["null"]], "columns": cols,
+                    "note": "Every %s of the summed ring (one column a graph). In Prism: Column table -> Analyze -> Frequency "
+                            "distribution. The observed values are in the 'Observed' table." % say[v["null"]].lower().rstrip("s")})
+    graphs = views[0]["raw"]
+    out.append({"title": "Observed", "rows": ["%s · %s" % (g["row_say"], g["kind_say"].lower()) for g in graphs],
+                "columns": [("Observed sum", _col([g["stat"] for g in graphs]))] +
+                           [("P, %s" % say[v["null"]], _col([g["p"] for g in v["raw"]])) for v in views],
+                "note": "The ring's statistic (summed change in coherence) and its P against each test, FP first."})
+    return out
+
+
+def follow_tables(item, nulls, nulls_fp, raw, levels):
+    """Prism tables of a follow-up figure: b (each rat's four values), c (each
+    rat's change, one column a measure) and d (every set of each null)."""
+    la, lb = levels
+    out, ch = [], []
+    for k in item["keys"]:
+        ms = item["measures"][k]
+        per = ms.get("per_rat") or {}
+        rats = sorted(per, key=int)
+        name = _measure_say(k, item)
+        out.append({"title": "b %s" % name, "rows": ["rat %s" % r for r in rats],
+                    "columns": [("Precon1 %s" % _short_level(la), _col([per[r][0] for r in rats])),
+                                ("Precon1 %s" % _short_level(lb), _col([per[r][1] for r in rats])),
+                                ("Precon4 %s" % _short_level(la), _col([per[r][2] for r in rats])),
+                                ("Precon4 %s" % _short_level(lb), _col([per[r][3] for r in rats]))],
+                    "note": "%s: each rat's mean over its trials in each window. In Prism: Column table (or Grouped), "
+                            "before-after plot." % name})
+        ch.append((name, rats, [per[r][4] for r in rats]))
+        rfp, rsh = raw.get(k, (None, None))[1], raw.get(k, (None, None))[0]
+        cols = []
+        if rfp is not None:
+            cols.append(("FP sets", _col(rfp)))
+        if rsh is not None:
+            cols.append(("Within-session shuffles", _col(rsh)))
+        nf = nulls_fp.get(k)
+        out.append({"title": "d %s" % name, "columns": cols,
+                    "note": "%s: every set of each null of the mean change (observed %.6g; FP %s; shuffles %s). In Prism: Column "
+                            "table -> Analyze -> Frequency distribution, and draw the observed value as a line."
+                            % (name, nulls[k]["obs"], p_say(nf["p"]) if nf else "not measured", p_say(nulls[k]["p"]))})
+    rats = sorted({r for _n, rs, _v in ch for r in rs}, key=int)
+    out.insert(1 if len(item["keys"]) == 1 else len(item["keys"]),
+               {"title": "c changes", "rows": ["rat %s" % r for r in rats],
+                "columns": [(n, _col([dict(zip(rs, vs)).get(r) for r in rats])) for n, rs, vs in ch],
+                "note": "Each rat's change in %s: (Precon4 %s − %s) − (Precon1 %s − %s). In Prism: Column table, scatter with "
+                        "mean ± 95%% CI; Analyze -> One sample t test against 0 gives the t-test on the figure."
+                        % ("the measure", _short_level(lb), _short_level(la), _short_level(lb), _short_level(la))})
+    return out
+
+
+def _sheet_name(t, used):
+    n = "".join(c for c in t if c not in '[]:*?/\\')[:31] or "Sheet"
+    k = 2
+    while n in used:
+        n = (n[:28] + " %d" % k)[:31]
+        k += 1
+    used.add(n)
+    return n
+
+
+def prism_files(stem, tables, what):
+    """The same tables as an .xlsx (a sheet a table, after an 'About' sheet)
+    and a Prism .pzfx (a data table each); returns {"xlsx", "pzfx"}."""
+    from openpyxl import Workbook
+    from xml.sax.saxutils import escape
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "About"
+    ws.append(["%s: the numbers behind its panels, for GraphPad Prism." % what])
+    ws.append(["Each sheet is one table, laid out as Prism's Column table wants it: one column a group, one row a rat (or a set)."])
+    ws.append([])
+    for t in tables:
+        ws.append([t["title"], t.get("note", "")])
+    used = {"About"}
+    for t in tables:
+        sh = wb.create_sheet(_sheet_name(t["title"], used))
+        head = (["Rat"] if t.get("rows") else []) + [c for c, _v in t["columns"]]
+        sh.append(head)
+        n = max([len(v) for _c, v in t["columns"]] + [len(t.get("rows") or [])])
+        for i in range(n):
+            row = ([t["rows"][i] if i < len(t["rows"]) else None] if t.get("rows") else [])
+            row += [v[i] if i < len(v) else None for _c, v in t["columns"]]
+            sh.append(row)
+    xl = figs_dir(stem + ".xlsx")
+    wb.save(xl)
+    # Prism's own XML (PrismXMLVersion 5.00): a OneWay (Column) table per table.
+    out = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<GraphPadPrismFile xmlns="http://graphpad.com/prism/Prism.htm" PrismXMLVersion="5.00">',
+           '<Created><OriginalVersion CreatedByProgram="GraphPad Prism" CreatedByVersion="6.0f.254" Login="" DateTime="%s"/></Created>'
+           % time.strftime("%Y-%m-%dT%H:%M:%S"),
+           '<InfoSequence><Ref ID="Info0" Selected="1"/></InfoSequence>',
+           '<Info ID="Info0"><Title>%s</Title><Notes>%s</Notes></Info>'
+           % (escape(what), escape(" | ".join("%s: %s" % (t["title"], t.get("note", "")) for t in tables))),
+           '<TableSequence>' + "".join('<Ref ID="Table%d"%s/>' % (i, ' Selected="1"' if i == 0 else "") for i in range(len(tables)))
+           + '</TableSequence>']
+    for i, t in enumerate(tables):
+        out.append('<Table ID="Table%d" XFormat="none" TableType="OneWay" EVFormat="AsteriskAfterNumber">' % i)
+        out.append('<Title>%s</Title>' % escape(t["title"]))
+        if t.get("rows"):
+            out.append('<RowTitlesColumn Width="81"><Subcolumn>' + "".join('<d>%s</d>' % escape(str(r)) for r in t["rows"])
+                       + '</Subcolumn></RowTitlesColumn>')
+        for c, vals in t["columns"]:
+            out.append('<YColumn Width="81" Decimals="6" Subcolumns="1"><Title>%s</Title><Subcolumn>' % escape(c)
+                       + "".join('<d/>' if v is None else '<d>%s</d>' % repr(v) for v in vals) + '</Subcolumn></YColumn>')
+        out.append('</Table>')
+    out.append('</GraphPadPrismFile>')
+    pz = figs_dir(stem + ".pzfx")
+    with open(pz, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(out))
+    return {"xlsx": os.path.basename(xl), "pzfx": os.path.basename(pz)}
+
+
+def schematic_figure(R, days, res):
+    """Supplementary Figure S1: how a ring's three rows are made, on the
+    real numbers of one pair (the one whose change in cue effect is
+    largest), averaged over the rats."""
+    if res is None or not res.get("units"):
+        return None
+    mid, band = res["model"], res["band"]
+    lv = ["a", "b"]
+    bi = [x for x, _l, _h in joe.BANDS].index(band)
+    mi = joe.METHODS.index(res["method"])
+    keep = [R["pairs"].index(u) for u in res["units"]]
+    # each rat's session means, from tab 8's own rat-days (joe.json keeps no table)
+    per = {}
+    import warnings
+    for (r, d), (arrs, _fp, _meta) in days.items():
+        if d not in joe.TESTED:
+            continue
+        base, cue = session_pairs(arrs, mid, bi, mi)
+        with warnings.catch_warnings(), np.errstate(invalid="ignore"):
+            warnings.simplefilter("ignore", RuntimeWarning)
+            per[(r, d)] = (np.nanmean(base[:, keep], axis=0), np.nanmean(cue[:, keep], axis=0))
+    def mean(day, level, k):
+        v = [x[0 if level == "a" else 1][k] for (r, d), x in per.items() if d == day and np.isfinite(x[0 if level == "a" else 1][k])]
+        return float(np.mean(v)) if v else float("nan")
+    best, ki = -1.0, None
+    for k in range(len(keep)):
+        dd = (mean("Precon4", "b", k) - mean("Precon4", "a", k)) - (mean("Precon1", "b", k) - mean("Precon1", "a", k))
+        if np.isfinite(dd) and abs(dd) > best:
+            best, ki = abs(dd), k
+    if ki is None:
+        return None
+    pick = R["pairs"][keep[ki]]
+    mean_k = mean
+    v = {(d, l): mean_k(d, l, ki) for d in joe.TESTED for l in lv}
+    e1, e4 = v[("Precon1", lv[1])] - v[("Precon1", lv[0])], v[("Precon4", lv[1])] - v[("Precon4", lv[0])]
+    ch = e4 - e1
+    eff = EFFECT.get(mid, "effect")
+    wa, wb = WSAY[WINDOWS[mid][0]], WSAY[WINDOWS[mid][1]]
+    plt = _plt()
+    W, H = WIDTH["double"], 54.0
+    fig = plt.figure(figsize=(W * MM, H * MM))
+    lo = min(v.values()) - 0.15 * (max(v.values()) - min(v.values()) + 1e-9)
+    hi = max(v.values()) + 0.15 * (max(v.values()) - min(v.values()) + 1e-9)
+    for k, (day, col, x0) in enumerate((("Precon1", C_P1, 8.0), ("Precon4", C_P4, 66.0))):
+        ax = _ax(fig, x0 + 6, 12.0, 34.0, 36.0, H, W)
+        b0, b1 = v[(day, lv[0])], v[(day, lv[1])]
+        ax.bar([0, 1], [b0, b1], color=[col, col], alpha=0.35 if day == "Precon1" else 0.55, width=0.6, edgecolor=col, lw=0.6)
+        e = b1 - b0
+        ax.annotate("", xy=(1.42, b1), xytext=(1.42, b0), arrowprops=dict(arrowstyle="-|>", color=C_UP if e > 0 else C_DOWN, lw=1.0))
+        ax.set_xticks([0, 1])
+        ax.set_xticklabels([wa, wb], fontsize=5.5)
+        ax.set_xlim(-0.5, 1.9)
+        ax.set_ylim(lo, hi)
+        ax.set_ylabel("Coherence (%s)" % band, fontsize=5.5)
+        ax.tick_params(labelsize=5)
+        for sp in ("top", "right"):
+            ax.spines[sp].set_visible(False)
+        _letter(fig, x0, 3.0, "ab"[k], H, W)
+        fig.text((x0 + 6) / W, 1 - 4.0 / H, "%s %s = %s − %s" % (day, eff, wb, wa), fontsize=6, fontweight="bold", va="top")
+        fig.text((x0 + 6) / W, 1 - 7.6 / H, "= %s%s" % (("%.3f" % e).replace("-", "−"), "   (%s, mean of the rats)" % pick if k == 0 else ""),
+                 fontsize=6, va="top", color=C_UP if e > 0 else C_DOWN)
+    ax = _ax(fig, 130.0, 12.0, 34.0, 36.0, H, W)
+    ax.bar([0, 1], [e1, e4], color=[C_P1, C_P4], alpha=0.6, width=0.6)
+    ax.axhline(0, color="#7F7F7F", lw=0.5)
+    ax.annotate("", xy=(1.42, e4), xytext=(1.42, e1), arrowprops=dict(arrowstyle="-|>", color=C_UP if ch > 0 else C_DOWN, lw=1.0))
+    ax.set_xticks([0, 1])
+    ax.set_xticklabels(["Precon1", "Precon4"], fontsize=5.5)
+    ax.set_xlim(-0.5, 1.9)
+    ax.set_ylabel(eff.capitalize(), fontsize=5.5)
+    ax.tick_params(labelsize=5)
+    for sp in ("top", "right"):
+        ax.spines[sp].set_visible(False)
+    _letter(fig, 124.0, 3.0, "c", H, W)
+    fig.text(130.0 / W, 1 - 4.0 / H, "Change in %s = Precon4’s − Precon1’s" % eff, fontsize=6, fontweight="bold", va="top")
+    fig.text(130.0 / W, 1 - 7.6 / H, "= %s" % ("%.3f" % ch).replace("-", "−"), fontsize=6, va="top", color=C_UP if ch > 0 else C_DOWN)
+    files = _save(fig, "fig_S1")
+    plt.close(fig)
+    no = next((m.get("no") for m in R["models"] if m["id"] == mid), "")
+    legend = {"title": "How each row of the ring figures is made.",
+              "body": ("Shown for one pair, %s (comparison %s, %s coherence; the pair whose change is largest), each bar the mean "
+                       "over the rats. a, the Precon1 %s: the cue window's coherence minus the baseline's, on Precon1 (a–c of a ring "
+                       "figure). b, the Precon4 %s, the same on Precon4 (d–f). c, the change in %s: Precon4's minus Precon1's "
+                       "(g–i), the number tab 8's light tests. Orange arrows: up; purple: down. A ring draws this for every pair "
+                       "at once, each line's width the size of its number." % (pick, no, band, eff, eff, eff))}
+    return {"id": "S1", "no": "S1", "kind": "schematic", "model": mid, "band": band, "pair": pick, "files": files,
+            "legend": legend, "stats": {"values": {"%s|%s" % k: val for k, val in v.items()}, "effect1": e1, "effect4": e4, "change": ch},
+            "methods": []}
 
 # --------------------------------------------------------------------------
 # Legends, Nature's way
@@ -1206,17 +1476,28 @@ def connectome_legend(R, C, null="rats"):
     sig_say = "; ".join("%s, %s: %s" % (g["row_say"], g["kind_say"].lower(), p_say(g["p"])) for g in sig) or "none"
     return {
         "title": "%s, %s: the connectome of the change from %s to %s." % (title, joe.BAND_SAY[C["band"]].replace("Gamma", "gamma").replace("Theta", "theta"), la, lb),
-        "body": ("a–c, Precon1; d–f, Precon4; g–i, Precon4 − Precon1. Each ring holds the %d regions (open, a region no pair "
+        "body": ("a–c, the Precon1 %s (%s − %s, on Precon1); d–f, the Precon4 %s; g–i, the change in %s (Precon4’s minus "
+                 "Precon1’s). Each ring holds the %d regions (open, a region no pair "
                  "reaches with at least %d rats); each edge is one of the %d pairs tested, curving toward the centre, its width the "
                  "mean change in coherence from %s to %s over the rats (Dickson 2022: 59–61 Hz notch, hanning(1024), 512 overlap, "
                  "2,048 points, averaged over 30–90 Hz without 59–61 Hz), orange for an increase and purple for a decrease. Left "
                  "column, the increases; middle, the decreases; right, both. Under each ring, its statistic (the summed increases, "
                  "the summed decreases, or the sum of all) %s; *P < 0.05, **P < 0.01, ***P < 0.001; uncorrected). n = %d rats, "
                  "%s trials per session. Significant: %s.")
-        % (len(R["regions"]), R.get("min_rats", 4), len(C["pairs"]), la, lb, how, len(C["rats"]),
+        % (EFFECT.get(C["model"], "effect"), WSAY[WINDOWS[C["model"]][1]], WSAY[WINDOWS[C["model"]][0]],
+           EFFECT.get(C["model"], "effect"), EFFECT.get(C["model"], "effect"),
+           len(R["regions"]), R.get("min_rats", 4), len(C["pairs"]), la, lb, how, len(C["rats"]),
            # 2026-10-22: it said 16; sessions had 12 to 16 (a review of Joe's deck)
            ("%d" % C["trials"][0]) if C.get("trials") and C["trials"][0] == C["trials"][1]
            else ("%d–%d" % tuple(C["trials"]) if C.get("trials") else "up to 16"), sig_say)}
+
+
+def _follow_what(item):
+    """What a follow-up figure shows, in words (its family, or its PAC said exactly)."""
+    if all(k.startswith("pac_") for k in item["keys"]):
+        return "; ".join(_measure_say(k, item).replace("PAC within", "theta–gamma coupling within")
+                         .replace("PAC ", "theta–gamma coupling, ") for k in item["keys"])
+    return item["family_say"].lower()
 
 
 def follow_legend(R, item, nulls, levels, nulls_fp=None):
@@ -1227,12 +1508,16 @@ def follow_legend(R, item, nulls, levels, nulls_fp=None):
         ms = item["measures"][key]
         nl = nulls[key]
         nf = (nulls_fp or {}).get(key)
-        parts.append("%s: t(%d) = %s, %s (one-sample t-test of each rat's change, uncorrected); within-session shuffles %s, rank %s of %s%s"
-                     % (_measure_say(key, item), ms.get("df") or 0, num(ms.get("t") or float("nan")), p_say(ms.get("p")), p_say(nl["p"]),
-                        format(nl["rank"], ","), format(nl["n"], ","),
-                        ("; FP intervals %s, rank %s of %s" % (p_say(nf["p"]), format(nf["rank"], ","), format(nf["n"], ","))) if nf else ""))
+        parts.append("%s: %swithin-session shuffles %s, rank %s of %s; t(%d) = %s, %s (one-sample t-test of each rat's change, uncorrected)"
+                     % (_measure_say(key, item),
+                        ("FP intervals %s, rank %s of %s; " % (p_say(nf["p"]), format(nf["rank"], ","), format(nf["n"], ","))) if nf else "",
+                        p_say(nl["p"]), format(nl["rank"], ","), format(nl["n"], ","),
+                        ms.get("df") or 0, num(ms.get("t") or float("nan")), p_say(ms.get("p"))))
     return {
-        "title": "%s, %s, %s: %s." % (title, item["band"], item["pair"], item["family_say"].lower()),
+        # 2026-10-23: "R PER - L DHC: phase-amplitude coupling" read as if the
+        # PAC were between the two and in gamma; it is within R PER, and the
+        # pair and band are how it was found.
+        "title": "%s · followed up from the %s coherence of %s: %s." % (title, item["band"], item["pair"], _follow_what(item)),
         "body": ("a, the pair on the ring of regions%s. Then, for each measure: its value for each rat at %s and %s on Precon1 "
                  "(grey) and Precon4 (black), %s, the mean ± s.e.m. beside them; each rat's change "
                  "between the days, (Precon4 %s − %s) − (Precon1 %s − %s), with the mean ± 95%% confidence interval; and that "
@@ -1241,13 +1526,19 @@ def follow_legend(R, item, nulls, levels, nulls_fp=None):
                  # its own uncorrected P, and the measures shown were picked by theirs.
                  "The pair was followed up because its own change in coherence had P < 0.05 (uncorrected; no pair survives "
                  "correction on its own), and of the measures run on it these are the ones whose t-test had P < 0.05: they "
-                 "are leads, chosen by that test. %s.")
+                 "are leads, chosen by that test.%s %s.")
         % (" (the arrow, the direction measured)" if any(k in ("gc_ab", "gc_ba", "pac_ab", "pac_ba") for k in item["keys"]) else "",
            la, lb, "each rat's values as dots (PAC is never drawn as lines)" if all(k.startswith("pac_") for k in item["keys"])
            else "each rat's two windows joined", lb, la, lb, la, format(N_PERM, ","),
            (" (grey) and against %s sets of fake trials from the same rats' FP1 and FP2, where there were no cues, each "
             "session as many as it had real trials, in random order, losing the windows its real trials lost (blue)"
-            % format(N_PERM, ",")) if nulls_fp else "", "; ".join(parts))}
+            % format(N_PERM, ",")) if nulls_fp else "",
+           (" PAC is Tort's modulation index (18 theta-phase bins) of gamma (30–90 Hz) amplitude over theta (5–12 Hz) phase, "
+            "computed over each trial's whole window (the whole baseline, or the whole cue window), then averaged over the "
+            "session's trials: a dot is one rat. The roses are the same windows' gamma amplitude in each theta-phase bin, "
+            "normalised, averaged over the trials and then the rats; the comodulogram is the change in cue effect in narrow "
+            "theta (2 Hz) and gamma (10 Hz) bands.") if any(k.startswith("pac_") for k in item["keys"]) else "",
+           "; ".join(parts))}
 
 
 # --------------------------------------------------------------------------
@@ -1277,8 +1568,9 @@ def build(progress=None, check=None, read_recordings=True, R=None, days=None, in
     regions = R["regions"]
     models = {m["id"]: m for m in R["models"]}
     shown = R.get("shown") or "dickson"
-    lit = [r for r in R["results"] if r["model"] in WINDOWS and r["method"] == shown and r.get("gate", {}).get("passed")]
-    lit.sort(key=lambda r: (models[r["model"]].get("no") or 0, r["band"]))
+    res_of = {(r["model"], r["band"]): r for r in R["results"] if r["method"] == shown}
+    groups = [(mid, band) for mid in RING_MODELS for band in BAND_ORDER
+              if mid in models and res_of.get((mid, band)) and res_of[(mid, band)].get("units")]
     items = follow_items(R)
     ip = joe.joe_dir("joe_inputs.json")
     if inputs is None and os.path.isfile(ip):
@@ -1307,64 +1599,87 @@ def build(progress=None, check=None, read_recordings=True, R=None, days=None, in
             if k[1] in joe.TESTED and [joe.say(x) for x in pm.get("regions") or []] == list(regions) and k in days:
                 pools[k] = (pa, pm)
     figures = []
-    for ri, res in enumerate(lit):
+    gkeys = ("row", "row_say", "kind", "kind_say", "side", "stat", "p", "rank", "n", "stars", "null", "null_kind")
+    # S1: how the rows of every ring are made, on one pair's real numbers.
+    s1 = schematic_figure(R, days, res_of.get(("m1", "gamma")) or res_of[groups[0]] if groups else None)
+    if s1:
+        figures.append(s1)
+    for gi, (mid, band) in enumerate(groups):
         if check:
             check()
-        no = models[res["model"]].get("no")
+        res = res_of[(mid, band)]
+        mdl = models[mid]
+        no = mdl.get("no")
+        group = {"model": mid, "band": band, "no": no, "title": mdl.get("title") or mdl.get("label"),
+                 "gated": bool((res.get("gate") or {}).get("passed")), "key": "%s|%s" % (mid, band)}
         if progress:
-            progress(ri, len(lit), "the connectome of %d, %s" % (no, res["band"]))
+            progress(gi, len(groups), "the connectome of %d, %s" % (no, band))
         C = connectome(R, days, res, pools=pools)
-        fid = "%d" % (ri + 1)
-        files = connectome_figure(C, regions, fid, "rats")
-        gkeys = ("row", "row_say", "kind", "kind_say", "side", "stat", "p", "rank", "n", "stars", "null", "null_kind")
-        # The main figure is the rats' null (what lit tab 8's light); the
-        # trials' and FP's are `alts`, a toggle away on tab 9.
-        alts = []
-        for nk, gkey, meth in (("trials", "graphs_trials", "permutation"), ("fp", "graphs_fp", "fpnull")):
+        fid = "%d" % (gi + 1)
+        # Every ring has three tests, FP first (2026-10-23: "FP, P, T"):
+        # FP's view is the figure itself when FP was measured; the trials'
+        # shuffle and the rats' sign flips are a toggle away.
+        views = []
+        for nk, gkey, meth in (("fp", "graphs_fp", "fpnull"), ("trials", "graphs_trials", "permutation"), ("rats", "graphs", "ratflip")):
             if not C.get(gkey):
                 continue
             ns = next(x for x in NULLS if x[0] == nk)
-            alts.append({"null": nk, "null_say": ns[1], "null_why": ns[2], "files": connectome_figure(C, regions, fid, nk),
-                         "legend": connectome_legend(R, C, nk),
-                         "stats": {"graphs": [{k: g[k] for k in gkeys} for g in C[gkey]], "n_perm": C["n_perm"]},
-                         "methods": ["connectome", meth, "coherence"]})
-        figures.append({"id": fid, "no": fid, "kind": "connectome", "model": res["model"], "band": res["band"],
-                        "comparison": no, "files": files, "legend": connectome_legend(R, C, "rats"),
-                        "null": "rats", "null_say": NULLS[0][1], "null_why": NULLS[0][2],
-                        "stats": {"graphs": [{k: g[k] for k in gkeys} for g in C["graphs"]], "pairs": C["pairs"],
-                                  "edges": C["edges"], "rats": C["rats"], "n_perm": C["n_perm"],
-                                  "n_signs": C["n_signs"], "rat_exact": C["rat_exact"]},
-                        "alts": alts, "methods": ["connectome", "ratflip", "coherence"]})
-        mine = [it for it in items if it["model"] == res["model"] and it["band"] == res["band"]]
-        for si, it in enumerate(mine):
+            views.append({"null": nk, "null_say": ns[1], "null_why": ns[2], "files": connectome_figure(C, regions, fid, nk),
+                          "legend": connectome_legend(R, C, nk),
+                          "stats": {"graphs": [{k: g[k] for k in gkeys} for g in C[gkey]], "n_perm": C["n_perm"]},
+                          "methods": ["connectome", meth, "coherence"], "raw": C[gkey]})
+        main, alts = views[0], views[1:]
+        prism = prism_files("fig_%s_prism" % fid, ring_tables(C, views, mdl), "Figure %s" % fid)
+        figures.append({"id": fid, "no": fid, "kind": "connectome", "model": mid, "band": band, "group": group,
+                        "comparison": no, "files": dict(main["files"], **prism), "legend": main["legend"],
+                        "null": main["null"], "null_say": main["null_say"], "null_why": main["null_why"],
+                        "stats": dict(main["stats"], pairs=C["pairs"], edges=C["edges"], rats=C["rats"], n_perm=C["n_perm"],
+                                      n_signs=C["n_signs"], rat_exact=C["rat_exact"], rows=[list(r) for r in C["rows"]]),
+                        "alts": [{k: v for k, v in a.items() if k != "raw"} for a in alts], "methods": main["methods"],
+                        "passes": _ring_passes(views)})
+        # The follow-ups of this group, sorted by how many tests they pass
+        # (3, 2, 1), FP counting most, then the shuffle, then the t-test.
+        mine = []
+        for it in [it for it in items if it["model"] == mid and it["band"] == band]:
             if check:
                 check()
             if progress:
-                progress(si, len(mine), "%s · %s" % (it["pair"], it["family_say"]))
-            levels = [lv["label"] for lv in models[it["model"]]["levels"]]
+                progress(gi, len(groups), "%s · %s" % (it["pair"], it["family_say"]))
             nulls = {k: follow_null(R, days, it, k) for k in it["keys"]}
             nulls_fp = {k: v for k, v in ((k, fp_follow_null(R, days, pools, it, k)) for k in it["keys"]) if v} if pools else {}
+            mine.append((min(_follow_rank(it["measures"][k], nulls[k], nulls_fp.get(k)) for k in it["keys"]), it, nulls, nulls_fp))
+        mine.sort(key=lambda x: x[0])
+        for si, (rank_key, it, nulls, nulls_fp) in enumerate(mine):
+            levels = [lv["label"] for lv in mdl["levels"]]
             prof = {}
             for k in it["keys"]:
                 pk = "%s|%s|%s|%s" % (it["model"], it["band"], it["pair"], k)
                 if pk in profiles:
                     prof[k] = profiles[pk]
             sid = "%s.%d" % (fid, si + 1)
+            raw = {k: (nulls[k].pop("raw", None), (nulls_fp.get(k) or {}).pop("raw", None)) for k in it["keys"]}
             files = follow_figure(it, nulls, regions, levels, sid.replace(".", "_"), profile=prof, nulls_fp=nulls_fp)
+            files.update(prism_files("fig_%s_prism" % sid.replace(".", "_"), follow_tables(it, nulls, nulls_fp, raw, levels),
+                                     "Figure %s" % sid))
             pac_missing = [k for k in it["keys"] if k.startswith("pac_") and k not in prof]
             figures.append({"id": sid, "no": sid, "kind": "follow", "family": it["family"], "model": it["model"],
-                            "band": it["band"], "comparison": no, "pair": it["pair"], "a": it["a"], "b": it["b"],
+                            "band": it["band"], "group": group, "comparison": no, "pair": it["pair"], "a": it["a"], "b": it["b"],
                             "keys": it["keys"], "files": files, "legend": follow_legend(R, it, nulls, levels, nulls_fp),
                             "pac_profiles": sorted(prof), "pac_missing": pac_missing,
+                            "passes": {"fp": rank_key[1] == 0, "shuffle": rank_key[2] == 0, "t": rank_key[3] == 0,
+                                       "n": -rank_key[0]},
                             "stats": {"measures": {k: {x: it["measures"][k].get(x) for x in ("delta", "t", "df", "p", "n")}
                                                    for k in it["keys"]},
                                       "nulls": nulls, "nulls_fp": nulls_fp},
-                            "methods": ["follow", "permutation"] + (["fpnull"] if nulls_fp else []) + sorted({{"pli": "pli", "icoh": "icoh", "gc_ab": "granger",
+                            "methods": ["follow"] + (["fpnull"] if nulls_fp else []) + ["permutation"] + sorted({{"pli": "pli", "icoh": "icoh", "gc_ab": "granger",
                                                                            "gc_ba": "granger", "xlag": "xcorr", "xpeak": "xcorr"}
                                                                           .get(k, "pac") for k in it["keys"]})})
-    out = {"schema": 1, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "from": R.get("at"), "n_perm": N_PERM, "seed": SEED,
+    out = {"schema": 2, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "from": R.get("at"), "n_perm": N_PERM, "seed": SEED,
            "regions": regions, "figures": figures, "notes": notes,
            "recordings_read": bool(profiles), "recordings_where": where, "vacc_run": vacc_run,
+           "groups": [{"model": m, "band": b, "no": models[m].get("no"), "title": models[m].get("title") or models[m].get("label"),
+                       "gated": bool((res_of[(m, b)].get("gate") or {}).get("passed")), "key": "%s|%s" % (m, b)} for m, b in groups],
+           "tests_order": ["fp", "shuffle", "t"],
            "fp": {"read": bool(pools), "rat_days": len(pools), "fake_trials": int(sum(len(m["onsets"]) for _a, m in pools.values())),
                   "step_s": joe.FP_POOL_STEP, "of": len([k for k in days if k[1] in joe.TESTED])},
            "pac_check": pac_agrees(R, days, profiles) if profiles else None,

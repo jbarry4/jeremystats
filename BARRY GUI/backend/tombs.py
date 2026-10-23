@@ -29,7 +29,11 @@ from . import shards
 # roster has to survive the next sync. Another machine still holding the name
 # pushes its copy, the pull writes it back, and a merge or a removal undoes
 # itself within seconds -- measured, twice.
-KINDS = ("session", "result", "bank", "curation", "layers", "deck", "person")
+# "path" (2026-10-23, pathtidy.py) is one path off one recording, keyed
+# "<gid>|<path>": a pull re-adds every path the cloud has, so a pruned path
+# came back from the first machine that had not heard.
+KINDS = ("session", "result", "bank", "curation", "layers", "deck", "person",
+         "path")
 
 
 def _now():

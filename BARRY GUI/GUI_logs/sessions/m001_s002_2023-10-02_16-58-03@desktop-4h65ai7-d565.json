@@ -32,18 +32,18 @@
     "session": "2026-09-04T15:57:01.566631+00:00",
     "spike_labels": "2026-09-04T15:57:01.566631+00:00",
     "start": "2026-09-04T15:57:01.566631+00:00",
-    "updated": "2026-10-22T16:49:32.561579+00:00",
+    "updated": "2026-10-23T19:20:13.363146+00:00",
     "view_state": "2026-10-21T15:12:37.706379+00:00"
   },
   "_keys": {
     "paths": {
       "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00": [
-        "set",
-        "2026-10-12T13:31:42.639301+00:00"
+        "gone",
+        "2026-10-23T19:20:13.363146+00:00"
       ],
       "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00": [
-        "set",
-        "2026-10-12T13:31:42.639301+00:00"
+        "gone",
+        "2026-10-23T19:20:13.363146+00:00"
       ],
       "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03": [
         "set",
@@ -62,8 +62,8 @@
         "2026-09-04T15:57:01.566631+00:00"
       ],
       "G:\\PTEN\\M1_s2\\timestamps.mat": [
-        "set",
-        "2026-09-04T15:57:01.566631+00:00"
+        "gone",
+        "2026-10-23T19:20:13.363146+00:00"
       ],
       "Y:\\ProcessedPtenData\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03": [
         "set",
@@ -72,6 +72,10 @@
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M1_s2_baseline": [
         "set",
         "2026-09-10T03:41:43.437478+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03": [
+        "set",
+        "2026-10-23T19:20:13.363146+00:00"
       ]
     },
     "seen": {
@@ -106,7 +110,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-22T16:49:32.561579+00:00",
+    "at": "2026-10-23T19:20:13.363146+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -158,12 +162,10 @@
     "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
     "E:\\Data\\M1ptens2oct2\\2023-10-02_16-58-03",
     "G:\\PTEN\\M1_s2",
-    "G:\\PTEN\\M1_s2\\timestamps.mat",
     "Y:\\ProcessedPtenData\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\M1_s2_baseline",
     "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
-    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00",
-    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00"
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -232,9 +234,9 @@
   },
   "start": "2023-10-02T16:58:03",
   "updated": {
-    "app_version": "2026.10.22.4",
-    "at": "2026-10-22T12:49:32-04:00",
-    "commit": "724bccbc",
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:13-04:00",
+    "commit": "be1e2ae4",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

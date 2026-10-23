@@ -28,10 +28,16 @@
     "schema": "2026-09-04T15:57:01.584888+00:00",
     "session": "2026-09-04T15:57:01.584888+00:00",
     "start": "2026-09-04T15:57:01.584888+00:00",
-    "updated": "2026-10-20T20:01:40.813454+00:00",
-    "view_state": "2026-10-20T20:01:40.813454+00:00"
+    "updated": "2026-10-23T19:20:17.200739+00:00",
+    "view_state": "2026-10-22T15:36:58.324517+00:00"
   },
   "_keys": {
+    "bookmarks": {
+      "84fc3cde": [
+        "set",
+        "2026-10-22T15:00:55.490339+00:00"
+      ]
+    },
     "paths": {
       "D:\\Data\\Archive\\PTEN Project\\PTEN\\M3_s2\\2023-09-20_12-55-14": [
         "set",
@@ -52,6 +58,10 @@
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M3_s2_baseline": [
         "set",
         "2026-09-10T03:43:17.613002+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14": [
+        "set",
+        "2026-10-23T19:20:17.200739+00:00"
       ]
     },
     "seen": {
@@ -73,7 +83,7 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-10-07T19:48:54.110060+00:00"
+        "2026-10-22T14:41:04.085201+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
@@ -86,7 +96,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-20T20:01:40.813454+00:00",
+    "at": "2026-10-23T19:20:17.200739+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -95,6 +105,25 @@
     59
   ],
   "bad_channels_note": "Bad channels from the Toothy workbook.",
+  "bookmarks": [
+    {
+      "color": "#ec4899",
+      "id": "84fc3cde",
+      "name": "Cell firing before p-spike figure example",
+      "saved": {
+        "app_version": "2026.10.21.5",
+        "at": "2026-10-22T11:00:55-04:00",
+        "commit": "724bccbc",
+        "email": "rain.younger@uvm.edu",
+        "host": "BarryLab",
+        "machine": "Strawbarry",
+        "os": "Windows",
+        "user": "Rain Younger"
+      },
+      "span": 1,
+      "t": 143.11278147570286
+    }
+  ],
   "condition": "base",
   "converted": true,
   "created": {
@@ -123,7 +152,8 @@
     "G:\\PTEN\\M3_s2",
     "Y:\\ProcessedPtenData\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M3_s2_baseline",
-    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M3_s2\\2023-09-20_12-55-14"
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M3_s2\\2023-09-20_12-55-14",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -161,7 +191,7 @@
       "scan": null
     },
     "barrylab-d8e8": {
-      "at": "2026-10-07T15:48:53-04:00",
+      "at": "2026-10-22T10:41:02-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14",
@@ -188,9 +218,9 @@
   "session": 2,
   "start": "2023-09-20T12:55:14",
   "updated": {
-    "app_version": "2026.10.20.5",
-    "at": "2026-10-20T16:01:40-04:00",
-    "commit": "f729a289",
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:17-04:00",
+    "commit": "be1e2ae4",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -236,17 +266,17 @@
     "fdefault": null,
     "flock": true,
     "gain": 2.5,
-    "hp": 5,
+    "hp": 1,
     "invert": true,
-    "lp": 100,
-    "marks_view": "show",
+    "lp": 70,
+    "marks_view": "dim",
     "normalize": "shared",
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 0.5,
+    "span": 1,
     "stft_mode": null,
-    "t0": 813.876506,
+    "t0": 1976.060206,
     "ylim": null
   }
 }

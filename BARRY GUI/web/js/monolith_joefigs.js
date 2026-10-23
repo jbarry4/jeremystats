@@ -21,7 +21,10 @@ window.MONO_JOEFIGS = (function () {
   const NS = 'http://www.w3.org/2000/svg';
   // nullPick: which null each connectome shows, by figure id ('rats', the
   // main one, or 'trials'); a toggle on its card (2026-10-22).
-  const P = { data: null, err: null, loading: false, seq: 0, making: false, makeNote: '', makeErr: null, open: new Set(),
+  // hide: the groups (comparison|band) the filter grid has switched off.
+  const HIDE_KEY = 'barry.joefigs.hide';
+  const hideLoad = () => { try { return new Set(JSON.parse(localStorage.getItem(HIDE_KEY) || '[]')); } catch (e) { return new Set(); } };
+  const P = { data: null, err: null, loading: false, seq: 0, making: false, makeNote: '', makeErr: null, open: new Set(), hide: hideLoad(),
               nullPick: {} };
   const $ = (id) => document.getElementById(id);
   const el = (...a) => M().el(...a);
@@ -746,7 +749,7 @@ window.MONO_JOEFIGS = (function () {
      within each session). Everything else about the figure is shared. */
   function viewOf(f0) {
     const pick = P.nullPick[f0.id];
-    const a = f0.kind === 'connectome' && pick && pick !== 'rats' ? (f0.alts || []).find((x) => x.null === pick) : null;
+    const a = f0.kind === 'connectome' && pick && pick !== f0.null ? (f0.alts || []).find((x) => x.null === pick) : null;
     if (!a) return f0;
     return Object.assign({}, f0, { files: a.files, legend: a.legend, methods: a.methods || f0.methods,
                                    null: a.null, null_say: a.null_say, null_why: a.null_why,
@@ -755,46 +758,55 @@ window.MONO_JOEFIGS = (function () {
 
   function figCard(f0, into) {
     const f = viewOf(f0);
-    const label = f.kind === 'connectome' ? 'Figure ' + f.no : 'Figure ' + f.no;
-    const card = into || el('div', { class: 'card fgcard', id: 'fig-' + f.id.replace('.', '_'), 'data-fig': f.id, 'data-kind': f.kind });
+    const label = f.kind === 'schematic' ? 'Supplementary Figure ' + f.no : 'Figure ' + f.no;
+    const card = into || el('div', { class: 'card fgcard', id: 'fig-' + f.id.replace('.', '_'), 'data-fig': f.id, 'data-kind': f.kind,
+                                      'data-group': f0.group ? f0.group.key : '' });
+    if (!into && f0.group && P.hide.has(f0.group.key)) card.hidden = true;
     card.innerHTML = '';
     card.appendChild(el('div', { class: 'hrow' }, [el('h3', {}, [el('span', { class: 'fgno', text: label + ' | ' }), f.legend.title])]));
     /* Which null the rings are tested against (2026-10-22: "a flip-flop
        option between these two, and make what got the light green the
        main one"). */
     if (f0.kind === 'connectome' && (f0.alts || []).length) {
-      const pick = f0.alts.some((x) => x.null === P.nullPick[f0.id]) ? P.nullPick[f0.id] : 'rats';
+      const pick = f0.alts.some((x) => x.null === P.nullPick[f0.id]) ? P.nullPick[f0.id] : f0.null;
+      const sayOf = (id, say) => (id === 'rats' ? say + ' (the light\u2019s test)' : say);
       const opt = (id, text, why) => el('button', { type: 'button', class: pick === id ? 'active' : null, 'data-null': id,
         'aria-pressed': String(pick === id), title: why, text,
         onclick: () => { if (pick !== id) { P.nullPick[f0.id] = id; figCard(f0, card); } } });
       card.appendChild(el('div', { class: 'hrow fgnull' }, [
         el('span', { class: 'small muted', text: 'Tested against' }),
         el('div', { class: 'seg', role: 'group', 'aria-label': 'Which null the rings are tested against' }, [
-          opt('rats', (f0.null_say || 'Rats flipped') + ' (the light\u2019s test)', f0.null_why || ''),
-        ].concat(f0.alts.map((a) => opt(a.null, a.null_say, a.null_why || '')))),
+          opt(f0.null, sayOf(f0.null, f0.null_say || f0.null), f0.null_why || ''),
+        ].concat(f0.alts.map((a) => opt(a.null, sayOf(a.null, a.null_say), a.null_why || '')))),
       ]));
     }
     card.appendChild(el('div', { class: 'fgimg' }, [el('img', { src: FILE(f.files.svg), alt: f.legend.title, loading: 'lazy', class: 'fgsvg' })]));
     // The numbers that matter, said once more under the picture.
     const chips = el('div', { class: 'fgstats' });
-    if (f.kind === 'connectome') {
+    if (f.kind === 'schematic') {
+      const st = f.stats || {};
+      for (const [k, say] of [['effect1', 'Precon1 cue effect'], ['effect4', 'Precon4 cue effect'], ['change', 'change in cue effect']]) {
+        if (st[k] != null) chips.appendChild(el('span', { class: 'fgchip', 'data-key': k, text: say + ': ' + (st[k] >= 0 ? '+' : '\u2212') + Math.abs(st[k]).toFixed(3) }));
+      }
+    } else if (f.kind === 'connectome') {
       for (const g of f.stats.graphs) {
         chips.appendChild(el('span', { class: 'fgchip' + (g.p < 0.05 ? ' sig' : ''), 'data-row': g.row, 'data-kind': g.kind,
           text: g.row_say + ' · ' + g.kind_say.toLowerCase() + ': ' + pSay(g.p) + (stars(g.p) ? ' ' + stars(g.p) : '') + ' (rank ' + fmtN(g.rank)
             + (g.n ? ' of ' + fmtN(g.n) : '') + ')' }));
       }
     } else {
+      // FP, P, T (2026-10-23): FP intervals, then the shuffle, then the t-test.
       for (const k of f.keys) {
         const ms = f.stats.measures[k] || {}, nl = f.stats.nulls[k] || {};
-        chips.appendChild(el('span', { class: 'fgchip' + (ms.p < 0.05 ? ' sig' : ''), 'data-key': k,
-          text: measureSay(k, f) + ': t(' + ms.df + ') = ' + (ms.t != null ? ms.t.toFixed(2) : '—') + ', ' + pSay(ms.p) + (stars(ms.p) ? ' ' + stars(ms.p) : '') }));
-        chips.appendChild(el('span', { class: 'fgchip' + (nl.p < 0.05 ? ' sig' : ''), 'data-key': k + '-perm',
-          text: 'shuffles: ' + pSay(nl.p) + (stars(nl.p) ? ' ' + stars(nl.p) : '') + ' (rank ' + fmtN(nl.rank) + ' of ' + fmtN(nl.n) + ')' }));
         const nf = (f.stats.nulls_fp || {})[k];
         if (nf) {
           chips.appendChild(el('span', { class: 'fgchip fgfp' + (nf.p < 0.05 ? ' sig' : ''), 'data-key': k + '-fp',
-            text: 'FP intervals: ' + pSay(nf.p) + (stars(nf.p) ? ' ' + stars(nf.p) : '') + ' (rank ' + fmtN(nf.rank) + ' of ' + fmtN(nf.n) + ')' }));
+            text: measureSay(k, f) + ' \u00b7 FP intervals: ' + pSay(nf.p) + (stars(nf.p) ? ' ' + stars(nf.p) : '') + ' (rank ' + fmtN(nf.rank) + ' of ' + fmtN(nf.n) + ')' }));
         }
+        chips.appendChild(el('span', { class: 'fgchip' + (nl.p < 0.05 ? ' sig' : ''), 'data-key': k + '-perm',
+          text: (nf ? '' : measureSay(k, f) + ' \u00b7 ') + 'shuffles: ' + pSay(nl.p) + (stars(nl.p) ? ' ' + stars(nl.p) : '') + ' (rank ' + fmtN(nl.rank) + ' of ' + fmtN(nl.n) + ')' }));
+        chips.appendChild(el('span', { class: 'fgchip' + (ms.p < 0.05 ? ' sig' : ''), 'data-key': k,
+          text: 't-test: t(' + ms.df + ') = ' + (ms.t != null ? ms.t.toFixed(2) : '—') + ', ' + pSay(ms.p) + (stars(ms.p) ? ' ' + stars(ms.p) : '') }));
       }
     }
     card.appendChild(chips);
@@ -807,8 +819,13 @@ window.MONO_JOEFIGS = (function () {
       el('a', { class: 'more-btn', href: FILE(f.files.pdf, true), download: f.files.pdf, text: 'PDF' }),
       el('a', { class: 'more-btn', href: FILE(f.files.svg, true), download: f.files.svg, text: 'SVG' }),
       el('a', { class: 'more-btn', href: FILE(f.files.png, true), download: f.files.png, text: 'PNG, 600 dpi' }),
+      f0.files.xlsx ? el('a', { class: 'more-btn fgprism', href: FILE(f0.files.xlsx, true), download: f0.files.xlsx,
+                                title: 'The numbers behind the panels, a sheet a table, laid out for GraphPad Prism', text: 'Prism data (.xlsx)' }) : null,
+      f0.files.pzfx ? el('a', { class: 'more-btn fgprism', href: FILE(f0.files.pzfx, true), download: f0.files.pzfx,
+                                title: 'The same tables as a Prism file: opens in Prism with the data tables filled', text: 'Prism file (.pzfx)' }) : null,
     ]);
-    const mbtn = el('button', { type: 'button', class: 'more-btn fgmbtn', 'aria-expanded': String(P.open.has(f.id)), text: 'Methods?' });
+    const mbtn = el('button', { type: 'button', class: 'more-btn fgmbtn', 'aria-expanded': String(P.open.has(f.id)), text: 'Methods?',
+                                hidden: (f.methods || []).length ? null : 'hidden' });
     tools.appendChild(mbtn);
     card.appendChild(tools);
     const mhost = el('div', { class: 'fgmhost' });
@@ -857,12 +874,16 @@ window.MONO_JOEFIGS = (function () {
     const conn = D.figures.filter((f) => f.kind === 'connectome');
     const fol = D.figures.filter((f) => f.kind === 'follow');
     const sig = conn.reduce((n, f) => n + f.stats.graphs.filter((g) => g.p < 0.05).length, 0);
-    const toc = el('ol', { class: 'fgtoc', id: 'figstoc' }, D.figures.map((f) => el('li', { class: f.kind === 'connectome' ? 'fgtop' : 'fgsub' }, [
-      el('a', { href: '#fig-' + f.id.replace('.', '_'), text: 'Figure ' + f.no + ': ' + (f.kind === 'connectome' ? f.legend.title : f.pair + ', ' + (f.legend.title.split(': ').pop()).replace(/\.$/, '')),
+    const toc = el('ol', { class: 'fgtoc', id: 'figstoc' }, D.figures.map((f) => el('li', { class: f.kind === 'follow' ? 'fgsub' : 'fgtop',
+      'data-group': f.group ? f.group.key : '', hidden: f.group && P.hide.has(f.group.key) ? 'hidden' : null }, [
+      el('a', { href: '#fig-' + f.id.replace('.', '_'), text: (f.kind === 'schematic' ? 'Supplementary Figure ' : 'Figure ') + f.no + ': '
+        + (f.kind === 'follow' ? f.pair + ', ' + (f.legend.title.split(': ').pop()).replace(/\.$/, '') : f.legend.title),
                 onclick: (e) => { e.preventDefault(); const c = $('fig-' + f.id.replace('.', '_')); if (c) c.scrollIntoView({ block: 'start', behavior: 'smooth' }); } })])));
     return section('figsintro', '9 · Joe’s figures', 'figs', [
-      el('p', { class: 'takeaway', id: 'figssay', text: conn.length + ' result' + (conn.length === 1 ? '' : 's') + ' that changed, each as a connectome (' + sig + ' of ' + (conn.length * 9)
-        + ' graphs beyond their shuffles), then ' + fol.length + ' follow-up figure' + (fol.length === 1 ? '' : 's') + ', broad to narrow. Each is ready for Nature: Arial, 5–8 pt, 183 mm wide, vector.' }),
+      el('p', { class: 'takeaway', id: 'figssay', text: conn.length + ' connectome' + (conn.length === 1 ? '' : 's') + ' (comparisons '
+        + Array.from(new Set(conn.map((f) => f.comparison))).join(', ') + ', in ' + Array.from(new Set(conn.map((f) => f.band))).join(' and ')
+        + '; ' + sig + ' of ' + (conn.length * 9) + ' graphs beyond their ' + (conn[0] && conn[0].null === 'fp' ? 'FP sets' : 'shuffles') + '), then '
+        + fol.length + ' follow-up figure' + (fol.length === 1 ? '' : 's') + ', grouped by window and band, the strongest first. Each is ready for Nature: Arial, 5–8 pt, 183 mm wide, vector, with its numbers for Prism.' }),
       fpLine(D),
       D.recordings_read ? readLine(D) : el('div', { class: 'small warn', id: 'figsrec' }, [
         el('p', { text: 'The recordings could not be read when these were drawn, so the PAC figures show each rat’s modulation index but not yet the phase–amplitude roses or comodulograms. Every recording has a copy on the VACC: read them there, or connect the data drive and press Draw again.' }),
@@ -892,7 +913,22 @@ window.MONO_JOEFIGS = (function () {
       return;
     }
     pane.appendChild(intro());
-    for (const f of P.data.figures) pane.appendChild(figCard(f));
+    const body = el('div', { class: 'fgbody' });
+    const main = el('div', { class: 'fgmain' });
+    let lastGroup = null;
+    for (const f of P.data.figures) {
+      const gk = f.group ? f.group.key : null;
+      if (gk && gk !== lastGroup) {
+        const g = f.group;
+        main.appendChild(el('h3', { class: 'fggroup', 'data-group': gk, hidden: P.hide.has(gk) ? 'hidden' : null,
+          text: g.no + ' \u00b7 ' + g.title + ' \u00b7 ' + g.band + (g.gated ? '' : '  (tab 8\u2019s light did not pass: rings only)') }));
+      }
+      lastGroup = gk;
+      main.appendChild(figCard(f));
+    }
+    body.appendChild(main);
+    body.appendChild(filterGrid());
+    pane.appendChild(body);
     if ((P.data.notes || []).length) {
       pane.appendChild(el('div', { class: 'card', id: 'figsnotes' }, [X().more('notes from drawing (' + P.data.notes.length + ')', (body) => {
         body.appendChild(el('ul', { class: 'small' }, P.data.notes.slice(0, 200).map((n) => el('li', { text: n }))));
@@ -908,6 +944,47 @@ window.MONO_JOEFIGS = (function () {
                        text: P.making === 'vacc' ? 'Reading on the VACC: ' + (P.makeNote || 'starting') : 'read the PAC on the VACC and draw again', onclick: () => make(true) }) : null,
         P.makeErr && P.data.recordings_read ? el('span', { class: 'warn', id: 'figsmakeerr', text: ' ' + P.makeErr }) : null]));
     }
+  }
+  /* The filter on the right (2026-10-23): a block a window x band; a
+     click shows or hides that group's figures, nothing redrawn. */
+  function filterGrid() {
+    const D = P.data;
+    const groups = D.groups || [];
+    const nos = Array.from(new Set(groups.map((g) => g.no)));
+    const bands = Array.from(new Set(groups.map((g) => g.band)));
+    const count = (gk) => D.figures.filter((f) => f.group && f.group.key === gk).length;
+    const strong = (gk) => D.figures.some((f) => f.group && f.group.key === gk && ((f.kind === 'connectome' && f.passes && f.passes[f.null])
+      || (f.kind === 'follow' && f.passes && f.passes.n === 3)));
+    const apply = () => {
+      for (const x of $('figspane').querySelectorAll('[data-group]')) {
+        if (x.classList.contains('fgblock')) continue;
+        const gk = x.dataset.group;
+        if (gk) x.hidden = P.hide.has(gk);
+      }
+      try { localStorage.setItem(HIDE_KEY, JSON.stringify(Array.from(P.hide))); } catch (e) { /* a private window */ }
+    };
+    const block = (g) => {
+      if (!g) return el('span', { class: 'fgblock none' });
+      const b = el('button', { type: 'button', class: 'fgblock' + (P.hide.has(g.key) ? '' : ' on') + (strong(g.key) ? ' strong' : ''), 'data-group': g.key,
+        'aria-pressed': String(!P.hide.has(g.key)), title: g.no + ' \u00b7 ' + g.title + ', ' + g.band + ': ' + count(g.key) + ' figure' + (count(g.key) === 1 ? '' : 's')
+          + (strong(g.key) ? '; something passes every test' : ''),
+        text: String(count(g.key)) });
+      b.addEventListener('click', () => {
+        if (P.hide.has(g.key)) P.hide.delete(g.key); else P.hide.add(g.key);
+        b.classList.toggle('on', !P.hide.has(g.key));
+        b.setAttribute('aria-pressed', String(!P.hide.has(g.key)));
+        apply();
+      });
+      return b;
+    };
+    const grid = el('div', { class: 'fggrid', style: 'grid-template-columns: auto repeat(' + bands.length + ', 1fr)' }, [el('span', {})]
+      .concat(bands.map((b) => el('span', { class: 'fgghead', text: b })))
+      .concat(nos.flatMap((no) => [el('span', { class: 'fgrow', title: (groups.find((g) => g.no === no) || {}).title || '', text: String(no) })]
+        .concat(bands.map((b) => block(groups.find((g) => g.no === no && g.band === b)))))));
+    return el('aside', { class: 'fgfilter', id: 'figsfilter', 'aria-label': 'Which groups of figures to show' }, [
+      el('div', { class: 'fgfhead', text: 'Show' }), grid,
+      el('p', { class: 'small muted', text: 'Rows: comparison 1 (baseline \u2192 both cues), 2 (baseline \u2192 cue 1), 5 (cue 1 \u2192 cue 2). A number is its figures; a ring round it, something there passes every test.' }),
+    ]);
   }
   function show() {
     if (!P.data && !P.loading) load(); else render();
