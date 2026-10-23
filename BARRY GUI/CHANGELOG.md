@@ -15,6 +15,27 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.23.5 - Lock: a locked Braces stamp holds its peak, and the rest go around it
+
+**Restart Jarvis**: `backend/braces.py` and `backend/app.py` changed.
+
+- **A locked stamp fills the one peak it sits on**, the nearest within
+  the pool's merge window (20 ms). It is not moved. That peak is taken out
+  before anything else is placed, so a Doppler stamp that wanted it goes to
+  the largest peak still free in its ±200 ms window. With two locked and
+  one free, the free one goes to the third peak. Before this, a locked
+  stamp blocked every peak within 12 ms of it.
+- **A stamp pushed off a locked peak, with more than one peak left, is
+  flagged** "pushed off a Braces stamp's peak, several left", so somebody
+  looks at it. With only one peak left, it goes there unflagged.
+- **The review bar names the peak a locked stamp holds.**
+- **A merged event filed under Doppler's time is locked too**, if its
+  Incisor half is where Braces put it.
+- Alignments made under the old rule stay as they are. Running a set again
+  reads it fresh rather than reopening them.
+
+---
+
 ## 2026.10.23.4 - Tab 9 tests every result against FP too: fake trials at random moments of FP1 and FP2
 
 From Shahriar: "add another statistical test to everything... a FP
