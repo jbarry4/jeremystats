@@ -358,18 +358,34 @@ BARRY.views.sessions = (function () {
        nothing to gain from a flash of the old list. What is drawn from it
        is marked as last time's in the line above the list, and replaced
        row for row, with the scroll kept, when the live answer lands. */
+    /* Through BARRY.data (web/js/data.js, 2026-10-21): one copy of the
+       registry for every view that reads it, kept in this browser between
+       visits, and a 304 with nothing to send when it has not changed. */
     let liveDone = false;
-    const live = api('/api/registry').finally(() => { liveDone = true; });
+    const live = BARRY.data.get('/api/registry', { fresh: !!force })
+      .finally(() => { liveDone = true; });
     let shownStale = false;
     let cleared = false;
     const clear = () => { if (!cleared) { cleared = true; done(); } };
+    let drawnLive = null;
     if (!sessions.length && !quiet) {
-      const was = await BARRY.stash.get('registry');
+      // A few milliseconds usually; 2-3 s on a 4x-slowed CPU (2026-10-22),
+      // so wait for it -- but never longer than the live answer.
+      const was = await Promise.race([BARRY.data.stale('/api/registry', 4000),
+                                      live.then(() => null, () => null)]);
       if (was && was.value && !liveDone) {
         clear();
-        staleAt = was.at || 0;
-        applyRegistry(was.value, true);
-        shownStale = true;
+        if (was.live) {
+          /* Already read this session, by another view: it is the answer,
+             not last time's -- drawn as it is, and only drawn again if
+             asking the server now says something has changed. */
+          drawnLive = was.value;
+          applyRegistry(was.value, false);
+        } else {
+          staleAt = was.at || 0;
+          applyRegistry(was.value, true);
+          shownStale = true;
+        }
       }
     }
 
@@ -385,11 +401,11 @@ BARRY.views.sessions = (function () {
       return;
     }
     clear();
+    if (drawnLive && reg === drawnLive) return;
     const back = shownStale ? BARRY.keepScroll($('#sessTree')) : null;
     if (shownStale) sessions = sessions.filter((x) => !x._stale);
     staleAt = null;
     staleFailed = false;
-    BARRY.stash.put('registry', reg);
     applyRegistry(reg, false);
     if (back) back();
   }
@@ -3708,7 +3724,8 @@ BARRY.views.sessions = (function () {
     if (vCountsLoading) return;
     vCountsLoading = true;
     try {
-      const got = await api('/api/vacc/knows');
+      // The same kept copy BARRY.vacc reads (web/js/data.js).
+      const got = await BARRY.data.get('/api/vacc/knows', { maxAge: 60000 });
       vCounts = got.counts || {};
     } catch (e) { vCounts = {}; } finally { vCountsLoading = false; }
     paintVacc();

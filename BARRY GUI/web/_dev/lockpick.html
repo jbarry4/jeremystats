@@ -1,0 +1,259 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>lockpick: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Lock is Braces built a second time (2026-10-22), and both pick by
+   recording, then set, then version -- a rail of three tiles, no radio
+   buttons. On the real bank, writing nothing:
+
+     Braces   the rail, no radio, a set menu of its recording's sets, no
+              Braces lock (that is Lock's)
+     Lock     only pooled sets Panning has sorted (the rest counted, not
+              offered), each set card saying whether Braces placed its
+              dentate spikes; the lock switch on by itself where it did and
+              off-able; Junction's own version greyed in the version tree;
+              the plan saying how many are locked; "That one's locked" and
+              Enter closing it; Many with a lock on every row, after the
+              version and before the bad contacts, that toggles; and the
+              Alignments list holding only pooled sets' alignments.
+
+   Nothing is run: "Line them up" is never pressed. Preference writes are
+   held for the run (a mode switch writes them) and put back. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const head = (t) => { say(''); say('=== ' + t + ' ===', 'hd'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              30000);
+  const W = frame.contentWindow, D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const txt = (n) => (n ? n.textContent.trim() : '');
+  // A const of the page's, not a window property.
+  const B = ev('BARRY');
+  const realSet = B.prefs.set;
+  B.prefs.set = function () { /* held for the run */ };
+  try {
+
+  /* ---------------------------------------------------------------- */
+  head('Braces picks by recording, then set, then version');
+  ev("BARRY.braces._reset()");
+  ev("BARRY.views.toolkit.pick('braces', 'dentist')");
+  await until(() => txt($('#tkResult .step-head strong')) === 'Braces', 15000);
+  await until(() => $('.br-pick .br-tile') || $('#tkResult .br-empty'), 30000);
+  const bc = B.braces._cands() || [];
+  if (!bc.length) {
+    say('  note  no curated DS set on this machine; the rail is not drawn', 'note');
+  } else {
+    check('three tiles: recording, set, version',
+          $$('.br-pick .br-tile-label').map(txt).join(',') === 'Recording,Set,Version',
+          $$('.br-pick .br-tile-label').map(txt).join(','));
+    check('no radio button anywhere on the panel',
+          !$$('#tkResult input[type=radio]').length);
+    check('no Braces lock on Braces', !$('#tkResult .br-pin')
+          && !$('#tkResult .br-set-braces'));
+    const gid = B.braces._state().q.gid;
+    const here = bc.filter((c) => c.gid === gid);
+    $('.br-pick .br-setbtn').click();
+    await until(() => $('.br-setmenu'), 3000);
+    check('the set opens a menu of this recording’s sets, one card each',
+          $$('.br-setmenu .br-setopt').length === here.length,
+          $$('.br-setmenu .br-setopt').length + ' of ' + here.length);
+    check('and the chosen one is marked',
+          $$('.br-setmenu .br-setopt.on').length === 1,
+          $$('.br-setmenu .br-setopt.on').length + ' marked; entry '
+            + B.braces._state().q.entry + ' in '
+            + here.map((c) => c.id).join(','));
+    D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await until(() => !$('.br-setmenu'), 2000);
+    check('Escape closes it', !$('.br-setmenu'));
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('Lock is Braces on pooled sets Panning has sorted');
+  ev("BARRY.lock._reset()");
+  ev("BARRY.views.toolkit.pick('lock', 'confluence')");
+  await until(() => txt($('#tkResult .step-head strong')) === 'Lock', 15000);
+  check('its header says step 3 of The Confluence',
+        /step 3 of The Confluence/.test(txt($('#tkResult .step-head'))),
+        txt($('#tkResult .step-head')).slice(0, 80));
+  await until(() => $('.br-pick .br-tile') || $('#tkResult .br-empty'), 30000);
+  const api = await (await W.fetch('/api/braces/candidates?type=pooled')).json();
+  const all = api.sets || [];
+  const sorted = all.filter((c) => (c.versions || []).some(
+    (v) => B.ui.versionProducer(v, c.pipeline, 'pooled') === 'Panning'));
+  const lc = B.lock._cands() || [];
+  check('only the pooled sets with a Panning pass are offered',
+        lc.length === sorted.length && lc.every((c) => sorted.some((s) => s.id === c.id)),
+        lc.length + ' offered, ' + sorted.length + ' sorted, ' + all.length + ' in all');
+  check('and the ones left out are counted', B.lock._unsorted() === all.length - sorted.length,
+        String(B.lock._unsorted()));
+  check('no "From Junction" filter, no radio',
+        !$('#tkResult .eye-filter') && !$$('#tkResult input[type=radio]').length);
+  if (!lc.length) {
+    check('with nothing sorted, it says Panning is the way in',
+          /Panning/.test(txt($('#tkResult .br-empty'))));
+  } else {
+    check('the same rail as Braces',
+          $$('.br-pick .br-tile-label').map(txt).join(',') === 'Recording,Set,Version');
+    const gid = B.lock._state().q.gid;
+    const here = lc.filter((c) => c.gid === gid);
+    $('.br-pick .br-setbtn').click();
+    await until(() => $('.br-setmenu'), 3000);
+    const cards = $$('.br-setmenu .br-setopt');
+    check('every set card says whether Braces has been run',
+          cards.length === here.length && cards.every((o) => o.querySelector('.br-set-braces')),
+          cards.length + ' cards');
+    const okChips = here.every((c, i) => {
+      const chip = cards[i] && cards[i].querySelector('.br-set-braces');
+      const n = (c.braced || {}).n || 0;
+      return chip && chip.classList.contains('on') === !!n
+        && (n ? txt(chip).indexOf(String(n)) >= 0 : /no Braces/.test(txt(chip)));
+    });
+    check('lit, with the count, exactly where Braces placed some', okChips);
+    D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await until(() => !$('.br-setmenu'), 2000);
+
+    const braced = lc.find((c) => ((c.braced || {}).n || 0) > 0);
+    const plain = lc.find((c) => !((c.braced || {}).n));
+    if (braced) {
+      head('a set Braces had been run on: ' + (braced.session_label || braced.name));
+      ev('BARRY.lock._chooseSet(' + JSON.stringify(braced.id) + ')');
+      await until(() => (B.lock._state().plan || {}).ok !== undefined
+                        && $('.br-pin'), 40000);
+      const pin = $('.br-pin');
+      check('the lock switch is there and on by itself',
+            pin && pin.getAttribute('aria-checked') === 'true' && B.lock._pinOn());
+      const pl = B.lock._state().plan || {};
+      check('the plan says how many Braces placed',
+            pl.ok === false || (pl.braced && pl.braced.n > 0
+              && /locked/.test(txt($('.br-plan-braces')))),
+            pl.ok === false ? pl.error : txt($('.br-plan-braces')).slice(0, 90));
+      pin.click();
+      check('pressing it unlocks them', B.lock._pinOn() === false);
+      await sleep(400);
+      $('.br-pin').click();
+      check('and again locks them', B.lock._pinOn() === true);
+      await sleep(400);
+
+      head('the version tree');
+      const vb = $('.br-tile .vbtn');
+      vb.click();
+      await until(() => $('#bigModalBox .vtree'), 4000);
+      const rows = $$('#bigModalBox .vtree-row');
+      // By what made it (the chip on the row), not by its note, which can
+      // mention Junction on a Panning pass.
+      const j0 = rows.filter((r) => /^Junction$/.test(
+        txt(r.querySelector('.vtree-by'))));
+      say('  note  ' + rows.map((r) => (r.dataset.v || 'now') + ':'
+        + txt(r.querySelector('.vtree-by')) + (r.disabled ? '(off)' : '')).join(' '), 'note');
+      check('it pops up the whole tree', rows.length >= 2, rows.length + ' rows');
+      check('Junction’s raw pool is greyed with the reason',
+            j0.length && j0.every((r) => r.disabled && /Panning/.test(r.textContent)),
+            j0.map((r) => r.dataset.v).join(','));
+      ev('closeModal()');
+      await sleep(200);
+    } else {
+      say('  note  no sorted pool here was made from Braces-aligned spikes', 'note');
+    }
+    if (plain) {
+      ev('BARRY.lock._chooseSet(' + JSON.stringify(plain.id) + ')');
+      await until(() => $('.br-pin'), 40000);
+      check('where Braces placed none, the switch is off and closed',
+            $('.br-pin').disabled && !B.lock._pinOn());
+    }
+
+    head('a locked stamp, tried');
+    ev('BARRY.lock._lockedSay()');
+    await until(() => $('.br-locked-ask'), 2000);
+    check('it says so, kindly',
+          /locked/.test(txt($('.br-locked-ask'))) && /second-guessing/.test(txt($('.br-locked-ask')))
+            && /better protocol/.test(txt($('.br-locked-ask'))));
+    D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await until(() => !$('.br-locked-ask'), 2000);
+    check('and Enter carries on', !$('.br-locked-ask'));
+
+    head('Many');
+    const manyB = $$('.br-mode .seg button').find((b) => /many/i.test(b.textContent));
+    if (manyB) manyB.click();
+    await until(() => $$('.br-many-lock .br-bulk-row').length, 20000);
+    const rowsM = $$('.br-many-lock .br-bulk-row');
+    check('every row has a lock', rowsM.length && rowsM.every((r) => r.querySelector('.br-bulk-lock')),
+          rowsM.length + ' rows');
+    const order = rowsM.every((r) => {
+      const kids = Array.from(r.children);
+      const v = kids.findIndex((k) => k.classList.contains('vbtn')
+                                      || k.classList.contains('br-hint'));
+      const l = kids.findIndex((k) => k.classList.contains('br-bulk-lock'));
+      const b = kids.findIndex((k) => k.classList.contains('br-bulk-bad'));
+      return v >= 0 && l === v + 1 && b === l + 1;
+    });
+    check('right after the version, before the bad contacts', order);
+    const rb = rowsM.find((r) => {
+      const c = lc.find((x) => x.id === r.dataset.id);
+      return c && ((c.braced || {}).n || 0) > 0;
+    });
+    if (rb) {
+      const c = lc.find((x) => x.id === rb.dataset.id);
+      const lockB = () => $('.br-bulk-row[data-id="' + c.id + '"] .br-bulk-lock');
+      check('locked by itself where Braces placed some',
+            lockB().getAttribute('aria-checked') === 'true' && B.lock._manyPin(c));
+      lockB().click();
+      await sleep(150);
+      check('a press opens it', B.lock._manyPin(c) === false
+            && lockB().getAttribute('aria-checked') === 'false');
+      lockB().click();
+      await sleep(150);
+      check('and another locks it', B.lock._manyPin(c) === true);
+    }
+    await until(() => B.lock._allSets() !== null, 15000);
+    const al = B.lock._allSets() || [];
+    check('the Alignments list holds pooled sets’ alignments only',
+          al.every((x) => x.kind === 'pooled'), al.length + ' alignments');
+    const oneB = $$('.br-mode .seg button').find((b) => /one/i.test(b.textContent));
+    if (oneB) oneB.click();
+  }
+
+  } catch (e) {
+    say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+    fails++;
+  } finally {
+    B.prefs.set = realSet;
+    try { ev("BARRY.views.toolkit.pick('bad')"); } catch (e) {}
+  }
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'lockpick: ' + fails + ' FAILED' : 'lockpick: passed';
+  frame.src = 'about:blank';
+})().catch((e) => {
+  say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+  document.title = 'lockpick CRASH';
+});
+</script></body></html>

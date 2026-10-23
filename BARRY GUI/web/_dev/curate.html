@@ -115,6 +115,10 @@ const post = (u, b) => fetch(u, { method: 'POST',
   try {
   // Clean slate: ours only.
   await dropOurs();
+  /* Checkup banks on leaving now, always (2026-10-21); this run banks by
+     hand below and checks exactly that, so the throwaway set is not
+     auto-banked. */
+  ev('BARRY.testNoAutobank = true');
 
   say('');
   say('=== candidates arrive unspecified ===', 'hd');

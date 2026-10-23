@@ -90,15 +90,17 @@ async function until(fn, ms = 40000) {
   const framed = W.getComputedStyle(D.getElementById('xfBody')).boxShadow;
   check('the workspace is framed in the mode colour',
         framed && framed !== 'none', framed);
-  /* One bar, at the BOTTOM of the workspace (2026-10-20): no banner on top,
-     and Leave the last thing on it, far right. */
+  /* The banner across the TOP names the mode and ends with Leave, the last
+     thing on it, far right (back 2026-10-21); the mode's tools are a bar at
+     the bottom. No "?" any more. */
   {
     const body = D.getElementById('xfBody').getBoundingClientRect();
     const bar = banner.getBoundingClientRect();
-    check('the bar is docked at the bottom of the workspace, not the top',
-          bar.bottom <= body.bottom + 1 && bar.top > body.top + body.height / 2,
-          'bar ' + Math.round(bar.top) + '-' + Math.round(bar.bottom)
-          + ' in ' + Math.round(body.top) + '-' + Math.round(body.bottom));
+    check('the banner sits across the top of the workspace',
+          bar.bottom <= body.top + 1,
+          'banner ' + Math.round(bar.top) + '-' + Math.round(bar.bottom)
+          + ', workspace from ' + Math.round(body.top));
+    check('there is no ? on it', !D.getElementById('modeHelp'));
     const btns = Array.from(banner.querySelectorAll('button'))
       .filter((b) => b.getBoundingClientRect().width > 0);
     check('Leave is the last button on it, far right',

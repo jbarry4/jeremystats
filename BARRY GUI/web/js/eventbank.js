@@ -53,12 +53,34 @@ BARRY.views.eventbank = (function () {
     const alsoSheets = api('/api/layers')
       .then((r) => { sheets = (r && r.sheets) || []; })
       .catch(() => { sheets = []; });
-    try {
-      const res = await api('/api/bank');
+    const take = (res) => {
       tree = res.tree || [];
       entries = res.entries || [];
       types = res.types || [];
       meta = res;
+    };
+    /* Through BARRY.data (web/js/data.js, 2026-10-21): one copy of the bank
+       list for the Event Bank, ToolKit and Xplorefinder, and last time's
+       drawn at once -- dimmed until this time's lands -- instead of a
+       skeleton for the whole read. */
+    let liveDone = false;
+    const asking = BARRY.data.get('/api/bank', { fresh: !!mine })
+      .finally(() => { liveDone = true; });
+    let dim = null;
+    if (!entries.length) {
+      // Wait for the browser's store as long as it takes -- it took 2.8 s on
+      // a 4x-slowed CPU -- but never longer than this time's answer.
+      const was = await Promise.race([BARRY.data.stale('/api/bank', 4000),
+                                      asking.then(() => null, () => null)]);
+      if (was && was.value && !liveDone) {
+        take(was.value);
+        if (bones) bones();
+        render();
+        if (!was.live) dim = BARRY.skeleton.stale(host);
+      }
+    }
+    try {
+      take(await asking);
     } catch (e) {
       toast('Could not read the event bank: ' + e.message, 'err');
       tree = []; entries = [];
@@ -66,6 +88,7 @@ BARRY.views.eventbank = (function () {
       try { await alsoSheets; } catch (e) { /* the events still render */ }
       // In a finally, so a failed read does not leave the bones behind.
       if (bones) bones();
+      if (dim) dim();
     }
     render();
   }
@@ -158,7 +181,9 @@ BARRY.views.eventbank = (function () {
 
     bar.appendChild(BARRY.ui.searchField({
       value: query,
-      placeholder: 'Search project, mouse, session, type, pipeline, who…',
+      // Short enough to be read whole in the box (nothing is cut short).
+      placeholder: 'Search the bank…',
+      title: 'Search by project, mouse, session, type, what produced it, or who',
       oninput: (e) => { query = e.target.value; keepFocus(render); },
     }));
 
@@ -588,6 +613,8 @@ BARRY.views.eventbank = (function () {
          (2026-10-20). A cell spanning the flexible column cannot do that. */
       el('div', { class: 'bank-meta' }, [
         el('span', { class: 'bank-type', text: typeName(e.type) }),
+        // What produced it, as a chip: "Incisor output" (2026-10-20).
+        BARRY.ui.producerChip(src, e.type),
         el('span', { class: 'bank-src', text: baseName(src.pipeline || ''),
                      title: src.pipeline || '' }),
       ]),
@@ -762,6 +789,7 @@ BARRY.views.eventbank = (function () {
        here can be opened -- its counts and note are on record even without
        a snapshot -- so none is disabled. */
     const strip = el('div', { class: 'ver-strip' }, [BARRY.ui.versionTree({
+      producer: (e.source || {}).pipeline, producerType: e.type,
       versions: shown,
       idOf: verKey,
       value: openVersion,
@@ -1219,19 +1247,15 @@ BARRY.views.eventbank = (function () {
       el('span', { class: 'hint', text: 'compared with' }),
       /* By name, as the strip is: the stored number repeats when two
          machines both mint it, and keyed on it this compared against
-         whichever came first. */
-      el('select', {
-        onchange: (ev) => {
-          against = others.find((o) => verKey(o) === ev.target.value)
-                 || against;
-          paint();
-        },
-      }, others.map((o) => el('option', {
-        value: verKey(o),
-        text: BARRY.ui.versionLabel(o) + '  ' + (o.by || '') + '  '
-            + BARRY.when(o.at, 'minute'),
-        selected: verKey(o) === verKey(against) ? 'selected' : null,
-      }))),
+         whichever came first. One button that opens the whole tree
+         (2026-10-21), not a drop-down of bare numbers. */
+      BARRY.ui.versionButton({
+        versions: others, idOf: verKey, value: verKey(against),
+        producer: (e.source || {}).pipeline, producerType: e.type,
+        heading: 'Compare ' + BARRY.ui.versionLabel(v) + ' with which version',
+        sub: e.name || '',
+        onpick: (o) => { if (o) { against = o; paint(); } },
+      }),
     ]));
     host.appendChild(rows);
     paint();
@@ -1263,6 +1287,7 @@ BARRY.views.eventbank = (function () {
                       + (e.session_label ? '  ·  ' + e.session_label : '') }),
         el('div', { class: 'detail-tags' }, [
           el('span', { class: 'tag lang', text: typeName(e.type) }),
+          BARRY.ui.producerChip(src, e.type),
           el('span', { class: 'tag opt', text: e.n + ' events' }),
           isArchived(e) ? el('span', { class: 'tag blocked', text: 'archived',
             title: 'Every version of this entry is archived: kept, and no '

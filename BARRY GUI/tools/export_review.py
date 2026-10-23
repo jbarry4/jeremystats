@@ -59,7 +59,7 @@ LAYERS = ("raw", "minus_fp")
 WEB_FILES = ("monolith.html", "monolith-guide.html", "monolith_guide.json",
              "js/monolith_figs.js", "js/monolith_help.js", "js/monolith.js",
              "js/monolith_events.js", "js/monolith_progress.js",
-             "js/monolith_explain.js", "js/monolith_physical.js", "js/monolith_narrow.js", "js/monolith_joe.js",
+             "js/monolith_explain.js", "js/monolith_physical.js", "js/monolith_narrow.js", "js/monolith_joe.js", "js/monolith_joefigs.js",
              "js/monolith_tour.js", "js/tour.js")
 # The windows in the lab's words, as the page says them (js/monolith.js).
 WLABEL = {"pre": "Pre-baseline", "cue1": "Cue 1", "cue2": "Cue 2",
@@ -271,6 +271,18 @@ def build(args):
             write(os.path.join(jd, f), J.raw("/joe/file/" + urllib.parse.quote(f)))
     except Exception as exc:                             # noqa: BLE001
         say("  tab 8 not copied (work it out in Jarvis first): %s" % exc)
+    # Tab 9, Joe's figures: the manifest and every figure's SVG, PDF and PNG.
+    try:
+        J9 = J.json("/data/joefigs")
+        write(os.path.join(data, "joefigs.json"), json.dumps(J9))
+        fd = os.path.join(data, "joefigs")
+        os.makedirs(fd, exist_ok=True)
+        for fg in J9.get("figures") or []:
+            # A connectome's other test (the trials' shuffle) is a toggle away: its files too.
+            for f in list((fg.get("files") or {}).values()) + [x for a in fg.get("alts") or [] for x in (a.get("files") or {}).values()]:
+                write(os.path.join(fd, f), J.raw("/joefigs/file/" + urllib.parse.quote(f)))
+    except Exception as exc:                             # noqa: BLE001
+        say("  tab 9 not copied (draw the figures in Jarvis first): %s" % exc)
     # The arrays: every pooled one, then Progress's while they fit.
     budget = int(args.budget_mb * 1e6)
     core = [n[:-4] for n in (S.get("files") or {})] + \

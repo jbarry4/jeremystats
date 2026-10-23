@@ -112,6 +112,14 @@ OVERLAP = "overlap"
 # than no flag at all.
 OVERLAP_DP = EventBank.DUP_DP
 
+# What a locked row says when somebody tries to move it (Lock, 2026-10-22).
+# The panel says the same words; this is for a caller that went round it.
+LOCKED_SAY = ("Braces already put this stamp on its peak, and this alignment "
+              "was run with Braces' stamps locked, so it stays where it is. "
+              "No second-guessing: follow the protocol as well as you can and "
+              "move on. If the result is not good enough, the fix is a better "
+              "protocol, not a nudge by hand.")
+
 
 def _now():
     return time.strftime("%Y-%m-%dT%H:%M:%S%z")
@@ -218,6 +226,12 @@ class BracesSets:
                 fresh.pop(str(i), None)
                 continue
             call = (val or {}).get("call")
+            # A stamp Braces placed and Lock was told to keep: it is not
+            # moved and not relabelled here. Confirm and keep say nothing
+            # it does not already do, so they are let through.
+            if (rec["rows"][i] or {}).get("locked") and call in ("move",
+                                                                 "garbage"):
+                raise BracesSetError(LOCKED_SAY)
             if call not in CALLS:
                 raise BracesSetError(
                     "%r is not something that can be decided about a stamp. "

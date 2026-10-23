@@ -42,7 +42,7 @@
   },
   "added": {
     "at": "2026-10-09T12:14:49-04:00",
-    "by": "spotter harness",
+    "by": "Debug_Bot",
     "machine": "BarryLab"
   },
   "by_label": {
@@ -136,7 +136,7 @@
   "versions": [
     {
       "at": "2026-10-09T12:14:49-04:00",
-      "by": "spotter harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 10
       },

@@ -1,0 +1,188 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>Harness — Panning's bar folds in stages; Faded has a slider</title>
+<style>
+  body { font: 12px/1.5 ui-monospace, monospace; margin: 0; background: #0c0f14; color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 38vw; }
+  #app { position: fixed; right: 0; top: 0; width: 62vw; height: 100vh; border: 0;
+         border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; } .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style></head>
+<body>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* 2026-10-22, two asks:
+
+   "In Panning separate the collapsing for the tick bar from the details,
+   labelling, numbers UI... the same button but in stages. First click just
+   the tick bars, second the labelling GUI as well, and the third in the
+   fully collapsed form, it returns."
+
+   "When Faded is clicked allow the user to select the opacity on a sliding
+   bar from 0.1 to 0.9... no need to show those actual numbers."
+
+   The fold is the shell's (core.js modeFold), so it is driven through the
+   real mode bar with stand-in strips; the fold state is localStorage and is
+   put back as it was. The slider is driven through the real More menu on
+   the demo recording; preferences are answered here and never written. */
+const out = document.getElementById('out');
+let fails = 0, checks = 0;
+const say = (t, c) => { const d = document.createElement('div');
+  d.className = c || ''; d.textContent = t; out.appendChild(d); };
+const head = (t) => { const h = document.createElement('h2'); h.textContent = t;
+  out.appendChild(h); };
+const check = (n, c, d) => { checks += 1; if (!c) fails += 1;
+  say(n + (c || d == null ? '' : '   [' + d + ']'), c ? 'ok' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 20000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(120);
+  }
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow, D = () => frame.contentDocument;
+  const keys = ['barry.modeFold.panning', 'barry.modeFold.curate'];
+  const was = {};
+  try {
+    await until(() => W().BARRY && W().BARRY.views && W().BARRY.views.xplore
+                      && typeof W().setMode === 'function', 30000);
+    const B = W().eval('BARRY');
+    const errs = [];
+    W().addEventListener('error', (e) => errs.push('window: ' + e.message));
+    for (const k of keys) was[k] = W().localStorage.getItem(k);
+    for (const k of keys) W().localStorage.removeItem(k);
+    const kept = {};
+    const realGet = B.prefs.get, realSet = B.prefs.set;
+    B.prefs.get = (k, d) => (k in kept ? kept[k] : realGet.call(B.prefs, k, d));
+    B.prefs.set = (k, v) => { kept[k] = v; };
+
+    head('Panning: the tick bars, then the labelling, then back');
+    W().eval("setView('xplore')");
+    W().eval("setMode('panning', function () {})");
+    await sleep(250);
+    const slot = B.modeSlot();
+    const mk = (tag, cls, txt) => { const n = D().createElement(tag);
+      n.className = cls; if (txt) n.textContent = txt; return n; };
+    const ticks = mk('canvas', 'pan-all mode-strip');
+    ticks.style.height = '24px';
+    const bar = mk('div', 'cur-bar');
+    const where = mk('div', 'cur-where', 'PTEN m51 s1 — 1 / 190');
+    const cats = mk('div', 'cur-cats', 'Spike Garbage Flag');
+    bar.appendChild(where); bar.appendChild(cats);
+    slot.appendChild(ticks); slot.appendChild(bar);
+    const fold = D().getElementById('modeFold');
+    const MB = D().getElementById('modeBar');
+    const shown = (n) => W().getComputedStyle(n).display !== 'none';
+    let heard = 0;
+    W().addEventListener('barry:modefold', () => { heard += 1; });
+    check('it starts open: ticks and labelling showing', shown(ticks) && shown(cats));
+    fold.click(); await sleep(150);
+    check('first click: only the tick bars go', !shown(ticks) && shown(cats) && shown(where)
+          && MB.classList.contains('fold-ticks') && !MB.classList.contains('folded'));
+    check('  remembered as that stage',
+          W().localStorage.getItem('barry.modeFold.panning') === 't');
+    fold.click(); await sleep(150);
+    check('second click: the labelling goes too, the bar is one line',
+          !shown(ticks) && !shown(cats) && shown(where) && MB.classList.contains('folded'));
+    check('  remembered as folded', W().localStorage.getItem('barry.modeFold.panning') === '1');
+    fold.click(); await sleep(150);
+    check('third click: everything comes back', shown(ticks) && shown(cats)
+          && !MB.classList.contains('folded') && !MB.classList.contains('fold-ticks'));
+    check('  remembered as open', W().localStorage.getItem('barry.modeFold.panning') === '0');
+    check('Panning is told each time, to redraw its strips', heard === 3, heard);
+    W().localStorage.setItem('barry.modeFold.panning', 't');
+    W().eval('setMode(null)');
+    W().eval("setMode('panning', function () {})");
+    await sleep(150);
+    check('entering again comes back at the stage it was left in',
+          MB.classList.contains('fold-ticks'));
+    W().eval('setMode(null)');
+    await sleep(100);
+    check('leaving clears both', !MB.classList.contains('fold-ticks')
+          && !MB.classList.contains('folded'));
+    ticks.remove(); bar.remove();
+
+    head('Every other add-on folds as before, in two');
+    W().eval("setMode('curate', function () {})");
+    await sleep(150);
+    fold.click(); await sleep(100);
+    check('first click folds it', MB.classList.contains('folded')
+          && !MB.classList.contains('fold-ticks'));
+    fold.click(); await sleep(100);
+    check('second click opens it', !MB.classList.contains('folded'));
+    W().localStorage.setItem('barry.modeFold.curate', 't');
+    W().eval('setMode(null)');
+    W().eval("setMode('curate', function () {})");
+    await sleep(100);
+    check('a stray middle stage is never read by a two-stage add-on',
+          !MB.classList.contains('fold-ticks') && !MB.classList.contains('folded'));
+    W().eval('setMode(null)');
+
+    head('Faded marks have a slider, and no numbers');
+    const X = B.views.xplore, XF = X.state;
+    const realApi = W().api;
+    W().api = async (path, opts) => (path === '/api/session/state'
+      ? { ok: true } : realApi(path, opts));
+    await X.open('demo:long-session');
+    const sess = await until(() => Object.values(XF.sessions)
+      .find((s) => s.path === 'demo:long-session'));
+    X.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    await until(() => XF.panes[0] && XF.panes[0]._geom, 20000);
+    sess.marksView = 'show';
+    const more = () => Array.from(D().querySelectorAll('#paneGrid button, #xfMaster button'))
+      .find((b) => /^More/.test(b.textContent.trim()) && b.offsetWidth > 0);
+    more().click();
+    await until(() => D().querySelector('.ctl-pop'), 4000);
+    const marksGrp = () => Array.from(D().querySelectorAll('.ctl-pop .ctl-pop-group'))
+      .find((g) => /^Marks/.test(g.textContent));
+    check('no slider while marks are shown', !marksGrp().querySelector('.marks-fade'));
+    Array.from(marksGrp().querySelectorAll('button')).find((b) => b.textContent.trim() === 'Faded').click();
+    await sleep(300);
+    const slider = marksGrp() && marksGrp().querySelector('input.marks-fade');
+    check('choosing Faded keeps the menu open and shows the slider', !!slider);
+    check('from 0.1 to 0.9', slider && slider.min === '0.1' && slider.max === '0.9');
+    const wrap = slider && slider.closest('.marks-fade-wrap');
+    check('with words at its ends and no numbers shown',
+          wrap && !/\d/.test(wrap.textContent) && /Fainter/.test(wrap.textContent)
+          && /Stronger/.test(wrap.textContent), wrap ? wrap.textContent : 'none');
+    slider.value = '0.75';
+    slider.dispatchEvent(new (W().Event)('input', { bubbles: true }));
+    check('moving it sets how faint, live', Math.abs(sess.marksFade - 0.75) < 1e-9,
+          sess.marksFade);
+    check('and says it in words to a screen reader',
+          slider.getAttribute('aria-valuetext') === 'strong');
+    slider.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    check('letting go keeps it as this person’s level', kept.marks_fade === 0.75,
+          kept.marks_fade);
+    sess.marksView = 'show';
+    D().body.dispatchEvent(new (W().KeyboardEvent)('keydown', { key: 'Escape', bubbles: true }));
+
+    check('no client error anywhere', errs.length === 0, errs.join(' | '));
+    B.prefs.get = realGet; B.prefs.set = realSet;
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  } finally {
+    try {
+      for (const k of keys) {
+        if (was[k] == null) W().localStorage.removeItem(k);
+        else W().localStorage.setItem(k, was[k]);
+      }
+    } catch (e) { /* the frame is gone */ }
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'panfold: ' + fails + ' FAILED' : 'panfold: passed';
+  frame.src = 'about:blank';
+})();
+</script>
+</body></html>

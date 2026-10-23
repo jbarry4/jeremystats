@@ -160,6 +160,11 @@ OUTLIER_FLOOR_MS = 8.0
 # smaller than this is not a move.
 SAME_MS = 1.0
 
+# How far from where it sits a locked stamp (Lock) looks for the one peak it
+# fills: the merge window Junction pools with, inside which two detectors'
+# stamps are called one event. Farther than that is another event.
+LOCK_REACH_MS = 20.0
+
 # Half a microsecond. Every time here has been rounded to six decimal places
 # on the way out of `continuity.sample_to_true`, so two times closer than
 # this are the same instant -- and without it a stamp exactly one window from
@@ -1211,11 +1216,15 @@ REASONS = {
     "contested": "not the nearest peak",
     "weak": "weak peak",
     "outlier": "unlike the others",
+    # Lock: its own peak is one a locked Braces stamp fills, and more than
+    # one other peak was left to go to.
+    "locked_peak": "pushed off a Braces stamp's peak, several left",
 }
 
 
 def propose(events, peaks, window_ms=WINDOW_MS, edge_frac=EDGE_FRAC,
-            same_ms=SAME_MS, align_ids=None):
+            same_ms=SAME_MS, align_ids=None, pinned=None,
+            lock_reach_ms=None):
     """One row per event: where it was, where it goes, and whether to ask.
 
     `events` is the banked list -- dicts with a `start` -- and is NOT
@@ -1241,8 +1250,27 @@ def propose(events, peaks, window_ms=WINDOW_MS, edge_frac=EDGE_FRAC,
 
     `align_ids=None` means align everything, which is what the rule's own
     checks use -- they are about the arithmetic and have no labels at all.
+
+    LOCKED STAMPS (Lock, 2026-10-22). `pinned` is a set of event indices
+    whose stamps another aligner already placed -- in a pooled set, the
+    Incisor stamps Braces put on their peaks -- and that are not to be
+    moved again. Each still gets a row, so the review shows it, but the row
+    never moves (`locked: "braces"`, `now == was`, no flag).
+
+    IT FILLS ITS PEAK (2026-10-23). A locked stamp is counted in the
+    placement without being repositioned: it takes the ONE candidate peak it
+    occupies -- the nearest within `lock_reach_ms` of where it sits (the
+    merge window, 20 ms), one each, never two locked stamps on one peak --
+    and that peak is taken out before the free stamps are assigned. A
+    Doppler stamp whose own peak that was goes to the largest of the peaks
+    still free, so two locked stamps and one free one put the free one on
+    the third; and where it was pushed off and more than one peak is left to
+    choose from, it is flagged (`locked_peak`) rather than trusted. The peak
+    each locked stamp fills is on its row (`fills`), None when there was
+    none in reach.
     """
-    rows, skipped = [], {}
+    pinned = {int(i) for i in (pinned or ())}
+    rows, skipped, locked = [], {}, []
     for i, ev in enumerate(events or []):
         try:
             t = float(ev.get("start"))
@@ -1256,15 +1284,48 @@ def propose(events, peaks, window_ms=WINDOW_MS, edge_frac=EDGE_FRAC,
                 key = lab or "undecided"
                 skipped[key] = skipped.get(key, 0) + 1
                 continue
+        if i in pinned:
+            locked.append({"i": i, "was": t, "now": t, "peak": None,
+                           "shift_ms": 0.0, "peak_uv": None, "flag": None,
+                           "moved": False, "same": True, "locked": "braces"})
+            continue
         rows.append({"i": i, "was": t})
     if not rows:
-        return dict(summarize([], peaks, window_ms, edge_frac, same_ms),
-                    skipped=skipped, n_skipped=sum(skipped.values()))
+        out = dict(summarize([], peaks, window_ms, edge_frac, same_ms),
+                   skipped=skipped, n_skipped=sum(skipped.values()))
+        return _with_locked(out, locked)
 
     rows.sort(key=lambda r: r["was"])
     stamps = [r["was"] for r in rows]
     p_times = list(peaks.get("times") or [])
     p_amps = list(peaks.get("amps") or [])
+    # Each locked stamp fills the one peak it occupies (see above), and that
+    # peak is not on offer to anybody else. Worked out against EVERY peak,
+    # before any are taken out, so `want` below can say which free stamps
+    # would have had a locked stamp's peak.
+    held = set()
+    full_t = list(p_times)
+    full_a = list(p_amps) if len(p_amps) == len(p_times) else []
+    if locked:
+        locked.sort(key=lambda r: r["was"])
+        fill = (assign([r["was"] for r in locked], full_t,
+                       float(lock_reach_ms or LOCK_REACH_MS))
+                if full_t else [None] * len(locked))
+        for r, j in zip(locked, fill):
+            r["fills"] = None if j is None else full_t[j]
+            if j is not None:
+                held.add(j)
+    if held:
+        keep = [j for j in range(len(full_t)) if j not in held]
+        p_times = [full_t[j] for j in keep]
+        p_amps = [full_a[j] for j in keep] if full_a else []
+        # What each free stamp would have taken with every peak on offer.
+        want = (biggest(stamps, full_t, full_a, window_ms) if full_a
+                else nearest(stamps, full_t, window_ms))
+    else:
+        want = [None] * len(stamps)
+    # How many peaks are left within reach of each, for "too many options".
+    left = [hi - lo for lo, hi in reach(stamps, p_times, window_s(window_ms))]
     thr_uv = float(peaks.get("thr_uv") or 0.0)
 
     # WHICH RULE. The largest peak in the window where the candidates come
@@ -1309,8 +1370,12 @@ def propose(events, peaks, window_ms=WINDOW_MS, edge_frac=EDGE_FRAC,
         flag = None
         # Order matters: a stamp that had to give up a nearer peak is the
         # only flag that reports a DECISION, so it outranks the two that
-        # merely report a measurement.
-        if closest[n] is not None and closest[n] != j:
+        # merely report a measurement. Pushed off a locked stamp's peak with
+        # more than one left to choose from outranks it: that is a choice
+        # nobody can call from the counts.
+        if want[n] is not None and want[n] in held and left[n] >= 2:
+            flag = "locked_peak"
+        elif closest[n] is not None and closest[n] != j:
             flag = "contested"
         elif abs(d) > edge_s:
             flag = "edge"
@@ -1365,9 +1430,22 @@ def propose(events, peaks, window_ms=WINDOW_MS, edge_frac=EDGE_FRAC,
     # What the rule bought, counted rather than asserted.
     stranded = sum(1 for n in range(len(rows))
                    if naive[n] is None and taken[n] is not None)
-    return dict(summarize(rows, peaks, window_ms, edge_frac, same_ms,
-                          greedy_stranded=stranded),
-                skipped=skipped, n_skipped=sum(skipped.values()))
+    out = dict(summarize(rows, peaks, window_ms, edge_frac, same_ms,
+                         greedy_stranded=stranded),
+               skipped=skipped, n_skipped=sum(skipped.values()))
+    return _with_locked(out, locked)
+
+
+def _with_locked(out, locked):
+    """The locked rows added to a proposal, in time order with the rest.
+
+    Counted apart (`n_locked`): `n` and every count beside it are about the
+    stamps this run measured, and a locked one was not measured."""
+    out["n_locked"] = len(locked)
+    if locked:
+        out["rows"] = sorted(list(out.get("rows") or []) + list(locked),
+                             key=lambda r: r["was"])
+    return out
 
 
 def summarize(rows, peaks, window_ms, edge_frac, same_ms,
@@ -1494,7 +1572,8 @@ def params_of(spec, peaks):
 
 
 def align(session, use_chans, spec, events, stamp_times, align_ids,
-          left_out, depth_n=DEPTH_BAND, job=None):
+          left_out, depth_n=DEPTH_BAND, job=None, pinned=None,
+          lock_reach_ms=None):
     """One whole alignment: screen, find the depth, read the windows, propose.
 
     Everything `/api/braces/run` does between choosing the channels and
@@ -1566,9 +1645,17 @@ def align(session, use_chans, spec, events, stamp_times, align_ids,
                   window_ms=spec["window_ms"],
                   edge_frac=spec["edge_frac"],
                   same_ms=spec["same_ms"],
-                  align_ids=set(align_ids or ()))
+                  align_ids=set(align_ids or ()),
+                  pinned=pinned,
+                  lock_reach_ms=lock_reach_ms or spec.get("lock_reach_ms"))
     params = params_of(spec, peaks)
     params["left_out"] = list(left_out)
+    # Which stamps were held where Braces put them (Lock), for the record.
+    params["pinned"] = len(pinned or ())
+    if pinned:
+        params["lock_reach_ms"] = float(lock_reach_ms
+                                        or spec.get("lock_reach_ms")
+                                        or LOCK_REACH_MS)
     rows = out.pop("rows")
     # Into the set, not only into the job's result: the job is gone by
     # tomorrow, and somebody opening this proposal then still has to be able

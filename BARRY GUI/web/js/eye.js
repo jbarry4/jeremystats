@@ -31,13 +31,9 @@
    ========================================================================== */
 'use strict';
 
-/* LOCK IS THE SAME PANEL, POINTED AT A POOLED SET (2026-10-14)
-   The Confluence's third step lines up Incisor's and Doppler's events
-   pooled into one set, and it is this panel with a different `cfg`: the
-   kind of set it offers, the words, and where a set "of its own" comes
-   from. One panel rather than a copy, so a fix to the wait or the commit
-   reaches both (constitution §6c). Both look through the IED band: a pooled
-   set holds IEDs, and the backend reads the same preset for it. */
+/* ONE PANEL, BUILT FROM A `cfg` (2026-10-14). Lock was built from it too,
+   until 2026-10-22, when it became a copy of Braces instead (braces.js
+   `makeBraces`): "the set up should be very similar to Braces". */
 function makeAligner(cfg) {
   const q = {
     entry: null,          // the bank entry being aligned
@@ -137,7 +133,7 @@ function makeAligner(cfg) {
      many were hidden rather than pretending they are not there. */
   function originOf(c) {
     const who = ((c.added || {}).by || '') + ' ' + (c.name || '');
-    if (/harness/i.test(who)) return 'test';
+    if (/harness|debug_bot/i.test(who)) return 'test';
     if (cfg.mine.test(c.pipeline || '')) return cfg.mine.id;
     return 'import';
   }
@@ -320,6 +316,7 @@ function makeAligner(cfg) {
     return el('div', { class: 'card eye-vers' }, [
       el('div', { class: 'section-label', text: 'Read the stamps from' }),
       BARRY.ui.versionTree({
+        producer: c && c.pipeline,
         versions: vs,
         idOf: (v) => v.ref,
         value: q.from_version,
@@ -704,9 +701,9 @@ function makeAligner(cfg) {
     const p = runs[q.measure].proposal;
     const s = counts(p);
     const box = el('div', { class: 'card' }, [
-      el('div', { class: 'section-label', text: '4. Write it' }),
+      el('div', { class: 'section-label', text: '4. Bank' }),
       el('p', { class: 'hint', style: 'max-width:80ch',
-        text: 'Committing writes a new version of the entry with the moved '
+        text: 'Banking writes a new version of the entry with the moved '
             + 'times on it. Every stamp that moves carries where it came '
             + 'from, so the version history reads as a set of moves rather '
             + 'than as everything lost and everything gained — which '
@@ -724,7 +721,8 @@ function makeAligner(cfg) {
         el('button', { class: 'btn ghost', text: 'Look at them first',
           title: 'Open the proposal on the bench, one at a time',
           onclick: () => openBench(p) }),
-        el('button', { class: 'btn', text: 'Commit the moves',
+        // The house verb for a new version (GUI-CONSTITUTION §8).
+        el('button', { class: 'btn', text: 'Bank as a new version…',
           onclick: () => commit(p) }),
       ]),
     ]);
@@ -758,7 +756,7 @@ function makeAligner(cfg) {
         el('p', { text: 'Stamps that found no peak stay exactly where they '
             + 'are, which is not an error — it is the aligner '
             + 'declining to guess.' }),
-      ]), 'Commit the moves');
+      ]), 'Bank as a new version');
     if (!ok) return;
     try {
       // Dry run first, always. The route defaults to it and the panel
@@ -838,25 +836,6 @@ BARRY.eye = makeAligner({
   bandWhy: '',
 });
 
-BARRY.lock = makeAligner({
-  tool: 'lock', title: 'Lock', step: 'step 3 of The Confluence',
-  type: 'pooled',
-  blurb: 'Put every pooled spike \u2014 Incisor\u2019s and Doppler\u2019s, '
-       + 'sorted in Panning \u2014 on the same part of itself, so Root '
-       + 'Canal measures each one at the same instant.',
-  mine: {
-    id: 'junction', label: 'From Junction', chip: 'Junction',
-    test: (p) => /^The Confluence/.test(p),
-    empty: 'No pooled set has been sorted yet. Pool a recording in Junction, '
-         + 'sort it in Panning and bank the results \u2014 an unsorted pool '
-         + 'has nothing worth moving yet.',
-  },
-  otherLabel: 'Other pooled sets',
-  order: ['Spike', 'spike', 'Flag', 'flag', 'Garbage', 'garbage'],
-  good: /spike/i,
-  nextOne: 'two events in a pool can be a few milliseconds apart, which is '
-         + 'what Panning\u2019s merge is for.',
-  bandWhy: ': a pooled set holds discharges as well as dentate spikes, and '
-         + 'a dentate spike keeps its shape in this band where a discharge '
-         + 'would lose its slow wave in the other',
-});
+/* Lock was a second `makeAligner` here until 2026-10-22. It is now Braces
+   built a second time (braces.js `makeBraces`), so it has Braces' picker,
+   Many, Alignments and review, and keeps the stamps Braces placed. */

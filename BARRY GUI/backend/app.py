@@ -10,9 +10,12 @@ code runs on Windows and macOS.
 from __future__ import annotations
 
 import datetime
+import hashlib
 import io
 import json
 import os
+import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -47,6 +50,7 @@ from . import (aibeta as aibetamod,
                guides as guidesmod,
                versions as versionsmod,
                natsort as natsortmod,
+               dayreport as dayreportmod,
                panorama as panoramamod,
                panoramaset as pnsetmod,
                horizon as horizonmod,
@@ -112,6 +116,157 @@ rootcanal.register_stages(cfcmod)
 aibetamod.register_stages(cfcmod)
 stratamod.register_stages(cfcmod)
 cfcmod.configure(LOGS_DIR)
+# Answers worked out from a recording (its overview strip, its band surface),
+# kept on disk keyed on the file's size and mtime: a restart used to read
+# them all over again (backend/derived.py, 2026-10-21).
+from . import derived as derivedmod  # noqa: E402
+derivedmod.configure(LOGS_DIR)
+
+# One memory budget for every cache in this process (backend/membudget.py,
+# 2026-10-21): measured at 1.3 GB private with one recording open, from
+# fifteen caches that each bounded only themselves. Registered here, in one
+# place, without changing how any of them keeps its entries.
+from . import membudget as membudgetmod  # noqa: E402
+
+
+def _budget_caches():
+    membudgetmod.register("panels", prewarm.budget_items, prewarm.budget_drop)
+    for name, mod, cache, order, lock in (
+            ("cfc", cfcmod, "_CACHE", "_CACHE_ORDER", "_CACHE_LOCK"),
+            ("spectrum", spectrummod, "_CACHE", "_CACHE_ORDER", "_CACHE_LOCK"),
+            ("incisor", incisormod, "_CACHE", "_CACHE_ORDER", "_CACHE_LOCK"),
+            ("doppler", dopplermod, "_CACHE", "_CACHE_ORDER", "_CACHE_LOCK"),
+            ("panorama", panoramamod, "_CACHE", "_CACHE_ORDER", "_CACHE_LOCK"),
+            ("horizon", horizonmod, "_CACHE", "_ORDER", None),
+            ("overview", extras, "_OVERVIEW_CACHE", None, None),
+            ("bandgram", extras, "_BANDGRAM_CACHE", "_BANDGRAM_ORDER", None),
+            # Not csc's `_MAT_CACHE`: it holds the ONE recording somebody has
+            # open, read whole from a .mat -- evicting it to make room would
+            # read the whole file again on the next pan.
+            ("storyboard", storyboard, "_IMG_CACHE", None, None)):
+        d = getattr(mod, cache, None)
+        if isinstance(d, dict):
+            membudgetmod.watch_dict(
+                name, d, getattr(mod, order, None) if order else None,
+                getattr(mod, lock, None) if lock else None)
+    # Light on this computer halves the budget: its own prefs shard says.
+    membudgetmod.light_from(
+        lambda: (storemod_own_prefs() or {}).get("lite") == "on")
+
+
+def storemod_own_prefs():
+    from . import shards as _shards
+    try:
+        return _shards._read_json(STORE._prefs_path())
+    except Exception:                                    # noqa: BLE001
+        return None
+
+
+_budget_caches()
+
+
+# What the start screen gets ready (backend/warmup.py, 2026-10-21).
+from . import warmup as warmupmod  # noqa: E402
+from . import streamjson  # noqa: E402
+from . import livefeed as livefeedmod  # noqa: E402
+
+# A recording being read for somebody: the background overview filler
+# stands aside until there are none.
+_FOREGROUND_READS = ("/api/csc/", "/api/panel")
+
+
+@app.before_request
+def _foreground_begin():
+    if request.path.startswith(_FOREGROUND_READS):
+        warmupmod.foreground_begin()
+        request.environ["_barry_fg"] = True
+
+
+@app.teardown_request
+def _foreground_end(_exc=None):
+    try:
+        if request.environ.get("_barry_fg"):
+            warmupmod.foreground_end()
+    except Exception:                                    # noqa: BLE001
+        pass
+
+
+@app.route("/api/warmup/engines")
+def api_warmup_engines():
+    """Import the analysis libraries now, one by one, each reported as it is
+    ready (streamed with ?stream=1). Tools would otherwise pay this on their
+    first run; start-up keeps them out on purpose (lazyimp.py)."""
+    if streamjson.wants_stream(request):
+        return streamjson.stream({"of": len(warmupmod.ENGINES)},
+                                 warmupmod.engines())
+    return jsonify({"ok": True, "engines": list(warmupmod.engines())})
+
+
+@app.route("/api/warmup/last", methods=["POST"])
+def api_warmup_last():
+    """The recording this machine opened last, opened now and kept, with its
+    overview strip read (or found on disk) -- so opening it again later is
+    immediate. Reads only: no identity is written, no registry touched; the
+    real open does those when somebody actually opens it."""
+    paths = warmupmod.recent_paths(STORE, limit=1)
+    if not paths:
+        return jsonify({"ok": True, "path": None})
+    path = paths[0]
+    t0 = time.time()
+    try:
+        if not _scheme_path(path) and not os.path.isdir(path):
+            return jsonify({"ok": True, "path": path, "here": False})
+        sess, err = _session_for(path, True)
+        if err:
+            return jsonify({"ok": True, "path": path, "opened": False,
+                            "error": err.get("error")})
+        ov = extras.overview(sess, channel=0, bins=700)
+        return jsonify({"ok": True, "path": path, "opened": True,
+                        "name": os.path.basename(path.rstrip("\\/")),
+                        "overview": bool(ov and ov.get("ok")),
+                        "cached": (ov or {}).get("cached"),
+                        "ms": round((time.time() - t0) * 1000)})
+    except Exception as exc:                             # noqa: BLE001
+        return jsonify({"ok": True, "path": path, "opened": False,
+                        "error": str(exc)[:200]})
+
+
+@app.route("/api/warmup/overviews", methods=["GET", "POST"])
+def api_warmup_overviews():
+    """POST starts writing the overview strips of the recordings this
+    machine opened most recently to disk (derived.py), one at a time in the
+    background; GET says how far it has got."""
+    if request.method == "POST":
+        body = request.get_json(silent=True) or {}
+        limit = max(1, min(int(body.get("limit") or 30), 100))
+        paths = warmupmod.recent_paths(STORE, limit=limit)
+
+        def make(p):
+            # Opened for this and let go, not kept in _SESSIONS: thirty
+            # background opens must not push out the recordings somebody
+            # has open.
+            if _scheme_path(p) or not os.path.isdir(p):
+                return None
+            sess = csc.open_session(p, invert=True)
+            return sess if sess.get("ok") else None
+
+        started = warmupmod.fill_overviews(paths, make, extras.overview)
+        return jsonify(dict({"ok": True, "started": started,
+                             "recordings": len(paths)},
+                            **warmupmod.fill_state()))
+    return jsonify(dict({"ok": True}, **warmupmod.fill_state()))
+
+
+@app.after_request
+def _settle_memory(resp):
+    """At most every two seconds, drop the oldest-used cache entries until
+    every cache together is under the budget. Here, after an answer has
+    been sent on its way, rather than inside each cache's own put."""
+    try:
+        membudgetmod.settle_soon()
+    except Exception:                                    # noqa: BLE001
+        pass
+    return resp
 # Whether a recording is one continuous block or several, keyed on the
 # reference file's size and mtime. A clean folder is decided by two records
 # per channel, so the check runs on every health report rather than being a
@@ -226,14 +381,67 @@ def unhandled(exc):
 # ==========================================================================
 # Static
 # ==========================================================================
+# The page's own files, named by their modification time (2026-10-21).
+#
+# Every start asked about all 66 of the page's scripts and its stylesheet
+# again -- "no-cache" means keep it but check first, and checking is a round
+# trip each, over the same six connections everything else needs. So the
+# page is served with each of its files' addresses carrying the file's mtime
+# (`js/core.js?v=1a2b3c`), and an address that carries one is cached for a
+# year, never checked. Editing a file changes its mtime, so the next load asks
+# for a different address -- the edit still shows on refresh, with no build
+# step, which is the rule `no_cache` below was written to keep. The page
+# itself stays "no-cache": it is what knows the current addresses.
+_ASSET_RE = re.compile(r'(\s(?:src|href)=")((?:js|img)/[^"?#]+|app\.css)(")')
+_INDEX = {"key": None, "html": None, "etag": None}
+
+
+def _versioned_index():
+    path = os.path.join(WEB_DIR, "index.html")
+    with open(path, "rb") as fh:
+        raw = fh.read().decode("utf-8")
+    found = sorted(set(m.group(2) for m in _ASSET_RE.finditer(raw)))
+    stamps = {}
+    for rel in found:
+        try:
+            stamps[rel] = "%x" % os.stat(os.path.join(WEB_DIR, rel)).st_mtime_ns
+        except OSError:
+            stamps[rel] = None
+    key = (hashlib.sha1(raw.encode("utf-8")).hexdigest(),
+           tuple(sorted(stamps.items())))
+    if _INDEX["key"] != key:
+        html = _ASSET_RE.sub(
+            lambda m: m.group(1) + m.group(2)
+            + (("?v=" + stamps[m.group(2)]) if stamps.get(m.group(2)) else "")
+            + m.group(3), raw)
+        _INDEX.update(key=key, html=html,
+                      etag=hashlib.sha1(html.encode("utf-8")).hexdigest()[:20])
+    return _INDEX["html"], _INDEX["etag"]
+
+
 @app.route("/")
 def index():
-    return send_from_directory(WEB_DIR, "index.html")
+    # JARVIS_ASSET_VERSIONS=0 serves the page exactly as written -- to
+    # measure what the versions are worth, or to rule them out.
+    if os.environ.get("JARVIS_ASSET_VERSIONS", "1") == "0":
+        return send_from_directory(WEB_DIR, "index.html")
+    try:
+        html, etag = _versioned_index()
+    except OSError:
+        return send_from_directory(WEB_DIR, "index.html")
+    resp = Response(html, mimetype="text/html")
+    resp.set_etag(etag)
+    return resp.make_conditional(request)
 
 
 @app.route("/<path:filename>")
 def static_files(filename):
-    return send_from_directory(WEB_DIR, filename)
+    resp = send_from_directory(WEB_DIR, filename)
+    # Asked for by its versioned address: that address will never mean
+    # anything else, so it is kept without asking again.
+    if request.args.get("v") and resp.status_code == 200:
+        resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return resp
 
 
 @app.before_request
@@ -1188,9 +1396,38 @@ def conflict_audit():
     conflicts.py. This one had its own, which did not know feedback overlays
     (`<id>~<machine>.json`) and listed seven of them as conflicts.
     """
+    # Asked on every sync poll, and a walk of eleven thousand files is most
+    # of a second even with git asked once (it was 9 s asked per file,
+    # measured 2026-10-21). The answer only changes when a file appears
+    # that nobody tagged, and saying so two minutes late is fine: kept for
+    # 120 s, recounted beside the poll rather than in it.
+    now = time.time()
+    if _CONFLICTS["out"] is not None and now - _CONFLICTS["at"] < 120:
+        return _CONFLICTS["out"]
+    if _CONFLICTS["out"] is not None:
+        with _CONFLICTS_LOCK:
+            if not _CONFLICTS["busy"]:
+                _CONFLICTS["busy"] = True
+                threading.Thread(target=_conflicts_recount, daemon=True,
+                                 name="conflict-audit").start()
+        return _CONFLICTS["out"]
+    _conflicts_recount()
+    return _CONFLICTS["out"]
+
+
+_CONFLICTS = {"out": None, "at": 0.0, "busy": False}
+_CONFLICTS_LOCK = threading.Lock()
+
+
+def _conflicts_recount():
+    """The audit itself (conflicts.py)."""
     from . import conflicts as conflictsmod
-    return conflictsmod.audit(LOGS_DIR,
-                              git=storemod_git() or "git")
+    try:
+        _CONFLICTS["out"] = conflictsmod.audit(LOGS_DIR,
+                                               git=storemod_git() or "git")
+        _CONFLICTS["at"] = time.time()
+    finally:
+        _CONFLICTS["busy"] = False
 
 
 # ==========================================================================
@@ -1270,7 +1507,9 @@ def api_sync_reindex():
 # ==========================================================================
 # Presets
 # ==========================================================================
-VALID_PRESETS = {"filters", "imports", "layouts"}
+# `support_panels`: one person's support panel preferences, named and
+# attributed, for anyone to copy (web/js/supportpanels.js, 2026-10-22).
+VALID_PRESETS = {"filters", "imports", "layouts", "support_panels"}
 
 
 @app.route("/api/presets/<kind>", methods=["GET", "POST", "DELETE"])
@@ -4807,7 +5046,7 @@ def _braces_spec(body, sess, kind=None):
 
 
 def _braces_vacc_parts(rec, spec, use_chans, events, stamp_times, align_ids,
-                       left_out, depth_n, push=True):
+                       left_out, depth_n, push=True, pinned=None):
     """Where one set runs on the cluster, what the node is sent, and what
     it costs. A single run builds a `VaccRun` from this; a batch makes it a
     task of one array (`_braces_vacc_task`).
@@ -4839,7 +5078,9 @@ def _braces_vacc_parts(rec, spec, use_chans, events, stamp_times, align_ids,
         stamp_times=[float(t) for t in stamp_times],
         align_ids=sorted(str(a) for a in align_ids),
         left_out=[int(n) for n in left_out],
-        depth_n=int(depth_n))
+        depth_n=int(depth_n),
+        # Lock's held stamps, by event index into `events`.
+        pinned=[int(i) for i in (pinned or [])])
     return {"cfg": cfg, "place": place, "where": where, "job_spec": job_spec,
             "seconds": seconds,
             # What a node holds: a few seconds of the contacts around a stamp.
@@ -4848,11 +5089,11 @@ def _braces_vacc_parts(rec, spec, use_chans, events, stamp_times, align_ids,
 
 
 def _braces_vacc_run(rec, spec, use_chans, events, stamp_times, align_ids,
-                     left_out, depth_n, steps):
+                     left_out, depth_n, steps, pinned=None):
     """A `VaccRun` of `braces.align` for one entry, and the `where` its rates
     belong to."""
     p = _braces_vacc_parts(rec, spec, use_chans, events, stamp_times,
-                           align_ids, left_out, depth_n)
+                           align_ids, left_out, depth_n, pinned=pinned)
     run = vaccrunmod.VaccRun(
         p["cfg"], "braces", p["job_spec"], p["place"]["remote"],
         plan={"seconds": p["seconds"]}, megasamples=p["megasamples"],
@@ -4935,15 +5176,43 @@ def _doppler_remember(sess, spec, key, out, extra=None):
         return False
 
 
-def _doppler_banked_for(gid, key):
+def _doppler_banked_for(gid, key, run=None):
     """The bank entry a run was filed as, found by the run's key -- or None.
-    Every run banked since 2026-10-19 carries it as `run_key`."""
+    Every run banked since 2026-10-19 carries it as `run_key`.
+
+    With `run` (its vault record), a run banked by hand before then is
+    found too, by what it computed: the same threshold to four places, the
+    same gap map and the same number of events on the same recording. The
+    threshold is the 99.9th percentile of that recording's line length, so
+    two different runs do not share it. Only for saying whether a run is
+    banked -- 33 runs from 10-12 to 10-16 read "Bank them" while their
+    entries sat in the bank (2026-10-21) -- never for deciding whether to
+    bank one, which keeps to the key.
+    """
     if not gid or not key:
         return None
     for rec in BANK.all():
         if (rec.get("gid") == gid and (rec.get("type") or "") == "ied"
                 and ((rec.get("source") or {}).get("parameters") or {})
                 .get("run_key") == key):
+            return rec
+    if not run:
+        return None
+
+    def mark(p, n):
+        try:
+            thr = round(float((p or {}).get("threshold")), 4)
+        except (TypeError, ValueError):
+            return None
+        return (thr, (p or {}).get("gap_map_sha"), int(n or 0))
+    want = mark(run.get("params"), run.get("n_events"))
+    if want is None:
+        return None
+    for rec in BANK.all():
+        src = rec.get("source") or {}
+        if (rec.get("gid") == gid and (rec.get("type") or "") == "ied"
+                and str(src.get("pipeline") or "").startswith("Doppler")
+                and mark(src.get("parameters"), rec.get("n")) == want):
             return rec
     return None
 
@@ -5531,8 +5800,19 @@ def api_doppler_scan():
     if hit is None and not body.get("force"):
         hit = _doppler_recall(sess, key)
     if hit is not None and not body.get("force"):
+        # With its key and whether it is banked, as a run that has just
+        # landed comes back -- without them the panel offered "Bank them"
+        # for an answer the bank already had (2026-10-21).
+        on_file = DOPPLER_VAULT.get(sess.get("gid"), key) or None
+        done = _doppler_banked_for(sess.get("gid"), key, run=on_file)
         return jsonify({"ok": True, "cached": True,
-                        "result": _doppler_public(hit)})
+                        "result": dict(
+                            _doppler_public(hit), key=key,
+                            banked=({"id": done["id"],
+                                     "name": done.get("name"),
+                                     "n": done.get("n"), "auto": False}
+                                    if done else None),
+                            before_fix=_doppler_before_fix(on_file))})
 
     steps = _doppler_steps(plan)
 
@@ -5705,7 +5985,7 @@ def api_doppler_run():
         path = used
     else:
         path = _local_path_of(row) or incisorvaccmod.path_of(gid)
-    done = _doppler_banked_for(gid, key)
+    done = _doppler_banked_for(gid, key, run=rec)
     return jsonify({
         "ok": True, "key": key,
         "result": dict(_doppler_public(full), key=key,
@@ -5749,7 +6029,7 @@ def api_doppler_reviews():
                 pass
             row = by_gid.get(gid) or {}
             local = _local_path_of(row)
-            mine = _doppler_banked_for(gid, rec.get("params_hash"))
+            mine = _doppler_banked_for(gid, rec.get("params_hash"), run=rec)
             rows.append({
                 "gid": gid,
                 # This run's own entry, when it has been banked -- by the
@@ -6248,11 +6528,27 @@ def api_braces_plan():
         })
     versions.sort(key=lambda r: versionsmod.key(r["name"]))
     _cur_name, _next_name = versionsmod.tip_next(rec.get("versions") or [])
+    # Lock: how many of the spikes in the version asked about Braces placed.
+    braced = None
+    if (rec.get("type") or "") == "pooled":
+        try:
+            src_v = body.get("from_version")
+            evs = (rec.get("events") or [] if src_v is None
+                   else BANK.events_at(rec, src_v)[0])
+            idx, info = _lock_braced_good(rec, evs)
+            braced = dict(info or {}, n=len(idx), of=sum(
+                1 for e in evs
+                if (e.get("label_id") or e.get("label")) in _good_ids(rec)))
+        except Exception:                                # noqa: BLE001
+            braced = None
     return jsonify({
         "ok": True,
+        "braced": braced,
         "entry": {"id": rec["id"], "name": rec.get("name"),
                   "n": rec.get("n"), "gid": rec.get("gid"),
                   "type": rec.get("type"),
+                  # What produced it, for the chip on the version tree.
+                  "pipeline": (rec.get("source") or {}).get("pipeline"),
                   "session_label": rec.get("session_label"),
                   "aligned": rec.get("aligned")},
         "session": {"path": sess.get("path"), "name": sess.get("name"),
@@ -6307,7 +6603,8 @@ def api_braces_plan():
 _BRACES_NOT_QUESTION = ("path", "excluded", "probe_name", "channel_pick")
 
 
-def _braces_question(rec, src_v, spec, want, depth_n, stamp_times):
+def _braces_question(rec, src_v, spec, want, depth_n, stamp_times,
+                     pinned_times=None):
     """(hash, question) of one alignment request."""
     import hashlib
     stamps = hashlib.sha1(json.dumps(
@@ -6319,9 +6616,35 @@ def _braces_question(rec, src_v, spec, want, depth_n, stamp_times):
                   if k not in _BRACES_NOT_QUESTION},
          "channels": sorted(int(x) for x in want),
          "depth_band": int(depth_n)}
+    # Lock with Braces' stamps held is a different question from Lock
+    # without. Only said when it is asked, so every question asked before
+    # this existed keeps its hash.
+    if pinned_times:
+        q["pinned"] = hashlib.sha1(json.dumps(
+            [round(float(t), 6) for t in sorted(pinned_times)]).encode()
+        ).hexdigest()[:12]
+        q["n_pinned"] = len(pinned_times)
     h = hashlib.sha1(json.dumps(q, sort_keys=True, default=str)
                      .encode()).hexdigest()[:16]
     return h, q
+
+
+def _braces_set_kind(rec):
+    """The kind of set an alignment was made of: what its question says,
+    else what the bank entry is now."""
+    k = ((rec.get("params") or {}).get("request") or {}).get("kind")
+    if k:
+        return k
+    return (BANK.get(rec.get("entry_id") or "") or {}).get("type") or "ds"
+
+
+def _braces_tool_of(members):
+    """'lock' for a batch of pooled sets, else 'braces'."""
+    for m in (members or []):
+        rec = BANK.get((m or {}).get("id") or "")
+        if rec and (rec.get("type") or "") == "pooled":
+            return "lock"
+    return "braces"
 
 
 def _braces_set_row(rec):
@@ -6339,6 +6662,9 @@ def _braces_set_row(rec):
         "n": len(rec.get("rows") or []),
         "counts": counts,
         "request_hash": p.get("request_hash"),
+        "kind": _braces_set_kind(rec),
+        # How many stamps were held where Braces put them (Lock).
+        "n_locked": int((rec.get("summary") or {}).get("n_locked") or 0),
     }
 
 
@@ -6475,8 +6801,36 @@ def _braces_prepare(body):
     stamp_times = [float(e["start"]) for e in events
                    if e.get("start") is not None]
     depth_n = int(body.get("depth_band") or bracesmod.DEPTH_BAND)
-    rq_hash, rq = _braces_question(rec, src_v, spec, want, depth_n,
-                                   stamp_times)
+    # LOCK KEEPS BRACES' WORK (2026-10-22). A pooled set's Incisor stamps
+    # that Braces already put on their peaks stay where they are when Lock
+    # is asked to keep them (`pin_braces`, on by default in the panel): a
+    # second aligner with a different measure is not a better answer to a
+    # question the protocol already answered.
+    pinned = []
+    if body.get("pin_braces") and (rec.get("type") or "") == "pooled":
+        held, _info = _lock_braced_good(rec, events)
+        pinned = sorted(held)
+        if pinned and len(pinned) >= n_good:
+            raise _BracesRefusal(
+                "Every spike in this set is one Braces already placed, and "
+                "Braces' stamps are being kept, so there is nothing left for "
+                "Lock to move. Nothing was read.")
+    if pinned:
+        # Each locked stamp fills the one peak it occupies, looked for
+        # within the pool's own merge window (`braces.propose`, 2026-10-23).
+        # On the spec, so it is part of the question -- an alignment made
+        # under the older rule is not opened as this one's answer -- and so
+        # it travels to a compute node with everything else.
+        pp = (rec.get("source") or {}).get("parameters") or {}
+        try:
+            reach_ms = float(pp.get("window_ms") or bracesmod.LOCK_REACH_MS)
+        except (TypeError, ValueError):
+            reach_ms = bracesmod.LOCK_REACH_MS
+        spec["lock_reach_ms"] = reach_ms
+        spec["lock_rule"] = "fills-its-peak"
+    rq_hash, rq = _braces_question(
+        rec, src_v, spec, want, depth_n, stamp_times,
+        [float(events[i]["start"]) for i in pinned])
     steps = [("ds depth", len(use_chans)),
              ("ds windows", max(1, len(bracesmod.spans(
                  stamp_times, spec["window_ms"]))))]
@@ -6486,7 +6840,7 @@ def _braces_prepare(body):
             "use_chans": use_chans, "left_out": left_out,
             "stamp_times": stamp_times, "depth_n": depth_n,
             "rq_hash": rq_hash, "rq": rq, "span": span, "steps": steps,
-            "who": _braces_who(body)}
+            "pinned": pinned, "who": _braces_who(body)}
 
 
 def _braces_file_parts(entry_id, gid, name, src_v, rq_hash, request, who,
@@ -6570,7 +6924,8 @@ def api_braces_run():
         try:
             run, vwhere = _braces_vacc_run(
                 rec, spec, use_chans, prep["events"], prep["stamp_times"],
-                prep["align_ids"], prep["left_out"], prep["depth_n"], steps)
+                prep["align_ids"], prep["left_out"], prep["depth_n"], steps,
+                pinned=prep["pinned"])
         except Exception as exc:                         # noqa: BLE001
             return fail("braces/run-vacc", exc, 400,
                         {"entry_id": body.get("entry_id")})
@@ -6587,7 +6942,7 @@ def api_braces_run():
             return _braces_file(prep, bracesmod.align(
                 prep["sess"], use_chans, spec, prep["events"],
                 prep["stamp_times"], prep["align_ids"], prep["left_out"],
-                prep["depth_n"], job))
+                prep["depth_n"], job, pinned=prep["pinned"]))
 
         job = cfcmod.start(spec, steps, work, max(0.001, prep["span"] / 60.0))
     STORE.record_activity([{
@@ -6626,10 +6981,13 @@ _BRACES_INFLIGHT_LOCK = threading.Lock()
 BRACES_INFLIGHT_KEEP_S = 3600.0
 
 
-def _braces_track(job, members, settings=None, resumed=False):
+def _braces_track(job, members, settings=None, resumed=False, tool=None):
     with _BRACES_INFLIGHT_LOCK:
         _BRACES_INFLIGHT[job.id] = {
             "id": job.id, "kind": "many", "members": list(members or []),
+            # Which panel sent it -- Braces, or Lock (Braces' engine on
+            # pooled sets) -- so each finds only its own batches again.
+            "tool": tool or _braces_tool_of(members),
             "settings": dict(settings or {}), "started": time.time(),
             "by": (STORE.provenance() or {}).get("user"),
             "resumed": bool(resumed)}
@@ -6642,7 +7000,8 @@ def _braces_vacc_task(prep):
     parts = _braces_vacc_parts(rec, prep["spec"], prep["use_chans"],
                                prep["events"], prep["stamp_times"],
                                prep["align_ids"], prep["left_out"],
-                               prep["depth_n"], push=False)
+                               prep["depth_n"], push=False,
+                               pinned=prep["pinned"])
     job_spec = parts["job_spec"]
     return {
         # The member is the SET: one recording can hold several sets, and
@@ -6681,7 +7040,9 @@ def api_braces_batch():
         rec = BANK.get(it["id"])
         members.append({"id": it["id"], "gid": (rec or {}).get("gid"),
                         "label": _braces_label(rec) if rec else it["id"],
-                        "from_version": it.get("from_version")})
+                        "from_version": it.get("from_version"),
+                        # Lock: keep Braces' stamps where they are, per set.
+                        "pin_braces": bool(it.get("pin_braces"))})
     force = bool(body.get("force"))
     settings = {k: body.get(k) for k in
                 ("measure", "window_ms", "estimator", "line_hz",
@@ -6704,7 +7065,8 @@ def api_braces_batch():
             job.member(mid, status="waiting", step="opening the recording")
             try:
                 prep = _braces_prepare(dict(settings, entry_id=mid, by=who,
-                                            from_version=m["from_version"]))
+                                            from_version=m["from_version"],
+                                            pin_braces=m["pin_braces"]))
             except Exception as exc:                     # noqa: BLE001
                 tally["failed"] += 1
                 job.member(mid, status="failed", step=None,
@@ -6790,7 +7152,8 @@ def api_braces_batch():
                 got = bracesmod.align(
                     prep["sess"], prep["use_chans"], prep["spec"],
                     prep["events"], prep["stamp_times"], prep["align_ids"],
-                    prep["left_out"], prep["depth_n"], _MemberJob(job, mid))
+                    prep["left_out"], prep["depth_n"], _MemberJob(job, mid),
+                    pinned=prep["pinned"])
                 filed = _braces_file(prep, got)
                 summ = filed["summary"] or {}
                 tally["done"] += 1
@@ -6822,7 +7185,8 @@ def api_braces_batch():
                        1.0, "here")
     _braces_track(job, [{"id": m["id"], "gid": m["gid"], "label": m["label"]}
                         for m in members],
-                  dict(settings, force=force, all_vacc=all_vacc))
+                  dict(settings, force=force, all_vacc=all_vacc),
+                  tool=str(body.get("tool") or "") or None)
     STORE.record_activity([{"action": "braces.batch",
                             "detail": {"n": len(members), "force": force,
                                        "settings": settings}}])
@@ -6835,10 +7199,13 @@ def api_braces_inflight():
     each with its job's own snapshot: what the panel finds again when it is
     opened, reloaded, or come back to."""
     now = time.time()
+    want_tool = (request.args.get("tool") or "").strip()
     with _BRACES_INFLIGHT_LOCK:
         items = list(_BRACES_INFLIGHT.values())
     out, gone = [], []
     for it in items:
+        if want_tool and (it.get("tool") or "braces") != want_tool:
+            continue
         job = cfcmod.get(it["id"])
         if job is None:
             gone.append(it["id"])
@@ -6879,11 +7246,17 @@ def api_braces_sets():
     panel lists every one made of it."""
     gid = request.args.get("gid")
     entry_id = request.args.get("entry_id")
+    # `type` narrows it to alignments of those kinds of set, comma
+    # separated: Lock lists its pooled ones, Braces everything else.
+    kinds = {k.strip() for k in (request.args.get("type") or "").split(",")
+             if k.strip()}
     out = []
     for rec in BRACES.all():
         if gid and rec.get("gid") != gid:
             continue
         if entry_id and rec.get("entry_id") != entry_id:
+            continue
+        if kinds and _braces_set_kind(rec) not in kinds:
             continue
         out.append(_braces_set_row(rec))
     return jsonify({"ok": True, "sets": out, "n": len(out)})
@@ -7166,6 +7539,122 @@ def _n_good(rec):
     return n
 
 
+def _lock_braced(rec, events=None):
+    """Which of a pooled set's events sit exactly where Braces put them.
+
+    Lock (2026-10-22) keeps those where they are rather than moving them a
+    second time by a different measure. An event is one when all of:
+
+      * the pool was made from a dentate-spike version Braces had aligned
+        (`ds_aligned`, which Junction records on the pool),
+      * its time is Incisor's stamp -- an Incisor-only event, or one both
+        found that kept Incisor's time (`curation._stamp_of`), and
+      * that time is one of the aligned version's own stamps, read back from
+        the dentate-spike entry, so an Incisor stamp something has moved
+        since is not claimed for Braces. Where the entry is not in this
+        bank, the first two decide.
+
+    `events` defaults to the entry's own; a version's snapshot carries no
+    origin, so the origin is looked up by time in the live events (and by
+    where an alignment moved a stamp from), as Root Canal does. Returns
+    (indices, info) -- info is None for anything that is not a pooled set.
+    """
+    if (rec.get("type") or "") != "pooled":
+        return set(), None
+    events = (rec.get("events") or []) if events is None else events
+    p = (rec.get("source") or {}).get("parameters") or {}
+    info = {"ds_aligned": bool(p.get("ds_aligned")),
+            "ds_entry": p.get("ds_entry"), "ds_name": p.get("ds_name"),
+            "ds_version": p.get("ds_version")}
+    if not p.get("ds_aligned"):
+        return set(), info
+    whose = {}
+    for ev in (rec.get("events") or []):
+        st = curation._stamp_of(ev)
+        if not st:
+            continue
+        for t in (ev.get("start"), ev.get("from_t")):
+            k = curation._tkey(t)
+            if k is not None:
+                whose.setdefault(k, (st, ev.get("pair_t")))
+    ds_times = None
+    ds = BANK.get(p.get("ds_entry") or "") if p.get("ds_entry") else None
+    if ds:
+        # Through `events_at`, whose resolver takes the `vk-` key a version
+        # with no id is given; `_cf_version_events` does not.
+        want = str(p.get("ds_version"))
+        hit = None
+        for v, name in versionsmod.label_rows(list(ds.get("versions") or [])):
+            if name == want:
+                hit = v
+        got = None
+        try:
+            if hit is not None and hit.get("snap"):
+                got = BANK.events_at(ds, BANK.version_key(hit))[0]
+            elif want == str(versionsmod.tip_next(ds.get("versions")
+                                                  or [])[0]):
+                got = ds.get("events") or []    # the tip, as it stands
+        except Exception:                                # noqa: BLE001
+            got = None
+        if got is None:
+            # The entry is here but that version cannot be read back, so
+            # nothing can be shown to still sit where Braces put it. Lock
+            # nothing rather than lock a stamp that has since moved.
+            info["why"] = ("v%s of the dentate-spike set cannot be read back "
+                           "on this computer, so no stamp can be shown to be "
+                           "Braces'." % want)
+            return set(), info
+        ds_times = {curation._tkey(e.get("start")) for e in got}
+    out = set()
+    for i, ev in enumerate(events or []):
+        k = curation._tkey(ev.get("start"))
+        if k is None:
+            continue
+        st, pair = whose.get(k) or (None, None)
+        st = curation._stamp_of(ev) or st
+        if ev.get("pair_t") is not None:
+            pair = ev.get("pair_t")
+        if st == "incisor":
+            at = k
+        elif st == "doppler" and pair is not None:
+            # One both found, filed under Doppler's time: its Incisor half
+            # is `pair_t`, and if that is where Braces put it, the event is
+            # locked too (2026-10-23) -- at its own time, which never moves.
+            at = curation._tkey(pair)
+        else:
+            continue
+        if ds_times is not None and at not in ds_times:
+            continue
+        if ds_times is None and st != "incisor":
+            continue
+        out.add(i)
+    return out, info
+
+
+def _good_ids(rec):
+    """The labels that name a real event for this entry's kind, by id and
+    by display name -- the set Braces aligns."""
+    goods = [lab for lab
+             in (curation.KINDS.get(rec.get("type") or "ds")
+                 or curation.KINDS["ds"])["labels"]
+             if lab.get("good")]
+    want = {lab["id"] for lab in goods} | {lab["name"] for lab in goods}
+    for lid, name in (rec.get("label_names") or {}).items():
+        if lid in want:
+            want.add(name)
+    return want
+
+
+def _lock_braced_good(rec, events=None):
+    """(indices of good events Braces placed, info) -- `_lock_braced`
+    narrowed to the events Lock would align at all."""
+    events = (rec.get("events") or []) if events is None else events
+    idx, info = _lock_braced(rec, events)
+    want = _good_ids(rec)
+    return {i for i in idx
+            if (events[i].get("label_id") or events[i].get("label")) in want}, info
+
+
 def _tip_usable(vers):
     """The newest version whose stamps can be read back on this machine.
 
@@ -7365,12 +7854,25 @@ def api_braces_candidates():
         if not _n_good(rec):
             continue
         vers = rec.get("versions") or []
+        # Lock (2026-10-22): for a pooled set, how many of its spikes Braces
+        # already placed, so the list can say so and Lock can keep them.
+        braced = None
+        if want_type == "pooled":
+            try:
+                idx, info = _lock_braced_good(rec)
+                braced = dict(info or {}, n=len(idx))
+            except Exception:                            # noqa: BLE001
+                braced = None
         out.append({
+            "braced": braced,
             "id": rec["id"], "name": rec.get("name"),
             "gid": rec.get("gid"), "n": rec.get("n"),
             "project": rec.get("project"), "mouse": rec.get("mouse"),
             "session": rec.get("session"),
             "session_label": rec.get("session_label"),
+            "type": rec.get("type") or want_type,
+            # What produced it, for the chips on its version button.
+            "pipeline": (rec.get("source") or {}).get("pipeline"),
             "by_label": rec.get("by_label") or {},
             "current_version": max([v.get("v") or 0 for v in vers] or [0]),
             "current_name": versionsmod.tip_next(vers)[0],
@@ -7397,6 +7899,7 @@ def api_braces_candidates():
                  "by": ver.get("by"),
                  "note": ver.get("note"),
                  "aligned": bool(ver.get("aligned")),
+                 **_version_made(ver),
                  # A version with no snapshot on this machine cannot
                  # supply stamps, so it cannot be a starting point.
                  "usable": bool(ver.get("snap")),
@@ -7743,6 +8246,7 @@ def api_dspca_candidates():
                  "note": ver.get("note"),
                  "aligned": bool(ver.get("aligned")),
                  "usable": bool(ver.get("snap")),
+                 **_version_made(ver),
                  # Which step minted it -- "rootcanal" for a set Root
                  # Canal cleaned, which is what the picker defaults to.
                  "tag": ver.get("tag"),
@@ -9433,6 +9937,8 @@ def api_rootcanal_candidates():
             "newest_aligned_name": (versionsmod.newest(aligned_names)
                                     if aligned_names else None),
             "rootcanal": _rootcanal_state(rec, ied_by),
+            # What produced it, for the chip on its version tree.
+            "pipeline": (rec.get("source") or {}).get("pipeline"),
             "added": rec.get("added"),
             # Sent, not left out: the picker draws it under its archived
             # toggle (`_bank_archived`).
@@ -11950,9 +12456,9 @@ def _rootcanal_margin_for(p):
         raise rootcanal.RootCanalError(
             "The margin ‘%s’ cannot be used here: %s. A margin is centres in "
             "µV, ms and dB, and those are only the same numbers under the "
-            "same measurement -- change these settings to match, or save a "
-            "margin from settings that do." % (used["nickname"],
-                                               "; ".join(diff)))
+            "same measurement -- set these settings back to the ones it was "
+            "measured with to keep its calls." % (used["nickname"],
+                                                  "; ".join(diff)))
     return margin, used
 
 
@@ -16728,6 +17234,9 @@ def _cur_history(gid, kind, summaries=None):
             "entry": rec.get("id"),
             "name": rec.get("name"),
             "n": rec.get("n"),
+            # What produced it, for the chip over its versions.
+            "pipeline": (rec.get("source") or {}).get("pipeline"),
+            "type": rec.get("type"),
             "versions": vers,
         })
     # Newest entry first, by its newest version.
@@ -17197,6 +17706,9 @@ def api_curation_for_recording(gid):
                 # The version an alignment (Braces, Eye, Lock) wrote, which
                 # the version tree says on its row.
                 "aligned": bool(v.get("aligned")),
+                # What last worked on it, for the chip on its row
+                # (ui.versionProducer, 2026-10-21).
+                **_version_made(v),
                 # Whether a set can actually be built from it.
                 "usable": bool(v.get("snap")) or v.get("v") == newest,
                 # Archived versions are offered last, under a toggle.
@@ -17241,6 +17753,17 @@ def api_curation_for_recording(gid):
 # The rule is backend/confluence.py's.
 # ==========================================================================
 
+def _version_made(v):
+    """What last worked on one version, as the version itself records it:
+    the step that minted it (`tag`), the aligner (`aligned.tool`) and
+    whether it was moved onto another clock. The page names the tool from
+    these (ui.versionProducer) -- "v2 = Checkup" (2026-10-21)."""
+    al = v.get("aligned")
+    return {"tag": v.get("tag") or None,
+            "aligned_tool": (al.get("tool") if isinstance(al, dict) else None),
+            "retimed": bool(v.get("retimed"))}
+
+
 def _cf_entry_row(rec):
     vers = rec.get("versions") or []
     # When it was last worked on: its newest version, or when it was filed.
@@ -17267,7 +17790,12 @@ def _cf_entry_row(rec):
         named = versionsmod.label_rows(BANK.repaired(rec).get("versions")
                                        or [])
         row["versions"] = [{"name": nm, "id": v.get("id"), "n": v.get("n"),
-                            "at": v.get("at"),
+                            "at": v.get("at"), "by": v.get("by"),
+                            "note": v.get("note"),
+                            "from_v": v.get("from_v"),
+                            "imported": bool(v.get("imported")),
+                            "aligned": bool(v.get("aligned")),
+                            **_version_made(v),
                             "archived": bool(v.get("archived"))}
                            for v, nm in sorted(
                                named, key=lambda x: versionsmod.key(x[1]),
@@ -17331,9 +17859,12 @@ def _cf_ver_aligned(ent, ver):
 def _cf_is_test(rec):
     """A set a harness banked and left behind -- offered nowhere, as Eye
     does not offer them either."""
-    who = "%s %s" % ((rec.get("added") or {}).get("by") or "",
-                     rec.get("name") or "")
-    return "harness" in who.lower()
+    by = (rec.get("added") or {}).get("by") or ""
+    who = "%s %s" % (by, rec.get("name") or "")
+    # Debug_Bot too: the harness names were re-credited to it (2026-10-23,
+    # tools/collapse_people.py), and a seed that stopped saying "harness"
+    # would otherwise start being offered as somebody's dataset.
+    return "harness" in who.lower() or peoplemod.is_test_name(by)
 
 
 def _bank_archived(rec):
@@ -22314,11 +22845,50 @@ def api_csc_overview():
             return fail("csc/overview band", exc, 400,
                         {"path": body.get("path"), "band": band})
         return jsonify(res)
+    if streamjson.wants_stream(request):
+        return _overview_streamed(sess, body.get("channel"), bins)
     try:
         res = extras.overview(sess, channel=body.get("channel"), bins=bins)
     except Exception as exc:
         return fail("csc/overview", exc, 400, {"path": body.get("path")})
     return jsonify(res)
+
+
+def _overview_streamed(sess, channel, bins):
+    """The amplitude strip a bin at a time, coarse to fine (2026-10-21), so
+    the page can draw the whole recording at low resolution almost at once
+    and watch it sharpen, instead of nothing until the 900th read. The read
+    runs on its own thread and hands each bin over as it lands; the closing
+    line carries the whole answer, which is also what an answer already kept
+    in memory or on disk arrives as -- at once, with no bins before it."""
+    import queue
+    q = queue.Queue()
+    final = {}
+
+    def work():
+        try:
+            res = extras.overview(sess, channel=channel, bins=bins,
+                                  on_bin=lambda i, lo, hi, rms, mabs:
+                                  q.put(("bin", [i, lo, hi, rms, mabs])))
+            q.put(("done", res))
+        except Exception as exc:                         # noqa: BLE001
+            q.put(("error", str(exc) or type(exc).__name__))
+
+    threading.Thread(target=work, daemon=True, name="overview-stream").start()
+
+    def items():
+        while True:
+            kind, val = q.get()
+            if kind == "bin":
+                yield val
+            elif kind == "done":
+                final["result"] = val
+                return
+            else:
+                raise RuntimeError(val)
+
+    return streamjson.stream({"bins": bins, "fields": ["i", "lo", "hi", "rms", "mabs"]},
+                             items(), tail=lambda: {"result": final.get("result")})
 
 
 # ==========================================================================
@@ -24338,6 +24908,15 @@ def api_debug_trace():
     })
 
 
+@app.route("/api/debug/memory")
+def api_debug_memory():
+    """What this process holds: its resident and private memory, the one
+    budget every cache shares, and each cache's entries and bytes
+    (backend/membudget.py). Read-only."""
+    from . import membudget
+    return jsonify(dict({"ok": True}, **membudget.report()))
+
+
 @app.route("/api/debug/clear", methods=["POST"])
 def api_debug_clear():
     extras.TRACE.clear()
@@ -24447,6 +25026,11 @@ REG = sessreg.Registry(STORE)
 CURATE = curation.Curation(LOGS_DIR, STORE)
 LAYERS = layers.Layers(LOGS_DIR, STORE)
 GUIDES = guidesmod.Guides(LOGS_DIR, STORE)
+
+# The figure builder, v2: every tool's plots as panels (figkit), one
+# recording a figure, versions kept frozen. Its routes live in figroutes.py.
+from . import figroutes as figroutesmod                       # noqa: E402
+FIGURES = figroutesmod.install(app, sys.modules[__name__])
 
 # X-ray's vault: one record per (recording, question), and the read cached
 # beside it.
@@ -25272,6 +25856,15 @@ def api_arc_monolith_data(name):
         if got is None:
             return jsonify({"ok": False, "error": "Tab 8 has not been worked out yet."}), 404
         return jsonify(got)
+    if name == "joefigs":
+        # Read straight off the disk: importing backend/joefigs.py pulls in
+        # scipy, and two page requests importing it at once deadlocked on
+        # its module locks (2026-10-21, a cold server opening tab 9).
+        path = os.path.join(monolithmod._path("joe"), "figs", "figs.json")
+        if not os.path.isfile(path):
+            return jsonify({"ok": False, "error": "Tab 9's figures have not been drawn yet."}), 404
+        with open(path, encoding="utf-8") as fh:
+            return app.response_class(fh.read(), mimetype="application/json")
     d = monolithmod.data_dir()
     if not d:
         return jsonify({"ok": False, "error": "The Monolith has not been "
@@ -25606,17 +26199,19 @@ def api_arc_monolith_joe():
     """Tab 8, Joe's data, here, from the recordings: `what` "joe" (measure
     every rat-day not measured yet, fit the models, write the SPSS files)
     or "script" (run tools/joe_standalone.py on the same recordings and
-    compare its files with these). Refused without `confirm`."""
+    compare its files with these), or "script_vacc" (the same, run on the
+    VACC's copies of the recordings). Refused without `confirm`."""
     body = request.get_json(silent=True) or {}
     if body.get("confirm") is not True:
         return jsonify({"ok": False, "error": "Say confirm: true."}), 400
     what = body.get("what") or "joe"
-    if what not in ("joe", "script"):
-        return jsonify({"ok": False, "error": "what is joe or script."}), 400
+    if what not in ("joe", "script", "script_vacc"):
+        return jsonify({"ok": False, "error": "what is joe, script or script_vacc."}), 400
     try:
         from . import joe as joemod
-        w = monolithmod.start_work("joe" if what == "joe" else "joescript",
-                                   joemod.work_safe if what == "joe" else joemod.script_safe)
+        w = monolithmod.start_work({"joe": "joe", "script": "joescript", "script_vacc": "joescriptvacc"}[what],
+                                   {"joe": joemod.work_safe, "script": joemod.script_safe,
+                                    "script_vacc": joemod.script_vacc_safe}[what])
     except monolithmod.MonolithError as exc:
         return _mono_refused(exc)
     except Exception as exc:                                 # noqa: BLE001
@@ -25647,6 +26242,50 @@ def api_arc_monolith_joe_file(name):
     if not os.path.isfile(path):
         return jsonify({"ok": False, "error": "No such file."}), 404
     return send_file(path, mimetype=types[os.path.splitext(base)[1]], as_attachment=True, download_name=base)
+
+
+@app.route("/api/arc/monolith/joefigs", methods=["POST"])
+def api_arc_monolith_joefigs():
+    """Tab 9, Joe's figures: every figure drawn again from tab 8's own
+    rat-days (and the PAC profiles from the recordings, where they can be
+    read). With `vacc: true`, the PAC profiles are read first from the
+    VACC's copies of the recordings; with `fp_vacc: true`, the FP
+    comparison's fake trials are measured there first. Refused without
+    `confirm`."""
+    body = request.get_json(silent=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    on_vacc = body.get("vacc") is True
+    fp_vacc = body.get("fp_vacc") is True
+    try:
+        from . import joefigs as figsmod
+        if fp_vacc:
+            w = monolithmod.start_work("joefigsfp", lambda wk: figsmod.work_safe(wk, fp_vacc=True))
+        else:
+            w = monolithmod.start_work("joefigsvacc" if on_vacc else "joefigs",
+                                       (lambda wk: figsmod.work_safe(wk, on_vacc=True)) if on_vacc else figsmod.work_safe)
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/joefigs", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.joefigs", "detail": {"vacc": on_vacc, "fp_vacc": fp_vacc}}])
+    return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/joefigs/file/<path:name>")
+def api_arc_monolith_joefigs_file(name):
+    """Tab 9's figure files: SVG and PNG shown in the page, and with
+    ?download=1, those or the PDF saved."""
+    types = {".svg": "image/svg+xml", ".png": "image/png", ".pdf": "application/pdf"}
+    base = os.path.basename(name)
+    ext = os.path.splitext(base)[1]
+    if base != name or ext not in types:
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    path = os.path.join(monolithmod._path("joe"), "figs", base)     # no import of joefigs: see data/joefigs
+    if not os.path.isfile(path):
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    save = request.args.get("download") == "1" or ext == ".pdf"
+    return send_file(path, mimetype=types[ext], as_attachment=save, download_name=base)
 
 
 @app.route("/api/arc/monolith/narrow", methods=["POST"])
@@ -25963,6 +26602,39 @@ def api_bank_update(entry_id):
 
     return jsonify({"ok": True, "entry": {k: v for k, v in rec.items()
                                           if k != "events"}})
+
+
+@app.route("/api/bank/<entry_id>/archive", methods=["POST"])
+def api_bank_archive_entry(entry_id):
+    """Archive (or unarchive) a whole entry: every version of it, which is
+    what makes an entry archived (`eventbank.entry_archived`). For the
+    workbench's "Pick up a set" list, which archives a dataset right there
+    (2026-10-20). Body: {archived: true|false}. Nothing is deleted."""
+    body = request.get_json(force=True, silent=True) or {}
+    want = bool(body.get("archived", True))
+    ent = BANK.get(entry_id)
+    if not ent:
+        return jsonify({"ok": False, "error": "No such bank entry."}), 404
+    n = 0
+    try:
+        for ver in list(ent.get("versions") or []):
+            if bool(ver.get("archived")) == want:
+                continue
+            # An id-less version is named by the id derived on read
+            # (`versions.stable_id`), which is what `_version_ref` resolves;
+            # `version_key`'s content hash is a different handle, and three
+            # test entries refused to archive on it (2026-10-21).
+            ref = (str(ver["id"]) if ver.get("id")
+                   else versionsmod.stable_id(entry_id, ver))
+            BANK.edit_version(entry_id, ref, {"archived": want})
+            n += 1
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{"action": "bank.archive" if want else
+                            "bank.unarchive",
+                            "detail": {"entry": entry_id, "versions": n}}])
+    return jsonify({"ok": True, "archived": want, "changed": n,
+                    "entry": entry_id})
 
 
 @app.route("/api/bank/<entry_id>/version/<v>", methods=["POST"])
@@ -27231,6 +27903,169 @@ threading.Thread(target=_sweep_loop, daemon=True,
                  name="barry-tomb-sweep").start()
 
 
+# ==========================================================================
+# The end-of-day error report (backend/dayreport.py, 2026-10-21)
+# ==========================================================================
+REPORTS_DIR = os.path.join(LOGS_DIR, "error_reports")
+DAYREPORT_EVERY_S = 1200.0
+
+
+def _own_day(log, day):
+    """This computer's own records for one day, from its own file only: a
+    report is one computer's day, and another's errors that synced here are
+    theirs to report."""
+    out = []
+    try:
+        with open(log.path(day), "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    out.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        pass
+    return out
+
+
+def _dayreport_stamps_path():
+    return os.path.join(REPORTS_DIR, "stamps@%s.json" % shards.machine_id())
+
+
+def _dayreport_write(day, force=False):
+    """Write (or rewrite) this computer's report for `day`. Returns
+    {path, n, distinct, written} -- `written` False when it was up to date
+    and not forced. Never raises."""
+    try:
+        errs = _own_day(STORE.error_log, day)
+        tests = [r for r in errs if _is_test_error(r)]
+        errs = [r for r in errs if not _is_test_error(r)]
+        path = dayreportmod.path_for(REPORTS_DIR, day, shards.machine_id())
+        want = dayreportmod.stamp_of(errs)
+        try:
+            with open(_dayreport_stamps_path(), "r", encoding="utf-8") as fh:
+                stamps = json.load(fh) or {}
+        except (OSError, ValueError):
+            stamps = {}
+        if not force and stamps.get(day) == want and os.path.exists(path):
+            return {"path": path, "n": len(errs), "written": False}
+        d0 = datetime.date.fromisoformat(day)
+        acts = []
+        for dd in (d0 - datetime.timedelta(days=1), d0,
+                   d0 + datetime.timedelta(days=1)):
+            acts += _own_day(STORE.activity_log, dd.isoformat())
+        ver, commit = store._code_version()
+        prov = STORE.provenance() or {}
+        marks = {}
+        for k, v in (STORE.resolved_errors() or {}).items():
+            sig, _, mach = str(k).partition(extras.MARK_SEP)
+            if not mach or mach in (prov.get("machine"), shards.machine_id()):
+                marks[sig] = v
+        text = dayreportmod.build(
+            day, errs, acts, extras.signature,
+            machine="%s (%s)" % (prov.get("machine") or platform.node(),
+                                 shards.machine_id()),
+            user=prov.get("user"),
+            build_id=" ".join(x for x in (ver, commit) if x) or None,
+            tests_left_out=len(tests), resolved=marks)
+        os.makedirs(REPORTS_DIR, exist_ok=True)
+        with open(path + ".tmp", "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(text)
+        os.replace(path + ".tmp", path)
+        stamps[day] = want
+        # A month of stamps is plenty; older days are never rewritten.
+        keep = sorted(stamps)[-31:]
+        stamps = {k: stamps[k] for k in keep}
+        with open(_dayreport_stamps_path() + ".tmp", "w",
+                  encoding="utf-8") as fh:
+            json.dump(stamps, fh, indent=1, sort_keys=True)
+        os.replace(_dayreport_stamps_path() + ".tmp", _dayreport_stamps_path())
+        STORE._stage(path)
+        STORE._stage(_dayreport_stamps_path())
+        return {"path": path, "n": len(errs),
+                "distinct": len(dayreportmod.group(errs, extras.signature)),
+                "written": True}
+    except Exception as exc:                             # noqa: BLE001
+        try:
+            STORE.record_error("dayreport.write", exc, None, {"day": day})
+        except Exception:                                # noqa: BLE001
+            pass
+        return {"path": None, "n": 0, "written": False, "error": str(exc)}
+
+
+def _dayreport_tick():
+    """Today's after six, yesterday's once the day has turned -- each only
+    when its errors changed since it was last written."""
+    now = datetime.datetime.now()
+    today = now.date().isoformat()
+    yday = (now.date() - datetime.timedelta(days=1)).isoformat()
+    try:
+        with open(_dayreport_stamps_path(), "r", encoding="utf-8") as fh:
+            stamps = json.load(fh) or {}
+    except (OSError, ValueError):
+        stamps = {}
+    for day in (yday, today):
+        errs = [r for r in _own_day(STORE.error_log, day)
+                if not _is_test_error(r)]
+        if dayreportmod.due(day, today, now.hour, stamps.get(day),
+                            dayreportmod.stamp_of(errs)):
+            _dayreport_write(day)
+
+
+def _dayreport_loop():
+    time.sleep(90)
+    while True:
+        try:
+            _dayreport_tick()
+        except Exception:                                # noqa: BLE001
+            pass
+        time.sleep(DAYREPORT_EVERY_S)
+
+
+# Not on a harness server: its faults are all tests, and its days are
+# somebody else's.
+if not os.environ.get("BARRY_HARNESS_SERVER"):
+    threading.Thread(target=_dayreport_loop, daemon=True,
+                     name="barry-dayreport").start()
+
+
+@app.route("/api/errors/report", methods=["GET", "POST"])
+def api_errors_report():
+    """This computer's end-of-day error report. POST writes it now for
+    `day` (default today) and returns its text; GET lists the reports on
+    disk, every computer's, newest first."""
+    if request.method == "GET":
+        rows = []
+        for name in sorted(os.listdir(REPORTS_DIR)
+                           if os.path.isdir(REPORTS_DIR) else [],
+                           reverse=True):
+            if not name.endswith(".txt"):
+                continue
+            day, _, mach = name[:-4].partition("@")
+            full = os.path.join(REPORTS_DIR, name)
+            rows.append({"day": day, "machine": mach, "path": full,
+                         "bytes": os.path.getsize(full),
+                         "mine": mach == shards.machine_id()})
+        return jsonify({"ok": True, "dir": REPORTS_DIR, "reports": rows})
+    body = request.get_json(force=True, silent=True) or {}
+    day = str(body.get("day") or datetime.date.today().isoformat())[:10]
+    try:
+        datetime.date.fromisoformat(day)
+    except ValueError:
+        return jsonify({"ok": False, "error": "Not a day: %s" % day}), 400
+    got = _dayreport_write(day, force=True)
+    if not got.get("path"):
+        return jsonify({"ok": False, "error": got.get("error")
+                        or "The report could not be written."}), 500
+    with open(got["path"], "r", encoding="utf-8") as fh:
+        got["text"] = fh.read()
+    got["ok"] = True
+    got["dir"] = REPORTS_DIR
+    return jsonify(got)
+
+
 def _vacc_status_marked():
     """`vacc.status()`, with each job the cluster lists marked by whether
     Jarvis on this machine is following it -- a run record in
@@ -28216,6 +29051,19 @@ def api_vacc_found():
     return jsonify(got)
 
 
+@app.route("/api/vacc/feed")
+def api_vacc_feed():
+    """What the VACC work is doing right now, line by line (livefeed.py):
+    the sign-in, the probe, every folder a walk finds, every recording
+    added. `since` is the last line the page has; -1 asks only where the
+    feed is up to. Memory only, never connects."""
+    try:
+        since = int(request.args.get("since", "-1"))
+    except ValueError:
+        since = -1
+    return jsonify(dict(livefeedmod.read(since), ok=True))
+
+
 @app.route("/api/vacc/found/look", methods=["POST"])
 def api_vacc_found_look():
     """Find what is on the cluster, in the background, and answer at once.
@@ -28250,6 +29098,10 @@ def api_vacc_found_look():
                 continue
             if which == "netfiles" and not is_native:
                 continue
+            if vaccmod.inventory_busy(root):
+                livefeedmod.say("%s is already being looked through" % root, "dim")
+            else:
+                livefeedmod.say("starting a walk of %s" % root, "")
             vaccmod.inventory_soon(cfg, root)
             started.append(root)
         got, _new = _vacc_found_body()
@@ -28294,10 +29146,27 @@ def api_vacc_found_add():
                 "error": "The list changed since it was shown -- %d new now. "
                          "Look at it again before adding."
                          % (got.get("n_new") or 0)}), 409
+        # Said in the live feed as well (livefeed.py): the welcome's
+        # Recordings step shows each one going in.
+        livefeedmod.task("add", restart=True, state="run", done=0,
+                         of=len(new_rows), label="Adding to the catalogue")
+        livefeedmod.say("adding %d recording%s to the catalogue"
+                        % (len(new_rows), "" if len(new_rows) == 1 else "s"),
+                        "hot", "add")
+        for r in new_rows:
+            livefeedmod.say("+ %s  %s" % (r.get("label") or r.get("key") or "?",
+                                          r.get("where") or r.get("path") or ""),
+                            "", "add")
         try:
             added, joined = vaccfindmod.register(REG, new_rows)
         except Exception as exc:                         # noqa: BLE001
+            livefeedmod.say("stopped: %s" % exc, "warn", "add")
+            livefeedmod.task("add", state="fail")
             return fail("vacc/found/add", exc, 400, {"n": len(new_rows)})
+        livefeedmod.task("add", state="done", done=len(new_rows))
+        livefeedmod.say("%d added, each with a permanent id%s" % (
+            added, ("; %d already known learned their netfiles path" % joined)
+            if joined else ""), "ok", "add")
     STORE.record_activity([{
         "action": "vacc.found.add",
         "detail": {"added": added, "joined": joined,

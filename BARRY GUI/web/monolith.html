@@ -641,6 +641,29 @@ table.jpost tr.jkeep th, table.jpost tr.jkeep td { color: var(--up); font-weight
 table.jterms tr.jkey th, table.jterms tr.jkey td { font-weight: 600; }
 .jfpout { flex: 0 1 220px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .jfiles { columns: 2 18em; }
+/* 9 · Joe's figures (js/monolith_joefigs.js) */
+#figspane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
+#figspane[hidden] { display: none; }
+#figspane .card > p { max-width: 90ch; overflow-wrap: anywhere; }
+.fgtoc { margin: 6px 0; padding-left: 0; list-style: none; font-size: 13.5px; columns: 2 26em; }
+.fgtoc li.fgtop { font-weight: 600; break-before: auto; }
+.fgtoc li.fgsub { margin-left: 1em; }
+.fgcard h3 { margin: 0; font-size: 15px; text-transform: none; letter-spacing: 0; color: var(--ink); }
+.fgcard .fgno { font-weight: 700; }
+.fgimg { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 6px; margin: 8px 0; overflow: hidden; }
+.fgimg img { display: block; width: 100%; height: auto; }
+.fgstats { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 4px 0; }
+.fgchip { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--chip); color: var(--ink-2); }
+.fgchip.sig { background: color-mix(in srgb, #E66101 22%, transparent); color: var(--ink); font-weight: 600; }
+/* A connectome's null, one at a time (monolith_joefigs.js figCard). */
+.fgnull { gap: 8px; align-items: center; flex-wrap: wrap; margin: 2px 0 6px; }
+.fglegend { max-width: 95ch; overflow-wrap: anywhere; line-height: 1.45; }
+.fgtools { gap: 6px; flex-wrap: wrap; }
+.fgmethods { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 6px; }
+.fgmethod { margin: 8px 0 14px; max-width: 95ch; }
+.fgmethod h4 { margin: 0 0 4px; font-size: 14px; text-transform: none; letter-spacing: 0; }
+.fgmethod p { margin: 3px 0; overflow-wrap: anywhere; }
+.fgtoyhost { margin-top: 6px; }
 /* 7 · Narrowing down (js/monolith_narrow.js) */
 #narrowpane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
 #narrowpane[hidden] { display: none; }
@@ -745,6 +768,7 @@ svg.narbar { display: block; }
 <script src="js/monolith_physical.js"></script>
 <script src="js/monolith_narrow.js"></script>
 <script src="js/monolith_joe.js"></script>
+<script src="js/monolith_joefigs.js"></script>
 <script src="js/monolith_tour.js"></script>
 <script src="js/tour.js"></script>
 </body>

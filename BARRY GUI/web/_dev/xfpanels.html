@@ -82,12 +82,9 @@ async function until(fn, ms) {
     say('panels: ' + ids.join(', '), 'note');
 
     const box = (i) => D().querySelector('#paneGrid > [data-pane-at="' + i + '"]');
-    const headSel = (i) => box(i) && box(i).querySelector('.pane-head select');
-    const choose = (i, panel) => {
-      const s = headSel(i);
-      s.value = panel;
-      s.dispatchEvent(new (W().Event)('change', { bubbles: true }));
-    };
+    /* What a pane shows is changed under More › Shows since 2026-10-20 --
+       the head only says it -- so this asks the same function More uses. */
+    const choose = (i, panel) => X.setPanel(i, panel);
     const arrived = (i, panel) => {
       const p = XF.panes[i];
       if (!p || p.panel !== panel) return false;

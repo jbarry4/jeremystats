@@ -133,8 +133,9 @@ const ENTRY = '46fd29a77cc7';
   eq('with five steps, in the order they are done',
      stepEls.map((b) => (b.querySelector('.tk-step-n') || {}).textContent),
      ['Incisor', 'Checkup', 'Braces', 'Root Canal', 'X-ray']);
-  eq('numbered one to five',
-     stepEls.map((b) => (b.querySelector('.tk-step-i') || {}).textContent)
+  // No printed numbers since 2026-10-21: the order is kept on `data-n`.
+  eq('in order one to five',
+     stepEls.map((b) => ((b.querySelector('.tk-step-i') || {}).dataset || {}).n)
        .join(''), '12345');
   eq('and says what this one does',
      ((stepEls[3] || {}).querySelector
@@ -224,10 +225,10 @@ const ENTRY = '46fd29a77cc7';
               'the progress card');
   ok('a running read draws the progress card, with a loader in it',
      !!D().querySelector('#tkResult .rc-job .loader'));
-  const gotFeed = await until(() => D().querySelector('#tkResult .tf'), 10000,
+  const gotFeed = await until(() => D().querySelector('#tkFeed .tf, #tkResult .tf'), 10000,
                               'the activity feed to mount');
   ok('the activity feed is mounted under it', gotFeed);
-  const feed0 = D().querySelector('#tkResult .tf');
+  const feed0 = D().querySelector('#tkFeed .tf, #tkResult .tf');
   /* The tick itself updates the card where it stands. Asked around one
      tick, synchronously: the ToolKit repaints the whole panel on its own
      schedule, and that is a different event from a tick. */
@@ -240,7 +241,7 @@ const ENTRY = '46fd29a77cc7';
     await sleep(90);
   }
   ok('fourteen ticks later it is the SAME feed, not a remount',
-     !!feed0 && D().querySelector('#tkResult .tf') === feed0);
+     !!feed0 && D().querySelector('#tkFeed .tf, #tkResult .tf') === feed0);
   const jobText = (D().querySelector('#tkResult .rc-job') || {}).textContent || '';
   ok('which says where it is up to', /15 of 296/.test(jobText),
      jobText.slice(0, 120));
@@ -459,7 +460,8 @@ const ENTRY = '46fd29a77cc7';
   ok('the why-line counts them', /2 on 2 of 3 axes/.test(
      (D().querySelector('.rc-why') || {}).textContent || ''));
   ok('and says how many were classified, placed ones included',
-     new RegExp(f50.n_placed + ' of ' + f50.n + ' classified').test(
+     new RegExp(f50.n_placed === f50.n ? 'all ' + f50.n + ' classified'
+                : f50.n_placed + ' of ' + f50.n + ' classified').test(
        (D().querySelector('.rc-why') || {}).textContent || ''));
   ok('Bank says so too', /\(2 on 2 of 3 axes\)/.test(
      (D().querySelector('.rc-bank') || {}).textContent || ''),
@@ -612,7 +614,7 @@ const ENTRY = '46fd29a77cc7';
      filtBefore);
 
   /* ================================================================== */
-  head('k CLUSTERS, RELABELS AND MARGINS');
+  head('k CLUSTERS, RELABELS AND CARRIED CALLS');
 
   const kBefore = JSON.stringify(st().fit.counts);
   const kBtn = (v) => Array.from(D().querySelectorAll('.rc-k .rc-kseg button'))
@@ -652,11 +654,12 @@ const ENTRY = '46fd29a77cc7';
                     && st().fit.clusters.every((c) => c.call_by === 'rule'),
               30000, 'the rule again');
   ok('and is', st().fit.clusters.every((c) => c.call_by === 'rule'));
-  ok('the dots can be coloured by cluster',
-     !!D().querySelector('.rc-colour-by'));
+  // Taken out on 2026-10-21: the dots are coloured by their call, always.
+  ok('there is no colour switch: the dots are coloured by their call',
+     !D().querySelector('.rc-colour-by'));
   /* COLOURS THAT MATCH, at k = 3. A chip, its centre and its dots say
-     one colour, in either colour mode; centres are numbered as the chips
-     are; no centre label lands on another. */
+     one colour; centres are numbered as the chips are; no centre label
+     lands on another. */
   const kTok = (t) => ev('BARRY.token(' + JSON.stringify(t) + ')');
   /* Colours compared through a canvas, which writes any colour the same
      way -- a token's hex and a swatch's rgb() come out alike. */
@@ -676,12 +679,6 @@ const ENTRY = '46fd29a77cc7';
      ((geom().space || {}).centres || []).every((c) =>
        c.fill === (c.cls === 'ied' ? kTok('--err') : kTok('--ok'))),
      JSON.stringify(((geom().space || {}).centres || []).map((c) => c.fill)));
-  ev(RC + '._singleColour("cluster")');
-  await sleep(150);
-  ok('by cluster, chip, centre and dots share each cluster’s colour',
-     kColourOk() && ((geom().space || {}).centres || []).every((c) =>
-       c.fill === kTok('--c' + ((c.k % 4) + 1))));
-  ev(RC + '._singleColour("call")');
   ok('centres are numbered as the chips are',
      ((geom().space || {}).centres || []).map((c) => c.label && c.label.text)
        .join() === '#1 DS,#2 DS,#3 IED',
@@ -723,53 +720,53 @@ const ENTRY = '46fd29a77cc7';
   ok('k = 1 is no split: nothing called IED, and it says why',
      st().fit.counts.ied === 0 && /no split/.test(st().fit.rule), st().fit.rule);
 
-  /* A margin that is not here is refused -- by the server, for real --
-     and said in the margin's own card, with the set fitted without it. */
-  ev(RC + '._setMargin({ artifact_id: "harness-none", mode: "fixed" })');
-  await until(() => ev(RC + '._marginErr()') && st().fit && st().fit.ok
-                    && !st().fitting, 30000, 'the refusal');
-  ok('an unknown margin is refused with a sentence',
-     /no saved Root Canal margin/.test(ev(RC + '._marginErr()') || ''),
-     ev(RC + '._marginErr()'));
-  await until(() => D().querySelector('.rc-margins .rc-margin-err')
-                    && !st().fitting, 20000, 'the card to say it');
-  ok('said in the margins card, which opens to say it',
-     !!D().querySelector('.rc-margins[open] .rc-margin-err'));
-  ok('and the set is still fitted, without it',
-     st().fit.ok && st().q.margin === null && !st().fit.margin_used);
-  // Cleared, as somebody would before going on, so the card folds again.
-  ev(RC + '._setMargin(null)');
-  await until(() => !ev(RC + '._marginErr()') && !st().fitting
-                    && !D().querySelector('.rc-margins[open]'), 20000,
-              'the card to fold');
-  ok('and once cleared the card folds back to one line',
-     !D().querySelector('.rc-margins[open]'));
+  /* MARGINS WERE TAKEN OUT (2026-10-21): there is no card to pick, apply
+     or save one. */
+  ok('there is no margins card, and nothing offers to save a margin',
+     !D().querySelector('.rc-margins')
+     && !Array.from(D().querySelectorAll('#tkResult button'))
+       .some((b) => /margin/i.test(b.textContent)));
 
-  /* Save margins: the request, through the naming dialog, intercepted so
-     nothing reaches the artifact store. */
-  ev('(function(){ var W = window; W.__rkSent = []; W.__rkFetch = W.fetch;'
-     + ' W.fetch = function(u, o) { if (String(u).indexOf("/api/rootcanal/'
-     + 'margin/save") >= 0) { W.__rkSent.push(JSON.parse((o && o.body) || "{}"));'
-     + ' return Promise.resolve(new Response(JSON.stringify({ ok: true,'
-     + ' artifact_id: "harness-m", version: 1, nickname: "harness margin",'
-     + ' confirmed: false }), { status: 200, headers: { "Content-Type":'
-     + ' "application/json" } })); } return W.__rkFetch.apply(this, arguments); };'
-     + ' W.__rkBd = BARRY.ui.bankDialog; BARRY.ui.bankDialog = async function(o){'
-     + ' await o.onBank({ name: "harness margin", note: "" }); return true; }; })()');
-  const kSave = Array.from(D().querySelectorAll('.rc-margins button'))
-    .find((b) => /Save these margins/.test(b.textContent));
-  ok('Single can save its margins', !!kSave);
-  if (kSave) kSave.click();
-  await until(() => JSON.parse(ev('JSON.stringify(window.__rkSent)')).length,
-              10000, 'the margin save');
-  const kSent = JSON.parse(ev('JSON.stringify(window.__rkSent)'))[0] || {};
-  ok('it asks the server to cut it from this recording, at these settings',
-     kSent.nickname === 'harness margin' && kSent.extract
-     && kSent.extract.source === 'single' && kSent.extract.k === 1
-     && kSent.extract.entry_id === ENTRY, JSON.stringify(kSent).slice(0, 160));
-  ev('(function(){ var W = window; if (W.__rkFetch) { W.fetch = W.__rkFetch;'
-     + ' delete W.__rkFetch; } if (W.__rkBd) { BARRY.ui.bankDialog = W.__rkBd;'
-     + ' delete W.__rkBd; } })()');
+  /* What is left of them: a version that carries its own calls -- a single
+     saved from a pool is made that way -- says so where k would be, and can
+     be fitted afresh. Set by hand and drawn without a fit, so nothing that
+     carries calls is ever sent. */
+  st().q.margin = { artifact_id: 'harness-carried', version: 1, mode: 'fixed' };
+  ev(RC + '._render()');
+  await until(() => D().querySelector('.rc-controls .rc-k-margin .rc-fit-afresh'),
+              5000, 'the carried-calls line');
+  const kCarry = D().querySelector('.rc-controls .rc-k-margin');
+  ok('a version carrying its own calls says so where k would be, with Fit afresh',
+     !!kCarry && /^k and the calls are this version’s own(, from ‘.+’|, saved with it)Fit afresh$/
+       .test(kCarry.textContent)
+     && !D().querySelector('.rc-controls .rc-kseg'),
+     kCarry && kCarry.textContent);
+  const kFit0 = st().fit;
+  if (kCarry) kCarry.querySelector('.rc-fit-afresh').click();
+  await until(() => st().fit !== kFit0 && !st().fitting, 30000, 'fitted afresh');
+  /* Not by way of a refusal: the harness id is no saved margin, so sending
+     it would be refused and fitted again -- and say so in marginErr. */
+  ok('Fit afresh fits again with nothing carried, and the k seg is back',
+     st().q.margin === null && !(ev(RC + '._lastBody()') || {}).margin
+     && ev(RC + '._marginErr()') == null
+     && st().fit !== kFit0 && !!D().querySelector('.rc-controls .rc-kseg'),
+     JSON.stringify(ev(RC + '._lastBody()') || {}).slice(0, 160));
+
+  /* And refused -- by the server, for real: calls that cannot be used here
+     are taken off, said in a toast, and the set fitted afresh. */
+  const kFit1 = st().fit;
+  st().q.margin = { artifact_id: 'harness-none', version: 1, mode: 'fixed' };
+  ev(RC + '._fit()');
+  await until(() => st().fit !== kFit1 && !st().fitting && st().fit && st().fit.ok,
+              30000, 'refused, then fitted afresh');
+  const kToasts = Array.from(D().querySelectorAll('#toasts .toast'))
+    .map((n) => n.textContent).join(' | ');
+  ok('calls the server refuses are taken off, said, and the set fitted afresh',
+     st().q.margin === null
+     && /no saved Root Canal margin/.test(ev(RC + '._marginErr()') || '')
+     && /Fitted afresh: the calls this version carried could not be used here/
+       .test(kToasts) && !(ev(RC + '._lastBody()') || {}).margin,
+     kToasts.slice(0, 240));
 
   kBtn(2).click();
   await until(() => st().fit && st().fit.k === 2 && !st().fitting, 30000, 'k = 2');
@@ -1287,7 +1284,7 @@ const ENTRY = '46fd29a77cc7';
                    /* and the why card's own rows, so a miss says which grew */
                    '.rc-why .rc-rule', '.rc-why-t > .chip-row',
                    '.rc-why .rc-clusters', '.rc-why .rc-clu',
-                   '.rc-why .rc-stats-go', '.rc-why .rc-margins',
+                   '.rc-why .rc-stats-go', '.rc-why .rc-borders',
                    '.rc-why .head-actions'].map((s2) => {
       const q2 = box(s2);
       return q2 ? s2 + ' ' + (q2.top - top0).toFixed(0) + '+'
@@ -1311,6 +1308,15 @@ const ENTRY = '46fd29a77cc7';
                                + ' (' + above + '; ' + room + ')' : 'missing');
     if (what === 'Open in Xplorefinder') {
       say('       ' + (r ? b.toFixed(0) : '?') + ' of ' + vh + ' px; ' + room, 'dim');
+      // What the row of counts holds, and how wide each part is.
+      const cr = D().querySelector('.rc-why-t > .chip-row');
+      if (cr) {
+        say('       counts row: ' + Array.from(cr.children).map((c2) => {
+          const R2 = c2.getBoundingClientRect();
+          return '[' + (c2.textContent || '').trim().slice(0, 40) + ' ' + R2.width.toFixed(0)
+            + 'x' + R2.height.toFixed(0) + ' @' + (R2.top - cr.getBoundingClientRect().top).toFixed(0) + ']';
+        }).join(' '), 'dim');
+      }
     }
   }
   const pic = box('#rcSpace');
@@ -1519,11 +1525,11 @@ const ENTRY = '46fd29a77cc7';
   ok('one bar over them all', !!D().querySelector('.rc-bulk-card .br-fbar'));
   ok('there is a Stop', Array.from(D().querySelectorAll('.rc-bulk-card button'))
      .some((b) => b.textContent === 'Stop'));
-  const feedB = D().querySelector('#tkResult .tf');
+  const feedB = D().querySelector('#tkFeed .tf, #tkResult .tf');
   const runB = D().querySelector('.rc-bulk-card .rc-bulk-run');
   for (let k = 0; k < 6; k++) { ev(RC + '._tickBulk()'); await sleep(90); }
   ok('ticking the batch leaves the activity feed alone',
-     !feedB || D().querySelector('#tkResult .tf') === feedB);
+     !feedB || D().querySelector('#tkFeed .tf, #tkResult .tf') === feedB);
   ok('and leaves the rows where they are, when nothing in them changed',
      !!runB && D().querySelector('.rc-bulk-card .rc-bulk-run') === runB);
   ev(RC + '._endBulk()');
@@ -1900,6 +1906,30 @@ const ENTRY = '46fd29a77cc7';
      /saved numbers/.test(st().evData.error)
      && /Elsewhere/.test(st().evData.error), st().evData.error);
 
+  /* One saved from a pool carries the pool's calls. With its read elsewhere
+     there is nothing here to fit afresh from, so it says so and keeps them;
+     and the calls are named from its own answer, not by an id. */
+  ev('window.__rsOpen = ' + JSON.stringify({ ok: true, version: 1,
+    nickname: 'from pool', single: sSingle, here: false,
+    payload: { params: Object.assign({}, sParams(2), { margin: {
+                 artifact_id: 'harness-carried', version: 1, mode: 'fixed' } }),
+               read: sRead, read_on: 'Elsewhere', from_version: sFrom },
+    fit: Object.assign({}, sFit, { params: sParams(2), margin_used: {
+      artifact_id: 'harness-carried', version: 1,
+      nickname: 'harness pool v2 clusters' } }) }));
+  await ev(RC + '._openVersion("harness-single", 1)');
+  await until(() => D().querySelector('.rc-controls .rc-k-margin .rc-fit-afresh'),
+              8000, 'the carried calls');
+  const sCarry = () => (D().querySelector('.rc-controls .rc-k-margin') || {})
+    .textContent || '';
+  ok('the calls it carries are named from its own answer',
+     /from ‘harness pool v2 clusters’/.test(sCarry()), sCarry());
+  D().querySelector('.rc-controls .rc-fit-afresh').click();
+  await sleep(300);
+  ok('Fit afresh with its read elsewhere keeps the calls: nothing here to fit '
+     + 'from', !!st().q.margin && st().q.margin.artifact_id === 'harness-carried'
+     && /harness pool v2 clusters/.test(sCarry()), sCarry());
+
   /* And one whose read is here: refitted, with its settings. */
   ev('window.__rsOpen = ' + JSON.stringify({ ok: true, version: 2,
     nickname: 'three clusters', single: sSingle, here: true,
@@ -2060,11 +2090,7 @@ const ENTRY = '46fd29a77cc7';
   await until(() => st().fit && st().fit.ok && !st().fitting, 30000, 'a fit');
   /* Margins and borders each have a card since 2026-10-19, both folded
      to one line while nothing is applied. */
-  ok('folded, the margins card says so on one line',
-     D().querySelector('.rc-why .rc-margin-sum').textContent
-       === 'Margins · none applied'
-     && !D().querySelector('.rc-why .rc-margins').open);
-  ok('and so does the Borders card beside it',
+  ok('the Borders card, folded, says so on one line',
      /^Borders · No border applied/.test(
        (D().querySelector('.rc-why .rc-border-sum') || {}).textContent || '')
      && !D().querySelector('.rc-why .rc-borders').open);
@@ -2101,10 +2127,9 @@ const ENTRY = '46fd29a77cc7';
   await until(() => !st().fitting && st().fit.border_used, 20000, 'the border on');
   ok('the request carries the border', (ev(RC + '._lastBody()').border || {})
      .artifact_id === 'hb-s');
-  ok('the call shown is the border’s: the seg says so and the legend has '
-     + 'ambiguous', Array.from(D().querySelectorAll('.rc-why .rc-colour-by button'))
-       .some((b) => b.textContent === 'by border')
-     && /solid DS\s*solid IED\s*outside, called DS\s*outside, called IED/
+  ok('the call shown is the border’s: the legend says so, with the '
+     + 'ones outside it',
+     /solid DS\s*solid IED\s*outside, called DS\s*outside, called IED/
        .test(D().querySelector('.rc-legend').textContent),
      D().querySelector('.rc-legend').textContent.slice(0, 120));
 
@@ -2136,10 +2161,18 @@ const ENTRY = '46fd29a77cc7';
   ev(RC + '._setBorder(null)');
   await until(() => !st().fitting && !st().fit.border_used, 20000, 'the border off');
   ok('taken off, the call is k-means’ again',
-     Array.from(D().querySelectorAll('.rc-why .rc-colour-by button'))
-       .some((b) => b.textContent === 'by call'));
+     /^\s*DS\s*IED/.test((D().querySelector('.rc-legend') || {}).textContent || ''),
+     (D().querySelector('.rc-legend') || {}).textContent);
   ev('(function(){ var W = window; if (W.__bdFetch) { W.fetch = W.__bdFetch;'
      + ' delete W.__bdFetch; } })()');
+
+  /* ================================================================== */
+  head('CARRIED CALLS STAY WITH THE VERSION THAT CARRIED THEM');
+
+  st().q.margin = { artifact_id: 'harness-carried', version: 1, mode: 'fixed' };
+  ev(RC + '._pickSetNow(' + JSON.stringify(ENTRY) + ')');
+  ok('picking a set drops the calls another version carried',
+     st().q.margin === null && ev(RC + '._marginErr()') == null);
 
   } catch (err) {
     /* A throw used to end a suite in silence: fewer passing checks and no

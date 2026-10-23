@@ -46,7 +46,7 @@
   },
   "added": {
     "at": "2026-10-20T17:37:37-04:00",
-    "by": "eye harness",
+    "by": "Debug_Bot",
     "machine": "BarryLab"
   },
   "by_label": {
@@ -123,7 +123,7 @@
   "versions": [
     {
       "at": "2026-10-20T17:37:37-04:00",
-      "by": "eye harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 6
       },
@@ -167,7 +167,7 @@
     },
     {
       "at": "2026-10-20T17:37:37-04:00",
-      "by": "eye harness",
+      "by": "Debug_Bot",
       "by_label": {
         "Garbage": 1,
         "Solid": 5

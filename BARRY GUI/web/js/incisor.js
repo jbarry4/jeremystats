@@ -1142,9 +1142,9 @@ BARRY.incisor = (function () {
   }
 
   function pickCard() {
+    // No label of its own: the picker carries "Recording" (ui.pickRecording),
+    // and two said it twice.
     const box = el('div', { class: 'card' });
-    box.appendChild(el('div', { class: 'section-label',
-                                text: 'Recording' }));
     const rows = BARRY.views.toolkit.registryRows
       ? BARRY.views.toolkit.registryRows() : [];
     /* This computer first, the cluster second (BARRY.vacc.reach). Run here,
@@ -2413,7 +2413,7 @@ BARRY.incisor = (function () {
 
     box.appendChild(el('div', { class: 'tk-actions' }, [
       el('button', {
-        class: 'btn', text: banking ? 'Banking…' : 'Bank and vet…',
+        class: 'btn', text: banking ? 'Banking…' : 'Bank as a new entry…',
         disabled: (banking || !n) ? 'disabled' : null,
         onclick: () => bank(row),
       }),

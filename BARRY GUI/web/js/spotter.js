@@ -321,6 +321,7 @@ BARRY.spotter = (function () {
             + 'worked on before. v0 is Doppler\u2019s own list, nothing decided; '
             + 'a later one carries the decisions made in it.' }),
         BARRY.ui.versionTree({
+          producer: ent.source, producerType: ent.kind,
           versions: vs,
           idOf: (v) => (v.id != null ? v.id : 'v' + v.v),
           value: pick.id != null ? pick.id : 'v' + pick.v,
@@ -374,6 +375,8 @@ BARRY.spotter = (function () {
     if (sess && BARRY.views.xplore.setChannelLines) {
       BARRY.views.xplore.setChannelLines(sess, []);
     }
+    // A main window laid out from Profile goes back to its one pane.
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     setMode(null);
     receipt(set_.gid, { quiet: true });
     if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
@@ -432,7 +435,14 @@ BARRY.spotter = (function () {
      which between them are how an IED is told from an artefact on one
      wire. */
   function layout() {
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    /* The main window as this person laid it out in Profile › Support panel
+       preferences (2026-10-22), or the traces alone, as always. Its first
+       pane is always the traces, which everything below reads. */
+    const mp = BARRY.supportPanels
+      ? BARRY.supportPanels.applyMain('spotter', [{ panel: 'traces' }], sess,
+                                      { col: 0.5, row: 0.5 })
+      : (BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 }), null);
+    if (mp && mp.span) span = mp.span;
     openAids();
   }
 
@@ -443,12 +453,20 @@ BARRY.spotter = (function () {
     }
     const every8 = ((sess.info || {}).channels || [])
       .filter((c, i) => i % 8 === 0).map((c) => c.index);
-    aidWin = BARRY.views.xplore.popOutPanes(sess, [
+    const defaults = [
       { panel: 'csd' },
       { panel: 'voltage' },
       { panel: 'spectrogram', tfChannels: every8, tfMode: 'stack',
         fmin: 1, fmax: 250 },
-    ], { role: 'aids', name: 'barry-spotter-aids', width: 720, height: 980,
+    ];
+    // What this person chose (Profile › Support panel preferences).
+    const plan = BARRY.supportPanels
+      ? BARRY.supportPanels.plan('spotter', defaults, sess)
+      : { specs: defaults };
+    if (!plan) return;
+    aidWin = BARRY.views.xplore.popOutPanes(sess, plan.specs, {
+         ...BARRY.supportPanels.opts(plan),
+         role: 'aids', name: 'barry-spotter-aids', width: 720, height: 980,
          chrome: 'notabs,noheads,nostrip,nochannels' });
   }
 
@@ -886,19 +904,6 @@ BARRY.spotter = (function () {
             lightChannels(current());
             render();
           }, { extra: 'spot-light' }) }),
-        el('button', {
-          class: 'mini spot-auto' + (autoOn() ? ' on' : ''),
-          text: 'Auto-bank: ' + (autoOn() ? 'on' : 'off'),
-          title: autoOn()
-            ? 'The decisions are banked as a new version without asking: when '
-              + 'the last undecided one is decided, and when you leave with '
-              + 'decisions the bank does not have yet. Click to turn it off.'
-            : 'Off: nothing is banked until you press Bank the results. '
-              + 'Click to turn it on.',
-          onclick: () => {
-            try { BARRY.prefs.set(AUTO_KEY, !autoOn()); } catch (e) { /* later */ }
-            render();
-          } }),
       ],
       next: {
         text: 'Next: Eye \u2014 line them up \u2192',
@@ -930,10 +935,11 @@ BARRY.spotter = (function () {
      would hold nothing new writes nothing. On by default, off by the switch
      in the bar, remembered per person. */
   const AUTO_KEY = 'spotter_autobank';
-  function autoOn() {
-    try { return BARRY.prefs.get(AUTO_KEY, true) !== false; }
-    catch (e) { return true; }
-  }
+  /* Always on (2026-10-21: "autobank is a constant, and when you leave"):
+     the decisions are banked when the last one is made and on leaving with
+     work the bank does not have. No switch. */
+  // `BARRY.testNoAutobank` is for a harness's throwaway sets only.
+  function autoOn() { return !BARRY.testNoAutobank; }
 
   async function quietBank(gid, why, k) {
     // Its own kind, passed in: on leaving it runs after the set is let go,

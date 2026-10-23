@@ -169,11 +169,17 @@ BARRY.rootcanal = (function () {
                  'win_ms', 'band_lo', 'band_hi', 'cross_ms'];
   /* How many clusters k-means looks for: 1 to 6, two by default. */
   const K_MAX = 6;
-  /* Saved margins, for the picker in both views; and the last refusal of
-     one, said in the card rather than only in a toast. */
+  /* Saved margins, listed only to name the one a version or a pool
+     carries (a single saved from a pool carries the pool's calls that
+     way); and the last refusal of carried calls. */
   let margins = null;
-  let marginsErr = null;
+  let marginsLoading = false;
+  const marginsAsked = new Set();
   let marginErr = null;
+  /* What the server says when carried calls cannot be used here (app.py's
+     margin load and checks, rootcanal.py's refine). Any other error is the
+     set's or the pool's own, and the calls stay. */
+  const MARGIN_REFUSAL = /^(The margin |There is no saved Root Canal margin|That version of the margin |A margin |Refining a \d+-cluster margin)/;
   /* Saved borders, the same way (2026-10-06), and Single's last refusal. */
   let borders = null;
   let bordersErr = null;
@@ -183,8 +189,6 @@ BARRY.rootcanal = (function () {
      border and which grace, before Apply -- kept across repaints, so a list
      arriving does not throw the pick away. */
   const borderPick = {};
-  /* Single's dots coloured by DS / IED call, or by cluster. */
-  let singleColour = 'call';
   /* AVERAGES AND THE LASSO. `avg` is Single's average on show ({ label,
      n, data, err, busy }); Pooled keeps its own in `pool.avg`. `lasso` is
      the path being drawn on the 3D view, `lassoSel` the dots drawn round
@@ -365,10 +369,6 @@ BARRY.rootcanal = (function () {
         forget(); single = null;
       }
       candsCtx = ctx;
-      /* A pooled set opens coloured by which detector found each event --
-         the question The Confluence exists to ask; the cluster call is a
-         click away. */
-      singleColour = ctx === 'pooled' ? 'origin' : 'call';
     }
     /* NOT A SECOND TIME (2026-10-20). The ToolKit calls this on every
        refresh it runs, and each call rebuilt the whole page: in Pooled the
@@ -492,6 +492,9 @@ BARRY.rootcanal = (function () {
     q.drawn = [];
     q.retry = [];
     q.cluster_names = {};
+    // Calls a version carried are that version's, not the next set's.
+    q.margin = null;
+    marginErr = null;
     avg = null;
     lassoSel = [];
     viewing = null;
@@ -611,10 +614,11 @@ BARRY.rootcanal = (function () {
       got = await apiPost('/api/rootcanal/fit', body);
     } catch (e) {
       if (mine !== fitGen) return;
-      /* A REFUSED MARGIN is about the margin, not the set: it is said in
-         the margin card, the margin is taken off, and the set is fitted as
-         it was -- the picture should not vanish because a boundary from
-         another measurement did not fit. */
+      /* A REFUSED BORDER, or refused carried calls (a version saved from a
+         pool carries the pool's calls as a margin), are about those, not the
+         set: taken off, said, and the set fitted afresh -- the picture
+         should not vanish because centres from another measurement did not
+         fit. */
       if (body.border && /^The border /.test(e.message)) {
         borderErr = e.message;
         q.border = null;
@@ -622,9 +626,11 @@ BARRY.rootcanal = (function () {
         refit();
         return;
       }
-      if (body.margin) {
+      if (body.margin && MARGIN_REFUSAL.test(e.message)) {
         marginErr = e.message;
         q.margin = null;
+        toast('Fitted afresh: the calls this version carried could not be '
+              + 'used here. ' + e.message, 'warn', 10000);
         fitting = false;
         refit();
         return;
@@ -999,14 +1005,13 @@ BARRY.rootcanal = (function () {
     if (!cands.length) { box.appendChild(nothing()); return; }
     box.appendChild(modeSwitch());
     if (bulk.on) { box.appendChild(bulkCard()); return; }
-    box.appendChild(doneCard());
+    box.appendChild(chooser());
     if (keep && keep.el.isConnected && document.activeElement !== keep.el) {
       keep.el.focus();
       try { if (keep.a != null) keep.el.setSelectionRange(keep.a, keep.b); } catch (e) { /* not text */ }
     }
-    const dl2 = doneNode.querySelector('.rc-done-list');
+    const dl2 = doneNode && doneNode.querySelector('.rc-done-list');
     if (dl2 && dScroll) dl2.scrollTop = dScroll;
-    box.appendChild(chooser());
     if (job) { box.appendChild(progress()); return; }
     if (!q.read) { box.appendChild(readCard()); return; }
     box.appendChild(workbench());
@@ -1038,8 +1043,8 @@ BARRY.rootcanal = (function () {
       blurb: inConfluence()
         ? 'Teases a pooled set apart — Incisor’s and Doppler’s events '
           + 'together, sorted in Panning and lined up in Lock — by '
-          + 'amplitude, half-width and high-frequency power, coloured by '
-          + 'which detector found each one. Nothing is taken out: each '
+          + 'amplitude, half-width and high-frequency power, each dot '
+          + 'coloured by its DS / IED call. Nothing is taken out: each '
           + 'event is named by its cluster.'
         : 'Takes the interictal discharges out of an aligned set of '
           + 'dentate spikes — amplitude, half-width and high-frequency '
@@ -1268,10 +1273,9 @@ BARRY.rootcanal = (function () {
     return ((b.last || {}).t || 0) - ((a.last || {}).t || 0);
   }
 
-  /* The list itself, above the set card; folded, it is nothing at all --
-     its toggle sits on the card's own first line (`doneToggle`), so a set's
-     picture is not pushed a line further down by it (the controls stay on
-     the first screen). */
+  /* The list itself, in the set card under the line its toggle is on;
+     folded, it is nothing at all, so a set's picture is not pushed a line
+     further down by it (the controls stay on the first screen). */
   function doneCard() {
     if (!doneNode) {
       doneNode = el('div', { class: 'rc-donelist' }, [
@@ -1600,12 +1604,13 @@ BARRY.rootcanal = (function () {
           + '  ·  ' + ((v && v.n) || cur.n) + ' events'
           + (v && v.aligned ? '  ·  aligned' : '') }),
         el('span', { class: 'spacer' }),
-        // What has been done already (2026-10-20); its list opens above.
+        // What has been done already (2026-10-20); its list drops down here.
         doneToggle(),
         BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Change set',
           title: 'Show the recording, entry and version lists again. The '
                + 'read and the answer stay until you pick something else.',
           onclick: () => { chooserOpen = true; render(); } }),
+        doneCard(),
       ]);
     }
 
@@ -1633,9 +1638,13 @@ BARRY.rootcanal = (function () {
     box.appendChild(el('div', { class: 'rc-choose-top' }, [
       el('div', { class: 'section-label', text: 'Recording' }),
       el('span', { class: 'spacer' }),
-      // What has been done already (2026-10-20); its list opens above.
+      // What has been done already (2026-10-20); its list drops down here.
       doneToggle(),
     ]));
+    /* DROPPED DOWN WHERE IT WAS PRESSED (2026-10-21): it opened above the
+       set card, so the card -- and the toggle -- jumped down, and folding
+       it meant finding the toggle again somewhere else. */
+    box.appendChild(doneCard());
     box.appendChild(BARRY.pickSession({
       rows,
       value: q.gid,
@@ -1710,6 +1719,9 @@ BARRY.rootcanal = (function () {
          was a list of radios, oldest first. */
       box.appendChild(el('div', { class: 'rc-vers' }, [BARRY.ui.versionTree({
         versions: vers,
+        // What produced the set, as a chip above it (2026-10-20).
+        producer: (cur || {}).pipeline,
+        producerType: (cur || {}).type,
         idOf: versionRef,
         value: q.from_version,
         unit: 'stamps',
@@ -1801,7 +1813,7 @@ BARRY.rootcanal = (function () {
     cross_ms: 'the half-width search', k: 'k',
     complete_only: 'only events on all 3 axes', cluster_calls: 'the calls',
     cluster_names: 'the names',
-    margin: 'the margin', drawn: 'the drawn clusters',
+    margin: 'the calls it carried', drawn: 'the drawn clusters',
     retry: 'the events searched again', flips: 'the flips',
     centres: 'the centres' };
 
@@ -1903,7 +1915,7 @@ BARRY.rootcanal = (function () {
                                       + ' ms' : null,
                  x.complete_only ? 'only events on all 3 axes' : null,
                  x.retry ? x.retry + ' searched again' : null,
-                 x.margin ? 'a margin applied' : null].filter(Boolean);
+                 x.margin ? 'calls carried from a pool' : null].filter(Boolean);
     const cnt = [ns.events != null ? ns.events + ' events' : null,
                  ns.ds != null ? ns.ds + ' DS' : null,
                  ns.ied != null ? ns.ied + ' IED' : null,
@@ -2255,8 +2267,9 @@ BARRY.rootcanal = (function () {
 
   /* k comes from a margin when one is applied in the view that is open. */
   function kFromMargin() {
-    if (viewMode === 'pooled') return pool.margin ? marginNick(pool.margin) : null;
-    return q.margin ? marginNick() : null;
+    const r = viewMode === 'pooled' ? pool.margin : q.margin;
+    // Its name, or `true` while the name is not known yet.
+    return r ? (marginNick(r) || true) : null;
   }
 
   /* The pool's own statement of what it was measured and clustered with,
@@ -2492,21 +2505,15 @@ BARRY.rootcanal = (function () {
             title: 'Their half-width was found only with the search reaching '
                  + 'past v1’s ' + CROSS_V1 + ' ms. Drawn with a dashed '
                  + 'outline.' }) : null,
-          cs.length ? BARRY.ui.chip(
-            (fit.n_placed != null ? fit.n_placed : fit.n_used) + ' of '
-            + fit.n + ' classified') : null,
+          cs.length ? (() => {
+            const placed = fit.n_placed != null ? fit.n_placed : fit.n_used;
+            return BARRY.ui.chip(placed === fit.n ? 'all ' + fit.n + ' classified'
+                                 : placed + ' of ' + fit.n + ' classified');
+          })() : null,
           /* Its saved versions and Save, in the row of counts: beside Bank
              they made the card a line taller and put the picked event's
              bar below the fold (measured: 912 px down on a 908 screen). */
           ...versionStrip(),
-          BARRY.ui.seg([['call', fit.border_used ? 'by border' : 'by call'],
-                        ['cluster', 'by cluster'],
-                        // A pooled set says which detector found each one.
-                        hasOrigins() ? ['origin', 'by origin'] : null,
-                       ].filter(Boolean),
-            hasOrigins() || singleColour !== 'origin' ? singleColour : 'call',
-            (v) => { singleColour = v; render(); },
-            { extra: 'rc-colour-by' }),
         ].filter(Boolean)),
         clusterChips(fit.clusters,
           (rank, call) => {
@@ -2535,8 +2542,10 @@ BARRY.rootcanal = (function () {
                event's bar below the fold (measured: 910 on a 908 screen,
                882 without it). */
             tail: statsButton('single') }),
-        marginCard(singleMarginCtx()),
-        bordersCard(singleBorderCtx()),
+        // Margins were taken out on 2026-10-21; the Borders fold is the one.
+        el('div', { class: 'rc-folds' }, [
+          bordersCard(singleBorderCtx()),
+        ]),
       ]),
       savedOnly ? el('p', { class: 'hint rc-warn rc-saved-only', text:
         'Drawn from v' + (viewing ? viewing.v : '?') + '’s saved numbers. Its '
@@ -2560,12 +2569,31 @@ BARRY.rootcanal = (function () {
     return el('div', { class: 'card rc-why' }, kids.filter(Boolean));
   }
 
-  /* How many clusters: a seg of 1..6, or -- while a margin is applied -- a
-     line saying the margin sets it. */
+  /* How many clusters: a seg of 1..6, or -- for a version or a pool that
+     carries its own calls (a single saved from a pool is made that way) --
+     a line saying where they come from, and a way to fit afresh. Margins
+     themselves were taken out on 2026-10-21; nothing can apply one now. */
   function kControl(cur, onPick, fromMargin) {
     if (fromMargin) {
-      return el('span', { class: 'hint rc-k-margin',
-        text: 'k is set by the margin ‘' + fromMargin + '’' });
+      return el('span', { class: 'rc-k-margin' }, [
+        el('span', { class: 'hint', text: 'k and the calls are this '
+          + (viewMode === 'pooled' ? 'pool' : 'version') + '’s own'
+          + (typeof fromMargin === 'string' ? ', from ‘' + fromMargin + '’'
+                                            : ', saved with it') }),
+        BARRY.ui.button({ kind: 'mini', text: 'Fit afresh',
+          extra: 'rc-fit-afresh',
+          title: 'Let k-means find the clusters again, at the k you pick.',
+          onclick: () => {
+            if (viewMode === 'pooled') {
+              pool.margin = null; pool.marginErr = null; runPool();
+              return;
+            }
+            /* Read elsewhere, there is nothing here to fit afresh from: said,
+               and the calls kept -- as every other setting is. */
+            if (savedOnly) { refusedSavedOnly(); return; }
+            q.margin = null; marginErr = null; refit();
+          } }),
+      ]);
     }
     return BARRY.ui.seg(
       Array.from({ length: K_MAX }, (_, j) => [String(j + 1), String(j + 1),
@@ -2579,7 +2607,7 @@ BARRY.rootcanal = (function () {
 
   /* One chip per cluster, lowest HF first: its colour, n, its centre in
      raw units and its call -- and pressing it calls that cluster the other
-     thing. The rule's call, a margin's and a hand's are said apart. */
+     thing. The rule's call, a carried one and a hand's are said apart. */
   function clusterChips(clusters, onToggle, onReset, anyHand, more) {
     if (!clusters || !clusters.length) return null;
     const ex = more || {};
@@ -2595,7 +2623,8 @@ BARRY.rootcanal = (function () {
            + hz(c.centre_raw[1]) + ' ms, ' + hz(c.centre_raw[2]) + ' dB. '
            + 'Called ' + c.call.toUpperCase() + ' '
            + (c.call_by === 'hand' ? 'by hand' : c.call_by === 'margin'
-              ? 'by the margin' : c.call_by === 'drawn'
+              ? 'by the calls this ' + (viewMode === 'pooled' ? 'pool' : 'version')
+                + ' carries' : c.call_by === 'drawn'
               ? 'as drawn round by hand' : c.call_by === 'name'
               ? 'by its name, ‘' + c.name + '’' : 'by the rule') + '. '
            + (c.name && ex.onName ? 'Press to rename it.'
@@ -2608,7 +2637,7 @@ BARRY.rootcanal = (function () {
                          + (c.name ? c.name : c.call.toUpperCase())
                          + ' · ' + (c.n || 0)
                          + (c.call_by === 'hand' ? ' · by hand'
-                            : c.call_by === 'margin' ? ' · margin'
+                            : c.call_by === 'margin' ? ' · carried'
                             : c.call_by === 'drawn' ? ' · drawn' : '') }),
     ]),
       /* Its name, from the lab's list or typed; the name's type is its call. */
@@ -2786,55 +2815,47 @@ BARRY.rootcanal = (function () {
     ]);
   }
 
-  /* A cluster's colour, and past the palette's four the marker shape that
-     tells #5 from #1 -- the same rule the pool's categories use. */
-  function cluColour(rank) {
-    return tok('--c' + ((Number(rank || 0) % CAT_N) + 1));
-  }
-  function cluShape(rank) {
-    return CAT_SHAPES[Math.floor(Number(rank || 0) / CAT_N) % CAT_SHAPES.length];
-  }
-  /* Whether the open view colours by cluster or by call. */
-  function byCluster() {
-    return viewMode === 'pooled' ? pool.colour === 'cluster'
-                                 : singleColour === 'cluster';
-  }
-  /* What a cluster is DRAWN in, right now: its chip, its centre and its
-     dots all say the same colour. */
+  /* What a cluster is DRAWN in: its call's colour, on its chip, its
+     centre and its dots alike. Colouring by cluster, or by which detector
+     found an event, was taken out on 2026-10-21. */
   function cluFill(rank, call) {
-    return byCluster() ? cluColour(rank) : colOf(call);
+    return colOf(call);
   }
 
+  /* Once at a time, and only the controls bar repainted when it lands:
+     it changes one name in the k slot, not the page. */
   async function loadMargins() {
+    if (marginsLoading) return;
+    marginsLoading = true;
     try {
       const got = await api('/api/rootcanal/margins');
       margins = got.margins || [];
-      marginsErr = null;
     } catch (e) {
-      margins = [];
-      marginsErr = e.message;
+      margins = margins || [];
     }
-    render();
+    marginsLoading = false;
+    swapTop();
   }
 
+  /* The name of the calls a version or a pool carries: the fit's own answer
+     says it; failing that the saved list, asked again for an id it has not
+     seen -- a propagate or a pool's singles make new ones. '' while it is
+     not known, never the bare id. */
   function marginNick(ref) {
     const r = ref || q.margin;
     if (!r) return null;
+    const f = viewMode === 'pooled' ? pool.fit : fit;
+    const mu = f && f.margin_used;
+    if (mu && mu.artifact_id === r.artifact_id && mu.nickname) return mu.nickname;
     const m = (margins || []).find((x) => x.artifact_id === r.artifact_id);
-    return (m && (m.nickname || m.name)) || r.artifact_id;
+    if (m) return m.nickname || m.name || '';
+    if (!marginsAsked.has(r.artifact_id)) {
+      marginsAsked.add(r.artifact_id);
+      loadMargins();
+    }
+    return '';
   }
 
-  function marginWords(m) {
-    return (m.nickname || m.name) + ' · k = ' + (m.k || '?') + ' · '
-      + ((m.calls && m.calls.ied) || 0) + ' IED / '
-      + ((m.calls && m.calls.ds) || 0) + ' DS · from '
-      + (m.source === 'pool_group' ? 'a group' : m.source || '?')
-      + (m.measure ? ' · ' + m.measure : '');
-  }
-
-  /* THE MARGINS CARD, for both views. Pick a saved margin and how to use
-     it, apply or clear it, and save this view's own. A refusal -- a margin
-     measured some other way -- is said here, in place. */
   /* ==================================================================
      A DS / IED BORDER IN THREE NUMBERS, WITH GRACE (2026-10-06)
      ================================================================== */
@@ -3291,9 +3312,9 @@ BARRY.rootcanal = (function () {
         text: 'Borders · ' + (bu ? 'Classified by ‘' + bu.nickname
           + '’ at grace ' + bu.grace_words + ': ' + borderShort(bu, c)
           : b.err ? 'not applied, said below'
+          // The archived ones are said inside, under their own fold.
           : 'No border applied' + (list.length ? ' · ' + list.length
-                                                 + ' saved' : '')
-            + (shelved.length ? ' · ' + shelved.length + ' archived' : '')) }),
+                                                 + ' saved' : '')) }),
       state,
       b.err ? el('p', { class: 'hint rc-warn rc-border-err',
                         text: 'Not applied: ' + b.err }) : null,
@@ -3549,121 +3570,6 @@ BARRY.rootcanal = (function () {
     });
   }
 
-  function marginCard(ctx) {
-    if (margins === null) { loadMargins(); }
-    const list = margins || [];
-    let pickId = ctx.applied ? ctx.applied.artifact_id
-                             : (list[0] && list[0].artifact_id) || '';
-    let mode = (ctx.applied && ctx.applied.mode) || 'fixed';
-    const sel = el('select', { class: 'rc-margin-pick',
-      'aria-label': 'saved margin',
-      onchange: (e) => { pickId = e.target.value; } },
-      list.length ? list.map((m) => el('option', { value: m.artifact_id,
-          text: marginWords(m),
-          selected: m.artifact_id === pickId ? 'selected' : null }))
-        : [el('option', { value: '', text: 'no margins saved yet' })]);
-    const modeSeg = BARRY.ui.seg([
-      ['fixed', 'Fixed', 'Every event to the nearest saved centre, on the '
-                       + 'margin’s own scale. Nothing moves: one rule '
-                       + 'across sets.'],
-      ['refine', 'Refine', 'k-means on this data, started from the saved '
-                         + 'centres, on the margin’s scale. Each cluster '
-                         + 'keeps the call it started with.']],
-      mode, (v) => { mode = v; ctx.onApply({ artifact_id: pickId, version: null,
-                                              mode: v }); },
-      { extra: 'rc-margin-mode' });
-    const used = ctx.used;
-    const kids = [
-      el('div', { class: 'rc-group-l', text: 'Margins' }),
-      used ? BARRY.ui.chip('margin ‘' + used.nickname + '’ v' + used.version
-                           + ' · ' + used.mode, { extra: 'rc-margin-on',
-        title: 'The boundary here is the saved margin ‘' + used.nickname
-             + '’, version ' + used.version + ', applied ' + used.mode
-             + '. Cleared, k-means goes back to finding its own.' }) : null,
-      sel, modeSeg,
-      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Apply',
-        extra: 'rc-margin-apply', disabled: !pickId || null,
-        onclick: () => ctx.onApply({ artifact_id: pickId, version: null,
-                                     mode }) }),
-      ctx.applied ? BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Clear',
-        extra: 'rc-margin-clear', onclick: () => ctx.onApply(null) }) : null,
-      el('span', { class: 'spacer' }),
-    ].concat(ctx.saves.map((sv) => BARRY.ui.button({ kind: 'ghost',
-      size: 'sm', text: sv.label, title: sv.title, extra: 'rc-margin-save',
-      onclick: () => saveMargin(sv) })));
-    /* FOLDED to one line unless a margin is on or was just refused: the
-       card sits above the pictures, and an open one pushed the event's own
-       controls below the fold. Margins only, since 2026-10-19: the borders
-       that shared this card have one of their own (`bordersCard`). */
-    const open = !!(ctx.applied || ctx.err || ctx.used);
-    /* SHORT, folded: the card is 455 px wide in Single and its summary
-       must stay one line. The rest is in its hover. */
-    const on = used ? 'margin ‘' + used.nickname + '’ v' + used.version
-                      + ' · ' + used.mode : null;
-    return el('details', { class: 'card rc-margins',
-                           open: open ? 'open' : null }, [
-      el('summary', { class: 'rc-margin-sum',
-        title: 'Margins: saved cluster centres, applied in place of k-means’ '
-             + 'own. Use a saved one, or save these.',
-        text: 'Margins · ' + (on || 'none applied') }),
-      el('div', { class: 'rc-margin-row' }, kids.filter(Boolean)),
-      ctx.err ? el('p', { class: 'hint rc-warn rc-margin-err',
-                          text: 'Not applied: ' + ctx.err }) : null,
-      marginsErr ? el('p', { class: 'hint rc-warn',
-                             text: 'Saved margins could not be listed: '
-                                 + marginsErr }) : null,
-    ].filter(Boolean));
-  }
-
-  /* Save a margin, through the one naming dialog: a label is required and
-     there is no default -- it is the name the margin is chosen by in every
-     other analysis. The server cuts it again from the request; the picture
-     is never what is filed. */
-  function saveMargin(sv) {
-    let rep = null;
-    const what = el('div', { class: 'rc-ask' }, [
-      el('p', { text: sv.what }),
-      el('ul', {}, [
-        el('li', { text: 'Kept: each cluster’s centre in µV, ms and dB, its '
-          + 'DS / IED call, and the scale it was cut on, so it reads the same '
-          + 'wherever it is applied.' }),
-        el('li', { text: 'And how it was measured -- filter, band, window and '
-          + 'search. It can only be applied where those match.' }),
-      ]),
-    ]);
-    return BARRY.ui.bankDialog({
-      kind: 'entry', title: 'Save these margins', name: '', what,
-      okText: 'Save margins',
-      onBank: async ({ name, note }) => {
-        const nick = String(name || '').trim();
-        if (!nick) throw new Error('A margin needs a label to be saved under.');
-        rep = await apiPost('/api/rootcanal/margin/save', {
-          nickname: nick, extract: sv.extract(), note: note || '' });
-      },
-    }).then((ok) => {
-      if (!ok || !rep) return null;
-      toast(rep.confirmed ? 'Nothing has changed, so v' + rep.version + ' of ‘'
-                            + rep.nickname + '’ is confirmed.'
-                          : 'Saved as ‘' + rep.nickname + '’ v' + rep.version
-                            + '.', rep.confirmed ? 'warn' : 'ok', 8000);
-      margins = null;
-      loadMargins();
-      return rep;
-    });
-  }
-
-  function singleMarginCtx() {
-    return {
-      applied: q.margin, used: fit && fit.margin_used, err: marginErr,
-      onApply: (ref) => { q.margin = ref; marginErr = null; refit(); },
-      saves: [{ label: 'Save these margins…',
-        title: 'This recording’s clusters as a named margin.',
-        what: 'Saves this recording’s ' + ((fit && fit.k) || q.k)
-            + ' cluster centres and their calls as a named margin.',
-        extract: () => Object.assign({ source: 'single' }, fitBody()) }],
-    };
-  }
-
   function chipC(text, cls) {
     return el('span', { class: 'stat-chip rc-cls-chip' }, [
       el('i', { class: 'rc-swatch', style: 'background:' + colOf(cls) }),
@@ -3906,25 +3812,10 @@ BARRY.rootcanal = (function () {
     return out.length ? out.join(' ') : null;
   }
 
-  /* The legend for the marks, once, above the pictures. */
   function legend() {
     const item = (cls, text) => el('span', { class: 'rc-lg' }, [
       el('i', { class: 'rc-lg-m ' + cls }), el('span', { text })]);
-    const byOrigin = singleColour === 'origin' && hasOrigins();
-    const byBorder = !!(fit && fit.border_used) && singleColour !== 'cluster'
-      && !byOrigin;
-    if (byOrigin) {
-      return el('div', { class: 'rc-legend' }, [
-        item('rc-lg-oi', 'found by Incisor'),
-        item('rc-lg-od', 'found by Doppler'),
-        item('rc-lg-ob', 'found by both'),
-        item('rc-lg-square', 'on 2 of 3 axes'),
-        item('rc-lg-wide', 'half-width by the widened search'),
-        item('rc-lg-flip', 'set by hand'),
-        item('rc-lg-hollow', 'not measured'),
-        item('rc-lg-centre', 'centre'),
-      ]);
-    }
+    const byBorder = !!(fit && fit.border_used);
     return el('div', { class: 'rc-legend' }, [
       item('rc-lg-ds', byBorder ? 'solid DS' : 'DS'),
       item('rc-lg-ied', byBorder ? 'solid IED' : 'IED'),
@@ -5117,18 +5008,6 @@ BARRY.rootcanal = (function () {
     return e.border === 'amb' ? outsideCol(own) : colOf(e.border);
   }
 
-  /* Which detector found a pooled event, in the colours Panning and the
-     ToolKit's stream use for them: Incisor's, Doppler's, and both halves
-     for one both found (drawn two-tone, by `fill2`). */
-  function originCol(o) {
-    return o === 'doppler' ? tok('--o-doppler') : o === 'incisor' || o === 'both'
-      ? tok('--o-incisor') : tok('--text-3');
-  }
-  function originCol2(o) {
-    return o === 'both' ? tok('--o-doppler') : null;
-  }
-  const hasOrigins = () => !!(fit && (fit.events || []).some((e) => e.origin));
-
   /* A colour as three numbers, for the CSD's interpolation. Through a
      canvas rather than a parser, so a token written as a name, a hex or an
      rgb() all come out the same. */
@@ -5264,18 +5143,9 @@ BARRY.rootcanal = (function () {
       /* With a border on, the call shown is the border's: solid DS,
          solid IED, or ambiguous (grey, and filled -- not hollow, which is
          "not measured"). */
-      fill: (e) => (singleColour === 'origin' && hasOrigins()
-                    ? originCol(e.origin)
-                    : singleColour === 'cluster' && e.cluster != null
-                    ? cluColour(e.cluster)
-                    : fit.border_used ? borderCol(e, e.cls) : colOf(e.cls)),
-      outside: (e) => !!fit.border_used && e.border === 'amb'
-                      && singleColour !== 'cluster'
-                      && !(singleColour === 'origin' && hasOrigins()),
-      fill2: (e) => (singleColour === 'origin' && hasOrigins()
-                     ? originCol2(e.origin) : null),
-      shape: (e) => (singleColour === 'cluster' && e.cluster != null
-                     ? cluShape(e.cluster) : null),
+      fill: (e) => (fit.border_used ? borderCol(e, e.cls) : colOf(e.cls)),
+      outside: (e) => !!fit.border_used && e.border === 'amb',
+      shape: () => null,
       centreFill: (c) => cluFill(c.k, c.cls),
       alpha: () => 1,
       ringed: (e) => !!e.flipped,
@@ -5395,29 +5265,10 @@ BARRY.rootcanal = (function () {
       g.lineWidth = 0.7;
       g.stroke();
     } else {
-      /* Two-tone when the scene says the event is two things at once -- a
-         pooled event both detectors found: the left half one colour, the
-         right half the other. */
-      const fill2 = kind === 'dot' && sc && sc.fill2 ? sc.fill2(e) : null;
-      if (fill2) {
-        g.beginPath();
-        g.arc(x, y, r, 1.5708, 4.7124);
-        g.closePath();
-        g.fillStyle = fill;
-        g.fill();
-        g.beginPath();
-        g.arc(x, y, r, -1.5708, 1.5708);
-        g.closePath();
-        g.fillStyle = fill2;
-        g.fill();
-        g.beginPath();
-        g.arc(x, y, r, 0, 6.2832);
-      } else {
-        g.beginPath();
-        g.arc(x, y, r, 0, 6.2832);
-        g.fillStyle = fill;
-        g.fill();
-      }
+      g.beginPath();
+      g.arc(x, y, r, 0, 6.2832);
+      g.fillStyle = fill;
+      g.fill();
       if (sc && sc.outside && sc.outside(e)) {
         // Outside the border: a dotted grey edge round its faded colour.
         g.strokeStyle = k.dim;
@@ -7105,6 +6956,8 @@ BARRY.rootcanal = (function () {
       if (xf.setChannelLines) {
         xf.setChannelLines(sess, now && now.contact != null ? [{
           key: 'rootcanal-max',
+          // Faded and hidden with the marks (2026-10-21): it is one of them.
+          followsMarks: true,
           label: 'max amp' + (now.cls ? ' · ' + now.cls.toUpperCase() : ''),
           colour: colOf(now.cls), number: Number(now.contact),
         }] : []);
@@ -7966,34 +7819,6 @@ BARRY.rootcanal = (function () {
     };
   }
 
-  function poolMarginCtx() {
-    const f = pool.focus;
-    const group = f && (f.mouse_key ? { mouse_key: f.mouse_key }
-      : f.mouse_type ? { mouse_type: f.mouse_type }
-      : f.member ? { gid: (poolMemberByKey(f.member) || {}).gid } : null);
-    const saves = [{ label: 'Save the pool’s margins…',
-      title: 'The whole pool’s clusters as a named margin, on the pool’s scale.',
-      what: 'Saves the whole pool’s cluster centres and their calls.',
-      extract: () => Object.assign({ source: 'pool' }, poolBody()) }];
-    if (group) {
-      saves.push({ label: 'Save this group’s margins…',
-        title: 'Clusters this group ALONE -- its members only, on their own '
-             + 'scale -- and saves that as a margin.',
-        what: 'Re-clusters only the focused group, on its own scale, and saves '
-            + 'its centres and calls.',
-        extract: () => Object.assign({ source: 'pool_group' }, poolBody(),
-                                     { focus: group }) });
-    }
-    return {
-      applied: pool.margin, used: pool.fit && pool.fit.margin_used,
-      err: pool.marginErr,
-      onApply: (ref) => { pool.margin = ref; pool.marginErr = null;
-                          if (pool.sel.length) runPool(); else render(); },
-      // The border is applied from its own card now: `poolBorderCtx`.
-      saves,
-    };
-  }
-
   function measureSig() {
     const b = poolBody();
     return JSON.stringify([b.members.map((m) => m.key).sort(), b.measure]);
@@ -8120,9 +7945,9 @@ BARRY.rootcanal = (function () {
           + 'called it, at the pool’s measurement, named “from pool ‘'
           + rep.nickname + '’ v' + rep.version + '”.' }),
         el('ul', {}, [
-          el('li', { text: 'The pool’s clusters are kept as a margin of their '
-            + 'own and applied, fixed: nearest centre on the pool’s scale is '
-            + 'how the pool placed each event.' }),
+          el('li', { text: 'Each event keeps the call the pool gave it: the '
+            + 'nearest of the pool’s centres, on the pool’s scale, is how the '
+            + 'pool placed it.' }),
           el('li', { text: 'A cluster drawn by hand is not a centre: its '
             + 'events go to the nearest one.' }),
           el('li', { text: 'A saved single whose read is elsewhere is done '
@@ -8207,8 +8032,8 @@ BARRY.rootcanal = (function () {
          measured over different HF bands, most often, which cannot share
          one power axis. The picture that was on screen stays: it is still
          the answer for the members it was drawn from. */
-      /* A refused margin is the margin's problem: said in its card, taken
-         off, and the pool fitted without it. */
+      /* Refused carried calls are theirs, not the pool's: taken off, said
+         in a toast, and the pool fitted afresh. */
       if (body.border && /^The border /.test(e.message)) {
         pool.borderErr = e.message;
         pool.border = null;
@@ -8216,9 +8041,11 @@ BARRY.rootcanal = (function () {
         render();
         return runPool();
       }
-      if (body.margin) {
+      if (body.margin && MARGIN_REFUSAL.test(e.message)) {
         pool.marginErr = e.message;
         pool.margin = null;
+        toast('Pooled afresh: the calls this pool carried could not be used '
+              + 'here. ' + e.message, 'warn', 10000);
         pool.fitting = false;
         render();
         return runPool();
@@ -8347,7 +8174,7 @@ BARRY.rootcanal = (function () {
   const COLOURS = [
     ['pool', 'pooled call'], ['single', 'single call'], ['switches', 'switches'],
     ['recording', 'recording'], ['mouse', 'mouse'], ['type', 'mouse type'],
-    ['cluster', 'cluster'], ['border', 'border'],
+    ['border', 'border'],
   ];
   /* The categorical palette is the theme's own (`--c1`..`--c4`, what
      `BARRY.hues` hands out once its neutral is dropped). Past four the
@@ -8415,8 +8242,6 @@ BARRY.rootcanal = (function () {
       return pool.fit && pool.fit.border_used ? borderCol(e, e.cls_pool)
                                               : colOf(e.cls_pool);
     }
-    if (mode === 'cluster') return e.cluster != null ? cluColour(e.cluster)
-                                                     : tok('--text-3');
     if (mode === 'single') return colOf(e.cls_single);
     if (mode === 'switches') {
       const sk = switchKind(e);
@@ -8431,7 +8256,6 @@ BARRY.rootcanal = (function () {
 
   function poolShape(e) {
     const mode = pool.colour;
-    if (mode === 'cluster') return e.cluster != null ? cluShape(e.cluster) : null;
     if (mode === 'recording' || mode === 'mouse' || mode === 'type') {
       return catStyle(catKey(e, mode), mode).shape;
     }
@@ -10268,7 +10092,7 @@ BARRY.rootcanal = (function () {
     ]);
   }
 
-  /* The pool's clusters, its margins, and what it left out or re-measured. */
+  /* The pool's clusters, and what it left out or re-measured. */
   function poolClusterBar() {
     const f = pool.fit;
     const c = (f && f.counts) || {};
@@ -10328,7 +10152,6 @@ BARRY.rootcanal = (function () {
                                        (e) => e.cluster === c.rank)),
           onRemove: (c) => { pool.drawn.splice(c.rank - ((f && f.k) || 0), 1);
                              runPool(); } }),
-      marginCard(poolMarginCtx()),
     ].filter(Boolean));
   }
 
@@ -11801,6 +11624,168 @@ BARRY.rootcanal = (function () {
     flip: (i) => flipEvent(i),
   };
 
+  /* ==================================================================
+     The figure builder (figure.js, 2026-10-22)
+
+     "Grab what you see": the space and the three flat views, as two
+     panels, with the settings they were fitted at. A picture that IS a
+     saved version (opened and not changed since) is grabbed as that
+     version, whose numbers open on any machine; anything else as the fit's
+     own question, which this machine can ask its read. Pooled is several
+     recordings, and a figure is one.
+     ================================================================== */
+  function figureParams() {
+    const params = fitBody({});
+    delete params.border;
+    if (viewing && viewing.artifact_id && !isDirty()) {
+      params.artifact = { artifact_id: viewing.artifact_id, v: viewing.v };
+    }
+    // The turn of the 3D view, in matplotlib's terms (degrees).
+    params.view = { elev: Math.round(view.pitch * 180 / Math.PI),
+                    azim: Math.round(-90 - view.yaw * 180 / Math.PI) };
+    return params;
+  }
+
+  if (BARRY.figure && BARRY.figure.source) {
+    BARRY.figure.source('rootcanal', {
+      label: 'Root Canal',
+      grab: () => {
+        if (viewMode === 'pooled') {
+          return { why: 'The pooled view is several recordings, and a figure '
+                      + 'is one. Switch to Single to grab a recording.' };
+        }
+        if (!q.entry || !fit || !fit.ok) {
+          return { why: 'Pick a set and fit it first, then grab it.' };
+        }
+        const cur = setOf() || {};
+        const params = figureParams();
+        return {
+          recording: { gid: q.gid || cur.gid || null,
+                       label: cur.session_label || cur.gid || q.entry,
+                       identity: { gid: q.gid || cur.gid || null,
+                                   label: cur.session_label || null } },
+          title: 'Root Canal — ' + (cur.session_label || q.entry),
+          panels: [
+            { tool: 'rootcanal', plot: 'space', row: 0, col: 0, params },
+            { tool: 'rootcanal', plot: 'flat', row: 0, col: 1,
+              params: JSON.parse(JSON.stringify(params)) },
+          ],
+        };
+      },
+      palette: (lay) => (lay.panels.some((p) => p.tool === 'rootcanal')
+        ? [['flat', 'The three flat views'], ['amp_hw', 'Amplitude against half-width'],
+           ['amp_hf', 'Amplitude against HF power'], ['hw_hf', 'Half-width against HF power'],
+           ['space', 'The three numbers, in 3D']]
+          .map(([plot, name]) => ({ tool: 'rootcanal', plot, name }))
+        : []),
+      panelFor: (tool, plot, lay) => {
+        const near = lay.panels.find((p) => p.tool === 'rootcanal');
+        return near ? { tool: 'rootcanal', plot,
+                        params: JSON.parse(JSON.stringify(near.params)) } : null;
+      },
+      openPanel: async (p) => {
+        const want = p.params || {};
+        if (BARRY.views.toolkit && BARRY.views.toolkit.pick) {
+          setView('toolkit');
+          BARRY.views.toolkit.pick('rootcanal');
+        }
+        if (want.entry_id && want.entry_id !== q.entry) await pickSetNow(want.entry_id);
+        if (want.from_version !== undefined) q.from_version = want.from_version;
+        for (const k of PKEYS) {
+          if (want[k] !== undefined) { q[k] = want[k]; pend[k] = want[k]; }
+        }
+        q.flips = (want.flips || []).slice();
+        q.centres = want.centres ? want.centres.map((c) => c.slice()) : null;
+        q.cluster_calls = Object.assign({}, want.cluster_calls);
+        q.cluster_names = JSON.parse(JSON.stringify(want.cluster_names || {}));
+        if (want.read) q.read = want.read;
+        await refit();
+        return 'Root Canal is open on set ' + want.entry_id
+          + ', with the panel’s settings.';
+      },
+    });
+  }
+
+  /* The walk-through (figreplay.js): Root Canal opened on the panel's set
+     with its settings, then what Root Canal is showing read back. A panel
+     that is a saved version is opened as that version. */
+  if (BARRY.figreplay && BARRY.figreplay.register) {
+    const WALK_KEYS = ['filt', 'lo_hz', 'hi_hz', 'mains_out', 'win_ms',
+                       'band_lo', 'band_hi', 'cross_ms', 'k'];
+    BARRY.figreplay.register('rootcanal', {
+      async open() { return 'Root Canal opens on each panel’s set.'; },
+      async setup(p) {
+        const want = p.params || {};
+        setView('toolkit');
+        BARRY.views.toolkit.pick('rootcanal');
+        if (viewMode === 'pooled') {
+          viewMode = 'single';
+          try { localStorage.setItem(VIEW_KEY, 'single'); } catch (e) { /* blocked */ }
+        }
+        if (want.entry_id && want.entry_id !== q.entry) await pickSetNow(want.entry_id);
+        if (want.artifact && want.artifact.artifact_id) {
+          await openVersion(want.artifact.artifact_id, want.artifact.v);
+          return 'Root Canal shows saved version v' + (want.artifact.v || '?')
+            + ' of set ' + want.entry_id + '.';
+        }
+        q.from_version = want.from_version === undefined ? q.from_version
+                                                          : want.from_version;
+        for (const k of PKEYS) {
+          if (want[k] !== undefined) { q[k] = want[k]; pend[k] = want[k]; }
+        }
+        q.flips = (want.flips || []).slice();
+        q.centres = want.centres ? want.centres.map((c) => c.slice()) : null;
+        q.cluster_calls = Object.assign({}, want.cluster_calls);
+        q.cluster_names = JSON.parse(JSON.stringify(want.cluster_names || {}));
+        if (want.read) q.read = want.read;
+        await refit();
+        return 'Root Canal is fitted on set ' + want.entry_id
+          + ' with the panel’s settings.';
+      },
+      async ready() {
+        let last = null;
+        for (let i = 0; i < 120; i++) {
+          await new Promise((r) => setTimeout(r, 150));
+          const now = fit && fit.ok && !fitting ? sigOf() : null;
+          if (now && now === last) return true;
+          last = now;
+        }
+        return false;
+      },
+      async readback() {
+        if (!fit || !fit.ok) return null;
+        const got = figureParams();
+        delete got.view;
+        return got;
+      },
+      differences(want, got) {
+        const out = [];
+        const say = (v) => (v === null || v === undefined ? 'none' : String(v));
+        if (want.entry_id !== got.entry_id) out.push('it is a different set');
+        if (say(want.from_version) !== say(got.from_version)) {
+          out.push('it is version ' + say(got.from_version) + ', not '
+                   + say(want.from_version));
+        }
+        for (const k of WALK_KEYS) {
+          if (want[k] === undefined) continue;
+          if (String(want[k]) !== String(got[k])) {
+            out.push(k.replace(/_/g, ' ') + ' is ' + say(got[k]) + ', not '
+                     + say(want[k]));
+          }
+        }
+        if (!BARRY.figreplay.sameSet(want.flips, got.flips)) {
+          out.push((got.flips || []).length + ' events are flipped by hand, not '
+                   + (want.flips || []).length);
+        }
+        if (!!want.artifact !== !!got.artifact) {
+          out.push(got.artifact ? 'it is now a saved version'
+                                : 'it is not the saved version any more');
+        }
+        return out;
+      },
+    });
+  }
+
   return {
     paint,
     /* For web/_dev/rootcanal.html, which drives the real panel rather than
@@ -11812,6 +11797,9 @@ BARRY.rootcanal = (function () {
     // Straight to the set, as the harness's own steps mean it; the nudge
     // a person gets on leaving a changed picture is `_leaveTo`.
     _pickSet: pickSetNow,
+    // A saved single version, opened as the Versions card opens it.
+    _openVersion: openVersion,
+    _figureParams: () => figureParams(),
     _leaveTo: pickSet,
     _read: startRead,
     _fit: refit,
@@ -11914,9 +11902,6 @@ BARRY.rootcanal = (function () {
                       render(); },
     /* Pooled, for web/_dev/rootcanalpool.html. */
     _setView: setView,
-    _margins: () => margins,
-    _loadMargins: loadMargins,
-    _setMargin: (ref) => { q.margin = ref; marginErr = null; refit(); },
     _marginErr: () => marginErr,
     _relabel: (rank, call) => { q.cluster_calls[String(rank)] = call; refit(); },
     _avg: () => curAvg(),
@@ -11964,8 +11949,6 @@ BARRY.rootcanal = (function () {
                         return lassoIds().slice(); },
     _lassoSel: () => lassoIds().slice(),
     _drawn: () => (viewMode === 'pooled' ? pool.drawn : q.drawn),
-    _singleColour: (v) => { if (v) { singleColour = v; render(); }
-                            return singleColour; },
     _viewMode: () => viewMode,
     _pool: () => pool,
     _poolLoad: loadPool,

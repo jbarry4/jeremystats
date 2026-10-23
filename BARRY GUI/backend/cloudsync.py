@@ -1248,7 +1248,7 @@ class Sync:
 
     def rows_presets(self):
         out = []
-        for kind in ("filters", "imports", "layouts"):
+        for kind in ("filters", "imports", "layouts", "support_panels"):
             for p in self.store.get_presets(kind):
                 saved = p.get("saved") or {}
                 out.append({
@@ -1478,6 +1478,51 @@ class Sync:
     ITEM_KINDS = ("bank", "curation", "layers", "artifacts", "braces",
                   "aibeta")
 
+    def _curation_newest(self):
+        """{set id: (gid, is_demo, newest stamp)} for every curation set.
+
+        Measured 2026-10-22: working the newest stamp out of every decision
+        and review was 143,000 timestamp parses and 1.36 s of every
+        /api/cloud/items -- an answer the page polls every five seconds
+        while anything waits. Kept, it is 11 ms (tools/check_cloud_items.py
+        checks the answer is the same). The stamps only move when a curation shard
+        does, and the store's signature (every shard's mtime and size, from
+        one directory pass) says when that is, so this is kept until it
+        moves. What depends on the push cursor or on the registry is judged
+        by the caller, every time.
+        """
+        if not self.curate:
+            return {}
+        book = getattr(self.curate, "book", self.curate)
+        try:
+            sig = book.signature()
+        except Exception:                                # noqa: BLE001
+            sig = None
+        memo = getattr(self, "_cur_newest", None)
+        if sig is not None and memo is not None and memo[0] == sig:
+            return memo[1]
+        newest = {}
+        for rec in self.curate.all():
+            gid, kind = rec.get("gid"), rec.get("kind")
+            if not gid or not kind:
+                continue
+            sid = "%s__%s" % (gid, kind)
+            if self._is_demo(rec):
+                newest[sid] = (gid, True, None)
+                continue
+            stamps = [cloud.ts(_prov(rec, "updated").get("at"))]
+            for ev in (rec.get("events") or []):
+                stamps.append(cloud.ts(ev.get("at"))
+                              or cloud.ts(ev.get("cleared_at")))
+                for r in (ev.get("reviews") or []):
+                    stamps.append(cloud.ts(r.get("at")))
+            stamps = [s for s in stamps if s]
+            newest[sid] = (gid, False,
+                           max(stamps, key=_ts_key) if stamps else None)
+        if sig is not None:
+            self._cur_newest = (sig, newest)
+        return newest
+
     def item_states(self, kinds=None, last_push=None, known_gids=None):
         """{kind: {id: {"state", "at"}}} for the records a person works on.
 
@@ -1528,26 +1573,13 @@ class Sync:
 
         if "curation" in want:
             d = {}
-            for rec in (self.curate.all() if self.curate else []):
-                gid, kind = rec.get("gid"), rec.get("kind")
-                if not gid or not kind:
-                    continue
-                sid = "%s__%s" % (gid, kind)
-                if self._is_demo(rec):
+            for sid, (gid, demo, t) in self._curation_newest().items():
+                if demo:
                     d[sid] = {"state": "local", "why": "demo"}
-                    continue
-                if orphan(gid):
+                elif orphan(gid):
                     d[sid] = {"state": "local", "why": "no recording"}
-                    continue
-                stamps = [cloud.ts(_prov(rec, "updated").get("at"))]
-                for ev in (rec.get("events") or []):
-                    stamps.append(cloud.ts(ev.get("at"))
-                                  or cloud.ts(ev.get("cleared_at")))
-                    for r in (ev.get("reviews") or []):
-                        stamps.append(cloud.ts(r.get("at")))
-                stamps = [s for s in stamps if s]
-                t = max(stamps, key=_ts_key) if stamps else None
-                d[sid] = {"state": judge(t), "at": t}
+                else:
+                    d[sid] = {"state": judge(t), "at": t}
             out["curation"] = d
 
         if "layers" in want:
@@ -1963,6 +1995,11 @@ class Sync:
         for r in self.results.catalog():
             path, rel = r.get("path"), (r.get("rel") or r.get("key"))
             if not path or not rel or not os.path.isfile(path):
+                continue
+            # The figure builder's files travel by git only; the cloud gets
+            # the catalogue row and never the picture (asked 2026-10-22).
+            if str(rel).replace("\\", "/").lower().startswith("figures/"):
+                skipped += 1
                 continue
             try:
                 sig = "%d:%d" % (os.path.getsize(path),

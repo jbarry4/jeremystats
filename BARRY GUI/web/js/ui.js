@@ -701,6 +701,9 @@ BARRY.ui = (function () {
       const said = typeof opt.line === 'function' ? opt.line(v) : null;
       const noteOf = (x) => (typeof opt.notes === 'function' ? opt.notes(x)
                              : (opt.notes ? x.note : null));
+      // What last worked on this version: "v2 · Checkup" (2026-10-21).
+      const madeBy = opt.producer === false ? null
+        : versionChip(v, opt.producer, opt.producerType);
       return el(opt.readonly ? 'div' : 'button', {
         class: 'vtree-row' + (on ? ' on' : '') + (why ? ' off' : ''),
         role: opt.readonly ? 'listitem' : 'radio',
@@ -725,6 +728,7 @@ BARRY.ui = (function () {
         },
       }, [
         el('strong', { class: 'vtree-n', text: 'v' + x.name }),
+        madeBy,
         el('span', { class: 'vtree-who', text: v.by || '' }),
         el('span', { class: 'vtree-when', text: when(v.at) }),
         el('span', { class: 'vtree-count',
@@ -827,7 +831,179 @@ BARRY.ui = (function () {
       // Nothing matching clears the choice: another tree was chosen.
       if (i >= 0) mark(rowEls[i]); else mark(lead && ref == null ? lead : null);
     };
+    /* What produced this family of versions, as a chip above it --
+       "Incisor output" (2026-10-20). `producer` is the entry's pipeline
+       (or its source); `producerType` its kind, for a curation pass. */
+    if (opt.producer && opt.family !== false) {
+      const chip = producerChip(opt.producer, opt.producerType);
+      if (chip) {
+        const fam = el('div', { class: 'vtree-family' }, [
+          el('div', { class: 'vtree-made' }, [chip]), host]);
+        fam.redraw = host.redraw; fam.value = host.value;
+        fam.choose = host.choose;
+        return fam;
+      }
+    }
     return host;
+  }
+
+  /* ---------- what made one version ---------- */
+
+  /* What last worked on one version (2026-10-21: "for each version...
+     mention what it was last processed by, e.g. v2 = Checkup / Tooth
+     Fairy"). Read from what the version itself records, most specific
+     first:
+       tag            the step that minted it (rootcanal, junction,
+                      tooth_fairy)
+       aligned        an alignment: Braces, Eye or Lock (`aligned_tool`, or
+                      `aligned.tool` on a raw record; else by the kind)
+       retimed        moved onto another clock
+       the note       a pass that names its tool ("Tooth Fairy", "DS1/DS2")
+       imported / v0  the detector's export: the entry's own producer
+       otherwise      a person's pass, in the add-on for the entry's kind
+     `src` is the entry's pipeline (or source), `type` its kind. */
+  const VTAGS = { rootcanal: 'Root Canal', junction: 'Junction',
+                  tooth_fairy: 'Tooth Fairy', toothfairy: 'Tooth Fairy',
+                  braces: 'Braces', eye: 'Eye', lock: 'Lock',
+                  dspca: 'X-ray', xray: 'X-ray' };
+  const KIND_PASS = { ds: 'Checkup', ied: 'Spotter', pooled: 'Panning' };
+  function versionProducer(v, src, type) {
+    if (!v || typeof v !== 'object') return null;
+    const kind = kindBase(type || '');
+    const tag = String(v.tag || '').toLowerCase();
+    if (VTAGS[tag]) return VTAGS[tag];
+    const al = v.aligned_tool
+      || (v.aligned && typeof v.aligned === 'object' ? v.aligned.tool : null);
+    if (al || v.aligned === true) {
+      const t = String(al || '');
+      if (/eye/i.test(t)) return 'Eye';
+      if (/lock/i.test(t)) return 'Lock';
+      if (/braces/i.test(t)) return 'Braces';
+      return kind === 'ied' ? 'Eye' : kind === 'pooled' ? 'Lock' : 'Braces';
+    }
+    if (v.retimed && v.retimed !== false) return 'Re-timed';
+    const note = String(v.note || '');
+    if (/Tooth Fairy/i.test(note)) return 'Tooth Fairy';
+    if (/Root Canal/i.test(note)) return 'Root Canal';
+    if (/DS1\/DS2|X-ray/i.test(note)) return 'X-ray';
+    const name = String(versionLabel(v)).slice(1);
+    const first = v.imported || v.v === 0 || name === '0';
+    if (!first && KIND_PASS[kind]) return KIND_PASS[kind];
+    const pr = producerOf(src, type);
+    return pr ? pr.name : null;
+  }
+
+  function versionChip(v, src, type) {
+    const name = versionProducer(v, src, type);
+    if (!name) return null;
+    return el('span', {
+      class: 'flagchip producer vtree-by',
+      'data-producer': name.toLowerCase().replace(/[^a-z]+/g, '-'),
+      text: name,
+      title: 'Last processed by ' + name,
+    });
+  }
+
+  /* ---------- a version choice: one button, the whole tree ---------- */
+
+  /* Every version picker (2026-10-21: "the drop down version picker is not
+     the way to go... click version should bring the entire git like tree
+     as a pop up"). The button says the version chosen, its count and what
+     made it; pressing it opens the whole lineage -- every version with who,
+     when, what made it and its note -- and picking a row chooses it and
+     closes. Takes everything versionTree takes, plus:
+       heading    the pop-up's title ("Which version of Incisor (ds)")
+       sub        a line under it
+       disabled   a reason the choice is closed; the tree still opens, to
+                  read
+     `button.version()` is the version chosen; `button.choose(ref)` sets it
+     without calling onpick. */
+  function versionButton(o) {
+    const opt = o || {};
+    const vs = opt.versions || [];
+    const idOf = typeof opt.idOf === 'function' ? opt.idOf
+      : (v) => (v && (v.id || v.label || v.v));
+    let cur = opt.value === undefined ? null : opt.value;
+    const match = (v) => {
+      if (cur === null || cur === undefined) return false;
+      const want = String(cur).replace(/^v/i, '');
+      return String(idOf(v)).replace(/^v/i, '') === want
+          || String(versionLabel(v)).slice(1) === want;
+    };
+    const chosen = () => vs.find(match) || null;
+    const btn = el('button', { type: 'button', class: 'vbtn',
+                               'aria-haspopup': 'dialog' });
+    /* `disabled` closes the whole choice when it is a string (the reason);
+       a function is a reason per version, as versionTree takes it, and
+       leaves the choice open (2026-10-22, Lock greys Junction's). */
+    const closed = typeof opt.disabled === 'string' ? opt.disabled : null;
+    function face() {
+      const v = chosen();
+      btn.innerHTML = '';
+      const kids = v
+        ? [el('strong', { class: 'vbtn-n', text: versionLabel(v) }),
+           v.n !== undefined && v.n !== null
+             ? el('span', { class: 'vbtn-c', text: Number(v.n).toLocaleString()
+                                                  + (opt.unit ? ' ' + opt.unit : '') })
+             : null,
+           opt.producer === false ? null
+             : versionChip(v, opt.producer, opt.producerType),
+           v.archived ? el('span', { class: 'vbtn-c', text: 'archived' }) : null]
+        : [el('strong', { class: 'vbtn-n',
+                          text: (opt.lead && opt.lead.name) || 'Choose a version' })];
+      kids.push(el('span', { class: 'vbtn-more',
+        text: vs.length > 1 ? vs.length + ' versions' : 'its only version' }));
+      kids.push(el('span', { class: 'vbtn-caret', 'aria-hidden': 'true', text: '▾' }));
+      kids.filter(Boolean).forEach((k) => btn.appendChild(k));
+      btn.title = (closed ? closed + '\n' : '')
+        + 'Every version of this, as a tree: who made each, when, what '
+        + 'processed it, and its note. Click to see it'
+        + (closed || opt.readonly ? '.' : ' and choose.');
+    }
+    btn.onclick = () => versionPop(Object.assign({}, opt, {
+      value: cur,
+      readonly: !!(opt.readonly || closed),
+      onpick: (v) => {
+        cur = v ? idOf(v) : null;
+        face();
+        closeModal();
+        if (typeof opt.onpick === 'function') opt.onpick(v);
+      },
+    }));
+    face();
+    // `version`, not `value`: a <button>'s value is a native string
+    // property, and a function assigned to it becomes its source text.
+    btn.version = chosen;
+    btn.choose = (ref) => { cur = ref; face(); };
+    return btn;
+  }
+
+  /* The tree on its own, in a pop-up: for a button above, or for a caller
+     that wants the whole picture of something it is not choosing. */
+  function versionPop(o) {
+    const opt = o || {};
+    const tree = versionTree(Object.assign({ notes: true }, opt));
+    showModal(el('div', { class: 'vpop' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: opt.heading || 'Versions' }),
+        el('div', { class: 'spacer' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        opt.sub ? el('p', { class: 'hint', text: opt.sub }) : null,
+        typeof opt.disabled === 'string'
+          ? el('p', { class: 'hint warn-line', text: opt.disabled }) : null,
+        el('p', { class: 'hint vpop-how', text: opt.readonly
+          ? 'Newest at the top; a branch sits in a lane of its own, joined to '
+            + 'the version it was worked from.'
+          : 'Newest at the top; a branch sits in a lane of its own, joined to '
+            + 'the version it was worked from. Click a version to use it.' }),
+        tree,
+      ].filter(Boolean)),
+      modalFoot([], [button({ kind: 'ghost', text: 'Close',
+                               onclick: () => closeModal() })]),
+    ]));
+    requestAnimationFrame(() => { if (tree.redraw) tree.redraw(); });
+    return tree;
   }
 
   /* ---------- the bank dialog ---------- */
@@ -1243,6 +1419,106 @@ BARRY.ui = (function () {
     return [live, gone];
   }
 
+  /* ---------- what produced a dataset ---------- */
+
+  /* "Any time the version family is shown, indicate what produced it as a
+     little chip -- Incisor output, Checkup output, Doppler output -- and in
+     the data bank too" (2026-10-20). Read off the entry's pipeline (and its
+     type, for a curation pass); an import says Imported. */
+  const PRODUCERS = [
+    [/^Incisor/i, 'Incisor'], [/^Doppler/i, 'Doppler'],
+    [/curation \(ds/i, 'Checkup'], [/curation \(ied/i, 'Spotter'],
+    [/curation \(pooled/i, 'Panning'],
+    [/Confluence|Junction/i, 'Junction'], [/Root Canal/i, 'Root Canal'],
+    [/Braces/i, 'Braces'], [/^Eye\b/i, 'Eye'], [/^Lock\b/i, 'Lock'],
+    [/X-ray|DS1\/DS2/i, 'X-ray'], [/Tooth Fairy/i, 'Tooth Fairy'],
+    [/Spark|The Arc/i, 'Spark'],
+  ];
+  function producerOf(src, type) {
+    const p = String((src && typeof src === 'object' ? src.pipeline : src) || '');
+    if (/Jarvis curation/i.test(p) && !/\((ds|ied|pooled)/i.test(p)) {
+      return { name: type === 'ied' ? 'Spotter' : type === 'pooled' ? 'Panning'
+                                                                    : 'Checkup',
+               label: (type === 'ied' ? 'Spotter' : type === 'pooled'
+                 ? 'Panning' : 'Checkup') + ' output', raw: p };
+    }
+    for (const [re, name] of PRODUCERS) {
+      if (re.test(p)) return { name, label: name + ' output', raw: p };
+    }
+    if (!p) return null;
+    return { name: 'Imported', label: /import|export|hand-sort|ETS|sorted/i.test(p)
+      ? 'Imported' : p, raw: p };
+  }
+
+  function producerChip(src, type) {
+    const pr = producerOf(src, type);
+    if (!pr) return null;
+    return el('span', {
+      class: 'flagchip producer',
+      'data-producer': pr.name.toLowerCase().replace(/[^a-z]+/g, '-'),
+      text: pr.label,
+      title: 'Produced by ' + (pr.raw || pr.name),
+    });
+  }
+
+  /* ---------- the link to the next step ---------- */
+
+  /* Every bundle step ends the same way (2026-10-20): a row, right-aligned,
+     "Next: <Step> — <what it does> →", read off ToolKit's own bundle list,
+     so inserting a step renumbers and relinks every page. The last step of
+     a bundle has none. A step not in a bundle has none.
+
+       toolId     the step this page is
+       ready      true, or a sentence saying why the next step cannot use
+                  this yet (the button is shown, disabled, with it)
+       note       a short line beside it, what carries over */
+  function nextStep(toolId) {
+    const tk = BARRY.views && BARRY.views.toolkit;
+    if (!tk || typeof tk.bundles !== 'function') return null;
+    const via = typeof tk.via === 'function' ? tk.via() : null;
+    const list = tk.bundles();
+    const order = via ? list.filter((b) => b.id === via).concat(list) : list;
+    for (const b of order) {
+      const i = (b.steps || []).findIndex((s) => s.id === toolId);
+      if (i < 0) continue;
+      const nx = b.steps[i + 1];
+      return nx ? { id: nx.id, name: nx.name, does: nx.does, soon: nx.soon,
+                    bundle: b.id, bundleName: b.name } : null;
+    }
+    return null;
+  }
+
+  function handoff(toolId, o) {
+    const opt = o || {};
+    const nx = nextStep(toolId);
+    if (!nx) return null;
+    const why = opt.ready === undefined || opt.ready === true ? null
+      : (typeof opt.ready === 'string' ? opt.ready : 'Not ready yet.');
+    const soon = nx.soon ? nx.name + ' is not built yet: ' + nx.soon : null;
+    /* Only ever the next step's page (2026-10-21: "Next links just take
+       you to the next ToolKit page, and not initiate opening any specific
+       object or recording"). No caller's onclick: what carries over waits
+       there, under Pick up a set or in its picker, for you to choose. */
+    const go = () => {
+      const tk = BARRY.views.toolkit;
+      if (tk && tk.pick) tk.pick(nx.id, nx.bundle);
+      if (typeof setView === 'function' && BARRY.state.view !== 'toolkit') {
+        setView('toolkit');
+      }
+    };
+    return el('div', { class: 'handoff' }, [
+      opt.note ? el('span', { class: 'hint handoff-note', text: opt.note }) : null,
+      button({
+        kind: 'ghost', size: 'sm', extra: 'handoff-go',
+        text: 'Next: ' + nx.name + ' — ' + nx.does + ' →',
+        title: why || soon || (nx.bundleName + ': ' + nx.name + ', '
+                               + nx.does),
+        disabled: !!(why || soon),
+        onclick: go,
+      }),
+    ].filter(Boolean));
+  }
+
   /* ---------- a mode's own end of the one bar ---------- */
 
   /* Every add-on's bar ends the same way (2026-10-20): its occasional
@@ -1484,6 +1760,10 @@ BARRY.ui = (function () {
     natSort: natSort,
     alignTable: alignTable,
     modeEnd: modeEnd,
+    handoff: handoff,
+    producerOf: producerOf,
+    producerChip: producerChip,
+    nextStep: nextStep,
     kindBase: kindBase,
     kindEntry: kindEntry,
     setUrl: setUrl,
@@ -1503,6 +1783,10 @@ BARRY.ui = (function () {
     openOn: openOn,
     pickRecording: pickRecording,
     versionTree: versionTree,
+    versionButton: versionButton,
+    versionPop: versionPop,
+    versionProducer: versionProducer,
+    versionChip: versionChip,
     bankDialog: bankDialog,
     stepOf: stepOf,
     stepHeader: stepHeader,

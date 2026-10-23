@@ -511,16 +511,77 @@ const BUSY = (function () {
   };
 }());
 
+/* Background requests yield (2026-10-21).
+
+   A browser opens at most six connections to Jarvis. Measured at start-up
+   on the lab desktop: the sync roll-up (19 s), the cloud sync states (6 s),
+   VACC's catalogue check (4 s) and the tool feed held four of them at once,
+   so whatever the person had just clicked queued behind work nobody was
+   waiting for -- "nothing, then everything".
+
+   So the requests nobody is waiting on take at most three of the six, one
+   after another as each frees up, and anything a person asked for never
+   waits behind them. Background is: an explicit `priority: 'background'`
+   (the warm-up, prefetching), and the roll-ups and pollers listed here.
+   The job dock's and the link's polls stay foreground: they are short, and
+   their whole point is to feel live. */
+const BACKGROUND_PATHS = [
+  '/api/sync/status', '/api/cloud/items', '/api/vacc/knows', '/api/presence',
+  '/api/toolfeed', '/api/warm/state', '/api/health/summary', '/api/devices',
+  '/api/digest', '/api/notes',
+];
+const SLOTS = (function () {
+  const MAX = 3;
+  let live = 0;
+  const queue = [];
+  function take() {
+    return new Promise((resolve) => {
+      const go = () => {
+        live += 1;
+        let done = false;
+        resolve(() => {
+          if (done) return;
+          done = true;
+          live -= 1;
+          const next = queue.shift();
+          if (next) next();
+        });
+      };
+      if (live < MAX) go(); else queue.push(go);
+    });
+  }
+  return { take, get live() { return live; }, get queued() { return queue.length; } };
+}());
+BARRY.requestSlots = SLOTS;
+
 /* A wrapper rather than a `finally` threaded through the body: the real api()
    below has five ways out, four of them throws, and counting down on each one
    is exactly the kind of bookkeeping that gets a new exit path added past it
-   later and leaves the bar stuck on. */
+   later and leaves the bar stuck on.
+
+   opts.priority  'background' to wait for one of the background slots
+   opts.etag      sent as If-None-Match; a 304 answers null, and
+   opts.meta      (an object) is filled in with {status, etag, notModified}
+   -- both for BARRY.data (web/js/data.js), which keeps lists between visits. */
 async function api(path, opts) {
-  const counted = BUSY.start(path.split('?')[0]);
+  const route = path.split('?')[0];
+  const pri = opts && opts.priority;
+  const bg = pri === 'background'
+    || (!pri && BACKGROUND_PATHS.some((p) => route.startsWith(p)));
+  const release = bg ? await SLOTS.take() : null;
+  const counted = BUSY.start(route);
   try {
-    return await apiCall(path, opts);
+    const out = await apiCall(path, opts);
+    // A write under /api/<thing> means every kept answer under it needs a
+    // fresh look; a 304 makes that look nearly free.
+    const method = (opts && opts.method) || 'GET';
+    if (method !== 'GET' && BARRY.data && BARRY.data.invalidate) {
+      try { BARRY.data.invalidate(route); } catch (e) { /* kept answers only */ }
+    }
+    return out;
   } finally {
     BUSY.stop(counted);
+    if (release) release();
   }
 }
 
@@ -533,14 +594,29 @@ async function apiCall(path, opts) {
   });
 
   let res;
+  const o = opts || {};
+  const init = Object.assign({ headers: { 'Content-Type': 'application/json' } }, o);
+  // api()'s own options are not fetch's.
+  delete init.priority; delete init.etag; delete init.meta;
+  if (o.etag) {
+    init.headers = Object.assign({}, init.headers, { 'If-None-Match': o.etag });
+  }
   try {
-    res = await fetch(path, Object.assign({
-      headers: { 'Content-Type': 'application/json' },
-    }, opts || {}));
+    res = await fetch(path, init);
   } catch (e) {
     // The request never completed -- server gone, or the tab went offline.
     record(0, e.message);
     throw new Error('Could not reach the server: ' + e.message);
+  }
+  if (o.meta) {
+    o.meta.status = res.status;
+    o.meta.etag = res.headers.get('ETag');
+  }
+  // Unchanged since the tag that was sent: nothing to read.
+  if (res.status === 304) {
+    record(304);
+    if (o.meta) o.meta.notModified = true;
+    return null;
   }
 
   /* 404 or 405 on an /api/ route means the route is not there -- which
@@ -1841,14 +1917,13 @@ function wireRail() {
    in each mode, so the two cannot drift apart, and so leaving is always the
    same button in the same place.
 
-   ONE BAR, AT THE BOTTOM (2026-10-20). A mode used to be announced twice:
-   a banner across the top with "Leave this mode", and the mode's own bar
-   at the bottom with a Leave of its own -- two exits, five shapes of bar.
-   Now there is one compact bar, `#modeBanner`, docked at the bottom of the
-   workspace. The shell owns both ends of it: on the left which mode this
-   is, on the right Simplify, ? (what the mode does, and its keys) and
-   Leave -- always the last thing, far right, and Esc does the same. The
-   mode puts its own tools in the middle (`BARRY.modeSlot()`).
+   THE BANNER AND THE BAR (2026-10-20, banner back 2026-10-21). A mode
+   used to be announced twice -- a banner with "Leave this mode", and the
+   mode's own bar with a Leave of its own: two exits, five shapes of bar.
+   Now the banner across the top names the mode in its colour, says what it
+   does, and ends with Simplify and Leave -- the one Leave, always last,
+   far right; Esc does the same. The mode's tools are one compact bar at
+   the bottom (`#modeBar`, `BARRY.modeSlot()`), which folds to one line.
 
    `what` is what the ? says; `keys` the keys it lists after it. Every mode
    is here, so every mode gets a name, a colour and the same bar.
@@ -1888,6 +1963,18 @@ const MODES = {
     keys: 'n p or \u2190 \u2192 step \u00b7 Enter moves it \u00b7 k leaves it '
         + '\u00b7 g garbage \u00b7 [ ] nudge 1 ms \u00b7 u undo \u00b7 l the list',
   },
+  /* Lock's review is Braces' review on a pooled set (braces.js
+     `makeBraces`, 2026-10-22), with one more thing worth the banner: the
+     stamps Braces placed are drawn in their own colour and do not move. */
+  lock: {
+    name: 'Lock',
+    what: 'Every stamp drawn where it was and where it goes '
+        + '\u00b7 Braces\u2019 stamps are locked (blue) and stay put '
+        + '\u00b7 n / p stop at the ones needing a decision (\u25bc) '
+        + '\u00b7 [ and ] to move one a millisecond',
+    keys: 'n p or \u2190 \u2192 step \u00b7 Enter moves it \u00b7 k leaves it '
+        + '\u00b7 g garbage \u00b7 [ ] nudge 1 ms \u00b7 u undo \u00b7 l the list',
+  },
   arcconfirm: {
     name: 'Confirm cue pairs',
     /* Worth a `what`: the drawing shows pulses that were DROPPED as well
@@ -1915,6 +2002,9 @@ const MODES = {
   },
   panning: {
     name: 'Panning',
+    /* Its bar folds in stages (2026-10-22): the tick bars first, then the
+       labelling too, then back. See modeFold. */
+    foldStages: 3,
     /* Worth a `what`: merging is the one thing here that is not on a
        button you can see until you need it, and two events a few
        milliseconds apart look like one line on the traces. */
@@ -2011,6 +2101,7 @@ function setMode(kind, leave) {
   }
   modeHelp(false);
   modeSimplify(kind, null);
+  modeFold(kind, null);
   modeReserve(!!m);
   // The mode's own tools leave with it.
   if (!m) {
@@ -2064,7 +2155,7 @@ function modeSimplify(kind, on) {
    while the mode is on. */
 let _modeRO = null;
 function modeReserve(on) {
-  const bar = document.getElementById('modeBanner');
+  const bar = document.getElementById('modeBar');
   const root = document.documentElement;
   if (!on || !bar) {
     if (_modeRO) { _modeRO.disconnect(); _modeRO = null; }
@@ -2083,6 +2174,67 @@ function modeReserve(on) {
   }
 }
 
+/* FOLDING THE BAR (2026-10-20): "this takes up A LOT of space for people
+   with small screens". Folded, the bar is one slim line -- the mode, where
+   you are in it, Leave -- and every key still works. Remembered per
+   add-on, on this computer. */
+/* The tools bar's fold, kept per add-on in localStorage
+   ('barry.modeFold.<kind>'): '0' open, '1' folded to one line. An add-on
+   whose MODES entry says `foldStages: 3` (Panning, 2026-10-22: "first click
+   just the tick bars, second the labelling as well, third it returns") has
+   a stage between: 't', its tick bars put away (`.fold-ticks`, which hides
+   `.mode-strip` canvases) with every tool still showing. `on` is null to
+   read back what was kept, true/false for folded/open, or a stage name
+   ('open' | 'ticks' | 'folded'). Returns the stage now in force. */
+function modeFold(kind, on) {
+  const bar = document.getElementById('modeBar');
+  const btn = document.getElementById('modeFold');
+  const key = 'barry.modeFold.' + (kind || '');
+  const staged = !!(kind && MODES[kind] && MODES[kind].foldStages === 3);
+  let stage = 'open';
+  if (kind && MODES[kind]) {
+    if (on === null || on === undefined) {
+      let v = '0';
+      try { v = localStorage.getItem(key) || '0'; } catch (e) { v = '0'; }
+      stage = v === '1' ? 'folded' : (v === 't' && staged ? 'ticks' : 'open');
+    } else {
+      stage = on === true ? 'folded' : on === false ? 'open'
+        : (on === 'ticks' && !staged ? 'folded' : String(on));
+      try {
+        localStorage.setItem(key, stage === 'folded' ? '1'
+                                  : stage === 'ticks' ? 't' : '0');
+      } catch (e) { /* session */ }
+    }
+  }
+  if (bar) {
+    bar.classList.toggle('folded', stage === 'folded');
+    bar.classList.toggle('fold-ticks', stage === 'ticks');
+  }
+  if (btn) {
+    btn.setAttribute('aria-expanded', stage === 'folded' ? 'false' : 'true');
+    btn.dataset.stage = stage;
+    btn.title = stage === 'folded' ? 'Unfold the bar: every tool back'
+      : stage === 'ticks' ? 'Fold the bar to one line (the keys still work)'
+      : staged ? 'Put the tick bars away; click again to fold the bar to one '
+                 + 'line, and again to bring it all back'
+      : 'Fold the bar to one line (the keys still work)';
+  }
+  return stage;
+}
+
+/* The next stage on a click: open → folded → open, or, staged,
+   open → ticks → folded → open. */
+function modeFoldNext(kind) {
+  const bar = document.getElementById('modeBar');
+  const now = bar && bar.classList.contains('folded') ? 'folded'
+    : (bar && bar.classList.contains('fold-ticks') ? 'ticks' : 'open');
+  const staged = !!(MODES[kind] && MODES[kind].foldStages === 3);
+  const next = staged
+    ? ({ open: 'ticks', ticks: 'folded', folded: 'open' })[now]
+    : (now === 'open' ? 'folded' : 'open');
+  return modeFold(kind, next);
+}
+
 /* The ? beside Leave: what the mode does, and its keys, in one place. */
 function modeHelp(open) {
   const pop = document.getElementById('modeHelpPop');
@@ -2098,6 +2250,15 @@ function wireMode() {
   if (out) out.addEventListener('click', () => {
     const fn = modeLeaveFn;
     if (fn) fn();
+  });
+  const fold = document.getElementById('modeFold');
+  if (fold) fold.addEventListener('click', () => {
+    if (!modeNow) return;
+    const stage = modeFoldNext(modeNow);
+    window.dispatchEvent(new Event('resize'));
+    // An add-on drawing into the bar (Panning's strips) redraws on this.
+    window.dispatchEvent(new CustomEvent('barry:modefold',
+      { detail: { kind: modeNow, stage } }));
   });
   const simple = document.getElementById('modeSimplify');
   if (simple) simple.addEventListener('click', () => {
@@ -2214,7 +2375,11 @@ BARRY.profile = (function () {
 
   async function people() {
     try {
-      roster = await api('/api/people');
+      // Kept by BARRY.data (web/js/data.js): asked every time, and a 304
+      // when nobody has been added -- so the start screen's "Who's
+      // working?" and this dialog read one copy.
+      roster = BARRY.data ? await BARRY.data.get('/api/people')
+                          : await api('/api/people');
     } catch (e) {
       roster = { people: [], me: null };
     }
@@ -2297,6 +2462,25 @@ BARRY.profile = (function () {
       creating = false;
       paintMode();
       paintKnown();
+      markClean();
+    };
+
+    /* Unsaved changes ask before the form goes (2026-10-23: "your changes
+       are unsaved, are you sure you want to close?"). What the form held
+       when it was opened or last filled is the baseline. */
+    let clean = null;
+    const formNow = () => JSON.stringify(Object.keys(f).sort()
+      .map((k) => [k, f[k] && f[k].value]));
+    function markClean() { clean = formNow(); }
+    const askClose = async () => {
+      if (clean !== null && formNow() !== clean && BARRY.confirm) {
+        const ok = await BARRY.confirm('Close without saving?',
+          'Your changes to this profile are not saved. Support panel '
+          + 'preferences save as you go, so those are kept either way.',
+          'Close without saving');
+        if (!ok) return;
+      }
+      closeModal();
     };
 
     /* Start a new one. Clears the form rather than inheriting whoever was
@@ -2306,6 +2490,8 @@ BARRY.profile = (function () {
       for (const k of ['name', 'email', 'role', 'initials']) {
         if (f[k]) f[k].value = '';
       }
+      // An empty new form is nothing unsaved yet.
+      markClean();
       editing = null;
       creating = true;
       paintMode();
@@ -2872,10 +3058,15 @@ BARRY.profile = (function () {
         el('h3', { text: 'Profile' }),
         el('span', { class: 'sub', text: 'who this work is credited to' }),
         el('div', { class: 'spacer' }),
-        el('button', { class: 'close-x', onclick: closeModal,
+        el('button', { class: 'close-x', onclick: askClose, 'aria-label': 'Close',
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
       ]),
-      el('div', { class: 'mb' }, [body]),
+      el('div', { class: 'mb' }, [
+        body,
+        // Which support panels each Xplorefinder add-on opens, and how
+        // (supportpanels.js). Saved as it is changed, not by Save.
+        BARRY.supportPanels ? BARRY.supportPanels.section() : null,
+      ].filter(Boolean)),
       el('div', { class: 'mf' }, [
         /* On the left, away from Save: adding somebody is a different job
            from saving the form, and putting them together is how one gets
@@ -2893,11 +3084,12 @@ BARRY.profile = (function () {
         }) : null,
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn ghost', text: 'Cancel',
-                       onclick: closeModal }),
+                       onclick: askClose }),
         save,
       ].filter(Boolean)),
     ]));
     paintMode();
+    markClean();
     setTimeout(() => { try { f.name.focus(); } catch (e) {} }, 0);
     /* After the modal is up, so the chips land in a box that exists. */
     people().then(paintKnown);
@@ -2909,7 +3101,7 @@ BARRY.profile = (function () {
     load();
   }
 
-  return { load, get, who, open, wire, paintChip };
+  return { load, get, who, open, wire, paintChip, roles: () => ROLES.slice() };
 })();
 
 
@@ -3555,6 +3747,9 @@ function showThemePicker() {
       // the picker open, because what changed is easiest to judge from
       // the picker you are still looking at.
       densityRow(),
+      // Jarvis Light: a speed setting for a slower computer, not a colour
+      // (js/lite.js). Leaves the picker open, like Compact.
+      BARRY.lite ? BARRY.lite.pickerRow() : null,
       // The name and the mark, off or back on with the reveal. Here because
       // it is how this screen looks, remembered the same way a theme is.
       BARRY.jarvis ? BARRY.jarvis.pickerRow(closeThemePicker) : null,
@@ -3640,15 +3835,27 @@ BARRY.boot = (function () {
        overlay becomes the title instead of fading, and goes when somebody
        chooses. Never in a harness, a pop-out or a deep link -- see
        startmenu.js `wanted`. */
-    try {
-      if (BARRY.startMenu && BARRY.startMenu.wanted()) {
-        BARRY.startMenu.take(box, finish);
-        return;
+    const menu = () => {
+      try {
+        if (BARRY.startMenu && BARRY.startMenu.wanted()) {
+          BARRY.startMenu.take(box, finish);
+          return;
+        }
+      } catch (e) {
+        reportClientError('boot.startmenu', e.message, e.stack);
       }
+      finish();
+    };
+    /* A computer nobody has said who they are on gets the welcome first
+       (welcome.js, 2026-10-23): who you are, the VACC, the recordings --
+       then straight in. Everywhere else it answers false at once and the
+       start menu is exactly as it was. */
+    try {
+      if (BARRY.welcome && BARRY.welcome.maybe(box, finish, menu)) return;
     } catch (e) {
-      reportClientError('boot.startmenu', e.message, e.stack);
+      reportClientError('boot.welcome', e.message, e.stack);
     }
-    finish();
+    menu();
   }
 
   /* A hard limit, whatever happens.
@@ -4037,9 +4244,15 @@ BARRY.init = async function init() {
 
   // Preferences and the catalog are both in hand now, so the per-machine
   // choice can be honored -- it may differ from what localStorage had.
-  const mine = themeForThisMachine();
-  if (mine && mine !== BARRY.state.theme) applyTheme(mine);
-  else applyTheme(BARRY.state.theme, true);   // records it for this machine
+  // Not when the address named a theme: `?theme=` wins and is not
+  // remembered, and this reconcile used to put this machine's own theme
+  // straight back over it a second later (found 2026-10-22: a measuring
+  // run asked for `dark` and got Halloween's visitors).
+  if (!new URLSearchParams(location.search).get('theme')) {
+    const mine = themeForThisMachine();
+    if (mine && mine !== BARRY.state.theme) applyTheme(mine);
+    else applyTheme(BARRY.state.theme, true);   // records it for this machine
+  }
 
   // Same reconciliation for VACC Mode, and skipped entirely when the URL
   // asked for a particular state -- a pop-out must keep what it was handed
@@ -4058,6 +4271,9 @@ BARRY.init = async function init() {
       catch (e) { /* ignore */ }
     }
   }
+  // Jarvis Light, the same way (js/lite.js keeps the rules: the URL wins,
+  // and a harness frame is left alone).
+  if (BARRY.lite) BARRY.lite.reconcile();
   // And whether the name is hidden here: the same per-host map, which may
   // know better than this browser's localStorage. Quietly -- the reveal is
   // for a person pressing the switch, not for a morning boot.
@@ -4126,6 +4342,18 @@ BARRY.init = async function init() {
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
   LOG.refreshJobList();
 
+  /* Everything Jarvis will want, got ready one thing at a time at
+     background priority -- the lists into their kept copies, the last
+     recording, the analysis engines (web/js/warmup.js). The start screen
+     shows it; nothing waits for it. A beat after the first view's own
+     requests, so they go first. */
+  if (BARRY.warmup && BARRY.warmup.wanted()) {
+    setTimeout(() => {
+      BARRY.warmup.start().catch((e) =>
+        reportClientError('warmup', e.message, e.stack));
+    }, 600);
+  }
+
   /* Everything still in flight that MOVES THE PAGE. The overlay stays up
      until these land.
 
@@ -4161,6 +4389,11 @@ BARRY.init = async function init() {
       if (isFinite(hp)) sess.hp = hp;
       if (isFinite(lp)) sess.lp = lp;
       if (isFinite(nt)) sess.notch = nt;
+      // A support window's own gain (Profile › Support panel preferences).
+      const gn = parseFloat(params.get('gain'));
+      if (isFinite(gn) && gn > 0) sess.gain = gn;
+      // Panels with bands of their own: the recording's band lock off.
+      if (params.get('flock') === '0') sess.flock = false;
       const panel = params.get('panel');
       if (panel && BARRY.views.xplore.state.panes[0]) {
         BARRY.views.xplore.state.panes[0].panel = panel;
@@ -4255,3 +4488,21 @@ BARRY.modes = (function () {
 
   return { register, leaveAllBut, active, names: () => Object.keys(known) };
 })();
+
+/* Inside a check page (web/_dev), nothing banks by itself (2026-10-21).
+   Every add-on now banks without being asked -- Checkup, Spotter, Panning,
+   Braces, the Arc's Clean -- and a harness entering and leaving a review
+   on a real proposal would otherwise write a real version. A harness that
+   means to test it sets `BARRY.testNoAutobank = false` itself. */
+try {
+  if (window.top !== window
+      && /\/_dev\//.test(window.top.location.pathname)) {
+    BARRY.testNoAutobank = true;
+    /* And it starts from the defaults, not from how this computer's
+       Xplorefinder was last left (a folded channel column, a hidden
+       overview strip, a fade level): a check page asserts on what it
+       sets up, and a preference it did not set made chan64 and curmarks
+       fail on one machine only (2026-10-22). */
+    BARRY.inCheckPage = true;
+  }
+} catch (e) { /* a cross-origin top is not a check page */ }

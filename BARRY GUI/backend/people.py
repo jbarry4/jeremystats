@@ -25,15 +25,44 @@ from __future__ import annotations
 
 import os
 import platform
+import re
 
 from . import shards
+
+# The one name every test harness's work is credited to (2026-10-23).
+#
+# Harnesses stamp their seeds with names of their own -- "harness@test",
+# "eye harness", "spotter harness", "bankback@harness", "zz edit probe" --
+# and each one turned up on the roster as somebody, eighteen rows of them,
+# offered as owners beside the people. The user's ruling: collapse them
+# into Debug_Bot. tools/collapse_people.py re-credited what was already
+# written; `test_credit` folds whatever a harness writes from now on, at
+# read time, so the harnesses can keep telling their own seeds apart.
+DEBUG_BOT = "Debug_Bot"
+
+# A name a test wrote. Deliberately narrow: "Rain" and "Tooth Fairy (AI)"
+# must never match, and a person whose name contains "test" is not one.
+_TEST_NAME = re.compile(
+    r"harness|@test\b|^test$|^zz\b|probe person|^debug[_ ]bot$", re.I)
+
+
+def is_test_name(name):
+    """Whether `name` is one a test harness stamps on its own records."""
+    got = ("" if name is None else str(name)).strip()
+    return bool(got) and bool(_TEST_NAME.search(got))
+
+
+def test_credit(name):
+    """`name`, or Debug_Bot when a harness wrote it."""
+    return DEBUG_BOT if is_test_name(name) else name
+
 
 # Names that record where something came from rather than a person who could
 # be asked about it. Kept in one place because curation.py needs the same
 # judgement when it picks a default owner.
 NOT_PEOPLE = frozenset({
     "snapshot import", "the import", "unknown", "another machine",
-    "a detector", "barry", "barry curation",
+    "a detector", "barry", "barry curation", DEBUG_BOT.lower(),
 })
 
 
@@ -332,6 +361,12 @@ class People:
             if not name:
                 return
             name = alias_of.get(name.lower(), name)
+            # What a harness wrote on a record is Debug_Bot's. Only on the
+            # records: a profile or a hand-added row is somebody saying a
+            # name outright, and the people harnesses add and remove their
+            # own probe names and look for them by exactly that name.
+            if where not in ("profile", self.HAND):
+                name = test_credit(name)
             # Keyed case-insensitively. Keyed as-written, "Rain" on a
             # decision and "rain" typed into the editor were two people --
             # and so were "Rain" and "Rain ", which is one stray keystroke
@@ -347,7 +382,7 @@ class People:
             # record; failing that, the one with capitals wins, because the
             # capital was typed on purpose.
             if name != row["name"]:
-                chosen = where in ("profile", HAND_SOURCE)
+                chosen = where in ("profile", self.HAND)
                 better = chosen or (name != name.lower()
                                     and row["name"] == row["name"].lower())
                 if better:

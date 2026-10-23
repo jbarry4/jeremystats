@@ -123,7 +123,22 @@ PREFS_LOCAL = ("theme", "density", "panes", "last_view", "last_session",
                # sign-in done in Setup -- turns VACC Mode on once.
                "vacc_signed_ack",
                # Motion: "lively" (default) or "calm" (2026-10-20).
-               "motion")
+               "motion",
+               # Jarvis Light, "on" or "off" (2026-10-21): a speed setting
+               # for a slower computer, so about this machine and nobody
+               # else's (web/js/lite.js). The server reads it too, to halve
+               # its cache budget (backend/membudget.py).
+               "lite",
+               # Support panel preferences (2026-10-22). They were shared by
+               # every machine, so whoever changed theirs last changed
+               # everyone's; one person's travels to another now as a
+               # preset they copy (presets kind 'support_panels').
+               "support_panels",
+               # This screen's Xplorefinder: the channel column folded or
+               # not, the overview strip in the main and support windows,
+               # and how faint Faded marks are (2026-10-21/22).
+               "xf_chan_column", "xf_overview_main", "xf_overview_aid",
+               "marks_fade")
 
 TRIAGE_SPEC = {"marks": shards.MAPLWW}
 TRIAGE_BASE = "resolved"
@@ -598,8 +613,14 @@ class Store:
                 preset["label"] = filter_label(
                     preset.get("name", "preset"), preset.get("highpass"),
                     preset.get("lowpass"), preset.get("notch"))
-            items = [p for p in items if p.get("id") != preset["id"]
-                     and p.get("name") != preset.get("name")]
+            # A support panel preset carries its owner in its id, so two
+            # people who share a display name, or name two presets alike,
+            # must not delete each other's (2026-10-22).
+            if kind == "support_panels":
+                items = [p for p in items if p.get("id") != preset["id"]]
+            else:
+                items = [p for p in items if p.get("id") != preset["id"]
+                         and p.get("name") != preset.get("name")]
             items.append(preset)
             items.sort(key=lambda p: (p.get("name") or "").lower())
             doc = self._preset_doc(kind)
@@ -1247,6 +1268,29 @@ def set_prefs(self, patch):
     """Shallow-merge a patch into preferences. A null value clears a key."""
     with _LOCK:
         rec = self.prefs.read(PREFS_BASE) or {}
+        # This machine's own value for every local key the patch does not
+        # set, at its own stamp -- not whichever machine wrote it last,
+        # which writing the merged record back would copy into this file
+        # and so spread the "local" pref after all (2026-10-22).
+        own = shards._read_json(self._prefs_path()) or {}
+        sync = rec.get("_sync") or {}
+        was = sync.get("was") or {}
+        fst = sync.get("fstamps") or {}
+        own_at = own.get("_at") or {}
+        for key in PREFS_LOCAL:
+            if key in (patch or {}):
+                continue
+            if key in own:
+                rec[key] = own[key]
+                was[key] = shards._fingerprint(own[key])
+                if own_at.get(key):
+                    fst[key] = own_at[key]
+            else:
+                rec.pop(key, None)
+                was.pop(key, None)
+        if sync:
+            sync["was"] = was
+            sync["fstamps"] = fst
         for k, v in (patch or {}).items():
             if v is None:
                 rec.pop(k, None)

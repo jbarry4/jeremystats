@@ -98,7 +98,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
   /* Auto-bank off for this run (spotter.js, 2026-10-19): leaving would
      otherwise bank the throwaway set into the bank. Read, not written --
      the switch is only reported off to the page while this runs. */
-  ev("BARRY.prefs.__spotGet = BARRY.prefs.get;"
+  ev("BARRY.prefs.__spotGet = BARRY.prefs.get; BARRY.testNoAutobank = true;"
      + "BARRY.prefs.get = function (k, d) { return k === 'spotter_autobank'"
      + " ? false : BARRY.prefs.__spotGet.apply(this, arguments); }; 'ok'");
   say('  note  ' + (target.label || gid), 'note');

@@ -210,6 +210,14 @@ BARRY.views.results = (function () {
     const host = $('#resultsBody');
     host.innerHTML = '';
     host.appendChild(modeSwitch());
+    if (mode === 'figures' && BARRY.figure && BARRY.figure.paintList) {
+      $('#resultsSub').textContent = 'Figures from the figure builder: the '
+        + 'drafts you grabbed, and every exported version.';
+      const pane = el('div', { class: 'fx-list-host' });
+      host.appendChild(pane);
+      BARRY.figure.paintList(pane);
+      return;
+    }
     if (mode === 'artifacts' && BARRY.artifacts) {
       $('#resultsSub').textContent = 'Versioned things a stage made for a '
         + 'later one to read — circuits and drifts.';
@@ -262,6 +270,14 @@ BARRY.views.results = (function () {
     return el('div', { class: 'seg res-mode' }, [
       el('button', { class: mode === 'files' ? 'active' : '', text: 'Files',
                      'data-mode': 'files', onclick: pick('files') }),
+      /* Figures in progress live here (2026-10-22): a grab is a draft with
+         no file yet, so the Files list cannot show it. */
+      BARRY.figure && BARRY.figure.paintList
+        ? el('button', { class: mode === 'figures' ? 'active' : '', text: 'Figures',
+                         'data-mode': 'figures',
+                         title: 'Drafts and versions from the figure builder',
+                         onclick: pick('figures') })
+        : null,
       el('button', { class: mode === 'artifacts' ? 'active' : '', text: 'Artifacts',
                      'data-mode': 'artifacts',
                      title: 'Circuits and drifts: versioned, citable, restorable',
@@ -930,8 +946,8 @@ BARRY.views.results = (function () {
    * a manifest CSV has no meaningful "make this again".
    */
   const REBUILDABLE = {
-    figure: { label: 'Rebuild', why: 'Check what this figure needs, then '
-                                     + 'walk through remaking it' },
+    figure: { label: 'Walk through', why: 'Check what this figure needs, put '
+                                          + 'it back on screen, and compare' },
     panorama: { label: 'Re-open', why: 'Open Panorama on the numbers this '
                                        + 'was drawn from' },
     toolkit: { label: 'Ask again', why: 'Run the same query and say whether '
@@ -948,10 +964,21 @@ BARRY.views.results = (function () {
        something generic. The rest open the plan. */
     if (r.kind === 'figure') {
       if (!BARRY.figrebuild) return null;
-      return el('button', {
-        class: 'mini', text: can.label, title: can.why,
-        onclick: (e) => { e.stopPropagation(); BARRY.figrebuild.start(r.run_id); },
-      });
+      /* Two acts on a figure (2026-10-22): open it in the builder to work
+         on it -- a new version, the old one untouched -- or walk it through
+         to prove it still comes out the same (figreplay.js). */
+      return el('span', { class: 'res-figacts' }, [
+        BARRY.figure && BARRY.figure.openRun ? el('button', {
+          class: 'mini', text: 'Open',
+          title: 'Open this figure in the figure builder. Exporting makes '
+               + 'its next version; this one stays as it is.',
+          onclick: (e) => { e.stopPropagation(); BARRY.figure.openRun(r.run_id); },
+        }) : null,
+        el('button', {
+          class: 'mini', text: can.label, title: can.why,
+          onclick: (e) => { e.stopPropagation(); BARRY.figrebuild.start(r.run_id); },
+        }),
+      ].filter(Boolean));
     }
     return el('button', {
       class: 'mini', text: can.label, title: can.why,
@@ -1272,11 +1299,18 @@ BARRY.views.results = (function () {
           onclick: () => apiPost('/api/results/reveal', { id: r.id }).catch(() => {}) }),
         el('button', { class: 'btn ghost sm', text: 'Download',
           onclick: () => window.open(fileUrl(r, true), '_blank') }),
+        r.run_id && r.kind === 'figure' && BARRY.figure && BARRY.figure.openRun
+          ? el('button', {
+              class: 'btn ghost sm', text: 'Open in the builder',
+              title: 'Work on this figure. Exporting makes its next version.',
+              onclick: () => { closeModal(); BARRY.figure.openRun(r.run_id); },
+            })
+          : null,
         r.run_id && r.kind === 'figure' && BARRY.figrebuild
           ? el('button', {
-              class: 'btn ghost sm', text: 'Rebuild…',
-              title: 'Check what this figure needs, then walk through '
-                   + 'remaking it',
+              class: 'btn ghost sm', text: 'Walk through…',
+              title: 'Check what this figure needs, put it back on screen, '
+                   + 'and compare',
               onclick: () => { closeModal(); BARRY.figrebuild.start(r.run_id); },
             })
           : null,

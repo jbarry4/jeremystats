@@ -322,9 +322,8 @@ function quantile(sorted, q) {
      card().querySelector('summary').textContent, 'Borders · No border applied · 3 saved');
   ok('and so does the card', /^No border applied: every event is called by its cluster/
      .test(card().querySelector('.rc-border-none').textContent));
-  ok('the margins card no longer carries the borders',
-     !D().querySelector('.rc-pool-work .rc-margins .rc-border-row')
-     && /^Margins · /.test(D().querySelector('.rc-pool-work .rc-margin-sum').textContent));
+  ok('and there is no margins card at all (taken out on 2026-10-21)',
+     !D().querySelector('.rc-pool-work .rc-margins'));
   const items = () => Array.from(card().querySelectorAll('.rc-border-item'));
   const txt = (r, sel) => (r.querySelector(sel) || {}).textContent || '';
   eq('the saved borders are a list, each by its nickname',

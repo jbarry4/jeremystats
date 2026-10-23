@@ -67,6 +67,7 @@
       if (path === '/data/physical') return file('data/physical.json');
       if (path === '/data/narrow') return file('data/narrow.json');
       if (path === '/data/joe') return file('data/joe.json');
+      if (path === '/data/joefigs') return file('data/joefigs.json');
       if (path === '/status') return { ok: true, work: null };
       if (path.indexOf('/entry?') === 0) return ahead('entry', path);
       if (path.indexOf('/leaf?') === 0) return ahead('leaf', path);

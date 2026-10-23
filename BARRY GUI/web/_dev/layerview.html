@@ -434,6 +434,17 @@ async function untilN(fn, tries = 900, gap = 100) {
      + '{col:0.5,row:0.5})');
   ev('window.__tracesCv = document.querySelector("#paneGrid canvas"); window.__log = []');
   const aFaint = LAYER_ALPHA('faint');
+  /* PER PANEL since 2026-10-22 ("it shows up on every support panel; make
+     it per panel"): a new pane has no bands until its own switch is on. */
+  await sleep(900);
+  let log0 = JSON.parse(ev('JSON.stringify(window.__log)') || '[]');
+  ck('a pane that was not switched on draws no bands',
+     !log0.some((r) => r[3] === 'I' && r[0] === 'fill' && near(r[1], aFaint)));
+  // The log is cleared first: switching a pane on repaints it at once.
+  // The CSD first: each switch repaints every pane of the recording, and the
+  // order check below reads the raster's first pass.
+  ev('window.__log = []; BARRY.views.xplore.paneLayers(1, "faint");'
+     + ' BARRY.views.xplore.paneLayers(0, "faint");');
   const drew = await untilN(() => {
     const l = JSON.parse(ev('JSON.stringify(window.__log)') || '[]');
     return l.some((r) => r[3] === 'I' && r[0] === 'fill' && near(r[1], aFaint));
@@ -509,6 +520,11 @@ async function untilN(fn, tries = 900, gap = 100) {
      !log.some((r) => r[0] === 'fill' && near(r[1], LAYER_ALPHA('faint'))),
      log.filter((r) => r[0] === 'fill'
                     && near(r[1], LAYER_ALPHA('faint'))).length + ' left');
+  ck('on that panel only: the CSD keeps its own',
+     ev('BARRY.views.xplore.state.panes[1].layerWash') === 'faint'
+     && !!ev('BARRY.views.xplore.current().layerView'));
+  ev('BARRY.views.xplore.paneLayers(1, "off")');
+  await sleep(150);
   ck('and the session stops carrying the flags',
      ev('!BARRY.views.xplore.current().layerView')
      && ev('!BARRY.views.xplore.current().strata'));

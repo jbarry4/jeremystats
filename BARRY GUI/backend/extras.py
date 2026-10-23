@@ -18,7 +18,7 @@ import time
 
 import numpy as np
 
-from . import continuity, csc, ids, nlx, spectrum, vaccio
+from . import continuity, csc, derived, ids, nlx, spectrum, vaccio
 
 # `panorama` is imported where it is used, not here.
 #
@@ -425,11 +425,31 @@ _OVERVIEW_CACHE = {}
 OVERVIEW_BINS = 900
 
 
-def overview(session, channel=None, bins=OVERVIEW_BINS):
+def coarse_to_fine(n, strides=(16, 8, 4, 2, 1)):
+    """0..n-1 in an order that covers the whole strip early: every 16th bin,
+    then the 8ths between them, and so on. Read in this order, a strip that
+    arrives a bin at a time is the whole recording at low resolution almost
+    at once, sharpening as the rest land."""
+    seen = bytearray(n)
+    out = []
+    for s in strides:
+        for i in range(0, n, s):
+            if not seen[i]:
+                seen[i] = 1
+                out.append(i)
+    return out
+
+
+def overview(session, channel=None, bins=OVERVIEW_BINS, on_bin=None):
     """A whole-recording amplitude strip, so the window has a context bar.
 
     Reads one channel at a coarse stride: a two-hour recording is summarized
     from a few megabytes, because .ncs records are seekable by index.
+
+    `on_bin(i, lo, hi, rms, mabs)`, if given, hears each bin as it is read,
+    coarse to fine (`coarse_to_fine`), for the streamed form of the route.
+    An answer already kept in memory or on disk is returned without calling
+    it: the caller gets the whole strip at once.
     """
     # On the cluster, read on the cluster. A few megabytes of coarse stride
     # is a few megabytes over a wire, and the answer is 900 numbers.
@@ -444,7 +464,8 @@ def overview(session, channel=None, bins=OVERVIEW_BINS):
 
     # "v2" because the shape of the response changed: a cache entry written
     # before mabs existed would come back without it.
-    key = (session.get("path"), ch.get("number"), int(bins), "v2")
+    invert = bool(session.get("invert", True))
+    key = (session.get("path"), ch.get("number"), int(bins), invert, "v2")
     hit = _OVERVIEW_CACHE.get(key)
     if hit:
         return hit
@@ -455,6 +476,22 @@ def overview(session, channel=None, bins=OVERVIEW_BINS):
     bins = int(max(60, min(bins, 2000)))
     step = dur / bins
 
+    # Kept on disk, keyed on the channel's file itself (backend/derived.py):
+    # a restart used to pay the whole read again. Only for a recording read
+    # here -- a demo is generated, and the cluster's copy is not this file.
+    src_file = ch.get("file") if session.get("source") == "ncs" else session.get("path")
+    ident = derived.file_ident(src_file) if session.get("source") in ("ncs", "mat") else None
+    disk_key = None
+    if ident:
+        disk_key = {"file": src_file, "ident": ident, "ch": ch.get("number"),
+                    "index": ch.get("index"), "bins": bins, "dur": round(dur, 3),
+                    "invert": invert, "v": 2}
+        kept = derived.get_json("overview", disk_key)
+        if kept and kept.get("ok"):
+            kept = dict(kept, cached="disk")
+            _OVERVIEW_CACHE[key] = kept
+            return kept
+
     lo = np.zeros(bins, dtype=np.float32)
     hi = np.zeros(bins, dtype=np.float32)
     amp = np.zeros(bins, dtype=np.float32)
@@ -464,21 +501,45 @@ def overview(session, channel=None, bins=OVERVIEW_BINS):
     # you want from a strip you are using to find the busy stretches.
     mabs = np.zeros(bins, dtype=np.float32)
 
+    def take(i, seg):
+        if seg is not None and seg.size:
+            lo[i] = float(np.min(seg))
+            hi[i] = float(np.max(seg))
+            amp[i] = float(np.sqrt(np.mean(np.square(seg, dtype=np.float64))))
+            mabs[i] = float(np.mean(np.abs(seg, dtype=np.float64)))
+        if on_bin is not None:
+            on_bin(i, round(float(lo[i]), 1), round(float(hi[i]), 1),
+                   round(float(amp[i]), 1), round(float(mabs[i]), 1))
+
     # A bin can be minutes long, so read a short probe from the head of each
     # rather than the whole span -- keeps the strip quick on network storage.
     probe = min(step, 0.35)
-    for i in range(bins):
-        t0 = i * step
+    # Coarse to fine when somebody is watching it arrive; in file order
+    # otherwise, which is the friendlier order for the disk.
+    order = coarse_to_fine(bins) if on_bin is not None else list(range(bins))
+    spans = [(i * step, i * step + probe) for i in order]
+    batched = False
+    if session.get("source") == "ncs" and ch.get("file"):
+        # One open and one header for all of them, not one per bin: 900
+        # opens on network storage were ten seconds (2026-10-21).
+        done = 0
         try:
-            seg, _t, _fs = csc._read_channel_window(session, ch, t0, t0 + probe)
-        except Exception:
-            continue
-        if seg.size == 0:
-            continue
-        lo[i] = float(np.min(seg))
-        hi[i] = float(np.max(seg))
-        amp[i] = float(np.sqrt(np.mean(np.square(seg, dtype=np.float64))))
-        mabs[i] = float(np.mean(np.abs(seg, dtype=np.float64)))
+            for j, seg, _a in nlx.read_ncs_ranges(ch["file"], spans,
+                                                  invert=invert):
+                take(order[j], seg)
+                done = j + 1
+            batched = True
+        except Exception:                                # noqa: BLE001
+            # Whatever was read stands; the rest one window at a time.
+            order, spans = order[done:], spans[done:]
+            batched = False
+    if not batched:
+        for i, (t0, t1) in zip(order, spans):
+            try:
+                seg, _t, _fs = csc._read_channel_window(session, ch, t0, t1)
+            except Exception:
+                seg = None
+            take(i, seg)
 
     res = {
         "ok": True, "bins": bins, "duration_s": dur,
@@ -493,6 +554,8 @@ def overview(session, channel=None, bins=OVERVIEW_BINS):
     if len(_OVERVIEW_CACHE) > 24:
         _OVERVIEW_CACHE.clear()
     _OVERVIEW_CACHE[key] = res
+    if disk_key:
+        derived.put_json("overview", disk_key, res)
     return res
 
 
@@ -551,6 +614,26 @@ def _bandgram(session, ch, bins):
     hit = _BANDGRAM_CACHE.get(key)
     if hit is not None:
         return hit[0], hit[1], dict(hit[2], cached=True)
+
+    # The surface is the expensive part -- the whole channel read at 250 Hz
+    # -- and it is a fact about the file, so it is kept on disk keyed on the
+    # file (backend/derived.py). A restart no longer reads it again.
+    src_file = ch.get("file") if session.get("source") == "ncs" else session.get("path")
+    ident = derived.file_ident(src_file) if session.get("source") in ("ncs", "mat") else None
+    disk_key = None
+    if ident:
+        disk_key = {"file": src_file, "ident": ident, "ch": ch.get("number"),
+                    "index": ch.get("index"), "bins": int(bins),
+                    "dur": round(float(session.get("duration_s") or 0.0), 3),
+                    "invert": bool(session.get("invert", True)), "v": 1}
+        kept = derived.get_arrays("bandgram", disk_key)
+        if kept and "freqs" in kept and "grid" in kept:
+            out = (kept["freqs"], kept["grid"], dict(kept.get("meta") or {}))
+            _BANDGRAM_CACHE[key] = out
+            _BANDGRAM_ORDER.append(key)
+            while len(_BANDGRAM_ORDER) > _BANDGRAM_MAX:
+                _BANDGRAM_CACHE.pop(_BANDGRAM_ORDER.pop(0), None)
+            return out[0], out[1], dict(out[2], cached="disk")
 
     t_start = time.time()
     dur = float(session.get("duration_s") or 0.0)
@@ -613,6 +696,9 @@ def _bandgram(session, ch, bins):
     _BANDGRAM_ORDER.append(key)
     while len(_BANDGRAM_ORDER) > _BANDGRAM_MAX:
         _BANDGRAM_CACHE.pop(_BANDGRAM_ORDER.pop(0), None)
+    if disk_key:
+        derived.put_arrays("bandgram", disk_key, {"freqs": freqs, "grid": grid},
+                           meta)
     return out
 
 
