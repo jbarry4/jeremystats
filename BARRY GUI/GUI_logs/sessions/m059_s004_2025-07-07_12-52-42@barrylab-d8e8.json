@@ -24,8 +24,8 @@
     "schema": "2026-09-04T15:57:01.884999+00:00",
     "session": "2026-09-04T15:57:01.884999+00:00",
     "start": "2026-09-04T15:57:01.884999+00:00",
-    "updated": "2026-10-15T15:39:54.840698+00:00",
-    "view_state": "2026-10-15T15:39:54.840698+00:00"
+    "updated": "2026-10-22T19:52:27.491990+00:00",
+    "view_state": "2026-10-22T19:52:27.491990+00:00"
   },
   "_keys": {
     "paths": {
@@ -39,15 +39,15 @@
       ],
       "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s4jul7\\2025-07-07_12-52-42": [
         "set",
-        "2026-09-04T15:57:01.884999+00:00"
+        "2026-09-10T03:53:30.081116+00:00"
       ],
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M59_s4_Baseline": [
         "set",
-        "2026-09-04T15:57:01.884999+00:00"
+        "2026-09-10T03:53:30.081116+00:00"
       ],
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s4_Baseline": [
         "set",
-        "2026-09-04T15:57:01.884999+00:00"
+        "2026-09-10T03:53:30.081116+00:00"
       ]
     },
     "seen": {
@@ -61,7 +61,7 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-10-15T15:25:57.643857+00:00"
+        "2026-10-22T18:03:33.015716+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
@@ -70,7 +70,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-15T15:39:54.840698+00:00",
+    "at": "2026-10-22T19:52:27.491990+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -126,7 +126,7 @@
       "scan": null
     },
     "barrylab-d8e8": {
-      "at": "2026-10-15T11:25:56-04:00",
+      "at": "2026-10-22T14:03:32-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "E:\\Data\\m59s4jul7\\2025-07-07_12-52-42",
@@ -145,9 +145,9 @@
   "session": 4,
   "start": "2025-07-07T12:52:42",
   "updated": {
-    "app_version": "2026.10.14.8",
-    "at": "2026-10-15T11:39:54-04:00",
-    "commit": "98135766",
+    "app_version": "2026.10.22.4",
+    "at": "2026-10-22T15:52:27-04:00",
+    "commit": "c715853b",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
@@ -189,21 +189,22 @@
       61,
       63
     ],
-    "clim": null,
+    "climBy": null,
     "fdefault": null,
     "flock": true,
     "gain": 2.5,
-    "hp": 5,
+    "hp": 1,
     "invert": true,
-    "lp": 100,
+    "lp": 70,
+    "marks_fade": null,
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 1.22,
+    "span": 1,
     "stft_mode": null,
-    "t0": 2700.9621819999998,
+    "t0": 24.592916,
     "ylim": 947.662353515625
   }
 }
