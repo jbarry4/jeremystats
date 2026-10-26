@@ -2064,6 +2064,26 @@ class Sync:
             "deck": ("storyboards", "id"),
         }
         for row in rows:
+            if row.get("kind") == "path":
+                # One path off one recording: `session_paths` is keyed on
+                # the pair. `%` and `&` encoded here, because `_safe_query`
+                # leaves both alone as URL grammar and a lab path can hold
+                # either.
+                gid, _, path = str(row.get("id") or "").partition("|")
+                if not gid or not path:
+                    done.append(row)
+                    continue
+                val = path.replace("%", "%25").replace("&", "%26")
+                try:
+                    hit = self.cloud.patch_rows(
+                        "session_paths", "gid=eq.%s&path=eq.%s" % (gid, val),
+                        {"deleted_at": cloud.ts(row.get("at")) or stamp,
+                         "updated_at": stamp})
+                    marked += len(hit) if hit else 0
+                    done.append(row)
+                except cloud.CloudError:
+                    pass          # try again next sync
+                continue
             spec = table_for.get(row.get("kind"))
             if not spec:
                 continue
@@ -2748,9 +2768,22 @@ class Sync:
         return n
 
     def _apply_paths(self, rows):
+        # Paths this machine knows were pruned (pathtidy.py): a row older
+        # than its note is the pruned path coming back from a machine that
+        # had not heard, and is not re-added. A newer one is somebody
+        # finding the folder again, and is.
+        pruned = {}
+        try:
+            for t in (self.tombs.all("path") if self.tombs else []):
+                pruned[str(t.get("id"))] = t.get("at")
+        except Exception:                                # noqa: BLE001
+            pruned = {}
         by_gid = {}
         for r in rows:
             if r.get("deleted_at"):
+                continue
+            note = pruned.get("%s|%s" % (r.get("gid"), r.get("path")))
+            if note and not tombsmod.newer(r.get("updated_at"), note):
                 continue
             by_gid.setdefault(r["gid"], []).append(r["path"])
         n = 0

@@ -15,6 +15,57 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.23.6 - Every PTEN session opens on a new computer: the paths Jarvis knows now match netfiles
+
+**Restart Jarvis**: `backend/app.py`, `backend/vacc.py`, `backend/cloudsync.py`,
+`backend/tombs.py` and the new `backend/pathtidy.py` changed.
+
+### Why PTEN would not open on a new computer
+
+- Every one of the 62 PTEN sessions in *PTEN_KCNT1 Dentate Spike Data* is
+  on netfiles, in ProcessedPtenData. But 59 of them were on record only as
+  `Y:\ProcessedPtenData\...`. `Y:` is the drive letter the rigs map, so a
+  computer that hasn't mapped it (a new laptop, or Bluebarry) could not
+  open any of them, even though it can reach the share by name.
+- 197 netfiles paths on record were gone. HeadfixPilot, Chronic_SAPilot,
+  5XFAD, Cdrivebckup and HOF were put into archives or moved.
+
+### What changed
+
+- **Paths now match the share.** Each of the 462 recordings that needed it
+  was updated:
+  - 284 now carry the share's own address
+    (`\\netfiles03.uvm.edu\bigdata_jbarry\...`), which opens on any lab
+    computer with or without a mapped drive.
+  - 206 dead paths were dropped: the 197 gone from netfiles, plus 4 test
+    folders and 5 paths to `timestamps.mat` files.
+  - All 62 sheet sessions now open from the share alone.
+  - Nothing on netfiles was touched, and no recording was removed. A
+    recording whose last copy went into a HeadfixPilot archive records
+    which one (`archived_in`).
+  - Local-drive paths (`D:\PTEN\...`) were left alone, because they may be
+    another computer's disk.
+- **A dropped path can't come back.** Each one is remembered. The cloud
+  copy is marked deleted, and a pull skips any path whose deletion is newer
+  than the copy it's offered. Other computers get the change with their
+  next git pull.
+
+### Everything VACC knows, redesigned
+
+- **It matches the welcome.** Sessions › Everything VACC knows now has:
+  - a card for each place (the cluster's own space, and netfiles), each
+    with its own **Find everything** button;
+  - the live console, where every folder a walk finds streams past;
+  - the counts as tiles.
+- **Keep the paths true** is new. **Check every path** compares everything
+  Jarvis knows against the latest netfiles walk. It makes one read-only
+  connection that asks the cluster about each path the walk didn't list,
+  and shows what would change, recording by recording. **Update N
+  recordings** then applies it, and the console shows each recording as it
+  goes. Run it again after netfiles changes.
+
+---
+
 ## 2026.10.23.5 - Lock: a locked Braces stamp holds its peak, and the rest go around it
 
 **Restart Jarvis**: `backend/braces.py` and `backend/app.py` changed.

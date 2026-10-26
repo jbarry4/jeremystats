@@ -1,7 +1,8 @@
 {
   "_at": {
-    "created": "2026-10-12T13:31:32.868786+00:00",
-    "gid": "2026-10-12T13:31:32.868786+00:00",
+    "archived_in": "2026-10-23T19:20:55.294812+00:00",
+    "created": "2026-10-12T13:13:12.022138+00:00",
+    "gid": "2026-10-12T13:13:12.022138+00:00",
     "group": "2026-10-12T13:31:32.868786+00:00",
     "key": "2026-10-12T13:31:32.868786+00:00",
     "label": "2026-10-12T13:31:32.868786+00:00",
@@ -13,34 +14,37 @@
     "schema": "2026-10-12T13:31:32.868786+00:00",
     "session": "2026-10-12T13:31:32.868786+00:00",
     "start": "2026-10-12T13:31:32.868786+00:00",
-    "updated": "2026-10-12T13:33:01.376395+00:00"
+    "updated": "2026-10-23T19:20:55.294812+00:00"
   },
   "_keys": {
     "paths": {
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s1_061925\\2025-06-19_12-24-17": [
-        "set",
-        "2026-10-12T13:33:01.376395+00:00"
+        "gone",
+        "2026-10-23T19:20:55.294812+00:00"
       ],
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s1b_061925\\2025-06-19_13-15-37": [
-        "set",
-        "2026-10-12T13:33:01.376395+00:00"
+        "gone",
+        "2026-10-23T19:20:55.294812+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-12T13:33:01.376395+00:00",
+    "at": "2026-10-23T19:20:55.294812+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
+  "archived_in": [
+    "Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56.tar.xz"
+  ],
   "created": {
     "app_version": "2026.10.09.4",
-    "at": "2026-10-12T09:31:32-04:00",
-    "commit": "2ec65512",
-    "email": "sakhava1@uvm.edu",
-    "host": "DESKTOP-4H65AI7",
-    "machine": "Bluebarry",
+    "at": "2026-10-12T09:13:12-04:00",
+    "commit": "1b2184e3",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Shahriar Tafti"
+    "user": "Rain Younger"
   },
   "gid": "sb209c176d82c",
   "group": null,
@@ -48,10 +52,7 @@
   "label": "PTEN_DKO m56 s1 2025-06-19",
   "loose_key": "m056_s001",
   "mouse": 56,
-  "paths": [
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s1_061925\\2025-06-19_12-24-17",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s1b_061925\\2025-06-19_13-15-37"
-  ],
+  "paths": [],
   "project": "PTEN",
   "project_source": "guessed",
   "retired": false,
@@ -59,9 +60,9 @@
   "session": 1,
   "start": "2025-06-19T16:24:17+00:00",
   "updated": {
-    "app_version": "2026.10.09.4",
-    "at": "2026-10-12T09:33:01-04:00",
-    "commit": "2ec65512",
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:55-04:00",
+    "commit": "be1e2ae4",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

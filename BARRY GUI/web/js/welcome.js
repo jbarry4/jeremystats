@@ -215,7 +215,12 @@ BARRY.welcome = (function () {
       since = got.next != null ? got.next : since;
       paintBars(got.tasks);
       if (queue.length) kick(); else paintFoot();
-      if (on) timer = setTimeout(poll, 250);
+      /* Four times a second while something is running or talking; every
+         second and a half when all is quiet; every three when nobody can
+         see it (a hidden tab, or a page that has put the console away). */
+      const quiet = !running.length && !(got.lines || []).length;
+      const away = document.hidden || !node.isConnected;
+      if (on) timer = setTimeout(poll, away ? 3000 : quiet ? 1500 : 250);
     }
 
     function start() {
@@ -1017,5 +1022,6 @@ BARRY.welcome = (function () {
     }, { escape: true, from: 'menu' });
   }
 
-  return { maybe, open, needs, get open_() { return !!live; } };
+  // `terminal` for Sessions' Everything VACC knows, which wears the same console.
+  return { maybe, open, needs, terminal, get open_() { return !!live; } };
 })();

@@ -16986,7 +16986,9 @@ div.tf-tile { cursor: default; }
 .wl-console {
   display: flex; flex-direction: column; gap: 8px; padding: 12px;
   border: 1px solid var(--line-soft); border-radius: var(--radius-control);
-  background: color-mix(in srgb, var(--bg) 82%, #000);
+  /* A shade off the page in every theme: darker on a dark one, a
+     soft tint on a light one, never grey-on-grey. */
+  background: color-mix(in srgb, var(--bg-2) 88%, var(--text) 5%);
   font-family: var(--mono); font-size: var(--fs-105);
 }
 .wl-console[hidden] { display: none; }
@@ -17040,3 +17042,26 @@ div.tf-tile { cursor: default; }
   .wl-bar-fill { transition: none; }
   .wl-barrow[data-state="run"]:not([data-known="1"]) .wl-bar-fill { animation: none; width: 100%; opacity: .45; }
 }
+
+/* Everything VACC knows (js/sessions.js foundCard, 2026-10-23): the
+   welcome's places, console and tiles, plus keeping the paths true. */
+.card.vk-card { display: flex; flex-direction: column; gap: 14px; }
+.vk-head { display: flex; flex-direction: column; gap: 4px; }
+.vk-head .hint { margin: 0; }
+.vk-card .wl-console { max-width: 100%; }
+.vk-list > summary { cursor: pointer; color: var(--text-2); }
+.vk-list > summary:hover { color: var(--text); }
+.vk-rows {
+  margin-top: 6px; max-height: 320px; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 6px;
+  font-family: var(--mono); font-size: var(--fs-105); color: var(--text-3);
+}
+.vk-row { overflow-wrap: anywhere; }
+.vk-row strong { display: block; color: var(--text-2); font-weight: 600; }
+.vk-add { color: var(--ok); overflow-wrap: anywhere; }
+.vk-drop { color: var(--warn); overflow-wrap: anywhere; }
+.vk-tidy {
+  display: flex; flex-direction: column; gap: 10px;
+  padding-top: 14px; border-top: 1px solid var(--line-soft);
+}
+.vk-tidy .hint { margin: 0; }

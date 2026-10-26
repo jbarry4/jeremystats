@@ -3517,155 +3517,314 @@ BARRY.views.sessions = (function () {
       : s < 129600 ? Math.round(s / 3600) + ' h ago'
         : Math.round(s / 86400) + ' days ago');
 
+  /* Everything VACC knows, in the welcome's clothes (2026-10-23: "modernize
+     and update this part ... to match the energy of the set up you
+     created"). The same pieces as the welcome's Recordings step -- a card
+     per place with its own Find button, the live console (the welcome's,
+     `BARRY.welcome.terminal`), the counts as tiles -- and one thing the
+     welcome has not: keeping every path Jarvis knows true to the share
+     (backend/pathtidy.py).
+
+     The console is made once and moved, never rebuilt: this pad is redrawn
+     on every answer, and a console that started again each time would
+     throw its lines away. */
+  let vTerm = null;
+  function vaccTerm() {
+    if (vTerm || !(BARRY.welcome && BARRY.welcome.terminal)) return vTerm;
+    vTerm = BARRY.welcome.terminal({
+      show: (t) => !t || /^walk:|^check:|^tidy|^add$/.test(t),
+      onDone: (t) => {
+        if (mode !== 'vacc') return;
+        if (/^walk:/.test(t) || t === 'add') loadFound(false);
+        if (t === 'tidy') loadTidy();
+      },
+    });
+    vTerm.start();
+    return vTerm;
+  }
+
+  const nn = (x) => Number(x || 0).toLocaleString();
+
+  function placeTile(kind, roots, title, cost) {
+    const mine = roots.filter((r) => (kind === 'netfiles') === (r.kind === 'netfiles'));
+    const busy = mine.some((r) => r.busy);
+    const looked = mine.filter((r) => r.age_s != null);
+    const total = looked.reduce((a, r) => a + (r.n || 0), 0);
+    const fresh = looked.length ? Math.min.apply(null, looked.map((r) => r.age_s)) : null;
+    return el('div', { class: 'wl-place', 'data-state': busy ? 'busy'
+      : looked.length ? 'done' : 'wait' }, [
+      el('div', { class: 'wl-place-head' }, [
+        el('span', { class: 'wl-mark-dot', 'aria-hidden': 'true' }),
+        el('strong', { text: title }),
+        el('span', { class: 'wl-hint', text: cost }),
+      ]),
+      el('p', { class: 'wl-hint', text: busy
+        ? 'Looking through it now — every folder it finds is in the console below.'
+        : looked.length
+          ? nn(total) + ' recording' + (total === 1 ? '' : 's') + ', looked through ' + ago(fresh)
+          : 'Not looked through on this computer yet.' }),
+      el('p', { class: 'wl-hint quiet', text: mine.map((r) => r.root).join('  ·  ') }),
+      el('button', {
+        class: 'btn ghost sm', type: 'button',
+        text: busy ? (kind === 'netfiles' ? 'Looking on netfiles…' : 'Looking on VACC…')
+          : (kind === 'netfiles' ? 'Find everything on netfiles' : 'Find everything on VACC'),
+        disabled: busy ? 'disabled' : null,
+        title: kind === 'netfiles'
+          ? 'Look through the lab’s netfiles share again, from the cluster. About two and a '
+            + 'half minutes; every folder it finds streams past in the console.'
+          : 'Look through the cluster’s own space again — scratch, the uploads in Jarvis '
+            + 'Data, temp and every folder a scan was pointed at. Seconds.',
+        onclick: () => {
+          if (vTerm) {
+            vTerm.local(kind === 'netfiles'
+              ? 'Find everything on netfiles: the cluster walks the lab’s share'
+              : 'Find everything on VACC: scratch, the uploads and temp');
+          }
+          loadFound(kind);
+        },
+      }),
+    ]);
+  }
+
+  function tile(n, words, hot) {
+    return el('div', { class: 'wl-num', 'data-hot': hot ? '1' : null }, [
+      el('strong', { text: nn(n) }), el('span', { text: words }),
+    ]);
+  }
+
   function foundCard() {
-    const box = el('div', { class: 'card' });
-    box.appendChild(el('div', { class: 'section-label',
-                                text: 'Found on VACC' }));
+    const box = el('div', { class: 'card vk-card' });
+    box.appendChild(el('div', { class: 'vk-head' }, [
+      el('div', { class: 'section-label', text: 'Everything VACC knows' }),
+      el('p', { class: 'hint', style: 'max-width:78ch',
+        text: 'Every place on the cluster Jarvis looks — scratch, uploads and the lab’s '
+            + 'netfiles share — sorted against the catalogue. A recording that is new '
+            + 'to Jarvis can be added; it is then offered by every tool, labelled '
+            + 'VACC loaded. Nothing is copied and nothing on the cluster changes.' }),
+    ]));
     if (!vFound) {
       if (!vFoundLoading) loadFound(false);
-      box.appendChild(el('p', { class: 'hint quiet',
+      box.appendChild(el('p', { class: 'wl-state', 'data-kind': 'busy',
                                 text: 'Reading what the cluster holds…' }));
       return box;
     }
     if (!vFound.ok) {
       box.appendChild(el('p', { class: 'warn-line',
         text: vFound.error || 'Could not read what the cluster holds.' }));
-      return box;
     }
     const f = vFound;
     const roots = f.roots || [];
-    const busyKind = (k) => roots.some((r) => r.busy && r.kind === k);
 
-    /* A computer that has never looked. Each computer keeps its own
-       listing of the share (it is minutes to make and a day old at most),
-       so a new one -- or a fresh install -- starts with nothing found, and
-       a card full of zeros would read as "the cluster is empty". It says
-       what to do instead (§5: an empty state says what to do next). */
     if (f.setup_needed && !f.walking) {
-      box.appendChild(el('div', { class: 'empty-state vacc-setup' }, [
-        el('p', { text: 'This computer has not looked on the VACC yet.' }),
-        el('p', { class: 'hint', style: 'max-width:78ch',
-          text: 'Set it up once: Jarvis looks through the cluster’s own '
-              + 'space (scratch, the uploads, temp — seconds) and through '
-              + 'the lab’s netfiles share (about two and a half minutes), '
-              + 'and matches every recording it finds to the catalogue. '
-              + 'After that the share is looked through again once a day, '
-              + 'or when you press one of the buttons below. Nothing is '
-              + 'copied and nothing is added until you say so.' }),
-      ]));
-      box.appendChild(el('div', { class: 'tk-actions' }, [
-        el('button', { class: 'btn ghost sm', text: 'Find everything on VACC',
-          title: 'Only the cluster’s own space: scratch, the uploads and '
-               + 'temp. Seconds.',
-          onclick: () => loadFound('vacc') }),
-        el('button', { class: 'btn ghost sm',
-          text: 'Find everything on netfiles',
-          title: 'Only the lab’s netfiles share, read from the cluster. '
-               + 'About two and a half minutes.',
-          onclick: () => loadFound('netfiles') }),
-        el('button', { class: 'btn', text: 'Set up this computer',
-          title: 'Both: the cluster’s own space and the netfiles share.',
-          onclick: () => loadFound('all') }),
-      ]));
-      return box;
+      box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
+        text: 'This computer has not looked on the VACC yet. Start with the cluster’s own '
+            + 'space (seconds), then the lab’s netfiles share (about two and a half '
+            + 'minutes). After that the share is looked through again once a day, or '
+            + 'when you ask.' }));
     }
-
-    box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
-      text: 'Every place on the cluster Jarvis looks — scratch, uploads and '
-          + 'the lab’s netfiles share — sorted against the catalogue. A '
-          + 'recording that is here and new to Jarvis can be added, and is '
-          + 'then offered by every tool, labelled VACC loaded.' }));
-
-    /* Where it looked, and how fresh each answer is. The share takes a
-       couple of minutes to walk and is walked once a day, so "walked 3 h
-       ago" is information, not an apology. */
-    for (const r of roots) {
-      box.appendChild(el('p', { class: 'hint quiet',
-        text: (r.kind === 'netfiles' ? 'netfiles  ' : 'VACC  ') + r.root
-            + '  ·  ' + (r.busy
-              ? 'looking through it now' + (r.kind === 'netfiles'
-                ? ' (about two and a half minutes)' : '')
-              : r.age_s == null ? 'not looked through on this computer yet'
-                : (r.n.toLocaleString() + ' recording'
-                   + (r.n === 1 ? '' : 's') + ', looked through '
-                   + ago(r.age_s))) }));
-    }
+    box.appendChild(el('div', { class: 'wl-places' }, [
+      placeTile('vacc', roots, 'The cluster’s own space', 'scratch, uploads, temp — seconds'),
+      placeTile('netfiles', roots, 'The lab’s netfiles share', 'about two and a half minutes'),
+    ]));
     for (const d of (f.denied_roots || [])) {
       box.appendChild(el('p', { class: 'warn-line',
         text: d + ' is mounted, and this account (' + (f.netid || '?')
             + ') cannot read it, so it is not walked — ask Shahriar to have '
             + 'it added to the jarvis_writes group.' }));
     }
+    const term = vaccTerm();
+    if (term) box.appendChild(term.node);
 
-    box.appendChild(el('div', { class: 'vacc-grid' }, [
-      vRow('Already in Jarvis', (f.n_matched || 0).toLocaleString()),
-      vRow('New to Jarvis', (f.n_new || 0).toLocaleString()),
-      vRow('Need a person to say which', (f.n_refused || 0).toLocaleString()),
-      vRow('Folder names no mouse and session',
-           (f.n_unidentifiable || 0).toLocaleString()),
-    ]));
-
-    const part = (label, rows, line, cls) => (rows && rows.length)
-      ? el('details', { class: cls || '' }, [
-          el('summary', { text: label }),
-          el('div', {}, BARRY.ui.natSort(rows.slice(), (r) => [r.label || r.key, r.path]).map((r) => el('div', { class: 'hint quiet',
-                                                   text: line(r) }))),
-        ])
-      : null;
-    const byProj = Object.entries(f.new_by_project || {})
-      .sort((a, b) => b[1] - a[1])
-      .map(([p, n]) => n + ' ' + p).join(', ');
-    [
-      part((f.n_new || 0) + ' new' + (byProj ? ' — ' + byProj : '')
-           + (f.n_new > (f.new || []).length
-             ? ' (the first ' + f.new.length + ' listed)' : ''),
-           f.new,
-           (r) => (r.label || r.key) + ' — ' + r.where
-                  + (r.kind === 'netfiles' ? '' : '  (a copy in ' + r.kind + ')')
-                  + (r.copies > 1 ? '  · ' + r.copies + ' copies' : '')),
-      part((f.n_refused || 0) + ' need a person to say which', f.refused,
-           (r) => r.path + ' — ' + r.why),
-      part((f.n_unidentifiable || 0) + ' whose folder names no mouse and '
-           + 'session — left alone; rename the folder, then look again',
-           f.unidentifiable, (r) => r.path),
-    ].filter(Boolean).forEach((x) => box.appendChild(x));
+    const looked = roots.some((r) => r.age_s != null);
+    if (looked) {
+      const byProj = Object.entries(f.new_by_project || {})
+        .sort((a, b) => b[1] - a[1]).map(([p, n]) => n + ' ' + p).join(', ');
+      box.appendChild(el('div', { class: 'wl-tally' }, [
+        tile(f.n_matched, 'already in Jarvis'),
+        tile(f.n_new, 'new' + (byProj ? ' — ' + byProj : ''), !!f.n_new),
+        tile(f.n_refused, 'need a person to say which'),
+        tile(f.n_unidentifiable, 'folders that name no mouse and session — left alone'),
+      ]));
+      const part = (label, rows, line) => (rows && rows.length)
+        ? el('details', { class: 'vk-list' }, [
+            el('summary', { text: label }),
+            el('div', { class: 'vk-rows' }, BARRY.ui.natSort(rows.slice(),
+              (r) => [r.label || r.key, r.path]).map((r) => el('div', { class: 'vk-row',
+                                                                     text: line(r) }))),
+          ])
+        : null;
+      [
+        part(nn(f.n_new) + ' new' + (f.n_new > (f.new || []).length
+               ? ' (the first ' + f.new.length + ' listed)' : ''), f.new,
+             (r) => (r.label || r.key) + ' — ' + r.where
+                    + (r.kind === 'netfiles' ? '' : '  (a copy in ' + r.kind + ')')
+                    + (r.copies > 1 ? '  · ' + r.copies + ' copies' : '')),
+        part(nn(f.n_refused) + ' need a person to say which', f.refused,
+             (r) => r.path + ' — ' + r.why),
+        part(nn(f.n_unidentifiable) + ' whose folder names no mouse and session — rename '
+             + 'the folder, then look again', f.unidentifiable, (r) => r.path),
+      ].filter(Boolean).forEach((x) => box.appendChild(x));
+    }
 
     const n = f.n_new || 0;
-    /* Two searches, because they are two different costs: the cluster's
-       own space is seconds, the lab's share is a couple of minutes of a
-       filesystem everybody's jobs read. Each says when it is running. */
-    box.appendChild(el('div', { class: 'tk-actions' }, [
+    box.appendChild(el('div', { class: 'wl-actions' }, [
       el('button', {
-        class: 'btn ghost sm',
-        text: busyKind('scratch') ? 'Looking on VACC…'
-                                  : 'Find everything on VACC',
-        disabled: busyKind('scratch') ? 'disabled' : null,
-        title: 'Look through the cluster’s own space again — scratch, the '
-             + 'uploads in Jarvis Data, temp and every folder a scan was '
-             + 'pointed at. Seconds.',
-        onclick: () => loadFound('vacc'),
-      }),
-      el('button', {
-        class: 'btn ghost sm',
-        text: busyKind('netfiles') ? 'Looking on netfiles…'
-                                   : 'Find everything on netfiles',
-        disabled: busyKind('netfiles') ? 'disabled' : null,
-        title: 'Look through the lab’s netfiles share again, from the '
-             + 'cluster. About two and a half minutes; the list here '
-             + 'updates when it is done.',
-        onclick: () => loadFound('netfiles'),
-      }),
-      el('button', {
-        class: 'btn',
+        class: 'btn', type: 'button',
         text: vAdding ? 'Adding…'
-          : n ? ('Add ' + n.toLocaleString() + ' recording'
-                 + (n === 1 ? '' : 's') + ' found on VACC')
+          : n ? 'Add ' + nn(n) + ' recording' + (n === 1 ? '' : 's') + ' found on VACC'
             : 'Nothing new to add',
         disabled: (vAdding || !n) ? 'disabled' : null,
         onclick: addFound,
       }),
     ]));
+    box.appendChild(tidyBlock(f));
     return box;
+  }
+
+  /* -------------------------------------------------------- the paths */
+  /* Keeping every path Jarvis knows true to the share (backend/pathtidy.py).
+     Made, shown, then applied by its digest: nothing changes on a look. */
+  let vTidy = null;          // GET /api/vacc/found/tidy
+  let vTidyBusy = false;
+  let vTidyAsked = false;
+  let vTidyTimer = null;
+
+  async function loadTidy() {
+    vTidyAsked = true;
+    try { vTidy = await api('/api/vacc/found/tidy'); } catch (e) { vTidy = vTidy || {}; }
+    if (mode === 'vacc') paintVacc();
+  }
+
+  async function planTidy() {
+    if (vTidyBusy) return;
+    vTidyBusy = true;
+    if (vTerm) vTerm.local('Check every path: compare everything Jarvis knows with netfiles', 'me');
+    paintVacc();
+    try {
+      const got = await apiPost('/api/vacc/found/tidy/plan', {});
+      vTidy = { ok: true, plan: got, running: false, result: null, age_s: 0 };
+    } catch (e) {
+      if (vTerm) vTerm.local(e.message, 'warn');
+      toast(e.message, 'warn', 9000);
+    } finally {
+      vTidyBusy = false;
+      paintVacc();
+    }
+  }
+
+  async function applyTidy() {
+    const plan = vTidy && vTidy.plan;
+    if (!plan || vTidyBusy) return;
+    const ok = await BARRY.confirm(
+      'Update the paths of ' + nn(plan.records) + ' recording' + (plan.records === 1 ? '' : 's') + '?',
+      el('div', { class: 'fix-facts' }, [
+        el('p', { text: nn(plan.add) + ' recording' + (plan.add === 1 ? '' : 's') + ' learn the '
+          + 'share’s own address, which opens on every lab computer — no mapped drive needed. '
+          + nn(plan.drop) + ' path' + (plan.drop === 1 ? ' is' : 's are') + ' dropped because '
+          + 'the cluster says ' + (plan.drop === 1 ? 'it is' : 'they are') + ' not there any more.' }),
+        el('p', { class: 'hint', text: 'Nothing on netfiles changes, and no recording is '
+          + 'removed: bad channels, layers and decisions stay. A recording whose only copy '
+          + 'went into an archive says which one. Paths on a local drive are left alone — '
+          + 'they may be another computer’s disk.' }),
+        el('p', { class: 'hint quiet', text: 'Each dropped path is remembered, so a sync '
+          + 'cannot bring it back. The change reaches other computers with their next pull.' }),
+      ]), 'Update them');
+    if (!ok) return;
+    vTidyBusy = true;
+    paintVacc();
+    try {
+      await apiPost('/api/vacc/found/tidy', { confirm: true, digest: plan.digest });
+      vTidy = Object.assign({}, vTidy, { running: true });
+    } catch (e) {
+      toast(e.message, 'err', 9000);
+    } finally {
+      vTidyBusy = false;
+      paintVacc();
+    }
+  }
+
+  function tidyBlock(f) {
+    const wrap = el('div', { class: 'vk-tidy' });
+    wrap.appendChild(el('div', { class: 'section-label', text: 'Keep the paths true' }));
+    wrap.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
+      text: 'Every path Jarvis knows, checked against netfiles. A recording found on the '
+          + 'share learns the share’s own address — \\\\netfiles03.uvm.edu\\bigdata_jbarry — '
+          + 'which every lab computer opens, mapped drive or not. A path the cluster says is '
+          + 'gone (moved, or put into an archive) is dropped. One read-only connection.' }));
+    if (!vTidyAsked && !vTidyBusy) loadTidy();
+    const t = vTidy || {};
+    const plan = t.plan;
+    const netfiles = (f.roots || []).filter((r) => r.kind === 'netfiles');
+    const fresh = netfiles.some((r) => r.age_s != null && r.age_s < 86400 && !r.busy);
+    if (t.running) {
+      wrap.appendChild(el('p', { class: 'wl-state', 'data-kind': 'busy',
+        text: 'Updating — each recording goes past in the console above.' }));
+      clearTimeout(vTidyTimer);
+      vTidyTimer = setTimeout(() => { if (mode === 'vacc') loadTidy(); }, 3000);
+      return wrap;
+    }
+    if (t.result && !plan) {
+      const r = t.result;
+      wrap.appendChild(el('p', { class: 'wl-state', 'data-kind': r.error ? 'warn' : 'ok',
+        text: r.error ? 'Stopped: ' + r.error
+          : 'Done: ' + nn(r.records) + ' recordings updated — ' + nn(r.added) + ' paths added, '
+            + nn(r.dropped) + ' dropped, in ' + r.seconds + ' s. Other computers get it with '
+            + 'their next pull.' }));
+    }
+    if (plan && !plan.records) {
+      wrap.appendChild(el('p', { class: 'wl-state', 'data-kind': 'ok',
+        text: 'Nothing to change: every path Jarvis knows on netfiles is there, and every '
+            + 'recording found on the share already has its address.' }));
+    } else if (plan) {
+      const reasons = plan.by_reason || {};
+      wrap.appendChild(el('div', { class: 'wl-tally' }, [
+        tile(plan.records, 'recordings change'),
+        tile(plan.add, 'learn the share’s own address', !!plan.add),
+        tile((reasons.gone || 0) + (reasons.archived || 0),
+             'gone from netfiles' + (reasons.archived ? ' — ' + nn(reasons.archived)
+               + ' of them into an archive' : '')),
+        tile((reasons.temp || 0) + (reasons.file || 0), 'test folders and file paths'),
+      ]));
+      const byProj = Object.entries(plan.by_project || {})
+        .map(([p, c]) => p + ': +' + nn(c.add) + ' −' + nn(c.drop)).join('   ·   ');
+      if (byProj) wrap.appendChild(el('p', { class: 'hint quiet', text: byProj }));
+      if (plan.emptied) {
+        wrap.appendChild(el('p', { class: 'hint', text: nn(plan.emptied) + ' recording'
+          + (plan.emptied === 1 ? ' is' : 's are') + ' then known only by what was learned '
+          + 'about ' + (plan.emptied === 1 ? 'it' : 'them') + ' — no folder on the share '
+          + 'holds ' + (plan.emptied === 1 ? 'it' : 'them') + ' now.' }));
+      }
+      const why = { gone: 'gone', archived: 'in an archive', temp: 'a test folder', file: 'a file' };
+      wrap.appendChild(el('details', { class: 'vk-list' }, [
+        el('summary', { text: 'What changes, recording by recording'
+          + (plan.n_rows > plan.rows.length ? ' (the first ' + plan.rows.length + ')' : '') }),
+        el('div', { class: 'vk-rows' }, plan.rows.map((r) => el('div', { class: 'vk-row' }, [
+          el('strong', { text: r.label || r.gid }),
+          ...r.add.map((u) => el('div', { class: 'vk-add', text: '+ ' + u })),
+          ...r.drop.map(([p, w]) => el('div', { class: 'vk-drop',
+            text: '− ' + p + '  (' + (why[w] || w) + ')' })),
+        ]))),
+      ]));
+    }
+    wrap.appendChild(el('div', { class: 'wl-actions' }, [
+      el('button', {
+        class: 'btn ghost sm', type: 'button',
+        text: vTidyBusy && !plan ? 'Checking…' : plan ? 'Check again' : 'Check every path',
+        disabled: (vTidyBusy || !fresh) ? 'disabled' : null,
+        title: fresh ? 'Compare every path on record with the share. Changes nothing.'
+          : 'Look through netfiles first — the check is made against a walk from the last day.',
+        onclick: planTidy,
+      }),
+      plan && plan.records ? el('button', {
+        class: 'btn', type: 'button',
+        text: 'Update ' + nn(plan.records) + ' recording' + (plan.records === 1 ? '' : 's'),
+        disabled: vTidyBusy ? 'disabled' : null,
+        onclick: applyTidy,
+      }) : null,
+      !fresh ? el('span', { class: 'hint quiet',
+        text: 'Look through netfiles first: the check uses a walk from the last day.' }) : null,
+    ].filter(Boolean)));
+    return wrap;
   }
 
   async function addFound() {

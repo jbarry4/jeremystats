@@ -3166,14 +3166,24 @@ window.MONO_FIXTURE = {
   await until(() => D().getElementById('figsintro'), 120);
   const conn9 = FIGS.figures.filter((f) => f.kind === 'connectome'), fol9 = FIGS.figures.filter((f) => f.kind === 'follow');
   const card9 = (f) => D().getElementById('fig-' + f.id.replace('.', '_'));
-  check('its own pane: a line, the contents, then a card a figure in order, the connectomes before their follow-ups',
+  // the filter remembers per viewer: what was there is put back at the end
+  let hideWas = null;
+  try { hideWas = W().localStorage.getItem('barry.joefigs.hide'); } catch (e) { /* none */ }
+  check('its own pane: a line, the contents, then Supplementary Figure S1, then a card a figure in order, each group’s ring before its follow-ups',
         !D().getElementById('figspane').hidden && D().getElementById('joepane').hidden
         && D().querySelectorAll('#figspane .fgcard').length === FIGS.figures.length && D().querySelectorAll('#figstoc li').length === FIGS.figures.length
         && Array.from(D().querySelectorAll('#figspane .fgcard')).map((c) => c.dataset.fig).join() === FIGS.figures.map((f) => f.id).join()
-        && D().querySelector('#figspane .fgcard').dataset.kind === 'connectome', D().querySelectorAll('#figspane .fgcard').length);
+        && D().querySelector('#figspane .fgcard').dataset.kind === 'schematic'
+        && FIGS.figures.every((f, i) => f.kind !== 'connectome' || !i || FIGS.figures[i - 1].kind !== 'follow' || FIGS.figures[i - 1].group.key !== f.group.key),
+        D().querySelectorAll('#figspane .fgcard').length);
+  check('a heading a group, by window then band, saying where tab 8’s light did not pass',
+        Array.from(D().querySelectorAll('#figspane h3.fggroup')).map((h) => h.dataset.group).join() === FIGS.groups.map((g) => g.key).join()
+        && FIGS.groups.every((g) => /did not pass/.test(txt(D().querySelector('#figspane h3.fggroup[data-group="' + g.key + '"]'))) === !g.gated),
+        Array.from(D().querySelectorAll('#figspane h3.fggroup')).map((h) => txt(h)).join(' | '));
   const sig9 = conn9.reduce((n, f) => n + f.stats.graphs.filter((g) => g.p < 0.05).length, 0);
-  check('the line counts the results, the graphs beyond their shuffles and the follow-up figures',
-        new RegExp('^' + conn9.length + ' results? that changed, each as a connectome \\(' + sig9 + ' of ' + conn9.length * 9 + ' graphs beyond their shuffles\\), then '
+  check('the line counts the connectomes, the graphs beyond their FP sets and the follow-up figures',
+        new RegExp('^' + conn9.length + ' connectomes? \\(comparisons ' + Array.from(new Set(conn9.map((f) => f.comparison))).join(', ') + ', in '
+                   + Array.from(new Set(conn9.map((f) => f.band))).join(' and ') + '; ' + sig9 + ' of ' + conn9.length * 9 + ' graphs beyond their FP sets\\), then '
                    + fol9.length + ' follow-up').test(txt(D().getElementById('figssay'))), txt(D().getElementById('figssay')));
   check('recordings read: no warning that the PAC roses are missing', FIGS.recordings_read && !D().getElementById('figsrec')
         && !D().querySelector('#figspane .fgpacnote'));
@@ -3184,30 +3194,61 @@ window.MONO_FIXTURE = {
                       + ', 2026-10-22 11:38\\)\\. Every trial’s modulation index read there matched tab 8’s own to within a (billionth|millionth) \\('
                       + pc9.compared.toLocaleString('en-US') + ' trials and windows\\)').test(txt(D().getElementById('figsread'))),
         txt(D().getElementById('figsread')));
+  const s19 = card9(FIGS.figures[0]);
+  check('Supplementary Figure S1: how the rows are made, its three numbers, no Methods',
+        /^Supplementary Figure S1 \| /.test(txt(s19.querySelector('h3'))) && s19.querySelectorAll('.fgchip').length === 3
+        && /change in cue effect: [+−]0\.\d{3}/.test(txt(s19.querySelector('.fgstats'))) && s19.querySelector('.fgmbtn').hidden,
+        txt(s19.querySelector('.fgstats')));
   const c9 = card9(conn9[0]);
   const g9 = conn9[0].stats.graphs;
-  check('a connectome figure: its picture, its nine graphs’ P and rank (starred below 0.05), a Nature legend, and PDF, SVG and a 600 dpi PNG',
-        /joefigs\/file\/fig_1\.svg$/.test(c9.querySelector('img.fgsvg').getAttribute('src'))
+  check('a connectome figure opens on FP: its picture, its nine graphs’ P and rank (starred below 0.05), a Nature legend, PDF, SVG, PNG and its Prism files',
+        conn9[0].null === 'fp' && c9.querySelector('img.fgsvg').getAttribute('src').endsWith(conn9[0].files.svg)
         && c9.querySelectorAll('.fgchip').length === 9 && c9.querySelectorAll('.fgchip.sig').length === g9.filter((g) => g.p < 0.05).length
         && Array.from(c9.querySelectorAll('.fgchip.sig')).every((x) => /\*/.test(txt(x)))
         && g9.every((g) => txt(c9.querySelector('.fgchip[data-row="' + g.row + '"][data-kind="' + g.kind + '"]')).indexOf('rank ' + g.rank.toLocaleString('en-US')) >= 0)
-        && /^Fig\. 1 \| /.test(txt(c9.querySelector('.fglegend'))) && /flipping the sign of each rat/.test(txt(c9.querySelector('.fglegend')))
-        && g9.every((g) => g.n === 2 ** conn9[0].stats.rats.length)
-        && ['pdf', 'svg', 'png'].every((x) => /download=1$/.test(Array.from(c9.querySelectorAll('.fgtools a')).find((a) => a.getAttribute('download') === conn9[0].files[x]).getAttribute('href'))),
+        && /^Fig\. 1 \| /.test(txt(c9.querySelector('.fglegend'))) && /FP1 and FP2/.test(txt(c9.querySelector('.fglegend')))
+        && /cue effect/.test(txt(c9.querySelector('.fglegend')))
+        && ['pdf', 'svg', 'png', 'xlsx', 'pzfx'].every((x) => /download=1$/.test(Array.from(c9.querySelectorAll('.fgtools a')).find((a) => a.getAttribute('download') === conn9[0].files[x]).getAttribute('href'))),
         txt(c9.querySelector('.fgstats')).slice(0, 200));
   const f9 = fol9[0];
   const fc9 = card9(f9);
-  check('a follow-up figure: each lit measure’s t-test and its shuffles, by name, in its chips',
-        f9.keys.every((k) => /^(PLI|Imaginary|Granger|Amplitude|PAC)/.test(txt(fc9.querySelector('.fgchip[data-key="' + k + '"]')))
-                       && txt(fc9.querySelector('.fgchip[data-key="' + k + '"]')).indexOf('t(' + f9.stats.measures[k].df + ')') >= 0
+  const keyOrder9 = Array.from(fc9.querySelectorAll('.fgchip')).map((x) => x.dataset.key);
+  check('a follow-up figure: each measure’s FP, shuffles and t-test, in that order, by name, and its Prism files',
+        f9.keys.every((k) => /^(PLI|Imaginary|Granger|Amplitude|PAC)[^]*FP intervals: P/.test(txt(fc9.querySelector('.fgchip[data-key="' + k + '-fp"]')))
+                       && txt(fc9.querySelector('.fgchip[data-key="' + k + '-fp"]')).indexOf('rank ' + f9.stats.nulls_fp[k].rank.toLocaleString('en-US')) >= 0
                        && txt(fc9.querySelector('.fgchip[data-key="' + k + '-perm"]')).indexOf('rank ' + f9.stats.nulls[k].rank.toLocaleString('en-US')) >= 0
-                       && /^FP intervals: P/.test(txt(fc9.querySelector('.fgchip[data-key="' + k + '-fp"]')))
-                       && txt(fc9.querySelector('.fgchip[data-key="' + k + '-fp"]')).indexOf('rank ' + f9.stats.nulls_fp[k].rank.toLocaleString('en-US')) >= 0),
+                       && txt(fc9.querySelector('.fgchip[data-key="' + k + '"]')).indexOf('t-test: t(' + f9.stats.measures[k].df + ')') === 0
+                       && keyOrder9.indexOf(k + '-fp') < keyOrder9.indexOf(k + '-perm') && keyOrder9.indexOf(k + '-perm') < keyOrder9.indexOf(k))
+        && fc9.querySelectorAll('.fgtools a.fgprism').length === 2
+        && Array.from(fc9.querySelectorAll('.fgtools a.fgprism')).map((a) => a.getAttribute('download')).join() === [f9.files.xlsx, f9.files.pzfx].join(),
         txt(fc9.querySelector('.fgstats')));
+  check('follow-ups in each group sorted by tests passed (all three first), FP counting most, then the shuffle, then the t-test',
+        FIGS.groups.every((g) => {
+          const fs = fol9.filter((f) => f.group.key === g.key).map((f) => [-f.passes.n, f.passes.fp ? 0 : 1, f.passes.shuffle ? 0 : 1, f.passes.t ? 0 : 1].join());
+          return fs.every((k, i) => !i || fs[i - 1] <= k);
+        }), fol9.map((f) => f.id + ':' + f.passes.n).join(' '));
   check('the FP comparison said at the top: how many fake trials, from how many rat-days',
         new RegExp('^FP comparison: ' + FIGS.fp.fake_trials.toLocaleString('en-US') + ' fake trials \\(a fake cue every ' + FIGS.fp.step_s + ' s of FP1 and FP2\\) from '
                    + FIGS.fp.rat_days + ' of the ' + FIGS.fp.of + ' rat-days').test(txt(D().getElementById('figsfpread'))) && !D().getElementById('figsfpnone'),
         txt(D().getElementById('figsfpread')));
+  // The filter on the right: a block a window x band, a click hides or shows its group.
+  const blocks9 = Array.from(D().querySelectorAll('#figsfilter button.fgblock'));
+  const gk9 = FIGS.groups[0].key;
+  const nIn9 = FIGS.figures.filter((x) => x.group && x.group.key === gk9).length;
+  check('the filter: a block a window × band, each with its figure count, all shown to begin with',
+        blocks9.length === FIGS.groups.length && blocks9.every((b) => b.classList.contains('on'))
+        && txt(D().querySelector('#figsfilter button.fgblock[data-group="' + gk9 + '"]')) === String(nIn9), blocks9.map((b) => txt(b)).join());
+  D().querySelector('#figsfilter button.fgblock[data-group="' + gk9 + '"]').click();
+  await sleep(40);
+  const hid9 = Array.from(D().querySelectorAll('#figspane .fgcard[data-group="' + gk9 + '"]'));
+  check('pressed: that group’s figures, heading and contents lines hidden, nothing else, nothing redrawn',
+        hid9.length === nIn9 && hid9.every((c) => c.hidden) && D().querySelector('#figspane h3.fggroup[data-group="' + gk9 + '"]').hidden
+        && Array.from(D().querySelectorAll('#figstoc li[data-group="' + gk9 + '"]')).every((li) => li.hidden)
+        && Array.from(D().querySelectorAll('#figspane .fgcard')).filter((c) => c.dataset.group !== gk9).every((c) => !c.hidden)
+        && card9(conn9[0]) === c9 && !D().querySelector('#figsfilter button.fgblock[data-group="' + gk9 + '"]').classList.contains('on'));
+  D().querySelector('#figsfilter button.fgblock[data-group="' + gk9 + '"]').click();
+  await sleep(40);
+  check('and pressed again: back', hid9.every((c) => !c.hidden) && !D().querySelector('#figspane h3.fggroup[data-group="' + gk9 + '"]').hidden);
   // Methods: a button, and behind it the words, the code and something to play with.
   const mb9 = c9.querySelector('.fgmbtn');
   check('Methods is a button, closed to begin with', !!mb9 && mb9.getAttribute('aria-expanded') === 'false' && !c9.querySelector('.fgmethods'));
@@ -3217,14 +3258,17 @@ window.MONO_FIXTURE = {
   check('opened: a section for each method behind the figure, each with what it is, how the code does it and what it means',
         ms9.join() === conn9[0].methods.join() && Array.from(c9.querySelectorAll('.fgmethod')).every((x) => /How the code does it\./.test(txt(x)) && /What it means\./.test(txt(x))),
         ms9.join());
-  const rat9 = c9.querySelector('.fgmethod[data-method="ratflip"] .fgtoy');
-  Array.from(rat9.querySelectorAll('.xstep')).find((b) => txt(b) === 'Where it lands').click();
+  const fpt9 = c9.querySelector('.fgmethod[data-method="fpnull"] .fgtoy');
+  Array.from(fpt9.querySelectorAll('.xstep')).find((b) => txt(b) === 'A fake trial').click();
+  await sleep(1600);
+  const fakes9 = fpt9.querySelectorAll('rect.fgfakecue').length;
+  Array.from(fpt9.querySelectorAll('.xstep')).find((b) => txt(b) === 'Where it lands').click();
   await sleep(500);
   const gd9 = g9.find((g) => g.row === 'delta' && g.kind === 'pos');
-  check('the rats’ flips, played on the figure’s own ' + gd9.n + ' sign patterns: eight rats, and the real value lands with its rank and P',
-        !c9.querySelector('.fgmethod[data-method="permutation"]') && rat9.querySelectorAll('rect.fgratbar').length === 8
-        && txt(rat9).indexOf('rank ' + gd9.rank.toLocaleString('en-US') + ' of ' + gd9.n.toLocaleString('en-US')) >= 0
-        && rat9.querySelectorAll('.fghist rect').length === gd9.null.counts.length, txt(rat9).slice(-160));
+  check('FP, played: a fake trial dropped into FP, then the figure’s own FP sets, and the real value lands with its rank and P',
+        !c9.querySelector('.fgmethod[data-method="ratflip"]') && fakes9 >= 1
+        && txt(fpt9).indexOf('rank ' + gd9.rank.toLocaleString('en-US') + ' of ' + gd9.n.toLocaleString('en-US')) >= 0
+        && fpt9.querySelectorAll('.fghist rect').length === gd9.null.counts.length, txt(fpt9).slice(-160));
   const con9 = c9.querySelector('.fgmethod[data-method="connectome"] .fgtoy');
   Array.from(con9.querySelectorAll('.xstep')).find((b) => txt(b) === 'Summed').click();
   await sleep(80);
@@ -3250,19 +3294,18 @@ window.MONO_FIXTURE = {
   mb9.click();
   await sleep(40);
   check('and Methods closes again', !c9.querySelector('.fgmethods') && mb9.getAttribute('aria-expanded') === 'false');
-  // The test the rings are held to: the rats' flips (what lit tab 8's
-  // light), or the trials' shuffle within each session, a toggle away.
+  // The test the rings are held to: FP first, then the shuffle (P), then the rats.
   const segs9 = () => Array.from(c9.querySelectorAll('.fgnull .seg button'));
-  check('a toggle of three tests over the rings: the rats’ flips (the light’s test, pressed to begin with), the trials’ shuffle, FP intervals',
-        segs9().length === 3 && segs9().map((b) => b.dataset.null).join() === 'rats,trials,fp' && segs9()[0].classList.contains('active')
+  check('a toggle of three tests, FP first and pressed: FP intervals, the trials’ shuffle, the rats’ flips (the light’s test)',
+        segs9().length === 3 && segs9().map((b) => b.dataset.null).join() === 'fp,trials,rats' && segs9()[0].classList.contains('active')
         && segs9()[0].getAttribute('aria-pressed') === 'true' && !segs9()[1].classList.contains('active')
-        && /the light’s test/.test(txt(segs9()[0])), segs9().map((b) => txt(b)).join(' | '));
+        && /the light’s test/.test(txt(segs9()[2])), segs9().map((b) => txt(b)).join(' | '));
   const t9 = conn9[0].alts.find((a) => a.null === 'trials');
   segs9()[1].click();
   await sleep(60);
   check('pressed: the same card, now the trials’ shuffle: its own picture, chips (of 10,000), legend and downloads',
         card9(conn9[0]) === c9 && segs9()[1].classList.contains('active') && !segs9()[0].classList.contains('active')
-        && /joefigs\/file\/fig_1_trials\.svg$/.test(c9.querySelector('img.fgsvg').getAttribute('src'))
+        && c9.querySelector('img.fgsvg').getAttribute('src').endsWith(t9.files.svg)
         && t9.stats.graphs.every((g) => txt(c9.querySelector('.fgchip[data-row="' + g.row + '"][data-kind="' + g.kind + '"]'))
           .indexOf('rank ' + g.rank.toLocaleString('en-US') + ' of ' + g.n.toLocaleString('en-US')) >= 0)
         && c9.querySelectorAll('.fgchip.sig').length === t9.stats.graphs.filter((g) => g.p < 0.05).length
@@ -3281,37 +3324,35 @@ window.MONO_FIXTURE = {
         && perm9.querySelectorAll('.fghist rect').length === gt9.null.counts.length, txt(perm9).slice(-160));
   c9.querySelector('.fgmbtn').click();
   await sleep(40);
-  // The third test: the same rings against fake trials from FP1 and FP2.
-  const fp9 = conn9[0].alts.find((a) => a.null === 'fp');
+  // The third: the rats' sign flips, the unit of tab 8's light.
+  const rt9 = conn9[0].alts.find((a) => a.null === 'rats');
   segs9()[2].click();
   await sleep(60);
-  check('pressed FP: the same card against fake trials from FP1 and FP2: its own picture, chips, legend and downloads',
+  check('pressed the rats: the same card, its sign flips (of ' + 2 ** conn9[0].stats.rats.length + '): its own picture, chips, legend and downloads',
         card9(conn9[0]) === c9 && segs9()[2].classList.contains('active')
-        && /joefigs\/file\/fig_1_fp\.svg$/.test(c9.querySelector('img.fgsvg').getAttribute('src'))
-        && fp9.stats.graphs.every((g) => txt(c9.querySelector('.fgchip[data-row="' + g.row + '"][data-kind="' + g.kind + '"]'))
-          .indexOf('rank ' + g.rank.toLocaleString('en-US') + ' of ' + g.n.toLocaleString('en-US')) >= 0)
-        && /FP1 and FP2/.test(txt(c9.querySelector('.fglegend')))
-        && ['pdf', 'svg', 'png'].every((x) => Array.from(c9.querySelectorAll('.fgtools a')).some((a) => a.getAttribute('download') === fp9.files[x])),
+        && c9.querySelector('img.fgsvg').getAttribute('src').endsWith(rt9.files.svg)
+        && rt9.stats.graphs.every((g) => g.n === 2 ** conn9[0].stats.rats.length
+          && txt(c9.querySelector('.fgchip[data-row="' + g.row + '"][data-kind="' + g.kind + '"]')).indexOf('rank ' + g.rank.toLocaleString('en-US') + ' of ' + g.n) >= 0)
+        && /flipping the sign of each rat/.test(txt(c9.querySelector('.fglegend')))
+        && ['pdf', 'svg', 'png'].every((x) => Array.from(c9.querySelectorAll('.fgtools a')).some((a) => a.getAttribute('download') === rt9.files[x])),
         txt(c9.querySelector('.fgstats')).slice(0, 160));
   c9.querySelector('.fgmbtn').click();
   await until(() => c9.querySelector('.fgmethods'), 40);
-  const fpt9 = c9.querySelector('.fgmethod[data-method="fpnull"] .fgtoy');
-  Array.from(fpt9.querySelectorAll('.xstep')).find((b) => txt(b) === 'A fake trial').click();
-  await sleep(1600);
-  const fakes9 = fpt9.querySelectorAll('rect.fgfakecue').length;
-  Array.from(fpt9.querySelectorAll('.xstep')).find((b) => txt(b) === 'Where it lands').click();
+  const rat9 = c9.querySelector('.fgmethod[data-method="ratflip"] .fgtoy');
+  Array.from(rat9.querySelectorAll('.xstep')).find((b) => txt(b) === 'Where it lands').click();
   await sleep(500);
-  const gf9 = fp9.stats.graphs.find((g) => g.row === 'delta' && g.kind === 'pos');
-  check('its Methods: FP, played: a fake trial dropped into FP, then the figure’s own FP sets, and the real value lands with its rank and P',
-        !c9.querySelector('.fgmethod[data-method="ratflip"]') && fakes9 >= 1
-        && txt(fpt9).indexOf('rank ' + gf9.rank.toLocaleString('en-US') + ' of ' + gf9.n.toLocaleString('en-US')) >= 0
-        && fpt9.querySelectorAll('.fghist rect').length === gf9.null.counts.length, txt(fpt9).slice(-160));
+  const gr9 = rt9.stats.graphs.find((g) => g.row === 'delta' && g.kind === 'pos');
+  check('its Methods: the rats’ flips, played on the figure’s own sign patterns: eight rats, and the real value lands with its rank and P',
+        !c9.querySelector('.fgmethod[data-method="permutation"]') && rat9.querySelectorAll('rect.fgratbar').length === 8
+        && txt(rat9).indexOf('rank ' + gr9.rank.toLocaleString('en-US') + ' of ' + gr9.n.toLocaleString('en-US')) >= 0
+        && rat9.querySelectorAll('.fghist rect').length === gr9.null.counts.length, txt(rat9).slice(-160));
   c9.querySelector('.fgmbtn').click();
   await sleep(40);
   segs9()[0].click();
   await sleep(60);
-  check('and back to the rats’ flips', segs9()[0].classList.contains('active') && !c9.querySelector('.fgmethods')
-        && /joefigs\/file\/fig_1\.svg$/.test(c9.querySelector('img.fgsvg').getAttribute('src')));
+  check('and back to FP', segs9()[0].classList.contains('active') && !c9.querySelector('.fgmethods')
+        && c9.querySelector('img.fgsvg').getAttribute('src').endsWith(conn9[0].files.svg));
+  try { if (hideWas === null) W().localStorage.removeItem('barry.joefigs.hide'); else W().localStorage.setItem('barry.joefigs.hide', hideWas); } catch (e) { /* none */ }
   // A follow-up's methods name its own measures' toys.
   const fm9 = fc9.querySelector('.fgmbtn');
   fm9.click();
@@ -3356,8 +3397,12 @@ window.MONO_FIXTURE = {
         !!D().getElementById('figsread') && !!D().getElementById('figsmake') && !!D().getElementById('figsvaccagain'));
   // Drawn before FP was measured: said, with a button to measure it on the VACC.
   FIGS = Object.assign({}, FIGS_READ, { fp: { read: false, rat_days: 0, fake_trials: 0, step_s: 10, of: FIGS_READ.fp.of },
-    figures: FIGS_READ.figures.map((x) => Object.assign({}, x, x.kind === 'connectome' ? { alts: (x.alts || []).filter((a) => a.null !== 'fp') }
-      : { stats: Object.assign({}, x.stats, { nulls_fp: {} }) })) });
+    // a ring drawn without FP opens on the shuffle, the rats a toggle away
+    figures: FIGS_READ.figures.map((x) => Object.assign({}, x, x.kind === 'connectome'
+      ? (() => { const t = x.alts.find((a) => a.null === 'trials');
+          return { null: 'trials', null_say: t.null_say, null_why: t.null_why, files: t.files, legend: t.legend, methods: t.methods,
+                   stats: Object.assign({}, x.stats, t.stats), alts: x.alts.filter((a) => a.null === 'rats') }; })()
+      : x.kind === 'follow' ? { stats: Object.assign({}, x.stats, { nulls_fp: {} }) } : {})) });
   await JF.load();
   const segsN = Array.from(D().querySelectorAll('#figspane .fgcard .fgnull .seg button')).filter((b) => b.dataset.null === 'fp').length;
   check('FP not measured yet: said at the top with a button to measure it on the VACC, no FP on the toggle or the chips',

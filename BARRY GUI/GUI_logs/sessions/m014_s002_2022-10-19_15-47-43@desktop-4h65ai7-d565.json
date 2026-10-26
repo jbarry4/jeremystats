@@ -1,6 +1,6 @@
 {
   "_at": {
-    "bad_channels": "2026-10-13T20:50:29.427478+00:00",
+    "bad_channels": "2026-10-14T15:57:40.186048+00:00",
     "created": "2026-09-18T15:45:47.265290+00:00",
     "duration_s": "2026-09-18T15:45:47.265290+00:00",
     "first_seen_by": "2026-09-18T15:45:47.265290+00:00",
@@ -21,7 +21,7 @@
     "schema": "2026-09-18T19:03:26.358308+00:00",
     "session": "2026-09-18T19:03:26.358308+00:00",
     "start": "2026-09-18T19:03:26.358308+00:00",
-    "updated": "2026-10-13T20:50:37.985479+00:00",
+    "updated": "2026-10-23T19:20:11.369144+00:00",
     "view_state": "2026-10-13T20:49:52.811920+00:00"
   },
   "_keys": {
@@ -43,6 +43,10 @@
       "D:\\KCNT1\\urethane\\hom\\KCNTM14_YH\\kcnt1m14s2oct19\\2022-10-19_15-47-43": [
         "set",
         "2026-09-18T19:06:51.978673+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2022-10-19_15-47-43": [
+        "set",
+        "2026-10-23T19:20:11.369144+00:00"
       ]
     },
     "seen": {
@@ -53,7 +57,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-13T20:50:37.985479+00:00",
+    "at": "2026-10-23T19:20:11.369144+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -100,7 +104,8 @@
   "n_channels": 128,
   "paths": [
     "D:\\KCNT1\\urethane\\hom\\KCNTM14_YH\\kcnt1m14s2oct19\\2022-10-19_15-47-43",
-    "/gpfs2/scratch/sakhava1/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M14s2/2022-10-19_15-47-43"
+    "/gpfs2/scratch/sakhava1/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M14s2/2022-10-19_15-47-43",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2022-10-19_15-47-43"
   ],
   "probe": "dual",
   "probe_source": "manual",
@@ -122,9 +127,9 @@
   "session": 2,
   "start": "2022-10-19T19:47:43+00:00",
   "updated": {
-    "app_version": "2026.10.13.9",
-    "at": "2026-10-13T16:50:37-04:00",
-    "commit": "31dd6256",
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:11-04:00",
+    "commit": "be1e2ae4",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

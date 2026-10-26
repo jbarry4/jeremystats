@@ -1249,7 +1249,10 @@ def inventory(cfg, root=None, timeout=180):
         if path in seen_live:
             return
         seen_live.add(path)
-        livefeed.bump(name)
+        # Set, not bumped: two walks of one root can overlap (a page's own
+        # look and the Sessions view's), and bumping counted both -- the bar
+        # read "444 of 222".
+        livefeed.task(name, done=len(seen_live))
         tail = path[len(root.rstrip("/")):].lstrip("/") or path
         _say("found %s  (%s ch)" % (tail, bits[1]), "", name)
 
@@ -1293,6 +1296,72 @@ def inventory(cfg, root=None, timeout=180):
         livefeed.task(name, state="fail")
         raise SSHError("The listing was cut short.", "garbled", raw)
     return out
+
+
+_MISSING = r"""
+while IFS= read -r p; do
+  [ -n "$p" ] || continue
+  [ -e "$p" ] && printf 'here\t%%s\n' "$p" || printf 'gone\t%%s\n' "$p"
+done <<'JARVIS_PATHS_END'
+%s
+JARVIS_PATHS_END
+find %s -maxdepth 6 -name '*.tar.xz' -printf 'arch\t%%p\n' 2>/dev/null
+echo "end=1"
+"""
+
+
+def missing(cfg, remote_paths, root, timeout=300):
+    """Which of `remote_paths` are not on the cluster, and every archive
+    under `root` -- one connection, read-only (`test -e`, `find`).
+
+    For pathtidy.py: a path the walk did not list may be gone or may be a
+    folder that is not a recording, and only the far side can say which.
+    Every answer is said in the live feed as it comes back.
+    Returns (gone_paths, archive_paths), both as the cluster spells them.
+    """
+    paths = [p for p in dict.fromkeys(remote_paths or []) if p
+             and "\n" not in p and "JARVIS_PATHS_END" not in p]
+    name = "check:" + root.rstrip("/")
+    livefeed.task(name, restart=True, state="run", done=0, of=len(paths),
+                  label="Checking %d paths on %s" % (len(paths), root))
+    _say("asking the cluster about %d paths the walk did not list"
+         % len(paths), "hot", name)
+    gone, archives, seen = [], [], [0]
+    base = root.rstrip("/") + "/"
+
+    def said(line):
+        bits = line.split("\t", 1)
+        if len(bits) != 2:
+            return
+        kind, path = bits
+        tail = path[len(base):] if path.startswith(base) else path
+        if kind in ("here", "gone"):
+            seen[0] += 1
+            livefeed.task(name, done=seen[0])
+            if kind == "gone":
+                gone.append(path)
+                _say("gone     %s" % tail, "warn", name)
+            else:
+                _say("there    %s" % tail, "dim", name)
+        elif kind == "arch":
+            archives.append(path)
+            _say("archive  %s" % tail, "dim", name)
+
+    script = _MISSING % ("\n".join(paths), q(root))
+    try:
+        raw = _ssh_watched(cfg, "bash -s", stdin=script, timeout=timeout,
+                           on_line=said)
+    except SSHError as exc:
+        _say("the check stopped: %s" % exc, "warn", name)
+        livefeed.task(name, state="fail")
+        raise
+    if "end=1" not in (raw or ""):
+        livefeed.task(name, state="fail")
+        raise SSHError("The check was cut short.", "garbled", raw)
+    _say("%d of %d gone, %d archives on the share"
+         % (len(gone), len(paths), len(archives)), "ok", name)
+    livefeed.task(name, state="done", done=len(paths))
+    return gone, archives
 
 
 # One listing per root: scratch, and every other cluster folder somebody has

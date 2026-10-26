@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "archived_in": "2026-10-23T19:20:46.686110+00:00",
+    "created": "2026-10-12T14:05:05.562410+00:00",
+    "gid": "2026-10-12T14:05:05.562410+00:00",
+    "key": "2026-10-12T14:05:05.562410+00:00",
+    "label": "2026-10-12T14:05:05.562410+00:00",
+    "loose_key": "2026-10-12T14:05:05.562410+00:00",
+    "mouse": "2026-10-12T14:05:05.562410+00:00",
+    "project": "2026-10-12T14:05:05.562410+00:00",
+    "project_source": "2026-10-12T14:05:05.562410+00:00",
+    "retired": "2026-10-12T14:05:05.562410+00:00",
+    "schema": "2026-10-12T14:05:05.562410+00:00",
+    "session": "2026-10-12T14:05:05.562410+00:00",
+    "start": "2026-10-12T14:05:05.562410+00:00",
+    "updated": "2026-10-23T19:20:46.686110+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s21aug12dcz-3\\2024-08-12_15-07-02": [
+        "gone",
+        "2026-10-23T19:20:46.686110+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-23T19:20:46.686110+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "archived_in": [
+    "Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind.tar.xz"
+  ],
+  "created": {
+    "app_version": "2026.10.09.6",
+    "at": "2026-10-12T10:05:05-04:00",
+    "commit": "021cb243",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "sa164c419af78",
+  "key": "m028_s021_2024-08-12_15-07-02",
+  "label": "PTEN m28 s21 2024-08-12",
+  "loose_key": "m028_s021",
+  "mouse": 28,
+  "paths": [],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 21,
+  "start": "2024-08-12T19:07:02+00:00",
+  "updated": {
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:46-04:00",
+    "commit": "be1e2ae4",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}
