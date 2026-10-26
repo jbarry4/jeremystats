@@ -15,6 +15,70 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.23.8 - Joe's figures, expanded: theta, cue 1 → cue 2, cue effects, Prism, a filter grid
+
+**Restart Jarvis**: `backend/joefigs.py` and `backend/app.py` changed.
+Then press "Draw the figures" on tab 9 once (about 5 minutes).
+
+- **More rings.** Tab 9 now draws comparisons 1, 2 and 5 (cue 1 → cue 2,
+  every trial whatever its sounds) in both theta and gamma, whether tab 8's
+  light passed or not. Any other window whose light passes gets a ring too.
+  Follow-ups still wait for tab 8's light.
+- **The rows say what they are.** Each row is a "cue effect" (cue −
+  baseline), not a Δ: the Precon1 cue effect, the Precon4 cue effect, and the
+  change in cue effect (Precon4's − Precon1's). The rows are labelled on
+  every ring. The new **Supplementary Figure S1** shows the arithmetic on one
+  real pair.
+- **Three tests, always FP, P, T.** The rings open on FP. The toggle reads
+  FP · Shuffles · Rats. Chips, legends and panel d all list FP first.
+- **Sorted.** Figures are grouped by window, then band (theta, then gamma),
+  with each group's ring on top. Its follow-ups follow, sorted by how many
+  tests they pass (all three, then two, then one), with FP counting most.
+- **A grid on the right** shows or hides each window × band group. It
+  remembers its choice in the browser.
+- **Prism.** Every figure's numbers download as .xlsx (one sheet per table)
+  and as .pzfx (GraphPad's own format):
+  - each rat's four values;
+  - each rat's change;
+  - the null sets, all 10,000.
+- **Colour-blind safe.** Tab 8's lights are blue and orange. A check that
+  lit is also a diamond, and a light that did not is a hollow ring.
+- **PAC figures say what the number is.** The title used to read as if the
+  coupling were between the pair, in gamma. It now reads, for example,
+  "followed up from the gamma coherence of R PER – L DHC: theta–gamma
+  coupling within R PER". The axis, a subtitle and the legend say how the
+  modulation index is made: Tort MI from θ 5–12 Hz phase and γ 30–90 Hz
+  amplitude, over each trial's whole window, then averaged over trials, one
+  dot per rat.
+- **Joe's deck** (`tools/joe_deck`) is rebuilt with theta and comparison 5.
+  It uses the cue-effect wording, the FP, P, T order and the new lights.
+
+## 2026.10.23.7 - Fixes from the end-of-day error reports (10-20 to 10-23)
+
+**Restart Jarvis**: `backend/app.py`, `backend/joe.py` and
+`backend/lazyimp.py` changed.
+
+- **Root Canal: committing again right after a commit said "Read it
+  again".** On 10-20, set 46fd29a77cc7 was cleaned (243 of 431 kept). The
+  next press of Bank was refused with "The read on file holds 431 events
+  and this version has 243". The panel still names the read it opened,
+  and the live set had become the cleaned list. Now the cleaned set is
+  found inside that read, as it already was without one named. A second
+  pass also gets the right sentence, and with it the "Clean again anyway"
+  dialog: *this version is already Root Canal's output*.
+- **Tab 8 and Tab 9 could fail to open on a just-started Jarvis.** Two
+  requests importing scipy at the same moment hit Python's import deadlock
+  check (10-21, twice). Tab 8's code now loads scipy only when it first
+  measures something, and the first import of any lazily loaded library
+  happens one thread at a time.
+- **One sync timeout is no longer an error.** On 10-21 both lab computers
+  timed out against Supabase in the same minute, and both synced again
+  on the next try. A timeout or lost connection now goes in the error log
+  only if the next attempt fails too. Any other failure is logged the
+  first time, as before.
+
+---
+
 ## 2026.10.23.6 - Every PTEN session opens on a new computer: the paths Jarvis knows now match netfiles
 
 **Restart Jarvis**: `backend/app.py`, `backend/vacc.py`, `backend/cloudsync.py`,

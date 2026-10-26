@@ -9717,11 +9717,22 @@ def _rootcanal_setup(body, pinned=False):
             "nothing to measure.")
     p = _rootcanal_params(body, rec, stamps)
     gid = rec.get("gid")
+    def find(rh):
+        if ROOTCANAL.has_cached(gid, rh, ".npz"):
+            return _rootcanal_load(gid, rh)
+        return _rootcanal_covering(gid, rh, stamps)
     rh = body.get("read") or p.read_hash()
-    if ROOTCANAL.has_cached(gid, rh, ".npz"):
-        got = _rootcanal_load(gid, rh)
-    else:
-        got = _rootcanal_covering(gid, rh, stamps)
+    got = find(rh)
+    # The panel names the read it opened, and keeps naming it after a
+    # commit -- when the live set has become the cleaned list, a subset of
+    # that read (2026-10-20, 431 read, 243 kept, the next press refused
+    # with "Read it again"). The version's own read, or one covering it,
+    # is the right one then.
+    if (got is not None and body.get("read")
+            and len(got.get("t") if got.get("t") is not None else ())
+            != len(stamps)):
+        rh = p.read_hash()
+        got = find(rh)
     if got is None:
         raise rootcanal.RootCanalError(
             "This set has not been read at these settings on this machine "
@@ -10487,6 +10498,25 @@ def api_rootcanal_commit():
     """
     body = request.get_json(force=True) or {}
     src_v = body.get("from_version")
+    # NOT ON ITS OWN OUTPUT, unless asked twice. K-means with two classes
+    # always finds two classes: run on a set it has already cleaned, it
+    # splits the dentate spikes that are left and takes out another share
+    # of them, and again the time after. Committing from the live set right
+    # after a commit is exactly that, and is the easy mistake to make, so it
+    # is refused with the way out rather than done -- before the read is
+    # looked for, so no other refusal can stand in front of this one.
+    try:
+        tag = _rootcanal_source_tag(_dspca_entry(body.get("entry_id")), src_v)
+    except Exception:                                    # noqa: BLE001
+        tag = None                   # setup below says what is wrong
+    if tag == "rootcanal" and not body.get("again"):
+        return jsonify({
+            "ok": False,
+            "error": "That version is already Root Canal's output. Two "
+                     "clusters are always found, so cleaning it again would "
+                     "take out another share of real dentate spikes. Read "
+                     "from the version before it -- or, if a second pass "
+                     "really is meant, send it again with again: true."}), 400
     try:
         rec, p, got, rh, _stamps = _rootcanal_setup(body)
         margin, used = _rootcanal_margin_for(p)
@@ -10500,21 +10530,6 @@ def api_rootcanal_commit():
     if not events:
         return jsonify({"ok": False,
                         "error": "That version holds no events."}), 400
-    # NOT ON ITS OWN OUTPUT, unless asked twice. K-means with two classes
-    # always finds two classes: run on a set it has already cleaned, it
-    # splits the dentate spikes that are left and takes out another share
-    # of them, and again the time after. Committing from the live set right
-    # after a commit is exactly that, and is the easy mistake to make, so it
-    # is refused with the way out rather than done.
-    if (_rootcanal_source_tag(rec, src_v) == "rootcanal"
-            and not body.get("again")):
-        return jsonify({
-            "ok": False,
-            "error": "That version is already Root Canal's output. Two "
-                     "clusters are always found, so cleaning it again would "
-                     "take out another share of real dentate spikes. Read "
-                     "from the version before it -- or, if a second pass "
-                     "really is meant, send it again with again: true."}), 400
 
     if (rec.get("type") or "") == "pooled":
         return _rootcanal_commit_pooled(body, rec, p, res, rh, events, src_v)
@@ -27222,12 +27237,24 @@ def cloud_sync_once(push=True, pull=True, files=False):
         # Whatever was blocking it evidently is not any more.
         _cloud_last.pop("blocked", None)
         _cloud_last.pop("blocked_note", None)
+        _cloud_last.pop("log_next", None)
     except Exception as exc:                       # noqa: BLE001
         # Log the first failure of a run, not every one. The commonest reason
         # to fail is "the schema is not applied yet", which does not fix
         # itself in two minutes -- and filling the error log with the same
-        # line 700 times before anyone reads it helps nobody.
+        # line 700 times before anyone reads it helps nobody. A timeout or a
+        # dropped connection is logged only if the next attempt fails too:
+        # one alone is Supabase having a slow minute, which the next pull
+        # gets past (2026-10-21, two machines in the same minute, both
+        # syncing again at once).
         first = _cloud_last.get("ok") is not False
+        transient = (" timed out after " in str(exc)
+                     or str(exc).startswith("cannot reach "))
+        if first and transient:
+            _cloud_last["log_next"] = True
+            first = False
+        elif _cloud_last.pop("log_next", False):
+            first = True
         _cloud_last.update({"at": cloudmod.now(), "ok": False,
                             "error": str(exc)[:400]})
         _cloud_last["failures"] = _cloud_last.get("failures", 0) + 1
