@@ -32,6 +32,7 @@ import time
 from datetime import datetime
 
 from . import cloud, eventbank, shards
+from . import tombs as tombsmod
 
 BUCKET = "results"
 # What the bucket accepts (supabase/03_storage.sql, allowed_mime_types), by
@@ -140,8 +141,16 @@ def _slim_versions(versions):
             continue
         row = {k: v.get(k) for k in
                ("v", "at", "by", "n", "note", "by_label", "machine",
-                "imported")
+                "imported", "tag")
                if v.get(k) is not None}
+        # Whether it is an alignment, and by which tool (2026-10-26): the
+        # mark Lock reads to tell Braces' stamps, which never travelled, so
+        # every alignment made on another machine arrived as a plain pass.
+        # The tool alone -- the full record carries the channel lists.
+        al = v.get("aligned")
+        if al:
+            row["aligned"] = {"tool": (al.get("tool") if isinstance(al, dict)
+                                       else None) or "jarvis.braces/1"}
         if row.get("v") is not None:
             # Said on the row rather than inferred later: a reader needs to
             # know this copy cannot be restored from.
@@ -372,8 +381,17 @@ class Sync:
         self.repo_root = repo_root
         self.cloud = cloud.Cloud(self.logs, store)
         self.machine = shards.machine_id()
-        from . import tombs
-        self.tombs = tombs.Tombs(self.logs, store)
+        self.tombs = tombsmod.Tombs(self.logs, store)
+
+    def _note_gone(self, kind, ident, at):
+        """Remember a deletion that arrived from elsewhere, as said already
+        (the cloud has it) -- so the next merge that brings a copy back is
+        refused here as well, by the note and not only by the row."""
+        try:
+            self.tombs.add(kind, ident, note="deleted elsewhere",
+                           at=at, synced=True)
+        except Exception:                                # noqa: BLE001
+            pass
 
     # ==================================================================
     # Local records -> rows
@@ -1238,7 +1256,7 @@ class Sync:
 
     def rows_presets(self):
         out = []
-        for kind in ("filters", "imports", "layouts"):
+        for kind in ("filters", "imports", "layouts", "support_panels"):
             for p in self.store.get_presets(kind):
                 saved = p.get("saved") or {}
                 out.append({
@@ -1468,6 +1486,51 @@ class Sync:
     ITEM_KINDS = ("bank", "curation", "layers", "artifacts", "braces",
                   "aibeta")
 
+    def _curation_newest(self):
+        """{set id: (gid, is_demo, newest stamp)} for every curation set.
+
+        Measured 2026-10-22: working the newest stamp out of every decision
+        and review was 143,000 timestamp parses and 1.36 s of every
+        /api/cloud/items -- an answer the page polls every five seconds
+        while anything waits. Kept, it is 11 ms (tools/check_cloud_items.py
+        checks the answer is the same). The stamps only move when a curation shard
+        does, and the store's signature (every shard's mtime and size, from
+        one directory pass) says when that is, so this is kept until it
+        moves. What depends on the push cursor or on the registry is judged
+        by the caller, every time.
+        """
+        if not self.curate:
+            return {}
+        book = getattr(self.curate, "book", self.curate)
+        try:
+            sig = book.signature()
+        except Exception:                                # noqa: BLE001
+            sig = None
+        memo = getattr(self, "_cur_newest", None)
+        if sig is not None and memo is not None and memo[0] == sig:
+            return memo[1]
+        newest = {}
+        for rec in self.curate.all():
+            gid, kind = rec.get("gid"), rec.get("kind")
+            if not gid or not kind:
+                continue
+            sid = "%s__%s" % (gid, kind)
+            if self._is_demo(rec):
+                newest[sid] = (gid, True, None)
+                continue
+            stamps = [cloud.ts(_prov(rec, "updated").get("at"))]
+            for ev in (rec.get("events") or []):
+                stamps.append(cloud.ts(ev.get("at"))
+                              or cloud.ts(ev.get("cleared_at")))
+                for r in (ev.get("reviews") or []):
+                    stamps.append(cloud.ts(r.get("at")))
+            stamps = [s for s in stamps if s]
+            newest[sid] = (gid, False,
+                           max(stamps, key=_ts_key) if stamps else None)
+        if sig is not None:
+            self._cur_newest = (sig, newest)
+        return newest
+
     def item_states(self, kinds=None, last_push=None, known_gids=None):
         """{kind: {id: {"state", "at"}}} for the records a person works on.
 
@@ -1518,26 +1581,13 @@ class Sync:
 
         if "curation" in want:
             d = {}
-            for rec in (self.curate.all() if self.curate else []):
-                gid, kind = rec.get("gid"), rec.get("kind")
-                if not gid or not kind:
-                    continue
-                sid = "%s__%s" % (gid, kind)
-                if self._is_demo(rec):
+            for sid, (gid, demo, t) in self._curation_newest().items():
+                if demo:
                     d[sid] = {"state": "local", "why": "demo"}
-                    continue
-                if orphan(gid):
+                elif orphan(gid):
                     d[sid] = {"state": "local", "why": "no recording"}
-                    continue
-                stamps = [cloud.ts(_prov(rec, "updated").get("at"))]
-                for ev in (rec.get("events") or []):
-                    stamps.append(cloud.ts(ev.get("at"))
-                                  or cloud.ts(ev.get("cleared_at")))
-                    for r in (ev.get("reviews") or []):
-                        stamps.append(cloud.ts(r.get("at")))
-                stamps = [s for s in stamps if s]
-                t = max(stamps, key=_ts_key) if stamps else None
-                d[sid] = {"state": judge(t), "at": t}
+                else:
+                    d[sid] = {"state": judge(t), "at": t}
             out["curation"] = d
 
         if "layers" in want:
@@ -1954,6 +2004,11 @@ class Sync:
             path, rel = r.get("path"), (r.get("rel") or r.get("key"))
             if not path or not rel or not os.path.isfile(path):
                 continue
+            # The figure builder's files travel by git only; the cloud gets
+            # the catalogue row and never the picture (asked 2026-10-22).
+            if str(rel).replace("\\", "/").lower().startswith("figures/"):
+                skipped += 1
+                continue
             try:
                 sig = "%d:%d" % (os.path.getsize(path),
                                  int(os.path.getmtime(path)))
@@ -2017,6 +2072,26 @@ class Sync:
             "deck": ("storyboards", "id"),
         }
         for row in rows:
+            if row.get("kind") == "path":
+                # One path off one recording: `session_paths` is keyed on
+                # the pair. `%` and `&` encoded here, because `_safe_query`
+                # leaves both alone as URL grammar and a lab path can hold
+                # either.
+                gid, _, path = str(row.get("id") or "").partition("|")
+                if not gid or not path:
+                    done.append(row)
+                    continue
+                val = path.replace("%", "%25").replace("&", "%26")
+                try:
+                    hit = self.cloud.patch_rows(
+                        "session_paths", "gid=eq.%s&path=eq.%s" % (gid, val),
+                        {"deleted_at": cloud.ts(row.get("at")) or stamp,
+                         "updated_at": stamp})
+                    marked += len(hit) if hit else 0
+                    done.append(row)
+                except cloud.CloudError:
+                    pass          # try again next sync
+                continue
             spec = table_for.get(row.get("kind"))
             if not spec:
                 continue
@@ -2026,7 +2101,12 @@ class Sync:
             if table == "sessions":
                 values["retired"] = True
             else:
-                values["deleted_at"] = stamp
+                # When it was deleted, not when this push got through:
+                # the pull compares it with a curation set's start, and a
+                # set started again before a late push must not read as
+                # older than its own deletion. `updated_at` stays now(), so
+                # the newest-wins trigger still takes the PATCH.
+                values["deleted_at"] = cloud.ts(row.get("at")) or stamp
             try:
                 # PATCH, not upsert: there is nothing to insert, and an
                 # insert would need a primary key this does not have.
@@ -2696,9 +2776,22 @@ class Sync:
         return n
 
     def _apply_paths(self, rows):
+        # Paths this machine knows were pruned (pathtidy.py): a row older
+        # than its note is the pruned path coming back from a machine that
+        # had not heard, and is not re-added. A newer one is somebody
+        # finding the folder again, and is.
+        pruned = {}
+        try:
+            for t in (self.tombs.all("path") if self.tombs else []):
+                pruned[str(t.get("id"))] = t.get("at")
+        except Exception:                                # noqa: BLE001
+            pruned = {}
         by_gid = {}
         for r in rows:
             if r.get("deleted_at"):
+                continue
+            note = pruned.get("%s|%s" % (r.get("gid"), r.get("path")))
+            if note and not tombsmod.newer(r.get("updated_at"), note):
                 continue
             by_gid.setdefault(r["gid"], []).append(r["path"])
         n = 0
@@ -2873,10 +2966,26 @@ class Sync:
     def _apply_bank(self, rows):
         if not self.bank:
             return 0
-        have = {e.get("id") for e in self.bank.all()}
+        have = {e.get("id"): e for e in self.bank.all()}
         n = 0
         for r in rows:
             if r.get("deleted_at"):
+                # Deleted somewhere else, and still here. It used to be
+                # skipped, which left this machine's copy live -- and its
+                # shard went back into git and brought the entry back for
+                # everybody (2026-10-20: thirteen deleted Doppler runs
+                # returned in one merge). Erased here, and noted, so a
+                # later merge of another machine's copy is erased too
+                # (`_sweep_tombstoned` in app.py). Only a copy older than
+                # the deletion: bank ids are never reused, but a stamp is
+                # the evidence, and without it nothing is removed.
+                mine = have.get(r.get("id"))
+                if mine is not None and tombsmod.newer(
+                        r.get("deleted_at"), _prov(mine, "added").get("at")):
+                    if self.bank.delete(r.get("id")):
+                        self._note_gone("bank", r.get("id"),
+                                        r.get("deleted_at"))
+                        n += 1
                 continue
             # An entry this machine already has is not nothing to do. It
             # used to be skipped outright, so a version created elsewhere
@@ -2941,6 +3050,22 @@ class Sync:
                 continue          # the set has to exist locally to take
                                   # decisions; a whole new set arrives with
                                   # its own import, not through a sync
+            if s.get("deleted_at"):
+                # Deleted somewhere else (see `_apply_bank`). A set's id is
+                # its recording and kind, so one started again after the
+                # deletion shares it -- and the cloud row keeps deleted_at,
+                # since no push clears it. Only the copies made before the
+                # deletion go, judged shard by shard
+                # (`Curation.delete_made_before`); a set started again
+                # falls through and takes its decisions like any live set.
+                if self.curate.delete_made_before(gid, kind,
+                                                  s.get("deleted_at")):
+                    self._note_gone("curation", s.get("id"),
+                                    s.get("deleted_at"))
+                    n += 1
+                rec = self.curate.get(gid, kind)
+                if not rec:
+                    continue
             mine = {e["id"]: e for e in (rec.get("events") or [])}
             touched = False
             for e in by_set.get(s["id"], []):

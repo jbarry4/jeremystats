@@ -40,14 +40,17 @@ BARRY.junction = (function () {
     find: '',
     ds: null, dsV: null,  // the dentate-spike entry, and its version (null: newest)
     ied: null, iedV: null,
-    win: 5,               // ms
+    win: 20,              // ms (the default since 2026-10-20; was 5)
     keep: 'incisor',      // whose time a merged event keeps
     sel: null,            // Many: the gids ticked (a Set), null until listed
+    manyFind: '',         // Many: what is typed in its search
+    manyV: {},            // Many: gid -> { ds, ied } version names chosen
+    manyE: {},            // Many: gid -> { ds, ied } entry ids chosen
   };
 
   let recs = null;        // /api/confluence/recordings
   let recsErr = null;
-  let defaultWin = 5;
+  let defaultWin = 20;
   let plan = null;        // the preview for the inputs on screen
   let planErr = null;
   let planSig = null;
@@ -75,7 +78,7 @@ BARRY.junction = (function () {
     try {
       const got = await api('/api/confluence/recordings');
       recs = got.recordings || [];
-      defaultWin = Number(got.window_ms) || 5;
+      defaultWin = Number(got.window_ms) || 20;
       recsErr = null;
     } catch (e) {
       recs = [];
@@ -90,9 +93,14 @@ BARRY.junction = (function () {
 
   /* The inputs Many would use for a recording: the newest entry of each
      kind at its newest version. */
+  /* The entries a recording pools from in Many at once: the ones chosen
+     in its pop-up (2026-10-21: "the sets are locked in"), else the first
+     the server offers on each side. */
   function defaultsFor(r) {
-    const ds = (r.ds || [])[0], ied = (r.ied || [])[0];
-    return { ds, ied };
+    const m = q.manyE[r.gid] || {};
+    const pick = (list, id) => (id && (list || []).find((x) => x.id === id))
+                               || (list || [])[0];
+    return { ds: pick(r.ds, m.ds), ied: pick(r.ied, m.ied) };
   }
 
   /* Whether a pool from exactly these inputs is already banked. A pool from
@@ -174,7 +182,8 @@ BARRY.junction = (function () {
       await load();
       if (!q.sel) q.sel = new Set((recs || []).filter(
         (r) => !pooledDefault(r)).map((r) => r.gid));
-      if (q.win === 5 && defaultWin !== 5) q.win = defaultWin;
+      // Still the starting window (nobody has typed one): the server's.
+      if (q.win === 20 && defaultWin !== 20) q.win = defaultWin;
       paint();
       return;
     }
@@ -245,9 +254,14 @@ BARRY.junction = (function () {
         text: 'Nothing here matches “' + q.find + '”.' }));
       return list;
     }
+    /* Counts are of the live entries: an archived one is kept, and is not
+       one more of anything to choose from (2026-10-20). */
+    const liveOf = (xs) => (xs || []).filter((x) => !x.archived);
     for (const r of rows) {
       // The newest of each, which is what picking the row starts from.
-      const pool = (r.pooled || [])[0];
+      const pool = liveOf(r.pooled)[0];
+      const nDs = liveOf(r.ds).length, nIed = liveOf(r.ied).length;
+      const nPool = liveOf(r.pooled).length;
       list.appendChild(el('button', {
         class: 'jn-rec' + (q.gid === r.gid ? ' on' : ''),
         onclick: () => choose(r.gid),
@@ -257,19 +271,18 @@ BARRY.junction = (function () {
           title: r.ds[0] && r.ds[0].aligned
             ? 'Braces has put the newest Incisor entry’s stamps on their peaks'
             : 'Braces has not lined up the newest Incisor entry' }, [
-          el('span', { text: 'Incisor' + (r.ds.length > 1 ? ' ×' + r.ds.length : '') }),
+          el('span', { text: 'Incisor' + (nDs > 1 ? ' ×' + nDs : '') }),
           alignWord(r.ds[0]),
         ]),
         el('span', { class: 'jn-tag d',
           title: r.ied[0] && r.ied[0].aligned
             ? 'Eye has put the newest Doppler entry’s stamps on their peaks'
             : 'Eye has not lined up the newest Doppler entry' }, [
-          el('span', { text: 'Doppler' + (r.ied.length > 1 ? ' ×' + r.ied.length : '') }),
+          el('span', { text: 'Doppler' + (nIed > 1 ? ' ×' + nIed : '') }),
           alignWord(r.ied[0]),
         ]),
-        r.pooled.length
-          ? BARRY.ui.chip(r.pooled.length === 1 ? 'pooled'
-                          : 'pooled ×' + r.pooled.length,
+        nPool
+          ? BARRY.ui.chip(nPool === 1 ? 'pooled' : 'pooled ×' + nPool,
                           { flag: true, kind: 'ok' })
           : null,
         pool && pool.aligned
@@ -369,23 +382,37 @@ BARRY.junction = (function () {
       ]),
     ]);
     if (entries.length > 1) {
-      side.appendChild(el('div', { class: 'jn-ents' }, entries.map((x) =>
-        el('button', {
-          class: 'jn-ent' + (x.id === ent.id ? ' on' : ''),
-          title: (x.pipeline || '') + (x.at ? ' · ' + x.at.slice(0, 10) : ''),
-          onclick: () => {
-            if (kind === 'ds') { q.ds = x.id; q.dsV = null; }
-            else { q.ied = x.id; q.iedV = null; }
-            landed = null; paint();
-          },
-        }, [el('span', { text: x.name || x.id }),
-            /* Two entries on one recording often share a name -- a re-run
-               of the same detector -- so each says how far it has got and
-               when it was last worked on. */
-            el('span', { class: 'hint quiet',
-              text: BARRY.ui.versionLabel(x.tip) + ' · ' + num(x.n)
-                  + (x.at ? ' · ' + String(x.at).slice(0, 10) : '') }),
-            alignWord(x)]))));
+      const row = (x) => el('button', {
+        class: 'jn-ent' + (x.id === ent.id ? ' on' : '')
+               + (x.archived ? ' is-archived' : ''),
+        title: (x.pipeline || '') + (x.at ? ' · ' + x.at.slice(0, 10) : ''),
+        onclick: () => {
+          if (kind === 'ds') { q.ds = x.id; q.dsV = null; }
+          else { q.ied = x.id; q.iedV = null; }
+          landed = null; paint();
+        },
+      }, [el('span', { text: x.name || x.id }),
+          /* Two entries on one recording often share a name -- a re-run
+             of the same detector -- so each says how far it has got and
+             when it was last worked on. */
+          el('span', { class: 'hint quiet',
+            text: BARRY.ui.versionLabel(x.tip) + ' · ' + num(x.n)
+                + (x.at ? ' · ' + String(x.at).slice(0, 10) : '') }),
+          alignWord(x)]);
+      /* Archived entries sink below the live ones, behind one toggle
+         (the user's rule, 2026-10-20): kept, not offered first. The
+         server sends them last and flagged (`archived`). */
+      const [liveEnts, goneEnts] = BARRY.ui.splitArchived(
+        entries, (x) => !!x.archived);
+      side.appendChild(el('div', { class: 'jn-ents' }, liveEnts.map(row)));
+      const tail = BARRY.ui.archivedTail({
+        key: 'jn-' + kind + '-' + (q.gid || ''), items: goneEnts,
+        noun: ['entry', 'entries'],
+        forceOpen: goneEnts.some((x) => x.id === ent.id),
+        render: (xs) => el('div', { class: 'jn-ents' }, xs.map(row)),
+        onToggle: () => paint(),
+      });
+      if (tail) side.appendChild(tail);
     } else {
       side.appendChild(el('div', { class: 'jn-ent-one' }, [
         el('span', { text: ent.name || ent.id }),
@@ -416,6 +443,7 @@ BARRY.junction = (function () {
     const value = kind === 'ds' ? q.dsV : q.iedV;
     const onLine = new Set(ent.aligned_names || []);
     slot.appendChild(BARRY.ui.versionTree({
+      producer: ent.pipeline, producerType: kind,
       versions: vs,
       idOf: (v) => v.id,
       value: value,
@@ -1045,38 +1073,81 @@ BARRY.junction = (function () {
     g.fill();
   }
 
+  /* Onto Panning's bench, not straight into Xplorefinder (2026-10-20:
+     "pick a set and version into the workbench, inspect its details, then
+     open Xplorefinder only if needed"). */
   function panIt(gid, entryId) {
-    if (!BARRY.panning) return;
     const tk = BARRY.views.toolkit;
-    if (tk && tk.pick) tk.pick('panning', 'confluence');
-    BARRY.panning.enter(gid, entryId);
+    if (tk && tk.benchFrom) tk.benchFrom('panning', gid, entryId);
   }
 
   /* ==================================================================
      Many at once
      ================================================================== */
+  /* The version each side pools from: the one chosen on its row, else
+     the newest (the entry's tip). */
+  const manyVer = (r, side) => {
+    const d = defaultsFor(r)[side];
+    const want = (q.manyV[r.gid] || {})[side];
+    return want || (d && d.tip);
+  };
   const pooledDefault = (r) => {
     const d = defaultsFor(r);
-    return !!(d.ds && d.ied && pooledFrom(r, d.ds.id, d.ds.tip, d.ied.id,
-                                          d.ied.tip, q.win));
+    return !!(d.ds && d.ied && pooledFrom(r, d.ds.id, manyVer(r, 'ds'),
+                                          d.ied.id, manyVer(r, 'ied'), q.win));
   };
+  /* The rows the search finds, in number order (m1, m3, m12). */
+  const manyRows = () => BARRY.ui.natSort((recs || []).filter(
+    (r) => BARRY.ui.searchMatch([nameOf(r), r.project, r.gid,
+                                 ((defaultsFor(r).ds || {}).name),
+                                 ((defaultsFor(r).ied || {}).name)],
+                                q.manyFind, { mouse: r.mouse, session: r.session })),
+    (r) => nameOf(r));
   const nAligned = (rows) => rows.filter(
     (r) => (r.ds[0] || {}).aligned && (r.ied[0] || {}).aligned).length;
 
   function paintMany(h) {
     if (!q.sel) q.sel = new Set();
-    const rows = recs || [];
+    const all = recs || [];
+    const rows = manyRows();
     const box = el('div', { class: 'card' }, [
       el('div', { class: 'section-label', text: 'Which recordings' }),
       el('p', { class: 'hint',
         text: 'Each is pooled from its newest Incisor entry and its newest '
-            + 'Doppler entry, at their newest versions. To choose another '
-            + 'entry or version, pool that recording on its own.' }),
+            + 'Doppler entry, at the versions shown -- the newest, unless '
+            + 'another is chosen on its row. To choose another entry, pool '
+            + 'that recording on its own.' }),
     ]);
+    /* A search, as every list of recordings has (2026-10-20): "m3s2",
+       "M3S2" and "m3 s2" find the same recording. */
+    const found = el('span', { class: 'hint jn-many-count' });
     const list = el('div', { class: 'jn-many', id: 'jnMany' });
-    for (const r of rows) list.appendChild(manyRow(r));
+    const fill = () => {
+      const shown = manyRows();
+      list.innerHTML = '';
+      for (const r of shown) list.appendChild(manyRow(r));
+      if (!shown.length) {
+        list.appendChild(el('p', { class: 'hint quiet',
+          text: all.length ? 'None of them match.' : 'Nothing to pool yet.' }));
+      }
+      found.textContent = shown.length === all.length
+        ? all.length + ' recording' + (all.length === 1 ? '' : 's')
+        : shown.length + ' of ' + all.length + ' shown';
+    };
+    box.appendChild(el('div', { class: 'cur-filter jn-many-find' }, [
+      BARRY.ui.searchField({
+        placeholder: 'Type a mouse, session, project or entry\u2026',
+        value: q.manyFind,
+        oninput: (ev) => {
+          q.manyFind = (ev && ev.target) ? ev.target.value : (ev || '');
+          fill();
+        },
+      }),
+      found,
+    ]));
+    fill();
     box.appendChild(list);
-    const n = rows.filter((r) => q.sel.has(r.gid)).length;
+    const n = all.filter((r) => q.sel.has(r.gid)).length;
     box.appendChild(BARRY.ui.field({
       label: 'Merge window (ms)', inline: true,
       control: el('input', { type: 'number', class: 'num', min: 0.5,
@@ -1090,14 +1161,16 @@ BARRY.junction = (function () {
     }));
     box.appendChild(keepField(() => { batch = null; paint(); }));
     box.appendChild(el('div', { class: 'tk-actions' }, [
-      el('button', { class: 'btn ghost sm', text: 'All',
-        onclick: () => { for (const r of rows) q.sel.add(r.gid); paint(); } }),
+      el('button', { class: 'btn ghost sm', text: 'All shown',
+        title: 'Tick every recording the search shows',
+        onclick: () => { for (const r of manyRows()) q.sel.add(r.gid); paint(); } }),
       el('button', { class: 'btn ghost sm', text: 'None',
         onclick: () => { q.sel.clear(); paint(); } }),
       el('button', { class: 'btn ghost sm', text: 'Not pooled yet',
         title: 'Only the recordings with no pool from their newest entries',
         onclick: () => {
-          q.sel = new Set(rows.filter((r) => !pooledDefault(r)).map((r) => r.gid));
+          q.sel = new Set(manyRows().filter((r) => !pooledDefault(r))
+                                    .map((r) => r.gid));
           paint();
         } }),
       el('button', { class: 'btn ghost sm',
@@ -1144,15 +1217,15 @@ BARRY.junction = (function () {
       el('strong', { class: 'jn-mname', text: nameOf(r) }),
       el('span', { class: 'jn-mside i' }, [
         el('i', { class: 'jn-dot i' }),
-        el('span', { text: (d.ds.name || d.ds.id) + ' · '
-                          + BARRY.ui.versionLabel(d.ds.tip) }),
+        el('span', { text: (d.ds.name || d.ds.id) }),
+        manyVerPick(r, 'ds'),
         alignWord(d.ds),
         el('b', { text: num(d.ds.n) }),
       ]),
       el('span', { class: 'jn-mside d' }, [
         el('i', { class: 'jn-dot d' }),
-        el('span', { text: (d.ied.name || d.ied.id) + ' · '
-                          + BARRY.ui.versionLabel(d.ied.tip) }),
+        el('span', { text: (d.ied.name || d.ied.id) }),
+        manyVerPick(r, 'ied'),
         alignWord(d.ied),
         el('b', { text: num(d.ied.n) }),
       ]),
@@ -1163,6 +1236,101 @@ BARRY.junction = (function () {
     ]);
     requestAnimationFrame(() => drawMini(row.querySelector('.jn-mflow'), res ? 1 : 0));
     return row;
+  }
+
+  /* Which set and version a side pools from: one button saying both --
+     the set's name, its version, what made that version -- that opens the
+     recording's pop-up (2026-10-21: "the sets are locked in... versions are
+     so undescriptive... if it's by recording, pop up, see the sets and
+     their versions"). */
+  function manyVerPick(r, side) {
+    const ent = defaultsFor(r)[side] || {};
+    const vs = ent.versions || [];
+    const cur = manyVer(r, side);
+    const v = vs.find((x) => String(x.name) === String(cur)) || null;
+    const others = ((side === 'ds' ? r.ds : r.ied) || []).length - 1;
+    return el('button', {
+      type: 'button', class: 'vbtn jn-mver',
+      disabled: merging ? 'disabled' : null,
+      title: 'The sets this recording has on each side and every version of '
+           + 'them, as trees. Click to see them and choose.',
+      onclick: () => manyPop(r, side),
+    }, [
+      el('strong', { class: 'vbtn-n', text: BARRY.ui.versionLabel(cur) }),
+      v ? BARRY.ui.versionChip(v, ent.pipeline, side) : null,
+      el('span', { class: 'vbtn-more',
+        text: (vs.length > 1 ? vs.length + ' versions' : 'its only version')
+            + (others > 0 ? ' · ' + others + ' other set'
+                            + (others === 1 ? '' : 's') : '') }),
+      el('span', { class: 'vbtn-caret', 'aria-hidden': 'true', text: '▾' }),
+    ].filter(Boolean));
+  }
+
+  /* One recording's inputs, whole: every Incisor set and every Doppler set
+     it has, each with its version tree. Choosing a set's version chooses
+     the set and the version together; Done keeps it. */
+  function manyPop(r, focus) {
+    const card = (side, ent) => {
+      const d = defaultsFor(r)[side] || {};
+      const on = d.id === ent.id;
+      const chosenV = on ? manyVer(r, side) : ent.tip;
+      return el('div', { class: 'jn-ppop-set' + (on ? ' on' : '') }, [
+        el('div', { class: 'jn-ppop-head' }, [
+          el('strong', { text: ent.name || ent.id }),
+          BARRY.ui.producerChip(ent.pipeline, side),
+          alignWord(ent),
+          on ? BARRY.ui.chip('pools from this', { flag: true, kind: 'ok' }) : null,
+          ent.archived ? BARRY.ui.chip('archived', { flag: true }) : null,
+        ].filter(Boolean)),
+        BARRY.ui.versionTree({
+          versions: ent.versions || [], value: on ? chosenV : null,
+          idOf: (v) => v.name, notes: true, family: false,
+          producer: ent.pipeline, producerType: side,
+          onpick: (v) => {
+            if (!v) return;
+            (q.manyE[r.gid] = q.manyE[r.gid] || {})[side] = ent.id;
+            (q.manyV[r.gid] = q.manyV[r.gid] || {})[side] =
+              String(v.name) === String(ent.tip) ? null : v.name;
+            batch = null;
+            redraw();
+          },
+        }),
+      ]);
+    };
+    const col = (side, label) => {
+      // Archived sets last (the user's rule): kept, not offered first.
+      const [liveE, goneE] = BARRY.ui.splitArchived(
+        (side === 'ds' ? r.ds : r.ied) || [], (x) => !!x.archived);
+      const ents = liveE.concat(goneE);
+      return el('div', { class: 'jn-ppop-col' + (focus === side ? ' focus' : '') }, [
+        el('div', { class: 'section-label', text: label }),
+        ents.length ? null : el('p', { class: 'hint', text: 'None banked.' }),
+      ].concat(ents.map((ent) => card(side, ent))).filter(Boolean));
+    };
+    const body = el('div', { class: 'jn-ppop' });
+    function redraw() {
+      body.innerHTML = '';
+      body.appendChild(col('ds', 'Incisor’s dentate spikes'));
+      body.appendChild(col('ied', 'Doppler’s IEDs'));
+      requestAnimationFrame(() => body.querySelectorAll('.vtree')
+        .forEach((t) => t.redraw && t.redraw()));
+    }
+    redraw();
+    showModal(el('div', { class: 'vpop jn-ppop-wrap' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: nameOf(r) + ': what it pools from' }),
+        el('div', { class: 'spacer' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        el('p', { class: 'hint', text: 'Every set this recording has on each '
+          + 'side, with every version of it: who made it, when, what processed '
+          + 'it and its note. Click a version to pool from that set at that '
+          + 'version.' }),
+        body,
+      ]),
+      BARRY.ui.modalFoot([], [BARRY.ui.button({ kind: 'primary', text: 'Done',
+        onclick: () => { closeModal(); paint(); } })]),
+    ]));
   }
 
   function resultBits(res, r) {
@@ -1217,7 +1385,12 @@ BARRY.junction = (function () {
     if (b) { b.disabled = true; b.textContent = 'Merging…'; }
     const items = rows.map((r) => {
       const d = defaultsFor(r);
-      return { gid: r.gid, ds_entry: d.ds.id, ied_entry: d.ied.id };
+      const it = { gid: r.gid, ds_entry: d.ds.id, ied_entry: d.ied.id };
+      // A version chosen on the row; the newest otherwise.
+      const m = q.manyV[r.gid] || {};
+      if (m.ds) it.ds_version = m.ds;
+      if (m.ied) it.ied_version = m.ied;
+      return it;
     });
     sfx('charge', Math.min(4, 0.9 + rows.length * 0.12));
     let got;

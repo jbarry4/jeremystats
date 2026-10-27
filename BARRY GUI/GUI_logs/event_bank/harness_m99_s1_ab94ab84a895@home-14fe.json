@@ -50,7 +50,7 @@
   },
   "added": {
     "at": "2026-09-22T16:48:10-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "Home"
   },
   "by_label": {
@@ -117,7 +117,7 @@
   "versions": [
     {
       "at": "2026-09-22T16:48:10-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 5
       },
@@ -157,7 +157,7 @@
     },
     {
       "at": "2026-09-22T16:48:10-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "Dentate Spike": 2,
         "Flag": 1,

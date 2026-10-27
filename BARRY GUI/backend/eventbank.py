@@ -79,6 +79,19 @@ def _slug(text, fallback="x"):
     return out[:40] or fallback
 
 
+def entry_archived(rec):
+    """Every version of the entry is archived: put away, not deleted.
+
+    The bank archives versions, not entries, so an entry is archived when
+    nothing in its history is left out. Unarchiving any one version brings
+    it back. Read by the pickers that offer entries to start from, and by
+    the Data Bank, which names the files so they cannot be mistaken for
+    current ones (bankmirror.py).
+    """
+    vers = (rec or {}).get("versions") or []
+    return bool(vers) and all(v.get("archived") for v in vers)
+
+
 def _source_for(entry, prior, pipeline):
     """Where the times came from, which is never the curation that read
     them.
@@ -118,6 +131,30 @@ def _source_for(entry, prior, pipeline):
         "parameters": entry.get("parameters") or {},
         "detector": entry.get("detector"),
     }
+
+
+#: The note `EventBank.align` writes on every alignment it mints, Braces',
+#: Eye's and Lock's alike (none of them sends one of its own).
+ALIGN_NOTE = "Aligned to the mean magnitude over"
+ALIGN_TOOL = {"ds": "jarvis.braces/1", "ied": "jarvis.eye/1",
+              "pooled": "jarvis.lock/1"}
+
+
+def _fold_aligned(rec):
+    """Mark a version as an alignment when its note says it is one.
+
+    The `aligned` record never travelled between machines until 2026-10-26
+    (cloudsync's slim versions left it behind), so every alignment made on
+    another computer arrived here as a plain pass -- and Lock could not tell
+    that a pool's dentate spikes had been through Braces. The note did
+    travel, and `align` writes the same opening words on every one, so the
+    mark is put back from it, in memory, when the bank is read. Only where
+    the mark is missing; a version that has one keeps it."""
+    tool = ALIGN_TOOL.get(rec.get("type") or "", "jarvis.braces/1")
+    for v in (rec.get("versions") or []):
+        if (isinstance(v, dict) and not v.get("aligned")
+                and str(v.get("note") or "").startswith(ALIGN_NOTE)):
+            v["aligned"] = {"tool": tool, "from_note": True}
 
 
 class EventBank:
@@ -212,6 +249,7 @@ class EventBank:
             # The event list can be long; the index carries a summary and
             # the detail view fetches the whole entry by id.
             rec.setdefault("n", len(rec.get("events") or []))
+            _fold_aligned(rec)
             out.append(rec)
         out.sort(key=lambda r: (r.get("added") or {}).get("at") or "", reverse=True)
         self._cache = out
@@ -255,6 +293,9 @@ class EventBank:
                     dict({k: v for k, v in ver.items() if k != "snap"},
                          label=nm, has_snap=bool(ver.get("snap")))
                     for ver, nm in versionsmod.label_rows(row["versions"])]
+            # Said once, here, so every list reads the one rule rather than
+            # working it out again from the versions.
+            row["archived"] = entry_archived(row)
             out.append(row)
         self._summaries = out
         self._sum_stamp = stamp
@@ -1900,7 +1941,10 @@ class EventBank:
             # unreadable, and the rest of this file already chose.
             "machine": platform.node(),
             "aligned": {
-                "tool": "jarvis.braces/1",
+                # Which aligner, by the kind of entry (2026-10-26): Lock's
+                # was filed as Braces'.
+                "tool": ALIGN_TOOL.get(rec.get("type") or "",
+                                       "jarvis.braces/1"),
                 "source_version": src_v,
                 "source_version_id": src_id,
                 "n_moved": len(shifts),
@@ -1940,7 +1984,7 @@ class EventBank:
         # what clock they are on. Read by the panel to mark a set that has
         # already been done, and by `align` itself through the twin check.
         rec["aligned"] = {
-            "tool": "jarvis.braces/1",
+            "tool": ALIGN_TOOL.get(rec.get("type") or "", "jarvis.braces/1"),
             "at": _now(),
             "by": who,
             "version": fresh["v"],
@@ -2359,8 +2403,11 @@ class EventBank:
                 continue
             if num in have:
                 continue
+            # `tag` and `aligned` too (2026-10-26): what made the version,
+            # which the version tree names and Lock reads.
             row = {k: incoming.get(k) for k in
-                   ("v", "at", "by", "n", "note", "by_label", "machine")
+                   ("v", "at", "by", "n", "note", "by_label", "machine",
+                    "tag", "aligned")
                    if incoming.get(k) is not None}
             row["v"] = num
             # Said outright on the record: this one arrived without its

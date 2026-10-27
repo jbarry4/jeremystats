@@ -86,25 +86,59 @@ def walk(root):
             yield full, os.path.relpath(full, root).replace("\\", "/"), name
 
 
+def ignored_of(repo, paths, git="git"):
+    """Which of `paths` git ignores, asked in ONE `git check-ignore --stdin`.
+
+    One process per file was the old way, and on Windows a process is most of
+    a tenth of a second: the store's untracked shared-looking files made the
+    audit 8.7 s on every `/api/sync/status` -- which the page polls
+    (measured 2026-10-21). None returned means git could not be asked, and
+    the caller then treats every path as tracked: the cautious answer."""
+    if not paths:
+        return set()
+    # NUL-separated both ways (-z), as bytes: in text mode Windows turned
+    # each newline into \r\n and git read the \r as part of the name, and
+    # without -z git quotes any path with a backslash in it.
+    try:
+        res = subprocess.run([git, "check-ignore", "--stdin", "-z"], cwd=repo,
+                             input=b"\0".join(p.encode("utf-8") for p in paths)
+                             + b"\0",
+                             capture_output=True, timeout=30)
+    except Exception:                                    # noqa: BLE001
+        return None
+    if res.returncode not in (0, 1):                     # 1: none ignored
+        return None
+    out = (res.stdout or b"").decode("utf-8", "replace").split("\0")
+    return set(os.path.normcase(os.path.abspath(os.path.join(repo, p)))
+               for p in out if p)
+
+
 def audit(root, git="git", limit=12):
     """The whole of GUI_logs, classified. `shared` lists at most `limit`
-    files that could conflict; git is asked only about those, so a clean
-    store costs no subprocess at all."""
+    files that could conflict; git is asked only about those -- all of them
+    in one question -- so a clean store costs no subprocess at all."""
     root = os.path.abspath(root)
     repo = os.path.dirname(root)
     kinds, shared, machines, n = {}, [], set(), 0
+    candidates = []
     for full, rel, name in walk(root):
         n += 1
         kind, _why = classify(rel, name)
         if kind == "SHARED":
-            if not tracked(repo, full, git):
-                kind = "untracked"
-            elif len(shared) < limit:
-                shared.append(rel)
+            candidates.append((full, rel))
+            continue
+        m = machine_of(name)
+        if m:
+            machines.add(m)
+        kinds[kind] = kinds.get(kind, 0) + 1
+    ignored = ignored_of(repo, [full for full, _rel in candidates], git)
+    for full, rel in candidates:
+        if ignored is not None and os.path.normcase(full) in ignored:
+            kind = "untracked"
         else:
-            m = machine_of(name)
-            if m:
-                machines.add(m)
+            kind = "SHARED"
+            if len(shared) < limit:
+                shared.append(rel)
         kinds[kind] = kinds.get(kind, 0) + 1
     return {
         "ok": not kinds.get("SHARED"),

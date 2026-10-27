@@ -1,6 +1,6 @@
 {
   "_at": {
-    "added": "2026-09-25T21:05:17.906354+00:00",
+    "added": "2026-09-25T21:04:41.708265+00:00",
     "by_label": "2026-09-25T21:05:17.906354+00:00",
     "curation_label": "2026-09-25T21:05:17.906354+00:00",
     "duration_s": "2026-09-25T21:05:17.906354+00:00",
@@ -29,21 +29,29 @@
   },
   "_keys": {
     "versions": {
+      "ca0a2b369ce6": [
+        "set",
+        "2026-10-21T15:45:19.649098+00:00"
+      ],
+      "cb0462fe6d61": [
+        "set",
+        "2026-10-21T15:45:13.552851+00:00"
+      ],
       "e9373ce2ac55": [
         "set",
-        "2026-09-25T21:05:17.906354+00:00"
+        "2026-10-21T15:45:16.467688+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-25T21:05:17.906354+00:00",
+    "at": "2026-10-21T15:45:19.649098+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": {
-    "at": "2026-09-25T17:05:17-04:00",
-    "by": "spotter harness",
-    "machine": "DESKTOP-4H65AI7"
+    "at": "2026-09-25T17:04:41-04:00",
+    "by": "Debug_Bot",
+    "machine": "LCOM549913"
   },
   "by_label": {
     "unspecified": 10
@@ -135,18 +143,168 @@
   "version": 0,
   "versions": [
     {
-      "at": "2026-09-25T17:05:17-04:00",
-      "by": "spotter harness",
+      "archived": true,
+      "at": "2026-09-25T17:04:54-04:00",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 10
       },
       "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T11:45:13-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
+      "from_v": null,
+      "gained": 0,
+      "id": "cb0462fe6d61",
+      "imported": true,
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 10,
+      "note": "Imported from Doppler (line length). 10 candidates, none decided yet.",
+      "snap": [
+        [
+          184.2307,
+          null
+        ],
+        [
+          368.4617,
+          null
+        ],
+        [
+          552.6917,
+          null
+        ],
+        [
+          736.9227,
+          null
+        ],
+        [
+          921.1527,
+          null
+        ],
+        [
+          1105.3827,
+          null
+        ],
+        [
+          1289.6137,
+          null
+        ],
+        [
+          1473.8437,
+          null
+        ],
+        [
+          1658.0747,
+          null
+        ],
+        [
+          1842.3047,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "archived": true,
+      "at": "2026-09-25T17:05:17-04:00",
+      "by": "Debug_Bot",
+      "by_label": {
+        "unspecified": 10
+      },
+      "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T11:45:16-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "from_v": null,
       "gained": 0,
       "id": "e9373ce2ac55",
       "imported": true,
       "lost": 0,
       "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 10,
+      "note": "Imported from Doppler (line length). 10 candidates, none decided yet.",
+      "snap": [
+        [
+          184.2307,
+          null
+        ],
+        [
+          368.4617,
+          null
+        ],
+        [
+          552.6917,
+          null
+        ],
+        [
+          736.9227,
+          null
+        ],
+        [
+          921.1527,
+          null
+        ],
+        [
+          1105.3827,
+          null
+        ],
+        [
+          1289.6137,
+          null
+        ],
+        [
+          1473.8437,
+          null
+        ],
+        [
+          1658.0747,
+          null
+        ],
+        [
+          1842.3047,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "archived": true,
+      "at": "2026-09-25T17:04:41-04:00",
+      "by": "Debug_Bot",
+      "by_label": {
+        "unspecified": 10
+      },
+      "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T11:45:19-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
+      "from_v": null,
+      "gained": 0,
+      "id": "ca0a2b369ce6",
+      "imported": true,
+      "lost": 0,
+      "machine": "LCOM549913",
       "moves": {},
       "n": 10,
       "note": "Imported from Doppler (line length). 10 candidates, none decided yet.",

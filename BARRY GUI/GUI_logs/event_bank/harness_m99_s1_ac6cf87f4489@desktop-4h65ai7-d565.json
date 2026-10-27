@@ -31,22 +31,22 @@
     "versions": {
       "377b6e232a6e": [
         "set",
-        "2026-09-23T13:58:16.855709+00:00"
+        "2026-10-21T15:53:31.059543+00:00"
       ],
       "v0-0c40e941": [
         "set",
-        "2026-09-23T13:58:16.855709+00:00"
+        "2026-10-21T15:53:26.462313+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-23T13:58:16.855709+00:00",
+    "at": "2026-10-21T15:53:31.059543+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": {
     "at": "2026-09-23T09:58:16-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "DESKTOP-4H65AI7"
   },
   "by_label": {
@@ -165,12 +165,22 @@
   "version": 1,
   "versions": [
     {
+      "archived": true,
       "at": "2026-09-23T09:58:16-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 15
       },
       "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T11:53:26-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "gained": 0,
       "id": "v0-0c40e941",
       "imported": true,
@@ -245,8 +255,9 @@
       "v": 0
     },
     {
+      "archived": true,
       "at": "2026-09-23T09:58:16-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "Dentate Spike": 10,
         "Flag": 1,
@@ -254,6 +265,15 @@
         "unspecified": 1
       },
       "changed": 14,
+      "edits": [
+        {
+          "at": "2026-10-21T11:53:31-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "from_v": 0,
       "gained": 0,
       "id": "377b6e232a6e",

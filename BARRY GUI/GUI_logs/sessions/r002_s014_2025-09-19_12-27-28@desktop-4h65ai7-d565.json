@@ -13,18 +13,18 @@
     "schema": "2026-10-14T19:16:06.184175+00:00",
     "session": "2026-10-14T19:16:06.184175+00:00",
     "start": "2026-10-14T19:16:06.184175+00:00",
-    "updated": "2026-10-19T15:56:55.897708+00:00"
+    "updated": "2026-10-23T19:20:04.457232+00:00"
   },
   "_keys": {
     "paths": {
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con4\\Multi_spcon_con4_FP2\\2025-09-19_14-09-32": [
-        "set",
-        "2026-10-14T19:16:41.192436+00:00"
+        "gone",
+        "2026-10-23T19:20:04.457232+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-19T15:56:55.897708+00:00",
+    "at": "2026-10-23T19:20:04.457232+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -44,9 +44,7 @@
   "label": "DEWEY r2 s14 Con4 FP1 2025-09-19",
   "loose_key": "r002_s014",
   "mouse": 2,
-  "paths": [
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con4\\Multi_spcon_con4_FP2\\2025-09-19_14-09-32"
-  ],
+  "paths": [],
   "project": "DEWEY",
   "project_source": "guessed",
   "retired": false,
@@ -54,9 +52,9 @@
   "session": 14,
   "start": "2025-09-19T16:27:28+00:00",
   "updated": {
-    "app_version": "2026.10.15.1",
-    "at": "2026-10-19T11:56:55-04:00",
-    "commit": "5e65af0c",
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:04-04:00",
+    "commit": "be1e2ae4",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

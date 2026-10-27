@@ -42,7 +42,7 @@
   },
   "added": {
     "at": "2026-09-09T15:46:37-04:00",
-    "by": "bankback@harness",
+    "by": "Debug_Bot",
     "machine": "BarryLab"
   },
   "by_label": {
@@ -202,7 +202,7 @@
   "versions": [
     {
       "at": "2026-09-09T15:46:37-04:00",
-      "by": "bankback@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 40
       },

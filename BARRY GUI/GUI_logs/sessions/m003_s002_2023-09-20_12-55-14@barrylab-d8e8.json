@@ -22,14 +22,20 @@
     "schema": "2026-09-04T15:57:01.584888+00:00",
     "session": "2026-09-04T15:57:01.584888+00:00",
     "start": "2026-09-04T15:57:01.584888+00:00",
-    "updated": "2026-10-07T19:49:45.915342+00:00",
-    "view_state": "2026-10-07T19:49:45.915342+00:00"
+    "updated": "2026-10-27T17:38:28.350598+00:00",
+    "view_state": "2026-10-27T17:38:28.350598+00:00"
   },
   "_keys": {
+    "bookmarks": {
+      "84fc3cde": [
+        "set",
+        "2026-10-22T15:00:55.490339+00:00"
+      ]
+    },
     "paths": {
       "D:\\Data\\Archive\\PTEN Project\\PTEN\\M3_s2\\2023-09-20_12-55-14": [
         "set",
-        "2026-09-08T18:38:54.075546+00:00"
+        "2026-09-10T03:43:17.613002+00:00"
       ],
       "D:\\PTEN\\PTEN\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14": [
         "set",
@@ -41,11 +47,15 @@
       ],
       "Y:\\ProcessedPtenData\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14": [
         "set",
-        "2026-09-04T15:57:01.584888+00:00"
+        "2026-09-10T03:43:17.613002+00:00"
       ],
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M3_s2_baseline": [
         "set",
-        "2026-09-04T15:57:01.584888+00:00"
+        "2026-09-10T03:43:17.613002+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14": [
+        "set",
+        "2026-10-23T19:20:17.200739+00:00"
       ]
     },
     "seen": {
@@ -67,11 +77,11 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-10-07T19:48:54.110060+00:00"
+        "2026-10-27T15:46:51.371657+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-21T17:25:05.673920+00:00"
+        "2026-10-20T20:01:33.661210+00:00"
       ],
       "lcom549913-e62b": [
         "set",
@@ -80,7 +90,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-07T19:49:45.915342+00:00",
+    "at": "2026-10-27T17:38:28.350598+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -89,6 +99,25 @@
     59
   ],
   "bad_channels_note": "Bad channels from the Toothy workbook.",
+  "bookmarks": [
+    {
+      "color": "#ec4899",
+      "id": "84fc3cde",
+      "name": "Cell firing before p-spike figure example",
+      "saved": {
+        "app_version": "2026.10.21.5",
+        "at": "2026-10-22T11:00:55-04:00",
+        "commit": "724bccbc",
+        "email": "rain.younger@uvm.edu",
+        "host": "BarryLab",
+        "machine": "Strawbarry",
+        "os": "Windows",
+        "user": "Rain Younger"
+      },
+      "span": 1,
+      "t": 143.11278147570286
+    }
+  ],
   "condition": "base",
   "converted": true,
   "created": {
@@ -113,7 +142,8 @@
     "G:\\PTEN\\M3_s2",
     "Y:\\ProcessedPtenData\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M3_s2_baseline",
-    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M3_s2\\2023-09-20_12-55-14"
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M3_s2\\2023-09-20_12-55-14",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -149,7 +179,7 @@
       "scan": null
     },
     "barrylab-d8e8": {
-      "at": "2026-10-07T15:48:53-04:00",
+      "at": "2026-10-27T11:46:51-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14",
@@ -157,12 +187,12 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-21T13:25:05-04:00",
+      "at": "2026-10-20T16:01:33-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN\\M3_pten\\m3s2sept20\\2023-09-20_12-55-14",
-      "root": "D:/PTEN/PTEN",
-      "scan": "scan_97cbe5659e"
+      "root": null,
+      "scan": null
     },
     "lcom549913-e62b": {
       "at": "2026-09-14T10:10:03-04:00",
@@ -176,8 +206,9 @@
   "session": 2,
   "start": "2023-09-20T12:55:14",
   "updated": {
-    "app_version": "2026.10.07.2",
-    "at": "2026-10-07T15:49:45-04:00",
+    "app_version": "2026.10.26.2",
+    "at": "2026-10-27T13:38:28-04:00",
+    "commit": "475259cf",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
@@ -219,21 +250,22 @@
       61,
       63
     ],
-    "clim": null,
+    "climBy": null,
     "fdefault": null,
     "flock": true,
     "gain": 2.5,
-    "hp": 5,
+    "hp": 1,
     "invert": true,
-    "lp": 100,
+    "lp": 70,
+    "marks_fade": null,
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 0.8,
+    "span": 1,
     "stft_mode": null,
-    "t0": 1167.6437609999998,
+    "t0": 858.147596,
     "ylim": null
   }
 }

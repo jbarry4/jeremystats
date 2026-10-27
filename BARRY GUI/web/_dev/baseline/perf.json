@@ -1,770 +1,1285 @@
 {
- "at": "2026-09-28T21:06:24.707Z",
- "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0",
+ "at": "2026-10-21T21:54:03.429Z",
+ "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+ "lite": false,
+ "dpr": 1,
  "boot": {
-  "domContentLoaded": 263.10000002384186,
-  "load": 271.39999997615814,
-  "firstContentfulPaint": 212,
-  "interactive": 426.89999997615814,
-  "settled": 790.6000000238419,
-  "scripts": 45,
-  "scriptKB": 3280.8095703125,
+  "domContentLoaded": 1489.7999999523163,
+  "load": 1500,
+  "firstContentfulPaint": 292,
+  "interactive": 2179.7999999523163,
+  "settled": 3125.7999999523163,
+  "scripts": 64,
+  "scriptKB": 4769.1708984375,
   "css": 1,
-  "cssKB": 538.4287109375,
-  "api": 15,
-  "apiKB": 426.7734375,
+  "cssKB": 744.7763671875,
+  "api": 12,
+  "apiKB": 55.2919921875,
   "apiSlowest": [
    {
     "url": "/api/notes?head=1",
-    "start": 211,
-    "ms": 246,
+    "start": 2002,
+    "ms": 972,
     "kb": 0
    },
    {
-    "url": "/api/sync/status?head=1",
-    "start": 344,
-    "ms": 222,
-    "kb": 6
-   },
-   {
     "url": "/api/catalog",
-    "start": 211,
-    "ms": 93,
-    "kb": 212
+    "start": 2003,
+    "ms": 595,
+    "kb": 22
    },
    {
     "url": "/api/pipeline/check",
-    "start": 377,
-    "ms": 66,
+    "start": 2779,
+    "ms": 454,
     "kb": 1
    },
    {
     "url": "/api/prefs",
-    "start": 211,
-    "ms": 48,
-    "kb": 2
+    "start": 2002,
+    "ms": 278,
+    "kb": 10
    },
    {
-    "url": "/api/profile",
-    "start": 211,
-    "ms": 40,
+    "url": "/api/vacc/status",
+    "start": 2633,
+    "ms": 199,
     "kb": 1
+   },
+   {
+    "url": "/api/jobs",
+    "start": 2663,
+    "ms": 94,
+    "kb": 0
    }
   ],
+  "blocked": 60.39999997615814,
+  "heapMB": 8.11067008972168,
+  "nodes": 3238
+ },
+ "idle": {
+  "ms": 10000,
+  "animations": 0,
+  "infinite": 0,
+  "names": [],
   "blocked": 0
  },
  "views": [
   {
    "label": "pipeline",
-   "paint": 10.099999964237213,
-   "settled": 67.29999995231628,
+   "paint": 8.800000071525574,
+   "settled": 69,
    "timedOut": false,
-   "requests": 2,
-   "api": 2,
-   "bytes": 1726,
+   "requests": 1,
+   "api": 1,
+   "bytes": 1353,
    "slowest": [
     {
      "url": "/api/pipeline/check",
-     "ms": 50,
+     "ms": 62,
      "kb": 1
-    },
-    {
-     "url": "/api/warm/state",
-     "ms": 3,
-     "kb": 0
     }
    ],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 8.54325008392334,
+   "nodes": 3239
   },
   {
    "label": "sessions",
-   "paint": 14.100000023841858,
-   "settled": 493,
+   "paint": 26.800000071525574,
+   "settled": 4399.800000071526,
    "timedOut": false,
    "requests": 2,
    "api": 2,
-   "bytes": 2279471,
+   "bytes": 178215,
    "slowest": [
     {
      "url": "/api/registry",
-     "ms": 83,
-     "kb": 2226
+     "ms": 4212,
+     "kb": 143
     },
     {
-     "url": "/api/warm/state",
-     "ms": 5,
-     "kb": 0
+     "url": "/api/health/summary",
+     "ms": 710,
+     "kb": 31
     }
    ],
-   "blocked": 0
+   "blocked": 163.10000002384186,
+   "firstRow": 4340.800000071526,
+   "lastRow": 4340.800000071526,
+   "rows": 520,
+   "heapMB": 12.779956817626953,
+   "nodes": 13555
   },
   {
    "label": "explorer",
-   "paint": 46.59999996423721,
-   "settled": 46.59999996423721,
+   "paint": 70.80000007152557,
+   "settled": 70.80000007152557,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 13.421253204345703,
+   "nodes": 13555
   },
   {
    "label": "xplore",
-   "paint": 19.19999998807907,
-   "settled": 71.40000003576279,
+   "paint": 20.100000023841858,
+   "settled": 20.100000023841858,
    "timedOut": false,
-   "requests": 1,
-   "api": 1,
-   "bytes": 373,
-   "slowest": [
-    {
-     "url": "/api/warm/state",
-     "ms": 3,
-     "kb": 0
-    }
-   ],
-   "blocked": 0
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 13.431595802307129,
+   "nodes": 13555
   },
   {
    "label": "toolkit",
-   "paint": 23.5,
-   "settled": 1058.8999999761581,
+   "paint": 63.199999928474426,
+   "settled": 1376.2999999523163,
    "timedOut": false,
-   "requests": 6,
-   "api": 6,
-   "bytes": 319913,
+   "requests": 4,
+   "api": 4,
+   "bytes": 47763,
    "slowest": [
-    {
-     "url": "/api/toolkit/scopes",
-     "ms": 607,
-     "kb": 171
-    },
     {
      "url": "/api/presence",
-     "ms": 478,
-     "kb": 0
-    },
-    {
-     "url": "/api/toolfeed/bad",
-     "ms": 361,
-     "kb": 14
-    }
-   ],
-   "blocked": 75.80000001192093
-  },
-  {
-   "label": "eventbank",
-   "paint": 20.5,
-   "settled": 472.89999997615814,
-   "timedOut": false,
-   "requests": 3,
-   "api": 3,
-   "bytes": 4558237,
-   "slowest": [
-    {
-     "url": "/api/layers",
-     "ms": 429,
-     "kb": 440
-    },
-    {
-     "url": "/api/bank",
-     "ms": 156,
-     "kb": 4011
-    },
-    {
-     "url": "/api/warm/state",
-     "ms": 6,
-     "kb": 0
-    }
-   ],
-   "blocked": 0
-  },
-  {
-   "label": "results",
-   "paint": 23.100000023841858,
-   "settled": 813.6999999880791,
-   "timedOut": false,
-   "requests": 15,
-   "api": 15,
-   "bytes": 351869,
-   "slowest": [
-    {
-     "url": "/api/results/folders",
-     "ms": 107,
+     "ms": 813,
      "kb": 2
     },
     {
+     "url": "/api/toolkit/bad-channels",
+     "ms": 127,
+     "kb": 8
+    },
+    {
+     "url": "/api/toolkit/scopes",
+     "ms": 120,
+     "kb": 22
+    }
+   ],
+   "blocked": 667.0999999046326,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 10.43303394317627,
+   "nodes": 20466
+  },
+  {
+   "label": "eventbank",
+   "paint": 30.799999952316284,
+   "settled": 991.1000000238419,
+   "timedOut": false,
+   "requests": 2,
+   "api": 2,
+   "bytes": 2520049,
+   "slowest": [
+    {
+     "url": "/api/toolfeed/bad",
+     "ms": 1602,
+     "kb": 15
+    },
+    {
+     "url": "/api/bank",
+     "ms": 599,
+     "kb": 2423
+    },
+    {
+     "url": "/api/layers",
+     "ms": 425,
+     "kb": 38
+    }
+   ],
+   "blocked": 281.10000002384186,
+   "firstRow": 844.6000000238419,
+   "lastRow": 844.6000000238419,
+   "rows": 316,
+   "heapMB": 19.788928031921387,
+   "nodes": 23444
+  },
+  {
+   "label": "results",
+   "paint": 29.09999990463257,
+   "settled": 549.5999999046326,
+   "timedOut": false,
+   "requests": 26,
+   "api": 26,
+   "bytes": 179865,
+   "slowest": [
+    {
      "url": "/api/results",
-     "ms": 86,
-     "kb": 210
+     "ms": 208,
+     "kb": 34
     },
     {
      "url": "/api/results/thumb",
-     "ms": 71,
-     "kb": 14
+     "ms": 117,
+     "kb": 6
+    },
+    {
+     "url": "/api/results/thumb",
+     "ms": 112,
+     "kb": 3
     }
    ],
-   "blocked": 0
+   "blocked": 135.20000004768372,
+   "firstRow": 352.5,
+   "lastRow": 352.5,
+   "rows": 226,
+   "heapMB": 21.563358306884766,
+   "nodes": 26972
   },
   {
    "label": "storyboard",
-   "paint": 6.199999988079071,
-   "settled": 270.19999998807907,
+   "paint": 21.700000047683716,
+   "settled": 89.19999992847443,
    "timedOut": false,
-   "requests": 5,
-   "api": 5,
-   "bytes": 6377373,
+   "requests": 4,
+   "api": 4,
+   "bytes": 6377116,
    "slowest": [
     {
-     "url": "/api/decks",
-     "ms": 132,
-     "kb": 7
-    },
-    {
      "url": "/api/results/file",
-     "ms": 34,
+     "ms": 31,
      "kb": 2489
     },
     {
      "url": "/api/results/file",
-     "ms": 30,
+     "ms": 28,
      "kb": 1977
+    },
+    {
+     "url": "/api/results/file",
+     "ms": 26,
+     "kb": 1754
     }
    ],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 21.740647315979004,
+   "nodes": 27518
   },
   {
    "label": "history",
-   "paint": 23.69999998807907,
-   "settled": 89.19999998807907,
+   "paint": 14,
+   "settled": 143,
    "timedOut": false,
    "requests": 2,
    "api": 2,
-   "bytes": 735753,
+   "bytes": 67032,
    "slowest": [
     {
      "url": "/api/activity",
-     "ms": 24,
-     "kb": 377
+     "ms": 92,
+     "kb": 32
     },
     {
      "url": "/api/history",
-     "ms": 17,
-     "kb": 341
+     "ms": 25,
+     "kb": 33
     }
    ],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": 142.79999995231628,
+   "lastRow": 142.79999995231628,
+   "rows": 334,
+   "heapMB": 24.96568775177002,
+   "nodes": 28873
   },
   {
    "label": "misc",
-   "paint": 25.600000023841858,
-   "settled": 228.5,
+   "paint": 31.299999952316284,
+   "settled": 433.39999997615814,
    "timedOut": false,
-   "requests": 8,
-   "api": 8,
-   "bytes": 159249,
+   "requests": 31,
+   "api": 31,
+   "bytes": 176668,
    "slowest": [
     {
-     "url": "/api/outputs",
-     "ms": 78,
-     "kb": 102
-    },
-    {
      "url": "/api/outputs/file",
-     "ms": 33,
+     "ms": 220,
      "kb": 4
     },
     {
      "url": "/api/outputs/file",
-     "ms": 27,
+     "ms": 215,
+     "kb": 6
+    },
+    {
+     "url": "/api/outputs/file",
+     "ms": 187,
      "kb": 4
     }
    ],
-   "blocked": 55
+   "blocked": 147.59999990463257,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 26.251480102539062,
+   "nodes": 33040
   },
   {
    "label": "errors",
-   "paint": 18.400000035762787,
-   "settled": 123.30000001192093,
+   "paint": 28.100000023841858,
+   "settled": 1041.6999999284744,
    "timedOut": false,
-   "requests": 2,
-   "api": 2,
-   "bytes": 764965,
+   "requests": 4,
+   "api": 4,
+   "bytes": 121829,
    "slowest": [
     {
-     "url": "/api/feedback",
-     "ms": 69,
-     "kb": 361
+     "url": "/api/errors/grouped",
+     "ms": 711,
+     "kb": 41
     },
     {
      "url": "/api/errors",
-     "ms": 57,
-     "kb": 386
+     "ms": 227,
+     "kb": 34
+    },
+    {
+     "url": "/api/feedback",
+     "ms": 52,
+     "kb": 37
     }
    ],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": 990.5,
+   "lastRow": 990.5,
+   "rows": 114,
+   "heapMB": 29.26544761657715,
+   "nodes": 34378
   }
  ],
  "warm": [
   {
    "label": "pipeline",
-   "paint": 22.19999998807907,
-   "settled": 201.5999999642372,
-   "timedOut": false,
-   "requests": 3,
-   "api": 3,
-   "bytes": 452581,
-   "slowest": [
-    {
-     "url": "/api/errors/grouped",
-     "ms": 524,
-     "kb": 435
-    },
-    {
-     "url": "/api/pipeline/check",
-     "ms": 172,
-     "kb": 1
-    },
-    {
-     "url": "/api/debug/trace",
-     "ms": 4,
-     "kb": 5
-    }
-   ],
-   "blocked": 0
-  },
-  {
-   "label": "sessions",
-   "paint": 40.799999952316284,
-   "settled": 312.2999999523163,
-   "timedOut": false,
-   "requests": 1,
-   "api": 1,
-   "bytes": 5346,
-   "slowest": [
-    {
-     "url": "/api/devices",
-     "ms": 930,
-     "kb": 5
-    }
-   ],
-   "blocked": 0
-  },
-  {
-   "label": "explorer",
-   "paint": 25.5,
-   "settled": 331.89999997615814,
-   "timedOut": false,
-   "requests": 1,
-   "api": 1,
-   "bytes": 5346,
-   "slowest": [],
-   "blocked": 0
-  },
-  {
-   "label": "xplore",
-   "paint": 27.69999998807907,
-   "settled": 31.30000001192093,
-   "timedOut": false,
-   "requests": 0,
-   "api": 0,
-   "bytes": 0,
-   "slowest": [],
-   "blocked": 0
-  },
-  {
-   "label": "toolkit",
-   "paint": 74.40000003576279,
-   "settled": 561.6999999880791,
-   "timedOut": false,
-   "requests": 3,
-   "api": 3,
-   "bytes": 143719,
-   "slowest": [
-    {
-     "url": "/api/toolfeed/bad",
-     "ms": 445,
-     "kb": 14
-    },
-    {
-     "url": "/api/presence",
-     "ms": 303,
-     "kb": 0
-    },
-    {
-     "url": "/api/toolkit/bad-channels",
-     "ms": 264,
-     "kb": 126
-    }
-   ],
-   "blocked": 0
-  },
-  {
-   "label": "eventbank",
-   "paint": 35.10000002384186,
-   "settled": 338.69999998807907,
-   "timedOut": false,
-   "requests": 3,
-   "api": 3,
-   "bytes": 4572545,
-   "slowest": [
-    {
-     "url": "/api/layers",
-     "ms": 301,
-     "kb": 440
-    },
-    {
-     "url": "/api/bank",
-     "ms": 287,
-     "kb": 4011
-    },
-    {
-     "url": "/api/toolfeed/bad",
-     "ms": 246,
-     "kb": 14
-    }
-   ],
-   "blocked": 0
-  },
-  {
-   "label": "results",
-   "paint": 35.69999998807907,
-   "settled": 380.80000001192093,
-   "timedOut": false,
-   "requests": 61,
-   "api": 61,
-   "bytes": 925971,
-   "slowest": [
-    {
-     "url": "/api/results/thumb",
-     "ms": 157,
-     "kb": 23
-    },
-    {
-     "url": "/api/results/thumb",
-     "ms": 156,
-     "kb": 37
-    },
-    {
-     "url": "/api/results/thumb",
-     "ms": 154,
-     "kb": 25
-    }
-   ],
-   "blocked": 0
-  },
-  {
-   "label": "storyboard",
-   "paint": 21.900000035762787,
-   "settled": 95.90000003576279,
-   "timedOut": false,
-   "requests": 1,
-   "api": 1,
-   "bytes": 7251,
-   "slowest": [
-    {
-     "url": "/api/decks",
-     "ms": 13,
-     "kb": 7
-    }
-   ],
-   "blocked": 0
-  },
-  {
-   "label": "history",
-   "paint": 40.30000001192093,
-   "settled": 127.29999995231628,
+   "paint": 25.800000071525574,
+   "settled": 470.89999997615814,
    "timedOut": false,
    "requests": 2,
    "api": 2,
-   "bytes": 735696,
+   "bytes": 7893,
    "slowest": [
     {
-     "url": "/api/history",
-     "ms": 38,
-     "kb": 341
-    },
-    {
-     "url": "/api/activity",
-     "ms": 27,
-     "kb": 377
+     "url": "/api/pipeline/check",
+     "ms": 133,
+     "kb": 1
     }
    ],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 29.3560209274292,
+   "nodes": 34399
   },
   {
-   "label": "misc",
-   "paint": 27.200000047683716,
-   "settled": 361.19999998807907,
+   "label": "sessions",
+   "paint": 98.5,
+   "settled": 98.5,
    "timedOut": false,
-   "requests": 68,
-   "api": 68,
-   "bytes": 1009139,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
    "slowest": [
     {
-     "url": "/api/outputs/file",
-     "ms": 253,
-     "kb": 14
-    },
-    {
-     "url": "/api/outputs/file",
-     "ms": 251,
-     "kb": 14
-    },
-    {
-     "url": "/api/outputs/file",
-     "ms": 248,
-     "kb": 14
+     "url": "/api/pipeline/check",
+     "ms": 133,
+     "kb": 1
     }
    ],
-   "blocked": 61.40000003576279
+   "blocked": 0,
+   "firstRow": 0.5,
+   "lastRow": 0.5,
+   "rows": 520,
+   "heapMB": 32.481987953186035,
+   "nodes": 34399
   },
   {
-   "label": "errors",
-   "paint": 21.799999952316284,
-   "settled": 21.799999952316284,
+   "label": "explorer",
+   "paint": 59.89999997615814,
+   "settled": 64.70000004768372,
+   "timedOut": false,
+   "requests": 1,
+   "api": 1,
+   "bytes": 1353,
+   "slowest": [],
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 32.96645927429199,
+   "nodes": 34455
+  },
+  {
+   "label": "xplore",
+   "paint": 28.200000047683716,
+   "settled": 28.299999952316284,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 32.97925090789795,
+   "nodes": 34455
+  },
+  {
+   "label": "toolkit",
+   "paint": 216.19999992847443,
+   "settled": 762.8999999761581,
+   "timedOut": false,
+   "requests": 3,
+   "api": 3,
+   "bytes": 25356,
+   "slowest": [
+    {
+     "url": "/api/toolfeed/bad",
+     "ms": 528,
+     "kb": 15
+    },
+    {
+     "url": "/api/toolkit/bad-channels",
+     "ms": 340,
+     "kb": 8
+    },
+    {
+     "url": "/api/pipeline/check",
+     "ms": 133,
+     "kb": 1
+    }
+   ],
+   "blocked": 396.60000002384186,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 28.192413330078125,
+   "nodes": 34455
+  },
+  {
+   "label": "eventbank",
+   "paint": 93,
+   "settled": 586.8999999761581,
+   "timedOut": false,
+   "requests": 2,
+   "api": 2,
+   "bytes": 2520049,
+   "slowest": [
+    {
+     "url": "/api/bank",
+     "ms": 398,
+     "kb": 2423
+    },
+    {
+     "url": "/api/layers",
+     "ms": 275,
+     "kb": 38
+    }
+   ],
+   "blocked": 147.10000002384186,
+   "firstRow": 0.19999992847442627,
+   "lastRow": 0.19999992847442627,
+   "rows": 316,
+   "heapMB": 49.53368282318115,
+   "nodes": 34455
+  },
+  {
+   "label": "results",
+   "paint": 124.70000004768372,
+   "settled": 701.2999999523163,
+   "timedOut": false,
+   "requests": 85,
+   "api": 85,
+   "bytes": 652621,
+   "slowest": [
+    {
+     "url": "/api/results/thumb",
+     "ms": 516,
+     "kb": 14
+    },
+    {
+     "url": "/api/results/thumb",
+     "ms": 511,
+     "kb": 4
+    },
+    {
+     "url": "/api/results/thumb",
+     "ms": 506,
+     "kb": 14
+    }
+   ],
+   "blocked": 129.10000002384186,
+   "firstRow": 1.600000023841858,
+   "lastRow": 1.600000023841858,
+   "rows": 280,
+   "heapMB": 50.976295471191406,
+   "nodes": 34455
+  },
+  {
+   "label": "storyboard",
+   "paint": 39,
+   "settled": 39.09999990463257,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 28.01846694946289,
+   "nodes": 34455
+  },
+  {
+   "label": "history",
+   "paint": 39.200000047683716,
+   "settled": 39.200000047683716,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0,
+   "firstRow": 0.8999999761581421,
+   "lastRow": 0.8999999761581421,
+   "rows": 334,
+   "heapMB": 29.41197109222412,
+   "nodes": 34455
+  },
+  {
+   "label": "misc",
+   "paint": 17.100000023841858,
+   "settled": 301.5,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 179.19999992847443,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 30.357775688171387,
+   "nodes": 34455
+  },
+  {
+   "label": "errors",
+   "paint": 81.60000002384186,
+   "settled": 81.70000004768372,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0,
+   "firstRow": 7.100000023841858,
+   "lastRow": 7.100000023841858,
+   "rows": 114,
+   "heapMB": 31.10983371734619,
+   "nodes": 34455
   }
  ],
  "tools": [
   {
    "label": "Incisor",
-   "paint": 23.100000023841858,
-   "settled": 23.19999998807907,
+   "paint": 34.59999990463257,
+   "settled": 34.59999990463257,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 28.550457000732422,
+   "nodes": 28207
   },
   {
    "label": "Checkup",
-   "paint": 26,
-   "settled": 26,
+   "paint": 48.10000002384186,
+   "settled": 48.200000047683716,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 28.691164016723633,
+   "nodes": 27775
   },
   {
    "label": "Braces",
-   "paint": 26.799999952316284,
-   "settled": 26.899999976158142,
+   "paint": 24.399999976158142,
+   "settled": 24.399999976158142,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 31.142109870910645,
+   "nodes": 27826
   },
   {
    "label": "Root Canal",
-   "paint": 31.400000035762787,
-   "settled": 31.5,
+   "paint": 44.59999990463257,
+   "settled": 44.699999928474426,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 33.71978950500488,
+   "nodes": 27783
   },
   {
    "label": "X-ray",
-   "paint": 12,
-   "settled": 12.199999988079071,
+   "paint": 43.60000002384186,
+   "settled": 43.700000047683716,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
-  },
-  {
-   "label": "Spark",
-   "paint": 14.800000011920929,
-   "settled": 14.800000011920929,
-   "timedOut": false,
-   "requests": 0,
-   "api": 0,
-   "bytes": 0,
-   "slowest": [],
-   "blocked": 0
-  },
-  {
-   "label": "Coupling",
-   "paint": 17.30000001192093,
-   "settled": 17.400000035762787,
-   "timedOut": false,
-   "requests": 0,
-   "api": 0,
-   "bytes": 0,
-   "slowest": [],
-   "blocked": 0
-  },
-  {
-   "label": "Circuit",
-   "paint": 22.5,
-   "settled": 22.5,
-   "timedOut": false,
-   "requests": 0,
-   "api": 0,
-   "bytes": 0,
-   "slowest": [],
-   "blocked": 0
-  },
-  {
-   "label": "Drift",
-   "paint": 24.30000001192093,
-   "settled": 24.30000001192093,
-   "timedOut": false,
-   "requests": 0,
-   "api": 0,
-   "bytes": 0,
-   "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 32.85573959350586,
+   "nodes": 27776
   },
   {
    "label": "Doppler",
-   "paint": 27.599999964237213,
-   "settled": 27.599999964237213,
+   "paint": 25.899999976158142,
+   "settled": 25.899999976158142,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 33.05164337158203,
+   "nodes": 27804
   },
   {
    "label": "Spotter",
-   "paint": 24,
-   "settled": 24,
+   "paint": 59.10000002384186,
+   "settled": 59.200000047683716,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 33.83334922790527,
+   "nodes": 27768
   },
   {
    "label": "Eye",
-   "paint": 16.399999976158142,
-   "settled": 16.399999976158142,
+   "paint": 47.39999997615814,
+   "settled": 47.5,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 39.55235004425049,
+   "nodes": 27792
+  },
+  {
+   "label": "Junction",
+   "paint": 25.100000023841858,
+   "settled": 45.10000002384186,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 41.24154186248779,
+   "nodes": 27783
+  },
+  {
+   "label": "Panning",
+   "paint": 22.800000071525574,
+   "settled": 22.800000071525574,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 41.40696716308594,
+   "nodes": 27768
+  },
+  {
+   "label": "Lock",
+   "paint": 30.299999952316284,
+   "settled": 30.299999952316284,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 41.83484363555908,
+   "nodes": 27783
+  },
+  {
+   "label": "Spark",
+   "paint": 51.39999997615814,
+   "settled": 51.60000002384186,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 41.97938823699951,
+   "nodes": 27805
+  },
+  {
+   "label": "Coupling",
+   "paint": 43.200000047683716,
+   "settled": 43.200000047683716,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 42.13257884979248,
+   "nodes": 27800
+  },
+  {
+   "label": "Circuit",
+   "paint": 51.39999997615814,
+   "settled": 51.5,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 42.517417907714844,
+   "nodes": 27807
+  },
+  {
+   "label": "Drift",
+   "paint": 48.09999990463257,
+   "settled": 48.199999928474426,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 42.66579246520996,
+   "nodes": 27823
   },
   {
    "label": "Horizon",
-   "paint": 20.30000001192093,
-   "settled": 20.399999976158142,
+   "paint": 37.5,
+   "settled": 37.5,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 44.19654846191406,
+   "nodes": 27782
   },
   {
    "label": "Panorama",
-   "paint": 28.899999976158142,
-   "settled": 28.899999976158142,
+   "paint": 32.90000009536743,
+   "settled": 33,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 45.61512279510498,
+   "nodes": 27786
   },
   {
    "label": "Braid",
-   "paint": 13.899999976158142,
-   "settled": 13.899999976158142,
+   "paint": 36.799999952316284,
+   "settled": 36.89999997615814,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 46.19909858703613,
+   "nodes": 27792
   },
   {
    "label": "Bad channels",
-   "paint": 81.5,
-   "settled": 386,
+   "paint": 219.89999997615814,
+   "settled": 441.60000002384186,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 74.80000001192093
+   "blocked": 166.19999992847443,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 49.933982849121094,
+   "nodes": 34035
   },
   {
    "label": "StrataScope",
-   "paint": 15.300000011920929,
-   "settled": 15.300000011920929,
+   "paint": 40.09999990463257,
+   "settled": 40.09999990463257,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 50.23733139038086,
+   "nodes": 27768
   },
   {
    "label": "Kilosort",
-   "paint": 15.699999988079071,
-   "settled": 15.699999988079071,
+   "paint": 34.5,
+   "settled": 34.5,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 50.330050468444824,
+   "nodes": 27771
   },
   {
    "label": "Import sorted snapshots",
-   "paint": 21.900000035762787,
-   "settled": 21.900000035762787,
+   "paint": 42.5,
+   "settled": 42.700000047683716,
    "timedOut": false,
    "requests": 0,
    "api": 0,
    "bytes": 0,
    "slowest": [],
-   "blocked": 0
+   "blocked": 0,
+   "firstRow": null,
+   "lastRow": null,
+   "rows": 0,
+   "heapMB": 51.793996810913086,
+   "nodes": 27776
   }
  ],
  "longTasks": [
+  {
+   "phase": "sessions",
+   "ms": 125
+  },
+  {
+   "phase": "toolkit",
+   "ms": 318
+  },
+  {
+   "phase": "toolkit",
+   "ms": 66
+  },
+  {
+   "phase": "toolkit",
+   "ms": 166
+  },
+  {
+   "phase": "toolkit",
+   "ms": 55
+  },
+  {
+   "phase": "toolkit",
+   "ms": 62
+  },
+  {
+   "phase": "eventbank",
+   "ms": 157
+  },
+  {
+   "phase": "eventbank",
+   "ms": 124
+  },
+  {
+   "phase": "results",
+   "ms": 123
+  },
+  {
+   "phase": "misc",
+   "ms": 82
+  },
+  {
+   "phase": "misc",
+   "ms": 65
+  },
+  {
+   "phase": "errors",
+   "ms": 55
+  },
+  {
+   "phase": "toolkit",
+   "ms": 65
+  },
+  {
+   "phase": "toolkit",
+   "ms": 188
+  },
+  {
+   "phase": "toolkit",
+   "ms": 200
+  },
+  {
+   "phase": "toolkit",
+   "ms": 201
+  },
+  {
+   "phase": "toolkit",
+   "ms": 75
+  },
+  {
+   "phase": "toolkit",
+   "ms": 69
+  },
+  {
+   "phase": "toolkit",
+   "ms": 65
+  },
+  {
+   "phase": "toolkit",
+   "ms": 68
+  },
+  {
+   "phase": "toolkit",
+   "ms": 72
+  },
+  {
+   "phase": "toolkit",
+   "ms": 69
+  },
+  {
+   "phase": "toolkit",
+   "ms": 61
+  },
+  {
+   "phase": "toolkit",
+   "ms": 55
+  },
+  {
+   "phase": "toolkit",
+   "ms": 56
+  },
+  {
+   "phase": "toolkit",
+   "ms": 56
+  },
+  {
+   "phase": "toolkit",
+   "ms": 62
+  },
+  {
+   "phase": "toolkit",
+   "ms": 77
+  },
+  {
+   "phase": "toolkit",
+   "ms": 69
+  },
+  {
+   "phase": "toolkit",
+   "ms": 70
+  },
+  {
+   "phase": "toolkit",
+   "ms": 83
+  },
+  {
+   "phase": "toolkit",
+   "ms": 89
+  },
+  {
+   "phase": "toolkit",
+   "ms": 60
+  },
+  {
+   "phase": "toolkit",
+   "ms": 59
+  },
+  {
+   "phase": "toolkit",
+   "ms": 62
+  },
+  {
+   "phase": "toolkit",
+   "ms": 54
+  },
+  {
+   "phase": "toolkit",
+   "ms": 73
+  },
+  {
+   "phase": "toolkit",
+   "ms": 67
+  },
+  {
+   "phase": "toolkit",
+   "ms": 79
+  },
+  {
+   "phase": "toolkit",
+   "ms": 75
+  },
+  {
+   "phase": "toolkit",
+   "ms": 60
+  },
+  {
+   "phase": "toolkit",
+   "ms": 62
+  },
+  {
+   "phase": "toolkit",
+   "ms": 72
+  },
+  {
+   "phase": "toolkit",
+   "ms": 54
+  },
+  {
+   "phase": "toolkit",
+   "ms": 76
+  },
+  {
+   "phase": "toolkit",
+   "ms": 72
+  },
+  {
+   "phase": "toolkit",
+   "ms": 72
+  },
+  {
+   "phase": "toolkit",
+   "ms": 83
+  },
+  {
+   "phase": "toolkit",
+   "ms": 64
+  },
+  {
+   "phase": "toolkit",
+   "ms": 72
+  },
+  {
+   "phase": "toolkit",
+   "ms": 55
+  },
+  {
+   "phase": "toolkit",
+   "ms": 77
+  },
+  {
+   "phase": "toolkit",
+   "ms": 65
+  },
+  {
+   "phase": "toolkit",
+   "ms": 55
+  },
+  {
+   "phase": "toolkit",
+   "ms": 80
+  },
+  {
+   "phase": "toolkit",
+   "ms": 95
+  },
+  {
+   "phase": "toolkit",
+   "ms": 67
+  },
+  {
+   "phase": "toolkit",
+   "ms": 61
+  },
+  {
+   "phase": "toolkit",
+   "ms": 60
+  },
+  {
+   "phase": "toolkit",
+   "ms": 54
+  },
+  {
+   "phase": "toolkit",
+   "ms": 66
+  },
+  {
+   "phase": "toolkit",
+   "ms": 67
+  },
+  {
+   "phase": "toolkit",
+   "ms": 76
+  },
+  {
+   "phase": "toolkit",
+   "ms": 95
+  },
+  {
+   "phase": "toolkit",
+   "ms": 111
+  },
+  {
+   "phase": "toolkit",
+   "ms": 92
+  },
+  {
+   "phase": "toolkit",
+   "ms": 108
+  },
+  {
+   "phase": "toolkit",
+   "ms": 106
+  },
   {
    "phase": "toolkit",
    "ms": 87
   },
   {
-   "phase": "misc",
-   "ms": 61
+   "phase": "toolkit",
+   "ms": 65
+  },
+  {
+   "phase": "toolkit",
+   "ms": 66
+  },
+  {
+   "phase": "toolkit",
+   "ms": 70
+  },
+  {
+   "phase": "toolkit",
+   "ms": 86
+  },
+  {
+   "phase": "toolkit",
+   "ms": 58
+  },
+  {
+   "phase": "eventbank",
+   "ms": 79
+  },
+  {
+   "phase": "results",
+   "ms": 118
   },
   {
    "phase": "misc",
-   "ms": 61
+   "ms": 157
+  },
+  {
+   "phase": "misc",
+   "ms": 59
   },
   {
    "phase": "Bad channels",
-   "ms": 76
+   "ms": 130
   }
  ],
  "server": {
-  "import_ms": 1684.0577125549316,
-  "catalog_ms": 330.87706565856934,
-  "total_ms": 2015.8307552337646
+  "import_ms": 4752.800226211548,
+  "catalog_ms": 2781.291961669922,
+  "total_ms": 7535.636901855469
+ },
+ "options": {
+  "lite": false,
+  "throttle": 0.0,
+  "warm_browser": false
  },
  "runs": 3
 }

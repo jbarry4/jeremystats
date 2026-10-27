@@ -345,6 +345,69 @@ out = braces.propose([{"start": 50.010, "label_id": "flag"}],
                      one_peak, 100, align_ids={"spike"})
 check("a flagged candidate is not aligned either", len(out["rows"]), 0)
 
+# LOCK (2026-10-22): a stamp Braces already placed is held where it is, and
+# owns its peak -- a free stamp beside it cannot be moved onto that event.
+evs = [{"start": 1.000, "label_id": "spike"},   # Braces placed it: held
+       {"start": 1.050, "label_id": "spike"},   # free, nearest peak is 1.004
+       {"start": 3.000, "label_id": "spike"}]   # free, its own peak
+pk = {"times": [1.004, 1.056, 3.010], "amps": [9.0, 4.0, 6.0],
+      "cand_dist_ms": 12.0}
+out = braces.propose(evs, pk, 100, align_ids={"spike"}, pinned={0})
+by_i = {r["i"]: r for r in out["rows"]}
+check("a locked stamp still gets a row", 0 in by_i, True)
+check("...that does not move", (by_i[0]["now"], by_i[0]["flag"]),
+      (1.000, None))
+check("...marked as held", by_i[0].get("locked"), "held")
+check("its peak is not given to the stamp beside it",
+      round(by_i[1]["now"], 3), 1.056)
+check("the others align as before", round(by_i[2]["now"], 3), 3.010)
+check("the locked one is counted apart", (out["n"], out["n_locked"]), (2, 1))
+check("rows stay in time order",
+      [r["i"] for r in out["rows"]], [0, 1, 2])
+check("the locked one says which peak it fills", by_i[0].get("fills"), 1.004)
+
+# IT FILLS ONE PEAK, THE ONE IT OCCUPIES (2026-10-23), and the free stamps
+# take the largest of what is left, in a ±200 ms window.
+# Two locked, one free: the free one goes to the third peak.
+evs = [{"start": 10.000, "label_id": "spike"},   # locked
+       {"start": 10.060, "label_id": "spike"},   # locked
+       {"start": 10.030, "label_id": "spike"}]   # free; both big ones are held
+pk = {"times": [10.002, 10.058, 10.150], "amps": [9.0, 8.0, 3.0]}
+out = braces.propose(evs, pk, 200, align_ids={"spike"}, pinned={0, 1})
+by_i = {r["i"]: r for r in out["rows"]}
+check("two locked, one free: each locked stamp fills its own peak",
+      (by_i[0]["fills"], by_i[1]["fills"]), (10.002, 10.058))
+check("...neither moves", (by_i[0]["now"], by_i[1]["now"]), (10.000, 10.060))
+check("...and the free one goes to the third", round(by_i[2]["now"], 3), 10.150)
+check("...unflagged, with only one peak left to it", by_i[2]["flag"], None)
+
+# Two free, one locked: the locked one fills its peak, the free ones take
+# the largest of the rest without sharing.
+evs = [{"start": 20.000, "label_id": "spike"},   # locked
+       {"start": 19.950, "label_id": "spike"},   # free
+       {"start": 20.050, "label_id": "spike"}]   # free
+pk = {"times": [19.900, 20.001, 20.100], "amps": [5.0, 9.0, 6.0]}
+out = braces.propose(evs, pk, 200, align_ids={"spike"}, pinned={0})
+by_i = {r["i"]: r for r in out["rows"]}
+check("one locked, two free: it fills its peak and stays",
+      (by_i[0]["fills"], by_i[0]["now"]), (20.001, 20.000))
+check("...the free ones take the others, in order and not shared",
+      (round(by_i[1]["now"], 3), round(by_i[2]["now"], 3)), (19.900, 20.100))
+check("...each pushed off its peak with more than one left: flagged",
+      (by_i[1]["flag"], by_i[2]["flag"]), ("locked_peak", "locked_peak"))
+
+# It fills only what it OCCUPIES: a peak more than 20 ms away is somebody
+# else's, and stays on offer.
+evs = [{"start": 30.000, "label_id": "spike"},   # locked, nothing under it
+       {"start": 30.120, "label_id": "spike"}]   # free
+pk = {"times": [30.100], "amps": [9.0]}
+out = braces.propose(evs, pk, 200, align_ids={"spike"}, pinned={0})
+by_i = {r["i"]: r for r in out["rows"]}
+check("a locked stamp with no peak within 20 ms fills nothing",
+      by_i[0]["fills"], None)
+check("...so the peak 100 ms off is the free stamp's",
+      round(by_i[1]["now"], 3), 30.100)
+
 print("\n" + "=" * 68)
 if FAIL:
     print("%d FAILED: %s" % (len(FAIL), ", ".join(FAIL)))

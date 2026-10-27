@@ -2054,7 +2054,9 @@ def k_sentence(core, band_label):
     ied = [r for r in range(k) if calls[r] == "ied"]
     ds = [r for r in range(k) if calls[r] == "ds"]
     db = lambda rs: ", ".join(_db_s(raw_c[r, 2]) + " dB" for r in rs)
-    head = ("k = %d%s: " % (k, ", from a saved margin"
+    # A margin is how a version saved from a pool carries the pool's calls;
+    # the UI has no margins of its own since 2026-10-21, so it is said so.
+    head = ("k = %d%s: " % (k, ", by the calls it carries"
                             if "margin" in by else ""))
     body = []
     if ied:

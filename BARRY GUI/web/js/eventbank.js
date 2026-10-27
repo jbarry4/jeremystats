@@ -53,12 +53,34 @@ BARRY.views.eventbank = (function () {
     const alsoSheets = api('/api/layers')
       .then((r) => { sheets = (r && r.sheets) || []; })
       .catch(() => { sheets = []; });
-    try {
-      const res = await api('/api/bank');
+    const take = (res) => {
       tree = res.tree || [];
       entries = res.entries || [];
       types = res.types || [];
       meta = res;
+    };
+    /* Through BARRY.data (web/js/data.js, 2026-10-21): one copy of the bank
+       list for the Event Bank, ToolKit and Xplorefinder, and last time's
+       drawn at once -- dimmed until this time's lands -- instead of a
+       skeleton for the whole read. */
+    let liveDone = false;
+    const asking = BARRY.data.get('/api/bank', { fresh: !!mine })
+      .finally(() => { liveDone = true; });
+    let dim = null;
+    if (!entries.length) {
+      // Wait for the browser's store as long as it takes -- it took 2.8 s on
+      // a 4x-slowed CPU -- but never longer than this time's answer.
+      const was = await Promise.race([BARRY.data.stale('/api/bank', 4000),
+                                      asking.then(() => null, () => null)]);
+      if (was && was.value && !liveDone) {
+        take(was.value);
+        if (bones) bones();
+        render();
+        if (!was.live) dim = BARRY.skeleton.stale(host);
+      }
+    }
+    try {
+      take(await asking);
     } catch (e) {
       toast('Could not read the event bank: ' + e.message, 'err');
       tree = []; entries = [];
@@ -66,6 +88,7 @@ BARRY.views.eventbank = (function () {
       try { await alsoSheets; } catch (e) { /* the events still render */ }
       // In a finally, so a failed read does not leave the bones behind.
       if (bones) bones();
+      if (dim) dim();
     }
     render();
   }
@@ -105,9 +128,11 @@ BARRY.views.eventbank = (function () {
         : 'No layer sheets yet.';
     } else if (sub) {
       sub.textContent = entries.length
-        ? list.length + ' of ' + entries.length + ' entr(ies)  ·  '
-          + tree.length + ' project(s)  ·  '
-          + entries.reduce((n, e) => n + (e.n || 0), 0) + ' events banked'
+        ? list.length + ' of ' + plural(entries.length, 'entry', 'entries')
+          + '  ·  ' + plural(tree.length, 'project', 'projects')
+          + '  ·  '
+          + entries.reduce((n, e) => n + (e.n || 0), 0).toLocaleString()
+          + ' events banked'
         : 'Nothing banked yet.';
     }
 
@@ -156,7 +181,9 @@ BARRY.views.eventbank = (function () {
 
     bar.appendChild(BARRY.ui.searchField({
       value: query,
-      placeholder: 'Search project, mouse, session, type, pipeline, who…',
+      // Short enough to be read whole in the box (nothing is cut short).
+      placeholder: 'Search the bank…',
+      title: 'Search by project, mouse, session, type, what produced it, or who',
       oninput: (e) => { query = e.target.value; keepFocus(render); },
     }));
 
@@ -166,7 +193,7 @@ BARRY.views.eventbank = (function () {
         title: 'Filter by project',
         onchange: (e) => { projectFilter = e.target.value; render(); },
       }, [el('option', { value: '', text: 'All projects' })].concat(
-        projects.sort().map((p) => el('option', {
+        BARRY.ui.natSort(projects).map((p) => el('option', {
           value: p, text: p, selected: projectFilter === p ? 'selected' : null,
         })))));
     }
@@ -231,7 +258,7 @@ BARRY.views.eventbank = (function () {
       if (!byProject.has(proj)) byProject.set(proj, []);
       byProject.get(proj).push(x);
     });
-    Array.from(byProject.keys()).sort().forEach(function (proj) {
+    BARRY.ui.natSort(Array.from(byProject.keys())).forEach(function (proj) {
       const rows = byProject.get(proj).slice().sort(function (a, b) {
         const am = (a.session || {}).mouse || 0;
         const bm = (b.session || {}).mouse || 0;
@@ -240,7 +267,8 @@ BARRY.views.eventbank = (function () {
       });
       box.appendChild(el('div', { class: 'grp-head' }, [
         el('span', { text: proj }),
-        el('span', { class: 'count', text: rows.length + ' sheet(s)' }),
+        el('span', { class: 'count',
+                     text: plural(rows.length, 'sheet', 'sheets') }),
       ]));
       rows.forEach(function (x) { box.appendChild(sheetRow(x)); });
     });
@@ -489,10 +517,43 @@ BARRY.views.eventbank = (function () {
   }
 
   /* ---------- left: project / mouse / session ---------- */
-  function bankTree(list) {
-    const keep = new Set(list.map((e) => e.id));
-    const box = el('div', { class: 'bank-tree' });
+  /* "1 entry", "5 entries": never "entr(ies)". */
+  const plural = (n, one, many) => n.toLocaleString() + ' '
+    + (n === 1 ? one : many);
 
+  /* An entry is archived when every version of it is: put away, not
+     deleted (backend eventbank.entry_archived, the one rule; `archived` on
+     the row wins when the server sends it). */
+  function isArchived(e) {
+    if (!e) return false;
+    if (e.archived === true || e.archived === false) return e.archived;
+    const vs = e.versions || [];
+    return vs.length > 0 && vs.every((v) => v.archived);
+  }
+
+  /* Archived entries sink (2026-10-20, the user's rule for every list):
+     the tree is the live entries, and the archived ones come after it,
+     behind one toggle that says how many -- never mixed in among the
+     entries somebody is working from, never dropped from view. */
+  let archIds = new Set();
+
+  function bankTree(list) {
+    const gone = list.filter(isArchived);
+    archIds = new Set(gone.map((e) => e.id));
+    const live = list.filter((e) => !isArchived(e));
+    const box = el('div', { class: 'bank-tree' });
+    treeInto(box, live);
+    const tail = BARRY.ui.archivedTail({
+      key: 'bank', items: gone, noun: ['entry', 'entries'],
+      render: (xs) => treeInto(el('div', { class: 'bank-tree-archived' }), xs),
+      onToggle: () => render(),
+    });
+    if (tail) box.appendChild(tail);
+    return box;
+  }
+
+  function treeInto(box, list) {
+    const keep = new Set(list.map((e) => e.id));
     for (const g of tree) {
       const mice = g.mice
         .map((m) => Object.assign({}, m, {
@@ -509,7 +570,8 @@ BARRY.views.eventbank = (function () {
         (b, s) => b + s.entries.length, 0), 0);
       box.appendChild(el('div', { class: 'grp-head' }, [
         el('span', { text: g.project }),
-        el('span', { class: 'count', text: n + ' entr(ies)' }),
+        el('span', { class: 'count',
+                     text: n + (n === 1 ? ' entry' : ' entries') }),
       ]));
 
       for (const m of mice) {
@@ -534,17 +596,28 @@ BARRY.views.eventbank = (function () {
     const added = e.added || {};
     const src = e.source || {};
     return el('div', {
-      class: 'bank-row' + (selected === e.id ? ' active' : ''),
+      class: 'bank-row' + (selected === e.id ? ' active' : '')
+             + (archIds.has(e.id) || isArchived(e) ? ' is-archived' : ''),
       // So a selection can find its own row without rebuilding the list.
       'data-id': e.id,
       title: 'Banked by ' + added.by + ' on ' + (added.at || '').slice(0, 16),
       onclick: () => selectEntry(e.id),
     }, [
-      el('span', { class: 'bank-type', text: typeName(e.type) }),
       el('span', { class: 'bank-name', text: e.name }),
       el('span', { class: 'bank-n', text: e.n + '' }),
-      el('span', { class: 'bank-src', text: baseName(src.pipeline || ''),
-                   title: src.pipeline || '' }),
+      /* The type and the producer share the second line as ONE cell that
+         spans the row. Two cells there, the producer spanning the count's
+         and the mark's columns, sized those columns to the producer's
+         whole width -- "The Confluence: Junction (Incisor + Doppler,
+         20 ms)" -- and the name was left a sliver, one word a line
+         (2026-10-20). A cell spanning the flexible column cannot do that. */
+      el('div', { class: 'bank-meta' }, [
+        el('span', { class: 'bank-type', text: typeName(e.type) }),
+        // What produced it, as a chip: "Incisor output" (2026-10-20).
+        BARRY.ui.producerChip(src, e.type),
+        el('span', { class: 'bank-src', text: baseName(src.pipeline || ''),
+                     title: src.pipeline || '' }),
+      ]),
       /* Whether it has reached the shared database. The bank pushes a
          change by itself within seconds (backend/syncitems.py); this says
          when it has. Per version is in the entry's own panel. */
@@ -659,19 +732,13 @@ BARRY.views.eventbank = (function () {
     const hidden = vs.filter((v) => v.archived);
     const shown = showArchived ? vs : vs.filter((v) => !v.archived);
 
+    const nLive = vs.length - hidden.length;
     box.appendChild(el('div', { class: 'section-label ver-head' }, [
-      el('span', { text: 'History  \u00b7  ' + shown.length + ' version'
-                       + (shown.length === 1 ? '' : 's') }),
-      hidden.length
-        ? el('button', {
-            class: 'linkish',
-            text: showArchived
-              ? 'hide ' + hidden.length + ' archived'
-              : hidden.length + ' archived \u2014 show',
-            onclick: () => { showArchived = !showArchived; repaint(); },
-          })
-        : null,
-    ].filter(Boolean)));
+      el('span', { text: 'History  \u00b7  ' + nLive + ' version'
+                       + (nLive === 1 ? '' : 's')
+                       + (hidden.length ? ' (+ ' + hidden.length
+                                          + ' archived)' : '') }),
+    ]));
 
     /* The lineage: every version at a glance, and a way into any of them.
        Reading a history means moving around in it. */
@@ -722,6 +789,7 @@ BARRY.views.eventbank = (function () {
        here can be opened -- its counts and note are on record even without
        a snapshot -- so none is disabled. */
     const strip = el('div', { class: 'ver-strip' }, [BARRY.ui.versionTree({
+      producer: (e.source || {}).pipeline, producerType: e.type,
       versions: shown,
       idOf: verKey,
       value: openVersion,
@@ -873,6 +941,17 @@ BARRY.views.eventbank = (function () {
       ].filter(Boolean)));
     }
     box.appendChild(list);
+    /* The archived versions' toggle sits at the bottom of the history, the
+       same toggle every list uses (2026-10-20). A version is part of a
+       lineage, so opened, the archived ones take their places in it --
+       between their parents and children -- rather than a separate pile:
+       the one thing here that differs from a flat list, kept on purpose. */
+    const tail = BARRY.ui.archivedTail({
+      key: 'ver-' + e.id, items: hidden, noun: ['version', 'versions'],
+      forceOpen: showArchived,
+      onToggle: (open) => { showArchived = open; repaint(); },
+    });
+    if (tail) box.appendChild(tail);
   }
 
   /* The version being looked at, if the reader has opened one. */
@@ -1168,19 +1247,15 @@ BARRY.views.eventbank = (function () {
       el('span', { class: 'hint', text: 'compared with' }),
       /* By name, as the strip is: the stored number repeats when two
          machines both mint it, and keyed on it this compared against
-         whichever came first. */
-      el('select', {
-        onchange: (ev) => {
-          against = others.find((o) => verKey(o) === ev.target.value)
-                 || against;
-          paint();
-        },
-      }, others.map((o) => el('option', {
-        value: verKey(o),
-        text: BARRY.ui.versionLabel(o) + '  ' + (o.by || '') + '  '
-            + BARRY.when(o.at, 'minute'),
-        selected: verKey(o) === verKey(against) ? 'selected' : null,
-      }))),
+         whichever came first. One button that opens the whole tree
+         (2026-10-21), not a drop-down of bare numbers. */
+      BARRY.ui.versionButton({
+        versions: others, idOf: verKey, value: verKey(against),
+        producer: (e.source || {}).pipeline, producerType: e.type,
+        heading: 'Compare ' + BARRY.ui.versionLabel(v) + ' with which version',
+        sub: e.name || '',
+        onpick: (o) => { if (o) { against = o; paint(); } },
+      }),
     ]));
     host.appendChild(rows);
     paint();
@@ -1204,7 +1279,7 @@ BARRY.views.eventbank = (function () {
     const src = e.source || {};
 
     box.appendChild(el('div', { class: 'detail-head' }, [
-      el('div', {}, [
+      el('div', { class: 'detail-head-main' }, [
         el('h2', { text: e.name }),
         el('p', { class: 'detail-path',
                   text: (e.project || 'Unfiled') + '  ·  m' + e.mouse
@@ -1212,9 +1287,17 @@ BARRY.views.eventbank = (function () {
                       + (e.session_label ? '  ·  ' + e.session_label : '') }),
         el('div', { class: 'detail-tags' }, [
           el('span', { class: 'tag lang', text: typeName(e.type) }),
+          BARRY.ui.producerChip(src, e.type),
           el('span', { class: 'tag opt', text: e.n + ' events' }),
-          e.note ? el('span', { class: 'tag opt', text: e.note }) : null,
+          isArchived(e) ? el('span', { class: 'tag blocked', text: 'archived',
+            title: 'Every version of this entry is archived: kept, and no '
+                 + 'longer offered as something to start from. Unarchive a '
+                 + 'version in its history to bring it back.' }) : null,
         ]),
+        /* The note is a sentence, so it reads as one: not an upper-case
+           pill, which turned a two-line note into a shouted banner wider
+           than the panel (2026-10-20). */
+        e.note ? el('p', { class: 'bank-note', text: e.note }) : null,
       ]),
       el('div', { class: 'head-actions' }, [
         el('button', { class: 'btn sm', text: 'Load onto a recording…',
@@ -1480,7 +1563,7 @@ BARRY.views.eventbank = (function () {
        means. */
     let windows = EXCL_WINDOWS.filter((w) => seen[w] || anyFlat)
       .concat(Object.keys(seen).filter(
-        (w) => EXCL_WINDOWS.indexOf(w) < 0).sort());
+        (w) => EXCL_WINDOWS.indexOf(w) < 0).sort(BARRY.ui.natCompare));
     if (!windows.length) windows = EXCL_WINDOWS.slice();
 
     const chan = {};                 // csc -> one row of the channel table
@@ -1863,7 +1946,7 @@ BARRY.views.eventbank = (function () {
       el('div', { class: 'mh' }, [
         el('h3', { text: 'Load "' + e.name + '" onto a recording' }),
         el('span', { class: 'sub', text: e.n + ' ' + typeName(e.type)
-                                       + ' event(s)' }),
+                                       + (e.n === 1 ? ' event' : ' events') }),
         el('div', { class: 'spacer' }),
         el('button', { class: 'close-x', onclick: closeModal,
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),

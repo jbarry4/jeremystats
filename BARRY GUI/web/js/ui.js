@@ -343,6 +343,9 @@ BARRY.ui = (function () {
       class: 'cur-set' + (opt.done ? ' done' : '')
              + (opt.extra ? ' ' + opt.extra : ''),
       'data-gid': opt.gid || null,
+      // Which set, exactly: a recording can hold several (one per bank
+      // entry), so the gid alone no longer finds a card.
+      'data-kind': opt.kind || null,
     }, [
       el('div', { class: 'cur-set-top' }, [
         typeof opt.title === 'string' ? el('strong', { text: opt.title })
@@ -698,6 +701,9 @@ BARRY.ui = (function () {
       const said = typeof opt.line === 'function' ? opt.line(v) : null;
       const noteOf = (x) => (typeof opt.notes === 'function' ? opt.notes(x)
                              : (opt.notes ? x.note : null));
+      // What last worked on this version: "v2 · Checkup" (2026-10-21).
+      const madeBy = opt.producer === false ? null
+        : versionChip(v, opt.producer, opt.producerType);
       return el(opt.readonly ? 'div' : 'button', {
         class: 'vtree-row' + (on ? ' on' : '') + (why ? ' off' : ''),
         role: opt.readonly ? 'listitem' : 'radio',
@@ -722,6 +728,7 @@ BARRY.ui = (function () {
         },
       }, [
         el('strong', { class: 'vtree-n', text: 'v' + x.name }),
+        madeBy,
         el('span', { class: 'vtree-who', text: v.by || '' }),
         el('span', { class: 'vtree-when', text: when(v.at) }),
         el('span', { class: 'vtree-count',
@@ -824,7 +831,182 @@ BARRY.ui = (function () {
       // Nothing matching clears the choice: another tree was chosen.
       if (i >= 0) mark(rowEls[i]); else mark(lead && ref == null ? lead : null);
     };
+    /* What produced this family of versions, as a chip above it --
+       "Incisor output" (2026-10-20). `producer` is the entry's pipeline
+       (or its source); `producerType` its kind, for a curation pass. */
+    if (opt.producer && opt.family !== false) {
+      const chip = producerChip(opt.producer, opt.producerType);
+      if (chip) {
+        const fam = el('div', { class: 'vtree-family' }, [
+          el('div', { class: 'vtree-made' }, [chip]), host]);
+        fam.redraw = host.redraw; fam.value = host.value;
+        fam.choose = host.choose;
+        return fam;
+      }
+    }
     return host;
+  }
+
+  /* ---------- what made one version ---------- */
+
+  /* What last worked on one version (2026-10-21: "for each version...
+     mention what it was last processed by, e.g. v2 = Checkup / Tooth
+     Fairy"). Read from what the version itself records, most specific
+     first:
+       tag            the step that minted it (rootcanal, junction,
+                      tooth_fairy)
+       aligned        an alignment: Braces, Eye or Lock (`aligned_tool`, or
+                      `aligned.tool` on a raw record; else by the kind)
+       retimed        moved onto another clock
+       the note       a pass that names its tool ("Tooth Fairy", "DS1/DS2")
+       imported / v0  the detector's export: the entry's own producer
+       otherwise      a person's pass, in the add-on for the entry's kind
+     `src` is the entry's pipeline (or source), `type` its kind. */
+  const VTAGS = { rootcanal: 'Root Canal', junction: 'Junction',
+                  tooth_fairy: 'Tooth Fairy', toothfairy: 'Tooth Fairy',
+                  braces: 'Braces', eye: 'Eye', lock: 'Lock',
+                  dspca: 'X-ray', xray: 'X-ray' };
+  const KIND_PASS = { ds: 'Checkup', ied: 'Spotter', pooled: 'Panning' };
+  function versionProducer(v, src, type) {
+    if (!v || typeof v !== 'object') return null;
+    const kind = kindBase(type || '');
+    const tag = String(v.tag || '').toLowerCase();
+    if (VTAGS[tag]) return VTAGS[tag];
+    const al = v.aligned_tool
+      || (v.aligned && typeof v.aligned === 'object' ? v.aligned.tool : null);
+    if (al || v.aligned === true) {
+      // A pooled set is only ever aligned by Lock -- whose versions were
+      // filed under Braces' tool name until 2026-10-26.
+      if (kind === 'pooled') return 'Lock';
+      const t = String(al || '');
+      if (/eye/i.test(t)) return 'Eye';
+      if (/lock/i.test(t)) return 'Lock';
+      if (/braces/i.test(t)) return 'Braces';
+      return kind === 'ied' ? 'Eye' : kind === 'pooled' ? 'Lock' : 'Braces';
+    }
+    if (v.retimed && v.retimed !== false) return 'Re-timed';
+    const note = String(v.note || '');
+    if (/Tooth Fairy/i.test(note)) return 'Tooth Fairy';
+    if (/Root Canal/i.test(note)) return 'Root Canal';
+    if (/DS1\/DS2|X-ray/i.test(note)) return 'X-ray';
+    const name = String(versionLabel(v)).slice(1);
+    const first = v.imported || v.v === 0 || name === '0';
+    if (!first && KIND_PASS[kind]) return KIND_PASS[kind];
+    const pr = producerOf(src, type);
+    return pr ? pr.name : null;
+  }
+
+  function versionChip(v, src, type) {
+    const name = versionProducer(v, src, type);
+    if (!name) return null;
+    return el('span', {
+      class: 'flagchip producer vtree-by',
+      'data-producer': name.toLowerCase().replace(/[^a-z]+/g, '-'),
+      text: name,
+      title: 'Last processed by ' + name,
+    });
+  }
+
+  /* ---------- a version choice: one button, the whole tree ---------- */
+
+  /* Every version picker (2026-10-21: "the drop down version picker is not
+     the way to go... click version should bring the entire git like tree
+     as a pop up"). The button says the version chosen, its count and what
+     made it; pressing it opens the whole lineage -- every version with who,
+     when, what made it and its note -- and picking a row chooses it and
+     closes. Takes everything versionTree takes, plus:
+       heading    the pop-up's title ("Which version of Incisor (ds)")
+       sub        a line under it
+       disabled   a reason the choice is closed; the tree still opens, to
+                  read
+     `button.version()` is the version chosen; `button.choose(ref)` sets it
+     without calling onpick. */
+  function versionButton(o) {
+    const opt = o || {};
+    const vs = opt.versions || [];
+    const idOf = typeof opt.idOf === 'function' ? opt.idOf
+      : (v) => (v && (v.id || v.label || v.v));
+    let cur = opt.value === undefined ? null : opt.value;
+    const match = (v) => {
+      if (cur === null || cur === undefined) return false;
+      const want = String(cur).replace(/^v/i, '');
+      return String(idOf(v)).replace(/^v/i, '') === want
+          || String(versionLabel(v)).slice(1) === want;
+    };
+    const chosen = () => vs.find(match) || null;
+    const btn = el('button', { type: 'button', class: 'vbtn',
+                               'aria-haspopup': 'dialog' });
+    /* `disabled` closes the whole choice when it is a string (the reason);
+       a function is a reason per version, as versionTree takes it, and
+       leaves the choice open (2026-10-22, Lock greys Junction's). */
+    const closed = typeof opt.disabled === 'string' ? opt.disabled : null;
+    function face() {
+      const v = chosen();
+      btn.innerHTML = '';
+      const kids = v
+        ? [el('strong', { class: 'vbtn-n', text: versionLabel(v) }),
+           v.n !== undefined && v.n !== null
+             ? el('span', { class: 'vbtn-c', text: Number(v.n).toLocaleString()
+                                                  + (opt.unit ? ' ' + opt.unit : '') })
+             : null,
+           opt.producer === false ? null
+             : versionChip(v, opt.producer, opt.producerType),
+           v.archived ? el('span', { class: 'vbtn-c', text: 'archived' }) : null]
+        : [el('strong', { class: 'vbtn-n',
+                          text: (opt.lead && opt.lead.name) || 'Choose a version' })];
+      kids.push(el('span', { class: 'vbtn-more',
+        text: vs.length > 1 ? vs.length + ' versions' : 'its only version' }));
+      kids.push(el('span', { class: 'vbtn-caret', 'aria-hidden': 'true', text: '▾' }));
+      kids.filter(Boolean).forEach((k) => btn.appendChild(k));
+      btn.title = (closed ? closed + '\n' : '')
+        + 'Every version of this, as a tree: who made each, when, what '
+        + 'processed it, and its note. Click to see it'
+        + (closed || opt.readonly ? '.' : ' and choose.');
+    }
+    btn.onclick = () => versionPop(Object.assign({}, opt, {
+      value: cur,
+      readonly: !!(opt.readonly || closed),
+      onpick: (v) => {
+        cur = v ? idOf(v) : null;
+        face();
+        closeModal();
+        if (typeof opt.onpick === 'function') opt.onpick(v);
+      },
+    }));
+    face();
+    // `version`, not `value`: a <button>'s value is a native string
+    // property, and a function assigned to it becomes its source text.
+    btn.version = chosen;
+    btn.choose = (ref) => { cur = ref; face(); };
+    return btn;
+  }
+
+  /* The tree on its own, in a pop-up: for a button above, or for a caller
+     that wants the whole picture of something it is not choosing. */
+  function versionPop(o) {
+    const opt = o || {};
+    const tree = versionTree(Object.assign({ notes: true }, opt));
+    showModal(el('div', { class: 'vpop' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: opt.heading || 'Versions' }),
+        el('div', { class: 'spacer' }),
+      ]),
+      el('div', { class: 'mb' }, [
+        opt.sub ? el('p', { class: 'hint', text: opt.sub }) : null,
+        typeof opt.disabled === 'string'
+          ? el('p', { class: 'hint warn-line', text: opt.disabled }) : null,
+        el('p', { class: 'hint vpop-how', text: opt.readonly
+          ? 'Newest at the top; a branch sits in a lane of its own, joined to '
+            + 'the version it was worked from.'
+          : 'Newest at the top; a branch sits in a lane of its own, joined to '
+            + 'the version it was worked from. Click a version to use it.' }),
+        tree,
+      ].filter(Boolean)),
+      modalFoot([], [button({ kind: 'ghost', text: 'Close',
+                               onclick: () => closeModal() })]),
+    ]));
+    requestAnimationFrame(() => { if (tree.redraw) tree.redraw(); });
+    return tree;
   }
 
   /* ---------- the bank dialog ---------- */
@@ -1106,7 +1288,493 @@ BARRY.ui = (function () {
     setTimeout(() => { over = true; node.textContent = fmt(to); }, ms + 60);
   }
 
+  /* ---------- archived things sink ---------- */
+
+  /* The user's rule (2026-10-20), for every list that has archived things
+     in it: they go to the bottom, behind one toggle that says how many.
+     Never mixed in among what somebody is working from -- an archived pool
+     sitting between two live ones was offered as though it were current --
+     and never dropped from view either, because archiving is putting away,
+     not deleting, and a thing nobody can find again cannot be unarchived.
+
+       key       which list, so its open state survives a repaint
+       items     the archived ones (the caller has already split them off)
+       render    (items) => a node, or nodes, for them, drawn as the live
+                 ones are
+       noun      ['entry', 'entries'] -- what the count counts
+       onToggle  (open) => the caller repaints
+       forceOpen true when what is CHOSEN is archived: a choice is never
+                 hidden behind a closed drawer
+
+     Returns null when nothing is archived: no toggle for an empty drawer. */
+  const archOpen = Object.create(null);
+
+  function archivedTail(o) {
+    const opt = o || {};
+    const items = opt.items || [];
+    if (!items.length) return null;
+    const open = !!archOpen[opt.key] || !!opt.forceOpen;
+    const noun = opt.noun || ['item', 'items'];
+    const word = items.length === 1 ? noun[0] : noun[1];
+    const wrap = el('div', { class: 'arch-tail' + (open ? ' open' : '') });
+    wrap.appendChild(el('button', {
+      class: 'arch-toggle', type: 'button',
+      'aria-expanded': open ? 'true' : 'false',
+      title: open ? 'Put the archived ' + noun[1] + ' away again'
+                  : 'Archived ' + noun[1] + ' are kept, not deleted. '
+                    + 'Show them to look at one or unarchive it.',
+      onclick: () => {
+        archOpen[opt.key] = !open;
+        if (typeof opt.onToggle === 'function') opt.onToggle(!open);
+      },
+    }, [
+      el('span', { class: 'caret', 'aria-hidden': 'true' }),
+      el('span', { text: (open ? 'Hide ' : 'Show ') + items.length
+                         + ' archived ' + word }),
+    ]));
+    if (open && typeof opt.render === 'function') {
+      const body = el('div', { class: 'arch-body' });
+      [].concat(opt.render(items) || []).filter(Boolean)
+        .forEach((n) => body.appendChild(n));
+      wrap.appendChild(body);
+    }
+    return wrap;
+  }
+
+  /* ---------- one submit per click; a duplicate is followed ---------- */
+
+  /* The VACC rule (2026-10-20): the same job is never submitted twice.
+     The server refuses a duplicate (backend/flights.py); this is the page's
+     half. `submitOnce(key, send)` runs `send(submitId)` once per key at a
+     time -- a second click while the first is still on its way gets the
+     SAME promise, not a second POST -- and mints the `submit_id` the
+     server remembers, so even a retried request lands on the first job.
+     `duplicateOf(err)` reads a refusal: the running job's flight (with
+     `job_id` when this computer is following it, or `where` it runs), or
+     null for any other error. */
+  const sending = Object.create(null);
+  let sids = 0;
+
+  function submitOnce(key, send) {
+    if (sending[key]) return sending[key];
+    sids += 1;
+    const sid = Date.now().toString(36) + '-' + sids.toString(36) + '-'
+      + Math.floor(Math.random() * 1e9).toString(36);
+    const p = Promise.resolve().then(() => send(sid));
+    sending[key] = p;
+    const done = () => { if (sending[key] === p) delete sending[key]; };
+    p.then(done, done);
+    return p;
+  }
+
+  function isSending(key) { return !!sending[key]; }
+
+  function duplicateOf(err) {
+    const d = err && err.data;
+    return d && d.kind === 'duplicate' ? (d.duplicate || {}) : null;
+  }
+
+  /* The sentence for a refused duplicate, the same in every tool. */
+  function duplicateWords(dup) {
+    const where = dup.where || 'another computer';
+    return 'This exact job is already '
+      + (dup.state === 'claimed' ? 'being submitted' : 'running')
+      + ' on the VACC' + (where === 'this computer' ? '' : ', from ' + where)
+      + (dup.job_id ? ' — following it.' : '. Its answer arrives when it '
+         + 'lands there; nothing new was started.');
+  }
+
+  /* ---------- one search rule for every list of recordings ---------- */
+
+  /* Whether `query` finds a row whose words are `parts` (2026-10-20).
+     People type a recording the way they say it -- "m3 s2", "M3S2",
+     "m3s2", "PTEN m3" -- and a list that only matched the spaced form
+     could not find M3S2's runs that were plainly there. So the row's mouse
+     and session are also offered joined ("m3s2"), case is ignored, and a
+     joined word must match a whole token, so "m3s2" does not find m3 s21.
+     `parts` may hold strings and numbers; `mouse`/`session` name the
+     recording's numbers when the row has them. */
+  function searchMatch(parts, query, o) {
+    const opt = o || {};
+    const q = String(query || '').trim().toLowerCase();
+    if (!q) return true;
+    const toks = [];
+    for (const p of parts || []) {
+      if (p === null || p === undefined || p === '') continue;
+      toks.push(String(p).toLowerCase());
+    }
+    if (opt.mouse != null) {
+      toks.push('m' + opt.mouse);
+      if (opt.session != null) toks.push('m' + opt.mouse + 's' + opt.session);
+    }
+    if (opt.session != null) toks.push('s' + opt.session);
+    const hay = ' ' + toks.join(' ') + ' ';
+    const words = ' ' + toks.join(' ').split(/[\s,·()]+/).join(' ') + ' ';
+    return q.split(/\s+/).every((w) => (/^m\d+s\d+$/.test(w)
+      ? words.indexOf(' ' + w + ' ') >= 0
+      : hay.indexOf(w) >= 0));
+  }
+
+  /* Split a list into [live, archived] by `isArchived`, keeping order. */
+  function splitArchived(list, isArchived) {
+    const live = [], gone = [];
+    for (const x of list || []) (isArchived(x) ? gone : live).push(x);
+    return [live, gone];
+  }
+
+  /* ---------- what produced a dataset ---------- */
+
+  /* "Any time the version family is shown, indicate what produced it as a
+     little chip -- Incisor output, Checkup output, Doppler output -- and in
+     the data bank too" (2026-10-20). Read off the entry's pipeline (and its
+     type, for a curation pass); an import says Imported. */
+  const PRODUCERS = [
+    [/^Incisor/i, 'Incisor'], [/^Doppler/i, 'Doppler'],
+    [/curation \(ds/i, 'Checkup'], [/curation \(ied/i, 'Spotter'],
+    [/curation \(pooled/i, 'Panning'],
+    [/Confluence|Junction/i, 'Junction'], [/Root Canal/i, 'Root Canal'],
+    [/Braces/i, 'Braces'], [/^Eye\b/i, 'Eye'], [/^Lock\b/i, 'Lock'],
+    [/X-ray|DS1\/DS2/i, 'X-ray'], [/Tooth Fairy/i, 'Tooth Fairy'],
+    [/Spark|The Arc/i, 'Spark'],
+  ];
+  function producerOf(src, type) {
+    const p = String((src && typeof src === 'object' ? src.pipeline : src) || '');
+    if (/Jarvis curation/i.test(p) && !/\((ds|ied|pooled)/i.test(p)) {
+      return { name: type === 'ied' ? 'Spotter' : type === 'pooled' ? 'Panning'
+                                                                    : 'Checkup',
+               label: (type === 'ied' ? 'Spotter' : type === 'pooled'
+                 ? 'Panning' : 'Checkup') + ' output', raw: p };
+    }
+    for (const [re, name] of PRODUCERS) {
+      if (re.test(p)) return { name, label: name + ' output', raw: p };
+    }
+    if (!p) return null;
+    return { name: 'Imported', label: /import|export|hand-sort|ETS|sorted/i.test(p)
+      ? 'Imported' : p, raw: p };
+  }
+
+  function producerChip(src, type) {
+    const pr = producerOf(src, type);
+    if (!pr) return null;
+    return el('span', {
+      class: 'flagchip producer',
+      'data-producer': pr.name.toLowerCase().replace(/[^a-z]+/g, '-'),
+      text: pr.label,
+      title: 'Produced by ' + (pr.raw || pr.name),
+    });
+  }
+
+  /* ---------- the link to the next step ---------- */
+
+  /* Every bundle step ends the same way (2026-10-20): a row, right-aligned,
+     "Next: <Step> — <what it does> →", read off ToolKit's own bundle list,
+     so inserting a step renumbers and relinks every page. The last step of
+     a bundle has none. A step not in a bundle has none.
+
+       toolId     the step this page is
+       ready      true, or a sentence saying why the next step cannot use
+                  this yet (the button is shown, disabled, with it)
+       note       a short line beside it, what carries over */
+  function nextStep(toolId) {
+    const tk = BARRY.views && BARRY.views.toolkit;
+    if (!tk || typeof tk.bundles !== 'function') return null;
+    const via = typeof tk.via === 'function' ? tk.via() : null;
+    const list = tk.bundles();
+    const order = via ? list.filter((b) => b.id === via).concat(list) : list;
+    for (const b of order) {
+      const i = (b.steps || []).findIndex((s) => s.id === toolId);
+      if (i < 0) continue;
+      const nx = b.steps[i + 1];
+      return nx ? { id: nx.id, name: nx.name, does: nx.does, soon: nx.soon,
+                    bundle: b.id, bundleName: b.name } : null;
+    }
+    return null;
+  }
+
+  function handoff(toolId, o) {
+    const opt = o || {};
+    const nx = nextStep(toolId);
+    if (!nx) return null;
+    const why = opt.ready === undefined || opt.ready === true ? null
+      : (typeof opt.ready === 'string' ? opt.ready : 'Not ready yet.');
+    const soon = nx.soon ? nx.name + ' is not built yet: ' + nx.soon : null;
+    /* Only ever the next step's page (2026-10-21: "Next links just take
+       you to the next ToolKit page, and not initiate opening any specific
+       object or recording"). No caller's onclick: what carries over waits
+       there, under Pick up a set or in its picker, for you to choose. */
+    const go = () => {
+      const tk = BARRY.views.toolkit;
+      if (tk && tk.pick) tk.pick(nx.id, nx.bundle);
+      if (typeof setView === 'function' && BARRY.state.view !== 'toolkit') {
+        setView('toolkit');
+      }
+    };
+    return el('div', { class: 'handoff' }, [
+      opt.note ? el('span', { class: 'hint handoff-note', text: opt.note }) : null,
+      button({
+        kind: 'ghost', size: 'sm', extra: 'handoff-go',
+        text: 'Next: ' + nx.name + ' — ' + nx.does + ' →',
+        title: why || soon || (nx.bundleName + ': ' + nx.name + ', '
+                               + nx.does),
+        disabled: !!(why || soon),
+        onclick: go,
+      }),
+    ].filter(Boolean));
+  }
+
+  /* ---------- a mode's own end of the one bar ---------- */
+
+  /* Every add-on's bar ends the same way (2026-10-20): its occasional
+     controls folded into More, then the next step of its bundle, then Bank
+     -- and after those the shell's Simplify, ? and Leave (core.js
+     `setMode`), so Leave is always the last thing, far right.
+
+       more   nodes for the More panel (a window length, a light switch,
+              List all, Tooth Fairy, Auto-bank...); none, no More
+       next   { text, title, onclick }: "Next: Eye — line them up →"
+       bank   { text, title, onclick, disabled }: "Bank the results…" */
+  function modeEnd(o) {
+    const opt = o || {};
+    const more = [].concat(opt.more || []).filter(Boolean);
+    const bits = [];
+    if (more.length) {
+      const pop = el('div', { class: 'mode-more-pop' }, more);
+      // Open again after a repaint if it was open before it.
+      const det = el('details', { class: 'mode-more',
+                                  open: modeEnd.open ? 'open' : null }, [
+        el('summary', { text: 'More', title: 'Settings and tools for this '
+                                             + 'sitting' }),
+        pop,
+      ]);
+      det.addEventListener('toggle', () => { modeEnd.open = det.open; });
+      /* Shut when somebody clicks anywhere else -- a <details> stays open.
+         One listener for every bar ever drawn, not one per repaint. */
+      if (!modeEnd.wired) {
+        modeEnd.wired = true;
+        document.addEventListener('mousedown', (e) => {
+          for (const d of document.querySelectorAll('details.mode-more[open]')) {
+            if (!d.contains(e.target)) { d.open = false; modeEnd.open = false; }
+          }
+        });
+      }
+      bits.push(det);
+    }
+    if (opt.next) {
+      bits.push(button({ kind: 'ghost', size: 'sm', text: opt.next.text,
+                         title: opt.next.title || null,
+                         onclick: opt.next.onclick }));
+    }
+    if (opt.bank) {
+      bits.push(button({ kind: 'ghost', size: 'sm',
+                         text: opt.bank.text || 'Bank the results…',
+                         title: opt.bank.title || null,
+                         disabled: !!opt.bank.disabled,
+                         onclick: opt.bank.onclick }));
+    }
+    return el('div', { class: 'mode-own-end' }, bits);
+  }
+
+  /* ---------- which working set: a kind names its bank entry ---------- */
+
+  /* A working set belongs to ONE bank entry since 2026-10-20 ("purely bank
+     identity based"), and its kind says which: "ied.e3b3111be3118" is the
+     set of entry 3b3111be3118. The sets made before stay "ds", "ied",
+     "pooled" -- one per recording -- and are matched to the entry they were
+     started from. Every route keeps its shape, /api/curation/<gid>/<kind>/..,
+     so a caller only has to carry the set's own kind instead of a constant. */
+  const kindBase = (k) => String(k || '').split('.')[0];
+  function kindEntry(k) {
+    const s = String(k || '');
+    const i = s.indexOf('.e');
+    return i >= 0 ? (s.slice(i + 2) || null) : null;
+  }
+
+  function setUrl(gid, kind, what) {
+    return '/api/curation/' + encodeURIComponent(gid) + '/'
+      + encodeURIComponent(kind) + (what ? '/' + what : '');
+  }
+
+  /* The kind of the set that stands for bank entry `entryId` on `gid`, or
+     null when there is none: a per-entry set of it, or an older set started
+     from it. */
+  async function setForEntry(gid, base, entryId) {
+    const got = await api('/api/curation/for-recording/'
+                          + encodeURIComponent(gid));
+    const s = ((got && got.existing) || []).find((x) => kindBase(x.kind) === base
+      && (kindEntry(x.kind) === entryId
+          || (!kindEntry(x.kind) && (x.source || {}).bank_entry === entryId)));
+    return s ? s.kind : null;
+  }
+
+  /* ---------- one order for every list of recordings ---------- */
+
+  /* Numbers inside names compare as numbers (2026-10-20): m1, m3, m5, m12
+     -- never m1, m12, m3, m34, m5 -- "wherever there are lists of
+     recordings displayed". So do sessions (s2 before s10), rats (J2 before
+     J10), channels (CSC9 before CSC10) and nicknames. Case is ignored; a
+     tie falls back to the plain text, so the order is total. A list that
+     is in time order, or ranked by a count, keeps that order: this is the
+     order for names. */
+  const NAT = (typeof Intl !== 'undefined' && Intl.Collator)
+    ? new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+    : null;
+
+  function natCompare(a, b) {
+    const x = a == null ? '' : String(a);
+    const y = b == null ? '' : String(b);
+    const c = NAT ? NAT.compare(x, y) : 0;
+    if (c) return c;
+    return x < y ? -1 : (x > y ? 1 : 0);
+  }
+
+  /* `list` sorted in place by `key(item)` in that order, and returned. A
+     key may be an array, compared part by part: [project, label]. */
+  function natSort(list, key) {
+    const k = key || ((x) => x);
+    return (list || []).sort((a, b) => {
+      const ka = k(a), kb = k(b);
+      if (!Array.isArray(ka) && !Array.isArray(kb)) return natCompare(ka, kb);
+      const A = [].concat(ka), B = [].concat(kb);
+      for (let i = 0; i < Math.max(A.length, B.length); i++) {
+        const c = natCompare(A[i], B[i]);
+        if (c) return c;
+      }
+      return 0;
+    });
+  }
+
+  /* ---------- numbers right, words left, in every table ---------- */
+
+  /* "All the text results are right aligned" (2026-10-20). Tables are
+     built in some eighty places, and many right-align every column but the
+     first, so a mouse, a group or a verdict sat on the right like a number.
+     Every table now aligns by what its columns hold -- a column of numbers
+     (signs, units, ranges and "312 / 1,204" allowed) right, in tabular
+     figures; a column of words left -- decided from the cells, so no
+     builder has to remember. A cell holding a control (a button, an input)
+     or nothing but a dash does not vote, and keeps its own alignment. A
+     table that wants its own says data-al="off". Big tables (over 3,000
+     rows) are left as built. */
+  const NUM_CELL = new RegExp(
+    '^[(\\[]?[-+−±~≈<>≤≥]?\\s*[$£€]?'
+    + '\\d[\\d,]*(?:\\.\\d+)?(?:[eE][-+]?\\d+)?'
+    + '(?:\\s*(?:%|‰|[A-Za-zµ°×]{1,7}))?'
+    + '(?:\\s*(?:/|–|-|to|of|±)\\s*[-+−]?\\d[\\d,]*'
+    + '(?:\\.\\d+)?(?:\\s*(?:%|[A-Za-zµ°]{1,7}))?)?'
+    + '[*†]{0,3}[)\\]]?$');
+
+  function cellVote(cell) {
+    if (cell.colSpan > 1) return null;
+    if (cell.querySelector('button, input, select, textarea')) return null;
+    const t = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!t || /^[-–—·?…]$|^n\/?a$/i.test(t)) return null;
+    return NUM_CELL.test(t) ? 'num' : 'text';
+  }
+
+  function alignTable(table) {
+    if (table.dataset.al === 'off') return;
+    const rows = table.rows;
+    if (!rows || !rows.length || rows.length > 3000) return;
+    const head = [], body = [];
+    for (const r of rows) {
+      const inHead = r.parentNode && r.parentNode.tagName === 'THEAD';
+      const allTh = r.cells.length
+        && Array.prototype.every.call(r.cells, (c) => c.tagName === 'TH');
+      ((inHead || (allTh && !body.length)) ? head : body).push(r);
+    }
+    const votes = [];                      // per column: [num, text]
+    const cols = (r) => {                  // [cell, column] pairs, colspans counted
+      const out = [];
+      let i = 0;
+      for (const c of r.cells) { out.push([c, i]); i += c.colSpan || 1; }
+      return out;
+    };
+    for (const r of body.slice(0, 400)) {
+      for (const [c, i] of cols(r)) {
+        const v = cellVote(c);
+        if (!v) continue;
+        const t = votes[i] || (votes[i] = [0, 0]);
+        t[v === 'num' ? 0 : 1] += 1;
+      }
+    }
+    const kind = votes.map((t) => {
+      if (!t) return null;
+      if (t[0] && t[1] <= Math.floor(t[0] / 10)) return 'num';
+      return t[1] ? 'text' : null;
+    });
+    for (const r of head.concat(body)) {
+      for (const [c, i] of cols(r)) {
+        const k = c.colSpan > 1 ? null : kind[i];
+        if (k && c.dataset.al !== k) c.dataset.al = k;
+        else if (!k && c.dataset.al) delete c.dataset.al;
+      }
+    }
+  }
+
+  const alignQ = new Set();
+  let alignT = 0;
+
+  function alignSoon(t) {
+    if (!t || (t.dataset && t.dataset.al === 'off')) return;
+    alignQ.add(t);
+    if (!alignT) alignT = setTimeout(alignFlush, 40);
+  }
+
+  function alignFlush() {
+    alignT = 0;
+    const ts = Array.from(alignQ);
+    alignQ.clear();
+    for (const t of ts) {
+      if (!t.isConnected) continue;
+      try { alignTable(t); } catch (e) { /* a table it cannot read keeps its look */ }
+    }
+  }
+
+  function alignWatch() {
+    if (alignWatch.on || typeof MutationObserver === 'undefined') return;
+    alignWatch.on = true;
+    const mo = new MutationObserver((muts) => {
+      for (const m of muts) {
+        const at = m.target.nodeType === 1 ? m.target : m.target.parentElement;
+        const t = at && at.closest ? at.closest('table') : null;
+        if (t) { alignSoon(t); continue; }
+        for (const n of m.addedNodes) {
+          if (n.nodeType !== 1) continue;
+          if (n.tagName === 'TABLE') alignSoon(n);
+          else for (const x of n.getElementsByTagName('table')) alignSoon(x);
+        }
+      }
+    });
+    mo.observe(document.body, { childList: true, subtree: true,
+                                characterData: true });
+    for (const t of document.getElementsByTagName('table')) alignSoon(t);
+  }
+
+  if (typeof document !== 'undefined') {
+    if (document.body) alignWatch();
+    else document.addEventListener('DOMContentLoaded', alignWatch);
+  }
+
   return {
+    archivedTail: archivedTail,
+    splitArchived: splitArchived,
+    searchMatch: searchMatch,
+    natCompare: natCompare,
+    natSort: natSort,
+    alignTable: alignTable,
+    modeEnd: modeEnd,
+    handoff: handoff,
+    producerOf: producerOf,
+    producerChip: producerChip,
+    nextStep: nextStep,
+    kindBase: kindBase,
+    kindEntry: kindEntry,
+    setUrl: setUrl,
+    setForEntry: setForEntry,
+    submitOnce: submitOnce,
+    isSending: isSending,
+    duplicateOf: duplicateOf,
+    duplicateWords: duplicateWords,
     sections: sections,
     countUp: countUp,
     reducedMotion: reducedMotion,
@@ -1118,6 +1786,10 @@ BARRY.ui = (function () {
     openOn: openOn,
     pickRecording: pickRecording,
     versionTree: versionTree,
+    versionButton: versionButton,
+    versionPop: versionPop,
+    versionProducer: versionProducer,
+    versionChip: versionChip,
     bankDialog: bankDialog,
     stepOf: stepOf,
     stepHeader: stepHeader,

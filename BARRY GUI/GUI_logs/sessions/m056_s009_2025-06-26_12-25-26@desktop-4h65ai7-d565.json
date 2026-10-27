@@ -1,7 +1,8 @@
 {
   "_at": {
-    "created": "2026-10-12T13:29:52.993062+00:00",
-    "gid": "2026-10-12T13:29:52.993062+00:00",
+    "archived_in": "2026-10-23T19:20:56.629007+00:00",
+    "created": "2026-10-12T13:13:29.823593+00:00",
+    "gid": "2026-10-12T13:13:29.823593+00:00",
     "group": "2026-10-12T13:29:52.993062+00:00",
     "key": "2026-10-12T13:29:52.993062+00:00",
     "label": "2026-10-12T13:29:52.993062+00:00",
@@ -13,30 +14,33 @@
     "schema": "2026-10-12T13:29:52.993062+00:00",
     "session": "2026-10-12T13:29:52.993062+00:00",
     "start": "2026-10-12T13:29:52.993062+00:00",
-    "updated": "2026-10-12T13:33:09.714628+00:00"
+    "updated": "2026-10-23T19:20:56.629007+00:00"
   },
   "_keys": {
     "paths": {
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s9_06262025\\2025-06-26_12-25-26": [
-        "set",
-        "2026-10-12T13:33:09.714628+00:00"
+        "gone",
+        "2026-10-23T19:20:56.629007+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-12T13:33:09.714628+00:00",
+    "at": "2026-10-23T19:20:56.629007+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
+  "archived_in": [
+    "Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56.tar.xz"
+  ],
   "created": {
     "app_version": "2026.10.09.4",
-    "at": "2026-10-12T09:29:52-04:00",
-    "commit": "2ec65512",
-    "email": "sakhava1@uvm.edu",
-    "host": "DESKTOP-4H65AI7",
-    "machine": "Bluebarry",
+    "at": "2026-10-12T09:13:29-04:00",
+    "commit": "1b2184e3",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Shahriar Tafti"
+    "user": "Rain Younger"
   },
   "gid": "sd32eea03f595",
   "group": null,
@@ -44,9 +48,7 @@
   "label": "PTEN_DKO m56 s9 2025-06-26",
   "loose_key": "m056_s009",
   "mouse": 56,
-  "paths": [
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s9_06262025\\2025-06-26_12-25-26"
-  ],
+  "paths": [],
   "project": "PTEN",
   "project_source": "guessed",
   "retired": false,
@@ -54,9 +56,9 @@
   "session": 9,
   "start": "2025-06-26T16:25:26+00:00",
   "updated": {
-    "app_version": "2026.10.09.4",
-    "at": "2026-10-12T09:33:09-04:00",
-    "commit": "2ec65512",
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:56-04:00",
+    "commit": "be1e2ae4",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

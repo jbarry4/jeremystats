@@ -33,6 +33,10 @@ BARRY.spotter = (function () {
   const $ = (s) => document.querySelector(s);
 
   let set_ = null;      // the curation set as the server has it
+  /* The set's own kind (2026-10-20): "ied" for an older set -- one per
+     recording -- or "ied.e<entry>" for the set of one bank entry. Every
+     route is asked with it (BARRY.ui.setUrl). */
+  let setKind = 'ied';
   let kind = null;      // { id, labels[] } -- COPIED from the set
   let sess = null;      // the open xplore session
   let entry = null;     // the bank entry it came from
@@ -118,10 +122,9 @@ BARRY.spotter = (function () {
      ================================================================== */
 
   /* `entryId` is a bank entry, because that is what Doppler hands over and
-     what a person picks out of a list of three runs on one recording. A set
-     is made from it if there is not one already; if there is, and it came
-     from a different entry, that is a question rather than something to do
-     silently. */
+     what a person picks out of a list of three runs on one recording. The
+     set that stands for it is opened, and made first if there is none.
+     `opts.kind` opens a set by its kind -- the workbench's way in. */
   async function enter(gid, entryId, opts) {
     /* One mode at a time, and `enter` is responsible for it. All three take
        over the panes, the keyboard and the aid window; entering one on top
@@ -131,14 +134,16 @@ BARRY.spotter = (function () {
     BARRY.modes.leaveAllBut('spotter');   // every other mode; see core.js
     if (set_) exit();
 
+    let want = (opts && opts.kind) || 'ied';
     if (entryId) {
       const made = await ensureSet(gid, entryId);
       if (!made) return false;
+      want = made;
     }
 
     let data;
     try {
-      data = await api('/api/curation/' + encodeURIComponent(gid) + '/ied');
+      data = await api(BARRY.ui.setUrl(gid, want));
     } catch (e) {
       toast('Could not open that set: ' + e.message, 'err', 9000);
       return false;
@@ -149,6 +154,7 @@ BARRY.spotter = (function () {
       return false;
     }
     set_ = data.set;
+    setKind = set_.kind || want;
     kind = { id: set_.kind, labels: set_.labels || [] };
     banked = data.banked || null;
     bankDirty = false;
@@ -180,8 +186,7 @@ BARRY.spotter = (function () {
     /* Opening it is what puts it on the bench. Nothing else does: banking a
        run leaves the set closed, because a set nobody has opened is not
        work in progress, it is a list that exists. */
-    apiPost('/api/curation/' + encodeURIComponent(gid) + '/ied/open',
-            { open: true })
+    apiPost(BARRY.ui.setUrl(gid, setKind, 'open'), { open: true })
       .then((r) => { if (r && r.set) set_.assignee = r.set.assignee; })
       .catch(() => {});
 
@@ -247,62 +252,39 @@ BARRY.spotter = (function () {
     });
   }
 
-  /* Make the set from the bank entry, unless one is already there.
+  /* The set that stands for this bank entry, made if there is none, and
+     its kind returned (null when somebody was asked and called it off).
 
-     One set per (recording, kind), which is the server's rule. If the one
-     that exists came from a different run, replacing it would throw away
-     decisions somebody made -- so it asks, and the question names both. */
+     A set belongs to ONE bank entry since 2026-10-20 -- "purely bank
+     identity based" -- so starting from a second run on a recording makes
+     a second set and replaces nothing. That is the end of the question this
+     used to ask ("There is already a set of IEDs on this recording...
+     Replace it"), and of decisions from one run sitting on the bench while
+     another run's versions were chosen. */
   async function ensureSet(gid, entryId) {
-    /* `/api/curation/<gid>/<kind>` is the one that answers "is there a set
-       here", and `set` comes back null when there is not. `for-recording`
-       answers a different question -- what is BANKED that a set could be
-       started from -- and reading it as a list of sets found none, every
-       time, so the first version replaced work silently. */
-    let existing = null;
     try {
-      const got = await api('/api/curation/' + encodeURIComponent(gid)
-                            + '/ied');
-      existing = got.set || null;
+      const have = await BARRY.ui.setForEntry(gid, 'ied', entryId);
+      if (have) { entry = entryId; return have; }
     } catch (e) { /* no set is the ordinary case */ }
-
-    if (existing) {
-      /* `bank_entry`, not `entry`: from-bank writes the source as
-         {kind:'bank version', bank_entry, version, ...}. Reading `.entry`
-         got undefined every time, so re-entering a set you had already
-         started from this very run asked to replace it. */
-      const from = (existing.source || {}).bank_entry;
-      if (!entryId || from === entryId) return true;
-      const ok = await BARRY.confirm(
-        'There is already a set of IEDs on this recording',
-        el('div', { class: 'fix-facts' }, [
-          el('p', { text: '"' + (existing.name || 'the existing set')
-              + '" has ' + ((existing.progress || {}).specified || 0)
-              + ' of ' + ((existing.progress || {}).total || 0)
-              + ' decided. Starting from this run instead replaces it.' }),
-          el('p', { text: 'Its decisions are already banked as versions of '
-              + 'the entry it came from, so they are not lost — but '
-              + 'they will not be in front of you any more.' }),
-        ]), 'Replace it', true);
-      if (!ok) return true;   // curate what is there
-    }
-    /* Which version to start from. It was always 0 -- Doppler's own list,
-       nothing decided -- so a run that had already been through Spotter and
-       banked started again from scratch. Now: the newest version a set can
-       be built from, and when there is more than one, the version tree to
-       choose with (constitution §6e), the same control Checkup uses. */
+    /* Which version to start from: the newest a set can be built from,
+       and when there is more than one, the version tree to choose with
+       (constitution §6e), the same control Checkup uses. */
     const pick = await chooseVersion(gid, entryId);
-    if (pick === null) return false;          // asked, and called off
+    if (pick === null) return null;          // asked, and called off
+    let res;
     try {
-      await apiPost('/api/curation/from-bank', {
-        gid, kind: 'ied', entry: entryId, replace: true,
+      res = await apiPost('/api/curation/from-bank', {
+        gid, kind: 'ied', entry: entryId, open: true,
         version: pick && pick.id != null ? pick.id : (pick ? pick.v : 0),
       });
     } catch (e) {
+      const d = e && e.data;
+      if (d && d.exists && d.kind) { entry = entryId; return d.kind; }
       toast('Could not make a set from that run: ' + e.message, 'err', 9000);
-      return false;
+      return null;
     }
     entry = entryId;
-    return true;
+    return res.kind || 'ied';
   }
 
   /* The version a new set starts from: {id, v, ...}, false for "the
@@ -339,6 +321,7 @@ BARRY.spotter = (function () {
             + 'worked on before. v0 is Doppler\u2019s own list, nothing decided; '
             + 'a later one carries the decisions made in it.' }),
         BARRY.ui.versionTree({
+          producer: ent.source, producerType: ent.kind,
           versions: vs,
           idOf: (v) => (v.id != null ? v.id : 'v' + v.v),
           value: pick.id != null ? pick.id : 'v' + pick.v,
@@ -361,13 +344,8 @@ BARRY.spotter = (function () {
     /* Leaving with decisions the bank does not have: banked on the way out,
        when that is on. After the set is let go, so it cannot hold up the
        leaving; quietBank waits for any save still in flight. */
-    {
-      const decided = events().filter((e) => e.label).length;
-      if (autoOn() && decided
-          && (bankDirty || !banked || banked.changed)) {
-        quietBank(set_.gid, 'Banked on leaving Spotter.');
-      }
-    }
+    /* Not banked on leaving any more (2026-10-26): a set banks itself
+       once, when the last candidate is first decided; after that, by hand. */
     /* Written now rather than in 350 ms. Preference writes are coalesced,
        and leaving is exactly the moment somebody is about to do something
        else -- the whole point is that it survives a tab switch. */
@@ -376,7 +354,7 @@ BARRY.spotter = (function () {
     BARRY.activity.log('spotter.leave',
                        { gid: set_.gid, left: left() }, sess);
     if (beatTimer) { clearInterval(beatTimer); beatTimer = null; }
-    apiPost('/api/presence/release', { gid: set_.gid, kind: 'ied' })
+    apiPost('/api/presence/release', { gid: set_.gid, kind: setKind })
       .catch(() => {});
     beatOthers = [];
     if (sess) { delete sess.curation; delete sess.curationMarks; }
@@ -392,6 +370,8 @@ BARRY.spotter = (function () {
     if (sess && BARRY.views.xplore.setChannelLines) {
       BARRY.views.xplore.setChannelLines(sess, []);
     }
+    // A main window laid out from Profile goes back to its one pane.
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     setMode(null);
     receipt(set_.gid, { quiet: true });
     if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
@@ -450,7 +430,14 @@ BARRY.spotter = (function () {
      which between them are how an IED is told from an artefact on one
      wire. */
   function layout() {
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    /* The main window as this person laid it out in Profile › Support panel
+       preferences (2026-10-22), or the traces alone, as always. Its first
+       pane is always the traces, which everything below reads. */
+    const mp = BARRY.supportPanels
+      ? BARRY.supportPanels.applyMain('spotter', [{ panel: 'traces' }], sess,
+                                      { col: 0.5, row: 0.5 })
+      : (BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 }), null);
+    if (mp && mp.span) span = mp.span;
     openAids();
   }
 
@@ -461,12 +448,20 @@ BARRY.spotter = (function () {
     }
     const every8 = ((sess.info || {}).channels || [])
       .filter((c, i) => i % 8 === 0).map((c) => c.index);
-    aidWin = BARRY.views.xplore.popOutPanes(sess, [
+    const defaults = [
       { panel: 'csd' },
       { panel: 'voltage' },
       { panel: 'spectrogram', tfChannels: every8, tfMode: 'stack',
         fmin: 1, fmax: 250 },
-    ], { role: 'aids', name: 'barry-spotter-aids', width: 720, height: 980,
+    ];
+    // What this person chose (Profile › Support panel preferences).
+    const plan = BARRY.supportPanels
+      ? BARRY.supportPanels.plan('spotter', defaults, sess)
+      : { specs: defaults };
+    if (!plan) return;
+    aidWin = BARRY.views.xplore.popOutPanes(sess, plan.specs, {
+         ...BARRY.supportPanels.opts(plan),
+         role: 'aids', name: 'barry-spotter-aids', width: 720, height: 980,
          chrome: 'notabs,noheads,nostrip,nochannels' });
   }
 
@@ -659,12 +654,12 @@ BARRY.spotter = (function () {
     saving += 1; updateSaving();
     try {
       const res = await apiPost(
-        '/api/curation/' + encodeURIComponent(set_.gid) + '/ied/label',
+        BARRY.ui.setUrl(set_.gid, setKind, 'label'),
         { event: ev.id, label: labelId });
       if (res.progress) set_._progress = res.progress;
       // The last one decided: bank it, if banking without asking is on.
       if (set_ && autoOn() && !left()) {
-        quietBank(set_.gid, 'Every candidate decided in Spotter.');
+        quietBank(set_.gid, 'Every candidate decided in Spotter.', setKind);
       }
       if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
         BARRY.views.toolkit.curationChanged();
@@ -710,8 +705,8 @@ BARRY.spotter = (function () {
     publishMarks();
     render(); drawRaster();
     try {
-      await apiPost('/api/curation/' + encodeURIComponent(set_.gid)
-                    + '/ied/label', { event: ev.id, label: labelId });
+      await apiPost(BARRY.ui.setUrl(set_.gid, setKind, 'label'),
+                    { event: ev.id, label: labelId });
     } catch (e) {
       ev.label = was;
       history.pop();
@@ -735,8 +730,8 @@ BARRY.spotter = (function () {
     goTo(at);
     drawRaster();
     try {
-      await apiPost('/api/curation/' + encodeURIComponent(set_.gid)
-                    + '/ied/label', { event: last.id, label: last.from });
+      await apiPost(BARRY.ui.setUrl(set_.gid, setKind, 'label'),
+                    { event: last.id, label: last.from });
     } catch (e) {
       events()[at].label = was;
       history.push(last);
@@ -799,8 +794,8 @@ BARRY.spotter = (function () {
     let bar = $('#spotBar');
     if (!bar) {
       bar = el('div', { id: 'spotBar', class: 'cur-bar spot-bar' });
-      const body = $('#xfBody');
-      if (body) body.appendChild(bar);
+      // In the middle of the one mode bar (core.js `BARRY.modeSlot`).
+      BARRY.modeSlot().appendChild(bar);
       // Once, when the bar is first built -- not on every render, or a
       // single keystroke fires as many times as the bar has been drawn.
       document.addEventListener('keydown', keys, true);
@@ -885,47 +880,43 @@ BARRY.spotter = (function () {
         if (!wanted(current())) goTo(firstWanted());
         render();
       }),
-      BARRY.ui.seg([
-        ['lit', 'Lit', 'Tint the channels this event was found on'],
-        ['faint', 'Faint', 'Tint them lightly'],
-        ['off', 'Off', 'Do not mark the channels at all'],
-      ], light, (id) => {
-        light = id;
-        try { BARRY.prefs.set('spotter_light', id); } catch (e) {}
-        lightChannels(current());
-        render();
-      }, { extra: 'spot-light' }),
       el('span', { id: 'spotSaving', class: 'cur-saving' }),
-      el('span', { class: 'spacer' }),
+    ]));
+
+    /* The bar's end (ui.modeEnd): the light switch and Auto-bank under
+       More, the next step of The Storm, and Bank -- then the shell's
+       Simplify, ? and Leave, the last thing on the right. */
+    bar.appendChild(BARRY.ui.modeEnd({
+      more: [
+        BARRY.ui.field({ label: 'Channels it was found on', control:
+          BARRY.ui.seg([
+            ['lit', 'Lit', 'Tint the channels this event was found on'],
+            ['faint', 'Faint', 'Tint them lightly'],
+            ['off', 'Off', 'Do not mark the channels at all'],
+          ], light, (id) => {
+            light = id;
+            try { BARRY.prefs.set('spotter_light', id); } catch (e) {}
+            lightChannels(current());
+            render();
+          }, { extra: 'spot-light' }) }),
+      ],
+      next: {
+        text: 'Next: Eye \u2014 line them up \u2192',
+        title: 'Step 3 of The Storm: Eye lines the confirmed ones up on '
+             + 'their peaks.',
+        onclick: () => {
+          if (BARRY.views.toolkit) BARRY.views.toolkit.pick('eye', 'storm');
+          setView('toolkit');
+        },
+      },
       /* Checkup's own dialog and route, not a second copy of either: one
          entry, one new version, and the dialog says what that version
          will hold before anything is written. Every decision is already
          saved the moment it is made -- this is what turns them into a
          version of the entry Doppler banked. */
-      el('button', { class: 'btn ghost sm', text: 'Bank the results\u2026',
-        title: 'Write these decisions as a new version of the banked run',
-        onclick: bank }),
-      el('button', {
-        class: 'mini spot-auto' + (autoOn() ? ' on' : ''),
-        text: 'Auto-bank: ' + (autoOn() ? 'on' : 'off'),
-        title: autoOn()
-          ? 'The decisions are banked as a new version without asking: when '
-            + 'the last undecided one is decided, and when you leave with '
-            + 'decisions the bank does not have yet. Click to turn it off.'
-          : 'Off: nothing is banked until you press Bank the results. '
-            + 'Click to turn it on.',
-        onclick: () => {
-          try { BARRY.prefs.set(AUTO_KEY, !autoOn()); } catch (e) { /* later */ }
-          render();
-        } }),
-      el('button', { class: 'btn ghost sm', text: 'Line them up…',
-        title: 'Take the confirmed ones to Eye',
-        onclick: () => {
-          if (BARRY.views.toolkit) BARRY.views.toolkit.pick('eye');
-          setView('toolkit');
-        } }),
-      el('button', { class: 'btn ghost sm', text: 'Leave', onclick: exit }),
-    ]));
+      bank: { text: 'Bank the results\u2026', onclick: bank,
+              title: 'Write these decisions as a new version of the banked run' },
+    }));
     updateSaving();
     ensureRaster();
   }
@@ -939,19 +930,23 @@ BARRY.spotter = (function () {
      would hold nothing new writes nothing. On by default, off by the switch
      in the bar, remembered per person. */
   const AUTO_KEY = 'spotter_autobank';
-  function autoOn() {
-    try { return BARRY.prefs.get(AUTO_KEY, true) !== false; }
-    catch (e) { return true; }
-  }
+  /* Always on (2026-10-21: "autobank is a constant, and when you leave"):
+     the decisions are banked when the last one is made and on leaving with
+     work the bank does not have. No switch. */
+  // `BARRY.testNoAutobank` is for a harness's throwaway sets only.
+  function autoOn() { return !BARRY.testNoAutobank; }
 
-  async function quietBank(gid, why) {
+  async function quietBank(gid, why, k) {
+    // Its own kind, passed in: on leaving it runs after the set is let go,
+    // and another set may be open by the time it asks.
+    const sk = k || setKind;
     for (let i = 0; i < 60 && saving > 0; i++) {
       await new Promise((r) => setTimeout(r, 100));
     }
     let res;
     try {
-      res = await apiPost('/api/curation/' + encodeURIComponent(gid) + '/ied/bank', {
-        note: why,
+      res = await apiPost(BARRY.ui.setUrl(gid, sk, 'bank'), {
+        note: why, auto: true,
         added_by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
                   || undefined,
       });
@@ -960,15 +955,18 @@ BARRY.spotter = (function () {
             + ' Bank the results by hand to keep them.', 'warn', 9000);
       return;
     }
+    // Once only (2026-10-26): the server banks a set by itself the first
+    // time every event is decided and never again, and says so here.
+    if (res.skipped || !(res.entries || []).length) return;
     const it = (res.entries || [])[0] || {};
     const v = BARRY.ui.versionLabel(it.version);
     if (it.replaced && !it.new_version) return;          // nothing new
     toast('Banked automatically as ' + v + ': ' + (it.n || 0) + ' decided.',
           'ok', 6000);
-    if (set_ && set_.gid === gid) {
+    if (set_ && set_.gid === gid && set_.kind === sk) {
       try {
-        const got = await api('/api/curation/' + encodeURIComponent(gid) + '/ied');
-        if (set_ && set_.gid === gid) {
+        const got = await api(BARRY.ui.setUrl(gid, sk));
+        if (set_ && set_.gid === gid && set_.kind === sk) {
           banked = got.banked || null; bankDirty = false; render();
         }
       } catch (e) { /* the chip keeps what it had */ }
@@ -999,10 +997,11 @@ BARRY.spotter = (function () {
       progress: { by_label: t, left: left() },
     });
     // What the bank holds now, read back rather than assumed.
+    const sk = set_ ? set_.kind : setKind;
     if (!set_ || set_.gid !== gid) return;
     try {
-      const got = await api('/api/curation/' + encodeURIComponent(gid) + '/ied');
-      if (!set_ || set_.gid !== gid) return;
+      const got = await api(BARRY.ui.setUrl(gid, sk));
+      if (!set_ || set_.gid !== gid || set_.kind !== sk) return;
       banked = got.banked || null;
       bankDirty = false;
       render();
@@ -1033,7 +1032,8 @@ BARRY.spotter = (function () {
     if (!set_ || forging || !BARRY.chipForge) return;
     const lab = await BARRY.chipForge.ask({
       labels: (kind && kind.labels) || [],
-      create: (body) => apiPost('/api/curation/categories/ied', body)
+      create: (body) => apiPost('/api/curation/categories/'
+                                + encodeURIComponent(setKind), body)
         .then((r) => r.label),
     });
     if (lab) forge(lab);
@@ -1277,7 +1277,7 @@ BARRY.spotter = (function () {
     let res;
     try {
       res = await apiPost('/api/presence/beat', {
-        gid: set_.gid, kind: 'ied', first: !!first, doing: 'spotting',
+        gid: set_.gid, kind: setKind, first: !!first, doing: 'spotting',
         n_total: events().length,
         n_decided: events().filter((e) => e.label).length,
         n_this_visit: events().filter((e) => e.label).length - decidedAtEntry,
@@ -1308,7 +1308,7 @@ BARRY.spotter = (function () {
     let all = {};
     try { all = JSON.parse(BARRY.prefs.get(WHERE_KEY, '{}')) || {}; }
     catch (e) { all = {}; }
-    all[set_.gid + ':ied'] = {
+    all[set_.gid + ':' + setKind] = {
       review, index, id: ev && ev.id, t: ev && ev.start,
       at: Date.now(),
     };
@@ -1330,7 +1330,7 @@ BARRY.spotter = (function () {
     let all = {};
     try { all = JSON.parse(BARRY.prefs.get(WHERE_KEY, '{}')) || {}; }
     catch (e) { return null; }
-    const got = all[set_.gid + ':ied'];
+    const got = all[set_.gid + ':' + setKind];
     if (!got) return null;
     const evs = events();
     let i = evs.findIndex((e) => e.id === got.id);
@@ -1356,8 +1356,7 @@ BARRY.spotter = (function () {
     const quiet = !!(opts && opts.quiet);
     let got;
     try {
-      got = await api('/api/curation/' + encodeURIComponent(gid)
-                      + '/ied/receipt');
+      got = await api(BARRY.ui.setUrl(gid, setKind, 'receipt'));
     } catch (e) { return; }
     const s = got.sitting || {};
     // Fewer than this is not a sitting, and on the way out it says nothing.
@@ -1391,7 +1390,7 @@ BARRY.spotter = (function () {
      entered the mode -- so it draws from the session, not from `set_`. */
   function draw(ctx, s, win, x0, plotW, y0, plotH, P) {
     const marks = s && s.curationMarks;
-    if (!marks || marks.kind !== 'ied') return;
+    if (!marks || BARRY.ui.kindBase(marks.kind) !== 'ied') return;
     const cur = (marks.events || [])[marks.index];
     if (!cur) return;
     const span_ = win.t1 - win.t0;
@@ -1461,7 +1460,7 @@ BARRY.spotter = (function () {
     // `if (BARRY.spotter.active)` in the tree relies on.
     get active() { return !!set_; },
     get state() {
-      return set_ ? { gid: set_.gid, kind: 'ied', index,
+      return set_ ? { gid: set_.gid, kind: setKind, index,
                       total: events().length, left: left() } : null;
     },
     // Which version a new set starts from, for web/_dev/vtreetools.html.

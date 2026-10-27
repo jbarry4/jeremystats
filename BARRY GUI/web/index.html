@@ -21,6 +21,22 @@
     }
   } catch (e) { /* private window: the name shows, which is the default */ }
 </script>
+<!-- Jarvis Light (js/lite.js): a speed setting for a slower computer, on
+     before the first paint so the boot screen is already still. `?lite=` in
+     the address wins; a frame inside a /_dev/ harness starts without it. -->
+<script>
+  try {
+    var liteQ = (location.search.match(/[?&]lite=(on|off|1|0)(?:&|$)/) || [])[1];
+    var liteDev = false;
+    try {
+      liteDev = window.top !== window && /\/_dev\//.test(parent.location.pathname);
+    } catch (e) { /* another origin's frame: not a harness */ }
+    if (liteQ ? (liteQ === 'on' || liteQ === '1')
+              : (!liteDev && localStorage.getItem('barry.lite') === 'on')) {
+      document.documentElement.dataset.lite = 'on';
+    }
+  } catch (e) { /* the full drawing, which is the default */ }
+</script>
 <link rel="stylesheet" href="app.css">
 <!-- The boot overlay's own styles, inline and before app.css, so the first
      paint has them. Deliberately duplicating a few colours rather than using
@@ -139,6 +155,15 @@
     .boot-sweep { opacity: 0; }
     #boot { transition: none; }
   }
+  /* Jarvis Light: the same stops, from the first paint. The boot screen is
+     on for as long as the scripts take to arrive, which on a slow computer
+     is the longest it is ever up. */
+  :root[data-lite="on"] .boot-fill, :root[data-lite="on"] .boot-wave,
+  :root[data-lite="on"] .boot-sweep { animation: none; }
+  :root[data-lite="on"] .boot-fill { width: 100%; }
+  :root[data-lite="on"] .boot-wave.live { stroke-dashoffset: 0; }
+  :root[data-lite="on"] .boot-sweep { opacity: 0; filter: none; }
+  :root[data-lite="on"] #boot { transition: none; }
 </style>
 </head>
 <body>
@@ -444,8 +469,13 @@
           <div class="seg" id="xfLayoutSeg" title="Pane layout">
             <button class="active" data-panes="1">1</button>
             <button data-panes="2">2</button>
+            <button data-panes="3">3</button>
             <button data-panes="4">4</button>
           </div>
+          <!-- How the panes are arranged, for the count chosen: two side by
+               side or stacked; three across, one on top or one below; four
+               with the top and bottom widths together or apart. -->
+          <div class="seg sm xf-shape" id="xfShapeSeg" title="How the panes are arranged" hidden></div>
           <!-- Probe geometry. An H10-D is six independent columns, and a CSD
                is only meaningful down one of them, so switching to it lays
                out six panes rather than changing a label. -->
@@ -465,18 +495,23 @@
             </select>
           </div>
           <button class="btn ghost sm" id="xfView">View…</button>
-          <button class="btn ghost sm" id="xfAddSession">Open session…</button>
+          <button class="btn ghost sm" id="xfAddSession">Open recording…</button>
           <button class="btn sm" id="xfFigure">Figure builder</button>
         </div>
       </header>
 
-      <!-- Named across the top whenever a mode is on. Hidden otherwise;
-           see .mode-banner in app.css. -->
+      <!-- THE BANNER (back, 2026-10-21: "I really liked the banner for what
+           view you're in"): the mode named across the top of the workspace
+           in its colour, what it does beside it, then Simplify and Leave --
+           Leave always last, far right; Esc does the same. Hidden unless an
+           add-on is on; see .mode-banner in app.css. -->
       <div class="mode-banner" id="modeBanner">
         <b id="modeName"></b>
         <span class="mode-what" id="modeWhat"></span>
         <div class="spacer"></div>
-        <button id="modeLeave">Leave this mode</button>
+        <button type="button" class="mode-simplify" id="modeSimplify"
+                aria-pressed="false">Simplify</button>
+        <button type="button" class="mode-leave" id="modeLeave">Leave</button>
       </div>
 
       <div class="xf-body" id="xfBody">
@@ -484,17 +519,31 @@
           <div class="dz-inner">
             <svg viewBox="0 0 24 24" class="dz-icon"><path d="M2 12h3l2-7 3 14 3-11 2 6 2-2h5"/></svg>
             <div class="dz-text">
-              <strong>Drop a CSC session here</strong>
+              <strong>Drop a recording here</strong>
               <span>a folder of CSC*.ncs, a single .ncs, or a converted .mat</span>
             </div>
             <div class="dz-actions">
               <button class="btn" id="xfPickFolder">Browse folder…</button>
               <button class="btn ghost" id="xfPickFile">Open file…</button>
-              <button class="btn ghost" id="xfGoSessions">Browse all sessions</button>
+              <button class="btn ghost" id="xfGoSessions">Browse all recordings</button>
             </div>
           </div>
         </div>
         <div class="pane-grid hidden" id="paneGrid"></div>
+        <!-- ONE OVERVIEW STRIP (2026-10-21): with two or more panes, the
+             strip is not copied under each one; the focused pane's sits here,
+             across the bottom (xplore.js placeGlobalStrip). -->
+        <div class="xf-strip" id="xfStrip" hidden></div>
+        <!-- THE MODE'S OWN TOOLS (2026-10-20): one compact bar at the bottom
+             of the workspace whenever an add-on is on. The mode puts its
+             tools in it (#modeSlot, BARRY.modeSlot()); the fold arrow
+             shrinks it to one line. Which mode, Simplify and Leave are on the
+             banner across the top (#modeBanner). -->
+        <div class="mode-bar" id="modeBar">
+          <button type="button" class="mode-fold" id="modeFold" aria-expanded="true"
+                  title="Fold the bar to one line (the keys still work)"></button>
+          <div class="mode-slot" id="modeSlot"></div>
+        </div>
       </div>
     </section>
 
@@ -517,7 +566,7 @@
           </div>
           <button class="btn ghost sm" id="sessHealth" title="Validate every listed recording">Health check all</button>
           <button class="btn ghost sm" id="sessCompare" title="Side-by-side metadata">Compare</button>
-          <button class="btn ghost sm" id="sessReveal">Open root</button>
+          <button class="btn ghost sm" id="sessReveal" title="Open the data root in the file browser">Open folder</button>
           <button class="btn sm" id="sessScan">Scan a root…</button>
         </div>
       </header>
@@ -573,7 +622,7 @@
         <div class="head-actions">
           <button class="btn ghost sm active" id="histTimelineToggle" title="Show the activity timeline">Timeline</button>
           <button class="btn ghost sm" id="histExport" title="Export what is listed as CSV">Export CSV</button>
-          <button class="btn ghost sm" id="histReveal">Open GUI_logs</button>
+          <button class="btn ghost sm" id="histReveal" title="Open GUI_logs in the file browser">Open folder</button>
           <button class="btn ghost sm" id="histRefresh">Refresh</button>
         </div>
       </header>
@@ -615,9 +664,12 @@
           <p class="sub" id="errSub">Everything that failed, with full context — saved to GUI_logs/errors.</p>
         </div>
         <div class="head-actions">
+          <!-- A developer's check, so first and quiet, never in the
+               primary's place at the end (2026-10-20). -->
+          <button class="mini" id="errTest" title="Write one test entry, to check the log end to end">Write a test entry</button>
           <select id="errDay" class="mini-select"></select>
+          <button class="btn ghost sm" id="errReport" title="This computer's errors for the chosen day, each with what it was doing before and after, as one file in GUI_logs/error_reports. Written by itself every evening.">End-of-day report</button>
           <button class="btn ghost sm" id="errRefresh">Refresh</button>
-          <button class="btn ghost sm" id="errTest">Write test entry</button>
         </div>
       </header>
       <div class="pad" id="errBody"></div>
@@ -631,10 +683,10 @@
           <p class="sub" id="resultsSub">Everything the GUI has saved, in the repo's Results folder.</p>
         </div>
         <div class="head-actions">
-          <button class="btn ghost sm" id="resManifest" title="Export a CSV of what is listed">Manifest CSV</button>
-          <button class="btn ghost sm" id="resOpenDir">Open Results folder</button>
+          <button class="btn ghost sm" id="resManifest" title="Export a CSV of what is listed">Export CSV</button>
+          <button class="btn ghost sm" id="resOpenDir" title="Open the Results folder in the file browser">Open folder</button>
           <button class="btn ghost sm" id="resGithub">View on GitHub</button>
-          <button class="btn ghost sm" id="resRefresh">Rescan</button>
+          <button class="btn ghost sm" id="resRefresh" title="Read the Results folder again">Refresh</button>
         </div>
       </header>
       <div class="pad" id="resultsBody"></div>
@@ -648,8 +700,8 @@
           <p class="sub" id="bankSub">Detected events, filed by project, mouse, session and type.</p>
         </div>
         <div class="head-actions">
-          <button class="btn ghost sm" id="bankReveal">Open folder</button>
           <button class="btn ghost sm" id="bankExport">Export CSV</button>
+          <button class="btn ghost sm" id="bankReveal">Open folder</button>
           <button class="btn ghost sm" id="bankRefresh">Refresh</button>
         </div>
       </header>
@@ -767,11 +819,18 @@
 </div>
 
 <script src="js/core.js"></script>
+<script src="js/lite.js"></script>
 <script src="js/jarvisfx.js"></script>
 <script src="js/jarvis.js"></script>
 <script src="js/jarvisshow.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/motion.js"></script>
+<script src="js/supportpanels.js"></script>
+<script src="js/startmenu.js"></script>
 <script src="js/stash.js"></script>
+<script src="js/data.js"></script>
+<script src="js/warmup.js"></script>
+<script src="js/welcome.js"></script>
 <script src="js/syncstate.js"></script>
 <script src="js/features.js"></script>
 <script src="js/activity.js"></script>
@@ -780,7 +839,7 @@
 <script src="js/xplore.js"></script>
 <script src="js/eventimport.js"></script>
 <script src="js/figure.js"></script>
-<script src="js/figrebuild.js"></script>
+<script src="js/figreplay.js"></script>
 <script src="js/sessions.js"></script>
 <script src="js/logs.js"></script>
 <script src="js/results.js"></script>

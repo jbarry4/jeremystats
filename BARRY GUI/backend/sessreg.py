@@ -253,6 +253,38 @@ def warm_opens(paths, workers=16):
     pool_map(_opens, [p for p in uniq if is_here(p)])
 
 
+COPY_FACTS = ("n_channels", "fs", "duration_s")
+
+
+def _copy_channels(rec, here):
+    """(n channels in the copy this machine opens, [disagreeing counts]).
+
+    Read from the sightings' per-path `copies`. The first is None when this
+    machine has not read the copy it reaches; the second is empty unless at
+    least two copies report different counts, and then lists each count
+    with the paths that hold it.
+    """
+    me = shards.machine_id()
+    seen = (rec or {}).get("seen") or {}
+    here_set = {os.path.normcase(x) for x in (here or [])}
+    here_n = None
+    counts = {}
+    for who, sgt in seen.items():
+        if not isinstance(sgt, dict):
+            continue
+        for path, f in (sgt.get("copies") or {}).items():
+            n = (f or {}).get("n_channels")
+            if not n:
+                continue
+            counts.setdefault(int(n), set()).add(path)
+            if who == me and os.path.normcase(path) in here_set:
+                here_n = int(n)
+    if len(counts) < 2:
+        return here_n, []
+    return here_n, [{"n": n, "paths": sorted(ps)}
+                    for n, ps in sorted(counts.items())]
+
+
 def _newest_sighting(rec):
     """The most recent time any machine laid eyes on this recording."""
     best = None
@@ -550,7 +582,7 @@ class Registry:
     # named after the machine that made it. Two people scanning the same
     # drive write two different keys in two different files, so a pull takes
     # both sides instead of fighting over one line.
-    def _seen_patch(self, rec, where, scan_id=None, root=None):
+    def _seen_patch(self, rec, where, scan_id=None, root=None, facts=None):
         """This machine's sighting, merged with whatever other machines wrote."""
         prov = self.store.provenance() if self.store else {}
         seen = dict((rec or {}).get("seen") or {})
@@ -565,10 +597,41 @@ class Registry:
         # The label rides along, because a human reading the table wants
         # "Bluebarry" and not "desktop-4h65ai7-d565".
         who = shards.machine_id()
-        seen[who] = {"at": prov.get("at"), "by": prov.get("user"),
-                     "path": where, "root": root, "scan": scan_id,
-                     "machine": prov.get("machine")}
+        prev = seen.get(who) if isinstance(seen.get(who), dict) else {}
+        # What each copy this machine has read holds (2026-10-20). The
+        # record's own `n_channels` is one fact for the recording, written
+        # by whichever machine scanned last -- from whichever copy it
+        # scanned -- so a card could say 128 channels above a folder of 64
+        # (PTEN m2 s3: an archive copy elsewhere had 128). Per path, kept
+        # across sightings, so the copy you open can speak for itself.
+        copies = dict(prev.get("copies") or {})
+        if where and facts:
+            got = {k: facts.get(k) for k in COPY_FACTS
+                   if facts.get(k) is not None}
+            if got:
+                got["at"] = prov.get("at")
+                copies[where] = got
+        entry = {"at": prov.get("at"), "by": prov.get("user"),
+                 "path": where, "root": root, "scan": scan_id,
+                 "machine": prov.get("machine")}
+        if copies:
+            entry["copies"] = copies
+        seen[who] = entry
         return seen
+
+    def note_copy(self, rec, path, facts):
+        """File what this machine found in one copy of `rec` (the health
+        check counts its channel files). Writes only this machine's
+        sighting, in this machine's shard. Returns True when it wrote."""
+        if not rec or not path or not facts:
+            return False
+        ident = {k: rec.get(k) for k in ("key", "loose_key", "mouse",
+                                          "session", "group", "start",
+                                          "label")}
+        ident["path"] = path
+        self.store.upsert_session(ident, {
+            "seen": self._seen_patch(rec, path, facts=facts)})
+        return True
 
     def seen_by(self, rec, names):
         """Has any of `names` seen this recording?
@@ -682,7 +745,8 @@ class Registry:
             # The sighting is always refreshed -- it is what a scan is for --
             # but only this machine's key changes, in this recording's own
             # file.
-            patch["seen"] = self._seen_patch(rec, ident["path"], scan_id, root)
+            patch["seen"] = self._seen_patch(rec, ident["path"], scan_id, root,
+                                             facts)
             self.store.upsert_session(ident, patch)
             seen += 1
         return new, seen
@@ -1125,6 +1189,13 @@ class Registry:
             "has_video": bool(rec.get("has_video")),
             "converted": bool(rec.get("converted")),
         }
+        here_n, copy_n = _copy_channels(rec, here)
+        # The channel count of the copy THIS machine opens, when it has
+        # read it -- what a card should say -- and, only when copies
+        # disagree, every count on record with the paths that hold it.
+        row["n_channels_here"] = here_n
+        if copy_n:
+            row["copy_channels"] = copy_n
         row["reachable"] = bool(row["here"])
         # "Can I click this right now." The filter that says "on this
         # machine" means this one, not `reachable`.

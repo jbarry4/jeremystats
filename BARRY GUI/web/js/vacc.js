@@ -76,17 +76,21 @@ BARRY.vacc = (function () {
        are there while the live answer comes -- only when there is nothing
        yet, and never waited on. `knowsAt` stays 0, so the live answer is
        still asked for and replaces it. */
+    // Kept by BARRY.data now (web/js/data.js, 2026-10-21), shared with the
+    // Sessions view's own read of it, and a 304 when nothing has changed.
     let liveDone = false;
-    const live = api('/api/vacc/knows').finally(() => { liveDone = true; });
+    const live = BARRY.data.get('/api/vacc/knows', { fresh: !!force })
+      .finally(() => { liveDone = true; });
     if (!knows) {
-      const was = await BARRY.stash.get('vacc-knows');
+      // However long the browser's store takes, never longer than the live.
+      const was = await Promise.race([BARRY.data.stale('/api/vacc/knows', 4000),
+                                      live.then(() => null, () => null)]);
       if (was && was.value && !liveDone && !knows) take(was.value);
     }
     try {
       const got = await live;
       take(got);
       knowsAt = Date.now();
-      BARRY.stash.put('vacc-knows', got);
     } catch (e) {
       knows = knows || {};
     }
@@ -437,11 +441,11 @@ BARRY.vacc = (function () {
       list.appendChild(el('button', { class: 'vacc-ls-row up', text: '..',
                                       onclick: () => go(up) }));
     }
-    for (const d of (here.dirs || [])) {
+    for (const d of BARRY.ui.natSort((here.dirs || []).slice(), (x) => x.name)) {
       list.appendChild(el('button', { class: 'vacc-ls-row dir', text: d.name,
                                       onclick: () => go(d.path) }));
     }
-    for (const r of (here.recordings || [])) {
+    for (const r of BARRY.ui.natSort((here.recordings || []).slice(), (x) => x.name)) {
       list.appendChild(el('div', { class: 'vacc-ls-row rec' }, [
         el('span', { text: r.name }),
         el('span', { class: 'vr-n', text: r.n_channels + ' ch' }),
@@ -475,7 +479,7 @@ BARRY.vacc = (function () {
     const line = (label, rows, cls) => rows.length
       ? el('details', { class: cls || '' }, [
           el('summary', { text: rows.length + ' ' + label }),
-          el('div', {}, rows.slice(0, 40).map((r) => el('div', {
+          el('div', {}, BARRY.ui.natSort(rows.slice(), (r) => [r.label, r.path]).slice(0, 40).map((r) => el('div', {
             class: 'hint quiet',
             text: (r.label ? r.label + ' — ' : '')
                 + (r.path || '').replace(d.root + '/', '')
@@ -779,6 +783,11 @@ BARRY.vacc = (function () {
           + 'not ask again.', 'ok', 8000);
       closeModal();
       await status(true);
+      /* Signed in means signed in: the mode comes on with it. It used to
+         stay off, so somebody who had just signed in still saw an unlit
+         VACC switch and signed in again to light it (2026-10-20). */
+      greeted(last && last.signed_in_at);
+      if (!BARRY.state.vacc && typeof applyVacc === 'function') applyVacc(true);
       BARRY.activity.log('vacc.signin', { netid: res.netid,
                                           made_key: !!res.made_key });
     } catch (e) {
@@ -1294,8 +1303,33 @@ BARRY.vacc = (function () {
   }
 
   /* ---- boot ------------------------------------------------------------- */
+  /* A sign-in this machine's app has already greeted, by its stamp.
+     Per machine (PREFS_LOCAL `vacc_signed_ack`), never synced. */
+  function greeted(at) {
+    if (!at || !BARRY.prefs) return;
+    try { BARRY.prefs.set('vacc_signed_ack', at); } catch (e) { /* later */ }
+  }
+
+  /* Signed in during Setup (backend/onboard.py), so open signed in: the mode
+     on and one sentence saying so, once per sign-in. Setup writes
+     `signed_in_at`; this compares it with the last one greeted here. */
+  function adoptSetupSignIn() {
+    const d = last || {};
+    if (!d.configured || !d.signed_in_at || !BARRY.prefs) return;
+    if (new URLSearchParams(location.search).get('vacc') !== null) return;
+    let seen = null;
+    try { seen = BARRY.prefs.get('vacc_signed_ack', null); } catch (e) { seen = null; }
+    if (seen && Number(seen) >= Number(d.signed_in_at)) return;
+    greeted(d.signed_in_at);
+    if (!BARRY.state.vacc && typeof applyVacc === 'function') applyVacc(true);
+    toast('Signed in to VACC as ' + (d.netid || 'you') + '. VACC Mode is on.',
+          'ok', 7000);
+    status(true);
+  }
+
   async function init() {
     await status();
+    adoptSetupSignIn();
     /* The reachability answer is local arithmetic and cheap -- 0.05 s for
        687 recordings -- but the registry read underneath it is four to
        eight seconds the first time a process asks, and this runs before

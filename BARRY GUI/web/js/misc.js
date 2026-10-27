@@ -156,12 +156,15 @@ BARRY.views.misc = (function () {
     }));
     host.appendChild(rowList(notebooks, 'No notebooks in the repo.'));
 
-    /* ---- archives ---- */
-    host.appendChild(el('div', {
-      class: 'section-label',
-      text: 'Archived / inactive — ' + archived.length,
-    }));
-    host.appendChild(rowList(archived, 'No archived scripts.'));
+    /* ---- archives ----
+       At the bottom, behind the one toggle every list uses
+       (ui.archivedTail, 2026-10-20): counted, kept, not in the way. */
+    const tail = BARRY.ui.archivedTail({
+      key: 'misc-scripts', items: archived, noun: ['script', 'scripts'],
+      render: (xs) => rowList(xs, ''),
+      onToggle: () => render(),
+    });
+    if (tail) host.appendChild(tail);
   }
 
 
@@ -560,9 +563,9 @@ BARRY.views.misc = (function () {
     host.appendChild(grid);
   }
 
+  /* Whole, never cut short (the house rule): the row wraps instead. */
   function shortPath(p) {
-    if (!p || p.length < 52) return p;
-    return p.slice(0, 22) + '…' + p.slice(-26);
+    return p;
   }
 
   function escapeHtml(s) {

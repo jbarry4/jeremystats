@@ -29,8 +29,8 @@
     "schema": "2026-09-04T15:57:01.904977+00:00",
     "session": "2026-09-04T15:57:01.904977+00:00",
     "start": "2026-09-04T15:57:01.904977+00:00",
-    "updated": "2026-10-19T15:02:35.107903+00:00",
-    "view_state": "2026-10-12T18:56:29.958712+00:00"
+    "updated": "2026-10-23T19:20:51.437799+00:00",
+    "view_state": "2026-10-16T17:37:14.220304+00:00"
   },
   "_keys": {
     "paths": {
@@ -40,11 +40,15 @@
       ],
       "Y:\\ProcessedPtenData\\PTENDKOM60\\m60s4jul10\\2025-07-10_13-51-27": [
         "set",
-        "2026-09-04T15:57:01.904977+00:00"
+        "2026-09-10T04:07:57.355416+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\PTENDKOM60\\m60s4jul10\\2025-07-10_13-51-27": [
+        "set",
+        "2026-10-23T19:20:51.437799+00:00"
       ],
       "vacc:se0695d94e768": [
         "set",
-        "2026-10-19T15:02:35.107903+00:00"
+        "2026-10-19T15:04:39.703138+00:00"
       ]
     },
     "seen": {
@@ -67,7 +71,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-19T15:02:35.107903+00:00",
+    "at": "2026-10-23T19:20:51.437799+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -102,7 +106,8 @@
   "paths": [
     "D:\\PTEN\\CTL\\PTENDKOM60\\m60s4jul10\\2025-07-10_13-51-27",
     "Y:\\ProcessedPtenData\\PTENDKOM60\\m60s4jul10\\2025-07-10_13-51-27",
-    "vacc:se0695d94e768"
+    "vacc:se0695d94e768",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\PTENDKOM60\\m60s4jul10\\2025-07-10_13-51-27"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -145,9 +150,9 @@
   "session": 4,
   "start": "2025-07-10T13:51:27",
   "updated": {
-    "app_version": "2026.10.15.1",
-    "at": "2026-10-19T11:02:35-04:00",
-    "commit": "5e65af0c",
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:51-04:00",
+    "commit": "be1e2ae4",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -201,9 +206,9 @@
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 0.8,
+    "span": 0.7,
     "stft_mode": null,
-    "t0": 1783.8138,
+    "t0": 1765.79545,
     "ylim": null
   }
 }

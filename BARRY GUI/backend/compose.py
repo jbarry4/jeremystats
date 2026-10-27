@@ -630,9 +630,24 @@ def _wrap(text, width):
     return "\n".join(textwrap.wrap(str(text), width)[:8])
 
 
-def _draw_traces(ax, sess, spec, layout, S=None):
+def _label_room(ax, S):
+    """How much height the channel labels have, in inches.
+
+    The figure's height for the builder that has always drawn the whole
+    page at once. figkit draws a panel alone as a preview tile and again
+    inside the page, and the two must thin their labels the same way, so it
+    asks for the axes' own height instead (`axes_based`).
+    """
+    if getattr(S, "axes_based", False):
+        return ax.get_position().height * ax.figure.get_size_inches()[1]
+    return ax.figure.get_size_inches()[1] * 0.6
+
+
+def _draw_traces(ax, sess, spec, layout, S=None, win=None):
+    """`win` is a window already read (figkit reads it once to know the
+    panel's extent before anything is drawn); otherwise it is read here."""
     S = S or _Scale(11.0, 8.5, layout)
-    win = csc.get_window(
+    win = win or csc.get_window(
         sess, spec.get("t0", 0), spec.get("t1", 10),
         channels=spec.get("channels"),
         px=int(spec.get("px", 2200)),
@@ -675,7 +690,7 @@ def _draw_traces(ax, sess, spec, layout, S=None):
     ax.set_yticks([(n - 1 - i) * step for i in range(n)])
     # Thin out channel labels when they would collide at this page size.
     lab_in = S.pt(S.chan_pt) * 1.5
-    max_labels = max(2, int((ax.figure.get_size_inches()[1] * 0.6) / lab_in))
+    max_labels = max(2, int(_label_room(ax, S) / lab_in))
     stride = max(1, int(np.ceil(n / max_labels)))
     ax.set_yticklabels(
         [(s["label"] + (" (bad)" if (s["bad"] or s["number"] in bad) else ""))
@@ -706,13 +721,14 @@ def _draw_traces(ax, sess, spec, layout, S=None):
                           pad=1.2))
 
 
-def _draw_image_panel(ax, sess, spec, S=None):
+def _draw_image_panel(ax, sess, spec, S=None, panel=None):
     """Draw a rendered raster into `ax`, and hand back what was drawn.
 
     Returned so a caller drawing several can put one colorbar on the lot --
-    the columns of a probe share a scale, so they share a bar.
+    the columns of a probe share a scale, so they share a bar. `panel` is a
+    render already made (figkit renders once to learn the colour range).
     """
-    panel = analysis.render_panel(sess, spec)
+    panel = panel or analysis.render_panel(sess, spec)
     img = _decode_data_uri(panel["image"])
     extent = panel["extent"]
 
@@ -738,7 +754,7 @@ def _draw_image_panel(ax, sess, spec, S=None):
         ax.set_ylabel("Channel", fontsize=S.label_pt, color=INK)
         if rows:
             lab_in = S.pt(S.chan_pt) * 1.5
-            max_labels = max(2, int((ax.figure.get_size_inches()[1] * 0.6) / lab_in))
+            max_labels = max(2, int(_label_room(ax, S) / lab_in))
             stride = max(1, int(np.ceil(len(rows) / max_labels)))
             # The image is drawn origin="upper", so rows[0] sits at the TOP of
             # the extent. Ticks therefore descend, or labels mirror the data.

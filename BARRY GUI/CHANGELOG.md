@@ -15,6 +15,1827 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.27.1 - Braces and Lock: settings that stay put, and the batch's switches as chips
+
+Reload the page; nothing on the server changed.
+
+- **One set no longer redraws the whole page on every press.** A measure,
+  the filter, a group or the window used to rebuild everything: the picker,
+  the plan, the channel grid and both alignment lists, which were fetched
+  again each time. Now only the parts that changed are redrawn.
+- **Changing the filter or the version no longer blanks the plan.** What it
+  said stays, dimmed, with "reading it again…" until the new answer arrives.
+  "Line them up" waits for it.
+- **In Many, the filter shows your choice at once.** Before, the button
+  didn't change until something else redrew the page.
+- **The batch's two checkboxes are now chips:**
+  - **Send to the VACC** is on by default wherever there is a cluster. Press
+    it to keep the sets this computer has here.
+  - **Read again** is off by default.
+
+  Each chip says what it means for this batch. The settings, the chips and
+  the sentence below them are now on separate rows, so the sentence no
+  longer runs off the card.
+
+---
+
+## 2026.10.26.2 - Tab 10, Joe export: everything for Joe in one list, and a site he downloads it from
+
+**Restart Jarvis**: `backend/app.py` changed and `backend/joeexport.py` is new.
+
+- **Tab 10 · Joe export** lists everything that goes to Joe, in this order (not the slides, which
+  go to him separately):
+  - **The figures**: every tab 9 figure in tab 9's order, grouped by
+    window and band.
+    - Each figure shows its three tests, FP first.
+    - Each ring has a toggle for its three views (FP, the shuffles, the
+      rats' flips), each as PDF, SVG and 600 dpi PNG.
+    - Each figure's numbers for Prism come as one zip holding the .xlsx
+      and the .pzfx.
+    - Every legend is also in one text file.
+  - **The statistics**: tab 8's 24 lights with their P values, the results
+    table, the read-me and the SPSS zip.
+  - **Make the numbers again**: the standalone script and its inputs.
+- **Download everything** builds one zip in the browser, with a folder per
+  section; each group of figures has its own button too.
+- **Joe's site.** "Assemble the site" copies the list, its files and a
+  password page into `GUI_logs/.cache/joe_site`. That folder is Vercel
+  project `joe-export`, with its own password and its own sign-in cookie,
+  separate from the review site's. It is 66 MB of the 100 MB a deploy can
+  take. Putting it online stays a separate step, from that folder:
+  `vercel deploy --prod` (the Vercel CLI is now installed on Bluebarry).
+- The page that is Joe's site and the list in tab 10 are drawn by the same
+  file (`web/js/joe_export.js`), so they cannot drift apart.
+- Tab 8's help now describes the lights as blue, with an orange diamond
+  for a check that lit. It still said green.
+- New check: `python tools/check_joeexport.py`.
+
+## 2026.10.26.1 - Lock: pick which origins to line up, the dentate-spike band, and fixes from Rain
+
+**Restart Jarvis**: `backend/app.py`, `backend/braces.py`,
+`backend/bracesset.py`, `backend/eventbank.py`, `backend/curation.py` and
+`backend/cloudsync.py` changed.
+
+### Lock
+
+- **Choose which groups to line up.** There are three switches: Incisor
+  only, Merged and Doppler only, each with its count. A group that is
+  switched off is held: its stamps don't move, and each fills its own peak.
+  This replaces the "Braces' stamps stay locked" switch. All three start on.
+  After that, a set opens with the groups it was last run with, or else the
+  ones Lock was last run with. In Many, each row has its own three switches.
+- **Each set says plainly whether Braces has been run** (**Braces ✓ 156**,
+  or **no Braces**), in the set menu, beside the switches, and on each Many
+  row.
+- **Braces is recognised again on sets aligned on another computer.** The
+  mark that says a version is an alignment didn't sync, so M22 s3, M21 s2
+  and others read as "no Braces". Older versions are now recognised by
+  Braces' own note, and the mark syncs from now on.
+- **The dentate-spike band (5–100 Hz) is the default filter.** The IED band
+  (1–70 Hz) is one click away under Filter.
+- **In the review, the traces can switch** between the DS band and the IED
+  band, or show **Both** side by side.
+- **The counts add up.** "191 spikes · 108 lined up · 83 held", and
+  "confirmed" no longer counts the held stamps.
+- **The Event Bank calls Lock's versions "Lock"**, not "Braces".
+- **Lock has its own entry in Profile › Support panel preferences** ("Lock
+  review").
+- **The review bar folds in three stages**, as Panning's does. The first
+  click hides the options and keeps the buttons.
+
+### Every curation tool
+
+- **Only one mode at a time, Braces and Lock included.** Entering Lock's
+  review used to leave Panning's bar, for another recording, underneath it.
+- **A set banks itself once**, the first time every event is decided, and
+  never again. Later changes are banked with **Bank the results**. Leaving
+  no longer banks, and touching an event without changing it never makes a
+  version. This applies to Checkup, Spotter and Panning.
+
+---
+
+## 2026.10.23.8 - Joe's figures, expanded: theta, cue 1 → cue 2, cue effects, Prism, a filter grid
+
+**Restart Jarvis**: `backend/joefigs.py` and `backend/app.py` changed.
+Then press "Draw the figures" on tab 9 once (about 5 minutes).
+
+- **More rings.** Tab 9 now draws comparisons 1, 2 and 5 (cue 1 → cue 2,
+  every trial whatever its sounds) in both theta and gamma, whether tab 8's
+  light passed or not. Any other window whose light passes gets a ring too.
+  Follow-ups still wait for tab 8's light.
+- **The rows say what they are.** Each row is a "cue effect" (cue −
+  baseline), not a Δ: the Precon1 cue effect, the Precon4 cue effect, and the
+  change in cue effect (Precon4's − Precon1's). The rows are labelled on
+  every ring. The new **Supplementary Figure S1** shows the arithmetic on one
+  real pair.
+- **Three tests, always FP, P, T.** The rings open on FP. The toggle reads
+  FP · Shuffles · Rats. Chips, legends and panel d all list FP first.
+- **Sorted.** Figures are grouped by window, then band (theta, then gamma),
+  with each group's ring on top. Its follow-ups follow, sorted by how many
+  tests they pass (all three, then two, then one), with FP counting most.
+- **A grid on the right** shows or hides each window × band group. It
+  remembers its choice in the browser.
+- **Prism.** Every figure's numbers download as .xlsx (one sheet per table)
+  and as .pzfx (GraphPad's own format):
+  - each rat's four values;
+  - each rat's change;
+  - the null sets, all 10,000.
+- **Colour-blind safe.** Tab 8's lights are blue and orange. A check that
+  lit is also a diamond, and a light that did not is a hollow ring.
+- **PAC figures say what the number is.** The title used to read as if the
+  coupling were between the pair, in gamma. It now reads, for example,
+  "followed up from the gamma coherence of R PER – L DHC: theta–gamma
+  coupling within R PER". The axis, a subtitle and the legend say how the
+  modulation index is made: Tort MI from θ 5–12 Hz phase and γ 30–90 Hz
+  amplitude, over each trial's whole window, then averaged over trials, one
+  dot per rat.
+- **Joe's deck** (`tools/joe_deck`) is rebuilt with theta and comparison 5.
+  It uses the cue-effect wording, the FP, P, T order and the new lights.
+
+## 2026.10.23.7 - Fixes from the end-of-day error reports (10-20 to 10-23)
+
+**Restart Jarvis**: `backend/app.py`, `backend/joe.py` and
+`backend/lazyimp.py` changed.
+
+- **Root Canal: committing again right after a commit said "Read it
+  again".** On 10-20, set 46fd29a77cc7 was cleaned (243 of 431 kept). The
+  next press of Bank was refused with "The read on file holds 431 events
+  and this version has 243". The panel still names the read it opened,
+  and the live set had become the cleaned list. Now the cleaned set is
+  found inside that read, as it already was without one named. A second
+  pass also gets the right sentence, and with it the "Clean again anyway"
+  dialog: *this version is already Root Canal's output*.
+- **Tab 8 and Tab 9 could fail to open on a just-started Jarvis.** Two
+  requests importing scipy at the same moment hit Python's import deadlock
+  check (10-21, twice). Tab 8's code now loads scipy only when it first
+  measures something, and the first import of any lazily loaded library
+  happens one thread at a time.
+- **One sync timeout is no longer an error.** On 10-21 both lab computers
+  timed out against Supabase in the same minute, and both synced again
+  on the next try. A timeout or lost connection now goes in the error log
+  only if the next attempt fails too. Any other failure is logged the
+  first time, as before.
+
+---
+
+## 2026.10.23.6 - Every PTEN session opens on a new computer: the paths Jarvis knows now match netfiles
+
+**Restart Jarvis**: `backend/app.py`, `backend/vacc.py`, `backend/cloudsync.py`,
+`backend/tombs.py` and the new `backend/pathtidy.py` changed.
+
+### Why PTEN would not open on a new computer
+
+- Every one of the 62 PTEN sessions in *PTEN_KCNT1 Dentate Spike Data* is
+  on netfiles, in ProcessedPtenData. But 59 of them were on record only as
+  `Y:\ProcessedPtenData\...`. `Y:` is the drive letter the rigs map, so a
+  computer that hasn't mapped it (a new laptop, or Bluebarry) could not
+  open any of them, even though it can reach the share by name.
+- 197 netfiles paths on record were gone. HeadfixPilot, Chronic_SAPilot,
+  5XFAD, Cdrivebckup and HOF were put into archives or moved.
+
+### What changed
+
+- **Paths now match the share.** Each of the 462 recordings that needed it
+  was updated:
+  - 284 now carry the share's own address
+    (`\\netfiles03.uvm.edu\bigdata_jbarry\...`), which opens on any lab
+    computer with or without a mapped drive.
+  - 206 dead paths were dropped: the 197 gone from netfiles, plus 4 test
+    folders and 5 paths to `timestamps.mat` files.
+  - All 62 sheet sessions now open from the share alone.
+  - Nothing on netfiles was touched, and no recording was removed. A
+    recording whose last copy went into a HeadfixPilot archive records
+    which one (`archived_in`).
+  - Local-drive paths (`D:\PTEN\...`) were left alone, because they may be
+    another computer's disk.
+- **A dropped path can't come back.** Each one is remembered. The cloud
+  copy is marked deleted, and a pull skips any path whose deletion is newer
+  than the copy it's offered. Other computers get the change with their
+  next git pull.
+
+### Everything VACC knows, redesigned
+
+- **It matches the welcome.** Sessions › Everything VACC knows now has:
+  - a card for each place (the cluster's own space, and netfiles), each
+    with its own **Find everything** button;
+  - the live console, where every folder a walk finds streams past;
+  - the counts as tiles.
+- **Keep the paths true** is new. **Check every path** compares everything
+  Jarvis knows against the latest netfiles walk. It makes one read-only
+  connection that asks the cluster about each path the walk didn't list,
+  and shows what would change, recording by recording. **Update N
+  recordings** then applies it, and the console shows each recording as it
+  goes. Run it again after netfiles changes.
+
+---
+
+## 2026.10.23.5 - Lock: a locked Braces stamp holds its peak, and the rest go around it
+
+**Restart Jarvis**: `backend/braces.py` and `backend/app.py` changed.
+
+- **A locked stamp fills the one peak it sits on**, the nearest within
+  the pool's merge window (20 ms). It is not moved. That peak is taken out
+  before anything else is placed, so a Doppler stamp that wanted it goes to
+  the largest peak still free in its ±200 ms window. With two locked and
+  one free, the free one goes to the third peak. Before this, a locked
+  stamp blocked every peak within 12 ms of it.
+- **A stamp pushed off a locked peak, with more than one peak left, is
+  flagged** "pushed off a Braces stamp's peak, several left", so somebody
+  looks at it. With only one peak left, it goes there unflagged.
+- **The review bar names the peak a locked stamp holds.**
+- **A merged event filed under Doppler's time is locked too**, if its
+  Incisor half is where Braces put it.
+- Alignments made under the old rule stay as they are. Running a set again
+  reads it fresh rather than reopening them.
+
+---
+
+## 2026.10.23.4 - Tab 9 tests every result against FP too: fake trials at random moments of FP1 and FP2
+
+From Shahriar: "add another statistical test to everything... a FP
+comparison... take random intervals of FP1/FP2 and see what the data set's
+rank is." **Restart Jarvis**: `backend/joe.py`, `backend/joefigs.py`,
+`backend/app.py` and `backend/monolith.py` changed. The figures here are
+drawn already.
+
+### Added
+
+- **The FP pool: fake trials in FP1 and FP2.** For every tested rat-day, a
+  fake cue-1 onset every 10 s of each FP recording (at least 10 s from its
+  ends), with a real trial's seven windows round it.
+  - Each window is measured exactly as a trial's is: the same wire rule,
+    clipping measured the same way, every measure. There are 1,017 fake
+    trials in all.
+  - It was measured on the VACC's copies of the FP recordings, checked
+    against the sizes tab 8 read, in 5.4 minutes on 32 CPUs (job 6000771).
+  - It is kept in `joe/fp_pool/`, one file a rat-day.
+  - Tab 9 offers "Measure them on the VACC" when it has not been made.
+- **The FP test, on every ring and every follow-up.**
+  - In each of 10,000 sets, every session gets as many fake trials as it
+    had real ones, drawn at random with replacement. Each is taken with its
+    two windows in random order: FP has no cue, so either window can stand
+    for it.
+  - Each fake trial also loses the windows the matching real trial lost to
+    clipping.
+  - The ring or the follow-up's change is then made exactly as the real one
+    is, and the real value's rank among the sets is its P.
+  - Rings: a third choice on the toggle ("FP intervals"), with its own
+    figure files (`fig_N_fp`) and legend.
+  - Follow-ups: panel d shows both second opinions on one axis, the
+    shuffles grey and FP blue, each with its own P. There is an FP chip
+    beside each shuffle chip, and FP is in the legend.
+  - Methods? has an FP section with its own animation: fake trials dropped
+    into FP, then the figure's own FP sets.
+- **The deck for Joe has it too:** `Joe figures explained 2026-10-23.pptx`,
+  102 slides. Each follow-up's verdict now weighs both second opinions.
+
+### Two things the checks caught in the first version
+
+- **The null was centred on the pool's own average, not on nothing.**
+  Drawing from a few minutes of FP centres the sets on that pool's average
+  change, which is chance; check_joe caught a ring 2.3 SDs off zero. The
+  random window order centres it exactly.
+- **FP looked cleaner than it is.** The cues lose far more windows to
+  clipping than FP does: in rat 6's Precon1, 21% of trial windows are
+  usable against 94% of FP's. So an FP set averaged more windows than the
+  real session and its null came out too narrow; four follow-ups passed FP
+  but not the shuffle.
+  - Each fake trial now loses its real trial's windows.
+  - The FP spread now matches the trial shuffle's: Figure 1's change has an
+    SD of 0.283 against 0.275.
+
+### On the real data
+
+- **Figure 1 (comparison 1), Precon4 − Precon1:** FP does not confirm it.
+  Increases: rats P = 0.012, trials P = 0.085, FP P = 0.100. Both: rats
+  P = 0.023, trials P = 0.187, FP P = 0.199.
+- **Figure 2 (comparison 2), Precon4 − Precon1:** the increases pass all
+  three (rats P = 0.027, trials P = 0.030, FP P = 0.037). Both: P = 0.062,
+  0.058 and 0.074.
+- **Follow-ups:**
+  - 9 of the 20 pass both second opinions: 1.2, 1.3, 1.4, 2.1, 2.3, 2.4,
+    2.9, 2.12 and 2.13.
+  - 5 pass one: 1.5 and 2.7 the shuffle only; 2.2, 2.10 and 2.11 FP only.
+  - 6 pass neither: 1.1, 1.6, 1.7, 2.5, 2.6 and 2.8.
+
+### Checked
+
+- `tools/check_joe.py`, the new checks:
+  - the pool's fake trials (a trial's seven windows round each onset,
+    every measure, every tested rat-day);
+  - one FP set by hand;
+  - FP on every ring with its own files and legend;
+  - FP's sets of a change sit round zero;
+  - the planted change stands out of FP;
+  - FP beside every follow-up, from the same observed change.
+- `web/_dev/monolith.html`:
+  - the three-way toggle, with FP's picture, chips, legend, downloads and
+    animation;
+  - the FP chips and the FP line;
+  - not measured: said, with the button posting `fp_vacc`.
+- `tools/check_review.py`: the copy carries every test's files.
+
+## 2026.10.23.3 - Braces and Lock look ±200 ms either way by default
+
+A stamp may now move up to 200 ms by default (it was 100). The *Window ±ms*
+box still changes it, for one set and for Many. Alignments made at ±100 ms
+are kept, and they still open under the settings they were made with.
+Reload the page; nothing on the server changed.
+
+---
+
+## 2026.10.23.2 - The figure builder, rebuilt: grab what you see
+
+**Restart Jarvis**: `backend/figkit/`, `backend/figures.py`,
+`backend/figroutes.py`, `backend/compose.py`, `backend/cloudsync.py` and
+`backend/app.py` changed.
+
+### Grab what you see
+
+- **Figure builder**, at the top right of Xplorefinder, grabs every pane on
+  screen, as it sits, into a figure. The same button is now at the top
+  right of every ToolKit tool.
+  - Root Canal's button grabs the 3D space and the three flat views.
+  - Tools whose figures are not built yet show the button greyed, with the
+    reason.
+- **A figure is one recording.** Panes of another recording are left out,
+  and the builder says so. Plots a tool pooled across recordings (Root
+  Canal's Pooled view) cannot be grabbed.
+- **A grab is a draft.** It saves itself as you work and waits in
+  **Results › Figures** until you export it. Close the builder and come
+  back to it any time.
+
+### The builder
+
+- A big dialog in three columns:
+  - **left:** shapes, the grid, the panels;
+  - **middle:** the page;
+  - **right:** the journal, the size, the words, and the panel you chose.
+- **Journals:** Nature (89, 120 or 183 mm, Arial, 5-8 pt), J Neurosci,
+  Cell, Poster or slide, and the lab pages every figure used before.
+- **Click the thing to change it.** Click a panel's title, an axis, the
+  colour bar or the letter on the page, and a small editor opens for just
+  that.
+- **Units are never typed.** An axis offers only the units its numbers can
+  be shown in: s, ms, µs; µV, mV; Hz, kHz; µm, mm. Picking one rescales the
+  numbers. The words in front of the unit are yours.
+- **Every axis has From and To**, and a choice: cut to the data, or extend
+  past it.
+- **Panels of the same kind share their scales**: the same seconds across,
+  the same colour range. The chain on a panel gives it its own.
+- **Labels:**
+  - panel letters (a, b, c for Nature; A, B, C for the others), which
+    re-letter when panels move;
+  - scale bars in place of the axes on traces;
+  - layer names from the recording's layer sheet.
+- **The footer is always there and never cut.** It names the recording,
+  then one line per panel saying where its numbers came from, then the
+  Jarvis version and commit, who made it, the computer and the date.
+- **Shapes** to start from (two across, one big with two beside it, and
+  so on). Then drag panels and drag their edges, as before.
+- **Right-click a panel** to duplicate it, share or separate its scales,
+  put its labels back, open it in its tool, or take it out.
+- **Keys:** Ctrl+Z and Ctrl+Shift+Z, Delete, the arrow keys to move a
+  panel, Ctrl+E to export, Esc to close.
+- **Only what changed is redrawn.** Change one word and that panel
+  redraws; the old picture stays, dimmed, until the new one arrives.
+
+### Versions, frozen
+
+- **Export** makes the figure's next version: PNG, SVG and PDF, plus the
+  numbers each panel plotted. They are filed under
+  `Results/Figures/<recording>/`.
+- **A version never changes once it is made.** It is never redrawn on
+  newer data. Editing and exporting again makes the next version beside
+  it.
+- The **version tree** in the builder's header opens any version.
+- A figure's files travel by git. Supabase gets the catalogue row and
+  **never the picture**.
+
+### The walk-through (it was "Rebuild")
+
+- **Walk through…** on a figure in Results:
+  1. checks what the figure needs before doing anything;
+  2. opens the recording;
+  3. sets each panel's tool up the way the panel was grabbed;
+  4. **reads back what is actually on screen** and compares it with the
+     figure's record;
+  5. shows the original and a fresh drawing of the screen **side by side**,
+     with what moved in plain words.
+- **Keep the redraw as the next version** is offered, never done for you.
+- Root Canal panels are walked through in Root Canal. They need the banked
+  set, not the recording's folder.
+- The old Rebuild drove the app step by step, then waited a fixed 2.2 s and
+  hoped nothing had moved. Late writes kept undoing it, and it sent Root
+  Canal's 66 figures into an Xplorefinder replay that could not work.
+  Reading back what is on screen is what makes a late write a reported
+  difference rather than a silent one.
+
+### Results
+
+- **Results › Figures**, a third view beside Files and Artifacts. It lists
+  every figure by recording: drafts, versions, **Open**, **Walk through…**
+  and **Archive** (nothing is deleted).
+- A figure file in Results has **Open** (into the builder) and **Walk
+  through…** where Rebuild was.
+
+### For later
+
+- `tools/migrate_figures_v2.py` brings the 75 figures made before this
+  (9 by the old builder, 66 by Root Canal) into the figure store, and
+  archives the 77 a harness made. It changes nothing until it is run with
+  `--apply`.
+- Figures from the other ToolKit tools come next. Each needs its own panel
+  drawing, grab and walk-through.
+
+### Tests
+
+- `tools/test_figkit.py` covers:
+  - units, ranges, shared scales and letters;
+  - refusing a second recording or a pooled plot;
+  - the footer never cut;
+  - tile against page;
+  - png, svg and pdf;
+  - old recipes;
+  - the walk-through's plan;
+  - the store.
+- `_dev/figv2.html` (50 checks): grab, click-to-edit, units, shapes,
+  links, right-click, undo, export, the walk-through, Results › Figures,
+  and the ToolKit button.
+- `_dev/figrc.html` (20 checks): Root Canal grab, draw, a pair panel in mV,
+  export and walk-through.
+- The old builder's harnesses are retired, along with `figrebuild.js`:
+  `figgrid.html`, `figtf.html`, `figh10.html`, `rebuild.html` and
+  `gridgeo.html`.
+
+## 2026.10.23.1 - A welcome for a new computer, and the test names folded into Debug_Bot
+
+**Restart Jarvis**: `backend/people.py`, `backend/app.py`, `backend/vacc.py`
+and the new `backend/livefeed.py` changed.
+
+### Welcome
+
+- **A computer that's new to Jarvis gets a welcome screen** instead of the
+  start menu. It goes through three steps:
+  1. **You.** Fill in your name, email, role and initials. If you've used
+     Jarvis on another computer, pick yourself from the people already
+     here and your details are filled in for you.
+  2. **Your VACC account.** Sign in with your NetID and password, then
+     **Confirm connection** checks that the cluster answers.
+  3. **Your recordings.** **Find everything on VACC** and **Find
+     everything on netfiles**, then **Add N recordings found**.
+- Your name is required, because it goes on everything you do. The VACC and
+  recordings steps can be skipped, and **Not now** gets you straight in.
+  The welcome comes back the next time until a name has been given.
+- **The VACC and Recordings steps show what is happening as it happens.**
+  Each one has a console. Bars at the top show each task, and below them
+  every step streams past: each key tried, each answer from the cluster
+  (who you are, the login node, partitions, jobs, which shares you can
+  read), and every recording folder a walk of scratch or netfiles finds.
+  When a walk finishes, the console lists everything new, everything that
+  needs a person, and every folder that names no mouse and session. A walk
+  is measured against the last walk of the same place, shown with a "~"
+  because it's an estimate. When the cluster goes quiet, the console says
+  for how long. Nothing is printed just to look busy: every line is
+  something that happened (`/api/vacc/feed`).
+- **Set up this computer**, a new item on the start menu, opens the same
+  steps whenever you want them. Sign-in under Profile and the two buttons
+  in Sessions › VACC are unchanged.
+
+### People
+
+- **Every test harness name is now Debug_Bot.** That covers harness@test,
+  eye harness, spotter harness, bankback@harness, curate@harness,
+  spikeflow@harness, harness and TEST. 1,329 credits in the Event Bank were
+  changed, plus 2 in curation and 1 on a session record.
+  Debug_Bot is listed apart from the people, so it's never offered as
+  someone to give work to. Anything a harness banks from now on is credited
+  to Debug_Bot as well, and is still hidden from the tools as a test
+  leftover.
+- **Fatima and "a colleague" have been removed.** Their work (2 Event Bank
+  versions) is credited to Shahriar Tafti.
+- Each old name was retired, so another computer's copy can't bring it
+  back. The activity and error logs still show the old names, because
+  those logs are never edited.
+
+---
+
+## 2026.10.22.5 - Lock is Braces for pooled sets, takes only what Panning sorted, and keeps Braces' stamps locked
+
+**Restart Jarvis**: `backend/app.py`, `backend/braces.py` and
+`backend/bracesset.py` changed.
+
+### Lock
+
+- **It is Braces now, on pooled sets.** It was Eye's panel. It now has
+  everything Braces has: One and Many, the Alignments list, alignments of
+  the set you picked, the plan, the channel grid, the proposal, the bench
+  and the review on the recording. It still offers Slope as a third
+  measure, and it still aligns through the IED band.
+- **Panning's results only.** A pooled set nobody has sorted in Panning is
+  not offered, and the list says how many were left out. In the version
+  tree, Junction's own versions are greyed with the reason.
+- **Braces' stamps stay where Braces put them.** A pooled event counts as
+  Braces' when its time is Incisor's stamp and that stamp is in the aligned
+  dentate-spike version the pool was made from. Each set says whether
+  Braces has been run on it (**Braces ✓ 431**, or **no Braces**). The
+  *Braces' stamps stay locked* switch turns on by itself wherever there are
+  any, and you can turn it off. Locked stamps are read around but never
+  moved, and no other stamp can take their peak.
+- **Many has a lock on every row**, between the version and the bad
+  contacts. A set where Braces placed every spike has nothing to move, so
+  it is not sent.
+- **In the review, a locked stamp is drawn in blue and won't move.** Drag
+  it, nudge it, or call it garbage, and it says so: *No second-guessing.
+  Follow the protocol as well as you can, then move on. If the result isn't
+  up to par, the fix is a better protocol, not a nudge by hand.* The server
+  refuses the same move with the same words.
+
+### Braces and Lock: picking a set
+
+- **Recording, then set, then version**, as three tiles in a row instead of
+  a list of radio buttons. Pick the recording, then pick the set from a
+  menu of cards showing what each holds and whether it was aligned before.
+  The version opens the whole version tree.
+- Braces' Alignments list no longer shows Lock's alignments.
+
+---
+
+## 2026.10.22.4 - Tab 9's rings are tested the way tab 8's light is: each rat's change flipped every way, with the trials' shuffle a toggle away
+
+Shahriar asked why tab 8's light for comparison 1 (gamma) is green when
+Figure 1's rings showed nothing. **Restart Jarvis**: `backend/joefigs.py`
+changed. Then press **Draw again** on tab 9; the copy here is drawn already.
+
+### Why they disagreed
+
+They answered different questions.
+
+- **The light** is a mixed model with the rat as the unit: did the rats
+  change together? Day × Phase P = 0.018, and 7 of 8 rats moved the same
+  way.
+- **The rings** were tested against the trials' two windows swapped inside
+  each session: is the change bigger than trial-to-trial noise? That noise
+  is about 1.7 times wider than the spread between rats, so the same sum
+  gave P = 0.187.
+
+### Changed
+
+- **The rings' main test is now the rats'.** Every way of flipping the
+  sign of each rat's change: 2⁸ = 256 for 8 rats, the real one among them,
+  all listed (sampled past 14 rats). P is the share at least as extreme, so
+  it moves in steps of 1/256. The smallest possible is 1/256 for the
+  increases or decreases and 2/256 for both, since flipping every rat gives
+  the mirror image. The legend says so.
+- **A toggle on Figures 1 and 2 swaps in the other test**, the 10,000
+  within-session shuffles. Each test has its own figure files
+  (`fig_N_trials` for the shuffle), chips, legend and downloads; the card
+  changes in place.
+- **Methods? follows the test shown.** The rats' test has an animation of
+  its own: eight rats' changes, some flipped, then every way, landing on the
+  figure's own 256 patterns. The shuffle keeps its own.
+- The follow-up figures are unchanged: they keep the trials' shuffle beside
+  their t-test.
+- **Built from jeremystats-31's start** (the rat null, the alternate block
+  and the toggle). Finished here:
+  - the legend's 1/256 and 2/256;
+  - the toggle showing which test is pressed (it set only `aria-pressed`,
+    and the house buttons light `.active`);
+  - the rats' own animation (it replayed the trial shuffle's story);
+  - the rat null ranking its own real pattern;
+  - the review site copying the toggle's files;
+  - the checks.
+
+### Fixed: three things tab 9's legends said wrong
+
+A review of the deck for Joe (below) caught these. They are in the PDFs.
+
+- **Trials per session:** "16 trials per session" became "12–16" (the
+  real range, from tab 8's rat-days).
+- **Why a pair was followed up:** "because it moved most in its comparison"
+  was not how pairs were picked. The legend now says each pair had its own
+  P < 0.05 (uncorrected; no pair survives correction), and that the
+  measures shown are the ones whose t-test passed. They are leads, chosen
+  by that test.
+- **PAC:** "each rat's two windows joined" was wrong for PAC, which is
+  dots only.
+
+### Added: the figures as a Morph deck for Joe
+
+- `Joe figures explained 2026-10-22.pptx` (99 slides, beside
+  `Ferall 2024.pptx` and, like it, untracked) walks Joe through tabs 8 and
+  9 one idea per slide, in the Ferall deck's grammar:
+  - a black title bar that is the section card made small;
+  - the figure zooming and panning under a light-blue focus box, its
+    neighbours dimmed;
+  - black notes sliding in from the right, the newest big and red.
+- Every number is read from `joe.json` and `figs.json`.
+- Two reviewers checked it before it went out, one for accuracy and one
+  reading the slides as Joe would. The first draft overclaimed in four
+  places, all fixed:
+  - Precon4 on its own is about even (23 pairs up, 21 down). What changed
+    is the swing away from Precon1's dip (31 of 44 pairs down).
+  - The change row's sign flips test whether the cues' effect was the same
+    on both days.
+  - Each light has two ways to pass, so about 2 of 24 light by chance;
+    3 lit.
+  - The follow-ups were picked from 190 t-tests, of which 21 passed and
+    about 10 would by chance. A follow-up that passes both tests is now
+    called a "stronger lead" rather than a "solid" one.
+- `tools/joe_deck` makes it again: `illustrations.py`, `plan.py` (the
+  words are in `story.py`), then `build.ps1`. It drives PowerPoint itself,
+  so every transition is PowerPoint's own Morph. It reports any text that
+  does not fit its box and renders every slide to a PNG, all under the
+  git-ignored `GUI_logs/.cache/joe_deck`.
+
+### On the real data
+
+- **Figure 1 (comparison 1, gamma), Precon4 − Precon1:**
+  - increases P = 0.012 (rank 254 of 256), against 0.085 for the trials'
+    shuffle;
+  - both P = 0.023, against 0.187;
+  - agreeing with the light.
+- **Figure 2 (comparison 2, gamma), Precon4 − Precon1:**
+  - increases P = 0.027 (0.030 for the trials');
+  - both P = 0.062 (0.058).
+  - Precon1's decreases are P = 0.090 by the rats and 0.039 by the trials:
+    the one ring the trials' shuffle passes and the rats' does not.
+- The real arrangement's value is what gets ranked. On this data no rat has
+  a pair on one day only, so it equals the drawn edges (to 10⁻¹⁷); where a
+  rat did, the change row's mean of differences would not equal the
+  difference of means.
+
+### Checked
+
+- `tools/check_joe.py`:
+  - the main test is the rats', all 2⁸ patterns, and the shuffle is the
+    alternative in its own files;
+  - every one of the nine P values equals, by hand, the share of all 256
+    sign patterns of tab 8's own per-rat changes;
+  - P comes in steps of 1/256, never under 1/256 one-sided or 2/256 for
+    both;
+  - the planted change passes both tests;
+  - each legend describes its own test.
+- `web/_dev/monolith.html`:
+  - the toggle has two buttons, with the rats' (the light's test) pressed;
+  - pressing it changes the same card's picture, chips (of 10,000), legend
+    and downloads;
+  - Methods? plays the shuffle on its own 10,000, then the rats' flips on
+    the figure's own 256 with eight rats;
+  - pressing again goes back.
+- `tools/check_review.py`: the copy carries both tests' files.
+
+## 2026.10.22.3 - Tabs 8 and 9 read the recordings on the VACC: the PAC roses are drawn, and the standalone script agrees to the last digit
+
+From Shahriar: "they are all on VACC". Every DEWEY recording has a copy in
+the lab's scratch (`Jarvis Data/DEWEY`), and the Monolith's manifest already
+named each folder's copy. So the two things that needed the data drive now
+run there when it is not connected. **Restart Jarvis**: `backend/joe.py`,
+`backend/joefigs.py`, `backend/app.py` and `backend/monolith.py` changed.
+
+### Added
+
+- **Tab 9: Read them on the VACC.** When the recordings could not be read,
+  the warning at the top of tab 9 has a button that reads the PAC
+  phase–amplitude profiles from the VACC's copies, then draws every figure
+  again. It takes about 2 minutes, most of it the drawing.
+  - It runs as one slurm job on a compute node, never the login node, with
+    one process per PAC measure. Only the numbers come home, a few
+    kilobytes, to `joe/pac_vacc.json`.
+  - A drawing uses that reading only when it was made from this very tab 8:
+    the same regions, follow-ups, trials and wires. A reading of another is
+    ignored and the figures say the recordings were not read.
+  - The line at the top says where the roses were read: here, or the VACC
+    with its job number.
+- **Tab 8: Run it on the VACC and compare.** A button beside "Run it here".
+  It runs `tools/joe_standalone.py` on the VACC's copies of every SPC, FP1
+  and FP2 folder (8 rat-days at once), brings its CSVs home and compares
+  them exactly as a run here is compared. The agreement line says where it
+  ran and the job.
+- **Before anything is read there, each copy is checked.** Every .ncs and
+  .nev file's size on the cluster must match the size of the recording tab
+  8 read, from one `find`.
+  - The script is refused if any copy differs or has none, and the last
+    comparison stands.
+  - For PAC, the rat-day whose copy differs is left out and named.
+- **Each run gets its own folder** under the workspace (`joefigs/<id>`,
+  `joescript/<id>`), with its own copy of the backend. Not the shared
+  `code` folder: a job running from that one imports as it goes, and
+  swapping it underneath would break it. The spec, the script, the log and
+  the answer stay there to be read; nothing is written beside a recording.
+
+### On the real data
+
+- **The PAC figures (1.3, 1.7, 2.5, 2.8 and 2.11) now have their rose plots
+  and comodulograms.** The job read all 16 tested rat-days in 33–41 s on
+  node307/node328.
+- **Every trial's modulation index read on the VACC is tab 8's own.**
+  - All 1,594 trial-windows agree to within 1.7 × 10⁻¹⁰. That is library
+    rounding: numpy 2.5.3 there, 2.4.6 here.
+  - Not one trial is in one and not the other.
+  - Tab 9 checks this on every drawing and says it under the title.
+- **The standalone script on the VACC agrees with tab 8 in every value.**
+  - 46 files and 73,856 values, identical to all ten decimals written.
+  - Every one of the 16 rat-days was read; 48 folders were checked.
+  - 7.5 minutes on 8 CPUs, job 5979928.
+  - This is what "nothing vibe-coded hallucinated a number" was waiting
+    for, and it replaces the comparison that could not run while E: was
+    unplugged.
+
+### Fixed
+
+- **The first rose's title sat on top of its 90° label.** The roses moved
+  3 mm down, and the empty band under each PAC figure is gone.
+- **Trials where tab 8 had no wire in one of the two regions** are no
+  longer sent to the reader. Before, each one failed with "Every one of
+  the 4 channels these regions need is invalidated for this event" and filled the notes with 118 lines that
+  meant nothing. Tab 8 measured nothing there either, which the trial check
+  above confirms.
+
+### Fixed after a review of the VACC code (two reviewers, 2026-10-22)
+
+- **A single poll the login node did not answer cancelled a healthy job.**
+  Polls now go through `vaccrun.retrying`, as every other VACC run's do,
+  for up to half an hour. Past that, Jarvis lets go without cancelling and
+  says the job and its folder. Only Stop, or a submit whose answer was
+  lost (cancelled by the job's name), cancels.
+- **A Jarvis restart mid-wait orphaned the job.** Each kind's job is
+  written to `joe/vacc_runs.json` at submit, and the next of its kind
+  cancels a leftover first.
+- **A job in neither squeue nor sacct was polled forever.** After the grace
+  period, whether it wrote its answer decides.
+- **A workspace with a space** would have cut `#SBATCH --output`; it is
+  refused before anything is sent.
+- **"Read the PAC on the VACC and draw again" read E: instead** when the
+  drive was connected. A reading just made on the VACC is now the one drawn.
+- **A partial reading said "draw tab 8 again".** A copy left out by the
+  size check is now said as trials not read (the notes say which), apart
+  from trials that did not match.
+- The progress of a second VACC reading now shows on its link.
+- The PAC note points at the control that is actually on the page.
+- With no manifest under the current rules, both routes now say so
+  instead of failing with `AttributeError`.
+
+### Checked
+
+- `tools/check_joe.py`: the new checks, on made-up recordings:
+  - the spec names every tested rat-day's copy, its trials, wires and file
+    sizes;
+  - the cluster's own entry point, `python -m backend.joefigs pac`, gives
+    the same profiles as reading here;
+  - a copy one byte off is named and left out;
+  - drawn without the recordings, the VACC's reading of this tab 8 is used
+    and a reading of another is not;
+  - every trial's MI is tab 8's own;
+  - the size check's parsing (a different size, a missing file, the folders
+    sent only as data);
+  - the script on the VACC, with the job stood in for by a run here: sent
+    with every folder's copy, compared as a run here is, and refused with
+    the last comparison kept when a copy is missing or differs.
+  - `vacc_job` against a stand-in cluster: polls that fail are waited out
+    and cancel nothing; Stop cancels by id and name; a lost submit cancels
+    by name; past the limit it lets go and keeps the record; the next job
+    cancels the one left behind; a vanished job is taken as finished; a
+    workspace with a space is refused.
+- `web/_dev/monolith.html`:
+  - tab 8 says where the script ran and posts `script_vacc`;
+  - tab 9 says where the roses were read, with the trial check;
+  - not read, it offers the VACC at the top and on each PAC figure, and
+    posts `vacc: true`.
+
+## 2026.10.22.2 - Main windows as well as support windows, copy someone's panels, layer bands per panel, a fade you can set
+
+**Restart Jarvis.** `backend/app.py`, `backend/store.py` and
+`backend/cloudsync.py` changed.
+
+### Added
+
+- **The main window, set up per add-on.** Support panel preferences now have
+  a Main window section above the Second window section for each add-on:
+  Checkup, Spotter, Panning, StrataScope, Braid, the Braces review and the
+  Arc's review. You get the same choices: extra panels (the same kind more
+  than once is fine), each panel's channels, filter, band and colours, gain,
+  a starting span, and a layout you can drag and set in percentages.
+  - The first panel is always the traces, because every add-on reads its
+    window from them.
+  - Nothing chosen means nothing changes.
+  - Leaving the add-on returns the window to one traces pane.
+- **The Braces review's second window** is now set from the same section,
+  rather than always opening the same four panels.
+- **Copy someone else's support panels.** A "Copy from someone…" list shows
+  presets grouped by person. You can copy all of a preset or one add-on's
+  part.
+  - Your own preferences are published by themselves a moment after you
+    change them, as "Your Name — current".
+  - **Save mine as a preset** keeps a named copy besides.
+  - Rain's panels from the lab rig (Panning and StrataScope) are already
+    there as "Rain Younger — current".
+  - Presets travel like the filter presets, in `GUI_logs/presets`.
+- **Faded has a slider.** Choosing Marks › Faded keeps the menu open and
+  shows a slider from fainter to stronger (0.1 to 0.9, no numbers). Each
+  recording keeps its own level; the last one you set is your default; its
+  other windows follow it.
+- **The overview strip can be hidden from More with any number of panes**,
+  in the main window and in support windows. It is also in View. The main
+  window and support windows each remember their own choice, and Support
+  panel preferences can set it per add-on.
+- **A support window's header folds.** The fold arrow now sits beside the
+  title in every window. A support window opens with the header folded, the
+  sliver brings it back, and the arrow folds it again.
+
+### Changed
+
+- **Layer bands are per panel, not per window.** Each panel's More › Layers
+  switch turns bands on for that panel only. While StrataScope is open, or in
+  a window following it, panels show the bands as before, and any one panel
+  can be switched off.
+- **Panning's fold arrow works in stages:** the first click hides the tick
+  bars, the second also hides the labelling, the third brings it all back.
+  Other add-ons still fold in two.
+- **Faded now fades everything it should:** events, spikes and bookmarks on
+  the traces, events on the rasters, Checkup, Braces and Spotter marks,
+  Panning's and Spotter's channel lanes, and the marks on the overview strip.
+  Before, several of these stayed at full strength.
+- **Hiding the channel column:** the arrow to bring it back stays at the
+  bottom where the hide arrow was.
+- **Support panel preferences belong to each computer.** Whoever changed
+  theirs last used to change everyone's. Copying a preset is now how one
+  person's reach another.
+
+## 2026.10.22.1 - Tab 9, Joe's figures: publication figures in Nature's format, broad to narrow, each with its shuffles and a Methods button
+
+From Shahriar: "create a section 9 called Joe's Figures… cohesive and
+publication ready… in Nature's format… starting with broader level and
+zooming in bit by bit." **Restart Jarvis**: `backend/joefigs.py` is new, and
+`app.py` and `monolith.py` changed.
+
+### Added
+
+- **Tab 9 on the Monolith page, and on the review site.** It has a line, a
+  contents list, then a card per figure in order, the broad figures first.
+  - Each card shows the figure, its numbers as chips (starred below
+    P = 0.05) and a Nature legend.
+  - PDF, SVG and 600 dpi PNG download buttons.
+  - A **Methods?** button that opens, for every method behind the figure,
+    what it is, how the code does it (the functions and libraries) and
+    what it means, each with something to play with.
+- **The connectome of each result that changed (Figures 1 and 2).**
+  - A ring of the regions in the Monolith's order, with a curved edge per
+    pair tested. The edge's width is the mean change in coherence (Dickson)
+    from the first window to the second; orange is an increase, purple a
+    decrease.
+  - Nine rings: Precon1, Precon4 and Precon4 − Precon1, each as increases,
+    decreases and both.
+  - Under every ring, its sum against **10,000 within-session shuffles**:
+    in every session, each trial's two windows are swapped at random,
+    which flips the sign of that trial's change. Each ring shows its rank
+    and permutation P, starred when below 0.05.
+  - The tests are one-sided for increases and decreases and two-sided for
+    both; nothing is corrected.
+- **A figure per follow-up that changed (1.1–1.7 and 2.1–2.13)**, one per
+  pair and family of measures, as tab 8's face groups them:
+  - a: the pair on the ring, with an arrow for a direction and a loop for
+    PAC within a region;
+  - b: each rat's four values;
+  - c: each rat's change between the days with its mean ± 95% CI and the
+    t-test;
+  - d: the same within-session shuffles.
+  - The lag says which region leads. P and t print with true minus signs.
+- **PAC is never a line.**
+  - The modulation index is shown as each rat's dots.
+  - Where the recordings can be read, two more panels are drawn through
+    the very wires tab 8 chose:
+    - rose plots of gamma amplitude by theta phase, for Precon1 and
+      Precon4 in each window;
+    - the comodulogram's change.
+  - Today the data drive was not connected, so the PAC figures say so and
+    show the dots only. Connect it and press **Draw again**. The rose plots
+    and comodulograms are checked on made-up recordings.
+- **Nature's format:**
+  - Arial, 5–8 pt with bold lowercase panel letters, 183 mm wide;
+  - vector SVG and PDF with fonts embedded (type 42) and a 600 dpi PNG;
+  - a colour-blind-safe purple–orange for direction of change, the days
+    in greyscale;
+  - n, error bars and tests are stated in each legend.
+- **The animations behind Methods?** Each one plays on the figure's own
+  numbers where it has them:
+  - the within-session shuffle, landing on the figure's own null;
+  - the connectome's edges being summed;
+  - phase-difference arrows for coherence, PLI and imaginary coherence
+    (wandering, locked with a lag, locked at zero lag);
+  - Granger as a prediction getting better;
+  - the amplitude cross-correlation sliding to its peak;
+  - the PAC toy.
+
+### On the real data
+
+- **Comparison 2 (baseline → cue 1, gamma):**
+  - Precon1's decreases ring stands out of its shuffles (P = 0.039).
+  - Its Precon4 − Precon1 increases ring stands out too (P = 0.030).
+  - "Both" is just short (P = 0.058).
+- **Comparison 1 (baseline → both cues, gamma):** no ring stands out. The
+  nearest are Precon1's decreases (P = 0.056) and the change's increases
+  (P = 0.085).
+- **The follow-ups:** 20 figures holding 21 measures, all lit by the
+  t-test (that is why they are there). The within-session shuffles agree
+  for 12 of the 21.
+  For example, R PER – L DHC's peak has t-test P = 0.003 but shuffle
+  P = 0.26. Both are on every figure.
+- There are 20 follow-up figures, not the 19 lines in the request.
+  R ACC – L ACC in comparison 2 is lit for both imaginary coherence and the
+  amplitude peak, and each family gets its own figure.
+
+### Fixed
+
+- **A cold server could deadlock on tab 9's first request.** Two requests
+  importing scipy at once hit Python's module locks. The tab's data and
+  file routes now read straight off the disk and import nothing heavy.
+- **Tab 9's script first took the name `MONO_FIGS`**, which the figure
+  library behind every ? already uses. That broke the help pictures. It is
+  `MONO_JOEFIGS` now, and the harness caught it.
+
+### Checked
+
+- `tools/check_joe.py`: 45 passed. The figure checks:
+  - a connectome per result that changed, nine graphs each, in all three
+    formats;
+  - its edges are the rats' mean changes from tab 8's own per-rat values;
+  - the shuffles of the sums are centred on zero;
+  - the planted theta change stands out of its shuffles;
+  - each follow-up's shuffle starts from tab 8's own change;
+  - the PAC roses and comodulogram are read from (made-up) recordings
+    through tab 8's wires;
+  - 183 mm wide, Arial, text kept as text.
+- `web/_dev/monolith.html`: 558 passed, 20 of them new for tab 9:
+  - nine tabs, and a card per figure in order;
+  - the line's counts;
+  - the chips' P and rank, starred;
+  - the Nature legend;
+  - the downloads;
+  - Methods opening and closing with a section per method;
+  - the shuffle and connectome toys on the figure's own numbers;
+  - coherence's toy (wandering cancels, zero lag adds up);
+  - the Methods pictures' words, at desktop and at 390 px;
+  - the 390 px page;
+  - the not-drawn state posting `/joefigs` confirmed.
+- `driftmono.html` 77 and `monolithrank.html` 5 passed.
+- `tools/check_review.py`: 55 passed. The copy opens tab 9 with its
+  figures, legends and files, and nothing to draw.
+
+## 2026.10.21.5 - Jarvis Light, and a Jarvis that loads, caches and remembers
+
+**Restart Jarvis on every machine.** The server changed a great deal.
+
+### Added
+
+- **Jarvis Light**, in the Theme picker under Compact, and in Ctrl+K as
+  "Toggle Jarvis Light". It is a speed setting for a slower computer, **not
+  a colour scheme**: every theme looks exactly as it did, in every colour.
+  It is remembered for this computer only. While it is on:
+  - **Nothing moves.** Every animation shows its final state, the way it
+    does for somebody whose system asks for reduced motion: no springs, no
+    hover lift, no sweeping loaders, no flowing ToolKit stream, a still
+    title screen.
+  - **No glass and no shadows.** Dialogs, popovers and toasts are the
+    theme's own panel colour instead of blurred glass, and nothing casts a
+    shadow.
+  - **Plots draw at 1×** instead of the screen's 1.25–2×. Text on a plot is
+    a little softer; panning has far less to draw.
+  - **VACC Mode keeps its colours** but not its circuit board, and
+    **Halloween keeps its colours** but not its visitors.
+  - The server keeps half as much in memory.
+  - The Jarvis reveal still plays in full when somebody presses Activate.
+  - With the name hidden it is called Workbench Light.
+- **The start screen gets everything ready while you choose.** Beside the
+  menu, "Getting ready" ticks off each thing as it is fetched and kept:
+  recordings, the Event Bank, ToolKit's choices, the VACC catalogue,
+  people, the patch notes, your last recording (opened, with its overview
+  strip), the analysis libraries, and the overview strips of the
+  recordings you opened recently. Continue, or any key, still goes straight
+  in; the rest carries on behind, and one quiet line in the rail says how
+  far it has got until it is done. Under it, a line of tips changes every
+  few seconds, led by the newest patch note.
+- **"Who's working?"** on the start screen, when nobody is set on this
+  computer or the last answer is more than eight hours old: the people who
+  have used this computer first, then everyone else. Otherwise it says
+  "Working as …" with a way to change it.
+
+### Changed
+
+- **Lists draw at once, from last time, and are sent only when they
+  change.** The recordings list, the Event Bank, ToolKit's choices, the
+  VACC catalogue and the people list are now one copy each, shared by
+  every view that reads them and kept in this browser between visits. A
+  view draws last time's straight away, dimmed or marked "as of …", and
+  this time's replaces it. When nothing has changed, the server says so
+  in one short answer instead of sending the whole list again.
+- **ToolKit draws its tool without waiting** for the list of recordings to
+  choose from (3.4 s on a cold start).
+- **Xplorefinder's band strips arrive one by one**, two at a time, instead
+  of all together after the slowest.
+- **A big recording's traces show their first rows at once.** Reading a
+  window costs the server per channel (on a 128-channel recording, 16
+  channels in about 0.3 s and all 128 in 2–3.5 s), so a pane opening onto
+  nothing stayed empty for those seconds. Now the first 16 rows are drawn
+  as soon as they arrive, with every other lane already in place, and the
+  whole window replaces them when it lands. What is left on screen is
+  exactly what it was before. Panning and filter changes are unchanged:
+  traces already on screen stay until the new window is whole.
+- **A recording's overview strip is read in one pass and kept on disk.**
+  It was 900 separate opens of the file (10.6 s on this morning's
+  recording); now one, and a restart no longer reads it again. The band
+  surface behind the strip is kept the same way.
+- **Requests nobody is waiting for take turns.** The sync check, the cloud
+  sync state, VACC's catalogue check and the tool feeds use at most three
+  of the browser's six connections, so a click never queues behind them.
+- **The page's own files are kept by the browser until they change.**
+  Every start used to ask again about every script and the stylesheet; a
+  second start now takes all 67 scripts from the browser without asking
+  (0 kB over the wire).
+
+### Fixed
+
+- **The sync check took 9–19 seconds, every time.** It asked git about two
+  hundred files one at a time to make sure none could cause a merge
+  conflict. It asks once now, and keeps the answer for two minutes: the
+  check answers in about a quarter of a second.
+- **The server took 3.4 s to start; it takes 1.4 s.** Root Canal's pool
+  comparison was loading scikit-learn at start-up (2.07 s); it loads it the
+  first time a pool is compared.
+- **The server reserved 867 MB of memory before its first request.** The
+  numerical libraries reserved a buffer for every one of the computer's
+  threads; they are capped at four (160 MB).
+- **On a slow computer the Event Bank showed its skeleton for the whole
+  read on a second start**, although last time's list was in the browser:
+  the browser's store took 2–3 s to answer and the view gave up on it after
+  0.3 s. The common lists are now read into memory as soon as the page is
+  first idle, and every view waits for last time's list for as long as the
+  live answer is still coming.
+- **`?theme=` in the address lost to this computer's theme** a moment after
+  start-up. The address wins again, and is still not remembered.
+- **The cloud sync state cost the server 1.4 s every five seconds** while
+  anything was waiting to go up: it re-read the time of every curation
+  decision and review (143,000 of them) on every poll. The newest time of
+  each set is now kept until a curation set changes, and the answer takes
+  about 160 ms instead. The answer itself is unchanged; this is checked
+  record for record.
+
+### Checked
+
+- `web/_dev/lite.html` (new): Jarvis Light changes no colour token in any
+  of the eleven themes, and everything listed above.
+- `web/_dev/warmup.html` (new): a harness frame does not warm up; with
+  `?warm=1` every step finishes, in order, with words beside it.
+- `tools/check_ncs_ranges.py`: the one-pass strip reader gives exactly what
+  900 separate reads give, sample for sample.
+- `tools/check_derived_cache.py`, `tools/check_membudget.py`: the disk
+  cache and the memory budget.
+- `web/_dev/datalayer.html` (new, 22 checks): five readers of one list
+  make one request; an unchanged list is a 304 and readers keep the very
+  same object; a write asks again; background requests never take more
+  than three connections; after a restart the first request is a 304
+  answered from the browser.
+- `web/_dev/progressive.html` (new, 18 checks): the overview strip
+  arrives coarse to fine and is whole at the end; band strips run at most
+  two at a time; a traces pane opening onto nothing draws its first 16
+  rows before the whole window, every lane in place, and ends on exactly
+  what a plain read returns.
+- `tools/check_cloud_items.py` (new): the kept curation times give the
+  same sync state as before, record for record.
+- **Measured on a computer slowed four times** (`tools/perf_profile.py
+  --throttle 4`, dark theme): the share of the main thread spent with a
+  view open and nobody touching it, full → Light. ToolKit 96 % → 48 %,
+  Root Canal 74 % → 19 %, Storyboard 28 % → 6 %, Sessions in its first
+  seconds 60 % → 1 %. Sessions once loaded is 4 % in full.
+- A second start takes all 67 scripts from the browser: 0 kB over the
+  wire.
+- The harnesses for Light, the warm-up, loading, themes, the Event Bank,
+  ToolKit, Sessions, sync, the VACC catalogue and Xplorefinder: 45 pages
+  and 1,312 checks passing. Four fail for reasons outside this change:
+  - `housekeeping.html`: 87 gids appear twice in the registry tree.
+  - `bankimport.html` and `banklayers.html`: the server's version routes.
+  - `vacccat.html`: depends on this machine's data.
+
+  `chan64.html`, `curmarks.html` and `panesync.html` failed here too, the
+  same way with the first-rows path switched off. They had inherited this
+  machine's own Xplorefinder settings, a recording's saved "marks faded",
+  and whichever recording the registry listed first. All three pass now
+  that check pages start from the defaults and use the demo recording.
+
+## 2026.10.21.4 - Root Canal: no margins, and the dots are coloured by their call only
+
+Restart Jarvis: two sentences the server writes changed (below). Everything
+else needs a page reload.
+
+### Removed
+
+- **Margins.** The Margins card is gone from Single and from Pooled, with
+  everything in it: picking a saved margin, applying it fixed or refined,
+  and saving the clusters on show as a new one (whole pool or one group).
+  The Borders card is the one fold left under the clusters.
+- **"by call / by cluster / by origin".** The switch at the head of
+  Single's key is gone, and Pooled's "Colour by" no longer offers
+  "cluster". Dots, centres and chips are coloured DS or IED by their call:
+  the border's call when a border is on, k-means' otherwise. Pooled's
+  other colourings (pooled call, single call, switches, recording, mouse,
+  mouse type, border) stay. In The Confluence, Root Canal's intro no
+  longer says the dots show which detector found each event.
+
+### Changed
+
+- **A single saved from a pool still keeps the pool's calls.** That is
+  done with a margin under the hood, so the server's margin routes stay.
+  Where k would be, such a version (or a saved pool that carries calls)
+  now says "k and the calls are this version's own, from '...'", with a
+  **Fit afresh** button that lets k-means find the clusters again. With
+  the version's read on another machine, Fit afresh says there is nothing
+  here to fit from and keeps the calls, as every other setting does.
+- **The word "margin" is gone from what you read.** Chips say "carried"
+  instead of "margin", the rule says "k = 2, by the calls it carries"
+  (server), the save prompt says "the calls it carried", and the version
+  hover says "calls carried from a pool". When the calls cannot be used
+  with the settings on screen, the message no longer tells you to save a
+  margin; it says to set the settings back to the ones they were measured
+  with (server).
+
+### Fixed
+
+Found by a review of the removal, each confirmed before it was fixed:
+
+- **Calls carried by one version followed you to the next set.** Opening
+  another set after a from-pool version fitted it with that version's
+  calls and called them its own. Picking a set now drops them.
+- **Any error dropped the calls.** A fit that failed for another reason
+  (a read that has gone, members read on another machine) took the
+  carried calls off for good and blamed them. Only a refusal of the calls
+  themselves does that now; other errors keep them.
+- **The k slot could show a 32-character id** instead of the calls' name
+  after a propagate made new ones. The name now comes from the fit's own
+  answer, and the saved list is asked again for an id it has not seen,
+  repainting only the controls bar rather than the whole page.
+
+### Checked
+
+- All 7 Root Canal and Confluence suites pass together: 879 checks.
+  rootcanal 355, rootcanalpool 294, rootcanalborder 103, rootcanaldone 24,
+  rootcanalfolders 32, rootcanalxplore 15 and confluence 56.
+- New checks:
+  - there is no margins card and no colour switch;
+  - Fit afresh in both views fits again without the calls, and not by
+    way of a refusal;
+  - calls the server refuses are taken off, a message says so, and the
+    set or pool is fitted afresh;
+  - another error keeps the calls;
+  - with the read elsewhere, Fit afresh keeps the calls, and they are
+    named from the version's answer;
+  - picking a set drops them.
+- Each fix was broken on purpose and its check failed (6 failures across
+  the two suites), then the file was restored byte for byte.
+- tools/check_rootcanal.py: 462 ok. The bank, artifacts and curation are
+  untouched by the runs.
+
+## 2026.10.21.3 - Support windows to the percent, one overview strip, versions as a tree, an end-of-day error report
+
+**Restart Jarvis.** `backend/app.py` changed, and `backend/dayreport.py` is
+new.
+
+### Added
+
+- **Support panel preferences, in detail** (Profile › Support panel
+  preferences). For each add-on's second window you can now:
+  - Hold up to eight panels, including the same kind more than once (three
+    voltage traces, say).
+  - Set how each panel opens: its channels (every one, even, odd, every 4th or
+    8th, the first 16/32/64, or a typed list such as `1-16, 33`); its own
+    filter (LFP, theta, gamma, ripple, spikes, a saved preset, or custom Hz,
+    with a 60 Hz notch); a spectrogram's or scalogram's band, stacked or
+    averaged, and its colours; a traces panel's gain.
+  - Give the window a span of its own. It still follows the main window,
+    centred on the same moment.
+  - Arrange the window with **Draw it…**, a small copy of the window. Drag the
+    lines between rows and panels, type widths and heights in percent, move a
+    panel between rows, or drag one panel onto another to swap them.
+- **Fold the channel column away.** The small ‹ in the corner under the
+  traces' channel column (or View › Channel column) folds it:
+  - the checkboxes and ok/bad buttons go, and the traces get the room;
+  - hovering a trace names its channel in a small dark label at the start of
+    its lane, the way rasters label their rows (bad channels in amber);
+  - the › in the sliver brings the column back.
+
+  This computer remembers the choice. Support windows open with it folded.
+- **One overview strip.** With two or more panes, the strip is no longer
+  repeated under each pane. One strip runs across the bottom and follows the
+  pane you last clicked. When the panes show different recordings, it says
+  which one it shows.
+- **End-of-day error report.** Each computer writes its own file,
+  `GUI_logs/error_reports/<day>@<computer>.txt`, every evening after six. It
+  rewrites the file the next day if more went wrong. Each distinct fault
+  appears once, with:
+  - how often it happened and when, and its full traceback;
+  - what that computer was doing in the five minutes before and the two
+    minutes after (the error is marked in place);
+  - the build it ran on.
+
+  Test faults are counted and left out. **End-of-day report** in Errors
+  writes the file now for the chosen day and shows it.
+- **Every version says what last processed it:** Incisor, Checkup, Braces,
+  Root Canal, Tooth Fairy, Junction and so on. The chip sits on every row of
+  every version tree.
+- **Tool colours.** Each ToolKit tool has a colour. Its icon wears it, and so
+  does every chip naming it as a producer ("Incisor output", or a version's
+  "Checkup"). A bundle's steps are no longer numbered: each step is its tool's
+  icon, in its colour, on a thin rail down the bundle that shows the order.
+  The open step gets a bar in its colour. X-ray and Root Canal have icons
+  now.
+
+### Changed
+
+- **Version drop-downs are gone.** A version choice is now one button that
+  shows the version, its count and what made it. Pressing it opens the whole
+  tree in a pop-up. This applies to Junction's Many at once, the Event Bank's
+  "compared with" and Drift's version.
+- **Junction · Many at once: the sets are no longer locked in.** A row's
+  version button opens that recording's pop-up. It shows every Incisor set and
+  every Doppler set the recording has, each with its version tree. Pick any
+  set at any version.
+- **Next only goes to the next step's page.** It never opens a set or a
+  recording for you.
+- **Braces' Many at once:** each row's version is a version button, and the
+  columns (version, bad contacts, where, Open the newest) line up down the
+  list.
+- **Every add-on that has something to bank now banks by itself:**
+  - **Checkup, Spotter, Panning:** when the last item is decided, and on Leave.
+  - **Braces:** once every flagged stamp has its call, and on leaving the
+    review. If calls are still waiting, it says so and waits.
+  - **The Arc's Clean:** files its decisions on Leave.
+
+  Inside check pages nothing banks by itself (`BARRY.testNoAutobank` is set
+  for any page framed by `/_dev/`).
+
+### Fixed
+
+- Archiving a whole bank entry refused some old entries ("That entry has no
+  version vk-…"). Versions from before ids are now named the way the bank
+  looks them up. All 167 test entries in the Event Bank are archived.
+
+## 2026.10.21.2 - Tab 8 says L POR-SUB, as the Monolith does; the script check keeps its last answer when it can't read the recordings
+
+From Shahriar: "I see POR in results, which tells me it was calculated on an
+older version of the data." It wasn't. Tab 8 was already computed under
+histology v2, the newest (`tools/check_histo.py`: all 96 cells match the
+workbook of 2026-10-05):
+- Right POR is left out of every rat.
+- The left POR channel group is used only in rats 4, 6, 7 and 10, whose
+  left POR probe histology v2 found in subiculum.
+
+What was old was the name. The Monolith calls that region Left POR-SUB; tab
+8 still printed the channel group's own name, L POR. No number changed. The
+rat-days were not measured again. **Restart Jarvis** (`backend/joe.py`
+changed).
+
+### Changed
+
+- **Tab 8 names it L POR-SUB everywhere:** the lights' pictures, the pairs,
+  the follow-ups, the SPSS files and their labels, the README and the
+  results summary. The definitions and the README say why, and which rats
+  have it.
+- **The standalone script takes the same names** from its inputs (a new
+  `labels` entry in `joe_inputs.json`), so its files still line up with
+  tab 8's.
+- **The script check keeps its last answer when it can't read the
+  recordings.**
+  - The script now writes into a fresh folder. A run that could not read
+    some rat-days is refused with a sentence, for example "The script could
+    not read 16 of the 16 rat-days (is the data drive connected?)", and the
+    last comparison stands.
+  - Today E: was not connected. Before this change, the run left empty
+    files behind and every file read as "differs".
+  - The comparison has to be run again with E: connected, because the pair
+    names changed. Until then the tab says the script has not been run on
+    these.
+
+### Checked
+
+- `tools/check_joe.py`: 38 passed.
+- `web/_dev/monolith.html`: 538 passed.
+- `tools/check_review.py`: 54 passed.
+- The refusal was tested with E: missing.
+
+## 2026.10.21.1 - Root Canal: the list of sets done drops down where it is pressed; the max-amp line fades with the marks
+
+A page reload is enough: nothing on the server changed.
+
+### Fixed
+
+- **"Already through Root Canal" opened in the wrong place.** Pressing it
+  opened the list above the set card, so the card and the toggle jumped
+  down, and folding it meant finding the toggle again. The list now drops
+  down right under its toggle, inside the set card, and folds back the
+  same way.
+- **Root Canal's "max amp" line ignored Xplorefinder's Marks setting.** In
+  the recording window opened from a dot, Marks faded or hidden faded or
+  hid every mark but that line. It now fades and hides with them. A
+  landmark you drag, such as Incisor's, still does not.
+
+### Checked
+
+- rootcanal (356), rootcanaldone (24), rootcanalpool (295) and
+  rootcanalxplore (15, with a new check that the max-amp line follows the
+  Marks setting) all pass.
+
+## 2026.10.20.11 - Doppler: no Bank button, and Next goes straight to Spotter
+
+**Restart Jarvis.** Part of this is on the server.
+
+### Changed
+
+- **Doppler has no Bank button.** A run banks itself the moment it lands,
+  so step 4 now only says where the run is:
+  - **Banked:** the name it was banked under.
+  - **Not banked:** the run landed before runs banked themselves, and nobody
+    banked it. **Run it again** sends it back to the cluster. The new answer
+    is made by today's Doppler, with the gap fix, and banks itself as it
+    lands. 17 runs from 10-12 and 10-14 are in this state.
+- **Next: Spotter just opens Spotter.** It used to open the add-a-set
+  dialog and ask which session. The run is waiting in Spotter's *Pick up a
+  set*, under *Banked, not started*.
+
+### Fixed
+
+- **Older runs read "not banked" when they were banked.** 33 runs from 10-12
+  to 10-16 were banked by hand before a run carried its own key. Their
+  landed rows said *recording banked* and their reports offered *Bank them*.
+  - Such a run is now recognised by what it computed: the same threshold,
+    gap map and number of events on the same recording.
+  - This is only used to show that a run is banked. Whether to bank a run
+    still goes by its key.
+- **A run opened from the cache showed Bank them even when banked.** It now
+  carries its key and its bank entry, as a run that has just landed does.
+
+## 2026.10.20.9 - Pane layouts, support panels, one way to pick up a set, what produced it
+
+**Restart Jarvis on every machine.** The server changed.
+
+### Changed
+
+- **Xplorefinder layouts.**
+  - **Three panes:** three side by side, one large on top with two below, or
+    two on top with one large below.
+  - **Two panes:** side by side or stacked.
+  - **Four panes:** the top and bottom rows can keep separate widths
+    ("Widths apart"). Drag either row's divider.
+  - The arrangement sits beside 1 / 2 / 3 / 4 and is remembered on this
+    computer.
+- **What a pane shows** is chosen under that pane's **More › Shows**. The
+  picker on every pane's header is gone; the header now just names the panel,
+  and clicking the name opens More.
+- **The overview strip can be shown or hidden per pane** under More ›
+  Overview strip.
+- **The header arrow folds the whole top row**: the open recordings, the
+  layout, the probe, Link time, View and the figure builder. A sliver at the
+  top brings it back.
+- **The add-on bar folds** to one slim line (the arrow on its left). It is
+  remembered per add-on, and the keys still work.
+- **Profile › Support panel preferences.** For each add-on (Checkup, Spotter,
+  Panning, StrataScope, Braid) you choose:
+  - whether its second window opens;
+  - which panels it shows (up to four) and in what order;
+  - how they are arranged.
+- **"Pick up a set" is the only way in** for Checkup, Spotter and Panning.
+  - It lists every set put down and every banked dataset with no set yet,
+    searchable together.
+  - Every row has **Archive** on it.
+  - "Add a set" and the separate banked-runs list are gone.
+- **What produced it:** a chip such as "Incisor output", "Checkup output" or
+  "Doppler output". It appears on every family of versions (version trees,
+  bench cards, the shelf) and in the Event Bank.
+- **Every ToolKit step ends the same way:** "Next: <Step> — what it does →",
+  below the tool and its Bank. The activity feed now sits under it.
+- **Flat tools open on a header:** Bad channels, Kilosort and Import sorted
+  snapshots.
+- **Words:** Bank as a new version… / Bank as a new entry… (were Commit the
+  moves, Commit DS1/DS2…, Bank and vet…); Save to Results; Open folder;
+  Export CSV; Refresh; Open recording….
+- **Nothing is cut short:** every "…" truncation now wraps instead.
+
+## 2026.10.20.8 - One mode bar at the bottom, sets by bank entry, number order, fewer phantom errors
+
+**Restart Jarvis on every machine.** The server changed.
+
+### Changed
+
+- **Every add-on has one compact bar, at the bottom.** The banner across the
+  top is gone, along with the second Leave it carried. The bar names the
+  mode on the left; the mode's own tools sit in the middle; More, the next
+  step and Bank come next; then **Simplify**, **?** and **Leave**, which is
+  always the last thing on the right. **Esc** leaves too. More holds the
+  occasional controls (window length, light switch, List all, Tooth Fairy,
+  Auto-bank). Checkup, Spotter, Panning, StrataScope, Braid, the Arc's
+  Confirm and Clean, and Braces all use it. Checkup's mode is called
+  Checkup, as its button is.
+- **Simplify** hides the channel list, the Xplorefinder header and the pane
+  strips so the traces fill the window. It is remembered per add-on.
+- **Working sets belong to one bank entry.** Two Doppler runs (or two pools)
+  on one recording are two sets, and starting one never replaces the other.
+  A set's decisions stay in that set and bank into its own entry. This is
+  what made flags seem to carry across M3S2's versions. Sets made before
+  today stay as they are.
+- **Checkup shows dentate spikes only.** Junction's pools are in Panning and
+  Doppler's runs in Spotter; none of them sit under Checkup any more.
+- **Add a set** works the same in all three doors: recording, then dataset,
+  then version (archived ones at the bottom), then onto the bench. It never
+  opens Xplorefinder by itself; open it from the card. Doppler's "Next:
+  Spotter" and Junction's "Pan them" put the run on the bench the same way.
+  Each bench card says which dataset it is.
+- **Junction, many at once:** a search, and each side shows the versions it
+  has, with a choice of which to pool from.
+- **Number order everywhere recordings are listed:** m1, m3, m5, m12, never
+  m1, m12, m3. Pickers, pool rows, batch plans, Results, the VACC browser,
+  Sessions and the Event Bank all sort this way, on the page and on the
+  server.
+- **Tables:** numbers right-aligned, words left-aligned, in every table.
+- **"Put it down" is "Close", and "Close all" is "Clear the bench".**
+
+### Fixed
+
+- **The Errors badge read 5,233.** It counted every row ever written, on
+  every computer, resolved or not. It now counts faults still open from the
+  last week. Faults that test harnesses make on purpose are marked and left
+  out, with a note in the Errors view and a "Show them" button.
+- The activity list spelled its verbs out letter by letter
+  ("i m p o r t e d"): a Tooth Fairy style leaked onto it.
+
+## 2026.10.20.7 - Root Canal: Bank that changes nothing writes nothing, one entry per answer, natural order
+
+**Restart Jarvis on every machine.** The server changed.
+
+### Fixed
+
+- **Bank said it had done nothing, and a new version appeared.** When the
+  set would come out exactly as a version the bank already holds (at
+  k = 1, say, where no event is called IED), Bank still filed a new result
+  under the new settings and saved another single version, "banked as vN".
+  Now nothing is written at all, and the message says why: "Nothing to
+  bank: these settings call no event an IED (k = 1: 53 DS), so the set
+  would be exactly v11, which the bank already holds. Nothing was
+  written. To keep these numbers (DS filter …), save them as a version."
+  It shows as information, not as a warning. Pooled sets work the same
+  way.
+- **The pool picker offered one recording's answers many times over.** PTEN
+  m2 s3 showed 7 entries.
+  - A saved version that is a banked result (banking and importing both
+    make one) is no longer listed twice. The banked entry says "saved as
+    v2" instead.
+  - Two answers that look alike are told apart by what differs: the
+    filter they were measured on, then k, then their events. A hash is
+    the last resort.
+  - A read says which version of the set it read ("of v11, the set as it
+    is", "of an earlier version").
+  - Answers about earlier versions of the set sit at the bottom, under
+    "Older: about earlier versions of the set", and the default is taken
+    from the current ones.
+  - A banked entry shows its filter as a chip, and an older one says
+    "older version".
+- **Root Canal rebuilt its whole page on every ToolKit refresh.** In Pooled,
+  the table you were ticking could be replaced under you. It now paints
+  once per bundle and view, and refills only what arrives. The Single
+  view's own loads (its sets, versions and first pick) no longer repaint
+  Pooled.
+- **The saved-version menu in Single was cut to 64 px**, so a version's name
+  could not be read. It is now a short menu ("v2 · 2 saved ▾"). Open, it
+  lists every version by its whole name, with its hover.
+- **Single's controls fell below one screen on a set with saved versions.**
+  On a 908 px screen the picked event's bar was 952 px down, because the
+  row of counts wrapped to three lines.
+  - The "by call / by cluster" switch now leads the colour key it
+    changes.
+  - "431 of 431 classified" reads "all 431 classified" when every event
+    has a class.
+  - The Margins and Borders folds sit side by side while shut. An open
+    one takes the whole width.
+  - The Borders line no longer counts archived borders; they are listed
+    inside the card.
+  The bar is 890 px down now.
+
+### Changed
+
+- **Recordings are listed in natural order:** m1, m3, m5, m12, never m12
+  before m3. This covers Root Canal's pool rows, its set chooser, its chip
+  values, the list of sets already done and the colour categories, and
+  Braces' recording chooser and Many list. The server's pool candidates,
+  saved singles and batch plan are sorted the same way.
+- **Braces' review bar is part of the one mode bar** at the bottom. The
+  shell's Leave replaces "Back to the proposal", "Undo every decision" is
+  under More, and the keys are listed in the ? popover.
+
+### Checked
+
+- Browser tests: rootcanal (356), rootcanalpool (295), rootcanalborder
+  (103), rootcanaldone, rootcanalfolders, rootcanalxplore, confluence and
+  all nine Braces tests pass. The pool test's ticking check failed about
+  one run in three before the repaint fix, and passed every run after it.
+- `tools/check_rootcanal.py`: 455 ok, 0 fail. New checks:
+  - the same set under other settings files no new result and saves no
+    new version, and says so;
+  - every banked answer says its filter, its k and whether it is older;
+  - every cached read says which version it read.
+- The m2 s3 report was checked against the real pool candidates:
+  - the two banked v11 results are one LFP-filter and one DS-filter
+    answer;
+  - the two saved versions are those same two results;
+  - v5 and the 37-event read are older.
+
+## 2026.10.20.6 - What was deleted stays deleted, here and in the cloud
+
+**Pull and restart Jarvis on every machine.** Until a machine runs this, it
+can bring a deleted entry back with its next commit.
+
+### Fixed
+
+- **A deleted bank entry or curation set came back with the next merge.**
+  Deleting erased the copies this computer had. A git merge then brought back
+  the copies other computers still had. Thirteen Doppler runs deleted at
+  11:10 were live again after a merge at 13:36. Now:
+  - **The deletion note is checked.** Anything a deletion note says is gone,
+    and that was made before the note, is erased again. This happens at
+    start-up, every five minutes, and after each sync's pull. Deletion notes
+    travel in git like everything else.
+  - **A sync's pull erases a local copy the cloud says was deleted**, and
+    notes it, so a later merge is refused too. Until now the pull only
+    skipped the row and left the copy live.
+
+  A curation set's id is its recording and kind, so a set started again on
+  the same recording after a deletion shares the old set's id.
+  - **Copies are judged one at a time.** A merge can put the deleted set's
+    old copy beside the new set's copy. Only copies made before the deletion,
+    with nothing imported into them since, are erased. The new set keeps
+    every decision.
+  - **The new set still syncs.** The cloud keeps the old row marked deleted,
+    but the new set's decisions sync as normal.
+- **Deleting in Jarvis now reaches Supabase.** Deleting a bank entry or a
+  curation set (in the Event Bank, in a workbench, or when banking folds old
+  entries into one) used to erase this computer's copy and nothing else.
+  - The cloud row stayed live, and the next merge brought the entry back.
+  - Each deletion now writes a note, so the next sync marks the row deleted
+    and every computer erases its copy.
+  - A deletion is dated when it happened, not when the sync got it through.
+  - Test harnesses write no notes: the harness server, Flask's test client,
+    demo records and a harness's own seeds.
+- **The harness runner no longer puts back what the sweep erased.** It
+  leaves those records deleted and says so, instead of restoring them from
+  git and blaming the page.
+
+### Data
+
+- **Deleted, not archived:** everything built from the Doppler runs made
+  before the gap fix on recordings in more than one segment. Archiving them
+  was causing confusion. Deleted here and in Supabase:
+  - the 14 runs again (13 had come back in a merge);
+  - the 13 Junction pools made from them;
+  - four curation sets: the Spotter sets on KCNT1 m1606 s1, PTEN m60 s1 and
+    PTEN m8 s2, and the Panning set on PTEN m60 s1;
+  - the one Doppler result still on record from before the fix (PTEN m8 s2,
+    CSC1–CSC64).
+
+  In Supabase, each entry's and set's row is marked deleted and kept, so
+  other computers erase their copies. Their snapshots and decisions are
+  removed. The reruns on all 13 recordings are untouched.
+
+## 2026.10.20.5 - A title screen to start on, and the first of the new look
+
+A page reload is enough for the look. The start menu shows from the next
+start.
+
+### Added
+
+- **A title screen and a menu, the way a game starts.** Once the catalogue
+  is read, the start-up screen turns into a title instead of fading away.
+  The mark springs in and the name forms a letter at a time, with the
+  scope still sweeping behind them. Underneath is a menu:
+  - **Continue**
+  - **Open a recording**
+  - **ToolKit**
+  - **Settings**
+  - **Patch notes**
+
+  ↑ ↓ choose, Enter starts, and Esc or any other key goes straight in. Each
+  choice makes one soft note, under the usual mute switch. Untick *Show
+  this at start* to skip it. It never appears in a pop-out, for a link that
+  opens somewhere specific, or under the harnesses.
+
+### Changed
+
+- **The first pass of the new look.** It is the same layout and density,
+  with surfaces that sit on the page instead of being boxed in:
+  - cards have a softer edge and a little depth;
+  - dialogs, popovers, toasts and the command palette float on frosted
+    glass;
+  - one radius each for controls, cards and overlays;
+  - one focus ring for the keyboard;
+  - buttons lift a pixel on hover and give a little when pressed.
+- **Things move when something happens.** The chosen part of every
+  two-or-three-way switch slides to the new choice. A view rises slightly
+  when you switch to it. Dialogs, popovers and toasts arrive on a gentle
+  spring. Nothing moves on its own while you are reading, and the system's
+  reduced-motion setting turns all of it off.
+- **Facts are drawn one way.** The upper-case pill some panels used for a
+  status now matches the other chips: mono and sentence case, coloured by
+  what it means.
+
+## 2026.10.20.4 - Root Canal: every set already done, pools in folders, and the dot you pick is the one Xplorefinder shows
+
+**Restart Jarvis on every machine.** The server has a new list of the sets
+Root Canal has done, and a read that only opens a cached one.
+
+### Added
+
+- **"Already through Root Canal", in Single.** A list of every set Root
+  Canal has been run on, built like Checkup's shelf:
+  - one row per set, with what Root Canal left on it: saved versions (the
+    newest by its nickname), a banked call (its version and its DS and IED
+    counts), and a read, here or on another machine;
+  - who last touched it, on which machine, and when, with its shared
+    mark;
+  - a search, an order (last touched, recording, most events), and chips
+    with counts: what was done (saved, banked, read but nothing kept, read
+    on this machine) and the project, mouse type, group, subgroup and
+    condition;
+  - **Open**, which puts the set in front of you the way it was left. A
+    saved version opens as saved. A read on this machine opens at once.
+    It never starts a new read: when its read is on another machine, it
+    says so.
+  The list is open while you choose a set and folds itself to one line,
+  beside Change set, once a picture is up.
+- **Folders for saved pools and pools of pools.**
+  - Every pool saved so far is in **Preliminary analysis**.
+  - **New folder** makes one. A pool is dragged onto a folder to file it,
+    or moved with the folder menu on its row. "Not in a folder" takes one
+    out.
+  - Folders can be renamed, folded shut and deleted. Deleting a folder
+    deletes no pool: its pools are just out of it.
+  - The same folders are on both shelves.
+  - A new pool is filed as it is saved: the save dialog asks which folder.
+  - Folders are shared, and merged per pool, so two people filing
+    different pools both keep theirs.
+- **Open a dot in Xplorefinder from the 3D view.** Double-click a dot, or
+  pick it and press **Open in Xplorefinder** in the 3D view's header.
+  Double-click empty space still resets the view. This works in the flat
+  views too.
+
+### Fixed
+
+- **Xplorefinder could show the wrong event.**
+  - In Pooled, the picked dot was never found in the window's list. The
+    window was not moved to it, and its mark said the recording's first
+    event, so a second dot opened showed the first one.
+  - A dot from another recording (another pool member, or a set picked
+    since) had its marks and its time put on whatever recording the
+    window already showed. The window is now sent to the dot's own
+    recording, at the dot.
+  - A dot picked while the window was still opening the last one was
+    dropped. The window now ends on the newest pick.
+  - Opening a dot waited for the recording registry to be read again
+    whenever a minute had passed. The rows already read are used first.
+- **Pooled's "Open in Xplorefinder" was greyed out** for a member whose
+  read is on another machine, even when its recording is on this one. It
+  now depends only on whether the recording is reachable.
+- **The list of sets already done could be one change behind.** A bank or
+  a save while it was still loading did not refresh it. It now reads again
+  once that load lands. Switching between The Dentist and The Confluence
+  no longer shows the other bundle's list for a moment.
+
+### Checked
+
+- `tools/check_rootcanal.py`: 451 ok, 0 fail. New checks:
+  - a cached-only read starts nothing;
+  - a set is listed as done once read, and its saved versions are
+    listed.
+- New browser tests, all on real data, with every write held:
+  - `_dev/rootcanaldone.html` (24): the list, its counts, chips, search
+    and order, and Open on a set read here and on one read elsewhere.
+  - `_dev/rootcanalfolders.html` (32): Preliminary analysis, making,
+    dragging, moving, renaming, folding, deleting, both shelves, and a
+    new pool filed where its dialog said.
+  - `_dev/rootcanalxplore.html` (14): with a stand-in recording window,
+    the right recording, time and mark for a picked dot, a
+    double-clicked dot, a dot of another pool member, two picks in a
+    row, and a recording not on this machine.
+- To test the tests, each fix was undone on purpose: 5, 3 and 6 checks
+  failed. The files were then restored byte for byte.
+- rootcanal (356), rootcanalpool (294), rootcanalborder (103) and
+  confluence (56) all pass.
+
+---
+
+## 2026.10.20.3 - VACC: one job per question, and signing in lands first time; archived things sink
+
+**Run Setup once, then restart Jarvis.** The changes are on the server, and
+the accounts have moved into Setup.
+
+### Changed
+
+- **The Supabase key and the VACC sign-in are asked for in Setup, not when
+  Jarvis is activated.** `Setup Windows.bat` / `Setup Mac.command` has a new
+  step 6, *Accounts*. It shows how each account stands, offers to change
+  it, and every question can be skipped. Activating Jarvis now just opens
+  it, with one line each saying how the accounts stand.
+- **Signing in to VACC lands the first time.** Setup and the app now share
+  one sign-in, and the app opens signed in, with VACC Mode on. It used to
+  take two tries for three reasons:
+  - the console sign-in never made a key, so on a fresh computer it could
+    not work;
+  - the new key was tested with one connection straight after it was
+    installed. `login.vacc.uvm.edu` is four login nodes, and one that has
+    not yet seen the new key says no. The test is now retried, and the
+    install and the test go to the same node;
+  - a sign-in did not turn VACC Mode on, so the app looked signed out.
+- **The same VACC job is never submitted twice.** "The same" means the same
+  tool, recording(s) and settings.
+  - A second click, a second tab, or a second computer asking while the
+    first is queued or running is refused with a sentence saying where the
+    running job is. A batch skips those members and names them on their
+    rows.
+  - Already landed still opens the answer, as before.
+  - Every submit takes a lock on the cluster in the same connection as its
+    `sbatch`. Jobs now carry a Slurm comment naming the tool and the
+    computer.
+- **Archived things sink.** In every list that has archived things in it,
+  they go to the bottom, behind one *Show N archived* toggle. They are
+  never mixed in among current ones and never dropped from view. This
+  covers:
+  - the Event Bank's list, and an entry's version history;
+  - Junction's entries;
+  - Spotter's and Panning's *Start from a banked run* (archived runs are
+    shown and say why they cannot be started);
+  - the workbench shelf;
+  - the people in Profile;
+  - the Explorer's sections, and Misc's archived scripts.
+
+### Fixed
+
+- **A long producer no longer squeezes a bank entry's name to one word a
+  line.** The type and the producer now share the row's second line.
+- **An entry's note reads as a sentence** under its tags, not as an
+  upper-case pill, and an archived entry carries an *archived* tag.
+- **With VACC Mode on, the lit wiring dims over lists, cards, tables and
+  traces.** It stays lit over the rail and the gutters, so it no longer
+  lights up across the names and numbers under the pointer.
+
+## 2026.10.20.2 - An archived bank entry says so everywhere, the Data Bank included
+
+**Restart Jarvis.** The change is on the server.
+
+### Changed
+
+- **Archiving every version of a banked entry now puts the entry away.**
+  The Event Bank archives versions, not entries, so an entry whose every
+  version is archived counts as archived. Unarchive in its history brings it
+  back.
+  - The lists that offer entries to start from still send it, marked
+    archived and placed after every current entry. These lists are
+    Junction's, Spotter's and Panning's *Start from a banked run*, and Root
+    Canal's. The newest entry a list offers is always a current one.
+  - Pooling the same inputs again makes a new pool rather than handing back
+    the archived one.
+- **The Data Bank says what is archived.** An archived entry's files are
+  named `ARCHIVED - <type> - <name>.csv` / `.json`, and its JSON says
+  `"archived": true`. `_index.csv` has two new columns at the end:
+  - `archived`, yes or no;
+  - `note`, the entry's note, which says why.
+- **A Doppler run from before the gap fix is not an answer on a recording in
+  pieces.** This means a run made before 2026.10.19.6 on a recording the
+  health check found in more than one segment. It stays on the landed list
+  and can still be opened.
+  - The landed list marks it *before the gap fix*.
+  - Its report will not bank it, and says why.
+  - Many counts the recording as not run, and a batch runs it again.
+
+  A recording nobody has checked for gaps is not judged.
+- **Doppler no longer shows an earlier run's events under a later run.** The
+  run's key is the question, so asking the same question again files the new
+  answer under the old key. Another computer's cache could still hold the old
+  answer's events and show them. A cached run older than the run on record
+  is now fetched again from the cluster.
+
+### Data
+
+- **Everything built from the Doppler runs made before the gap fix
+  (2026.10.19.6) on recordings in more than one segment is archived.** Those
+  14 runs, on 13 recordings, were deleted and Doppler was rerun on each.
+  Archived:
+  - the 13 Junction pools made from them, every version. This includes PTEN
+    m60 s1's 5 ms pool and the Panning decisions banked into it;
+  - the Spotter set on KCNT1 m1606 s1, which had nothing decided.
+
+  Each pool's note names the run it came from and the new run to pool from
+  instead.
+
+  Archives, deletions and notes reach other computers through a commit and a
+  pull, not through the cloud sync, which carries neither an archived
+  version nor a removed entry. Rain Younger's Panning and Spotter sets on
+  PTEN m60 s1, and the Spotter set on PTEN m8 s2, are on Rain's computer
+  only. Archive them there.
+
 ## 2026.10.20.1 - Braces: every spike seen, and the arrows stop only where a decision is needed
 
 A page reload is enough: nothing on the server changed.

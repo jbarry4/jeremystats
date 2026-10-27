@@ -141,7 +141,7 @@
       "skipped": 0,
       "source": {
         "bank_entry": "9d6d14128f84",
-        "by": "eye harness",
+        "by": "Debug_Bot",
         "entry_name": "eye harness \u2014 delete me",
         "kind": "bank version",
         "pipeline": "Doppler (line length)",
@@ -199,7 +199,7 @@
   "session_label": "KCNT1 m2 s1 2022-03-18",
   "source": {
     "bank_entry": "9d6d14128f84",
-    "by": "eye harness",
+    "by": "Debug_Bot",
     "entry_name": "eye harness \u2014 delete me",
     "kind": "bank version",
     "pipeline": "Doppler (line length)",

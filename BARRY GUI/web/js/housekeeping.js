@@ -115,14 +115,24 @@ BARRY.views.housekeeping = (function () {
        the view draws at once instead of waiting for the whole answer; the
        live one replaces it when it lands. Only when nothing is on screen
        yet, and only if the stash answers before the live read does. */
+    /* The registry through BARRY.data (2026-10-21): the same copy Sessions
+       and ToolKit read, kept between visits. A backfill writes, so it goes
+       to the server as before and the kept copy is asked again after it. */
     let liveDone = false;
-    const live = api('/api/registry' + (backfill ? '?backfill=1' : ''))
+    const live = (backfill
+      ? api('/api/registry?backfill=1').then((r) => {
+        BARRY.data.invalidate('/api/registry');
+        return r;
+      })
+      : BARRY.data.get('/api/registry'))
       .finally(() => { liveDone = true; });
     if (!data) {
-      const was = await BARRY.stash.get('registry');
+      // However long the browser's store takes, never longer than the live.
+      const was = await Promise.race([BARRY.data.stale('/api/registry', 4000),
+                                      live.then(() => null, () => null)]);
       if (was && was.value && !liveDone) {
         data = was.value;
-        staleAt = was.at || 0;
+        staleAt = was.live ? null : (was.at || 0);
         openNewBranches();
         render();
       }
@@ -130,7 +140,6 @@ BARRY.views.housekeeping = (function () {
     try {
       data = await live;
       staleAt = null;
-      BARRY.stash.put('registry', data);
     } catch (e) {
       toast('Could not read the registry: ' + e.message, 'err', 8000);
       if (staleAt == null) data = { tree: [], projects: [], total: 0 };
@@ -398,7 +407,7 @@ BARRY.views.housekeeping = (function () {
     return Array.from(seen).sort((a, b) => {
       if (a === 'Unfiled') return 1;
       if (b === 'Unfiled') return -1;
-      return a.localeCompare(b);
+      return BARRY.ui.natCompare(a, b);
     });
   }
 
@@ -914,7 +923,14 @@ BARRY.views.housekeeping = (function () {
       fact('First seen', (s.created || {}).at || '—'),
       fact('Last touched', (s.updated || {}).at || '—'),
       fact('Last found', (s.last_seen || {}).at || 'never by a scan'),
-      fact('Channels', s.n_channels || '—'),
+      // The copy this computer opens, when it has read it; every count on
+      // record when the copies disagree (registry per-copy facts, 2026-10-20).
+      fact('Channels', (s.n_channels_here || s.n_channels || '—')
+        + ((s.copy_channels || []).length > 1
+          ? '  (copies disagree: ' + s.copy_channels.map((c) => c.n + ' in '
+              + c.paths.length + ' cop' + (c.paths.length === 1 ? 'y' : 'ies'))
+              .join(', ') + ')'
+          : '')),
     ]));
 
     // ---- project --------------------------------------------------------

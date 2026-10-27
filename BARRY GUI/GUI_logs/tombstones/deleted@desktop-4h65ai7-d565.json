@@ -4,13 +4,141 @@
   },
   "_keys": {
     "gone": {
+      "bank:148da87e6da1": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:15edf88a9c34": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:1a5bd9f32d3e": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:38e200ea3375": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:3b3111be3118": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:3bef61c4f955": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
       "bank:4e00ff2b9b7d": [
         "set",
         "2026-10-15T14:04:29.390985+00:00"
       ],
+      "bank:524e5c537274": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:5dcf2c3aaa7a": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:6949b9dc9581": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:6c077ff96604": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:773e8e73c6ab": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:78a241655378": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:7e0d577f151f": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
       "bank:8931cc766fe7": [
         "set",
         "2026-10-15T14:04:29.390985+00:00"
+      ],
+      "bank:8c6f45c963a9": [
+        "set",
+        "2026-10-23T18:21:47.654426+00:00"
+      ],
+      "bank:96ccc0c35b19": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:9f269d624f95": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:abd7cd89926f": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:bd1e430bb50d": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:c29b7de500ca": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:c402f4a1ec4e": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:cd649397cfc0": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:cfc179ca8cbf": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:d26ac1fb266b": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:d2c8bdf02fa2": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:e2fedada93af": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:e722ca5724d7": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "bank:ebd7e0c826c2": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "bank:f05308cb9f1f": [
+        "set",
+        "2026-10-20T15:11:03.961738+00:00"
+      ],
+      "curation:s8d7f397b9708__ied": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "curation:s8d7f397b9708__pooled": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "curation:s9a8f6138b49e__ied": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
+      ],
+      "curation:sba57286bdee3__ied": [
+        "set",
+        "2026-10-20T17:58:42.922968+00:00"
       ],
       "deck:deck_008e35e2": [
         "set",
@@ -195,6 +323,10 @@
       "deck:deck_33e9772e": [
         "set",
         "2026-09-25T21:03:37.460019+00:00"
+      ],
+      "deck:deck_3c28fa6e": [
+        "set",
+        "2026-10-22T14:36:49.423066+00:00"
       ],
       "deck:deck_3c7334bf": [
         "set",
@@ -1024,9 +1156,841 @@
         "set",
         "2026-10-07T22:34:38.484221+00:00"
       ],
+      "path:s00da8ac343c1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s28jan19-flowerpot4\\2024-01-19_15-17-31": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s00ddc93c4925|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s9dcz0feb6\\2025-02-06_16-40-17": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s03d09383ec1b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-25_17-47-41": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s074e23a1fee6|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s11aug15dcz2\\2024-08-15_13-52-52": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s08bdd94ea75a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s21jan11-flowerpot3\\2024-01-11_17-04-45": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s08f0c5d1e05c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s3apr5\\2023-04-05_14-00-57": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s0a7d8f524e97|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s49jan30\\2024-01-30_16-59-16": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s0b3411fad490|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s46jan26\\2024-01-26_14-22-40": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s0bf2b0ea9547|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s8FPmar8\\2024-03-08_15-29-03": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s0c23730d27aa|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s43jan25\\2024-01-25_16-53-02": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s10b9901712ae|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s3FPmar1\\2024-03-01_15-20-17": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s122b12738cf3|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s1apr5\\2023-04-05_12-39-29": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s130ac142accf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con4\\Multi_spcon_con4_FP2\\2025-09-19_14-09-32": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s14f499593e3c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s34jan22\\2024-01-22_12-06-27": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s1872784368e8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s15jan10-flowerpot\\2024-01-10_15-07-21": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s1aec4e30424d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s3apr6\\2023-04-06_14-37-41": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s1bba3f183a91|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos3jan21\\2022-01-21_17-20-59": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s1cc5651e29bf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s18aug12\\2024-08-12_13-39-40": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s1e6fc13f36f5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Con1\\multi_spcon_con1_J1_FP2\\2025-09-16_12-35-36": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s1e7ada8eac32|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s2oct20_SA\\2023-10-24_18-12-28": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s1f83e06d0029|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s5jan8\\2024-01-08_17-19-00": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s2011bbcb4d64|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\m5s8jan9\\2024-01-09_14-27-27": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s214bfc141512|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m27_ptenblind\\m27s2jul2\\2024-07-10_11-39-12": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s21f5238b7679|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s1mar1\\2024-03-01_14-17-20": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s221aa14ef08d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s2jul10\\2025-07-10_12-46-40": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s226752ce25da|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s1apr3\\2023-04-03_14-51-07": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s2279b53ffcde|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s45jan26\\2024-01-26_13-49-40": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s24a347096b92|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_16-57-17": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s24a347096b92|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_16-58-42": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s24a347096b92|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_17-00-08": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s24a347096b92|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_17-02-56": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s261323ab8138|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Con2\\Multi_Spcon_J1_Con2_FP2\\2025-09-17_11-55-51": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s27f0593a9ed7|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s7_06192025\\2025-06-19_16-09-27": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s298bb578fdcd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s12jul15\\2025-07-15_13-48-38": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s2aa0bdf996ca|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM2\\FADM2s3apr4\\2023-04-04_17-48-23": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s2adfba95d32f|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s17aug12\\2024-08-12_13-20-37": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s2b995eadca07|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s4jul11\\2025-07-11_14-01-15": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s2b995eadca07|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s4jul11\\2025-07-11_14-38-38": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s2bcb342c8e01|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\M51\\m51s2apr8_postDCZ\\2025-04-08_17-45-12": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s2e0cf03cb75c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M5ptenko\\m5ptens2jan13\\2022-01-13_15-16-30": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s2ff694df2bee|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADm1s5apr3\\2023-04-03_17-23-48": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s308e358479d0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s14mar20\\2024-03-20_18-38-41": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s33de61d7ba0b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s3apr5\\2023-04-05_17-30-54": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s33ea2aed2755|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s2apr3\\2023-04-03_16-32-08": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s352ea772fdfa|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-09-22_13-35-21": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s375b44b95da9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\m5s7jan9\\2024-01-09_13-49-55": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s37e8a7f56529|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s1dec4\\2023-12-04_16-17-15": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s3d4e5c5c0e91|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s5jan5\\2022-01-05_17-22-40": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s3fb460ef7a4a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon1\\J2S191225_FP2\\2025-09-13_10-15-34": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s444dd5032dca|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s7cno120feb4\\2025-02-04_15-59-28": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s4585d1ef49ce|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s10_07012025\\2025-07-01_11-05-16": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s45bae70722f2|C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s45bae70722f2|C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s45bae70722f2|G:\\PTEN\\M1_s2\\timestamps.mat": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s49f306485ed1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos2jan21\\2022-01-21_16-34-48": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s4ae5ed74335c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s36jan22\\2024-01-22_15-38-39": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s4b3d2a3821c2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s2apr5\\2023-04-05_16-59-08": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s4bdb064c3029|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s41jan24\\2024-01-24_18-24-11": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s4cc69cf76001|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\M7s3jan5\\2022-01-05_16-34-47": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s51d3deeed36c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s2jan5\\2022-01-05_16-01-54": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s5213f39fb75a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s9aug16dcz2\\2024-08-16_16-08-09": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s52d22e29c21b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s12jul14\\2025-07-14_16-09-37": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s53bc67326044|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s40jan24\\2024-01-24_17-52-30": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s541f5c5f3f4b|C:\\Users\\Z390\\AppData\\Local\\Temp\\claude\\c--Users-Z390-Desktop-jeremystats\\10793393-7bec-4466-a06f-1b1910bd2af0\\scratchpad\\junkfolder": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s551f57109899|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-23_15-05-25": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s551f57109899|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-23_15-33-47": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s55723c01a337|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon4\\multi_spcon_J2_precon4_FP2\\2025-09-15_16-02-32": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s5733437d84ec|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s50feb5\\2024-02-05_15-24-13": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s5822cc97c64c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s3jan8\\2024-01-08_16-15-14": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s589b86177f6d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M12ptenko\\m12ptens3jan14\\2022-01-14_16-40-31": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s5a30e67eb8b3|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s5jul11\\2025-07-11_14-43-44": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s5b932a8e933d|G:\\PTEN\\M1_s8\\timestamps.mat": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s5fc6914c130e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s3cno0feb4\\2025-02-04_13-52-42": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s608d71d2ce31|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m69s10jul14\\2025-07-14_15-01-18": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s61cb60f8983d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-18_14-57-06": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s65ea3bec96e0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s42jan25\\2024-01-25_16-20-33": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s67f94b63e474|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s16jan10-flowerpot2\\2024-01-10_16-18-55": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s68f90e9606d0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s11_07012025\\2025-07-01_11-57-56": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s6a9d2213791f|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon4\\multi_spcon_J1_precon4_FP2\\2025-09-15_12-31-41": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s6abee91e3972|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s5apr6\\2023-04-06_16-13-47": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s6bc05a77e321|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Precon1\\J1s191225_FP2\\2025-09-12_13-22-37": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s6bc05a77e321|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Precon1\\J1s291225_SP1\\2025-09-12_17-33-58": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s6cdff44bbdc0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s9jul14\\2025-07-14_13-59-36": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s6f06fb3fbfe9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s7aug16\\2024-08-16_14-58-41": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s6f37541d9ea6|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s4cno30feb4\\2025-02-04_14-23-38": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s7189bc63fd72|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s2apr5\\2023-04-05_13-48-26": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s71ef4518fd3d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M6ptenko\\m1s1dec21\\2021-12-21_15-40-33": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s72b6f480b5c0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s9mar18\\2024-03-18_15-12-52": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s73c1e30c08b4|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s5cno60feb4\\2025-02-04_14-54-39": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s74e451c63959|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s44jan25-flowerpot\\2024-01-25_17-41-04": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s775e62b7a8f0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s2dec4\\2024-01-08_15-04-57": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s775e62b7a8f0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s2jan8\\2024-01-08_15-13-41": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s778648f305ec|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s19aug12-dcz\\2024-08-12_14-12-48": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s7955408bfadf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s6_06192025\\2025-06-19_15-38-55": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s79ce9ea48506|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M6ptenko\\m2s2dec21\\2021-12-21_15-52-40": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s7a16d196138d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s13aug15dcz4\\2024-08-15_15-00-33": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s7cbc40ea6382|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon3\\Pre3FP1\\2025-09-14_11-22-47": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s7cbc40ea6382|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon3\\Pre3SPcon\\2025-09-14_11-29-47": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s7cbc40ea6382|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon3\\pre3FP2\\2025-09-14_13-03-29": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s7d9fb1a2bc80|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M12ptenko\\m12ptens4jan14\\2022-01-14_16-58-42": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s800b22a302b5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s2mar1\\2024-03-01_14-47-57": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s802da46ec00b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-05_12-49-31": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s8056149a4605|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s10mar18\\2024-03-18_15-43-36": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s82343a26d280|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s4jan5\\2022-01-05_16-57-02": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s838a2623ae31|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con2\\Multi_Spcon_J2_Con2_FP2\\2025-09-17_15-06-20": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s8a082a3870f2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s47jan26-flowerpot\\2024-01-26_14-57-30": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s8a99f296058a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s6apr3\\2023-04-03_17-45-33": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s8d50a361b096|G:\\PTEN\\M34_s8\\timestamps.mat": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s908db39101c6|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s4FPmar1\\2024-03-01_15-27-45": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s90fcf20ecd5f|C:\\Users\\Z390\\AppData\\Local\\Temp\\claude\\c--Users-Z390-Desktop-jeremystats\\10793393-7bec-4466-a06f-1b1910bd2af0\\scratchpad\\junkfolder": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s9293ad84cde6|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM54\\m54s4_060525\\2025-06-05_14-33-47": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s96cc56245c0d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s4apr6\\2023-04-06_15-34-03": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s9728718bbd70|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\m5s9jan9\\2024-01-09_14-51-28": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s9a24ec997705|G:\\PTEN\\M11_s11\\timestamps.mat": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s9b0393c60c33|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s4_06192025\\2025-06-19_14-37-42": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s9bcf0b534c38|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s4apr5\\2023-04-05_14-55-09": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s9c82b86917ba|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s5apr5\\2023-04-05_15-40-40": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s9d0c67990d82|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM54\\m54s3_060225\\2025-06-02_16-32-16": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s9e8706d4a3c8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s35jan22-flowerpot1\\2024-01-22_12-58-51": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s9e8706d4a3c8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s35jan22\\2024-01-22_15-05-39": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s9f80655558bd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-12_14-37-00": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sa164c419af78|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s21aug12dcz-3\\2024-08-12_15-07-02": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sa41f3b8fe7fb|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s3apr3\\2023-04-03_16-42-24": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sa48edc035066|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\M51\\m51s3apr8_postDCZ30\\2025-04-08_18-21-09": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sa4d2bd9a3dd1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s3jul10\\2025-07-10_13-20-23": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sa537bb60b1d5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s11jul14\\2025-07-14_15-32-22": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sa56245ea6b13|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s5jul10\\2025-07-10_14-21-55": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sa61019000ace|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s22aug12dcz-4\\2024-08-12_15-38-24": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sa75283a02718|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s11mar19\\2024-03-19_13-31-42": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:saadc0e703a8a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon2\\J1S291325_FP2\\2025-09-13_12-22-27": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:saaf096d3deaa|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM54\\m54s2_060225\\2025-06-02_16-17-58": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb11137db10ff|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s10aug15dcz1\\2024-08-15_13-21-28": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb1e2b0541138|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s4jan8\\2024-01-08_17-01-57": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb206c76b676b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s9aug15\\2024-08-15_12-43-26": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb209c176d82c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s1_061925\\2025-06-19_12-24-17": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb209c176d82c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s1b_061925\\2025-06-19_13-15-37": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb218a6211ef8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s5_06192025\\2025-06-19_15-08-32": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb361797e6f9c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s6jan5\\2022-01-05_17-42-32": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb5de56b987c3|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s1apr5\\2023-04-05_16-44-17": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb6dc0dcecc5d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s2apr6\\2023-04-06_13-46-44": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb6df05f8cc9a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M12ptenko\\m12ptens1jan14\\2022-01-14_16-01-51": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-27-32": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-31-13": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-42-41": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-54-05": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-55-40": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_16-01-44": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_16-33-41": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb8710ea8d7f3|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM2\\FADM2s1apr4\\2023-04-04_13-52-02": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb8ab9ae6a7d5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s12-FP-mar19\\2024-03-19_14-02-09": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sb8d6cf027eaf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s9jul15\\2025-07-15_12-11-04": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sbb307f32db63|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s10aug16dcz3\\2024-08-16_16-36-47": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sbb62c377e01f|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM54\\m54s1_060225\\2025-06-02_14-49-39": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sbbccc56b32d7|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s12aug15dcz3\\2024-08-15_14-25-04": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sbc1efe97f88d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s8aug16dcz1\\2024-08-16_15-30-30": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sc1f0097221e9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s48jan30\\2024-01-30_16-28-02": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sc35686356db0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm55\\m55s1jun11\\2025-06-19_12-23-21": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sc3e1eb855301|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s20aug12-dcz2\\2024-08-12_14-45-13": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sc4be10602b0c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s2jul11\\2025-07-11_13-03-13": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sc6245988b2ad|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s10mar19\\2024-03-19_13-00-39": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sc6aa93a27188|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s6jan9\\2024-01-09_13-14-33": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sc7faee13fccd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M12ptenko\\m12ptens2jan14\\2022-01-14_16-18-41": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sc9961a05120e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos4jan21\\2022-01-21_18-01-11": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:scb4a12a1e78a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon1\\J2S191225_FP2\\2025-09-12_17-49-55": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:scbfa22661eda|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s10jul15\\2025-07-15_12-44-10": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:scdebeff90547|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-09-21_15-44-27": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sce590e2b5756|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Con3\\multi_spcon_con3_J1_FP1\\2025-09-18_10-56-18": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:scfe69f136654|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m30_ptenblind\\m30s6jul2\\2024-07-02_13-55-08": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:scfeaf3fbd6aa|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M6ptenko\\m1s3dec21\\2021-12-21_16-34-00": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sd0d56d2d267e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s1jan5\\2022-01-05_15-43-37": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sd1d713298204|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon2\\J2S291325_FP1\\2025-09-13_12-51-49": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sd1d713298204|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon2\\J2S291325_SPCON\\2025-09-13_14-01-39": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sd2cfbdeefd51|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M5ptenko\\m5ptens1jan13\\2022-01-13_14-59-31": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sd2ec1593cf84|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Test1\\Multi_Spcon_J2_Test1_FP2\\2025-09-20_14-05-50": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sd32eea03f595|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s9_06262025\\2025-06-26_12-25-26": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sd3cce16f30e5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M5ptenko\\m5ptens3jan13\\2022-01-13_15-44-36": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sd45f6d78eadf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s6mar8\\2024-03-08_14-00-44": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sd56ec65a0ad2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s10dcz30feb6\\2025-02-06_17-13-53": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sd56ef19e4993|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s6jul11\\2025-07-11_15-18-52": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sd5a1ad41cb27|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\con1\\con1_fp2\\2025-09-16_15-56-51": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sd725d4804bf8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon3\\multi_spcon_precon3_FP2\\2025-09-14_16-18-01": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sdad37204adc9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s12_07012025\\2025-07-01_12-55-53": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sdc28e1004c6b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s3_061925\\2025-06-19_14-05-54": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sddf3e5010ff2|G:\\PTEN\\M2_s8\\timestamps.mat": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:se01327b53d02|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s5FPmar1\\2024-03-01_16-35-52": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:se0174fefc499|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s3jul11\\2025-07-11_13-35-00": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:se0174fefc499|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s3jul11\\2025-07-11_13-59-07": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:se06940c6b4fc|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s37jan23\\2024-01-23_10-05-46": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:se5d034b6fed2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s1apr6\\2023-04-06_13-39-31": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:se77ff517b35e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-24_17-20-54": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:se77ff517b35e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-24_17-48-13": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:se80dad58a958|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s51feb5\\2024-02-05_15-58-02": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:se88c60f8b7fe|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos5jan21\\2022-01-21_18-12-38": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:se8ec590a5014|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-04_13-37-03": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sec7d1c2dcbca|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s22aug12dcz-4\\2024-08-14_11-25-07": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sed74cffc92a8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s16aug12\\2024-08-12_12-54-17": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:see3e94be4f79|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s6jul10\\2025-07-10_14-52-32": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:see44a45ecb19|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s8jul14\\2025-07-14_13-17-51": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:seec91fec52e0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos1jan21\\2022-01-21_16-08-29": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sf4011d15f7c1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s7mar8\\2024-03-08_14-30-58": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sf708374df3f5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-20_17-19-12": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sf853f33745e0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s4apr3\\2023-04-03_17-09-09": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sf86b58006353|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con3\\multi_spcon_con3_J2_FP2\\2025-09-18_14-53-14": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sf98f040a4f80|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s1feb4\\2025-02-04_11-49-12": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sfa433fd440de|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM2\\FADM2s2apr4\\2023-04-04_16-43-24": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sfca017658a98|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s13mar20\\2024-03-20_18-08-44": [
+        "set",
+        "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "person:Avery (AI)": [
+        "set",
+        "2026-10-23T13:41:57.014058+00:00"
+      ],
+      "person:Fatima": [
+        "set",
+        "2026-10-23T13:29:53.800026+00:00"
+      ],
       "person:Harness Probe Person": [
         "set",
-        "2026-09-29T18:04:01.736652+00:00"
+        "2026-10-23T13:41:57.568365+00:00"
       ],
       "person:Rain": [
         "set",
@@ -1036,13 +2000,49 @@
         "gone",
         "2026-09-09T16:09:16.429262+00:00"
       ],
+      "person:TEST": [
+        "set",
+        "2026-10-23T13:29:51.778158+00:00"
+      ],
+      "person:a colleague": [
+        "set",
+        "2026-10-23T13:29:54.079528+00:00"
+      ],
+      "person:bankback@harness": [
+        "set",
+        "2026-10-23T13:29:50.091582+00:00"
+      ],
+      "person:curate@harness": [
+        "set",
+        "2026-10-23T13:29:50.835396+00:00"
+      ],
+      "person:eye harness": [
+        "set",
+        "2026-10-23T13:29:49.582391+00:00"
+      ],
+      "person:harness": [
+        "set",
+        "2026-10-23T13:29:51.480847+00:00"
+      ],
+      "person:harness@test": [
+        "set",
+        "2026-10-23T13:29:49.257565+00:00"
+      ],
+      "person:spikeflow@harness": [
+        "set",
+        "2026-10-23T13:29:51.185211+00:00"
+      ],
+      "person:spotter harness": [
+        "set",
+        "2026-10-23T13:29:49.945787+00:00"
+      ],
       "person:zz autosync probe": [
         "set",
         "2026-09-09T17:43:06.158198+00:00"
       ],
       "person:zz edit probe": [
         "set",
-        "2026-09-29T18:04:05.866627+00:00"
+        "2026-10-23T13:38:13.968403+00:00"
       ],
       "person:zz edit probe renamed": [
         "set",
@@ -2400,6 +3400,10 @@
         "set",
         "2026-09-09T21:40:46.375301+00:00"
       ],
+      "session:s4e2327029138": [
+        "set",
+        "2026-10-22T16:07:40.978554+00:00"
+      ],
       "session:s5083cd98d7f6": [
         "set",
         "2026-09-11T15:22:41.799041+00:00"
@@ -3076,6 +4080,10 @@
         "set",
         "2026-09-10T02:01:46.776186+00:00"
       ],
+      "session:se0b562c0fa29": [
+        "set",
+        "2026-10-22T16:18:33.416597+00:00"
+      ],
       "session:se169051f46a9": [
         "set",
         "2026-09-18T17:25:31.878595+00:00"
@@ -3203,11 +4211,65 @@
     }
   },
   "_shard": {
-    "at": "2026-10-19T20:41:44.430524+00:00",
+    "at": "2026-10-23T19:21:57.096929+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "gone": {
+    "bank:148da87e6da1": {
+      "at": "2026-10-20T11:10:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "148da87e6da1",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:15edf88a9c34": {
+      "at": "2026-10-20T11:10:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "15edf88a9c34",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:1a5bd9f32d3e": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "1a5bd9f32d3e",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:38e200ea3375": {
+      "at": "2026-10-20T11:10:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "38e200ea3375",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:3b3111be3118": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "3b3111be3118",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:3bef61c4f955": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "3bef61c4f955",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
     "bank:4e00ff2b9b7d": {
       "at": "2026-10-14T19:08:52-0400",
       "by": "desktop-4h65ai7-d565",
@@ -3217,6 +4279,69 @@
       "synced": true,
       "synced_at": "2026-10-15T10:04:29-0400"
     },
+    "bank:524e5c537274": {
+      "at": "2026-10-20T11:10:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "524e5c537274",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:5dcf2c3aaa7a": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "5dcf2c3aaa7a",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:6949b9dc9581": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "6949b9dc9581",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:6c077ff96604": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "6c077ff96604",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:773e8e73c6ab": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "773e8e73c6ab",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:78a241655378": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "78a241655378",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:7e0d577f151f": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "7e0d577f151f",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
     "bank:8931cc766fe7": {
       "at": "2026-10-14T19:08:53-0400",
       "by": "desktop-4h65ai7-d565",
@@ -3225,6 +4350,176 @@
       "note": "banked by the confluence.html harness by mistake",
       "synced": true,
       "synced_at": "2026-10-15T10:04:29-0400"
+    },
+    "bank:8c6f45c963a9": {
+      "at": "2026-10-23T17:36:29+00:00",
+      "by": "desktop-4h65ai7-d565",
+      "id": "8c6f45c963a9",
+      "kind": "bank",
+      "note": "deleted elsewhere",
+      "synced": true
+    },
+    "bank:96ccc0c35b19": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "96ccc0c35b19",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:9f269d624f95": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "9f269d624f95",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:abd7cd89926f": {
+      "at": "2026-10-20T11:10:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "abd7cd89926f",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:bd1e430bb50d": {
+      "at": "2026-10-20T11:10:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "bd1e430bb50d",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:c29b7de500ca": {
+      "at": "2026-10-20T11:10:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "c29b7de500ca",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:c402f4a1ec4e": {
+      "at": "2026-10-20T11:10:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "c402f4a1ec4e",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:cd649397cfc0": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "cd649397cfc0",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:cfc179ca8cbf": {
+      "at": "2026-10-20T11:10:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "cfc179ca8cbf",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:d26ac1fb266b": {
+      "at": "2026-10-20T11:10:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "d26ac1fb266b",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:d2c8bdf02fa2": {
+      "at": "2026-10-20T11:10:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "d2c8bdf02fa2",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:e2fedada93af": {
+      "at": "2026-10-20T11:10:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "e2fedada93af",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:e722ca5724d7": {
+      "at": "2026-10-20T13:57:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "e722ca5724d7",
+      "kind": "bank",
+      "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:ebd7e0c826c2": {
+      "at": "2026-10-20T11:10:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "ebd7e0c826c2",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "bank:f05308cb9f1f": {
+      "at": "2026-10-20T11:10:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "f05308cb9f1f",
+      "kind": "bank",
+      "note": "Doppler run on a recording in more than one segment, made before the gap fix (2026.10.19.6); deleted to be rerun, 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T11:11:03-0400"
+    },
+    "curation:s8d7f397b9708__ied": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8d7f397b9708__ied",
+      "kind": "curation",
+      "note": "Curation set started from a Doppler run (or its pool) that predates the gap fix; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "curation:s8d7f397b9708__pooled": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8d7f397b9708__pooled",
+      "kind": "curation",
+      "note": "Curation set started from a Doppler run (or its pool) that predates the gap fix; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "curation:s9a8f6138b49e__ied": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9a8f6138b49e__ied",
+      "kind": "curation",
+      "note": "Curation set started from a Doppler run (or its pool) that predates the gap fix; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "curation:sba57286bdee3__ied": {
+      "at": "2026-10-20T13:57:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sba57286bdee3__ied",
+      "kind": "curation",
+      "note": "Curation set started from a Doppler run (or its pool) that predates the gap fix; deleted 2026-10-20",
+      "synced": true,
+      "synced_at": "2026-10-20T13:58:42-0400"
     },
     "deck:deck_008e35e2": {
       "at": "2026-09-08T23:45:28-0400",
@@ -3639,6 +4934,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-25T17:03:37-0400"
+    },
+    "deck:deck_3c28fa6e": {
+      "at": "2026-10-21T19:00:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_3c28fa6e",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-10-22T10:36:49-0400"
     },
     "deck:deck_3c7334bf": {
       "at": "2026-09-03T10:59:20-0400",
@@ -5503,8 +6807,1878 @@
       "synced": true,
       "synced_at": "2026-10-07T18:34:38-0400"
     },
+    "path:s00da8ac343c1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s28jan19-flowerpot4\\2024-01-19_15-17-31": {
+      "at": "2026-10-23T15:20:23-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s00da8ac343c1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s28jan19-flowerpot4\\2024-01-19_15-17-31",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s00ddc93c4925|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s9dcz0feb6\\2025-02-06_16-40-17": {
+      "at": "2026-10-23T15:20:53-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s00ddc93c4925|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s9dcz0feb6\\2025-02-06_16-40-17",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s03d09383ec1b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-25_17-47-41": {
+      "at": "2026-10-23T15:21:11-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s03d09383ec1b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-25_17-47-41",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s074e23a1fee6|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s11aug15dcz2\\2024-08-15_13-52-52": {
+      "at": "2026-10-23T15:20:40-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s074e23a1fee6|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s11aug15dcz2\\2024-08-15_13-52-52",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s08bdd94ea75a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s21jan11-flowerpot3\\2024-01-11_17-04-45": {
+      "at": "2026-10-23T15:20:23-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s08bdd94ea75a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s21jan11-flowerpot3\\2024-01-11_17-04-45",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s08f0c5d1e05c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s3apr5\\2023-04-05_14-00-57": {
+      "at": "2026-10-23T15:21:08-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s08f0c5d1e05c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s3apr5\\2023-04-05_14-00-57",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s0a7d8f524e97|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s49jan30\\2024-01-30_16-59-16": {
+      "at": "2026-10-23T15:20:26-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s0a7d8f524e97|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s49jan30\\2024-01-30_16-59-16",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s0b3411fad490|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s46jan26\\2024-01-26_14-22-40": {
+      "at": "2026-10-23T15:20:25-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s0b3411fad490|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s46jan26\\2024-01-26_14-22-40",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s0bf2b0ea9547|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s8FPmar8\\2024-03-08_15-29-03": {
+      "at": "2026-10-23T15:20:32-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s0bf2b0ea9547|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s8FPmar8\\2024-03-08_15-29-03",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s0c23730d27aa|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s43jan25\\2024-01-25_16-53-02": {
+      "at": "2026-10-23T15:20:25-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s0c23730d27aa|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s43jan25\\2024-01-25_16-53-02",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s10b9901712ae|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s3FPmar1\\2024-03-01_15-20-17": {
+      "at": "2026-10-23T15:20:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s10b9901712ae|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s3FPmar1\\2024-03-01_15-20-17",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s122b12738cf3|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s1apr5\\2023-04-05_12-39-29": {
+      "at": "2026-10-23T15:21:07-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s122b12738cf3|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s1apr5\\2023-04-05_12-39-29",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s130ac142accf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con4\\Multi_spcon_con4_FP2\\2025-09-19_14-09-32": {
+      "at": "2026-10-23T15:20:04-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s130ac142accf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con4\\Multi_spcon_con4_FP2\\2025-09-19_14-09-32",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s14f499593e3c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s34jan22\\2024-01-22_12-06-27": {
+      "at": "2026-10-23T15:20:23-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s14f499593e3c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s34jan22\\2024-01-22_12-06-27",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s1872784368e8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s15jan10-flowerpot\\2024-01-10_15-07-21": {
+      "at": "2026-10-23T15:20:22-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1872784368e8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s15jan10-flowerpot\\2024-01-10_15-07-21",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s1aec4e30424d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s3apr6\\2023-04-06_14-37-41": {
+      "at": "2026-10-23T15:21:09-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1aec4e30424d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s3apr6\\2023-04-06_14-37-41",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s1bba3f183a91|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos3jan21\\2022-01-21_17-20-59": {
+      "at": "2026-10-23T15:20:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1bba3f183a91|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos3jan21\\2022-01-21_17-20-59",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s1cc5651e29bf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s18aug12\\2024-08-12_13-39-40": {
+      "at": "2026-10-23T15:20:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1cc5651e29bf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s18aug12\\2024-08-12_13-39-40",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s1e6fc13f36f5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Con1\\multi_spcon_con1_J1_FP2\\2025-09-16_12-35-36": {
+      "at": "2026-10-23T15:20:02-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1e6fc13f36f5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Con1\\multi_spcon_con1_J1_FP2\\2025-09-16_12-35-36",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s1e7ada8eac32|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s2oct20_SA\\2023-10-24_18-12-28": {
+      "at": "2026-10-23T15:21:11-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1e7ada8eac32|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s2oct20_SA\\2023-10-24_18-12-28",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s1f83e06d0029|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s5jan8\\2024-01-08_17-19-00": {
+      "at": "2026-10-23T15:20:21-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1f83e06d0029|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s5jan8\\2024-01-08_17-19-00",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s2011bbcb4d64|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\m5s8jan9\\2024-01-09_14-27-27": {
+      "at": "2026-10-23T15:20:22-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s2011bbcb4d64|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\m5s8jan9\\2024-01-09_14-27-27",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s214bfc141512|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m27_ptenblind\\m27s2jul2\\2024-07-10_11-39-12": {
+      "at": "2026-10-23T15:20:44-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s214bfc141512|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m27_ptenblind\\m27s2jul2\\2024-07-10_11-39-12",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s21f5238b7679|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s1mar1\\2024-03-01_14-17-20": {
+      "at": "2026-10-23T15:20:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s21f5238b7679|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s1mar1\\2024-03-01_14-17-20",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s221aa14ef08d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s2jul10\\2025-07-10_12-46-40": {
+      "at": "2026-10-23T15:20:57-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s221aa14ef08d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s2jul10\\2025-07-10_12-46-40",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s226752ce25da|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s1apr3\\2023-04-03_14-51-07": {
+      "at": "2026-10-23T15:21:06-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s226752ce25da|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s1apr3\\2023-04-03_14-51-07",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s2279b53ffcde|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s45jan26\\2024-01-26_13-49-40": {
+      "at": "2026-10-23T15:20:25-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s2279b53ffcde|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s45jan26\\2024-01-26_13-49-40",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s24a347096b92|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_16-57-17": {
+      "at": "2026-10-23T15:20:15-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s24a347096b92|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_16-57-17",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s24a347096b92|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_16-58-42": {
+      "at": "2026-10-23T15:20:15-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s24a347096b92|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_16-58-42",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s24a347096b92|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_17-00-08": {
+      "at": "2026-10-23T15:20:15-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s24a347096b92|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_17-00-08",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s24a347096b92|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_17-02-56": {
+      "at": "2026-10-23T15:20:15-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s24a347096b92|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_17-02-56",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s261323ab8138|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Con2\\Multi_Spcon_J1_Con2_FP2\\2025-09-17_11-55-51": {
+      "at": "2026-10-23T15:20:02-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s261323ab8138|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Con2\\Multi_Spcon_J1_Con2_FP2\\2025-09-17_11-55-51",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s27f0593a9ed7|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s7_06192025\\2025-06-19_16-09-27": {
+      "at": "2026-10-23T15:20:56-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s27f0593a9ed7|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s7_06192025\\2025-06-19_16-09-27",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s298bb578fdcd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s12jul15\\2025-07-15_13-48-38": {
+      "at": "2026-10-23T15:21:00-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s298bb578fdcd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s12jul15\\2025-07-15_13-48-38",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s2aa0bdf996ca|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM2\\FADM2s3apr4\\2023-04-04_17-48-23": {
+      "at": "2026-10-23T15:21:07-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s2aa0bdf996ca|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM2\\FADM2s3apr4\\2023-04-04_17-48-23",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s2adfba95d32f|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s17aug12\\2024-08-12_13-20-37": {
+      "at": "2026-10-23T15:20:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s2adfba95d32f|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s17aug12\\2024-08-12_13-20-37",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s2b995eadca07|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s4jul11\\2025-07-11_14-01-15": {
+      "at": "2026-10-23T15:20:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s2b995eadca07|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s4jul11\\2025-07-11_14-01-15",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s2b995eadca07|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s4jul11\\2025-07-11_14-38-38": {
+      "at": "2026-10-23T15:20:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s2b995eadca07|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s4jul11\\2025-07-11_14-38-38",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s2bcb342c8e01|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\M51\\m51s2apr8_postDCZ\\2025-04-08_17-45-12": {
+      "at": "2026-10-23T15:20:53-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s2bcb342c8e01|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\M51\\m51s2apr8_postDCZ\\2025-04-08_17-45-12",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s2e0cf03cb75c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M5ptenko\\m5ptens2jan13\\2022-01-13_15-16-30": {
+      "at": "2026-10-23T15:20:20-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s2e0cf03cb75c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M5ptenko\\m5ptens2jan13\\2022-01-13_15-16-30",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s2ff694df2bee|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADm1s5apr3\\2023-04-03_17-23-48": {
+      "at": "2026-10-23T15:21:06-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s2ff694df2bee|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADm1s5apr3\\2023-04-03_17-23-48",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s308e358479d0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s14mar20\\2024-03-20_18-38-41": {
+      "at": "2026-10-23T15:20:33-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s308e358479d0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s14mar20\\2024-03-20_18-38-41",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s33de61d7ba0b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s3apr5\\2023-04-05_17-30-54": {
+      "at": "2026-10-23T15:21:09-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s33de61d7ba0b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s3apr5\\2023-04-05_17-30-54",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s33ea2aed2755|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s2apr3\\2023-04-03_16-32-08": {
+      "at": "2026-10-23T15:21:06-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s33ea2aed2755|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s2apr3\\2023-04-03_16-32-08",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s352ea772fdfa|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-09-22_13-35-21": {
+      "at": "2026-10-23T15:20:17-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s352ea772fdfa|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-09-22_13-35-21",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s375b44b95da9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\m5s7jan9\\2024-01-09_13-49-55": {
+      "at": "2026-10-23T15:20:22-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s375b44b95da9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\m5s7jan9\\2024-01-09_13-49-55",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s37e8a7f56529|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s1dec4\\2023-12-04_16-17-15": {
+      "at": "2026-10-23T15:20:19-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s37e8a7f56529|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s1dec4\\2023-12-04_16-17-15",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s3d4e5c5c0e91|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s5jan5\\2022-01-05_17-22-40": {
+      "at": "2026-10-23T15:20:28-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s3d4e5c5c0e91|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s5jan5\\2022-01-05_17-22-40",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s3fb460ef7a4a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon1\\J2S191225_FP2\\2025-09-13_10-15-34": {
+      "at": "2026-10-23T15:20:03-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s3fb460ef7a4a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon1\\J2S191225_FP2\\2025-09-13_10-15-34",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s444dd5032dca|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s7cno120feb4\\2025-02-04_15-59-28": {
+      "at": "2026-10-23T15:20:53-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s444dd5032dca|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s7cno120feb4\\2025-02-04_15-59-28",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s4585d1ef49ce|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s10_07012025\\2025-07-01_11-05-16": {
+      "at": "2026-10-23T15:20:56-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s4585d1ef49ce|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s10_07012025\\2025-07-01_11-05-16",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s45bae70722f2|C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00": {
+      "at": "2026-10-23T15:20:13-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s45bae70722f2|C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00",
+      "kind": "path",
+      "note": "a test's temporary folder",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s45bae70722f2|C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00": {
+      "at": "2026-10-23T15:20:13-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s45bae70722f2|C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260909_171424\\FAKEPROJ\\fake_m1\\m1s2_2026-01-02\\2026-01-02_11-30-00",
+      "kind": "path",
+      "note": "a test's temporary folder",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s45bae70722f2|G:\\PTEN\\M1_s2\\timestamps.mat": {
+      "at": "2026-10-23T15:20:13-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s45bae70722f2|G:\\PTEN\\M1_s2\\timestamps.mat",
+      "kind": "path",
+      "note": "a file, not a recording folder",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s49f306485ed1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos2jan21\\2022-01-21_16-34-48": {
+      "at": "2026-10-23T15:20:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s49f306485ed1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos2jan21\\2022-01-21_16-34-48",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s4ae5ed74335c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s36jan22\\2024-01-22_15-38-39": {
+      "at": "2026-10-23T15:20:24-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s4ae5ed74335c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s36jan22\\2024-01-22_15-38-39",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s4b3d2a3821c2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s2apr5\\2023-04-05_16-59-08": {
+      "at": "2026-10-23T15:21:09-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s4b3d2a3821c2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s2apr5\\2023-04-05_16-59-08",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s4bdb064c3029|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s41jan24\\2024-01-24_18-24-11": {
+      "at": "2026-10-23T15:20:24-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s4bdb064c3029|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s41jan24\\2024-01-24_18-24-11",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s4cc69cf76001|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\M7s3jan5\\2022-01-05_16-34-47": {
+      "at": "2026-10-23T15:20:27-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s4cc69cf76001|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\M7s3jan5\\2022-01-05_16-34-47",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s51d3deeed36c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s2jan5\\2022-01-05_16-01-54": {
+      "at": "2026-10-23T15:20:27-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s51d3deeed36c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s2jan5\\2022-01-05_16-01-54",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s5213f39fb75a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s9aug16dcz2\\2024-08-16_16-08-09": {
+      "at": "2026-10-23T15:20:43-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s5213f39fb75a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s9aug16dcz2\\2024-08-16_16-08-09",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s52d22e29c21b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s12jul14\\2025-07-14_16-09-37": {
+      "at": "2026-10-23T15:20:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s52d22e29c21b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s12jul14\\2025-07-14_16-09-37",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s53bc67326044|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s40jan24\\2024-01-24_17-52-30": {
+      "at": "2026-10-23T15:20:24-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s53bc67326044|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s40jan24\\2024-01-24_17-52-30",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s541f5c5f3f4b|C:\\Users\\Z390\\AppData\\Local\\Temp\\claude\\c--Users-Z390-Desktop-jeremystats\\10793393-7bec-4466-a06f-1b1910bd2af0\\scratchpad\\junkfolder": {
+      "at": "2026-10-23T15:21:11-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s541f5c5f3f4b|C:\\Users\\Z390\\AppData\\Local\\Temp\\claude\\c--Users-Z390-Desktop-jeremystats\\10793393-7bec-4466-a06f-1b1910bd2af0\\scratchpad\\junkfolder",
+      "kind": "path",
+      "note": "a test's temporary folder",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s551f57109899|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-23_15-05-25": {
+      "at": "2026-10-23T15:21:10-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s551f57109899|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-23_15-05-25",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s551f57109899|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-23_15-33-47": {
+      "at": "2026-10-23T15:21:10-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s551f57109899|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-23_15-33-47",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s55723c01a337|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon4\\multi_spcon_J2_precon4_FP2\\2025-09-15_16-02-32": {
+      "at": "2026-10-23T15:20:03-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s55723c01a337|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon4\\multi_spcon_J2_precon4_FP2\\2025-09-15_16-02-32",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s5733437d84ec|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s50feb5\\2024-02-05_15-24-13": {
+      "at": "2026-10-23T15:20:26-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s5733437d84ec|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s50feb5\\2024-02-05_15-24-13",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s5822cc97c64c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s3jan8\\2024-01-08_16-15-14": {
+      "at": "2026-10-23T15:20:21-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s5822cc97c64c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s3jan8\\2024-01-08_16-15-14",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s589b86177f6d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M12ptenko\\m12ptens3jan14\\2022-01-14_16-40-31": {
+      "at": "2026-10-23T15:20:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s589b86177f6d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M12ptenko\\m12ptens3jan14\\2022-01-14_16-40-31",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s5a30e67eb8b3|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s5jul11\\2025-07-11_14-43-44": {
+      "at": "2026-10-23T15:20:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s5a30e67eb8b3|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s5jul11\\2025-07-11_14-43-44",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s5b932a8e933d|G:\\PTEN\\M1_s8\\timestamps.mat": {
+      "at": "2026-10-23T15:20:14-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s5b932a8e933d|G:\\PTEN\\M1_s8\\timestamps.mat",
+      "kind": "path",
+      "note": "a file, not a recording folder",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s5fc6914c130e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s3cno0feb4\\2025-02-04_13-52-42": {
+      "at": "2026-10-23T15:20:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s5fc6914c130e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s3cno0feb4\\2025-02-04_13-52-42",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s608d71d2ce31|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m69s10jul14\\2025-07-14_15-01-18": {
+      "at": "2026-10-23T15:21:00-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s608d71d2ce31|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m69s10jul14\\2025-07-14_15-01-18",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s61cb60f8983d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-18_14-57-06": {
+      "at": "2026-10-23T15:20:19-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s61cb60f8983d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-18_14-57-06",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s65ea3bec96e0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s42jan25\\2024-01-25_16-20-33": {
+      "at": "2026-10-23T15:20:24-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s65ea3bec96e0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s42jan25\\2024-01-25_16-20-33",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s67f94b63e474|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s16jan10-flowerpot2\\2024-01-10_16-18-55": {
+      "at": "2026-10-23T15:20:22-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s67f94b63e474|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s16jan10-flowerpot2\\2024-01-10_16-18-55",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s68f90e9606d0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s11_07012025\\2025-07-01_11-57-56": {
+      "at": "2026-10-23T15:20:57-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s68f90e9606d0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s11_07012025\\2025-07-01_11-57-56",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s6a9d2213791f|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon4\\multi_spcon_J1_precon4_FP2\\2025-09-15_12-31-41": {
+      "at": "2026-10-23T15:20:02-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s6a9d2213791f|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon4\\multi_spcon_J1_precon4_FP2\\2025-09-15_12-31-41",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s6abee91e3972|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s5apr6\\2023-04-06_16-13-47": {
+      "at": "2026-10-23T15:21:10-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s6abee91e3972|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s5apr6\\2023-04-06_16-13-47",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s6bc05a77e321|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Precon1\\J1s191225_FP2\\2025-09-12_13-22-37": {
+      "at": "2026-10-23T15:20:01-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s6bc05a77e321|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Precon1\\J1s191225_FP2\\2025-09-12_13-22-37",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s6bc05a77e321|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Precon1\\J1s291225_SP1\\2025-09-12_17-33-58": {
+      "at": "2026-10-23T15:20:01-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s6bc05a77e321|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Precon1\\J1s291225_SP1\\2025-09-12_17-33-58",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s6cdff44bbdc0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s9jul14\\2025-07-14_13-59-36": {
+      "at": "2026-10-23T15:20:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s6cdff44bbdc0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s9jul14\\2025-07-14_13-59-36",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s6f06fb3fbfe9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s7aug16\\2024-08-16_14-58-41": {
+      "at": "2026-10-23T15:20:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s6f06fb3fbfe9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s7aug16\\2024-08-16_14-58-41",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s6f37541d9ea6|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s4cno30feb4\\2025-02-04_14-23-38": {
+      "at": "2026-10-23T15:20:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s6f37541d9ea6|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s4cno30feb4\\2025-02-04_14-23-38",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s7189bc63fd72|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s2apr5\\2023-04-05_13-48-26": {
+      "at": "2026-10-23T15:21:07-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s7189bc63fd72|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s2apr5\\2023-04-05_13-48-26",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s71ef4518fd3d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M6ptenko\\m1s1dec21\\2021-12-21_15-40-33": {
+      "at": "2026-10-23T15:20:13-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s71ef4518fd3d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M6ptenko\\m1s1dec21\\2021-12-21_15-40-33",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s72b6f480b5c0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s9mar18\\2024-03-18_15-12-52": {
+      "at": "2026-10-23T15:20:32-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s72b6f480b5c0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s9mar18\\2024-03-18_15-12-52",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s73c1e30c08b4|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s5cno60feb4\\2025-02-04_14-54-39": {
+      "at": "2026-10-23T15:20:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s73c1e30c08b4|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s5cno60feb4\\2025-02-04_14-54-39",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s74e451c63959|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s44jan25-flowerpot\\2024-01-25_17-41-04": {
+      "at": "2026-10-23T15:20:25-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s74e451c63959|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s44jan25-flowerpot\\2024-01-25_17-41-04",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s775e62b7a8f0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s2dec4\\2024-01-08_15-04-57": {
+      "at": "2026-10-23T15:20:20-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s775e62b7a8f0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s2dec4\\2024-01-08_15-04-57",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s775e62b7a8f0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s2jan8\\2024-01-08_15-13-41": {
+      "at": "2026-10-23T15:20:20-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s775e62b7a8f0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s2jan8\\2024-01-08_15-13-41",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s778648f305ec|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s19aug12-dcz\\2024-08-12_14-12-48": {
+      "at": "2026-10-23T15:20:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s778648f305ec|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s19aug12-dcz\\2024-08-12_14-12-48",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s7955408bfadf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s6_06192025\\2025-06-19_15-38-55": {
+      "at": "2026-10-23T15:20:56-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s7955408bfadf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s6_06192025\\2025-06-19_15-38-55",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s79ce9ea48506|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M6ptenko\\m2s2dec21\\2021-12-21_15-52-40": {
+      "at": "2026-10-23T15:20:14-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s79ce9ea48506|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M6ptenko\\m2s2dec21\\2021-12-21_15-52-40",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s7a16d196138d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s13aug15dcz4\\2024-08-15_15-00-33": {
+      "at": "2026-10-23T15:20:40-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s7a16d196138d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s13aug15dcz4\\2024-08-15_15-00-33",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s7cbc40ea6382|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon3\\Pre3FP1\\2025-09-14_11-22-47": {
+      "at": "2026-10-23T15:20:02-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s7cbc40ea6382|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon3\\Pre3FP1\\2025-09-14_11-22-47",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s7cbc40ea6382|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon3\\Pre3SPcon\\2025-09-14_11-29-47": {
+      "at": "2026-10-23T15:20:02-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s7cbc40ea6382|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon3\\Pre3SPcon\\2025-09-14_11-29-47",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s7cbc40ea6382|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon3\\pre3FP2\\2025-09-14_13-03-29": {
+      "at": "2026-10-23T15:20:02-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s7cbc40ea6382|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon3\\pre3FP2\\2025-09-14_13-03-29",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s7d9fb1a2bc80|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M12ptenko\\m12ptens4jan14\\2022-01-14_16-58-42": {
+      "at": "2026-10-23T15:20:36-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s7d9fb1a2bc80|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M12ptenko\\m12ptens4jan14\\2022-01-14_16-58-42",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s800b22a302b5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s2mar1\\2024-03-01_14-47-57": {
+      "at": "2026-10-23T15:20:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s800b22a302b5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s2mar1\\2024-03-01_14-47-57",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s802da46ec00b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-05_12-49-31": {
+      "at": "2026-10-23T15:20:18-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s802da46ec00b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-05_12-49-31",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s8056149a4605|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s10mar18\\2024-03-18_15-43-36": {
+      "at": "2026-10-23T15:20:32-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8056149a4605|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s10mar18\\2024-03-18_15-43-36",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s82343a26d280|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s4jan5\\2022-01-05_16-57-02": {
+      "at": "2026-10-23T15:20:28-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s82343a26d280|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s4jan5\\2022-01-05_16-57-02",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s838a2623ae31|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con2\\Multi_Spcon_J2_Con2_FP2\\2025-09-17_15-06-20": {
+      "at": "2026-10-23T15:20:04-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s838a2623ae31|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con2\\Multi_Spcon_J2_Con2_FP2\\2025-09-17_15-06-20",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s8a082a3870f2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s47jan26-flowerpot\\2024-01-26_14-57-30": {
+      "at": "2026-10-23T15:20:25-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8a082a3870f2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s47jan26-flowerpot\\2024-01-26_14-57-30",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s8a99f296058a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s6apr3\\2023-04-03_17-45-33": {
+      "at": "2026-10-23T15:21:07-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8a99f296058a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s6apr3\\2023-04-03_17-45-33",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s8d50a361b096|G:\\PTEN\\M34_s8\\timestamps.mat": {
+      "at": "2026-10-23T15:20:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8d50a361b096|G:\\PTEN\\M34_s8\\timestamps.mat",
+      "kind": "path",
+      "note": "a file, not a recording folder",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s908db39101c6|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s4FPmar1\\2024-03-01_15-27-45": {
+      "at": "2026-10-23T15:20:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s908db39101c6|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s4FPmar1\\2024-03-01_15-27-45",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s90fcf20ecd5f|C:\\Users\\Z390\\AppData\\Local\\Temp\\claude\\c--Users-Z390-Desktop-jeremystats\\10793393-7bec-4466-a06f-1b1910bd2af0\\scratchpad\\junkfolder": {
+      "at": "2026-10-23T15:21:11-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s90fcf20ecd5f|C:\\Users\\Z390\\AppData\\Local\\Temp\\claude\\c--Users-Z390-Desktop-jeremystats\\10793393-7bec-4466-a06f-1b1910bd2af0\\scratchpad\\junkfolder",
+      "kind": "path",
+      "note": "a test's temporary folder",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s9293ad84cde6|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM54\\m54s4_060525\\2025-06-05_14-33-47": {
+      "at": "2026-10-23T15:20:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9293ad84cde6|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM54\\m54s4_060525\\2025-06-05_14-33-47",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s96cc56245c0d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s4apr6\\2023-04-06_15-34-03": {
+      "at": "2026-10-23T15:21:10-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s96cc56245c0d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s4apr6\\2023-04-06_15-34-03",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s9728718bbd70|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\m5s9jan9\\2024-01-09_14-51-28": {
+      "at": "2026-10-23T15:20:22-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9728718bbd70|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\m5s9jan9\\2024-01-09_14-51-28",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s9a24ec997705|G:\\PTEN\\M11_s11\\timestamps.mat": {
+      "at": "2026-10-23T15:20:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9a24ec997705|G:\\PTEN\\M11_s11\\timestamps.mat",
+      "kind": "path",
+      "note": "a file, not a recording folder",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s9b0393c60c33|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s4_06192025\\2025-06-19_14-37-42": {
+      "at": "2026-10-23T15:20:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9b0393c60c33|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s4_06192025\\2025-06-19_14-37-42",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s9bcf0b534c38|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s4apr5\\2023-04-05_14-55-09": {
+      "at": "2026-10-23T15:21:08-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9bcf0b534c38|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s4apr5\\2023-04-05_14-55-09",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s9c82b86917ba|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s5apr5\\2023-04-05_15-40-40": {
+      "at": "2026-10-23T15:21:08-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9c82b86917ba|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM3_old\\FADM3s5apr5\\2023-04-05_15-40-40",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s9d0c67990d82|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM54\\m54s3_060225\\2025-06-02_16-32-16": {
+      "at": "2026-10-23T15:20:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9d0c67990d82|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM54\\m54s3_060225\\2025-06-02_16-32-16",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s9e8706d4a3c8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s35jan22-flowerpot1\\2024-01-22_12-58-51": {
+      "at": "2026-10-23T15:20:24-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9e8706d4a3c8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s35jan22-flowerpot1\\2024-01-22_12-58-51",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s9e8706d4a3c8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s35jan22\\2024-01-22_15-05-39": {
+      "at": "2026-10-23T15:20:24-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9e8706d4a3c8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s35jan22\\2024-01-22_15-05-39",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s9f80655558bd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-12_14-37-00": {
+      "at": "2026-10-23T15:20:19-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9f80655558bd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-12_14-37-00",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sa164c419af78|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s21aug12dcz-3\\2024-08-12_15-07-02": {
+      "at": "2026-10-23T15:20:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sa164c419af78|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s21aug12dcz-3\\2024-08-12_15-07-02",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sa41f3b8fe7fb|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s3apr3\\2023-04-03_16-42-24": {
+      "at": "2026-10-23T15:21:06-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sa41f3b8fe7fb|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s3apr3\\2023-04-03_16-42-24",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sa48edc035066|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\M51\\m51s3apr8_postDCZ30\\2025-04-08_18-21-09": {
+      "at": "2026-10-23T15:20:53-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sa48edc035066|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\M51\\m51s3apr8_postDCZ30\\2025-04-08_18-21-09",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sa4d2bd9a3dd1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s3jul10\\2025-07-10_13-20-23": {
+      "at": "2026-10-23T15:20:57-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sa4d2bd9a3dd1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s3jul10\\2025-07-10_13-20-23",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sa537bb60b1d5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s11jul14\\2025-07-14_15-32-22": {
+      "at": "2026-10-23T15:20:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sa537bb60b1d5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s11jul14\\2025-07-14_15-32-22",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sa56245ea6b13|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s5jul10\\2025-07-10_14-21-55": {
+      "at": "2026-10-23T15:20:57-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sa56245ea6b13|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s5jul10\\2025-07-10_14-21-55",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sa61019000ace|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s22aug12dcz-4\\2024-08-12_15-38-24": {
+      "at": "2026-10-23T15:20:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sa61019000ace|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s22aug12dcz-4\\2024-08-12_15-38-24",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sa75283a02718|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s11mar19\\2024-03-19_13-31-42": {
+      "at": "2026-10-23T15:20:32-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sa75283a02718|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s11mar19\\2024-03-19_13-31-42",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:saadc0e703a8a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon2\\J1S291325_FP2\\2025-09-13_12-22-27": {
+      "at": "2026-10-23T15:20:02-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "saadc0e703a8a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon2\\J1S291325_FP2\\2025-09-13_12-22-27",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:saaf096d3deaa|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM54\\m54s2_060225\\2025-06-02_16-17-58": {
+      "at": "2026-10-23T15:20:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "saaf096d3deaa|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM54\\m54s2_060225\\2025-06-02_16-17-58",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb11137db10ff|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s10aug15dcz1\\2024-08-15_13-21-28": {
+      "at": "2026-10-23T15:20:40-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb11137db10ff|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s10aug15dcz1\\2024-08-15_13-21-28",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb1e2b0541138|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s4jan8\\2024-01-08_17-01-57": {
+      "at": "2026-10-23T15:20:21-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb1e2b0541138|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s4jan8\\2024-01-08_17-01-57",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb206c76b676b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s9aug15\\2024-08-15_12-43-26": {
+      "at": "2026-10-23T15:20:39-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb206c76b676b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s9aug15\\2024-08-15_12-43-26",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb209c176d82c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s1_061925\\2025-06-19_12-24-17": {
+      "at": "2026-10-23T15:20:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb209c176d82c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s1_061925\\2025-06-19_12-24-17",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb209c176d82c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s1b_061925\\2025-06-19_13-15-37": {
+      "at": "2026-10-23T15:20:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb209c176d82c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s1b_061925\\2025-06-19_13-15-37",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb218a6211ef8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s5_06192025\\2025-06-19_15-08-32": {
+      "at": "2026-10-23T15:20:56-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb218a6211ef8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s5_06192025\\2025-06-19_15-08-32",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb361797e6f9c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s6jan5\\2022-01-05_17-42-32": {
+      "at": "2026-10-23T15:20:28-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb361797e6f9c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s6jan5\\2022-01-05_17-42-32",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb5de56b987c3|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s1apr5\\2023-04-05_16-44-17": {
+      "at": "2026-10-23T15:21:08-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb5de56b987c3|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s1apr5\\2023-04-05_16-44-17",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb6dc0dcecc5d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s2apr6\\2023-04-06_13-46-44": {
+      "at": "2026-10-23T15:21:09-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb6dc0dcecc5d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s2apr6\\2023-04-06_13-46-44",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb6df05f8cc9a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M12ptenko\\m12ptens1jan14\\2022-01-14_16-01-51": {
+      "at": "2026-10-23T15:20:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb6df05f8cc9a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M12ptenko\\m12ptens1jan14\\2022-01-14_16-01-51",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-27-32": {
+      "at": "2026-10-23T15:20:16-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-27-32",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-31-13": {
+      "at": "2026-10-23T15:20:16-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-31-13",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-42-41": {
+      "at": "2026-10-23T15:20:16-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-42-41",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-54-05": {
+      "at": "2026-10-23T15:20:16-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-54-05",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-55-40": {
+      "at": "2026-10-23T15:20:16-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_15-55-40",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_16-01-44": {
+      "at": "2026-10-23T15:20:16-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_16-01-44",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_16-33-41": {
+      "at": "2026-10-23T15:20:16-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb7aca24e36dd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-09_16-33-41",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb8710ea8d7f3|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM2\\FADM2s1apr4\\2023-04-04_13-52-02": {
+      "at": "2026-10-23T15:21:07-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb8710ea8d7f3|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM2\\FADM2s1apr4\\2023-04-04_13-52-02",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb8ab9ae6a7d5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s12-FP-mar19\\2024-03-19_14-02-09": {
+      "at": "2026-10-23T15:20:33-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb8ab9ae6a7d5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s12-FP-mar19\\2024-03-19_14-02-09",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sb8d6cf027eaf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s9jul15\\2025-07-15_12-11-04": {
+      "at": "2026-10-23T15:21:00-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb8d6cf027eaf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s9jul15\\2025-07-15_12-11-04",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sbb307f32db63|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s10aug16dcz3\\2024-08-16_16-36-47": {
+      "at": "2026-10-23T15:20:43-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sbb307f32db63|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s10aug16dcz3\\2024-08-16_16-36-47",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sbb62c377e01f|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM54\\m54s1_060225\\2025-06-02_14-49-39": {
+      "at": "2026-10-23T15:20:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sbb62c377e01f|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM54\\m54s1_060225\\2025-06-02_14-49-39",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sbbccc56b32d7|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s12aug15dcz3\\2024-08-15_14-25-04": {
+      "at": "2026-10-23T15:20:40-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sbbccc56b32d7|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m22_ptenblind\\m22s12aug15dcz3\\2024-08-15_14-25-04",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sbc1efe97f88d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s8aug16dcz1\\2024-08-16_15-30-30": {
+      "at": "2026-10-23T15:20:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sbc1efe97f88d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\m24_ptenblind\\m24s8aug16dcz1\\2024-08-16_15-30-30",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sc1f0097221e9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s48jan30\\2024-01-30_16-28-02": {
+      "at": "2026-10-23T15:20:25-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc1f0097221e9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s48jan30\\2024-01-30_16-28-02",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sc35686356db0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm55\\m55s1jun11\\2025-06-19_12-23-21": {
+      "at": "2026-10-23T15:20:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc35686356db0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm55\\m55s1jun11\\2025-06-19_12-23-21",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sc3e1eb855301|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s20aug12-dcz2\\2024-08-12_14-45-13": {
+      "at": "2026-10-23T15:20:46-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc3e1eb855301|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s20aug12-dcz2\\2024-08-12_14-45-13",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sc4be10602b0c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s2jul11\\2025-07-11_13-03-13": {
+      "at": "2026-10-23T15:20:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc4be10602b0c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s2jul11\\2025-07-11_13-03-13",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sc6245988b2ad|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s10mar19\\2024-03-19_13-00-39": {
+      "at": "2026-10-23T15:20:32-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc6245988b2ad|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s10mar19\\2024-03-19_13-00-39",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sc6aa93a27188|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s6jan9\\2024-01-09_13-14-33": {
+      "at": "2026-10-23T15:20:21-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc6aa93a27188|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s6jan9\\2024-01-09_13-14-33",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sc7faee13fccd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M12ptenko\\m12ptens2jan14\\2022-01-14_16-18-41": {
+      "at": "2026-10-23T15:20:35-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc7faee13fccd|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M12ptenko\\m12ptens2jan14\\2022-01-14_16-18-41",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sc9961a05120e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos4jan21\\2022-01-21_18-01-11": {
+      "at": "2026-10-23T15:20:30-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc9961a05120e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos4jan21\\2022-01-21_18-01-11",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:scb4a12a1e78a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon1\\J2S191225_FP2\\2025-09-12_17-49-55": {
+      "at": "2026-10-23T15:20:03-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "scb4a12a1e78a|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon1\\J2S191225_FP2\\2025-09-12_17-49-55",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:scbfa22661eda|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s10jul15\\2025-07-15_12-44-10": {
+      "at": "2026-10-23T15:21:00-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "scbfa22661eda|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s10jul15\\2025-07-15_12-44-10",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:scdebeff90547|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-09-21_15-44-27": {
+      "at": "2026-10-23T15:20:17-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "scdebeff90547|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-09-21_15-44-27",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sce590e2b5756|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Con3\\multi_spcon_con3_J1_FP1\\2025-09-18_10-56-18": {
+      "at": "2026-10-23T15:20:02-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sce590e2b5756|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\Con3\\multi_spcon_con3_J1_FP1\\2025-09-18_10-56-18",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:scfe69f136654|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m30_ptenblind\\m30s6jul2\\2024-07-02_13-55-08": {
+      "at": "2026-10-23T15:20:48-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "scfe69f136654|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m30_ptenblind\\m30s6jul2\\2024-07-02_13-55-08",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:scfeaf3fbd6aa|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M6ptenko\\m1s3dec21\\2021-12-21_16-34-00": {
+      "at": "2026-10-23T15:20:13-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "scfeaf3fbd6aa|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M6ptenko\\m1s3dec21\\2021-12-21_16-34-00",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sd0d56d2d267e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s1jan5\\2022-01-05_15-43-37": {
+      "at": "2026-10-23T15:20:27-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd0d56d2d267e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M7ptenko\\m7s1jan5\\2022-01-05_15-43-37",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sd1d713298204|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon2\\J2S291325_FP1\\2025-09-13_12-51-49": {
+      "at": "2026-10-23T15:20:03-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd1d713298204|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon2\\J2S291325_FP1\\2025-09-13_12-51-49",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sd1d713298204|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon2\\J2S291325_SPCON\\2025-09-13_14-01-39": {
+      "at": "2026-10-23T15:20:03-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd1d713298204|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon2\\J2S291325_SPCON\\2025-09-13_14-01-39",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sd2cfbdeefd51|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M5ptenko\\m5ptens1jan13\\2022-01-13_14-59-31": {
+      "at": "2026-10-23T15:20:19-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd2cfbdeefd51|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M5ptenko\\m5ptens1jan13\\2022-01-13_14-59-31",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sd2ec1593cf84|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Test1\\Multi_Spcon_J2_Test1_FP2\\2025-09-20_14-05-50": {
+      "at": "2026-10-23T15:20:04-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd2ec1593cf84|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Test1\\Multi_Spcon_J2_Test1_FP2\\2025-09-20_14-05-50",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sd32eea03f595|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s9_06262025\\2025-06-26_12-25-26": {
+      "at": "2026-10-23T15:20:56-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd32eea03f595|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s9_06262025\\2025-06-26_12-25-26",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sd3cce16f30e5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M5ptenko\\m5ptens3jan13\\2022-01-13_15-44-36": {
+      "at": "2026-10-23T15:20:20-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd3cce16f30e5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M5ptenko\\m5ptens3jan13\\2022-01-13_15-44-36",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sd45f6d78eadf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s6mar8\\2024-03-08_14-00-44": {
+      "at": "2026-10-23T15:20:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd45f6d78eadf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s6mar8\\2024-03-08_14-00-44",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sd56ec65a0ad2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s10dcz30feb6\\2025-02-06_17-13-53": {
+      "at": "2026-10-23T15:20:53-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd56ec65a0ad2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s10dcz30feb6\\2025-02-06_17-13-53",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sd56ef19e4993|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s6jul11\\2025-07-11_15-18-52": {
+      "at": "2026-10-23T15:21:00-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd56ef19e4993|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s6jul11\\2025-07-11_15-18-52",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sd5a1ad41cb27|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\con1\\con1_fp2\\2025-09-16_15-56-51": {
+      "at": "2026-10-23T15:20:04-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd5a1ad41cb27|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\con1\\con1_fp2\\2025-09-16_15-56-51",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sd725d4804bf8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon3\\multi_spcon_precon3_FP2\\2025-09-14_16-18-01": {
+      "at": "2026-10-23T15:20:03-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd725d4804bf8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\precon3\\multi_spcon_precon3_FP2\\2025-09-14_16-18-01",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sdad37204adc9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s12_07012025\\2025-07-01_12-55-53": {
+      "at": "2026-10-23T15:20:57-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sdad37204adc9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s12_07012025\\2025-07-01_12-55-53",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sdc28e1004c6b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s3_061925\\2025-06-19_14-05-54": {
+      "at": "2026-10-23T15:20:55-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sdc28e1004c6b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s3_061925\\2025-06-19_14-05-54",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sddf3e5010ff2|G:\\PTEN\\M2_s8\\timestamps.mat": {
+      "at": "2026-10-23T15:20:15-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sddf3e5010ff2|G:\\PTEN\\M2_s8\\timestamps.mat",
+      "kind": "path",
+      "note": "a file, not a recording folder",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:se01327b53d02|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s5FPmar1\\2024-03-01_16-35-52": {
+      "at": "2026-10-23T15:20:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se01327b53d02|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s5FPmar1\\2024-03-01_16-35-52",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:se0174fefc499|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s3jul11\\2025-07-11_13-35-00": {
+      "at": "2026-10-23T15:20:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se0174fefc499|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s3jul11\\2025-07-11_13-35-00",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:se0174fefc499|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s3jul11\\2025-07-11_13-59-07": {
+      "at": "2026-10-23T15:20:59-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se0174fefc499|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM61\\m61s3jul11\\2025-07-11_13-59-07",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:se06940c6b4fc|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s37jan23\\2024-01-23_10-05-46": {
+      "at": "2026-10-23T15:20:24-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se06940c6b4fc|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s37jan23\\2024-01-23_10-05-46",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:se5d034b6fed2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s1apr6\\2023-04-06_13-39-31": {
+      "at": "2026-10-23T15:21:09-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se5d034b6fed2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s1apr6\\2023-04-06_13-39-31",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:se77ff517b35e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-24_17-20-54": {
+      "at": "2026-10-23T15:21:10-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se77ff517b35e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-24_17-20-54",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:se77ff517b35e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-24_17-48-13": {
+      "at": "2026-10-23T15:21:11-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se77ff517b35e|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-24_17-48-13",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:se80dad58a958|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s51feb5\\2024-02-05_15-58-02": {
+      "at": "2026-10-23T15:20:26-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se80dad58a958|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s51feb5\\2024-02-05_15-58-02",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:se88c60f8b7fe|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos5jan21\\2022-01-21_18-12-38": {
+      "at": "2026-10-23T15:20:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se88c60f8b7fe|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos5jan21\\2022-01-21_18-12-38",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:se8ec590a5014|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-04_13-37-03": {
+      "at": "2026-10-23T15:20:17-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se8ec590a5014|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-04_13-37-03",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sec7d1c2dcbca|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s22aug12dcz-4\\2024-08-14_11-25-07": {
+      "at": "2026-10-23T15:20:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sec7d1c2dcbca|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s22aug12dcz-4\\2024-08-14_11-25-07",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sed74cffc92a8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s16aug12\\2024-08-12_12-54-17": {
+      "at": "2026-10-23T15:20:45-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sed74cffc92a8|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s16aug12\\2024-08-12_12-54-17",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:see3e94be4f79|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s6jul10\\2025-07-10_14-52-32": {
+      "at": "2026-10-23T15:20:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "see3e94be4f79|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s6jul10\\2025-07-10_14-52-32",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:see44a45ecb19|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s8jul14\\2025-07-14_13-17-51": {
+      "at": "2026-10-23T15:20:58-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "see44a45ecb19|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM60\\m60s8jul14\\2025-07-14_13-17-51",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:seec91fec52e0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos1jan21\\2022-01-21_16-08-29": {
+      "at": "2026-10-23T15:20:29-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "seec91fec52e0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos1jan21\\2022-01-21_16-08-29",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sf4011d15f7c1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s7mar8\\2024-03-08_14-30-58": {
+      "at": "2026-10-23T15:20:31-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sf4011d15f7c1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s7mar8\\2024-03-08_14-30-58",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sf708374df3f5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-20_17-19-12": {
+      "at": "2026-10-23T15:21:10-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sf708374df3f5|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M9\\M9s1oct20_SA\\2023-10-20_17-19-12",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sf853f33745e0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s4apr3\\2023-04-03_17-09-09": {
+      "at": "2026-10-23T15:21:06-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sf853f33745e0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s4apr3\\2023-04-03_17-09-09",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sf86b58006353|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con3\\multi_spcon_con3_J2_FP2\\2025-09-18_14-53-14": {
+      "at": "2026-10-23T15:20:04-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sf86b58006353|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con3\\multi_spcon_con3_J2_FP2\\2025-09-18_14-53-14",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sf98f040a4f80|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s1feb4\\2025-02-04_11-49-12": {
+      "at": "2026-10-23T15:20:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sf98f040a4f80|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s1feb4\\2025-02-04_11-49-12",
+      "kind": "path",
+      "note": "on netfiles only inside an archive now",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sfa433fd440de|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM2\\FADM2s2apr4\\2023-04-04_16-43-24": {
+      "at": "2026-10-23T15:21:07-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sfa433fd440de|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM2\\FADM2s2apr4\\2023-04-04_16-43-24",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sfca017658a98|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s13mar20\\2024-03-20_18-08-44": {
+      "at": "2026-10-23T15:20:33-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sfca017658a98|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s13mar20\\2024-03-20_18-08-44",
+      "kind": "path",
+      "note": "no longer on netfiles",
+      "synced": true,
+      "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "person:Avery (AI)": {
+      "at": "2026-10-23T09:41:57-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Avery (AI)",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:Fatima": {
+      "at": "2026-10-23T09:29:53-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "Fatima",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
     "person:Harness Probe Person": {
-      "at": "2026-09-29T14:04:01-0400",
+      "at": "2026-10-23T09:41:57-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "Harness Probe Person",
       "kind": "person",
@@ -5519,6 +8693,78 @@
       "note": "merged away or removed from the roster",
       "synced": false
     },
+    "person:TEST": {
+      "at": "2026-10-23T09:29:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "TEST",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:a colleague": {
+      "at": "2026-10-23T09:29:54-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "a colleague",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:bankback@harness": {
+      "at": "2026-10-23T09:29:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "bankback@harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:curate@harness": {
+      "at": "2026-10-23T09:29:50-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "curate@harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:eye harness": {
+      "at": "2026-10-23T09:29:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "eye harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:harness": {
+      "at": "2026-10-23T09:29:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:harness@test": {
+      "at": "2026-10-23T09:29:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "harness@test",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:spikeflow@harness": {
+      "at": "2026-10-23T09:29:51-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "spikeflow@harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
+    "person:spotter harness": {
+      "at": "2026-10-23T09:29:49-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "spotter harness",
+      "kind": "person",
+      "note": "merged away or removed from the roster",
+      "synced": false
+    },
     "person:zz autosync probe": {
       "at": "2026-09-09T13:43:06-0400",
       "by": "desktop-4h65ai7-d565",
@@ -5528,7 +8774,7 @@
       "synced": false
     },
     "person:zz edit probe": {
-      "at": "2026-09-29T14:04:05-0400",
+      "at": "2026-10-23T09:38:13-0400",
       "by": "desktop-4h65ai7-d565",
       "id": "zz edit probe",
       "kind": "person",
@@ -7971,6 +11217,15 @@
       "synced": true,
       "synced_at": "2026-09-09T17:40:46-0400"
     },
+    "session:s4e2327029138": {
+      "at": "2026-10-22T12:07:37-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s4e2327029138",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-10-22T12:07:40-0400"
+    },
     "session:s5083cd98d7f6": {
       "at": "2026-09-11T11:22:29-0400",
       "by": "desktop-4h65ai7-d565",
@@ -9491,6 +12746,15 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-09T22:01:46-0400"
+    },
+    "session:se0b562c0fa29": {
+      "at": "2026-10-22T12:18:28-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se0b562c0fa29",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": true,
+      "synced_at": "2026-10-22T12:18:33-0400"
     },
     "session:se169051f46a9": {
       "at": "2026-09-18T13:25:30-0400",

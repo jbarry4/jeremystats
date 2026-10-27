@@ -1,0 +1,424 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>Harness — support panel preferences, one strip, version pop-up</title>
+<style>
+  body { font: 12px/1.5 ui-monospace, monospace; margin: 0; background: #0c0f14; color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 40vw; }
+  #app { position: fixed; right: 0; top: 0; width: 60vw; height: 100vh; border: 0;
+         border-left: 1px solid #243; }
+  #aid { position: fixed; left: 0; bottom: 0; width: 40vw; height: 44vh; border: 1px solid #453; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; } .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style></head>
+<body>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* 2026-10-21, four asks at once:
+
+   "Add super granular features to the support panel preferences. Allow to
+   select the width/height as percentages... a final mini popout that lets
+   you drag things. Allow duplicate modes, e.g. 3 voltage traces. Then for
+   each allow to choose default span, gain, channels selected, filter, and
+   for the spectrogram/scalogram their presets."
+
+   "When we have two or more panes, it doesn't copy [the overview strip]
+   for each pane. There should be a global one just at the bottom."
+
+   "The drop down version picker is not the way to go... click version
+   should bring the entire git like tree as a pop up", and "for each version
+   mention what it was last processed by".
+
+   Preferences are answered here and never written: BARRY.prefs is stubbed
+   for the run. The demo recording, so nothing has to be mounted. */
+const out = document.getElementById('out');
+let fails = 0, checks = 0;
+const say = (t, c) => { const d = document.createElement('div');
+  d.className = c || ''; d.textContent = t; out.appendChild(d); };
+const head = (t) => { const h = document.createElement('h2'); h.textContent = t;
+  out.appendChild(h); };
+const check = (n, c, d) => { checks += 1; if (!c) fails += 1;
+  say(n + (c || d == null ? '' : '   [' + d + ']'), c ? 'ok' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 20000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(120);
+  }
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow, D = () => frame.contentDocument;
+  const ev = (c) => W().eval(c);
+  let aid = null;
+  try {
+    await until(() => W().BARRY && W().BARRY.views && W().BARRY.views.xplore
+                      && W().BARRY.supportPanels && typeof W().setView === 'function', 30000);
+    const B = ev('BARRY');
+    const X = B.views.xplore, XF = X.state, SP = B.supportPanels;
+    const errs = [];
+    W().addEventListener('error', (e) => errs.push('window: ' + e.message));
+    W().addEventListener('unhandledrejection', (e) =>
+      errs.push('promise: ' + ((e.reason && e.reason.message) || e.reason)));
+
+    // Preferences answered here, never written.
+    const kept = {};
+    const realGet = B.prefs.get, realSet = B.prefs.set;
+    B.prefs.get = (k, d) => (k in kept ? kept[k] : realGet.call(B.prefs, k, d));
+    B.prefs.set = (k, v) => { kept[k] = JSON.parse(JSON.stringify(v)); };
+    const realApi = W().api;
+    W().api = async (path, opts) => (path === '/api/session/state'
+      ? { ok: true } : realApi(path, opts));
+
+    ev("setView('xplore')");
+    await X.open('demo:long-session');
+    const sess = await until(() => Object.values(XF.sessions)
+      .find((s) => s.path === 'demo:long-session'));
+    sess.t0 = 120; sess.span = 6;
+    X.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    await until(() => XF.panelDefs && XF.panelDefs.length, 10000);
+
+    /* ---------------------------------------------------------------- */
+    head('Profile › Support panel preferences');
+    const sec = SP.section();
+    sec.open = true;
+    D().body.appendChild(sec);
+    // The second window's block of Spotter's row (its main window's is first).
+    const addonRow = (name) => Array.from(sec.querySelectorAll('.spp-row'))
+      .find((r) => r.querySelector('.spp-head strong').textContent === name);
+    const row = () => addonRow('Spotter').querySelector('.spp-block.aid');
+    const cards = () => Array.from(row().querySelectorAll('.spp-panel'));
+    check('Spotter starts from its own three', cards().length === 3, cards().length);
+    const pick = (selEl, value) => {
+      selEl.value = value;
+      selEl.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    };
+    // Added by its mark (2026-10-23), the same kind three times.
+    for (let k = 0; k < 3; k++) row().querySelector('button.spp-addp[data-add="traces"]').click();
+    check('three voltage traces added, the same kind three times', cards().length === 6,
+          cards().length);
+    let plan = SP.plan('spotter', [{ panel: 'csd' }], sess);
+    check('the plan opens six, three of them traces',
+          plan.specs.length === 6 && plan.specs.filter((s) => s.panel === 'traces').length === 3,
+          JSON.stringify(plan.specs.map((s) => s.panel)));
+    const card = (i) => cards()[i];
+    const fieldSel = (i, label) => Array.from(card(i).querySelectorAll('.spp-f'))
+      .find((f) => f.querySelector('.spp-fl').textContent === label);
+    pick(fieldSel(3, 'Channels').querySelector('select'), 'first16');
+    const gain = fieldSel(3, 'Gain').querySelector('input');
+    gain.value = '2';
+    gain.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    pick(fieldSel(4, 'Filter').querySelector('select'), 'ripple');
+    pick(fieldSel(2, 'Band').querySelector('select'), 'b4_100');
+    pick(fieldSel(2, 'Colours').querySelector('select'), (XF.colormaps[1] || {}).id || 'viridis');
+    const spanIn = row().querySelector('.spp-tools .spp-num');
+    spanIn.value = '3';
+    spanIn.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    plan = SP.plan('spotter', [{ panel: 'csd' }], sess);
+    check('a traces panel opens on its first 16 channels at twice the gain',
+          plan.specs[3].channels && plan.specs[3].channels.length === 16
+          && plan.specs[3].gain === 2, JSON.stringify(plan.specs[3]));
+    check('another traces panel keeps a filter of its own',
+          plan.specs[4].filt && plan.specs[4].filt.hp === 150 && plan.specs[4].filt.lp === 250,
+          JSON.stringify(plan.specs[4]));
+    check('the spectrogram takes its band and colours',
+          plan.specs[2].fmin === 4 && plan.specs[2].fmax === 100 && plan.specs[2].cmap,
+          JSON.stringify(plan.specs[2]));
+    check('the window has its own span', plan.span === 3, plan.span);
+    check('and the third traces panel is untouched',
+          !plan.specs[5].channels && !plan.specs[5].filt && !plan.specs[5].gain);
+
+    head('The arrangement editor: the window, drawn small, dragged');
+    row().querySelector('.spp-draw').click();
+    const dlg = await until(() => D().querySelector('.spl'));
+    check('it opens', !!dlg);
+    check('one box per panel', dlg.querySelectorAll('.spl-slot').length === 6,
+          dlg.querySelectorAll('.spl-slot').length);
+    const vbar = dlg.querySelector('.spl-vbar');
+    const rowEl = vbar.parentNode;
+    const w0 = +rowEl.querySelectorAll('.spl-w')[0].value;
+    const r = vbar.getBoundingClientRect();
+    const P = (type, x) => new (W().PointerEvent)(type, { bubbles: true, pointerId: 7,
+      clientX: x, clientY: r.top + r.height / 2, isPrimary: true });
+    vbar.dispatchEvent(P('pointerdown', r.left + 2));
+    vbar.dispatchEvent(P('pointermove', r.left + 2 + rowEl.getBoundingClientRect().width * 0.2));
+    vbar.dispatchEvent(P('pointerup', r.left + 2 + rowEl.getBoundingClientRect().width * 0.2));
+    await sleep(100);
+    const rowNow = D().querySelector('.spl .spl-row');
+    const ws = Array.from(rowNow.querySelectorAll('.spl-w')).map((x) => +x.value);
+    check('dragging the line between two panels moves the width',
+          ws[0] > w0 + 10, w0 + ' -> ' + ws.join('/'));
+    check('and the row still adds up to 100%',
+          Math.abs(ws.reduce((a, b) => a + b, 0) - 100) <= 1, ws.join('+'));
+    // A typed height.
+    const h = D().querySelector('.spl .spl-h');
+    h.value = '60';
+    h.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    await sleep(50);
+    check('a typed height is the row’s', +D().querySelector('.spl .spl-h').value === 60);
+    Array.from(D().querySelectorAll('.spl button')).find((b) => b.classList.contains('spl-save')).click();
+    await sleep(100);
+    const c = SP.choice('spotter');
+    check('Save keeps the drawing as rows in percent',
+          c.layout && c.layout.rows.length >= 2
+          && c.layout.rows.every((rr) => rr.cols.reduce((a, b) => a + b, 0) === 100)
+          && c.layout.rows.reduce((a, rr) => a + rr.h, 0) === 100,
+          JSON.stringify(c.layout));
+    check('the list says it is drawn', /Drawn/.test(row().textContent));
+    plan = SP.plan('spotter', [{ panel: 'csd' }], sess);
+    const o = SP.opts(plan);
+    check('the window is sent the layout, its span and the band lock off',
+          o.layout && o.span === 3 && o.flock === 'off', JSON.stringify(o));
+    sec.remove();
+
+    /* ---------------------------------------------------------------- */
+    head('The support window opens as drawn');
+    const url = X.paneUrl(sess, plan.specs, Object.assign({ role: 'aids',
+      chrome: 'notabs,noheads,nostrip,nochannels' }, o));
+    aid = document.createElement('iframe');
+    aid.id = 'aid';
+    aid.src = url.replace(location.origin, '');
+    document.body.appendChild(aid);
+    await new Promise((res) => aid.addEventListener('load', res, { once: true }));
+    const AW = aid.contentWindow, AD = aid.contentDocument;
+    await until(() => AW.eval('typeof BARRY !== "undefined" && BARRY.views.xplore'
+                              + ' && BARRY.views.xplore.state.nPanes === 6'), 40000);
+    const AX = AW.eval('BARRY.views.xplore.state');
+    check('six panes', AX.nPanes === 6, AX.nPanes);
+    check('three of them traces', AX.panes.filter((p) => p && p.panel === 'traces').length === 3);
+    check('the drawn layout is the window’s',
+          AX.customLayout && AX.customLayout.n === 6);
+    const grid = AD.getElementById('paneGrid');
+    const tr = grid.style.gridTemplateRows.split(' ').filter(Boolean);
+    check('its rows have the drawn heights',
+          tr.length === c.layout.rows.length
+          && Math.abs(parseFloat(tr[0]) - c.layout.rows[0].h) < 0.6,
+          grid.style.gridTemplateRows + ' vs ' + c.layout.rows.map((x) => x.h).join('/'));
+    check('its own span, following the main window’s centre',
+          AX.ownSpan === 3 && Math.abs(Object.values(AX.sessions)[0].span - 3) < 1e-6,
+          AX.ownSpan + ' / ' + (Object.values(AX.sessions)[0] || {}).span);
+    check('panels with their own band: the band lock is off',
+          Object.values(AX.sessions)[0].flock === false);
+    check('the gain multiple reached the traces pane', AX.panes[3].gain === 2,
+          AX.panes[3].gain);
+    check('one overview strip across the bottom of it',
+          await until(() => !AD.getElementById('xfStrip').hidden
+                            && AD.querySelector('#xfStrip .pane-timebar'), 15000) != null);
+
+    head('The support window\u2019s header folds, and comes back (2026-10-22)');
+    const AV = AD.getElementById('view-xplore');
+    const vis = (n) => !!n && AW.getComputedStyle(n).display !== 'none'
+                       && n.getBoundingClientRect().height > 0;
+    check('it opens with the header folded to a sliver',
+          AV.classList.contains('hide-tabs') && !!AD.querySelector('.unfold-top .unfold-tabs'));
+    AD.querySelector('.unfold-top .unfold-tabs').click();
+    await sleep(300);
+    const headArrow = AD.querySelector('#view-xplore > .view-head .xf-head > .fold-tabs');
+    check('unfolded, the header is there with its own fold arrow',
+          vis(AV.querySelector(':scope > .view-head')) && vis(headArrow));
+    if (headArrow) headArrow.click();
+    await sleep(300);
+    check('and the arrow folds it away again',
+          AV.classList.contains('hide-tabs') && !vis(AV.querySelector(':scope > .view-head')));
+    check('Profile\u2019s overview choice travels in the address',
+          /[?&]overview=0/.test(X.paneUrl(sess, plan.specs, { overview: 'off' }))
+          && !/overview=/.test(X.paneUrl(sess, plan.specs, {})));
+    aid.src = 'about:blank';
+
+    /* ---------------------------------------------------------------- */
+    head('One overview strip for two or more panes');
+    X.setPanes([{ panel: 'traces' }, { panel: 'traces' }], { col: 0.5, row: 0.5 });
+    const strip = D().getElementById('xfStrip');
+    await until(() => !strip.hidden && strip.querySelector('.pane-timebar'), 10000);
+    check('two panes: the strip is at the bottom', !strip.hidden
+          && !!strip.querySelector('.pane-timebar'));
+    const shown = Array.from(D().querySelectorAll('#paneGrid .pane .pane-timebar'))
+      .filter((b) => W().getComputedStyle(b).display !== 'none');
+    check('and not under each pane', shown.length === 0, shown.length + ' shown');
+    const sb = strip.getBoundingClientRect(), gb = D().getElementById('paneGrid').getBoundingClientRect();
+    check('it spans the whole workspace, below the panes',
+          sb.top >= gb.bottom - 1 && Math.abs(sb.width - gb.width) < 3,
+          Math.round(sb.top) + ' vs ' + Math.round(gb.bottom) + ', w ' + Math.round(sb.width)
+          + ' vs ' + Math.round(gb.width));
+    const box1 = D().querySelector('#paneGrid > [data-pane-at="1"]');
+    box1.dispatchEvent(new (W().MouseEvent)('mousedown', { bubbles: true }));
+    await sleep(120);
+    check('a click into the second pane brings the second pane’s',
+          XF.panes[1]._mini && XF.panes[1]._mini.parentNode.parentNode === strip);
+    X.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    await sleep(200);
+    check('one pane: the strip goes back under it', strip.hidden
+          && !!D().querySelector('#paneGrid .pane .pane-timebar'));
+
+    head('More hides the overview strip, with any number of panes');
+    X.setPanes([{ panel: 'traces' }, { panel: 'traces' }], { col: 0.5, row: 0.5 });
+    await until(() => !strip.hidden, 8000);
+    const moreBtn = () => Array.from(D().querySelectorAll('#paneGrid button, #xfMaster button'))
+      .find((b) => /^More/.test(b.textContent.trim()) && b.offsetWidth > 0);
+    const pickIn = async (label) => {
+      moreBtn().click();
+      await until(() => D().querySelector('.ctl-pop'), 4000);
+      const grp = Array.from(D().querySelectorAll('.ctl-pop .ctl-pop-group'))
+        .find((g) => /^Overview strip/.test(g.textContent));
+      const b = grp && Array.from(grp.querySelectorAll('button'))
+        .find((x) => x.textContent.trim() === label);
+      if (b) b.click();
+      await sleep(300);
+      return !!b;
+    };
+    check('More offers it with two panes', await pickIn('Hidden'));
+    const VX = D().getElementById('view-xplore');
+    check('Hidden puts the strip away', VX.classList.contains('hide-overview')
+          && W().getComputedStyle(strip).display === 'none');
+    check('remembered for this kind of window', kept.xf_overview_main === 'hidden',
+          kept.xf_overview_main);
+    await pickIn('Shown');
+    check('Shown brings it back', !VX.classList.contains('hide-overview')
+          && W().getComputedStyle(strip).display !== 'none'
+          && kept.xf_overview_main === 'shown');
+    X.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    await sleep(200);
+
+    head('The main window, as Profile lays it out (2026-10-22)');
+    const shapeWas = W().localStorage.getItem('barry.xfShape');
+    kept.support_panels = { spotter: { main: {
+      panels: [{ panel: 'traces' }, { panel: 'csd' },
+               { panel: 'traces', channels: 'first16', gain: 3 }],
+      layout: { rows: [{ h: 70, cols: [100] }, { h: 30, cols: [40, 60] }] },
+      span: 2 } } };
+    const mp = SP.mainPlan('spotter', [{ panel: 'traces' }], sess);
+    check('the plan has three panels, the traces first',
+          mp && mp.specs.length === 3 && mp.specs[0].panel === 'traces'
+          && mp.specs[2].channels && mp.specs[2].channels.length === 16
+          && mp.specs[2].gain === 3 && mp.span === 2, JSON.stringify(mp && mp.specs));
+    SP.applyMain('spotter', [{ panel: 'traces' }], sess, { col: 0.5, row: 0.5 });
+    await sleep(400);
+    const g2 = D().getElementById('paneGrid');
+    const rows2 = g2.style.gridTemplateRows.split(' ').filter(Boolean);
+    check('laid out as drawn: three panes, 70% and 30% high',
+          XF.nPanes === 3 && XF.customLayout && XF.customLayout.n === 3
+          && Math.abs(parseFloat(rows2[0]) - 70) < 0.6, XF.nPanes + ' / ' + g2.style.gridTemplateRows);
+    check('without touching the saved arrangement',
+          W().localStorage.getItem('barry.xfShape') === shapeWas);
+    SP.restoreMain();
+    await sleep(300);
+    check('leaving puts the window back to its one traces pane',
+          XF.nPanes === 1 && XF.panes[0].panel === 'traces' && !XF.customLayout);
+    kept.support_panels = {};
+    check('with nothing chosen, the add-on lays out as it always has',
+          SP.applyMain('spotter', [{ panel: 'traces' }], sess, { col: 0.5, row: 0.5 }) === null
+          && XF.nPanes === 1 && !XF.customLayout);
+    const sec2 = SP.section();
+    sec2.open = true;
+    D().body.appendChild(sec2);
+    const spRow = Array.from(sec2.querySelectorAll('.spp-row'))
+      .find((r) => r.querySelector('.spp-head strong').textContent === 'Spotter');
+    check('Profile shows a main window and a second window for each add-on',
+          !!spRow.querySelector('.spp-block.main') && !!spRow.querySelector('.spp-block.aid'));
+    check('the main window\u2019s first panel is the traces, fixed in place',
+          /Voltage traces|traces/i.test((spRow.querySelector('.spp-block.main .spp-fixed') || {}).textContent || ''));
+    const arcRow = Array.from(sec2.querySelectorAll('.spp-row'))
+      .find((r) => /Arc/.test(r.querySelector('.spp-head strong').textContent));
+    check('the Arc\u2019s review has a main window only',
+          !!arcRow && !!arcRow.querySelector('.spp-block.main') && !arcRow.querySelector('.spp-block.aid'));
+
+    head('Copying someone else\u2019s');
+    const rainPreset = { id: 'sp-rain-younger-uvm-edu', name: 'Rain Younger \u2014 current',
+      label: 'current', owner: 'Rain Younger', owner_email: 'rain.younger@uvm.edu',
+      addons: { panning: { open: true, panels: ['csd', 'theta', 'traces', 'spectrogram'],
+                           shape: 'linked' },
+                strata: { open: true, panels: ['csd', 'theta'], shape: 'cols' } } };
+    const apiNow = W().api;
+    W().api = async (path, opts) => (path === '/api/presets/support_panels'
+      ? { ok: true, presets: [rainPreset] } : apiNow(path, opts));
+    sec2.remove();
+    const sec3 = SP.section();
+    sec3.open = true;
+    D().body.appendChild(sec3);
+    await until(() => sec3.querySelector('.spp-from optgroup'), 5000);
+    const grp = sec3.querySelector('.spp-from optgroup');
+    check('the people who shared theirs are listed by name',
+          grp && grp.label === 'Rain Younger' && /current/.test(grp.textContent),
+          grp ? grp.label : 'none');
+    kept.support_panels = { strata: { open: true, panels: ['csd'] } };
+    const realConfirm = B.confirm;
+    B.confirm = async () => true;
+    await SP.copyFrom(rainPreset, 'panning');
+    check('copying one add-on takes theirs for it and leaves the rest',
+          JSON.stringify(kept.support_panels.panning) === JSON.stringify(rainPreset.addons.panning)
+          && JSON.stringify(kept.support_panels.strata) === JSON.stringify({ open: true, panels: ['csd'] }),
+          JSON.stringify(kept.support_panels));
+    await SP.copyFrom(rainPreset, null);
+    check('copying all of it takes every add-on it has',
+          JSON.stringify(kept.support_panels.strata) === JSON.stringify(rainPreset.addons.strata));
+    B.confirm = realConfirm;
+    W().api = apiNow;
+    sec3.remove();
+    kept.support_panels = {};
+
+    /* ---------------------------------------------------------------- */
+    head('A version choice is a button that opens the whole tree');
+    const vs = [
+      { name: '0', v: 0, id: 'a0', n: 120, by: 'Incisor', imported: true,
+        at: '2026-10-01T10:00:00-04:00', note: 'Imported from Incisor.' },
+      { name: '1', v: 1, id: 'a1', from_v: 0, n: 90, by: 'Rain',
+        at: '2026-10-02T10:00:00-04:00', note: 'First pass.' },
+      { name: '1.1', v: 2, id: 'a2', from_v: 1, n: 90, by: 'Rain', tag: 'rootcanal',
+        at: '2026-10-03T10:00:00-04:00', note: 'Named.' },
+      { name: '2', v: 3, id: 'a3', from_v: 1, n: 88, by: 'Rain', aligned: true,
+        at: '2026-10-04T10:00:00-04:00' },
+    ];
+    let picked = null;
+    const btn = B.ui.versionButton({ versions: vs, value: 'a1',
+      producer: 'Incisor (hilus)', producerType: 'ds', heading: 'Which version',
+      onpick: (v) => { picked = v; } });
+    D().body.appendChild(btn);
+    check('the button says the version, its count and what made it',
+          /v1/.test(btn.textContent) && /90/.test(btn.textContent)
+          && /Checkup/.test(btn.textContent) && /4 versions/.test(btn.textContent),
+          btn.textContent);
+    btn.click();
+    const pop = await until(() => D().querySelector('.vpop .vtree'));
+    check('pressing it opens the tree in a pop-up', !!pop);
+    const made = Array.from(D().querySelectorAll('.vpop .vtree-row')).map((rw) =>
+      rw.dataset.v + '=' + ((rw.querySelector('.vtree-by') || {}).textContent || ''));
+    check('every version says what last processed it',
+          made.join(' ') === '2=Braces 1.1=Root Canal 1=Checkup 0=Incisor', made.join(' '));
+    const chip = D().querySelector('.vpop .vtree-by[data-producer="checkup"]');
+    const tint = chip && W().getComputedStyle(chip).getPropertyValue('--tc').trim();
+    check('its chip wears the tool’s colour', !!tint, tint);
+    check('the tree has its graph drawn',
+          await until(() => D().querySelectorAll('.vpop .vt-node').length === 4, 4000) != null);
+    Array.from(D().querySelectorAll('.vpop .vtree-row')).find((rw) => rw.dataset.v === '0').click();
+    await sleep(100);
+    check('picking a row chooses it and closes the pop-up',
+          picked && picked.id === 'a0' && !D().querySelector('.vpop'));
+    check('and the button now says it', /v0/.test(btn.textContent), btn.textContent);
+    btn.remove();
+
+    head('ToolKit wears the same colours');
+    ev("setView('toolkit')");
+    const step = await until(() => D().querySelector('.tk-step[data-tool]'), 10000)
+              || (await until(() => D().querySelector('.tk-tool[data-tool]'), 5000));
+    check('its tools carry their colour', !!step
+          && W().getComputedStyle(step).getPropertyValue('--tc').trim() !== '');
+
+    check('no client error anywhere', errs.length === 0, errs.join(' | '));
+    B.prefs.get = realGet; B.prefs.set = realSet;
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'supportpanels: ' + fails + ' FAILED' : 'supportpanels: passed';
+  if (aid) aid.src = 'about:blank';
+  frame.src = 'about:blank';
+})();
+</script>
+</body></html>

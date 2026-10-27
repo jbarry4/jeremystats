@@ -742,7 +742,10 @@ def code(u):
 
 
 def write_models(values, inp, out):
-    regions = inp["regions"]
+    # The names people read, from the inputs (Left POR is Left POR-SUB
+    # under histology v2), so the pairs are named as tab 8 names them.
+    labels = inp.get("labels") or {}
+    regions = [labels.get(n, n) for n in inp["regions"]]
     pr = [(a, b) for a in range(len(regions)) for b in range(a + 1, len(regions))]
     pair_names = ["%s – %s" % (short(regions[a]), short(regions[b])) for a, b in pr]
     rats = sorted({r for r, _d in values})

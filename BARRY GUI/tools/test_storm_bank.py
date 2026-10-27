@@ -17,7 +17,14 @@ What is guarded:
     files nothing;
   * /api/curation/startable lists every entry of the kind a set could be
     started from, and not the entry a set was started from nor the one it
-    banks into; an entry on a recording that has a set says which;
+    banks into; one whose every version is archived is sent flagged
+    `archived`, after the rest, for the list's archived toggle; an entry on
+    a recording that has a set says which;
+  * the Data Bank names an archived entry's files `ARCHIVED - ...`, and its
+    index says archived and carries the note;
+  * a Doppler run made before the gap fix on a recording the health check
+    found in pieces is kept and marked, and is not an answer; a cached full
+    run older than the run on record under its key is not read back;
   * a set's banked state: none before it is banked; "banked vN" after; and
     "changed" once a decision moves away from what that version holds, or
     once two events are merged after it.
@@ -120,8 +127,13 @@ def main():
         ids = {e["id"]: e for e in st.get("entries", [])}
         check("the entry the set was started from is not offered again",
               got["id"] not in ids, sorted(ids))
-        check("another run on that recording is, saying the set is there",
-              other["id"] in ids and ids[other["id"]].get("set_name") == "the set",
+        # Since 2026-10-20 a set belongs to one bank entry, so starting the
+        # other run makes a set of its own and replaces nothing: no
+        # `set_name` to warn about, and the set already there is named in
+        # `on_recording`.
+        check("another run on that recording is, replacing nothing",
+              other["id"] in ids and ids[other["id"]].get("set_name") is None
+              and ids[other["id"]].get("on_recording") == ["the set"],
               ids.get(other["id"]))
         check("so is an import on a recording with no set, with its pipeline",
               imp["id"] in ids and ids[imp["id"]].get("set_name") is None
@@ -129,6 +141,46 @@ def main():
               ids.get(imp["id"]))
         bad = cli.get("/api/curation/startable?kind=nonsense")
         check("a kind it does not know is refused", bad.status_code == 400)
+        put = A.BANK.add({"gid": "gD", "type": "ied", "name": "put away",
+                          "events": [{"start": 5.0}],
+                          "pipeline": "Doppler (line length)",
+                          "added_by": "test"})
+        for v in (A.BANK.get(put["id"]).get("versions") or []):
+            A.BANK.edit_version(put["id"], A.BANK.version_key(v),
+                                {"archived": True})
+        st = cli.get("/api/curation/startable?kind=ied").get_json()
+        got = st.get("entries", [])
+        check("an entry with every version archived is still sent, flagged, "
+              "last, and counted",
+              got and got[-1]["id"] == put["id"] and got[-1]["archived"] is True
+              and not any(e["archived"] for e in got[:-1])
+              and st.get("archived") == 1,
+              [(e["id"], e["archived"]) for e in got])
+        check("the bank's own listing carries the same flag",
+              next(r for r in A.BANK.summaries()
+                   if r["id"] == put["id"]).get("archived") is True
+              and next(r for r in A.BANK.summaries()
+                       if r["id"] == other["id"]).get("archived") is False)
+
+        print("\nthe Data Bank says what is archived")
+        from backend import bankmirror as BM            # noqa: E402
+        A.BANK.update(put["id"], {"note": "made from a run before the fix"})
+        made = BM.BankMirror(tmp, A.BANK).rebuild()
+        root = made["root"]
+        names = [n for _d, _s, fs in os.walk(root) for n in fs]
+        check("an archived entry's files say so in their name",
+              "ARCHIVED - ied - put away.csv" in names
+              and "ARCHIVED - ied - put away.json" in names
+              and "ied - put away.csv" not in names, sorted(names))
+        check("a current entry's do not",
+              "ied - older run.csv" in names, sorted(names))
+        import csv as _csv                               # noqa: E402
+        with open(os.path.join(root, "_index.csv"), encoding="utf-8") as fh:
+            rows = {r["entry_id"]: r for r in _csv.DictReader(fh)}
+        check("the index says archived, and the note says why",
+              rows[put["id"]]["archived"] == "yes"
+              and rows[put["id"]]["note"] == "made from a run before the fix"
+              and rows[other["id"]]["archived"] == "no", rows.get(put["id"]))
 
         print("\nwhether a set's work is in the bank")
         row = lambda: next(s for s in cli.get("/api/curation").get_json()["sets"]
@@ -159,6 +211,58 @@ def main():
         one = cli.get("/api/curation/gA/ied").get_json()
         check("one set's own answer carries the same",
               (one.get("banked") or {}).get("changed") is True, one.get("banked"))
+        print("\na Doppler run from before the gap fix")
+        from backend import toolresults as TR, healthlog as HL  # noqa: E402
+        saved2 = (A.DOPPLER_VAULT, A.HEALTHLOG)
+        try:
+            A.DOPPLER_VAULT = TR.ToolResults(tmp, "doppler", None)
+            A.HEALTHLOG = HL.HealthLog(tmp, None)
+            A.HEALTHLOG.record("gP", None, {"ok": True, "n_segments": 3,
+                                            "gaps": [{}, {}]})
+            A.HEALTHLOG.record("gS", None, {"ok": True, "n_segments": 1})
+            now = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+
+            def filed(gid, key, ver, rh):
+                rec = {"gid": gid, "params_hash": key, "request_hash": rh,
+                       "n_events": 3, "computed": {"app_version": ver,
+                                                   "at": now}}
+                A.DOPPLER_VAULT.put(rec)
+                return A.DOPPLER_VAULT.get(gid, key)
+
+            old = filed("gP", "kOld", "2026.10.15.1", "rOld")
+            new = filed("gP", "kNew", "2026.10.20.1", "rNew")
+            one = filed("gS", "kOne", "2026.10.15.1", "rOne")
+            unk = filed("gU", "kUnk", "2026.10.15.1", "rUnk")
+            check("an old run on a recording in pieces is before the fix",
+                  A._doppler_before_fix(old) is True)
+            check("a run since the fix, an old run on one segment, and one "
+                  "on a recording nobody checked are not",
+                  not A._doppler_before_fix(new)
+                  and not A._doppler_before_fix(one)
+                  and not A._doppler_before_fix(unk))
+            check("so the old one is not an answer, and the others are",
+                  A._doppler_answered("gP", "rOld") is None
+                  and A._doppler_answered("gP", "rNew") == "kNew"
+                  and A._doppler_answered("gS", "rOne") == "kOne")
+            rv = {r["key"]: r for r in
+                  cli.get("/api/doppler/reviews").get_json()["reviews"]}
+            check("the landed list keeps it, and says so",
+                  rv.get("kOld", {}).get("before_fix") is True
+                  and rv.get("kNew", {}).get("before_fix") is False,
+                  {k: v.get("before_fix") for k, v in rv.items()})
+
+            path = A.DOPPLER_VAULT.cached_path("gS", "kOne", ".json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write('{"n": 3, "events": []}')
+            check("a cached run as new as its record is read back",
+                  (A._doppler_recall({"gid": "gS"}, "kOne") or {}).get("n")
+                  == 3)
+            two_days = time.time() - 2 * 86400
+            os.utime(path, (two_days, two_days))
+            check("one older than the run on record under its key is not",
+                  A._doppler_recall({"gid": "gS"}, "kOne") is None)
+        finally:
+            A.DOPPLER_VAULT, A.HEALTHLOG = saved2
     finally:
         (A.BANK, A.CURATE, A.STORE.record_activity, A.mirror_bank_soon,
          A._session_by_gid) = saved

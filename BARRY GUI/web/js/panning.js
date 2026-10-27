@@ -43,7 +43,11 @@
 'use strict';
 
 BARRY.panning = (function () {
+  /* The kind of every pool's set, and the set's OWN kind (2026-10-20):
+     "pooled" for an older set -- one per recording -- or "pooled.e<entry>"
+     for the set of one pool. Every route is asked with the set's own. */
   const KIND = 'pooled';
+  let setKind = KIND;
   const $ = (s) => document.querySelector(s);
 
   let set_ = null;      // the curation set as the server has it
@@ -108,8 +112,7 @@ BARRY.panning = (function () {
     const m = Math.floor(s / 60);
     return m + ':' + String((s - m * 60).toFixed(3)).padStart(6, '0');
   };
-  const url = (what) => '/api/curation/' + encodeURIComponent(set_.gid)
-    + '/' + KIND + (what ? '/' + what : '');
+  const url = (what) => BARRY.ui.setUrl(set_.gid, setKind, what || null);
 
   const events = () => (set_ && set_.events) || [];
   const current = () => events()[index] || null;
@@ -139,16 +142,21 @@ BARRY.panning = (function () {
   /* ==================================================================
      Entering and leaving
      ================================================================== */
+  /* `entryId` is the pool's bank entry: its set is opened, and made first
+     if there is none. `opts.kind` opens a set by its kind -- the
+     workbench's way in. */
   async function enter(gid, entryId, opts) {
     BARRY.modes.leaveAllBut('panning');
     if (set_) exit();
+    let want = (opts && opts.kind) || KIND;
     if (entryId) {
       const made = await ensureSet(gid, entryId);
       if (!made) return false;
+      want = made;
     }
     let data;
     try {
-      data = await api('/api/curation/' + encodeURIComponent(gid) + '/' + KIND);
+      data = await api(BARRY.ui.setUrl(gid, want));
     } catch (e) {
       toast('Could not open that pool: ' + e.message, 'err', 9000);
       return false;
@@ -159,6 +167,7 @@ BARRY.panning = (function () {
       return false;
     }
     set_ = data.set;
+    setKind = set_.kind || want;
     kind = { id: set_.kind, labels: set_.labels || [] };
 
     const got = BARRY.vacc.reachFor(
@@ -233,43 +242,30 @@ BARRY.panning = (function () {
     BARRY.idle.onWake(() => { if (beatTimer && set_) beat(false); });
   }
 
-  /* A set from the pooled entry, unless there is one already from it. One
-     set per (recording, kind): a set from a different pool is replaced
-     only when somebody says so. */
+  /* The set that stands for this pool, made if there is none, and its kind
+     returned (null when somebody was asked and called it off). A set
+     belongs to ONE bank entry since 2026-10-20, so a second pool on a
+     recording makes a second set and replaces nothing. */
   async function ensureSet(gid, entryId) {
-    let existing = null;
     try {
-      const got = await api('/api/curation/' + encodeURIComponent(gid) + '/' + KIND);
-      existing = got.set || null;
+      const have = await BARRY.ui.setForEntry(gid, KIND, entryId);
+      if (have) return have;
     } catch (e) { /* no set is the ordinary case */ }
-    if (existing) {
-      const from = (existing.source || {}).bank_entry;
-      if (!entryId || from === entryId) return true;
-      const ok = await BARRY.confirm(
-        'There is already a pooled set on this recording',
-        el('div', { class: 'fix-facts' }, [
-          el('p', { text: '"' + (existing.name || 'the existing set')
-              + '" has ' + ((existing.progress || {}).specified || 0)
-              + ' of ' + ((existing.progress || {}).total || 0)
-              + ' decided. Starting from this pool instead replaces it.' }),
-          el('p', { text: 'Its decisions are already banked as versions of '
-              + 'the pool it came from, so they are not lost — but they '
-              + 'will not be in front of you any more.' }),
-        ]), 'Replace it', true);
-      if (!ok) return true;
-    }
     const pick = await chooseVersion(gid, entryId);
-    if (pick === null) return false;
+    if (pick === null) return null;
+    let res;
     try {
-      await apiPost('/api/curation/from-bank', {
-        gid, kind: KIND, entry: entryId, replace: true,
+      res = await apiPost('/api/curation/from-bank', {
+        gid, kind: KIND, entry: entryId, open: true,
         version: pick && pick.id != null ? pick.id : (pick ? pick.v : 0),
       });
     } catch (e) {
+      const d = e && e.data;
+      if (d && d.exists && d.kind) return d.kind;
       toast('Could not make a set from that pool: ' + e.message, 'err', 9000);
-      return false;
+      return null;
     }
-    return true;
+    return res.kind || KIND;
   }
 
   async function chooseVersion(gid, entryId) {
@@ -302,6 +298,7 @@ BARRY.panning = (function () {
             + 'worked on before. v0 is Junction’s pool, nothing decided; '
             + 'a later one carries the decisions made in it.' }),
         BARRY.ui.versionTree({
+          producer: ent.source, producerType: ent.kind,
           versions: vs,
           idOf: (v) => (v.id != null ? v.id : 'v' + v.v),
           value: pick.id != null ? pick.id : 'v' + pick.v,
@@ -323,18 +320,14 @@ BARRY.panning = (function () {
     if (!set_) return;
     /* Leaving with decisions or merges the bank does not have: banked on
        the way out, when that is on (quietBank, below). */
-    {
-      const decided = events().filter((e) => e.label).length;
-      if (autoOn() && decided
-          && (bankDirty || !banked || banked.changed)) {
-        quietBank(set_.gid, 'Banked on leaving Panning.');
-      }
-    }
+    /* Not banked on leaving any more (2026-10-26): a set banks itself
+       once, when the last event is first decided, and every change after
+       that is banked by hand -- "Never again." */
     rememberWhere();
     try { BARRY.prefs.flush(); } catch (e) { /* the timer will get it */ }
     BARRY.activity.log('panning.leave', { gid: set_.gid, left: left() }, sess);
     if (beatTimer) { clearInterval(beatTimer); beatTimer = null; }
-    apiPost('/api/presence/release', { gid: set_.gid, kind: KIND })
+    apiPost('/api/presence/release', { gid: set_.gid, kind: setKind })
       .catch(() => {});
     beatOthers = [];
     if (sess) { delete sess.curation; delete sess.curationMarks; }
@@ -347,6 +340,8 @@ BARRY.panning = (function () {
     if (sess && BARRY.views.xplore.setChannelLines) {
       BARRY.views.xplore.setChannelLines(sess, []);
     }
+    // A main window laid out from Profile goes back to its one pane.
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     setMode(null);
     receipt(set_.gid, { quiet: true });
     if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
@@ -359,7 +354,15 @@ BARRY.panning = (function () {
       if (n) n.remove();
     }
     document.removeEventListener('keydown', keys, true);
+    window.removeEventListener('barry:modefold', onFold);
     if (BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
+  }
+
+  /* The bar folded or unfolded (core.js modeFold): the strips are sized from
+     their box, which was nothing while they were put away, so they are drawn
+     again once they are back, or the ticks and the clicks disagree. */
+  function onFold() {
+    requestAnimationFrame(() => { if (set_) drawStrips(); });
   }
 
   /* Through the IED band, for the reason Spotter gives: a pooled set holds
@@ -388,7 +391,14 @@ BARRY.panning = (function () {
   }
 
   function layout() {
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    /* The main window as this person laid it out in Profile › Support panel
+       preferences (2026-10-22), or the traces alone, as always. Its first
+       pane is always the traces, which everything below reads. */
+    const mp = BARRY.supportPanels
+      ? BARRY.supportPanels.applyMain('panning', [{ panel: 'traces' }], sess,
+                                      { col: 0.5, row: 0.5 })
+      : (BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 }), null);
+    if (mp && mp.span) span = mp.span;
     openAids();
   }
 
@@ -399,12 +409,20 @@ BARRY.panning = (function () {
     }
     const every8 = ((sess.info || {}).channels || [])
       .filter((c, i) => i % 8 === 0).map((c) => c.index);
-    aidWin = BARRY.views.xplore.popOutPanes(sess, [
+    const defaults = [
       { panel: 'csd' },
       { panel: 'voltage' },
       { panel: 'spectrogram', tfChannels: every8, tfMode: 'stack',
         fmin: 1, fmax: 250 },
-    ], { role: 'aids', name: 'barry-panning-aids', width: 720, height: 980,
+    ];
+    // What this person chose (Profile › Support panel preferences).
+    const plan = BARRY.supportPanels
+      ? BARRY.supportPanels.plan('panning', defaults, sess)
+      : { specs: defaults };
+    if (!plan) return;
+    aidWin = BARRY.views.xplore.popOutPanes(sess, plan.specs, {
+         ...BARRY.supportPanels.opts(plan),
+         role: 'aids', name: 'barry-panning-aids', width: 720, height: 980,
          chrome: 'notabs,noheads,nostrip,nochannels' });
   }
 
@@ -530,7 +548,7 @@ BARRY.panning = (function () {
       if (res.progress) set_._progress = res.progress;
       // The last one decided: bank it, if banking without asking is on.
       if (set_ && autoOn() && !left()) {
-        quietBank(set_.gid, 'Every event decided in Panning.');
+        quietBank(set_.gid, 'Every event decided in Panning.', setKind);
       }
       if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
         BARRY.views.toolkit.curationChanged();
@@ -899,7 +917,7 @@ BARRY.panning = (function () {
                        { gid: own.gid, n: change.length, label: want }, sess);
     // The last ones decided: banked, as a single decision would be.
     if (set_ === own && want && autoOn() && !left()) {
-      quietBank(own.gid, 'Every event decided in Panning.');
+      quietBank(own.gid, 'Every event decided in Panning.', own.kind);
     }
     toast(plural(change.length, 'event') + ' '
           + (want ? 'labelled ' + labelName(want) : 'made undecided')
@@ -1376,9 +1394,10 @@ BARRY.panning = (function () {
     let bar = $('#panBar');
     if (!bar) {
       bar = el('div', { id: 'panBar', class: 'cur-bar spot-bar pan-bar' });
-      const body = $('#xfBody');
-      if (body) body.appendChild(bar);
+      // In the middle of the one mode bar (core.js `BARRY.modeSlot`).
+      BARRY.modeSlot().appendChild(bar);
       document.addEventListener('keydown', keys, true);
+      window.addEventListener('barry:modefold', onFold);
     }
     bar.innerHTML = '';
     const ev = current();
@@ -1519,38 +1538,34 @@ BARRY.panning = (function () {
         if (!wanted(current())) goTo(firstWanted());
         render(); drawStrips();
       }, { extra: 'pan-origin' }),
-      el('button', { class: 'btn ghost sm', text: 'List all…',
-        title: 'Every event in this pool, by time, decision or origin. Click '
-             + 'one to go to it; label everything shown at once.  [L]',
-        onclick: listAll }),
-      el('button', { class: 'btn ghost sm', text: 'Label many…',
-        title: 'Give one label to every event of the kinds you pick — say, '
-             + 'every merged and every Incisor-only one is a spike. One step '
-             + 'of undo puts them all back.',
-        onclick: () => bulkDialog() }),
       el('span', { id: 'panSaving', class: 'cur-saving' }),
-      el('span', { class: 'spacer' }),
-      el('button', { class: 'btn ghost sm', text: 'Bank the results…',
-        title: 'Write these decisions and merges as a new version of the pool',
-        onclick: bank }),
-      el('button', {
-        class: 'mini spot-auto' + (autoOn() ? ' on' : ''),
-        text: 'Auto-bank: ' + (autoOn() ? 'on' : 'off'),
-        title: autoOn()
-          ? 'The decisions and merges are banked as a new version without '
-            + 'asking: when the last undecided event is decided, and when you '
-            + 'leave with work the bank does not have yet. Click to turn it off.'
-          : 'Off: nothing is banked until you press Bank the results. '
-            + 'Click to turn it on.',
-        onclick: () => {
-          try { BARRY.prefs.set(AUTO_KEY, !autoOn()); } catch (e) { /* later */ }
-          render();
-        } }),
-      el('button', { class: 'btn ghost sm', text: 'Line them up…',
-        title: 'Take the spikes to Lock',
-        onclick: () => toTool('lock') }),
-      el('button', { class: 'btn ghost sm', text: 'Leave', onclick: exit }),
     ]));
+
+    /* The bar's end (ui.modeEnd): List all, Label many and Auto-bank under
+       More, the next step of The Confluence, and Bank -- then the shell's
+       Simplify, ? and Leave, the last thing on the right. */
+    bar.appendChild(BARRY.ui.modeEnd({
+      more: [
+        el('button', { class: 'btn ghost sm', text: 'List all\u2026',
+          title: 'Every event in this pool, by time, decision or origin. Click '
+               + 'one to go to it; label everything shown at once.  [L]',
+          onclick: listAll }),
+        el('button', { class: 'btn ghost sm', text: 'Label many\u2026',
+          title: 'Give one label to every event of the kinds you pick \u2014 '
+               + 'say, every merged and every Incisor-only one is a spike. One '
+               + 'step of undo puts them all back.',
+          onclick: () => bulkDialog() }),
+      ],
+      next: {
+        text: 'Next: Lock \u2014 line them up \u2192',
+        title: 'Step 3 of The Confluence: Lock lines the spikes up on their '
+             + 'peaks.',
+        onclick: () => toTool('lock'),
+      },
+      bank: { text: 'Bank the results\u2026', onclick: bank,
+              title: 'Write these decisions and merges as a new version of '
+                   + 'the pool' },
+    }));
     updateSaving();
     ensureStrips();
   }
@@ -1578,18 +1593,20 @@ BARRY.panning = (function () {
      not have. The dialog's own route, so a bank that would hold nothing new
      writes nothing. On by default, off by the switch in the bar. */
   const AUTO_KEY = 'panning_autobank';
-  function autoOn() {
-    try { return BARRY.prefs.get(AUTO_KEY, true) !== false; }
-    catch (e) { return true; }
-  }
+  /* Always on (2026-10-21: "autobank is a constant, and when you leave"):
+     the decisions are banked when the last one is made and on leaving with
+     work the bank does not have. No switch. */
+  // `BARRY.testNoAutobank` is for a harness's throwaway sets only.
+  function autoOn() { return !BARRY.testNoAutobank; }
 
-  async function quietBank(gid, why) {
+  async function quietBank(gid, why, k) {
+    // Its own kind, passed in: on leaving it runs after the set is let go.
+    const sk = k || setKind;
     await settled();
     let res;
     try {
-      res = await apiPost('/api/curation/' + encodeURIComponent(gid) + '/'
-                          + KIND + '/bank', {
-        note: why,
+      res = await apiPost(BARRY.ui.setUrl(gid, sk, 'bank'), {
+        note: why, auto: true,
         added_by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
                   || undefined,
       });
@@ -1598,6 +1615,9 @@ BARRY.panning = (function () {
             + ' Bank the results by hand to keep them.', 'warn', 9000);
       return;
     }
+    // Once only (2026-10-26): the server banks a set by itself the first
+    // time every event is decided and never again, and says so here.
+    if (res.skipped || !(res.entries || []).length) return;
     const it = (res.entries || [])[0] || {};
     if (it.replaced && !it.new_version) return;          // nothing new
     toast('Banked automatically as ' + BARRY.ui.versionLabel(it.version)
@@ -1653,14 +1673,14 @@ BARRY.panning = (function () {
     const bar = $('#panBar');
     if (!bar || !bar.parentNode) return;
     if (!$('#panWin')) {
-      const w = el('canvas', { id: 'panWin', class: 'pan-win',
+      const w = el('canvas', { id: 'panWin', class: 'pan-win mode-strip',
         title: 'Click an event to go to it. Shift-click another to pick it '
              + 'for a merge, then press M.',
         onclick: winClick });
       bar.parentNode.insertBefore(w, bar);
     }
     if (!$('#panAll')) {
-      const a = el('canvas', { id: 'panAll', class: 'pan-all',
+      const a = el('canvas', { id: 'panAll', class: 'pan-all mode-strip',
         onclick: allClick });
       bar.parentNode.insertBefore(a, $('#panWin'));
     }
@@ -1956,7 +1976,7 @@ BARRY.panning = (function () {
     let res;
     try {
       res = await apiPost('/api/presence/beat', {
-        gid: set_.gid, kind: KIND, first: !!first, doing: 'panning',
+        gid: set_.gid, kind: setKind, first: !!first, doing: 'panning',
         n_total: events().length,
         n_decided: events().filter((e) => e.label).length,
         n_this_visit: events().filter((e) => e.label).length - decidedAtEntry,
@@ -1983,7 +2003,7 @@ BARRY.panning = (function () {
     let all = {};
     try { all = JSON.parse(BARRY.prefs.get(WHERE_KEY, '{}')) || {}; }
     catch (e) { all = {}; }
-    all[set_.gid + ':' + KIND] = {
+    all[set_.gid + ':' + setKind] = {
       review, origin, index, id: ev && ev.id, t: ev && ev.start, at: Date.now(),
     };
     const ks = Object.keys(all);
@@ -1999,7 +2019,7 @@ BARRY.panning = (function () {
     let all = {};
     try { all = JSON.parse(BARRY.prefs.get(WHERE_KEY, '{}')) || {}; }
     catch (e) { return null; }
-    const got = all[set_.gid + ':' + KIND];
+    const got = all[set_.gid + ':' + setKind];
     if (!got) return null;
     const evs = events();
     let i = evs.findIndex((e) => e.id === got.id);
@@ -2026,8 +2046,7 @@ BARRY.panning = (function () {
     const quiet = !!(opts && opts.quiet);
     let got;
     try {
-      got = await api('/api/curation/' + encodeURIComponent(gid) + '/' + KIND
-                      + '/receipt');
+      got = await api(BARRY.ui.setUrl(gid, setKind, 'receipt'));
     } catch (e) { return; }
     const s = got.sitting || {};
     if (quiet && (s.n || 0) < RECEIPT_MIN) return;
@@ -2060,7 +2079,7 @@ BARRY.panning = (function () {
      from module state, so the aid window draws it too. */
   function draw(ctx, s, win, x0, plotW, y0, plotH, P) {
     const marks = s && s.curationMarks;
-    if (!marks || marks.kind !== KIND) return;
+    if (!marks || BARRY.ui.kindBase(marks.kind) !== KIND) return;
     // The main window remembers what it is showing, for the window strip.
     if (set_ && s === sess) {
       const was = lastWin;
@@ -2182,7 +2201,7 @@ BARRY.panning = (function () {
     get origin() { return origin; },
     get active() { return !!set_; },
     get state() {
-      return set_ ? { gid: set_.gid, kind: KIND, index, mark,
+      return set_ ? { gid: set_.gid, kind: setKind, index, mark,
                       total: events().length, left: left() } : null;
     },
     // For a harness: pick the second event of a merge, as a shift-click does.

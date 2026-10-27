@@ -77,6 +77,11 @@ def main():
     import logging
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
+    # A deletion on this server is a page's, and the runner puts back any
+    # committed record a page deletes: no tombstone may be written for it,
+    # or every machine's sweep would erase the record again (app.py
+    # `_note_deleted`).
+    os.environ["BARRY_HARNESS_SERVER"] = "1"
     from backend.app import app
 
     def serve():

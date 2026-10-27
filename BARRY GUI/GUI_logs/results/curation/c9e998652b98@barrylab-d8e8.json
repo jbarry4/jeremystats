@@ -1,0 +1,26 @@
+{
+  "_at": {
+    "key": "2026-10-20T20:33:40.703043+00:00",
+    "rel": "2026-10-20T20:33:40.703043+00:00",
+    "starred": "2026-10-20T20:33:40.703043+00:00",
+    "updated": "2026-10-20T20:33:40.703043+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-20T20:33:40.703043+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "key": "pten m60 s1 2025-07-10/rootcanal_pten m60 s1 2025-07-10_space_179d6410.png",
+  "rel": "PTEN m60 s1 2025-07-10/rootcanal_PTEN m60 s1 2025-07-10_space_179d6410.png",
+  "starred": false,
+  "updated": {
+    "app_version": "2026.10.20.6",
+    "at": "2026-10-20T16:33:40-04:00",
+    "commit": "04301561",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

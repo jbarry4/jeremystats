@@ -172,6 +172,16 @@ twelve, and the house pattern is to **name the component and stop its
 animation**, not a blanket `* { animation: none }` — reduced motion should
 keep the contrast and lose the movement, not flatten the page.
 
+That block is now worn by two kinds of computer: the one whose system asks
+for reduced motion, and **every computer in Jarvis Light** (below), which
+switches all of them on. A loop with no stop is a loop a slow laptop runs
+for as long as the view is open — the ToolKit stream alone kept a 4×-slowed
+CPU at 100 % (measured 2026-10-21). Ask about motion through
+`window.matchMedia('(prefers-reduced-motion: reduce)')` or
+`BARRY.ui.reducedMotion()`: Light answers both. Only the Jarvis reveal asks
+the system alone (`BARRY.lite.osReducedMotion()`), because it plays in full
+even in Light.
+
 ### A theme with visitors
 
 Halloween is the one theme with more than a palette: [spooky.js](js/spooky.js)
@@ -216,6 +226,39 @@ What it must not do:
 A new header or bar checks how it looks with the switch on.
 `web/_dev/compact.html` measures the headers both ways at 1366x768 and
 fails any that do not get smaller.
+
+### Jarvis Light
+
+The picker's third switch: `data-lite="on"` on the root, for a **slower
+computer**. A speed setting, **never a colour**: UVM Light is the colour
+theme; this changes no colour token, and `web/_dev/lite.html` checks all of
+them in all eleven themes. [lite.js](js/lite.js) does four things while it is
+on:
+
+- **Motion stops.** Every `prefers-reduced-motion` rule in the page is
+  switched on (its media list gains `all`), so each component's own stop is
+  what draws. Nothing is copied: a stop written tomorrow is honoured too.
+- **Scripts hear it.** `matchMedia` answers the reduced-motion question
+  with yes, so `BARRY.ui.reducedMotion()`, `BARRY.motion`, the start menu,
+  VACC's power-up and board and Halloween's visitors all take their still
+  path without being edited.
+- **Plots draw at 1×.** `devicePixelRatio` reads 1, so every canvas fills
+  one pixel per CSS pixel — 2.25× fewer on a laptop at 150 %. Read the ratio
+  at draw time, never cache it at load.
+- **The rest goes flat** (app.css, *Jarvis Light*): `--glass-blur` none,
+  `--glass-bg` the theme's own `--bg-2`, the `--elev-*` shadows none, no
+  transitions, the title screen still.
+
+It never hides a control, a label or a result. It is remembered per
+computer like Compact (`lite` in PREFS_LOCAL), `?lite=on|off` wins and is
+not remembered, and a frame inside a `/_dev/` page starts **off** so no
+harness measures it by accident. The server halves its cache budget while
+it is on. `BARRY.lite.suspend()` lifts all of it for a moment somebody asked
+for — the reveal.
+
+A new surface checks itself in Light: no glass of its own (use
+`--glass-blur`), no shadow of its own (use `--elev-*`), and a reduced-motion
+stop for anything that moves.
 
 ### Fire mode
 
@@ -347,6 +390,46 @@ be a worse lie than the inconsistency it replaced.
 That is the general rule when two surfaces differ: **unify the shape, keep the
 difference that is about what the thing can do.**
 
+### `handoff(toolId, { ready, note })` -- the next step
+
+Every bundle step ends with "**Next: <Step> — <what it does> →**",
+right-aligned, below the tool and its Bank, read off ToolKit's bundle list
+(so inserting a step relinks every page). ToolKit draws it in its own host
+(`#tkNext`) on every step; a tool never draws its own. **Next only goes to
+the next step's page** (2026-10-21: "Next links just take you to the next
+toolkit page, and not initiate opening any specific object or recording"):
+it never opens a set, a run or a recording, and `handoff` takes no
+`onclick`. What carries over waits there -- under Pick up a set, or in the
+step's picker -- and a tool may say so in a `note` through
+`BARRY.views.toolkit.setHandoff(toolId, { note, ready })`. A mode's own Next
+(`modeEnd({ next })`) is the same: `pick(step, bundle)` and `setView`,
+nothing else. The last step of a bundle has none. The order of every tool page is therefore:
+header, picker, run bar, settings, result, Bank, Next -- then the activity
+feed, in a host of its own (`#tkFeed`).
+
+### Adding a set: recording → dataset → version → bench
+
+Checkup, Spotter and Panning add a set the same way
+(`toolkit.js newSetDialog`): the recording, then the dataset banked for it,
+then the version (archived ones at the bottom), then **Put on the bench**.
+It never opens the mode; the bench card does. A working set belongs to ONE
+bank entry: its kind says which (`ied.e<entry>`), `BARRY.ui.kindBase` gives
+the door, `BARRY.ui.setUrl(gid, kind, what)` the route. Never hard-code a
+kind in a URL. Each door shows its own kind only.
+
+### Lists and tables
+
+- **Number order for names**: every list of recordings, mice, rats,
+  channels, sets is in number order -- m1, m3, m5, m12, never m1, m12, m3.
+  `BARRY.ui.natCompare` / `natSort` on the page, `backend/natsort.py`
+  (`natsortmod` in app.py) on the server. A list in time order or ranked by
+  a count keeps that order.
+- **Numbers right, words left**, in every table, decided from the column
+  (`ui.js alignTable`, `data-al`). A table that wants its own says
+  `data-al="off"`.
+- **Nothing is cut short.** No `text-overflow: ellipsis`, no `slice + '…'`:
+  wrap or shrink (2026-10-20, every rule swept).
+
 ### Still to come
 
 `analysisRun`. Comod, Incisor, Panorama and Spectrum share three dead
@@ -447,8 +530,10 @@ name, and a stream carrying "The Dentist" would be found as one.
 
 **Which detector found an event has one pair of colours: `--o-incisor` and
 `--o-doppler`,** taken from the categorical palette so every theme has its
-own. The stream, Junction, Panning and Root Canal all use them, and an event
-both found is drawn two-tone -- half each -- everywhere, never a third colour.
+own. The stream, Junction and Panning all use them, and an event both found
+is drawn two-tone -- half each -- everywhere, never a third colour. (Root
+Canal coloured its dots this way too until 2026-10-21; it now colours them by
+their call only.)
 
 #### Bundles fold
 
@@ -486,6 +571,52 @@ The same shape applies to anything else that is a heading over a list — the
 Explorer's tree sections and the Errors view's groups already work this way,
 with the same `.caret` and the same `.open` class on the parent. Copy that,
 not a new one.
+
+### A mode's support window, and the one overview strip
+
+**What an add-on's second window opens is the person's choice**
+(`supportpanels.js`, Profile › Support panel preferences). An add-on never
+hard-codes its window: it hands its defaults to
+`BARRY.supportPanels.plan(mode, defaults, sess)` and opens what comes back
+with `popOutPanes(sess, plan.specs, { ...BARRY.supportPanels.opts(plan), ... })`.
+`null` means the person turned the window off. A plan carries up to eight
+panels, the same kind more than once if chosen. Each panel can have its own
+`channels` (positions), `filt`, band (`fmin`/`fmax`), `tfMode`, `cmap`, and
+for traces a `gain` multiple. A plan also carries a named `shape` or a drawn
+`layout` (rows in percent of the height, widths in percent of each row) and
+an own `span`. A window with its own span still follows the main window,
+centred on the same moment (`XF.ownSpan`, `applyRemote`, `publishLink`). A
+panel with a band of its own turns the window's band lock off (`flock=0`).
+`_dev/supportpanels.html` checks all of it.
+
+**An add-on's MAIN window is the person's choice too** (2026-10-22). Lay it
+out with `BARRY.supportPanels.applyMain(mode, defaults, sess, split, fill)`,
+never with your own `setPanes` call. It returns the main plan (use
+`plan.span` as your starting span) or null, meaning the defaults stand
+exactly as before. Call `restoreMain()` on leaving: it clears the drawn
+layout and the shape override, puts back the band lock, and returns the
+window to one traces pane. Pane 0 is always the traces; every add-on reads
+it.
+
+**Layer bands are per panel** (`pane.layerWash`, `paneLayerWash`,
+`paneLayerAlpha`). A pane that has not chosen follows whatever is driving
+the labelling (StrataScope here, or the labelling window it follows). Every
+call into `BARRY.strata.draw` names its pane through `layerPaneNow`.
+
+**Marks › Faded has a level** (`sess.marksFade`, 0.1 to 0.9, `marksAlpha`).
+Every painter of marks multiplies by the `ctx.globalAlpha` it is handed,
+never assigning an absolute one, so wrapping a call in the marks' alpha
+fades it. A new painter does the same.
+
+**With two or more panes there is one overview strip, across the bottom**
+(2026-10-21: "it doesn't copy that for each pane. There should be a global
+one"). Each pane still builds its strip. `placeGlobalStrip` hides them
+(`.one-strip`) and moves the focused pane's own strip, listeners and all,
+into `#xfStrip`. A click into another pane brings that pane's strip. With
+one pane, the strip goes back under it. Never draw a second strip, and never
+look for a pane's strip inside its box: it may be at the bottom. Putting it
+away is window-level chrome (`XF.chrome.overview`, View and More › Overview
+strip), remembered separately for the main window and for support windows.
 
 ### An Xplorefinder mode
 
@@ -559,6 +690,54 @@ reachable") right after Incisor had banked it off the cluster.
 
 **`rebind` exists because reopening a recording replaces the session object.**
 A mode holding the old one keeps painting into a detached tree.
+
+**The banner on top, the tools at the bottom (2026-10-21).** A mode used to
+announce itself twice: a banner across the top with "Leave this mode", and
+its own bar at the bottom with a Leave of its own. That made two exits and
+five shapes of bar. On 2026-10-20 the two became one bar at the bottom. The
+next day the banner came back by request ("like the old C H E C K U P
+(Leave), but for all the views"). Each half now has one job, and the shell
+owns both:
+
+```
+top     C H E C K U P   what the mode does ................ Simplify  Leave
+bottom  [⌄]  the mode's own tools ...... More · Next: Braces → · Bank…
+```
+
+- **The banner (`#modeBanner`)** sits across the top of the workspace. It
+  shows the mode's name spaced out in its colour (`--mode-<name>`, and every
+  mode has one; `#app.in-mode` frames the workspace), then the `what` from
+  your `MODES` entry. At the right are **Simplify** (hides the channel list,
+  the Xplorefinder header and the pane strips; remembered per add-on) and
+  **Leave**, which is always the last thing, far right. **There is no ?**:
+  the keys are on their own buttons. **Esc leaves**, but only after anything
+  nearer has had it: a field being typed in, a dialog or popover, or your own
+  keydown that calls `preventDefault` (cancelling a drag).
+- **The tools bar (`#modeBar`)** is at the bottom. It has the fold arrow (one
+  slim line, remembered per add-on; the keys still work). A MODES entry
+  with `foldStages: 3` folds in stages: tick bars first (`.mode-strip`
+  canvases, `.fold-ticks`), then everything, then back. Panning uses this,
+  and listens for `barry:modefold` to redraw its strips and your tools:
+  `BARRY.modeSlot().appendChild(yourBar)`, never `#xfBody`. End your bar with
+  `BARRY.ui.modeEnd({ more, next, bank })`: occasional controls folded into
+  More, then the next step (navigation only, see `handoff`), then Bank.
+- **Banking needs no switch.** Every add-on banks by itself when the last
+  item is decided and on Leave with work the bank does not have:
+  - Checkup, Spotter and Panning bank their sets.
+  - Braces banks its alignment once every flagged stamp has a call (waiting
+    calls are said, not banked half-decided).
+  - The Arc's Clean files its decisions.
+
+  A bank that would hold nothing new writes nothing. There is no Auto-bank
+  toggle. Check pages under `/_dev/` turn it off for the whole frame
+  (`BARRY.testNoAutobank`, core.js). StrataScope saves each accepted step as
+  it goes, Braid has nothing to bank, and Coupling is not built.
+- Never draw a Leave of your own. `_dev/modes.html` checks that the banner is
+  on top, that Leave is its last button, that there is one Leave and no ?,
+  and that Esc does the same.
+
+**Support panels are the person's choice.** See *A mode's support window*
+above.
 
 ### Bad channels
 
@@ -1155,6 +1334,29 @@ there), `unit` (*stamps*), `state` (*the detector*, *on the bench*,
 `readonly` (a history to read). `tree.choose(ref)` sets the choice without
 calling back; `choose(null)` clears it, for a picker with several trees.
 
+**A choice that is not the page's main business is `ui.versionButton`**
+(2026-10-21: "the drop down version picker is not the way to go... click
+version should bring the entire git like tree as a pop up"). A button
+saying the version chosen, its count and what made it; pressing it opens
+the whole tree (`ui.versionPop`) with notes, and picking a row chooses and
+closes. It takes everything `versionTree` takes, plus `heading` and `sub`.
+**A version is never an `<option>`** -- a row in a table of many entries
+gets the button, not a select.
+
+**Every row says what last processed that version** (`ui.versionProducer`,
+chip `.vtree-by`): the step that minted it (`tag`: Root Canal, Junction,
+Tooth Fairy), the aligner (`aligned.tool`: Braces, Eye, Lock), a re-time,
+the detector for v0, and otherwise the add-on for the entry's kind
+(Checkup, Spotter, Panning). Pass the entry's pipeline as `producer` and
+its kind as `producerType`; `producer: false` only where nothing produced
+it in that sense (an Arc artifact). Routes that send versions send `tag`,
+`aligned_tool` and `retimed` with them (`app.py _version_made`).
+
+**Producer chips wear the tool's colour.** One token per ToolKit tool,
+`--tool-<id>` (app.css, beside `--o-incisor`), set on `[data-tool]` and
+`[data-producer]` as `--tc`; ToolKit's step numbers and icons wear the same
+colour. A new tool gets a token and both selectors in the same change.
+
 ### Every version picker
 
 The register. **A new version picker is `ui.versionTree` and gets a row
@@ -1176,9 +1378,10 @@ by stored number. The register is how the next one is not missed.
 | Event Bank — lineage strip | the version opened | tree | name | `eventbank.js` `detail` | `lineage.html` |
 | Sessions — *Correct it again, from an earlier version* | the version a correction reads | tree, every version, the corrected ones disabled with why | id | `sessions.js` `pickVersion` | `vtreetools.html` |
 | Checkup — bank dialog's history | nothing (a history to read) | tree, `readonly`, notes | — | `curate.js` `bankParts` | `benchbank.html` |
-| Braces — *Many at once*, per row | the version each entry in the batch reads | `<select>` | ref | `braces.js` bulk rows | — *a row in a table of many entries: the tree is for choosing one, a table for comparing many* |
-| Event Bank — *compare with*, inside an open version | the version the open one is diffed against | `<select>` | name | `eventbank.js` `versionDetail` | `lineage.html` — *a second choice inside one already made; the tree is the choice of which version to open* |
-| Drift — each artifact's version, in its member row | the artifact version a drift pins | `<select>` | version id | `drift.js` `pickRow` | — *The Arc's; its builders move it with the rest of the Arc, and it is a row in a list of many* |
+| Braces — *Many at once*, per row | the version each entry in the batch reads | `<select>` | ref | `braces.js` bulk rows | — *still a select: Braces is jeremystats-c4's, asked 2026-10-21 to move it to `versionButton`* |
+| Junction — *Many at once*, per row | the set and version each side pools from | `versionButton` look, opening the recording's pop-up: every set on both sides, each with its tree | name | `junction.js` `manyVerPick`, `manyPop` | `confluence.html` |
+| Event Bank — *compare with*, inside an open version | the version the open one is diffed against | `versionButton` | name | `eventbank.js` `versionDetail` | `lineage.html` |
+| Drift — each artifact's version, in its member row | the artifact version a drift pins | `versionButton`, `producer: false` | version id | `drift.js` `pickRow` | `drift.html` |
 
 Every picker above sends the version by **id or ref**, never by the stored
 number alone, and every route it reaches resolves a ref:
@@ -1302,6 +1505,20 @@ per object.
 | **VACC loaded** | on VACC, VACC can read it, Uploaded to VACC (as a mark) | the mark on a recording the cluster can read with this account now, whether in place on netfiles or as an uploaded copy; *how* goes in the title. "Uploaded" stays the word for the act |
 | **Recording** | Session, 1. Which recording | the label over the recording picker, in every tool |
 | **v4.1** | 4.1, version 4.1, v7 | a version, always by its derived name through `versionLabel` — never the stored integer |
+| **Leave** | Leave this mode, Back to Spark, Back to the proposal | going out of an Xplorefinder mode -- one button, the shell's |
+| **Close** | Put it down, Done | a dialog, a panel, a set on the bench |
+| **Bank as a new version…** / **Bank as a new entry…** | Commit, Commit the moves, Keep, Save as, Bank and vet | writing to the Event Bank |
+| **Save to Results** | Save into Results | writing to Results |
+| **Next: <Step> — <what it does> →** | Confirm them in Spotter, Pan them (as the page's next step), Line them up… | the link to the next step of a bundle |
+| **Refresh** | Rescan, Re-check | read it again |
+| **Export CSV** | Manifest CSV | a CSV of what is listed |
+| **Open folder** | Open GUI_logs, Open root, Open Results folder | the folder in the file browser |
+| **Open recording…** | Open session… | Xplorefinder's way in |
+| **Put on the bench** | Start on it | a set onto a workbench |
+
+View headers put their actions in one order: `[view switch] [filters]
+[Export CSV] [Open folder] [Refresh] [Primary]`; a developer's check (Write
+a test entry) goes first and quiet, never in the primary's place.
 
 Placeholders describe what you can type, not what the box is:
 *"Type a mouse, session or date…"*, not *"Search sessions"*.
@@ -1358,8 +1575,11 @@ around it — start-up, switching views, opening a tool — which is what people
 mean when they call the app lethargic, and which nothing had measured until
 `tools/perf_baseline.py`.
 
-There is no lite mode. Every rule below makes the app faster on every
-machine, so it is fine on a laptop over a VPN and better on a lab computer.
+Every rule below makes the app faster on every machine, so it is fine on a
+laptop over a VPN and better on a lab computer. For a computer that is
+still too slow there is **Jarvis Light** (§4): the same app, cheaper to
+draw. The rules below are not excused by it — Light is for the computer,
+not for the code.
 
 ### Measure it, in real time
 
@@ -1489,28 +1709,147 @@ Results and Misc make **61–66 requests per visit**, one per thumbnail.
   about 230 ms repainting 400+ cards it could not show at once anyway.
 - A change repaints the row that changed, not the whole view.
 
-### What is still to be measured
+### A slower computer, measured (2026-10-21)
 
-Two suspects cannot be tested on the lab machine, and are written here so
-they are not forgotten:
+`python tools/perf_baseline.py --throttle 4` runs the same page with the CPU
+slowed four times and the screen scaled 1.5× — a lab laptop, roughly.
+`--warm-browser` measures the second start in one browser (what somebody who
+opened Jarvis yesterday meets), and `--lite` measures Jarvis Light.
+`python tools/perf_profile.py --view toolkit` says WHERE a view's time goes:
+DevTools' sampling profiler over a stretch of doing nothing, by function and
+by file, with every running animation listed.
 
-- **GPU effects.** Six `backdrop-filter` and four `blur()` rules, and eleven
-  infinite animations, are near-free on a lab GPU and paid on every repaint on
-  a laptop's integrated one. Headless Edge draws without a GPU, so only a run
-  of `_dev/perf.html` on a real laptop can say. Until then: **no new
-  `backdrop-filter`**, and an infinite animation pauses when it is off screen.
-- **The VPN.** Every number above was taken on the lab LAN. The laptop run on
-  and off the VPN sets the budgets; they are not guessed.
+What that found, and the rule each one became:
+
+- **One loop can own the machine.** ToolKit's stream animation kept a
+  throttled CPU at 100 % for as long as ToolKit was open; turning that one
+  animation off took it to 3 %. Every loop needs its reduced-motion stop
+  (§4), and Light switches them all on.
+- **A poll is paid every time.** `/api/sync/status` ran a conflict audit that
+  asked git about two hundred files one process at a time: 8.7 s of server
+  for every poll (now one `git check-ignore --stdin`, 0.7 s, kept 2 min). A
+  route a page polls is measured on its own, warm, and kept under 100 ms.
+- **The first importer pays, again.** A module-level `from sklearn.cluster`
+  in rootcanalpool.py was 2.07 s of a 3.4 s server start. Every heavy import
+  goes through lazyimp.py (above).
+- **A library's threads are memory.** numpy and scipy each reserved a buffer
+  per CPU thread: 867 MB committed before the first request. backend/
+  __init__.py caps their pools at four: 160 MB.
+- **A poll that re-derives everything pays for all of it, every time.**
+  `/api/cloud/items` parsed the time of every curation decision (143,000)
+  on each five-second poll: 1.36 s. Kept against the store's signature it
+  is 11 ms. Whatever a poll works out from records is kept until their
+  shards change (`Book.signature()`), never on a timer alone.
+- **Light, measured** (`perf_profile.py --throttle 4 --theme dark`, a view
+  open and nobody touching it): ToolKit 96 % of the main thread → 48 %,
+  Root Canal 74 % → 19 %, Storyboard 28 % → 6 %, Sessions in its first
+  seconds 60 % → 1 %. What is left in Light is the work itself, not the
+  look.
+
+  Measure in a fixed theme. Halloween's yard and VACC's board are their
+  own loops, and before 2026-10-22 `?theme=` lost to the machine's own
+  theme a second after start-up, so a run that asked for dark could be
+  measuring Halloween.
+
+### Lists: one copy, last time's first, sent only when changed
+
+The registry was fetched by five views, each keeping its own copy of two
+megabytes, and Sessions showed nothing for 4.3 s on a first open.
+
+- **Read a list through `BARRY.data`** (web/js/data.js), never a bare
+  `api()`: `get(url)` hands every caller one copy and shares a request
+  already in flight; `stale(url)` gives last time's from this browser to draw
+  at once; `watch(url, cb)` hears each answer. A view draws last time's
+  dimmed (`BARRY.skeleton.stale`) or marked *as of …*, then this time's.
+- **The server tags every GET answer** with an ETag (backend/gzipjson.py) and
+  answers 304 with no body when the tag the page sends still matches. A list
+  that has not changed costs nothing to send, parse or redraw.
+- **A write under `/api/<thing>`** marks every kept answer under it as needing
+  a fresh look (`api()` does this; nothing to remember).
+- **Read-only.** A kept answer is shared: copy before changing it.
+- **Wait for the browser's store, but never past the live answer.** On a
+  CPU slowed four times IndexedDB took 2–3 s to hand back last time's Event
+  Bank, so a fixed 300 ms wait drew the skeleton for the whole read. Race
+  it: `Promise.race([BARRY.data.stale(url, 4000), live.then(() => null,
+  () => null)])`. The main window also reads the common lists into memory
+  when it is first idle, so `stale` usually answers at once.
+
+### Requests nobody waits for yield
+
+A browser opens six connections to Jarvis. The polls and roll-ups nobody is
+waiting on (`BACKGROUND_PATHS` in core.js, or `priority: 'background'`) take
+at most three of them, one after another, so a click never queues behind
+them.
+
+### What costs per item arrives per item
+
+A strip of 900 bins, or a line per channel, used to arrive whole or not at
+all. Now:
+- **Read many windows of one file through one open**
+  (`nlx.read_ncs_ranges`), never one `read_ncs_range` each.
+- **Ask for many things a few at a time**, drawing each as it lands, never
+  all at once (Xplorefinder's band strips: two at a time).
+- **Onto an empty pane, the first rows first.** A trace window costs the
+  server per channel. A traces pane with nothing on it asks for its first
+  16 rows alongside the whole window and draws them with every lane in
+  place (`earlyWin`, xplore.js). The whole answer then replaces them, so
+  the end state is the plain read. Never onto traces already showing: a
+  full picture is not traded for a mostly empty one.
+- **Stream an answer whose items each cost something real**
+  (backend/streamjson.py, `BARRY.data.stream`): a head line, one line per
+  item as it is ready, a closing line. Not for an answer that comes out of
+  one shared read — those are kept and drawn from last time instead.
+
+### What is worked out from a file is kept on disk
+
+`backend/derived.py`: the overview strip and the band surface of a channel,
+in `GUI_logs/.cache/derived/`, keyed on the file's path, size and mtime — a
+changed file is a different key, so a kept answer can never describe data
+that is no longer there. Capped at 1 GB, oldest-used first. A restart no
+longer reads a recording through again to draw its strip.
+
+### One memory budget
+
+`backend/membudget.py`: every cache registers (`register`, or `watch_dict`
+for a plain dict-and-order cache) and one least-recently-used policy keeps
+all of them together under about 6 % of the machine's memory, at most 1 GB
+(half in Light). `/api/debug/memory` shows the process, the budget and each
+cache. A new cache registers.
+
+### The start screen gets things ready
+
+`web/js/warmup.js`: from the moment the preferences are in, one step at a
+time at background priority — every list into its kept copy, the last
+recording opened on the server with its strip, the analysis libraries
+imported, recent recordings' strips written to disk. The start screen shows
+each step tick off; Continue and every key go straight in at any point, and
+a line in the rail says how far it has got until it is done. Never in a
+frame, a pop-out or under automation.
+
+### The page's own files
+
+`index()` (app.py) serves the page with every script and stylesheet address
+carrying its file's mtime (`js/core.js?v=…`), and an address with a version
+is cached for a year, never re-checked. Editing a file changes its address,
+so the edit shows on refresh with no build step. `JARVIS_ASSET_VERSIONS=0`
+turns it off, to measure it or rule it out.
 
 ### When you add something
 
 - [ ] Heavy imports inside the function that uses them
 - [ ] Nothing fetched at boot that the first screen does not draw
-- [ ] Pollers stop in `onHide` and in a background window
+- [ ] Pollers stop in `onHide` and in a background window; a polled route is
+      under 100 ms warm
 - [ ] No cloud call on the path to drawing the view (§11)
 - [ ] One request per question; long lists draw what is visible
-- [ ] No new `backdrop-filter`
-- [ ] `perf_baseline.py` before and after, and the number moved
+- [ ] A list is read through `BARRY.data`, and drawn from last time first
+- [ ] Many things are asked for a few at a time, each drawn as it lands
+- [ ] Derived data kept on disk keyed on the file; a new cache registers
+      with membudget
+- [ ] Glass through `--glass-blur`, shadow through `--elev-*`; checked in
+      Jarvis Light
+- [ ] `perf_baseline.py` before and after (and `--throttle 4`), and the
+      number moved
 
 ---
 

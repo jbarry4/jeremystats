@@ -175,7 +175,8 @@ def part3_and_4():
     A.CLOUD.mirror_bank = lambda d: {"written": 0}
     # The failure would be filed in GUI_logs/errors; this is a rehearsal.
     real_err = A.STORE.record_error
-    A.STORE.record_error = lambda *a, **k: None
+    logged = []
+    A.STORE.record_error = lambda *a, **k: logged.append(a[0])
     real_conf = type(A.CLOUD.cloud).configured
     type(A.CLOUD.cloud).configured = property(lambda self: True)
     try:
@@ -192,6 +193,35 @@ def part3_and_4():
         out = A.cloud_sync_once(pull=True, push=False, files=False)
         check("a pull on its own still fails as itself",
               calls == ["pull"] and out.get("ok") is False, calls)
+
+        # One timeout is Supabase's slow minute; two in a row is worth a
+        # line in the error log (2026-10-21).
+        def slow(**k):
+            raise A.cloudmod.CloudError(
+                "GET /rest/v1/prefs timed out after 60s")
+        A.CLOUD.pull = slow
+        A._cloud_last.clear()
+        del logged[:]
+        A.cloud_sync_once(pull=True, push=False, files=False)
+        check("one timeout is not logged", logged == [], logged)
+        A.cloud_sync_once(pull=True, push=False, files=False)
+        check("the second in a row is, once", logged == ["cloud.sync"],
+              logged)
+        A.cloud_sync_once(pull=True, push=False, files=False)
+        check("and the third is not", logged == ["cloud.sync"], logged)
+        A.CLOUD.pull = lambda **k: {}
+        A.cloud_sync_once(pull=True, push=False, files=False)
+        A.CLOUD.pull = slow
+        del logged[:]
+        A.cloud_sync_once(pull=True, push=False, files=False)
+        check("after a success, a lone timeout is quiet again", logged == [],
+              logged)
+        A.CLOUD.pull = pull
+        A._cloud_last.clear()
+        del logged[:]
+        A.cloud_sync_once(pull=True, push=False, files=False)
+        check("any other failure is logged the first time",
+              logged == ["cloud.sync"], logged)
     finally:
         for k, v in saved.items():
             setattr(A.CLOUD, k, v)

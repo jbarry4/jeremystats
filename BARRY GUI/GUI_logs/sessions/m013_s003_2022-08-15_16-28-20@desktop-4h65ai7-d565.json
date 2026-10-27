@@ -1,6 +1,6 @@
 {
   "_at": {
-    "bad_channels": "2026-10-13T20:48:21.927555+00:00",
+    "bad_channels": "2026-10-14T15:57:41.392938+00:00",
     "created": "2026-09-18T15:37:38.558635+00:00",
     "duration_s": "2026-09-18T15:37:38.558635+00:00",
     "first_seen_by": "2026-09-18T15:37:38.558635+00:00",
@@ -21,7 +21,7 @@
     "schema": "2026-09-18T15:47:00.871728+00:00",
     "session": "2026-09-18T15:47:00.871728+00:00",
     "start": "2026-09-18T15:47:00.871728+00:00",
-    "updated": "2026-10-13T20:49:15.539174+00:00",
+    "updated": "2026-10-23T19:20:10.987897+00:00",
     "view_state": "2026-10-13T20:49:15.539174+00:00"
   },
   "_keys": {
@@ -43,6 +43,10 @@
       "D:\\KCNT1\\urethane\\wt\\KCNTM13_WT\\kcnt1s3aug15\\2022-08-15_16-28-20": [
         "set",
         "2026-09-18T15:49:35.907145+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-15_16-28-20": [
+        "set",
+        "2026-10-23T19:20:10.987897+00:00"
       ]
     },
     "seen": {
@@ -53,7 +57,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-13T20:49:15.539174+00:00",
+    "at": "2026-10-23T19:20:10.987897+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -100,7 +104,8 @@
   "n_channels": 128,
   "paths": [
     "D:\\KCNT1\\urethane\\wt\\KCNTM13_WT\\kcnt1s3aug15\\2022-08-15_16-28-20",
-    "/gpfs2/scratch/sakhava1/KCNT1 Urethane/KCNT1_DATA/Kcnt1_M13s3/2022-08-15_16-28-20"
+    "/gpfs2/scratch/sakhava1/KCNT1 Urethane/KCNT1_DATA/Kcnt1_M13s3/2022-08-15_16-28-20",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-15_16-28-20"
   ],
   "probe": "dual",
   "probe_source": "manual",
@@ -122,9 +127,9 @@
   "session": 3,
   "start": "2022-08-15T20:28:20+00:00",
   "updated": {
-    "app_version": "2026.10.13.9",
-    "at": "2026-10-13T16:49:15-04:00",
-    "commit": "31dd6256",
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:10-04:00",
+    "commit": "be1e2ae4",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

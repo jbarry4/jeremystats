@@ -719,7 +719,12 @@ BARRY.arc = (function () {
      or stepping back out shows the counts as they were before. Only when
      Spark is the tool on screen: painting into a pane another tool owns is
      the fault `paint()` guards against at the top of this module. */
+  /* Decisions made in Clean that have not been filed: what leaving files
+     by itself (2026-10-21, autobank everywhere). */
+  let unfiled = false;
+
   function afterDecision() {
+    unfiled = true;
     try {
       if (BARRY.views.toolkit && BARRY.views.toolkit.tool
           && BARRY.views.toolkit.tool() === 'spark'
@@ -3631,10 +3636,12 @@ BARRY.arc = (function () {
       /* File from inside Clean, through the panel's own route rather than
          a second copy of it: one place knows what an entry has to carry.
          Returns what was filed so the mode can say so. */
+      unfiled: () => unfiled,
       file: async () => {
         const res = await apiPost(
           '/api/arc/spark/' + encodeURIComponent(q.gid) + '/bank',
           { excluded: excluded, kept: keptAll() });
+        unfiled = false;
         const t = dropTally();
         BARRY.activity.log('arc.spark.bank', {
           gid: q.gid, n: res.n, excluded: t.n, channels: t.chans,
@@ -3814,7 +3821,14 @@ BARRY.arcmode = (function () {
     /* One pane. These modes are about time, not about geometry: what is
        being checked is where a pulse fell, and six region panes would give
        six copies of the same answer in a sixth of the height. */
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    /* Profile › Support panel preferences can add panes beside it
+       (2026-10-22); the traces stay first, which this mode reads. */
+    if (BARRY.supportPanels) {
+      BARRY.supportPanels.applyMain('arcmode', [{ panel: 'traces' }], sess,
+                                    { col: 0.5, row: 0.5 });
+    } else {
+      BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    }
     if (which === 'clean') grab();
     render();
     document.addEventListener('keydown', keys, true);
@@ -3826,6 +3840,20 @@ BARRY.arcmode = (function () {
 
   function exit() {
     document.removeEventListener('keydown', keys, true);
+    /* Filed on the way out, always (2026-10-21: "autobank is a constant,
+       and when you leave"), when Clean has decisions the bank does not:
+       the same route as Save and return, after the mode has gone. */
+    const C = BARRY.arc && BARRY.arc.clean;
+    if (kind === 'clean' && !saving && C && C.unfiled && C.unfiled()
+        && !BARRY.testNoAutobank) {
+      C.file().then((res) => toast('Filed ' + res.n + ' cue pairs with their '
+                                   + 'clipping decisions on the way out.',
+                                   'ok', 6000))
+        .catch((e) => toast('Could not file on the way out: ' + e.message
+                            + ' Open Clean again and use Save and return.',
+                            'warn', 9000));
+    }
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     /* Hand the pointer back. A mode that keeps `grabTime` after it has
        gone owns every press on the pane and the traces stop panning, with
        nothing on screen to say why. */
@@ -4190,7 +4218,9 @@ BARRY.arcmode = (function () {
      The panel
      ================================================================== */
   function render() {
-    const host = document.getElementById('xfBody');
+    // In the one mode bar (core.js `BARRY.modeSlot`): Confirm's panel is
+    // its bar alone; Clean's grows by the grid of blocks above it.
+    const host = BARRY.modeSlot();
     if (!host) return;
     if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
     const p = now();
@@ -4286,30 +4316,10 @@ BARRY.arcmode = (function () {
     }
 
     bits.push(el('div', { class: 'spacer' }));
-    /* The keys, spelled as keys.
-     *
-     * The arrows have been bound since the first version of this mode and
-     * were advertised nowhere, so the bar taught n and p to people whose
-     * hand was already on the arrow keys -- "why is it n/p? not the arrow
-     * keys" is the whole of the report. Both still work; the arrows are
-     * named first, because they are the pair that needs no learning. */
-    const keyBits = [
-      el('kbd', { text: '←' }), el('kbd', { text: '→' }),
-      el('span', { text: 'or' }),
-      el('kbd', { text: 'n' }), el('kbd', { text: 'p' }),
-      el('span', { text: 'step pairs' }),
-    ];
-    if (kind === 'clean') {
-      keyBits.push(el('kbd', { text: '↑' }), el('kbd', { text: '↓' }),
-                   el('span', { text: 'pick a channel' }),
-                   el('kbd', { text: 'k' }), el('span', { text: 'keep' }),
-                   el('kbd', { text: 'x' }), el('span', { text: 'drop' }),
-                   el('kbd', { text: 't' }),
-                   el('span', { text: 'state / transition' }));
-    }
-    keyBits.push(el('kbd', { text: 'esc' }),
-                 el('span', { text: edit ? 'call off the drag' : 'leave' }));
-    bits.push(el('span', { class: 'arc-bar-keys' }, keyBits));
+    /* The keys are on the one bar's ? now (core.js MODES.arcconfirm /
+       arcclean `keys`), the same place every mode keeps them -- the arrows
+       named first, because they are the pair that needs no learning ("why
+       is it n/p? not the arrow keys"). Esc calls off a drag, else leaves. */
 
     /* The way out, with the decisions written down.
      *
@@ -4321,12 +4331,8 @@ BARRY.arcmode = (function () {
      * here files them and goes back, and it is the last thing on the bar
      * because it is the one thing to click. */
     if (kind === 'clean') {
-      bits.push(el('button', {
-        class: 'btn ghost sm',
-        text: 'Back to Spark',
-        title: 'Leave without filing. The decisions are kept.',
-        onclick: () => exit(),
-      }));
+      /* No "Back to Spark": Leave, at the far right of the one bar, does
+         that, and keeps the decisions. */
       bits.push(el('button', {
         class: 'btn' + (saving ? ' off' : ''),
         disabled: saving ? 'disabled' : null,
