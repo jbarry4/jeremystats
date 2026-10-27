@@ -6,6 +6,7 @@
     "curate_span": "2026-10-20T21:51:24.532171+00:00",
     "density": "2026-10-21T17:07:20.712462+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
+    "figure_profile": "2026-10-23T19:05:47.379192+00:00",
     "panning_at": "2026-10-23T17:34:01.489387+00:00",
     "panning_span": "2026-10-22T14:33:27.710295+00:00",
     "pipeline_folders": "2026-09-23T13:26:19.592745+00:00",
@@ -15,12 +16,12 @@
     "spotter_at": "2026-10-22T15:55:55.110663+00:00",
     "spotter_light": "2026-10-16T17:21:44.827873+00:00",
     "support_panels": "2026-10-22T14:25:27.296113+00:00",
-    "updated": "2026-10-23T17:34:01.489387+00:00",
+    "updated": "2026-10-26T15:09:23.347952+00:00",
     "vacc_signed_ack": "2026-10-20T16:14:37.060022+00:00",
     "xf_chan_column": "2026-10-22T14:33:18.151050+00:00",
     "xf_overview_aid": "2026-10-22T17:56:53.803893+00:00",
     "xf_simplify_curate": "2026-10-21T21:43:37.927942+00:00",
-    "xf_simplify_lock": "2026-10-23T17:22:35.236450+00:00",
+    "xf_simplify_lock": "2026-10-26T14:41:05.634930+00:00",
     "xf_simplify_panning": "2026-10-23T16:01:13.183303+00:00",
     "xf_simplify_spotter": "2026-10-21T14:46:13.790670+00:00"
   },
@@ -127,7 +128,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-23T17:34:01.489387+00:00",
+    "at": "2026-10-26T15:09:23.347952+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -545,6 +546,7 @@
   "density": "comfortable",
   "digest_seen": "2026-09-08T02:30:43.952468+00:00",
   "fav_scripts": [],
+  "figure_profile": "nature",
   "jarvis": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": true,
@@ -670,7 +672,7 @@
     "Home": "dark",
     "LCOM549913": "halloween"
   },
-  "updated": "2026-10-23T13:34:01-04:00",
+  "updated": "2026-10-26T11:09:23-04:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": true,
@@ -683,7 +685,7 @@
   "xf_chan_column": "folded",
   "xf_overview_aid": "hidden",
   "xf_simplify_curate": false,
-  "xf_simplify_lock": true,
+  "xf_simplify_lock": false,
   "xf_simplify_panning": true,
   "xf_simplify_spotter": false
 }
