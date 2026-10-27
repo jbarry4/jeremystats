@@ -1,0 +1,207 @@
+{
+  "_at": {},
+  "_keys": {
+    "presets": {
+      "sp-isabella-piatek-uvm-edu": [
+        "set",
+        "2026-10-27T17:45:41.699625+00:00"
+      ],
+      "sp-rain-younger-uvm-edu": [
+        "set",
+        "2026-10-22T15:03:04.284596+00:00"
+      ],
+      "sp-sakhava1-uvm-edu": [
+        "set",
+        "2026-10-23T13:14:59.110729+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-27T17:45:41.699625+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "presets": [
+    {
+      "addons": {
+        "lock": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  70,
+                  30
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": 0.8
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "custom",
+              "hp": 1,
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "gain": 2.5,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "fmax": 800,
+              "fmin": 1,
+              "panel": "spectrogram"
+            }
+          ],
+          "shape": "linked",
+          "span": null
+        }
+      },
+      "at": "2026-10-27T17:45:27.801Z",
+      "auto": true,
+      "id": "sp-isabella-piatek-uvm-edu",
+      "label": "current",
+      "name": "Isabella Piatek \u2014 current",
+      "owner": "Isabella Piatek",
+      "owner_email": "isabella.piatek@uvm.edu",
+      "saved": {
+        "app_version": "2026.10.27.1",
+        "at": "2026-10-27T13:45:41-04:00",
+        "commit": "e6182225",
+        "email": "Isabella.Piatek@uvm.edu",
+        "host": "LCOM549913",
+        "machine": "Blackbarry",
+        "os": "Windows",
+        "user": "Isabella Piatek"
+      }
+    },
+    {
+      "addons": {
+        "panning": {
+          "open": true,
+          "panels": [
+            "csd",
+            "theta",
+            "traces",
+            "spectrogram"
+          ],
+          "shape": "linked"
+        },
+        "strata": {
+          "open": true,
+          "panels": [
+            "csd",
+            "theta",
+            "voltage",
+            "spectrogram"
+          ],
+          "shape": "linked"
+        }
+      },
+      "at": "2026-10-21T17:58:49.680510+00:00",
+      "id": "sp-rain-younger-uvm-edu",
+      "label": "current",
+      "name": "Rain Younger \u2014 current",
+      "note": "From the lab rig (barrylab-d8e8), as Rain left them on 2026-10-21.",
+      "owner": "Rain Younger",
+      "owner_email": "rain.younger@uvm.edu",
+      "saved": {
+        "app_version": "2026.10.21.5",
+        "at": "2026-10-22T11:03:04-04:00",
+        "commit": "724bccbc",
+        "email": "sakhava1@uvm.edu",
+        "host": "DESKTOP-4H65AI7",
+        "machine": "Bluebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      }
+    },
+    {
+      "addons": {
+        "curate": {
+          "layout": null,
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "panel": "csd"
+            },
+            {
+              "panel": "traces"
+            },
+            {
+              "panel": "traces"
+            }
+          ],
+          "shape": "top1",
+          "span": null
+        },
+        "panning": {
+          "open": true,
+          "panels": [
+            "csd",
+            "theta",
+            "traces",
+            "spectrogram"
+          ],
+          "shape": "linked"
+        },
+        "strata": {
+          "open": true,
+          "panels": [
+            "csd",
+            "theta",
+            "voltage",
+            "spectrogram"
+          ],
+          "shape": "linked"
+        }
+      },
+      "at": "2026-10-23T13:14:58.515Z",
+      "auto": true,
+      "id": "sp-sakhava1-uvm-edu",
+      "label": "current",
+      "name": "Shahriar Tafti \u2014 current",
+      "owner": "Shahriar Tafti",
+      "owner_email": "sakhava1@uvm.edu",
+      "saved": {
+        "app_version": "2026.10.22.5",
+        "at": "2026-10-23T09:14:58-04:00",
+        "commit": "b13e5f6c",
+        "email": "sakhava1@uvm.edu",
+        "host": "DESKTOP-4H65AI7",
+        "machine": "Bluebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      }
+    }
+  ]
+}
