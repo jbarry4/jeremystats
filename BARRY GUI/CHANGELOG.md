@@ -15,6 +15,30 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.27.1 - Braces and Lock: settings that stay put, and the batch's switches as chips
+
+Reload the page; nothing on the server changed.
+
+- **One set no longer redraws the whole page on every press.** A measure,
+  the filter, a group or the window used to rebuild everything: the picker,
+  the plan, the channel grid and both alignment lists, which were fetched
+  again each time. Now only the parts that changed are redrawn.
+- **Changing the filter or the version no longer blanks the plan.** What it
+  said stays, dimmed, with "reading it again…" until the new answer arrives.
+  "Line them up" waits for it.
+- **In Many, the filter shows your choice at once.** Before, the button
+  didn't change until something else redrew the page.
+- **The batch's two checkboxes are now chips:**
+  - **Send to the VACC** is on by default wherever there is a cluster. Press
+    it to keep the sets this computer has here.
+  - **Read again** is off by default.
+
+  Each chip says what it means for this batch. The settings, the chips and
+  the sentence below them are now on separate rows, so the sentence no
+  longer runs off the card.
+
+---
+
 ## 2026.10.26.2 - Tab 10, Joe export: everything for Joe in one list, and a site he downloads it from
 
 **Restart Jarvis**: `backend/app.py` changed and `backend/joeexport.py` is new.

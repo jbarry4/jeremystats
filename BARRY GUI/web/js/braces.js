@@ -87,8 +87,10 @@ function makeBraces(cfg) {
     hold: {},
     // Read again even where these settings were run before.
     force: false,
-    // Every set to the cluster, even the ones this computer has.
-    allVacc: false,
+    // Every set to the cluster, even the ones this computer has. Null
+    // until somebody presses the chip: on wherever there is a cluster
+    // (2026-10-27: "a send to VACC chip, on by default").
+    allVacc: null,
     find: '',           // the search over the list
     rev: 0,             // bumped when what the rows say has changed
   };
@@ -222,10 +224,18 @@ function makeBraces(cfg) {
 
   async function refreshPlan() {
     if (!q.entry) return;
-    plan = null;
+    /* The same set read again (another version, another band): the plan on
+       screen stays, dimmed, until the new one lands -- blanking it to
+       "Working it out" took the channel grid and the button with it, and
+       put them back a second later. A different set starts clean. */
+    const same = plan && plan.ok && plan.entry && plan.entry.id === q.entry;
+    if (same) planBusy = true; else plan = null;
+    planRev += 1;
     render();
+    const asked = q.entry;
+    let got;
     try {
-      plan = await apiPost('/api/braces/plan', {
+      got = await apiPost('/api/braces/plan', {
         entry_id: q.entry,
         from_version: q.from_version,
         window_ms: q.window_ms,
@@ -233,8 +243,12 @@ function makeBraces(cfg) {
         band_kind: cfg.bands ? q.band : undefined,
       });
     } catch (e) {
-      plan = { ok: false, error: e.message };
+      got = { ok: false, error: e.message };
     }
+    if (q.entry !== asked) return;      // another set was picked meanwhile
+    plan = got;
+    planBusy = false;
+    planRev += 1;
     render();
   }
 
@@ -544,13 +558,57 @@ function makeBraces(cfg) {
     shownPage = page;
     if (page === 'many') {
       BARRY.ui.sections(h, manyParts());
+    } else if (page === 'one') {
+      BARRY.ui.sections(h, oneParts());
     } else {
       renders += 1;
       BARRY.ui.sections(h, [{ key: page, sig: renders, enter: false,
-        build: page === 'set' ? proposalView : pickView }]);
+        build: proposalView }]);
     }
     if (back) back();
     if (!flightsAsked) { flightsAsked = true; loadFlights(); }
+  }
+
+  /* ONE SET, IN PARTS THAT ARE KEPT (2026-10-27: "the entire settings panel
+     is glitchy for one and many"). Every press rebuilt the whole page -- the
+     picker, the plan, both lists of alignments (each fetched again) and the
+     settings -- so a filter press blanked the plan, threw the channel grid
+     away and back, and reloaded two lists nobody had touched. Now each part
+     is rebuilt only when what it shows has changed, as Many's are. */
+  let planRev = 0;
+  let planBusy = false;
+  const holdSig = () => (cfg.pin ? holdNow().join(',') : '');
+  function oneParts() {
+    if (!cands || !cands.length) {
+      return [{ key: 'one-empty', enter: false,
+                sig: [cands ? cands.length : -1, unsorted],
+                build: pickView }];
+    }
+    const regN = (BARRY.views.toolkit && BARRY.views.toolkit.registryRows)
+      ? BARRY.views.toolkit.registryRows().length : 0;
+    return [
+      { key: 'otop', enter: false,
+        sig: ['otop', flights.filter(flightRunning).length],
+        build: () => el('div', { class: 'br-wrap' }, [stepHead(), modeCard()]) },
+      { key: 'pick', enter: false,
+        sig: [q.gid, q.entry, q.from_version, cands.length, unsorted, regN],
+        build: pickCard },
+      { key: 'plan', enter: false,
+        sig: [planRev, planBusy, q.from_version, holdSig(), q.band],
+        build: planCard },
+      q.entry ? { key: 'aligns', enter: false, sig: [q.entry, recentRev],
+                  build: entryAlignments } : null,
+      { key: 'settings', enter: false,
+        sig: [q.entry, q.measure, q.window_ms, q.band, holdSig(), planRev,
+              (q.channels || []).join(','), !!presets],
+        build: settingsCard },
+      { key: 'go', enter: false,
+        sig: [q.entry, job ? job.id : null, planRev, planBusy, holdSig(),
+              q.band],
+        build: goCard },
+      { key: 'recent', enter: false, sig: ['recent', recentRev],
+        build: recentSets },
+    ];
   }
 
   /* ---------- 1. what to align ---------- */
@@ -574,11 +632,9 @@ function makeBraces(cfg) {
 
     box.appendChild(modeCard());
 
-    if (bulk.on) {
-      // Drawn by `manyParts` -- this is the bank arriving mid-render.
-      return box;
-    }
-    return pickOne(box);
+    // One and Many are drawn by `oneParts` and `manyParts`; this is the
+    // bank arriving, or there being nothing in it.
+    return box;
   }
 
   function stepHead() {
@@ -629,7 +685,7 @@ function makeBraces(cfg) {
     ].filter(Boolean));
   }
 
-  function pickOne(box) {
+  function pickCard() {
     /* Which recording, then which of its banked entries.
 
        Two questions in that order, because the first narrows the second
@@ -718,16 +774,13 @@ function makeBraces(cfg) {
         + '. Running it again proposes a fresh alignment on top of that '
         + 'one; it does not undo it.' }));
     }
-    box.appendChild(card);
+    return card;
+  }
 
-    /* What it would read. */
-    box.appendChild(planCard());
-
-    /* And every alignment already made of it, to open without reading. */
-    if (q.entry) box.appendChild(entryAlignments());
-
-    /* Settings. */
-    const set = el('div', { class: 'card' });
+  /* Settings, for the set on screen. */
+  function settingsCard() {
+    const cur = (cands || []).find((c) => c.id === q.entry) || null;
+    const set = el('div', { class: 'card br-settings' });
     set.appendChild(el('div', { class: 'section-label',
                                 text: 'Settings' }));
     /* Lock's first setting, above the rest: which origin groups it lines
@@ -743,9 +796,12 @@ function makeBraces(cfg) {
       + 'carry it and a dead one cannot sink it — and nothing is '
       + 'thresholded, because a peak is already the largest thing within '
       + 'its window.' }));
-    box.appendChild(set);
+    return set;
+  }
 
-    /* Go. */
+  /* Go. */
+  function goCard() {
+    const cur = (cands || []).find((c) => c.id === q.entry) || null;
     const go = el('div', { class: 'br-go' });
     if (job) {
       const say = jobSays(job);
@@ -767,7 +823,7 @@ function makeBraces(cfg) {
          than one that waits. */
       // Lock, with every spike in a held group: nothing to move.
       const held = cfg.pin && heldAllOf(cur, holdNow());
-      const ready = !!(plan && plan.ok) && !held;
+      const ready = !!(plan && plan.ok) && !held && !planBusy;
       go.appendChild(el('button', {
         class: 'btn', text: 'Line them up',
         disabled: ready ? null : 'disabled',
@@ -784,10 +840,7 @@ function makeBraces(cfg) {
           + 'move. Tick a group above to line it up.' }));
       }
     }
-    box.appendChild(go);
-
-    box.appendChild(recentSets());
-    return box;
+    return go;
   }
 
   /* ---- the picker's rail (2026-10-22) ----------------------------------
@@ -1245,8 +1298,9 @@ function makeBraces(cfg) {
                              q.measure = id; render(); },
             text: label,
           }))),
-        el('span', { class: 'br-hint', text: bandWords() }),
-      ]),
+        // Said once: where there is a Filter field beside it, it says it.
+        cfg.bands ? null : el('span', { class: 'br-hint', text: bandWords() }),
+      ].filter(Boolean)),
       /* Lock: which band the stamps are aligned through. The dentate-spike
          one by default (2026-10-26); the IED one is what Lock used before. */
       cfg.bands ? el('div', { class: 'br-field' }, [
@@ -1367,9 +1421,13 @@ function makeBraces(cfg) {
   }
 
   function planCard() {
-    const card = el('div', { class: 'card br-plan' });
+    const card = el('div', { class: 'card br-plan' + (planBusy ? ' busy' : '') });
     card.appendChild(el('div', { class: 'section-label',
                                  text: 'What it will read' }));
+    // Read again with what was just changed; what it said before stays.
+    if (planBusy) {
+      card.appendChild(el('span', { class: 'br-plan-busy', text: 'reading it again…' }));
+    }
     if (!plan) {
       card.appendChild(el('p', { class: 'hint', text: 'Working it out…' }));
       return card;
@@ -1675,11 +1733,11 @@ function makeBraces(cfg) {
     const nTick = ok.filter((x) => bulk.want[x.c.id]).length;
     BARRY.ui.sections(node.querySelector('.br-many-parts'), [
       { key: 'tools', enter: false,
-        sig: [bulk.rev, bulk.find, nTick, q.measure, q.window_ms],
+        sig: [bulk.rev, bulk.find, nTick, q.measure, q.window_ms, q.band],
         build: () => pickTools(ok, shown) },
       { key: 'list', enter: false,
         sig: [bulk.rev, bulk.find, (cands || []).length, q.measure,
-              q.window_ms],
+              q.window_ms, q.band],
         build: () => pickList(ok, shown) },
       { key: 'blocked', enter: false,
         sig: [bulk.rev, blocked.length],
@@ -1902,50 +1960,94 @@ function makeBraces(cfg) {
     const picks = Object.keys(bulk.want).sort().join(',');
     BARRY.ui.sections(inner, [
       { key: 'set', enter: false,
-        sig: [q.measure, q.window_ms, bulk.force, bulk.allVacc, run,
+        sig: [q.measure, q.window_ms, q.band, bulk.force, allVaccOn(), run,
               !!(BARRY.vacc && (BARRY.vacc.last || {}).configured)],
         build: () => runSettings(run) },
       { key: 'cost', enter: false,
-        sig: [picks, bulk.rev, q.measure, q.window_ms, bulk.force,
-              bulk.allVacc, run],
+        sig: [picks, bulk.rev, q.measure, q.window_ms, q.band, bulk.force,
+              allVaccOn(), run],
         build: costLine },
       { key: 'go', enter: false, sig: [picks, bulk.rev, run],
         build: manyGo },
     ]);
   }
 
+  /* Whether there is a cluster to send to at all. */
+  const clusterUp = () => !!(BARRY.vacc && (BARRY.vacc.last || {}).configured);
+  /* Every set to the VACC: on by itself where there is one. */
+  const allVaccOn = () => (bulk.allVacc == null ? clusterUp()
+                                                : !!(bulk.allVacc && clusterUp()));
+
+  const CLOUD_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">'
+    + '<path d="M7 18h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.4 9.2 4.5 4.5 0 0 0 7 18z"/>'
+    + '<path d="M12 15.5v-5M9.8 12.6 12 10.4l2.2 2.2"/></svg>';
+  const AGAIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">'
+    + '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.8 4.5v4h-4"/></svg>';
+
+  /* A switch that looks like one: a chip with its icon, what it does, what
+     that means for this batch, and a light. Replaces two checkboxes with
+     sentences after them (2026-10-27: "these buttons are weird"). */
+  function chipSwitch(o) {
+    return el('button', {
+      type: 'button', class: 'br-chip' + (o.on ? ' on' : '') + (o.cls ? ' ' + o.cls : ''),
+      'aria-pressed': o.on ? 'true' : 'false',
+      disabled: o.lock ? 'disabled' : null,
+      title: o.title,
+      onclick: (e) => {
+        // The chip answers at once; the counts below follow.
+        const b = e.currentTarget;
+        b.classList.toggle('on', !o.on);
+        b.setAttribute('aria-pressed', !o.on ? 'true' : 'false');
+        o.toggle(!o.on);
+        setTimeout(render, 120);
+      },
+    }, [
+      el('span', { class: 'br-chip-ico', html: o.icon }),
+      el('span', { class: 'br-chip-words' }, [
+        el('b', { text: o.label }),
+        el('i', { text: o.on ? o.onText : o.offText }),
+      ]),
+      el('span', { class: 'br-chip-light', 'aria-hidden': 'true' }),
+    ]);
+  }
+
   function runSettings(lock) {
     const box = el('div', { class: 'br-bulk-settings' }, [settingsFields(lock)]);
-    box.appendChild(el('label', { class: 'br-bulk-force',
-      title: 'A set already aligned with exactly these settings is opened '
-           + 'from that alignment rather than read again. Tick this to read '
-           + 'every one again anyway.' }, [
-      el('input', { type: 'checkbox', checked: bulk.force ? 'checked' : null,
-        disabled: lock ? 'disabled' : null,
-        onchange: (e) => { bulk.force = e.target.checked; render(); } }),
-      el('span', { text: 'read again even where these settings were run' }),
-    ]));
-    if (BARRY.vacc && (BARRY.vacc.last || {}).configured) {
-      box.appendChild(el('label', { class: 'br-bulk-force br-bulk-allvacc',
-        title: 'The cluster reads them side by side; this computer reads its '
-             + 'own one after another. A set the cluster cannot read stays '
-             + 'here.' }, [
-        el('input', { type: 'checkbox', checked: bulk.allVacc ? 'checked' : null,
-          disabled: lock ? 'disabled' : null,
-          onchange: (e) => { bulk.allVacc = e.target.checked; render(); } }),
-        el('span', { text: 'send them all to the VACC, even the ones this '
-                           + 'computer has' }),
-      ]));
+    const chips = el('div', { class: 'br-chips' });
+    if (clusterUp()) {
+      chips.appendChild(chipSwitch({
+        on: allVaccOn(), lock, icon: CLOUD_SVG, cls: 'vacc',
+        label: 'Send to the VACC',
+        onText: 'every set, side by side on the cluster',
+        offText: 'only the sets this computer cannot read',
+        title: 'On: every ticked set is aligned on the cluster, side by side. '
+             + 'Off: this computer aligns the ones it has, one after another, '
+             + 'and only the rest go to the cluster. A set the cluster cannot '
+             + 'read stays here either way.',
+        toggle: (v) => { bulk.allVacc = v; },
+      }));
     }
-    box.appendChild(el('span', { class: 'br-hint', text: 'Every set in this '
-      + 'batch is read with these, and its proposal records them. They are '
-      + 'the one-set panel’s too: changing them here changes them there.' }));
+    chips.appendChild(chipSwitch({
+      on: !!bulk.force, lock, icon: AGAIN_SVG, cls: 'again',
+      label: 'Read again',
+      onText: 'even sets already run with these settings',
+      offText: 'sets run before with these settings just open',
+      title: 'A set already aligned with exactly these settings is opened '
+           + 'from that alignment rather than read again. Turn this on to '
+           + 'read every one again anyway.',
+      toggle: (v) => { bulk.force = v; },
+    }));
+    box.appendChild(chips);
+    box.appendChild(el('p', { class: 'br-hint br-bulk-say', text: 'Every set '
+      + 'in this batch is read with these, and its proposal records them. '
+      + 'They are the one-set panel’s too: changing them here changes them '
+      + 'there.' }));
     return box;
   }
 
   /* Where a ticked set will actually run, this batch. */
   const runsOn = (x) => ((x.r.where === 'vacc'
-                          || (bulk.allVacc && x.r.vacc)) ? 'vacc' : 'here');
+                          || (allVaccOn() && x.r.vacc)) ? 'vacc' : 'here');
 
   function costLine() {
     const sel = chosen();
@@ -2000,7 +2102,7 @@ function makeBraces(cfg) {
         band_kind: cfg.bands ? q.band : undefined,
         measure: q.measure, window_ms: q.window_ms, estimator: q.estimator,
         force: !!bulk.force,
-        where: bulk.allVacc ? 'vacc' : null,
+        where: allVaccOn() ? 'vacc' : null,
       });
     } catch (e) {
       toast(e.message, 'err', 12000);
