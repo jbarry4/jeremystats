@@ -320,13 +320,9 @@ BARRY.panning = (function () {
     if (!set_) return;
     /* Leaving with decisions or merges the bank does not have: banked on
        the way out, when that is on (quietBank, below). */
-    {
-      const decided = events().filter((e) => e.label).length;
-      if (autoOn() && decided
-          && (bankDirty || !banked || banked.changed)) {
-        quietBank(set_.gid, 'Banked on leaving Panning.', setKind);
-      }
-    }
+    /* Not banked on leaving any more (2026-10-26): a set banks itself
+       once, when the last event is first decided, and every change after
+       that is banked by hand -- "Never again." */
     rememberWhere();
     try { BARRY.prefs.flush(); } catch (e) { /* the timer will get it */ }
     BARRY.activity.log('panning.leave', { gid: set_.gid, left: left() }, sess);
@@ -1610,7 +1606,7 @@ BARRY.panning = (function () {
     let res;
     try {
       res = await apiPost(BARRY.ui.setUrl(gid, sk, 'bank'), {
-        note: why,
+        note: why, auto: true,
         added_by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
                   || undefined,
       });
@@ -1619,6 +1615,9 @@ BARRY.panning = (function () {
             + ' Bank the results by hand to keep them.', 'warn', 9000);
       return;
     }
+    // Once only (2026-10-26): the server banks a set by itself the first
+    // time every event is decided and never again, and says so here.
+    if (res.skipped || !(res.entries || []).length) return;
     const it = (res.entries || [])[0] || {};
     if (it.replaced && !it.new_version) return;          // nothing new
     toast('Banked automatically as ' + BARRY.ui.versionLabel(it.version)

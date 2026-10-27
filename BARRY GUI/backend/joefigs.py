@@ -209,6 +209,17 @@ ROWS = (("Precon1", "Precon1"), ("Precon4", "Precon4"), ("delta", "Precon4 − P
 #: 8's light passed; grouped by window, then band, in this order.
 RING_MODELS = ("m1", "m2", "m5")
 BAND_ORDER = ("theta", "gamma")
+
+
+def ring_groups(R):
+    """The (model, band) groups drawn, in order: comparisons 1, 2 and 5 in
+    both bands, and any other window whose light passed (its follow-ups
+    need a group to sit in), by window, then band."""
+    shown = R.get("shown") or "dickson"
+    res = {(r["model"], r["band"]): r for r in R["results"] if r["method"] == shown and r.get("units")}
+    models = {m["id"] for m in R["models"]}
+    return [(m, b) for m in WINDOWS for b in BAND_ORDER if m in models and (m, b) in res
+            and (m in RING_MODELS or (res[(m, b)].get("gate") or {}).get("passed"))]
 #: The windows in plain words, and what each comparison's effect is called
 #: (no deltas on the figures: "Precon1 cue effect = Cues - Baseline").
 WSAY = {"base20": "Baseline", "base10": "Baseline", "pair": "Cues", "cue1": "Cue 1", "cue2": "Cue 2",
@@ -1569,8 +1580,7 @@ def build(progress=None, check=None, read_recordings=True, R=None, days=None, in
     models = {m["id"]: m for m in R["models"]}
     shown = R.get("shown") or "dickson"
     res_of = {(r["model"], r["band"]): r for r in R["results"] if r["method"] == shown}
-    groups = [(mid, band) for mid in RING_MODELS for band in BAND_ORDER
-              if mid in models and res_of.get((mid, band)) and res_of[(mid, band)].get("units")]
+    groups = ring_groups(R)
     items = follow_items(R)
     ip = joe.joe_dir("joe_inputs.json")
     if inputs is None and os.path.isfile(ip):

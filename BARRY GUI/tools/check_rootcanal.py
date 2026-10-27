@@ -1054,6 +1054,20 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
        "out", r.status_code == 400 and "again: true" in r.get_json()["error"]
        and len(bank.get("rcchk000001")["versions"]) == n_ds_v,
        r.get_json())
+    # The panel keeps naming the read it opened, the uncleaned one
+    # (2026-10-20: refused "431 ... 243 ... Read it again" instead).
+    r = c.post("/api/rootcanal/commit",
+               json=dict(body, pngs={}, read=js["read"]))
+    ck("and so it is when the panel still names the read it was cleaned "
+       "from", r.status_code == 400 and "again: true" in r.get_json()["error"],
+       r.get_json())
+    r = c.post("/api/rootcanal/fit", json={"entry_id": "rcchk000001",
+                                           "read": js["read"]})
+    fj = r.get_json()
+    ck("and the cleaned set still fits under that read's name",
+       r.status_code == 200 and fj["ok"]
+       and fj["n"] == len(stamp_t) - n_ied,
+       fj.get("error") or fj.get("n"))
     src = [v for v in bank.get("rcchk000001")["versions"]
            if v.get("tag") == "curated-check"][0]
 

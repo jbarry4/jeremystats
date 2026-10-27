@@ -20,7 +20,9 @@ OUT = os.path.join(APP, "GUI_logs", ".cache", "joe_deck", "img")
 os.makedirs(OUT, exist_ok=True)
 MM = 1 / 25.4
 C_UP, C_DOWN, C_P1, C_P4, C_NULL = "#E66101", "#5E3C99", "#8C8C8C", "#1A1A1A", "#D4D4D4"
-GREEN, AMBER, GREY = "#2E9E5B", "#E0A526", "#C8C8C8"
+# tab 8's lights since 2026-10-23: colour-blind safe, and a shape for each
+# state (lit: a disc; a check that lit: a diamond; dark: a hollow ring)
+LIT, CHECK_LIT, GREY = "#0072B2", "#D55E00", "#9A9A9A"
 plt.rcParams.update({"font.family": "Arial", "font.size": 8, "axes.linewidth": 0.6, "svg.fonttype": "none",
                      "xtick.major.width": 0.6, "ytick.major.width": 0.6})
 BOXES = {}
@@ -68,11 +70,11 @@ def coherence_demo():
 
 # 2. A trial's windows ------------------------------------------------------
 def timeline():
-    W, H = 150.0, 70.0
+    W, H = 150.0, 83.0
     fig = plt.figure(figsize=(W * MM, H * MM))
-    ax = ax_mm(fig, 6, 6, 138, 58, W, H)
+    ax = ax_mm(fig, 6, 6, 138, 71, W, H)
     ax.set_xlim(-24, 23)
-    ax.set_ylim(0, 10)
+    ax.set_ylim(-2.6, 10)
     ax.axis("off")
     # the bar: baseline 20 s, cue 1, cue 2
     ax.add_patch(Rectangle((-20, 6.2), 20, 1.6, color="#E6E6E6"))
@@ -98,12 +100,17 @@ def timeline():
     bracket(-10, -0.4, 1.0, "10 s baseline", "#333333")
     bracket(0.4, 10, 1.0, "cue 1", C_UP)
     ax.text(-23.5, 0.65, "2", fontsize=10, fontweight="bold", va="center")
-    # boxes in mm: x = 6 + (v + 24) / 47 * 138 ; y = 6 + (10 - v) / 10 * 58
+    # comparison 5: cue 1 vs cue 2, whatever the sounds
+    bracket(0.4, 9.6, -1.6, "cue 1", "#333333")
+    bracket(10.4, 20, -1.6, "cue 2", C_UP)
+    ax.text(-23.5, -1.95, "5", fontsize=10, fontweight="bold", va="center")
+    # boxes in mm: x = 6 + (v + 24) / 47 * 138 ; y = 6 + (10 - v) / 12.6 * 71
     X = lambda v: 6 + (v + 24) / 47 * 138                # noqa: E731
-    Y = lambda v: 6 + (10 - v) / 10 * 58                 # noqa: E731
+    Y = lambda v: 6 + (10 - v) / 12.6 * 71               # noqa: E731
     save(fig, "timeline", W, H, {
         "baseline": [X(-21), Y(9.6), X(0), Y(5.8)], "cues": [X(0), Y(9.6), X(20.6), Y(5.8)],
-        "cmp1": [X(-24), Y(4.3), X(21), Y(2.3)], "cmp2": [X(-24), Y(1.7), X(21), Y(-0.3)]})
+        "cmp1": [X(-24), Y(4.3), X(21), Y(2.3)], "cmp2": [X(-24), Y(1.7), X(21), Y(-0.3)],
+        "cmp5": [X(-24), Y(-0.9), X(21), Y(-2.9)]})
 
 
 # 3. Tab 8's lights -----------------------------------------------------------
@@ -131,8 +138,13 @@ def lights(R):
         for band in ("theta", "gamma"):
             r = res.get((m["id"], band))
             lit = bool(r and (r.get("gate") or {}).get("passed") and (r.get("mixed") or {}).get("ok"))
-            col = (AMBER if check else GREEN) if lit else GREY
-            ax.add_patch(plt.Circle((cx[band], y), 2.1, color=col))
+            if lit and check:
+                ax.add_patch(plt.Polygon([(cx[band], y - 2.5), (cx[band] + 2.5, y), (cx[band], y + 2.5), (cx[band] - 2.5, y)],
+                                         closed=True, color=CHECK_LIT))
+            elif lit:
+                ax.add_patch(plt.Circle((cx[band], y), 2.1, color=LIT))
+            else:
+                ax.add_patch(plt.Circle((cx[band], y), 1.8, fill=False, ec=GREY, lw=0.9))
             boxes["%s_%s" % (m["id"], band)] = [cx[band] - 4, y - 3.2, cx[band] + 4, y + 3.2]
         boxes["row_%s" % m["id"]] = [2, y - 3.2, W - 2, y + 3.2]
     save(fig, "lights", W, H, boxes)

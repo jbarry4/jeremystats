@@ -348,11 +348,16 @@ def page_checks(work, site, S):
           and 'id="joemake"' not in jo and 'id="joescriptrun"' not in jo,
           re.findall(r"(?:Could not read|not in this copy)[^<]*", jo)[:2])
     fg = dom("monolith.html#tab=figs")
-    check("tab 9 opens by its link, from the copy: the figures, their legends and files, and nothing to draw",
+    check("tab 9 opens by its link, from the copy: S1, the rings on FP, their legends, files and Prism files, the grid, and nothing to draw",
           re.search(r'id="tab-figs"[^>]*aria-selected="true"', fg) is not None and 'id="figsintro"' in fg
-          and 'src="data/joefigs/fig_1.svg"' in fg
+          and 'src="data/joefigs/fig_S1.svg"' in fg and 'src="data/joefigs/fig_1_fp.svg"' in fg
+          and re.search(r'href="data/joefigs/fig_1_prism\.xlsx"', fg) is not None and 'id="figsfilter"' in fg
           and 'class="small fglegend"' in fg and 'id="figsmake"' not in fg,
           re.findall(r"(?:Could not read|not in this copy|could not be read)[^<]*", fg)[:2])
+    jx = dom("monolith.html#tab=joex")
+    check("tab 10 opens by its link, from the copy, and says Joe's export is a site of its own (no files, no button)",
+          re.search(r'id="tab-joex"[^>]*aria-selected="true"', jx) is not None and 'id="joexstatic"' in jx
+          and "Not in this copy" in jx and 'id="joexbuild"' not in jx)
     srv.shutdown()
 
 

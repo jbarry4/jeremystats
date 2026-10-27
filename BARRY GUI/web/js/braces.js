@@ -61,7 +61,11 @@ function makeBraces(cfg) {
     estimator: 'sd',
     // Lock: keep the stamps Braces placed where they are. Ticked by itself
     // whenever the set has any (`pinFor`); null until somebody changes it.
-    pin: null,
+    // Lock: the origin groups held this run ('incisor', 'both',
+    // 'doppler'); null until somebody changes it, and then `holdFor` says.
+    hold: null,
+    // Lock: which band the stamps are aligned through, 'ds' or 'ied'.
+    band: 'ds',
   };
 
   let cands = null;     // sets that could be aligned
@@ -79,8 +83,8 @@ function makeBraces(cfg) {
      is open. */
   const bulk = {
     on: false, pick: {}, want: {},
-    // Lock: entry id -> keep Braces' stamps (the lock on each row).
-    pin: {},
+    // Lock: entry id -> the origin groups held for that set, once changed.
+    hold: {},
     // Read again even where these settings were run before.
     force: false,
     // Every set to the cluster, even the ones this computer has.
@@ -132,6 +136,11 @@ function makeBraces(cfg) {
     render();
     warmRegistry();
     warmKnows();
+    if (cfg.pin) {
+      // What each set was last run with (its groups), and the bands' words.
+      if (allSets === null) loadAllSets();
+      if (!presets) loadPresets().then(() => { if (!job) render(); });
+    }
     if (!cands) await loadCandidates();
   }
 
@@ -205,7 +214,7 @@ function makeBraces(cfg) {
       q.entry = (cands.find((c) => c.gid) || cands[0]).id;
       q.from_version = null;
       q.channels = null;
-      q.pin = null;
+      q.hold = null;
     }
     render();
     if (q.entry) refreshPlan();
@@ -221,6 +230,7 @@ function makeBraces(cfg) {
         from_version: q.from_version,
         window_ms: q.window_ms,
         estimator: q.estimator,
+        band_kind: cfg.bands ? q.band : undefined,
       });
     } catch (e) {
       plan = { ok: false, error: e.message };
@@ -242,9 +252,12 @@ function makeBraces(cfg) {
         from_version: q.from_version,
         window_ms: q.window_ms,
         estimator: q.estimator,
-        pin_braces: pinOn(),
+        hold: cfg.pin ? holdNow() : undefined,
+        band_kind: cfg.bands ? q.band : undefined,
         force: !!force,
       });
+      // The last setting it was run on, remembered (2026-10-26).
+      if (cfg.pin) rememberHold(holdNow());
     } catch (e) {
       toast(e.message, 'err', 9000);
       return;
@@ -717,9 +730,9 @@ function makeBraces(cfg) {
     const set = el('div', { class: 'card' });
     set.appendChild(el('div', { class: 'section-label',
                                 text: 'Settings' }));
-    /* Lock's first setting, above the rest: whether the stamps Braces
-       already placed stay where they are. */
-    if (cfg.pin) set.appendChild(pinCard(cur));
+    /* Lock's first setting, above the rest: which origin groups it lines
+       up, and which it holds where they are (2026-10-26). */
+    if (cfg.pin) set.appendChild(originCard(cur));
     set.appendChild(settingsFields(false));
     if (plan && plan.ok) set.appendChild(channelPicker());
     set.appendChild(el('p', { class: 'hint', text: W.measureWhy(q.measure)
@@ -752,15 +765,14 @@ function makeBraces(cfg) {
          true while the channel is still missing -- that state is a prompt,
          and a button that offers to start a read it cannot aim is worse
          than one that waits. */
-      // Lock, with every spike one Braces placed and kept: nothing to move.
-      const held = pinOn() && plan && plan.ok && plan.braced
-        && plan.braced.n >= plan.braced.of;
+      // Lock, with every spike in a held group: nothing to move.
+      const held = cfg.pin && heldAllOf(cur, holdNow());
       const ready = !!(plan && plan.ok) && !held;
       go.appendChild(el('button', {
         class: 'btn', text: 'Line them up',
         disabled: ready ? null : 'disabled',
-        title: held ? 'Every spike in this set is one Braces placed, and '
-            + 'they are locked, so there is nothing left to move.'
+        title: held ? 'Every spike in this set is in a group being held, '
+            + 'so there is nothing left to move.'
           : ready ? 'If this set has been aligned with exactly these '
           + 'settings before, that alignment opens instead of the recording '
           + 'being read again.' : 'This set cannot be read here',
@@ -768,9 +780,8 @@ function makeBraces(cfg) {
       }));
       if (held) {
         go.appendChild(el('span', { class: 'br-hint', text: 'Every spike '
-          + 'here is already where Braces put it, and locked — there is '
-          + 'nothing for Lock to move. Unlock them above to line them up '
-          + 'again by Lock’s own measure.' }));
+          + 'here is in a group being held, so there is nothing for Lock to '
+          + 'move. Tick a group above to line it up.' }));
       }
     }
     box.appendChild(go);
@@ -800,7 +811,7 @@ function makeBraces(cfg) {
     q.entry = id;
     q.channels = null;
     q.from_version = null;
-    q.pin = null;
+    q.hold = null;
     plan = null;
     if (id) refreshPlan(); else render();
   }
@@ -820,15 +831,58 @@ function makeBraces(cfg) {
   /* How many of a set's spikes Braces already placed (Lock). */
   const bracedN = (c) => ((c && c.braced && c.braced.n) || 0);
 
-  /* Whether this run keeps them: only in Lock, only when there are any,
-     and ticked by itself until somebody says otherwise. */
-  function pinOn() {
-    if (!cfg.pin) return false;
-    const c = (cands || []).find((x) => x.id === q.entry);
-    const n = (plan && plan.ok && plan.braced) ? plan.braced.n : bracedN(c);
-    if (!n) return false;
-    return q.pin == null ? true : !!q.pin;
+  /* LOCK'S THREE GROUPS (2026-10-26). A pooled spike was found by Incisor
+     alone, by both detectors within the merge window, or by Doppler alone,
+     and Lock lines up the groups ticked and holds the rest where they are
+     -- "put in options to not move one or two of those three groups, and
+     that sidesteps the issue of knowing if Braces was run". */
+  const GROUPS = [['incisor', 'Incisor only'], ['both', 'Merged'],
+                  ['doppler', 'Doppler only']];
+  const HOLD_KEY = 'lock_hold';
+  const groupName = (g) => (GROUPS.find((x) => x[0] === g) || [g, g])[1];
+  const cleanHold = (v) => (Array.isArray(v) ? GROUPS.map((x) => x[0])
+    .filter((g) => v.indexOf(g) >= 0) : null);
+
+  /* What a set holds when nobody has said: what it was last run with, else
+     the last setting Lock was run on anywhere, else nothing -- every group
+     lined up ("have all, and then remember the last setting"). */
+  function holdFor(c) {
+    if (!cfg.pin || !c) return [];
+    const had = (allSets || []).find((x) => x.entry_id === c.id);
+    const rq = had && (had.params || {}).request;
+    if (rq) return cleanHold(rq.hold) || [];
+    let last = null;
+    try { last = cleanHold(BARRY.prefs.get(HOLD_KEY, null)); } catch (e) { /* none */ }
+    return last || [];
   }
+
+  /* The one set on screen. */
+  function holdNow() {
+    if (!cfg.pin) return [];
+    if (q.hold) return q.hold;
+    return holdFor((cands || []).find((x) => x.id === q.entry));
+  }
+
+  function rememberHold(h) {
+    try { BARRY.prefs.set(HOLD_KEY, cleanHold(h) || []); } catch (e) { /* session */ }
+  }
+
+  /* How many spikes each group holds: the plan's (the version picked)
+     where there is one, else the set's own. */
+  const originsOf = (c) => ((c && c.id === q.entry && plan && plan.ok
+                             && plan.origins) || (c && c.origins) || {});
+
+  /* Every spike in a held group: nothing for Lock to move. */
+  function heldAllOf(c, hold) {
+    if (!c || !hold || !hold.length) return false;
+    const o = originsOf(c);
+    const total = GROUPS.reduce((a, [g]) => a + (o[g] || 0), 0);
+    const held = hold.reduce((a, g) => a + (o[g] || 0), 0);
+    return total > 0 && held >= total;
+  }
+
+  // Kept for the harness and the older callers: whether anything is held.
+  function pinOn() { return holdNow().length > 0; }
 
   /* "Has Braces been run on this one?", on the set itself. */
   function bracesChip(c) {
@@ -1033,55 +1087,81 @@ function makeBraces(cfg) {
       Object.assign(versionOpts(c), {
         onpick: (v) => {
           q.from_version = v ? v.ref : null;
-          q.pin = null;
           refreshPlan();
         },
       }))]);
   }
 
-  /* Lock's switch: keep the stamps Braces placed where they are. On by
-     itself whenever there are any -- the protocol already answered where
-     those go -- and said in full either way. */
-  function pinCard(c) {
-    const b = (plan && plan.ok && plan.braced) || (c && c.braced) || {};
-    const n = (plan && plan.ok && plan.braced) ? plan.braced.n : bracedN(c);
-    const of = b.of != null ? b.of : (c ? goodOf(c) : 0);
-    const on = pinOn();
-    return el('button', {
-      type: 'button', role: 'switch', 'aria-checked': on ? 'true' : 'false',
-      class: 'br-pin' + (on ? ' on' : '') + (n ? '' : ' none'),
-      disabled: n ? null : 'disabled',
-      title: n ? 'Click to ' + (on ? 'let Lock move them too' : 'lock them again')
-               : 'There is nothing Braces placed in this set',
-      // The knob slides first, then the page says what changed.
-      onclick: (e) => {
-        q.pin = !on;
-        const b = e.currentTarget;
-        b.classList.toggle('on', !on);
-        b.setAttribute('aria-checked', !on ? 'true' : 'false');
-        const ico = b.querySelector('.br-pin-ico');
-        if (ico) ico.innerHTML = !on ? LOCK_SVG : UNLOCK_SVG;
-        setTimeout(render, 200);
-      },
-    }, [
-      el('span', { class: 'br-pin-ico', html: on ? LOCK_SVG : UNLOCK_SVG }),
-      el('span', { class: 'br-pin-words' }, [
-        el('b', { text: !n ? 'Nothing here for Braces to lock'
-                  : on ? 'Braces’ stamps stay locked'
-                       : 'Braces’ stamps will be moved too' }),
-        el('i', { text: !n
-          ? (b.why ? b.why
-             : b.ds_aligned ? 'None of these spikes sits on a stamp Braces placed.'
-             : 'Braces had not been run on the dentate spikes this pool came '
-               + 'from, so Lock lines up every spike.')
-          : on ? n + ' of ' + of + ' spikes are where Braces put them. They '
-                 + 'are not moved, not relabelled, and no other stamp may take '
-                 + 'their peak.'
-               : 'Lock will re-place all ' + of + ', including the ' + n
-                 + ' Braces already put on their peaks.' }),
+  /* The groups, as three switches: lit lines a group up, a padlock holds
+     it. Then, clearly labelled, whether Braces has been run on the dentate
+     spikes this pool came from -- as a guide to what to hold, not as the
+     thing that decides. */
+  const MOVE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true">'
+    + '<path class="mv" d="M4 12h16M8 7.5 3.5 12 8 16.5M16 7.5l4.5 4.5-4.5 4.5"/>'
+    + '</svg>';
+
+  function originCard(c) {
+    const o = originsOf(c);
+    const hold = holdNow();
+    const box = el('div', { class: 'br-origins' });
+    box.appendChild(el('div', { class: 'br-origins-head' }, [
+      el('label', { text: 'Line up' }),
+      el('span', { class: 'br-hint', text: 'Lit groups are lined up. A held '
+        + 'group stays exactly where it is: each of its stamps fills its own '
+        + 'peak, and nothing else may take it.' }),
+    ]));
+    const row = el('div', { class: 'br-origin-row' });
+    for (const [g, name] of GROUPS) {
+      const n = o[g] || 0;
+      const held = hold.indexOf(g) >= 0;
+      row.appendChild(el('button', {
+        type: 'button', role: 'switch', 'data-g': g,
+        'aria-checked': held ? 'false' : 'true',
+        class: 'br-origin' + (held ? ' held' : ' on') + (n ? '' : ' none'),
+        title: (held ? 'Held: ' : 'Lined up: ') + n + ' ' + name
+             + ' spike' + (n === 1 ? '' : 's') + '. Click to '
+             + (held ? 'line them up.' : 'hold them where they are.'),
+        onclick: (e) => {
+          const next = held ? hold.filter((x) => x !== g) : hold.concat([g]);
+          q.hold = cleanHold(next);
+          const b = e.currentTarget;
+          b.classList.toggle('held', !held);
+          b.classList.toggle('on', held);
+          setTimeout(render, 160);
+        },
+      }, [
+        el('span', { class: 'br-origin-ico', html: held ? LOCK_SVG : MOVE_SVG }),
+        el('span', { class: 'br-origin-words' }, [
+          el('b', { text: name }),
+          el('i', { text: n + ' spike' + (n === 1 ? '' : 's') + ' · '
+                          + (held ? 'held' : 'lined up') }),
+        ]),
+      ]));
+    }
+    box.appendChild(row);
+    if (c) box.appendChild(bracesLine(c));
+    return box;
+  }
+
+  /* "Has Braces been run?", said plainly beside the groups. */
+  function bracesLine(c) {
+    const b = (c.id === q.entry && plan && plan.ok && plan.braced) || c.braced || {};
+    const n = b.n || 0;
+    return el('div', { class: 'br-braces-line' + (n ? ' on' : '') }, [
+      el('span', { class: 'br-set-tag br-set-braces' + (n ? ' on' : '') }, [
+        el('span', { class: 'br-lock-ico', html: n ? LOCK_SVG : UNLOCK_SVG }),
+        el('span', { text: n ? 'Braces ✓' : 'no Braces' }),
       ]),
-      el('span', { class: 'br-pin-track', 'aria-hidden': 'true' }, [
-        el('span', { class: 'br-pin-knob' })]),
+      el('span', { class: 'br-hint', text: n
+        ? n + ' of these spikes are Incisor stamps Braces already put on '
+          + 'their peaks' + (b.ds_version != null ? ' (v' + b.ds_version
+            + ' of ' + (b.ds_name || 'the dentate-spike set') + ')' : '')
+          + '. They are in Incisor only and Merged.'
+        : (b.why ? b.why
+           : b.ds_aligned ? 'The dentate spikes were aligned in Braces, but '
+             + 'none of these spikes sits on one of those stamps.'
+           : 'Braces had not been run on the dentate spikes this pool was '
+             + 'made from.') }),
     ]);
   }
 
@@ -1167,6 +1247,27 @@ function makeBraces(cfg) {
           }))),
         el('span', { class: 'br-hint', text: bandWords() }),
       ]),
+      /* Lock: which band the stamps are aligned through. The dentate-spike
+         one by default (2026-10-26); the IED one is what Lock used before. */
+      cfg.bands ? el('div', { class: 'br-field' }, [
+        el('label', { text: 'Filter' }),
+        el('div', { class: 'seg sm br-band' }, [
+          ['ds', 'Dentate spike'], ['ied', 'IED'],
+        ].map(([id, label]) => el('button', {
+          class: q.band === id ? 'active' : '',
+          disabled: off,
+          title: (id === 'ds' ? 'The dentate-spike filter, as Braces aligns '
+                   : 'The IED filter, as Lock aligned before 2026-10-26 ')
+                 + '(' + bandText(id) + ')',
+          onclick: () => {
+            if (q.band === id) return;
+            q.band = id;
+            if (q.entry && !bulk.on) refreshPlan(); else render();
+          },
+          text: label,
+        }))),
+        el('span', { class: 'br-hint', text: bandText(q.band) }),
+      ]) : null,
       field('Window ±ms', el('input', {
         type: 'number', step: '10', min: '5', value: String(q.window_ms),
         class: 'br-window', disabled: off,
@@ -1184,6 +1285,71 @@ function makeBraces(cfg) {
     const b = plan && plan.ok && plan.spec && plan.spec.band;
     return (b && b.length === 2)
       ? (+b[0]) + '–' + (+b[1]) + ' Hz either way' : W.band;
+  }
+
+  /* THE TWO BANDS (2026-10-26). The filter presets of the same names --
+     `ds` 5-100 Hz and `ied` 1-70 Hz, each with the mains notched -- read
+     from where the backend reads them, so the words and the traces say the
+     numbers actually used. */
+  let presets = null;
+  function loadPresets() {
+    if (presets) return Promise.resolve(presets);
+    return api('/api/presets/filters').then((f) => {
+      presets = {};
+      for (const x of (f.presets || [])) presets[x.id] = x;
+      return presets;
+    }).catch(() => { presets = {}; return presets; });
+  }
+  const presetFilt = (id) => {
+    const x = (presets || {})[id];
+    return x ? { hp: +x.highpass || 0, lp: +x.lowpass || 0, notch: +x.notch || 0 }
+             : (id === 'ied' ? { hp: 1, lp: 70, notch: 60 }
+                             : { hp: 5, lp: 100, notch: 60 });
+  };
+  function bandText(id) {
+    if (id === 'both') return '';
+    const f = presetFilt(id);
+    return f.hp + '–' + f.lp + ' Hz' + (f.notch ? ', ' + f.notch + ' Hz out' : '');
+  }
+
+  /* The traces in the review, through either band or both at once: the
+     first traces pane takes the band; "Both" puts a second traces pane
+     beside it through the other one, marked so it can be taken away again.
+     Remembered per tool, as a way of looking rather than a fact about a
+     set. */
+  const TRACE_KEY = () => cfg.tool + '_trace_band';
+  function setTraceBand(id) {
+    if (!view) return;
+    view.traceBand = id;
+    try { BARRY.prefs.set(TRACE_KEY(), id); } catch (e) { /* session */ }
+    loadPresets().then(() => {
+      if (!view) return;
+      const xp = BARRY.views.xplore;
+      const panes = ((xp.state || {}).panes || []).map((x) => Object.assign({}, x));
+      const own = panes.findIndex((x) => x.brBand);
+      const first = panes.findIndex((x) => x.panel === 'traces' && !x.brBand);
+      if (first < 0) return;
+      const main = id === 'ied' ? 'ied' : 'ds';
+      if (id === 'both') {
+        panes[first].filt = presetFilt('ds');
+        if (own < 0) {
+          panes.splice(first + 1, 0, { panel: 'traces', filt: presetFilt('ied'),
+                                       brBand: 'ied' });
+        }
+        xp.setPanes(panes, { col: 0.5, row: 0.5 });
+      } else if (own >= 0) {
+        panes.splice(own, 1);
+        panes[first].filt = presetFilt(main);
+        xp.setPanes(panes, { col: 0.5, row: 0.5 });
+      } else if (xp.paneFilter) {
+        xp.paneFilter(first, presetFilt(main));
+      }
+      // Every pane drawn again carries the marks, and the aid window
+      // follows the pointer as before.
+      view.sig = null;
+      vPublish();
+      vBar();
+    });
   }
 
   function field(label, input, hint) {
@@ -1238,23 +1404,19 @@ function makeBraces(cfg) {
         : null,
     ].filter(Boolean)));
 
-    /* Lock: how many of these Braces already placed, and what happens to
-       them -- said where the read is described, because it changes it. */
-    const br = plan.braced;
-    if (cfg.pin && br) {
-      card.appendChild(el('p', { class: 'hint br-plan-braces' + (pinOn() ? ' on' : ''),
-        text: br.n
-          ? br.n + ' of ' + br.of + ' spikes are Incisor’s stamps that Braces '
-            + 'already put on their peaks' + (br.ds_version != null
-              ? ' (v' + br.ds_version + ' of ' + (br.ds_name || 'the dentate-spike set') + ')'
-              : '') + '. ' + (pinOn() ? 'They are locked: Lock reads around '
-            + 'them, moves only the other ' + (br.of - br.n) + ', and nothing '
-            + 'may take their peaks.' : 'They are NOT locked this run, so Lock '
-            + 'will move them by its own measure.')
-          : (br.ds_aligned ? 'None of these spikes sits where Braces put an '
-            + 'Incisor stamp, so there is nothing to lock.'
-            : 'Braces had not been run on the dentate spikes this pool was '
-            + 'made from, so every spike here is Lock’s to line up.') }));
+    /* Lock: what is lined up and what is held, said where the read is
+       described, because it changes it. */
+    if (cfg.pin && plan.origins) {
+      const hold = holdNow();
+      const o = plan.origins;
+      const moving = GROUPS.filter(([g]) => hold.indexOf(g) < 0);
+      card.appendChild(el('p', { class: 'hint br-plan-braces'
+                                 + (hold.length ? ' on' : ''),
+        text: 'Lines up ' + (moving.length ? moving.map(([g, nm]) =>
+          nm + ' (' + (o[g] || 0) + ')').join(', ') : 'nothing')
+          + (hold.length ? '; holds ' + hold.map((g) => groupName(g) + ' ('
+            + (o[g] || 0) + ')').join(', ') + ' where they are, each filling '
+            + 'its own peak.' : '. Nothing is held.') }));
     }
     /* The version is the third tile of the picker above (2026-10-22), with
        the whole tree a click away; it is not asked twice. */
@@ -1383,8 +1545,10 @@ function makeBraces(cfg) {
       if ((p.measure || 'csd') !== q.measure) return false;
       if (Number(p.window_ms) !== Number(q.window_ms)) return false;
       const rq = p.request || {};
-      // Lock: held Braces' stamps, or not -- a different question.
-      if (cfg.pin && !!rq.pinned !== manyPin(c)) return false;
+      // Lock: which groups were held -- a different question each.
+      if (cfg.pin && (cleanHold(rq.hold) || []).join(',')
+                     !== manyHold(c).join(',')) return false;
+      if (cfg.bands && (rq.band_kind || 'ds') !== q.band) return false;
       const fv = ('from_version' in rq) ? rq.from_version : x.from_version;
       return (fv || null) === want;
     }) || null;
@@ -1405,9 +1569,9 @@ function makeBraces(cfg) {
 
   const chosen = () => manyRows().filter((x) => !x.why && bulk.want[x.c.id]
                                               && !heldAll(x.c));
-  /* Lock: a set whose every spike Braces placed, with its lock on, has
-     nothing to move -- not sent, and its row says why. */
-  const heldAll = (c) => manyPin(c) && bracedN(c) >= goodOf(c);
+  /* Lock: a set whose every spike is in a held group has nothing to move
+     -- not sent, and its row says why. */
+  const heldAll = (c) => cfg.pin && heldAllOf(c, manyHold(c));
 
   function rowSub(c, r) {
     const bad = badOf(c);
@@ -1460,7 +1624,9 @@ function makeBraces(cfg) {
       .finally(() => {
         allSetsAsked = false;
         bulk.rev += 1;
-        if (shownPage === 'many') render();
+        // Lock's groups default to what a set was last run with.
+        if (shownPage === 'many' || (cfg.pin && shownPage === 'one'
+                                     && !q.hold && !set_)) render();
       });
   }
 
@@ -1591,13 +1757,15 @@ function makeBraces(cfg) {
       el('div', { class: 'ip-main' }, [
         el('span', { class: 'ip-name nm', text: rowLabel(c) }),
         el('span', { class: 'ip-sub', text: rowSub(c, r) }),
+        // Lock: whether Braces has been run, on the row itself.
+        cfg.pin ? el('span', { class: 'br-row-braces' }, [bracesChip(c)]) : null,
         before ? el('span', { class: 'ip-done', text:
           'aligned with these settings ' + String((before.created || {}).at || '')
             .slice(0, 10) + ' — sending it opens that one, nothing is read' })
           : null,
         heldAll(c) ? el('span', { class: 'ip-done br-held-all', text:
-          'every spike is one Braces placed, and they are locked — nothing to '
-          + 'move, so it is not sent. Open its lock to line them up anyway.' })
+          'every spike is in a held group — nothing to move, so it is not '
+          + 'sent. Light a group to line it up.' })
           : null,
       ].filter(Boolean)),
       /* The version, changeable before anything is sent: one button that
@@ -1626,7 +1794,7 @@ function makeBraces(cfg) {
       /* Lock: the stamps Braces placed, locked or not, per set -- right
          after the version and before the bad channels (2026-10-22). Locked
          by itself wherever there are any; dim where Braces placed none. */
-      cfg.pin ? manyLock(c) : null,
+      cfg.pin ? manyOrigins(c) : null,
       /* The contacts this recording has marked bad, which the batch uses.
          Interpolated rather than dropped -- a second difference over an
          uneven grid is not a CSD -- so "which wires are not believed". */
@@ -1658,42 +1826,51 @@ function makeBraces(cfg) {
   /* Whether a set in Many keeps Braces' stamps: yes, wherever it has any,
      until its lock is pressed open. */
   function manyPin(c) {
-    return !!(cfg.pin && bracedN(c) && bulk.pin[c.id] !== false);
+    return !!(cfg.pin && manyHold(c).length);
   }
 
-  function manyLock(c) {
-    const n = bracedN(c);
-    const b = el('button', {
-      type: 'button', role: 'switch',
-      class: 'mini br-bulk-lock' + (manyPin(c) ? ' on' : '') + (n ? '' : ' none'),
-      'aria-checked': manyPin(c) ? 'true' : 'false',
-      disabled: n ? null : 'disabled',
-    });
+  /* The groups one row of Many holds: changed on the row, else its own. */
+  function manyHold(c) {
+    if (!cfg.pin) return [];
+    return bulk.hold[c.id] || holdFor(c);
+  }
+
+  /* One row's three groups, as small switches: I, M, D, lit when lined up
+     and padlocked when held -- where the Braces lock was (2026-10-26). */
+  function manyOrigins(c) {
+    const o = c.origins || {};
+    const box = el('span', { class: 'br-bulk-origins',
+                             role: 'group', 'aria-label': 'Which groups to line up' });
     const face = () => {
-      const on = manyPin(c);
-      b.classList.toggle('on', on);
-      b.setAttribute('aria-checked', on ? 'true' : 'false');
-      b.innerHTML = '';
-      b.appendChild(el('span', { class: 'br-lock-ico',
-                                 html: on ? LOCK_SVG : UNLOCK_SVG }));
-      b.appendChild(el('span', { text: n ? String(n) : '—' }));
-      b.title = !n
-        ? 'Braces placed none of this set’s spikes, so there is nothing to lock.'
-        : on ? n + ' spikes are where Braces put them, and stay there: not '
-               + 'moved, not relabelled. Click to let Lock move them too.'
-             : 'Lock will move all of them, the ' + n + ' Braces placed '
-               + 'included. Click to lock those again.';
-      b.setAttribute('aria-label', 'Keep Braces’ stamps on ' + rowLabel(c));
+      const hold = manyHold(c);
+      box.innerHTML = '';
+      for (const [g, name] of GROUPS) {
+        const n = o[g] || 0;
+        const held = hold.indexOf(g) >= 0;
+        box.appendChild(el('button', {
+          type: 'button', role: 'switch', 'data-g': g,
+          'aria-checked': held ? 'false' : 'true',
+          class: 'mini br-bulk-og' + (held ? ' held' : ' on') + (n ? '' : ' none'),
+          title: name + ': ' + n + ' spike' + (n === 1 ? '' : 's') + ', '
+               + (held ? 'held where they are. Click to line them up.'
+                       : 'lined up. Click to hold them.'),
+          onclick: () => {
+            const now = manyHold(c);
+            bulk.hold[c.id] = cleanHold(held ? now.filter((x) => x !== g)
+                                             : now.concat([g]));
+            face();
+            bulk.rev += 1;
+            render();
+          },
+        }, [
+          held ? el('span', { class: 'br-lock-ico sm', html: LOCK_SVG }) : null,
+          el('b', { text: name.charAt(0) }),
+          el('span', { text: String(n) }),
+        ].filter(Boolean)));
+      }
     };
-    b.addEventListener('click', () => {
-      bulk.pin[c.id] = !manyPin(c);
-      face();
-      // What "aligned with these settings" means has changed with it.
-      bulk.rev += 1;
-      render();
-    });
     face();
-    return b;
+    return box;
   }
 
   function blockedPart(blocked) {
@@ -1818,8 +1995,9 @@ function makeBraces(cfg) {
       got = await apiPost('/api/braces/batch', {
         entries: sel.map((x) => ({ id: x.c.id,
                                    from_version: bulk.pick[x.c.id] || null,
-                                   pin_braces: manyPin(x.c) })),
+                                   hold: cfg.pin ? manyHold(x.c) : undefined })),
         tool: cfg.tool,
+        band_kind: cfg.bands ? q.band : undefined,
         measure: q.measure, window_ms: q.window_ms, estimator: q.estimator,
         force: !!bulk.force,
         where: bulk.allVacc ? 'vacc' : null,
@@ -2426,11 +2604,13 @@ function makeBraces(cfg) {
 
     /* The counts. */
     box.appendChild(el('div', { class: 'br-counts' }, [
-      count(sum.n, W.many),
-      /* Lock: the ones held where Braces put them, which the run read
-         around and did not move. */
-      sum.n_locked ? count(sum.n_locked, 'locked by Braces', 'lock') : null,
-      count((c.auto || 0) + (c.confirmed || 0), 'confirmed', 'ok'),
+      /* Every spike first, then how it splits (2026-10-26: "108 spikes,
+         83 locked" read as a set of 108 when it held 191). */
+      count((s.rows || []).length, W.many),
+      sum.n_locked ? count(sum.n, 'lined up') : null,
+      sum.n_locked ? count(sum.n_locked, 'held', 'lock') : null,
+      count((c.auto || 0) + (c.confirmed || 0) - heldAnswered(), 'confirmed',
+            'ok'),
       count(c.waiting || 0, 'need you', (c.waiting ? 'warn' : null)),
       count(sum.n_same || 0, 'already aligned'),
       count(ms(sum.shift_median_ms), 'median Δ'),
@@ -2572,6 +2752,15 @@ function makeBraces(cfg) {
     return card;
   }
 
+  /* Held rows the counts call auto or confirmed: they were never in
+     question, so "confirmed" leaves them out. */
+  function heldAnswered() {
+    const rows = (set_ && set_.set.rows) || [];
+    let n = 0;
+    rows.forEach((r, i) => { if (r.locked && callFor(i) !== 'keep') n += 1; });
+    return n;
+  }
+
   function count(v, label, tone) {
     return el('div', { class: 'br-count' + (tone ? ' ' + tone : '') }, [
       el('b', { text: String(v == null ? '—' : v) }),
@@ -2617,8 +2806,8 @@ function makeBraces(cfg) {
     // Not one of the proposal's. Raised by the review and cleared by the
     // review -- see `overlapping`.
     overlap: 'shares a time with another stamp',
-    // Not a flag either: Lock held it where Braces put it.
-    locked: 'locked — Braces placed it',
+    // Not a flag either: Lock held it where it was.
+    locked: 'held where it is',
   };
 
   function tableCard(c) {
@@ -2829,7 +3018,7 @@ function makeBraces(cfg) {
     { id: 'now', name: 'goes here', color: '#FFB81C' },
     { id: 'ask', name: 'needs you', color: '#ED8B33' },
     { id: 'here', name: 'the one you are on', color: '#7FE3B0' },
-  ].concat(cfg.pin ? [{ id: 'locked', name: 'locked by Braces',
+  ].concat(cfg.pin ? [{ id: 'locked', name: 'held, not moved',
                         color: '#9db8ff' }] : []);
 
   const vRows = () => (view && set_ && set_.set.rows) || [];
@@ -2865,9 +3054,9 @@ function makeBraces(cfg) {
       return false;
     }
     // One mode at a time, or two toolbars and two key handlers stack on
-    // top of each other. Same note as the top of `curate.enter`.
-    if (BARRY.strata && BARRY.strata.active) BARRY.strata.exit();
-    if (BARRY.curate && BARRY.curate.active) BARRY.curate.exit();
+    // top of each other -- every other one, Panning included (2026-10-26:
+    // Panning's bar for M22 s3 sat under Lock's for M1 s2).
+    if (BARRY.modes) BARRY.modes.leaveAllBut(cfg.mode);
 
     /* Every step, recorded. This mode has failed in four different places
        now -- a blocked pop-up, a missing registry entry, a sync that
@@ -2910,6 +3099,14 @@ function makeBraces(cfg) {
     const stops = (s.rows || []).some((r, i) => r.flag || overlapping(i));
     view = { sess: sess, at: 0, rev: 0, curve: curvePref(),
              only: stops ? 'flag' : 'all' };
+    {
+      // The traces' band: the last one looked at here, else the run's.
+      let tb = null;
+      try { tb = BARRY.prefs.get(TRACE_KEY(), null); } catch (e) { tb = null; }
+      const lo = Number((((s.params || {}).band) || [5])[0]);
+      view.traceBand = (tb === 'ds' || tb === 'ied' || tb === 'both') ? tb
+        : (lo < 3 ? 'ied' : 'ds');
+    }
     /* THIS WINDOW OWNS THE MARKS.
        `xplore`'s live loop skips the window that is running a curation and
        calls `adoptCuration` on every other one -- and `adoptCuration` with
@@ -3040,8 +3237,11 @@ function makeBraces(cfg) {
     return !!aidWin;
   }
 
-  function exitView() {
+  /* `opts.handoff`: another mode is being entered, and will say which view
+     to show. */
+  function exitView(opts) {
     if (!view) return;
+    const handoff = !!(opts && opts.handoff);
     /* THE WAY OUT ALWAYS HAPPENS.
 
        Everything in the `try` is tidying: shut the aid window, hand back
@@ -3098,7 +3298,7 @@ function makeBraces(cfg) {
       // A main window laid out from Profile goes back to its one pane.
       if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
       setMode(null);
-      setView('toolkit');
+      if (!handoff) setView('toolkit');
       // Banked on the way out, after the view has gone (autoBank).
       setTimeout(() => autoBank('leave'), 0);
     }
@@ -3743,7 +3943,7 @@ function makeBraces(cfg) {
       moved: 'moved by hand', confirmed: 'confirmed', kept: 'left alone',
       flagged: 'needs a decision', auto: 'moving, unflagged',
       garbage: 'not an event', overlap: 'shares a time',
-      locked: 'locked by Braces',
+      locked: 'held, not moved',
     };
     const STATE_COLOUR = {
       moved: '#5cc98d', confirmed: '#5cc98d', kept: '#ED8B33',
@@ -4037,7 +4237,8 @@ function makeBraces(cfg) {
            the thing a person needs named -- it is drawn underneath this
            one, a tenth of a millisecond away, where nothing on the trace
            can tell them apart. */
-        + (r.locked ? '   ·   ' + REASONS.locked
+        + (r.locked ? '   ·   ' + (r.origin ? groupName(r.origin) + ', '
+                                                 : '') + REASONS.locked
              + (r.fills != null ? ', holding the peak at ' + clock(r.fills)
                                 : ', no peak under it')
            : overlapping(view.at)
@@ -4071,7 +4272,7 @@ function makeBraces(cfg) {
       el('span', {}, [
         el('b', { text: moves ? 'Move it' : 'It is right' }),
         el('i', { text: moves ? '\u2192 ' + clock(vNow(r))
-                              : r.locked ? 'locked by Braces'
+                              : r.locked ? 'held where it is'
                               : 'already on the peak' }),
       ]),
     ]));
@@ -4151,7 +4352,22 @@ function makeBraces(cfg) {
                          onclick: () => vMove(5) }),
         ]),
       ]),
-      el('div', { class: 'ctl' }, [
+      /* Which band the traces are drawn through: the dentate-spike one,
+         the IED one, or both side by side (2026-10-26). */
+      el('div', { class: 'ctl br-opt' }, [
+        el('label', { text: 'Traces' }),
+        el('div', { class: 'seg sm br-trace-seg' }, [
+          ['ds', 'DS band', 'The traces through the dentate-spike filter'],
+          ['ied', 'IED band', 'The traces through the IED filter'],
+          ['both', 'Both', 'Two trace panes side by side, one through each'],
+        ].map(([id, label, tip]) => el('button', {
+          class: view.traceBand === id ? 'active' : '',
+          title: tip + (bandText(id) ? ' (' + bandText(id) + ')' : ''),
+          onclick: () => { setTraceBand(id); vBar(); },
+          text: label,
+        }))),
+      ]),
+      el('div', { class: 'ctl br-opt' }, [
         el('label', { text: 'Curve' }),
         el('div', { class: 'seg sm' }, [
           el('button', {
@@ -4170,7 +4386,7 @@ function makeBraces(cfg) {
           }),
         ]),
       ]),
-      el('div', { class: 'ctl' }, [
+      el('div', { class: 'ctl br-opt' }, [
         el('label', { text: 'List' }),
         el('div', { class: 'seg sm' }, [
           el('button', {
@@ -4184,7 +4400,7 @@ function makeBraces(cfg) {
       ]),
       /* WHERE n / p STOP, not what is shown (2026-10-19). It was "Show",
          and every stamp is drawn whichever is picked. */
-      el('div', { class: 'ctl' }, [
+      el('div', { class: 'ctl br-opt' }, [
         el('label', { text: 'Step through' }),
         el('div', { class: 'seg sm br-step-seg' }, [
           ['flag', 'Needing a decision',
@@ -5196,9 +5412,14 @@ function makeBraces(cfg) {
     const box = el('div', { class: 'br-enter-ask br-close-ask br-locked-ask',
                             role: 'alertdialog', 'aria-labelledby': 'brLockedT' }, [
       el('div', { class: 'br-locked-ico', html: LOCK_SVG }),
-      el('strong', { id: 'brLockedT', text: 'That one’s locked' }),
-      el('p', { class: 'br-close-q', text: 'Braces already put this stamp '
-        + 'on its peak, and this alignment keeps Braces’ work where it is.' }),
+      el('strong', { id: 'brLockedT', text: 'That one’s held' }),
+      el('p', { class: 'br-close-q', text: (() => {
+        const r = (vRows()[view ? view.at : -1])
+          || (bench && set_ ? set_.set.rows[bench.n] : null) || {};
+        return (r.origin ? groupName(r.origin) + ' is' : 'Its group is')
+          + ' held in this alignment: already lined up, so it stays where '
+          + 'it is.';
+      })() }),
       el('p', { text: 'No second-guessing — follow the protocol as well as '
         + 'you can, then move on. If the result isn’t up to par, the fix is '
         + 'a better protocol, not a nudge by hand.' }),
@@ -5661,6 +5882,10 @@ function makeBraces(cfg) {
        locked stamp answers with. */
     _pinOn: () => pinOn(),
     _manyPin: (c) => manyPin(c),
+    _holdNow: () => holdNow(),
+    _manyHold: (c) => manyHold(c),
+    _traceBand: () => (view ? view.traceBand : null),
+    _setTraceBand: (id) => setTraceBand(id),
     _lockedSay: () => lockedSay(),
     _lockedAsk: () => (lockedAsk ? lockedAsk.box.textContent : null),
     _closeLockedSay: () => closeLockedSay(),
@@ -5671,6 +5896,13 @@ function makeBraces(cfg) {
     _cfg: cfg,
   };
   makeBraces.all.push(api_);
+  // Registered with the others, so entering any mode leaves this one.
+  if (BARRY.modes) {
+    BARRY.modes.register(cfg.mode, {
+      get active() { return !!view; },
+      exit: () => exitView({ handoff: true }),
+    });
+  }
   return api_;
 }
 /* Every instance, so one can end the other's review (Braces and Lock). */
@@ -5739,7 +5971,9 @@ const LOCK_PRODUCER = (v, c) => (BARRY.ui.versionProducer
   ? BARRY.ui.versionProducer(v, c.pipeline, 'pooled') : null);
 
 BARRY.lock = makeBraces({
-  tool: 'lock', name: 'Lock', mode: 'lock', panels: 'braces',
+  tool: 'lock', name: 'Lock', mode: 'lock', panels: 'lock',
+  // Aligned through the dentate-spike band unless told otherwise.
+  bands: true,
   step: 'step 3 of The Confluence',
   type: 'pooled',
   setTypes: 'pooled',
@@ -5761,9 +5995,9 @@ BARRY.lock = makeBraces({
   words: {
     blurb: 'Every pooled spike — Incisor’s and Doppler’s, sorted in '
          + 'Panning — onto the peak it belongs to, so Root Canal measures '
-         + 'each one at the same instant. The stamps Braces already placed '
-         + 'stay locked where they are. Nothing is written until you accept '
-         + 'it.',
+         + 'each one at the same instant. Choose which groups to line up — '
+         + 'Incisor only, Merged, Doppler only — and the rest are held where '
+         + 'they are. Nothing is written until you accept it.',
     empty: 'Lock lines up pooled sets once Panning has sorted them. Pool a '
          + 'recording in Junction, sort it in Panning and bank the result — '
          + 'an unsorted pool still has the garbage in it, and moving stamps '
@@ -5773,7 +6007,7 @@ BARRY.lock = makeBraces({
             + 'sort it in Panning first.',
     one: 'spike', many: 'spikes', aOne: 'a spike',
     setWord: 'sorted pooled set',
-    band: 'the IED band either way',
+    band: 'the dentate-spike band either way',
     versionSub: 'The stamps as they stand are read unless you pick an earlier '
               + 'version. Junction’s own version is greyed: Lock starts from '
               + 'what Panning sorted.',
@@ -5791,9 +6025,8 @@ BARRY.lock = makeBraces({
         : 'The CSD is the second derivative across depth, so it is the part '
           + 'of the signal that cannot have come from somewhere else on the '
           + 'probe — where the current went. Smoothed across depth first, '
-          + 'or one noisy contact dominates a derivative. Aligned through the '
-          + 'IED band, not the dentate-spike one: a discharge loses its slow '
-          + 'wave under a 5 Hz high-pass, and a dentate spike keeps its '
-          + 'shape in this band. '),
+          + 'or one noisy contact dominates a derivative. Through the '
+          + 'dentate-spike band by default; the IED band keeps a discharge’s '
+          + 'slow wave, and is one press away under Filter. '),
   },
 });

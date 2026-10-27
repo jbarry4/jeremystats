@@ -875,6 +875,9 @@ BARRY.ui = (function () {
     const al = v.aligned_tool
       || (v.aligned && typeof v.aligned === 'object' ? v.aligned.tool : null);
     if (al || v.aligned === true) {
+      // A pooled set is only ever aligned by Lock -- whose versions were
+      // filed under Braces' tool name until 2026-10-26.
+      if (kind === 'pooled') return 'Lock';
       const t = String(al || '');
       if (/eye/i.test(t)) return 'Eye';
       if (/lock/i.test(t)) return 'Lock';

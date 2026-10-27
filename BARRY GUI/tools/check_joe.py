@@ -488,11 +488,12 @@ def main():
     print("FP pools made in %.0f s" % (time.time() - t0))
     figs = joefigs.build(R=R9, days=day_data, inputs=inputs)
     shown = [r for r in out["results"] if r["model"] in joefigs.WINDOWS and r["method"] == "dickson" and r["gate"].get("passed")]
-    want_groups = [(m, b) for m in joefigs.RING_MODELS for b in joefigs.BAND_ORDER
-                   if any(r["model"] == m and r["band"] == b and r["method"] == "dickson" and r.get("units") for r in out["results"])]
+    want_groups = [(m, b) for m in joefigs.WINDOWS for b in joefigs.BAND_ORDER
+                   if any(r["model"] == m and r["band"] == b and r["method"] == "dickson" and r.get("units")
+                          and (m in joefigs.RING_MODELS or r["gate"].get("passed")) for r in out["results"])]
     conn = [f for f in figs["figures"] if f["kind"] == "connectome"]
-    check("a connectome for comparisons 1, 2 and 5 in theta and in gamma (%d), lit or not, nine graphs each, as SVG, PDF and 600 dpi PNG"
-          % len(want_groups),
+    check("a connectome for comparisons 1, 2 and 5 in theta and in gamma, lit or not, and for any other window that lit (%d), "
+          "nine graphs each, as SVG, PDF and 600 dpi PNG" % len(want_groups),
           [(f["model"], f["band"]) for f in conn] == want_groups and all(len(f["stats"]["graphs"]) == 9 for f in conn)
           and all(os.path.isfile(joefigs.figs_dir(f["files"][x])) for f in figs["figures"] for x in ("svg", "pdf", "png")),
           ([(f["model"], f["band"]) for f in conn], want_groups))

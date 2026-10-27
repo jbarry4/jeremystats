@@ -146,21 +146,55 @@ async function until(fn, ms) {
       head('a set Braces had been run on: ' + (braced.session_label || braced.name));
       ev('BARRY.lock._chooseSet(' + JSON.stringify(braced.id) + ')');
       await until(() => (B.lock._state().plan || {}).ok !== undefined
-                        && $('.br-pin'), 40000);
-      const pin = $('.br-pin');
-      check('the lock switch is there and on by itself',
-            pin && pin.getAttribute('aria-checked') === 'true' && B.lock._pinOn());
+                        && $$('.br-origin').length === 3, 40000);
       const pl = B.lock._state().plan || {};
-      check('the plan says how many Braces placed',
-            pl.ok === false || (pl.braced && pl.braced.n > 0
-              && /locked/.test(txt($('.br-plan-braces')))),
-            pl.ok === false ? pl.error : txt($('.br-plan-braces')).slice(0, 90));
-      pin.click();
-      check('pressing it unlocks them', B.lock._pinOn() === false);
+      const og = () => $$('.br-origin');
+      check('three groups, Incisor only, Merged and Doppler only',
+            og().map((b) => b.dataset.g).join(',') === 'incisor,both,doppler',
+            og().map((b) => b.dataset.g).join(','));
+      check('each with its count from the plan', !pl.origins || og().every(
+        (b) => txt(b).indexOf(String(pl.origins[b.dataset.g] || 0)) >= 0),
+        og().map(txt).join(' | '));
+      const held0 = B.lock._holdNow().slice();
+      check('held exactly as the set was last run, or as Lock last ran',
+            og().every((b) => b.classList.contains('held')
+                              === (held0.indexOf(b.dataset.g) >= 0)),
+            'holding ' + (held0.join(',') || 'nothing'));
+      check('the Braces line says it in words',
+            /Braces ✓/.test(txt($('.br-braces-line')))
+              && /placed|put on their peaks/.test(txt($('.br-braces-line'))),
+            txt($('.br-braces-line')).slice(0, 90));
+      const inc = og().find((b) => b.dataset.g === 'incisor');
+      const wasHeld = held0.indexOf('incisor') >= 0;
+      inc.click();
       await sleep(400);
-      $('.br-pin').click();
-      check('and again locks them', B.lock._pinOn() === true);
+      check('pressing a group flips it', (B.lock._holdNow().indexOf('incisor') >= 0)
+            === !wasHeld, B.lock._holdNow().join(','));
+      check('and the plan says what is held',
+            !B.lock._holdNow().length
+              || /holds Incisor only/.test(txt($('.br-plan-braces'))),
+            txt($('.br-plan-braces')).slice(0, 120));
+      $$('.br-origin').find((b) => b.dataset.g === 'incisor').click();
       await sleep(400);
+      check('and back', B.lock._holdNow().join(',') === held0.join(','));
+
+      head('the band');
+      const band = $$('.br-band button');
+      check('Dentate spike is the filter by default',
+            band.length === 2 && /Dentate/.test(txt(band.find((b) =>
+              b.classList.contains('active')))),
+            band.map(txt).join(','));
+      check('and the plan reads the dentate-spike band',
+            pl.ok === false || ((pl.spec || {}).band || [])[0] === 5,
+            JSON.stringify((pl.spec || {}).band));
+      band.find((b) => /IED/.test(txt(b))).click();
+      await until(() => ((B.lock._state().plan || {}).spec || {}).band
+                        && B.lock._state().plan.spec.band[0] === 1, 30000);
+      check('IED is one press away, and the plan follows',
+            (((B.lock._state().plan || {}).spec || {}).band || [])[0] === 1);
+      $$('.br-band button').find((b) => /Dentate/.test(txt(b))).click();
+      await until(() => (((B.lock._state().plan || {}).spec || {}).band || [])[0] === 5,
+                  30000);
 
       head('the version tree');
       const vb = $('.br-tile .vbtn');
@@ -184,16 +218,16 @@ async function until(fn, ms) {
     }
     if (plain) {
       ev('BARRY.lock._chooseSet(' + JSON.stringify(plain.id) + ')');
-      await until(() => $('.br-pin'), 40000);
-      check('where Braces placed none, the switch is off and closed',
-            $('.br-pin').disabled && !B.lock._pinOn());
+      await until(() => $('.br-braces-line'), 40000);
+      check('where Braces placed none, it says so',
+            /no Braces/.test(txt($('.br-braces-line'))));
     }
 
     head('a locked stamp, tried');
     ev('BARRY.lock._lockedSay()');
     await until(() => $('.br-locked-ask'), 2000);
     check('it says so, kindly',
-          /locked/.test(txt($('.br-locked-ask'))) && /second-guessing/.test(txt($('.br-locked-ask')))
+          /held/.test(txt($('.br-locked-ask'))) && /second-guessing/.test(txt($('.br-locked-ask')))
             && /better protocol/.test(txt($('.br-locked-ask'))));
     D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await until(() => !$('.br-locked-ask'), 2000);
@@ -204,33 +238,34 @@ async function until(fn, ms) {
     if (manyB) manyB.click();
     await until(() => $$('.br-many-lock .br-bulk-row').length, 20000);
     const rowsM = $$('.br-many-lock .br-bulk-row');
-    check('every row has a lock', rowsM.length && rowsM.every((r) => r.querySelector('.br-bulk-lock')),
+    check('every row has its three groups',
+          rowsM.length && rowsM.every((r) => r.querySelectorAll('.br-bulk-og').length === 3),
           rowsM.length + ' rows');
+    check('and says whether Braces has been run',
+          rowsM.every((r) => r.querySelector('.br-row-braces .br-set-braces')));
     const order = rowsM.every((r) => {
       const kids = Array.from(r.children);
       const v = kids.findIndex((k) => k.classList.contains('vbtn')
                                       || k.classList.contains('br-hint'));
-      const l = kids.findIndex((k) => k.classList.contains('br-bulk-lock'));
+      const l = kids.findIndex((k) => k.classList.contains('br-bulk-origins'));
       const b = kids.findIndex((k) => k.classList.contains('br-bulk-bad'));
       return v >= 0 && l === v + 1 && b === l + 1;
     });
     check('right after the version, before the bad contacts', order);
-    const rb = rowsM.find((r) => {
-      const c = lc.find((x) => x.id === r.dataset.id);
-      return c && ((c.braced || {}).n || 0) > 0;
-    });
+    const rb = rowsM[0];
     if (rb) {
       const c = lc.find((x) => x.id === rb.dataset.id);
-      const lockB = () => $('.br-bulk-row[data-id="' + c.id + '"] .br-bulk-lock');
-      check('locked by itself where Braces placed some',
-            lockB().getAttribute('aria-checked') === 'true' && B.lock._manyPin(c));
-      lockB().click();
-      await sleep(150);
-      check('a press opens it', B.lock._manyPin(c) === false
-            && lockB().getAttribute('aria-checked') === 'false');
-      lockB().click();
-      await sleep(150);
-      check('and another locks it', B.lock._manyPin(c) === true);
+      const dB = () => $('.br-bulk-row[data-id="' + c.id + '"] .br-bulk-og[data-g="doppler"]');
+      const was = B.lock._manyHold(c).indexOf('doppler') >= 0;
+      dB().click();
+      await sleep(200);
+      check('a press on a row’s D holds or lines up its Doppler only',
+            (B.lock._manyHold(c).indexOf('doppler') >= 0) === !was
+              && dB().classList.contains('held') === !was);
+      dB().click();
+      await sleep(200);
+      check('and another puts it back',
+            (B.lock._manyHold(c).indexOf('doppler') >= 0) === was);
     }
     await until(() => B.lock._allSets() !== null, 15000);
     const al = B.lock._allSets() || [];
@@ -239,6 +274,13 @@ async function until(fn, ms) {
     const oneB = $$('.br-mode .seg button').find((b) => /one/i.test(b.textContent));
     if (oneB) oneB.click();
   }
+
+  /* ---------------------------------------------------------------- */
+  head('one mode at a time');
+  const names = ev('BARRY.modes.names().join(",")') || '';
+  check('Braces and Lock are registered with the other modes, so entering '
+        + 'any one leaves them', /\bbraces\b/.test(names) && /\block\b/.test(names),
+        names);
 
   } catch (e) {
     say('CRASH ' + e.message + '\n' + e.stack, 'bad');

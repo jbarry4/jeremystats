@@ -133,6 +133,30 @@ def _source_for(entry, prior, pipeline):
     }
 
 
+#: The note `EventBank.align` writes on every alignment it mints, Braces',
+#: Eye's and Lock's alike (none of them sends one of its own).
+ALIGN_NOTE = "Aligned to the mean magnitude over"
+ALIGN_TOOL = {"ds": "jarvis.braces/1", "ied": "jarvis.eye/1",
+              "pooled": "jarvis.lock/1"}
+
+
+def _fold_aligned(rec):
+    """Mark a version as an alignment when its note says it is one.
+
+    The `aligned` record never travelled between machines until 2026-10-26
+    (cloudsync's slim versions left it behind), so every alignment made on
+    another computer arrived here as a plain pass -- and Lock could not tell
+    that a pool's dentate spikes had been through Braces. The note did
+    travel, and `align` writes the same opening words on every one, so the
+    mark is put back from it, in memory, when the bank is read. Only where
+    the mark is missing; a version that has one keeps it."""
+    tool = ALIGN_TOOL.get(rec.get("type") or "", "jarvis.braces/1")
+    for v in (rec.get("versions") or []):
+        if (isinstance(v, dict) and not v.get("aligned")
+                and str(v.get("note") or "").startswith(ALIGN_NOTE)):
+            v["aligned"] = {"tool": tool, "from_note": True}
+
+
 class EventBank:
     def __init__(self, root, store):
         self.root = os.path.join(root, "event_bank")
@@ -225,6 +249,7 @@ class EventBank:
             # The event list can be long; the index carries a summary and
             # the detail view fetches the whole entry by id.
             rec.setdefault("n", len(rec.get("events") or []))
+            _fold_aligned(rec)
             out.append(rec)
         out.sort(key=lambda r: (r.get("added") or {}).get("at") or "", reverse=True)
         self._cache = out
@@ -1916,7 +1941,10 @@ class EventBank:
             # unreadable, and the rest of this file already chose.
             "machine": platform.node(),
             "aligned": {
-                "tool": "jarvis.braces/1",
+                # Which aligner, by the kind of entry (2026-10-26): Lock's
+                # was filed as Braces'.
+                "tool": ALIGN_TOOL.get(rec.get("type") or "",
+                                       "jarvis.braces/1"),
                 "source_version": src_v,
                 "source_version_id": src_id,
                 "n_moved": len(shifts),
@@ -1956,7 +1984,7 @@ class EventBank:
         # what clock they are on. Read by the panel to mark a set that has
         # already been done, and by `align` itself through the twin check.
         rec["aligned"] = {
-            "tool": "jarvis.braces/1",
+            "tool": ALIGN_TOOL.get(rec.get("type") or "", "jarvis.braces/1"),
             "at": _now(),
             "by": who,
             "version": fresh["v"],
@@ -2375,8 +2403,11 @@ class EventBank:
                 continue
             if num in have:
                 continue
+            # `tag` and `aligned` too (2026-10-26): what made the version,
+            # which the version tree names and Lock reads.
             row = {k: incoming.get(k) for k in
-                   ("v", "at", "by", "n", "note", "by_label", "machine")
+                   ("v", "at", "by", "n", "note", "by_label", "machine",
+                    "tag", "aligned")
                    if incoming.get(k) is not None}
             row["v"] = num
             # Said outright on the record: this one arrived without its

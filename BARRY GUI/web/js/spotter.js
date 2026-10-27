@@ -344,13 +344,8 @@ BARRY.spotter = (function () {
     /* Leaving with decisions the bank does not have: banked on the way out,
        when that is on. After the set is let go, so it cannot hold up the
        leaving; quietBank waits for any save still in flight. */
-    {
-      const decided = events().filter((e) => e.label).length;
-      if (autoOn() && decided
-          && (bankDirty || !banked || banked.changed)) {
-        quietBank(set_.gid, 'Banked on leaving Spotter.', setKind);
-      }
-    }
+    /* Not banked on leaving any more (2026-10-26): a set banks itself
+       once, when the last candidate is first decided; after that, by hand. */
     /* Written now rather than in 350 ms. Preference writes are coalesced,
        and leaving is exactly the moment somebody is about to do something
        else -- the whole point is that it survives a tab switch. */
@@ -951,7 +946,7 @@ BARRY.spotter = (function () {
     let res;
     try {
       res = await apiPost(BARRY.ui.setUrl(gid, sk, 'bank'), {
-        note: why,
+        note: why, auto: true,
         added_by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
                   || undefined,
       });
@@ -960,6 +955,9 @@ BARRY.spotter = (function () {
             + ' Bank the results by hand to keep them.', 'warn', 9000);
       return;
     }
+    // Once only (2026-10-26): the server banks a set by itself the first
+    // time every event is decided and never again, and says so here.
+    if (res.skipped || !(res.entries || []).length) return;
     const it = (res.entries || [])[0] || {};
     const v = BARRY.ui.versionLabel(it.version);
     if (it.replaced && !it.new_version) return;          // nothing new

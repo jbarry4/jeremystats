@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "headers": [
+    {
+      "source": "/files/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "private, max-age=3600" },
+        { "key": "Content-Disposition", "value": "attachment" }
+      ]
+    },
+    {
+      "source": "/files/(.*)\\.svg",
+      "headers": [{ "key": "Content-Disposition", "value": "inline" }]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
+        { "key": "Referrer-Policy", "value": "same-origin" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    }
+  ]
+}

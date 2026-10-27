@@ -52,7 +52,12 @@ import os
 import time
 
 import numpy as np
-from scipy.signal import butter, filtfilt, hilbert
+
+# Loaded on first use, not at import; see lazyimp.py. Imported here it ran
+# inside whichever request first asked for tab 8 or 9, and two at once
+# deadlocked on scipy's module locks (2026-10-21).
+from . import lazyimp  # noqa: E402
+butter, filtfilt = lazyimp.names("scipy.signal", "butter", "filtfilt")
 
 from . import coupling, nlx, ratidentity, spark, sweep
 

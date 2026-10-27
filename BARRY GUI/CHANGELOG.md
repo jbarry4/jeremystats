@@ -15,6 +15,145 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.26.2 - Tab 10, Joe export: everything for Joe in one list, and a site he downloads it from
+
+**Restart Jarvis**: `backend/app.py` changed and `backend/joeexport.py` is new.
+
+- **Tab 10 · Joe export** lists everything that goes to Joe, in this order (not the slides, which
+  go to him separately):
+  - **The figures**: every tab 9 figure in tab 9's order, grouped by
+    window and band.
+    - Each figure shows its three tests, FP first.
+    - Each ring has a toggle for its three views (FP, the shuffles, the
+      rats' flips), each as PDF, SVG and 600 dpi PNG.
+    - Each figure's numbers for Prism come as one zip holding the .xlsx
+      and the .pzfx.
+    - Every legend is also in one text file.
+  - **The statistics**: tab 8's 24 lights with their P values, the results
+    table, the read-me and the SPSS zip.
+  - **Make the numbers again**: the standalone script and its inputs.
+- **Download everything** builds one zip in the browser, with a folder per
+  section; each group of figures has its own button too.
+- **Joe's site.** "Assemble the site" copies the list, its files and a
+  password page into `GUI_logs/.cache/joe_site`. That folder is Vercel
+  project `joe-export`, with its own password and its own sign-in cookie,
+  separate from the review site's. It is 66 MB of the 100 MB a deploy can
+  take. Putting it online stays a separate step, from that folder:
+  `vercel deploy --prod` (the Vercel CLI is now installed on Bluebarry).
+- The page that is Joe's site and the list in tab 10 are drawn by the same
+  file (`web/js/joe_export.js`), so they cannot drift apart.
+- Tab 8's help now describes the lights as blue, with an orange diamond
+  for a check that lit. It still said green.
+- New check: `python tools/check_joeexport.py`.
+
+## 2026.10.26.1 - Lock: pick which origins to line up, the dentate-spike band, and fixes from Rain
+
+**Restart Jarvis**: `backend/app.py`, `backend/braces.py`,
+`backend/bracesset.py`, `backend/eventbank.py`, `backend/curation.py` and
+`backend/cloudsync.py` changed.
+
+### Lock
+
+- **Choose which groups to line up.** There are three switches: Incisor
+  only, Merged and Doppler only, each with its count. A group that is
+  switched off is held: its stamps don't move, and each fills its own peak.
+  This replaces the "Braces' stamps stay locked" switch. All three start on.
+  After that, a set opens with the groups it was last run with, or else the
+  ones Lock was last run with. In Many, each row has its own three switches.
+- **Each set says plainly whether Braces has been run** (**Braces ✓ 156**,
+  or **no Braces**), in the set menu, beside the switches, and on each Many
+  row.
+- **Braces is recognised again on sets aligned on another computer.** The
+  mark that says a version is an alignment didn't sync, so M22 s3, M21 s2
+  and others read as "no Braces". Older versions are now recognised by
+  Braces' own note, and the mark syncs from now on.
+- **The dentate-spike band (5–100 Hz) is the default filter.** The IED band
+  (1–70 Hz) is one click away under Filter.
+- **In the review, the traces can switch** between the DS band and the IED
+  band, or show **Both** side by side.
+- **The counts add up.** "191 spikes · 108 lined up · 83 held", and
+  "confirmed" no longer counts the held stamps.
+- **The Event Bank calls Lock's versions "Lock"**, not "Braces".
+- **Lock has its own entry in Profile › Support panel preferences** ("Lock
+  review").
+- **The review bar folds in three stages**, as Panning's does. The first
+  click hides the options and keeps the buttons.
+
+### Every curation tool
+
+- **Only one mode at a time, Braces and Lock included.** Entering Lock's
+  review used to leave Panning's bar, for another recording, underneath it.
+- **A set banks itself once**, the first time every event is decided, and
+  never again. Later changes are banked with **Bank the results**. Leaving
+  no longer banks, and touching an event without changing it never makes a
+  version. This applies to Checkup, Spotter and Panning.
+
+---
+
+## 2026.10.23.8 - Joe's figures, expanded: theta, cue 1 → cue 2, cue effects, Prism, a filter grid
+
+**Restart Jarvis**: `backend/joefigs.py` and `backend/app.py` changed.
+Then press "Draw the figures" on tab 9 once (about 5 minutes).
+
+- **More rings.** Tab 9 now draws comparisons 1, 2 and 5 (cue 1 → cue 2,
+  every trial whatever its sounds) in both theta and gamma, whether tab 8's
+  light passed or not. Any other window whose light passes gets a ring too.
+  Follow-ups still wait for tab 8's light.
+- **The rows say what they are.** Each row is a "cue effect" (cue −
+  baseline), not a Δ: the Precon1 cue effect, the Precon4 cue effect, and the
+  change in cue effect (Precon4's − Precon1's). The rows are labelled on
+  every ring. The new **Supplementary Figure S1** shows the arithmetic on one
+  real pair.
+- **Three tests, always FP, P, T.** The rings open on FP. The toggle reads
+  FP · Shuffles · Rats. Chips, legends and panel d all list FP first.
+- **Sorted.** Figures are grouped by window, then band (theta, then gamma),
+  with each group's ring on top. Its follow-ups follow, sorted by how many
+  tests they pass (all three, then two, then one), with FP counting most.
+- **A grid on the right** shows or hides each window × band group. It
+  remembers its choice in the browser.
+- **Prism.** Every figure's numbers download as .xlsx (one sheet per table)
+  and as .pzfx (GraphPad's own format):
+  - each rat's four values;
+  - each rat's change;
+  - the null sets, all 10,000.
+- **Colour-blind safe.** Tab 8's lights are blue and orange. A check that
+  lit is also a diamond, and a light that did not is a hollow ring.
+- **PAC figures say what the number is.** The title used to read as if the
+  coupling were between the pair, in gamma. It now reads, for example,
+  "followed up from the gamma coherence of R PER – L DHC: theta–gamma
+  coupling within R PER". The axis, a subtitle and the legend say how the
+  modulation index is made: Tort MI from θ 5–12 Hz phase and γ 30–90 Hz
+  amplitude, over each trial's whole window, then averaged over trials, one
+  dot per rat.
+- **Joe's deck** (`tools/joe_deck`) is rebuilt with theta and comparison 5.
+  It uses the cue-effect wording, the FP, P, T order and the new lights.
+
+## 2026.10.23.7 - Fixes from the end-of-day error reports (10-20 to 10-23)
+
+**Restart Jarvis**: `backend/app.py`, `backend/joe.py` and
+`backend/lazyimp.py` changed.
+
+- **Root Canal: committing again right after a commit said "Read it
+  again".** On 10-20, set 46fd29a77cc7 was cleaned (243 of 431 kept). The
+  next press of Bank was refused with "The read on file holds 431 events
+  and this version has 243". The panel still names the read it opened,
+  and the live set had become the cleaned list. Now the cleaned set is
+  found inside that read, as it already was without one named. A second
+  pass also gets the right sentence, and with it the "Clean again anyway"
+  dialog: *this version is already Root Canal's output*.
+- **Tab 8 and Tab 9 could fail to open on a just-started Jarvis.** Two
+  requests importing scipy at the same moment hit Python's import deadlock
+  check (10-21, twice). Tab 8's code now loads scipy only when it first
+  measures something, and the first import of any lazily loaded library
+  happens one thread at a time.
+- **One sync timeout is no longer an error.** On 10-21 both lab computers
+  timed out against Supabase in the same minute, and both synced again
+  on the next try. A timeout or lost connection now goes in the error log
+  only if the next attempt fails too. Any other failure is logged the
+  first time, as before.
+
+---
+
 ## 2026.10.23.6 - Every PTEN session opens on a new computer: the paths Jarvis knows now match netfiles
 
 **Restart Jarvis**: `backend/app.py`, `backend/vacc.py`, `backend/cloudsync.py`,

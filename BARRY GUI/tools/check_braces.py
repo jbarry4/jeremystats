@@ -357,7 +357,7 @@ by_i = {r["i"]: r for r in out["rows"]}
 check("a locked stamp still gets a row", 0 in by_i, True)
 check("...that does not move", (by_i[0]["now"], by_i[0]["flag"]),
       (1.000, None))
-check("...marked as Braces'", by_i[0].get("locked"), "braces")
+check("...marked as held", by_i[0].get("locked"), "held")
 check("its peak is not given to the stamp beside it",
       round(by_i[1]["now"], 3), 1.056)
 check("the others align as before", round(by_i[2]["now"], 3), 3.010)
