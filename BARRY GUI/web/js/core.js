@@ -1953,6 +1953,11 @@ const MODES = {
   },
   braces: {
     name: 'Braces',
+    /* Folds in stages too (2026-10-26: "either fully collapsed or not
+       collapsed at all"): the options first, the buttons kept. */
+    foldStages: 3,
+    foldMiddle: 'Put the options away and keep the buttons; click again to '
+              + 'fold the bar to one line, and again to bring it all back',
     /* Worth a `what` where curation's is not: this mode draws each stamp
        TWICE, and a viewer who does not know that is looking at twice as
        many dentate spikes as the recording has. */
@@ -1968,8 +1973,11 @@ const MODES = {
      stamps Braces placed are drawn in their own colour and do not move. */
   lock: {
     name: 'Lock',
+    foldStages: 3,
+    foldMiddle: 'Put the options away and keep the buttons; click again to '
+              + 'fold the bar to one line, and again to bring it all back',
     what: 'Every stamp drawn where it was and where it goes '
-        + '\u00b7 Braces\u2019 stamps are locked (blue) and stay put '
+        + '\u00b7 held groups are drawn blue and stay put '
         + '\u00b7 n / p stop at the ones needing a decision (\u25bc) '
         + '\u00b7 [ and ] to move one a millisecond',
     keys: 'n p or \u2190 \u2192 step \u00b7 Enter moves it \u00b7 k leaves it '
@@ -2215,8 +2223,9 @@ function modeFold(kind, on) {
     btn.dataset.stage = stage;
     btn.title = stage === 'folded' ? 'Unfold the bar: every tool back'
       : stage === 'ticks' ? 'Fold the bar to one line (the keys still work)'
-      : staged ? 'Put the tick bars away; click again to fold the bar to one '
-                 + 'line, and again to bring it all back'
+      : staged ? ((MODES[kind] || {}).foldMiddle
+                  || 'Put the tick bars away; click again to fold the bar to '
+                     + 'one line, and again to bring it all back')
       : 'Fold the bar to one line (the keys still work)';
   }
   return stage;

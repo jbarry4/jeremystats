@@ -141,8 +141,16 @@ def _slim_versions(versions):
             continue
         row = {k: v.get(k) for k in
                ("v", "at", "by", "n", "note", "by_label", "machine",
-                "imported")
+                "imported", "tag")
                if v.get(k) is not None}
+        # Whether it is an alignment, and by which tool (2026-10-26): the
+        # mark Lock reads to tell Braces' stamps, which never travelled, so
+        # every alignment made on another machine arrived as a plain pass.
+        # The tool alone -- the full record carries the channel lists.
+        al = v.get("aligned")
+        if al:
+            row["aligned"] = {"tool": (al.get("tool") if isinstance(al, dict)
+                                       else None) or "jarvis.braces/1"}
         if row.get("v") is not None:
             # Said on the row rather than inferred later: a reader needs to
             # know this copy cannot be restored from.

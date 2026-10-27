@@ -13062,14 +13062,76 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .br-plan-braces.on { border-left: 2px solid var(--br-lock); padding-left: 10px; }
 .br-count.lock b { color: var(--br-lock); }
 
-/* Many: the lock on each row. */
-.br-bulk-lock { display: inline-flex; align-items: center; gap: 4px;
-  justify-self: stretch; justify-content: center; color: var(--text-3);
+/* Lock's three groups (2026-10-26): lit = lined up, padlocked = held. */
+.br-origins { display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 14px; }
+.br-origins-head { display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 4px 10px; }
+.br-origins-head > label { font-size: var(--fs-105); letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-3); }
+.br-origin-row { display: grid; gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 760px) {
+  .br-origin-row { grid-template-columns: minmax(0, 1fr); }
+}
+.br-origin {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px;
+  align-items: center; padding: 9px 12px; font: inherit; color: var(--text);
+  text-align: left; cursor: pointer; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--bg-2);
+  transition: border-color var(--dur-2, .16s), background var(--dur-2, .16s),
+              transform calc(160ms * var(--motion-pace, 1)) var(--ease-snap, ease);
+}
+.br-origin:hover:not(:disabled) { border-color: var(--accent-line); }
+.br-origin:active:not(:disabled) { transform: scale(.98); }
+.br-origin.on {
+  border-color: color-mix(in srgb, var(--tc, var(--accent)) 55%, var(--line));
+  background: color-mix(in srgb, var(--tc, var(--accent)) 10%, var(--bg-2));
+}
+.br-origin.held {
+  border-color: color-mix(in srgb, var(--br-lock) 55%, var(--line));
+  background: color-mix(in srgb, var(--br-lock) 9%, var(--bg-2));
+}
+.br-origin:disabled { cursor: default; opacity: .55; }
+.br-origin-ico { display: grid; place-items: center; width: 32px; height: 32px;
+  border-radius: 9px; color: var(--tc, var(--accent));
+  background: color-mix(in srgb, var(--tc, var(--accent)) 14%, transparent); }
+.br-origin.held .br-origin-ico { color: var(--br-lock);
+  background: color-mix(in srgb, var(--br-lock) 16%, transparent); }
+.br-origin-ico svg { width: 20px; height: 20px; fill: none; stroke: currentColor;
+  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.br-origin-ico .lk-bd { fill: color-mix(in srgb, currentColor 16%, transparent); }
+.br-origin-ico .lk-bk { fill: currentColor; stroke-width: 1; }
+.br-origin-ico .lk-wr { stroke-width: 1.2; }
+.br-origin-words { min-width: 0; }
+.br-origin-words b { display: block; font-size: var(--fs-125); }
+.br-origin-words i { display: block; margin-top: 1px; font-style: normal;
+  font-size: var(--fs-11); color: var(--text-3);
   font-variant-numeric: tabular-nums; }
-.br-bulk-lock.on { color: var(--br-lock);
+.br-braces-line { display: flex; flex-wrap: wrap; align-items: center;
+  gap: 4px 10px; }
+.br-braces-line .br-hint { flex: 1 1 40ch; min-width: 0; }
+.br-row-braces { display: inline-flex; margin-top: 2px; }
+
+/* Many: the three groups on each row, where the lock was. */
+.br-bulk-origins { display: inline-flex; gap: 3px; justify-self: stretch;
+  justify-content: center; }
+.br-bulk-og { display: inline-flex; align-items: center; gap: 3px;
+  min-width: 0; font-variant-numeric: tabular-nums; color: var(--text-3); }
+.br-bulk-og b { font-weight: 700; }
+.br-bulk-og.on { color: var(--text);
+  border-color: color-mix(in srgb, var(--tc, var(--accent)) 50%, transparent);
+  background: color-mix(in srgb, var(--tc, var(--accent)) 10%, transparent); }
+.br-bulk-og.held { color: var(--br-lock);
   border-color: color-mix(in srgb, var(--br-lock) 50%, transparent);
   background: color-mix(in srgb, var(--br-lock) 12%, transparent); }
-.br-bulk-lock.none { opacity: .5; }
+.br-bulk-og.none { opacity: .45; }
+.br-many-lock { --tc: var(--tool-lock, var(--accent)); }
+
+/* The review bar's middle fold: the options away, the buttons kept. */
+#modeBar.fold-ticks #brViewBar .br-opt,
+#modeBar.fold-ticks #brViewBar .br-view-key,
+#modeBar.fold-ticks #brViewBar .mode-more { display: none !important; }
 
 /* "That one's locked." */
 .br-locked-ask { text-align: center; }

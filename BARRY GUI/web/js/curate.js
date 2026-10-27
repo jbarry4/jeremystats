@@ -305,9 +305,8 @@ BARRY.curate = (function () {
     /* Banked on the way out, always (2026-10-21), when there are decisions
        the bank does not have: after the set is let go, so it cannot hold up
        the leaving; quietBank waits for any save still in flight. */
-    if (events().some((e) => e.label)) {
-      quietBank(set_.gid, set_.kind, 'Banked on leaving Checkup.');
-    }
+    /* Not banked on leaving any more (2026-10-26): a set banks itself
+       once, when the last candidate is first decided; after that, by hand. */
     /* The place, written now rather than in 350 ms. Preference writes are
        coalesced, and leaving is exactly the moment somebody is about to do
        something else -- the whole point is that it survives a tab switch,
@@ -740,7 +739,7 @@ BARRY.curate = (function () {
     let res;
     try {
       res = await apiPost(BARRY.ui.setUrl(gid, kind, 'bank'), {
-        note: why,
+        note: why, auto: true,
         added_by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
                   || undefined,
       });
@@ -752,6 +751,9 @@ BARRY.curate = (function () {
       }
       return;
     }
+    // Once only (2026-10-26): the server banks a set by itself the first
+    // time every event is decided and never again, and says so here.
+    if (res.skipped || !(res.entries || []).length) return;
     const it = (res.entries || [])[0] || {};
     if (it.replaced && !it.new_version) return;          // nothing new
     toast('Banked automatically as ' + BARRY.ui.versionLabel(it.version)

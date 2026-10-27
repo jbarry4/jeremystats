@@ -354,6 +354,10 @@ def page_checks(work, site, S):
           and re.search(r'href="data/joefigs/fig_1_prism\.xlsx"', fg) is not None and 'id="figsfilter"' in fg
           and 'class="small fglegend"' in fg and 'id="figsmake"' not in fg,
           re.findall(r"(?:Could not read|not in this copy|could not be read)[^<]*", fg)[:2])
+    jx = dom("monolith.html#tab=joex")
+    check("tab 10 opens by its link, from the copy, and says Joe's export is a site of its own (no files, no button)",
+          re.search(r'id="tab-joex"[^>]*aria-selected="true"', jx) is not None and 'id="joexstatic"' in jx
+          and "Not in this copy" in jx and 'id="joexbuild"' not in jx)
     srv.shutdown()
 
 

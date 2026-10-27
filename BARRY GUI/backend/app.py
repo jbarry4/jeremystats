@@ -5008,6 +5008,12 @@ def _braces_spec(body, sess, kind=None):
     the peak it is aligned to. DS keeps the detector's own band exactly as
     before -- that is what `_incisor_spec` exists to guarantee.
     """
+    # Which band a pooled set is aligned through (2026-10-26): the
+    # dentate-spike band by default -- "for this run everything on the
+    # dentate spike filter" -- with the IED band one setting away
+    # (`band_kind: "ied"`), which is what Lock used before.
+    if kind == "pooled":
+        kind = "ied" if str(body.get("band_kind") or "ds") == "ied" else "ds"
     if kind and kind != "ds" and body.get("band") is None:
         kb = _kind_band(kind)
         if kb:
@@ -6541,9 +6547,19 @@ def api_braces_plan():
                 if (e.get("label_id") or e.get("label")) in _good_ids(rec)))
         except Exception:                                # noqa: BLE001
             braced = None
+    origins = None
+    if (rec.get("type") or "") == "pooled":
+        try:
+            src_v = body.get("from_version")
+            evs = (rec.get("events") or [] if src_v is None
+                   else BANK.events_at(rec, src_v)[0])
+            origins = _pool_counts(rec, evs)
+        except Exception:                                # noqa: BLE001
+            origins = None
     return jsonify({
         "ok": True,
         "braced": braced,
+        "origins": origins,
         "entry": {"id": rec["id"], "name": rec.get("name"),
                   "n": rec.get("n"), "gid": rec.get("gid"),
                   "type": rec.get("type"),
@@ -6604,7 +6620,7 @@ _BRACES_NOT_QUESTION = ("path", "excluded", "probe_name", "channel_pick")
 
 
 def _braces_question(rec, src_v, spec, want, depth_n, stamp_times,
-                     pinned_times=None):
+                     pinned_times=None, hold=None):
     """(hash, question) of one alignment request."""
     import hashlib
     stamps = hashlib.sha1(json.dumps(
@@ -6624,6 +6640,10 @@ def _braces_question(rec, src_v, spec, want, depth_n, stamp_times,
             [round(float(t), 6) for t in sorted(pinned_times)]).encode()
         ).hexdigest()[:12]
         q["n_pinned"] = len(pinned_times)
+    if hold:
+        # Which origin groups were held, as somebody chose them -- read
+        # back by the panel to say a set was run this way before.
+        q["hold"] = sorted(hold)
     h = hashlib.sha1(json.dumps(q, sort_keys=True, default=str)
                      .encode()).hexdigest()[:16]
     return h, q
@@ -6807,14 +6827,35 @@ def _braces_prepare(body):
     # second aligner with a different measure is not a better answer to a
     # question the protocol already answered.
     pinned = []
-    if body.get("pin_braces") and (rec.get("type") or "") == "pooled":
-        held, _info = _lock_braced_good(rec, events)
-        pinned = sorted(held)
+    hold = []
+    if (rec.get("type") or "") == "pooled":
+        # Every event's origin on it, so the run, the rows and a compute
+        # node all know which group each stamp is in -- a version's
+        # snapshot holds only a time and a label, so it is looked up by time
+        # in the live events (`_pool_groups`).
+        groups = _pool_groups(rec, events)
+        events = [dict(e, origin=g) if g and not e.get("origin") else e
+                  for e, g in zip(events, groups)]
+        # WHICH GROUPS ARE HELD (2026-10-26). "Put in options to not move
+        # one or two of those three groups, and that sidesteps the issue of
+        # knowing if Braces was run": the origins somebody ticked off are
+        # held where they are, each filling its own peak, and only the rest
+        # are lined up.
+        hold = sorted({str(h) for h in (body.get("hold") or [])
+                       if str(h) in POOL_GROUPS})
+        held = {i for i, g in enumerate(groups) if g in hold}
+        # The older switch: Braces' own stamps, held.
+        if body.get("pin_braces"):
+            held |= _lock_braced_good(rec, events)[0]
+        pinned = sorted(i for i in held
+                        if (events[i].get("label_id")
+                            or events[i].get("label")) in align_ids)
         if pinned and len(pinned) >= n_good:
             raise _BracesRefusal(
-                "Every spike in this set is one Braces already placed, and "
-                "Braces' stamps are being kept, so there is nothing left for "
-                "Lock to move. Nothing was read.")
+                "Every spike in this set is in a group being held (%s), so "
+                "there is nothing left for Lock to move. Nothing was read."
+                % (", ".join(POOL_GROUP_WORDS[h] for h in hold)
+                   or "Braces' own stamps"))
     if pinned:
         # Each locked stamp fills the one peak it occupies, looked for
         # within the pool's own merge window (`braces.propose`, 2026-10-23).
@@ -6830,7 +6871,12 @@ def _braces_prepare(body):
         spec["lock_rule"] = "fills-its-peak"
     rq_hash, rq = _braces_question(
         rec, src_v, spec, want, depth_n, stamp_times,
-        [float(events[i]["start"]) for i in pinned])
+        [float(events[i]["start"]) for i in pinned], hold=hold)
+    if (rec.get("type") or "") == "pooled":
+        # Which band, as asked, for the panel to read back (the spec in the
+        # question already holds the numbers).
+        rq["band_kind"] = ("ied" if str(body.get("band_kind") or "ds") == "ied"
+                           else "ds")
     steps = [("ds depth", len(use_chans)),
              ("ds windows", max(1, len(bracesmod.spans(
                  stamp_times, spec["window_ms"]))))]
@@ -6840,7 +6886,7 @@ def _braces_prepare(body):
             "use_chans": use_chans, "left_out": left_out,
             "stamp_times": stamp_times, "depth_n": depth_n,
             "rq_hash": rq_hash, "rq": rq, "span": span, "steps": steps,
-            "pinned": pinned, "who": _braces_who(body)}
+            "pinned": pinned, "hold": hold, "who": _braces_who(body)}
 
 
 def _braces_file_parts(entry_id, gid, name, src_v, rq_hash, request, who,
@@ -7042,11 +7088,12 @@ def api_braces_batch():
                         "label": _braces_label(rec) if rec else it["id"],
                         "from_version": it.get("from_version"),
                         # Lock: keep Braces' stamps where they are, per set.
-                        "pin_braces": bool(it.get("pin_braces"))})
+                        "pin_braces": bool(it.get("pin_braces")),
+                        "hold": list(it.get("hold") or [])})
     force = bool(body.get("force"))
     settings = {k: body.get(k) for k in
                 ("measure", "window_ms", "estimator", "line_hz",
-                 "smooth_ms", "depth_band")
+                 "smooth_ms", "depth_band", "band_kind")
                 if body.get(k) is not None}
     # Every set to the cluster, even the ones this computer has: side by
     # side there rather than one after another here. Only where the cluster
@@ -7066,7 +7113,8 @@ def api_braces_batch():
             try:
                 prep = _braces_prepare(dict(settings, entry_id=mid, by=who,
                                             from_version=m["from_version"],
-                                            pin_braces=m["pin_braces"]))
+                                            pin_braces=m["pin_braces"],
+                                            hold=m["hold"]))
             except Exception as exc:                     # noqa: BLE001
                 tally["failed"] += 1
                 job.member(mid, status="failed", step=None,
@@ -7563,10 +7611,23 @@ def _lock_braced(rec, events=None):
         return set(), None
     events = (rec.get("events") or []) if events is None else events
     p = (rec.get("source") or {}).get("parameters") or {}
-    info = {"ds_aligned": bool(p.get("ds_aligned")),
+    # Asked of the dentate-spike entry NOW, not read off the pool. The pool
+    # wrote down what it saw when it was made, and before 2026-10-26 an
+    # alignment made on another computer arrived without its mark -- so
+    # pools of Braces-aligned sets were filed as "not aligned" (M22 s3,
+    # M21 s2). The bank puts the mark back from the version's note.
+    aligned = bool(p.get("ds_aligned"))
+    ds0 = BANK.get(p.get("ds_entry") or "") if p.get("ds_entry") else None
+    if ds0 is not None and p.get("ds_version") is not None:
+        try:
+            aligned = (str(p.get("ds_version"))
+                       in _cf_aligned(ds0, raw=True)["aligned_names"])
+        except Exception:                                # noqa: BLE001
+            pass
+    info = {"ds_aligned": aligned,
             "ds_entry": p.get("ds_entry"), "ds_name": p.get("ds_name"),
             "ds_version": p.get("ds_version")}
-    if not p.get("ds_aligned"):
+    if not aligned:
         return set(), info
     whose = {}
     for ev in (rec.get("events") or []):
@@ -7629,6 +7690,42 @@ def _lock_braced(rec, events=None):
             continue
         out.add(i)
     return out, info
+
+
+#: A pooled event's origin group: found by Incisor alone, by both within the
+#: merge window, or by Doppler alone. The words are the panel's.
+POOL_GROUPS = ("incisor", "both", "doppler")
+POOL_GROUP_WORDS = {"incisor": "Incisor only", "both": "Merged",
+                    "doppler": "Doppler only"}
+
+
+def _pool_groups(rec, events):
+    """The origin group of each of `events` (a pooled set's), or None.
+
+    From the event itself where it says, else by its time in the live set --
+    where it is now, or where an alignment moved it from -- because a
+    version's snapshot carries a time and a label and nothing else."""
+    if (rec.get("type") or "") != "pooled":
+        return [None] * len(events or [])
+    by_t = _rootcanal_origins(rec, [])
+    out = []
+    for e in (events or []):
+        g = e.get("origin")
+        if g not in POOL_GROUPS:
+            g = by_t.get(curation._tkey(e.get("start")))
+        out.append(g if g in POOL_GROUPS else None)
+    return out
+
+
+def _pool_counts(rec, events=None):
+    """{group: n} over the events Lock would align (the good ones)."""
+    events = (rec.get("events") or []) if events is None else events
+    want = _good_ids(rec)
+    out = {g: 0 for g in POOL_GROUPS}
+    for e, g in zip(events, _pool_groups(rec, events)):
+        if g and (e.get("label_id") or e.get("label")) in want:
+            out[g] += 1
+    return out
 
 
 def _good_ids(rec):
@@ -7865,6 +7962,8 @@ def api_braces_candidates():
                 braced = None
         out.append({
             "braced": braced,
+            # Lock's three groups, counted over its spikes (2026-10-26).
+            "origins": (_pool_counts(rec) if want_type == "pooled" else None),
             "id": rec["id"], "name": rec.get("name"),
             "gid": rec.get("gid"), "n": rec.get("n"),
             "project": rec.get("project"), "mouse": rec.get("mouse"),
@@ -19499,6 +19598,36 @@ def api_curation_delete(gid, kind):
     return jsonify({"ok": ok})
 
 
+#: What an add-on wrote on the version it banked by itself when the last
+#: event was decided (curate.js, spotter.js, panning.js `quietBank`).
+_AUTO_DONE_NOTES = ("Every event decided in", "Every candidate decided in")
+
+
+def _autobanked_before(rec):
+    """Whether this curation set has already banked itself once: marked on
+    the set, or -- for a set that did so before the mark existed -- a
+    version of its entry, written since the set was started, that carries
+    the add-on's "every one decided" note."""
+    if rec.get("autobanked"):
+        return True
+    kind = rec.get("kind") or ""
+    own = curation.entry_of(kind)
+    if own:
+        ent = BANK.get(own)
+    else:
+        whole = [p for p in _legacy_curated(rec.get("gid"), kind)
+                 if p.get("curation_label") == "*"]
+        ent = whole[0] if whole else None
+    if not ent:
+        return False
+    since = str((rec.get("created") or {}).get("at") or "")
+    for v in (ent.get("versions") or []):
+        note = str(v.get("note") or "")
+        if note.startswith(_AUTO_DONE_NOTES) and str(v.get("at") or "") >= since:
+            return True
+    return False
+
+
 @app.route("/api/curation/<gid>/<kind>/bank", methods=["POST"])
 def api_curation_bank(gid, kind):
     """Send the curated events to the Event Bank, as one versioned entry.
@@ -19515,6 +19644,17 @@ def api_curation_bank(gid, kind):
     sess = _session_by_gid(gid)
     if not sess:
         return jsonify({"ok": False, "error": "No such recording."}), 404
+
+    # BANKED BY ITSELF ONCE (2026-10-26). A bank the add-on asks for on its
+    # own (`auto`) happens the first time every event is decided and never
+    # again: "it should only bank automatically ONCE ... Never again." Later
+    # changes are banked by hand. A set that banked itself before this rule
+    # existed has no mark, so a version already written from it by the
+    # add-on counts too.
+    auto = bool(body.get("auto"))
+    if auto and _autobanked_before(rec):
+        return jsonify({"ok": True, "skipped": "already banked itself once",
+                        "entries": []})
 
     bundle = CURATE.bank_one(rec, only_specified=not body.get("include_left"))
     if not bundle["n"]:
@@ -19589,6 +19729,11 @@ def api_curation_bank(gid, kind):
              "new_version": bool(entry.get("new_version")),
              "adopted": (adopt or {}).get("name") if adopt else None,
              "replaced": bool(entry.get("replaced"))}]
+    if auto:
+        try:
+            CURATE.mark_autobanked(gid, kind, entry.get("version"))
+        except Exception:                                # noqa: BLE001
+            pass
 
     for old_entry in prior:
         if old_entry["id"] == entry["id"]:
@@ -25880,6 +26025,11 @@ def api_arc_monolith_data(name):
             return jsonify({"ok": False, "error": "Tab 9's figures have not been drawn yet."}), 404
         with open(path, encoding="utf-8") as fh:
             return app.response_class(fh.read(), mimetype="application/json")
+    if name == "joeexport":
+        # Tab 10: everything that goes to Joe (backend/joeexport.py).
+        from . import joeexport as jxmod
+        man, _paths = jxmod.manifest()
+        return jsonify(man), (200 if man.get("ok") else 404)
     d = monolithmod.data_dir()
     if not d:
         return jsonify({"ok": False, "error": "The Monolith has not been "
@@ -26303,6 +26453,41 @@ def api_arc_monolith_joefigs_file(name):
         return jsonify({"ok": False, "error": "No such file."}), 404
     save = request.args.get("download") == "1" or ext == ".pdf"
     return send_file(path, mimetype=types[ext], as_attachment=save, download_name=base)
+
+
+@app.route("/api/arc/monolith/joeexport/file/<path:name>")
+def api_arc_monolith_joeexport_file(name):
+    """Tab 10's files: only the ones its list names (backend/joeexport.py),
+    saved, never shown; SVGs shown with ?view=1 (the previews)."""
+    from . import joeexport as jxmod
+    types = {".svg": "image/svg+xml", ".png": "image/png", ".pdf": "application/pdf", ".zip": "application/zip",
+             ".csv": "text/csv", ".txt": "text/plain", ".py": "text/x-python", ".json": "application/json",
+             ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation"}
+    base = os.path.basename(name)
+    ext = os.path.splitext(base)[1]
+    _man, paths = jxmod.manifest()
+    if base != name or ext not in types or base not in paths:
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    view = ext == ".svg" and request.args.get("view") == "1"
+    return send_file(paths[base], mimetype=types[ext], as_attachment=not view, download_name=base)
+
+
+@app.route("/api/arc/monolith/joeexport/site", methods=["POST"])
+def api_arc_monolith_joeexport_site():
+    """Assemble Joe's site (GUI_logs/.cache/joe_site) from tab 10's list.
+    Deploying it is not done here. Refused without `confirm`."""
+    body = request.get_json(silent=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    from . import joeexport as jxmod
+    try:
+        st = jxmod.site()
+    except RuntimeError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 409
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/joeexport/site", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.joeexport.site", "detail": {"bytes": st.get("bytes")}}])
+    return jsonify({"ok": True, "site": st})
 
 
 @app.route("/api/arc/monolith/narrow", methods=["POST"])

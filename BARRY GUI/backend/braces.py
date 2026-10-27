@@ -1284,12 +1284,20 @@ def propose(events, peaks, window_ms=WINDOW_MS, edge_frac=EDGE_FRAC,
                 key = lab or "undecided"
                 skipped[key] = skipped.get(key, 0) + 1
                 continue
+        # A pooled event's origin group rides on its row, so the review can
+        # say which group a held stamp is in (2026-10-26).
+        org = ev.get("origin") if ev.get("origin") in (
+            "incisor", "both", "doppler") else None
         if i in pinned:
-            locked.append({"i": i, "was": t, "now": t, "peak": None,
-                           "shift_ms": 0.0, "peak_uv": None, "flag": None,
-                           "moved": False, "same": True, "locked": "braces"})
+            row = {"i": i, "was": t, "now": t, "peak": None,
+                   "shift_ms": 0.0, "peak_uv": None, "flag": None,
+                   "moved": False, "same": True, "locked": "held"}
+            if org:
+                row["origin"] = org
+            locked.append(row)
             continue
-        rows.append({"i": i, "was": t})
+        rows.append({"i": i, "was": t, "origin": org} if org
+                    else {"i": i, "was": t})
     if not rows:
         out = dict(summarize([], peaks, window_ms, edge_frac, same_ms),
                    skipped=skipped, n_skipped=sum(skipped.values()))

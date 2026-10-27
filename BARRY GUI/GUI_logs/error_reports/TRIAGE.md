@@ -28,6 +28,29 @@ does not show up in it.
   prints around a fault. The 10-20 Root Canal bug showed up there, not in
   the traceback.
 
+## Pass 2: 2026-10-26 (morning), 10-23 evening to 10-26 09:30
+
+Nothing new. Covered: the 10-23, 10-24 and 10-25 reports on both machines,
+and every raw shard in `GUI_logs/errors/`. The newest is still
+10-23@desktop-4h65ai7-d565, last written 12:12.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 10-23 | Bluebarry | 0 | 26 test faults, the same ones pass 1 read. None after 12:12 |
+| 10-23 | Strawbarry | 0 | 1091 actions, no faults |
+| 10-24, 10-25 | both | 0 | **0 actions**: Jarvis was open but unused (weekend), so this proves nothing |
+| 10-26 | both | 0 so far | No shard yet at 09:30 |
+
+Builds the reports name: Bluebarry was still running `2026.10.23.6`
+through 10-25, and Strawbarry `2026.10.23.5`. **Neither was running pass
+1's fixes (`2026.10.23.7`) yet.** They reached master in `f2af2ca1`
+(10-26 09:24). The first report that tests them is the first one whose
+`build` line reads `2026.10.23.7` or later. Until then, a Root Canal "Read it
+again", a scipy `_DeadlockError` or a lone sync timeout is the old code,
+not a failed fix.
+
+Next pass: start from 10-26's reports. Check their build lines first.
+
 ## Pass 1: 2026-10-23 (afternoon), everything since the reports began
 
 The first pass since the reporter started (it first wrote 10-20's report on

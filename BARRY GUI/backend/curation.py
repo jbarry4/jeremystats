@@ -1762,6 +1762,17 @@ class Curation:
         return self._write(rec)
 
     @shards.atomic
+    def mark_autobanked(self, gid, kind, version=None):
+        """Say that this set has banked itself, once (2026-10-26): "it
+        should only bank automatically ONCE after all events are decided for
+        the first time. Never again." Every later change is banked by hand."""
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        rec["autobanked"] = {"at": _now(), "version": version}
+        return self._write(rec)
+
+    @shards.atomic
     def assign(self, gid, kind, who):
         """Say whose set this is. Empty hands it back to nobody."""
         rec = self._read(gid, kind)

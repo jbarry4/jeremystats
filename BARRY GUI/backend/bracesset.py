@@ -114,8 +114,9 @@ OVERLAP_DP = EventBank.DUP_DP
 
 # What a locked row says when somebody tries to move it (Lock, 2026-10-22).
 # The panel says the same words; this is for a caller that went round it.
-LOCKED_SAY = ("Braces already put this stamp on its peak, and this alignment "
-              "was run with Braces' stamps locked, so it stays where it is. "
+LOCKED_SAY = ("This stamp is in a group this alignment holds where it is -- "
+              "already lined up, by Braces or by the protocol -- so it is not "
+              "moved or relabelled here. "
               "No second-guessing: follow the protocol as well as you can and "
               "move on. If the result is not good enough, the fix is a better "
               "protocol, not a nudge by hand.")

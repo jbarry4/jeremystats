@@ -70,6 +70,10 @@ BARRY.supportPanels = (function () {
       shape: 'cols' },
     { mode: 'braces', name: 'Braces review',
       panels: ['csd', 'theta', 'voltage', 'spectrogram'], shape: 'linked' },
+    // Lock's own (2026-10-26: "Panel preferences has been GREAT so far! Can
+    // we get it for Lock too?"), starting from Braces' defaults.
+    { mode: 'lock', name: 'Lock review',
+      panels: ['csd', 'theta', 'voltage', 'spectrogram'], shape: 'linked' },
     // The Arc's review opens no second window: its main window only.
     { mode: 'arcmode', name: 'The Arc\u2019s review', panels: [], shape: null,
       aid: false },
