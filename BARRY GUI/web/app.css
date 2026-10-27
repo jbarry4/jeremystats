@@ -12824,9 +12824,55 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .br-mode { display: flex; align-items: center; gap: var(--sp-12); }
 .br-mode .br-hint { color: var(--text-3); font-size: var(--fs-115); }
 /* One set's settings, in many too (2026-10-12). */
-.br-bulk-settings { display: flex; flex-wrap: wrap; align-items: flex-end;
-  gap: var(--sp-6) 14px; margin: var(--sp-8) 0; }
-.br-bulk-settings > .br-hint { flex: 1 1 24ch; min-width: 0; }
+/* Three rows (2026-10-27): the settings, the batch's two switches as chips,
+   and a sentence -- one wrapping line ran the sentence off the card. */
+.br-bulk-settings { display: flex; flex-direction: column; align-items: stretch;
+  gap: 12px; margin: var(--sp-8) 0; }
+.br-bulk-settings > .br-hint { margin: 0; max-width: 90ch; }
+
+/* A switch as a chip: icon, what it does, what that means now, a light. */
+.br-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.br-chip {
+  --cc: var(--tc, var(--accent));
+  display: inline-grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center; gap: 10px; min-width: 0; max-width: 100%;
+  padding: 7px 12px 7px 8px; font: inherit; color: var(--text-2);
+  text-align: left; cursor: pointer; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg-2);
+  transition: border-color var(--dur-2, .16s), background var(--dur-2, .16s),
+              color var(--dur-2, .16s),
+              transform calc(150ms * var(--motion-pace, 1)) var(--ease-snap, ease);
+}
+.br-chip.vacc { --cc: var(--accent-2, #7fb8ff); }
+.br-chip:hover:not(:disabled) { border-color: var(--accent-line); }
+.br-chip:active:not(:disabled) { transform: scale(.97); }
+.br-chip:disabled { cursor: default; opacity: .6; }
+.br-chip.on { color: var(--text);
+  border-color: color-mix(in srgb, var(--cc) 60%, var(--line));
+  background: color-mix(in srgb, var(--cc) 12%, var(--bg-2)); }
+.br-chip-ico { display: grid; place-items: center; width: 28px; height: 28px;
+  border-radius: 50%; color: var(--text-3);
+  background: color-mix(in srgb, var(--text-3) 12%, transparent);
+  transition: color var(--dur-2, .16s), background var(--dur-2, .16s); }
+.br-chip.on .br-chip-ico { color: var(--cc);
+  background: color-mix(in srgb, var(--cc) 18%, transparent); }
+.br-chip-ico svg { width: 17px; height: 17px; fill: none; stroke: currentColor;
+  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.br-chip-words { min-width: 0; }
+.br-chip-words b { display: block; font-size: var(--fs-12); }
+.br-chip-words i { display: block; font-style: normal; font-size: var(--fs-105);
+  color: var(--text-3); overflow-wrap: anywhere; }
+.br-chip-light { width: 8px; height: 8px; border-radius: 50%;
+  background: var(--line);
+  transition: background var(--dur-2, .16s), box-shadow var(--dur-2, .16s); }
+.br-chip.on .br-chip-light { background: var(--cc);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cc) 25%, transparent); }
+
+/* The plan, read again: what it said stays, quieter, until the new one. */
+.br-plan { position: relative; transition: opacity var(--dur-2, .16s); }
+.br-plan.busy > :not(.br-plan-busy):not(.section-label) { opacity: .5; }
+.br-plan-busy { position: absolute; top: 12px; right: 14px;
+  font-size: var(--fs-105); color: var(--text-3); }
 /* Many is Doppler's shape (2026-10-14): a searchable list of sets that
    keeps its scroll, the settings and the cost once for the batch, and the
    batch itself as a row per set with a bar over them. */
