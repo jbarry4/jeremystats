@@ -24,8 +24,8 @@
     "schema": "2026-09-04T15:57:01.904976+00:00",
     "session": "2026-09-04T15:57:01.904976+00:00",
     "start": "2026-09-04T15:57:01.904976+00:00",
-    "updated": "2026-10-22T20:31:09.485435+00:00",
-    "view_state": "2026-10-22T20:31:09.485435+00:00"
+    "updated": "2026-10-27T19:13:59.876685+00:00",
+    "view_state": "2026-10-27T19:13:59.876685+00:00"
   },
   "_keys": {
     "bookmarks": {
@@ -50,6 +50,10 @@
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M60\\M60_s1_Baseline": [
         "set",
         "2026-09-10T03:58:44.189270+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45": [
+        "set",
+        "2026-10-23T19:20:51.248075+00:00"
       ]
     },
     "seen": {
@@ -67,7 +71,7 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-10-22T20:10:15.448920+00:00"
+        "2026-10-27T19:04:37.950467+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
@@ -76,7 +80,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-22T20:31:09.485435+00:00",
+    "at": "2026-10-27T19:13:59.876685+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -110,7 +114,8 @@
     "D:\\PTEN\\CTL\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45",
     "Y:\\ProcessedPtenData\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M60_s1_Baseline",
-    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M60\\M60_s1_Baseline"
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M60\\M60_s1_Baseline",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -139,7 +144,7 @@
       "scan": null
     },
     "barrylab-d8e8": {
-      "at": "2026-10-22T16:10:15-04:00",
+      "at": "2026-10-27T15:04:37-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45",
@@ -158,9 +163,9 @@
   "session": 1,
   "start": "2025-07-10T11:41:45",
   "updated": {
-    "app_version": "2026.10.22.4",
-    "at": "2026-10-22T16:31:09-04:00",
-    "commit": "c715853b",
+    "app_version": "2026.10.27.1",
+    "at": "2026-10-27T15:13:59-04:00",
+    "commit": "3a7029a8",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
@@ -217,7 +222,7 @@
     "spacing": 50,
     "span": 1,
     "stft_mode": null,
-    "t0": 2413.662023,
+    "t0": 2413.605992,
     "ylim": null
   }
 }
