@@ -23,8 +23,8 @@
     "schema": "2026-09-04T15:57:01.604946+00:00",
     "session": "2026-09-04T15:57:01.604946+00:00",
     "start": "2026-09-04T15:57:01.604946+00:00",
-    "updated": "2026-10-14T19:50:05.241027+00:00",
-    "view_state": "2026-10-12T15:19:32.874438+00:00"
+    "updated": "2026-10-27T19:40:51.367033+00:00",
+    "view_state": "2026-10-27T19:40:51.367033+00:00"
   },
   "_keys": {
     "paths": {
@@ -42,15 +42,19 @@
       ],
       "Y:\\ProcessedPtenData\\M6_PtenMissCTL\\M6s8sept14\\2023-09-14_18-04-54": [
         "set",
-        "2026-09-04T15:57:01.604946+00:00"
+        "2026-09-10T03:47:29.100279+00:00"
       ],
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M6_s8_CNO": [
         "set",
-        "2026-09-04T15:57:01.604946+00:00"
+        "2026-09-10T03:47:29.100279+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M6_PtenMissCTL\\M6s8sept14\\2023-09-14_18-04-54": [
+        "set",
+        "2026-10-23T19:20:27.069792+00:00"
       ],
       "vacc:s08c93e795383": [
         "set",
-        "2026-10-14T19:50:05.241027+00:00"
+        "2026-10-14T22:25:36.439862+00:00"
       ]
     },
     "seen": {
@@ -72,16 +76,16 @@
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-10-12T16:02:12.989789+00:00"
+        "2026-10-15T18:30:55.542371+00:00"
       ],
       "lcom549913-e62b": [
         "set",
-        "2026-10-09T14:29:44.392018+00:00"
+        "2026-10-27T19:32:24.546990+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-14T19:50:05.241027+00:00",
+    "at": "2026-10-27T19:40:51.367033+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -115,7 +119,8 @@
     "Y:\\ProcessedPtenData\\M6_PtenMissCTL\\M6s8sept14\\2023-09-14_18-04-54",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M6_s8_CNO",
     "D:\\Data\\Archive\\PTEN Project\\Control\\M6_s8\\2023-09-14_18-04-54",
-    "vacc:s08c93e795383"
+    "vacc:s08c93e795383",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M6_PtenMissCTL\\M6s8sept14\\2023-09-14_18-04-54"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -152,7 +157,7 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-10-12T12:02:12-04:00",
+      "at": "2026-10-15T14:30:54-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\CTL\\M6_PtenMissCTL\\M6s8sept14\\2023-09-14_18-04-54",
@@ -160,7 +165,7 @@
       "scan": null
     },
     "lcom549913-e62b": {
-      "at": "2026-10-09T10:29:43-04:00",
+      "at": "2026-10-27T15:32:22-04:00",
       "by": "Isabella Piatek",
       "machine": "Blackbarry",
       "path": "D:\\Data\\Archive\\PTEN Project\\Control\\M6_s8\\2023-09-14_18-04-54",
@@ -171,9 +176,9 @@
   "session": 8,
   "start": "2023-09-14T18:04:54",
   "updated": {
-    "app_version": "2026.10.14.5",
-    "at": "2026-10-14T15:50:05-04:00",
-    "commit": "7007a9e8",
+    "app_version": "2026.10.27.1",
+    "at": "2026-10-27T15:40:51-04:00",
+    "commit": "a64cdea8",
     "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
     "machine": "Blackbarry",
@@ -182,86 +187,55 @@
   },
   "view_state": {
     "channels": [
-      0,
       1,
-      2,
       3,
-      4,
       5,
-      6,
       7,
-      8,
       9,
-      10,
       11,
-      12,
       13,
-      14,
       15,
-      16,
       17,
-      18,
       19,
-      20,
       21,
-      22,
       23,
-      24,
       25,
-      26,
       27,
-      28,
       29,
-      30,
       31,
-      32,
       33,
-      34,
       35,
-      36,
       37,
-      38,
       39,
-      40,
       41,
-      42,
       43,
-      44,
       45,
-      46,
       47,
-      48,
       49,
-      50,
       51,
-      52,
       53,
-      54,
       55,
-      56,
       57,
-      58,
       59,
-      60,
       61,
-      62,
       63
     ],
-    "clim": null,
+    "climBy": null,
     "fdefault": null,
     "flock": true,
     "gain": 2.25,
-    "hp": 0,
+    "hp": 1,
     "invert": true,
-    "lp": 0,
+    "lp": 70,
+    "marks_fade": null,
     "marks_view": "show",
     "normalize": "shared",
-    "notch": 0,
+    "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 6,
+    "span": 0.4,
     "stft_mode": null,
-    "t0": 406.75642106544893,
+    "t0": 1171.602529,
     "ylim": null
   }
 }
