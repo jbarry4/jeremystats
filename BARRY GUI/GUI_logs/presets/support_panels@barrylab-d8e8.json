@@ -2,9 +2,13 @@
   "_at": {},
   "_keys": {
     "presets": {
+      "sp-isabella-piatek-uvm-edu": [
+        "set",
+        "2026-10-27T17:45:41.699625+00:00"
+      ],
       "sp-rain-younger-uvm-edu": [
         "set",
-        "2026-10-27T15:48:24.382052+00:00"
+        "2026-10-27T22:17:16.748147+00:00"
       ],
       "sp-rain-younger-uvm-edu-rain-setup": [
         "set",
@@ -17,11 +21,92 @@
     }
   },
   "_shard": {
-    "at": "2026-10-27T17:41:09.655231+00:00",
+    "at": "2026-10-27T22:17:16.748147+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
   "presets": [
+    {
+      "addons": {
+        "lock": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  70,
+                  30
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": 0.8
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "custom",
+              "hp": 1,
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "gain": 2.5,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "fmax": 800,
+              "fmin": 1,
+              "panel": "spectrogram"
+            }
+          ],
+          "shape": "linked",
+          "span": null
+        }
+      },
+      "at": "2026-10-27T17:45:27.801Z",
+      "auto": true,
+      "id": "sp-isabella-piatek-uvm-edu",
+      "label": "current",
+      "name": "Isabella Piatek \u2014 current",
+      "owner": "Isabella Piatek",
+      "owner_email": "isabella.piatek@uvm.edu",
+      "saved": {
+        "app_version": "2026.10.27.1",
+        "at": "2026-10-27T13:45:41-04:00",
+        "commit": "e6182225",
+        "email": "Isabella.Piatek@uvm.edu",
+        "host": "LCOM549913",
+        "machine": "Blackbarry",
+        "os": "Windows",
+        "user": "Isabella Piatek"
+      }
+    },
     {
       "addons": {
         "lock": {
@@ -100,8 +185,8 @@
               },
               {
                 "cols": [
-                  74,
-                  26
+                  68,
+                  32
                 ],
                 "h": 50
               }
@@ -121,6 +206,7 @@
             "span": null
           },
           "open": true,
+          "overview": null,
           "panels": [
             {
               "filter": "p:ds",
@@ -161,7 +247,7 @@
           "shape": "linked"
         }
       },
-      "at": "2026-10-27T15:48:24.378Z",
+      "at": "2026-10-27T22:17:16.743Z",
       "auto": true,
       "id": "sp-rain-younger-uvm-edu",
       "label": "current",
@@ -169,9 +255,9 @@
       "owner": "Rain Younger",
       "owner_email": "rain.younger@uvm.edu",
       "saved": {
-        "app_version": "2026.10.26.2",
-        "at": "2026-10-27T11:48:24-04:00",
-        "commit": "475259cf",
+        "app_version": "2026.10.27.1",
+        "at": "2026-10-27T18:17:16-04:00",
+        "commit": "8d803f4e",
         "email": "rain.younger@uvm.edu",
         "host": "BarryLab",
         "machine": "Strawbarry",

@@ -26,8 +26,8 @@
     "schema": "2026-09-04T15:57:01.575592+00:00",
     "session": "2026-09-04T15:57:01.575592+00:00",
     "start": "2026-09-04T15:57:01.575592+00:00",
-    "updated": "2026-10-15T17:36:17.391530+00:00",
-    "view_state": "2026-10-15T17:36:17.391530+00:00"
+    "updated": "2026-10-27T19:27:33.401832+00:00",
+    "view_state": "2026-10-27T19:27:33.401832+00:00"
   },
   "_keys": {
     "paths": {
@@ -49,11 +49,15 @@
       ],
       "Y:\\ProcessedPtenData\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00": [
         "set",
-        "2026-09-04T15:57:01.575592+00:00"
+        "2026-09-10T03:43:06.779078+00:00"
       ],
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M2_s8_CNO": [
         "set",
-        "2026-09-04T15:57:01.575592+00:00"
+        "2026-09-10T03:43:06.779078+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00": [
+        "set",
+        "2026-10-23T19:20:15.526043+00:00"
       ],
       "vacc:sddf3e5010ff2": [
         "set",
@@ -75,11 +79,11 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-10-15T17:16:04.562852+00:00"
+        "2026-10-27T19:25:52.440721+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-10-12T18:12:56.582795+00:00"
+        "2026-10-22T16:36:04.488301+00:00"
       ],
       "lcom549913-e62b": [
         "set",
@@ -88,7 +92,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-15T17:36:17.391530+00:00",
+    "at": "2026-10-27T19:27:33.401832+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -120,11 +124,11 @@
   "paths": [
     "D:\\PTEN\\CTL\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00",
     "G:\\PTEN\\M2_s8",
-    "G:\\PTEN\\M2_s8\\timestamps.mat",
     "Y:\\ProcessedPtenData\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M2_s8_CNO",
     "D:\\Data\\Archive\\PTEN Project\\Control\\M2_s8\\2024-01-26_17-48-00",
-    "vacc:sddf3e5010ff2"
+    "vacc:sddf3e5010ff2",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00"
   ],
   "probe": "h3",
   "probe_source": "manual",
@@ -155,7 +159,7 @@
       "scan": null
     },
     "barrylab-d8e8": {
-      "at": "2026-10-15T13:16:03-04:00",
+      "at": "2026-10-27T15:25:49-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00",
@@ -163,7 +167,7 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-10-12T14:12:56-04:00",
+      "at": "2026-10-22T12:36:04-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\CTL\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00",
@@ -182,9 +186,9 @@
   "session": 8,
   "start": "2024-01-26T17:48:00",
   "updated": {
-    "app_version": "2026.10.14.8",
-    "at": "2026-10-15T13:36:17-04:00",
-    "commit": "98135766",
+    "app_version": "2026.10.27.1",
+    "at": "2026-10-27T15:27:33-04:00",
+    "commit": "8d803f4e",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
@@ -226,21 +230,22 @@
       61,
       63
     ],
-    "clim": null,
+    "climBy": null,
     "fdefault": null,
     "flock": true,
     "gain": 2.5,
     "hp": 1,
     "invert": true,
     "lp": 70,
+    "marks_fade": null,
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 1.22,
+    "span": 1,
     "stft_mode": null,
-    "t0": 12.350983000000001,
+    "t0": 211.094111,
     "ylim": 896.7700805664062
   }
 }

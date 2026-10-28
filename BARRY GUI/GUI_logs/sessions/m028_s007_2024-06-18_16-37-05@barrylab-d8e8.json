@@ -24,14 +24,14 @@
     "schema": "2026-09-04T15:57:01.754614+00:00",
     "session": "2026-09-04T15:57:01.754614+00:00",
     "start": "2026-09-04T15:57:01.754614+00:00",
-    "updated": "2026-10-13T23:01:33.041796+00:00",
-    "view_state": "2026-10-13T23:01:33.041796+00:00"
+    "updated": "2026-10-27T22:13:46.433720+00:00",
+    "view_state": "2026-10-27T22:13:46.433720+00:00"
   },
   "_keys": {
     "paths": {
       "D:\\Data\\Archive\\PTEN Project\\PTEN\\M28_s7\\2024-06-18_16-37-05": [
         "set",
-        "2026-09-08T18:41:25.392289+00:00"
+        "2026-09-10T03:53:01.430149+00:00"
       ],
       "D:\\PTEN\\PTEN\\m28_ptenblind\\m28s7jun18\\2024-06-18_16-37-05": [
         "set",
@@ -43,11 +43,15 @@
       ],
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M28_s7_CNO": [
         "set",
-        "2026-09-04T15:57:01.754614+00:00"
+        "2026-09-10T03:53:01.430149+00:00"
       ],
       "Y:\\ProcessedPtenData\\m28_ptenblind\\m28s7jun18\\2024-06-18_16-37-05": [
         "set",
-        "2026-09-04T15:57:01.754614+00:00"
+        "2026-09-10T03:53:01.430149+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\m28_ptenblind\\m28s7jun18\\2024-06-18_16-37-05": [
+        "set",
+        "2026-10-23T19:20:44.902804+00:00"
       ]
     },
     "seen": {
@@ -69,7 +73,7 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-10-13T22:26:41.791692+00:00"
+        "2026-10-27T21:49:22.260389+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
@@ -77,12 +81,12 @@
       ],
       "lcom549913-e62b": [
         "set",
-        "2026-09-14T14:10:04.323634+00:00"
+        "2026-10-16T18:38:22.888858+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-13T23:01:33.041796+00:00",
+    "at": "2026-10-27T22:13:46.433720+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -118,7 +122,8 @@
     "G:\\PTEN\\M28_s7",
     "Y:\\ProcessedPtenData\\m28_ptenblind\\m28s7jun18\\2024-06-18_16-37-05",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M28_s7_CNO",
-    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M28_s7\\2024-06-18_16-37-05"
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M28_s7\\2024-06-18_16-37-05",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\m28_ptenblind\\m28s7jun18\\2024-06-18_16-37-05"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -154,7 +159,7 @@
       "scan": "scan_e4c0479cd6"
     },
     "barrylab-d8e8": {
-      "at": "2026-10-13T18:26:41-04:00",
+      "at": "2026-10-27T17:49:22-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\m28_ptenblind\\m28s7jun18\\2024-06-18_16-37-05",
@@ -170,20 +175,20 @@
       "scan": "scan_97cbe5659e"
     },
     "lcom549913-e62b": {
-      "at": "2026-09-14T10:10:04-04:00",
+      "at": "2026-10-16T14:38:22-04:00",
       "by": "Isabella Piatek",
       "machine": "Blackbarry",
       "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M28_s7\\2024-06-18_16-37-05",
-      "root": "D:/Data/Archive/PTEN Project/PTEN",
-      "scan": "scan_1a5cc6ded9"
+      "root": null,
+      "scan": null
     }
   },
   "session": 7,
   "start": "2024-06-18T16:37:05",
   "updated": {
-    "app_version": "2026.10.12.5",
-    "at": "2026-10-13T19:01:33-04:00",
-    "commit": "071b8c13",
+    "app_version": "2026.10.27.1",
+    "at": "2026-10-27T18:13:46-04:00",
+    "commit": "8d803f4e",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
@@ -225,13 +230,14 @@
       61,
       63
     ],
-    "clim": null,
+    "climBy": null,
     "fdefault": null,
     "flock": true,
     "gain": 2.5,
-    "hp": 5,
+    "hp": 1,
     "invert": true,
-    "lp": 100,
+    "lp": 70,
+    "marks_fade": null,
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
@@ -239,7 +245,7 @@
     "spacing": 50,
     "span": 1,
     "stft_mode": null,
-    "t0": 2173.911866,
+    "t0": 2185.403305,
     "ylim": null
   }
 }
