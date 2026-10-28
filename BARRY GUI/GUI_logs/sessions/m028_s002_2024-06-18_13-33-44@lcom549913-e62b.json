@@ -24,14 +24,14 @@
     "schema": "2026-09-04T15:57:01.744918+00:00",
     "session": "2026-09-04T15:57:01.744918+00:00",
     "start": "2026-09-04T15:57:01.744918+00:00",
-    "updated": "2026-09-14T14:10:04.289206+00:00",
-    "view_state": "2026-09-12T20:20:51.207421+00:00"
+    "updated": "2026-10-27T18:46:28.049030+00:00",
+    "view_state": "2026-10-27T18:46:28.049030+00:00"
   },
   "_keys": {
     "paths": {
       "D:\\Data\\Archive\\PTEN Project\\PTEN\\M28_s2\\2024-06-18_13-33-44": [
         "set",
-        "2026-09-08T18:38:57.308069+00:00"
+        "2026-09-10T03:40:59.023241+00:00"
       ],
       "D:\\PTEN\\PTEN\\m28_ptenblind\\m28s2jun18\\2024-06-18_13-33-44": [
         "set",
@@ -43,11 +43,15 @@
       ],
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M28_s2_baseline": [
         "set",
-        "2026-09-04T15:57:01.744918+00:00"
+        "2026-09-10T03:40:59.023241+00:00"
       ],
       "Y:\\ProcessedPtenData\\m28_ptenblind\\m28s2jun18\\2024-06-18_13-33-44": [
         "set",
-        "2026-09-04T15:57:01.744918+00:00"
+        "2026-09-10T03:40:59.023241+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\m28_ptenblind\\m28s2jun18\\2024-06-18_13-33-44": [
+        "set",
+        "2026-10-23T19:20:44.325209+00:00"
       ]
     },
     "seen": {
@@ -69,20 +73,20 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-09-12T20:10:22.159084+00:00"
+        "2026-10-21T20:24:00.903246+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-14T13:59:18.816803+00:00"
+        "2026-10-20T20:03:08.669617+00:00"
       ],
       "lcom549913-e62b": [
         "set",
-        "2026-09-14T14:10:04.289206+00:00"
+        "2026-10-27T18:27:28.456489+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-14T14:10:04.289206+00:00",
+    "at": "2026-10-27T18:46:28.049030+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -118,7 +122,8 @@
     "G:\\PTEN\\M28_s2",
     "Y:\\ProcessedPtenData\\m28_ptenblind\\m28s2jun18\\2024-06-18_13-33-44",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M28_s2_baseline",
-    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M28_s2\\2024-06-18_13-33-44"
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M28_s2\\2024-06-18_13-33-44",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\m28_ptenblind\\m28s2jun18\\2024-06-18_13-33-44"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -154,34 +159,36 @@
       "scan": "scan_e4c0479cd6"
     },
     "barrylab-d8e8": {
-      "at": "2026-09-12T16:10:22-04:00",
+      "at": "2026-10-21T16:23:59-04:00",
       "by": "Rain Younger",
-      "machine": "Bluebarry",
+      "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\m28_ptenblind\\m28s2jun18\\2024-06-18_13-33-44",
       "root": null,
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-14T09:59:18-04:00",
+      "at": "2026-10-20T16:03:01-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN\\m28_ptenblind\\m28s2jun18\\2024-06-18_13-33-44",
-      "root": "D:/PTEN/PTEN",
-      "scan": "scan_f179140bc2"
+      "root": null,
+      "scan": null
     },
     "lcom549913-e62b": {
-      "at": "2026-09-14T10:10:04-04:00",
+      "at": "2026-10-27T14:27:28-04:00",
       "by": "Isabella Piatek",
       "machine": "Blackbarry",
       "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M28_s2\\2024-06-18_13-33-44",
-      "root": "D:/Data/Archive/PTEN Project/PTEN",
-      "scan": "scan_1a5cc6ded9"
+      "root": null,
+      "scan": null
     }
   },
   "session": 2,
   "start": "2024-06-18T13:33:44",
   "updated": {
-    "at": "2026-09-14T10:10:04-04:00",
+    "app_version": "2026.10.27.1",
+    "at": "2026-10-27T14:46:28-04:00",
+    "commit": "a64cdea8",
     "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
     "machine": "Blackbarry",
@@ -223,22 +230,22 @@
       61,
       63
     ],
-    "clim": null,
-    "even_only": false,
+    "climBy": null,
     "fdefault": null,
     "flock": true,
-    "gain": 1,
-    "hp": 5,
+    "gain": 2.5,
+    "hp": 0,
     "invert": true,
-    "lp": 100,
+    "lp": 0,
+    "marks_fade": null,
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
-    "probe": null,
+    "probe": "h3",
     "spacing": 50,
-    "span": 1,
+    "span": 0.8,
     "stft_mode": null,
-    "t0": 2860.765,
+    "t0": 2909.229738,
     "ylim": null
   }
 }

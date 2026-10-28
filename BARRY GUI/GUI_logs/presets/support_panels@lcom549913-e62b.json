@@ -4,11 +4,15 @@
     "presets": {
       "sp-isabella-piatek-uvm-edu": [
         "set",
-        "2026-10-27T17:45:41.699625+00:00"
+        "2026-10-27T19:34:06.883805+00:00"
       ],
       "sp-rain-younger-uvm-edu": [
         "set",
-        "2026-10-22T15:03:04.284596+00:00"
+        "2026-10-27T15:48:24.382052+00:00"
+      ],
+      "sp-rain-younger-uvm-edu-rain-setup": [
+        "set",
+        "2026-10-27T17:41:09.655231+00:00"
       ],
       "sp-sakhava1-uvm-edu": [
         "set",
@@ -17,7 +21,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-27T17:45:41.699625+00:00",
+    "at": "2026-10-27T19:34:06.883805+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -71,13 +75,81 @@
               "panel": "csd"
             },
             {
+              "filter": "p:none",
               "gain": 2.5,
+              "notch": true,
               "panel": "traces"
             },
             {
               "band": "custom",
+              "filter": "p:none",
               "fmax": 800,
               "fmin": 1,
+              "notch": true,
+              "panel": "spectrogram"
+            }
+          ],
+          "shape": "linked",
+          "span": null
+        },
+        "panning": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  74,
+                  26
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": 0.4
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "custom",
+              "hp": 1,
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "gain": 2.5,
+              "notch": true,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "filter": "raw",
+              "fmax": 800,
+              "fmin": 1,
+              "notch": true,
               "panel": "spectrogram"
             }
           ],
@@ -85,7 +157,7 @@
           "span": null
         }
       },
-      "at": "2026-10-27T17:45:27.801Z",
+      "at": "2026-10-27T19:34:06.875Z",
       "auto": true,
       "id": "sp-isabella-piatek-uvm-edu",
       "label": "current",
@@ -94,8 +166,8 @@
       "owner_email": "isabella.piatek@uvm.edu",
       "saved": {
         "app_version": "2026.10.27.1",
-        "at": "2026-10-27T13:45:41-04:00",
-        "commit": "e6182225",
+        "at": "2026-10-27T15:34:06-04:00",
+        "commit": "a64cdea8",
         "email": "Isabella.Piatek@uvm.edu",
         "host": "LCOM549913",
         "machine": "Blackbarry",
@@ -105,15 +177,131 @@
     },
     {
       "addons": {
+        "lock": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  70,
+                  30
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "custom",
+              "hp": 1,
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "gain": 2.5,
+              "notch": true,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "filter": "p:none",
+              "fmax": 800,
+              "fmin": 1,
+              "notch": true,
+              "panel": "spectrogram"
+            }
+          ],
+          "shape": "linked",
+          "span": null
+        },
         "panning": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  74,
+                  26
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
           "open": true,
           "panels": [
-            "csd",
-            "theta",
-            "traces",
-            "spectrogram"
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "gain": 2.5,
+              "notch": true,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "filter": "raw",
+              "fmax": 800,
+              "fmin": 1,
+              "notch": true,
+              "panel": "spectrogram"
+            }
           ],
-          "shape": "linked"
+          "shape": "linked",
+          "span": null
         },
         "strata": {
           "open": true,
@@ -126,22 +314,179 @@
           "shape": "linked"
         }
       },
-      "at": "2026-10-21T17:58:49.680510+00:00",
+      "at": "2026-10-27T15:48:24.378Z",
+      "auto": true,
       "id": "sp-rain-younger-uvm-edu",
       "label": "current",
       "name": "Rain Younger \u2014 current",
-      "note": "From the lab rig (barrylab-d8e8), as Rain left them on 2026-10-21.",
       "owner": "Rain Younger",
       "owner_email": "rain.younger@uvm.edu",
       "saved": {
-        "app_version": "2026.10.21.5",
-        "at": "2026-10-22T11:03:04-04:00",
-        "commit": "724bccbc",
-        "email": "sakhava1@uvm.edu",
-        "host": "DESKTOP-4H65AI7",
-        "machine": "Bluebarry",
+        "app_version": "2026.10.26.2",
+        "at": "2026-10-27T11:48:24-04:00",
+        "commit": "475259cf",
+        "email": "rain.younger@uvm.edu",
+        "host": "BarryLab",
+        "machine": "Strawbarry",
         "os": "Windows",
-        "user": "Shahriar Tafti"
+        "user": "Rain Younger"
+      }
+    },
+    {
+      "addons": {
+        "lock": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  70,
+                  30
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
+          "open": true,
+          "overview": null,
+          "panels": [
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "custom",
+              "hp": 1,
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "gain": 2.5,
+              "notch": true,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "filter": "p:none",
+              "fmax": 800,
+              "fmin": 1,
+              "notch": true,
+              "panel": "spectrogram"
+            }
+          ],
+          "shape": "linked",
+          "span": null
+        },
+        "panning": {
+          "layout": {
+            "rows": [
+              {
+                "cols": [
+                  50,
+                  50
+                ],
+                "h": 50
+              },
+              {
+                "cols": [
+                  74,
+                  26
+                ],
+                "h": 50
+              }
+            ]
+          },
+          "main": {
+            "layout": null,
+            "panels": [
+              {
+                "filter": "p:ds",
+                "gain": 2.5,
+                "notch": true,
+                "panel": "traces"
+              }
+            ],
+            "shape": null,
+            "span": null
+          },
+          "open": true,
+          "panels": [
+            {
+              "filter": "p:ds",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "notch": true,
+              "panel": "csd"
+            },
+            {
+              "filter": "p:none",
+              "gain": 2.5,
+              "notch": true,
+              "panel": "traces"
+            },
+            {
+              "band": "custom",
+              "filter": "raw",
+              "fmax": 800,
+              "fmin": 1,
+              "notch": true,
+              "panel": "spectrogram"
+            }
+          ],
+          "shape": "linked",
+          "span": null
+        },
+        "strata": {
+          "open": true,
+          "panels": [
+            "csd",
+            "theta",
+            "voltage",
+            "spectrogram"
+          ],
+          "shape": "linked"
+        }
+      },
+      "at": "2026-10-27T17:41:09.651Z",
+      "auto": false,
+      "id": "sp-rain-younger-uvm-edu-rain-setup",
+      "label": "Rain Setup",
+      "name": "Rain Younger \u2014 Rain Setup",
+      "owner": "Rain Younger",
+      "owner_email": "rain.younger@uvm.edu",
+      "saved": {
+        "app_version": "2026.10.26.2",
+        "at": "2026-10-27T13:41:09-04:00",
+        "commit": "475259cf",
+        "email": "rain.younger@uvm.edu",
+        "host": "BarryLab",
+        "machine": "Strawbarry",
+        "os": "Windows",
+        "user": "Rain Younger"
       }
     },
     {

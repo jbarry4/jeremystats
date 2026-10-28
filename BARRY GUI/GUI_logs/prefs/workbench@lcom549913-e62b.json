@@ -1,13 +1,14 @@
 {
   "_at": {
     "braces_curve": "2026-10-19T16:52:32.986134+00:00",
-    "braces_span": "2026-10-19T15:41:35.395792+00:00",
+    "braces_span": "2026-10-27T17:51:19.133890+00:00",
     "curate_at": "2026-10-26T15:29:52.122450+00:00",
     "curate_span": "2026-10-20T16:12:30.208713+00:00",
     "density": "2026-10-20T17:51:48.551423+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "figure_profile": "2026-10-23T19:05:47.379192+00:00",
-    "panning_at": "2026-10-23T17:34:01.489387+00:00",
+    "lock_trace_band": "2026-10-27T15:44:47.703711+00:00",
+    "panning_at": "2026-10-27T19:42:00.686385+00:00",
     "panning_span": "2026-10-20T17:48:47.486599+00:00",
     "pipeline_folders": "2026-09-23T13:26:19.592745+00:00",
     "radio": "2026-10-13T19:54:21.520703+00:00",
@@ -15,11 +16,12 @@
     "result_group": "2026-10-23T13:56:44.359945+00:00",
     "spotter_at": "2026-10-22T15:55:55.110663+00:00",
     "spotter_light": "2026-10-16T17:21:44.827873+00:00",
-    "support_panels": "2026-10-27T17:45:41.640089+00:00",
-    "updated": "2026-10-27T17:45:41.086397+00:00",
+    "support_panels": "2026-10-27T19:34:04.756627+00:00",
+    "updated": "2026-10-27T19:42:00.686385+00:00",
     "vacc_signed_ack": "2026-10-20T16:14:37.060022+00:00",
+    "xf_chan_column": "2026-10-22T14:33:18.151050+00:00",
     "xf_simplify_curate": "2026-10-21T21:43:37.927942+00:00",
-    "xf_simplify_lock": "2026-10-26T14:41:05.634930+00:00",
+    "xf_simplify_lock": "2026-10-27T18:17:13.669159+00:00",
     "xf_simplify_panning": "2026-10-23T16:01:13.183303+00:00",
     "xf_simplify_spotter": "2026-10-21T14:46:13.790670+00:00"
   },
@@ -122,7 +124,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-27T17:45:41.640089+00:00",
+    "at": "2026-10-27T19:42:00.686385+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -546,7 +548,8 @@
     "DESKTOP-4H65AI7": true,
     "LCOM549913": false
   },
-  "panning_at": "{\"s45965a6b13d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e9609fe60ed\",\"t\":39.066984,\"at\":1792507235815},\"s79ba9ba163c4:pooled\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e127b36b23c\",\"t\":12.197434,\"at\":1792595619389},\"s45bae70722f2:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":257,\"id\":\"efb1cb85a58\",\"t\":57.814477,\"at\":1792530883739},\"sd0d0bded958b:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":2,\"id\":\"e4d8cec8ce8\",\"t\":25.35749,\"at\":1792519409404},\"s45bae70722f2:pooled.ebfa98498290b\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":246,\"id\":\"efc21024109\",\"t\":1708.491514,\"at\":1792776841481},\"s38b9e61c5684:pooled.eafa70b62f372\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":473,\"id\":\"e6bf584fe41\",\"t\":1842.81976,\"at\":1792596663805},\"s0a9e96cf1739:pooled.e43a2cfedde17\":{\"review\":\"all\",\"origin\":\"all\",\"index\":7,\"id\":\"e89e2ad1232\",\"t\":202.664174,\"at\":1792776740753},\"sc74c98b2495d:pooled.eb60578899091\":{\"review\":\"left\",\"origin\":\"all\",\"index\":788,\"id\":\"e413f3d1154\",\"t\":3008.4926,\"at\":1792691744286},\"s016e132432c8:pooled.ef4c18a9a8bd4\":{\"review\":\"flag\",\"origin\":\"doppler\",\"index\":74,\"id\":\"e73f8386728\",\"t\":698.684753,\"at\":1792605263217},\"s4a67210fc7ac:pooled.e35c325a44d44\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":477,\"id\":\"e7c844f1bfc\",\"t\":2912.134277,\"at\":1792678141047},\"sd0d0bded958b:pooled.edb66d3c694fd\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":198,\"id\":\"e27e7cf868e\",\"t\":1976.560206,\"at\":1792683443922},\"s6cdd64d005c4:pooled.ea62d1b78448b\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":333,\"id\":\"e96f39238ed\",\"t\":1929.003175,\"at\":1792691023965},\"sd94396e874c7:pooled.e8aad148bd6f6\":{\"review\":\"left\",\"origin\":\"all\",\"index\":31,\"id\":\"ec6da953380\",\"t\":618.017395,\"at\":1792692159046},\"sd42a6992b76c:pooled.e1429bf1f239f\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e528cae5121\",\"t\":25.092916,\"at\":1792698749464},\"s9eb56573e0b4:pooled.ecb139fb2ea29\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":247,\"id\":\"ec09dc6a831\",\"t\":1002.679098,\"at\":1792699766696},\"s8d7f397b9708:pooled.ed4a4bcb4e47f\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":629,\"id\":\"e5ce8cc2c8d\",\"t\":2414.162023,\"at\":1792701083177},\"s14510e30e1bd:pooled.eeaecc4a5e194\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":235,\"id\":\"e6aaa4ef3cf\",\"t\":1216.178138,\"at\":1792757382345},\"sba57286bdee3:pooled.e2a8e47760eea\":{\"review\":\"left\",\"origin\":\"all\",\"index\":440,\"id\":\"e71c84d7913\",\"t\":1800.565504,\"at\":1792769426438},\"s43b16cd74bcb:pooled.eab69363ee622\":{\"review\":\"left\",\"origin\":\"all\",\"index\":44,\"id\":\"ee571131c2f\",\"t\":658.884313,\"at\":1792759992226},\"s500a5aec223e:pooled.eece9a84acdea\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":231,\"id\":\"eda7ba87c5a\",\"t\":1402.676437,\"at\":1792767185542},\"s4187bdd4a184:pooled.e86e4fcb4748a\":{\"review\":\"left\",\"origin\":\"all\",\"index\":118,\"id\":\"e7705189716\",\"t\":494.534322,\"at\":1792773756720}}",
+  "lock_trace_band": "ds",
+  "panning_at": "{\"s45965a6b13d3:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e9609fe60ed\",\"t\":39.066984,\"at\":1792507235815},\"s79ba9ba163c4:pooled\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e127b36b23c\",\"t\":12.197434,\"at\":1793115588967},\"s45bae70722f2:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":257,\"id\":\"efb1cb85a58\",\"t\":57.814477,\"at\":1792530883739},\"sd0d0bded958b:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":2,\"id\":\"e4d8cec8ce8\",\"t\":25.35749,\"at\":1792519409404},\"s45bae70722f2:pooled.ebfa98498290b\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":246,\"id\":\"efc21024109\",\"t\":1708.491514,\"at\":1792776841481},\"s38b9e61c5684:pooled.eafa70b62f372\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":473,\"id\":\"e6bf584fe41\",\"t\":1842.81976,\"at\":1792596663805},\"s0a9e96cf1739:pooled.e43a2cfedde17\":{\"review\":\"all\",\"origin\":\"all\",\"index\":7,\"id\":\"e89e2ad1232\",\"t\":202.664174,\"at\":1792776740753},\"sc74c98b2495d:pooled.eb60578899091\":{\"review\":\"left\",\"origin\":\"all\",\"index\":788,\"id\":\"e413f3d1154\",\"t\":3008.4926,\"at\":1792691744286},\"s016e132432c8:pooled.ef4c18a9a8bd4\":{\"review\":\"flag\",\"origin\":\"doppler\",\"index\":74,\"id\":\"e73f8386728\",\"t\":698.684753,\"at\":1792605263217},\"s4a67210fc7ac:pooled.e35c325a44d44\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":477,\"id\":\"e7c844f1bfc\",\"t\":2912.134277,\"at\":1792678141047},\"sd0d0bded958b:pooled.edb66d3c694fd\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":198,\"id\":\"e27e7cf868e\",\"t\":1976.560206,\"at\":1792683443922},\"s6cdd64d005c4:pooled.ea62d1b78448b\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":333,\"id\":\"e96f39238ed\",\"t\":1929.003175,\"at\":1792691023965},\"sd94396e874c7:pooled.e8aad148bd6f6\":{\"review\":\"left\",\"origin\":\"all\",\"index\":31,\"id\":\"ec6da953380\",\"t\":618.017395,\"at\":1792692159046},\"sd42a6992b76c:pooled.e1429bf1f239f\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":0,\"id\":\"e528cae5121\",\"t\":25.092916,\"at\":1792698749464},\"s9eb56573e0b4:pooled.ecb139fb2ea29\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":247,\"id\":\"ec09dc6a831\",\"t\":1002.679098,\"at\":1792699766696},\"s8d7f397b9708:pooled.ed4a4bcb4e47f\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":629,\"id\":\"e5ce8cc2c8d\",\"t\":2414.162023,\"at\":1792701083177},\"s14510e30e1bd:pooled.eeaecc4a5e194\":{\"review\":\"all\",\"origin\":\"doppler\",\"index\":235,\"id\":\"e6aaa4ef3cf\",\"t\":1216.178138,\"at\":1792757382345},\"sba57286bdee3:pooled.e2a8e47760eea\":{\"review\":\"left\",\"origin\":\"all\",\"index\":440,\"id\":\"e71c84d7913\",\"t\":1800.565504,\"at\":1792769426438},\"s43b16cd74bcb:pooled.eab69363ee622\":{\"review\":\"left\",\"origin\":\"all\",\"index\":44,\"id\":\"ee571131c2f\",\"t\":658.884313,\"at\":1792759992226},\"s500a5aec223e:pooled.eece9a84acdea\":{\"review\":\"left\",\"origin\":\"doppler\",\"index\":231,\"id\":\"eda7ba87c5a\",\"t\":1402.676437,\"at\":1792767185542},\"s4187bdd4a184:pooled.e86e4fcb4748a\":{\"review\":\"left\",\"origin\":\"all\",\"index\":118,\"id\":\"e7705189716\",\"t\":494.534322,\"at\":1792773756720},\"s08c93e795383:pooled.e7288d9478f30\":{\"review\":\"left\",\"origin\":\"all\",\"index\":534,\"id\":\"ebef6ee550a\",\"t\":1171.802529,\"at\":1793130120675}}",
   "panning_span": 0.6,
   "pipeline_folders": {
     "session": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43"
@@ -645,13 +648,81 @@
           "panel": "csd"
         },
         {
+          "filter": "p:none",
           "gain": 2.5,
+          "notch": true,
           "panel": "traces"
         },
         {
           "band": "custom",
+          "filter": "p:none",
           "fmax": 800,
           "fmin": 1,
+          "notch": true,
+          "panel": "spectrogram"
+        }
+      ],
+      "shape": "linked",
+      "span": null
+    },
+    "panning": {
+      "layout": {
+        "rows": [
+          {
+            "cols": [
+              50,
+              50
+            ],
+            "h": 50
+          },
+          {
+            "cols": [
+              74,
+              26
+            ],
+            "h": 50
+          }
+        ]
+      },
+      "main": {
+        "layout": null,
+        "panels": [
+          {
+            "filter": "p:ds",
+            "gain": 2.5,
+            "notch": true,
+            "panel": "traces"
+          }
+        ],
+        "shape": null,
+        "span": 0.4
+      },
+      "open": true,
+      "overview": null,
+      "panels": [
+        {
+          "filter": "p:ds",
+          "notch": true,
+          "panel": "csd"
+        },
+        {
+          "filter": "custom",
+          "hp": 1,
+          "notch": true,
+          "panel": "csd"
+        },
+        {
+          "filter": "p:none",
+          "gain": 2.5,
+          "notch": true,
+          "panel": "traces"
+        },
+        {
+          "band": "custom",
+          "filter": "raw",
+          "fmax": 800,
+          "fmin": 1,
+          "notch": true,
           "panel": "spectrogram"
         }
       ],
@@ -667,7 +738,7 @@
     "Home": "dark",
     "LCOM549913": "halloween"
   },
-  "updated": "2026-10-27T13:45:41-04:00",
+  "updated": "2026-10-27T15:42:00-04:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": true,
@@ -677,6 +748,7 @@
     "LCOM549913": true
   },
   "vacc_signed_ack": 1792512852.3774557,
+  "xf_chan_column": "folded",
   "xf_simplify_curate": false,
   "xf_simplify_lock": false,
   "xf_simplify_panning": true,
