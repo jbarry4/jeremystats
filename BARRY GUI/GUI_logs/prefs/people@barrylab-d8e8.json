@@ -8,7 +8,7 @@
       ],
       "Avery Sullenberger": [
         "set",
-        "2026-10-20T17:00:18.105771+00:00"
+        "2026-10-27T18:15:34.629729+00:00"
       ],
       "Debug_Bot": [
         "set",
@@ -24,7 +24,7 @@
       ],
       "Isabella Piatek": [
         "set",
-        "2026-10-27T17:45:44.721659+00:00"
+        "2026-10-27T19:34:07.080471+00:00"
       ],
       "Rain": [
         "set",
@@ -32,7 +32,7 @@
       ],
       "Rain Younger": [
         "set",
-        "2026-10-27T22:17:15.278495+00:00"
+        "2026-10-29T17:30:32.405300+00:00"
       ],
       "Shahriar": [
         "set",
@@ -113,7 +113,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-27T22:17:15.278495+00:00",
+    "at": "2026-10-29T17:30:32.405300+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -152,7 +152,7 @@
     {
       "at": "2026-09-08T21:23:16.555182+00:00",
       "by": "Isabella Piatek",
-      "edited_at": "2026-10-27T17:45:44.719659+00:00",
+      "edited_at": "2026-10-27T19:34:07.079930+00:00",
       "email": "Isabella.Piatek@uvm.edu",
       "id": "Isabella Piatek",
       "initials": "IP",
@@ -192,8 +192,8 @@
     },
     {
       "at": "2026-10-20T17:00:18.105309+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-10-20T17:00:18.105322+00:00",
+      "by": "Avery Sullenberger",
+      "edited_at": "2026-10-27T18:15:31.815164+00:00",
       "email": "asullenb@uvm.edu",
       "id": "Avery Sullenberger",
       "initials": "AS",
@@ -242,7 +242,7 @@
       ],
       "at": "2026-09-29T18:04:01.532204+00:00",
       "by": "Rain Younger",
-      "edited_at": "2026-10-27T22:17:15.278494+00:00",
+      "edited_at": "2026-10-29T17:30:32.405299+00:00",
       "email": "rain.younger@uvm.edu",
       "id": "Rain Younger",
       "initials": "RY",
