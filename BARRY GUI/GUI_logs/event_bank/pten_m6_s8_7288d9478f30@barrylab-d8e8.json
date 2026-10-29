@@ -1,15 +1,16 @@
 {
   "_at": {
-    "added": "2026-10-28T18:24:36.084584+00:00",
-    "by_label": "2026-10-28T18:24:36.084584+00:00",
+    "added": "2026-10-27T18:39:40.403895+00:00",
+    "aligned": "2026-10-29T12:26:20.896898+00:00",
+    "by_label": "2026-10-29T12:26:20.896898+00:00",
     "curation_label": "2026-10-28T18:24:36.084584+00:00",
     "duration_s": "2026-10-28T18:24:36.084584+00:00",
-    "events": "2026-10-28T18:24:36.084584+00:00",
+    "events": "2026-10-29T12:26:20.896898+00:00",
     "gid": "2026-10-28T18:24:36.084584+00:00",
     "id": "2026-10-28T18:24:36.084584+00:00",
     "label_names": "2026-10-28T18:24:36.084584+00:00",
     "mouse": "2026-10-28T18:24:36.084584+00:00",
-    "n": "2026-10-28T18:24:36.084584+00:00",
+    "n": "2026-10-29T12:26:20.896898+00:00",
     "name": "2026-10-28T18:24:36.084584+00:00",
     "note": "2026-10-28T18:24:36.084584+00:00",
     "project": "2026-10-28T18:24:36.084584+00:00",
@@ -43,6 +44,10 @@
         "set",
         "2026-10-28T18:24:36.084584+00:00"
       ],
+      "br-17d3deedee": [
+        "set",
+        "2026-10-29T12:26:20.896898+00:00"
+      ],
       "c03fa6142444": [
         "set",
         "2026-10-28T18:24:36.084584+00:00"
@@ -70,18 +75,180 @@
     }
   },
   "_shard": {
-    "at": "2026-10-28T18:24:36.084584+00:00",
+    "at": "2026-10-29T12:26:20.896898+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
   "added": {
-    "at": "2026-10-27T14:38:08-04:00",
+    "at": "2026-10-27T14:39:40-04:00",
     "by": "Rain Younger",
-    "machine": "BarryLab"
+    "machine": "DESKTOP-NR2H5O7"
+  },
+  "aligned": {
+    "at": "2026-10-29T08:26:20-04:00",
+    "band": [
+      5.0,
+      100.0
+    ],
+    "by": "Rain Younger",
+    "cand_dist_ms": 12.0,
+    "cand_height_sd": 0.0,
+    "channels": [
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52
+    ],
+    "computed_on": {
+      "file": "result_2.json",
+      "host": "login.vacc.uvm.edu",
+      "kind": "vacc",
+      "max_rss": null,
+      "netid": "sakhava1",
+      "partition": "general",
+      "rid": "7e2b09dd242c",
+      "slurm_id": "6098078_2",
+      "workspace": "/gpfs1/home/s/a/sakhava1/jarvis/runs/7e2b09dd242c"
+    },
+    "csd_smooth": true,
+    "dist_ms": 100.0,
+    "estimator": "mad",
+    "invert": true,
+    "left_out": [
+      59
+    ],
+    "lfp_fs": 1000.0,
+    "line_hz": 60.0,
+    "lock_reach_ms": 20.0,
+    "measure": "csd",
+    "n_channels": 16,
+    "order": 3,
+    "pinned": 547,
+    "profile": {
+      "36": -0.222763,
+      "37": -0.247848,
+      "38": -0.14683,
+      "39": 0.146434,
+      "40": 0.310789,
+      "41": 0.318891,
+      "42": 0.261834,
+      "43": 0.165336,
+      "44": 0.118968,
+      "45": 0.12097,
+      "46": 0.189245,
+      "47": 0.315074,
+      "48": 0.450338,
+      "49": 0.26287,
+      "50": -0.205245,
+      "51": -0.271787
+    },
+    "request": {
+      "band_kind": "ds",
+      "channels": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        63,
+        64
+      ],
+      "depth_band": 16,
+      "entry_id": "7288d9478f30",
+      "from_version": "e3e6334d55e8",
+      "hold": [
+        "both",
+        "incisor"
+      ],
+      "kind": "pooled",
+      "n_pinned": 547,
+      "pinned": "80ae9fe3fed7",
+      "stamps": "27e2c0e6bac5"
+    },
+    "request_hash": "c66f6b6c32fd7a77",
+    "screened": {
+      "59": "dead (0.4 uV against a median of 108)"
+    },
+    "smooth_ms": 0.0,
+    "source_version": 2,
+    "source_version_id": "e3e6334d55e8",
+    "spacing_um": 30.0,
+    "tool": "jarvis.lock/1",
+    "version": 3,
+    "window_ms": 200.0
   },
   "by_label": {
-    "garbage": 1,
-    "spike": 565
+    "Spike": 565
   },
   "curation_label": "*",
   "duration_s": null,
@@ -89,3642 +256,2844 @@
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 6.170892
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 9.091996
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 11.396995
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 19.213992,
       "start": 19.213992
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 21.957991
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 33.249987
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 37.753485,
       "start": 37.759985
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 42.916983
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 63.234975
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 73.388971
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 79.069968
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 88.073965
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 96.577961
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 97.972956
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 98.47946,
       "start": 98.47996
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 101.665959
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 104.944958
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 105.504958
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 106.375927
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 106.375957
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 107.13599
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 108.518456,
       "start": 108.521994
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 112.326955
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 113.839954
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 116.696953
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 117.255953
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 118.601952
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 120.363794
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 120.378562
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 126.231949
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 128.642948
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 130.207492
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 131.112166
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 131.402947
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 134.471006
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 136.198765
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 136.650945
     },
     {
-      "channel": 44,
-      "label": "Garbage",
-      "label_id": "garbage",
-      "origin": "doppler",
-      "start": 137.763445
-    },
-    {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 142.120943
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 144.317442,
       "start": 144.317942
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 144.650497
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 145.066992
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 148.79794
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 151.3125
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 151.958094
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 156.376937
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 157.917937
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 158.126936
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 158.639046
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 159.291436,
       "start": 159.291936
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 159.581936
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 160.743935
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 162.098313
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 162.523709
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 164.153837
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 166.811933
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 167.401933
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 168.319932
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 169.93142
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 169.948307
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 171.752931
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 181.208927
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 182.431927
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 185.555925
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 186.214925
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 186.470925
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 186.797925,
       "start": 186.798925
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 187.281925
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 187.457925
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 188.503924
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 192.781579
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 196.539921
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 197.217599
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 201.826903
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 202.068919
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 202.069699
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 203.403918
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 203.550918
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 204.424918
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 204.879918
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 205.823865
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 207.657511
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 208.860916,
       "start": 208.860916
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 214.394914
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 218.830912
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 219.258912
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 220.313911
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 220.961644
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 226.991847
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 227.172909,
       "start": 227.171623
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 227.401909
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 228.207908
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 228.956908
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 230.428907
     },
     {
-      "channel": 42,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 230.791907,
       "start": 230.792907
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 231.074907
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 231.354907
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 231.550386
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 240.446903
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 241.515903
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 245.103901
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 249.212773
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 249.393707
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 250.0469
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 250.780899
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 251.794511
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 252.180399,
       "start": 252.181899
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 252.420714
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 253.166035
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 257.741396,
       "start": 257.741649
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 259.052896,
       "start": 259.044112
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 259.527021
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 259.649896
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 260.110366
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 260.661895
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 261.747895
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 261.911121
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 262.161409
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 262.566894
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 263.124894
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 263.866894
     },
     {
-      "channel": 4,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
-      "start": 264.518894
-    },
-    {
-      "label": "Spike",
-      "label_id": "spike",
-      "origin": "incisor",
       "start": 264.539665
     },
     {
+      "align_flag": "locked_peak",
+      "from_t": 264.518894,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
+      "start": 264.647004
+    },
+    {
+      "label": "Spike",
+      "label_id": "spike",
       "start": 265.980767
     },
     {
-      "channel": 50,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 268.452392,
       "start": 268.458892
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 277.039889,
       "start": 277.040889
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 278.698656
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 281.2533
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 282.102134
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 283.366886
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 284.964692
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 294.245882,
       "start": 294.260487
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 294.943881,
       "start": 294.943881
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 295.710115
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 296.436102
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 296.436293
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 297.032881
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 298.596442
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 300.150304
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 300.563879,
       "start": 300.563879
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 301.798879
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 302.394026
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 303.288878
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 305.174877
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 305.486877
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 305.730976
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 309.193876
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 312.422874
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 314.110874
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 315.418395
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 317.720872
     },
     {
-      "channel": 42,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 320.182371,
       "start": 320.182871
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 320.549871
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 321.415871
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 328.367868
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 329.650868
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 332.195866
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 335.725684
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 336.832865
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 337.168432
     },
     {
-      "channel": 46,
+      "from_t": 337.426364,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
-      "start": 337.426364
+      "start": 337.414327
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 337.729202
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 342.682132
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 347.80886,
       "start": 347.79286
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 348.11486
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 351.091859,
       "start": 351.103986
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 354.091251
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 364.024854
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 364.373458
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 366.832853
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 368.560852
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 382.518954
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 385.682845
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 387.315408
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 390.574843
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 488.989803
     },
     {
-      "channel": 40,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 491.875802,
       "start": 491.878802
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 500.924799
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 503.245798
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 511.848794
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 522.06879
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
       "start": 524.376789
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 525.926789
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 528.156047
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 529.543711
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 539.052783
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 539.234783
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 544.402781
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 549.476779
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 549.705779
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 552.711778,
       "start": 552.710778
     },
     {
-      "channel": 44,
+      "from_t": 583.203766,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
-      "start": 583.203766
+      "start": 583.202274
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 586.855778
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 597.399934
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 597.547605
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 598.16776
     },
     {
-      "channel": 42,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 600.478259,
       "start": 600.478759
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 600.803759
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 600.977063
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 601.574867
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 605.973756
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 606.352756
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 613.023754
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 623.412749
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 623.806749
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 625.823748
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 626.936077
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 627.889077
     },
     {
-      "channel": 42,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 628.186248,
       "start": 628.183577
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 633.861716
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 634.380745
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 642.745242,
       "start": 642.745742
     },
     {
-      "channel": 48,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 644.213241,
       "start": 644.213741
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 646.14474,
       "start": 646.14474
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 654.132737
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 655.991736
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 656.429736
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 659.601735
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 659.758927
     },
     {
-      "channel": 42,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 660.772234,
       "start": 660.784026
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 660.885875
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 661.331734
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 661.508199
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 666.873732
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 670.603731,
       "start": 670.603731
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 671.378546
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 673.02073
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 673.578729,
       "start": 673.577901
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 675.964624
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 677.370228,
       "start": 677.371127
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 684.112252
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 688.853723
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 689.164525
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 689.932706
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 690.058223,
       "start": 690.057723
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 695.505649
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 697.76472
     },
     {
-      "channel": 42,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 697.92772,
       "start": 697.92872
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 698.812719
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 702.834718
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 704.805717
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 705.079339
     },
     {
-      "channel": 6,
+      "align_flag": "locked_peak",
+      "from_t": 705.119217,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
-      "start": 705.119217
+      "start": 705.217696
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 708.874215,
       "start": 708.874715
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 709.547715
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 710.514714
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 711.114714
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 716.295712
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 718.545711
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 722.80071
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 723.951543
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 724.5377
     },
     {
-      "channel": 48,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 727.236708,
       "start": 727.238149
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 728.081707,
       "start": 728.081707
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 728.783707
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 728.991707
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 729.313707,
       "start": 729.313707
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 735.919837
     },
     {
-      "channel": 40,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 736.208204,
       "start": 736.205227
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 737.197704
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 738.281203,
       "start": 738.281703
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 738.498106
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 738.766703
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 743.253701
     },
     {
-      "channel": 40,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 744.092701,
       "start": 744.093701
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 748.499864
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 749.909545
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 753.493282
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 753.923697,
       "start": 753.924697
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 754.578197,
       "start": 754.578697
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 754.708992
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 755.186697
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 765.481692
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 765.847692
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 771.31969,
       "start": 771.31969
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 771.53469
     },
     {
-      "channel": 48,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 772.26519,
       "start": 772.26569
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 780.365686
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 782.135921
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 784.856616
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 785.025536
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 789.741683
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 790.091682
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 790.744684
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 791.010145
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 791.806682,
       "start": 791.806592
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 793.405939
     },
     {
-      "channel": 40,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 797.41268,
       "start": 797.41268
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 799.331179,
       "start": 799.331679
     },
     {
-      "channel": 40,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 800.305678,
       "start": 800.305678
     },
     {
-      "channel": 40,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 802.280178,
       "start": 802.281678
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 810.138674
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 811.079674
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 811.433829
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 812.145518
     },
     {
-      "channel": 38,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 813.453173,
       "start": 813.457383
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 816.041014
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 817.089172,
       "start": 817.089672
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 822.926669
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 825.386895
     },
     {
-      "channel": 42,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 827.488167,
       "start": 827.488667
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 828.188323
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 829.549739
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 835.849664
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 835.999164,
       "start": 835.998001
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 836.824664,
       "start": 836.826664
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 836.82704
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 837.908663
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 839.170795
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 842.439661
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 842.698661,
       "start": 842.697661
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 842.817661
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 843.028488
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 844.95066
     },
     {
-      "channel": 36,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 845.47216,
       "start": 845.47366
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 845.681186
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 849.586687
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 849.587659
     },
     {
-      "channel": 44,
+      "align_flag": "locked_peak",
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
       "start": 849.644659
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 854.955846
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 857.128656
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 858.692748
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 859.079378
     },
     {
-      "channel": 44,
+      "from_t": 859.357155,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
-      "start": 859.357155
+      "start": 859.389788
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 865.932652
     },
     {
-      "channel": 32,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 867.040652,
       "start": 867.045652
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 867.7644
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 868.873867
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 869.072651,
       "start": 869.072253
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 873.374649
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 874.837648
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 875.832648
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 876.547648,
       "start": 876.559323
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 877.797647
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 880.462646,
       "start": 880.462646
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 881.000646
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 883.557645,
       "start": 883.558645
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 890.123642
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 890.696642
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 891.961117
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 896.01814,
       "start": 896.01864
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 896.54314,
       "start": 896.545053
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 901.484736
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 904.834357
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 908.9628
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 909.380103
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 913.930864
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 913.932633
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 914.593589
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 917.154631,
       "start": 917.154631
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 917.557531
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 921.37263
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 921.733153
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 922.011129,
       "start": 922.011629
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 922.434629
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 922.978538
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 929.88095
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 931.065626
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 931.433118
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 933.359125,
       "start": 933.358625
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 938.440623
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 939.905622
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 946.55062
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 947.071619,
       "start": 947.072619
     },
     {
-      "channel": 46,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 947.858119,
       "start": 947.858619
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 948.053619
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 948.430619
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 950.723556
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 950.906618
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 951.779905
     },
     {
-      "channel": 44,
+      "align_flag": "locked_peak",
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
       "start": 954.427116
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 954.451327
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 955.329616
     },
     {
-      "channel": 46,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 957.582115,
       "start": 957.582615
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 958.750615
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 960.063229
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 964.713612
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 965.897612
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 965.898112,
       "start": 965.897687
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 966.712252
     },
     {
-      "channel": 44,
+      "from_t": 967.872111,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
-      "start": 967.872111
+      "start": 967.846585
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 968.240611
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 968.584349
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 969.152136
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 969.153611,
       "start": 969.152611
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 969.63461
     },
     {
-      "channel": 40,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 969.95911,
       "start": 969.96461
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 971.930818
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 972.880609
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 973.492609
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 977.076607
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 977.636607,
       "start": 977.636607
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 977.736607
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 978.173274
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 978.321502
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 979.575683
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 979.934106,
       "start": 979.934606
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 981.288606
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 983.920254
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 985.203244
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 985.281488
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 985.876104,
       "start": 985.877604
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 986.138604
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 986.600604
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 991.474602
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 992.695941
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 994.797289
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 998.409599
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 998.927909
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1000.73919
     },
     {
-      "channel": 46,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1001.795597,
       "start": 1001.795597
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1002.264543
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1002.645597
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1007.139114
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1007.140095,
       "start": 1007.139445
     },
     {
-      "channel": 44,
+      "from_t": 1008.074595,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
-      "start": 1008.074595
+      "start": 1008.07331
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1010.059594,
       "start": 1010.059594
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1010.40615
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1010.406307
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1011.191594
     },
     {
-      "channel": 44,
+      "align_flag": "locked_peak",
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
       "start": 1011.971593
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1012.034184
     },
     {
-      "channel": 48,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1012.686093,
       "start": 1012.684593
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1016.499591
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1017.189591
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1018.466591
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1018.98929
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1019.87059
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1023.787589
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1024.704588
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1025.322052
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1028.180294
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1029.654806
     },
     {
-      "channel": 44,
+      "align_flag": "locked_peak",
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
       "start": 1030.324086
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1030.48504
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1030.485586
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1031.838585
     },
     {
-      "channel": 40,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1033.584085,
       "start": 1033.585585
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1036.201584
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1038.036959
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1041.38547
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1043.478081,
       "start": 1043.478581
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1044.19158
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
       "start": 1045.11658
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1045.58408,
       "start": 1045.58258
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1046.23408,
       "start": 1046.23558
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1051.275578
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1052.738577
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1054.350765
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1054.802576
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1056.124576
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1056.873575
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1057.207575
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1057.835075,
       "start": 1057.835575
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1058.709575
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1066.106329
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1066.784571
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1067.012071,
       "start": 1066.99533
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1067.691571
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1068.229571,
       "start": 1068.229571
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1068.643159
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1068.82457
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1069.00157
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1072.157569
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1073.195423
     },
     {
-      "channel": 44,
+      "align_flag": "locked_peak",
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
       "start": 1073.780068
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1073.939568
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1076.861567
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1077.478567
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1079.262625
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1079.340293
     },
     {
-      "channel": 44,
+      "align_flag": "locked_peak",
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
       "start": 1082.642065
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1082.667276
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1082.969428
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1083.889445
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1086.615839
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1088.093563
     },
     {
-      "channel": 42,
+      "from_t": 1089.018562,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
-      "start": 1089.018562
+      "start": 1089.014094
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1089.330787
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1090.012731
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1090.954062,
       "start": 1090.954562
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1091.175596
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1091.506451
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1091.828561
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1092.387561
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1098.068059,
       "start": 1098.068559
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1098.295559
     },
     {
-      "channel": 42,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1101.108557,
       "start": 1101.107557
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1105.180556
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1108.587681
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1108.892936
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1108.914554,
       "start": 1108.913379
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1112.400781
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1113.111699
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1114.201052,
       "start": 1114.201552
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
       "start": 1116.713051
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1119.446723
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1120.887865
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1122.051043
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1122.799549
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1127.587547
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1130.149046,
-      "stamp": "incisor",
       "start": 1130.169695
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1130.500128
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1134.541044,
       "start": 1134.543573
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1136.036295
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1136.577179
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1139.151542
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1139.472806
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1141.188306
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1142.259541
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1142.842041,
       "start": 1142.826541
     },
     {
-      "channel": 42,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1143.74304,
       "start": 1143.742228
     },
     {
-      "channel": 42,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1144.54104,
       "start": 1144.54154
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1144.99154,
       "start": 1144.99154
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1145.17954
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1145.547849
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1146.251039,
       "start": 1146.251767
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1146.841714
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1146.880539
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1147.216539,
-      "stamp": "incisor",
       "start": 1147.191539
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1147.949539
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1155.239536
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1155.49427
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1157.059727
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1163.107533
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1164.431032,
       "start": 1164.431532
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1165.073207
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1165.503532
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1165.788531
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1166.207531,
       "start": 1166.222671
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1168.199531
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1170.035799
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1171.198414
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1171.678148
     },
     {
-      "channel": 44,
+      "align_flag": "locked_peak",
+      "from_t": 1171.802529,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "doppler",
-      "start": 1171.802529
+      "start": 1171.774567
     },
     {
-      "channel": 42,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1172.424529,
       "start": 1172.424529
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1172.655529
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1172.876529
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1179.114526
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1179.828622
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1181.329211
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1182.868525
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1183.16417
     },
     {
-      "channel": 46,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1187.619023,
       "start": 1187.619523
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1189.326152
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1190.270022,
       "start": 1190.261522
     },
     {
-      "channel": 46,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1191.245021,
       "start": 1191.255521
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1191.686192
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1192.130521,
       "start": 1192.136955
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1193.291236
     },
     {
-      "channel": 40,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1193.29302,
       "start": 1193.29152
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1195.31452
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1198.610518,
       "start": 1198.611518
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1199.348845
     },
     {
-      "channel": 46,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1199.704018,
       "start": 1199.703518
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1210.584513
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1210.820513
     },
     {
-      "channel": 44,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1217.489011,
       "start": 1217.488511
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1218.33551
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1219.536356
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1221.433509
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1236.312503
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1251.187736
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1290.524805
     },
     {
       "label": "Spike",
       "label_id": "spike",
-      "origin": "incisor",
       "start": 1296.511479
     },
     {
-      "channel": 40,
       "label": "Spike",
       "label_id": "spike",
-      "origin": "both",
-      "pair_t": 1308.657474,
       "start": 1308.656713
     }
   ],
@@ -3758,7 +3127,7 @@
     "spike": "Spike"
   },
   "mouse": 6,
-  "n": 566,
+  "n": 565,
   "name": "PTEN m6 s8 2023-09-14 \u2014 pooled (Incisor + Doppler, 20 ms)",
   "note": "",
   "project": "PTEN",
@@ -17525,6 +16894,2457 @@
         ]
       ],
       "v": 2
+    },
+    {
+      "aligned": {
+        "band": [
+          5.0,
+          100.0
+        ],
+        "cand_dist_ms": 12.0,
+        "cand_height_sd": 0.0,
+        "channels": [
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52
+        ],
+        "computed_on": {
+          "file": "result_2.json",
+          "host": "login.vacc.uvm.edu",
+          "kind": "vacc",
+          "max_rss": null,
+          "netid": "sakhava1",
+          "partition": "general",
+          "rid": "7e2b09dd242c",
+          "slurm_id": "6098078_2",
+          "workspace": "/gpfs1/home/s/a/sakhava1/jarvis/runs/7e2b09dd242c"
+        },
+        "csd_smooth": true,
+        "dist_ms": 100.0,
+        "estimator": "mad",
+        "flagged": {
+          "locked_peak": 9
+        },
+        "invert": true,
+        "left_out": [
+          59
+        ],
+        "lfp_fs": 1000.0,
+        "line_hz": 60.0,
+        "lock_reach_ms": 20.0,
+        "measure": "csd",
+        "n_channels": 16,
+        "n_moved": 9,
+        "n_unmoved": 557,
+        "order": 3,
+        "order_held": false,
+        "pinned": 547,
+        "profile": {
+          "36": -0.222763,
+          "37": -0.247848,
+          "38": -0.14683,
+          "39": 0.146434,
+          "40": 0.310789,
+          "41": 0.318891,
+          "42": 0.261834,
+          "43": 0.165336,
+          "44": 0.118968,
+          "45": 0.12097,
+          "46": 0.189245,
+          "47": 0.315074,
+          "48": 0.450338,
+          "49": 0.26287,
+          "50": -0.205245,
+          "51": -0.271787
+        },
+        "request": {
+          "band_kind": "ds",
+          "channels": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            60,
+            61,
+            62,
+            63,
+            64
+          ],
+          "depth_band": 16,
+          "entry_id": "7288d9478f30",
+          "from_version": "e3e6334d55e8",
+          "hold": [
+            "both",
+            "incisor"
+          ],
+          "kind": "pooled",
+          "n_pinned": 547,
+          "pinned": "80ae9fe3fed7",
+          "stamps": "27e2c0e6bac5"
+        },
+        "request_hash": "c66f6b6c32fd7a77",
+        "resorted": 2,
+        "screened": {
+          "59": "dead (0.4 uV against a median of 108)"
+        },
+        "shift_max_ms": 128.11,
+        "shift_median_ms": 25.526,
+        "shift_min_ms": -27.962,
+        "smooth_ms": 0.0,
+        "source_version": 2,
+        "source_version_id": "e3e6334d55e8",
+        "spacing_um": 30.0,
+        "tool": "jarvis.lock/1",
+        "window_ms": 200.0
+      },
+      "at": "2026-10-29T08:26:20-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "Spike": 565
+      },
+      "changed": 0,
+      "from_id": "e3e6334d55e8",
+      "from_v": 2,
+      "gained": 0,
+      "id": "br-17d3deedee",
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 565,
+      "note": "Aligned to the mean magnitude over 16 channels, \u00b1200 ms, reading v2. 9 stamp(s) moved by -28.0 to 128.1 ms; 557 left where they were. No labels changed.",
+      "shifted": 9,
+      "snap": [
+        [
+          6.170892,
+          "spike"
+        ],
+        [
+          9.091996,
+          "spike"
+        ],
+        [
+          11.396995,
+          "spike"
+        ],
+        [
+          19.213992,
+          "spike"
+        ],
+        [
+          21.957991,
+          "spike"
+        ],
+        [
+          33.249987,
+          "spike"
+        ],
+        [
+          37.759985,
+          "spike"
+        ],
+        [
+          42.916983,
+          "spike"
+        ],
+        [
+          63.234975,
+          "spike"
+        ],
+        [
+          73.388971,
+          "spike"
+        ],
+        [
+          79.069968,
+          "spike"
+        ],
+        [
+          88.073965,
+          "spike"
+        ],
+        [
+          96.577961,
+          "spike"
+        ],
+        [
+          97.972956,
+          "spike"
+        ],
+        [
+          98.47996,
+          "spike"
+        ],
+        [
+          101.665959,
+          "spike"
+        ],
+        [
+          104.944958,
+          "spike"
+        ],
+        [
+          105.504958,
+          "spike"
+        ],
+        [
+          106.375927,
+          "spike"
+        ],
+        [
+          106.375957,
+          "spike"
+        ],
+        [
+          107.13599,
+          "spike"
+        ],
+        [
+          108.521994,
+          "spike"
+        ],
+        [
+          112.326955,
+          "spike"
+        ],
+        [
+          113.839954,
+          "spike"
+        ],
+        [
+          116.696953,
+          "spike"
+        ],
+        [
+          117.255953,
+          "spike"
+        ],
+        [
+          118.601952,
+          "spike"
+        ],
+        [
+          120.363794,
+          "spike"
+        ],
+        [
+          120.378562,
+          "spike"
+        ],
+        [
+          126.231949,
+          "spike"
+        ],
+        [
+          128.642948,
+          "spike"
+        ],
+        [
+          130.207492,
+          "spike"
+        ],
+        [
+          131.112166,
+          "spike"
+        ],
+        [
+          131.402947,
+          "spike"
+        ],
+        [
+          134.471006,
+          "spike"
+        ],
+        [
+          136.198765,
+          "spike"
+        ],
+        [
+          136.650945,
+          "spike"
+        ],
+        [
+          142.120943,
+          "spike"
+        ],
+        [
+          144.317942,
+          "spike"
+        ],
+        [
+          144.650497,
+          "spike"
+        ],
+        [
+          145.066992,
+          "spike"
+        ],
+        [
+          148.79794,
+          "spike"
+        ],
+        [
+          151.3125,
+          "spike"
+        ],
+        [
+          151.958094,
+          "spike"
+        ],
+        [
+          156.376937,
+          "spike"
+        ],
+        [
+          157.917937,
+          "spike"
+        ],
+        [
+          158.126936,
+          "spike"
+        ],
+        [
+          158.639046,
+          "spike"
+        ],
+        [
+          159.291936,
+          "spike"
+        ],
+        [
+          159.581936,
+          "spike"
+        ],
+        [
+          160.743935,
+          "spike"
+        ],
+        [
+          162.098313,
+          "spike"
+        ],
+        [
+          162.523709,
+          "spike"
+        ],
+        [
+          164.153837,
+          "spike"
+        ],
+        [
+          166.811933,
+          "spike"
+        ],
+        [
+          167.401933,
+          "spike"
+        ],
+        [
+          168.319932,
+          "spike"
+        ],
+        [
+          169.93142,
+          "spike"
+        ],
+        [
+          169.948307,
+          "spike"
+        ],
+        [
+          171.752931,
+          "spike"
+        ],
+        [
+          181.208927,
+          "spike"
+        ],
+        [
+          182.431927,
+          "spike"
+        ],
+        [
+          185.555925,
+          "spike"
+        ],
+        [
+          186.214925,
+          "spike"
+        ],
+        [
+          186.470925,
+          "spike"
+        ],
+        [
+          186.798925,
+          "spike"
+        ],
+        [
+          187.281925,
+          "spike"
+        ],
+        [
+          187.457925,
+          "spike"
+        ],
+        [
+          188.503924,
+          "spike"
+        ],
+        [
+          192.781579,
+          "spike"
+        ],
+        [
+          196.539921,
+          "spike"
+        ],
+        [
+          197.217599,
+          "spike"
+        ],
+        [
+          201.826903,
+          "spike"
+        ],
+        [
+          202.068919,
+          "spike"
+        ],
+        [
+          202.069699,
+          "spike"
+        ],
+        [
+          203.403918,
+          "spike"
+        ],
+        [
+          203.550918,
+          "spike"
+        ],
+        [
+          204.424918,
+          "spike"
+        ],
+        [
+          204.879918,
+          "spike"
+        ],
+        [
+          205.823865,
+          "spike"
+        ],
+        [
+          207.657511,
+          "spike"
+        ],
+        [
+          208.860916,
+          "spike"
+        ],
+        [
+          214.394914,
+          "spike"
+        ],
+        [
+          218.830912,
+          "spike"
+        ],
+        [
+          219.258912,
+          "spike"
+        ],
+        [
+          220.313911,
+          "spike"
+        ],
+        [
+          220.961644,
+          "spike"
+        ],
+        [
+          226.991847,
+          "spike"
+        ],
+        [
+          227.171623,
+          "spike"
+        ],
+        [
+          227.401909,
+          "spike"
+        ],
+        [
+          228.207908,
+          "spike"
+        ],
+        [
+          228.956908,
+          "spike"
+        ],
+        [
+          230.428907,
+          "spike"
+        ],
+        [
+          230.792907,
+          "spike"
+        ],
+        [
+          231.074907,
+          "spike"
+        ],
+        [
+          231.354907,
+          "spike"
+        ],
+        [
+          231.550386,
+          "spike"
+        ],
+        [
+          240.446903,
+          "spike"
+        ],
+        [
+          241.515903,
+          "spike"
+        ],
+        [
+          245.103901,
+          "spike"
+        ],
+        [
+          249.212773,
+          "spike"
+        ],
+        [
+          249.393707,
+          "spike"
+        ],
+        [
+          250.0469,
+          "spike"
+        ],
+        [
+          250.780899,
+          "spike"
+        ],
+        [
+          251.794511,
+          "spike"
+        ],
+        [
+          252.181899,
+          "spike"
+        ],
+        [
+          252.420714,
+          "spike"
+        ],
+        [
+          253.166035,
+          "spike"
+        ],
+        [
+          257.741649,
+          "spike"
+        ],
+        [
+          259.044112,
+          "spike"
+        ],
+        [
+          259.527021,
+          "spike"
+        ],
+        [
+          259.649896,
+          "spike"
+        ],
+        [
+          260.110366,
+          "spike"
+        ],
+        [
+          260.661895,
+          "spike"
+        ],
+        [
+          261.747895,
+          "spike"
+        ],
+        [
+          261.911121,
+          "spike"
+        ],
+        [
+          262.161409,
+          "spike"
+        ],
+        [
+          262.566894,
+          "spike"
+        ],
+        [
+          263.124894,
+          "spike"
+        ],
+        [
+          263.866894,
+          "spike"
+        ],
+        [
+          264.539665,
+          "spike"
+        ],
+        [
+          264.647004,
+          "spike"
+        ],
+        [
+          265.980767,
+          "spike"
+        ],
+        [
+          268.458892,
+          "spike"
+        ],
+        [
+          277.040889,
+          "spike"
+        ],
+        [
+          278.698656,
+          "spike"
+        ],
+        [
+          281.2533,
+          "spike"
+        ],
+        [
+          282.102134,
+          "spike"
+        ],
+        [
+          283.366886,
+          "spike"
+        ],
+        [
+          284.964692,
+          "spike"
+        ],
+        [
+          294.260487,
+          "spike"
+        ],
+        [
+          294.943881,
+          "spike"
+        ],
+        [
+          295.710115,
+          "spike"
+        ],
+        [
+          296.436102,
+          "spike"
+        ],
+        [
+          296.436293,
+          "spike"
+        ],
+        [
+          297.032881,
+          "spike"
+        ],
+        [
+          298.596442,
+          "spike"
+        ],
+        [
+          300.150304,
+          "spike"
+        ],
+        [
+          300.563879,
+          "spike"
+        ],
+        [
+          301.798879,
+          "spike"
+        ],
+        [
+          302.394026,
+          "spike"
+        ],
+        [
+          303.288878,
+          "spike"
+        ],
+        [
+          305.174877,
+          "spike"
+        ],
+        [
+          305.486877,
+          "spike"
+        ],
+        [
+          305.730976,
+          "spike"
+        ],
+        [
+          309.193876,
+          "spike"
+        ],
+        [
+          312.422874,
+          "spike"
+        ],
+        [
+          314.110874,
+          "spike"
+        ],
+        [
+          315.418395,
+          "spike"
+        ],
+        [
+          317.720872,
+          "spike"
+        ],
+        [
+          320.182871,
+          "spike"
+        ],
+        [
+          320.549871,
+          "spike"
+        ],
+        [
+          321.415871,
+          "spike"
+        ],
+        [
+          328.367868,
+          "spike"
+        ],
+        [
+          329.650868,
+          "spike"
+        ],
+        [
+          332.195866,
+          "spike"
+        ],
+        [
+          335.725684,
+          "spike"
+        ],
+        [
+          336.832865,
+          "spike"
+        ],
+        [
+          337.168432,
+          "spike"
+        ],
+        [
+          337.414327,
+          "spike"
+        ],
+        [
+          337.729202,
+          "spike"
+        ],
+        [
+          342.682132,
+          "spike"
+        ],
+        [
+          347.79286,
+          "spike"
+        ],
+        [
+          348.11486,
+          "spike"
+        ],
+        [
+          351.103986,
+          "spike"
+        ],
+        [
+          354.091251,
+          "spike"
+        ],
+        [
+          364.024854,
+          "spike"
+        ],
+        [
+          364.373458,
+          "spike"
+        ],
+        [
+          366.832853,
+          "spike"
+        ],
+        [
+          368.560852,
+          "spike"
+        ],
+        [
+          382.518954,
+          "spike"
+        ],
+        [
+          385.682845,
+          "spike"
+        ],
+        [
+          387.315408,
+          "spike"
+        ],
+        [
+          390.574843,
+          "spike"
+        ],
+        [
+          488.989803,
+          "spike"
+        ],
+        [
+          491.878802,
+          "spike"
+        ],
+        [
+          500.924799,
+          "spike"
+        ],
+        [
+          503.245798,
+          "spike"
+        ],
+        [
+          511.848794,
+          "spike"
+        ],
+        [
+          522.06879,
+          "spike"
+        ],
+        [
+          524.376789,
+          "spike"
+        ],
+        [
+          525.926789,
+          "spike"
+        ],
+        [
+          528.156047,
+          "spike"
+        ],
+        [
+          529.543711,
+          "spike"
+        ],
+        [
+          539.052783,
+          "spike"
+        ],
+        [
+          539.234783,
+          "spike"
+        ],
+        [
+          544.402781,
+          "spike"
+        ],
+        [
+          549.476779,
+          "spike"
+        ],
+        [
+          549.705779,
+          "spike"
+        ],
+        [
+          552.710778,
+          "spike"
+        ],
+        [
+          583.202274,
+          "spike"
+        ],
+        [
+          586.855778,
+          "spike"
+        ],
+        [
+          597.399934,
+          "spike"
+        ],
+        [
+          597.547605,
+          "spike"
+        ],
+        [
+          598.16776,
+          "spike"
+        ],
+        [
+          600.478759,
+          "spike"
+        ],
+        [
+          600.803759,
+          "spike"
+        ],
+        [
+          600.977063,
+          "spike"
+        ],
+        [
+          601.574867,
+          "spike"
+        ],
+        [
+          605.973756,
+          "spike"
+        ],
+        [
+          606.352756,
+          "spike"
+        ],
+        [
+          613.023754,
+          "spike"
+        ],
+        [
+          623.412749,
+          "spike"
+        ],
+        [
+          623.806749,
+          "spike"
+        ],
+        [
+          625.823748,
+          "spike"
+        ],
+        [
+          626.936077,
+          "spike"
+        ],
+        [
+          627.889077,
+          "spike"
+        ],
+        [
+          628.183577,
+          "spike"
+        ],
+        [
+          633.861716,
+          "spike"
+        ],
+        [
+          634.380745,
+          "spike"
+        ],
+        [
+          642.745742,
+          "spike"
+        ],
+        [
+          644.213741,
+          "spike"
+        ],
+        [
+          646.14474,
+          "spike"
+        ],
+        [
+          654.132737,
+          "spike"
+        ],
+        [
+          655.991736,
+          "spike"
+        ],
+        [
+          656.429736,
+          "spike"
+        ],
+        [
+          659.601735,
+          "spike"
+        ],
+        [
+          659.758927,
+          "spike"
+        ],
+        [
+          660.784026,
+          "spike"
+        ],
+        [
+          660.885875,
+          "spike"
+        ],
+        [
+          661.331734,
+          "spike"
+        ],
+        [
+          661.508199,
+          "spike"
+        ],
+        [
+          666.873732,
+          "spike"
+        ],
+        [
+          670.603731,
+          "spike"
+        ],
+        [
+          671.378546,
+          "spike"
+        ],
+        [
+          673.02073,
+          "spike"
+        ],
+        [
+          673.577901,
+          "spike"
+        ],
+        [
+          675.964624,
+          "spike"
+        ],
+        [
+          677.371127,
+          "spike"
+        ],
+        [
+          684.112252,
+          "spike"
+        ],
+        [
+          688.853723,
+          "spike"
+        ],
+        [
+          689.164525,
+          "spike"
+        ],
+        [
+          689.932706,
+          "spike"
+        ],
+        [
+          690.057723,
+          "spike"
+        ],
+        [
+          695.505649,
+          "spike"
+        ],
+        [
+          697.76472,
+          "spike"
+        ],
+        [
+          697.92872,
+          "spike"
+        ],
+        [
+          698.812719,
+          "spike"
+        ],
+        [
+          702.834718,
+          "spike"
+        ],
+        [
+          704.805717,
+          "spike"
+        ],
+        [
+          705.079339,
+          "spike"
+        ],
+        [
+          705.217696,
+          "spike"
+        ],
+        [
+          708.874715,
+          "spike"
+        ],
+        [
+          709.547715,
+          "spike"
+        ],
+        [
+          710.514714,
+          "spike"
+        ],
+        [
+          711.114714,
+          "spike"
+        ],
+        [
+          716.295712,
+          "spike"
+        ],
+        [
+          718.545711,
+          "spike"
+        ],
+        [
+          722.80071,
+          "spike"
+        ],
+        [
+          723.951543,
+          "spike"
+        ],
+        [
+          724.5377,
+          "spike"
+        ],
+        [
+          727.238149,
+          "spike"
+        ],
+        [
+          728.081707,
+          "spike"
+        ],
+        [
+          728.783707,
+          "spike"
+        ],
+        [
+          728.991707,
+          "spike"
+        ],
+        [
+          729.313707,
+          "spike"
+        ],
+        [
+          735.919837,
+          "spike"
+        ],
+        [
+          736.205227,
+          "spike"
+        ],
+        [
+          737.197704,
+          "spike"
+        ],
+        [
+          738.281703,
+          "spike"
+        ],
+        [
+          738.498106,
+          "spike"
+        ],
+        [
+          738.766703,
+          "spike"
+        ],
+        [
+          743.253701,
+          "spike"
+        ],
+        [
+          744.093701,
+          "spike"
+        ],
+        [
+          748.499864,
+          "spike"
+        ],
+        [
+          749.909545,
+          "spike"
+        ],
+        [
+          753.493282,
+          "spike"
+        ],
+        [
+          753.924697,
+          "spike"
+        ],
+        [
+          754.578697,
+          "spike"
+        ],
+        [
+          754.708992,
+          "spike"
+        ],
+        [
+          755.186697,
+          "spike"
+        ],
+        [
+          765.481692,
+          "spike"
+        ],
+        [
+          765.847692,
+          "spike"
+        ],
+        [
+          771.31969,
+          "spike"
+        ],
+        [
+          771.53469,
+          "spike"
+        ],
+        [
+          772.26569,
+          "spike"
+        ],
+        [
+          780.365686,
+          "spike"
+        ],
+        [
+          782.135921,
+          "spike"
+        ],
+        [
+          784.856616,
+          "spike"
+        ],
+        [
+          785.025536,
+          "spike"
+        ],
+        [
+          789.741683,
+          "spike"
+        ],
+        [
+          790.091682,
+          "spike"
+        ],
+        [
+          790.744684,
+          "spike"
+        ],
+        [
+          791.010145,
+          "spike"
+        ],
+        [
+          791.806592,
+          "spike"
+        ],
+        [
+          793.405939,
+          "spike"
+        ],
+        [
+          797.41268,
+          "spike"
+        ],
+        [
+          799.331679,
+          "spike"
+        ],
+        [
+          800.305678,
+          "spike"
+        ],
+        [
+          802.281678,
+          "spike"
+        ],
+        [
+          810.138674,
+          "spike"
+        ],
+        [
+          811.079674,
+          "spike"
+        ],
+        [
+          811.433829,
+          "spike"
+        ],
+        [
+          812.145518,
+          "spike"
+        ],
+        [
+          813.457383,
+          "spike"
+        ],
+        [
+          816.041014,
+          "spike"
+        ],
+        [
+          817.089672,
+          "spike"
+        ],
+        [
+          822.926669,
+          "spike"
+        ],
+        [
+          825.386895,
+          "spike"
+        ],
+        [
+          827.488667,
+          "spike"
+        ],
+        [
+          828.188323,
+          "spike"
+        ],
+        [
+          829.549739,
+          "spike"
+        ],
+        [
+          835.849664,
+          "spike"
+        ],
+        [
+          835.998001,
+          "spike"
+        ],
+        [
+          836.826664,
+          "spike"
+        ],
+        [
+          836.82704,
+          "spike"
+        ],
+        [
+          837.908663,
+          "spike"
+        ],
+        [
+          839.170795,
+          "spike"
+        ],
+        [
+          842.439661,
+          "spike"
+        ],
+        [
+          842.697661,
+          "spike"
+        ],
+        [
+          842.817661,
+          "spike"
+        ],
+        [
+          843.028488,
+          "spike"
+        ],
+        [
+          844.95066,
+          "spike"
+        ],
+        [
+          845.47366,
+          "spike"
+        ],
+        [
+          845.681186,
+          "spike"
+        ],
+        [
+          849.586687,
+          "spike"
+        ],
+        [
+          849.587659,
+          "spike"
+        ],
+        [
+          849.644659,
+          "spike"
+        ],
+        [
+          854.955846,
+          "spike"
+        ],
+        [
+          857.128656,
+          "spike"
+        ],
+        [
+          858.692748,
+          "spike"
+        ],
+        [
+          859.079378,
+          "spike"
+        ],
+        [
+          859.389788,
+          "spike"
+        ],
+        [
+          865.932652,
+          "spike"
+        ],
+        [
+          867.045652,
+          "spike"
+        ],
+        [
+          867.7644,
+          "spike"
+        ],
+        [
+          868.873867,
+          "spike"
+        ],
+        [
+          869.072253,
+          "spike"
+        ],
+        [
+          873.374649,
+          "spike"
+        ],
+        [
+          874.837648,
+          "spike"
+        ],
+        [
+          875.832648,
+          "spike"
+        ],
+        [
+          876.559323,
+          "spike"
+        ],
+        [
+          877.797647,
+          "spike"
+        ],
+        [
+          880.462646,
+          "spike"
+        ],
+        [
+          881.000646,
+          "spike"
+        ],
+        [
+          883.558645,
+          "spike"
+        ],
+        [
+          890.123642,
+          "spike"
+        ],
+        [
+          890.696642,
+          "spike"
+        ],
+        [
+          891.961117,
+          "spike"
+        ],
+        [
+          896.01864,
+          "spike"
+        ],
+        [
+          896.545053,
+          "spike"
+        ],
+        [
+          901.484736,
+          "spike"
+        ],
+        [
+          904.834357,
+          "spike"
+        ],
+        [
+          908.9628,
+          "spike"
+        ],
+        [
+          909.380103,
+          "spike"
+        ],
+        [
+          913.930864,
+          "spike"
+        ],
+        [
+          913.932633,
+          "spike"
+        ],
+        [
+          914.593589,
+          "spike"
+        ],
+        [
+          917.154631,
+          "spike"
+        ],
+        [
+          917.557531,
+          "spike"
+        ],
+        [
+          921.37263,
+          "spike"
+        ],
+        [
+          921.733153,
+          "spike"
+        ],
+        [
+          922.011629,
+          "spike"
+        ],
+        [
+          922.434629,
+          "spike"
+        ],
+        [
+          922.978538,
+          "spike"
+        ],
+        [
+          929.88095,
+          "spike"
+        ],
+        [
+          931.065626,
+          "spike"
+        ],
+        [
+          931.433118,
+          "spike"
+        ],
+        [
+          933.358625,
+          "spike"
+        ],
+        [
+          938.440623,
+          "spike"
+        ],
+        [
+          939.905622,
+          "spike"
+        ],
+        [
+          946.55062,
+          "spike"
+        ],
+        [
+          947.072619,
+          "spike"
+        ],
+        [
+          947.858619,
+          "spike"
+        ],
+        [
+          948.053619,
+          "spike"
+        ],
+        [
+          948.430619,
+          "spike"
+        ],
+        [
+          950.723556,
+          "spike"
+        ],
+        [
+          950.906618,
+          "spike"
+        ],
+        [
+          951.779905,
+          "spike"
+        ],
+        [
+          954.427116,
+          "spike"
+        ],
+        [
+          954.451327,
+          "spike"
+        ],
+        [
+          955.329616,
+          "spike"
+        ],
+        [
+          957.582615,
+          "spike"
+        ],
+        [
+          958.750615,
+          "spike"
+        ],
+        [
+          960.063229,
+          "spike"
+        ],
+        [
+          964.713612,
+          "spike"
+        ],
+        [
+          965.897612,
+          "spike"
+        ],
+        [
+          965.897687,
+          "spike"
+        ],
+        [
+          966.712252,
+          "spike"
+        ],
+        [
+          967.846585,
+          "spike"
+        ],
+        [
+          968.240611,
+          "spike"
+        ],
+        [
+          968.584349,
+          "spike"
+        ],
+        [
+          969.152136,
+          "spike"
+        ],
+        [
+          969.152611,
+          "spike"
+        ],
+        [
+          969.63461,
+          "spike"
+        ],
+        [
+          969.96461,
+          "spike"
+        ],
+        [
+          971.930818,
+          "spike"
+        ],
+        [
+          972.880609,
+          "spike"
+        ],
+        [
+          973.492609,
+          "spike"
+        ],
+        [
+          977.076607,
+          "spike"
+        ],
+        [
+          977.636607,
+          "spike"
+        ],
+        [
+          977.736607,
+          "spike"
+        ],
+        [
+          978.173274,
+          "spike"
+        ],
+        [
+          978.321502,
+          "spike"
+        ],
+        [
+          979.575683,
+          "spike"
+        ],
+        [
+          979.934606,
+          "spike"
+        ],
+        [
+          981.288606,
+          "spike"
+        ],
+        [
+          983.920254,
+          "spike"
+        ],
+        [
+          985.203244,
+          "spike"
+        ],
+        [
+          985.281488,
+          "spike"
+        ],
+        [
+          985.877604,
+          "spike"
+        ],
+        [
+          986.138604,
+          "spike"
+        ],
+        [
+          986.600604,
+          "spike"
+        ],
+        [
+          991.474602,
+          "spike"
+        ],
+        [
+          992.695941,
+          "spike"
+        ],
+        [
+          994.797289,
+          "spike"
+        ],
+        [
+          998.409599,
+          "spike"
+        ],
+        [
+          998.927909,
+          "spike"
+        ],
+        [
+          1000.73919,
+          "spike"
+        ],
+        [
+          1001.795597,
+          "spike"
+        ],
+        [
+          1002.264543,
+          "spike"
+        ],
+        [
+          1002.645597,
+          "spike"
+        ],
+        [
+          1007.139114,
+          "spike"
+        ],
+        [
+          1007.139445,
+          "spike"
+        ],
+        [
+          1008.07331,
+          "spike"
+        ],
+        [
+          1010.059594,
+          "spike"
+        ],
+        [
+          1010.40615,
+          "spike"
+        ],
+        [
+          1010.406307,
+          "spike"
+        ],
+        [
+          1011.191594,
+          "spike"
+        ],
+        [
+          1011.971593,
+          "spike"
+        ],
+        [
+          1012.034184,
+          "spike"
+        ],
+        [
+          1012.684593,
+          "spike"
+        ],
+        [
+          1016.499591,
+          "spike"
+        ],
+        [
+          1017.189591,
+          "spike"
+        ],
+        [
+          1018.466591,
+          "spike"
+        ],
+        [
+          1018.98929,
+          "spike"
+        ],
+        [
+          1019.87059,
+          "spike"
+        ],
+        [
+          1023.787589,
+          "spike"
+        ],
+        [
+          1024.704588,
+          "spike"
+        ],
+        [
+          1025.322052,
+          "spike"
+        ],
+        [
+          1028.180294,
+          "spike"
+        ],
+        [
+          1029.654806,
+          "spike"
+        ],
+        [
+          1030.324086,
+          "spike"
+        ],
+        [
+          1030.48504,
+          "spike"
+        ],
+        [
+          1030.485586,
+          "spike"
+        ],
+        [
+          1031.838585,
+          "spike"
+        ],
+        [
+          1033.585585,
+          "spike"
+        ],
+        [
+          1036.201584,
+          "spike"
+        ],
+        [
+          1038.036959,
+          "spike"
+        ],
+        [
+          1041.38547,
+          "spike"
+        ],
+        [
+          1043.478581,
+          "spike"
+        ],
+        [
+          1044.19158,
+          "spike"
+        ],
+        [
+          1045.11658,
+          "spike"
+        ],
+        [
+          1045.58258,
+          "spike"
+        ],
+        [
+          1046.23558,
+          "spike"
+        ],
+        [
+          1051.275578,
+          "spike"
+        ],
+        [
+          1052.738577,
+          "spike"
+        ],
+        [
+          1054.350765,
+          "spike"
+        ],
+        [
+          1054.802576,
+          "spike"
+        ],
+        [
+          1056.124576,
+          "spike"
+        ],
+        [
+          1056.873575,
+          "spike"
+        ],
+        [
+          1057.207575,
+          "spike"
+        ],
+        [
+          1057.835575,
+          "spike"
+        ],
+        [
+          1058.709575,
+          "spike"
+        ],
+        [
+          1066.106329,
+          "spike"
+        ],
+        [
+          1066.784571,
+          "spike"
+        ],
+        [
+          1066.99533,
+          "spike"
+        ],
+        [
+          1067.691571,
+          "spike"
+        ],
+        [
+          1068.229571,
+          "spike"
+        ],
+        [
+          1068.643159,
+          "spike"
+        ],
+        [
+          1068.82457,
+          "spike"
+        ],
+        [
+          1069.00157,
+          "spike"
+        ],
+        [
+          1072.157569,
+          "spike"
+        ],
+        [
+          1073.195423,
+          "spike"
+        ],
+        [
+          1073.780068,
+          "spike"
+        ],
+        [
+          1073.939568,
+          "spike"
+        ],
+        [
+          1076.861567,
+          "spike"
+        ],
+        [
+          1077.478567,
+          "spike"
+        ],
+        [
+          1079.262625,
+          "spike"
+        ],
+        [
+          1079.340293,
+          "spike"
+        ],
+        [
+          1082.642065,
+          "spike"
+        ],
+        [
+          1082.667276,
+          "spike"
+        ],
+        [
+          1082.969428,
+          "spike"
+        ],
+        [
+          1083.889445,
+          "spike"
+        ],
+        [
+          1086.615839,
+          "spike"
+        ],
+        [
+          1088.093563,
+          "spike"
+        ],
+        [
+          1089.014094,
+          "spike"
+        ],
+        [
+          1089.330787,
+          "spike"
+        ],
+        [
+          1090.012731,
+          "spike"
+        ],
+        [
+          1090.954562,
+          "spike"
+        ],
+        [
+          1091.175596,
+          "spike"
+        ],
+        [
+          1091.506451,
+          "spike"
+        ],
+        [
+          1091.828561,
+          "spike"
+        ],
+        [
+          1092.387561,
+          "spike"
+        ],
+        [
+          1098.068559,
+          "spike"
+        ],
+        [
+          1098.295559,
+          "spike"
+        ],
+        [
+          1101.107557,
+          "spike"
+        ],
+        [
+          1105.180556,
+          "spike"
+        ],
+        [
+          1108.587681,
+          "spike"
+        ],
+        [
+          1108.892936,
+          "spike"
+        ],
+        [
+          1108.913379,
+          "spike"
+        ],
+        [
+          1112.400781,
+          "spike"
+        ],
+        [
+          1113.111699,
+          "spike"
+        ],
+        [
+          1114.201552,
+          "spike"
+        ],
+        [
+          1116.713051,
+          "spike"
+        ],
+        [
+          1119.446723,
+          "spike"
+        ],
+        [
+          1120.887865,
+          "spike"
+        ],
+        [
+          1122.051043,
+          "spike"
+        ],
+        [
+          1122.799549,
+          "spike"
+        ],
+        [
+          1127.587547,
+          "spike"
+        ],
+        [
+          1130.169695,
+          "spike"
+        ],
+        [
+          1130.500128,
+          "spike"
+        ],
+        [
+          1134.543573,
+          "spike"
+        ],
+        [
+          1136.036295,
+          "spike"
+        ],
+        [
+          1136.577179,
+          "spike"
+        ],
+        [
+          1139.151542,
+          "spike"
+        ],
+        [
+          1139.472806,
+          "spike"
+        ],
+        [
+          1141.188306,
+          "spike"
+        ],
+        [
+          1142.259541,
+          "spike"
+        ],
+        [
+          1142.826541,
+          "spike"
+        ],
+        [
+          1143.742228,
+          "spike"
+        ],
+        [
+          1144.54154,
+          "spike"
+        ],
+        [
+          1144.99154,
+          "spike"
+        ],
+        [
+          1145.17954,
+          "spike"
+        ],
+        [
+          1145.547849,
+          "spike"
+        ],
+        [
+          1146.251767,
+          "spike"
+        ],
+        [
+          1146.841714,
+          "spike"
+        ],
+        [
+          1146.880539,
+          "spike"
+        ],
+        [
+          1147.191539,
+          "spike"
+        ],
+        [
+          1147.949539,
+          "spike"
+        ],
+        [
+          1155.239536,
+          "spike"
+        ],
+        [
+          1155.49427,
+          "spike"
+        ],
+        [
+          1157.059727,
+          "spike"
+        ],
+        [
+          1163.107533,
+          "spike"
+        ],
+        [
+          1164.431532,
+          "spike"
+        ],
+        [
+          1165.073207,
+          "spike"
+        ],
+        [
+          1165.503532,
+          "spike"
+        ],
+        [
+          1165.788531,
+          "spike"
+        ],
+        [
+          1166.222671,
+          "spike"
+        ],
+        [
+          1168.199531,
+          "spike"
+        ],
+        [
+          1170.035799,
+          "spike"
+        ],
+        [
+          1171.198414,
+          "spike"
+        ],
+        [
+          1171.678148,
+          "spike"
+        ],
+        [
+          1171.774567,
+          "spike"
+        ],
+        [
+          1172.424529,
+          "spike"
+        ],
+        [
+          1172.655529,
+          "spike"
+        ],
+        [
+          1172.876529,
+          "spike"
+        ],
+        [
+          1179.114526,
+          "spike"
+        ],
+        [
+          1179.828622,
+          "spike"
+        ],
+        [
+          1181.329211,
+          "spike"
+        ],
+        [
+          1182.868525,
+          "spike"
+        ],
+        [
+          1183.16417,
+          "spike"
+        ],
+        [
+          1187.619523,
+          "spike"
+        ],
+        [
+          1189.326152,
+          "spike"
+        ],
+        [
+          1190.261522,
+          "spike"
+        ],
+        [
+          1191.255521,
+          "spike"
+        ],
+        [
+          1191.686192,
+          "spike"
+        ],
+        [
+          1192.136955,
+          "spike"
+        ],
+        [
+          1193.291236,
+          "spike"
+        ],
+        [
+          1193.29152,
+          "spike"
+        ],
+        [
+          1195.31452,
+          "spike"
+        ],
+        [
+          1198.611518,
+          "spike"
+        ],
+        [
+          1199.348845,
+          "spike"
+        ],
+        [
+          1199.703518,
+          "spike"
+        ],
+        [
+          1210.584513,
+          "spike"
+        ],
+        [
+          1210.820513,
+          "spike"
+        ],
+        [
+          1217.488511,
+          "spike"
+        ],
+        [
+          1218.33551,
+          "spike"
+        ],
+        [
+          1219.536356,
+          "spike"
+        ],
+        [
+          1221.433509,
+          "spike"
+        ],
+        [
+          1236.312503,
+          "spike"
+        ],
+        [
+          1251.187736,
+          "spike"
+        ],
+        [
+          1290.524805,
+          "spike"
+        ],
+        [
+          1296.511479,
+          "spike"
+        ],
+        [
+          1308.656713,
+          "spike"
+        ]
+      ],
+      "v": 3
     }
   ]
 }
