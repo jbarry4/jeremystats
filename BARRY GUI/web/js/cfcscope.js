@@ -93,6 +93,8 @@ BARRY.cfc = (function () {
     if (mapWin && !mapWin.closed) { try { mapWin.close(); } catch (e) {} }
     aidWin = null;
     mapWin = null;
+    // A main window laid out from Profile goes back to its one pane.
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     setMode(null);
     const b = document.getElementById('cfcBar');
     if (b) b.remove();
@@ -113,16 +115,33 @@ BARRY.cfc = (function () {
      and this is the layout people build by hand; one monitor and you
      alt-tab, which still beats four squares. */
   function layout() {
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 1, row: 1 });
+    /* The main window as this person laid it out in Profile › Support panel
+       preferences (2026-10-22), or the traces alone, as always. Its first
+       pane is always the traces, which everything below reads. */
+    const mp = BARRY.supportPanels
+      ? BARRY.supportPanels.applyMain('cfc', [{ panel: 'traces' }], sess,
+                                      { col: 1, row: 1 })
+      : (BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 1, row: 1 }), null);
+    // A span of its own: the same moment at the centre, that much around it.
+    if (mp && mp.span && sess) {
+      BARRY.views.xplore.setWindow(sess,
+        Math.max(0, sess.t0 + sess.span / 2 - mp.span / 2), mp.span);
+    }
     openAids();
   }
 
   function openAids() {
     if (aidWin && !aidWin.closed) { try { aidWin.focus(); } catch (e) {} return; }
-    aidWin = BARRY.views.xplore.popOutPanes(sess, [
+    const defaults = [
       { panel: 'bandpower' },
       { panel: 'spectrogram', fmin: 1, fmax: 250 },
-    ], {
+    ];
+    // What this person chose (Profile › Support panel preferences).
+    const plan = BARRY.supportPanels
+      ? BARRY.supportPanels.plan('cfc', defaults, sess) : { specs: defaults };
+    if (!plan) return;
+    aidWin = BARRY.views.xplore.popOutPanes(sess, plan.specs, {
+      ...BARRY.supportPanels.opts(plan),
       role: 'cfc', name: 'barry-cfc-aids', width: 720, height: 820,
       /* Headers and tabs folded away: both panes are the same recording and
          the labels would cost more of a short pane than they are worth. The
@@ -140,14 +159,17 @@ BARRY.cfc = (function () {
     let b = document.getElementById('cfcBar');
     if (!b) {
       b = el('div', { class: 'cfc-bar', id: 'cfcBar' });
-      const body = document.getElementById('xfBody');
-      if (body) body.appendChild(b); else document.body.appendChild(b);
+      // In the middle of the one mode bar (core.js `BARRY.modeSlot`).
+      BARRY.modeSlot().appendChild(b);
     }
     b.innerHTML = '';
 
     const chan = firstChannel();
+    /* No name of its own and no Leave of its own: the one bar says Braid
+       on its left and ends with Leave (core.js). Leaving still closes the
+       panels and the comodulogram window -- nothing here was written down,
+       so there is nothing to save. */
     b.appendChild(el('div', { class: 'cfc-bar-row' }, [
-      el('strong', { text: 'Braid' }),
       el('span', { class: 'hint',
         text: 'Band-resolved theta power and the spectrogram are in the '
             + 'second window.' }),
@@ -169,14 +191,6 @@ BARRY.cfc = (function () {
              + 'before it runs anything.',
         onclick: openMap,
       }),
-      /* Last on the right, where DS curation and StrataScope put theirs.
-         A mode that takes over the panes, the keyboard and a second window
-         has to say how to give them back. */
-      el('button', { class: 'btn ghost sm', text: 'Leave',
-                     title: 'Close the panels and the comodulogram window '
-                          + 'and hand the panes back. Nothing here was '
-                          + 'written down, so there is nothing to save.',
-                     onclick: exit }),
     ]));
     // The banner already says the mode; this says the part that is a promise.
     b.appendChild(el('p', { class: 'hint cfc-note',
@@ -194,7 +208,9 @@ BARRY.cfc = (function () {
 
        Measured, not assumed: the bar wraps to two rows on a narrow window,
        which is the same reason StrataScope measures its own. */
-    const h = Math.ceil(b.getBoundingClientRect().height);
+    // The whole one bar, which this bar now sits inside (core.js).
+    const whole = document.getElementById('modeBar') || b;
+    const h = Math.ceil(whole.getBoundingClientRect().height);
     if (h) document.documentElement.style.setProperty('--bottom-bar',
                                                       h + 'px');
   }

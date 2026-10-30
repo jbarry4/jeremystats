@@ -538,6 +538,37 @@ const post = (u, b) => fetch(u, { method: 'POST',
           /Read for the common reference only \(2\): CSC1, CSC3/.test(rnote),
           rnote.slice(-400));
     ev('BARRY.doppler._adopt(window.__stormFake)');
+
+    /* No Bank button (2026-10-21): runs bank themselves as they land. */
+    head('the bank card: where the run is, never a Bank button');
+    const tx = (n) => ((n && n.textContent) || '').replace(/\s+/g, ' ').trim();
+    const card = () => {
+      const c = $$('#tkResult .card').find((x) => /^4\. /.test(
+        tx(x.querySelector('.section-label'))));
+      return c ? tx(c) : '';
+    };
+    const bankBtn = () => $$('#tkResult .card button')
+      .some((b) => /^Bank them$/.test(tx(b)));
+    ev('window.__stormBanked = Object.assign({}, window.__stormFake, {banked:'
+       + '{id:"harness-entry",name:"harness run",n:3,auto:true}});'
+       + 'BARRY.doppler._adopt(window.__stormBanked); BARRY.doppler.paint();');
+    await until(() => /4\. Banked/.test(card() || ''), 4000);
+    check('a banked run says where it is', /Banked as it landed/.test(card() || ''),
+          card());
+    check('and offers no Bank button', !bankBtn());
+    const next = () => tx($('#tkNext'));
+    check('Next opens Spotter, saying the run waits there',
+          /Next: Spotter/.test(next()) && /waiting in Spotter/.test(next()), next());
+    ev('window.__stormOld = Object.assign({}, window.__stormFake, {banked:null,'
+       + 'computed:{at:"2026-10-12T10:00:00-04:00"}});'
+       + 'BARRY.doppler._adopt(window.__stormOld); BARRY.doppler.paint();');
+    await until(() => /4\. Not banked/.test(card() || ''), 4000);
+    check('an old run nobody banked says so, and offers to run it again',
+          /before runs banked themselves/.test(card() || '')
+            && $$('#tkResult .card button').some((b) => /Run it again/.test(tx(b))),
+          card());
+    check('still no Bank button', !bankBtn());
+    ev('BARRY.doppler._adopt(window.__stormFake); BARRY.doppler.paint();');
   }
 
   /* ---------------------------------------------------------------- */

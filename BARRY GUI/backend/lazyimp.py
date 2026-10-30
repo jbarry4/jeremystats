@@ -28,6 +28,24 @@ Constitution section 10: import what you use, when you use it.
 """
 import importlib
 import importlib.util
+import threading
+
+# One first import at a time. Lazy means the import runs inside whichever
+# request thread asks first, and two threads importing scipy at once can
+# take its module locks in opposite orders: Python raises _DeadlockError
+# rather than hang (2026-10-21, two requests opening tab 9 on a cold
+# server). Once a module is in, the lock is never taken for it again.
+_FIRST = threading.RLock()
+_LOADED = set()
+
+
+def _import(name):
+    if name in _LOADED:
+        return importlib.import_module(name)
+    with _FIRST:
+        mod = importlib.import_module(name)
+        _LOADED.add(name)
+        return mod
 
 
 def have(package):
@@ -48,7 +66,7 @@ class _Module(object):
     def _lazy_load(self):
         mod = self.__dict__["_lazy_mod"]
         if mod is None:
-            mod = importlib.import_module(self.__dict__["_lazy_name"])
+            mod = _import(self.__dict__["_lazy_name"])
             self.__dict__["_lazy_mod"] = mod
         return mod
 
@@ -76,7 +94,7 @@ def names(module_name, *attrs):
     """
     def one(attr):
         def call(*args, **kwargs):
-            return getattr(importlib.import_module(module_name), attr)(
+            return getattr(_import(module_name), attr)(
                 *args, **kwargs)
         call.__name__ = attr
         call.__qualname__ = attr

@@ -2315,7 +2315,7 @@ BARRY.circuit = (function () {
       if (!bulk.want[r.gid]) continue;
       for (const c of (r.cue_types || [])) all[c.cue_type] = c.cue_label;
     }
-    const ids = Object.keys(all).sort();
+    const ids = BARRY.ui.natSort(Object.keys(all));
     const isAll = bulk.cues === 'all';
     const box = el('div', { class: 'cir-cuepick' }, [
       el('button', {
@@ -2557,10 +2557,14 @@ BARRY.circuit = (function () {
     const gids = batchWant();
     if (!gids.length || !bulk.plan || !(bulk.plan.todo || []).length) return;
     try {
-      const got = await apiPost('/api/arc/circuit/batch/run', {
-        gids: gids, cue_types: bulk.cues, kind: bulk.kind,
-        params: Object.assign({}, st.params || {}), where: bulk.where,
-      });
+      // One batch per click (ui.submitOnce): a second click while the
+      // first was on its way used to submit the whole batch again.
+      const got = await BARRY.ui.submitOnce('circuit:batch', (sid) =>
+        apiPost('/api/arc/circuit/batch/run', {
+          gids: gids, cue_types: bulk.cues, kind: bulk.kind,
+          params: Object.assign({}, st.params || {}), where: bulk.where,
+          submit_id: sid,
+        }));
       bulk.job = { id: got.job, status: 'running', members: null };
       bulk.open = {}; bulk.shown = {};
       log('arc.circuit.batch', { n: gids.length, kind: bulk.kind, where: bulk.where,

@@ -1065,8 +1065,8 @@ BARRY.dspca = (function () {
         reachable: true,
       });
     }
-    rows.sort((x, y) => String(x.label || '').localeCompare(
-      String(y.label || '')));
+    // Number order: m1, m3, m12 (2026-10-20).
+    BARRY.ui.natSort(rows, (x) => x.label || '');
 
     // Opened on something workable rather than on nothing.
     if (!q.gid || !seen.has(q.gid)) {
@@ -1617,7 +1617,7 @@ BARRY.dspca = (function () {
       el('span', { class: 'spacer' }),
       el('button', { class: 'btn ghost sm', text: 'Put the old answer back',
                      onclick: () => { revertCompare(); closeModal(); } }),
-      el('button', { class: 'btn sm', text: 'Keep the new one',
+      el('button', { class: 'btn sm', text: 'Keep it',
                      onclick: closeModal }),
     ]));
     showModal(wrap, { replace: true });
@@ -2096,7 +2096,7 @@ BARRY.dspca = (function () {
     out.push(el('div', { class: 'dp-spacer' }));
     out.push(el('button', {
       class: 'btn dp-commit', disabled: !(fit && fit.ok) || null,
-      text: 'Commit DS1/DS2…',
+      text: 'Bank DS1/DS2 as a new version…',
       title: 'Write the call as the next version of the bank entry. '
              + 'A preview first, always.',
       onclick: preview,

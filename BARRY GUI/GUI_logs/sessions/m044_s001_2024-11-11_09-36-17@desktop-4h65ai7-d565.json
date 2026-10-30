@@ -28,8 +28,8 @@
     "schema": "2026-09-04T15:57:01.824837+00:00",
     "session": "2026-09-04T15:57:01.824837+00:00",
     "start": "2026-09-04T15:57:01.824837+00:00",
-    "updated": "2026-10-19T16:48:19.878759+00:00",
-    "view_state": "2026-10-13T23:13:22.926799+00:00"
+    "updated": "2026-10-23T19:20:51.946743+00:00",
+    "view_state": "2026-10-19T16:48:56.067723+00:00"
   },
   "_keys": {
     "paths": {
@@ -45,9 +45,13 @@
         "set",
         "2026-09-10T03:55:57.070333+00:00"
       ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\PtenDKOM44\\M44S1\\2024-11-11_09-36-17": [
+        "set",
+        "2026-10-23T19:20:51.946743+00:00"
+      ],
       "vacc:sd699dd1d187e": [
         "set",
-        "2026-10-19T16:48:19.878759+00:00"
+        "2026-10-19T17:04:02.834078+00:00"
       ]
     },
     "seen": {
@@ -70,7 +74,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-19T16:48:19.878759+00:00",
+    "at": "2026-10-23T19:20:51.946743+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -105,7 +109,8 @@
     "D:\\PTEN\\PTEN_DKO\\PtenDKOM44\\M44S1\\2024-11-11_09-36-17",
     "Y:\\ProcessedPtenData\\PtenDKOM44\\M44S1\\2024-11-11_09-36-17",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\DKO\\M44\\M44_s1_Baseline",
-    "vacc:sd699dd1d187e"
+    "vacc:sd699dd1d187e",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\PtenDKOM44\\M44S1\\2024-11-11_09-36-17"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -148,9 +153,9 @@
   "session": 1,
   "start": "2024-11-11T09:36:17",
   "updated": {
-    "app_version": "2026.10.19.2",
-    "at": "2026-10-19T12:48:19-04:00",
-    "commit": "a4626323",
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:51-04:00",
+    "commit": "be1e2ae4",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -204,9 +209,9 @@
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 1,
+    "span": 0.7,
     "stft_mode": null,
-    "t0": 3003.06576,
+    "t0": 2950.453409,
     "ylim": null
   }
 }

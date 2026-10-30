@@ -31,8 +31,8 @@
     "schema": "2026-09-04T15:57:01.894928+00:00",
     "session": "2026-09-04T15:57:01.894928+00:00",
     "start": "2026-09-04T15:57:01.894928+00:00",
-    "updated": "2026-10-14T16:15:15.963918+00:00",
-    "view_state": "2026-10-09T18:46:47.889272+00:00"
+    "updated": "2026-10-23T19:20:51.062891+00:00",
+    "view_state": "2026-10-16T17:16:37.033587+00:00"
   },
   "_keys": {
     "bookmarks": {
@@ -72,15 +72,19 @@
       ],
       "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40": [
         "set",
-        "2026-09-04T15:57:01.894928+00:00"
+        "2026-09-10T03:57:04.591087+00:00"
       ],
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M59_s10_CNO": [
         "set",
-        "2026-09-04T15:57:01.894928+00:00"
+        "2026-09-10T03:57:04.591087+00:00"
       ],
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s10_CNO": [
         "set",
-        "2026-09-04T15:57:01.894928+00:00"
+        "2026-09-10T03:57:04.591087+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40": [
+        "set",
+        "2026-10-23T19:20:51.062891+00:00"
       ],
       "vacc:sef04f3b4eb4d": [
         "set",
@@ -115,7 +119,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-14T16:15:15.963918+00:00",
+    "at": "2026-10-23T19:20:51.062891+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -166,7 +170,8 @@
     "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M59_s10_CNO",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s10_CNO",
-    "vacc:sef04f3b4eb4d"
+    "vacc:sef04f3b4eb4d",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -223,9 +228,9 @@
   "session": 10,
   "start": "2025-07-07T16:42:40",
   "updated": {
-    "app_version": "2026.10.14.4",
-    "at": "2026-10-14T12:15:15-04:00",
-    "commit": "092138ee",
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:51-04:00",
+    "commit": "be1e2ae4",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -270,7 +275,7 @@
     "clim": null,
     "fdefault": null,
     "flock": true,
-    "gain": 2.596153846153846,
+    "gain": 2.5,
     "hp": 5,
     "invert": true,
     "lp": 100,
@@ -279,9 +284,9 @@
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 0.976,
+    "span": 0.7,
     "stft_mode": null,
-    "t0": 3.558978,
+    "t0": 1254.296055,
     "ylim": null
   }
 }

@@ -307,7 +307,7 @@ const getj = (u) => fetch(u).then((r) => r.json());
     check('a measure has been offered as the one to keep',
           ['csd', 'voltage', 'slope'].indexOf(ev('BARRY.eye._state().measure')) >= 0,
           String(ev('BARRY.eye._state().measure')));
-    check('and the commit card is up', /Commit the moves/.test(
+    check('and the bank card is up', /Bank as a new version/.test(
       $('#tkResult').textContent));
   }
 

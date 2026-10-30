@@ -1,0 +1,135 @@
+{
+  "_at": {},
+  "_keys": {
+    "presets": {
+      "a827fddc": [
+        "set",
+        "2026-10-20T17:31:20.276320+00:00"
+      ],
+      "ds": [
+        "set",
+        "2026-09-02T23:21:29.287686+00:00"
+      ],
+      "ied": [
+        "set",
+        "2026-09-02T23:21:29.287686+00:00"
+      ],
+      "lfp": [
+        "set",
+        "2026-09-02T23:21:29.287686+00:00"
+      ],
+      "none": [
+        "set",
+        "2026-09-02T23:21:29.287686+00:00"
+      ],
+      "ripple": [
+        "set",
+        "2026-09-02T23:21:29.287686+00:00"
+      ],
+      "spike": [
+        "set",
+        "2026-09-02T23:21:29.287686+00:00"
+      ],
+      "theta": [
+        "set",
+        "2026-09-02T23:21:29.287686+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-20T17:31:20.276320+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "presets": [
+    {
+      "builtin": true,
+      "highpass": 5,
+      "id": "ds",
+      "label": "Dentate spike  5-100 Hz, notch 60",
+      "lowpass": 100,
+      "name": "Dentate spike",
+      "notch": 60,
+      "note": "Toothy dentate-spike band"
+    },
+    {
+      "builtin": true,
+      "highpass": 1,
+      "id": "ied",
+      "label": "IED  1-70 Hz, notch 60",
+      "lowpass": 70,
+      "name": "IED",
+      "notch": 60,
+      "note": "Interictal discharge band with line notch"
+    },
+    {
+      "builtin": true,
+      "highpass": 0,
+      "id": "lfp",
+      "label": "LFP  <300 Hz",
+      "lowpass": 300,
+      "name": "LFP",
+      "notch": 0,
+      "note": "Wideband local field potential"
+    },
+    {
+      "builtin": true,
+      "highpass": 0,
+      "id": "none",
+      "label": "None  (no filtering)",
+      "lowpass": 0,
+      "name": "None",
+      "notch": 0,
+      "note": "Raw signal, exactly as recorded"
+    },
+    {
+      "highpass": 0,
+      "id": "a827fddc",
+      "label": "Panning View  notch 60",
+      "lowpass": 0,
+      "name": "Panning View",
+      "notch": 60,
+      "note": "HP 0 / LP 0 / notch 60",
+      "saved": {
+        "app_version": "2026.10.20.1",
+        "at": "2026-10-20T13:31:20-04:00",
+        "commit": "5175db95",
+        "email": "rain.younger@uvm.edu",
+        "host": "BarryLab",
+        "machine": "Strawbarry",
+        "os": "Windows",
+        "user": "Rain Younger"
+      }
+    },
+    {
+      "builtin": true,
+      "highpass": 120,
+      "id": "ripple",
+      "label": "Ripple  120-250 Hz",
+      "lowpass": 250,
+      "name": "Ripple",
+      "notch": 0,
+      "note": "Sharp-wave ripple band"
+    },
+    {
+      "builtin": true,
+      "highpass": 300,
+      "id": "spike",
+      "label": "Spikes  >300 Hz",
+      "lowpass": 0,
+      "name": "Spikes",
+      "notch": 0,
+      "note": "Unit/spike band"
+    },
+    {
+      "builtin": true,
+      "highpass": 4,
+      "id": "theta",
+      "label": "Theta  4-12 Hz",
+      "lowpass": 12,
+      "name": "Theta",
+      "notch": 0,
+      "note": "Hippocampal theta band"
+    }
+  ]
+}

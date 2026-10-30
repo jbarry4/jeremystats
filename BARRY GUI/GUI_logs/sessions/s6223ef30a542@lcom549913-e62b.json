@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-10-29T17:16:22.608031+00:00",
+    "gid": "2026-10-29T17:16:22.608031+00:00",
+    "group": "2026-10-29T17:16:22.608031+00:00",
+    "key": "2026-10-29T17:19:11.764993+00:00",
+    "label": "2026-10-29T17:16:22.608031+00:00",
+    "loose_key": "2026-10-29T17:16:22.608031+00:00",
+    "mouse": "2026-10-29T17:16:22.608031+00:00",
+    "project": "2026-10-29T17:16:22.608031+00:00",
+    "project_source": "2026-10-29T17:16:22.608031+00:00",
+    "retired": "2026-10-29T17:16:22.608031+00:00",
+    "schema": "2026-10-29T17:16:22.608031+00:00",
+    "session": "2026-10-29T17:16:22.608031+00:00",
+    "start": "2026-10-29T17:16:22.608031+00:00",
+    "updated": "2026-10-29T17:19:11.764993+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Fall'24\\Kcnt1_459\\kcnt_459_s2Dec6\\2024-12-06_14-29-22": [
+        "set",
+        "2026-10-29T17:19:11.764993+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-29T17:19:11.764993+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.27.1",
+    "at": "2026-10-29T13:16:22-04:00",
+    "commit": "d752a3b1",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s6223ef30a542",
+  "group": null,
+  "key": null,
+  "label": "KCNT1 s2 2024-12-06",
+  "loose_key": null,
+  "mouse": null,
+  "paths": [
+    "Y:\\Jeremy3\\KCNT1\\Fall'24\\Kcnt1_459\\kcnt_459_s2Dec6\\2024-12-06_14-29-22"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 2,
+  "start": "2024-12-06T19:29:22+00:00",
+  "updated": {
+    "app_version": "2026.10.27.1",
+    "at": "2026-10-29T13:19:11-04:00",
+    "commit": "d752a3b1",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

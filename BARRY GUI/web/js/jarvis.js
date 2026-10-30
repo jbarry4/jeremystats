@@ -230,6 +230,9 @@
         || (s.indexOf(NAME) < 0 && s.indexOf('JARVIS') < 0)) return s;
     s = s.replace(/JARVIS/g, STAND_IN.toUpperCase());
     if (s.trim() === NAME) return s.replace(NAME, STAND_IN);
+    // The speed setting's name is a name, not a sentence about the app:
+    // "Jarvis Light" is "Workbench Light", never "the workbench Light".
+    s = s.replace(/\bJarvis Light\b/g, STAND_IN + ' Light');
     return s.replace(/Jarvis(['’]s)?\b/g, (m, poss, i, all) => {
       const before = all.slice(0, i);
       const after = all.slice(i + m.length);
@@ -457,9 +460,15 @@
   };
   const shows = () => (B && B.jarvisshow) || window.JarvisShow || null;
 
+  /* The OS's own answer, not Jarvis Light's: the reveal is a moment somebody
+     asked for, once, and it plays in full on a slower computer too -- Light
+     stands aside for it (`suspend`, below). Only the system setting stops it. */
   function canAnimate() {
     try {
-      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+      const lite = B && B.lite;
+      const reduce = lite ? lite.osReducedMotion()
+        : (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      if (reduce) return false;
     } catch (e) { /* no matchMedia: animate */ }
     const body = document.body;
     if (!body || body.classList.contains('solo-window') || body.classList.contains('aid-window')) return false;
@@ -627,6 +636,10 @@
 
   function playReveal() {
     finishStage();
+    // Jarvis Light steps aside until the reveal is over (finishStage).
+    let liteRelease = null;
+    try { if (B && B.lite && B.lite.on()) liteRelease = B.lite.suspend(); }
+    catch (e) { liteRelease = null; }
     const c = colours();
     const k = pace();
     const railMark = document.querySelector('#rail .brand-mark');
@@ -676,7 +689,7 @@
     if (railMark) railMark.classList.add('jv-await');
 
     const st = { box, big, railMark, letters, k, timers: [], stops: [], shown: false,
-                 held: false, leaving: false };
+                 held: false, leaving: false, liteRelease };
     state.stage = st;
     const later = (ms, fn) => st.timers.push(setTimeout(() => {
       try { fn(); } catch (e) { finishStage(); }
@@ -835,6 +848,8 @@
     if (!st.shown) show();
     st.stops.forEach((f) => { try { f(); } catch (e) { /* decoration */ } });
     if (st.box.parentNode) st.box.parentNode.removeChild(st.box);
+    // Light back on, if it was on: the moment is over.
+    if (st.liteRelease) { try { st.liteRelease(); } catch (e) { /* fine */ } }
     const mark = document.querySelector('#rail .brand-mark');
     if (mark) {
       mark.classList.remove('jv-await');

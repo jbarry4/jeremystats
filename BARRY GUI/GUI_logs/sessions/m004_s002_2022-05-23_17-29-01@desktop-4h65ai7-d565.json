@@ -22,7 +22,7 @@
     "schema": "2026-09-18T16:10:36.109319+00:00",
     "session": "2026-09-18T16:10:36.109319+00:00",
     "start": "2026-09-18T16:10:36.109319+00:00",
-    "updated": "2026-10-14T15:05:35.268844+00:00",
+    "updated": "2026-10-23T19:20:06.230078+00:00",
     "view_state": "2026-10-13T21:04:58.489848+00:00"
   },
   "_keys": {
@@ -44,6 +44,10 @@
       "D:\\KCNT1\\urethane\\hom\\KCNTM4_homYH\\KCNTM4s2may23\\2022-05-23_17-29-01": [
         "set",
         "2026-09-18T16:16:45.662936+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNTM4\\KCNTM4s2may23\\2022-05-23_17-29-01": [
+        "set",
+        "2026-10-23T19:20:06.230078+00:00"
       ]
     },
     "seen": {
@@ -54,7 +58,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-14T15:05:35.268844+00:00",
+    "at": "2026-10-23T19:20:06.230078+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -102,7 +106,8 @@
   "n_channels": 128,
   "paths": [
     "D:\\KCNT1\\urethane\\hom\\KCNTM4_homYH\\KCNTM4s2may23\\2022-05-23_17-29-01",
-    "/gpfs2/scratch/sakhava1/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M4s2/2022-05-23_17-29-01"
+    "/gpfs2/scratch/sakhava1/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M4s2/2022-05-23_17-29-01",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNTM4\\KCNTM4s2may23\\2022-05-23_17-29-01"
   ],
   "probe": "dual",
   "probe_source": "manual",
@@ -124,9 +129,9 @@
   "session": 2,
   "start": "2022-05-23T21:29:01+00:00",
   "updated": {
-    "app_version": "2026.10.14.2",
-    "at": "2026-10-14T11:05:35-04:00",
-    "commit": "092138ee",
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:06-04:00",
+    "commit": "be1e2ae4",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

@@ -1,7 +1,7 @@
 {
   "_at": {
-    "created": "2026-10-12T13:29:03.430931+00:00",
-    "gid": "2026-10-12T13:29:03.430931+00:00",
+    "created": "2026-10-12T13:10:30.689558+00:00",
+    "gid": "2026-10-12T13:10:30.689558+00:00",
     "group": "2026-10-12T13:29:03.430931+00:00",
     "key": "2026-10-12T13:29:03.430931+00:00",
     "label": "2026-10-12T13:29:03.430931+00:00",
@@ -13,7 +13,7 @@
     "schema": "2026-10-12T13:29:03.430931+00:00",
     "session": "2026-10-12T13:29:03.430931+00:00",
     "start": "2026-10-12T13:29:03.430931+00:00",
-    "updated": "2026-10-12T13:31:56.104876+00:00"
+    "updated": "2026-10-23T19:21:06.472442+00:00"
   },
   "_keys": {
     "channel_banks": {
@@ -28,13 +28,13 @@
     },
     "paths": {
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s3apr3\\2023-04-03_16-42-24": [
-        "set",
-        "2026-10-12T13:31:56.104876+00:00"
+        "gone",
+        "2026-10-23T19:21:06.472442+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-12T13:31:56.104876+00:00",
+    "at": "2026-10-23T19:21:06.472442+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -54,13 +54,13 @@
   ],
   "created": {
     "app_version": "2026.10.09.4",
-    "at": "2026-10-12T09:29:03-04:00",
-    "commit": "2ec65512",
-    "email": "sakhava1@uvm.edu",
-    "host": "DESKTOP-4H65AI7",
-    "machine": "Bluebarry",
+    "at": "2026-10-12T09:10:30-04:00",
+    "commit": "1b2184e3",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Shahriar Tafti"
+    "user": "Rain Younger"
   },
   "gid": "sa41f3b8fe7fb",
   "group": null,
@@ -68,9 +68,7 @@
   "label": "m1 s3 2023-04-03",
   "loose_key": "m001_s003",
   "mouse": 1,
-  "paths": [
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADM1s3apr3\\2023-04-03_16-42-24"
-  ],
+  "paths": [],
   "project": "Unfiled",
   "project_source": "guessed",
   "retired": false,
@@ -78,9 +76,9 @@
   "session": 3,
   "start": "2023-04-03T20:42:24+00:00",
   "updated": {
-    "app_version": "2026.10.09.4",
-    "at": "2026-10-12T09:31:56-04:00",
-    "commit": "2ec65512",
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:21:06-04:00",
+    "commit": "be1e2ae4",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

@@ -100,6 +100,10 @@ BOOT_CHATTER = (
     "/api/activity",         # the boot entry in the activity log
     "/api/pipeline/check",   # the pipeline view checking its remembered folder
     "/api/errors/client",    # a client-side error, which must always land
+    # The start screen getting things ready (warmup.py, 2026-10-21): reads
+    # only, made before anybody has chosen anything.
+    "/api/warmup/last",
+    "/api/warmup/overviews",
 )
 
 

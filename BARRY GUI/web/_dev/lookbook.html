@@ -1,0 +1,156 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lookbook — Look v2</title>
+<link rel="stylesheet" href="/app.css">
+<style>
+  /* app.css holds the page still (the app scrolls inside its views), so
+     this page makes its own scroller. */
+  html, body { height: 100%; overflow: hidden; }
+  #lb { height: 100vh; overflow-y: auto; padding: 18px 24px 60px; box-sizing: border-box; }
+  .lb-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+            position: sticky; top: -18px; z-index: 5; padding: 14px 0 12px;
+            background: var(--bg); border-bottom: 1px solid var(--line-soft); margin-bottom: 18px; }
+  .lb-top h1 { margin: 0; font-size: var(--fs-17); font-weight: 600; }
+  .lb-top .hint { margin: 0; }
+  .lb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+  .lb-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .lb-note { font-size: var(--fs-105); color: var(--text-3); margin: 6px 0 0; }
+</style>
+<div id="lb"></div>
+<div id="toasts"></div>
+<script src="/js/core.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/features.js"></script>
+<script>
+/* The lookbook for Look v2 (2026-10-20): every primitive and shared
+   composition, as the app draws them, in whichever theme is picked. It is
+   the checkpoint the user approves before any surface migrates, and the
+   reference afterwards: a control that looks different in the app from
+   here is the app drifting. Nothing on this page writes anything. */
+const root = document.getElementById('lb');
+const ui = BARRY.ui;
+const THEME_IDS = ['dark', 'light', 'slate', 'parchment', 'phosphor', 'horizon',
+  'horizon-night', 'jirai', 'jirai-shiro', 'jirai-yami', 'halloween'];
+const q0 = new URLSearchParams(location.search);
+let theme = q0.get('theme') || 'dark';
+let compact = q0.get('density') === 'compact';
+
+function applyLook() {
+  document.documentElement.dataset.theme = theme;
+  if (compact) document.documentElement.dataset.density = 'compact';
+  else delete document.documentElement.dataset.density;
+}
+
+function card(title, kids, note) {
+  return el('div', { class: 'card' }, [
+    el('div', { class: 'section-label', text: title }),
+  ].concat(kids).concat(note ? [el('p', { class: 'lb-note', text: note })] : []));
+}
+
+function row(kids) { return el('div', { class: 'lb-row' }, kids.filter(Boolean)); }
+
+const versions = [
+  { id: 'a0', v: 0, label: '0', by: 'Incisor', at: '2026-10-01T10:00:00', n: 1306, note: 'import' },
+  { id: 'a1', v: 1, label: '1', from_id: 'a0', by: 'Rain', at: '2026-10-08T10:00:00', n: 1211 },
+  { id: 'a2', v: 2, label: '2', from_id: 'a1', by: 'Rain', at: '2026-10-15T10:00:00', n: 1198 },
+  { id: 'a11', v: 3, label: '1.1', from_id: 'a1', by: 'Jeremy', at: '2026-10-16T10:00:00', n: 1190 },
+  { id: 'a3', v: 4, label: '3', from_id: 'a2', by: 'Rain', at: '2026-10-19T10:00:00', n: 1204, archived: true },
+];
+
+function draw() {
+  applyLook();
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'lb-top' }, [
+    el('h1', { text: 'Lookbook' }),
+    el('p', { class: 'hint', text: 'Look v2 — every primitive and composition, as the app draws them.' }),
+    el('div', { class: 'spacer', style: 'flex:1' }),
+    ui.seg(THEME_IDS.map((t) => [t, t]), theme, (t) => { theme = t; draw(); }),
+    el('label', { class: 'toggle' + (compact ? ' on' : '') }, [
+      el('input', { type: 'checkbox', checked: compact ? 'checked' : null,
+                    onchange: (e) => { compact = e.target.checked; draw(); } }),
+      el('span', { text: 'Compact' }),
+    ]),
+  ]));
+
+  const grid = el('div', { class: 'lb-grid' });
+  root.appendChild(grid);
+
+  grid.appendChild(card('Buttons', [
+    row([ui.button({ kind: 'primary', text: 'Scan this recording' }),
+         ui.button({ kind: 'ghost', text: 'Run again' }),
+         ui.button({ kind: 'ghost', text: 'Delete entry', danger: true })]),
+    row([ui.button({ kind: 'primary', size: 'sm', text: 'Bank as v5…' }),
+         ui.button({ kind: 'ghost', size: 'sm', text: 'Export CSV' }),
+         ui.button({ kind: 'ghost', size: 'sm', text: 'Open folder' }),
+         ui.button({ kind: 'primary', size: 'sm', text: 'Disabled', disabled: true })]),
+    row([ui.button({ kind: 'mini', text: 'mini' }), ui.button({ kind: 'mini', text: 'on', on: true }),
+         ui.button({ kind: 'link', text: 'a link-style action' })]),
+  ], 'Hover lifts, press squishes, Tab shows the one focus ring.'));
+
+  grid.appendChild(card('Choices', [
+    row([el('button', { class: 'pill active', text: 'All (82)' }),
+         el('button', { class: 'pill', text: 'Unfinished (12)' }),
+         el('button', { class: 'pill', text: 'Done (70)', disabled: 'disabled' })]),
+    row([ui.seg([['one', 'One'], ['many', 'Many']], 'one', () => {}),
+         ui.seg([['local', 'This computer'], ['vacc', 'VACC']], 'vacc', () => {})]),
+    row([el('label', { class: 'toggle on' }, [el('input', { type: 'checkbox', checked: 'checked' }),
+                                             el('span', { text: 'Bank automatically' })]),
+         el('label', { class: 'toggle' }, [el('input', { type: 'checkbox' }),
+                                           el('span', { text: 'Show all recordings' })])]),
+  ]));
+
+  grid.appendChild(card('Facts', [
+    row([ui.chip('641 events'), ui.chip('aligned', { kind: 'good' }),
+         ui.chip('changed since v3', { kind: 'warn' }), ui.chip('pooled', { flag: true, kind: 'ok' }),
+         el('span', { class: 'flagchip warn', text: '128 in another copy' }),
+         el('span', { class: 'tag blocked', text: 'archived' })]),
+  ]));
+
+  grid.appendChild(card('Fields', [
+    ui.field({ label: 'Recording', control: ui.searchField({ placeholder: 'Type a mouse, session or date…' }) }),
+    ui.field({ label: 'Window (ms)', inline: true, control: el('input', { type: 'number', value: '5', style: 'width:70px' }),
+               hint: 'Events this close together are one event. Default 5.' }),
+    ui.field({ label: 'Probe', control: el('select', {}, [el('option', { text: 'H3 · one linear array' }),
+                                                          el('option', { text: 'H10-D · 6 columns' })]) }),
+  ]));
+
+  grid.appendChild(card('A tool’s header and run bar', [
+    ui.stepHeader({ title: 'Incisor', step: 'step 1 of The Dentist',
+                    blurb: 'Finds dentate spikes on every channel and says which one is the hilus.' }),
+    ui.runBar({ modes: { local: ['one', 'many'], vacc: ['one', 'many'] }, where: 'local', count: 'one',
+                cost: 'About 4 minutes here, 64 channels.',
+                action: { text: 'Scan this recording', onclick: () => toast('Started (lookbook).', 'ok') } }),
+  ]));
+
+  grid.appendChild(card('Versions', [
+    ui.versionTree({ versions: versions.filter((v) => !v.archived), value: 'a2', onpick: () => {}, unit: 'stamps' }),
+    ui.archivedTail({ key: 'lb-vers', items: versions.filter((v) => v.archived),
+                      noun: ['version', 'versions'], onToggle: () => draw() }),
+  ]));
+
+  grid.appendChild(card('On the bench', [
+    ui.workbenchCard({ title: 'PTEN m34 s8 — DS', chips: [ui.chip('banked v3', { kind: 'good' })],
+                       count: '312 / 1,204', owner: { name: 'Rain Younger' }, when: '3h',
+                       progress: 26, actions: [ui.button({ kind: 'ghost', size: 'sm', text: 'Close' }),
+                                               ui.button({ kind: 'primary', size: 'sm', text: 'Carry on…' })] }),
+    ui.workbenchCard({ title: 'KCNT1 m2 s2 — IED', count: '0 / 343', owner: {},
+                       progress: 0, actions: [ui.button({ kind: 'primary', size: 'sm', text: 'Start…' })] }),
+  ]));
+
+  grid.appendChild(card('Waiting, empty, wrong', [
+    loader('Reading the recording', '64 channels · about 40 s'),
+    el('div', { class: 'empty-state' }, [el('p', { text: 'Nothing banked yet. Run Incisor on a recording to make the first entry.' })]),
+    row([ui.button({ kind: 'ghost', size: 'sm', text: 'Toast: ok', onclick: () => toast('Banked as v5.', 'ok') }),
+         ui.button({ kind: 'ghost', size: 'sm', text: 'Toast: warn', onclick: () => toast('Already running on the VACC — following it.', 'warn') }),
+         ui.button({ kind: 'ghost', size: 'sm', text: 'Toast: err', onclick: () => toast('The cluster refused the key.', 'err') })]),
+    row([ui.button({ kind: 'ghost', size: 'sm', text: 'Open a dialog', onclick: () =>
+           BARRY.confirm('Bank these 641 events?', 'Continues v4 → v5. Every decision is already saved; this files them as a version.', 'Bank as v5', false, () => {}) }),
+         ui.button({ kind: 'ghost', size: 'sm', text: 'Open a popover', onclick: (e) =>
+           openPopover(e.currentTarget, () => el('div', {}, [el('div', { class: 'section-label', text: 'Window' }),
+             el('p', { class: 'hint', text: 'A popover floats on glass, from its button.' })])) })]),
+  ]));
+}
+
+draw();
+</script>

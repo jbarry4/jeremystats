@@ -501,15 +501,21 @@ BARRY.drift = (function () {
     const on = sideOf(r.artifact_id);
     const vid = st.pickVer[r.artifact_id] || r.version_id;
     const vers = r.versions || [];
-    const verSel = vers.length > 1 ? el('select', {
-      class: 'dr-ver', 'aria-label': 'Which version',
-      title: 'A drift pins the exact version it reads. The current one is first.',
-      onchange: (e) => { st.pickVer[r.artifact_id] = e.target.value; },
-    }, vers.map((v) => el('option', { value: v.version_id,
-      text: 'v' + v.v + (v.current ? ' (current)' : '') + (v.n_pairs != null
-        ? ' · ' + plural(v.n_pairs, 'pair') : '') + (v.here === false
-        ? ' · not on this computer' : '') }))) : null;
-    if (verSel) verSel.value = vid;
+    /* Which version a drift reads: one button that opens the whole tree
+       (2026-10-21), not a drop-down of bare numbers. */
+    const verSel = vers.length > 1 ? BARRY.ui.versionButton({
+      versions: vers.map((v) => Object.assign({}, v, {
+        id: v.version_id, n: v.n_pairs,
+        note: [v.current ? 'The current version.' : null,
+               v.here === false ? 'Not on this computer.' : null,
+               v.note || null].filter(Boolean).join(' ') || null,
+      })),
+      idOf: (v) => v.id, value: vid, unit: 'pairs', producer: false,
+      disabled: null,
+      heading: 'Which version of ' + (r.nickname || r.name),
+      sub: 'A drift pins the exact version it reads.',
+      onpick: (v) => { if (v) st.pickVer[r.artifact_id] = v.id; },
+    }) : null;
     const note = r.compatible === false
       ? el('span', { class: 'dr-row-why' + (r.cue_only ? ' cue' : ''),
                      text: (r.cue_only ? 'Another cue pairing: ' : 'Does not fit: ')
@@ -722,7 +728,11 @@ BARRY.drift = (function () {
     });
     if ((st.nickname || '').trim()) body.nickname = st.nickname.trim();
     try {
-      const got = await apiPost('/api/arc/drift/run', body);
+      // One run per click (ui.submitOnce); on the VACC the cluster lock
+      // refuses a second copy of the same drift as well.
+      const got = await BARRY.ui.submitOnce('drift:run', (sid) =>
+        apiPost('/api/arc/drift/run', Object.assign({}, body,
+                                                    { submit_id: sid })));
       st.job = { id: got.job, status: 'running', stages: [], where: body.where };
       log('arc.drift.run', { where: body.where, left: body.left.length,
                              right: body.right.length });

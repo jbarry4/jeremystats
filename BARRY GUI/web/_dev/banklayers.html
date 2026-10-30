@@ -140,10 +140,24 @@ const hd = (t) => p('\n== ' + t + ' ==');
      v0regions.length + ' labelled rows in what should be the empty version');
 
   hd('5. Snapshotting adds a version');
+  /* On a DEMO sheet only (2026-10-20). This step used to snapshot whichever
+     sheet it had just opened -- the first real one with a history -- and a
+     version is history, so it stayed: KCNT1 m306 s1, a signed-off
+     StrataScope sheet, was left carrying a "harness snapshot" v1, which then
+     travelled to every computer through the cloud. A demo sheet is the
+     harness's own to write on; with none, the step says so and writes
+     nothing. */
+  const demoRow = rows().find((r) => /DEMO/i.test(r.textContent || ''));
+  if (demoRow) {
+    demoRow.click();
+    await untilN(() => D().querySelector('.layer-runs'), 100);
+    await sleep(1200);
+  }
   const before = D().querySelectorAll('.ver-row').length;
-  const snapBtn = Array.from(D().querySelectorAll('.bank-detail .btn'))
-    .find((b) => /Snapshot/.test(b.textContent || ''));
-  ck('there is a snapshot button', !!snapBtn);
+  const snapBtn = demoRow ? Array.from(D().querySelectorAll('.bank-detail .btn'))
+    .find((b) => /Snapshot/.test(b.textContent || '')) : null;
+  if (!demoRow) p('  (no demo sheet here, so nothing is snapshotted -- this step writes only on demo data)');
+  ck('there is a snapshot button', !demoRow || !!snapBtn);
   if (snapBtn) {
     snapBtn.click();
     await untilN(() => D().querySelector('.ver-edit textarea'), 60);
@@ -164,8 +178,10 @@ const hd = (t) => p('\n== ' + t + ' ==');
   }
 
   p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
-  p('(this run left one snapshot behind on ' + gid + ' — a version is'
-    + ' history, so it is not something to quietly delete)');
+  if (snapBtn) {
+    p('(this run left one snapshot behind on the demo sheet -- demo data,'
+      + ' the harness\'s own to write on)');
+  }
   document.title = (bad ? bad + ' FAILED — ' : 'ok — ') + 'bank layers';
 } catch (e) {
   p('THREW: ' + (e && e.message) + '\n' + (e && e.stack));

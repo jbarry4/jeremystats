@@ -1,0 +1,282 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>lite: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:560px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:560px;top:0;width:1366px;height:768px;border:0}
+#second{left:560px;top:400px;width:600px;height:360px;opacity:.4}</style></head>
+<body><pre id="log"></pre>
+<iframe id="app" src="/?linkhold=0&menu=0"></iframe>
+<script>
+/* Jarvis Light (js/lite.js): the same Jarvis, cheaper to draw, for a slower
+   computer. A SPEED setting, never a colour scheme -- the user said so twice
+   (2026-10-14) -- so the first thing checked is that no colour token moves,
+   in any of the eleven themes.
+
+   Then what it is for: motion stopped (the reduced-motion stops switched on,
+   and scripts told), plots at 1x, no glass or elevation, no VACC board, no
+   Halloween visitors; the switch in the theme picker and Ctrl+K; the reveal's
+   suspend; the name-hidden wording; and that a /_dev/ frame starts with it
+   OFF unless its address says otherwise, so no other harness ever runs in it
+   by accident.
+
+   Nothing written: BARRY.prefs.set and activity.log are stood in for during
+   the run, and Light, the theme, VACC Mode and localStorage are put back. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(80);
+  }
+  return null;
+}
+
+/* The colours a theme defines (the same list _dev/vaccskin.html keeps), less
+   `--shadow`: that one is elevation, not colour, and Light is allowed to take
+   it away. */
+const COLOUR_TOKENS = [
+  '--bg', '--bg-2', '--bg-3', '--bg-hover', '--line', '--line-soft',
+  '--text', '--text-2', '--text-3',
+  '--accent', '--accent-soft', '--accent-line', '--on-accent',
+  '--ok', '--ok-soft', '--warn', '--warn-soft', '--err', '--err-soft',
+  '--on-err', '--accent-2', '--accent-2-soft',
+  '--c1', '--c2', '--c3', '--c4', '--c5',
+  '--trace', '--event',
+];
+
+async function frameLite(src) {
+  const f = document.createElement('iframe');
+  f.id = 'second';
+  f.src = src;
+  document.body.appendChild(f);
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const ok = await until(() => f.contentWindow.eval('typeof BARRY') === 'object'
+                         && f.contentWindow.eval('!!BARRY.lite'), 20000);
+  const on = ok ? f.contentWindow.eval('BARRY.lite.on()') : null;
+  const attr = f.contentDocument.documentElement.dataset.lite || '';
+  f.src = 'about:blank';
+  await sleep(100);
+  f.remove();
+  return { on, attr };
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const ev = (c) => W().eval(c);
+  const root = () => D().documentElement;
+  const tok = (n) => W().getComputedStyle(root()).getPropertyValue(n).trim();
+  let B = null, realSet = null, realLog = null, wasTheme = null, wasVacc = null;
+  let wasLocal = null;
+  const written = [];
+  try {
+    await until(() => ev('typeof BARRY === "object" && !!BARRY.lite && !!BARRY.state.catalog')
+                      && D().querySelector('#rail .nav-item'), 30000);
+    B = ev('BARRY');
+    wasTheme = B.state.theme;
+    wasVacc = !!B.state.vacc;
+    wasLocal = W().localStorage.getItem('barry.lite');
+    realSet = B.prefs.set;
+    B.prefs.set = (k, v) => { written.push([k, v]); };
+    realLog = B.activity.log;
+    B.activity.log = () => {};
+    const Lt = B.lite;
+
+    say('=== a harness frame starts without it ===');
+    check('off in a /_dev/ frame, whatever this computer chose', Lt.on() === false);
+    check('and nothing on the root says otherwise', !root().dataset.lite,
+          root().dataset.lite);
+
+    say('');
+    say('=== it changes no colour, in any theme ===');
+    const themes = ev('THEMES').map((t) => t.id);
+    check('eleven themes to check', themes.length === 11, themes.join(' '));
+    const moved = [];
+    for (const id of themes) {
+      ev("applyTheme('" + id + "', false)");
+      await sleep(120);
+      Lt.set(false, { remember: false }); await sleep(60);
+      const off = COLOUR_TOKENS.map(tok);
+      Lt.set(true, { remember: false }); await sleep(60);
+      const on = COLOUR_TOKENS.map(tok);
+      const diff = COLOUR_TOKENS.filter((t, i) => off[i] !== on[i]);
+      diff.forEach((t) => moved.push(id + ' ' + t));
+      check(id.padEnd(15) + ' ' + COLOUR_TOKENS.length + ' colours identical',
+            diff.length === 0, diff.join(', '));
+    }
+    check('nothing moved anywhere', moved.length === 0, moved.slice(0, 6).join(' | '));
+    ev("applyTheme('dark', false)");
+    await sleep(120);
+
+    say('');
+    say('=== what it is for ===');
+    Lt.set(true, { remember: false });
+    await sleep(120);
+    check('the root says so', root().dataset.lite === 'on');
+    check('a script asking about reduced motion hears yes',
+          W().matchMedia('(prefers-reduced-motion: reduce)').matches === true);
+    check('so does BARRY.ui.reducedMotion()', B.ui.reducedMotion() === true);
+    check('and BARRY.motion', B.motion.reduced() === true);
+    check('an unrelated query is answered honestly',
+          W().matchMedia('(min-width: 1px)').matches === true
+          && W().matchMedia('(max-width: 1px)').matches === false);
+    check('plots draw at 1x', W().devicePixelRatio === 1, W().devicePixelRatio);
+    check('the real ratio is still known', Lt.realDpr() >= 1, Lt.realDpr());
+    const probe = (cls) => {
+      const n = D().createElement('div');
+      n.className = cls;
+      D().body.appendChild(n);
+      const cs = W().getComputedStyle(n);
+      const out = { blur: cs.backdropFilter, shadow: cs.boxShadow,
+                    transition: cs.transitionDuration, bg: cs.backgroundColor };
+      n.remove();
+      return out;
+    };
+    const modal = probe('modal');
+    check('a dialog has no glass', modal.blur === 'none', modal.blur);
+    check('and no elevation', modal.shadow === 'none', modal.shadow);
+    check('and does not animate in', /^0s/.test(modal.transition), modal.transition);
+    const pane = probe('panel-input');
+    check('the pane label strip is not re-blurred on every pan', pane.blur === 'none',
+          pane.blur);
+    const card = probe('card');
+    check('a card lies flat', card.shadow === 'none', card.shadow);
+    ev("setView('results')");
+    await sleep(200);
+    ev("setView('pipeline')");
+    await sleep(150);
+    const pad = D().querySelector('.view.active > .pad');
+    check('a view arrives without rising',
+          !pad || W().getComputedStyle(pad).animationName === 'none',
+          pad && W().getComputedStyle(pad).animationName);
+    await sleep(600);
+    const running = D().getAnimations().filter((a) => a.playState === 'running');
+    const forever = running.filter((a) => {
+      try { return a.effect.getTiming().iterations === Infinity; } catch (e) { return false; }
+    });
+    check('nothing loops at rest', forever.length === 0,
+          forever.map((a) => a.animationName || '?').join(' '));
+
+    say('');
+    say('=== VACC keeps its colours, loses the board ===');
+    W().applyVacc(true, false);
+    await sleep(300);
+    check('VACC Mode is on', root().dataset.vacc === 'on');
+    check('with no board over the page', !D().getElementById('vaccCircuit'));
+    Lt.set(false, { remember: false });
+    await sleep(300);
+    check('the board comes back when Light goes off', !!D().getElementById('vaccCircuit')
+          || W().matchMedia('(prefers-reduced-motion: reduce)').matches);
+    Lt.set(true, { remember: false });
+    await sleep(300);
+    check('and goes again when it comes back on', !D().getElementById('vaccCircuit'));
+    W().applyVacc(wasVacc, false);
+
+    say('');
+    say('=== Halloween keeps its colours, loses its visitors ===');
+    ev("applyTheme('halloween', false)");
+    await sleep(300);
+    check('the palette is Halloween', root().dataset.theme === 'halloween');
+    check('with no visitors', !D().getElementById('spooky'));
+    Lt.set(false, { remember: false });
+    await sleep(300);
+    check('they arrive when Light goes off', !!D().getElementById('spooky'));
+    Lt.set(true, { remember: false });
+    await sleep(300);
+    check('and leave when it comes back', !D().getElementById('spooky'));
+    ev("applyTheme('dark', false)");
+    await sleep(200);
+
+    say('');
+    say('=== the reveal plays in full ===');
+    const release = Lt.suspend();
+    await sleep(80);
+    check('suspended: full drawing', root().dataset.lite === 'held'
+          && W().devicePixelRatio === Lt.realDpr());
+    check('motion answered by the OS alone',
+          W().matchMedia('(prefers-reduced-motion: reduce)').matches === Lt.osReducedMotion());
+    check('Light is still the choice', Lt.on() === true);
+    release();
+    release();       // twice is harmless
+    await sleep(80);
+    check('released: Light again', root().dataset.lite === 'on' && W().devicePixelRatio === 1);
+
+    say('');
+    say('=== the switch ===');
+    Lt.set(false, { remember: false });
+    await sleep(80);
+    D().getElementById('themeToggle').click();
+    const row = await until(() => D().querySelector('#themePop .lite-opt'), 3000);
+    // "Workbench Light" where this computer hides the name (js/jarvis.js).
+    check('the theme picker has a Jarvis Light row',
+          !!row && /(Jarvis|Workbench) Light/.test(row.textContent), row && row.textContent);
+    check('which says what it is for, so it is not read as a colour',
+          !!row && /slower computers/.test(row.textContent));
+    check('off to start with', row && row.getAttribute('aria-checked') === 'false');
+    row.click();
+    await sleep(150);
+    check('pressing it turns Light on', Lt.on() && root().dataset.lite === 'on');
+    check('and the switch says so', row.getAttribute('aria-checked') === 'true');
+    check('the picker stays open', !!D().getElementById('themePop'));
+    check('remembered in this browser', W().localStorage.getItem('barry.lite') === 'on');
+    check('and for this computer', written.some(([k, v]) => k === 'lite' && v === 'on'),
+          JSON.stringify(written));
+    row.click();
+    await sleep(150);
+    check('pressing it again turns it off', !Lt.on() && !root().dataset.lite);
+    ev('closeThemePicker()');
+    const cmds = B.palette.commands ? B.palette.commands() : [];
+    check('Ctrl+K has it', cmds.some((c) => c.label === 'Toggle Jarvis Light'),
+          cmds.length + ' commands');
+
+    say('');
+    say('=== the name hidden ===');
+    check('"Jarvis Light" reads "Workbench Light"',
+          B.jarvis.neutral('Jarvis Light') === 'Workbench Light',
+          B.jarvis.neutral('Jarvis Light'));
+    check('inside a sentence too',
+          B.jarvis.neutral('Turn on Jarvis Light.') === 'Turn on Workbench Light.',
+          B.jarvis.neutral('Turn on Jarvis Light.'));
+
+    say('');
+    say('=== the address wins ===');
+    const a = await frameLite('/?linkhold=0&menu=0&lite=on');
+    check('?lite=on turns it on, even in a harness frame', a.on === true && a.attr === 'on',
+          JSON.stringify(a));
+    W().localStorage.setItem('barry.lite', 'on');
+    const b = await frameLite('/?linkhold=0&menu=0&lite=off');
+    check('?lite=off keeps it off over a stored on', b.on === false && !b.attr,
+          JSON.stringify(b));
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  } finally {
+    try {
+      if (B && B.lite) B.lite.set(false, { remember: false });
+      if (B && realSet) B.prefs.set = realSet;
+      if (B && realLog) B.activity.log = realLog;
+      if (wasLocal == null) W().localStorage.removeItem('barry.lite');
+      else W().localStorage.setItem('barry.lite', wasLocal);
+      if (wasTheme) W().applyTheme(wasTheme, false);
+      if (wasVacc !== null) W().applyVacc(wasVacc, false);
+      W().closeThemePicker && W().closeThemePicker();
+    } catch (e) { /* the frame is going anyway */ }
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'lite: ' + fails + ' FAILED' : 'lite: passed';
+  frame.src = 'about:blank';
+})();
+</script>
+</body></html>

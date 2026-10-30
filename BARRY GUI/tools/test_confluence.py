@@ -137,8 +137,8 @@ def pooling():
             got = str(e)
         check("a window of %s ms is refused in a sentence" % bad,
               bool(got) and got.endswith("."), got)
-    check("a missing window is the 5 ms default",
-          CF.window_s(None) == 0.005)
+    check("a missing window is the 20 ms default",
+          CF.window_s(None) == 0.02)
 
 
 def banking(tmp):

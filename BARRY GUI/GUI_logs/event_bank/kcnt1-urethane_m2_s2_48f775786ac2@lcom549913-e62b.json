@@ -42,7 +42,7 @@
   },
   "added": {
     "at": "2026-09-25T18:05:20-04:00",
-    "by": "spotter harness",
+    "by": "Debug_Bot",
     "machine": "LCOM549913"
   },
   "by_label": {
@@ -136,7 +136,7 @@
   "versions": [
     {
       "at": "2026-09-25T18:05:20-04:00",
-      "by": "spotter harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 10
       },

@@ -42,7 +42,7 @@
   },
   "added": {
     "at": "2026-09-25T15:46:54-04:00",
-    "by": "harness@test",
+    "by": "Debug_Bot",
     "machine": "BarryLab"
   },
   "by_label": {
@@ -89,7 +89,7 @@
   "versions": [
     {
       "at": "2026-09-25T15:46:54-04:00",
-      "by": "harness@test",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 2
       },

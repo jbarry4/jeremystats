@@ -17,13 +17,13 @@
     "probe_source": "2026-09-25T15:12:29.791115+00:00",
     "project": "2026-09-21T14:15:30.031530+00:00",
     "project_source": "2026-09-21T14:15:30.031530+00:00",
-    "quality": "2026-10-01T19:24:12.875307+00:00",
+    "quality": "2026-10-22T16:08:06.824373+00:00",
     "retired": "2026-09-18T15:46:11.116053+00:00",
     "schema": "2026-09-18T15:46:11.116053+00:00",
     "session": "2026-09-18T15:46:11.116053+00:00",
     "start": "2026-09-18T15:46:11.116053+00:00",
-    "updated": "2026-10-12T13:14:37.767923+00:00",
-    "view_state": "2026-09-25T15:11:37.195282+00:00"
+    "updated": "2026-10-27T17:49:31.038031+00:00",
+    "view_state": "2026-10-26T15:29:41.297389+00:00"
   },
   "_keys": {
     "channel_banks": {
@@ -43,18 +43,22 @@
       ],
       "Z:\\harness\\split-me": [
         "set",
-        "2026-10-12T13:14:37.767923+00:00"
+        "2026-10-27T17:49:31.038031+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNTM2\\KCNTM2_S3_03182022\\2022-03-18_16-19-08": [
+        "set",
+        "2026-10-23T19:20:05.120491+00:00"
       ]
     },
     "seen": {
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-10-08T14:56:55.260341+00:00"
+        "2026-10-26T15:29:26.262037+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-12T13:14:37.767923+00:00",
+    "at": "2026-10-27T17:49:31.038031+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -102,6 +106,7 @@
   "note": "",
   "paths": [
     "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S3_03182022\\2022-03-18_16-19-08",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNTM2\\KCNTM2_S3_03182022\\2022-03-18_16-19-08",
     "Z:\\harness\\split-me"
   ],
   "probe": "dual",
@@ -113,7 +118,7 @@
   "schema": 1,
   "seen": {
     "desktop-4h65ai7-d565": {
-      "at": "2026-10-08T10:56:55-04:00",
+      "at": "2026-10-26T11:29:26-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S3_03182022\\2022-03-18_16-19-08",
@@ -124,9 +129,9 @@
   "session": 3,
   "start": "2022-03-18T20:19:08+00:00",
   "updated": {
-    "app_version": "2026.10.09.4",
-    "at": "2026-10-12T09:14:37-04:00",
-    "commit": "1b2184e3",
+    "app_version": "2026.10.26.2",
+    "at": "2026-10-27T13:49:31-04:00",
+    "commit": "475259cf",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
@@ -264,22 +269,22 @@
       126,
       127
     ],
-    "clim": null,
-    "even_only": false,
+    "climBy": null,
     "fdefault": null,
     "flock": true,
     "gain": 1,
-    "hp": 0,
+    "hp": 1,
     "invert": true,
-    "lp": 0,
+    "lp": 70,
+    "marks_fade": 0.2,
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
     "probe": "dual",
     "spacing": 50,
-    "span": 10,
+    "span": 1,
     "stft_mode": null,
-    "t0": 74.39617043719639,
+    "t0": 13.3,
     "ylim": 138.64778565256464
   }
 }

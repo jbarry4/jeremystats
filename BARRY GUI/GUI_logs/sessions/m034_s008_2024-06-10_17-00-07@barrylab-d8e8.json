@@ -25,8 +25,8 @@
     "schema": "2026-09-04T15:57:01.804684+00:00",
     "session": "2026-09-04T15:57:01.804684+00:00",
     "start": "2026-09-04T15:57:01.804684+00:00",
-    "updated": "2026-10-13T16:42:24.083849+00:00",
-    "view_state": "2026-10-13T16:42:24.083849+00:00"
+    "updated": "2026-10-29T14:32:42.757683+00:00",
+    "view_state": "2026-10-29T14:32:42.757683+00:00"
   },
   "_keys": {
     "bookmarks": {
@@ -42,7 +42,7 @@
     "paths": {
       "D:\\Data\\Archive\\PTEN Project\\PTEN\\M34_s8\\2024-06-10_17-00-07": [
         "set",
-        "2026-09-08T18:41:40.172145+00:00"
+        "2026-09-10T03:52:50.101245+00:00"
       ],
       "D:\\PTEN\\PTEN\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07": [
         "set",
@@ -58,11 +58,15 @@
       ],
       "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07": [
         "set",
-        "2026-09-04T15:57:01.804684+00:00"
+        "2026-09-10T03:52:50.101245+00:00"
       ],
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M34_s8_CNO": [
         "set",
-        "2026-09-04T15:57:01.804684+00:00"
+        "2026-09-10T03:52:50.101245+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07": [
+        "set",
+        "2026-10-23T19:20:50.175179+00:00"
       ]
     },
     "seen": {
@@ -84,11 +88,11 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-10-13T16:22:45.383223+00:00"
+        "2026-10-29T14:22:45.431449+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-21T17:25:07.575380+00:00"
+        "2026-10-20T13:46:03.467402+00:00"
       ],
       "lcom549913-e62b": [
         "set",
@@ -97,7 +101,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-13T16:42:24.083849+00:00",
+    "at": "2026-10-29T14:32:42.757683+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -180,10 +184,10 @@
   "paths": [
     "D:\\PTEN\\PTEN\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
     "G:\\PTEN\\M34_s8",
-    "G:\\PTEN\\M34_s8\\timestamps.mat",
     "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M34_s8_CNO",
-    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M34_s8\\2024-06-10_17-00-07"
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M34_s8\\2024-06-10_17-00-07",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -219,7 +223,7 @@
       "scan": "scan_e4c0479cd6"
     },
     "barrylab-d8e8": {
-      "at": "2026-10-13T12:22:45-04:00",
+      "at": "2026-10-29T10:22:45-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
@@ -227,12 +231,12 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-21T13:25:07-04:00",
+      "at": "2026-10-20T09:46:03-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
-      "root": "D:/PTEN/PTEN",
-      "scan": "scan_97cbe5659e"
+      "root": null,
+      "scan": null
     },
     "lcom549913-e62b": {
       "at": "2026-09-14T10:10:04-04:00",
@@ -246,9 +250,9 @@
   "session": 8,
   "start": "2024-06-10T17:00:07",
   "updated": {
-    "app_version": "2026.10.12.5",
-    "at": "2026-10-13T12:42:24-04:00",
-    "commit": "071b8c13",
+    "app_version": "2026.10.27.1",
+    "at": "2026-10-29T10:32:42-04:00",
+    "commit": "7b90a533",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
@@ -290,21 +294,22 @@
       61,
       63
     ],
-    "clim": null,
+    "climBy": null,
     "fdefault": null,
     "flock": true,
     "gain": 2.5,
-    "hp": 5,
+    "hp": 1,
     "invert": true,
-    "lp": 100,
+    "lp": 70,
+    "marks_fade": null,
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 1,
+    "span": 0.8,
     "stft_mode": null,
-    "t0": 1808.486579,
+    "t0": 1789.3876639999999,
     "ylim": null
   }
 }

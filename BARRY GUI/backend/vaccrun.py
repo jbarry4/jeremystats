@@ -44,7 +44,7 @@ import re
 import threading
 import time
 
-from . import cfc, vacc
+from . import cfc, flights, vacc
 
 # The clock and the sleep, as module attributes so a test can run a whole
 # thirty-minute outage in a millisecond. Looked up at call time.
@@ -81,7 +81,8 @@ POLL_RETRY_LIMIT_S = 1800.0
 FETCH_RETRY_LIMIT_S = 300.0
 # Kinds that are answers, not silences. Retrying them asks the same
 # question and gets the same answer.
-NO_RETRY = ("garbled", "no-jobid", "vanished", "detached", "no-result")
+NO_RETRY = ("garbled", "no-jobid", "vanished", "detached", "no-result",
+            "duplicate")
 _NO_RESULT = "__JARVIS_NO_RESULT__"
 
 
@@ -305,6 +306,23 @@ class VaccArray:
         self.runlog = None
         self.record = {}
         self.submitted_at = None
+        # Which computer submitted it, for the Slurm comment (flights.py).
+        self.device = ""
+
+    def release_locks(self):
+        """Remove every member's duplicate lock. Best effort, one call.
+
+        The node removes its own when a task ends; this is for the ones it
+        never got to -- a cancelled array, a task killed at its time limit.
+        """
+        paths = [j["lock"] for j in self.jobs if j.get("lock")]
+        if not paths:
+            return
+        try:
+            self._ssh("\n".join(flights.drop_own_lock_sh(p, self.rid)
+                                for p in paths))
+        except Exception:                                # noqa: BLE001
+            pass
 
     @classmethod
     def reattach(cls, cfg, rec, ssh=None):
@@ -323,7 +341,10 @@ class VaccArray:
         if self.runlog is None:
             return
         keep = ("gid", "member", "label", "spec_local", "spec_remote",
-                "tool_steps", "seconds", "megasamples", "resume")
+                "tool_steps", "seconds", "megasamples", "resume",
+                # The duplicate guard's key and cluster lock, so a restart
+                # claims the key again and can clear the lock (flights.py).
+                "fkey", "lock")
         self.runlog.write({
             "rid": self.rid, "kind": "array", "tool": self.tool,
             "array_id": self.array_id, "workspace": self.ws,
@@ -343,12 +364,29 @@ class VaccArray:
         cap = ("%%%d" % int(self.concurrency)) if self.concurrency else ""
 
         parts = ["set -e", "mkdir -p %s" % vacc.q(self.ws)]
+        # A member's duplicate lock (flights.py), when its route took one.
+        # Marked rather than taken: the route already refused the members
+        # another machine holds, and an array cannot drop one task halfway
+        # through being written. The node removes each one that fails; the
+        # rest go when the array's answers are home (`release_locks`).
+        for j in self.jobs:
+            if not j.get("lock") and j.get("spec_local") is not None:
+                d = flights.default_lock(self.tool, j.get("spec_local"),
+                                         self.rid, j.get("seconds"),
+                                         self.device)
+                j["fkey"] = j.get("fkey") or d["key"]
+                j["lock"] = flights.lock_path(self.cfg, j["fkey"])
+                j["lock_owner"] = d["owner"]
+            if j.get("lock") and j.get("lock_owner"):
+                parts.append(flights.mark_lock_sh(j["lock"],
+                                                  j["lock_owner"]).rstrip())
         for i, j in enumerate(self.jobs):
             payload = json.dumps({
                 "rid": "%s_%d" % (self.rid, i), "tool": self.tool,
                 "spec": j["spec_remote"], "plan": {},
                 "stages": [n2 for n2, _ in (j.get("tool_steps") or [])],
                 "report": j.get("report"),
+                "lock": j.get("lock") or None,
             })
             parts.append("cat > %s/spec_%d.json <<'JARVIS_SPEC_EOF'\n%s\n"
                          "JARVIS_SPEC_EOF" % (vacc.q(self.ws), i, payload))
@@ -357,6 +395,7 @@ class VaccArray:
             "#!/bin/bash\n"
             "#SBATCH --job-name=%(rid)s\n"
             "#SBATCH --array=0-%(last)d%(cap)s\n"
+            "#SBATCH --comment=jv1;%(tool)s;batch;%(dev)s\n"
             "%(acct)s"
             "#SBATCH --partition=%(part)s\n"
             "#SBATCH --time=%(time)s\n"
@@ -371,6 +410,8 @@ class VaccArray:
             "exec python vacc_run.py %(ws)s/spec_${SLURM_ARRAY_TASK_ID}.json\n"
         ) % {
             "rid": self.rid, "last": max(0, n - 1), "cap": cap,
+            "tool": flights.safe(self.tool, 16),
+            "dev": flights.safe(self.device, 32),
             "acct": vacc.sbatch_account(self.cfg),
             "part": req["partition"], "time": req["time"], "mem": req["mem"],
             "cpus": req["cpus"], "ws": self.ws,
@@ -724,6 +765,22 @@ class VaccRun:
         # Member ids the node may report (`{"k": "member"}` lines). Empty
         # for every tool that does not declare any.
         self.members = []
+        # The duplicate guard (flights.py), set by the route that claimed
+        # this job's key: {"key", "owner", "stale_s", "device"}. Taken
+        # atomically on the cluster in `submit`, and removed on the way out
+        # only if its owner line names THIS run -- so a run refused as a
+        # duplicate never removes the other computer's lock, and one whose
+        # sbatch failed after the lock was taken does not leave it behind.
+        self.lock = None
+
+    def _drop_lock(self):
+        if not self.lock:
+            return
+        try:
+            self._ssh(flights.drop_own_lock_sh(
+                flights.lock_path(self.cfg, self.lock["key"]), self.rid))
+        except Exception:                                # noqa: BLE001
+            pass
 
     @classmethod
     def reattach(cls, cfg, rec, ssh=None):
@@ -814,6 +871,11 @@ class VaccRun:
                                 ssh=self._ssh)
                 except Exception:                    # noqa: BLE001
                     pass
+            # The duplicate lock goes with the job -- except when contact was
+            # lost and the job is still out there, which is exactly when a
+            # second copy must stay refused.
+            if self.state != "detached":
+                self._drop_lock()
 
     def _unfinished(self):
         if self.state == "detached":
@@ -837,6 +899,13 @@ class VaccRun:
         """
         self.state = "submitting"
         vacc.check_rid(self.rid)
+        # Every single run takes a duplicate lock. A route that claimed the
+        # job's key set one already (flights.py); any other gets the default,
+        # keyed by the local spec, so no tool can submit one spec twice.
+        if self.lock is None:
+            self.lock = flights.default_lock(self.tool, self.spec_local,
+                                             self.rid,
+                                             self.plan.get("seconds"))
         ws = vacc._remote_path(self.cfg.get("workspace") or ".", "runs", self.rid)
         self.ws = ws
         req = vacc.slurm_request(self.plan.get("seconds") or 0,
@@ -851,6 +920,9 @@ class VaccRun:
             # Member ids the node may report on, for a tool whose progress is
             # per item (Circuit: per cue pair). Empty for the others.
             "members": list(self.members),
+            # The duplicate lock the node removes when it ends (flights.py).
+            "lock": (flights.lock_path(self.cfg, self.lock["key"])
+                     if self.lock else None),
         })
         # A real script rather than `--wrap`, for two reasons: the preamble is
         # several lines and `--wrap` is one, and a file left in the run
@@ -863,6 +935,7 @@ class VaccRun:
         submit_sh = (
             "#!/bin/bash\n"
             "#SBATCH --job-name=%(rid)s\n"
+            "%(comment)s"
             "%(acct)s"
             "#SBATCH --partition=%(part)s\n"
             "#SBATCH --time=%(time)s\n"
@@ -878,20 +951,42 @@ class VaccRun:
         ) % {
             "rid": self.rid, "part": req["partition"], "time": req["time"],
             "mem": req["mem"], "cpus": req["cpus"], "ws": ws,
+            "comment": ("#SBATCH --comment=%s\n" % flights.comment(
+                self.tool, self.lock["key"], self.lock.get("device"))
+                if self.lock else ""),
             "acct": vacc.sbatch_account(self.cfg),
             "pre": vacc.activate(self.cfg),
             "code": vacc._remote_path(self.cfg.get("workspace") or ".", "code"),
         }
+        # The duplicate lock, taken in the SAME connection as the sbatch and
+        # before it: `mkdir` is atomic on the cluster's filesystem, so two
+        # computers submitting the same job in the same second cannot both
+        # get past this line (flights.py).
+        take = ""
+        if self.lock:
+            take = flights.take_lock_sh(
+                flights.lock_path(self.cfg, self.lock["key"]),
+                self.lock.get("owner") or "{}",
+                self.lock.get("stale_s") or 86400)
         script = (
             "set -e\n"
+            "%(take)s"
             "mkdir -p %(ws)s\n"
             "cat > %(ws)s/spec.json <<'JARVIS_SPEC_EOF'\n%(spec)s\n"
             "JARVIS_SPEC_EOF\n"
             "cat > %(ws)s/submit.sh <<'JARVIS_SH_EOF'\n%(sh)s"
             "JARVIS_SH_EOF\n"
             "cd %(ws)s && sbatch --parsable submit.sh\n"
-        ) % {"ws": vacc.q(ws), "spec": payload, "sh": submit_sh}
+        ) % {"ws": vacc.q(ws), "spec": payload, "sh": submit_sh,
+             "take": take}
         out = self._ssh("bash -s", stdin=script, timeout=60)
+        held = flights.duplicate_in(out) if self.lock else None
+        if held is not None:
+            who = held.get("device") or "another computer"
+            raise vacc.SSHError(
+                "This exact job is already running on the VACC, from %s. "
+                "Nothing was submitted; follow that one instead." % who,
+                "duplicate", out)
         for line in reversed((out or "").strip().splitlines()):
             digits = line.strip().split(";")[0].strip()
             if digits.isdigit():

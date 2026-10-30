@@ -79,15 +79,17 @@ window.MONO_JOE = (function () {
     P.loading = false;
     render();
   }
+  // what: 'joe' (work tab 8 out), 'script' (the standalone script here) or
+  // 'script_vacc' (the same script on the VACC's copies of the recordings).
   async function make(what) {
-    const script = what === 'script';
+    const script = what !== 'joe';
     if (script ? P.scripting : P.making) return;
-    if (script) { P.scripting = true; P.scriptErr = null; P.scriptNote = ''; } else { P.making = true; P.makeErr = null; P.makeNote = ''; }
+    if (script) { P.scripting = what; P.scriptErr = null; P.scriptNote = ''; } else { P.making = true; P.makeErr = null; P.makeNote = ''; }
     render();
     try {
-      await M().runHere('/joe', { confirm: true, what: script ? 'script' : 'joe' }, (note) => {
+      await M().runHere('/joe', { confirm: true, what }, (note) => {
         if (script) P.scriptNote = note; else P.makeNote = note;
-        const b = $(script ? 'joescriptrun' : 'joemake');
+        const b = $(what === 'script_vacc' ? 'joescriptvacc' : script ? 'joescriptrun' : 'joemake');
         if (b) b.textContent = (script ? 'Running the script: ' : 'Working: ') + note;
       });
     } catch (e) {
@@ -725,6 +727,8 @@ window.MONO_JOE = (function () {
           'Bands: theta 5–12 Hz and gamma 30–90 Hz, from the proposal. Mains and its harmonics are notched; the notch’s own 59–61 Hz bins are left out of gamma.',
           'Coherence: Dickson 2022, Jeremy’s MATLAB: a 59–61 Hz Butterworth notch, then mscohere with hanning(1024), 512 overlap, 2048 points. Welch, the circuits’ way (1 s Hann segments, half overlapping, FFT twice as long), is computed too, only to say whether it agrees.',
           'Pairs: every pair of the ' + (D.regions || []).length + ' regions, kept in a model when at least ' + D.min_rats + ' rats have it at every level on both days.',
+          'Regions: histology v2, probes scored “y” only. No probe aimed at POR is in POR; the left ones sit in subiculum, so that region is L POR-SUB'
+            + ((D.por_sub_rats || []).length ? ' (rats ' + D.por_sub_rats.join(', ') + ')' : '') + '. Right POR-SUB is left out.',
           'Clipping: measured here for every window (the rail, or a flat top, for 16 samples or more), as Spark measures it; a clipped wire gives way to its region’s next.',
           'Models: a mixed model, Day × factor × Pair, each term tested against the rats’ own spread in it (the rat random), a rat missing a pair keeping its others. No repeated-measures ANOVA: it would keep only the rats with every pair (see Every test).',
         ];
@@ -1043,7 +1047,8 @@ window.MONO_JOE = (function () {
       const bad = A.files.filter((x) => !x.ok);
       kids.push(el('p', { class: 'physanswer ' + (A.ok ? 'ok' : 'warn'), id: 'joeagree' }, [el('span', { class: 'head', text: A.ok
         ? 'Yes: ' + A.files.length + ' files, every cell within ' + (A.tol === 1e-6 ? 'a millionth' : A.tol) + ' (largest difference ' + sig(Math.max(...A.files.map((x) => x.worst || 0))) + ').'
-        : 'Not everywhere: ' + bad.length + ' of ' + A.files.length + ' files differ.' }), el('span', { class: 'small muted', text: ' Run ' + A.ran_at + '.' })]));
+        : 'Not everywhere: ' + bad.length + ' of ' + A.files.length + ' files differ.' }),
+        el('span', { class: 'small muted', text: ' Run ' + A.ran_at + (A.where === 'vacc' ? ' on the VACC, from its copies of the recordings' + (A.slurm_id ? ' (job ' + A.slurm_id + ')' : '') : '') + '.' })]));
       if (bad.length) {
         kids.push(el('ul', { class: 'small' }, bad.slice(0, 12).map((x) => el('li', { text: x.file + ': ' + (x.why || ('largest difference ' + sig(x.worst)
           + (x.missing_differs ? ', ' + x.missing_differs + ' cells missing in one only' : ''))) }))));
@@ -1052,9 +1057,14 @@ window.MONO_JOE = (function () {
       kids.push(el('p', { class: 'small muted', id: 'joeagree', text: 'Not run yet. The script reads the recordings itself, with nothing from Jarvis, and writes the same values.' }));
     }
     if (!window.MONO_STATIC) {
-      kids.push(el('button', { type: 'button', class: 'more-btn', id: 'joescriptrun', disabled: P.scripting ? 'disabled' : null,
-                               text: P.scripting ? 'Running the script: ' + (P.scriptNote || 'starting') : 'Run it here and compare (about 45 minutes)',
-                               onclick: () => make('script') }));
+      kids.push(el('div', { class: 'hrow' }, [
+        el('button', { type: 'button', class: 'more-btn', id: 'joescriptrun', disabled: P.scripting ? 'disabled' : null,
+                       text: P.scripting === 'script' ? 'Running the script: ' + (P.scriptNote || 'starting') : 'Run it here and compare (about 45 minutes)',
+                       onclick: () => make('script') }),
+        el('button', { type: 'button', class: 'more-btn', id: 'joescriptvacc', disabled: P.scripting ? 'disabled' : null,
+                       text: P.scripting === 'script_vacc' ? 'Running the script: ' + (P.scriptNote || 'starting') : 'Run it on the VACC and compare (about 10 minutes)',
+                       title: 'From the VACC’s copies of the recordings, so the data drive need not be connected',
+                       onclick: () => make('script_vacc') })]));
       if (P.scriptErr) kids.push(el('p', { class: 'small warn', text: P.scriptErr }));
     }
     kids.push(el('p', { class: 'small muted', text: 'Elsewhere: python joe_standalone.py --inputs joe_inputs.json --out <folder> --jobs 4 (four rat-days at once; the files do not depend on it). It needs Python 3, numpy and scipy, and the recordings at the paths in the inputs. It writes both ways of computing coherence, so the Welch comparison is checked too.' }));

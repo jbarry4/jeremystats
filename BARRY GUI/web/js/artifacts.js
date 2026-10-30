@@ -270,13 +270,10 @@ BARRY.artifacts = (function () {
         if (!groups.has(g)) groups.set(g, []);
         groups.get(g).push(r);
       }
-      const names = Array.from(groups.keys()).sort((a, b) =>
-        a.localeCompare(b, undefined, { numeric: true }));
+      const names = BARRY.ui.natSort(Array.from(groups.keys()));
       for (const g of names) {
         if (g) side.appendChild(el('div', { class: 'art-group', text: g }));
-        const list = groups.get(g).sort((a, b) =>
-          String(a.nickname || a.name).localeCompare(String(b.nickname || b.name),
-                                                     undefined, { numeric: true }));
+        const list = BARRY.ui.natSort(groups.get(g), (r) => r.nickname || r.name);
         for (const r of list) side.appendChild(rowOf(r));
       }
     }
@@ -477,7 +474,7 @@ BARRY.artifacts = (function () {
   }
 
   function paramsOf(p) {
-    const keys = Object.keys(p || {}).sort();
+    const keys = BARRY.ui.natSort(Object.keys(p || {}));
     if (!keys.length) return null;
     return el('table', { class: 'art-params' }, [
       el('tbody', {}, keys.map((k) => el('tr', {}, [

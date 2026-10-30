@@ -1,0 +1,185 @@
+{
+  "_at": {
+    "added": "2026-10-20T18:05:16.320315+00:00",
+    "by_label": "2026-10-20T18:05:16.320315+00:00",
+    "curation_label": "2026-10-20T18:05:16.320315+00:00",
+    "duration_s": "2026-10-20T18:05:16.320315+00:00",
+    "events": "2026-10-20T18:05:16.320315+00:00",
+    "gid": "2026-10-20T18:05:16.320315+00:00",
+    "id": "2026-10-20T18:05:16.320315+00:00",
+    "label_names": "2026-10-20T18:05:16.320315+00:00",
+    "mouse": "2026-10-20T18:05:16.320315+00:00",
+    "n": "2026-10-20T18:05:16.320315+00:00",
+    "name": "2026-10-20T18:05:16.320315+00:00",
+    "note": "2026-10-20T18:05:16.320315+00:00",
+    "project": "2026-10-20T18:05:16.320315+00:00",
+    "recording_start": "2026-10-20T18:05:16.320315+00:00",
+    "schema": "2026-10-20T18:05:16.320315+00:00",
+    "session": "2026-10-20T18:05:16.320315+00:00",
+    "session_key": "2026-10-20T18:05:16.320315+00:00",
+    "session_label": "2026-10-20T18:05:16.320315+00:00",
+    "session_loose_key": "2026-10-20T18:05:16.320315+00:00",
+    "session_path": "2026-10-20T18:05:16.320315+00:00",
+    "source": "2026-10-20T18:05:16.320315+00:00",
+    "specified": "2026-10-20T18:05:16.320315+00:00",
+    "type": "2026-10-20T18:05:16.320315+00:00",
+    "type_name": "2026-10-20T18:05:16.320315+00:00",
+    "units": "2026-10-20T18:05:16.320315+00:00",
+    "version": "2026-10-20T18:05:16.320315+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "014c98a59180": [
+        "set",
+        "2026-10-20T18:05:16.320315+00:00"
+      ],
+      "v0-2e3d89d8": [
+        "set",
+        "2026-10-20T18:05:16.320315+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-20T18:05:16.320315+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-20T14:05:16-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "LCOM549913"
+  },
+  "by_label": {
+    "Flag": 2
+  },
+  "curation_label": "*",
+  "duration_s": null,
+  "events": [
+    {
+      "channel": 36,
+      "label": "Flag",
+      "label_id": "flag",
+      "origin": "doppler",
+      "start": 6.740997
+    },
+    {
+      "channel": 2,
+      "label": "Flag",
+      "label_id": "flag",
+      "origin": "both",
+      "pair_t": 13.275495,
+      "start": 13.280103
+    }
+  ],
+  "gid": "sd0d0bded958b",
+  "id": "b96104290b50",
+  "label_names": {},
+  "mouse": 3,
+  "n": 2,
+  "name": "PTEN m3 s2 2023-09-20 \u2014 pooled (Incisor + Doppler, 20 ms)",
+  "note": "",
+  "project": "PTEN",
+  "recording_start": "2023-09-20T16:55:14+00:00",
+  "schema": 1,
+  "session": 2,
+  "session_key": "m003_s002_2023-09-20_12-55-14",
+  "session_label": "PTEN m3 s2 2023-09-20",
+  "session_loose_key": null,
+  "session_path": null,
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {
+      "ds_aligned": true,
+      "ds_entry": "93cf98061019",
+      "ds_name": "PTEN m3 s2 2023-09-20  \u00b7  Incisor CSC20\u2013CSC58",
+      "ds_version": "7",
+      "ied_aligned": false,
+      "ied_entry": "3a0157a8b6ab",
+      "ied_name": "PTEN m3 s2 2023-09-20  \u00b7  Doppler 20\u2013300 Hz",
+      "ied_version": "0",
+      "keep": "incisor",
+      "rule": "time only, any channel; one to one, nearest first; Incisor's time kept, Doppler's as pair_t",
+      "stats": {
+        "doppler_only": 142,
+        "ds_left_out": 0,
+        "ied_left_out": 0,
+        "incisor_only": 32,
+        "keep": "incisor",
+        "merged": 28,
+        "n": 202,
+        "n_ds": 60,
+        "n_ied": 170,
+        "window_ms": 20.0
+      },
+      "window_ms": 20.0
+    },
+    "pipeline": "The Confluence: Junction (Incisor + Doppler, 20 ms)",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "pooled",
+  "type_name": "pooled",
+  "units": "seconds relative to the start of the recording",
+  "version": 1,
+  "versions": [
+    {
+      "at": "2026-10-20T14:05:16-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "unspecified": 2
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-2e3d89d8",
+      "imported": true,
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {},
+      "n": 2,
+      "note": "Imported from The Confluence: Junction (Incisor + Doppler, 20 ms). 2 candidates, none decided yet.",
+      "snap": [
+        [
+          6.740997,
+          null
+        ],
+        [
+          13.280103,
+          null
+        ]
+      ],
+      "synthesized": true,
+      "v": 0
+    },
+    {
+      "at": "2026-10-20T14:05:16-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "Flag": 2
+      },
+      "changed": 2,
+      "from_id": null,
+      "from_v": 0,
+      "gained": 0,
+      "id": "014c98a59180",
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {
+        "undecided \u2192 flag": 2
+      },
+      "n": 2,
+      "note": "",
+      "snap": [
+        [
+          6.740997,
+          "flag"
+        ],
+        [
+          13.280103,
+          "flag"
+        ]
+      ],
+      "v": 1
+    }
+  ]
+}

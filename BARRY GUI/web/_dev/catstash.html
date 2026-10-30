@@ -64,14 +64,22 @@ async function untilN(fn, tries = 200, gap = 100) {
   // The stash writes 1.5 s after the list is drawn, and IndexedDB finishes
   // when it finishes: asked until it answers, rather than after a guess.
   let kept = null;
+  // Kept by BARRY.data under its address since 2026-10-21 (web/js/data.js):
+  // asked of the browser's store itself, not the copy in memory.
   for (let i = 0; i < 40 && !(kept && kept.value); i++) {
     await sleep(250);
-    kept = await W().eval("BARRY.stash.get('registry', 1000)");
+    const raw = await W().eval("BARRY.stash.get('data:/api/registry', 1000)");
+    kept = raw && raw.value ? { value: raw.value.body, at: raw.at } : null;
   }
   check('and this browser keeps it', !!(kept && kept.value && kept.value.tree),
         kept ? Object.keys(kept).join(',') + ' / ' + Object.keys(kept.value || {}).slice(0, 6).join(',') : String(kept));
 
   head('the next open, with the live answer held back 2.5 s');
+  /* Reloaded WITHOUT the #sessions the first open left in the address:
+     with it, the app opens Sessions itself on the way up, and once its
+     files came out of the browser's cache (2026-10-21) it did so before
+     this page had wrapped `api` -- the hold below never held anything. */
+  W().history.replaceState(null, '', '/?linkhold=0');
   W().location.reload();
   await loaded();
   await up();
@@ -107,6 +115,7 @@ async function untilN(fn, tries = 200, gap = 100) {
         sc ? sc.scrollTop + ' vs ' + was : 'no scroller');
 
   head('Everything Jarvis Knows');
+  W().history.replaceState(null, '', '/?linkhold=0');
   W().location.reload();
   await loaded();
   await up();

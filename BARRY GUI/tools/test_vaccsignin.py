@@ -271,6 +271,151 @@ def test_key_paths():
           os.path.basename(priv))
 
 
+class _Fake:
+    """Stand-ins for everything `sign_in` touches on the far side."""
+
+    def __init__(self, working=None, refuse=0, who=None):
+        self.working = working
+        self.refuse = refuse          # key-only proofs refused before one works
+        self.who = who
+        self.calls = []
+
+    def __enter__(self):
+        self.saved = {n: getattr(vacc, n) for n in
+                      ("working_key", "make_key", "install_key", "_ssh",
+                       "_pin_host")}
+        self.sleep = vacc.time.sleep
+        vacc.working_key = lambda netid, host=None, **k: (
+            self.calls.append("working_key") or self.working)
+        vacc.make_key = lambda *a, **k: (
+            self.calls.append("make_key") or {"created": True})
+        vacc.install_key = lambda netid, password, host=None, duo="1", \
+            alias=None: (self.calls.append(("install_key", host, alias))
+                         or {"already": False, "netid": netid})
+        vacc._pin_host = lambda host: None
+
+        def ssh(cfg, cmd, stdin=None, timeout=45):
+            self.calls.append(("ssh", cmd))
+            if self.refuse > 0:
+                self.refuse -= 1
+                raise vacc.SSHError("refused", "auth")
+            return (self.who or cfg["netid"]) + "\n"
+        vacc._ssh = ssh
+        vacc.time.sleep = lambda s: self.calls.append(("sleep", s))
+        return self
+
+    def __exit__(self, *exc):
+        for n, f in self.saved.items():
+            setattr(vacc, n, f)
+        vacc.time.sleep = self.sleep
+
+
+def test_sign_in():
+    print("\n== sign_in: one implementation, lands the first time ==")
+    tmp = tempfile.mkdtemp(prefix="jarvis-signin-")
+    try:
+        # A fresh machine: no key works, so it must MAKE one before
+        # installing it. The console path used to skip this and could
+        # never succeed on a new computer.
+        with _Fake() as f:
+            try:
+                vacc.sign_in(tmp, "sakhava1")
+                check("with no working key and no password it asks for one",
+                      False, "did not raise")
+            except vacc.SSHError as exc:
+                check("with no working key and no password it asks for one",
+                      exc.kind == "need-password", exc.kind)
+        with _Fake(refuse=2) as f:
+            got = vacc.sign_in(tmp, "sakhava1", password="hunter2")
+            names = [c if isinstance(c, str) else c[0] for c in f.calls]
+            check("a key is made before it is installed",
+                  "make_key" in names and "install_key" in names
+                  and names.index("make_key") < names.index("install_key"),
+                  str(names))
+            proofs = [c for c in f.calls if c[0] == "ssh"]
+            check("a refused proof is retried, not given up on",
+                  len(proofs) == 3, "%d proofs" % len(proofs))
+            check("and the retries wait between attempts",
+                  any(c[0] == "sleep" for c in f.calls if isinstance(c, tuple)))
+            check("it reports a new key", got["made_key"] is True)
+        cfg = vacc.load_config(tmp)
+        raw = vacc._read(vacc.config_path(tmp))
+        check("the config is written only after the proof, with the netid",
+              cfg.get("netid") == "sakhava1", cfg.get("netid"))
+        check("and enabled", raw.get("enabled") is True, raw.get("enabled"))
+        check("and a signed_in_at stamp the app can greet",
+              isinstance(raw.get("signed_in_at"), (int, float)),
+              raw.get("signed_in_at"))
+
+        # A key that already works: no password, no install, still enabled.
+        tmp2 = tempfile.mkdtemp(prefix="jarvis-signin-")
+        try:
+            with _Fake(working="C:/keys/id_ed25519") as f:
+                got = vacc.sign_in(tmp2, "sakhava1")
+                names = [c if isinstance(c, str) else c[0] for c in f.calls]
+                check("a working key needs no install",
+                      "install_key" not in names and "make_key" not in names,
+                      str(names))
+            raw2 = vacc._read(vacc.config_path(tmp2))
+            check("and is saved enabled (the console path left it out)",
+                  raw2.get("enabled") is True and raw2.get("key_path")
+                  == "C:/keys/id_ed25519", str(raw2))
+        finally:
+            shutil.rmtree(tmp2, ignore_errors=True)
+
+        # The cluster says somebody else: nothing is saved over the old one.
+        tmp3 = tempfile.mkdtemp(prefix="jarvis-signin-")
+        try:
+            with _Fake(working="k", who="someoneelse") as f:
+                try:
+                    vacc.sign_in(tmp3, "sakhava1")
+                    check("a mismatched account is refused", False)
+                except vacc.SSHError as exc:
+                    check("a mismatched account is refused",
+                          exc.kind == "mismatch", exc.kind)
+            check("and nothing is written",
+                  not vacc._read(vacc.config_path(tmp3)).get("netid"))
+        finally:
+            shutil.rmtree(tmp3, ignore_errors=True)
+
+        # Refused on every try: the error is raised, not swallowed, and the
+        # config is left alone.
+        tmp4 = tempfile.mkdtemp(prefix="jarvis-signin-")
+        try:
+            with _Fake(refuse=99) as f:
+                notes = []
+                try:
+                    vacc.sign_in(tmp4, "sakhava1", password="x",
+                                 note=notes.append)
+                    check("a key that never takes is reported", False)
+                except vacc.SSHError as exc:
+                    check("a key that never takes is reported",
+                          exc.kind == "auth", exc.kind)
+                check("every refused attempt is noted for the log",
+                      len(notes) == len(vacc.PROOF_WAITS), str(notes))
+            check("and nothing is written after a failed proof",
+                  not vacc._read(vacc.config_path(tmp4)).get("netid"))
+        finally:
+            shutil.rmtree(tmp4, ignore_errors=True)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_ssh_cmd_alias():
+    print("\n== a pinned login node keeps the host key it is known by ==")
+    cmd = vacc.ssh_cmd({"netid": "sakhava1", "host": "10.0.0.5",
+                        "host_alias": "login.vacc.uvm.edu",
+                        "key_path": "k"}, "whoami")
+    check("HostKeyAlias names the cluster", "HostKeyAlias=login.vacc.uvm.edu"
+          in cmd, " ".join(cmd))
+    check("and the connection goes to the pinned address",
+          "sakhava1@10.0.0.5" in cmd)
+    plain = vacc.ssh_cmd({"netid": "sakhava1", "host": "login.vacc.uvm.edu",
+                          "key_path": "k"}, "whoami")
+    check("an unpinned call carries no alias",
+          not any("HostKeyAlias" in c for c in plain))
+
+
 def main():
     print("The guided VACC sign-in, offline.")
     test_netid()
@@ -280,6 +425,8 @@ def main():
     test_install_refusals()
     test_install_script()
     test_key_paths()
+    test_sign_in()
+    test_ssh_cmd_alias()
 
     print("\n%d check(s)" % N[0])
     if FAILED:

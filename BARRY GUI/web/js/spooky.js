@@ -714,7 +714,10 @@ BARRY.spooky = (function () {
      person picked it, false when it was restored at boot or synced from
      another window -- the welcome is said once, to somebody choosing it. */
   function sync(theme, chosen) {
-    if (theme === THEME && !popout()) start(!!chosen);
+    // Jarvis Light keeps the palette and lets the visitors go: they are
+    // the most drawing a theme has ever asked for (js/lite.js).
+    const lite = BARRY.lite && BARRY.lite.on();
+    if (theme === THEME && !popout() && !lite) start(!!chosen);
     else stop();
   }
 

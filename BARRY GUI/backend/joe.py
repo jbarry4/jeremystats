@@ -52,7 +52,12 @@ import os
 import time
 
 import numpy as np
-from scipy.signal import butter, filtfilt, hilbert
+
+# Loaded on first use, not at import; see lazyimp.py. Imported here it ran
+# inside whichever request first asked for tab 8 or 9, and two at once
+# deadlocked on scipy's module locks (2026-10-21).
+from . import lazyimp  # noqa: E402
+butter, filtfilt = lazyimp.names("scipy.signal", "butter", "filtfilt")
 
 from . import coupling, nlx, ratidentity, spark, sweep
 
@@ -1142,11 +1147,19 @@ def code(name):
     return short(name).replace(" ", "").replace("-", "")
 
 
+def say(name):
+    """A region as people read it: the Monolith's name (histology v2: the
+    left POR probes are in subiculum, so that channel group is Left
+    POR-SUB), shortened."""
+    from . import monolith as MO
+    return short(MO.label(name))
+
+
 def build(day_data, names, progress=None, check=None):
     """The models, their gates, post hocs and follow-ups, from the loaded
     day files {(rat, day): (arrs, fp, meta)}."""
     pr = pairs_of(len(names))
-    pair_names = ["%s – %s" % (short(names[a]), short(names[b])) for a, b in pr]
+    pair_names = ["%s – %s" % (say(names[a]), say(names[b])) for a, b in pr]
     bil = set(bilateral(names))
     results, n_done = [], 0
     jobs = [(mdl, bi, mi) for mdl in MODELS for bi in range(len(BANDS))
@@ -1159,7 +1172,7 @@ def build(day_data, names, progress=None, check=None):
             progress(n_done, len(jobs), "%s · %s%s" % (mdl[1], BAND_SAY[BANDS[bi][0]],
                                                       " · " + METHOD_SAY[METHODS[mi]] if mdl[5] == "pair" else ""))
         n_done += 1
-        units = pair_names if mdl[5] == "pair" else [short(n) for n in names]
+        units = pair_names if mdl[5] == "pair" else [say(n) for n in names]
         tab_all = model_table(day_data, mdl, bi, mi, units, days=DAYS)
         tab = {r: {d: per[d] for d in TESTED} for r, per in tab_all.items()}
         keep = included_units(tab, mdl, units)
@@ -1204,13 +1217,13 @@ def build(day_data, names, progress=None, check=None):
                 pi = pair_names.index(r["unit"])
                 a, bb = pr[pi]
                 meas = {k: follow_test(day_data, mdl, bi, pi, a, bb, k) for k in FOLLOW_KEYS}
-                fol.append({"pair": r["unit"], "a": short(names[a]), "b": short(names[bb]),
+                fol.append({"pair": r["unit"], "a": say(names[a]), "b": say(names[bb]),
                             "bilateral": (a, bb) in bil, "measures": meas})
             res["follow"] = {"basis": basis, "pairs": fol}
         results.append(res)
     # Bilateral coherence, gated on any first-pass coherence model passing.
     bl = [pair_names[pr.index(p)] for p in sorted(bil)]
-    return {"schema": SCHEMA, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "regions": [short(n) for n in names],
+    return {"schema": SCHEMA, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "regions": [say(n) for n in names],
             "pairs": pair_names, "bilateral": bl, "bands": [{"id": b, "low": lo, "high": hi, "label": BAND_SAY[b]}
                                                             for b, lo, hi in BANDS],
             "methods": [{"id": m, "label": METHOD_SAY[m]} for m in METHODS],
@@ -1531,6 +1544,9 @@ def readme_text(out, positive, welch, rows_summary):
     w("  One value per rat, day, window and pair: the mean over that day's trials (16 cue pairs).")
     w("  Comparison 8 is power instead: log10 power in each region.")
     w("  Precon2 and Precon3 are drawn on the tab but never tested, so they are not in these files.")
+    w("  Regions: histology v2, probes scored 'y' only. No probe aimed at POR is in POR; the left")
+    w("  ones sit in subiculum, so that region is L POR-SUB (rats %s). Right POR-SUB is left out." % (
+        ", ".join(str(r) for r in D.get("por_sub_rats") or []) or "none"))
     w("")
     w("THE TEST")
     w("  A mixed model: day (Precon1, Precon4) x phase (the comparison's two windows) x pair,")
@@ -1786,6 +1802,7 @@ def inputs_of(man, names, chan_map):
     folders, which trials were kept, which wires are marked bad, which
     regions histology rules out, what each rat heard, and the seed. Plain
     JSON a person can read."""
+    from . import monolith as MO
     days = []
     for d in man.get("days") or []:
         days.append({
@@ -1801,6 +1818,9 @@ def inputs_of(man, names, chan_map):
         "about": "Inputs for tools/joe_standalone.py: the decisions behind tab 8 (which trials, wires and regions), "
                  "not its numbers. The script reads the recordings and works out everything else itself.",
         "schema": SCHEMA, "regions": list(names), "channels": {k: list(v) for k, v in chan_map.items()},
+        # The names people read (Left POR is Left POR-SUB, histology v2); the
+        # script names its pairs with them, so its files match tab 8's.
+        "labels": {n: MO.label(n) for n in names if MO.label(n) != n},
         "identity": {str(r): ratidentity.identity(r) for r in sorted({int(d["rat"]) for d in man.get("days") or []})},
         "bands": [list(b) for b in BANDS], "skip_hz": list(SKIP_HZ), "fp": {"seed": FP_SEED, "lengths": list(FP_LENGTHS),
                                                                           "edge_s": FP_EDGE_S},
@@ -1874,6 +1894,9 @@ def joe_work(worker, workers=None):
     out["n_days"] = len(day_data)
     out["notes"] = notes
     out["histology"] = man.get("histology")
+    # Which rats' left POR probe is in subiculum: the rats Left POR-SUB has.
+    out["por_sub_rats"] = sorted({int(d["rat"]) for d in man.get("days") or []
+                                  if d["day"] in TESTED and "Left POR" not in (d.get("blocked") or [])})
     out["trial_counts"] = {"r%d %s" % k: len(v[2]["trials"]) for k, v in day_data.items()}
     got = write_exports(out, joe_dir("export"))
     out["exports"] = got["downloads"]
@@ -1908,6 +1931,16 @@ def script_safe(worker):
         return script_work(worker)
     except JoeError as exc:
         raise MO.MonolithError(str(exc), exc.status)
+
+
+def script_vacc_safe(worker):
+    from . import monolith as MO, vacc
+    try:
+        return script_vacc_work(worker)
+    except JoeError as exc:
+        raise MO.MonolithError(str(exc), exc.status)
+    except vacc.SSHError as exc:
+        raise MO.MonolithError("The VACC: %s" % exc, 502)
 
 
 def _write(path, obj):
@@ -1991,24 +2024,36 @@ def agreement(tol=1e-6):
                     worst = max(worst, abs(fx - fy))
         rows.append({"file": f, "ok": miss == 0 and worst <= tol, "cells": n, "worst": worst, "missing_differs": miss})
     st = os.path.getmtime(sd)
+    ran = {}
+    if os.path.isfile(os.path.join(sd, "ran.json")):
+        with open(os.path.join(sd, "ran.json"), encoding="utf-8") as fh:
+            ran = json.load(fh)
     return {"files": rows, "ok": bool(rows) and all(r["ok"] for r in rows), "tol": tol,
-            "ran_at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(st))}
+            "ran_at": ran.get("at") or time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(st)),
+            "where": ran.get("where") or "here", "slurm_id": ran.get("slurm_id")}
 
 
 def script_work(worker):
-    """Run the standalone script here, on the same recordings, into
-    joe_dir("script"), and compare."""
+    """Run the standalone script here, on the same recordings, and compare.
+
+    It writes into a fresh folder first. Only a run that read every rat-day
+    replaces joe_dir("script"): a run that could not reach the recordings
+    (the data drive not connected, say) would otherwise leave empty files
+    behind and the agreement would read as the script disagreeing
+    (2026-10-21: E: was unplugged and every file "differed")."""
+    import shutil
     import subprocess
     import sys
     inp = joe_dir("joe_inputs.json")
     if not os.path.isfile(inp):
         raise JoeError("Work tab 8 out first: the script reads the inputs it writes.", 409)
-    out = joe_dir("script")
-    os.makedirs(out, exist_ok=True)
+    tmp = joe_dir("script.new")
+    shutil.rmtree(tmp, ignore_errors=True)
+    os.makedirs(tmp)
     worker.note(phase="joe-script", item="running tools/joe_standalone.py")
     log = open(joe_dir("script.log"), "w", encoding="utf-8")
     try:
-        p = subprocess.Popen([sys.executable, script_path(), "--inputs", inp, "--out", out, "--jobs", "4"],
+        p = subprocess.Popen([sys.executable, script_path(), "--inputs", inp, "--out", tmp, "--jobs", "4"],
                              stdout=log, stderr=subprocess.STDOUT)
         while p.poll() is None:
             if worker.stopping():
@@ -2019,9 +2064,601 @@ def script_work(worker):
         log.close()
     if p.returncode != 0:
         raise JoeError("The script stopped with an error; its log is %s." % joe_dir("script.log"), 500)
+    return _take_script(tmp, inp)
+
+
+def _take_script(tmp, inp, where=None):
+    """The script's output in `tmp` becomes joe_dir("script") only if it
+    read every rat-day; then the comparison. `where` says where it ran."""
+    import shutil
+    out = joe_dir("script")
+    # A rat-day the script could not read is a note "rN PrecondX: <error>".
+    with open(inp, encoding="utf-8") as fh:
+        days = [d for d in json.load(fh)["days"] if d["day"] in TESTED]
+    notes_path = os.path.join(tmp, "notes.txt")
+    notes = open(notes_path, encoding="utf-8").read().splitlines() if os.path.isfile(notes_path) else []
+    unread = [n for n in notes if any(n.startswith("r%d %s: " % (int(d["rat"]), d["day"])) for d in days)]
+    if unread:
+        shutil.rmtree(tmp, ignore_errors=True)
+        missing = "cannot find the path" in unread[0] or "No such file" in unread[0]
+        raise JoeError(("The script could not read %d of the %d rat-days%s, so nothing was compared and the last "
+                        "comparison stands. First: %s") % (
+            len(unread), len(days), " (is the data drive connected?)" if missing and not where else "", unread[0]), 409)
+    with open(os.path.join(tmp, "ran.json"), "w", encoding="utf-8") as fh:
+        json.dump(dict(where or {"where": "here"}, at=time.strftime("%Y-%m-%dT%H:%M:%S")), fh)
+    shutil.rmtree(out, ignore_errors=True)
+    os.replace(tmp, out)
     agree = agreement()
     got = result()
     if got is not None:
         got["agreement"] = agree
         _write(joe_dir("joe.json"), got)
     return agree
+
+
+# --------------------------------------------------------------------------
+# On the VACC: the recordings' copies there, when E: is not plugged in
+# --------------------------------------------------------------------------
+# Every DEWEY recording was uploaded to the lab's scratch (Jarvis Data/DEWEY),
+# and the Monolith's manifest names each folder's copy and the sizes of its
+# files (Shahriar, 2026-10-22: "they are all on VACC"). A job here sends what
+# it needs to a run folder of its own under the workspace, runs as ONE slurm
+# job on a compute node (never on the login node), and only its answer comes
+# home. Nothing is written beside a recording, and a copy whose .ncs/.nev
+# sizes differ from the ones tab 8 read is refused before it is used.
+VACC_POLL_S = 15.0
+
+
+def logs_dir():
+    from . import monolith as MO, vacc
+    return vacc.LOGS_DIR or os.path.dirname(os.path.dirname(MO._path()))
+
+
+def vacc_copies():
+    """{local folder (normalised): (its copy on the VACC's scratch, {.ncs/.nev file: bytes})}."""
+    from . import monolith as MO
+    man = MO.manifest()
+    if man is None:
+        raise JoeError("There is no Monolith manifest under the current rules: make it again (Drift, then Monolith).", 409)
+    out = {}
+    for d in man.get("days") or []:
+        for f in d.get("folders") or []:
+            r = (f.get("remote") or {}).get("scratch")
+            if f.get("local") and r:
+                out[_norm(f["local"])] = (r, {n: b for n, b in (f.get("files") or {}).items()
+                                              if n.lower().endswith((".ncs", ".nev"))})
+    return out
+
+
+def _norm(p):
+    return os.path.normcase(os.path.normpath(p))
+
+
+def vacc_config():
+    from . import vacc
+    cfg = vacc.load_config(logs_dir())
+    if not cfg.get("netid"):
+        raise JoeError("Sign in to the VACC first.", 409)
+    return cfg
+
+
+def vacc_sizes(cfg, want):
+    """What differs between the copies on the cluster and the sizes tab 8
+    read: `want` is {remote folder: {file: bytes}}; [] when nothing does.
+    One connection, the folders sent as data on stdin."""
+    from . import vacc
+    folders = sorted(want)
+    script = ("while IFS= read -r f; do find \"$f\" -maxdepth 1 -type f \\( -name '*.ncs' -o -name '*.nev' \\) "
+              "-printf '%s\\t%p\\n'; done <<'JARVIS_DIRS_EOF'\n" + "\n".join(folders) + "\nJARVIS_DIRS_EOF\n")
+    raw = vacc._ssh(cfg, "bash -s", stdin=script, timeout=180)
+    have = {}
+    for line in (raw or "").splitlines():
+        size, _t, path = line.partition("\t")
+        if size.isdigit() and "/" in path:
+            folder, _s, name = path.rpartition("/")
+            have.setdefault(folder, {})[name] = int(size)
+    bad = []
+    for folder in folders:
+        got = have.get(folder.rstrip("/")) or {}
+        for name, size in sorted(want[folder].items()):
+            if got.get(name) != size:
+                bad.append("%s/%s is %s, not %d bytes" % (folder, name, "missing" if name not in got else "%d bytes" % got[name], size))
+    return bad
+
+
+VACC_RUNS = "vacc_runs.json"
+
+
+def vacc_runs(update=None, drop=()):
+    """joe/vacc_runs.json: the job of each kind tabs 8 and 9 have on the
+    VACC, written at submit. A Jarvis that stops mid-wait would otherwise
+    orphan it; the next job of its kind cancels it first, by its name
+    (it would only be answering for an old press). Machine-local."""
+    path = joe_dir(VACC_RUNS)
+    runs = {}
+    if os.path.isfile(path):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                runs = json.load(fh)
+        except (OSError, ValueError):
+            runs = {}
+    if update or drop:
+        runs.update(update or {})
+        for k in drop:
+            runs.pop(k, None)
+        _write(path, runs)
+    return runs
+
+
+def _ws_root(cfg):
+    """The workspace, refused unless it is a plain absolute path: it goes
+    unquoted into `#SBATCH --output`, which sbatch splits at whitespace."""
+    root = str(cfg.get("workspace") or "")
+    if not root.startswith("/") or any(c in root for c in " \t\n'\"$`\\"):
+        raise JoeError("The VACC workspace %r is not a plain absolute path; set it again from the VACC panel." % root, 409)
+    return root
+
+
+def vacc_job(files, command, cpus=4, mem="8G", wall="01:00:00", progress=None, check=None, kind="joe"):
+    """Send `files` ({path in the run folder: bytes}) to a run folder of
+    their own, run `command` there as one slurm job with the lab's Python,
+    and wait for it. Returns (cfg, run folder, slurm id).
+
+    Only a Stop (or a submit that went wrong) cancels the job. A poll the
+    login node does not answer is retried for half an hour
+    (vaccrun.retrying, as every other VACC run is), and past that Jarvis
+    lets go without cancelling and says where the job is: one dropped
+    connection used to scancel a healthy job."""
+    import io
+    import tarfile
+    from . import vacc, vaccrun
+    say = progress or (lambda s: None)
+    cfg = vacc_config()
+    root = _ws_root(cfg)
+    old = vacc_runs().get(kind)
+    if old:
+        try:
+            vacc.cancel(cfg, slurm_id=old.get("slurm_id"), rid=old.get("rid"))
+        except Exception:                                    # noqa: BLE001
+            pass
+        vacc_runs(drop=[kind])
+    rid = vacc.new_rid()
+    ws = vacc._remote_path(root, kind, rid)
+    sh = ("#!/bin/bash\n"
+          "#SBATCH --job-name=%(rid)s\n"
+          "%(acct)s"
+          "#SBATCH --partition=%(part)s\n"
+          "#SBATCH --time=%(wall)s\n"
+          "#SBATCH --mem=%(mem)s\n"
+          "#SBATCH --cpus-per-task=%(cpus)d\n"
+          "#SBATCH --nodes=1\n"
+          "#SBATCH --ntasks=1\n"
+          "#SBATCH --output=%(ws)s/job_%%j.out\n"
+          "#SBATCH --mail-type=NONE\n"
+          "%(pre)s\n"
+          "cd %(wsq)s\n"
+          "%(cmd)s\n") % {
+        "rid": rid, "acct": vacc.sbatch_account(cfg), "part": cfg.get("partition") or "general", "wall": wall,
+        "mem": mem, "cpus": cpus, "ws": ws, "wsq": vacc.q(ws), "pre": vacc.activate(cfg), "cmd": command}
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w", format=tarfile.GNU_FORMAT) as tar:
+        for name, data in sorted(dict(files, **{"submit.sh": sh.encode("utf-8")}).items()):
+            info = tarfile.TarInfo(name)
+            info.size, info.mode, info.mtime = len(data), 0o644, int(time.time())
+            tar.addfile(info, io.BytesIO(data))
+    say("sending it to the VACC")
+    rec = {"rid": rid, "ws": ws, "slurm_id": None, "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    vacc_runs(update={kind: rec})
+    jid = None
+    try:
+        got = vacc._ssh(cfg, "mkdir -p %s && cd %s && tar -xf - && sbatch --parsable submit.sh" % (vacc.q(ws), vacc.q(ws)),
+                        stdin=buf.getvalue(), timeout=300)
+        jid = next((ln.split(";")[0].strip() for ln in reversed((got or "").strip().splitlines())
+                    if ln.split(";")[0].strip().isdigit()), None)
+        if not jid:
+            raise JoeError("The VACC did not take the job: %s" % (got or "no answer").strip()[:300], 502)
+    except BaseException:
+        # The answer may have been lost after sbatch took it: the job is
+        # named after the run, so it is cancelled by name.
+        try:
+            vacc.cancel(cfg, rid=rid)
+        except Exception:                                    # noqa: BLE001
+            pass
+        vacc_runs(drop=[kind])
+        raise
+    vacc_runs(update={kind: dict(rec, slurm_id=jid)})
+
+    class _Watch:                       # what retrying calls between tries
+        stopped = False
+
+        def check(self):
+            if check:
+                try:
+                    check()
+                except BaseException:
+                    self.stopped = True
+                    raise
+
+    watch = _Watch()
+    gone_since = None
+    try:
+        while True:
+            watch.check()
+            try:
+                st = vaccrun.retrying(lambda: vacc.poll_states(cfg, [jid]), job=watch, what="job %s" % jid,
+                                      note=say).get(str(jid)) or {}
+            except vaccrun.Detached as exc:
+                raise JoeError("%s The job is %s, in %s; nothing was cancelled." % (exc, jid, ws), 502)
+            if not st:
+                # In neither squeue nor sacct: usually the accounting
+                # database catching up. After the grace, the answer (or its
+                # absence) decides.
+                gone_since = gone_since or time.time()
+                if time.time() - gone_since > vacc.LAG_GRACE_S:
+                    break
+            else:
+                gone_since = None
+                outcome = vacc.outcome_for(st.get("state"))
+                if outcome is not None:
+                    if outcome[0] != "done":
+                        try:
+                            tail = vacc._ssh(cfg, "tail -n 5 %s/job_%s.out 2>/dev/null || true" % (vacc.q(ws), jid), timeout=30)
+                        except vacc.SSHError:
+                            tail = ""
+                        vacc_runs(drop=[kind])                   # it has ended: nothing to cancel
+                        raise JoeError("The VACC job %s ended %s. %s %s" % (jid, st.get("state"), outcome[1],
+                                                                            (tail or "").strip()[-600:]), 502)
+                    break
+            try:                                             # what the job last said: for the eye only
+                last = vacc._ssh(cfg, "tail -n 1 %s/job_%s.out 2>/dev/null || true" % (vacc.q(ws), jid), timeout=30).strip()
+            except vacc.SSHError:
+                last = ""
+            say("VACC job %s %s%s" % (jid, (st.get("state") or "submitted").lower(), (": " + last[-120:]) if last else ""))
+            time.sleep(VACC_POLL_S)
+    except BaseException:
+        if watch.stopped:
+            try:
+                vacc.cancel(cfg, slurm_id=jid, rid=rid)
+            except Exception:                                # noqa: BLE001
+                pass
+            vacc_runs(drop=[kind])
+        raise
+    vacc_runs(drop=[kind])                                   # it has ended: nothing left to cancel
+    return cfg, ws, jid
+
+
+def vacc_text(cfg, ws, name, timeout=120):
+    """One file of the run's, as text; a JoeError naming the run's log when
+    the job did not write it."""
+    from . import vacc
+    raw = vacc._ssh(cfg, "f=%s; if [ -f \"$f\" ]; then cat \"$f\"; else echo __JARVIS_NO_FILE__; fi" % vacc.q(ws + "/" + name),
+                    timeout=timeout)
+    if raw.strip() == "__JARVIS_NO_FILE__":
+        raise JoeError("The VACC job finished but wrote no %s; its log is in %s." % (name, ws), 502)
+    return raw
+
+
+def vacc_tree(cfg, ws, name, dest, timeout=600):
+    """A folder of the run's, home into `dest` (a gzipped tar, as text)."""
+    import base64
+    import io
+    import tarfile
+    from . import vacc
+    raw = vacc._ssh(cfg, "cd %s && tar -czf - . | base64 -w0" % vacc.q(ws + "/" + name), timeout=timeout)
+    with tarfile.open(fileobj=io.BytesIO(base64.b64decode(raw.strip())), mode="r:gz") as tar:
+        tar.extractall(dest, filter="data")
+
+
+# --------------------------------------------------------------------------
+# Fake trials in FP: the pool the FP comparison draws from
+# --------------------------------------------------------------------------
+# Shahriar, 2026-10-23: "take random intervals of FP1/FP2 and see what the
+# data set's rank is", for every test of tab 9. A fake cue-1 onset every
+# FP_POOL_STEP s of each FP recording, a real trial's seven windows round it
+# (the 20 s and 10 s baselines before it, cue 1 and cue 2 after it, both
+# cues, the switch), each measured exactly as a real trial's window is: the
+# same wires rule, clipping measured the same way, the same measures. The
+# FP nulls (joefigs) build sessions of these fake trials. The recordings are
+# short (5-11 minutes), so neighbouring fake trials overlap; a null draws
+# them with replacement rather than pretending they are independent slots.
+FP_POOL_STEP = 10.0
+FP_POOL_SCHEMA = 1
+
+
+def fake_windows(t):
+    """A trial's seven windows round a fake cue-1 onset at t (each cue 10 s)."""
+    return trial_windows({"opener_t": t, "closer_t": t + 10.0, "offset_t": t + 20.0})
+
+
+def fp_onsets(d, step=FP_POOL_STEP):
+    """[(role, folder, t)]: every fake onset with all seven windows inside
+    the recording and FP_EDGE_S from its ends."""
+    out = []
+    for f in d.get("folders") or []:
+        if f.get("role") not in ("FP1", "FP2") or not f.get("local") or not os.path.isdir(f["local"]):
+            continue
+        dur = duration_s(f["local"])
+        if not dur:
+            continue
+        t = FP_EDGE_S + 20.0
+        while t + 20.0 <= dur - FP_EDGE_S + 1e-9:
+            out.append((f["role"], f["local"], round(t, 3)))
+            t += step
+    return out
+
+
+def fp_pool_part(d, names, chan_map, part=(0, 1), step=FP_POOL_STEP, check=None):
+    """Every `part[1]`-th fake trial from `part[0]` of one rat-day, measured.
+    Returns (indices, {measure: (7, n, ...)}, notes)."""
+    R = len(names)
+    P = len(pairs_of(R))
+    bad = [int(c) for c in d.get("bad") or []]
+    blocked = d.get("blocked") or {}
+    only = sorted({int(c) for nm, cs in chan_map.items() if nm not in blocked for c in cs})
+    onsets = fp_onsets(d, step)
+    idx = [i for i in range(len(onsets)) if i % part[1] == part[0]]
+    arrs = _empty(len(idx), R, P)
+    notes = []
+    for folder in sorted({onsets[i][1] for i in idx}):
+        mine = [(j, i) for j, i in enumerate(idx) if onsets[i][1] == folder]
+        spans = [{"pair_id": "f%04d" % i, "windows": fake_windows(onsets[i][2])} for _j, i in mine]
+        cl = spark.clipping_windows(folder, spans, skip=bad, only=only)
+        for j, i in mine:
+            if check:
+                check()
+            role, _f, t = onsets[i]
+            wins = fake_windows(t)
+            per = ((cl or {}).get("by_pair") or {}).get("f%04d" % i) or {}
+            unm = ((cl or {}).get("unmeasured") or {}).get("f%04d" % i) or {}
+            drop = {}
+            for wn, _a, _b in wins:
+                lost = set(bad) | {int(c) for c in unm}
+                lost |= {int(c) for c, rec in per.items() if wn in (rec.get("windows") or [])}
+                drop[wn] = sorted(lost)
+            try:
+                got = coupling._signals_for_windows(folder, chan_map, wins, drop, FS, blocked=blocked)
+            except coupling.CouplingError as exc:
+                notes.append("r%d %s %s fake trial at %.0f s: %s" % (d["rat"], d["day"], role, t, exc))
+                continue
+            for wi, (wn, _a, _b) in enumerate(wins):
+                w = got[wn]
+                sigs = [w["regions"][nm]["signal"] if w["regions"][nm]["usable"] else None for nm in names]
+                wires = [w["regions"][nm].get("channel") if w["regions"][nm].get("channel") is not None else -1 for nm in names]
+                _put(arrs, wi, j, measure(sigs), wires)
+    return idx, arrs, notes
+
+
+def fp_pool_key(d, names, chan_map, step=FP_POOL_STEP):
+    """What a rat-day's pool depends on: its FP folders (by name, not by
+    machine), its bad and blocked wires, the regions and wires map, the step."""
+    blob = json.dumps({"schema": FP_POOL_SCHEMA, "rat": d["rat"], "day": d["day"], "bad": d.get("bad"),
+                       "blocked": sorted((d.get("blocked") or {}).keys()), "names": list(names),
+                       "chan": {k: list(v) for k, v in chan_map.items()}, "step": step, "edge": FP_EDGE_S,
+                       "fp": sorted(os.path.basename(os.path.normpath(f.get("local") or "")) for f in d.get("folders") or []
+                                    if f.get("role") in ("FP1", "FP2")),
+                       "bands": BANDS, "skip": SKIP_HZ}, sort_keys=True, default=str)
+    return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:16]
+
+
+def fp_pool_path(rat, day):
+    return joe_dir("fp_pool", "r%d_%s.npz" % (int(rat), day))
+
+
+def fp_pool_save(path, d, names, chan_map, parts, step=FP_POOL_STEP):
+    """Put a rat-day's parts together and keep them (float32: a null needs no more)."""
+    onsets = fp_onsets(d, step)
+    R, P = len(names), len(pairs_of(len(names)))
+    arrs = _empty(len(onsets), R, P)
+    notes = []
+    for idx, a, nn in parts:
+        for k in arrs:
+            arrs[k][:, idx] = a[k]
+        notes += nn
+    meta = {"schema": FP_POOL_SCHEMA, "key": fp_pool_key(d, names, chan_map, step), "rat": d["rat"], "day": d["day"],
+            "step": step, "windows": list(WINDOWS), "regions": list(names),
+            "onsets": [[r, t] for r, _f, t in onsets], "notes": notes}
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp.npz"
+    np.savez_compressed(tmp, meta=np.array(json.dumps(meta, default=str)),
+                        **{"p_" + k: (v.astype(np.float32) if v.dtype == np.float64 else v) for k, v in arrs.items()})
+    os.replace(tmp, path)
+
+
+def fp_pool_load(path):
+    z = np.load(path, allow_pickle=False)
+    return {k[2:]: z[k] for k in z.files if k.startswith("p_")}, json.loads(str(z["meta"]))
+
+
+def fp_pools():
+    """{(rat, day): (arrays, meta)} of every pool kept here."""
+    d = joe_dir("fp_pool")
+    out = {}
+    for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        if f.endswith(".npz") and not f.endswith(".tmp.npz"):
+            a, m = fp_pool_load(os.path.join(d, f))
+            out[(int(m["rat"]), m["day"])] = (a, m)
+    return out
+
+
+def _fp_part_job(args):
+    d, names, chan_map, part, step = args
+    return d["rat"], d["day"], fp_pool_part(d, names, chan_map, part, step)
+
+
+def fp_pool_run(spec_path, out_dir, cpus=None):
+    """What a compute node runs (`python -m backend.joe fppool SPEC OUT`):
+    every tested rat-day's pool, in parts across the node's CPUs, one .npz
+    a rat-day."""
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    with open(spec_path, encoding="utf-8") as fh:
+        spec = json.load(fh)
+    names, chan_map, step = spec["names"], {k: [int(c) for c in v] for k, v in spec["chan_map"].items()}, spec["step"]
+    n = int(cpus or os.environ.get("SLURM_CPUS_PER_TASK") or os.cpu_count() or 1)
+    jobs = []
+    for d in spec["days"]:
+        k = max(1, min(8, len(fp_onsets(d, step)) // 12))
+        jobs += [(d, names, chan_map, (i, k), step) for i in range(k)]
+    got = {}
+    print("%d rat-days in %d parts, %d at a time" % (len(spec["days"]), len(jobs), n), flush=True)
+    with ProcessPoolExecutor(n) as ex:
+        futs = [ex.submit(_fp_part_job, j) for j in jobs]
+        for i, f in enumerate(as_completed(futs)):
+            rat, day, part = f.result()
+            got.setdefault((rat, day), []).append(part)
+            print("%d/%d r%d %s" % (i + 1, len(jobs), rat, day), flush=True)
+    os.makedirs(out_dir, exist_ok=True)
+    for d in spec["days"]:
+        fp_pool_save(os.path.join(out_dir, "r%d_%s.npz" % (int(d["rat"]), d["day"])), d, names, chan_map,
+                     got.get((d["rat"], d["day"])) or [], step)
+    print("done", flush=True)
+
+
+def _pool_days(names, chan_map):
+    """The tested rat-days as the Monolith's manifest has them, and the keys their pools must carry."""
+    from . import monolith as MO
+    man = MO.manifest()
+    if man is None:
+        raise JoeError("There is no Monolith manifest under the current rules: make it again (Drift, then Monolith).", 409)
+    return [d for d in man.get("days") or [] if d.get("day") in TESTED]
+
+
+def fp_pool_work(worker):
+    """The pools, here, from the recordings (when the data drive is connected)."""
+    from . import monolith as MO, sweep
+    man = MO.manifest() or {}
+    names = list(man.get("regions") or sweep.regions())
+    chan_map = {k: v for k, v in coupling.dewey_map().items() if k in names}
+    days = _pool_days(names, chan_map)
+    for i, d in enumerate(days):
+        worker.note(phase="joe-fppool", i=i, of=len(days), item="r%d %s · fake trials in FP" % (d["rat"], d["day"]))
+        if not fp_onsets(d):
+            raise JoeError("r%d %s: its FP recordings cannot be opened here (is the data drive connected?)." % (d["rat"], d["day"]), 409)
+        part = fp_pool_part(d, names, chan_map, check=worker.check)
+        fp_pool_save(fp_pool_path(d["rat"], d["day"]), d, names, chan_map, [part])
+    return {"days": len(days)}
+
+
+def fp_pool_vacc_work(worker):
+    """The pools on the VACC, from its copies of the FP recordings (checked
+    against the sizes tab 8 read), one job across a node's CPUs."""
+    import shutil
+    from . import monolith as MO, sweep, vacc
+    say = lambda s: worker.note(phase="joe-fppool", item=s)          # noqa: E731
+    man = MO.manifest() or {}
+    names = list(man.get("regions") or sweep.regions())
+    chan_map = {k: [int(c) for c in v] for k, v in coupling.dewey_map().items() if k in names}
+    copies = vacc_copies()
+    days, want, none = [], {}, []
+    for d in _pool_days(names, chan_map):
+        fl = []
+        for f in d.get("folders") or []:
+            if f.get("role") not in ("FP1", "FP2"):
+                continue
+            c = copies.get(_norm(f.get("local") or ""))
+            if c is None:
+                none.append("r%d %s %s" % (d["rat"], d["day"], f.get("role")))
+                continue
+            fl.append(dict(f, local=c[0]))
+            want[c[0]] = c[1]
+        days.append({"rat": d["rat"], "day": d["day"], "bad": d.get("bad") or [], "blocked": d.get("blocked") or {}, "folders": fl,
+                     "_key": fp_pool_key(d, names, chan_map)})
+    if none:
+        raise JoeError("The Monolith knows of no copy on the VACC of %d FP folders (first: %s)." % (len(none), none[0]), 409)
+    cfg = vacc_config()
+    say("checking the VACC's copies of the FP recordings")
+    bad = vacc_sizes(cfg, want)
+    if bad:
+        raise JoeError("%d FP files on the VACC differ from the recordings tab 8 read. First: %s" % (len(bad), bad[0]), 409)
+    app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    files = {}
+    for rel in vacc._code_files(app_dir):
+        if rel.startswith("backend"):
+            with open(os.path.join(app_dir, rel), "rb") as fh:
+                files["code/" + rel.replace(os.sep, "/")] = fh.read()
+    files["spec.json"] = json.dumps({"names": names, "chan_map": chan_map, "step": FP_POOL_STEP, "days": days}).encode("utf-8")
+    cpus = 32
+    cfg, ws, jid = vacc_job(files, "cd code && exec python -m backend.joe fppool ../spec.json ../pool %d" % cpus,
+                            cpus=cpus, mem="64G", wall="04:00:00", progress=say, check=worker.check, kind="joefppool")
+    say("bringing the FP pools home")
+    tmp = joe_dir("fp_pool.new")
+    shutil.rmtree(tmp, ignore_errors=True)
+    os.makedirs(tmp)
+    vacc_tree(cfg, ws, "pool", tmp, timeout=1200)
+    # The key a pool carries was made from the cluster's paths; this
+    # machine's (made from the same folder names) is the one kept.
+    for d in days:
+        p = os.path.join(tmp, "r%d_%s.npz" % (int(d["rat"]), d["day"]))
+        if not os.path.isfile(p):
+            raise JoeError("The VACC wrote no pool for r%d %s." % (d["rat"], d["day"]), 502)
+    dst = joe_dir("fp_pool")
+    shutil.rmtree(dst, ignore_errors=True)
+    os.replace(tmp, dst)
+    try:
+        vacc._ssh(cfg, "rm -rf %s/code %s/pool" % (vacc.q(ws), vacc.q(ws)), timeout=120)
+    except Exception:                                    # noqa: BLE001
+        pass
+    return {"days": len(days), "slurm_id": jid}
+
+
+def fp_pool_vacc_safe(worker):
+    from . import monolith as MO, vacc
+    try:
+        return fp_pool_vacc_work(worker)
+    except JoeError as exc:
+        raise MO.MonolithError(str(exc), exc.status)
+    except vacc.SSHError as exc:
+        raise MO.MonolithError("The VACC: %s" % exc, 502)
+
+
+def script_vacc_work(worker):
+    """The standalone script, run on the VACC's copies of the recordings,
+    then compared exactly as a run here is (`_take_script`)."""
+    import shutil
+    inp = joe_dir("joe_inputs.json")
+    if not os.path.isfile(inp):
+        raise JoeError("Work tab 8 out first: the script reads the inputs it writes.", 409)
+    say = lambda s: worker.note(phase="joe-script", item=s)          # noqa: E731
+    with open(inp, encoding="utf-8") as fh:
+        inputs = json.load(fh)
+    copies = vacc_copies()
+    days, want, none = [], {}, []
+    for d in inputs["days"]:
+        if d["day"] not in TESTED:
+            continue
+        fl = []
+        for role, path in d.get("folders") or []:
+            c = copies.get(_norm(path))
+            if c is None:
+                none.append("r%d %s %s" % (int(d["rat"]), d["day"], role))
+                continue
+            fl.append([role, c[0]])
+            want[c[0]] = c[1]
+        days.append(dict(d, folders=fl))
+    if none:
+        raise JoeError("The Monolith knows of no copy on the VACC of %d folders (first: %s), so the script was not run "
+                       "there." % (len(none), none[0]), 409)
+    cfg = vacc_config()
+    say("checking the VACC's copies against the recordings tab 8 read")
+    bad = vacc_sizes(cfg, want)
+    if bad:
+        raise JoeError("%d files on the VACC differ from the recordings tab 8 read, so the script was not run there. "
+                       "First: %s" % (len(bad), bad[0]), 409)
+    cpus = 8
+    files = {"joe_standalone.py": open(script_path(), "rb").read(),
+             "joe_inputs.json": json.dumps(dict(inputs, days=days), indent=1).encode("utf-8")}
+    cfg, ws, jid = vacc_job(files, "exec python joe_standalone.py --inputs joe_inputs.json --out out --jobs %d" % cpus,
+                            cpus=cpus, mem="32G", wall="03:00:00", progress=say, check=worker.check, kind="joescript")
+    say("bringing the script's CSVs home")
+    tmp = joe_dir("script.new")
+    shutil.rmtree(tmp, ignore_errors=True)
+    os.makedirs(tmp)
+    vacc_tree(cfg, ws, "out", tmp)
+    with open(joe_dir("script.log"), "w", encoding="utf-8") as fh:
+        fh.write(vacc_text(cfg, ws, "job_%s.out" % jid))
+    return _take_script(tmp, inp, where={"where": "vacc", "slurm_id": jid, "run": ws})
+
+
+if __name__ == "__main__":
+    import sys as _sys
+    if _sys.argv[1:2] == ["fppool"]:
+        fp_pool_run(_sys.argv[2], _sys.argv[3], int(_sys.argv[4]) if len(_sys.argv) > 4 else None)

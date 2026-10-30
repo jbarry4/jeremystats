@@ -19,9 +19,9 @@
 /* Braces' "Read the stamps from" is the version tree (constitution §6e).
 
    A set with several readable versions is what the tree is for, and one is
-   not guaranteed to be reachable on the machine running this, so the plan
-   card is drawn from a fixture through BARRY.braces._planCard -- the real
-   card, the real code, a given plan. Nothing is read or written. X-ray, Root
+   not guaranteed to be reachable on the machine running this, so the tree
+   the picker's Version tile pops up is drawn from a fixture through
+   BARRY.braces._versionTree -- the real tree, the real code, a given set. Nothing is read or written. X-ray, Root
    Canal, Checkup and the Event Bank are checked on real data by dspca.html,
    rootcanal.html, curversion.html and lineage.html. */
 const out = document.getElementById('out');
@@ -48,7 +48,7 @@ async function untilN(fn, tries = 200, gap = 100) {
   const W = () => f.contentWindow;
   const D = () => f.contentDocument;
   const ready = await untilN(() => typeof W().setView === 'function'
-                                   && W().eval('BARRY.braces && BARRY.braces._planCard'));
+                                   && W().eval('BARRY.braces && BARRY.braces._versionTree'));
   check('the application loads, with the hook', !!ready);
   if (!ready) { document.title = 'FAIL'; return; }
   const B = W().eval('BARRY');
@@ -69,13 +69,17 @@ async function untilN(fn, tries = 200, gap = 100) {
       { ref: 'r4', v: 4, name: '1.1', usable: true, n: 122, by: 'zz c', at: T(10) },
     ],
   };
+  /* The picker's third tile pops this tree up (2026-10-22); drawn in
+     place here from the set it would be drawn for. */
+  const asSet = (p) => ({ name: 'zz set', n: p.entry.n, type: 'ds',
+                          current_name: p.current_name, versions: p.versions });
   const stage = D().createElement('div');
   stage.style.cssText = 'position:fixed;left:10px;top:10px;width:520px;'
     + 'z-index:99999;background:var(--bg);padding:8px';
   D().body.appendChild(stage);
   try {
     q.from_version = null;
-    stage.appendChild(B.braces._planCard(plan));
+    stage.appendChild(B.braces._versionTree(asSet(plan)));
     await sleep(150);
     const tree = stage.querySelector('.br-vers .vtree');
     head('the tree');
@@ -111,7 +115,7 @@ async function untilN(fn, tries = 200, gap = 100) {
           String(q.from_version));
     q.from_version = 'r4';
     stage.innerHTML = '';
-    stage.appendChild(B.braces._planCard(plan));
+    stage.appendChild(B.braces._versionTree(asSet(plan)));
     await sleep(100);
     const on = stage.querySelector('.br-vers .vtree-row[aria-checked="true"]');
     check('a choice already held is shown as chosen', on && on.dataset.v === '1.1',

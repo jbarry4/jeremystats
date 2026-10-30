@@ -194,7 +194,7 @@ BARRY.curate = (function () {
       const was = review;
       review = back.review;
       if (!nWanted()) review = was;
-      goTo(back.index, true);
+      goTo(back.index, true, true);
       /* Said out loud. Landing in the middle of a set with no explanation
          reads as a bug, and the whole point is to be able to trust it -- so
          it names the number, and says when the candidate itself has gone
@@ -207,7 +207,7 @@ BARRY.curate = (function () {
         : 'Back where you left off: ' + at + ' of ' + total + '.',
         null, 5000);
     } else {
-      goTo(firstWanted(), true);
+      goTo(firstWanted(), true, true);
     }
     render();
 
@@ -302,6 +302,11 @@ BARRY.curate = (function () {
 
   function exit() {
     if (!set_) return;
+    /* Banked on the way out, always (2026-10-21), when there are decisions
+       the bank does not have: after the set is let go, so it cannot hold up
+       the leaving; quietBank waits for any save still in flight. */
+    /* Not banked on leaving any more (2026-10-26): a set banks itself
+       once, when the last candidate is first decided; after that, by hand. */
     /* The place, written now rather than in 350 ms. Preference writes are
        coalesced, and leaving is exactly the moment somebody is about to do
        something else -- the whole point is that it survives a tab switch,
@@ -327,6 +332,7 @@ BARRY.curate = (function () {
     }
     if (aidWin && !aidWin.closed) { try { aidWin.close(); } catch (e) {} }
     aidWin = null;
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     setMode(null);
     /* What the sitting came to, on the way out -- but only if there was a
        sitting. `quiet` makes it say nothing for a set somebody opened,
@@ -356,7 +362,14 @@ BARRY.curate = (function () {
     // Same reasoning as StrataScope: what you are deciding -- is this
     // deflection a dentate spike or one bad wire -- is read off the traces,
     // so they get the window and the aids get their own.
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    /* The main window as this person laid it out in Profile › Support panel
+       preferences (2026-10-22), or the traces alone, as always. Its first
+       pane is always the traces, which everything below reads. */
+    const mp = BARRY.supportPanels
+      ? BARRY.supportPanels.applyMain('curate', [{ panel: 'traces' }], sess,
+                                      { col: 0.5, row: 0.5 })
+      : (BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 }), null);
+    if (mp && mp.span) span = mp.span;
     openAids();
   }
 
@@ -366,9 +379,15 @@ BARRY.curate = (function () {
        and a stacked spectrogram -- and the CSD is the one a dentate spike
        is judged on, so it gets the whole window instead of a quarter of it.
        Each of the others is still a panel switch away in that window. */
-    aidWin = BARRY.views.xplore.popOutPanes(sess, [
-      { panel: 'csd' },
-    ], { role: 'aids', name: 'barry-curate-aids', width: 720, height: 1000,
+    // What this person chose for Checkup's window (Profile › Support panel
+    // preferences), or the CSD alone.
+    const plan = BARRY.supportPanels
+      ? BARRY.supportPanels.plan('curate', [{ panel: 'csd' }], sess)
+      : { specs: [{ panel: 'csd' }] };
+    if (!plan) return;
+    aidWin = BARRY.views.xplore.popOutPanes(sess, plan.specs, {
+         ...BARRY.supportPanels.opts(plan),
+         role: 'aids', name: 'barry-curate-aids', width: 720, height: 1000,
          // Folded on arrival. It is for glancing at: the header, control
          // strip and channel list cost more of the pane than they are
          // worth, and each has a sliver to bring it back if you want it.
@@ -565,7 +584,7 @@ BARRY.curate = (function () {
              || all[i].id !== got.id };
   }
 
-  function goTo(i, quiet) {
+  function goTo(i, quiet, ownSpan) {
     const n = events().length;
     if (!n) return;
     index = Math.max(0, Math.min(n - 1, i));
@@ -576,7 +595,10 @@ BARRY.curate = (function () {
     // Somebody zoomed the pane: that is the window they want, so take it
     // rather than putting it back. Only a real change counts -- the
     // centring below sets the span itself, so every jump reports one.
-    const shown = paneSpan();
+    // Not on the way in (Spotter's rule): the pane then still shows what
+    // the recording was last looked at with, and the span this mode chose
+    // -- its own, or Profile's -- wins.
+    const shown = ownSpan ? null : paneSpan();
     if (shown && Math.abs(shown - span) > Math.max(0.02, span * 0.02)) {
       setSpan(shown);
     }
@@ -661,6 +683,10 @@ BARRY.curate = (function () {
       if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
         BARRY.views.toolkit.curationChanged();
       }
+      // The last one decided: banked, always (2026-10-21).
+      if (set_ === own && labelId && !left()) {
+        quietBank(own.gid, own.kind, 'Every candidate decided in Checkup.');
+      }
     } catch (e) {
       if (set_ !== own) {
         // Left, or onto another set, before this one answered: nothing on
@@ -696,6 +722,44 @@ BARRY.curate = (function () {
     } finally {
       saving -= 1;
       updateSaving();
+    }
+  }
+
+  /* ---------- banking without being asked ----------
+
+     The same route as the dialog, so a bank that would hold nothing new
+     writes nothing (the server answers `replaced`, no new version). Said in
+     a toast when a version was written; quiet otherwise. */
+  async function quietBank(gid, kind, why) {
+    // A harness's throwaway set is not banked (`BARRY.testNoAutobank`).
+    if (BARRY.testNoAutobank) return;
+    for (let i = 0; i < 60 && saving > 0; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    let res;
+    try {
+      res = await apiPost(BARRY.ui.setUrl(gid, kind, 'bank'), {
+        note: why, auto: true,
+        added_by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
+                  || undefined,
+      });
+    } catch (e) {
+      // Nothing decided yet is not a failure worth a toast.
+      if (!/nothing has been curated/i.test(e.message || '')) {
+        toast('Could not bank automatically: ' + e.message
+              + ' Bank the results by hand to keep them.', 'warn', 9000);
+      }
+      return;
+    }
+    // Once only (2026-10-26): the server banks a set by itself the first
+    // time every event is decided and never again, and says so here.
+    if (res.skipped || !(res.entries || []).length) return;
+    const it = (res.entries || [])[0] || {};
+    if (it.replaced && !it.new_version) return;          // nothing new
+    toast('Banked automatically as ' + BARRY.ui.versionLabel(it.version)
+          + ': ' + (it.n || 0) + ' decided.', 'ok', 6000);
+    if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
+      BARRY.views.toolkit.curationChanged();
     }
   }
 
@@ -848,8 +912,8 @@ BARRY.curate = (function () {
     let bar = $('#curBar');
     if (!bar) {
       bar = el('div', { class: 'cur-bar', id: 'curBar' });
-      const body = $('#xfBody');
-      if (body) body.appendChild(bar); else document.body.appendChild(bar);
+      // In the middle of the one mode bar (core.js `BARRY.modeSlot`).
+      BARRY.modeSlot().appendChild(bar);
       document.addEventListener('keydown', keys, true);
     }
     bar.innerHTML = '';
@@ -964,37 +1028,53 @@ BARRY.curate = (function () {
             : ''),
         }))),
       ]),
-      el('div', { class: 'ctl' }, [
-        el('label', { text: 'Window s' }),
-        el('input', {
-          type: 'number', step: '0.1', value: String(span),
-          style: 'width:56px',
-          onchange: (e) => {
-            setSpan(Math.max(0.05, parseFloat(e.target.value) || 1));
-            goTo(index);
-          },
-        }),
-      ]),
       el('span', { class: 'cur-saving', id: 'curSaving', text: '' }),
-      el('div', { style: 'flex:1' }),
-      /* Tooth Fairy, AI Beta's best model: sorts the whole set, asks
-         before it starts, and writes nothing unless its summary is
-         accepted (toothfairy.js). */
-      (set_.kind === 'ds' && BARRY.toothFairy) ? el('button', {
-        class: 'btn ghost sm tf-btn',
-        title: 'Let Tooth Fairy read every candidate and call each one DS, '
-             + 'Flag for Deep Review, Flag or Garbage. It asks first, and '
-             + 'nothing changes unless you accept its summary.',
-        onclick: toothFairySweep,
-      }, [BARRY.toothFairy.icon(), 'Tooth Fairy\u2026']) : null,
-      el('button', { class: 'btn ghost sm', text: 'List all\u2026',
-                     title: 'Every candidate in this set, by time or by '
-                          + 'category. Click one to go to it.',
-                     onclick: listAll }),
-      el('button', { class: 'btn ghost sm', text: 'Bank the results…',
-                     onclick: bank }),
-      el('button', { class: 'btn ghost sm', text: 'Leave', onclick: exit }),
     ]));
+
+    /* The bar's end (ui.modeEnd): the occasional controls under More, the
+       next step of The Dentist, and Bank -- then the shell's Simplify, ?
+       and Leave, the last thing on the right. */
+    bar.appendChild(BARRY.ui.modeEnd({
+      more: [
+        el('div', { class: 'ctl' }, [
+          el('label', { text: 'Window s' }),
+          el('input', {
+            type: 'number', step: '0.1', value: String(span),
+            style: 'width:56px',
+            onchange: (e) => {
+              setSpan(Math.max(0.05, parseFloat(e.target.value) || 1));
+              goTo(index);
+            },
+          }),
+        ]),
+        el('button', { class: 'btn ghost sm', text: 'List all\u2026',
+                       title: 'Every candidate in this set, by time or by '
+                            + 'category. Click one to go to it.',
+                       onclick: listAll }),
+        /* Tooth Fairy, AI Beta's best model: sorts the whole set, asks
+           before it starts, and writes nothing unless its summary is
+           accepted (toothfairy.js). */
+        (BARRY.ui.kindBase(set_.kind) === 'ds' && BARRY.toothFairy) ? el('button', {
+          class: 'btn ghost sm tf-btn',
+          title: 'Let Tooth Fairy read every candidate and call each one DS, '
+               + 'Flag for Deep Review, Flag or Garbage. It asks first, and '
+               + 'nothing changes unless you accept its summary.',
+          onclick: toothFairySweep,
+        }, [BARRY.toothFairy.icon(), 'Tooth Fairy\u2026']) : null,
+      ],
+      next: {
+        text: 'Next: Braces \u2014 line them up \u2192',
+        title: 'Step 3 of The Dentist: Braces lines the stamps up on their '
+             + 'peaks. Your decisions stay as they are.',
+        onclick: () => {
+          if (BARRY.views.toolkit) BARRY.views.toolkit.pick('braces', 'dentist');
+          setView('toolkit');
+        },
+      },
+      bank: { text: 'Bank the results\u2026', onclick: bank,
+              title: 'Write these decisions as a new version of the banked '
+                   + 'entry' },
+    }));
 
     // Only the overlay changed, so repaint rather than refetch. The window
     // move in goTo() is what asks the server for new samples, and it does
@@ -1798,6 +1878,8 @@ BARRY.curate = (function () {
   let lastDraw = null;
 
   function draw(ctx, s, win, x0, plotW, y0, plotH, P) {
+    // The marks' strength, handed in by the pane (Marks › Faded).
+    const A = ctx.globalAlpha;
     if (!s || !s.curation || !set_) {
       lastDraw = { ok: false, why: !s ? 'no session'
                    : (!s.curation ? 'session has no curation'
@@ -1832,7 +1914,7 @@ BARRY.curate = (function () {
 
       // The one being decided gets a full-height line; the others get a tick,
       // so the candidate in question is never ambiguous.
-      ctx.globalAlpha = isNow ? 0.95 : (e.label ? 0.55 : 0.4);
+      ctx.globalAlpha = (isNow ? 0.95 : (e.label ? 0.55 : 0.4)) * A;
       ctx.strokeStyle = isNow ? (e.label ? c : P.accent) : c;
       ctx.lineWidth = isNow ? 2 : 1;
       if (!isNow && !e.label) ctx.setLineDash([3, 3]); else ctx.setLineDash([]);
@@ -1845,7 +1927,7 @@ BARRY.curate = (function () {
 
       if (isNow) {
         ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = A;
         ctx.fillStyle = e.label ? c : P.accent;
         ctx.beginPath();
         ctx.arc(x, y0 + 7, 4.5, 0, Math.PI * 2);
@@ -2191,6 +2273,7 @@ BARRY.vers = (function () {
         };
       };
       const tree = BARRY.ui.versionTree({
+        producer: ent.pipeline, producerType: ent.type,
         versions: rows,
         idOf: (v) => keyOf.get(v),
         disabled: (v) => (v.has_snap ? null

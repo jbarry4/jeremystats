@@ -1,0 +1,152 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>Harness — folding the channel column</title>
+<style>
+  body { font: 12px/1.5 ui-monospace, monospace; margin: 0; background: #0c0f14; color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 38vw; }
+  #app { position: fixed; right: 0; top: 0; width: 62vw; height: 100vh; border: 0;
+         border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; } .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style></head>
+<body>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* 2026-10-21: "Add a channel collapse option that hides the check buttons
+   and ok/bad buttons, and then adds the channel number on a hover similar
+   to how they show up for the rasters."
+
+   On the demo recording; preferences are answered here and never written. */
+const out = document.getElementById('out');
+let fails = 0, checks = 0;
+const say = (t, c) => { const d = document.createElement('div');
+  d.className = c || ''; d.textContent = t; out.appendChild(d); };
+const head = (t) => { const h = document.createElement('h2'); h.textContent = t;
+  out.appendChild(h); };
+const check = (n, c, d) => { checks += 1; if (!c) fails += 1;
+  say(n + (c || d == null ? '' : '   [' + d + ']'), c ? 'ok' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 20000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(120);
+  }
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow, D = () => frame.contentDocument;
+  try {
+    await until(() => W().BARRY && W().BARRY.views && W().BARRY.views.xplore
+                      && typeof W().setView === 'function', 30000);
+    const B = W().eval('BARRY');
+    const X = B.views.xplore, XF = X.state;
+    const errs = [];
+    W().addEventListener('error', (e) => errs.push('window: ' + e.message));
+    const kept = {};
+    const realGet = B.prefs.get, realSet = B.prefs.set;
+    B.prefs.get = (k, d) => (k in kept ? kept[k] : realGet.call(B.prefs, k, d));
+    B.prefs.set = (k, v) => { kept[k] = v; };
+    const realApi = W().api;
+    W().api = async (path, opts) => (path === '/api/session/state'
+      ? { ok: true } : realApi(path, opts));
+
+    W().eval("setView('xplore')");
+    await X.open('demo:long-session');
+    const sess = await until(() => Object.values(XF.sessions)
+      .find((s) => s.path === 'demo:long-session'));
+    sess.t0 = 120; sess.span = 6;
+    X.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    const overlay = () => D().querySelector('#paneGrid .ch-overlay');
+    await until(() => overlay() && overlay().querySelector('.ch-lane'), 20000);
+    if (!XF.chrome.channels) {
+      overlay().querySelector('.ch-fold').click();
+      await sleep(300);
+    }
+
+    head('Shown: every lane has its checkbox and ok/bad button');
+    const lanes = overlay().querySelectorAll('.ch-lane');
+    check('the column is there', lanes.length > 0, lanes.length);
+    check('with checkboxes and ok/bad buttons',
+          overlay().querySelectorAll('.ch-lane input[type=checkbox]').length === lanes.length
+          && overlay().querySelectorAll('.ch-lane .badbtn').length === lanes.length);
+    const fold = overlay().querySelector('.ch-fold');
+    check('and a way to fold it away', !!fold && fold.offsetWidth > 0);
+    const wideL = XF.panes[0]._geom.padL;
+
+    head('Folded');
+    fold.click();
+    await until(() => overlay() && overlay().classList.contains('folded'), 5000);
+    await sleep(300);
+    check('the checkboxes and ok/bad buttons are gone',
+          !overlay().querySelector('.ch-lane, input[type=checkbox], .badbtn'));
+    const slimL = XF.panes[0]._geom.padL;
+    check('the traces get the room', slimL < wideL && slimL <= 24,
+          wideL + ' -> ' + slimL);
+    check('the choice is remembered', kept.xf_chan_column === 'folded',
+          kept.xf_chan_column);
+    check('and the View menu says the same', XF.chrome.channels === false);
+
+    head('The channel number on hover, as a raster labels its rows');
+    const cv = XF.panes[0]._canvas;
+    const g = XF.panes[0]._geom;
+    const r = cv.getBoundingClientRect();
+    const pick = Math.min(2, g.n - 1);
+    const y = r.top + g.top + g.lane * (pick + 0.5);
+    cv.dispatchEvent(new (W().MouseEvent)('mousemove', { bubbles: true,
+      clientX: r.left + g.padL + g.plotW * 0.4, clientY: y }));
+    window.dispatchEvent(new MouseEvent('noop'));
+    await sleep(80);
+    // The pane listens on its window, not only on the canvas.
+    W().dispatchEvent(new (W().MouseEvent)('mousemove', { bubbles: true,
+      clientX: r.left + g.padL + g.plotW * 0.4, clientY: y }));
+    await sleep(80);
+    const tag = cv.parentNode.querySelector('.ch-hover-tag');
+    const want = XF.panes[0]._win.series[pick].label;
+    check('hovering a trace names its channel', tag && tag.classList.contains('on')
+          && tag.textContent.indexOf(want) === 0,
+          tag ? tag.textContent + ' vs ' + want : 'no tag');
+    const tb = tag && tag.getBoundingClientRect();
+    check('at the start of that lane',
+          tb && tb.top >= r.top + g.top + g.lane * pick - 2
+          && tb.top <= r.top + g.top + g.lane * (pick + 1)
+          && Math.abs(tb.left - (r.left + g.padL + 3)) < 3,
+          tb ? Math.round(tb.top) + ',' + Math.round(tb.left) : 'none');
+    const bg = tag && W().getComputedStyle(tag).backgroundColor;
+    check('in the raster label’s dark box', /rgba\(0, 0, 0, 0\.5\)/.test(bg || ''), bg);
+    cv.dispatchEvent(new (W().MouseEvent)('mouseleave', { bubbles: false }));
+    await sleep(80);
+    check('and it goes when the cursor leaves', !tag.classList.contains('on'));
+
+    head('Back');
+    overlay().querySelector('.ch-fold').click();
+    await until(() => overlay() && overlay().querySelector('.ch-lane'), 5000);
+    await sleep(200);
+    check('the column comes back', overlay().querySelectorAll('.ch-lane').length === lanes.length);
+    check('at its full width', XF.panes[0]._geom.padL === wideL);
+    check('remembered as shown', kept.xf_chan_column === 'full');
+    W().dispatchEvent(new (W().MouseEvent)('mousemove', { bubbles: true,
+      clientX: r.left + g.padL + g.plotW * 0.4, clientY: y }));
+    await sleep(80);
+    const tag2 = cv.parentNode.querySelector('.ch-hover-tag');
+    check('with the column shown, no hover label (the column names it)',
+          !tag2 || !tag2.classList.contains('on'));
+
+    check('no client error anywhere', errs.length === 0, errs.join(' | '));
+    B.prefs.get = realGet; B.prefs.set = realSet;
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'chancol: ' + fails + ' FAILED' : 'chancol: passed';
+  frame.src = 'about:blank';
+})();
+</script>
+</body></html>

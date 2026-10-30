@@ -128,9 +128,12 @@ async function untilN(fn, tries = 250, gap = 100) {
     ? Array.from(arcCard.querySelectorAll('.tk-step')) : [];
   check('The Arc shows four steps', arcSteps.length === 4,
         'got ' + arcSteps.length);
-  check('numbered 1 to 4',
-        arcSteps.map((s) => txt(s.querySelector('.tk-step-i'))).join('')
-          === '1234');
+  // In order on the rail, each its own mark; no printed numbers since
+  // 2026-10-21 -- the order is kept on `data-n`.
+  check('in order 1 to 4, each with its mark',
+        arcSteps.map((s) => (s.querySelector('.tk-step-i') || {dataset: {}}).dataset.n)
+          .join('') === '1234'
+        && arcSteps.every((s) => s.querySelector('.tk-step-i svg.tk-ico')));
   check('every step is visible, built or not',
         arcSteps.length === 4 && arcSteps.every(seen));
 

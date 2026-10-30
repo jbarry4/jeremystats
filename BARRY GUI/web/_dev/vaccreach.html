@@ -187,19 +187,22 @@ async function until(fn, ms) {
     if (vBtn && !vBtn.hidden) {
       vBtn.click();
       const card = () => Array.from(D().querySelectorAll('#vaccBody .card'))
-        .find((c) => /Found on VACC/.test(c.textContent));
-      await until(() => card() && /Already in Jarvis/.test(card().textContent),
+        .find((c) => /Everything VACC knows/i.test(c.textContent));
+      // The welcome's tiles since 2026-10-23: "already in Jarvis", "new".
+      await until(() => card() && (/already in Jarvis/.test(card().textContent)
+                                   || card().querySelector('.wl-places')),
                   60000);
-      check('the Found on VACC card is drawn, with its counts',
-            !!card() && /New to Jarvis/.test(card().textContent),
+      check('the Everything VACC knows card is drawn, with its places',
+            !!card() && !!card().querySelector('.wl-places'),
             card() ? card().textContent.slice(0, 120) : 'none');
       const btns = () => card() ? Array.from(card().querySelectorAll('button'))
         .map((b) => b.textContent) : [];
       const f0 = await json('/api/vacc/found');
       if (f0.setup_needed) {
-        // A computer that never looked: the setup, with both finds.
-        check('a computer that never looked is offered the setup',
-              btns().indexOf('Set up this computer') >= 0, btns().join(' | '));
+        // A computer that never looked: both finds, each on its own card.
+        check('a computer that never looked is offered both finds',
+              card().querySelectorAll('.wl-place button').length === 2,
+              btns().join(' | '));
       } else {
         const add = card() && Array.from(card().querySelectorAll('button.btn'))
           .find((b) => /^Add [\d,]+ recordings? found on VACC$|^Nothing new to add$/

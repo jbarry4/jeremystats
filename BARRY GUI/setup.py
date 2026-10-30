@@ -364,6 +364,32 @@ def check_repo():
         warn("git not found -- GUI_logs will be written but cannot be synced.")
 
 
+def check_accounts():
+    """The two accounts this machine can use, asked for here and only here.
+
+    They used to be asked for every time Jarvis was activated on a machine
+    without them. Setup is the step somebody runs on purpose to get a
+    machine ready, so this is where they belong (2026-10-20). Both steps
+    are skippable; re-run Setup to change either. The same code backs the
+    app's own sign-in (backend/onboard.py -> vacc.sign_in).
+    """
+    print(c("\n6. Accounts", "bold"))
+    try:
+        from backend import onboard
+    except Exception as exc:
+        warn("Could not load the account steps: %s" % exc)
+        return {}
+    done = {}
+    for name, step in (("sync", onboard.cloud_step),
+                       ("vacc", onboard.vacc_step)):
+        try:
+            done[name] = bool(step(say=print))
+        except Exception as exc:
+            warn("The %s step stopped: %s" % (name, exc))
+            done[name] = False
+    return done
+
+
 def main():
     print(BANNER)
     print("  Setting up Jarvis in:\n     " + HERE)
@@ -377,6 +403,8 @@ def main():
     matlab = check_matlab()
     ffmpeg = check_ffmpeg()
     check_repo()
+    if py_ok and pkg_ok:
+        check_accounts()
 
     print(c("\n" + "=" * 66, "dim"))
     if py_ok and pkg_ok:
@@ -388,6 +416,14 @@ def main():
     print("    Python packages : " + ("ready" if pkg_ok else "MISSING (required)"))
     print("    MATLAB          : " + (matlab or "not found -- MATLAB pipeline stages disabled"))
     print("    ffmpeg          : " + (ffmpeg or "not found -- session video disabled"))
+    if py_ok and pkg_ok:
+        try:
+            from backend import onboard
+            for line in (onboard.cloud_line(), onboard.vacc_line()):
+                head, _, rest = line.partition(":")
+                print("    %-16s: %s" % (head.strip(), rest.strip()))
+        except Exception:
+            pass
 
     if py_ok and pkg_ok:
         if os.name == "nt":

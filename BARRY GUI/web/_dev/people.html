@@ -89,9 +89,13 @@ const PROBE = 'Harness Probe Person';
   /* The distinction the button depends on. If every name looked held, the
      feature would be dead on arrival -- which is what testing `total`
      would have produced. */
-  ck('and somebody is hand-added only, so removal is reachable',
-     people.some((x) => held(x) === 0),
-     'every name looks held — the delete could never be used');
+  /* Reported, not required. Whether this store has a hand-added-only name
+     is a fact about the data: since the harness and departed names were
+     cleared (2026-10-23) it has none. Section 3 makes one -- the probe --
+     and checks that removal reaches it, which is the claim. */
+  if (!people.some((x) => held(x) === 0)) {
+    p('  (nobody here is hand-added only; section 3 adds one to show removal is reachable)');
+  }
 
   hd('2. A name with work behind it is refused');
   /* Somebody the data carries AND who has no hand-added row, so the

@@ -204,6 +204,13 @@ BARRY.palette = (function () {
        () => applyTheme(BARRY.state.theme === 'dark' ? 'light' : 'dark')],
       ['Toggle VACC Mode', 'light the interface up for the cluster',
        () => applyVacc(!BARRY.state.vacc)],
+      // A speed setting, not a colour (js/lite.js).
+      ['Toggle Jarvis Light', 'less motion and effects, for slower computers',
+       () => { if (BARRY.lite) {
+         const on = BARRY.lite.toggle();
+         toast(on ? 'Jarvis Light is on: less motion and effects.'
+                  : 'Jarvis Light is off.', 'ok');
+       } }],
       ['VACC status', 'the cluster, the queue, and what it can already read',
        () => BARRY.vacc && BARRY.vacc.showVacc()],
       ['Export run history as CSV', 'every run, as a table',
@@ -449,7 +456,8 @@ BARRY.palette = (function () {
 
   function toggle() { (open ? hide : show)(); }
 
-  return { show, hide, toggle, isOpen: () => open };
+  // `commands` for the harnesses that check an entry is on offer.
+  return { show, hide, toggle, isOpen: () => open, commands };
 })();
 
 /* ==========================================================================

@@ -1,0 +1,458 @@
+{
+  "_at": {
+    "added": "2026-10-20T20:31:54.588149+00:00",
+    "deleted": "2026-10-20T20:31:54.588149+00:00",
+    "id": "2026-10-20T20:31:54.588149+00:00",
+    "kind": "2026-10-20T20:31:54.588149+00:00",
+    "name": "2026-10-20T20:31:54.588149+00:00",
+    "nickname": "2026-10-20T20:31:54.588149+00:00",
+    "schema": "2026-10-20T20:31:54.588149+00:00",
+    "subject": "2026-10-20T20:31:54.588149+00:00",
+    "subject_key": "2026-10-20T20:31:54.588149+00:00",
+    "version": "2026-10-20T20:31:54.588149+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "b43a8a6a4112": [
+        "set",
+        "2026-10-20T20:31:54.588149+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-20T20:31:54.588149+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-20T15:09:17-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "f669e8c87dc9",
+  "kind": "rootcanal_pool",
+  "name": "Root Canal pool \u00b7 PTEN \u00b7 9 recordings, 9 mice",
+  "nickname": "PTEN ALL PTEN Baseline Full Incisor",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "gids": [
+      "s14510e30e1bd",
+      "s38b9e61c5684",
+      "s45bae70722f2",
+      "s4a67210fc7ac",
+      "s500a5aec223e",
+      "s6cdd64d005c4",
+      "sba57286bdee3",
+      "sc74c98b2495d",
+      "sd0d0bded958b"
+    ],
+    "n_mice": 9,
+    "n_recordings": 9,
+    "name": "Root Canal pool \u00b7 PTEN \u00b7 9 recordings, 9 mice",
+    "pool_key": "8be238e4ecef4c08b47a8f3d6fe92320",
+    "projects": [
+      "PTEN"
+    ]
+  },
+  "subject_key": "rootcanal_pool|8be238e4ecef4c08b47a8f3d6fe92320",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.10.20.5",
+      "at": "2026-10-20T15:09:17-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "f729a289",
+      "digest": "6fc92af18509",
+      "id": "b43a8a6a4112",
+      "inputs": [
+        {
+          "banked": true,
+          "ds_version": "18",
+          "entry_id": "852640a8846a",
+          "key": "b:s45bae70722f2:5eb88e8de1cd",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 2,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "5eb88e8de1cd",
+          "read": "416ff3701c57",
+          "rows_digest": "60d638abb43a"
+        },
+        {
+          "banked": true,
+          "ds_version": "9",
+          "entry_id": "46fd29a77cc7",
+          "key": "b:s38b9e61c5684:f4ae75ce0ff5",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 2,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "f4ae75ce0ff5",
+          "read": "3c855c001a2f",
+          "rows_digest": "f6222e54cf33"
+        },
+        {
+          "banked": true,
+          "ds_version": "8",
+          "entry_id": "91bb7fbbdad8",
+          "key": "b:s4a67210fc7ac:58ae7d6828d4",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 2,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "58ae7d6828d4",
+          "read": "58c0e8ce84df",
+          "rows_digest": "6540f909ef1b"
+        },
+        {
+          "banked": true,
+          "ds_version": "9",
+          "entry_id": "93cf98061019",
+          "key": "b:sd0d0bded958b:89416f40f5ab",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": false,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 2,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "89416f40f5ab",
+          "read": "d6f9949f9a83",
+          "rows_digest": "b93a34a0b166"
+        },
+        {
+          "banked": true,
+          "ds_version": "8",
+          "entry_id": "a28cf9b10de0",
+          "key": "b:s6cdd64d005c4:7bc41bca727c",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 2,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "7bc41bca727c",
+          "read": "214540505b96",
+          "rows_digest": "f4df7fdc9b1e"
+        },
+        {
+          "banked": true,
+          "ds_version": "10",
+          "entry_id": "80ca39fd6931",
+          "key": "b:s14510e30e1bd:26481f71357a",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 2,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "26481f71357a",
+          "read": "40f38ef349b0",
+          "rows_digest": "56e569701af5"
+        },
+        {
+          "banked": true,
+          "ds_version": "8",
+          "entry_id": "eb879cc295c6",
+          "key": "b:sc74c98b2495d:e825a4991383",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 2,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "e825a4991383",
+          "read": "5e5199e5856b",
+          "rows_digest": "a3cc86abb1b2"
+        },
+        {
+          "banked": true,
+          "ds_version": "11",
+          "entry_id": "66a070f2749d",
+          "key": "b:s500a5aec223e:d5db4946cfee",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 2,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "d5db4946cfee",
+          "read": "0a208d5e9ac2",
+          "rows_digest": "f465fa978a2f"
+        },
+        {
+          "banked": true,
+          "ds_version": "10",
+          "entry_id": "7e31c748f710",
+          "key": "b:sba57286bdee3:0a0c9f12e2cb",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 2,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "0a0c9f12e2cb",
+          "read": "c454852eb54a",
+          "rows_digest": "a0f578fee440"
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "delta_bic": 504.8848158096225,
+        "events": 2198,
+        "members": 9,
+        "mice": 9,
+        "stats": null,
+        "switch_rate": 0.3034576888080073,
+        "unbanked": 0
+      },
+      "note": "JA Management",
+      "params": {
+        "all_ds": false,
+        "band": [
+          500.0,
+          1000.0
+        ],
+        "band_pool": false,
+        "cluster_calls": {},
+        "cluster_names": {},
+        "complete_only": false,
+        "dbic_scale": [
+          [
+            2.0,
+            "no support for two groups"
+          ],
+          [
+            6.0,
+            "positive support for two groups"
+          ],
+          [
+            10.0,
+            "strong support for two groups"
+          ],
+          [
+            null,
+            "very strong support for two groups"
+          ]
+        ],
+        "drawn": [],
+        "gmm": {
+          "compare": [
+            1,
+            2
+          ],
+          "covariance": "full",
+          "min_n": 20,
+          "n_init": 5,
+          "random_state": 0
+        },
+        "k": 2,
+        "margin_mode": null,
+        "measure": {
+          "band_hi": 1000.0,
+          "band_lo": 500.0,
+          "cross_ms": 100.0,
+          "filt": "ds",
+          "filter_label": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+          "hi_hz": 100.0,
+          "lo_hz": 5.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 25.0
+        },
+        "n_init": 10,
+        "random_state": 0,
+        "scale": "pooled raw"
+      },
+      "params_hash": "4b546b206b07",
+      "v": 1
+    }
+  ]
+}

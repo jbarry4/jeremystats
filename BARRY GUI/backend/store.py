@@ -93,6 +93,13 @@ PREFS_SPEC = {
     # because putting one back has to sync too, and an artifact's soft
     # delete only ever travels one way.
     "rootcanal_border_archive": shards.MAPLWW,
+    # Root Canal's folders for saved pools and pools of pools (2026-10-20):
+    # the folders, {id: {name, at, by, gone}}, and which folder each pool is
+    # in, {pool id: folder id or ""}. Merged per key for the same reason as
+    # the archive: two people filing different pools both keep theirs, and
+    # renaming one folder does not undo somebody else's new one.
+    "rootcanal_pool_folders": shards.MAPLWW,
+    "rootcanal_pool_in": shards.MAPLWW,
 }
 
 # Settings that describe this screen rather than this project. Merging them
@@ -110,7 +117,28 @@ PREFS_LOCAL = ("theme", "density", "panes", "last_view", "last_session",
                "spotter_span", "panning_span",
                "chrome", "fullscreen", "zoom",
                "recent_scripts", "recent_bookmarks", "pipeline_folders",
-               "scratch_draft")
+               "scratch_draft",
+               # The VACC sign-in this machine's app has already greeted
+               # (2026-10-20): a newer `signed_in_at` in .vacc.json -- a
+               # sign-in done in Setup -- turns VACC Mode on once.
+               "vacc_signed_ack",
+               # Motion: "lively" (default) or "calm" (2026-10-20).
+               "motion",
+               # Jarvis Light, "on" or "off" (2026-10-21): a speed setting
+               # for a slower computer, so about this machine and nobody
+               # else's (web/js/lite.js). The server reads it too, to halve
+               # its cache budget (backend/membudget.py).
+               "lite",
+               # Support panel preferences (2026-10-22). They were shared by
+               # every machine, so whoever changed theirs last changed
+               # everyone's; one person's travels to another now as a
+               # preset they copy (presets kind 'support_panels').
+               "support_panels",
+               # This screen's Xplorefinder: the channel column folded or
+               # not, the overview strip in the main and support windows,
+               # and how faint Faded marks are (2026-10-21/22).
+               "xf_chan_column", "xf_overview_main", "xf_overview_aid",
+               "marks_fade")
 
 TRIAGE_SPEC = {"marks": shards.MAPLWW}
 TRIAGE_BASE = "resolved"
@@ -124,6 +152,9 @@ class Store:
         # two cannot both be built first. None means "no profile", which
         # provenance() handles by falling back to the git identity.
         self.profile = None
+        # Set by the app: whether the request being served is a test's (the
+        # test client, a harness page). record_error marks what it writes.
+        self.test_origin = None
         self.dirs = {
             "runs": os.path.join(self.root, "runs"),
             "sessions": os.path.join(self.root, "sessions"),
@@ -582,8 +613,14 @@ class Store:
                 preset["label"] = filter_label(
                     preset.get("name", "preset"), preset.get("highpass"),
                     preset.get("lowpass"), preset.get("notch"))
-            items = [p for p in items if p.get("id") != preset["id"]
-                     and p.get("name") != preset.get("name")]
+            # A support panel preset carries its owner in its id, so two
+            # people who share a display name, or name two presets alike,
+            # must not delete each other's (2026-10-22).
+            if kind == "support_panels":
+                items = [p for p in items if p.get("id") != preset["id"]]
+            else:
+                items = [p for p in items if p.get("id") != preset["id"]
+                         and p.get("name") != preset.get("name")]
             items.append(preset)
             items.sort(key=lambda p: (p.get("name") or "").lower())
             doc = self._preset_doc(kind)
@@ -602,12 +639,21 @@ class Store:
     # ------------------------------------------------------------------
     # Errors
     # ------------------------------------------------------------------
-    def record_error(self, where, message, detail=None, context=None):
+    def record_error(self, where, message, detail=None, context=None,
+                     test=False):
         """Append one error to this machine's log for today.
 
         JSONL because it is append-only, and one file per machine per day
         because two people appending to a shared day file is the single most
         reliable way to produce a merge conflict.
+
+        `test` marks a fault a test made on purpose. A harness server's are
+        all marked (tools/harness_run.py sets BARRY_HARNESS_SERVER), and so
+        is anything written while serving a test's request (`test_origin`,
+        set by the app: Flask's test client, a web/_dev page). They are
+        kept, but the Errors view and its badge leave them out unless asked:
+        on 2026-10-20 the badge read 5,233, and a third of that was harness
+        pages failing on purpose.
         """
         rec = {
             "id": uuid.uuid4().hex[:12],
@@ -623,14 +669,22 @@ class Store:
             "shard": shards.machine_id(),
             "user": self.provenance().get("user"),
         }
+        if not test and self.test_origin is not None:
+            try:
+                test = bool(self.test_origin())
+            except Exception:      # noqa: BLE001
+                test = False
+        if test or os.environ.get("BARRY_HARNESS_SERVER"):
+            rec["test"] = True
         try:
             self.error_log.append([rec])
         except Exception:          # noqa: BLE001
             pass                   # never let logging an error raise another
         return rec
 
-    def list_errors(self, limit=300, day=None):
-        return self.error_log.read(limit=limit, day=day)
+    def list_errors(self, limit=300, day=None, keep=None):
+        """Newest first. `keep` filters before the limit counts."""
+        return self.error_log.read(limit=limit, day=day, keep=keep)
 
     def error_days(self):
         return self.error_log.days()
@@ -1214,6 +1268,29 @@ def set_prefs(self, patch):
     """Shallow-merge a patch into preferences. A null value clears a key."""
     with _LOCK:
         rec = self.prefs.read(PREFS_BASE) or {}
+        # This machine's own value for every local key the patch does not
+        # set, at its own stamp -- not whichever machine wrote it last,
+        # which writing the merged record back would copy into this file
+        # and so spread the "local" pref after all (2026-10-22).
+        own = shards._read_json(self._prefs_path()) or {}
+        sync = rec.get("_sync") or {}
+        was = sync.get("was") or {}
+        fst = sync.get("fstamps") or {}
+        own_at = own.get("_at") or {}
+        for key in PREFS_LOCAL:
+            if key in (patch or {}):
+                continue
+            if key in own:
+                rec[key] = own[key]
+                was[key] = shards._fingerprint(own[key])
+                if own_at.get(key):
+                    fst[key] = own_at[key]
+            else:
+                rec.pop(key, None)
+                was.pop(key, None)
+        if sync:
+            sync["was"] = was
+            sync["fstamps"] = fst
         for k, v in (patch or {}).items():
             if v is None:
                 rec.pop(k, None)

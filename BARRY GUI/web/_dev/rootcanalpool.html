@@ -105,6 +105,16 @@ const NL = String.fromCharCode(10);
       clientX: r.left + cv.clientLeft + x, clientY: r.top + cv.clientTop + y }));
   };
 
+  /* Shared prefs are not this suite's to write (2026-10-20): a pool saved
+     here is filed into a folder as it is saved, and that is a shared
+     preference. Held in the page, the folders read as they really are
+     until the suite files something, and put back in the finally. */
+  ev('(function(){ var W = window; if (W.__rcpPrefSet) return;'
+     + ' W.__rcpPrefSet = BARRY.prefs.set; W.__rcpPrefGet = BARRY.prefs.get; W.__rcpMem = {};'
+     + ' BARRY.prefs.set = function(k, v) { W.__rcpMem[k] = v; return v; };'
+     + ' BARRY.prefs.get = function(k, d) { if (k in W.__rcpMem) return W.__rcpMem[k];'
+     + '   return W.__rcpPrefGet.apply(BARRY.prefs, arguments); }; })()');
+
   /* Every request the panel makes for a pool fit, and the save and the
      reopen answered from here. Wrapped once, for the frame's fetch only,
      and put back in the finally. */
@@ -264,7 +274,11 @@ const NL = String.fromCharCode(10);
   ok('the rows are ticked where they stand: the table is the same table',
      D().querySelector('.rc-pool-cands') === tbl0
      && rows().every((r) => r.querySelector('.rc-pool-pick').checked
-                            && r.classList.contains('on')));
+                            && r.classList.contains('on')),
+     JSON.stringify([D().querySelector('.rc-pool-cands') === tbl0,
+       rows().filter((r) => !(r.querySelector('.rc-pool-pick').checked
+                              && r.classList.contains('on')))
+         .map((r) => r.dataset.rec + ' ' + r.textContent.slice(0, 80))]));
   ok('and none is warned of being in twice', !D().querySelector('.rc-rec-dup'));
   D().querySelector('.rc-sel-none').click();
   await sleep(120);
@@ -1274,8 +1288,9 @@ const NL = String.fromCharCode(10);
   ok('pressing a cluster calls it the other thing, by hand',
      P().fit.clusters[0].call === 'ied' && P().fit.clusters[0].call_by === 'hand');
   eq('and the request carries it', P().lastBody.cluster_calls, { 0: 'ied' });
-  ok('the colour can be by cluster',
-     Array.from(D().querySelectorAll('.rc-colour option'))
+  // Taken out on 2026-10-21: no colouring by cluster.
+  ok('the colour is not offered by cluster',
+     !Array.from(D().querySelectorAll('.rc-colour option'))
        .some((o) => o.value === 'cluster'));
   ok('pool centres are numbered as its chips are',
      ((geom().space || {}).centres || []).map((c) => c.label && c.label.text)
@@ -1300,44 +1315,66 @@ const NL = String.fromCharCode(10);
      && (P().fit.counts.excluded === 0
          || !!D().querySelector('.rc-count-excluded')), P().fit.counts.excluded);
 
-  ok('a margins card', !!D().querySelector('.rc-pool-clusters .rc-margins'));
-  const kBtns = () => Array.from(D().querySelectorAll('.rc-pool-clusters .rc-margins button'));
-  ok('it can save the whole pool’s margins',
-     kBtns().some((b) => /Save the pool’s margins/.test(b.textContent)));
-  const kGroup = kBtns().find((b) => /Save this group’s margins/.test(b.textContent));
-  ok('and, with a mouse in focus, that group’s alone', !!kGroup);
-  ev('window.__rcpReply.msave = { status: 200, body: { ok: true, artifact_id:'
-     + ' "harness-m", version: 1, nickname: "harness group margin",'
-     + ' confirmed: false } }');
-  ev('(function(){ window.__rkBd = BARRY.ui.bankDialog; BARRY.ui.bankDialog ='
-     + ' async function(o){ await o.onBank({ name: "harness group margin",'
-     + ' note: "" }); return true; }; })()');
-  if (kGroup) kGroup.click();
-  await until(() => sent().some((x) => x[0] === 'msave'), 10000, 'the group save');
-  const kms = (sent().filter((x) => x[0] === 'msave').pop() || [null, {}])[1];
-  ok('the group margin is cut from the group, at the shared settings',
-     kms.extract && kms.extract.source === 'pool_group'
-     && kms.extract.focus && kms.extract.k === 3
-     && kms.extract.measure && kms.extract.measure.band_lo === 600
-     && kms.nickname === 'harness group margin',
-     JSON.stringify(kms).slice(0, 200));
-  ev('(function(){ if (window.__rkBd) { BARRY.ui.bankDialog = window.__rkBd;'
-     + ' delete window.__rkBd; } })()');
+  /* MARGINS WERE TAKEN OUT (2026-10-21): no card to pick, apply or save
+     one, whole pool or group. */
+  ok('there is no margins card, and nothing offers to save a margin',
+     !D().querySelector('.rc-margins')
+     && !Array.from(D().querySelectorAll('#tkResult button'))
+       .some((b) => /margin/i.test(b.textContent)));
+  /* What is left of them: a saved pool that carries its own calls says so
+     where k would be, and can be pooled afresh. Set by hand and drawn
+     without a fit, so nothing that carries calls is ever sent. */
+  P().margin = { artifact_id: 'harness-carried', version: 1, mode: 'fixed' };
+  ev(RC + '._render()');
+  await until(() => D().querySelector('#tkResult .rc-k-margin .rc-fit-afresh'),
+              5000, 'the carried-calls line');
+  const kCarry = D().querySelector('#tkResult .rc-k-margin');
+  ok('a pool carrying its own calls says so where k would be, with Fit afresh',
+     !!kCarry && /^k and the calls are this pool’s own(, from ‘.+’|, saved with it)Fit afresh$/
+       .test(kCarry.textContent)
+     && !D().querySelector('#tkResult .rc-kseg'),
+     kCarry && kCarry.textContent);
+  const kFit0 = P().fit;
+  P().marginErr = null;
+  if (kCarry) kCarry.querySelector('.rc-fit-afresh').click();
+  await kWaitPool('pooled afresh', () => P().fit !== kFit0);
+  /* Not by way of a refusal: the harness id is no saved margin, so sending
+     it would be refused and pooled again -- and say so in marginErr. */
+  ok('Fit afresh pools again with nothing carried, and the k seg is back',
+     P().margin === null && !(P().lastBody || {}).margin && P().marginErr == null
+     && !!D().querySelector('#tkResult .rc-kseg'),
+     JSON.stringify(P().lastBody || {}).slice(0, 160));
 
-  P().margin = { artifact_id: 'harness-none', mode: 'fixed' };
-  // Pooled again from the picture's screen, which has no Pool button.
+  /* And refused -- by the server, for real: carried calls that cannot be
+     used here are taken off, said in a toast, and the pool fitted afresh. */
+  const kFit1 = P().fit;
+  P().marginErr = null;
+  P().margin = { artifact_id: 'harness-none', version: 1, mode: 'fixed' };
   ev(RC + '._poolRun()');
-  await until(() => P().marginErr && !P().fitting && P().fit && P().fit.ok,
-              120000, 'refit without it');
-  await sleep(200);
-  ok('a margin that is not here is refused, in the margins card',
-     /no saved Root Canal margin/.test(P().marginErr || '')
-     && !!D().querySelector('.rc-pool-clusters .rc-margins[open] .rc-margin-err'),
-     P().marginErr);
-  ok('and the pool is fitted without it', P().margin === null && P().fit.ok);
+  await kWaitPool('refused, then pooled afresh',
+                  () => P().fit !== kFit1 && P().margin === null);
+  const kToasts = Array.from(D().querySelectorAll('#toasts .toast'))
+    .map((n) => n.textContent).join(' | ');
+  ok('carried calls the server refuses are taken off, said, and the pool '
+     + 'fitted afresh', /no saved Root Canal margin/.test(P().marginErr || '')
+     && /Pooled afresh: the calls this pool carried could not be used here/
+       .test(kToasts) && !(P().lastBody || {}).margin, kToasts.slice(0, 240));
+  /* Any other error is the pool's own: the calls it carries stay. */
+  P().margin = { artifact_id: 'harness-carried', version: 1, mode: 'fixed' };
+  ev('window.__rcpReply.fit = ' + JSON.stringify({ status: 400, body: {
+    ok: false, error: 'harness: the pool failed for its own reasons' } }));
+  ev(RC + '._poolRun()');
+  await until(() => !P().fitting && P().fitErr, 8000, 'the error');
+  ok('an error that is not about the calls keeps them, and says itself',
+     !!P().margin && P().margin.artifact_id === 'harness-carried'
+     && /its own reasons/.test(P().fitErr || ''), P().fitErr);
+  ev('delete window.__rcpReply.fit');
+  P().margin = null;
+  ev(RC + '._poolRun()');
+  await kWaitPool('pooled again', () => !P().fitErr);
 
   // Put the shared settings back for what follows, through the controls.
-  P().cluster_calls = {}; P().marginErr = null;
+  P().cluster_calls = {};
   D().querySelector('#tkResult .rc-controls .rc-complete input').click();
   await kWaitPool('all events', () => P().lastBody.complete_only === false);
   ev(RC + '._setParam("band_lo", 500)');
@@ -1949,7 +1986,9 @@ const NL = String.fromCharCode(10);
       if (ev) {
         ev('(function(){ var W = window; if (W.__rcpFetch) { W.fetch = W.__rcpFetch;'
            + ' delete W.__rcpFetch; } if (W.__rcpLog) { BARRY.activity.log ='
-           + ' W.__rcpLog; delete W.__rcpLog; } })()');
+           + ' W.__rcpLog; delete W.__rcpLog; } if (W.__rcpPrefSet) {'
+           + ' BARRY.prefs.set = W.__rcpPrefSet; BARRY.prefs.get = W.__rcpPrefGet;'
+           + ' delete W.__rcpPrefSet; delete W.__rcpPrefGet; } })()');
         ev('try { closeModal(); } catch (e) {}');
         ev('BARRY.rootcanal._poolClose()');
         ev('(function(v){ try { if (v == null) localStorage.removeItem('

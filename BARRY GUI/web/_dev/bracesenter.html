@@ -112,7 +112,7 @@ async function until(fn, ms, what) {
   let entered = false;
   try {
     head('AN OPEN PROPOSAL WHOSE RECORDING IS HERE');
-    const sets = await get('/api/braces/sets');
+    const sets = await get('/api/braces/sets?type=ds,ied');
     const open = (sets.sets || []).filter((s) => !s.committed);
     for (const s of open.slice(0, 6)) {
       const one = await get('/api/braces/set/' + encodeURIComponent(s.set_id));

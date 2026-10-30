@@ -90,8 +90,7 @@ BARRY.hk = (function () {
     }));
     // "Not set" last: it is a to-do list, not a category.
     out.sort((a, b) => (a.key === '\u0000unset') - (b.key === '\u0000unset')
-                    || a.label.localeCompare(b.label, undefined,
-                                             { numeric: true }));
+                    || BARRY.ui.natCompare(a.label, b.label));
     return out;
   }
 
@@ -106,7 +105,8 @@ BARRY.hk = (function () {
     { id: 'session', name: 'Session', get: (s) => s.session, num: true },
     { id: 'date', name: 'Date', get: (s) => s.date || '' },
     { id: 'condition', name: 'Condition', get: (s) => s.condition || '' },
-    { id: 'n_channels', name: 'Ch', get: (s) => s.n_channels, num: true },
+    { id: 'n_channels', name: 'Ch',
+      get: (s) => s.n_channels_here || s.n_channels, num: true },
     { id: 'duration', name: 'Length', get: (s) => s.duration_s, num: true,
       show: (v) => (v ? fmtDur(v) : '') },
     { id: 'bad', name: 'Bad channels', get: (s) => (s.bad_channels || []).join(' '),
@@ -168,9 +168,7 @@ BARRY.hk = (function () {
       const x = col.get(a);
       const y = col.get(b);
       if (col.num) return dir * ((Number(x) || 0) - (Number(y) || 0));
-      return dir * String(x == null ? '' : x)
-        .localeCompare(String(y == null ? '' : y), undefined,
-                       { numeric: true });
+      return dir * BARRY.ui.natCompare(x, y);
     });
   }
 

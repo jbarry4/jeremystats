@@ -48,7 +48,8 @@
     if (cachedPath !== undefined) return cachedPath;
     cachedPath = null;
     try {
-      const reg = await api('/api/registry');
+      // The shared copy (web/js/data.js); one young enough is not asked again.
+      const reg = await BARRY.data.get('/api/registry', { maxAge: 60000 });
       const demos = reg.demo_paths || [];
       if (demos.length) { cachedPath = demos[0]; return cachedPath; }
     } catch (e) { /* fall through to whatever is stored */ }

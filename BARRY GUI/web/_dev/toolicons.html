@@ -61,14 +61,10 @@ const EV = (src) => { try { return W().eval(src); } catch (e) { return null; } }
   A.src = '/#toolkit';
   await until(() => EV('typeof BARRY !== "undefined" && !!BARRY.views.toolkit'),
               40000);
-  /* Icons belong to TOOLS, not to the steps inside a bundle.
-
-     A bundle -- The Dentist -- carries one mark, and the tools within it
-     are listed as numbered steps: `.tk-step-i` where a tool has
-     `svg.tk-ico`. Numbering them is the point, because they are meant to
-     be done in order. This page was widened to `.tk-tool, .tk-step` when
-     Incisor, Checkup and Braces moved into the bundle, and then demanded
-     an icon from three rows that are numbered on purpose. */
+  /* Every tool carries its mark, in a bundle or not (2026-10-21: "get rid
+     of the numbering"). A bundle's steps used to be numbered instead; now
+     each step is its tool's mark, in its colour, on a rail down the bundle
+     that says the order. The order is kept on `.tk-step-i[data-n]`. */
   const tools = await until(() => {
     const n = D().querySelectorAll('#tkBody .tk-tool');
     return n.length ? n : null;
@@ -79,14 +75,15 @@ const EV = (src) => { try { return W().eval(src); } catch (e) { return null; } }
 
   const steps = D().querySelectorAll('#tkBody .tk-step');
   if (steps.length) {
-    head('A bundle step is numbered instead');
+    head('A bundle step carries its tool’s mark, and no printed number');
     say('note', '  ' + steps.length + ' step(s)');
     for (const s of steps) {
       const nm = (s.querySelector('.tk-step-n') || {}).textContent || '?';
-      const n = (s.querySelector('.tk-step-i') || {}).textContent || '';
-      ck(nm + ' is numbered', /^\d+$/.test(n.trim()), 'got "' + n + '"');
-      ck('  ' + nm + ' does not also carry a tool mark',
-         !s.querySelector('svg.tk-ico'));
+      const i = s.querySelector('.tk-step-i');
+      ck(nm + ' carries a mark', !!(i && i.querySelector('svg.tk-ico path')));
+      ck('  ' + nm + ' prints no number', i && !/\d/.test(i.textContent),
+         i ? '"' + i.textContent + '"' : 'none');
+      ck('  ' + nm + ' keeps its place in the order', i && /^\d+$/.test(i.dataset.n || ''));
     }
   }
 

@@ -878,6 +878,19 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
     ck("a fit before any read is refused with a sentence, 400",
        r.status_code == 400 and not r.get_json()["ok"]
        and "Read it first" in r.get_json()["error"], r.get_json())
+    # Opening a set from the list of the ones done (2026-10-20) asks for a
+    # cached read only: never a new one.
+    r = c.post("/api/rootcanal/read", json={"entry_id": "rcchk000001",
+                                            "only_cached": True})
+    oc = r.get_json()
+    ck("a cached-only read with nothing cached starts nothing, and says so",
+       r.status_code == 200 and oc["ok"] and oc["cached"] is False
+       and oc["job"] is None and oc.get("not_here") is True, oc)
+    r = c.get("/api/rootcanal/done?type=ds")
+    ck("and before any read the set is not among the ones done",
+       r.status_code == 200 and not any(
+           x["entry_id"] == "rcchk000001" for x in r.get_json()["sets"]),
+       r.get_json().get("error"))
     r = c.post("/api/rootcanal/read", json={"entry_id": "rcchk000001"})
     js = r.get_json()
     ck("a read starts a job", r.status_code == 200 and js["ok"]
@@ -898,6 +911,25 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
     ck("asked again, it is cached, with no job",
        js2["cached"] is True and js2["job"] is None
        and js2["read"] == js["read"], js2)
+    r = c.post("/api/rootcanal/read", json={"entry_id": "rcchk000001",
+                                            "only_cached": True})
+    ck("and asked cached-only, it is the same read",
+       r.get_json()["cached"] is True and r.get_json()["read"] == js["read"],
+       r.get_json())
+    r = c.get("/api/rootcanal/done?type=ds")
+    dn = [x for x in (r.get_json().get("sets") or [])
+          if x["entry_id"] == "rcchk000001"]
+    ck("read, the set is listed among the ones Root Canal has done: its read "
+       "here, nothing saved or banked yet, and the read as the last thing",
+       r.status_code == 200 and len(dn) == 1
+       and (dn[0].get("reads") or {}).get("here", 0) >= 1
+       and dn[0].get("saved") is None and dn[0].get("banked") is None
+       and dn[0]["last"]["what"] == "read"
+       and dn[0]["session_label"] == "CHECK m0 s0",
+       dn or r.get_json().get("error"))
+    ck("and a pooled-type list does not list it",
+       not any(x["entry_id"] == "rcchk000001" for x in
+               c.get("/api/rootcanal/done?type=pooled").get_json()["sets"]))
     r = c.post("/api/rootcanal/fit", json={"entry_id": "rcchk000001"})
     fit = r.get_json()
     ck("the fit answers in the contract's shape",
@@ -1022,16 +1054,64 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
        "out", r.status_code == 400 and "again: true" in r.get_json()["error"]
        and len(bank.get("rcchk000001")["versions"]) == n_ds_v,
        r.get_json())
+    # The panel keeps naming the read it opened, the uncleaned one
+    # (2026-10-20: refused "431 ... 243 ... Read it again" instead).
+    r = c.post("/api/rootcanal/commit",
+               json=dict(body, pngs={}, read=js["read"]))
+    ck("and so it is when the panel still names the read it was cleaned "
+       "from", r.status_code == 400 and "again: true" in r.get_json()["error"],
+       r.get_json())
+    r = c.post("/api/rootcanal/fit", json={"entry_id": "rcchk000001",
+                                           "read": js["read"]})
+    fj = r.get_json()
+    ck("and the cleaned set still fits under that read's name",
+       r.status_code == 200 and fj["ok"]
+       and fj["n"] == len(stamp_t) - n_ied,
+       fj.get("error") or fj.get("n"))
     src = [v for v in bank.get("rcchk000001")["versions"]
            if v.get("tag") == "curated-check"][0]
 
     head("COMMITTING THE SAME ANSWER AGAIN WRITES NOTHING")
+    n_res0 = sum(1 for x in A.ROOTCANAL.all() or []
+                 if x.get("kind") == "classification"
+                 and x.get("entry_id") == "rcchk000001")
+    def n_single_versions():
+        got = c.get("/api/rootcanal/singles?entry_id=rcchk000001").get_json()
+        return sum(len(x.get("versions") or [])
+                   for x in got.get("singles") or [])
+    nv0 = n_single_versions()
     r = c.post("/api/rootcanal/commit",
                json=dict(body, pngs={}, from_version=src["id"]))
     cm2 = r.get_json()
     ck("the re-commit says nothing was written",
        cm2["ok"] and cm2["written"] == {"ds": False, "ied": False}
        and "already" in cm2, cm2)
+    # THE SAME SET UNDER OTHER SETTINGS (2026-10-20): a new question that
+    # makes the set the bank already holds files nothing at all -- it used
+    # to file a second result and save another single version "banked as
+    # vN" while saying nothing was written.
+    r = c.post("/api/rootcanal/commit",
+               json=dict(body, pngs={}, from_version=src["id"], seed=12345))
+    cm3 = r.get_json()
+    if cm3.get("written") != {"ds": False, "ied": False}:
+        ck("precondition: another seed makes the same set", False,
+           cm3.get("written"))
+    else:
+        ck("the same set under other settings files no new result and saves "
+           "no new version",
+           cm3.get("unchanged") is True
+           and cm3.get("params_hash") != cm.get("params_hash")
+           and sum(1 for x in A.ROOTCANAL.all() or []
+                   if x.get("kind") == "classification"
+                   and x.get("entry_id") == "rcchk000001") == n_res0
+           and n_single_versions() == nv0 and nv0 >= 1
+           and cm3.get("single") is None,
+           (cm3.get("unchanged"), n_res0, nv0, n_single_versions()))
+        ck("and says so plainly: nothing to bank, why, and how to keep the "
+           "numbers", str(cm3.get("already", "")).startswith(
+               "Nothing to bank: v")
+           and "Nothing was written" in cm3["already"]
+           and "save them as a version" in cm3["already"], cm3.get("already"))
     ck("no new DS version, no new IED version, no second IED entry",
        len(bank.get("rcchk000001")["versions"]) == n_ds_v
        and len(bank.get(cm["ied_entry"])["versions"]) == n_ied_v
@@ -1768,6 +1848,15 @@ def _cluster_stats_routes(A, c, unbanked):
     pay2 = A.ARTIFACTS.payload(sv2["artifact_id"], sv2["version"])
     ck("an answer a browser sends is not saved: only the server's, for that "
        "picture", sv2.get("ok") and "stats" not in pay2, pay2.get("stats"))
+    dn = [x for x in (c.get("/api/rootcanal/done?type=ds").get_json()
+                      .get("sets") or []) if x["entry_id"] == body["entry_id"]]
+    sv_ = (dn[0].get("saved") or {}) if dn else {}
+    ck("kept as versions, the list of sets done says so: how many, the "
+       "newest by its nickname, and saving as the last thing done",
+       len(dn) == 1 and sv_.get("artifact_id") == sv2["artifact_id"]
+       and sv_.get("n_versions", 0) >= 2
+       and (sv_.get("last") or {}).get("nickname") == "untested"
+       and dn[0]["last"]["what"] == "saved", dn)
 
     # ENOUGH EVENTS FOR AN ANSWER: saved singles of 300 events whose shape
     # is known -- two blobs, and one cloud -- read on another machine, so
@@ -2152,6 +2241,26 @@ def _pool_routes(A, tmp, fake):
                <= set(s) for s in singles), cj)
     ck("a recording with both appears twice, as two candidates",
        {s["entry_id"] for s in banked} & {s["entry_id"] for s in unbanked})
+    # WHAT TELLS ANSWERS APART (2026-10-20): what each was measured on, and
+    # whether it is about an earlier version of the set than the bank holds.
+    newest = {}
+    for s_ in banked:
+        ent_ = A.BANK.get(s_["entry_id"]) or {}
+        newest[s_["entry_id"]] = A._rootcanal_version_name(ent_, None)
+    ck("every banked answer says its filter, its k, and whether it is about "
+       "an older version of the set -- only the bank's newest is not",
+       banked and all(s_.get("filter_label") and "k" in s_
+                      and s_.get("older") == (str(s_.get("version"))
+                                              != str(newest[s_["entry_id"]]))
+                      for s_ in banked),
+       [(s_.get("version"), s_.get("filter_label"), s_.get("older"),
+         newest.get(s_["entry_id"])) for s_ in banked])
+    ck("every cached read says which version of the set it read, or that it "
+       "was an earlier one", unbanked and all(
+           ("older" in s_) and (s_.get("from_name") or s_.get("older"))
+           for s_ in unbanked),
+       [(s_.get("live"), s_.get("from_name"), s_.get("older"))
+        for s_ in unbanked])
     one_b = banked[0]
     fake.calls = 0
     fb = c.post("/api/rootcanal/pool/fit",

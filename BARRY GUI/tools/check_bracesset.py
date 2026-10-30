@@ -156,6 +156,27 @@ try:
     check("...and overlaps nothing", brs.overlaps(SETS.get(empty["set_id"])),
           [])
 
+    print("\nLOCK: A STAMP BRACES PLACED IS NOT MOVED OR RELABELLED")
+    print("-" * 68)
+    held = dict(row(0, 1.000, 1.000, same=True, peak=None), locked="braces")
+    locked = SETS.create("entry3", "gid1", None, {}, [held, row(1, 2.0, 2.01)],
+                         {}, by="harness")
+    lid = locked["set_id"]
+    for call in ("move", "garbage"):
+        try:
+            SETS.decide(lid, {"0": {"call": call, "t": 1.5}}, by="harness")
+            said = "allowed"
+        except brs.BracesSetError as exc:
+            said = "refused" if "second-guessing" in str(exc) else str(exc)
+        check("a %s on a locked stamp is refused, in the panel's words" % call,
+              said, "refused")
+    SETS.decide(lid, {"0": {"call": "confirm"}}, by="harness")
+    check("a confirm on it is let through, and changes nothing",
+          0 in brs.resolve(SETS.get(lid))[0], False)
+    SETS.decide(lid, {"1": {"call": "move", "t": 2.02}}, by="harness")
+    check("its neighbour still moves", brs.resolve(SETS.get(lid))[0].get(1),
+          2.02)
+
 finally:
     shutil.rmtree(ROOT, ignore_errors=True)
     print("\nscratch sets removed")

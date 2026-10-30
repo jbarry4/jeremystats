@@ -1,6 +1,6 @@
 {
   "_at": {
-    "added": "2026-10-12T13:33:55.137372+00:00",
+    "added": "2026-10-12T13:17:21.912524+00:00",
     "by_label": "2026-10-12T13:33:55.137372+00:00",
     "curation_label": "2026-10-12T13:33:55.137372+00:00",
     "duration_s": "2026-10-12T13:33:55.137372+00:00",
@@ -31,19 +31,23 @@
     "versions": {
       "2637aaf4e207": [
         "set",
-        "2026-10-12T13:33:55.137372+00:00"
+        "2026-10-21T18:42:43.484103+00:00"
+      ],
+      "df7273f240f4": [
+        "set",
+        "2026-10-21T18:42:39.376611+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-12T13:33:55.137372+00:00",
+    "at": "2026-10-21T18:42:43.484103+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": {
-    "at": "2026-10-12T09:33:55-04:00",
-    "by": "harness@test",
-    "machine": "DESKTOP-4H65AI7"
+    "at": "2026-10-12T09:17:21-04:00",
+    "by": "Debug_Bot",
+    "machine": "BarryLab"
   },
   "by_label": {
     "unspecified": 5
@@ -96,12 +100,73 @@
   "version": 0,
   "versions": [
     {
-      "at": "2026-10-12T09:33:55-04:00",
-      "by": "harness@test",
+      "archived": true,
+      "at": "2026-10-12T09:17:21-04:00",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 5
       },
       "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T14:42:39-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
+      "from_id": null,
+      "from_v": null,
+      "gained": 0,
+      "id": "df7273f240f4",
+      "imported": true,
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 5,
+      "note": "Imported from harness: BARRY threshold detector. 5 candidates, none decided yet.",
+      "snap": [
+        [
+          611.964856,
+          null
+        ],
+        [
+          913.777326,
+          null
+        ],
+        [
+          1226.660132,
+          null
+        ],
+        [
+          1569.32793,
+          null
+        ],
+        [
+          1763.529999,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "archived": true,
+      "at": "2026-10-12T09:33:55-04:00",
+      "by": "Debug_Bot",
+      "by_label": {
+        "unspecified": 5
+      },
+      "changed": 0,
+      "edits": [
+        {
+          "at": "2026-10-21T14:42:43-04:00",
+          "by": "Shahriar Tafti",
+          "changed": [
+            "archived"
+          ]
+        }
+      ],
       "from_id": null,
       "from_v": null,
       "gained": 0,

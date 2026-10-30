@@ -34,6 +34,14 @@
 'use strict';
 
 BARRY.doppler = (function () {
+  /* What a run from before the gap fix is, said once for the landed list's
+     chip and the report's bank card (the server's `_doppler_before_fix`). */
+  const GAP_FIX_WORDS =
+    'Made before the gap fix (2026.10.19.6) on a recording the health '
+    + 'check found in more than one segment. Every event after a segment '
+    + 'that read short may be stamped early by the shortfall, so this run '
+    + 'is not banked. Run the recording again: Many counts it as not run.';
+
   /* What is being asked for. Held here rather than read off the DOM, so a
      redraw cannot lose a half-filled form. */
   const q = {
@@ -141,7 +149,6 @@ BARRY.doppler = (function () {
      exactly when somebody is in the middle of using it. */
   let paramsOpen = false;
   let savingBad = false;
-  let banking = false;
   let hoverEv = null;    // the tick under the pointer on the raster
   let dark = true;
 
@@ -225,7 +232,7 @@ BARRY.doppler = (function () {
       if (res) {
         list.push({ key: 'report', sig: [oid(res), (q.row || {}).label],
                     build: reportCard });
-        list.push({ key: 'bank', sig: [oid(res), banking], build: bankCard });
+        list.push({ key: 'bank', sig: [oid(res)], build: bankCard });
       }
     }
     list.push({ key: 'runs', sig: 'runs', build: runsShell,
@@ -447,13 +454,15 @@ BARRY.doppler = (function () {
       ? 'No cluster is configured on this computer.'
       : (!v.can ? (v.reason || 'The cluster cannot reach this recording.')
                 : ('Runs on ' + (v.remote || 'the cluster')));
+    const sendingNow = BARRY.ui.isSending('doppler:' + q.path);
     return el('button', {
       class: 'btn',
-      text: mine ? 'On the cluster' : 'Run on the VACC',
+      text: mine ? 'On the cluster'
+        : sendingNow ? 'Submitting…' : 'Run on the VACC',
       // Disabled with the reason ON it rather than hidden: a control that
       // vanishes teaches nothing.
-      disabled: (mine || !vaccOn() || !v.can || (est && est.split))
-        ? 'disabled' : null,
+      disabled: (mine || sendingNow || !vaccOn() || !v.can
+                 || (est && est.split)) ? 'disabled' : null,
       title: why,
       onclick: () => run(false),
     });
@@ -1050,11 +1059,31 @@ BARRY.doppler = (function () {
   async function run(force) {
     if (!q.path || myFlight()) return;
     let started;
+    /* One submit per click (ui.submitOnce), and a duplicate the server
+       refuses is followed rather than reported as a failure: the same
+       recording with the same settings already on the cluster is that
+       run (backend/flights.py). */
     try {
-      started = await apiPost('/api/doppler/scan', body({ where: 'vacc',
-        force: !!force }));
+      const p = BARRY.ui.submitOnce('doppler:' + q.path, (sid) =>
+        apiPost('/api/doppler/scan', body({ where: 'vacc', force: !!force,
+                                            submit_id: sid })));
+      paint();
+      started = await p;
     } catch (e) {
-      toast(e.message, 'err', 9000);
+      const dup = BARRY.ui.duplicateOf(e);
+      if (dup && dup.job_id) {
+        toast(BARRY.ui.duplicateWords(dup), null, 7000);
+        if (!flights.has(dup.job_id)) {
+          track({ id: dup.job_id, status: 'running' }, 'one',
+                [{ gid: q.gid, label: (q.row || {}).label || null }],
+                { path: q.path, params: paramsBody() });
+        }
+        paint();
+        return;
+      }
+      toast(dup ? BARRY.ui.duplicateWords(dup) : e.message,
+            dup ? 'warn' : 'err', 9000);
+      paint();
       return;
     }
     if (started.cached) {
@@ -2024,9 +2053,21 @@ BARRY.doppler = (function () {
   /* ------------------------------------------------------------- banking */
 
   function bankCard() {
-    /* Banked already: by the server the moment the run landed (asked for
-       2026-10-19), or from this card before. Said, with the way on to
-       Spotter, rather than offering to file the same run a second time. */
+    /* No Bank button (2026-10-21: "if runs are auto banked why do we need
+       this then?"). A run banks itself the moment it lands (2026-10-19), so
+       this card only says where the run is.
+
+       Next, at the foot of the page, just opens Spotter. It used to open
+       the add-a-set dialog on this run, which asked which session --
+       "doesn't open anything meaningful". The run waits in Spotter's Pick
+       up a set, under Banked, not started, with every other run that has
+       no set yet. */
+    const tk = BARRY.views.toolkit;
+    if (tk && tk.setHandoff) {
+      tk.setHandoff('doppler', res.banked && res.banked.id
+        ? { note: 'Banked. It is waiting in Spotter, under Pick up a set.' }
+        : null);
+    }
     if (res.banked && res.banked.id) {
       return el('div', { class: 'card' }, [
         el('div', { class: 'section-label', text: '4. Banked' }),
@@ -2034,121 +2075,39 @@ BARRY.doppler = (function () {
           text: (res.banked.auto ? 'Banked as it landed, as ' : 'Banked as ')
               + '“' + (res.banked.name || 'its own entry') + '” — '
               + (res.banked.n || res.n || 0).toLocaleString() + ' candidates, '
-              + 'nothing decided yet. The next step is confirming them in '
-              + 'Spotter.' }),
-        el('div', { class: 'tk-actions dop-actions' }, [
-          el('span', { class: 'spacer' }),
-          el('button', { class: 'btn', text: 'Confirm them in Spotter',
-            onclick: () => {
-              if (BARRY.spotter) BARRY.spotter.enter(q.gid, res.banked.id);
-            } }),
-        ]),
+              + 'nothing decided yet. Confirm them in Spotter: Next, at the '
+              + 'foot of the page.' }),
       ]);
     }
-    const box = el('div', { class: 'card' }, [
-      el('div', { class: 'section-label', text: '4. Bank them' }),
+    if (res.before_fix) {
+      return el('div', { class: 'card' }, [
+        el('div', { class: 'section-label', text: '4. Not for the bank' }),
+        el('p', { class: 'hint', style: 'max-width:78ch',
+          text: GAP_FIX_WORDS }),
+      ]);
+    }
+    /* Not banked: a run that landed before runs banked themselves, and was
+       never banked by hand either. Run again, it banks itself as it lands
+       -- and is made by the Doppler of today, gap fix included, which an
+       old run is not. */
+    const when = (res.computed || {}).at || null;
+    return el('div', { class: 'card' }, [
+      el('div', { class: 'section-label', text: '4. Not banked' }),
       el('p', { class: 'hint', style: 'max-width:78ch',
-        text: 'Each run is banked as its own entry under a name you choose, '
-            + 'so two filters on the same recording sit side by side and '
-            + 'can be compared. Versions inside an entry then mean only '
-            + 'what a person did to that list — confirmed in Spotter, '
-            + 'reviewed again, lined up in Eye.' }),
+        text: 'This run landed' + (when ? ' ' + whenWords(when) : '')
+            + ', before runs banked themselves, and nobody banked it. Run '
+            + 'it again and it banks itself as it lands, made by today’s '
+            + 'Doppler.' }),
       el('div', { class: 'tk-actions dop-actions' }, [
         el('span', { class: 'spacer' }),
-        el('button', { class: 'btn', text: banking ? 'Banking…'
-                                                   : 'Bank them',
-          disabled: (banking || !res.n) ? 'disabled' : null,
-          onclick: bank }),
+        el('button', { class: 'btn', text: 'Run it again',
+          title: 'Sends this recording to the cluster again with these '
+               + 'settings. The answer replaces this one and is banked as '
+               + 'it lands.',
+          disabled: (!q.path || !vaccOn()) ? 'disabled' : null,
+          onclick: () => run(true) }),
       ]),
     ]);
-    return box;
-  }
-
-  async function bank() {
-    /* Through the one bank dialog (constitution §6e): a new entry, named,
-       with the session already in the name. Who comes from the profile --
-       this used to return without a word when nobody was set, so Bank did
-       nothing at all -- and the note is the account of how the run was
-       made, there to be read and changed before it is filed. */
-    const p = res.params || {};
-    const r = q.row || {};
-    const suggested = BARRY.bankName.suggest(
-      r, 'Doppler ' + (p.band ? (p.band[0] + '–' + p.band[1] + ' Hz')
-                              : 'unfiltered'));
-    let added = null;
-    const ok = await BARRY.ui.bankDialog({
-      kind: 'entry',
-      title: 'Bank ' + res.n.toLocaleString() + ' IEDs from '
-             + (r.label || 'this recording') + '?',
-      name: suggested,
-      note: bankNote(),
-      what: 'It goes in as a detector’s output, not as a curated set — '
-          + 'nothing is decided about any of them yet, and the next step is '
-          + 'confirming them in Spotter.',
-      where: 'Filed under ' + [r.project || r.group || 'Unfiled',
-                               r.mouse != null ? 'm' + r.mouse : null,
-                               r.session != null ? 's' + r.session : null]
-        .filter(Boolean).join(' / ') + ' in the Event Bank, as its own entry '
-        + 'beside any other run on this recording.',
-      okText: 'Bank them',
-      onBank: async ({ name, note, who }) => {
-        banking = true; paint();
-        try {
-          /* `channel` is the one the peak was taken from. An event in the
-             bank has a channel, not a list of them -- the whitelist in
-             `eventbank.add` is deliberate, and a `channels` field would be
-             dropped on the way in and would not survive a version restore.
-             The full participation stays in Doppler's own vault and
-             Spotter reads it back from there. */
-          const evs = (res.events || []).map((e) => ({
-            start: e.start,
-            end: e.end || undefined,
-            channel: e.peak_channel,
-            amplitude: e.peak_uv,
-          }));
-          added = await apiPost('/api/bank/add', {
-            project: r.project || r.group,
-            mouse: r.mouse, session: r.session,
-            session_key: r.key, session_loose_key: r.loose_key,
-            session_label: r.label, session_path: q.path,
-            recording_start: r.start, duration_s: r.duration_s,
-            gid: q.gid,
-            type: 'ied', type_name: 'IED',
-            name,
-            note: note || bankNote(),
-            events: evs,
-            pipeline: 'Doppler (line length)',
-            detector: 'LLspikedetector',
-            time_basis: 'recording',
-            // The run's key, so it is found again as banked (and the
-            // server does not bank it a second time).
-            parameters: Object.assign({}, p, res.key ? { run_key: res.key } : {}),
-            added_by: who,
-            version_note: 'The detector’s own list, nothing decided about '
-                        + 'it yet.',
-          });
-        } finally {
-          banking = false; paint();
-        }
-      },
-    });
-    if (!ok || !added) return;
-    {
-      const ent = added.entry || added;
-      res.banked = { id: ent.id, name: ent.name, n: ent.n, auto: false };
-    }
-    toast('Banked. Confirm them in Spotter.', 'ok', 7000);
-    loadReviews(true);
-    paint();
-    /* Offered, not taken. Banking and confirming are two steps of a
-       bundle and the second one is a sitting somebody chooses to start. */
-    const entryId = (added.entry || {}).id || added.id;
-    const go = await BARRY.confirm(
-      'Confirm them now?',
-      el('p', { text: res.n.toLocaleString() + ' candidates are banked. '
-          + 'Spotter walks them one at a time.' }),
-      'Open Spotter');
-    if (go && BARRY.spotter) BARRY.spotter.enter(q.gid, entryId);
   }
 
   function bankNote() {
@@ -2430,6 +2389,12 @@ BARRY.doppler = (function () {
       el('span', { class: 'dop-run-tags' }, [
         isNew ? BARRY.ui.chip('new', { kind: 'ok' }) : null,
         open ? BARRY.ui.chip('open') : null,
+        /* Made before the gap fix on a recording in pieces: kept, so the
+           run can still be opened, and said, so it is not banked again. */
+        r.before_fix
+          ? BARRY.ui.chip('before the gap fix', { kind: 'warn',
+              title: GAP_FIX_WORDS })
+          : null,
         /* This run's own entry when there is one (banked as it landed, or
            from the dialog); otherwise whether anything is banked on the
            recording, which is all an older run can say. */
@@ -2500,7 +2465,9 @@ BARRY.doppler = (function () {
       c && c.number != null ? c.number : c)).filter(isFinite);
     q.preset = sp.preset || (q.exclude.length ? 'custom' : 'all');
     est = null;
-    adopt(got.result, true);
+    adopt(Object.assign({}, got.result, { before_fix: !!got.before_fix,
+                                          computed: got.computed || null }),
+          true);
     landedOpen = r.key;
     freshKeys.delete(r.key);
     /* The estimate is for the plan card above the report; a moment is
@@ -2898,9 +2865,12 @@ BARRY.doppler = (function () {
                                     && (force || !r.answered));
     if (!send.length) return;
     try {
-      const started = await apiPost('/api/doppler/batch',
-        Object.assign({ gids: send.map((r) => r.gid), force: !!force },
-                      paramsBody()));
+      // One batch per click (ui.submitOnce); members already running on
+      // the VACC are skipped by the server and named on their rows.
+      const started = await BARRY.ui.submitOnce('doppler:batch', (sid) =>
+        apiPost('/api/doppler/batch',
+          Object.assign({ gids: send.map((r) => r.gid), force: !!force,
+                          submit_id: sid }, paramsBody())));
       track(started.job, 'many',
             send.map((r) => ({ gid: r.gid, label: r.label })),
             { params: paramsBody() });

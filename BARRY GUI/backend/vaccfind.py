@@ -178,10 +178,13 @@ def survey(found, cfg, match):
             "remote": row["path"],
             "unc": unc,
         })
-    new.sort(key=lambda r: (str(r["project"]),
-                            str((r["identity"] or {}).get("mouse")),
-                            str((r["identity"] or {}).get("session")),
-                            str((r["identity"] or {}).get("start"))))
+    # Number order before the list is cut to what is shown (2026-10-20):
+    # as text, m10 came before m2 and the wrong sixty were shown.
+    from . import natsort
+    new.sort(key=lambda r: natsort.keys(
+        r["project"], (r["identity"] or {}).get("mouse"),
+        (r["identity"] or {}).get("session"),
+        (r["identity"] or {}).get("start")))
 
     by_project = {}
     for r in new:

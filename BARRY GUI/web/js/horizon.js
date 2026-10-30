@@ -749,7 +749,7 @@ BARRY.horizon = (function () {
     const msg = el('p', { class: 'hint' });
     box.appendChild(BARRY.ui.actions([
       BARRY.ui.button({
-        kind: 'primary', text: 'Save into Results',
+        kind: 'primary', text: 'Save to Results',
         onclick: async (e) => {
           const b = e.target;
           b.disabled = 'disabled';

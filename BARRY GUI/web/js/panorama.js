@@ -1836,7 +1836,7 @@ BARRY.panorama = (function () {
       const p = m.project || projectOf(m) || '—';
       (byProject[p] = byProject[p] || []).push(m);
     }
-    for (const p of Object.keys(byProject).sort()) {
+    for (const p of BARRY.ui.natSort(Object.keys(byProject))) {
       if (Object.keys(byProject).length > 1) {
         box.appendChild(el('div', { class: 'pn-tree-group', text: p }));
       }

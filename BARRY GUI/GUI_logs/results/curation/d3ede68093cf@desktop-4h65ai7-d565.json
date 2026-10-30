@@ -1,0 +1,28 @@
+{
+  "_at": {
+    "key": "2026-10-20T18:52:11.979538+00:00",
+    "rel": "2026-10-20T18:52:11.979538+00:00",
+    "starred": "2026-10-20T18:52:11.979538+00:00",
+    "title": "2026-10-20T20:35:07.332771+00:00",
+    "updated": "2026-10-20T20:35:07.332771+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-20T20:35:07.332771+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "key": "pten m1 s2 2023-10-02/rootcanal_pten m1 s2 2023-10-02_flat_5eb88e8d.png",
+  "rel": "PTEN m1 s2 2023-10-02/rootcanal_PTEN m1 s2 2023-10-02_flat_5eb88e8d.png",
+  "starred": false,
+  "title": "rootcanal_PTEN m1 s2 2023-10-02_flat_5eb88e8d",
+  "updated": {
+    "app_version": "2026.10.20.5",
+    "at": "2026-10-20T16:35:07-04:00",
+    "commit": "f729a289",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

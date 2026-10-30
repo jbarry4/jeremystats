@@ -68,6 +68,12 @@ async function untilN(fn, tries = 300, gap = 90) {
   say('note', '  ' + target.session_label + '  ('
       + JSON.stringify((target.progress || {}).by_label) + ')');
 
+  /* The recording's view is answered here, not written: this page moves
+     the window and shows the marks, and neither is anybody's to keep. */
+  const realApi = W.api;
+  W.api = async (path, opts) => (path === '/api/session/state'
+    ? { ok: true } : realApi(path, opts));
+
   W.eval("setView('toolkit')");
   await sleep(300);
   const started = await W.eval('BARRY.curate.enter('
@@ -75,6 +81,12 @@ async function untilN(fn, tries = 300, gap = 90) {
   check('curation opened', !!W.eval('BARRY.curate.active'), String(started));
   if (!W.eval('BARRY.curate.active')) return;
   await untilN(() => D.querySelector('.pane-canvas-host canvas'), 300);
+  /* A precondition, established: the marks shown at full strength. The
+     recording's saved view can say Faded (lcom549913 set it on 2026-10-14),
+     and a faded marker never matches its own colour, which is what this
+     page counts. Not saved (the view is stubbed above). */
+  W.eval('(function(){ var s = BARRY.views.xplore.current(); if (s) { s.marksView = "show"; }'
+    + ' BARRY.views.xplore.redraw && BARRY.views.xplore.redraw(); })()');
   await sleep(2500);
 
   const info = () => JSON.parse(W.eval(

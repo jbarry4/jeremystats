@@ -1,27 +1,30 @@
 {
   "_at": {
-    "bad_channels": "2026-09-10T03:02:56.662777+00:00",
-    "bad_channels_note": "2026-09-02T23:51:19.796506+00:00",
-    "condition": "2026-09-02T23:51:19.796506+00:00",
-    "converted": "2026-09-02T23:51:19.796506+00:00",
+    "bad_channels": "2026-09-21T16:44:38.274764+00:00",
+    "bad_channels_note": "2026-09-04T15:57:01.595057+00:00",
+    "condition": "2026-09-04T15:57:01.595057+00:00",
+    "converted": "2026-09-04T15:57:01.595057+00:00",
     "created": "2026-09-02T23:51:19.796506+00:00",
-    "duration_s": "2026-09-02T23:51:19.796506+00:00",
-    "first_seen_by": "2026-09-02T23:51:19.796506+00:00",
-    "fs": "2026-09-02T23:51:19.796506+00:00",
+    "duration_s": "2026-09-04T15:57:01.595057+00:00",
+    "first_seen_by": "2026-09-04T15:57:01.595057+00:00",
+    "fs": "2026-09-04T15:57:01.595057+00:00",
     "gid": "2026-09-02T23:51:19.796506+00:00",
-    "group": "2026-09-02T23:51:19.796506+00:00",
-    "key": "2026-09-02T23:51:19.796506+00:00",
-    "label": "2026-09-02T23:51:19.796506+00:00",
-    "loose_key": "2026-09-02T23:51:19.796506+00:00",
-    "mouse": "2026-09-02T23:51:19.796506+00:00",
-    "n_channels": "2026-09-02T23:51:19.796506+00:00",
-    "project": "2026-09-02T23:51:19.796506+00:00",
-    "project_source": "2026-09-02T23:51:19.796506+00:00",
-    "retired": "2026-09-03T13:41:00.178535+00:00",
-    "schema": "2026-09-02T23:51:19.796506+00:00",
-    "session": "2026-09-02T23:51:19.796506+00:00",
-    "start": "2026-09-02T23:51:19.796506+00:00",
-    "updated": "2026-09-10T03:45:35.692847+00:00"
+    "group": "2026-09-04T15:57:01.595057+00:00",
+    "hemisphere": "2026-09-09T00:00:22.679435+00:00",
+    "hemisphere_source": "2026-09-09T00:00:22.679435+00:00",
+    "key": "2026-09-04T15:57:01.595057+00:00",
+    "label": "2026-09-04T15:57:01.595057+00:00",
+    "loose_key": "2026-09-04T15:57:01.595057+00:00",
+    "mouse": "2026-09-04T15:57:01.595057+00:00",
+    "n_channels": "2026-09-04T15:57:01.595057+00:00",
+    "project": "2026-09-04T15:57:01.595057+00:00",
+    "project_source": "2026-09-04T15:57:01.595057+00:00",
+    "retired": "2026-09-04T15:57:01.595057+00:00",
+    "schema": "2026-09-04T15:57:01.595057+00:00",
+    "session": "2026-09-04T15:57:01.595057+00:00",
+    "start": "2026-09-04T15:57:01.595057+00:00",
+    "updated": "2026-10-27T19:55:03.221039+00:00",
+    "view_state": "2026-10-27T19:55:03.221039+00:00"
   },
   "_keys": {
     "paths": {
@@ -31,11 +34,11 @@
       ],
       "D:\\PTEN\\PTEN\\M5_Pten\\M5s7nov17\\2023-11-17_14-23-24": [
         "set",
-        "2026-09-02T23:51:19.796506+00:00"
+        "2026-09-04T15:57:01.595057+00:00"
       ],
       "G:\\PTEN\\M5_s7": [
         "set",
-        "2026-09-02T23:51:19.796506+00:00"
+        "2026-09-04T15:57:01.595057+00:00"
       ],
       "Y:\\ProcessedPtenData\\M5_Pten\\M5s7nov17\\2023-11-17_14-23-24": [
         "set",
@@ -44,25 +47,54 @@
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M5_s7_CNO": [
         "set",
         "2026-09-10T03:45:35.692847+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M5_Pten\\M5s7nov17\\2023-11-17_14-23-24": [
+        "set",
+        "2026-10-23T19:20:21.966976+00:00"
+      ],
+      "vacc:s81e818bd402d": [
+        "set",
+        "2026-10-27T19:26:29.072161+00:00"
       ]
     },
     "seen": {
       "BarryLab": [
         "set",
-        "2026-09-02T23:51:19.796506+00:00"
+        "2026-09-04T15:57:01.595057+00:00"
+      ],
+      "Bluebarry": [
+        "set",
+        "2026-09-09T13:48:17.589370+00:00"
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-09-04T13:13:47.737071+00:00"
+        "2026-09-04T15:57:01.595057+00:00"
+      ],
+      "StrawBarry": [
+        "set",
+        "2026-09-08T22:13:16.248172+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-10-09T14:24:43.912171+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-10-14T19:14:06.431212+00:00"
+      ],
+      "lcom549913-e62b": [
+        "set",
+        "2026-10-12T16:09:52.824562+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-10T03:45:35.692847+00:00",
+    "at": "2026-10-27T19:55:03.221039+00:00",
     "machine": "desktop-nr2h5o7-8845",
     "schema": 1
   },
   "bad_channels": [
+    8,
     59
   ],
   "bad_channels_note": "Bad channels from the Toothy workbook.",
@@ -79,6 +111,8 @@
   "fs": 30000.0,
   "gid": "s81e818bd402d",
   "group": "PTEN",
+  "hemisphere": "R",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
   "key": "m005_s007_2023-11-17_14-23-24",
   "label": "PTEN m5 s7 2023-11-17",
   "loose_key": "m005_s007",
@@ -89,7 +123,9 @@
     "G:\\PTEN\\M5_s7",
     "Y:\\ProcessedPtenData\\M5_Pten\\M5s7nov17\\2023-11-17_14-23-24",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M5_s7_CNO",
-    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M5_s7\\2023-11-17_14-23-24"
+    "D:\\Data\\Archive\\PTEN Project\\PTEN\\M5_s7\\2023-11-17_14-23-24",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M5_Pten\\M5s7nov17\\2023-11-17_14-23-24",
+    "vacc:s81e818bd402d"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -97,11 +133,18 @@
   "schema": 2,
   "seen": {
     "BarryLab": {
-      "at": "2026-09-02T19:38:00-04:00",
+      "at": "2026-09-04T11:26:57-04:00",
       "by": "barry",
-      "path": "G:\\PTEN\\M5_s7",
-      "root": "G:/PTEN",
-      "scan": "scan_597c4266fa"
+      "path": "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\PTEN\\IED Mice Subgroup\\M5_s7_CNO",
+      "root": "Y:/ProcessedPtenData",
+      "scan": "scan_894736ef4e"
+    },
+    "Bluebarry": {
+      "at": "2026-09-09T09:48:17-04:00",
+      "by": "Shahriar Tafti",
+      "path": "D:\\PTEN\\PTEN\\M5_Pten\\M5s7nov17\\2023-11-17_14-23-24",
+      "root": "D:/PTEN/PTEN",
+      "scan": "scan_a1e96d5dc1"
     },
     "DESKTOP-4H65AI7": {
       "at": "2026-09-04T09:13:47-04:00",
@@ -109,14 +152,101 @@
       "path": "D:\\PTEN\\PTEN\\M5_Pten\\M5s7nov17\\2023-11-17_14-23-24",
       "root": "D:/PTEN/PTEN",
       "scan": "scan_a9e7e27d1a"
+    },
+    "StrawBarry": {
+      "at": "2026-09-08T18:13:16-04:00",
+      "by": "Rain",
+      "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s7nov17\\2023-11-17_14-23-24",
+      "root": null,
+      "scan": null
+    },
+    "barrylab-d8e8": {
+      "at": "2026-10-09T10:24:25-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s7nov17\\2023-11-17_14-23-24",
+      "root": null,
+      "scan": null
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-10-14T15:14:05-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\PTEN\\M5_Pten\\M5s7nov17\\2023-11-17_14-23-24",
+      "root": null,
+      "scan": null
+    },
+    "lcom549913-e62b": {
+      "at": "2026-10-12T12:09:39-04:00",
+      "by": "Isabella Piatek",
+      "machine": "Blackbarry",
+      "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M5_s7\\2023-11-17_14-23-24",
+      "root": null,
+      "scan": null
     }
   },
   "session": 7,
   "start": "2023-11-17T14:23:24",
   "updated": {
-    "at": "2026-09-09T23:45:35-04:00",
+    "app_version": "2026.10.27.1",
+    "at": "2026-10-27T15:55:00-04:00",
+    "commit": "b0ad6272",
+    "email": "asullenb@uvm.edu",
     "machine": "DESKTOP-NR2H5O7",
     "os": "Windows",
-    "user": "asull"
+    "user": "Avery Sullenberger"
+  },
+  "view_state": {
+    "channels": [
+      1,
+      3,
+      5,
+      6,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19,
+      21,
+      23,
+      25,
+      27,
+      29,
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
+    ],
+    "climBy": null,
+    "fdefault": null,
+    "flock": true,
+    "gain": 2.5,
+    "hp": 1,
+    "invert": true,
+    "lp": 70,
+    "marks_fade": null,
+    "marks_view": "show",
+    "normalize": "shared",
+    "notch": 60,
+    "probe": "h3",
+    "spacing": 50,
+    "span": 0.5,
+    "stft_mode": null,
+    "t0": 2583.261122,
+    "ylim": null
   }
 }

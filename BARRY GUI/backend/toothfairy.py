@@ -86,9 +86,14 @@ def set_basis(cur, bank, gid, kind):
     tb = (cur.get("time_basis") or {}).get("kind")
     if tb:
         return tb, "the set's own record"
-    best = None
-    for ent in bank.all():
-        if ent.get("gid") != gid or (ent.get("type") or "") != kind:
+    # A set of one bank entry ("ds.e<id>", 2026-10-20) is on that entry's
+    # clock; an older set, on the busiest entry of its kind on the recording.
+    from . import curation as _cur
+    own = _cur.entry_of(kind)
+    best = bank.get(own) if own else None
+    for ent in ([] if best else bank.all()):
+        if ent.get("gid") != gid \
+                or (ent.get("type") or "") != _cur.kind_of(kind):
             continue
         if best is None or len(ent.get("versions") or []) > \
                 len(best.get("versions") or []):

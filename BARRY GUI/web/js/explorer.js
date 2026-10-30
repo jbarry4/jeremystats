@@ -73,7 +73,7 @@ BARRY.views.explorer = (function () {
     // Keep IED first and Misc last, matching the sidebar's mental model.
     const names = Array.from(bySection.keys()).sort((a, b) => {
       const rank = (n) => (n === 'IED Pipeline' ? 0 : n === 'Misc' ? 2 : 1);
-      return rank(a) - rank(b) || a.localeCompare(b);
+      return rank(a) - rank(b) || BARRY.ui.natCompare(a, b);
     });
 
     // Favourites and recents ride above the real sections. They are views
@@ -108,10 +108,11 @@ BARRY.views.explorer = (function () {
       ]));
 
       const box = el('div', { class: 'tree-items' });
-      for (const it of group) {
+      const itemRow = (it) => {
         const on = favs().indexOf(it.rel) >= 0;
-        box.appendChild(el('div', {
-          class: 'tree-item' + (current && current.rel === it.rel ? ' active' : ''),
+        return el('div', {
+          class: 'tree-item' + (current && current.rel === it.rel ? ' active' : '')
+                 + (it.archived ? ' is-archived' : ''),
           title: it.rel,
           onclick: (e) => { if (!e.target.closest('.tree-fav')) select(it.rel); },
         }, [
@@ -123,9 +124,21 @@ BARRY.views.explorer = (function () {
             title: on ? 'Remove from favourites' : 'Add to favourites',
             onclick: (e) => { e.stopPropagation(); toggleFav(it.rel); },
           }),
-        ]));
-      }
+        ]);
+      };
+      /* Archived scripts sink to the bottom of their section, behind the
+         one toggle every list uses (2026-10-20) -- unless one of them is
+         the script open now, which is never hidden. */
+      const [liveIts, goneIts] = BARRY.ui.splitArchived(group, (it) => !!it.archived);
+      for (const it of liveIts) box.appendChild(itemRow(it));
       section.appendChild(box);
+      const tail = BARRY.ui.archivedTail({
+        key: 'explorer-' + name, items: goneIts, noun: ['script', 'scripts'],
+        forceOpen: !!(current && goneIts.some((it) => it.rel === current.rel)),
+        render: (xs) => el('div', { class: 'tree-items' }, xs.map(itemRow)),
+        onToggle: () => renderTree(),
+      });
+      if (tail) section.appendChild(tail);
       host.appendChild(section);
     }
   }

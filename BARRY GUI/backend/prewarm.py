@@ -95,8 +95,25 @@ def get(session, spec):
             _STATS["miss"] += 1
             return None
         _CACHE.move_to_end(k)            # least-recently-used at the front
+        # Used now: the shared budget (membudget) drops the oldest-used
+        # entry across every cache, so "used" has to mean used.
+        _CACHE[k] = (hit[0], hit[1], time.time())
         _STATS["hit"] += 1
         return hit[0]
+
+
+def budget_items():
+    """For backend/membudget.py: (key, bytes, last used) of every panel."""
+    with _LOCK:
+        return [(k, v[1], v[2]) for k, v in _CACHE.items()]
+
+
+def budget_drop(key):
+    with _LOCK:
+        v = _CACHE.pop(key, None)
+        if v is not None:
+            _BYTES[0] -= v[1]
+            _STATS["evicted"] += 1
 
 
 def put(session, spec, payload):

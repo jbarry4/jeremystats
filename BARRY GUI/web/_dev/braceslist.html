@@ -59,7 +59,7 @@ async function until(fn, ms, what) {
   const get = (u) => ev('api(' + JSON.stringify(u) + ')');
   const BR = 'BARRY.braces';
   try {
-    const all = (await get('/api/braces/sets')).sets || [];
+    const all = (await get('/api/braces/sets?type=ds,ied')).sets || [];
     const byEntry = new Map();
     for (const s of all) {
       const k = s.entry_id || s.set_id;

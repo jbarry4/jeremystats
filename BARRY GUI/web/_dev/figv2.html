@@ -1,0 +1,269 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — figure builder v2</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 40vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 60vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The figure builder, v2: grab what you see, click the thing to change it.
+
+   Establishes its own start: opens the recording it is given, puts a traces
+   pane and a CSD pane side by side, and grabs them. Everything it saves goes
+   to the by-product lane -- every /api/figures and /api/figkit/export call
+   is sent with ?lane=scratch, which the server files under the ignored
+   cache and Results/_scratch -- and BARRY.prefs.set is held for the run, so
+   choosing a journal here does not change anybody's default.
+
+   `?session=<path>` is required; the suite passes the demo recording. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || d === undefined ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return false;
+}
+
+(async () => {
+  const f = document.getElementById('app');
+  let restore = () => {};
+  try {
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    const W = () => f.contentWindow;
+    const D = () => f.contentDocument;
+    const errs = [];
+    W().addEventListener('error', (e) => errs.push(
+      e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+    W().addEventListener('unhandledrejection',
+                         (e) => errs.push('rejected: ' + e.reason));
+    await until(() => typeof W().setView === 'function' && W().eval('BARRY.figure'));
+    await sleep(600);
+    const run = (src) => W().eval(src);
+    const B = () => W().eval('BARRY');
+    const $$ = (sel) => Array.from(D().querySelectorAll(sel));
+    const byText = (sel, re) => $$(sel).find((n) => re.test((n.textContent || '').trim()));
+
+    /* The by-product lane for everything this saves, and no shared prefs. */
+    const realFetch = W().fetch;
+    W().fetch = function (url, opts) {
+      let u = String(url);
+      if (/^\/api\/(figures|figkit\/export)/.test(u)) {
+        u += (u.indexOf('?') >= 0 ? '&' : '?') + 'lane=scratch';
+      }
+      return realFetch.call(this, u, opts);
+    };
+    const realPrefSet = B().prefs.set;
+    B().prefs.set = () => {};
+    restore = () => { W().fetch = realFetch; B().prefs.set = realPrefSet; };
+
+    const sessPath = new URLSearchParams(location.search).get('session');
+    if (!sessPath) { say('bad', 'give ?session=<path>'); return; }
+
+    head('0. A recording, two panes');
+    run("setView('xplore')");
+    const sess = await run('BARRY.views.xplore.open(' + JSON.stringify(sessPath) + ')');
+    check('the recording opened', !!sess);
+    if (!sess) throw new Error('no session');
+    await sleep(1500);
+    run('(function(){var X=BARRY.views.xplore.state;X.nPanes=2;'
+        + 'X.panes=[{sessionId:X.active,panel:"traces"},'
+        + '{sessionId:X.active,panel:"csd",cmap:"jet"}];'
+        + 'BARRY.views.xplore.onShow();})()');
+    await sleep(1500);
+
+    head('1. Grab what you see');
+    const btn = D().getElementById('xfFigure');
+    check('the Figure builder button is in the Xplorefinder header', !!btn);
+    btn.click();
+    const opened = await until(() => D().querySelector('#bigModalBox .fx'), 150);
+    check('the builder opens', opened);
+    const L = () => B().figure.layout();
+    check('it holds the two panes as two panels',
+          L() && L().panels.length === 2, L() && L().panels.length);
+    check('in the order they sit on screen',
+          L() && L().panels[0].plot === 'traces' && L().panels[1].plot === 'csd'
+          && L().panels[0].col === 0 && L().panels[1].col === 1,
+          JSON.stringify(L() && L().panels.map((p) => [p.plot, p.row, p.col])));
+    check('one recording, with its gid', !!(L() && L().recording.gid));
+    check('it is a draft with an id', !!(B().figure.figure() || {}).id);
+    check('a panel carries the pane’s seconds and filters',
+          L() && L().panels[0].params.t1 > L().panels[0].params.t0
+          && 'highpass' in L().panels[0].params);
+
+    head('2. The page draws, tile by tile');
+    const tiled = await until(() => $$('.fx-tile img').filter((i) => i.src
+      && i.src.startsWith('data:image/png')).length === 2, 400);
+    check('both tiles arrive', tiled);
+    check('the frame arrives', !!(D().getElementById('fxFrame') || {}).src);
+    check('the axis across can be clicked', $$('.fx-tile[data-uid="p1"] .fx-hit-x').length === 1);
+    check('the CSD’s colour bar can be clicked',
+          $$('.fx-tile[data-uid="p2"] .fx-hit-c').length === 1);
+    const fr = B().figure.frame();
+    check('panels are lettered a, b', fr && fr.letters.p1 === 'a' && fr.letters.p2 === 'b',
+          JSON.stringify(fr && fr.letters));
+    const foot = (fr && fr.footer || []).join(' ');
+    check('the footer names the recording and each panel',
+          /a\s+Xplorefinder/.test(foot) && /b\s+Xplorefinder/.test(foot), foot);
+    check('the footer is never cut', foot.indexOf('…') < 0 && foot.indexOf('...') < 0);
+
+    head('3. Click an axis: the unit is chosen, never typed');
+    const sigBefore = B().figure.frame().sigs.p1;
+    D().querySelector('.fx-tile[data-uid="p1"] .fx-hit-x').click();
+    const popped = await until(() => D().querySelector('.fx-pop'), 50);
+    check('a small editor opens beside it', popped);
+    const ms = byText('.fx-pop .seg button', /^ms$/);
+    check('it offers ms among the units of time', !!ms);
+    check('there is no box to type a unit into',
+          !$$('.fx-pop input').some((i) => /unit/i.test(i.placeholder || '')));
+    if (ms) ms.click();
+    await until(() => (L().panels[0].axes.x || {}).unit === 'ms', 30);
+    check('choosing ms records it on the panel', (L().panels[0].axes.x || {}).unit === 'ms');
+    const redrawn = await until(() => B().figure.frame().sigs.p1 !== sigBefore, 120);
+    check('only that panel’s picture is asked for again', redrawn
+          && B().figure.frame().sigs.p2 === fr.sigs.p2);
+
+    head('4. Words, shapes, links');
+    const tbox = D().querySelector('[data-fk="fx-pt-p1"]');
+    check('the selected panel has a title box', !!tbox);
+    if (tbox) {
+      tbox.value = 'Traces, harness';
+      tbox.dispatchEvent(new (W().Event)('input', { bubbles: true }));
+      await until(() => L().panels[0].title === 'Traces, harness', 40);
+    }
+    check('typing a title sets it', L().panels[0].title === 'Traces, harness');
+    const shape = byText('.fx-shape', /Two stacked/);
+    check('there is a "Two stacked" shape', !!shape);
+    if (shape) shape.click();
+    await sleep(200);
+    check('the shape re-slots the panels',
+          L().panels[0].row === 0 && L().panels[1].row === 1 && L().cols === 1,
+          JSON.stringify(L().panels.map((p) => [p.row, p.col])));
+    const chain = D().querySelector('.fx-chain.on');
+    check('a shared scale shows as a chain', !!chain);
+    if (chain) chain.click();
+    await sleep(150);
+    check('clicking it gives the panel its own scale',
+          L().panels.some((p) => p.link && Object.values(p.link).includes(false)));
+
+    head('5. Right-click, undo');
+    const tile = D().querySelector('.fx-tile[data-uid="p2"]');
+    tile.dispatchEvent(new (W().MouseEvent)('contextmenu',
+      { bubbles: true, cancelable: true, clientX: 300, clientY: 300 }));
+    const menu = await until(() => D().querySelector('.fx-menu'), 30);
+    check('a right-click opens the panel’s menu', menu);
+    const dup = byText('.fx-menu button', /Duplicate/);
+    if (dup) dup.click();
+    await sleep(200);
+    check('Duplicate adds a panel', L().panels.length === 3);
+    D().dispatchEvent(new (W().KeyboardEvent)('keydown',
+      { key: 'z', ctrlKey: true, bubbles: true }));
+    await sleep(200);
+    check('Ctrl+Z takes it away again', L().panels.length === 2);
+
+    head('6. Export: version 1, frozen');
+    await until(() => !D().querySelector('.fx-sheet.busy'), 300);
+    const ex = D().getElementById('fxExport');
+    check('the export button says v1', ex && /v1/.test(ex.textContent));
+    if (ex) ex.click();
+    const exported = await until(() => ((B().figure.figure() || {}).versions || []).length === 1, 400);
+    check('exporting makes version 1', exported);
+    const v1 = ((B().figure.figure() || {}).versions || [])[0] || {};
+    check('with a png, an svg and a pdf',
+          !!(v1.files && v1.files.png && v1.files.svg && v1.files.pdf),
+          JSON.stringify(v1.files));
+    check('and its plotted numbers', !!v1.data);
+    check('the version button is in the header', !!D().querySelector('#fxHead .vbtn'));
+    const ex2 = D().getElementById('fxExport');
+    check('the next export would be v2', ex2 && /v2/.test(ex2.textContent));
+    const files = $$('#fxFoot a').map((a) => a.textContent);
+    check('downloads are offered', files.join(',') === 'PNG,SVG,PDF', files.join(','));
+
+    head('7. Leaving keeps the draft');
+    const fid = (B().figure.figure() || {}).id;
+    D().dispatchEvent(new (W().KeyboardEvent)('keydown', { key: 'Escape', bubbles: true }));
+    await sleep(300);
+    check('Esc closes the builder', !D().querySelector('#bigModalBox .fx'));
+
+    head('8. The walk-through puts v1 back and reads it back');
+    run('BARRY.figreplay.start(' + JSON.stringify(fid) + ', 1)');
+    const planned = await until(() => D().querySelector('#bigModalBox .fr #frGo'), 100);
+    check('the plan opens before anything is done', planned);
+    const steps = $$('#frSteps .rb-step').map((n) => n.querySelector('.rb-title span').textContent);
+    check('it plans: find, open, a step per panel, read back, compare',
+          steps.length === 6 && /Find/.test(steps[0]) && /Panel a/.test(steps[2])
+          && /Panel b/.test(steps[3]) && /Read back/.test(steps[4]),
+          steps.join(' | '));
+    D().getElementById('frGo').click();
+    const walked = await until(() => {
+      const c = D().getElementById('frCompare');
+      return c && !c.classList.contains('hidden') && c.querySelector('.rb-verdict');
+    }, 600);
+    check('it walks every step and draws the redraw beside the original', walked);
+    const states = $$('#frSteps .rb-step').map((n) => n.dataset.state);
+    check('every step reports done', states.every((s) => s === 'done'), states.join(','));
+    const verdict = (D().querySelector('#frCompare .rb-verdict') || {}).textContent || '';
+    check('nothing moved, and it says so', /Nothing moved/.test(verdict), verdict);
+    check('the redraw is a picture', !!D().querySelector('#frCompare img[src^="data:image"]'));
+    await until(() => /Keep the redraw/.test((D().getElementById('frGo') || {}).textContent || ''), 60);
+    const keep = D().getElementById('frGo');
+    check('keeping it is offered, not done', keep && /Keep the redraw/.test(keep.textContent));
+    if (keep) keep.click();
+    const kept = await until(() => /Kept as v2/.test((D().getElementById('frGo') || {}).textContent || ''), 300);
+    check('keeping it makes v2 and leaves v1 alone', kept);
+    run('closeModal()');
+    await sleep(200);
+
+    head('9. Results › Figures lists it');
+    run("setView('results')");
+    await until(() => D().querySelector('.res-mode button[data-mode="figures"]'), 80);
+    const fbtn = D().querySelector('.res-mode button[data-mode="figures"]');
+    check('Results has a Figures view', !!fbtn);
+    if (fbtn) fbtn.click();
+    const listed = await until(() => $$('.fx-list-row').length > 0, 120);
+    check('the figure is listed, with its versions', listed
+          && /v2 of 2/.test(D().querySelector('.fx-list-row').textContent),
+          listed && D().querySelector('.fx-list-row').textContent);
+
+    head('10. ToolKit tools wear the button');
+    run("setView('toolkit')");
+    await sleep(900);
+    run("BARRY.views.toolkit.pick('rootcanal')");
+    await until(() => D().querySelector('.tk-figbar .fig-grab'), 60);
+    const g = D().querySelector('.tk-figbar .fig-grab');
+    check('a tool page has the Figure builder button, top right', !!g);
+    check('a tool without figures yet says so rather than failing',
+          g && (g.disabled ? /not built yet/.test(g.title) : true), g && g.title);
+
+    check('no page errors', errs.length === 0, errs.join(' | '));
+  } catch (e) {
+    say('bad', 'crashed: ' + (e && e.message || e));
+    String((e && e.stack) || '').split(/\n/).slice(1, 6)
+      .forEach((ln) => say('bad', '  at ' + ln.trim().slice(0, 140)));
+  } finally {
+    restore();
+    try { f.src = 'about:blank'; } catch (e) { /* gone */ }
+    document.title = bad ? bad + ' failed' : 'all passed';
+    say('note', bad ? bad + ' failed' : 'all passed');
+  }
+})();
+</script>

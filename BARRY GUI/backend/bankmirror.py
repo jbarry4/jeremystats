@@ -33,7 +33,7 @@ import json
 import os
 import re
 
-from . import ids
+from . import eventbank, ids
 
 FOLDER = "Data Bank"
 README = """# Data Bank
@@ -52,6 +52,10 @@ nothing needs Jarvis to read it.
 times and nobody has been through them yet; true means somebody has, and the
 label says what they called it. They are different claims and the bank does
 not blur them.
+
+`archived` says an entry has been put away: every version of it is archived
+in the Event Bank. Its files start `ARCHIVED - `, and `note` says why. They
+are kept so the work can be found again, not to be used.
 
 This folder is generated. Edit it and the next sync writes over you -- change
 things in Jarvis, or in the database, and they land here.
@@ -81,8 +85,20 @@ def _entry_dir(root, entry):
 
 
 def _entry_stem(entry):
-    return _safe("%s - %s" % (entry.get("type") or "event",
+    """`<type> - <name>`, and `ARCHIVED - ` in front of an archived entry.
+
+    In the name, because the name is what a person browsing these folders
+    sees. A CSV of times on its own cannot say it has been put away, and an
+    archived one would otherwise look as current as the one that replaced
+    it (asked 2026-10-20, for the pools made from the Doppler runs before
+    the gap fix). Put in front of the name `_safe` has already made, so
+    the prefix never pushes the end of a long name off: the file is the
+    one it was, with the word in front."""
+    stem = _safe("%s - %s" % (entry.get("type") or "event",
                               entry.get("name") or entry.get("id")))
+    if eventbank.entry_archived(entry):
+        stem = "ARCHIVED - " + stem
+    return stem
 
 
 def _write_if_changed(path, text):
@@ -188,6 +204,8 @@ class BankMirror:
                     if k not in ("events", "_sync", "path")}
             meta["n_events"] = len(events)
             meta["times_file"] = os.path.basename(csv_path)
+            if eventbank.entry_archived(entry):
+                meta["archived"] = True
             json_path = os.path.join(folder, stem + ".json")
             if self._safe_write(json_path, json.dumps(
                     meta, indent=2, sort_keys=True, default=str) + "\n"):
@@ -205,6 +223,8 @@ class BankMirror:
                 (entry.get("added") or {}).get("at") or "",
                 entry.get("gid") or "", entry.get("id"),
                 os.path.relpath(csv_path, self.root).replace("\\", "/"),
+                "yes" if eventbank.entry_archived(entry) else "no",
+                entry.get("note") or "",
             ])
 
         # ---- the mice -------------------------------------------------
@@ -227,7 +247,8 @@ class BankMirror:
         if self._safe_write(idx, _csv(index, [
                 "project", "mouse", "session", "date", "type", "name",
                 "n_events", "specified", "curation_label", "pipeline",
-                "added_by", "added_at", "gid", "entry_id", "times_file"])):
+                "added_by", "added_at", "gid", "entry_id", "times_file",
+                "archived", "note"])):
             written += 1
         wanted.add(idx)
 

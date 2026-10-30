@@ -582,8 +582,16 @@ table.jans tr.check td.jcell.pass { background: color-mix(in srgb, var(--focus) 
 .chip.jgate.warn { background: color-mix(in srgb, var(--focus) 26%, transparent); color: var(--ink); }
 /* The face of tab 8: traffic lights, a picked light's picture and words. */
 .jlight { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line-2); vertical-align: middle; flex: none; }
-.jlight.on { background: var(--ok); border-color: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
-.jlight.on.warn { background: var(--focus); border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 24%, transparent); }
+/* Tab 8's lights, colorblind-safe (2026-10-23; validated with the dataviz
+   palette check, deutan/protan/tritan): Okabe-Ito blue for a comparison that
+   changed, vermillion for a check that lit, drawn as a diamond so a check
+   never rests on colour; not lit stays a hollow ring. */
+:root { --jlit: #3A8FD0; --jcheck: #E0702A; }
+:root[data-theme="light"], :root[data-theme="parchment"], :root[data-theme="horizon"], :root[data-theme="jirai-shiro"] {
+  --jlit: #0072B2; --jcheck: #D55E00; }
+.jlight.on { background: var(--jlit); border-color: var(--jlit); box-shadow: 0 0 0 3px color-mix(in srgb, var(--jlit) 22%, transparent); }
+.jlight.on.warn { background: var(--jcheck); border-color: var(--jcheck); border-radius: 3px; transform: rotate(45deg) scale(0.86);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jcheck) 24%, transparent); }
 table.jlights td.jcell, table.jlights td.jnone { text-align: center; padding: 7px 6px; }
 table.jlights td.jcell.pass, table.jlights tr.check td.jcell.pass { background: none; }
 table.jlights td.jcell.sel, table.jlights tr.check td.jcell.pass.sel { background: var(--chip); box-shadow: inset 0 0 0 2px var(--focus); }
@@ -641,6 +649,49 @@ table.jpost tr.jkeep th, table.jpost tr.jkeep td { color: var(--up); font-weight
 table.jterms tr.jkey th, table.jterms tr.jkey td { font-weight: 600; }
 .jfpout { flex: 0 1 220px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .jfiles { columns: 2 18em; }
+/* 9 · Joe's figures (js/monolith_joefigs.js) */
+#figspane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
+#figspane[hidden] { display: none; }
+/* the figures beside their filter (2026-10-23): a block a window x band */
+.fgbody { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 14px; align-items: start; }
+.fgmain { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.fggroup { margin: 10px 2px 0; font-size: 14px; color: var(--ink); text-transform: none; letter-spacing: 0; }
+.fggroup[hidden], .fgcard[hidden], .fgtoc li[hidden] { display: none; }
+.fgfilter { position: sticky; top: 8px; background: var(--panel, var(--bg-2)); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+.fgfhead { font-size: 12px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
+.fggrid { display: grid; gap: 6px; align-items: center; }
+.fgghead { font-size: 11.5px; color: var(--ink-2); text-align: center; }
+.fgrow { font-size: 12px; font-weight: 600; color: var(--ink); text-align: right; padding-right: 2px; }
+.fgblock { min-height: 34px; border-radius: 7px; border: 1px solid var(--line-2); background: transparent; color: var(--ink-3);
+  font: 600 13px/1 var(--mono, monospace); cursor: pointer; }
+.fgblock.on { background: var(--chip); color: var(--ink); border-color: var(--ink-3); }
+.fgblock.strong { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink-2); }
+.fgblock.none { visibility: hidden; }
+.fgblock:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (max-width: 760px) {
+  .fgbody { grid-template-columns: minmax(0, 1fr); }
+  .fgfilter { position: static; order: -1; }
+}
+#figspane .card > p { max-width: 90ch; overflow-wrap: anywhere; }
+.fgtoc { margin: 6px 0; padding-left: 0; list-style: none; font-size: 13.5px; columns: 2 26em; }
+.fgtoc li.fgtop { font-weight: 600; break-before: auto; }
+.fgtoc li.fgsub { margin-left: 1em; }
+.fgcard h3 { margin: 0; font-size: 15px; text-transform: none; letter-spacing: 0; color: var(--ink); }
+.fgcard .fgno { font-weight: 700; }
+.fgimg { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 6px; margin: 8px 0; overflow: hidden; }
+.fgimg img { display: block; width: 100%; height: auto; }
+.fgstats { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 4px 0; }
+.fgchip { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--chip); color: var(--ink-2); }
+.fgchip.sig { background: color-mix(in srgb, #E66101 22%, transparent); color: var(--ink); font-weight: 600; }
+/* A connectome's null, one at a time (monolith_joefigs.js figCard). */
+.fgnull { gap: 8px; align-items: center; flex-wrap: wrap; margin: 2px 0 6px; }
+.fglegend { max-width: 95ch; overflow-wrap: anywhere; line-height: 1.45; }
+.fgtools { gap: 6px; flex-wrap: wrap; }
+.fgmethods { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 6px; }
+.fgmethod { margin: 8px 0 14px; max-width: 95ch; }
+.fgmethod h4 { margin: 0 0 4px; font-size: 14px; text-transform: none; letter-spacing: 0; }
+.fgmethod p { margin: 3px 0; overflow-wrap: anywhere; }
+.fgtoyhost { margin-top: 6px; }
 /* 7 · Narrowing down (js/monolith_narrow.js) */
 #narrowpane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
 #narrowpane[hidden] { display: none; }
@@ -745,6 +796,9 @@ svg.narbar { display: block; }
 <script src="js/monolith_physical.js"></script>
 <script src="js/monolith_narrow.js"></script>
 <script src="js/monolith_joe.js"></script>
+<script src="js/monolith_joefigs.js"></script>
+<script src="js/joe_export.js"></script>
+<script src="js/monolith_joeexport.js"></script>
 <script src="js/monolith_tour.js"></script>
 <script src="js/tour.js"></script>
 </body>

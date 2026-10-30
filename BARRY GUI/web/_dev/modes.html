@@ -90,23 +90,51 @@ async function until(fn, ms = 40000) {
   const framed = W.getComputedStyle(D.getElementById('xfBody')).boxShadow;
   check('the workspace is framed in the mode colour',
         framed && framed !== 'none', framed);
+  /* The banner across the TOP names the mode and ends with Leave, the last
+     thing on it, far right (back 2026-10-21); the mode's tools are a bar at
+     the bottom. No "?" any more. */
+  {
+    const body = D.getElementById('xfBody').getBoundingClientRect();
+    const bar = banner.getBoundingClientRect();
+    check('the banner sits across the top of the workspace',
+          bar.bottom <= body.top + 1,
+          'banner ' + Math.round(bar.top) + '-' + Math.round(bar.bottom)
+          + ', workspace from ' + Math.round(body.top));
+    check('there is no ? on it', !D.getElementById('modeHelp'));
+    const btns = Array.from(banner.querySelectorAll('button'))
+      .filter((b) => b.getBoundingClientRect().width > 0);
+    check('Leave is the last button on it, far right',
+          btns.length && btns[btns.length - 1] === D.getElementById('modeLeave'),
+          btns.map((b) => b.textContent.trim()).join(' | '));
+    check('and there is one Leave, not two',
+          Array.from(D.querySelectorAll('#view-xplore button'))
+            .filter((b) => /^Leave/.test(b.textContent.trim())
+                           && b.getBoundingClientRect().width > 0).length === 1);
+  }
 
-  head('Leaving is one button, and it works');
+  head('Leaving is one button, and Esc does the same');
   D.getElementById('modeLeave').click();
   await sleep(250);
   check('the leave button called the mode back', W.eval('window.__left') === 1);
+  W.eval("window.__left = 0");
+  D.body.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape',
+                                                        bubbles: true }));
+  await sleep(150);
+  check('and so does Esc', W.eval('window.__left') === 1);
   W.eval('setMode(null)');
   await sleep(200);
   check('and the shell is unmarked', !app.classList.contains('mode-strata'));
   check('the banner is gone', !vis(D.getElementById('modeBanner')));
 
-  head('DS curation is visibly a different mode');
+  head('Checkup is visibly a different mode');
   W.eval("setMode('curate', function(){})");
   await sleep(250);
   check('marked as curation, not strata',
         app.classList.contains('mode-curate')
         && !app.classList.contains('mode-strata'));
-  check('and named as such', /DS curation/i.test(
+  /* Called what its step is called (2026-10-20): the button that opens it
+     says Checkup, and the bar used to say "DS curation". */
+  check('and named as such', /Checkup/i.test(
         D.getElementById('modeName').textContent),
         D.getElementById('modeName').textContent);
   const cCol = W.getComputedStyle(app).getPropertyValue('--mode').trim();

@@ -228,6 +228,8 @@ BARRY.strata = (function () {
     document.documentElement.style.removeProperty('--bottom-bar');
     window.removeEventListener('resize', alignRail);
     document.removeEventListener('keydown', keys, true);
+    // A main window laid out from Profile goes back to its one pane.
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     // The pane read as an H3 (layout) gets every channel back.
     if (h3Pane) {
       h3Pane = false;
@@ -261,7 +263,28 @@ BARRY.strata = (function () {
       spec.colLabel = 'Read as an H3: CSC ' + first[0].number + '\u2013'
         + first[first.length - 1].number;
     }
-    BARRY.views.xplore.setPanes([spec], { col: 0.5, row: 0.5 });
+    /* The main window as this person laid it out in Profile › Support panel
+       preferences (2026-10-22), or the traces alone, as always. Its first
+       pane is always the traces, which everything below reads. */
+    const lanes = ['traces', 'voltage', 'csd', 'theta'];
+    const mp = BARRY.supportPanels
+      ? BARRY.supportPanels.applyMain('strata', [spec], sess, { col: 0.5, row: 0.5 },
+          (specs) => {
+            // The same first 64, read as an H3, on every lane panel that
+            // was not given channels of its own.
+            if (!asH3) return;
+            specs.forEach((sp) => {
+              if (lanes.indexOf(sp.panel) >= 0 && !sp.channels) {
+                sp.channels = spec.channels.slice();
+                if (sp.panel === 'traces') sp.colLabel = spec.colLabel;
+              }
+            });
+          })
+      : (BARRY.views.xplore.setPanes([spec], { col: 0.5, row: 0.5 }), null);
+    if (mp && mp.span && sess) {
+      BARRY.views.xplore.setWindow(sess,
+        Math.max(0, sess.t0 + sess.span / 2 - mp.span / 2), mp.span);
+    }
     openAids();
   }
 
@@ -271,24 +294,31 @@ BARRY.strata = (function () {
     if (aidWin && !aidWin.closed) { try { aidWin.focus(); } catch (e) {} return; }
     const every8 = h3Channels(sess)
       .filter((c, i) => i % 8 === 0).map((c) => c.index);
-    const specs = [
+    const defaults = [
       { panel: 'csd' },
       { panel: 'theta' },
       { panel: 'voltage' },
       { panel: 'spectrogram', tfChannels: every8, tfMode: 'stack',
         fmin: 1, fmax: 250 },
     ];
+    // What this person chose (Profile › Support panel preferences).
+    const plan = BARRY.supportPanels
+      ? BARRY.supportPanels.plan('strata', defaults, sess) : { specs: defaults };
+    if (!plan) return;
+    const specs = plan.specs;
     // The same first 64 as the labelling window's pane, read as an H3.
     if (h3Pane) {
       const all = sess.info.channels || [];
       const only = h3Channels(sess).map((c) => all.indexOf(c));
-      specs.forEach((sp) => { sp.channels = only; });
+      // Unless this person chose a panel's channels in Profile.
+      specs.forEach((sp) => { if (!sp.channels) sp.channels = only; });
     }
     // Folded on arrival. These four are for glancing at: the headers,
     // control strips and channel lists cost more of a short pane than
     // they are worth, and every one of them has a sliver to bring it
     // back if you want it.
-    const paneOpts = { role: 'aids', chrome: 'notabs,noheads,nostrip,nochannels' };
+    const paneOpts = { role: 'aids', chrome: 'notabs,noheads,nostrip,nochannels',
+                       ...BARRY.supportPanels.opts(plan) };
     /* The steps' page, which IS the four live panes until a step is open and
        then swaps to that step's evidence (web/strata-aids.html). Without the
        steps module, the four panes on their own, as before. */
@@ -467,8 +497,8 @@ BARRY.strata = (function () {
     let b = $('#strataBar');
     if (!b) {
       b = el('div', { class: 'strata-bar', id: 'strataBar' });
-      const body = $('#xfBody');
-      if (body) body.appendChild(b); else document.body.appendChild(b);
+      // In the middle of the one mode bar (core.js `BARRY.modeSlot`).
+      BARRY.modeSlot().appendChild(b);
       document.addEventListener('keydown', keys, true);
     }
     b.innerHTML = '';
@@ -575,13 +605,15 @@ BARRY.strata = (function () {
         }))),
       ]),
       el('span', { class: 'cur-saving', id: 'strataSaving', text: '' }),
-      el('div', { style: 'flex:1' }),
-      el('button', {
-        class: 'btn ghost sm', text: 'Export CSV',
-        onclick: () => window.open('/api/layers/' + encodeURIComponent(gid)
-                                   + '/export', '_blank'),
+      // The end (ui.modeEnd): Export CSV under More -- then the shell's
+      // Simplify, ? and Leave, the last thing on the right.
+      BARRY.ui.modeEnd({
+        more: [el('button', {
+          class: 'btn ghost sm', text: 'Export CSV',
+          onclick: () => window.open('/api/layers/' + encodeURIComponent(gid)
+                                     + '/export', '_blank'),
+        })],
       }),
-      el('button', { class: 'btn ghost sm', text: 'Leave', onclick: exit }),
     ]));
   }
 
@@ -836,7 +868,8 @@ BARRY.strata = (function () {
        bottom:0 covers the bar's left edge, which is where the brushes live.
        Measured rather than assumed, because the bar wraps to two rows on a
        narrow window. */
-    const barEl = $('#strataBar');
+    // The whole one bar, which this bar now sits inside (core.js).
+    const barEl = $('#modeBar') || $('#strataBar');
     const barH = barEl ? Math.ceil(barEl.getBoundingClientRect().height) : 0;
     r.style.bottom = barH + 'px';
     /* Toasts sit bottom-right at z-index 60; without this one covers Export

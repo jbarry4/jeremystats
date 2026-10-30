@@ -71,15 +71,14 @@ import re
 
 import numpy as np
 
-from . import rootcanal
+from . import lazyimp, rootcanal
 
-try:
-    from sklearn.cluster import KMeans
-    from sklearn.mixture import GaussianMixture
-    HAVE_SKLEARN = True
-except Exception:                                        # noqa: BLE001
-    KMeans = GaussianMixture = None
-    HAVE_SKLEARN = False
+# Imported the first time a pool is compared, never at start-up (lazyimp.py,
+# constitution section 10). At module level this was 2.07 s of the server's
+# 3.4 s of imports (`python -X importtime`, 2026-10-21): sklearn.cluster
+# pulls in most of scikit-learn, and this module is imported at boot.
+HAVE_SKLEARN = lazyimp.have("sklearn")
+GaussianMixture = lazyimp.names("sklearn.mixture", "GaussianMixture")
 
 AXES = rootcanal.AXES
 SEED = rootcanal.SEED

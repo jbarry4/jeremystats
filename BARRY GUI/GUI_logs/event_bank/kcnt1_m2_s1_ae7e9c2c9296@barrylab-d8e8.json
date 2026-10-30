@@ -42,7 +42,7 @@
   },
   "added": {
     "at": "2026-09-21T12:48:04-04:00",
-    "by": "spikeflow@harness",
+    "by": "Debug_Bot",
     "machine": "BarryLab"
   },
   "by_label": {
@@ -132,7 +132,7 @@
   "versions": [
     {
       "at": "2026-09-21T12:48:04-04:00",
-      "by": "spikeflow@harness",
+      "by": "Debug_Bot",
       "by_label": {
         "unspecified": 10
       },

@@ -1,0 +1,12 @@
+{
+  "name": "joe-export",
+  "private": true,
+  "type": "module",
+  "description": "Joe's figures, data and slides, to download. Assembled by BARRY GUI/backend/joeexport.py from BARRY GUI/review/joe_site; edit those, not the assembled copy.",
+  "dependencies": {
+    "@vercel/functions": "^3.9.11"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

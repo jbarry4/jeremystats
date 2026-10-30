@@ -32,7 +32,10 @@ from __future__ import annotations
 
 import bisect
 
-DEFAULT_WINDOW_MS = 5.0
+# 20 ms, the user's default from 2026-10-20 (it was 5): the pools people
+# kept were the 20 ms ones, and a pair a few milliseconds outside 5 ms
+# read as two events.
+DEFAULT_WINDOW_MS = 20.0
 MAX_WINDOW_MS = 100.0
 ORIGINS = ("incisor", "doppler", "both")
 

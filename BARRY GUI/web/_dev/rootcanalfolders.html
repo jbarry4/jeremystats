@@ -1,0 +1,317 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>rootcanalfolders: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Root Canal Pooled: folders for saved pools and pools of pools
+   (2026-10-20).
+
+   WHAT WAS ASKED: "To the pools of recordings and pools of pools add a
+   folder structure where we can create new folders and drag all our pools
+   into it. For every existing one, put them in a folder called Preliminary
+   analysis."
+
+   On the real shelf of saved pools (and a pool of pools of its own when this
+   machine has none):
+     - every saved pool nobody has filed is in Preliminary analysis;
+     - New folder makes one, a name already taken is refused;
+     - a pool DRAGGED onto a folder is filed there, and the menu on its row
+       does the same; "Not in a folder" takes one out;
+     - a folder renamed keeps its pools; folded shut, it hides them;
+     - the pools-of-pools shelf has the same folders;
+     - a folder deleted deletes no pool: its pools are out of it;
+     - a new pool saved is filed in the folder its dialog picked.
+
+   IT WRITES NOTHING. Both folder preferences are held in the page, starting
+   empty -- nobody has filed anything -- whatever this machine's are; every
+   other preference write is held too, the activity log is quiet, and the
+   two saves are answered from here. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(150);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  const W = () => frame.contentWindow;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  await until(() => ev('!!(BARRY.prefs && BARRY.rootcanal)'), 10000, 'the modules');
+  const RC = 'BARRY.rootcanal';
+  const P = () => ev(RC + '._pool()');
+  let viewWas = null;
+  try { viewWas = ev('localStorage.getItem("barry.rootcanal.view")'); } catch (e) { /* none */ }
+
+  ev('(function(){ var W = window; if (W.__rcfPrefSet) return;'
+     + ' W.__rcfPrefSet = BARRY.prefs.set; W.__rcfPrefGet = BARRY.prefs.get;'
+     + ' W.__rcfMem = { rootcanal_pool_folders: {}, rootcanal_pool_in: {} };'
+     + ' BARRY.prefs.set = function(k, v) { W.__rcfMem[k] = JSON.parse(JSON.stringify(v)); return v; };'
+     + ' BARRY.prefs.get = function(k, d) { if (k in W.__rcfMem) return JSON.parse(JSON.stringify(W.__rcfMem[k]));'
+     + '   return W.__rcfPrefGet.apply(BARRY.prefs, arguments); };'
+     + ' W.__rcfLog = BARRY.activity.log; BARRY.activity.log = function(){}; })()');
+  const mem = (k) => JSON.parse(ev('JSON.stringify(window.__rcfMem[' + JSON.stringify(k) + '] || {})'));
+  /* The saves answered from here; a pool of pools of its own when this
+     machine has none. Everything else goes to the server. */
+  ev('(function(){ var W = window; if (W.__rcfFetch) return; W.__rcfFetch = W.fetch;'
+     + ' W.__rcfSaves = [];'
+     + ' var json = function(o, st) { return Promise.resolve(new Response(JSON.stringify(o),'
+     + '   { status: st || 200, headers: { "Content-Type": "application/json" } })); };'
+     + ' W.fetch = function(u, o) { var s = String(u).split("?")[0];'
+     + '  if (/\\/api\\/rootcanal\\/(pool|dpool)\\/save$/.test(s)) {'
+     + '    var b = JSON.parse((o && o.body) || "{}"); W.__rcfSaves.push(b);'
+     + '    return json({ ok: true, artifact_id: "harness-new-pool", version: 1,'
+     + '      nickname: b.nickname, name: "Root Canal pool", confirmed: false }); }'
+     + '  if (/\\/api\\/rootcanal\\/(pool|dpool|single)\\/propagate$/.test(s)'
+     + '      || /\\/api\\/rootcanal\\/(border|margin|single|names)\\/save$/.test(s))'
+     + '    return json({ ok: false, error: "harness: no writes" }, 400);'
+     + '  if (/\\/api\\/rootcanal\\/dpools$/.test(s)) {'
+     + '    return W.__rcfFetch.apply(this, arguments).then(function(r) { return r.json(); })'
+     + '      .then(function(j) { if (!(j.dpools || []).length) j.dpools = [{ artifact_id: "harness-dpool",'
+     + '        id: "harness-dpool", nickname: "harness pool of pools", name: "Root Canal pool of pools",'
+     + '        version: 1, current: { n_summary: { pools: 2 } }, added: { at: "2026-10-01T00:00:00Z" } }];'
+     + '        W.__rcfDpools = j.dpools.length; return json(j); }); }'
+     + '  return W.__rcfFetch.apply(this, arguments); }; })()');
+
+  const folderBoxes = () => Array.from(D().querySelectorAll('.rc-shelf:not(.rc-dshelf) .rc-folder'));
+  const boxOf = (name, sel) => Array.from(D().querySelectorAll((sel || '.rc-shelf:not(.rc-dshelf)')
+    + ' .rc-folder')).find((b) => ((b.querySelector('.rc-folder-name') || {}).textContent
+      || (b.classList.contains('loose') ? 'Not in a folder' : '')) === name) || null;
+  const rowsIn = (box) => box ? Array.from(box.querySelectorAll('.rc-shelf-row'))
+    .map((r) => r.dataset.pool) : [];
+  const type = async (text) => {
+    await until(() => D().querySelector('.rc-folder-input'), 4000, 'the name box');
+    const inp = D().querySelector('.rc-folder-input');
+    inp.value = text;
+    inp.dispatchEvent(new (W().Event)('input', { bubbles: true }));
+    inp.dispatchEvent(new (W().KeyboardEvent)('keydown', { key: 'Enter', bubbles: true }));
+    await sleep(200);
+  };
+  /* A real drag: the browser's own DataTransfer, the row's dragstart, then
+     dragover and drop on the folder, as a mouse would. */
+  const drag = (row, box) => {
+    const dt = new (W().DataTransfer)();
+    const fire = (node, type) => node.dispatchEvent(new (W().DragEvent)(type, {
+      bubbles: true, cancelable: true, dataTransfer: dt }));
+    fire(row, 'dragstart');
+    const over = fire(box, 'dragover');
+    const lit = box.classList.contains('rc-drop-on');
+    fire(box, 'drop');
+    fire(row, 'dragend');
+    return { accepted: !over, lit: lit };
+  };
+
+  try {
+    head('THE SAVED POOLS, IN FOLDERS');
+    ev(RC + '._setView("pooled")');
+    ev('setView("toolkit")');
+    await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
+    const step = Array.from(D().querySelectorAll('.tk-step'))
+      .find((b) => /Root Canal/.test(b.textContent));
+    if (step) step.click();
+    await until(() => D().querySelector('.rc-viewseg'), 15000, 'Root Canal');
+    ev(RC + '._setView("pooled")');
+    ev(RC + '._setLevel("pool")');
+    ev(RC + '._render()');
+    await until(() => P().shelf && D().querySelector('.rc-shelf:not(.rc-dshelf) .rc-folders'),
+                30000, 'the shelf');
+    const shelf = (P().shelf || []).map((p) => p.artifact_id || p.id);
+    say('       ' + shelf.length + ' saved pool(s) on this machine', 'dim');
+    ok('precondition: nobody has filed anything (held empty for the run)',
+       !Object.keys(mem('rootcanal_pool_in')).length
+       && !Object.keys(mem('rootcanal_pool_folders')).length);
+    ok('precondition: there are saved pools to file', shelf.length >= 2, String(shelf.length));
+    const prelim = boxOf('Preliminary analysis');
+    ok('there is a folder called Preliminary analysis', !!prelim);
+    ok('and every saved pool is in it', JSON.stringify(rowsIn(prelim).slice().sort())
+       === JSON.stringify(shelf.slice().sort()), JSON.stringify([rowsIn(prelim).length, shelf.length]));
+    ok('“Not in a folder” is there, empty, saying what it is for',
+       !!boxOf('Not in a folder') && !rowsIn(boxOf('Not in a folder')).length
+       && /Drag one here to take it out/.test(boxOf('Not in a folder').textContent));
+    ok('nothing was written to put them there', !Object.keys(mem('rootcanal_pool_in')).length);
+    ok('each row is draggable, with a grip, and has the folder menu',
+       Array.from(D().querySelectorAll('.rc-shelf:not(.rc-dshelf) .rc-shelf-row'))
+         .every((r) => r.getAttribute('draggable') === 'true' && r.querySelector('.rc-grip')
+                       && r.querySelector('.rc-move-folder')));
+
+    head('A NEW FOLDER');
+    D().querySelector('.rc-shelf:not(.rc-dshelf) .rc-folder-new').click();
+    await until(() => D().querySelector('.rc-folder-input')
+                && D().activeElement === D().querySelector('.rc-folder-input'), 4000, 'the caret');
+    ok('New folder asks for a name, on the line, with the caret in it',
+       D().activeElement === D().querySelector('.rc-folder-input'));
+    await type('Harness folder A');
+    const folders1 = mem('rootcanal_pool_folders');
+    const fidA = Object.keys(folders1).find((k) => folders1[k].name === 'Harness folder A');
+    ok('it is made, and kept (in the shared folders preference)', !!fidA
+       && !folders1[fidA].gone && !!folders1[fidA].at, JSON.stringify(folders1));
+    ok('and drawn, empty, saying so', !!boxOf('Harness folder A')
+       && /Empty\. Drag a pool here\./.test(boxOf('Harness folder A').textContent));
+    D().querySelector('.rc-shelf:not(.rc-dshelf) .rc-folder-new').click();
+    await type('preliminary ANALYSIS');
+    ok('a name already taken is refused', Object.keys(mem('rootcanal_pool_folders')).length === 1
+       && Array.from(D().querySelectorAll('#toasts .toast')).some((n) =>
+         /There is a folder called ‘Preliminary analysis’ already/.test(n.textContent)));
+    ev('(function(){ var b = Array.from(document.querySelectorAll(".rc-folders-bar button"))'
+       + '.find(function(x){ return x.textContent === "Cancel"; }); if (b) b.click(); })()');
+    await sleep(200);
+
+    head('DRAGGED ONTO A FOLDER');
+    const id1 = shelf[0];
+    const row1 = D().querySelector('.rc-shelf:not(.rc-dshelf) .rc-shelf-row[data-pool="' + id1 + '"]');
+    const dr = drag(row1, boxOf('Harness folder A'));
+    ok('the folder takes the drag, and lights up under it', dr.accepted && dr.lit, JSON.stringify(dr));
+    await until(() => rowsIn(boxOf('Harness folder A')).indexOf(id1) >= 0, 4000, 'the move');
+    ok('the pool is in the folder now', rowsIn(boxOf('Harness folder A')).indexOf(id1) >= 0
+       && rowsIn(boxOf('Preliminary analysis')).indexOf(id1) < 0);
+    ok('filed in the shared preference, and nothing else is', JSON.stringify(mem('rootcanal_pool_in'))
+       === JSON.stringify({ [id1]: fidA }), JSON.stringify(mem('rootcanal_pool_in')));
+    ok('the rest stay in Preliminary analysis', rowsIn(boxOf('Preliminary analysis')).length
+       === shelf.length - 1);
+    const pressed = drag(D().querySelector('.rc-shelf:not(.rc-dshelf) .rc-shelf-row[data-pool="'
+      + shelf[1] + '"] .rc-move-folder'), boxOf('Harness folder A'));
+    await sleep(200);
+    ok('a drag started on the row’s menu is not a drag', !pressed.accepted
+       && rowsIn(boxOf('Harness folder A')).indexOf(shelf[1]) < 0, JSON.stringify(pressed));
+
+    head('MOVED FROM ITS ROW');
+    const sel2 = D().querySelector('.rc-shelf:not(.rc-dshelf) .rc-shelf-row[data-pool="'
+      + shelf[1] + '"] .rc-move-folder');
+    sel2.value = '';
+    sel2.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    await until(() => rowsIn(boxOf('Not in a folder')).indexOf(shelf[1]) >= 0, 4000, 'the move');
+    ok('“Not in a folder” from the menu takes it out', rowsIn(boxOf('Not in a folder'))
+       .indexOf(shelf[1]) >= 0 && mem('rootcanal_pool_in')[shelf[1]] === '');
+    const sel1 = D().querySelector('.rc-shelf:not(.rc-dshelf) .rc-shelf-row[data-pool="'
+      + id1 + '"] .rc-move-folder');
+    ok('the menu says where each pool is', sel1.value === fidA, sel1.value);
+
+    head('RENAMED, FOLDED');
+    boxOf('Harness folder A').querySelector('.rc-folder-rename').click();
+    await type('Harness folder B');
+    ok('renamed, it keeps its pools', !boxOf('Harness folder A') && !!boxOf('Harness folder B')
+       && rowsIn(boxOf('Harness folder B')).indexOf(id1) >= 0
+       && mem('rootcanal_pool_folders')[fidA].name === 'Harness folder B');
+    boxOf('Harness folder B').querySelector('.rc-folder-twist').click();
+    await sleep(200);
+    ok('folded shut, its pools are hidden and it says so', !rowsIn(boxOf('Harness folder B')).length
+       && boxOf('Harness folder B').querySelector('.rc-folder-twist').getAttribute('aria-expanded') === 'false'
+       && /1 pool/.test(boxOf('Harness folder B').textContent));
+    const shutDrop = drag(D().querySelector('.rc-shelf:not(.rc-dshelf) .rc-shelf-row[data-pool="'
+      + shelf[1] + '"]'), boxOf('Harness folder B'));
+    await until(() => mem('rootcanal_pool_in')[shelf[1]] === fidA, 3000, 'the drop');
+    ok('a folder folded shut still takes a drop', shutDrop.accepted
+       && mem('rootcanal_pool_in')[shelf[1]] === fidA);
+    boxOf('Harness folder B').querySelector('.rc-folder-twist').click();
+    await sleep(200);
+    ok('opened again, both are in it', rowsIn(boxOf('Harness folder B')).length === 2);
+
+    head('THE POOLS-OF-POOLS SHELF HAS THE SAME FOLDERS');
+    ev(RC + '._setLevel("double")');
+    await until(() => P().dshelf && D().querySelector('.rc-dshelf .rc-folders'), 20000, 'that shelf');
+    const dnames = Array.from(D().querySelectorAll('.rc-dshelf .rc-folder-name')).map((n) => n.textContent);
+    ok('the same folders, by name', JSON.stringify(dnames) === JSON.stringify(['Harness folder B',
+       'Preliminary analysis', 'Not in a folder']), JSON.stringify(dnames));
+    const dshelf = (P().dshelf || []).map((p) => p.artifact_id || p.id);
+    ok('its pools nobody filed are in Preliminary analysis', dshelf.length > 0
+       && JSON.stringify(rowsIn(boxOf('Preliminary analysis', '.rc-dshelf')).sort())
+          === JSON.stringify(dshelf.slice().sort()));
+    ok('and none of the recordings’ pools are drawn on it', !rowsIn(boxOf('Harness folder B', '.rc-dshelf')).length);
+    const drow = D().querySelector('.rc-dshelf .rc-shelf-row');
+    drag(drow, boxOf('Harness folder B', '.rc-dshelf'));
+    await until(() => rowsIn(boxOf('Harness folder B', '.rc-dshelf')).length === 1, 4000, 'the move');
+    ok('a pool of pools is filed the same way', mem('rootcanal_pool_in')[drow.dataset.pool] === fidA);
+    ev(RC + '._setLevel("pool")');
+    await until(() => D().querySelector('.rc-shelf:not(.rc-dshelf) .rc-folders'), 20000, 'back');
+
+    head('A FOLDER DELETED DELETES NO POOL');
+    boxOf('Harness folder B').querySelector('.rc-folder-delete').click();
+    await until(() => D().querySelector('#bigModal:not(.hidden) .btn.danger'), 4000, 'the question');
+    ok('it asks first, saying its pools are only taken out of it',
+       /2 saved pools in it are taken out of it, to Not in a folder\. No pool is deleted/
+         .test(D().querySelector('#bigModal').textContent));
+    D().querySelector('#bigModal .btn.danger').click();
+    await until(() => !boxOf('Harness folder B'), 4000, 'the folder gone');
+    ok('the folder is gone (kept as deleted, so it stays gone everywhere)',
+       !boxOf('Harness folder B') && mem('rootcanal_pool_folders')[fidA].gone === true);
+    ok('its pools are in no folder, and every pool is still on the shelf',
+       rowsIn(boxOf('Not in a folder')).sort().join() === [id1, shelf[1]].sort().join()
+       && (P().shelf || []).length === shelf.length);
+
+    head('A NEW POOL IS FILED WHERE ITS DIALOG SAYS');
+    D().querySelector('.rc-shelf:not(.rc-dshelf) .rc-folder-new').click();
+    await type('Harness folder C');
+    const fidC = Object.keys(mem('rootcanal_pool_folders')).find((k) =>
+      mem('rootcanal_pool_folders')[k].name === 'Harness folder C');
+    // A pool in hand, as if just pooled: its members are the saved one's.
+    ev('(function(){ var p = ' + RC + '._pool(); p.open = null;'
+       + ' p.sel = [{ key: "b:harness:1", session_label: "harness" }];'
+       + ' p.fit = { ok: true, members: [], events: [] }; })()');
+    const saving = ev('(' + RC + '._poolSave(), 1)');
+    await until(() => D().querySelector('#bigModal:not(.hidden) .rc-save-folder'), 5000, 'the dialog');
+    const fsel = D().querySelector('#bigModal .rc-save-folder');
+    ok('the dialog asks which folder', !!fsel && Array.from(fsel.options).map((o) => o.text)
+       .join('|') === 'Harness folder C|Preliminary analysis|Not in a folder',
+       fsel && Array.from(fsel.options).map((o) => o.text).join('|'));
+    if (fsel) {
+      fsel.value = fidC;
+      const nm = D().querySelector('#bigModal .bank-dlg-name');
+      if (nm) { nm.value = 'harness pool'; nm.dispatchEvent(new (W().Event)('input', { bubbles: true })); }
+      Array.from(D().querySelectorAll('#bigModal .mf button')).pop().click();
+      await until(() => ev('window.__rcfSaves.length') > 0
+                  && mem('rootcanal_pool_in')['harness-new-pool'] !== undefined, 8000, 'the save');
+      ok('saved through the stub, and filed in the folder picked',
+         mem('rootcanal_pool_in')['harness-new-pool'] === fidC,
+         JSON.stringify(mem('rootcanal_pool_in')));
+    }
+    void saving;
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+  } finally {
+    try {
+      ev('(function(){ var s = document.getElementById("bigModal");'
+         + ' for (var i = 0; i < 6 && s && !s.classList.contains("hidden"); i++) closeModal(); })()');
+      ev(RC + '._poolClose()');
+      ev('(function(){ var W = window; if (W.__rcfFetch) { W.fetch = W.__rcfFetch; delete W.__rcfFetch; }'
+         + ' if (W.__rcfLog) { BARRY.activity.log = W.__rcfLog; delete W.__rcfLog; }'
+         + ' if (W.__rcfPrefSet) { BARRY.prefs.set = W.__rcfPrefSet; BARRY.prefs.get = W.__rcfPrefGet;'
+         + ' delete W.__rcfPrefSet; delete W.__rcfPrefGet; } })()');
+      ev('(function(v){ try { if (v == null) localStorage.removeItem("barry.rootcanal.view");'
+         + ' else localStorage.setItem("barry.rootcanal.view", v); } catch (e) {} })('
+         + JSON.stringify(viewWas == null ? null : viewWas) + ')');
+    } catch (e) { /* gone */ }
+    await sleep(500);
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'rootcanalfolders: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

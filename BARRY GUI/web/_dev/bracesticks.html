@@ -126,7 +126,7 @@ async function until(fn, ms, what) {
   let entered = false;
   try {
     head('AN OPEN PROPOSAL WITH FLAGS STILL OPEN');
-    const sets = await get('/api/braces/sets');
+    const sets = await get('/api/braces/sets?type=ds,ied');
     const open = (sets.sets || []).filter((s) => !s.committed
                                             && ((s.counts || {}).waiting || 0) > 0);
     for (const s of open.slice(0, 6)) {

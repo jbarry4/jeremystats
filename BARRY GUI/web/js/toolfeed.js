@@ -338,7 +338,8 @@ BARRY.toolfeed = (function () {
   function onWhat(r) {
     const key = r.session_key || r.gid || '';
     if (!key) return '';
-    return String(key).length > 30 ? String(key).slice(0, 29) + '…' : key;
+    // Whole: the row wraps rather than cutting a recording's name short.
+    return String(key);
   }
 
   /* The one or two things from `detail` worth a line. Not the whole object:
@@ -357,7 +358,7 @@ BARRY.toolfeed = (function () {
   function shortName(who) {
     const s = String(who || '').trim();
     if (!s) return 'somebody';
-    return s.length > 16 ? s.slice(0, 15) + '…' : s;
+    return s;
   }
 
   /* ---------- time ---------- */
