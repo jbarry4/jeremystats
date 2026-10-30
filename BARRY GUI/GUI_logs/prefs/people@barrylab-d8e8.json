@@ -40,7 +40,7 @@
       ],
       "Shahriar Tafti": [
         "set",
-        "2026-10-23T13:44:27.408419+00:00"
+        "2026-10-30T14:50:44.771664+00:00"
       ],
       "Sylvia Clouse": [
         "set",
@@ -113,7 +113,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-29T17:30:32.405300+00:00",
+    "at": "2026-10-30T14:50:44.771664+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -222,22 +222,6 @@
     },
     {
       "aliases": [
-        "a colleague",
-        "fatima",
-        "shahriar",
-        "theexaminedexistence@gmail.com"
-      ],
-      "at": "2026-09-08T21:24:21.570229+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-10-23T13:44:27.407684+00:00",
-      "email": "sakhava1@uvm.edu",
-      "id": "Shahriar Tafti",
-      "initials": "ST",
-      "name": "Shahriar Tafti",
-      "role": "Graduate Student"
-    },
-    {
-      "aliases": [
         "rain"
       ],
       "at": "2026-09-29T18:04:01.532204+00:00",
@@ -248,6 +232,22 @@
       "initials": "RY",
       "name": "Rain Younger",
       "role": "Graduate Student"
+    },
+    {
+      "aliases": [
+        "a colleague",
+        "fatima",
+        "shahriar",
+        "theexaminedexistence@gmail.com"
+      ],
+      "at": "2026-09-08T21:24:21.570229+00:00",
+      "by": "Rain Younger",
+      "edited_at": "2026-10-30T14:50:44.771663+00:00",
+      "email": "sakhava1@uvm.edu",
+      "id": "Shahriar Tafti",
+      "initials": "ST",
+      "name": "Shahriar Tafti",
+      "role": "Gradstudent"
     }
   ]
 }
