@@ -48,9 +48,9 @@ window.MONO = (function () {
   // same circuit, points of interest and drill-down (the lab, 2026-10-06).
   const TABS = [['cov', '1 · What was kept'], ['main', '2 · The Monolith'], ['c21', '3 · Cue 2 − Cue 1'], ['avg', '4 · How a number is made'],
                 ['ev', '5 · Events first'], ['phys', '6 · Physical vs balanced cue'], ['narrow', '7 · Narrowing down'],
-                ['joe', '8 · Joe’s data'], ['figs', '9 · Joe’s figures'], ['joex', '10 · Joe export']];
+                ['joe', '8 · Joe’s data'], ['figs', '9 · Joe’s figures'], ['joex', '10 · Joe export'], ['more', '11 · Narrowing down (even more)'], ['final', '12 · The final stage']];
   const PANES = { cov: 'covpane', main: 'mainpane', c21: 'mainpane', avg: 'avgpane', ev: 'evpane', phys: 'physpane', narrow: 'narrowpane',
-                  joe: 'joepane', figs: 'figspane', joex: 'joexpane' };
+                  joe: 'joepane', figs: 'figspane', joex: 'joexpane', more: 'morepane', final: 'finalpane' };
   // The windows by their meeting names; the switch is cue 1 giving way to cue 2.
   const WLABEL = { pre: 'Pre-baseline', cue1: 'Cue 1', cue2: 'Cue 2', post: 'Post-baseline', pair: 'Cue 1 + Cue 2',
                    onset: 'Onset', switch: 'Switch', offset: 'Offset', c21: 'Cue 2 − Cue 1' };
@@ -482,6 +482,8 @@ window.MONO = (function () {
     app.appendChild(el('div', { id: 'joepane', role: 'tabpanel', hidden: st.tab === 'joe' ? null : 'hidden' }));
     app.appendChild(el('div', { id: 'figspane', role: 'tabpanel', hidden: st.tab === 'figs' ? null : 'hidden' }));
     app.appendChild(el('div', { id: 'joexpane', role: 'tabpanel', hidden: st.tab === 'joex' ? null : 'hidden' }));
+    app.appendChild(el('div', { id: 'morepane', role: 'tabpanel', hidden: st.tab === 'more' ? null : 'hidden' }));
+    app.appendChild(el('div', { id: 'finalpane', role: 'tabpanel', hidden: st.tab === 'final' ? null : 'hidden' }));
     // Where a value comes from, and the way back: the trail over the result.
     mp.appendChild(el('nav', { class: 'trail', id: 'trail', 'aria-label': 'Where this value comes from' }));
     mp.appendChild(el('div', { class: 'card', id: 'verdict' }));
@@ -555,6 +557,8 @@ window.MONO = (function () {
     if (st.tab === 'joe' && window.MONO_JOE) window.MONO_JOE.show();
     if (st.tab === 'figs' && window.MONO_JOEFIGS) window.MONO_JOEFIGS.show();
     if (st.tab === 'joex' && window.MONO_JOEX) window.MONO_JOEX.show();
+    if (st.tab === 'more' && window.MONO_EVENMORE) window.MONO_EVENMORE.show();
+    if (st.tab === 'final' && window.MONO_FINAL) window.MONO_FINAL.show();
     if (st.tab === 'main' || st.tab === 'c21') renderTrail();
     try { scrollTo(0, 0); } catch (e) { /* none */ }
   }
@@ -3774,6 +3778,8 @@ window.MONO = (function () {
     if (st.tab === 'joe' && window.MONO_JOE) window.MONO_JOE.show();
     if (st.tab === 'figs' && window.MONO_JOEFIGS) window.MONO_JOEFIGS.show();
     if (st.tab === 'joex' && window.MONO_JOEX) window.MONO_JOEX.show();
+    if (st.tab === 'more' && window.MONO_EVENMORE) window.MONO_EVENMORE.show();
+    if (st.tab === 'final' && window.MONO_FINAL) window.MONO_FINAL.show();
     document.dispatchEvent(new CustomEvent('monolith:ready'));
   }
 

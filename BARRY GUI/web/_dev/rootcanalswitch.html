@@ -1,0 +1,179 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>rootcanalswitch: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Root Canal Single: a read belongs to the set it was started on.
+
+   2026-10-29, Strawbarry: one set was reading, another was opened, and when
+   the read finished it was handed to the set now open. Every fit on it was
+   refused, "This set has not been read at these settings on this machine
+   yet", four times in four minutes.
+
+     - a read that finishes after another set was opened sends no fit, leaves
+       the open set unread, and says the read is done and where it is;
+     - while it runs, its card names the set being read, not the one open;
+     - a read that finishes on its own set still opens and fits at once.
+
+   NO REAL READ RUNS. /read hands back a job this page owns, the job poll
+   answers from it, and /fit is recorded and refused; writes are refused,
+   preference writes are held and the activity log is quiet. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(150);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  await until(() => ev('!!(BARRY.prefs && BARRY.rootcanal)'), 10000, 'the modules');
+  const RC = 'BARRY.rootcanal';
+  let viewWas = null;
+  try { viewWas = ev('localStorage.getItem("barry.rootcanal.view")'); } catch (e) { /* none */ }
+
+  ev('(function(){ var W = window; if (W.__rcsPrefSet) return;'
+     + ' W.__rcsPrefSet = BARRY.prefs.set; W.__rcsMem = {}; W.__rcsPrefGet = BARRY.prefs.get;'
+     + ' BARRY.prefs.set = function(k, v) { W.__rcsMem[k] = v; return v; };'
+     + ' BARRY.prefs.get = function(k, d) { if (k in W.__rcsMem) return W.__rcsMem[k];'
+     + '   return W.__rcsPrefGet.apply(BARRY.prefs, arguments); };'
+     + ' W.__rcsLog = BARRY.activity.log; BARRY.activity.log = function(){}; })()');
+  ev('(function(){ var W = window; if (W.__rcsFetch) return; W.__rcsFetch = W.fetch;'
+     + ' W.__rcsFits = []; W.__rcsN = 0; W.__rcsJob = "running";'
+     + ' var json = function(o, st) { return Promise.resolve(new Response(JSON.stringify(o),'
+     + '   { status: st || 200, headers: { "Content-Type": "application/json" } })); };'
+     + ' var job = function(id) { var done = W.__rcsJob === "done";'
+     + '   return { id: id, status: done ? "done" : "running",'
+     + '            stages: [{ done: done ? 10 : 3, of: 10, unit: "events" }] }; };'
+     + ' W.fetch = function(u, o) { var s = String(u).split("?")[0];'
+     + '  var post = o && o.method === "POST";'
+     + '  if (post && /\\/api\\/rootcanal\\/read$/.test(s)) {'
+     + '    var b = JSON.parse(o.body || "{}");'
+     + '    if (b.only_cached) return json({ ok: true, cached: false, job: null, read: "h", not_here: true });'
+     + '    W.__rcsN += 1; W.__rcsJob = "running";'
+     + '    return json({ ok: true, cached: false, job: job("h-read-" + W.__rcsN),'
+     + '                  read: "harnessread" + W.__rcsN, n: 10 }); }'
+     + '  var m = /\\/api\\/cfc\\/job\\/(h-read-\\d+)$/.exec(s);'
+     + '  if (m) return json({ ok: true, job: job(m[1]) });'
+     + '  if (post && /\\/api\\/rootcanal\\/fit$/.test(s)) {'
+     + '    W.__rcsFits.push(JSON.parse(o.body || "{}"));'
+     + '    return json({ ok: false, error: "harness: no fits" }, 400); }'
+     + '  if (post && /\\/api\\/(rootcanal|cfc)\\//.test(s)) {'
+     + '    return json({ ok: false, error: "harness: no writes" }, 400); }'
+     + '  return W.__rcsFetch.apply(this, arguments); }; })()');
+  const st = () => ev(RC + '._state()');
+  const fits = () => ev('window.__rcsFits.slice()');
+  const toasts = () => Array.from(D().querySelectorAll('#toasts .toast')).map((n) => n.textContent);
+  const finish = async () => {
+    ev('window.__rcsJob = "done"');
+    return until(() => !st().job && !st().busy, 15000, 'the read to finish');
+  };
+
+  try {
+    head('ROOT CANAL, TWO SETS');
+    ev(RC + '._setView("single")');
+    ev('setView("toolkit")');
+    await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
+    const stepBtn = Array.from(D().querySelectorAll('.tk-step'))
+      .find((b) => /Root Canal/.test(b.textContent));
+    if (stepBtn) stepBtn.click();
+    await until(() => D().querySelector('.rc-viewseg'), 15000, 'Root Canal');
+    ev(RC + '._setView("single")');
+    await until(() => (st().cands || []).length >= 2, 60000, 'the sets');
+    const sets = (st().cands || []).filter((c) => c.readable !== false);
+    ok('precondition: two sets to switch between', sets.length >= 2, String(sets.length));
+    // Two with different names, so the card can be told apart.
+    const A = sets[0];
+    const B = sets.find((c) => c.session_label && c.session_label !== A.session_label)
+      || sets[1];
+    say('       A = ' + A.entry_id + ' ' + (A.session_label || '')
+        + ', B = ' + B.entry_id + ' ' + (B.session_label || ''), 'dim');
+
+    head('A READ THAT FINISHES UNDER ANOTHER SET');
+    ev(RC + '._pickSet(' + JSON.stringify(A.entry_id) + ')');
+    await sleep(300);
+    ev(RC + '._read()');
+    await until(() => !!st().job, 6000, 'the read to start');
+    ok('the read of A is running', !!st().job && st().q.entry === A.entry_id);
+    ev(RC + '._pickSet(' + JSON.stringify(B.entry_id) + ')');
+    await until(() => D().querySelector('.rc-job'), 6000, 'the read card');
+    const card = D().querySelector('.rc-job');
+    if (A.session_label && A.session_label !== B.session_label) {
+      ok('its card names A, the set being read, with B open',
+         card && card.textContent.indexOf(A.session_label) >= 0
+         && card.textContent.indexOf(B.session_label) < 0,
+         card && card.textContent);
+    } else {
+      say('       the two sets share a name; the card check is skipped', 'dim');
+    }
+    const before = fits().length;
+    await finish();
+    await sleep(800);
+    const sent = fits().slice(before);
+    ok('no fit is sent for B', sent.length === 0, JSON.stringify(sent.map((b) => [b.entry_id, b.read])));
+    ok('B is left unread', st().q.entry === B.entry_id && !st().q.read,
+       JSON.stringify([st().q.entry, st().q.read]));
+    ok('and it says A\'s read is done and where to open it',
+       toasts().some((t) => /^The read of .+ is done\. Open it from Already through Root Canal\./.test(t)),
+       toasts().slice(-2).join(' | '));
+
+    head('A READ THAT FINISHES ON ITS OWN SET');
+    const before2 = fits().length;
+    ev(RC + '._read()');
+    await until(() => !!st().job, 6000, 'the read to start');
+    const hash = 'harnessread' + ev('window.__rcsN');
+    await finish();
+    await until(() => fits().length > before2, 6000, 'the fit');
+    const mine = fits().slice(before2);
+    ok('it opens and fits at once, on B, over the read it made',
+       mine.length >= 1 && mine.every((b) => b.entry_id === B.entry_id && b.read === hash),
+       JSON.stringify(mine.map((b) => [b.entry_id, b.read])));
+    ok('and B now holds that read', st().q.read === hash, String(st().q.read));
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+  } finally {
+    try {
+      ev('(function(){ var W = window; if (W.__rcsFetch) { W.fetch = W.__rcsFetch; delete W.__rcsFetch; }'
+         + ' if (W.__rcsLog) { BARRY.activity.log = W.__rcsLog; delete W.__rcsLog; }'
+         + ' if (W.__rcsPrefSet) { BARRY.prefs.set = W.__rcsPrefSet; BARRY.prefs.get = W.__rcsPrefGet;'
+         + ' delete W.__rcsPrefSet; delete W.__rcsPrefGet; } })()');
+      ev('(function(v){ try { if (v == null) localStorage.removeItem("barry.rootcanal.view");'
+         + ' else localStorage.setItem("barry.rootcanal.view", v); } catch (e) {} })('
+         + JSON.stringify(viewWas == null ? null : viewWas) + ')');
+    } catch (e) { /* gone */ }
+    await sleep(500);
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'rootcanalswitch: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

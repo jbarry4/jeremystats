@@ -1,0 +1,174 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>fixes1030: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* What changed on 2026-10-30, on the real bank, writing nothing.
+
+     Eye       Braces built a third time: the same picker and Alignments,
+               its own mode, its review panels, on IED sets.
+     Lock      a held stamp warns and offers the override; without one it
+               is the old notice; "Garbage it anyway" does what was asked.
+     Root      Many in The Confluence lists pooled sets, and every row has
+     Canal     the version it is read from, as a button that opens the tree.
+     Lists     Lock reads its sets again when it is shown, so a set banked
+               after it was first opened is offered.
+
+   Writes are refused at fetch, preference writes are held, the activity log
+   is quiet, and nothing is run. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => { const n = document.createElement('span');
+  if (cls) n.className = cls; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(150);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow;
+  const ev = (c) => W.eval(c);
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state.catalog'),
+              30000, 'the app to boot');
+  const B = ev('BARRY');
+  const realSet = B.prefs.set, realLog = B.activity.log;
+  B.prefs.set = () => {};
+  B.activity.log = () => {};
+  B.testNoAutobank = true;
+  const realFetch = W.fetch;
+  const asked = [];
+  W.fetch = function (u, o) {
+    const s = String(u).split('?')[0];
+    asked.push(s);
+    if (o && o.method && o.method !== 'GET'
+        && !/\/api\/(rootcanal\/batch\/plan|braces\/plan|presence|errors\/client)/.test(s)) {
+      return Promise.resolve(new W.Response(JSON.stringify(
+        { ok: false, error: 'harness: no writes' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }));
+    }
+    return realFetch.apply(this, arguments);
+  };
+  const tk = () => B.views.toolkit;
+  ev('setView("toolkit")');
+  await until(() => $('.tk-bundle'), 15000, 'the ToolKit');
+
+  try {
+    head('EYE IS BRACES BUILT A THIRD TIME');
+    ok('Eye is a makeBraces instance', !!(B.eye && B.eye._cfg
+       && B.eye._cfg.tool === 'eye' && B.eye._cfg.type === 'ied'));
+    ok('...registered as a mode of its own', !!(B.modes && B.eye._cfg.mode === 'eye'));
+    tk().pick('eye', 'storm');
+    await until(() => $('#tkResult .br-recent') || $('#tkResult .br-pick')
+                      || $('#tkResult .empty-state'), 30000, 'Eye');
+    ok('its panel is Braces’ (the picker or the Alignments list)',
+       !!($('#tkResult .br-pick') || $('#tkResult .br-recent')),
+       ($('#tkResult') || {}).textContent.slice(0, 200));
+    ok('...asking for IED sets', asked.some((u) => /braces\/candidates/.test(u)));
+    const ec = B.eye._cands() || [];
+    ok('every set offered is an IED set', ec.every((c) => (c.type || 'ied') === 'ied'),
+       ec.map((c) => c.type).join(','));
+    ok('Braces no longer lists Eye’s alignments', B.braces._cfg.setTypes === 'ds');
+
+    head('LOCK: A HELD STAMP WARNS, AND CAN BE OVERRIDDEN');
+    tk().pick('lock', 'confluence');
+    await until(() => $('#tkResult .br-pick') || $('#tkResult .br-recent'), 30000, 'Lock');
+    B.lock._lockedSay();
+    await until(() => $('.br-locked-ask'), 3000, 'the notice');
+    const plain = $('.br-locked-ask');
+    ok('without an action it is the notice it was',
+       !!plain && /held/.test(plain.textContent) && !/anyway/.test(plain.textContent),
+       plain && plain.textContent);
+    B.lock._closeLockedSay();
+    let did = 0;
+    B.lock._lockedSay(0, 'garbage', () => { did += 1; });
+    await until(() => $('.br-locked-ask'), 3000, 'the warning');
+    const box = $('.br-locked-ask');
+    const btn = box && Array.from(box.querySelectorAll('button'))
+      .find((b) => /Garbage it anyway/.test(b.textContent));
+    ok('with one it offers "Garbage it anyway"', !!btn, box && box.textContent);
+    ok('...and says the hold can be overridden',
+       !!box && /unless you override/.test(box.textContent));
+    ok('...and still says no second-guessing', !!box && /second-guessing/.test(box.textContent));
+    const leave = box && Array.from(box.querySelectorAll('button'))
+      .find((b) => /Leave it held/.test(b.textContent));
+    ok('...beside "Leave it held", the default', !!leave
+       && D().activeElement === leave, D().activeElement && D().activeElement.textContent);
+    if (btn) btn.click();
+    await sleep(200);
+    ok('pressing it does what was asked', did === 1, 'called ' + did);
+    ok('...and closes the warning', !$('.br-locked-ask'));
+    B.lock._lockedSay(0, 'move', () => { did += 10; });
+    await until(() => $('.br-locked-ask'), 3000, 'the warning');
+    D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await sleep(200);
+    ok('Enter leaves it held', did === 1 && !$('.br-locked-ask'), 'called ' + did);
+
+    head('LOCK READS ITS SETS AGAIN WHEN SHOWN');
+    const n0 = asked.filter((u) => /braces\/candidates/.test(u)).length;
+    tk().pick('braces', 'dentist');
+    await until(() => $('#tkResult .br-pick') || $('#tkResult .br-recent'), 30000, 'Braces');
+    tk().pick('lock', 'confluence');
+    await until(() => asked.filter((u) => /braces\/candidates/.test(u)).length > n0 + 1,
+                15000, 'Lock to ask again');
+    ok('coming back to Lock asks for its sets again',
+       asked.filter((u) => /braces\/candidates/.test(u)).length >= n0 + 2,
+       (asked.filter((u) => /braces\/candidates/.test(u)).length - n0) + ' asks');
+
+    head('ROOT CANAL, MANY, IN THE CONFLUENCE');
+    tk().pick('rootcanal', 'confluence');
+    await until(() => $('.rc-mode'), 30000, 'Root Canal');
+    const many = $$('.rc-mode button').find((b) => /many/i.test(b.textContent));
+    if (many) many.click();
+    await until(() => $('.rc-bulk-find') || $('.rc-bulk-say'), 60000, 'Many');
+    await until(() => ev('BARRY.rootcanal._state ? 1 : 1'), 1000);
+    const planAsked = asked.filter((u) => /rootcanal\/batch\/plan/.test(u)).length;
+    ok('the plan was asked for', planAsked > 0);
+    const rows = $$('.rc-bulk-row');
+    say('       ' + rows.length + ' row(s) in Many', 'dim');
+    const vb = $$('.rc-bulk-row .vbtn');
+    ok('every row has its version button', rows.length === 0 || vb.length === rows.length,
+       vb.length + ' of ' + rows.length);
+    const left = ($('.rc-bulk-left') || {}).textContent || '';
+    ok('no DS set is offered here (Checkup is The Dentist’s)',
+       !/one in Checkup yet/.test(left));
+    if (vb[0]) {
+      vb[0].click();
+      await until(() => $('.vpop'), 3000, 'the tree');
+      ok('a version button opens the tree', !!$('.vpop'));
+      const close = $$('.vpop button').find((b) => /Close/.test(b.textContent));
+      if (close) close.click();
+    }
+  } finally {
+    W.fetch = realFetch;
+    B.prefs.set = realSet;
+    B.activity.log = realLog;
+  }
+} catch (e) {
+  ok('the run finished', false, e && e.stack);
+} finally {
+  say('');
+  say(pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'fixes1030: ' + pass + ' ok, ' + fail + ' fail';
+  document.getElementById('app').src = 'about:blank';
+} })();
+</script></body></html>

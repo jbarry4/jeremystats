@@ -105,6 +105,8 @@
   --tool-other: var(--c5);
 
   --trace: #7FE3B0;
+
+  --trace-2: #FF7AC8;  /* the second band, over the first */
   --event: #FF8A7A;
 
   --radius:    10px;
@@ -327,6 +329,8 @@
   --c5: #6f8c7d;
 
   --trace: #154734;
+
+  --trace-2: #C2185B;  /* the second band, over the first */
   --event: #c0392b;
   --shadow: 0 8px 28px rgba(21, 71, 52, 0.14);
 }
@@ -375,6 +379,8 @@
   --c5: #8b98a8;
 
   --trace: #8fd3ff;
+
+  --trace-2: #FF7AC8;  /* the second band, over the first */
   --event: #ff9a76;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
 }
@@ -415,6 +421,8 @@
   --c5: #7a7266;
 
   --trace: #3d5340;
+
+  --trace-2: #B5179E;  /* the second band, over the first */
   --event: #a3342a;
   --shadow: 0 8px 28px rgba(80, 62, 33, 0.16);
 }
@@ -456,6 +464,8 @@
   --c5: #7f9c8c;
 
   --trace: #46f08c;
+
+  --trace-2: #FF6FAE;  /* the second band, over the first */
   --event: #ffd166;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
 }
@@ -500,6 +510,8 @@
   --c5: #7593a2;
 
   --trace: #17708f;
+
+  --trace-2: #D1495B;  /* the second band, over the first */
   --event: #c25070;
   --shadow: 0 8px 28px rgba(20, 48, 61, 0.13);
 }
@@ -541,6 +553,8 @@
   --c5: #8ba3bd;
 
   --trace: #5bcefa;
+
+  --trace-2: #FF7AC8;  /* the second band, over the first */
   --event: #f5a9b8;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
 }
@@ -591,6 +605,8 @@
   --c5: #a9819c;
 
   --trace: #ff9ec7;
+
+  --trace-2: #5BD1FF;  /* the second band, over the first */
   --event: #d9b8ff;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.62);
 }
@@ -640,6 +656,8 @@
   --c5: #9c7387;
 
   --trace: #b03a68;
+
+  --trace-2: #1F6FD1;  /* the second band, over the first */
   --event: #6b3fa0;
   --shadow: 0 8px 28px rgba(42, 22, 34, 0.14);
 }
@@ -686,6 +704,8 @@
   --c5: #9184ad;
 
   --trace: #c9a7ff;
+
+  --trace-2: #4EE6D6;  /* the second band, over the first */
   --event: #ff9ec7;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
 }
@@ -730,6 +750,8 @@
   --c5: #8d8296;
 
   --trace: #9be564;
+
+  --trace-2: #FF7AC8;  /* the second band, over the first */
   --event: #ff7a1a;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.65);
 
@@ -12868,6 +12890,12 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .br-chip.on .br-chip-light { background: var(--cc);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--cc) 25%, transparent); }
 
+/* The review's two bands, keyed under the Traces switch (2026-10-27). */
+.br-dual-key { display: inline-flex; align-items: center; gap: 4px 6px;
+  margin-left: 8px; font-size: var(--fs-105); color: var(--text-3); }
+.br-dual-key i { display: inline-block; width: 14px; height: 3px;
+  border-radius: 2px; }
+
 /* The plan, read again: what it said stays, quieter, until the new one. */
 .br-plan { position: relative; transition: opacity var(--dur-2, .16s); }
 .br-plan.busy > :not(.br-plan-busy):not(.section-label) { opacity: .5; }
@@ -13196,11 +13224,16 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 @media (prefers-reduced-motion: reduce) {
   .br-locked-ask .lk-sh { animation: none; }
 }
-.br-acts .cur-cat.br-is-locked { opacity: .45; }
+/* Held, not forbidden (2026-10-30): pressing it asks before overriding. */
+.br-acts .cur-cat.br-is-locked { opacity: .72; }
 
 #app.mode-lock { --mode: var(--tool-lock, #c9a86a);
   --mode-soft: color-mix(in srgb, var(--tool-lock, #c9a86a) 13%, transparent); }
 #app.mode-lock .pane-canvas-host { cursor: ew-resize; }
+/* Eye's review, Braces' own since 2026-10-30, in Eye's colour. */
+#app.mode-eye { --mode: var(--tool-eye, #b5dd5f);
+  --mode-soft: color-mix(in srgb, var(--tool-eye, #b5dd5f) 13%, transparent); }
+#app.mode-eye .pane-canvas-host { cursor: ew-resize; }
 .br-flight-line { display: flex; flex-wrap: wrap; align-items: baseline;
   gap: var(--sp-4) var(--sp-10); }
 .br-flight-line .br-hint { color: var(--text-2); font-size: var(--fs-115); }
@@ -14695,7 +14728,9 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
 /* The list keeps its scroll (`data-keep-scroll`); a row is the tick and
    the set as one label, and an already-read set's Open and Bank… beside. */
 .rc-bulk-list { margin: 0; max-height: min(52vh, 520px); }
-.inc-pick.rc-bulk-row { grid-template-columns: minmax(0, 1fr) auto;
+/* The set, the version it is read from (2026-10-30), then Open / Bank…. */
+.inc-pick.rc-bulk-row { grid-template-columns: minmax(0, 1fr) auto auto;
+                        align-items: center;
                         gap: var(--sp-8); padding: 0 10px 0 0; }
 .rc-bulk-tick { display: flex; align-items: flex-start; gap: var(--sp-10);
                 min-width: 0; padding: 6px 0 6px 10px; cursor: pointer; }

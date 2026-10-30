@@ -40,7 +40,7 @@
       ],
       "Shahriar Tafti": [
         "set",
-        "2026-10-23T13:44:27.408419+00:00"
+        "2026-10-30T15:46:26.890641+00:00"
       ],
       "Sylvia Clouse": [
         "set",
@@ -125,7 +125,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-23T13:44:27.408419+00:00",
+    "at": "2026-10-30T15:46:26.890641+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -254,12 +254,12 @@
       ],
       "at": "2026-09-08T21:24:21.570229+00:00",
       "by": "Shahriar Tafti",
-      "edited_at": "2026-10-23T13:44:27.407684+00:00",
+      "edited_at": "2026-10-30T15:46:26.890238+00:00",
       "email": "sakhava1@uvm.edu",
       "id": "Shahriar Tafti",
       "initials": "ST",
       "name": "Shahriar Tafti",
-      "role": "Graduate Student"
+      "role": "Gradstudent"
     }
   ]
 }

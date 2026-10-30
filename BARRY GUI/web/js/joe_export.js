@@ -61,6 +61,12 @@ window.JOE_EXPORT = (function () {
 .jx .jx-light.on.chk { background: var(--jcheck, #D55E00); border-color: var(--jcheck, #D55E00); border-radius: 2px; transform: rotate(45deg) scale(.85); }
 .jx .jx-status { font-size: 13.5px; color: var(--ink-2); min-height: 1.3em; margin-top: 6px; }
 .jx .jx-gsay { font-size: 13.5px; color: var(--ink-3); margin: -4px 0 6px; }
+.jx .jx-switch { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 10px 0 2px; }
+.jx .jx-methods details { border-top: 1px solid var(--line); padding: 6px 0; }
+.jx .jx-methods summary { font-weight: 600; color: var(--ink); }
+.jx .jx-methods p { font-size: 14px; max-width: 95ch; overflow-wrap: anywhere; margin: 6px 0; }
+.jx .jx-flag { border-left: 4px solid var(--jcheck, #D55E00); background: color-mix(in srgb, var(--jcheck, #D55E00) 9%, transparent);
+  padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 8px 0 10px; font-size: 14px; overflow-wrap: anywhere; }
 @media (max-width: 640px) {
   .jx .jx-fig { grid-template-columns: minmax(0, 1fr); }
   .jx .jx-thumb { max-width: 320px; }
@@ -146,28 +152,36 @@ window.JOE_EXPORT = (function () {
     }
   }
 
+  /* The correction switch (2026-10-30): Dickson's way and Part 2 come drawn
+     both ways, and one switch at the top picks which every figure shows. */
+  const SW = { mode: 'fdr', figs: [] };
+
   function tests(fg) {
     if (!fg.tests || !fg.tests.length) return null;
-    return el('div', { class: 'jx-tests', 'aria-label': 'Its three tests, FP first' }, fg.tests.map((t) => el('span', { class: 'jx-test' }, [
-      el('span', { class: 'jx-dot' + (t.pass ? ' on' : ''), 'aria-hidden': 'true' }),
-      el('span', { text: t.say + (t.pass ? ': passes' : ': does not pass') })])));
+    const pass = (t) => (t.pass && typeof t.pass === 'object' ? !!t.pass[SW.mode] : !!t.pass);
+    return el('div', { class: 'jx-tests', 'aria-label': fg.tests.length > 1 ? 'Its three tests, FP first' : 'Its test' }, fg.tests.map((t) => el('span', { class: 'jx-test' }, [
+      el('span', { class: 'jx-dot' + (pass(t) ? ' on' : ''), 'aria-hidden': 'true' }),
+      el('span', { text: t.say + (pass(t) ? ': passes' : ': does not pass') })])));
   }
 
   function figure(fg, url, preview) {
     let vi = 0;
+    const keyed = fg.views.some((v) => v.key);              // one view each side of the switch: the switch picks
     const img = el('img', { alt: fg.name, loading: 'lazy' });
     const thumb = el('a', { class: 'jx-thumb', target: '_blank', rel: 'noopener' }, [img]);
     const legend = el('div', { class: 'jx-legend' });
     const files = el('div', { class: 'jx-files' });
+    const testBox = el('div', {});
     const vbtns = [];
     function show() {
       const v = fg.views[vi];
       if (v.preview) { img.src = preview(v.preview); thumb.href = preview(v.preview); }
       legend.replaceChildren(el('p', {}, [el('b', { text: v.legend.title || '' }), ' ', v.legend.body || '']));
       files.replaceChildren(...v.files.map((f) => fileLink(f, url)).concat(fg.prism ? [fileLink(fg.prism, url)] : []));
+      testBox.replaceChildren(...[tests(fg)].filter(Boolean));
       vbtns.forEach((b, i) => b.setAttribute('aria-pressed', i === vi ? 'true' : 'false'));
     }
-    const views = fg.views.length > 1 ? el('div', { class: 'jx-views', role: 'group', 'aria-label': 'Which test the picture shows' },
+    const views = !keyed && fg.views.length > 1 ? el('div', { class: 'jx-views', role: 'group', 'aria-label': 'Which test the picture shows' },
       fg.views.map((v, i) => { const b = el('button', { type: 'button', text: v.say, on: { click: () => { vi = i; show(); } } }); vbtns.push(b); return b; }))
       : null;
     const node = el('div', { class: 'jx-fig', id: 'jx-fig-' + fg.id.replace('.', '_') }, [
@@ -175,12 +189,39 @@ window.JOE_EXPORT = (function () {
       el('div', {}, [
         el('div', { class: 'jx-figname', text: fg.name }),
         el('div', { text: fg.title || '' }),
-        tests(fg),
+        testBox,
         views,
         el('details', {}, [el('summary', { text: 'Legend' }), legend]),
         files])]);
-    show();
+    node.update = () => {
+      if (keyed) vi = Math.max(0, fg.views.findIndex((v) => v.key === SW.mode));
+      node.hidden = !!(fg.show_in && fg.show_in[SW.mode] === false);
+      show();
+    };
+    node.update();
+    SW.figs.push(node);
     return node;
+  }
+
+  function switchNode(M) {
+    if (!M.switch) return null;
+    const btns = [];
+    const set = (m) => {
+      SW.mode = m;
+      btns.forEach((b) => b.setAttribute('aria-pressed', b.dataset.mode === m ? 'true' : 'false'));
+      SW.figs.forEach((n) => n.update());
+    };
+    for (const m of ['fdr', 'raw']) {
+      const b = el('button', { type: 'button', text: M.switch[m], 'data-mode': m, 'aria-pressed': m === SW.mode ? 'true' : 'false', on: { click: () => set(m) } });
+      btns.push(b);
+    }
+    return el('div', { class: 'jx-switch' }, [el('span', { class: 'jx-muted', text: 'Dickson’s way and Part 2, stars and follow-ups:' }),
+      el('div', { class: 'jx-views', role: 'group', 'aria-label': 'Correction for many tests' }, btns)]);
+  }
+
+  function methods(list) {
+    return el('div', { class: 'jx-methods' }, list.map((s) => el('details', { open: /Waiting/.test(s.title) ? true : null }, [
+      el('summary', { text: s.title }), ...s.paras.map((t) => el('p', { text: t }))])));
   }
 
   function lights(rows) {
@@ -201,6 +242,8 @@ window.JOE_EXPORT = (function () {
     const url = opts.url || ((n) => 'files/' + encodeURIComponent(n));
     const preview = opts.preview || url;
     root.replaceChildren();
+    SW.figs = [];
+    SW.mode = (M && M.switch && M.switch.default) || 'fdr';
     const wrap = el('div', { class: 'jx' });
     root.appendChild(wrap);
     if (!M || !M.ok) {
@@ -227,14 +270,24 @@ window.JOE_EXPORT = (function () {
         el('li', { text: 'The question, from the proposal: did the cues’ effect on coherence between regions change from Precon1 to Precon4, in theta (5–12 Hz) and gamma (30–90 Hz)?' }),
         el('li', { text: 'A cue effect is the cue window’s coherence minus the baseline’s. Each ring figure has three rows: the Precon1 cue effect, the Precon4 cue effect, and the change in cue effect (Precon4’s minus Precon1’s), which is the question. Supplementary Figure S1 shows it on one pair.' }),
         el('li', { text: 'Every result is held to three tests, FP first: FP (' + (M.fp && M.fp.fake_trials ? M.fp.fake_trials.toLocaleString('en-US') + ' ' : '') + 'fake trials from the same rats’ FP1 and FP2, with no cues), the shuffles (each trial’s baseline and cue swapped at random inside its session) and the rats (every way of flipping the sign of each rat’s change, or a t-test). A filled dot is a test passed (P < 0.05).' }),
-        el('li', { text: 'No P value is corrected for the number of tests. Read them as leads to test again, not findings.' })]),
+        el('li', { text: 'No P value in the figures section is corrected for the number of tests. Read them as leads to test again, not findings.' }),
+        M.sections.some((s) => s.id === 'dickson')
+          ? el('li', { text: 'Dickson’s way asks the plan’s simpler question: did coherence in each of ten region pairs change from Precon1 to Precon4 (and between cue 1 and cue 2, and against the baseline)? A GEE decides, corrected across the ten pairs. Its coherence comes from pooled spectra: read the warning at the top of that section.' })
+          : null,
+        M.sections.some((s) => s.id === 'final')
+          ? el('li', { text: 'Part 2 is the final stage: power inside each region, the background under it, and, on the coherence results that pass, which region leads and theta–gamma coupling; with the methods written from the run. Every figure here is a PDF.' })
+          : null]),
+      M.twenty ? el('div', { class: 'jx-flag', role: 'note' }, [el('b', { text: 'Waiting for you. ' }), M.twenty]) : null,
+      switchNode(M),
       el('div', { class: 'jx-nav' }, M.sections.map((s) => el('a', { href: '#jx-' + s.id, text: s.title })))]));
     for (const s of M.sections) {
       const sFiles = filesOf(s);
       const card = el('div', { class: 'jx-card', id: 'jx-' + s.id }, [
         el('div', { class: 'jx-head' }, [el('div', {}, [el('h2', { text: s.title }), el('p', { class: 'jx-muted', text: s.say })])]),
+        s.flag ? el('div', { class: 'jx-flag', role: 'note' }, [el('b', { text: 'Read first. ' }), s.flag]) : null,
         s.files && s.files.length ? el('div', { class: 'jx-files' }, s.files.map((f) => fileLink(f, url))) : null]);
       if (s.lights) card.appendChild(lights(s.lights));
+      if (s.methods && s.methods.length) card.appendChild(el('div', {}, [el('h3', { text: 'Methods' }), methods(s.methods)]));
       if (s.groups) {
         card.appendChild(el('div', { class: 'jx-nav' }, s.groups.map((g) => el('a', { href: '#jx-g-' + g.key.replace('|', '-'), text: g.title }))));
         for (const g of s.groups) {
@@ -244,7 +297,8 @@ window.JOE_EXPORT = (function () {
           gb.addEventListener('click', () => zipDown(gf, () => '', 'Joe_figures_' + g.key.replace('|', '_') + '.zip', url, (t) => { gs.textContent = t; }, gb));
           card.appendChild(el('div', { id: 'jx-g-' + g.key.replace('|', '-') }, [
             el('div', { class: 'jx-head' }, [el('h3', { text: g.title }), gb]),
-            g.key !== 'S' && !g.gated ? el('p', { class: 'jx-gsay', text: 'Tab 8’s light did not pass here, so this group is its ring only.' }) : null,
+            g.say ? el('p', { class: 'jx-gsay', text: g.say })
+              : g.key !== 'S' && !g.gated ? el('p', { class: 'jx-gsay', text: 'Tab 8’s light did not pass here, so this group is its ring only.' }) : null,
             gs]
             .concat(g.figures.map((fg) => figure(fg, url, preview)))));
         }

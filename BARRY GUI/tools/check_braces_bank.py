@@ -119,12 +119,15 @@ try:
     check("...and how many stamps changed places",
           crossed.get("resorted"), 3)
     truthy("...in words the panel can show", crossed.get("reordered"))
-    # Nothing to do is not a version -- and not a failure either. It is
-    # what a set that is already right looks like, so it comes back as an
-    # outcome the panel can be calm about rather than as a red error.
+    # Nothing moving on a set nobody has aligned yet IS an alignment
+    # (2026-10-30): Lock with every group held wrote nothing, was marked
+    # "accepted as vnull", and Root Canal waited on it for ever. So it is a
+    # version -- and not a failure either. Nothing to do is only a set that
+    # is ALREADY aligned, looked at again (see DOING IT TWICE).
     bad = BANK.align(eid, {}, params, dry_run=True)
-    truthy("an alignment that moves nothing writes nothing",
-           bad.get("nothing_to_do"))
+    truthy("the first alignment is written even when it moves nothing",
+           bad.get("unmoved_first") and not bad.get("nothing_to_do"))
+    check("...as the next version", bad.get("next_version"), v_before + 1)
     truthy("...and is not reported as an error", not bad.get("error"))
 
     print("\nTHE WRITE")

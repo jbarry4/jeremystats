@@ -815,7 +815,12 @@ function makeAligner(cfg) {
   };
 }
 
-BARRY.eye = makeAligner({
+/* NOT BUILT ANY MORE (2026-10-30). Eye is Braces built a third time now
+   (braces.js, after Lock): "update the Eye gui to match the flow and steps
+   of braces". This was its panel; the config is kept beside the function
+   it fed so the old shape can be read, and nothing constructs it -- two
+   Eyes would both hear every key. */
+const EYE_WAS = ({
   tool: 'eye', title: 'Eye', step: 'step 3 of The Storm', type: 'ied',
   blurb: 'Put every confirmed discharge on the same part of itself, so an '
        + 'average of them is of the event and not of the jitter.',

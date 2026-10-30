@@ -1307,9 +1307,11 @@ def _sheet_name(t, used):
     return n
 
 
-def prism_files(stem, tables, what):
+def prism_files(stem, tables, what, into=None):
     """The same tables as an .xlsx (a sheet a table, after an 'About' sheet)
-    and a Prism .pzfx (a data table each); returns {"xlsx", "pzfx"}."""
+    and a Prism .pzfx (a data table each), in tab 9's folder or `into`
+    (tab 11's); returns {"xlsx", "pzfx"}."""
+    at = (lambda n: os.path.join(into, n)) if into else figs_dir
     from openpyxl import Workbook
     from xml.sax.saxutils import escape
     wb = Workbook()
@@ -1330,7 +1332,7 @@ def prism_files(stem, tables, what):
             row = ([t["rows"][i] if i < len(t["rows"]) else None] if t.get("rows") else [])
             row += [v[i] if i < len(v) else None for _c, v in t["columns"]]
             sh.append(row)
-    xl = figs_dir(stem + ".xlsx")
+    xl = at(stem + ".xlsx")
     wb.save(xl)
     # Prism's own XML (PrismXMLVersion 5.00): a OneWay (Column) table per table.
     out = ['<?xml version="1.0" encoding="UTF-8"?>',
@@ -1353,7 +1355,7 @@ def prism_files(stem, tables, what):
                        + "".join('<d/>' if v is None else '<d>%s</d>' % repr(v) for v in vals) + '</Subcolumn></YColumn>')
         out.append('</Table>')
     out.append('</GraphPadPrismFile>')
-    pz = figs_dir(stem + ".pzfx")
+    pz = at(stem + ".pzfx")
     with open(pz, "w", encoding="utf-8") as fh:
         fh.write("\n".join(out))
     return {"xlsx": os.path.basename(xl), "pzfx": os.path.basename(pz)}

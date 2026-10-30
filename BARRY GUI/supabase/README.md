@@ -12,7 +12,15 @@ more than once.
 | `01_schema.sql` | the tables, indexes, the newest-wins trigger, two views |
 | `02_rls.sql` | locks it down — **read the note at the top of that file** |
 | `03_storage.sql` | the `results` bucket for figures |
-| `04`–`23` | everything since, in number order; the Sync panel names any the database is missing |
+| `04`–`24` | everything since, in number order; the Sync panel names any the database is missing |
+
+`24_arrival_clock.sql` (2026-10-30) gives every table `synced_at`, the
+database's own arrival time, and pulls ask by it. Before it, a row pushed
+late (a minute's cycle, a clock behind) was never pulled by a computer
+whose cursor had passed its stamp, which is why a GitHub push was the only
+thing that worked. It also adds `aligned` and `by_label` to `bank_entries`.
+Jarvis switches over on its own; its first pull afterwards reads every
+table once.
 
 `21_shard_files.sql` (2026-10-06) lets Braces sets and AI Beta runs reach the
 other machines without a git pull; until it is run they travel by git only,
