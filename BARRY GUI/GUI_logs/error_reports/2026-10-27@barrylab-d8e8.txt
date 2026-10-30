@@ -1,0 +1,151 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-10-27
+computer    Strawbarry (barrylab-d8e8)
+person      Rain Younger
+build       2026.10.27.1 8d803f4e
+written     2026-10-27T18:17:52-04:00
+faults      4 error(s), 1 distinct
+activity    973 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x4    15:03:32-15:03:52  braces/decide: This alignment was already accepted as version 3. Run it again to propose something different.
+
+==========================================================================
+1/1  braces/decide  x4
+==========================================================================
+first       2026-10-27T15:03:32-04:00
+latest      2026-10-27T15:03:52-04:00
+who         Rain Younger
+signature   braces/decide||This alignment was already accepted as version N. Run it again to propose something different.
+
+message
+    This alignment was already accepted as version 3. Run it again to propose something different.
+
+context
+    set_id             br39b1caa1dc
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 7379, in api_braces_decide
+        rec = BRACES.decide(set_id, calls or {}, by=_braces_who(body))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\shards.py", line 173, in go
+        return fn(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\bracesset.py", line 210, in decide
+        raise BracesSetError(
+    backend.bracesset.BracesSetError: This alignment was already accepted as version 3. Run it again to propose something different.
+
+--- around 2026-10-27T15:03:32-04:00 ---
+    14:59:57   -214.8s  mode.change  [xplore]  {"from":"lock","since_gesture_ms":158,"to":null,"via":"wireMode/<@http://127.0.0.1:8733/js/core.js?v=18e26aed27d451b4:2261:13 < "}
+    15:00:26   -186.0s  braces.batch  {"force":false,"n":1,"settings":{"band_kind":"ds","estimator":"sd","measure":"csd","window_ms":200}}
+    15:00:39   -172.1s  braces.enter  [toolkit]  {"path":"E:\\Data\\m34s5jun10\\2024-06-10_14-45-34","set":"br39b1caa1dc","step":"opening"}
+    15:00:40   -171.8s  session.open  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"channels":64,"duration_s":1295.9744,"fs":30000,"path":"E:\\Data\\m34s5jun10\\2024-06-10_14-45-34","restored":["3 bad channel(s)","view restored"]}
+    15:00:40   -171.8s  braces.enter  [xplore]  {"set":"br39b1caa1dc","step":"opened","view":"xplore"}
+    15:00:40   -171.8s  mode.change  [xplore]  {"from":null,"since_gesture_ms":526,"to":"lock","via":""}
+    15:00:40   -171.7s  events.import  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    15:00:40   -171.7s  braces.enter  [xplore]  {"set":"br39b1caa1dc","step":"laid out","view":"xplore"}
+    15:00:40   -171.7s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1159.5337}
+    15:00:40   -171.7s  braces.enter  [xplore]  {"n":221,"set":"br39b1caa1dc","step":"ready","view":"xplore"}
+    15:00:40   -171.5s  link.scope  [pipeline]  {"scope":"session"}
+    15:00:41   -170.9s  session.open  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"channels":64,"duration_s":1295.9744,"fs":30000,"path":"E:\\Data\\m34s5jun10\\2024-06-10_14-45-34","restored":["3 bad channel(s)","view restored"]}
+    15:00:42   -169.7s  events.import  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    15:01:29   -122.0s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1163.7343}
+    15:01:36   -115.9s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1203.4255}
+    15:01:41   -110.1s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1213.9542}
+    15:01:50   -101.4s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1215.6877}
+    15:03:32     +0.0s  >>> braces/decide: This alignment was already accepted as version 3. Run it again to propose something different.
+    15:03:40     +8.5s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1215.6877}
+    15:03:58    +26.8s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1215.6877}
+    15:04:04    +32.5s  mode.change  [xplore]  {"from":"lock","since_gesture_ms":112,"to":null,"via":"wireMode/<@http://127.0.0.1:8733/js/core.js?v=18e26aed27d451b4:2261:13 < "}
+    15:04:37    +65.1s  braces.enter  [toolkit]  {"path":"Y:\\ProcessedPtenData\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45","set":"brf33775193e","step":"opening"}
+    15:04:37    +65.1s  braces.enter  [xplore]  {"set":"brf33775193e","step":"opened","view":"xplore"}
+    15:04:37    +65.1s  mode.change  [xplore]  {"from":null,"since_gesture_ms":79,"to":"lock","via":""}
+    15:04:37    +65.2s  braces.enter  [xplore]  {"set":"brf33775193e","step":"laid out","view":"xplore"}
+    15:04:37    +65.2s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":470.3057}
+    15:04:37    +65.2s  braces.enter  [xplore]  {"n":571,"set":"brf33775193e","step":"ready","view":"xplore"}
+    15:04:37    +65.5s  link.scope  [pipeline]  {"scope":"session"}
+    15:04:38    +66.4s  session.open  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"channels":64,"duration_s":2415.991466666667,"fs":30000,"path":"Y:\\ProcessedPtenData\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45","restored":["1 bad channel(s)","view restored"]}
+    15:04:38    +66.5s  events.import  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    15:04:52    +80.4s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":470.3057}
+    15:05:08    +96.4s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":912.6896}
+    15:05:15   +103.9s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":972.5983}
+    (1 later action(s) in the window not shown)
+
+--- around 2026-10-27T15:03:50-04:00 ---
+    14:59:57   -232.8s  mode.change  [xplore]  {"from":"lock","since_gesture_ms":158,"to":null,"via":"wireMode/<@http://127.0.0.1:8733/js/core.js?v=18e26aed27d451b4:2261:13 < "}
+    15:00:26   -204.0s  braces.batch  {"force":false,"n":1,"settings":{"band_kind":"ds","estimator":"sd","measure":"csd","window_ms":200}}
+    15:00:39   -190.1s  braces.enter  [toolkit]  {"path":"E:\\Data\\m34s5jun10\\2024-06-10_14-45-34","set":"br39b1caa1dc","step":"opening"}
+    15:00:40   -189.8s  session.open  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"channels":64,"duration_s":1295.9744,"fs":30000,"path":"E:\\Data\\m34s5jun10\\2024-06-10_14-45-34","restored":["3 bad channel(s)","view restored"]}
+    15:00:40   -189.8s  braces.enter  [xplore]  {"set":"br39b1caa1dc","step":"opened","view":"xplore"}
+    15:00:40   -189.8s  mode.change  [xplore]  {"from":null,"since_gesture_ms":526,"to":"lock","via":""}
+    15:00:40   -189.7s  events.import  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    15:00:40   -189.7s  braces.enter  [xplore]  {"set":"br39b1caa1dc","step":"laid out","view":"xplore"}
+    15:00:40   -189.7s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1159.5337}
+    15:00:40   -189.7s  braces.enter  [xplore]  {"n":221,"set":"br39b1caa1dc","step":"ready","view":"xplore"}
+    15:00:40   -189.5s  link.scope  [pipeline]  {"scope":"session"}
+    15:00:41   -188.9s  session.open  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"channels":64,"duration_s":1295.9744,"fs":30000,"path":"E:\\Data\\m34s5jun10\\2024-06-10_14-45-34","restored":["3 bad channel(s)","view restored"]}
+    15:00:42   -187.7s  events.import  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    15:01:29   -140.0s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1163.7343}
+    15:01:36   -133.9s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1203.4255}
+    15:01:41   -128.1s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1213.9542}
+    15:01:50   -119.4s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1215.6877}
+    15:03:40     -9.5s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1215.6877}
+    15:03:50     +0.0s  >>> braces/decide: This alignment was already accepted as version 3. Run it again to propose something different.
+    15:03:58     +8.8s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1215.6877}
+    15:04:04    +14.5s  mode.change  [xplore]  {"from":"lock","since_gesture_ms":112,"to":null,"via":"wireMode/<@http://127.0.0.1:8733/js/core.js?v=18e26aed27d451b4:2261:13 < "}
+    15:04:37    +47.1s  braces.enter  [toolkit]  {"path":"Y:\\ProcessedPtenData\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45","set":"brf33775193e","step":"opening"}
+    15:04:37    +47.1s  braces.enter  [xplore]  {"set":"brf33775193e","step":"opened","view":"xplore"}
+    15:04:37    +47.1s  mode.change  [xplore]  {"from":null,"since_gesture_ms":79,"to":"lock","via":""}
+    15:04:37    +47.2s  braces.enter  [xplore]  {"set":"brf33775193e","step":"laid out","view":"xplore"}
+    15:04:37    +47.2s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":470.3057}
+    15:04:37    +47.2s  braces.enter  [xplore]  {"n":571,"set":"brf33775193e","step":"ready","view":"xplore"}
+    15:04:37    +47.5s  link.scope  [pipeline]  {"scope":"session"}
+    15:04:38    +48.4s  session.open  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"channels":64,"duration_s":2415.991466666667,"fs":30000,"path":"Y:\\ProcessedPtenData\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45","restored":["1 bad channel(s)","view restored"]}
+    15:04:38    +48.5s  events.import  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    15:04:52    +62.4s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":470.3057}
+    15:05:08    +78.4s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":912.6896}
+    15:05:15    +85.9s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":972.5983}
+    15:05:30   +100.8s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":1291.3308}
+
+--- around 2026-10-27T15:03:52-04:00 ---
+    14:59:57   -234.8s  mode.change  [xplore]  {"from":"lock","since_gesture_ms":158,"to":null,"via":"wireMode/<@http://127.0.0.1:8733/js/core.js?v=18e26aed27d451b4:2261:13 < "}
+    15:00:26   -206.0s  braces.batch  {"force":false,"n":1,"settings":{"band_kind":"ds","estimator":"sd","measure":"csd","window_ms":200}}
+    15:00:39   -192.1s  braces.enter  [toolkit]  {"path":"E:\\Data\\m34s5jun10\\2024-06-10_14-45-34","set":"br39b1caa1dc","step":"opening"}
+    15:00:40   -191.8s  session.open  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"channels":64,"duration_s":1295.9744,"fs":30000,"path":"E:\\Data\\m34s5jun10\\2024-06-10_14-45-34","restored":["3 bad channel(s)","view restored"]}
+    15:00:40   -191.8s  braces.enter  [xplore]  {"set":"br39b1caa1dc","step":"opened","view":"xplore"}
+    15:00:40   -191.8s  mode.change  [xplore]  {"from":null,"since_gesture_ms":526,"to":"lock","via":""}
+    15:00:40   -191.7s  events.import  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    15:00:40   -191.7s  braces.enter  [xplore]  {"set":"br39b1caa1dc","step":"laid out","view":"xplore"}
+    15:00:40   -191.7s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1159.5337}
+    15:00:40   -191.7s  braces.enter  [xplore]  {"n":221,"set":"br39b1caa1dc","step":"ready","view":"xplore"}
+    15:00:40   -191.5s  link.scope  [pipeline]  {"scope":"session"}
+    15:00:41   -190.9s  session.open  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"channels":64,"duration_s":1295.9744,"fs":30000,"path":"E:\\Data\\m34s5jun10\\2024-06-10_14-45-34","restored":["3 bad channel(s)","view restored"]}
+    15:00:42   -189.7s  events.import  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    15:01:29   -142.0s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1163.7343}
+    15:01:36   -135.9s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1203.4255}
+    15:01:41   -130.1s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1213.9542}
+    15:01:50   -121.4s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1215.6877}
+    15:03:40    -11.5s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1215.6877}
+    15:03:52     +0.0s  >>> braces/decide: This alignment was already accepted as version 3. Run it again to propose something different.
+    15:03:58     +6.8s  window.change  [xplore]  rec=m034_s005_2024-06-10_14-45-34  {"scope":"session","span":1,"t0":1215.6877}
+    15:04:04    +12.5s  mode.change  [xplore]  {"from":"lock","since_gesture_ms":112,"to":null,"via":"wireMode/<@http://127.0.0.1:8733/js/core.js?v=18e26aed27d451b4:2261:13 < "}
+    15:04:37    +45.1s  braces.enter  [toolkit]  {"path":"Y:\\ProcessedPtenData\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45","set":"brf33775193e","step":"opening"}
+    15:04:37    +45.1s  braces.enter  [xplore]  {"set":"brf33775193e","step":"opened","view":"xplore"}
+    15:04:37    +45.1s  mode.change  [xplore]  {"from":null,"since_gesture_ms":79,"to":"lock","via":""}
+    15:04:37    +45.2s  braces.enter  [xplore]  {"set":"brf33775193e","step":"laid out","view":"xplore"}
+    15:04:37    +45.2s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":470.3057}
+    15:04:37    +45.2s  braces.enter  [xplore]  {"n":571,"set":"brf33775193e","step":"ready","view":"xplore"}
+    15:04:37    +45.5s  link.scope  [pipeline]  {"scope":"session"}
+    15:04:38    +46.4s  session.open  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"channels":64,"duration_s":2415.991466666667,"fs":30000,"path":"Y:\\ProcessedPtenData\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45","restored":["1 bad channel(s)","view restored"]}
+    15:04:38    +46.5s  events.import  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    15:04:52    +60.4s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":470.3057}
+    15:05:08    +76.4s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":912.6896}
+    15:05:15    +83.9s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":972.5983}
+    15:05:30    +98.8s  window.change  [xplore]  rec=m060_s001_2025-07-10_11-41-45  {"scope":"session","span":1,"t0":1291.3308}
