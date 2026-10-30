@@ -139,9 +139,14 @@ def _slim_versions(versions):
     for v in (versions or []):
         if not isinstance(v, dict):
             continue
+        # Its id and what it was built on too (2026-10-30): without them a
+        # version arrived as a bare number, was dropped wherever that number
+        # had been minted already, and took a different name and place in
+        # the tree than it had where it was made.
         row = {k: v.get(k) for k in
                ("v", "at", "by", "n", "note", "by_label", "machine",
-                "imported", "tag")
+                "imported", "tag", "id", "from_v", "from_id", "retimed",
+                "shifted")
                if v.get(k) is not None}
         # Whether it is an alignment, and by which tool (2026-10-26): the
         # mark Lock reads to tell Braces' stamps, which never travelled, so
@@ -262,6 +267,27 @@ def _ts_key(stamp):
         return datetime.fromisoformat(cloud.ts(stamp) or UNSTAMPED)
     except (TypeError, ValueError):
         return datetime.fromisoformat(UNSTAMPED)
+
+
+#: How far each pull reaches back past its cursor (see `Sync.pull`). On the
+#: database's own arrival clock (migration 24) only a transaction still
+#: committing as the last pull read can be behind it. On the writers'
+#: clocks it is how late a push may land -- a minute's cycle, a retry, a
+#: clock a little behind -- and still be seen. Kept short: a table that
+#: moved inside the margin is asked again next cycle, and a bank row
+#: carries its events (memory: egress is requests and big rows).
+ARRIVAL_SLACK_S = 30
+UPDATED_SLACK_S = 180
+
+
+def _minus(stamp, seconds):
+    """`stamp` less `seconds`, as the ISO text a PostgREST filter takes."""
+    from datetime import timedelta
+    try:
+        when = datetime.fromisoformat(cloud.ts(stamp) or UNSTAMPED)
+    except (TypeError, ValueError):
+        return stamp
+    return (when - timedelta(seconds=seconds)).isoformat()
 
 
 def _after(stamp, since):
@@ -615,6 +641,12 @@ class Sync:
                 # in the JSON shard, which is the redundancy copy.
                 "versions": _slim_versions(rec.get("versions")),
                 "version": _int(rec.get("version")),
+                # What the live set is aligned to, and its label mix
+                # (2026-10-30), so a machine taking on another's live set
+                # (`EventBank.absorb_live`) takes these with it. Columns of
+                # migration 24; dropped from the push until it is run.
+                "aligned": rec.get("aligned") or None,
+                "by_label": rec.get("by_label") or None,
                 # The newest thing that happened to it, not the moment it was
                 # created. This was `added.at`, so an entry that was edited
                 # afterwards never looked new to the incremental push and
@@ -2224,7 +2256,6 @@ class Sync:
         """
         state = self.cloud.state()
         since = since or state.get("last_pull")
-        q = ("updated_at=gt.%s" % since) if since else ""
         applied, newest = {}, since
 
         missing = []
@@ -2248,23 +2279,66 @@ class Sync:
         # Never an error: a sync that refuses to work until a migration has
         # been applied everywhere is a sync that stops working for the
         # person who did not apply it.
+        # WHICH CLOCK THE CURSOR RUNS ON (2026-10-30).
+        #
+        # `updated_at` is the WRITER's clock, and the cursor used to be the
+        # newest one seen. So a row made on Strawbarry at 10:00:00 and pushed
+        # at 10:00:40 was never pulled by a Bluebarry whose cursor had already
+        # reached 10:00:20 -- from its own rows, pulled back, or anybody
+        # else's. Nothing retried it and nothing said so: "only pushing
+        # changes via GitHub works". The table's watermark could not see it
+        # either, because a late row with an older stamp does not move a max.
+        #
+        # Migration 24 gives every table `synced_at`, the DATABASE's clock
+        # when the row arrived or changed, and puts the database's own time
+        # in the view (`_clock`). Where it is in, the cursor is that time as
+        # the view was read (`last_arrival`): everything that arrives after
+        # it is asked for next cycle, whatever the writer stamped on it.
+        #
+        # Either way the question overlaps the last answer by a margin: every
+        # applier here only adds or keeps the newer, so a row seen twice
+        # costs nothing and a row never seen costs somebody's work. On the
+        # arrival clock the margin covers a transaction still committing
+        # (ARRIVAL_SLACK_S). On the writers' clocks it covers a push that
+        # lands late (UPDATED_SLACK_S) -- for that long after the cursor last
+        # moved, and no longer, or a quiet table would be asked every cycle.
+        arrival = state.get("last_arrival")
+        clock, cursor = "updated_at", since
+        if since != getattr(self, "_cursor_was", None):
+            self._cursor_was, self._cursor_moved = since, time.time()
+        slack = (UPDATED_SLACK_S
+                 if time.time() - getattr(self, "_cursor_moved", 0.0)
+                 < UPDATED_SLACK_S else 0)
+        db_now = None
         fresh = None
         listed = set()
-        if since:
+        marks = None
+        if since or arrival:
             try:
                 marks = self.cloud.select("barry_watermarks", "", limit=100)
-                fresh = set()
-                for row in (marks or []):
-                    listed.add(row.get("table_name"))
-                    at = row.get("updated_at")
-                    # As times, not text (see _after): a stamp with no
-                    # microseconds sorts wrongly against one with them.
-                    if at and _after(at, since):
-                        fresh.add(row.get("table_name"))
             except Exception as exc:                     # noqa: BLE001
                 if not _absent(exc):
                     raise
-                fresh = None                 # no view here; ask each table
+                marks = None                 # no view here; ask each table
+        if marks and all("synced_at" in (row or {}) for row in marks):
+            # The first pull on the arrival clock has no cursor on it, and
+            # starts from the beginning: once, and it is what brings back
+            # every row the old cursor stepped over.
+            clock, cursor, slack = "synced_at", arrival, ARRIVAL_SLACK_S
+            db_now = next((row.get("synced_at") for row in marks
+                           if row.get("table_name") == "_clock"), None)
+            marks = [row for row in marks if row.get("table_name") != "_clock"]
+        lower = (_minus(cursor, slack) if slack else cursor) if cursor else None
+        q = ("%s=gt.%s" % (clock, lower)) if lower else ""
+        if marks is not None and lower:
+            fresh = set()
+            for row in marks:
+                listed.add(row.get("table_name"))
+                at = row.get(clock)
+                # As times, not text (see _after): a stamp with no
+                # microseconds sorts wrongly against one with them.
+                if at and _after(at, lower):
+                    fresh.add(row.get("table_name"))
         # The figure list is worth reading again only when it moved.
         if fresh is None or "results" in fresh:
             self.results_moved = True
@@ -2276,11 +2350,15 @@ class Sync:
                         >= 600)
         # Their own cursor: the shared one moves on every cycle, and a table
         # asked every ten minutes with it would miss what landed between.
-        unlisted_since = getattr(self, "_unlisted_since", None) or since
-        uq = ("updated_at=gt.%s" % unlisted_since) if unlisted_since else ""
+        # On the clock the rest is on -- a cursor kept on the other one would
+        # be compared with the wrong column.
+        uf = getattr(self, "_unlisted_from", None)
+        if not uf or uf[0] != clock:
+            uf = (clock, cursor)
+        uq = ("%s=gt.%s" % (clock, _minus(uf[1], slack))) if uf[1] else ""
         if unlisted_due:
             self._unlisted_at = time.time()
-            self._unlisted_since = since
+            self._unlisted_from = (clock, cursor)
 
         def fetch(table, columns=None):
             # Skipped entirely when the watermark says this table has not
@@ -2297,6 +2375,12 @@ class Sync:
             # it used to report the single word "pulling" for all of them.
             if on_table:
                 on_table(table)
+            # A key-only read still brings the arrival time, or a table that
+            # alone moved would never move the cursor on and be asked again
+            # every cycle.
+            if (columns and clock == "synced_at"
+                    and "synced_at" not in columns.split(",")):
+                columns = columns + ",synced_at"
             try:
                 rows = self.cloud.select_all(table, tq, columns=columns)
             except Exception as exc:                     # noqa: BLE001
@@ -2318,9 +2402,14 @@ class Sync:
                 if got and (not newest_holder[0]
                             or _ts_key(got) > _ts_key(newest_holder[0])):
                     newest_holder[0] = got
+                came = r.get("synced_at")
+                if came and (not arrival_holder[0]
+                             or _ts_key(came) > _ts_key(arrival_holder[0])):
+                    arrival_holder[0] = came
             return rows
 
         newest_holder = [newest]
+        arrival_holder = [arrival]
 
         sessions = fetch("sessions")
         applied["sessions"] = self._apply_sessions(sessions)
@@ -2356,11 +2445,20 @@ class Sync:
         if on_progress:
             on_progress(applied)
 
-        self.cloud.save_state({"last_pull": newest_holder[0] or cloud.now()})
+        keep = {"last_pull": newest_holder[0] or cloud.now()}
+        if clock == "synced_at":
+            # The database's time as the view was read, taken BEFORE the
+            # rows were: anything landing while they were read is after it.
+            # Without `_clock`, the newest arrival seen.
+            got = db_now or arrival_holder[0]
+            if got:
+                keep["last_arrival"] = got
+        self.cloud.save_state(keep)
         if missing:
             applied["_missing_tables"] = missing
         out = {"applied": applied, "since": since,
-               "through": newest_holder[0]}
+               "through": newest_holder[0], "clock": clock,
+               "arrival": arrival_holder[0]}
         # A version that disagrees with itself across machines is a fault,
         # not a merge. It rides out with the result so it is on screen
         # rather than in a log nobody opens.
@@ -2992,12 +3090,23 @@ class Sync:
             # arrived in the row and was thrown away -- which is why a new
             # v# only showed up after a git pull.
             if r.get("id") in have:
+                # And its live set (2026-10-30): the events, the curated flag
+                # and the alignment a bank write elsewhere changed, which
+                # only a git pull used to bring -- "results banked in
+                # Panning don't show up in Lock unless a github sync is
+                # done". Measured against this entry's last change BEFORE
+                # the versions are absorbed, which move it.
+                before = _bank_touched(have[r.get("id")])
                 try:
                     got = self.bank.absorb_versions(
                         r.get("id"), r.get("versions") or [],
                         r.get("version"))
                     if got:
                         n += got
+                except Exception:        # noqa: BLE001
+                    pass
+                try:
+                    n += self.bank.absorb_live(r.get("id"), r, before)
                 except Exception:        # noqa: BLE001
                     pass
                 continue
@@ -3021,6 +3130,9 @@ class Sync:
                     "added_by": r.get("added_by"),
                     "curated": bool(r.get("specified")),
                     "curation_label": r.get("curation_label"),
+                    # Migration 24's columns, where the row has them.
+                    "aligned": r.get("aligned") or None,
+                    "by_label": r.get("by_label") or None,
                 })
                 # And the history it arrived with, or a brand new entry
                 # would show as v0 on this machine while the machine that

@@ -93,6 +93,7 @@ function makeBraces(cfg) {
     allVacc: null,
     find: '',           // the search over the list
     rev: 0,             // bumped when what the rows say has changed
+    rows: 0,            // bumped when one row was drawn again in place
   };
   /* The batches the server is running or has just run, from
      `/api/braces/inflight` -- the server's, not this page's, so leaving the
@@ -144,6 +145,48 @@ function makeBraces(cfg) {
       if (!presets) loadPresets().then(() => { if (!job) render(); });
     }
     if (!cands) await loadCandidates();
+    else freshen();
+  }
+
+  /* THE LIST, READ AGAIN ON EVERY VISIT (2026-10-30: "results banked in
+     Panning do not show up in Lock unless a github sync is done ... even
+     when Panning was banked on the same PC"). The sets were read once per
+     page and kept, so anything banked after Lock was first opened -- here
+     or anywhere -- stayed out of it until Jarvis was restarted, which a
+     push happened to do. Asked in the background; the panel is drawn again
+     only when the answer differs, and the alignments list with it. */
+  let freshening = false;
+  async function freshen() {
+    if (freshening || job) return;
+    freshening = true;
+    let got = null;
+    try {
+      got = await api('/api/braces/candidates?type=' + cfg.type,
+                      { priority: 'background' });
+    } catch (e) { /* the list on screen stands */ }
+    freshening = false;
+    if (cfg.pin) loadAllSets();
+    if (!got) return;
+    const all = got.sets || [];
+    const next = cfg.sorted ? all.filter(cfg.sorted) : all;
+    const sig = (l) => JSON.stringify((l || []).map((c) => [
+      c.id, c.current_name, (c.versions || []).length, c.n_good]));
+    if (sig(next) === sig(cands) && all.length - next.length === unsorted) {
+      return;
+    }
+    cands = next;
+    unsorted = all.length - next.length;
+    bulk.rev += 1;
+    // Not over a proposal or a read: nothing on those screens is the list.
+    if (set_ || job || bench || view) return;
+    if (q.entry && !cands.some((c) => c.id === q.entry)) {
+      q.entry = cands.length ? (cands.find((c) => c.gid) || cands[0]).id : null;
+      q.from_version = null; q.channels = null; q.hold = null;
+      render();
+      if (q.entry) refreshPlan();
+      return;
+    }
+    render();
   }
 
   /* What the cluster can read -- which decides the rows Many can send to
@@ -454,8 +497,27 @@ function makeBraces(cfg) {
   /* ==================================================================
      Deciding
      ================================================================== */
+  /* An accepted proposal is the record of the version it became, and the
+     server refuses any call on it. Autobank accepts it the moment the last
+     flagged stamp has its call, so the next key pressed in the same breath
+     was a red error, pressed again and again (2026-10-27, four times in
+     twenty seconds on Strawbarry, twice elsewhere). Said here instead, once,
+     as what it is. */
+  let saidAccepted = null;
+  function accepted() {
+    const c = set_ && set_.set && set_.set.committed;
+    if (!c) return false;
+    if (saidAccepted !== set_.set.set_id) {
+      saidAccepted = set_.set.set_id;
+      toast('Already banked as version ' + c.version + ', so this pass is '
+            + 'the record of it and is not changed. To change a stamp, run '
+            + cfg.name + ' again on that version.', null, 9000);
+    }
+    return true;
+  }
+
   async function decide(n, call, t) {
-    if (!set_) return;
+    if (!set_ || accepted()) return;
     try {
       /* A null call means "forget what was said about this row", and the
          route only reads `call` when it is not null -- so undoing has to go
@@ -463,7 +525,9 @@ function makeBraces(cfg) {
          drop one. Sent as a single-row map rather than a second route. */
       const body = (call == null)
         ? { calls: { [String(n)]: null } }
-        : { row: n, call: call, t: t };
+        : { row: n, call: call, t: t,
+            // A held stamp only gets here once somebody overrode the hold.
+            override: isLocked(n) && overridden(n) ? true : undefined };
       const got = await apiPost(
         '/api/braces/set/' + encodeURIComponent(set_.set.set_id) + '/decide',
         body);
@@ -1366,11 +1430,12 @@ function makeBraces(cfg) {
     return f.hp + '–' + f.lp + ' Hz' + (f.notch ? ', ' + f.notch + ' Hz out' : '');
   }
 
-  /* The traces in the review, through either band or both at once: the
-     first traces pane takes the band; "Both" puts a second traces pane
-     beside it through the other one, marked so it can be taken away again.
-     Remembered per tool, as a way of looking rather than a fact about a
-     set. */
+  /* The traces in the review, through either band or both at once. Both
+     is two lines on one trace, the IED band drawn over the dentate-spike
+     one in its own colour (2026-10-27: "two overlapping lines, not two
+     separate windows"), in every traces pane of the recording -- the
+     support window's too, which learns it from the pointer. Remembered per
+     tool, as a way of looking rather than a fact about a set. */
   const TRACE_KEY = () => cfg.tool + '_trace_band';
   function setTraceBand(id) {
     if (!view) return;
@@ -1379,25 +1444,33 @@ function makeBraces(cfg) {
     loadPresets().then(() => {
       if (!view) return;
       const xp = BARRY.views.xplore;
-      const panes = ((xp.state || {}).panes || []).map((x) => Object.assign({}, x));
+      const panes = (xp.state || {}).panes || [];
+      // A second pane from the two-window version of this, put away.
       const own = panes.findIndex((x) => x.brBand);
-      const first = panes.findIndex((x) => x.panel === 'traces' && !x.brBand);
-      if (first < 0) return;
-      const main = id === 'ied' ? 'ied' : 'ds';
-      if (id === 'both') {
-        panes[first].filt = presetFilt('ds');
-        if (own < 0) {
-          panes.splice(first + 1, 0, { panel: 'traces', filt: presetFilt('ied'),
-                                       brBand: 'ied' });
-        }
-        xp.setPanes(panes, { col: 0.5, row: 0.5 });
-      } else if (own >= 0) {
-        panes.splice(own, 1);
-        panes[first].filt = presetFilt(main);
-        xp.setPanes(panes, { col: 0.5, row: 0.5 });
-      } else if (xp.paneFilter) {
-        xp.paneFilter(first, presetFilt(main));
+      if (own >= 0) {
+        xp.setPanes(panes.filter((x, i) => i !== own)
+                         .map((x) => Object.assign({}, x)),
+                    { col: 0.5, row: 0.5 });
       }
+      const main = presetFilt(id === 'ied' ? 'ied' : 'ds');
+      // For Both, the IED band over the dentate-spike one. Set on the
+      // recording first, so the reads below fetch both.
+      const want = id === 'both' ? presetFilt('ied') : null;
+      const dualMoved = JSON.stringify(want)
+                        !== JSON.stringify(view.sess.dual || null);
+      view.sess.dual = want;
+      // Every traces pane through the main band, through the Filter menu's
+      // own route, so its header says so and it reads again.
+      let read = false;
+      (xp.state.panes || []).forEach((x, i) => {
+        if (x.panel !== 'traces') return;
+        if (JSON.stringify(x.filt || null) !== JSON.stringify(main)
+            && xp.paneFilter) {
+          xp.paneFilter(i, main);
+          read = true;
+        }
+      });
+      if (dualMoved && !read && xp.refreshAll) xp.refreshAll();
       // Every pane drawn again carries the marks, and the aid window
       // follows the pointer as before.
       view.sig = null;
@@ -1733,7 +1806,8 @@ function makeBraces(cfg) {
     const nTick = ok.filter((x) => bulk.want[x.c.id]).length;
     BARRY.ui.sections(node.querySelector('.br-many-parts'), [
       { key: 'tools', enter: false,
-        sig: [bulk.rev, bulk.find, nTick, q.measure, q.window_ms, q.band],
+        sig: [bulk.rev, bulk.rows, bulk.find, nTick, q.measure, q.window_ms,
+              q.band],
         build: () => pickTools(ok, shown) },
       { key: 'list', enter: false,
         sig: [bulk.rev, bulk.find, (cands || []).length, q.measure,
@@ -1845,8 +1919,7 @@ function makeBraces(cfg) {
         onpick: (v) => {
           if (!v) return;
           bulk.pick[c.id] = v.ref;
-          bulk.rev += 1;
-          render();
+          redrawRow(c, row, '.vbtn');
         },
       }) : el('span', { class: 'br-hint', text: 'no readable version' }),
       /* Lock: the stamps Braces placed, locked or not, per set -- right
@@ -1879,6 +1952,25 @@ function makeBraces(cfg) {
         : el('span', { class: 'br-bulk-none' }),
     ]);
     return row;
+  }
+
+  /* One row of Many drawn again where it stands (2026-10-27: "after
+     selecting the version here it scrolls back to the top"). A version
+     picked or a group held changes that row and the counts, not which rows
+     there are, so the list is not rebuilt and its scroll is never at stake.
+     `focus` is what had it in the old row, given back in the new one. */
+  function redrawRow(c, node, focus) {
+    const row = node && node.closest ? node.closest('.br-bulk-row') : null;
+    if (row && row.isConnected) {
+      const fresh = manyRow(c, reachOf(c));
+      row.replaceWith(fresh);
+      const f = focus ? fresh.querySelector(focus) : null;
+      if (f) { try { f.focus({ preventScroll: true }); } catch (e) { /* gone */ } }
+      bulk.rows += 1;
+    } else {
+      bulk.rev += 1;
+    }
+    render();
   }
 
   /* Whether a set in Many keeps Braces' stamps: yes, wherever it has any,
@@ -1917,8 +2009,7 @@ function makeBraces(cfg) {
             bulk.hold[c.id] = cleanHold(held ? now.filter((x) => x !== g)
                                              : now.concat([g]));
             face();
-            bulk.rev += 1;
-            render();
+            redrawRow(c, box, '.br-bulk-og[data-g="' + g + '"]');
           },
         }, [
           held ? el('span', { class: 'br-lock-ico sm', html: LOCK_SVG }) : null,
@@ -1964,10 +2055,10 @@ function makeBraces(cfg) {
               !!(BARRY.vacc && (BARRY.vacc.last || {}).configured)],
         build: () => runSettings(run) },
       { key: 'cost', enter: false,
-        sig: [picks, bulk.rev, q.measure, q.window_ms, q.band, bulk.force,
-              allVaccOn(), run],
+        sig: [picks, bulk.rev, bulk.rows, q.measure, q.window_ms, q.band,
+              bulk.force, allVaccOn(), run],
         build: costLine },
-      { key: 'go', enter: false, sig: [picks, bulk.rev, run],
+      { key: 'go', enter: false, sig: [picks, bulk.rev, bulk.rows, run],
         build: manyGo },
     ]);
   }
@@ -3001,18 +3092,35 @@ function makeBraces(cfg) {
   }
 
   /* How many stamps a bank would move: a row moves if what it would land
-     on differs from where it started. Counted the way the write counts it. */
+     on differs from where it started. Counted the way the write counts it
+     -- `bracesset.settled`, rule for rule. A row whose peak is where it
+     already sits (`same`) stays even when `now` is a sample off: counting
+     it here is what banked a Lock set that moved nothing and came back
+     "accepted as vnull" (2026-10-30). */
   function pendingMoves() {
     const s = set_ && set_.set;
     if (!s) return 0;
     return (s.rows || []).filter((r, i) => {
       const said = callFor(i);
-      if (said === 'keep') return false;
+      if (said === 'keep' || said === 'garbage') return false;
+      const prop = (r.now != null && !r.same) ? r.now : r.was;
       const to = (said === 'move' && (s.calls || {})[String(i)])
         ? (s.calls || {})[String(i)].t
-        : (r.now == null ? r.was : r.now);
+        : said === 'confirm' ? prop
+          : r.flag ? r.was : prop;
       return Math.abs(to - r.was) > 1e-9;
     }).length;
+  }
+
+  /* Whether banking would write anything: a stamp moved, one thrown out
+     here, or -- the first time these stamps are aligned at all -- nothing
+     moved, which is still the alignment Root Canal waits for. */
+  function pendingWrite() {
+    const s = set_ && set_.set;
+    if (!s) return false;
+    if (pendingMoves()) return true;
+    if ((s.rows || []).some((r, i) => callFor(i) === 'garbage')) return true;
+    return set_.source_aligned === false;
   }
 
   /* Banked without being asked (2026-10-21: "autobank is a constant
@@ -3023,7 +3131,15 @@ function makeBraces(cfg) {
   function autoBank(why) {
     if (BARRY.testNoAutobank || busy || !set_ || !set_.set
         || set_.set.committed) return;
-    if (!pendingMoves()) return;
+    if (!pendingWrite()) return;
+    /* A first alignment that moves nothing banks when the last call is
+       made, never on leaving: an old proposal opened and left again --
+       every stamp held, the set aligned since by another run -- would
+       otherwise be written as a branch nobody asked for. */
+    if (why === 'leave' && !pendingMoves()
+        && !(set_.set.rows || []).some((r, i) => callFor(i) === 'garbage')) {
+      return;
+    }
     const rows = set_.set.rows || [];
     const waiting = rows.filter((r, i) => r.flag && !callFor(i)).length;
     if (waiting) {
@@ -3050,13 +3166,16 @@ function makeBraces(cfg) {
        back with "there is nothing to write", makes a finished set look
        like a failed one. Counted the way the write counts it: a row moves
        if what it would land on differs from where it started. */
-    const moves = pendingMoves();
+    const moves = pendingWrite();
     bar.appendChild(el('button', {
       class: 'btn',
       disabled: moves ? null : 'disabled',
       text: moves ? 'Bank it as ' + nextV + '…' : 'Nothing to bank',
       title: moves
-        ? 'Shows exactly what would be written before writing it'
+        ? (pendingMoves() ? 'Shows exactly what would be written before '
+                            + 'writing it'
+          : 'Nothing moves, but these stamps have not been aligned before: '
+            + 'banking records that they are, so Root Canal can read them')
         : 'Every stamp is already where the recording puts it, so a new '
           + 'version would hold exactly what the last one does',
       onclick: () => commit(false),
@@ -3219,6 +3338,9 @@ function makeBraces(cfg) {
     setMode(cfg.mode, exitView);
     vLayout();
     vGrab();
+    // The traces through the band last looked at (Lock's always; Braces'
+    // only when it is not the dentate-spike band the recording is read in).
+    if (cfg.bands || view.traceBand !== 'ds') setTraceBand(view.traceBand);
     step('laid out', { view: BARRY.state.view });
 
     // Land on something the pass actually contains. Guarded: a throw here
@@ -3371,6 +3493,9 @@ function makeBraces(cfg) {
       if (view.sess) {
         delete view.sess.curation;
         delete view.sess.curationMarks;
+        if (view.sess.dual && BARRY.views.xplore.setDual) {
+          BARRY.views.xplore.setDual(view.sess, null);
+        }
         // Tell the other window the mode is over, or it keeps drawing
         // marks for a proposal nobody is looking at any more.
         if (BARRY.views.xplore.publishCuration) {
@@ -3503,7 +3628,8 @@ function makeBraces(cfg) {
       const said = callFor(i);
       // What the dashed half says: answered, still being asked about, or
       // nobody has looked.
-      const st = r.locked ? 'locked'
+      // Held, unless somebody overrode the hold and moved or tossed it.
+      const st = (r.locked && said !== 'garbage' && said !== 'move') ? 'locked'
         : said === 'garbage' ? 'garbage'
         : (said === 'confirm' || said === 'move') ? 'confirmed'
         : (said === 'keep' ? 'kept'
@@ -3613,6 +3739,8 @@ function makeBraces(cfg) {
         // once per keystroke: `curveAt` is the stamp it was read for.
         curve: (view.curve && view.trace) ? view.trace : null,
         curveAt: view.curve ? view.at : null,
+        // The second band over the traces, for the support window too.
+        dual: view.sess.dual || null,
         home_t: cur ? cur.was : null,
       }, same ? {} : { labels: VIEW_LABELS, events: evs }));
     }
@@ -3647,7 +3775,11 @@ function makeBraces(cfg) {
     if (view.curve) { view.trace = null; loadCurve(); }
     const r = all[view.at];
     const span = vSpan();
-    BARRY.views.xplore.setWindow(0, Math.max(0, vNow(r) - span / 2), span);
+    /* Centred on where the stamp WAS, not where it is proposed to go
+       (2026-10-30): the search window is ±window_ms around the original,
+       so a span of twice that shows the whole of it -- centred on the
+       proposal, a peak near one edge put half the window off screen. */
+    BARRY.views.xplore.setWindow(0, Math.max(0, r.was - span / 2), span);
     view.spanSet = true;
     vPublish();
     vBar();
@@ -3717,14 +3849,21 @@ function makeBraces(cfg) {
   async function vMove(deltaMs) {
     const r = vAt();
     if (!r) return;
-    if (r.locked) { lockedSay(); return; }
+    if (isHeld(view.at)) {
+      lockedSay(view.at, 'move', () => vMove(deltaMs));
+      return;
+    }
     const t = Math.round((vNow(r) + deltaMs / 1000) * 1e6) / 1e6;
     await vDrop(view.at, vNow(r), t);
   }
 
   async function vSay(call) {
     const r = vAt();
-    if (!r) return;
+    if (!r || accepted()) return;
+    if ((call === 'move' || call === 'garbage') && isHeld(view.at)) {
+      lockedSay(view.at, call, () => vSay(call));
+      return;
+    }
     await decide(view.at, call);
     vPublish();
     vNextOpen();
@@ -3766,7 +3905,7 @@ function makeBraces(cfg) {
 
   function vEnter() {
     const r = vAt();
-    if (!r || (view && view.drag)) return;
+    if (!r || (view && view.drag) || accepted()) return;
     const said = (set_.set.calls || {})[String(view.at)] || {};
     const prop = r.now == null ? r.was : r.now;
     const mine = (view.placed && view.placed.row === view.at) ? view.placed.t
@@ -3895,8 +4034,14 @@ function makeBraces(cfg) {
           vGoTo(hit);
           return true;
         }
-        // A locked stamp is not picked up: it says so, and nothing moves.
-        if (r.locked) { lockedSay(); return true; }
+        // A held stamp is not picked up: it says so, and nothing moves
+        // unless the hold is overridden -- then it is picked up next time.
+        if (isHeld(view.at)) {
+          lockedSay(view.at, 'move', () => {
+            toast('Overridden: this one can be dragged now.', null, 4000);
+          });
+          return true;
+        }
         view.drag = { row: view.at, t: vNow(r), last: 0, from: vNow(r) };
         return true;
       },
@@ -3926,7 +4071,12 @@ function makeBraces(cfg) {
      (`crowds`); anywhere else it is decided at once. */
   async function vDrop(row, from, at) {
     if (!view) return;
-    if (isLocked(row)) { lockedSay(); vPublish(); return; }
+    if (isHeld(row)) {
+      vPublish();
+      lockedSay(row, 'move', () => vDrop(row, from, at));
+      return;
+    }
+    if (accepted()) { vPublish(); return; }
     const near = crowds(row, from, at);
     if (near) { crowdedReview(row, from, at, near); return; }
     // Held while the decision is on its way, so an Enter pressed the
@@ -3964,7 +4114,7 @@ function makeBraces(cfg) {
   }
 
   async function vUndoAll() {
-    if (!view || !set_) return;
+    if (!view || !set_ || accepted()) return;
     const keys = Object.keys(set_.set.calls || {});
     if (!keys.length) {
       toast('Nothing has been decided yet.', null, 3500);
@@ -4266,8 +4416,10 @@ function makeBraces(cfg) {
     if (!view) return;
     const r = vAt();
     if (!r) return;
-    // Not relabelled either: Panning called it a spike, Braces placed it.
-    if (r.locked) { lockedSay(); return; }
+    // Not relabelled either, unless the hold is overridden: Panning called
+    // it a spike, Braces placed it.
+    if (isHeld(view.at)) { lockedSay(view.at, 'garbage', vGarbage); return; }
+    if (accepted()) return;
     const n = view.at;
     if (callFor(n) === 'garbage') {
       // Already rejected: the button takes it back, and putting something
@@ -4397,11 +4549,13 @@ function makeBraces(cfg) {
        rather than where something in it sits. */
     acts.appendChild(el('button', {
       class: 'cur-cat' + (said === 'garbage' ? ' on' : '')
-             + (r.locked ? ' br-is-locked' : ''),
+             + (isHeld(view.at) ? ' br-is-locked' : ''),
       style: '--cat:#d9534f',
       title: said === 'garbage'
         ? 'Take that back \u2014 it goes back to being a spike   (g)'
-        : 'Not ' + W.aOne + ' at all. Asks first.   (g)',
+        : isHeld(view.at)
+          ? 'Held where it is. Asks before overriding the hold.   (g)'
+          : 'Not ' + W.aOne + ' at all. Asks first.   (g)',
       onclick: vGarbage,
     }, [
       el('kbd', { text: 'g' }),
@@ -4427,7 +4581,14 @@ function makeBraces(cfg) {
         el('i', { text: said ? 'this one' : '\u2014' }),
       ]),
     ]));
-    bar.appendChild(acts);
+    /* Banked: nothing here can be decided any more (see `accepted`), so
+       the answers give way to saying so. Stepping through still works. */
+    bar.appendChild(s.committed
+      ? el('div', { class: 'cur-cats br-acts' }, [
+          el('span', { class: 'cur-sub', text: 'Banked as version '
+            + s.committed.version + '. This pass is its record and does '
+            + 'not change; run ' + cfg.name + ' again to change a stamp.' })])
+      : acts);
 
     bar.appendChild(el('div', { class: 'cur-nav' }, [
       el('button', { class: 'mini', text: '◀', title: 'Previous  (p)',
@@ -4468,7 +4629,13 @@ function makeBraces(cfg) {
           onclick: () => { setTraceBand(id); vBar(); },
           text: label,
         }))),
-      ]),
+        view.traceBand === 'both' ? el('span', { class: 'br-dual-key' }, [
+          el('i', { style: 'background:' + BARRY.token('--trace', '#7FE3B0') }),
+          el('span', { text: bandText('ds') }),
+          el('i', { style: 'background:' + BARRY.token('--trace-2', '#FF7AC8') }),
+          el('span', { text: bandText('ied') }),
+        ]) : null,
+      ].filter(Boolean)),
       el('div', { class: 'ctl br-opt' }, [
         el('label', { text: 'Curve' }),
         el('div', { class: 'seg sm' }, [
@@ -5049,10 +5216,15 @@ function makeBraces(cfg) {
     const n = bench.n;
     const r = set_.set.rows[n];
     const moved = Math.abs(bench.t - (r.now == null ? r.was : r.now)) > 1e-6;
-    if (r.locked && moved) {
+    if (isHeld(n) && moved) {
+      const want = bench.t;
       bench.t = r.was;
       drawBench();
-      lockedSay();
+      lockedSay(n, 'move', () => {
+        if (!bench || bench.n !== n) return;
+        bench.t = want;
+        answer(call);
+      });
       return;
     }
     const near = (call === 'confirm' && moved) ? crowds(n, bench.from, bench.t) : null;
@@ -5227,7 +5399,12 @@ function makeBraces(cfg) {
     const cv = e.currentTarget;
     const s = set_.set;
     const r = s.rows[bench.n];
-    if (r.locked) { lockedSay(); return; }
+    if (isHeld(bench.n)) {
+      lockedSay(bench.n, 'move', () => {
+        toast('Overridden: this one can be dragged now.', null, 4000);
+      });
+      return;
+    }
     const win = ((s.params || {}).window_ms || 100) / 1000;
     const span = win * 3;
     const t0 = r.was - span, t1 = r.was + span;
@@ -5260,7 +5437,13 @@ function makeBraces(cfg) {
        IMMEDIATE, so the review's own Enter never also fires. */
     if (lockedAsk) {
       const k0 = e.key.toLowerCase();
-      if (k0 === 'enter' || k0 === 'escape' || k0 === ' ') closeLockedSay();
+      // Tab reaches "… anyway", and Enter on it is the override.
+      const onAnyway = lockedAsk.anyway && document.activeElement
+        && document.activeElement.classList.contains('ghost')
+        && lockedAsk.box.contains(document.activeElement);
+      if (k0 === 'tab') return;
+      if ((k0 === 'enter' || k0 === ' ') && onAnyway) lockedAsk.anyway();
+      else if (k0 === 'enter' || k0 === 'escape' || k0 === ' ') closeLockedSay();
       e.preventDefault();
       e.stopImmediatePropagation();
       return;
@@ -5284,7 +5467,15 @@ function makeBraces(cfg) {
     else if (k === 'k') { answer('keep'); }
     else if (k === '0') { bench.t = r.now == null ? r.was : r.now;
                           render(); }
-    else if ((k === '[' || k === ']') && r.locked) { lockedSay(); }
+    else if ((k === '[' || k === ']') && isHeld(bench.n)) {
+      const n = bench.n;
+      lockedSay(n, 'move', () => {
+        if (!bench || bench.n !== n) return;
+        bench.t = Math.round((bench.t + (k === '[' ? -0.001 : 0.001)) * 1e6)
+                  / 1e6;
+        drawBench();
+      });
+    }
     else if (k === '[') { bench.t = Math.round((bench.t - 0.001) * 1e6) / 1e6;
                           drawBench(); }
     else if (k === ']') { bench.t = Math.round((bench.t + 0.001) * 1e6) / 1e6;
@@ -5501,37 +5692,71 @@ function makeBraces(cfg) {
      "If someone tries to move it say... no second guessing. That's a bad
      scientific habit. You follow the protocol as best you can. And then
      you move on." Said once, plainly, and eased up: the screen gives a
-     small shake, the padlock says it, Enter carries on. The server refuses
-     the same move in the same words (`bracesset.LOCKED_SAY`) for any
-     caller that went round this. */
+     small shake, the padlock says it, Enter carries on.
+
+     A WARNING, NOT A WALL (2026-10-30: "two spikes side by side, and I am
+     not allowed to garbage this one? ... the warning is good, but not being
+     able to toss this is a problem"). `go` is what was being tried, and
+     "... anyway" does it. The row then stays overridden for the rest of
+     this proposal, so nudging it a millisecond at a time does not ask
+     again on every key, and the calls it sends carry `override` -- which
+     the server wants (`bracesset.LOCKED_SAY`) and keeps on the call. */
   let lockedAsk = null;
+  let overrode = { set: null, rows: new Set() };
   const isLocked = (i) => !!(((set_ && set_.set && set_.set.rows) || [])[i]
                              || {}).locked;
+  // Here, or on a call the server kept with the override on it.
+  const overridden = (i) => !!(set_ && (
+    (overrode.set === set_.set.set_id && overrode.rows.has(i))
+    || ((set_.set.calls || {})[String(i)] || {}).override));
+  // Held, and nobody has chosen to override it in this proposal.
+  const isHeld = (i) => isLocked(i) && !overridden(i);
 
-  function lockedSay() {
+  /* `n` the row, `what` 'move' or 'garbage', `go` the thing to do once the
+     hold is overridden. Without `go` it is the old notice, and Enter is
+     the only way on. */
+  function lockedSay(n, what, go) {
     closeLockedSay();
     shake();
+    const r = (set_ && set_.set.rows[n])
+      || (vRows()[view ? view.at : -1])
+      || (bench && set_ ? set_.set.rows[bench.n] : null) || {};
+    const anyway = () => {
+      closeLockedSay();
+      if (set_) {
+        if (overrode.set !== set_.set.set_id) {
+          overrode = { set: set_.set.set_id, rows: new Set() };
+        }
+        overrode.rows.add(n);
+      }
+      go();
+    };
     const box = el('div', { class: 'br-enter-ask br-close-ask br-locked-ask',
                             role: 'alertdialog', 'aria-labelledby': 'brLockedT' }, [
       el('div', { class: 'br-locked-ico', html: LOCK_SVG }),
       el('strong', { id: 'brLockedT', text: 'That one’s held' }),
-      el('p', { class: 'br-close-q', text: (() => {
-        const r = (vRows()[view ? view.at : -1])
-          || (bench && set_ ? set_.set.rows[bench.n] : null) || {};
-        return (r.origin ? groupName(r.origin) + ' is' : 'Its group is')
-          + ' held in this alignment: already lined up, so it stays where '
-          + 'it is.';
-      })() }),
+      el('p', { class: 'br-close-q', text:
+        (r.origin ? groupName(r.origin) + ' is' : 'Its group is')
+        + ' held in this alignment: already lined up, so it stays where it '
+        + 'is unless you override it.' }),
       el('p', { text: 'No second-guessing — follow the protocol as well as '
         + 'you can, then move on. If the result isn’t up to par, the fix is '
         + 'a better protocol, not a nudge by hand.' }),
       el('div', { class: 'br-enter-acts' }, [
         el('button', { class: 'btn', onclick: closeLockedSay }, [
-          el('span', { text: 'Fair enough' }), el('kbd', { text: 'Enter' })]),
-      ]),
+          el('span', { text: go ? 'Leave it held' : 'Fair enough' }),
+          el('kbd', { text: 'Enter' })]),
+        go ? el('button', { class: 'btn ghost', onclick: anyway,
+                            title: 'Override the hold on this one stamp. The '
+                                 + 'call is kept with a note that the hold '
+                                 + 'was overridden.' }, [
+          el('span', { text: what === 'garbage' ? 'Garbage it anyway'
+                                                : 'Move it anyway' })])
+          : null,
+      ].filter(Boolean)),
     ]);
     document.body.appendChild(box);
-    lockedAsk = { box };
+    lockedAsk = { box, anyway: go ? anyway : null };
     try { box.querySelector('.btn').focus({ preventScroll: true }); } catch (e) { /* ok */ }
   }
 
@@ -5988,7 +6213,7 @@ function makeBraces(cfg) {
     _manyHold: (c) => manyHold(c),
     _traceBand: () => (view ? view.traceBand : null),
     _setTraceBand: (id) => setTraceBand(id),
-    _lockedSay: () => lockedSay(),
+    _lockedSay: (n, what, go) => lockedSay(n, what, go),
     _lockedAsk: () => (lockedAsk ? lockedAsk.box.textContent : null),
     _closeLockedSay: () => closeLockedSay(),
     _cands: () => cands,
@@ -6015,8 +6240,9 @@ BARRY.braces = makeBraces({
   tool: 'braces', name: 'Braces', mode: 'braces', panels: 'braces',
   step: 'step 3 of The Dentist',
   type: 'ds',
-  // Its Alignments list: its own sets, and Eye's, which open here.
-  setTypes: 'ds,ied',
+  // Its Alignments list: its own sets. Eye's opened here until Eye became
+  // Braces built a third time (2026-10-30); they are in Eye's list now.
+  setTypes: 'ds',
   passTool: 'Checkup',
   pin: false,
   measures: [
@@ -6130,5 +6356,67 @@ BARRY.lock = makeBraces({
           + 'or one noisy contact dominates a derivative. Through the '
           + 'dentate-spike band by default; the IED band keeps a discharge’s '
           + 'slow wave, and is one press away under Filter. '),
+  },
+});
+
+/* EYE, step 3 of The Storm (2026-10-30: "Update the Eye gui to match the
+   flow and steps of braces"). Braces built a third time, as Lock was on
+   2026-10-22: the same picker, run, Many, Alignments and review, on the
+   discharges Spotter confirmed. It was its own panel (eye.js
+   `makeAligner`), which read all three measures and compared them, and
+   sent its proposals to Braces' review to be answered -- so the one step
+   of three without a review of its own. The engine was always Braces'.
+
+   No band choice: an IED is aligned through the IED band, which the server
+   reads from the kind (`_braces_spec`), because the dentate-spike filter
+   takes away the slow wave that is half of what a discharge is. */
+BARRY.eye = makeBraces({
+  tool: 'eye', name: 'Eye', mode: 'eye', panels: 'eye',
+  step: 'step 3 of The Storm',
+  type: 'ied',
+  setTypes: 'ied',
+  passTool: 'Spotter',
+  pin: false,
+  measures: [
+    ['csd', 'CSD', 'The current source density across depth — the part of '
+                   + 'the signal that cannot be volume-conducted'],
+    ['voltage', 'Voltage', 'The magnitude of the filtered voltage, which is '
+                           + 'what Doppler was run on'],
+    ['slope', 'Slope', 'Where the voltage changes fastest — a discharge’s '
+                       + 'sharpest edge, which can be tens of milliseconds '
+                       + 'before its largest excursion'],
+  ],
+  words: {
+    blurb: 'Every confirmed discharge onto the part of itself the others are '
+         + 'on, so an average of them is of the event and not of the jitter. '
+         + 'A ±200 ms window through the IED band, and one peak per stamp. '
+         + 'Nothing is written until you accept it.',
+    empty: 'Eye works on discharges Spotter has confirmed. Run Doppler to find '
+         + 'the candidates and go through them in Spotter — a raw detector '
+         + 'list has nothing worth moving, because half of it is thrown away '
+         + 'an hour later.',
+    noneHere: 'Nothing confirmed is banked against this recording, so there '
+            + 'are no discharges to line up. Run Doppler and go through what '
+            + 'it finds in Spotter first.',
+    one: 'discharge', many: 'discharges', aOne: 'a discharge',
+    setWord: 'confirmed set',
+    band: 'the IED band',
+    versionSub: 'The stamps as they stand are read unless you pick an earlier '
+              + 'version. Picking one branches off it; nothing after it is '
+              + 'touched.',
+    acrossShank: 'A discharge appears across most of the shank at the same '
+               + 'instant,',
+    measureWhy: (m) => (m === 'voltage'
+      ? 'The filtered voltage is what Doppler was itself run on, so aligning '
+        + 'to it reproduces the detector’s own criterion. '
+      : m === 'slope'
+        ? 'The slope is where the voltage changes fastest: a discharge with a '
+          + 'slow after-going wave has its largest excursion tens of '
+          + 'milliseconds after its sharpest edge, and this lines them up on '
+          + 'the edge. '
+        : 'The CSD is the second derivative across depth, so it is the part '
+          + 'of the signal that cannot have come from somewhere else on the '
+          + 'probe. Smoothed across depth first, or one noisy contact '
+          + 'dominates a derivative. '),
   },
 });

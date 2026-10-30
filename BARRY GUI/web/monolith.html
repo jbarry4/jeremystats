@@ -692,6 +692,59 @@ table.jterms tr.jkey th, table.jterms tr.jkey td { font-weight: 600; }
 .fgmethod h4 { margin: 0 0 4px; font-size: 14px; text-transform: none; letter-spacing: 0; }
 .fgmethod p { margin: 3px 0; overflow-wrap: anywhere; }
 .fgtoyhost { margin-top: 6px; }
+/* 11 · Narrowing down (even more) (js/monolith_evenmore.js) */
+#morepane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
+#morepane[hidden] { display: none; }
+#morepane .card > p { max-width: 90ch; overflow-wrap: anywhere; }
+.moresteps { margin: 6px 0; padding-left: 1.2em; max-width: 90ch; }
+.moresteps li { margin: 3px 0; overflow-wrap: anywhere; }
+.morepairs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0; font-size: 13px; }
+.morepair { display: inline-flex; align-items: center; gap: 6px; }
+.moresw { display: inline-block; width: 18px; height: 0; border-top: 3px solid var(--c); vertical-align: middle; margin-right: 6px; }
+.moresw.dashed { border-top-style: dashed; }
+.moretools { align-items: center; flex-wrap: wrap; margin-top: 6px; }
+.card.moreflag { border-left: 5px solid var(--up); }
+.moreflag h2 { color: var(--up); }
+.moreflagitem { margin: 6px 0 10px; }
+.moreflagitem h3 { margin: 0 0 4px; font-size: 15px; text-transform: none; letter-spacing: 0; color: var(--ink); }
+.moreflagitem p { max-width: 90ch; overflow-wrap: anywhere; margin: 4px 0; }
+.moretiles { display: flex; gap: 8px; flex-wrap: wrap; }
+.moretile { min-height: 40px; padding: 0 18px; border-radius: 9px; border: 1px solid var(--line-2); background: transparent; color: var(--ink-2);
+  font: 600 14px/1 inherit; cursor: pointer; }
+.moretile.on { background: var(--chip); color: var(--ink); border-color: var(--ink-3); }
+.moretile:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+table.moretable { font-size: 13px; font-variant-numeric: tabular-nums; border-collapse: collapse; }
+table.moretable th, table.moretable td { padding: 3px 10px 3px 0; text-align: left; vertical-align: top; }
+table.moretable thead th { color: var(--ink-3); font-weight: 600; font-size: 12px; border-bottom: 1px solid var(--line); }
+table.moretable tbody th { font-weight: 600; white-space: nowrap; }
+table.moretable tr.sig th, table.moretable tr.sig td { color: var(--ink); font-weight: 700; }
+table.moretable tr.weak th, table.moretable tr.weak td, table.moretable td.weakcell { color: var(--ink-3); font-weight: 400; }
+.moreomni { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 8px 24px; }
+.moreomni h4 { margin: 4px 0; font-size: 13px; }
+h3.moresub { margin: 16px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); }
+.morefigs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 14px 18px; align-items: start; }
+.morefig { border-top: 1px solid var(--line); padding-top: 8px; min-width: 0; }
+.morefig h3 { margin: 0; font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--ink); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.morefno { font-weight: 700; }
+.morefig .chip.sig { font-size: 11.5px; padding: 1px 8px; border-radius: 10px; background: color-mix(in srgb, #E69F00 28%, transparent); color: var(--ink); }
+.morefimg { display: block; background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 6px; margin: 8px 0; overflow: hidden; }
+.morefimg img { display: block; width: 100%; height: auto; }
+.morelegend p { max-width: 95ch; overflow-wrap: anywhere; line-height: 1.45; font-size: 13px; }
+.morefiles { gap: 6px; flex-wrap: wrap; }
+/* the correction switch, shared by tabs 11 and 12 (MONO_FDR) */
+.morebar { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center; }
+.morefdr { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.morefdrsay { font-size: 13px; color: var(--ink-2); }
+/* 12 · The final stage (js/monolith_final.js) */
+#finalpane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
+#finalpane[hidden] { display: none; }
+#finalpane .card > p { max-width: 90ch; overflow-wrap: anywhere; }
+table.moretable td.sigcell { color: var(--ink); font-weight: 700; }
+.card.finalnotjoe { border-left: 5px solid var(--line-2); }
+.finalmethods { margin-top: 8px; }
+.finalmsec { border-top: 1px solid var(--line); padding: 6px 0; }
+.finalmsec summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.finalmsec p { max-width: 95ch; overflow-wrap: anywhere; line-height: 1.5; font-size: 13.5px; margin: 6px 0; }
 /* 7 · Narrowing down (js/monolith_narrow.js) */
 #narrowpane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
 #narrowpane[hidden] { display: none; }
@@ -799,6 +852,8 @@ svg.narbar { display: block; }
 <script src="js/monolith_joefigs.js"></script>
 <script src="js/joe_export.js"></script>
 <script src="js/monolith_joeexport.js"></script>
+<script src="js/monolith_evenmore.js"></script>
+<script src="js/monolith_final.js"></script>
 <script src="js/monolith_tour.js"></script>
 <script src="js/tour.js"></script>
 </body>

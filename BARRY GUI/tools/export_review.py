@@ -59,7 +59,7 @@ LAYERS = ("raw", "minus_fp")
 WEB_FILES = ("monolith.html", "monolith-guide.html", "monolith_guide.json",
              "js/monolith_figs.js", "js/monolith_help.js", "js/monolith.js",
              "js/monolith_events.js", "js/monolith_progress.js",
-             "js/monolith_explain.js", "js/monolith_physical.js", "js/monolith_narrow.js", "js/monolith_joe.js", "js/monolith_joefigs.js", "js/joe_export.js", "js/monolith_joeexport.js",
+             "js/monolith_explain.js", "js/monolith_physical.js", "js/monolith_narrow.js", "js/monolith_joe.js", "js/monolith_joefigs.js", "js/joe_export.js", "js/monolith_joeexport.js", "js/monolith_evenmore.js", "js/monolith_final.js",
              "js/monolith_tour.js", "js/tour.js")
 # The windows in the lab's words, as the page says them (js/monolith.js).
 WLABEL = {"pre": "Pre-baseline", "cue1": "Cue 1", "cue2": "Cue 2",

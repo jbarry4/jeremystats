@@ -1,0 +1,189 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>brmanyscroll: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:560px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:560px;top:0;right:0;bottom:0;width:calc(100vw - 560px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Picking a version on a row of Many keeps the list where it was
+   (2026-10-27: "after selecting the version here it scrolls back to the
+   top ... Lock many view"). Lock, then Braces: scroll the list down, open
+   a row's version tree low in the list, pick another version, and every
+   scroller -- the list and anything around it -- is where it was. The pick
+   is the page's own memory only; nothing is sent, preference writes are
+   held for the run, and the picks are put back. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const head = (t) => { say(''); say('=== ' + t + ' ===', 'hd'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              30000);
+  const W = frame.contentWindow, D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const txt = (n) => (n ? n.textContent.trim() : '');
+  const B = ev('BARRY');
+  const realSet = B.prefs.set;
+  B.prefs.set = function () { /* held for the run */ };
+  // Every element that scrolls, by a path that survives a rebuild.
+  const scrollers = () => {
+    const out = {};
+    for (const n of [D().scrollingElement].concat($$('*'))) {
+      if (!n || n.scrollTop <= 0) continue;
+      const key = n === D().scrollingElement ? 'page'
+        : (n.id ? '#' + n.id : '')
+          + (n.dataset && n.dataset.keepScroll ? '[' + n.dataset.keepScroll + ']' : '')
+          + '.' + String(n.className || '').split(/\s+/).slice(0, 2).join('.');
+      out[key] = n.scrollTop;
+    }
+    return out;
+  };
+  try {
+    for (const [tool, home, cls] of [['lock', 'confluence', 'br-many-lock'],
+                                     ['braces', 'dentist', 'br-many-braces']]) {
+      head(tool + ': a version picked low in Many');
+      ev('BARRY.' + tool + '._reset()');
+      ev("setView('toolkit')");
+      ev("BARRY.views.toolkit.pick('" + tool + "', '" + home + "')");
+      await until(() => $('.br-mode .seg button'), 20000);
+      const manyB = $$('.br-mode .seg button').find((b) => /many/i.test(b.textContent));
+      if (manyB) manyB.click();
+      await until(() => $$('.' + cls + ' .br-bulk-row').length, 30000);
+      await sleep(800);
+      let list = $('.' + cls + ' .br-many-list');
+      let rows = $$('.' + cls + ' .br-bulk-row');
+      if (!list || rows.length < 6) {
+        say('  note  ' + rows.length + ' rows; too few to scroll', 'note');
+        continue;
+      }
+      // Low in the list, with another version to pick: opened and looked
+      // at, since Lock greys Junction's own.
+      let row = null;
+      for (let i = rows.length - 1; i >= 0 && !row; i--) {
+        const vb = rows[i].querySelector('.vbtn');
+        if (!vb || !/\d+ versions/.test(txt(vb))) continue;
+        vb.click();
+        await until(() => $('.vpop .vtree-row'), 5000);
+        const free = $$('.vpop .vtree-row').some((r) => !r.disabled
+          && !r.classList.contains('on') && r.dataset.ref);
+        D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        await until(() => !$('.vpop'), 3000);
+        if (free) row = rows[i];
+      }
+      if (!row) { say('  note  no row with another version to pick', 'note'); continue; }
+      await sleep(300);
+      // Every scroller around the row, as far down as it goes towards it.
+      const scrolled = [];
+      for (let n = row.parentElement; n; n = n.parentElement) {
+        const o = W.getComputedStyle(n).overflowY;
+        if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight + 4) {
+          n.scrollTop = Math.min(n.scrollHeight - n.clientHeight,
+            row.getBoundingClientRect().top - n.getBoundingClientRect().top
+              + n.scrollTop - 80);
+          scrolled.push((n.className || n.tagName) + ' ' + n.scrollTop + '/'
+                        + (n.scrollHeight - n.clientHeight));
+        }
+      }
+      say('  note  scrollers: ' + scrolled.join(' | '), 'note');
+      if (!scrolled.length) {
+        for (let n = row.parentElement; n; n = n.parentElement) {
+          say('  note    ' + n.tagName + (n.id ? '#' + n.id : '') + '.'
+              + String(n.className || '').split(/\s+/).slice(0, 2).join('.')
+              + ' ' + W.getComputedStyle(n).overflowY + ' ' + n.scrollHeight
+              + '/' + n.clientHeight, 'note');
+        }
+      }
+      await sleep(400);
+      list = $('.' + cls + ' .br-many-list');
+      rows = $$('.' + cls + ' .br-bulk-row');
+      row = rows.find((r) => r.dataset.id === row.dataset.id) || row;
+      const before = scrollers();
+      say('  note  before: ' + JSON.stringify(before), 'note');
+      check('something is scrolled down', Object.keys(before).length > 0);
+      const id = row.dataset.id;
+      row.querySelector('.vbtn').click();
+      await until(() => $('.vpop .vtree-row'), 5000);
+      const other = $$('.vpop .vtree-row').find((r) => !r.disabled
+        && !r.classList.contains('on') && r.dataset.ref);
+      if (!other) {
+        say('  note  only one choosable version', 'note');
+        D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        continue;
+      }
+      const ref = other.dataset.v;
+      other.click();
+      await until(() => !$('.vpop'), 5000);
+      await sleep(1200);
+      const after = scrollers();
+      say('  note  after:  ' + JSON.stringify(after), 'note');
+      for (const k of Object.keys(before)) {
+        check('stays: ' + k, Math.abs((after[k] || 0) - before[k]) <= 2,
+              before[k] + ' -> ' + (after[k] || 0));
+      }
+      const nowRow = $('.' + cls + ' .br-bulk-row[data-id="' + id + '"]');
+      check('the row shows the version picked',
+            nowRow && txt(nowRow.querySelector('.vbtn')).indexOf('v' + ref.replace(/^v/, '')) === 0,
+            nowRow ? txt(nowRow.querySelector('.vbtn')).slice(0, 30) + ' / ' + ref : 'gone');
+      const listNow = $('.' + cls + ' .br-many-list');
+      check('the list itself was not rebuilt, only the row', listNow === list);
+      check('the rest of the rows are the same nodes',
+            rows.filter((r) => r !== row).every((r) => r.isConnected));
+      // Put the pick back: the page's memory only, but the next check reads it.
+      if (tool === 'lock' && nowRow) {
+        const og = () => $('.' + cls + ' .br-bulk-row[data-id="' + id + '"] .br-bulk-og[data-g="doppler"]');
+        const top0 = listNow.scrollTop, pad0 = $('#tkBody').scrollTop;
+        const held0 = og().classList.contains('held');
+        og().click();
+        await sleep(600);
+        check('a group held on the row: the row says so',
+              og().classList.contains('held') === !held0);
+        check('and the list stays where it was',
+              Math.abs(listNow.scrollTop - top0) <= 2 && $('#tkBody').scrollTop === pad0
+                && $('.' + cls + ' .br-many-list') === listNow,
+              top0 + ' -> ' + listNow.scrollTop);
+        check('the switch pressed still has the focus',
+              D().activeElement === og(), String(D().activeElement && D().activeElement.className));
+        og().click();
+        await sleep(400);
+        check('pressed again, back as it was', og().classList.contains('held') === held0);
+      }
+    }
+  } catch (e) {
+    say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+    fails++;
+  } finally {
+    B.prefs.set = realSet;
+    try { ev('BARRY.lock._reset(); BARRY.braces._reset()'); } catch (e) {}
+  }
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'brmanyscroll: ' + fails + ' FAILED' : 'brmanyscroll: passed';
+  frame.src = 'about:blank';
+})().catch((e) => {
+  say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+  document.title = 'brmanyscroll CRASH';
+});
+</script></body></html>

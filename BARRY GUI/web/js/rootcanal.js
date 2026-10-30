@@ -235,6 +235,7 @@ BARRY.rootcanal = (function () {
 
   let cands = null;       // sets that could be put through this
   let job = null;         // the read, while it is happening
+  let jobFor = null;      // the set and version that read is of
   let poll = null;
   let jobSeen = { done: -1, at: 0 };  // when the count last moved
   let busy = false;
@@ -267,6 +268,10 @@ BARRY.rootcanal = (function () {
      rebuilt. */
   const bulk = { on: false, plan: null, want: {}, job: null, poll: null,
                  rev: 0, filt: { q: '' },
+                 // Entry id -> the version ref to read it from, picked per
+                 // row (2026-10-30); a set not in here is read as it stands.
+                 // `kind` is which bundle the plan was worked out for.
+                 pick: {}, kind: null,
                  // The send in flight and what it sent, a Stop pressed, and
                  // the batch before, said on the picker until the next.
                  sending: false, sent: null, stopping: false, last: null };
@@ -382,6 +387,35 @@ BARRY.rootcanal = (function () {
     if (viewMode === 'pooled') { await loadPool(); return; }
     loadDone();
     if (!cands) await loadCandidates();
+    else freshen();
+  }
+
+  /* THE SETS, READ AGAIN ON EVERY VISIT (2026-10-30). They were read once
+     per page, so a set Lock or Braces aligned after Root Canal was first
+     opened -- on this computer or another -- stayed "not aligned yet" until
+     a restart. Asked in the background; drawn again only when the answer
+     differs, and never over a read or a picture being worked on. */
+  let freshening = false;
+  async function freshen() {
+    if (freshening || job) return;
+    freshening = true;
+    let got = null;
+    try {
+      got = await api('/api/rootcanal/candidates', { priority: 'background' });
+    } catch (e) { /* the list on screen stands */ }
+    freshening = false;
+    if (!got) return;
+    const want = inConfluence() ? 'pooled' : 'ds';
+    const next = (got.sets || []).filter((c) => (c.type || 'ds') === want);
+    const sig = (l) => JSON.stringify((l || []).map((c) => [
+      c.entry_id, c.aligned, c.readable, c.n,
+      (c.versions || []).length, c.newest_aligned_name,
+      (c.rootcanal || {}).version]));
+    if (sig(next) === sig(cands)) return;
+    cands = next;
+    if (bulk.on) { loadBulk(); return; }
+    if (q.read || job) return;
+    singleRender();
   }
 
   async function loadCandidates() {
@@ -524,6 +558,9 @@ BARRY.rootcanal = (function () {
         return;
       }
       job = got.job;
+      const cur = setOf();
+      jobFor = { entry: q.entry, from_version: q.from_version,
+                 label: (cur && cur.session_label) || null };
       jobSeen = { done: -1, at: Date.now() };
       render();
       watch(got.read);
@@ -555,10 +592,27 @@ BARRY.rootcanal = (function () {
                    : 'The read failed: ' + (job.error || 'no reason given'),
               quit ? 'warn' : 'err', 12000);
         job = null;
+        jobFor = null;
         render();
         return;
       }
       job = null;
+      const was = jobFor;
+      jobFor = null;
+      /* THE READ IS OF THE SET IT WAS STARTED ON (2026-10-29). Strawbarry
+         opened another set while one was reading; the finished read was
+         handed to the set now open, and every fit on it was refused, "not
+         read at these settings", four times. One that finishes under
+         another set is filed and listed, and the open set is left alone. */
+      if (!was || was.entry !== q.entry
+          || String(was.from_version) !== String(q.from_version)) {
+        loadDone(true);
+        toast('The read of ' + ((was && was.label) || 'the other set')
+              + ' is done. Open it from Already through Root Canal.',
+              'ok', 9000);
+        render();
+        return;
+      }
       q.read = hash;
       chooserOpen = false;
       loadDone(true);
@@ -1100,7 +1154,7 @@ BARRY.rootcanal = (function () {
         onChange: (w, c) => {
           bulk.on = c === 'many';
           render();
-          if (bulk.on && !bulk.plan) loadBulk();
+          if (bulk.on && (!bulk.plan || bulk.kind !== bulkKind())) loadBulk();
         },
       }),
       // Said once here; the card under it says what a tick costs.
@@ -1703,7 +1757,8 @@ BARRY.rootcanal = (function () {
                                      + (rc.version ? ' · v' + rc.version : '') })
                 : null,
         el('span', { class: 'person-what', text: can
-          ? (c.aligned ? '' : 'not through Braces')
+          ? (c.aligned ? '' : 'not through '
+             + (inConfluence() ? 'Lock' : 'Braces'))
           : (c.why_not || 'cannot be read here') }),
       ].filter(Boolean)));
     }
@@ -1750,7 +1805,8 @@ BARRY.rootcanal = (function () {
     }
     if (cur && !cur.aligned) {
       box.appendChild(el('p', { class: 'hint rc-warn', text:
-        'Nothing in this set has been through Braces. Amplitude and '
+        'Nothing in this set has been through '
+        + (inConfluence() ? 'Lock' : 'Braces') + '. Amplitude and '
         + 'half-width are measured about the stamp, so stamps a few '
         + 'milliseconds out measure a smear. Step 3 first is worth it.' }));
     }
@@ -2143,9 +2199,11 @@ BARRY.rootcanal = (function () {
   function progress() {
     const st = (job && job.stages && job.stages[0]) || {};
     const frac = st.of ? Math.min(1, (st.done || 0) / st.of) : 0;
-    const cur = setOf();
+    // The set the read is of, which need not be the one open now.
+    const cur = jobFor && jobFor.entry !== q.entry ? jobFor : setOf();
     return el('div', { class: 'card rc-job' }, [
-      loader('Reading ' + ((cur && cur.session_label) || 'the recording')
+      loader('Reading ' + ((cur && (cur.label || cur.session_label))
+                           || 'the recording')
              + ' at 5 kHz', jobWords()),
       el('div', { class: 'rc-bar' }, [
         el('i', { style: 'width:' + (100 * frac).toFixed(1) + '%' })]),
@@ -4585,6 +4643,7 @@ BARRY.rootcanal = (function () {
           el('span', { class: 'ip-sub', text: bulkSub(r) }),
         ]),
       ]),
+      bulkVersion(r),
       r.cached ? el('span', { class: 'rc-bulk-row-acts' }, [
         BARRY.ui.button({ kind: 'mini', text: 'Open', extra: 'rc-bulk-open',
           title: 'Open it now. Its read is on file, so nothing is read.',
@@ -4596,6 +4655,39 @@ BARRY.rootcanal = (function () {
       ]) : null,
     ]);
     return row;
+  }
+
+  /* WHICH VERSION A SET IS READ FROM, per row (2026-10-30: "doesn't allow
+     you to choose which version you read when you select Many"). The
+     version tree Braces' Many uses, with Single's rules: the set as it
+     stands unless another is picked, and a version this computer holds no
+     stamps for greyed with why. Picking one works the plan out again,
+     because whether it has been read already depends on which it is. */
+  function bulkVersion(r) {
+    const vs = r.versions || [];
+    if (!vs.length) return null;
+    const tip = vs[vs.length - 1];
+    return BARRY.ui.versionButton({
+      versions: vs, idOf: (v) => v.ref,
+      value: r.from_version != null ? r.from_version : (tip && tip.ref),
+      unit: 'events',
+      producer: r.pipeline, producerType: r.type,
+      // Single's rules: only a version with no stamps here is ruled out.
+      disabled: (v) => (usable(v) ? null : (v.why_not || 'not readable here')),
+      state: (v) => [
+        v.aligned ? 'aligned' : null,
+        v.tag === 'rootcanal' ? 'Root Canal’s own output' : null,
+        r.from_version == null && v === tip ? 'read unless you pick another'
+                                            : null,
+      ].filter(Boolean),
+      heading: 'Which version of ' + r.label + ' to read',
+      sub: 'The set as it stands is read unless you pick another.',
+      onpick: (v) => {
+        if (!v) return;
+        bulk.pick[r.entry_id] = v.ref;
+        loadBulk();
+      },
+    });
   }
 
   /* The sets already read, folded, with how many there are, how many the
@@ -4839,11 +4931,19 @@ BARRY.rootcanal = (function () {
     ]);
   }
 
+  /* Which sets Many lists: pooled ones in The Confluence, dentate-spike
+     ones in The Dentist. It listed DS sets in both (2026-10-30). */
+  const bulkKind = () => (inConfluence() ? 'pooled' : 'ds');
+
   async function loadBulk() {
-    if (bulk.loading) return;
+    if (bulk.loading) { bulk.again = true; return; }
     bulk.loading = true;
+    const kind = bulkKind();
+    if (bulk.kind !== kind) { bulk.pick = {}; bulk.want = {}; }
     try {
-      bulk.plan = await api('/api/rootcanal/batch/plan');
+      bulk.plan = await apiPost('/api/rootcanal/batch/plan',
+                                { type: kind, picks: bulk.pick });
+      bulk.kind = kind;
     } catch (e) {
       bulk.plan = { ok: false, error: e.message, todo: [], done: [],
                     blocked: [], n: 0, n_done: 0, n_blocked: 0 };
@@ -4851,6 +4951,8 @@ BARRY.rootcanal = (function () {
     } finally {
       bulk.loading = false;
     }
+    // A version picked while the plan was being worked out: once more.
+    if (bulk.again) { bulk.again = false; loadBulk(); return; }
     bulk.rev += 1;
     // What stays ticked is what can still be read.
     const can = new Set(bulkRows().map((r) => r.entry_id));
@@ -4869,10 +4971,13 @@ BARRY.rootcanal = (function () {
     const go = () => {
       bulk.on = false;
       pickSetNow(entryId);
-      /* The batch reads each set as it stands (`from_version` null), so
-         that is what is opened; anything else could be a read nobody has
-         paid for yet, and "Open" would quietly start one. */
-      q.from_version = null;
+      /* The version the batch read it from -- as it stands unless one was
+         picked on its row -- so what opens is the read on file; anything
+         else could be a read nobody has paid for yet, and "Open" would
+         quietly start one. */
+      const row = bulkRows().find((r) => r.entry_id === entryId);
+      q.from_version = (row && row.from_version != null) ? row.from_version
+                                                         : null;
       bankAfterFit = !!(o && o.bank);
       BARRY.activity.log('rootcanal.open_from_batch', { entry: entryId });
       // The read is done, so this comes back cached and goes to a fit.
@@ -4895,8 +5000,13 @@ BARRY.rootcanal = (function () {
     bulk.sent = rows.map((r) => ({ id: r.entry_id, label: r.label }));
     bulkRefresh();
     try {
+      const picks = {};
+      for (const r of rows) {
+        if (r.from_version != null) picks[r.entry_id] = r.from_version;
+      }
       const got = await apiPost('/api/rootcanal/batch',
-                                { entries: rows.map((r) => r.entry_id) });
+                                { entries: rows.map((r) => r.entry_id),
+                                  picks: picks });
       bulk.job = got.job;
       watchBulk();
     } catch (e) {

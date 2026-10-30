@@ -1,0 +1,554 @@
+{
+  "_at": {
+    "braces_curve": "2026-10-07T19:25:45.859231+00:00",
+    "braces_span": "2026-10-16T16:08:52.612624+00:00",
+    "curate_at": "2026-10-15T14:53:57.026814+00:00",
+    "curate_span": "2026-10-14T17:36:49.834684+00:00",
+    "density": "2026-10-19T16:43:45.054340+00:00",
+    "digest_seen": "2026-09-09T02:30:43.953785+00:00",
+    "panning_at": "2026-10-14T23:31:27.850104+00:00",
+    "pipeline_folders": "2026-09-23T13:26:19.592745+00:00",
+    "radio": "2026-10-13T19:54:21.520703+00:00",
+    "recent_scripts": "2026-10-12T15:37:32.641324+00:00",
+    "result_group": "2026-09-28T20:50:31.306822+00:00",
+    "spotter_at": "2026-10-14T23:36:25.404389+00:00",
+    "spotter_light": "2026-09-25T22:03:51.166243+00:00",
+    "updated": "2026-10-19T16:43:47.171542+00:00"
+  },
+  "_keys": {
+    "jarvis": {
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-10-14T18:59:06.348928+00:00"
+      ],
+      "LCOM549913": [
+        "set",
+        "2026-10-14T17:30:51.445344+00:00"
+      ]
+    },
+    "themes": {
+      "BarryLab": [
+        "set",
+        "2026-09-24T14:11:28.640625+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-10-19T15:22:42.213249+00:00"
+      ],
+      "DESKTOP-AH45FAE": [
+        "set",
+        "2026-10-15T19:32:56.871554+00:00"
+      ],
+      "DESKTOP-NR2H5O7": [
+        "set",
+        "2026-09-04T15:13:55.120628+00:00"
+      ],
+      "Home": [
+        "set",
+        "2026-09-03T00:09:05.747120+00:00"
+      ],
+      "LCOM549913": [
+        "set",
+        "2026-10-09T14:33:01.566491+00:00"
+      ],
+      "ip0af50ae7.int.uvm.edu": [
+        "set",
+        "2026-10-19T16:43:47.171542+00:00"
+      ]
+    },
+    "vacc": {
+      "BarryLab": [
+        "set",
+        "2026-10-12T18:59:06.282190+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-10-19T15:22:41.068586+00:00"
+      ],
+      "DESKTOP-AH45FAE": [
+        "set",
+        "2026-10-15T19:33:41.922396+00:00"
+      ],
+      "Home": [
+        "set",
+        "2026-09-22T21:06:24.756552+00:00"
+      ],
+      "LCOM549913": [
+        "set",
+        "2026-10-14T16:17:09.961180+00:00"
+      ],
+      "ip0af50ae7.int.uvm.edu": [
+        "set",
+        "2026-10-19T16:43:02.388087+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-19T16:43:47.171542+00:00",
+    "machine": "ip0af50ae7.int.uvm.edu-c6a7",
+    "schema": 1
+  },
+  "braces_curve": true,
+  "braces_span": 0.7,
+  "curate_at": {
+    "demo-ds-tutorial:ds": {
+      "at": 1790615198941,
+      "id": "e7b1108a8e9",
+      "n": 24,
+      "review": "flag",
+      "t": 33.9
+    },
+    "s0159b3a9fcf7:ied": {
+      "at": 1790109330543,
+      "id": "e0d898dd4a4",
+      "n": 10,
+      "review": "left",
+      "t": 18.3
+    },
+    "s016e132432c8:ds": {
+      "at": 1791916204405,
+      "id": "e38fbf1f3d3",
+      "n": 125,
+      "review": "flag",
+      "t": 2603.758309
+    },
+    "s0a1cd99454b9:ds": {
+      "at": 1791928389426,
+      "id": "ed0a4f5e3c5",
+      "n": 525,
+      "review": "flag",
+      "t": 1859.701986
+    },
+    "s0a9e96cf1739:ds": {
+      "at": 1791481636261,
+      "id": "e611832c310",
+      "n": 322,
+      "review": "flag",
+      "t": 149.63639
+    },
+    "s0d29c92fef19:ds": {
+      "at": 1791918400141,
+      "id": "e1a63358cd2",
+      "n": 880,
+      "review": "flag",
+      "t": 1921.308064
+    },
+    "s0ed1b8c54a0e:ied": {
+      "at": 1790102833793,
+      "id": "e4a81fd9f3c",
+      "n": 10,
+      "review": "left",
+      "t": 13.8
+    },
+    "s110a7941c417:ds": {
+      "at": 1791820515943,
+      "id": "e1d8edc6906",
+      "n": 971,
+      "review": "flag",
+      "t": 2208.666322
+    },
+    "s14510e30e1bd:ds": {
+      "at": 1790980689686,
+      "id": "efe7ba38fff",
+      "n": 186,
+      "review": "all",
+      "t": 79.045586
+    },
+    "s1563f9c932bc:ds": {
+      "at": 1791932505516,
+      "id": "e8ab8dc56e0",
+      "n": 588,
+      "review": "flag",
+      "t": 2174.411866
+    },
+    "s1812bfda2a22:ds": {
+      "at": 1791561823155,
+      "id": "e8a35c02a1e",
+      "n": 241,
+      "review": "flag",
+      "t": 1860.74833
+    },
+    "s23f920a8e30d:ds": {
+      "at": 1791580107156,
+      "id": "edaa5c2a8b7",
+      "n": 232,
+      "review": "all",
+      "t": 1174.233825
+    },
+    "s37025d2aac74:ds": {
+      "at": 1791580319116,
+      "id": "e2c46024404",
+      "n": 296,
+      "review": "flag",
+      "t": 1872.726532
+    },
+    "s37c7c8edfe10:ds": {
+      "at": 1791585373310,
+      "id": "ecff8c045bf",
+      "n": 62,
+      "review": "all",
+      "t": 1798.08262
+    },
+    "s38b9e61c5684:ds": {
+      "at": 1791936669366,
+      "id": "e45e0e0d6e5",
+      "n": 619,
+      "review": "flag",
+      "t": 1823.931268
+    },
+    "s3cbe283bf5c8:ied": {
+      "at": 1789748432214,
+      "id": "eeae8586e05",
+      "n": 10,
+      "review": "left",
+      "t": 13.8
+    },
+    "s4187bdd4a184:ds": {
+      "at": 1791583024966,
+      "id": "ea19be21c45",
+      "n": 1014,
+      "review": "flag",
+      "t": 3256.102754
+    },
+    "s43b16cd74bcb:ds": {
+      "at": 1791824425481,
+      "id": "eb55be37870",
+      "n": 312,
+      "review": "flag",
+      "t": 2457.520959
+    },
+    "s45bae70722f2:ds": {
+      "at": 1791469047989,
+      "id": "e34eba1d842",
+      "n": 73,
+      "review": "all",
+      "t": 1093.463
+    },
+    "s478d8e348e84:ds": {
+      "at": 1791584005446,
+      "id": "eb939ce8ad8",
+      "n": 501,
+      "review": "all",
+      "t": 2135.281172
+    },
+    "s4a67210fc7ac:ds": {
+      "at": 1791930336978,
+      "id": "ead8027e8f0",
+      "n": 361,
+      "review": "flag",
+      "t": 2909.614294
+    },
+    "s4b8436913f72:ds": {
+      "at": 1791583525966,
+      "id": "eeac07b724b",
+      "n": 1072,
+      "review": "all",
+      "t": 706.544006
+    },
+    "s4cba75610a75:ds": {
+      "at": 1791936293814,
+      "id": "eef9b1fa647",
+      "n": 189,
+      "review": "flag",
+      "t": 2190.14331
+    },
+    "s500a5aec223e:ds": {
+      "at": 1791483118085,
+      "id": "e6c4daead1d",
+      "n": 77,
+      "review": "flag",
+      "t": 31.451987
+    },
+    "s503339c95a67:ds": {
+      "at": 1792076036995,
+      "id": "ea0e0cd8865",
+      "n": 867,
+      "review": "flag",
+      "t": 1793.484977
+    },
+    "s5b932a8e933d:ds": {
+      "at": 1791557841641,
+      "id": "eeb590774b3",
+      "n": 199,
+      "review": "all",
+      "t": 1797.658278
+    },
+    "s6b2088ae883b:ied": {
+      "at": 1791319579516,
+      "id": "e2ef6fb494c",
+      "n": 6,
+      "review": "left",
+      "t": 19.0005
+    },
+    "s6cdd64d005c4:ds": {
+      "at": 1791921556567,
+      "id": "e0f23ec3090",
+      "n": 222,
+      "review": "flag",
+      "t": 1926.906689
+    },
+    "s72df5edc7210:ds": {
+      "at": 1790974350703,
+      "id": "e834e2be1b0",
+      "n": 91,
+      "review": "all",
+      "t": 1899.485238
+    },
+    "s7ab0f7b6d949:ds": {
+      "at": 1791470326208,
+      "id": "e11bb5bf8ce",
+      "n": 46,
+      "review": "flag",
+      "t": 1975.532328
+    },
+    "s81e818bd402d:ds": {
+      "at": 1791556666376,
+      "id": "e6f98729466",
+      "n": 804,
+      "review": "flag",
+      "t": 15.638944
+    },
+    "s838980579a4b:ds": {
+      "at": 1791938412375,
+      "id": "ec7096177d3",
+      "n": 852,
+      "review": "flag",
+      "t": 1760.251293
+    },
+    "s83ce541881d3:ds": {
+      "at": 1791908503513,
+      "id": "e34f3e97811",
+      "n": 1593,
+      "review": "flag",
+      "t": 2123.411086
+    },
+    "s844b9d764f72:ds": {
+      "at": 1792073975715,
+      "id": "e8b5830395e",
+      "n": 578,
+      "review": "flag",
+      "t": 1788.014034
+    },
+    "s8d50a361b096:ds": {
+      "at": 1791909767241,
+      "id": "e611ed757dc",
+      "n": 167,
+      "review": "flag",
+      "t": 1808.986579
+    },
+    "s8d7f397b9708:ds": {
+      "at": 1791828465482,
+      "id": "e84bbd0d697",
+      "n": 701,
+      "review": "flag",
+      "t": 2415.835987
+    },
+    "s8fdc9981f949:ds": {
+      "at": 1791561536907,
+      "id": "e4acae3e299",
+      "n": 96,
+      "review": "flag",
+      "t": 1190.719523
+    },
+    "s9a8f6138b49e:ds": {
+      "at": 1790969447716,
+      "id": "ebe7712ac5a",
+      "n": 586,
+      "review": "all",
+      "t": 1797.668706
+    },
+    "sa9275263c832:ds": {
+      "at": 1791562266620,
+      "id": "eb4d7200cc9",
+      "n": 122,
+      "review": "flag",
+      "t": 1941.443365
+    },
+    "sb00c1b34d80b:ds": {
+      "at": 1791902555109,
+      "id": "e244ce60aae",
+      "n": 334,
+      "review": "flag",
+      "t": 2273.059835
+    },
+    "sb296ea8083b3:ds": {
+      "at": 1791572496408,
+      "id": "eee1278932e",
+      "n": 374,
+      "review": "flag",
+      "t": 1793.345816
+    },
+    "sb5b24f9f8e93:ds": {
+      "at": 1791905030422,
+      "id": "e13b2707c07",
+      "n": 485,
+      "review": "flag",
+      "t": 1788.1545
+    },
+    "sba57286bdee3:ds": {
+      "at": 1791066013816,
+      "id": "e496cf9b4d3",
+      "n": 354,
+      "review": "all",
+      "t": 839.646023
+    },
+    "sc7e6b0e5d060:ds": {
+      "at": 1791483254478,
+      "id": "e0dfc5f0ea9",
+      "n": 56,
+      "review": "flag",
+      "t": 1251.48917
+    },
+    "sd24a31e0e55b:ds": {
+      "at": 1791810636009,
+      "id": "e31a95423e1",
+      "n": 61,
+      "review": "flag",
+      "t": 184.1796
+    },
+    "sd42a6992b76c:ds": {
+      "at": 1791475357410,
+      "id": "eee8d909c2e",
+      "n": 535,
+      "review": "flag",
+      "t": 25.096071
+    },
+    "sd699dd1d187e:ds": {
+      "at": 1791933236789,
+      "id": "e222ffcadba",
+      "n": 110,
+      "review": "flag",
+      "t": 3003.56576
+    },
+    "sd94396e874c7:ds": {
+      "at": 1791813591435,
+      "id": "eaf96f9b21d",
+      "n": 140,
+      "review": "flag",
+      "t": 2179.810285
+    },
+    "sddf3e5010ff2:ds": {
+      "at": 1791901338789,
+      "id": "eb04e0d876d",
+      "n": 314,
+      "review": "flag",
+      "t": 202.691149
+    },
+    "se0695d94e768:ds": {
+      "at": 1791831410211,
+      "id": "e6591a15e2b",
+      "n": 688,
+      "review": "flag",
+      "t": 1784.2138
+    },
+    "se0c7b6ba6d5a:ds": {
+      "at": 1791233733419,
+      "id": "e73db2297a2",
+      "n": 1425,
+      "review": "all",
+      "t": 1800.861179
+    },
+    "se4e5efda72ba:ds": {
+      "at": 1791914824012,
+      "id": "e3876966d9b",
+      "n": 1328,
+      "review": "flag",
+      "t": 1839.27667
+    },
+    "se7d688078e3b:ds": {
+      "at": 1791838871095,
+      "id": "ecb50e923c1",
+      "n": 368,
+      "review": "all",
+      "t": 1827.799389
+    },
+    "se942a3f42a33:ds": {
+      "at": 1792001390594,
+      "id": "ee78f14dc61",
+      "n": 905,
+      "review": "flag",
+      "t": 2473.761176
+    },
+    "sec05b6b24732:ds": {
+      "at": 1791564051557,
+      "id": "eb8434f9a71",
+      "n": 73,
+      "review": "flag",
+      "t": 1498.511011
+    },
+    "sef04f3b4eb4d:ds": {
+      "at": 1791999385321,
+      "id": "e03b6379452",
+      "n": 689,
+      "review": "flag",
+      "t": 1784.350492
+    },
+    "sf357f48d27eb:ds": {
+      "at": 1791572649049,
+      "id": "e1d90022ef7",
+      "n": 413,
+      "review": "flag",
+      "t": 61.824741
+    },
+    "sf95925ed3403:ds": {
+      "at": 1791470868696,
+      "id": "ea09987c776",
+      "n": 51,
+      "review": "flag",
+      "t": 1614.749398
+    }
+  },
+  "curate_span": 0.8,
+  "density": "compact",
+  "digest_seen": "2026-09-08T02:30:43.952468+00:00",
+  "fav_scripts": [],
+  "jarvis": {
+    "DESKTOP-4H65AI7": true,
+    "LCOM549913": false
+  },
+  "panning_at": "{\"demo-ds-tutorial:pooled\":{\"review\":\"left\",\"origin\":\"all\",\"index\":3,\"id\":\"e3\",\"t\":15.11,\"at\":1792020687838}}",
+  "pipeline_folders": {
+    "session": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43"
+  },
+  "radio": {
+    "agreed": true,
+    "small": true,
+    "station": "DA7wDV4MbNo",
+    "volume": 55
+  },
+  "recent_scripts": [
+    "IED/03_IED_Detection/vacc_ied_detect.m",
+    "Kilosort/Kilosort-4_additional_code/Config files/AD_channel_mapping_figures.py",
+    "Kilosort/Kilosort-4_additional_code/H3_channel_journey_flowchart.py",
+    "Kilosort/Kilosort-4_additional_code/automate_kilosort/kilosort_automation.py",
+    "IED/VoltageRaster_EventsAvg.m",
+    "IED/vacc_ied_detect1.m",
+    "IED/vacc_ied_detect.m",
+    "IED/spreadsheet_to_gui.m",
+    "IED/Python helpers/Solid or Sputter Web.py",
+    "IED/07_Grand_Average/CSDRaster_GrandAverage_Spatial_Norm.m",
+    "IED/08_Anatomical_Labeling/blank_png_gen.py",
+    "IED/05_Session_Pipeline/stages/EventStacks_ampWidth_Avg_Pipeline.m"
+  ],
+  "result_group": "",
+  "spotter_at": "{\"s45965a6b13d3:ied\":{\"review\":\"all\",\"index\":49,\"id\":\"e4c9f7bba8b\",\"t\":943.472121,\"at\":1792001370071},\"sddf3e5010ff2:ied\":{\"review\":\"left\",\"index\":7,\"id\":\"eb9bd781841\",\"t\":17.209561,\"at\":1790372908151},\"s9a8f6138b49e:ied\":{\"review\":\"left\",\"index\":162,\"id\":\"ef8f3715329\",\"t\":1248.283006,\"at\":1791910611232},\"s91039ecb8aa9:ied\":{\"review\":\"left\",\"index\":38,\"id\":\"ea4af54247d\",\"t\":334.640772,\"at\":1791915271213},\"s96884739a6ff:ied\":{\"review\":\"left\",\"index\":8,\"id\":\"e246138cb5b\",\"t\":86.9387,\"at\":1792020966917}}",
+  "spotter_light": "lit",
+  "themes": {
+    "BarryLab": "horizon-night",
+    "DESKTOP-4H65AI7": "halloween",
+    "DESKTOP-AH45FAE": "horizon-night",
+    "DESKTOP-NR2H5O7": "horizon-night",
+    "Home": "dark",
+    "LCOM549913": "horizon-night",
+    "ip0af50ae7.int.uvm.edu": "halloween"
+  },
+  "updated": "2026-10-19T12:43:47-04:00",
+  "vacc": {
+    "BarryLab": true,
+    "DESKTOP-4H65AI7": false,
+    "DESKTOP-AH45FAE": true,
+    "Home": true,
+    "LCOM549913": true,
+    "ip0af50ae7.int.uvm.edu": true
+  }
+}

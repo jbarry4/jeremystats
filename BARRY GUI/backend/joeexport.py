@@ -144,6 +144,147 @@ def _tests(f):
     return []
 
 
+#: Tab 11's files go to Joe under this prefix, so they never share a name
+#: with tab 9's (both number their figures fig_1_1...); tab 12's under FINAL.
+DICKSON = "Dickson_"
+FINAL = "Final_"
+#: Joe gets each figure as a PDF only (2026-10-30, "keep just PDF": Part 2
+#: would not fit in a deploy otherwise); the page shows a small PNG of it.
+PREVIEW_W = 800
+SWITCH = {"default": "fdr", "fdr": "Corrected (FDR q < 0.05)", "raw": "Uncorrected (p < 0.05)"}
+
+
+def _preview(add, png, name):
+    """A figure's preview for the page: its 600 dpi PNG at PREVIEW_W px,
+    96 colours (about 80 kB), made again when the PNG is newer. Listed so
+    the page can show it, never offered as a download. Returns its name."""
+    if not png or not os.path.isfile(png):
+        return None
+    out = cache_dir(os.path.splitext(name)[0] + "_preview.png")
+    if not os.path.isfile(out) or os.path.getmtime(out) < os.path.getmtime(png):
+        from PIL import Image
+        im = Image.open(png).convert("RGB")
+        im = im.resize((PREVIEW_W, max(1, int(im.height * PREVIEW_W / im.width))), Image.LANCZOS)
+        tmp = out + ".part.png"
+        im.quantize(colors=96, method=Image.Quantize.MEDIANCUT).save(tmp, "PNG", optimize=True)
+        os.replace(tmp, out)
+    got = add(out)
+    return got["name"] if got else None
+
+
+def _mode_views(add, fd, f, prefix, legend):
+    """A tab 11 or 12 figure as two views, one each side of the switch: its
+    PDF and its preview."""
+    out = []
+    for key, files in (("fdr", f.get("files") or {}), ("raw", dict(f.get("files") or {}, **(f.get("files_raw") or {})))):
+        pdf = files.get("pdf")
+        out.append({"key": key, "null": None, "say": SWITCH[key], "legend": legend,
+                    "files": [x for x in [add(fd(pdf), name=prefix + pdf, say="PDF")] if x] if pdf else [],
+                    "preview": _preview(add, fd(files["png"]), prefix + files["png"]) if files.get("png") else None})
+    return out
+
+
+def _dickson(add):
+    """Tab 11's figures as groups (a band and phase each), every figure both
+    sides of the switch, its legends in one file and its GEE files; None
+    when tab 11 has not been worked out."""
+    root = _mono()._path("evenmore")
+    E = _read(os.path.join(root, "evenmore.json"))
+    if not E:
+        return None
+    fd = lambda n: os.path.join(root, "figs", n)        # noqa: E731
+    pairs = E.get("pairs") or []
+    groups, legend_lines = [], ["Dickson's way (Jarvis tab 11): every legend, in the order of the figures.",
+                                "Made %s." % (E.get("at") or "")[:10], "", "READ FIRST: " + (E.get("flag_say") or ""), ""]
+    for B in E.get("bands") or []:
+        for ph, key, say in ((1, "phase1", "Early against Late"), (2, "phase2", "cue 1 against cue 2"),
+                             (3, "phase3", "baseline, cue 1 and cue 2")):
+            g = {"key": "D-%s-%d" % (B["band"], ph), "title": "%s · %s" % (B["say"], say), "band": B["band"], "gated": True,
+                 "say": "Each pair alone, then all ten together with the statistics.", "figures": []}
+            for f in (B.get(key) or {}).get("figures") or []:
+                fl = f.get("files") or {}
+                no = "D" + f["id"].replace("_", ".")
+                what = "all ten pairs" if f["kind"] == "pooled" else (pairs[f["pair"]]["say"] if f.get("pair") is not None else "")
+                prism = None
+                if fl.get("xlsx") or fl.get("pzfx"):
+                    zp = _prism_zip(DICKSON + "fig_%s_prism" % f["id"], fd(fl["xlsx"]) if fl.get("xlsx") else None,
+                                    fd(fl["pzfx"]) if fl.get("pzfx") else None)
+                    prism = add(zp, say="Prism (.xlsx and .pzfx)")
+                lg = f.get("legend") or {}
+                legend_lines += ["Figure %s. %s" % (no, lg.get("title") or ""), lg.get("body") or "", ""]
+                ps = f.get("passes")
+                ps = ps if isinstance(ps, dict) else {"fdr": bool(ps), "raw": bool(ps)}
+                g["figures"].append({"id": no, "name": "Figure %s · %s" % (no, what), "kind": "dickson", "pair": f.get("pair"),
+                                     "title": lg.get("title"),
+                                     "tests": ([{"key": "gee", "say": "GEE, across the ten", "pass": ps}] if f["kind"] == "pair" else []),
+                                     "views": _mode_views(add, fd, f, DICKSON, lg), "prism": prism})
+            if g["figures"]:
+                groups.append(g)
+    lp = cache_dir(DICKSON + "figure_legends.txt")
+    text = "\n".join(legend_lines)
+    if not os.path.isfile(lp) or open(lp, encoding="utf-8").read() != text:
+        with open(lp, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(text)
+    files = [add(lp, say="Every legend of this section, in one text file"),
+             add(os.path.join(root, "export", "evenmore_gee.zip"), name=DICKSON + "GEE_files.zip",
+                 say="Every row each GEE saw, every test, and R and SPSS scripts that fit them again"),
+             add(os.path.join(root, "export", "evenmore_README.txt"), name=DICKSON + "README.txt", say="What this section is, in words")]
+    return E, groups, [x for x in files if x]
+
+
+def _final(add):
+    """Part 2, tab 12: power, FOOOF, Granger and coupling on the hits, and
+    the methods; never the side question (not for Joe, 2026-10-30). None
+    when tab 12 has not been worked out."""
+    root = _mono()._path("final")
+    Fj = _read(os.path.join(root, "final.json"))
+    if not Fj:
+        return None
+    fd = lambda n: os.path.join(root, "figs", n)        # noqa: E731
+    say_r = {r["id"]: r["say"] for r in Fj.get("regions") or []}
+    pairs = ["RSC–dHC", "RSC–ACC", "RSC–OFC", "RSC–PER", "dHC–ACC", "dHC–OFC", "dHC–PER", "ACC–OFC", "ACC–PER", "OFC–PER"]
+    figs = Fj.get("figures") or {}
+    groups, legend_lines = [], ["The final stage (Jarvis tab 12): every legend.", "Made %s." % (Fj.get("at") or "")[:10], ""]
+    specs = [("F-power-theta", "Within-region power · Theta 5–12 Hz", [f for f in figs.get("power", []) if f.get("band") == "theta"]),
+             ("F-power-gamma", "Within-region power · Gamma 30–90 Hz", [f for f in figs.get("power", []) if f.get("band") == "gamma"]),
+             ("F-fooof", "Oscillation against background (FOOOF)", figs.get("fooof", [])),
+             ("F-follow", "On the coherence results: which leads (Granger) and theta–gamma coupling", figs.get("granger", []) + figs.get("pac", []))]
+    for key, title, fs in specs:
+        g = {"key": key, "title": title, "gated": True, "figures": [],
+             "say": "Granger and coupling are run only on the coherence results that pass; the switch at the top changes which." if key == "F-follow"
+             else "Each region alone, then every region together." if key.startswith("F-power") else "Five regions, four measures."}
+        for f in fs:
+            if f.get("joe") is False:
+                continue
+            no = f["id"].replace("_", ".")            # P (power), F (FOOOF), G (Granger), M (coupling): apart from tabs 9 and 11
+            what = ("every region" if f.get("kind") == "all" else say_r.get(f.get("region"), "")) if f.get("region") or f.get("kind") == "all" \
+                else "%s, %s" % (pairs[f["pair"]], f.get("band")) if f.get("pair") is not None else ""
+            fl = f.get("files") or {}
+            prism = None
+            if fl.get("xlsx") or fl.get("pzfx"):
+                zp = _prism_zip(FINAL + "fig_%s_prism" % f["id"], fd(fl["xlsx"]) if fl.get("xlsx") else None, fd(fl["pzfx"]) if fl.get("pzfx") else None)
+                prism = add(zp, say="Prism (.xlsx and .pzfx)")
+            lg = f.get("legend") or {}
+            legend_lines += ["Figure %s. %s" % (no, lg.get("title") or ""), lg.get("body") or "", ""]
+            ps = f.get("passes") or {}
+            g["figures"].append({"id": no, "name": "Figure %s · %s" % (no, what), "kind": "final", "title": lg.get("title"),
+                                 "tests": [{"key": "gee", "say": "GEE", "pass": ps}] if ps else [],
+                                 "show_in": f.get("in"), "views": _mode_views(add, fd, f, FINAL, lg), "prism": prism})
+        if g["figures"]:
+            groups.append(g)
+    lp = cache_dir(FINAL + "figure_legends.txt")
+    text = "\n".join(legend_lines)
+    if not os.path.isfile(lp) or open(lp, encoding="utf-8").read() != text:
+        with open(lp, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(text)
+    ed = lambda n: os.path.join(root, "export", n)      # noqa: E731
+    files = [add(ed("final_methods.docx"), name=FINAL + "methods.docx", say="The methods, written from this run (Word)"),
+             add(ed("final_methods.txt"), name=FINAL + "methods.txt", say="The same, as text"),
+             add(ed("final_files.zip"), name=FINAL + "GEE_files.zip", say="Every row, every test, SPSS's coefficients, R and SPSS scripts"),
+             add(lp, say="Every legend of this part, in one text file")]
+    return Fj, groups, [x for x in files if x]
+
+
 def manifest():
     """Everything that goes to Joe, with each file's name, size and where it
     is here (`files`: name -> path, kept out of what the page is sent)."""
@@ -178,8 +319,8 @@ def manifest():
             fl = v.get("files") or {}
             views.append({"null": v.get("null"), "say": VIEW_SAY.get(v.get("null")) if f["kind"] == "connectome" else None,
                           "legend": v.get("legend") or {},
-                          "files": [x for x in [add(fd(fl[k]), say=k.upper()) for k in ("pdf", "svg", "png") if fl.get(k)] if x],
-                          "preview": fl.get("svg")})
+                          "files": [x for x in [add(fd(fl["pdf"]), say="PDF")] if x] if fl.get("pdf") else [],
+                          "preview": _preview(add, fd(fl["png"]), fl["png"]) if fl.get("png") else None})
         pf = f.get("files") or {}
         prism = None
         if pf.get("xlsx") or pf.get("pzfx"):
@@ -193,6 +334,31 @@ def manifest():
                      "say": "Nature format (Arial, 183 mm wide): PDF and SVG to edit, a 600 dpi PNG to paste. Each ring figure comes "
                             "three ways, one per test; each figure’s numbers come for Prism.",
                      "groups": groups, "files": [x for x in [leg] if x]})
+    # 1b. tab 11, Dickson's way (Shahriar, 2026-10-28), once it is worked out
+    dgroups = _dickson(add)
+    if dgroups:
+        E, groups_d, files_d = dgroups
+        fl = E.get("flag") or {}
+        nums = "; ".join("%s %s: pooled %.3f, mean of trials %.3f" % (b, d, x["pooled"], x["trialmean"])
+                         for b in ("theta", "gamma") for d in ("Precon1", "Precon4") for x in [(fl.get(b) or {}).get(d) or {}]
+                         if x.get("pooled") is not None and x.get("trialmean") is not None)
+        sections.append({"id": "dickson", "title": "Dickson’s way: ten pairs, Early against Late",
+                         "say": "Dickson et al. 2022’s Figure 3 on these rats, as the lab’s Coherence Analysis Plan lays it out: RSC, dHC, "
+                                "ACC, OFC and PER, each with each; each pair the mean of its valid wire pairs on both sides; the cue pair "
+                                "window, Precon1 (Early) against Precon4 (Late); then cue 1 against cue 2 on each day; then the baseline, "
+                                "cue 1 and cue 2 (Session × Period). A GEE (Gamma, log link, exchangeable, the rat as the cluster) "
+                                "decides; per-pair tests are corrected across the ten (FDR), and the switch at the top turns that off.",
+                         "flag": (E.get("flag_say") or "") + (" Mean over rats and pairs: " + nums + "." if nums else ""),
+                         "groups": groups_d, "files": files_d})
+    # 1c. Part 2: tab 12, the final stage (2026-10-30)
+    fin = _final(add)
+    if fin:
+        Fj, groups_f, files_f = fin
+        sections.append({"id": "final", "title": "Part 2 · The final stage: power, background, which leads, coupling",
+                         "say": "Within-region power in each region on its own (2 sessions × 3 periods, dB re 1 µV²/Hz, a normal GEE), "
+                                "FOOOF's background and theta peak, and, on the coherence results that pass, Granger (which region "
+                                "leads) and theta–gamma coupling. The methods, written from the run, are here as Word and text.",
+                         "flag": Fj.get("twenty") or "", "groups": groups_f, "files": files_f, "methods": Fj.get("methods") or []})
     # 2. tab 8's statistics
     st = [add(joe_root("export", n), say=s) for n, s in (("joe_tab8_results.csv", "Every comparison’s result, one row each"),
                                                          ("joe_tab8_README.txt", "What every file and column is"),
@@ -210,10 +376,12 @@ def manifest():
                          if ag.get("ok") else ""),
                      "files": [x for x in sc if x]})
     total = sum(os.path.getsize(p) for p in paths.values())
-    n_fig = sum(len(g["figures"]) for g in groups)
+    n_fig = sum(len(g["figures"]) for s in sections for g in s.get("groups") or [])
     return ({"ok": True, "schema": 1, "made": time.strftime("%Y-%m-%dT%H:%M:%S"), "joe_at": J.get("at"), "figs_at": F.get("at"),
              "rats": len(J.get("rats") or []), "days": J.get("tested"), "n_figures": n_fig, "n_files": len(paths),
              "bytes": total, "budget_mb": BUDGET_MB, "fp": F.get("fp"), "n_perm": F.get("n_perm"),
+             "switch": SWITCH if any(s["id"] in ("dickson", "final") for s in sections) else None,
+             "twenty": (fin[0].get("twenty") if fin else None),
              "sections": sections, "site": site_status()}, paths)
 
 
