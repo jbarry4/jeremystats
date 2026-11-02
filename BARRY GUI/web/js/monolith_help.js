@@ -411,7 +411,7 @@ window.MONO_HELP = (function () {
     },
     final: {
       title: 'The final stage',
-      plain: 'What the lab’s last two documents asked for. Within-region power: does a region’s own theta or gamma power respond to the cues differently on Precon4 than on Precon1? Each region on its own. FOOOF: is any change in the rhythm or in the 1/f background? Then, on the pairs tab 11 found: which region leads (Granger) and theta–gamma coupling inside their regions. Every result’s robustness, a side question for us, and the methods, written from this run.',
+      plain: 'What the lab’s last two documents asked for. Within-region power: does a region’s own theta or gamma power respond to the cues differently on Precon4 than on Precon1? In four tiers: every region in one model (tier 1, and tier 2 across frequency), then each region on its own (tiers 3a and 3b). FOOOF: is any change in the rhythm or in the 1/f background? Then, on the pairs tab 11 found: which region leads (Granger) and theta–gamma coupling inside their regions. Every result’s robustness, a side question for us, and the methods, written from this run.',
       steps: ['Power: each 10 s window’s Welch spectrum, pooled over a session’s trials, in dB; both sides averaged.', 'The GEE (normal, identity) on Session × Period, then the three contrasts, corrected across the five regions.',
               'Granger and coupling: only for tab 11’s results on the side of the switch in use.', 'The methods: rebuilt from the numbers every time.'],
       look: 'A region whose Session × Period passes, and whether the coherence that changed was matched by a power change (a local change) or not (a change in coupling).',

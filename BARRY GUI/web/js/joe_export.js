@@ -220,7 +220,7 @@ window.JOE_EXPORT = (function () {
   }
 
   function methods(list) {
-    return el('div', { class: 'jx-methods' }, list.map((s) => el('details', { open: /Waiting/.test(s.title) ? true : null }, [
+    return el('div', { class: 'jx-methods' }, list.map((s) => el('details', { open: /Read first/.test(s.title) ? true : null }, [
       el('summary', { text: s.title }), ...s.paras.map((t) => el('p', { text: t }))])));
   }
 
@@ -277,7 +277,6 @@ window.JOE_EXPORT = (function () {
         M.sections.some((s) => s.id === 'final')
           ? el('li', { text: 'Part 2 is the final stage: power inside each region, the background under it, and, on the coherence results that pass, which region leads and theta–gamma coupling; with the methods written from the run. Every figure here is a PDF.' })
           : null]),
-      M.twenty ? el('div', { class: 'jx-flag', role: 'note' }, [el('b', { text: 'Waiting for you. ' }), M.twenty]) : null,
       switchNode(M),
       el('div', { class: 'jx-nav' }, M.sections.map((s) => el('a', { href: '#jx-' + s.id, text: s.title })))]));
     for (const s of M.sections) {

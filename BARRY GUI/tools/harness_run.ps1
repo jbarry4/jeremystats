@@ -11,6 +11,11 @@ Set-Location $app
 $held = Get-NetTCPConnection -LocalPort 8791 -State Listen -ErrorAction SilentlyContinue
 if ($held) { "port 8791 already held by pid $($held.OwningProcess); not starting another"; exit 1 }
 $env:JARVIS_WARM = "0"
+# A harness server, as tools/harness_run.py says too: what it files is a
+# test's, its deletions write no tombstones, it writes no day report and
+# never reaches the shelf. Without it a harness's refusals on purpose were
+# real faults in Bluebarry's report (2026-10-30).
+$env:BARRY_HARNESS_SERVER = "1"
 $log = Join-Path $env:TEMP "jarvis_harness_server.log"
 $p = Start-Process python -ArgumentList '-c', '"from backend.app import app; app.run(host=''127.0.0.1'', port=8791, debug=False, threaded=True, use_reloader=False)"' -PassThru -WindowStyle Hidden -RedirectStandardOutput $log -RedirectStandardError "$log.err"
 try {

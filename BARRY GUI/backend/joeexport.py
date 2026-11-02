@@ -29,6 +29,7 @@ import json
 import os
 import re
 import shutil
+import threading
 import time
 import zipfile
 
@@ -285,9 +286,23 @@ def _final(add):
     return Fj, groups, [x for x in files if x]
 
 
+# Every file request works the manifest out, and making it writes: the Prism
+# zips, the previews and the legend files are made again, each through one
+# fixed name, whenever their sources are newer. Tab 10 asks for its pictures
+# several at once, so on 2026-10-30 four requests made the same zip together
+# and three failed (WinError 32, and WinError 2 once the first had moved the
+# .part away). One at a time; the second finds the files already made.
+_MAKING = threading.RLock()
+
+
 def manifest():
     """Everything that goes to Joe, with each file's name, size and where it
     is here (`files`: name -> path, kept out of what the page is sent)."""
+    with _MAKING:
+        return _manifest()
+
+
+def _manifest():
     J = _read(joe_root("joe.json"))
     F = _read(joe_root("figs", "figs.json"))
     if J is None or F is None:
@@ -355,10 +370,11 @@ def manifest():
     if fin:
         Fj, groups_f, files_f = fin
         sections.append({"id": "final", "title": "Part 2 · The final stage: power, background, which leads, coupling",
-                         "say": "Within-region power in each region on its own (2 sessions × 3 periods, dB re 1 µV²/Hz, a normal GEE), "
+                         "say": "Within-region power in four tiers: every region in one model (2 sessions × 3 periods × 5 regions, then × frequency), "
+                                "then each region on its own (dB re 1 µV²/Hz, a normal GEE, a mixed model beside it), "
                                 "FOOOF's background and theta peak, and, on the coherence results that pass, Granger (which region "
                                 "leads) and theta–gamma coupling. The methods, written from the run, are here as Word and text.",
-                         "flag": Fj.get("twenty") or "", "groups": groups_f, "files": files_f, "methods": Fj.get("methods") or []})
+                         "groups": groups_f, "files": files_f, "methods": Fj.get("methods") or []})
     # 2. tab 8's statistics
     st = [add(joe_root("export", n), say=s) for n, s in (("joe_tab8_results.csv", "Every comparison’s result, one row each"),
                                                          ("joe_tab8_README.txt", "What every file and column is"),
@@ -381,7 +397,6 @@ def manifest():
              "rats": len(J.get("rats") or []), "days": J.get("tested"), "n_figures": n_fig, "n_files": len(paths),
              "bytes": total, "budget_mb": BUDGET_MB, "fp": F.get("fp"), "n_perm": F.get("n_perm"),
              "switch": SWITCH if any(s["id"] in ("dickson", "final") for s in sections) else None,
-             "twenty": (fin[0].get("twenty") if fin else None),
              "sections": sections, "site": site_status()}, paths)
 
 

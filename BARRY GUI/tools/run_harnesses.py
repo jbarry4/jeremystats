@@ -319,12 +319,28 @@ def drop_profile():
         pass
 
 
+def pick(names, args):
+    """The harnesses `args` name, each a part of a file name.
+
+    Commas split as well as spaces: `harness_run.ps1 -Names a,b` under
+    `powershell -File` hands over one argument, "a,b", which no file name
+    contains, and the run printed "0 harness(es) ... nothing failing" --
+    a clean sweep of nothing (2026-10-31)."""
+    only = [o for a in args for o in a.split(",") if o.strip()]
+    only = [o.strip() for o in only]
+    if not only:
+        return names, []
+    return ([n for n in names if any(o in n for o in only)],
+            [o for o in only if not any(o in n for n in names)])
+
+
 def main():
-    only = sys.argv[1:] or None
     names = sorted(f for f in os.listdir(os.path.join(ROOT, "web", "_dev"))
                    if f.endswith(".html"))
-    if only:
-        names = [n for n in names if any(o in n for o in only)]
+    names, unmatched = pick(names, sys.argv[1:])
+    if unmatched:
+        print("no harness in web/_dev matches: " + ", ".join(unmatched))
+        return 2
 
     rows = []
     # The records each page might delete are checked at the top of the NEXT

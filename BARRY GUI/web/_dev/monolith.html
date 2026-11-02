@@ -3598,8 +3598,8 @@ window.MONO_FIXTURE = {
   FNT.setBand('theta');
   M.showTab('final');
   await until(() => D().getElementById('finalmissing'), 120);
-  check('not worked out yet: said, with a button, and the 20 × 16 × 8 × 2 question waiting for Joe even before',
-        !!D().getElementById('finalmake') && /waiting for confirmation from Joe/.test(txt(D().getElementById('finaltwenty'))));
+  check('not worked out yet: said, with a button; the dropped 20 × 16 × 8 × 2 question nowhere',
+        !!D().getElementById('finalmake') && !D().getElementById('finaltwenty') && !/20 × 16/.test(txt(D().getElementById('finalpane'))));
   D().getElementById('finalmake').click();
   await until(() => fnPosted.length && D().getElementById('finalpower'), 120);
   check('pressed: asked of Jarvis, confirmed, and read again', fnPosted.length === 1 && fnPosted[0].confirm === true && !!D().getElementById('finalpower'));
@@ -3609,6 +3609,10 @@ window.MONO_FIXTURE = {
         fnPow.querySelectorAll('tbody tr').length === fnPer.length && /dB/.test(txt(fnPow.querySelector('tbody')))
         && D().querySelectorAll('#finalpower .morefig').length === FN.figures.power.filter((x) => x.band === 'theta').length
         && D().querySelector('#finalpower .morefig.pooled') !== null);
+  const fnTier = D().getElementById('finaltiertable');
+  check('tiers 1 and 2: every region together, each key term with the GEE (its q across theta and gamma) and the mixed model beside it',
+        fnTier && fnTier.querySelectorAll('tbody tr').length === 4 && /Session × Period × Region/.test(txt(fnTier))
+        && Array.from(fnTier.querySelectorAll('tbody tr td:nth-child(4)')).every((td) => /^F\(/.test(txt(td))), fnTier && txt(fnTier).slice(0, 200));
   check('FOOOF: four measures by five regions, and its figure', D().querySelectorAll('#finalfoooftable tbody tr').length === 4
         && D().querySelectorAll('#finalfoooftable thead th').length === 6 && D().querySelectorAll('#finalfooof .morefig').length === 1);
   check('the follow-ups name tab 11’s results on this side of the switch, and show only theirs',
