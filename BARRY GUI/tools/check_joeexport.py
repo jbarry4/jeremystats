@@ -45,8 +45,12 @@ check("every figure tab 9 drew, in its order (%d)" % len(F["figures"]), [f["id"]
 want = set()
 for f in F["figures"]:
     for v in [f] + list(f.get("alts") or []):
-        want |= {v["files"][k] for k in ("pdf", "svg", "png") if v.get("files", {}).get(k)}
-check("every view of every figure as PDF, SVG and PNG (%d files)" % len(want), want <= set(paths), sorted(want - set(paths))[:4])
+        want |= {v["files"]["pdf"]} if v.get("files", {}).get("pdf") else set()
+views = [v for f in listed for v in f["views"]]
+check("every view of every figure as a PDF and nothing else to download, with a preview to look at (%d PDFs; 2026-10-30, \"keep just PDF\")"
+      % len(want), want <= set(paths) and all([x["name"].endswith(".pdf") for x in v["files"]] == [True] for v in views)
+      and all(v["preview"] in paths and v["preview"].endswith("_preview.png") for v in views)
+      and not any(n.endswith(".svg") or (n.endswith(".png") and not n.endswith("_preview.png")) for n in paths), sorted(want - set(paths))[:4])
 pz = [f for f in listed if f["kind"] != "schematic"]
 okz = True
 for f in pz:
@@ -74,6 +78,35 @@ check("tab 8's files: results, read-me, SPSS zip; the script and its inputs",
       {"joe_tab8_results.csv", "joe_tab8_README.txt", "joe_tab8_spss.zip", "joe_standalone.py", "joe_inputs.json"} <= set(paths))
 check("the size the list says is the files' (%.1f MB), under the %.0f MB a deploy takes" % (man["bytes"] / 1e6, JX.BUDGET_MB),
       man["bytes"] == sum(os.path.getsize(p) for p in paths.values()) and man["bytes"] < JX.BUDGET_MB * 1e6)
+
+print("\nDickson's way (tab 11) and Part 2 (tab 12)")
+EMj = MO._path("evenmore", "evenmore.json")
+FNj = MO._path("final", "final.json")
+secs = {s["id"]: s for s in man["sections"]}
+if os.path.isfile(EMj):
+    EMd = json.load(open(EMj, encoding="utf-8"))
+    dfig = [f for g in secs["dickson"]["groups"] for f in g["figures"]]
+    nfig = sum(len(B[k]["figures"]) for B in EMd["bands"] for k in ("phase1", "phase2", "phase3"))
+    check("Dickson's way: every tab 11 figure, all three phases (%d), each drawn both sides of the switch" % nfig,
+          len(dfig) == nfig and all([v["key"] for v in f["views"]] == ["fdr", "raw"] for f in dfig))
+    check("its files named apart from tab 9's (Dickson_)", all(x["name"].startswith("Dickson_") for f in dfig for v in f["views"] for x in v["files"]))
+if os.path.isfile(FNj):
+    FNd = json.load(open(FNj, encoding="utf-8"))
+    ffig = [f for g in secs["final"]["groups"] for f in g["figures"]]
+    nf = sum(len(v) for k, v in FNd["figures"].items() if k != "side")
+    check("Part 2: every tab 12 figure but the side question (%d), each both sides of the switch" % nf,
+          len(ffig) == nf and all([v["key"] for v in f["views"]] == ["fdr", "raw"] for f in ffig))
+    raw_json = json.dumps(man, ensure_ascii=False)
+    check("the side question never reaches Joe: no figure, no file, no word of it",
+          "side_question" not in raw_json and "Side question" not in raw_json and not any("side" in n.lower() for n in paths), )
+    with zipfile.ZipFile(paths["Final_GEE_files.zip"]) as z:
+        check("Part 2's zip holds the methods (Word and text), the rows and SPSS's coefficients, and no side question",
+              {"final_methods.docx", "final_methods.txt", "final_long.csv", "final_coefficients_spss.csv"} <= set(z.namelist())
+              and not any("side" in n for n in z.namelist()), z.namelist())
+    check("the methods are in the page, and the “20 × 16 × 8 × 2” question waits for Joe at the top",
+          bool(secs["final"].get("methods")) and "waiting for confirmation from Joe" in (man.get("twenty") or "") and man.get("switch", {}).get("default") == "fdr")
+    check("Granger and coupling figures say which side of the switch they belong to",
+          all(f.get("show_in") is not None for g in secs["final"]["groups"] if g["key"] == "F-follow" for f in g["figures"]))
 
 print("\nThe site")
 s = JX.site()

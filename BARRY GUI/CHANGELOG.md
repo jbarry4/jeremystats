@@ -15,6 +15,193 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.30.3 - Sync that works without git; Eye is Braces; Lock fixes
+
+Restart Jarvis on every computer. Then run `supabase/24_arrival_clock.sql`
+once in the Supabase SQL editor. Sync works better without it and fully with
+it.
+
+- **Sync no longer needs a GitHub push.** There were two causes:
+  - **The pull's cursor ran ahead of late rows.** Each computer asked for
+    rows "newer than the newest `updated_at` I have seen". That is the
+    writer's clock, so a row made at 10:00:00 and pushed at 10:00:40 was
+    never asked for by a computer whose cursor had already reached
+    10:00:20. Migration 24 adds `synced_at`, the database's own arrival
+    time, to every table. With it, pulls ask by arrival time. Before it is
+    run, each pull reaches 3 minutes back. The first pull on the new clock
+    reads everything once, which recovers what was missed.
+    `tools/check_pullclock.py` covers this.
+  - **A bank write elsewhere arrived as a version number only.** The new
+    events, the curated flag and the alignment stayed as they were here.
+    A version numbered like one already here was dropped. Now the newer
+    live set is taken on, stamped with the other computer's time, and
+    versions travel by id with their lineage. `tools/check_bankabsorb.py`
+    covers this.
+- **Lock, Braces, Root Canal and Junction read their lists again** each
+  time you open them. Before, a set banked in Panning after Lock was first
+  opened did not appear until Jarvis restarted, even on the same computer.
+- **Full results are shared through the VACC.** Incisor scans, Doppler
+  runs and Root Canal reads are copied to the lab's shared space
+  (`Jarvis Data/_answers`) once they are made. Another computer takes its
+  copy down instead of asking you to run it again. A few minutes after
+  start, each computer also sends what it has already run. This needs a
+  VACC sign-in (`backend/answers.py`, `/api/answers/status`). In Root
+  Canal's Many, a set read elsewhere is listed with the ones already read.
+- **"Accepted as vnull" fixed.** Lock marked a set accepted when banking
+  had written nothing (every spike held, so nothing moved). Root Canal then
+  said the set was never aligned. Now:
+  - Such a set reads as not accepted, so it can be banked.
+  - A first alignment that moves nothing is still written as a version.
+  - The panel counts moves the way the server does.
+  - Root Canal names Lock, not Braces, for pooled sets.
+- **Lock: a held stamp warns instead of refusing.** The message is the
+  same, with "Garbage it anyway" or "Move it anyway" beside "Leave it held".
+  The call records that the hold was overridden.
+- **Braces and Lock centre the screen on the original stamp**, not the
+  proposed one, so the whole ±window stays in view.
+- **Root Canal Many lets you pick a version for each set.** In The
+  Confluence, Many lists pooled sets (it listed DS sets before).
+- **Typing is not interrupted by a repaint.** If a panel redraws while you
+  are typing in one of its fields, the caret and your text go back into
+  the new field. Before, keys after a redraw went to the page's shortcuts.
+- **Eye is now built the same way as Braces**, as Lock is: the same picker,
+  Many, Alignments list and review, on the discharges Spotter confirmed. It
+  aligns through the IED band and offers CSD, Voltage or Slope. Braces'
+  Alignments list no longer shows Eye's sets.
+
+## 2026.10.30.2 - Monolith tab 12: the final stage; tab 11's switch and periods
+
+Restart Jarvis (new routes). Press Work it out on tab 12; it works tab 11 out
+again first, because tab 11's rat-days now carry more measures.
+
+- **Tab 12, the final stage**, from the Within-Region Power plan and the
+  Supplemental Notes:
+  - **Power in each region on its own.** RSC, dHC, ACC, OFC and PER are
+    each tested alone (Region is never a factor), as 2 sessions × 3
+    periods. Power is in dB re 1 µV²/Hz. The model is a normal GEE, with
+    each rat as a cluster. The plan's three panels are drawn for each
+    region, then once more for every region together.
+  - **FOOOF.** The 1/f background's exponent and offset, and the theta
+    peak's frequency and power.
+  - **Follow-ups on tab 11's results.** Granger (which region leads) and
+    theta–gamma coupling within the regions of those results.
+  - **The side question.** Gamma coherence with every trial as its own
+    row. It is marked "not for Joe" and is kept out of his site.
+  - **The methods.** Written from the run itself, and shown as a card, a
+    .docx and a .txt.
+- **A correction switch on tabs 11 and 12.** It is one shared switch, with
+  FDR on by default. Flipping it redraws every star and figure (each
+  figure is drawn both ways). It also changes which pairs get the
+  follow-ups.
+- **Tab 11 now shows coherence in baseline, cue 1 and cue 2.** The test is
+  Session × Period, with three planned contrasts.
+- **"Does it hold?"** For every result that passes, a leave-one-rat-out
+  refit and a linear mixed model are shown beside the GEE. Each result is
+  marked solid, shaky or fragile.
+- **Coefficients are reported the way SPSS reports them**: the last level
+  of each factor is the reference.
+- **Joe's site is now PDF-only, with small previews.** It has a Part 2
+  section and the same correction switch. The "20 × 16 × 8 × 2" question
+  is flagged as waiting for Joe.
+- Checks:
+  - `tools/check_final.py` (17);
+  - `tools/check_evenmore.py` (29);
+  - `tools/check_joeexport.py` (25);
+  - the Monolith harness (615).
+
+## 2026.10.30.1 - Root Canal: a read stays with the set it was started on
+
+Reload the page; nothing on the server changed.
+
+- **Opening another set while one was reading broke the new one.** When
+  the read finished, Root Canal handed it to whichever set was open by
+  then. Every fit on that set was refused with "This set has not been read
+  at these settings on this machine yet", and Recompute kept getting the
+  same refusal (Strawbarry, 10-29, four times). Now a read that finishes
+  under another set is filed and listed, and the open set is left alone. A
+  note says the read is done and to open it from Already through Root
+  Canal.
+- **The reading card names the set being read.** It used to name whichever
+  set was open, so after a switch it looked like the new set was the one
+  reading.
+- New check: `web/_dev/rootcanalswitch.html`.
+
+## 2026.10.28.2 - Monolith tab 11: Narrowing down (even more)
+
+Restart Jarvis (new routes), then open Monolith › 11. Work it out there; it
+reads tab 8's wires, so tab 8 must have been worked out on this machine.
+
+- **Dickson 2022's Figure 3 on our rats, as the Coherence Analysis Plan
+  lays it out.** The plan's ten region pairs (RSC, dHC, ACC, OFC, PER),
+  Early (Precon1) against Late (Precon4), in theta and gamma. Each pair
+  gets its own figure: its edge on the ring, violins of every rat's
+  frequency bins, Early to Late, and the spectrum with the change per
+  bin. Then all ten share one figure with the statistics.
+- **Phase 2: cue 1 against cue 2 on each day,** for the matched pairings
+  (every Precon trial is one).
+- **Both sides of the brain.** Within a rat, a pair is the mean of its
+  valid wire pairs, ipsi and contra counting the same. Homotopic pairs are
+  never used.
+- **A GEE decides every significance.** It is Gamma with a log link,
+  exchangeable, and the rat as the cluster. Each pair's test is corrected
+  across the ten (FDR).
+- **A flag at the top.** Coherence here comes from pooled spectra, not
+  from the mean of trials, and the flag says by how much that lowers it.
+  It also greys out the tests of many things at once, which 8 rats cannot
+  support with robust errors.
+- **Downloads.** Every figure comes as PDF, SVG and PNG, with Prism files.
+  There is also a zip of the GEE rows and tests, with R and SPSS scripts
+  that fit them again.
+- **Joe's site (tab 10).** Tab 11 is listed there as "Dickson's way". It
+  goes online at the next deploy.
+- Checks: `tools/check_evenmore.py` (26) and the Monolith harness (601).
+
+## 2026.10.28.1 - Braces and Lock: no red errors after a set is banked
+
+Reload the page; nothing on the server changed.
+
+- **Keys pressed after a set banks itself no longer come back as
+  errors.** Autobank banks a Braces or Lock set the moment its last
+  flagged stamp gets an answer. Any key pressed after that (Enter, k, g,
+  [ or ]) went to the server and came back red: *This alignment was
+  already accepted as version 3*. On 10-27 Rain got it four times in
+  twenty seconds, and Avery twice. Now the review says once that the set
+  is banked and sends nothing. The bar shows *Banked as version N* in
+  place of the answer buttons, and you can still step through the
+  stamps.
+- **Switching sets in Panning is no longer filed as a glitch.** Opening
+  the next set leaves Panning and comes back once the recording has
+  loaded, which took 5.5 s over the VACC on 10-27. The watcher for
+  modes that undo themselves filed that as a fault. A mode left by a
+  click and later re-entered is now treated as a switch. Going into a
+  mode and back out of it with no click is still reported.
+
+## 2026.10.27.3 - Many keeps its place when you pick a version
+
+Reload the page; nothing on the server changed.
+
+- **Picking a version on a row of Many, in Lock or Braces, no longer
+  scrolls the list.** Only that row is redrawn. Before, the whole list was
+  rebuilt, and could come back at the top. The same goes for a group
+  (I, M, D) held or lined up on a row in Lock, and the switch you pressed
+  keeps the keyboard focus.
+
+## 2026.10.27.2 - Both bands on one trace, in every window
+
+Reload the page; nothing on the server changed.
+
+- **Traces › Both in the Braces and Lock review now draws two lines on the
+  same trace** instead of two separate panes. The dentate-spike band
+  (5–100 Hz) is drawn in the trace colour, and the IED band (1–70 Hz) is
+  drawn over it in a contrasting one, on the same lanes and at the same
+  scale. Every theme has its own second colour. A key beside the switch
+  shows which colour is which, and each pane's header names both filters.
+- **The support window does the same.** Any traces panel there gets both
+  lines too, and goes back to one band when you pick one band or leave the
+  review.
+
+---
+
 ## 2026.10.27.1 - Braces and Lock: settings that stay put, and the batch's switches as chips
 
 Reload the page; nothing on the server changed.

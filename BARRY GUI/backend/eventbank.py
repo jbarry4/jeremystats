@@ -74,6 +74,19 @@ def _now():
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
+def _utc(stamp):
+    """An ISO stamp in any offset as an aware UTC time; the epoch when it
+    cannot be read. Compared as times: the bank writes local time with an
+    offset, the shared database UTC."""
+    try:
+        when = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return datetime(1970, 1, 1, tzinfo=timezone.utc)
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return when.astimezone(timezone.utc)
+
+
 def _slug(text, fallback="x"):
     out = re.sub(r"[^A-Za-z0-9]+", "-", str(text or "")).strip("-").lower()
     return out[:40] or fallback
@@ -155,6 +168,22 @@ def _fold_aligned(rec):
         if (isinstance(v, dict) and not v.get("aligned")
                 and str(v.get("note") or "").startswith(ALIGN_NOTE)):
             v["aligned"] = {"tool": tool, "from_note": True}
+    # And the entry's own mark, when its newest version is an alignment
+    # (2026-10-30). The mark did not travel through the shared database, so
+    # a set Lock lined up on Strawbarry stayed "Lock hasn't lined this set
+    # up yet" in Root Canal everywhere else until a git pull.
+    if not rec.get("aligned"):
+        vs = [v for v in (rec.get("versions") or []) if isinstance(v, dict)]
+        def order(v):
+            try:
+                return (int(v.get("v") or 0), str(v.get("at") or ""))
+            except (TypeError, ValueError):
+                return (0, "")
+        if vs:
+            top = max(vs, key=order)
+            if top.get("aligned"):
+                rec["aligned"] = {"tool": tool, "version": top.get("v"),
+                                  "from_versions": True}
 
 
 class EventBank:
@@ -1144,6 +1173,23 @@ class EventBank:
         return versionsmod.newest([n for _r, n in named])
 
     @staticmethod
+    def stamps_aligned(rec, src=None):
+        """Whether the stamps an alignment would read are already aligned.
+
+        `src` is the version row it reads, None for the live events. The
+        live events carry the entry's own mark, which a relabel keeps; a
+        chosen version carries its own, and the newest version is the live
+        events whichever way it was asked for.
+        """
+        if src is None:
+            return bool(rec.get("aligned"))
+        if src.get("aligned"):
+            return True
+        top = max([v.get("v") or 0 for v in (rec.get("versions") or [])]
+                  or [0])
+        return bool((src.get("v") or 0) == top and rec.get("aligned"))
+
+    @staticmethod
     def is_branch(rec, src_v=None):
         """Whether a write would BRANCH rather than continue the line.
 
@@ -1675,10 +1721,12 @@ class EventBank:
         # `from_v` is what `versions.label_rows` walks to work out lineage
         # and that is numbered; `src_id` is what actually chose the version.
         src_v, src_id, dropped = None, None, []
+        src = None
         if from_version is not None:
             src = self.version_at(rec, from_version)
             src_v = src.get("v") or 0
             src_id = src.get("id")
+        src_aligned = EventBank.stamps_aligned(rec, src)
 
         if from_version is None:
             events = rec.get("events") or []
@@ -1859,7 +1907,18 @@ class EventBank:
                 "holds, which is a duplicate rather than an alignment. "
                 "Nothing was written." % len(collided))
             return report
-        if not shifts and not dropped_lbl:
+        report["source_aligned"] = src_aligned
+        if not shifts and not dropped_lbl and not src_aligned:
+            # NOTHING MOVES, BUT NOTHING HAD BEEN ALIGNED EITHER (2026-10-30).
+            #
+            # Lock with every group held, or a set whose stamps all sat on
+            # their peaks already, is a finished alignment -- and without a
+            # version saying so, Root Canal goes on reading "hasn't been
+            # aligned yet" forever. So the first alignment of these stamps is
+            # written even when it moves none of them. Only a set ALREADY
+            # aligned and looked at again is `nothing_to_do` below.
+            report["unmoved_first"] = True
+        elif not shifts and not dropped_lbl:
             # NOT AN ERROR, and it used to be reported as one.
             #
             # Every stamp already sitting where the recording puts it is a
@@ -2345,10 +2404,21 @@ class EventBank:
         except (TypeError, ValueError):
             return "unknown"
         hit = None
-        for ver in (rec.get("versions") or []):
-            if ver.get("v") == v:
+        # Two machines can each mint a v3 (the number is not an identity,
+        # see `version_at`), and both reach here since versions travel by id
+        # (2026-10-30). The copy that already holds these very stamps is the
+        # answer; else the one still waiting for its snapshot; else the
+        # first, which is what it always was.
+        same = [ver for ver in (rec.get("versions") or [])
+                if ver.get("v") == v]
+        want = snap_sha(snap)
+        for ver in same:
+            if ver.get("snap") and snap_sha(ver["snap"]) == want:
                 hit = ver
                 break
+        if hit is None:
+            hit = next((ver for ver in same if not ver.get("snap")),
+                       same[0] if same else None)
         if hit is None:
             # The metadata has not arrived yet. `bank_entries` is applied
             # before this table for exactly that reason, so this is a
@@ -2391,34 +2461,59 @@ class EventBank:
         rec = self.get(entry_id)
         if not rec:
             return 0
+        mine = list(rec.get("versions") or [])
         have = {}
-        for v in (rec.get("versions") or []):
+        ids = set()
+        for v in mine:
             if v.get("v") is not None:
-                have[int(v["v"])] = v
+                have.setdefault(int(v["v"]), []).append(v)
+            ids.add(str(v.get("id") or versionsmod.stable_id(rec["id"], v)))
         added = 0
         for incoming in (versions or []):
             try:
                 num = int(incoming.get("v"))
             except (TypeError, ValueError):
                 continue
-            if num in have:
+            # BY ITS ID where it carries one (2026-10-30). By number, a v3
+            # minted on Strawbarry was dropped on arrival wherever a v3 had
+            # been minted too -- two different versions, and the second only
+            # ever reached another machine through git. A version from a
+            # sender that predates ids is still matched by number.
+            iid = incoming.get("id")
+            if iid is not None:
+                if str(iid) in ids:
+                    continue
+                # The same pass, held here from before ids travelled.
+                if any(not x.get("id") and versionsmod._twin_of(incoming, x)
+                       for x in have.get(num, [])):
+                    continue
+            elif num in have:
                 continue
             # `tag` and `aligned` too (2026-10-26): what made the version,
-            # which the version tree names and Lock reads.
+            # which the version tree names and Lock reads. Its id and what
+            # it was built on since 2026-10-30, so it has the same name and
+            # the same place in the tree on every machine.
             row = {k: incoming.get(k) for k in
                    ("v", "at", "by", "n", "note", "by_label", "machine",
-                    "tag", "aligned")
+                    "tag", "aligned", "id", "from_v", "from_id", "retimed",
+                    "shifted", "imported")
                    if incoming.get(k) is not None}
             row["v"] = num
             # Said outright on the record: this one arrived without its
             # snapshot, so it can be seen and cited but not restored until
             # the JSON shard carrying it turns up.
             row["snap_elsewhere"] = True
-            have[num] = row
+            have.setdefault(num, []).append(row)
+            mine.append(row)
+            if iid is not None:
+                ids.add(str(iid))
             added += 1
         if not added:
             return 0
-        rec["versions"] = [have[k] for k in sorted(have)]
+        # In number order, and in the order each arrived within a number:
+        # `label_rows` walks creation order to name branches.
+        rec["versions"] = sorted(mine, key=lambda x: (int(x.get("v") or 0),
+                                                       str(x.get("at") or "")))
         try:
             top = max(have)
         except ValueError:
@@ -2434,6 +2529,68 @@ class EventBank:
             rec["version"] = top
         self._save(rec)
         return added
+
+    # The parts of an entry that ARE its live set, which a bank write on
+    # another machine changes and a version's metadata does not carry.
+    LIVE_FIELDS = ("events", "n", "specified", "curation_label", "by_label",
+                   "aligned", "name", "note")
+
+    def absorb_live(self, entry_id, row, before):
+        """Take on another machine's live set, when it is the newer one
+        (2026-10-30).
+
+        A bank write elsewhere arrived here as a version's metadata and
+        nothing else: this machine kept the events, the curated flag and the
+        alignment mark it had, so Lock offered a set Panning had banked
+        elsewhere at its old stamps, Root Canal said Lock had never lined up
+        a set it had, and only a git pull -- which merges the shard itself --
+        put it right. `row` is the shared database's row for the entry and
+        `before` this entry's last change as it stood before the pull
+        touched it (`touched`).
+
+        Taken when the row's last change is newer than anything here. Or,
+        for a version already absorbed by number before this existed (so the
+        two stamps are now equal): when the newest version was made on
+        another machine, this machine holds its snapshot, and the row's
+        events are that snapshot while this machine's are not.
+
+        Written stamped with the row's own time, not now: re-stamping
+        another machine's change as this one's would let it outrank a newer
+        change from a third machine when git merges the shards.
+        """
+        rec = self.get(entry_id)
+        if not rec or not row:
+            return 0
+        at = row.get("updated_at")
+        if not at:
+            return 0
+        newer = _utc(at) > _utc(before) if before else True
+        if not newer:
+            vs = [v for v in (rec.get("versions") or []) if v.get("at")]
+            top = max(vs, key=lambda v: _utc(v.get("at"))) if vs else None
+            snap = (top or {}).get("snap")
+            if (not top or not snap or top.get("machine") == platform.node()
+                    or _utc(top.get("at")) != _utc(at)):
+                return 0
+            want = [[round(float(s[0]), 4), s[1]] for s in snap]
+            def pairs(evs):
+                return [[round(float(e.get("start") or 0.0), 4),
+                         e.get("label_id") or e.get("label")]
+                        for e in (evs or [])]
+            if pairs(row.get("events")) != want or pairs(
+                    rec.get("events")) == want:
+                return 0
+        patch = {k: row[k] for k in self.LIVE_FIELDS
+                 if k in row and row[k] is not None and row[k] != rec.get(k)}
+        if not patch:
+            return 0
+        rec.update(patch)
+        base = self._base_for_id(rec["id"]) or self._base_of(rec)
+        with _LOCK:
+            self.book.write(base, rec, stamp=_utc(at).isoformat(
+                timespec="microseconds"))
+            self._drop_cache()
+        return 1
 
     def _version_ref(self, rec, ref):
         """The one version `ref` names in `rec`, or a refusal.

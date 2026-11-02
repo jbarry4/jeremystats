@@ -116,7 +116,8 @@ OVERLAP_DP = EventBank.DUP_DP
 # The panel says the same words; this is for a caller that went round it.
 LOCKED_SAY = ("This stamp is in a group this alignment holds where it is -- "
               "already lined up, by Braces or by the protocol -- so it is not "
-              "moved or relabelled here. "
+              "moved or relabelled here unless the call is sent with "
+              "`override`. "
               "No second-guessing: follow the protocol as well as you can and "
               "move on. If the result is not good enough, the fix is a better "
               "protocol, not a nudge by hand.")
@@ -152,6 +153,13 @@ class BracesSets:
         out = []
         for rec in self.book.all():
             if rec and rec.get("set_id"):
+                # Marked accepted with no version behind it: the route used
+                # to mark a write that had written nothing ("accepted as
+                # vnull", 2026-10-30). Read as not accepted, so it can be
+                # banked; the next write to it stores the mark as cleared.
+                if (rec.get("committed") is not None
+                        and (rec["committed"] or {}).get("version") is None):
+                    rec.pop("committed", None)
                 out.append(rec)
         out.sort(key=lambda r: (r.get("created") or {}).get("at") or "",
                  reverse=True)
@@ -228,16 +236,24 @@ class BracesSets:
                 continue
             call = (val or {}).get("call")
             # A stamp Braces placed and Lock was told to keep: it is not
-            # moved and not relabelled here. Confirm and keep say nothing
-            # it does not already do, so they are let through.
-            if (rec["rows"][i] or {}).get("locked") and call in ("move",
-                                                                 "garbage"):
+            # moved and not relabelled here unless somebody says so on
+            # purpose. Confirm and keep say nothing it does not already do,
+            # so they are let through. A WARNING, not a wall (2026-10-30:
+            # "two spikes side by side, and I am not allowed to garbage this
+            # one?") -- the panel says LOCKED_SAY and offers the override,
+            # and the call it sends then carries `override`, kept on the
+            # call so the record says the hold was overridden by hand.
+            held = (rec["rows"][i] or {}).get("locked") and call in (
+                "move", "garbage")
+            if held and not (val or {}).get("override"):
                 raise BracesSetError(LOCKED_SAY)
             if call not in CALLS:
                 raise BracesSetError(
                     "%r is not something that can be decided about a stamp. "
                     "Use one of: %s" % (call, ", ".join(CALLS)))
             item = {"call": call, "by": who, "at": _now()}
+            if held:
+                item["override"] = True
             if call == "move":
                 try:
                     item["t"] = round(float(val.get("t")), 6)

@@ -1755,6 +1755,113 @@ BARRY.ui = (function () {
     else document.addEventListener('DOMContentLoaded', alignWatch);
   }
 
+  /* THE CARET STAYS WHERE IT WAS PUT (2026-10-30: "you click into a typing
+     field and then it unselects the field so you don't type anything" --
+     and the keys after that went to the page's shortcuts instead).
+
+     A panel that draws itself again while somebody is typing in it takes
+     the field away and puts a new one, with no caret, where it was. Twelve
+     tools draw that way and the repaints come from polls, arrivals and
+     syncs nobody pressed for, so it is caught here, once, whatever caused
+     it: when the field being typed in leaves the page and the focus falls
+     to nothing, its twin -- the same kind of field with the same name for
+     it, in the same view -- is focused, with the caret and selection where
+     they were. The text comes too when the new field arrived empty, unless
+     the field had just been sent with Enter (an empty field then is the
+     tool's answer, not a loss). Pressing anywhere else lets go. */
+  const caret = { el: null, key: null, scope: null, val: '', a: null,
+                  b: null, enterAt: 0, lostAt: 0 };
+  const TEXTISH = /^(text|search|number|email|url|tel|password|)$/i;
+
+  function isTyping(n) {
+    if (!n || n.nodeType !== 1) return false;
+    const t = n.tagName;
+    return t === 'TEXTAREA' || (t === 'INPUT' && TEXTISH.test(n.type || ''));
+  }
+
+  /* What makes two fields the same field, across a repaint. Without a name
+     of some kind it is not guessed at: two anonymous boxes in one panel
+     cannot be told apart, and focusing the wrong one is worse. */
+  function fieldKey(n) {
+    const name = n.getAttribute('data-fk') || n.getAttribute('aria-label')
+      || n.getAttribute('name') || n.getAttribute('placeholder') || n.id;
+    if (!name) return null;
+    return [n.tagName, n.type || '', name,
+            Array.from(n.classList).sort().join('.')].join('|');
+  }
+
+  function caretNote(n) {
+    caret.val = n.value;
+    try { caret.a = n.selectionStart; caret.b = n.selectionEnd; }
+    catch (e) { caret.a = caret.b = null; }    // number fields have none
+  }
+
+  function caretRestore() {
+    if (!caret.el || caret.el.isConnected) return;
+    const act = document.activeElement;
+    if (act && act !== document.body && act !== document.documentElement) {
+      caret.el = null;                       // something else has it now
+      return;
+    }
+    if (Date.now() - caret.lostAt > 2000) { caret.el = null; return; }
+    const scope = caret.scope && caret.scope.isConnected ? caret.scope : document;
+    const twin = Array.from(scope.querySelectorAll(caret.el.tagName))
+      .find((n) => n.isConnected && n.offsetParent !== null
+                   && fieldKey(n) === caret.key);
+    if (!twin) return;                       // not drawn yet: the next mutation
+    // Read before the focus: focusing it notes the new field's own state.
+    const val = caret.val, a = caret.a, b = caret.b;
+    const sent = Date.now() - caret.enterAt < 1500;
+    caret.el = twin;
+    try { twin.focus({ preventScroll: true }); } catch (e) { return; }
+    if (!twin.value && val && !sent) {
+      twin.value = val;
+      twin.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    try {
+      if (a != null && twin.value === val) twin.setSelectionRange(a, b);
+    } catch (e) { /* no selection on this kind */ }
+    caretNote(twin);
+  }
+
+  function caretWatch() {
+    if (caretWatch.on || typeof MutationObserver === 'undefined') return;
+    caretWatch.on = true;
+    document.addEventListener('focusin', (e) => {
+      const n = e.target;
+      if (!isTyping(n)) { caret.el = null; return; }
+      const key = fieldKey(n);
+      if (!key) { caret.el = null; return; }
+      caret.el = n; caret.key = key; caret.lostAt = 0;
+      caret.scope = n.closest('.view') || null;
+      caretNote(n);
+    }, true);
+    for (const t of ['input', 'keyup', 'select', 'mouseup']) {
+      document.addEventListener(t, (e) => {
+        if (e.target === caret.el) caretNote(caret.el);
+      }, true);
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.target === caret.el && e.key === 'Enter') caret.enterAt = Date.now();
+    }, true);
+    // A press anywhere but the field is somebody choosing to leave it.
+    document.addEventListener('pointerdown', (e) => {
+      if (caret.el && e.target !== caret.el) caret.el = null;
+    }, true);
+    new MutationObserver(() => {
+      if (!caret.el) return;
+      if (!caret.el.isConnected && !caret.lostAt) caret.lostAt = Date.now();
+      if (caret.el.isConnected) { caret.lostAt = 0; return; }
+      caretRestore();
+      if (caret.el && caret.el.isConnected) caret.lostAt = 0;
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  if (typeof document !== 'undefined') {
+    if (document.body) caretWatch();
+    else document.addEventListener('DOMContentLoaded', caretWatch);
+  }
+
   return {
     archivedTail: archivedTail,
     splitArchived: splitArchived,

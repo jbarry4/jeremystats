@@ -358,6 +358,14 @@ def page_checks(work, site, S):
     check("tab 10 opens by its link, from the copy, and says Joe's export is a site of its own (no files, no button)",
           re.search(r'id="tab-joex"[^>]*aria-selected="true"', jx) is not None and 'id="joexstatic"' in jx
           and "Not in this copy" in jx and 'id="joexbuild"' not in jx)
+    em = dom("monolith.html#tab=more")
+    check("tab 11 opens by its link, from the copy, and says it opens in Jarvis (no button, nothing asked of a server)",
+          re.search(r'id="tab-more"[^>]*aria-selected="true"', em) is not None and 'id="morestatic"' in em
+          and "Not in this copy" in em and 'id="moremake"' not in em)
+    fn = dom("monolith.html#tab=final")
+    check("tab 12 opens by its link, from the copy, and says it opens in Jarvis (no button)",
+          re.search(r'id="tab-final"[^>]*aria-selected="true"', fn) is not None and 'id="finalstatic"' in fn
+          and "Not in this copy" in fn and 'id="finalmake"' not in fn)
     srv.shutdown()
 
 

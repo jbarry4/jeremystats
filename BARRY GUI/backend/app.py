@@ -2614,6 +2614,15 @@ INCISOR_VAULT = toolresults.ToolResults(LOGS_DIR, "incisor", STORE)
 # megabytes and regenerable, so they go to .cache, which git ignores.
 DOPPLER_VAULT = toolresults.ToolResults(LOGS_DIR, "doppler", STORE)
 
+# The full answers behind both, and Root Canal's reads, on the lab's shelf
+# on the cluster (backend/answers.py, 2026-10-30): "anything processed by
+# any device is accessible to anyone without the need to reprocess". Only
+# the app itself reaches the shelf, as only it syncs (Jarvis_CLOUD_SYNC,
+# below); the tools and checks that import this module leave it alone.
+from . import answers as answersmod  # noqa: E402
+answersmod.configure(LOGS_DIR, share=os.environ.get(
+    "Jarvis_CLOUD_SYNC", "").lower() in ("1", "on", "true", "yes"))
+
 
 def _incisor_remember(sess, spec, key, out, extra=None):
     """File a finished scan: the numbers durably, the events as cache.
@@ -2630,6 +2639,8 @@ def _incisor_remember(sess, spec, key, out, extra=None):
         with open(INCISOR_VAULT.cached_path(gid, key, ".json"),
                   "w", encoding="utf-8") as fh:
             json.dump(out, fh)
+        answersmod.share_soon("incisor",
+                              INCISOR_VAULT.cached_path(gid, key, ".json"))
     except Exception as exc:                             # noqa: BLE001
         STORE.record_error("incisor.cache", exc, None, {"gid": gid})
     try:
@@ -2658,7 +2669,8 @@ def _incisor_recall(sess, key):
     if not gid:
         return None
     path = INCISOR_VAULT.cached_path(gid, key, ".json")
-    if not os.path.exists(path):
+    # Not here: the shelf, where the machine that ran it put it.
+    if not os.path.exists(path) and not answersmod.fetch("incisor", path):
         return None
     try:
         with open(path, "r", encoding="utf-8") as fh:
@@ -5158,6 +5170,8 @@ def _doppler_remember(sess, spec, key, out, extra=None):
         with open(DOPPLER_VAULT.cached_path(gid, key, ".json"),
                   "w", encoding="utf-8") as fh:
             json.dump(out, fh)
+        answersmod.share_soon("doppler",
+                              DOPPLER_VAULT.cached_path(gid, key, ".json"))
     except Exception as exc:                             # noqa: BLE001
         STORE.record_error("doppler.cache", exc, None, {"gid": gid})
     try:
@@ -5301,7 +5315,8 @@ def _doppler_recall(sess, key):
     if not gid:
         return None
     path = DOPPLER_VAULT.cached_path(gid, key, ".json")
-    if not os.path.exists(path):
+    # Not here: the shelf, where the machine that ran it put it.
+    if not os.path.exists(path) and not answersmod.fetch("doppler", path):
         return None
     if _doppler_cache_older(gid, key, path):
         return None
@@ -7329,9 +7344,18 @@ def api_braces_set(set_id):
         here = sess.get("path")
     except Exception:                                    # noqa: BLE001
         here = None
+    # Whether the stamps it read were aligned already: if not, banking it is
+    # worth a version even when nothing moves (`EventBank.align`).
+    try:
+        src = (BANK.version_at(entry, rec["from_version"])
+               if entry and rec.get("from_version") is not None else None)
+        src_aligned = BANK.stamps_aligned(entry, src)
+    except Exception:                                    # noqa: BLE001
+        src_aligned = True
     return jsonify({
         "session_path": here,
         "ok": True,
+        "source_aligned": src_aligned,
         "set": {k: rec.get(k) for k in
                 ("set_id", "entry_id", "gid", "name", "from_version",
                  "params", "summary", "created", "committed", "rows",
@@ -7374,7 +7398,10 @@ def api_braces_decide(set_id):
         # `calls` form for exactly this reason; now both work.
         calls = {str(body.get("row")):
                  (None if body.get("call") is None
-                  else {"call": body["call"], "t": body.get("t")})}
+                  else {"call": body["call"], "t": body.get("t"),
+                        # A held stamp moved or thrown out on purpose
+                        # (`bracesset.decide`).
+                        "override": bool(body.get("override"))})}
     try:
         rec = BRACES.decide(set_id, calls or {}, by=_braces_who(body))
     except Exception as exc:                             # noqa: BLE001
@@ -7471,6 +7498,11 @@ def api_braces_commit(set_id):
         if report.get("error"):
             out["error"] = report["error"]
         return jsonify(out)
+    if report.get("version") is None:
+        # Nothing was written (`nothing_to_do`), so nothing was accepted.
+        # Marking it anyway is what put "accepted as vnull" on two Lock sets
+        # (2026-10-30) and left Root Canal saying they were never aligned.
+        return jsonify({"ok": True, "report": report})
 
     BRACES.mark_committed(set_id, report.get("version"),
                           report.get("version_id"), by=_braces_who(body))
@@ -9761,7 +9793,29 @@ def _rootcanal_npz(gid, rh):
 
 
 def _rootcanal_save(gid, rh, got):
-    return rootcanal.save_read(_rootcanal_npz(gid, rh), got)
+    out = rootcanal.save_read(_rootcanal_npz(gid, rh), got)
+    # On the shelf for every other machine (backend/answers.py): a read is
+    # minutes of disk, and "read it again on this machine" was the answer.
+    answersmod.share_soon("rootcanal", out)
+    return out
+
+
+def _rootcanal_have(gid, rh):
+    """This machine holds the read, or has just taken it off the shelf."""
+    if not (gid and rh):
+        return False
+    if ROOTCANAL.has_cached(gid, rh, ".npz"):
+        return True
+    return answersmod.fetch("rootcanal", _rootcanal_npz(gid, rh))
+
+
+def _rootcanal_on_shelf(gid, rh):
+    """The read is on the shelf (one listing for every set asked)."""
+    try:
+        return bool(gid and rh and answersmod.has(
+            "rootcanal", os.path.basename(_rootcanal_npz(gid, rh))))
+    except Exception:                                    # noqa: BLE001
+        return False
 
 
 def _rootcanal_load(gid, rh):
@@ -9799,7 +9853,7 @@ def _rootcanal_setup(body, pinned=False):
     rec = _dspca_entry(body.get("entry_id"))
     if pinned and body.get("read"):
         gid, rh = rec.get("gid"), body["read"]
-        if not ROOTCANAL.has_cached(gid, rh, ".npz"):
+        if not _rootcanal_have(gid, rh):
             raise rootcanal.RootCanalError(
                 "This member's read is not on this machine -- it was read "
                 "somewhere else -- so its traces cannot be shown here. Its "
@@ -9817,7 +9871,7 @@ def _rootcanal_setup(body, pinned=False):
     p = _rootcanal_params(body, rec, stamps)
     gid = rec.get("gid")
     def find(rh):
-        if ROOTCANAL.has_cached(gid, rh, ".npz"):
+        if _rootcanal_have(gid, rh):
             return _rootcanal_load(gid, rh)
         return _rootcanal_covering(gid, rh, stamps)
     rh = body.get("read") or p.read_hash()
@@ -9937,6 +9991,35 @@ def _rootcanal_state(rec, ied_by):
             "version": versionsmod.newest(mine) if mine else None}
 
 
+def _rootcanal_versions(rec):
+    """A set's versions as the version tree draws them, each with whether
+    this machine holds its stamps (`usable`), whether it is an alignment,
+    and the `ref` a read is sent back with -- the candidates route's shape,
+    for Many's per-set version button."""
+    vers = rec.get("versions") or []
+    named = named_versions(vers)
+    for row in named:
+        row["usable"] = bool(any(
+            v.get("snap") for v in vers
+            if BANK.version_key(v) == BANK.version_key(row)))
+        row["ref"] = BANK.version_key(row)
+        row["aligned"] = bool(row.get("aligned"))
+    return named
+
+
+def _rootcanal_aligner(kind):
+    """The step that aligns a set of this kind: Lock lines up a pooled set
+    (The Confluence), Braces a dentate-spike one (The Dentist)."""
+    return "Lock" if (kind or "") == "pooled" else "Braces"
+
+
+def _rootcanal_unaligned(kind):
+    """Why a set is not offered yet, naming the step that would fix it."""
+    if (kind or "") == "pooled":
+        return "Lock hasn't lined this set up yet"
+    return "Braces hasn't aligned this set yet"
+
+
 def _rootcanal_reachable(out):
     """Whether each candidate's recording can be read here. Mutates `out`.
 
@@ -9969,7 +10052,7 @@ def _rootcanal_reachable(out):
             # recording may well be here, and the step before this one has
             # not been run.
             row["readable"] = False
-            row["why_not"] = "Braces hasn't aligned this set yet"
+            row["why_not"] = _rootcanal_unaligned(row.get("type"))
         elif known is None:
             row["readable"], row["why_not"] = True, None
         elif not g:
@@ -10208,8 +10291,9 @@ def _rootcanal_prepare(rec, src_v):
     read and the batch so the two cannot key the same set differently."""
     if not rec.get("aligned"):
         raise rootcanal.RootCanalError(
-            "Braces hasn't aligned this set yet. Every measurement here is "
-            "taken at the stamp, so align it in Braces first.")
+            "%s. Every measurement here is taken at the stamp, so align it "
+            "in %s first." % (_rootcanal_unaligned(rec.get("type")),
+                              _rootcanal_aligner(rec.get("type"))))
     stamps, n_all = _dspca_stamps(rec, src_v)
     if not stamps:
         raise rootcanal.RootCanalError(
@@ -10225,7 +10309,7 @@ def _rootcanal_prepare(rec, src_v):
     return sess, chans, stamps, p, marked
 
 
-def _rootcanal_is_read(gid, rh, marked, stamps=None):
+def _rootcanal_is_read(gid, rh, marked, stamps=None, fetch=False):
     """Whether this read is on file and still honours the bad contacts.
 
     The marked-bad list is not in the read's name -- a fit has to find the
@@ -10234,7 +10318,12 @@ def _rootcanal_is_read(gid, rh, marked, stamps=None):
     was filed with. A contact marked bad since is a read that would pick a
     wire somebody has said not to trust, and is read again.
     """
-    if not ROOTCANAL.has_cached(gid, rh, ".npz"):
+    # Off the shelf when asked to (a read, the batch): read elsewhere is
+    # read (backend/answers.py). Not when only listing -- a plan of forty
+    # sets must not download forty reads to draw itself.
+    here = (_rootcanal_have(gid, rh) if fetch
+            else ROOTCANAL.has_cached(gid, rh, ".npz"))
+    if not here:
         # Not under its own name -- but a set Root Canal has cleaned is a
         # subset of the read it was cleaned from, and that is as good as
         # read. See `_rootcanal_covering`.
@@ -10298,7 +10387,8 @@ def api_rootcanal_read():
                      "from_version": src_v})
     gid = rec.get("gid")
     rh = p.read_hash()
-    if _rootcanal_is_read(gid, rh, marked, stamps) and not body.get("force"):
+    if (_rootcanal_is_read(gid, rh, marked, stamps, fetch=True)
+            and not body.get("force")):
         return jsonify({"ok": True, "cached": True, "job": None, "read": rh,
                         "n": len(stamps)})
     # Opening a set from the list of the ones already done (2026-10-20):
@@ -10971,6 +11061,15 @@ def api_rootcanal_batch_plan():
     body = request.get_json(force=True, silent=True) or {}
     if request.method == "GET":
         body = dict(request.args)
+    # Which kind: The Dentist cleans dentate-spike sets, The Confluence names
+    # pooled ones (2026-10-30: the Confluence's Many listed DS sets).
+    want_type = (body.get("type") or "ds").strip() or "ds"
+    # The version each set is read from, chosen per row in Many (2026-10-30:
+    # "doesn't allow you to choose which version you read"). A set nobody
+    # picked for is read as it stands, as it always was.
+    picks = body.get("picks") or {}
+    if not isinstance(picks, dict):
+        picks = {}
     try:
         todo, done, blocked = [], [], []
         # WHAT EACH SET IS, for the batch card's search and filter chips
@@ -10981,10 +11080,11 @@ def api_rootcanal_batch_plan():
         # of the registry for all of it (`_rootcanal_reg_index`).
         reg = _rootcanal_reg_index()
         for rec in BANK.all():
-            if (rec.get("type") or "") != "ds":
+            if (rec.get("type") or "") != want_type:
                 continue
             label = (rec.get("session_label") or rec.get("name")
                      or rec.get("id"))
+            src_v = picks.get(rec["id"], body.get("from_version"))
             proj, mk, mt = _rootcanal_who(rec.get("gid"), rec.get("project"),
                                           rec.get("mouse"), reg)
             # The date the search finds: the recording's start where the
@@ -11002,18 +11102,23 @@ def api_rootcanal_batch_plan():
                    "date": day or None,
                    "project": proj, "mouse": rec.get("mouse"),
                    "mouse_key": mk, "mouse_type": mt,
-                   "session": rec.get("session")}
+                   "session": rec.get("session"),
+                   "type": rec.get("type") or want_type,
+                   "pipeline": (rec.get("source") or {}).get("pipeline"),
+                   "from_version": src_v,
+                   "versions": _rootcanal_versions(rec)}
             if not rec.get("specified"):
-                blocked.append(dict(row, why="nobody has been through this "
-                                             "one in Checkup yet"))
+                blocked.append(dict(row, why=(
+                    "nobody has been through this one in %s yet"
+                    % ("Panning" if want_type == "pooled" else "Checkup"))))
                 continue
             if not row["n_good"]:
                 blocked.append(dict(row, why="every candidate was rejected, "
                                              "so there is nothing to measure"))
                 continue
             if not rec.get("aligned"):
-                blocked.append(dict(row, why="Braces hasn't aligned this set "
-                                             "yet"))
+                blocked.append(dict(row, why=_rootcanal_unaligned(
+                    rec.get("type"))))
                 continue
             # ALREADY CLEANED. The batch reads the live set, and once Root
             # Canal has banked, the live set IS its output. k-means always
@@ -11021,11 +11126,12 @@ def api_rootcanal_batch_plan():
             # take a second share of real dentate spikes out -- which is
             # why commit refuses it. Offering it here would be a batch that
             # spends minutes per set building answers it cannot bank.
-            vs = rec.get("versions") or []
-            last = (max(vs, key=lambda v: (v.get("v") or 0,
-                                           str(v.get("at") or "")))
-                    if vs else None)
-            if last and last.get("tag") == "rootcanal":
+            #
+            # Asked of the version being read: the newest unless one was
+            # picked. A pooled set is named, never split, so reading its own
+            # output again takes nothing out.
+            if (want_type == "ds"
+                    and _rootcanal_source_tag(rec, src_v) == "rootcanal"):
                 blocked.append(dict(row, why=(
                     "Root Canal has already taken the IEDs out of this "
                     "one; cleaning its own output again would take real "
@@ -11033,7 +11139,7 @@ def api_rootcanal_batch_plan():
                 continue
             try:
                 sess, chans, stamps, p, marked = _rootcanal_prepare(
-                    rec, body.get("from_version"))
+                    rec, src_v)
             except Exception as exc:                     # noqa: BLE001
                 blocked.append(dict(row, why=str(exc)))
                 continue
@@ -11043,6 +11149,10 @@ def api_rootcanal_batch_plan():
             row["path"] = sess.get("path")
             if _rootcanal_is_read(rec.get("gid"), rh, marked, stamps):
                 done.append(dict(row, cached=True))
+            elif _rootcanal_on_shelf(rec.get("gid"), rh):
+                # Read on another machine and on the shelf: it lands at once
+                # with nothing read, so it is with the ones already read.
+                done.append(dict(row, cached=True, shelf=True))
             else:
                 todo.append(row)
         # The facts are for finding sets, never a reason to leave one out:
@@ -11090,6 +11200,10 @@ def api_rootcanal_batch():
     body = request.get_json(force=True) or {}
     want = body.get("entries") or []
     force = bool(body.get("force"))
+    # The version picked for each set in Many; the rest as they stand.
+    picks = body.get("picks") or {}
+    if not isinstance(picks, dict):
+        picks = {}
     if not want:
         return jsonify({"ok": False,
                         "error": "Nothing was chosen to read."}), 400
@@ -11117,11 +11231,12 @@ def api_rootcanal_batch():
             job.member(eid, status="running")
             try:
                 rec = BANK.get(eid)
-                src_v = body.get("from_version")
+                src_v = picks.get(eid, body.get("from_version"))
                 sess, chans, stamps, p, marked = _rootcanal_prepare(rec, src_v)
                 gid = rec.get("gid")
                 rh = p.read_hash()
-                if _rootcanal_is_read(gid, rh, marked, stamps) and not force:
+                if (_rootcanal_is_read(gid, rh, marked, stamps, fetch=True)
+                        and not force):
                     job.member(eid, status="done", cached=True, read=rh)
                     out["cached"].append({"entry_id": eid, "read": rh})
                     continue
@@ -24010,6 +24125,11 @@ COLUMN_MIGRATIONS = {
     # shard_files (Braces sets and AI Beta runs travelling), found the same
     # way: a probe for its `sha` is how a machine learns it was never made.
     "sha": "21_shard_files.sql",
+    # The arrival clock every pull asks by, and the live set's alignment
+    # and label mix travelling with the entry (2026-10-30).
+    "synced_at": "24_arrival_clock.sql",
+    "aligned": "24_arrival_clock.sql",
+    "by_label": "24_arrival_clock.sql",
 }
 
 
@@ -24046,6 +24166,9 @@ COLUMN_TABLES = {
     "jarvis_version": "machines",
     "gz": "artifact_payloads",
     "sha": "shard_files",
+    "synced_at": "bank_entries",
+    "aligned": "bank_entries",
+    "by_label": "bank_entries",
 }
 
 
@@ -25212,6 +25335,18 @@ DSPCA = toolresults.ToolResults(
 ROOTCANAL = toolresults.ToolResults(
     LOGS_DIR, "rootcanal", STORE,
     keys=tuple(rootcanal.Params.READ_KEYS) + tuple(rootcanal.Params.FIT_KEYS))
+# What this machine already ran, onto the shelf once, a few minutes after
+# start (backend/answers.py): the work done before the shelf existed is
+# what the other machines were asked to run again.
+answersmod.start_backfill([("incisor", INCISOR_VAULT.cache, ".json"),
+                           ("doppler", DOPPLER_VAULT.cache, ".json"),
+                           ("rootcanal", ROOTCANAL.cache, ".npz")])
+
+
+@app.route("/api/answers/status")
+def api_answers_status():
+    """What this machine has put on the shelf, and what is waiting."""
+    return jsonify(dict(answersmod.status(), ok=True))
 # Checkup's AI Beta: its run records and the models they trained, sharded
 # per machine under GUI_logs/aibeta; the features it reads are cache.
 AIBETA = aibetamod.Runs(LOGS_DIR, STORE)
@@ -26025,6 +26160,19 @@ def api_arc_monolith_data(name):
             return jsonify({"ok": False, "error": "Tab 9's figures have not been drawn yet."}), 404
         with open(path, encoding="utf-8") as fh:
             return app.response_class(fh.read(), mimetype="application/json")
+    if name == "final":
+        path = os.path.join(monolithmod._path("final"), "final.json")
+        if not os.path.isfile(path):
+            return jsonify({"ok": False, "error": "Tab 12 has not been worked out yet."}), 404
+        with open(path, encoding="utf-8") as fh:
+            return app.response_class(fh.read(), mimetype="application/json")
+    if name == "evenmore":
+        # Tab 11, read off the disk for the same reason as joefigs.
+        path = os.path.join(monolithmod._path("evenmore"), "evenmore.json")
+        if not os.path.isfile(path):
+            return jsonify({"ok": False, "error": "Tab 11 has not been worked out yet."}), 404
+        with open(path, encoding="utf-8") as fh:
+            return app.response_class(fh.read(), mimetype="application/json")
     if name == "joeexport":
         # Tab 10: everything that goes to Joe (backend/joeexport.py).
         from . import joeexport as jxmod
@@ -26455,20 +26603,124 @@ def api_arc_monolith_joefigs_file(name):
     return send_file(path, mimetype=types[ext], as_attachment=save, download_name=base)
 
 
+@app.route("/api/arc/monolith/evenmore", methods=["POST"])
+def api_arc_monolith_evenmore():
+    """Tab 11, Narrowing down (even more): each tested rat-day's pooled
+    spectra (on tab 8's wires), then the GEEs, the figures and the exports
+    (backend/evenmore.py). Refused without `confirm`."""
+    body = request.get_json(silent=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    try:
+        from . import evenmore as emmod
+        w = monolithmod.start_work("evenmore", emmod.work_safe)
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/evenmore", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.evenmore", "detail": {}}])
+    return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/final", methods=["POST"])
+def api_arc_monolith_final():
+    """Tab 12, the final stage: power, FOOOF, Granger and PAC on tab 11's
+    hits, the side question, the robustness checks and the methods
+    (backend/finalstage.py; tab 11 is worked out again first when its
+    rat-days predate these measures). Refused without `confirm`."""
+    body = request.get_json(silent=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    try:
+        from . import finalstage as fsmod
+        w = monolithmod.start_work("final", fsmod.work_safe)
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/final", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.final", "detail": {}}])
+    return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/final/file/<path:name>")
+def api_arc_monolith_final_file(name):
+    """Tab 12's figure files and Prism tables (as tab 11's)."""
+    types = {".svg": "image/svg+xml", ".png": "image/png", ".pdf": "application/pdf",
+             ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".pzfx": "application/xml"}
+    base = os.path.basename(name)
+    ext = os.path.splitext(base)[1]
+    if base != name or ext not in types:
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    path = os.path.join(monolithmod._path("final"), "figs", base)
+    if not os.path.isfile(path):
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    save = request.args.get("download") == "1" or ext in (".pdf", ".xlsx", ".pzfx")
+    return send_file(path, mimetype=types[ext], as_attachment=save, download_name=base)
+
+
+@app.route("/api/arc/monolith/final/export/<path:name>")
+def api_arc_monolith_final_export(name):
+    """Tab 12's exports: the rows, the tests, SPSS's coefficients, R and
+    SPSS scripts, and the methods (.txt and .docx)."""
+    types = {".csv": "text/csv", ".R": "text/plain", ".sps": "text/plain", ".txt": "text/plain", ".zip": "application/zip",
+             ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+    base = os.path.basename(name)
+    ext = os.path.splitext(base)[1]
+    if base != name or ext not in types or not base.startswith("final_"):
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    path = os.path.join(monolithmod._path("final"), "export", base)
+    if not os.path.isfile(path):
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    return send_file(path, mimetype=types[ext], as_attachment=True, download_name=base)
+
+
+@app.route("/api/arc/monolith/evenmore/file/<path:name>")
+def api_arc_monolith_evenmore_file(name):
+    """Tab 11's figure files (SVG and PNG shown in the page; ?download=1
+    saves) and their Prism tables."""
+    types = {".svg": "image/svg+xml", ".png": "image/png", ".pdf": "application/pdf",
+             ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".pzfx": "application/xml"}
+    base = os.path.basename(name)
+    ext = os.path.splitext(base)[1]
+    if base != name or ext not in types:
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    path = os.path.join(monolithmod._path("evenmore"), "figs", base)
+    if not os.path.isfile(path):
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    save = request.args.get("download") == "1" or ext in (".pdf", ".xlsx", ".pzfx")
+    return send_file(path, mimetype=types[ext], as_attachment=save, download_name=base)
+
+
+@app.route("/api/arc/monolith/evenmore/export/<path:name>")
+def api_arc_monolith_evenmore_export(name):
+    """Tab 11's exports: the GEE rows, the tests, the R and SPSS scripts."""
+    types = {".csv": "text/csv", ".R": "text/plain", ".sps": "text/plain", ".txt": "text/plain", ".zip": "application/zip"}
+    base = os.path.basename(name)
+    ext = os.path.splitext(base)[1]
+    if base != name or ext not in types or not base.startswith("evenmore_"):
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    path = os.path.join(monolithmod._path("evenmore"), "export", base)
+    if not os.path.isfile(path):
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    return send_file(path, mimetype=types[ext], as_attachment=True, download_name=base)
+
+
 @app.route("/api/arc/monolith/joeexport/file/<path:name>")
 def api_arc_monolith_joeexport_file(name):
     """Tab 10's files: only the ones its list names (backend/joeexport.py),
     saved, never shown; SVGs shown with ?view=1 (the previews)."""
     from . import joeexport as jxmod
     types = {".svg": "image/svg+xml", ".png": "image/png", ".pdf": "application/pdf", ".zip": "application/zip",
-             ".csv": "text/csv", ".txt": "text/plain", ".py": "text/x-python", ".json": "application/json",
+             ".csv": "text/csv", ".txt": "text/plain", ".py": "text/x-python", ".json": "application/json", ".jpg": "image/jpeg",
+             ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
              ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation"}
     base = os.path.basename(name)
     ext = os.path.splitext(base)[1]
     _man, paths = jxmod.manifest()
     if base != name or ext not in types or base not in paths:
         return jsonify({"ok": False, "error": "No such file."}), 404
-    view = ext == ".svg" and request.args.get("view") == "1"
+    # previews (an SVG, or since 2026-10-30 a small JPEG) are shown, never saved
+    view = ext in (".svg", ".jpg") and request.args.get("view") == "1"
     return send_file(paths[base], mimetype=types[ext], as_attachment=not view, download_name=base)
 
 

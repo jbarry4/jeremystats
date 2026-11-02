@@ -3172,7 +3172,8 @@ document.addEventListener('keydown', () => { _lastGesture = Date.now(); },
 function noticeBounce(from, to, via) {
   const now = Date.now();
   const prev = _lastMode;
-  _lastMode = { at: now, from: from, to: to, via: via };
+  _lastMode = { at: now, from: from, to: to, via: via,
+                byHand: now - _lastGesture < 1000 };
   if (!prev.at) return;
 
   const gap = now - prev.at;
@@ -3189,6 +3190,11 @@ function noticeBounce(from, to, via) {
   /* A person doing it deliberately is not a fault. Anything within a
      second of a click or a key is theirs. */
   if (now - _lastGesture < 1000) return;
+  /* Nor is one tool moving to another of its sets: left by a click, and
+     back in once the next recording has opened -- 5.5 s over the VACC on
+     2026-10-27, which read as a bounce. The fault is the other way round,
+     into a mode and out again unasked, and that is still reported. */
+  if (to && prev.from === to && prev.byHand) return;
 
   try {
     apiPost('/api/errors/client', {

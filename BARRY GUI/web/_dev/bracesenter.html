@@ -306,6 +306,37 @@ async function until(fn, ms, what) {
         ok('and it goes by itself', await until(() => !D().querySelector('.br-party'),
                                                 6000, 'it to go'));
       }
+
+      head('BANKED: THE KEYS SAY SO, ONCE, AND SEND NOTHING');
+      /* 2026-10-27: autobank accepted the set, the next keys went on to the
+         server and came back red, four times in twenty seconds. Accepted
+         here in the page only. */
+      ev(BR + '._state().set.set.committed = { version: 9, by: "Debug_Bot" }');
+      ev(BR + '._goTo(' + n0 + ')');
+      await until(() => at() === n0, 5000, 'the stamp');
+      const k4 = said().length;
+      /* Counted as they are made: the stack on screen also loses the
+         earlier ones as they time out, which virtual time hurries. */
+      ev('(function(){ var W = window; W.__beToasts = []; W.__beToast = W.toast;'
+         + ' W.toast = function(m) { W.__beToasts.push(String(m));'
+         + ' return W.__beToast.apply(this, arguments); }; })()');
+      for (const k of ['Enter', 'k', 'g', ']', 'Enter']) { key(k); await sleep(150); }
+      await sleep(400);
+      const toasted = JSON.parse(ev('JSON.stringify(window.__beToasts)'));
+      ev('window.toast = window.__beToast');
+      ok('nothing is sent to the server', said().length === k4,
+         JSON.stringify(said().slice(k4)));
+      ok('it is said once, not once a key',
+         toasted.length === 1 && /Already banked as version 9/.test(toasted[0]),
+         JSON.stringify(toasted));
+      ok('and the bar says it is banked, with no answers on it',
+         /Banked as version 9/.test((D().getElementById('brViewBar') || {}).textContent || '')
+         && !D().querySelector('#brViewBar .cur-cat'));
+      key('n');
+      await sleep(300);
+      if (at() === n0) { key('p'); await sleep(300); }
+      ok('stepping through still works', at() !== n0, 'at ' + at());
+      ev('delete ' + BR + '._state().set.set.committed');
     }
   } catch (err) {
     fail++;

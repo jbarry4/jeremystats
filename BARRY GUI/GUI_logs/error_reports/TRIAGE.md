@@ -8,6 +8,12 @@ does not show up in it.
 
 ## How to triage
 
+- Since 2026-10-30 a pass runs by itself every morning at 08:47 on
+  Bluebarry. The scheduled task "Jarvis daily error triage" runs
+  `tools/daily_triage.ps1`, with the prompt in
+  `tools/daily_triage_prompt.md`. Its run logs go to
+  `%LOCALAPPDATA%\JarvisTriage`. It never commits.
+
 - Each report is `<day>@<machine shard>.txt`, written by `backend/dayreport.py`
   (after 18:00 for today, on the first tick of a new day for yesterday). It
   covers **one computer only**. If a machine never ran Jarvis that day, it has
@@ -27,6 +33,90 @@ does not show up in it.
 - To find what the person was doing, read the activity lines the report
   prints around a fault. The 10-20 Root Canal bug showed up there, not in
   the traceback.
+
+## Pass 4: 2026-10-30 (morning), 10-28 09:30 to 10-29
+
+Covered: Bluebarry's 10-28 and 10-29 reports here, and from `origin/master`
+(read with `git show`, not pulled) Strawbarry's 10-27, 10-28 and 10-29,
+Avery's 10-26 and Blackbarry's (Isabella, `lcom549913-e62b`, new) 10-26,
+10-27 and 10-28. No raw shards newer than 10-28 have synced here, so the
+reports were all there was. **Reports from other machines arrive by git;
+`git fetch` and read them off `origin/master`.**
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 10-27 | Strawbarry (Rain) | 4 | `braces/decide` "already accepted", pass 3's, **fixed** in `2026.10.28.1` |
+| 10-28 | Bluebarry | 0 | 21 test faults |
+| 10-28 | Strawbarry, Blackbarry | 0 | 1147 and 209 actions |
+| 10-29 | Bluebarry | 0 | 0 actions |
+| 10-29 | Strawbarry (Rain) | 4 | `rootcanal/fit` "has not been read at these settings", **fixed** |
+| 10-26..28 | Avery, Blackbarry | 0 | |
+
+1. **Root Canal: a finished read handed to the wrong set.** At 10:47:39 a
+   read of entry `bfa98498290b` started; Rain then opened `41dd94702761`
+   (pten m2 s3, its v3 `vk-b8455d7848f5`, 113 stamps, never read on
+   Strawbarry). When the first read finished, `watch()` in
+   `web/js/rootcanal.js` set `q.read` to its hash and fitted, so the fit
+   asked for `41dd` over another recording's read: refused at 10:49:28
+   and on each Recompute after. Rain pressed Read at 10:53:45 and it
+   worked from there. `startRead` now records the set (`jobFor`), and a
+   read that finishes under another set only refreshes the list and says
+   so. The reading card names `jobFor`'s set. New
+   `web/_dev/rootcanalswitch.html` fails 4 checks with the guard taken
+   out and passes 9 with it in.
+
+Builds: everyone else is on `2026.10.27.1`. **`origin/master` stops at
+`2026.10.27.1`: 10.28.1 (Braces) and this pass's fix are not committed,
+so no other machine has them yet.** A `braces/decide` "already accepted"
+from a machine on `2026.10.27.1` is the old code.
+
+Next pass: from 10-30. `git fetch` first and read the reports off origin.
+
+## Pass 3: 2026-10-28 (morning), 10-26 to 10-28 09:30
+
+Covered: the 10-26 reports from both machines and 10-27's from Bluebarry,
+plus every raw shard. Strawbarry and DESKTOP-NR2H5O7 (Avery) had no 10-27
+report yet; their raw shards arrived by sync on 10-28 09:24.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 10-26 | Bluebarry | 0 | 8 test faults (harness mode.bounce and braces/plan) |
+| 10-26 | Strawbarry | 0 | 224 actions |
+| 10-27 | Bluebarry | 0 | 19 test faults |
+| 10-27 | Strawbarry (Rain) | 4 | `braces/decide` "already accepted as version 3", 4× in 20 s. **Fixed** |
+| 10-27 | DESKTOP-NR2H5O7 (Avery) | 3 | the same `braces/decide` 2×, **fixed**. `ui/mode.bounce` none→panning in 5.5 s, a false alarm, **watcher fixed** |
+
+1. **Braces/Lock keys after autobank.** `autoBank` commits once the last
+   flagged stamp has its call, and the review stayed open with its answer
+   buttons and keys live. Every key then hit `BracesSet.decide`, which
+   refuses a committed set, and came back as a red toast. Now
+   `accepted()` in `web/js/braces.js` stops `decide`, `vSay`, `vEnter`,
+   `vGarbage`, `vDrop` and `vUndoAll`, and says so once per set. `vBar`
+   shows "Banked as version N" in place of the answers. A section was
+   added to `web/_dev/bracesenter.html`. The server's refusal is unchanged
+   and still logs, so a `braces/decide` "already accepted" from a build at
+   or after `2026.10.28.1` means some other path is still sending.
+2. **mode.bounce false alarm.** Panning's `enter()` calls `exit()` (mode
+   none), then `setMode('panning')` once the recording is open, 5.5 s
+   later over the VACC. The click was on the first change, not the
+   second. `noticeBounce` in `web/js/core.js` now records `byHand` on each
+   change and skips X → none → X when the leaving was by hand. The real
+   fault shape (into a mode, then out unasked) is still reported, and a
+   check was added for it in `web/_dev/bounce.html`.
+3. **`web/_dev/bounce.html` was broken in two ways.** Its counts read
+   `/api/errors` without `tests=all`. Since 10-20 its own bounces are
+   marked as tests and hidden, so "the bounce filed an error" could never
+   pass. Its clean-up also resolved every bounce signature it could see,
+   which, being hidden from its own, were only the real ones. (None was
+   ever stored as resolved, so nothing was lost.) It now counts with
+   `tests=all` and resolves only `test` records.
+
+Pass 1's fixes are live on Bluebarry since build `2026.10.26.2` (10-27's
+report). No Root Canal "Read it again", no scipy deadlock, and no sync
+timeout since then, though there was little Root Canal use. Strawbarry
+was still on `2026.10.23.6` on 10-26.
+
+Next pass: Strawbarry's and Avery's 10-27 reports, then 10-28.
 
 ## Pass 2: 2026-10-26 (morning), 10-23 evening to 10-26 09:30
 

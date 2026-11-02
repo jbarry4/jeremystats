@@ -13,6 +13,10 @@
       "headers": [{ "key": "Content-Disposition", "value": "inline" }]
     },
     {
+      "source": "/files/(.*)_preview\\.png",
+      "headers": [{ "key": "Content-Disposition", "value": "inline" }]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow" },

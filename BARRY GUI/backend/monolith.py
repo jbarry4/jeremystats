@@ -3782,7 +3782,9 @@ _WORK_SAY = {"upload": "uploading", "fetch": "fetching and building the "
              "joescriptvacc": "running tab 8's standalone script on the VACC",
              "joefigsvacc": "reading tab 9's PAC on the VACC, then drawing the figures",
              "joefigsfp": "measuring FP's fake trials on the VACC, then drawing tab 9's figures",
-             "joefigs": "drawing tab 9's figures"}
+             "joefigs": "drawing tab 9's figures",
+             "evenmore": "working out tab 11 (narrowing down, even more)",
+             "final": "working out tab 12 (the final stage)"}
 
 
 def work_now():

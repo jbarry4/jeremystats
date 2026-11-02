@@ -73,6 +73,7 @@ BARRY.junction = (function () {
   /* ==================================================================
      Reading
      ================================================================== */
+  let recsAt = 0;
   async function load(force) {
     if (recs && !force) return;
     try {
@@ -84,6 +85,22 @@ BARRY.junction = (function () {
       recs = [];
       recsErr = e.message;
     }
+    recsAt = Date.now();
+  }
+
+  /* READ AGAIN ON EVERY VISIT (2026-10-30). The recordings were read once
+     per page, so an Incisor or Doppler set banked after Junction was first
+     opened -- here or on another computer -- was not offered until a
+     restart. In the background; painted again only when the answer
+     differs, and not while a merge or a batch is on screen. */
+  let freshening = false;
+  async function freshen() {
+    if (freshening || !recs || Date.now() - recsAt < 4000) return;
+    freshening = true;
+    const was = JSON.stringify(recs);
+    try { await load(true); } finally { freshening = false; }
+    if (JSON.stringify(recs) === was || landed || batch) return;
+    paint();
   }
 
   const recOf = (gid) => (recs || []).find((r) => r.gid === gid) || null;
@@ -187,6 +204,7 @@ BARRY.junction = (function () {
       paint();
       return;
     }
+    freshen();
     h.appendChild(modeCard());
     if (recsErr) {
       h.appendChild(el('div', { class: 'card' }, [el('div', {

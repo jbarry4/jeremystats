@@ -7929,6 +7929,16 @@ BARRY.views.xplore = (function () {
         })
         .catch(() => { /* the whole read reports what went wrong */ });
     }
+    /* TWO BANDS ON ONE TRACE (2026-10-27: "two overlapping lines, not two
+       separate windows"). With `sess.dual` set -- a second filter's corners
+       -- every traces pane of the recording reads its window a second time
+       through it, beside the first read, and draws it over the first in a
+       colour of its own. The same channels, the same points, so the two
+       lines sit on one lane. */
+    const dual = sess.dual && !pane.fullRate ? sess.dual : null;
+    const dualAsk = dual ? apiPost('/api/csc/window', Object.assign({}, ask, {
+      highpass: dual.hp || 0, lowpass: dual.lp || 0, notch: dual.notch || 0,
+    })).catch(() => null) : null;
     try {
       const win = await apiPost('/api/csc/window', ask);
       whole = true;
@@ -7944,11 +7954,21 @@ BARRY.views.xplore = (function () {
       // trace pane draws while its own read is on the way.
       if ((!pane.channels || !pane.channels.length) && !pane.filt) sess.win = win;
       pane._win = win;
+      pane._win2 = null;
+      if (dualAsk) {
+        const w2 = await dualAsk;
+        if (id !== pane._req || XF.panes[index] !== pane) return;
+        if (w2 && w2.series && w2.series.length === win.series.length
+            && w2.n_points === win.n_points) {
+          pane._win2 = Object.assign(w2, { dual });
+        }
+      }
       showPanelInput(pane, {
         input: [fmtTime(win.t0) + '\u2013' + fmtTime(win.t1)
                 + ' (' + round(win.t1 - win.t0, 2) + ' s)',
                 win.series.length + ' ch',
-                filterWords(filtOf(pane, sess)),
+                filterWords(filtOf(pane, sess))
+                  + (pane._win2 ? '  +  ' + filterWords(dual) + ' over it' : ''),
                 sess.bad.size ? sess.bad.size + ' bad marked' : null,
                 sess.invert ? 'inverted' : null,
                ].filter(Boolean).join('  \u00b7  '),
@@ -9129,6 +9149,19 @@ BARRY.views.xplore = (function () {
      that from a plain move. */
   async function adoptCuration(sess, pointer) {
     if (!sess) return false;
+    /* The second band travels on the pointer (2026-10-27: "also on the
+       support panel"): a support window draws its traces with the same two
+       lines as the main one. Read before anything below can return. */
+    if (pointer && !pointer.off && 'dual' in pointer) {
+      const want = pointer.dual || null;
+      if (JSON.stringify(want) !== JSON.stringify(sess.dual || null)) {
+        sess.dual = want;
+        setTimeout(refreshAll, 0);
+      }
+    } else if ((!pointer || pointer.off) && sess.dual) {
+      sess.dual = null;
+      setTimeout(refreshAll, 0);
+    }
     if (!pointer || pointer.off) {
       if (sess.curationMarks) { delete sess.curationMarks; return true; }
       return false;
@@ -9923,6 +9956,8 @@ BARRY.views.xplore = (function () {
       bg: get('--bg', '#0a1310'), grid: get('--line-soft', '#1a3227'),
       text: get('--text-2', '#a3bdb0'), dim: get('--text-3', '#6f8c7d'),
       trace: get('--trace', '#7FE3B0'), warn: get('--warn', '#ED8B33'),
+      // The second band's line, over the first (`sess.dual`, 2026-10-27).
+      trace2: get('--trace-2', '#FF7AC8'),
       event: get('--event', '#FF8A7A'), accent: get('--accent', '#FFB81C'),
     };
     if (!missing) { paletteCache = out; paletteKey = key; }
@@ -10254,6 +10289,55 @@ BARRY.views.xplore = (function () {
       // this loop -- the marks read their own alpha and would inherit this.
       ctx.globalAlpha = 1;
     }
+    drawDual(ctx, pane, sess, win, P, { padL, padTop, plotH, lane, dx, shared });
+  }
+
+  /* The second band, drawn over the first on the same lanes and at the same
+     scale, so the two are read against each other rather than side by side:
+     the midline only, in its own colour, with a faint envelope. Only when
+     the read matches the first point for point; otherwise nothing, rather
+     than a line that sits a sample off. */
+  function drawDual(ctx, pane, sess, win, P, g) {
+    const w2 = pane._win2;
+    if (!sess.dual || !w2 || !w2.series || w2.series.length !== win.series.length
+        || w2.n_points !== win.n_points) return;
+    const npts = win.n_points;
+    const { padL, padTop, plotH, lane, dx, shared } = g;
+    ctx.save();
+    for (let i = 0; i < w2.series.length; i++) {
+      const s = w2.series[i];
+      const mid = padTop + lane * (i + .5);
+      const scale = sess.normalize === 'per' ? (localMax(win.series[i]) || 1)
+                                               : shared;
+      const k = (lane * .44) * sess.gain * (pane.gain > 0 ? pane.gain : 1)
+                / scale;
+      ctx.fillStyle = P.trace2;
+      ctx.globalAlpha = .18;
+      ctx.beginPath();
+      let started = false;
+      for (let j = 0; j < npts; j++) {
+        const v = s.max[j]; if (v === null) continue;
+        const x = padL + j * dx, y = clampY(mid - v * k, padTop, padTop + plotH);
+        if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+      }
+      for (let j = npts - 1; j >= 0; j--) {
+        const v = s.min[j]; if (v === null) continue;
+        ctx.lineTo(padL + j * dx, clampY(mid - v * k, padTop, padTop + plotH));
+      }
+      if (started) { ctx.closePath(); ctx.fill(); }
+      ctx.globalAlpha = .95;
+      ctx.strokeStyle = P.trace2; ctx.lineWidth = 1.2; ctx.lineJoin = 'round';
+      ctx.beginPath(); started = false;
+      for (let j = 0; j < npts; j++) {
+        const lo = s.min[j], hi = s.max[j];
+        if (lo === null || hi === null) { started = false; continue; }
+        const x = padL + j * dx, y = clampY(mid - (lo + hi) * .5 * k, padTop, padTop + plotH);
+        if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
   function drawEventMarks(ctx, sess, win, x0, plotW, y0, plotH, P) {
@@ -12164,6 +12248,16 @@ BARRY.views.xplore = (function () {
       refreshSession(s);
     },
     publishCuration: (sess, pointer) => publishCuration(sess, pointer),
+    /* Draw every traces pane of a recording through a second band too,
+       over the first ({hp, lp, notch}), or stop (null). */
+    setDual: (sess, f) => {
+      const want = f ? { hp: +f.hp || 0, lp: +f.lp || 0, notch: +f.notch || 0 }
+                     : null;
+      if (!sess) return;
+      if (JSON.stringify(want) === JSON.stringify(sess.dual || null)) return;
+      sess.dual = want;
+      refreshAll();
+    },
     /* StrataScope's way of telling the other windows what it has. Exposed
        rather than reached for, because the sheet lives in strata.js and the
        linking lives here, and neither should have to know the other's

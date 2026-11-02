@@ -74,6 +74,9 @@ BARRY.supportPanels = (function () {
     // we get it for Lock too?"), starting from Braces' defaults.
     { mode: 'lock', name: 'Lock review',
       panels: ['csd', 'theta', 'voltage', 'spectrogram'], shape: 'linked' },
+    // Eye's, since it became Braces built a third time (2026-10-30).
+    { mode: 'eye', name: 'Eye review',
+      panels: ['csd', 'theta', 'voltage', 'spectrogram'], shape: 'linked' },
     // The Arc's review opens no second window: its main window only.
     { mode: 'arcmode', name: 'The Arc\u2019s review', panels: [], shape: null,
       aid: false },

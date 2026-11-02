@@ -1,0 +1,90 @@
+{
+  "_at": {
+    "created": "2026-10-30T15:36:44.871452+00:00",
+    "gid": "2026-10-30T15:36:44.871452+00:00",
+    "group": "2026-10-30T15:36:44.871452+00:00",
+    "key": "2026-10-30T15:41:43.715025+00:00",
+    "label": "2026-10-30T15:36:44.871452+00:00",
+    "loose_key": "2026-10-30T15:36:44.871452+00:00",
+    "mouse": "2026-10-30T15:36:44.871452+00:00",
+    "project": "2026-10-30T15:36:44.871452+00:00",
+    "project_source": "2026-10-30T15:36:44.871452+00:00",
+    "retired": "2026-10-30T15:36:44.871452+00:00",
+    "schema": "2026-10-30T15:36:44.871452+00:00",
+    "session": "2026-10-30T15:36:44.871452+00:00",
+    "start": "2026-10-30T15:36:44.871452+00:00",
+    "updated": "2026-10-30T15:41:43.715025+00:00"
+  },
+  "_keys": {
+    "channel_banks": {
+      "b1": [
+        "set",
+        "2026-10-30T15:36:44.871452+00:00"
+      ],
+      "b2": [
+        "set",
+        "2026-10-30T15:36:44.871452+00:00"
+      ]
+    },
+    "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Summer'24\\Kcnt1_836_opto\\Kcnt1_836_S2_121223\\2023-12-12_16-45-13": [
+        "set",
+        "2026-10-30T15:41:43.715025+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-30T15:41:43.715025+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "channel_banks": [
+    {
+      "first": 1,
+      "id": "b1",
+      "last": 64,
+      "region": null
+    },
+    {
+      "first": 65,
+      "id": "b2",
+      "last": 128,
+      "region": null
+    }
+  ],
+  "created": {
+    "app_version": "2026.10.28.2",
+    "at": "2026-10-30T11:36:44-04:00",
+    "commit": "9de27b58",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s597759c8f648",
+  "group": null,
+  "key": null,
+  "label": "KCNT1 s2 2023-12-12",
+  "loose_key": null,
+  "mouse": null,
+  "paths": [
+    "Y:\\Jeremy3\\KCNT1\\Summer'24\\Kcnt1_836_opto\\Kcnt1_836_S2_121223\\2023-12-12_16-45-13"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 2,
+  "start": "2023-12-12T21:45:13+00:00",
+  "updated": {
+    "app_version": "2026.10.28.2",
+    "at": "2026-10-30T11:41:43-04:00",
+    "commit": "9de27b58",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

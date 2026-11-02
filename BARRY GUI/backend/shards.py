@@ -576,13 +576,18 @@ class Book:
         return [m for m, _p in self.shard_files(base)]
 
     # -- writing --------------------------------------------------------
-    def write(self, base, rec):
+    def write(self, base, rec, stamp=None):
         """Persist `rec` as this machine's shard of `base`.
 
         Only what actually changed since read() handed the record over is
         re-stamped. Everything else keeps the provenance it arrived with, so
         writing back a record you only partly edited cannot clobber a
         colleague's newer change, and cannot undo their deletion.
+
+        `stamp` is for a change that was made somewhere else and is only
+        being taken on here (`EventBank.absorb_live`): it keeps the time it
+        was made, so it cannot outrank a later change from a third machine.
+        A UTC ISO time with microseconds, as `_now` writes.
         """
         with _LOCK:
             sync = rec.pop("_sync", None) or {}
@@ -593,7 +598,7 @@ class Book:
 
             path = self.mine(base)
             prev = _read_json(path) or {}
-            at = _now()
+            at = stamp or _now()
 
             body = {k: v for k, v in rec.items() if k not in META}
             stamps = dict(prev.get("_at") or {})

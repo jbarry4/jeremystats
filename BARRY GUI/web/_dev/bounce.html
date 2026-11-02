@@ -24,7 +24,7 @@ const ck=(n,c,d)=>{p((c?'ok    ':'FAIL  ')+n+(c||!d?'':'   ['+d+']'));if(!c)bad+
  for(let i=0;i<300 && typeof W().setView!=='function';i++) await sleep(100);
  await sleep(1200);
  const count=async()=>{
-   const r=await (await W().fetch('/api/errors?limit=400')).json();
+   const r=await (await W().fetch('/api/errors?limit=400&tests=all')).json();
    return (r.errors||[]).filter(e=>/mode\.bounce/.test(e.where||'')).length;
  };
  const before=await count();
@@ -41,7 +41,7 @@ const ck=(n,c,d)=>{p((c?'ok    ':'FAIL  ')+n+(c||!d?'':'   ['+d+']'));if(!c)bad+
  p('  now: '+after);
  ck('the bounce filed an error', after > before, before+' -> '+after);
 
- const r=await (await W().fetch('/api/errors?limit=400')).json();
+ const r=await (await W().fetch('/api/errors?limit=400&tests=all')).json();
  const one=(r.errors||[]).filter(e=>/mode\.bounce/.test(e.where||''))[0];
  if(one){
    p('  where:   '+one.where);
@@ -73,12 +73,36 @@ const ck=(n,c,d)=>{p((c?'ok    ':'FAIL  ')+n+(c||!d?'':'   ['+d+']'));if(!c)bad+
  const now=await count();
  ck('nothing filed for a deliberate one', now === was, was+' -> '+now);
 
+ p('\n== 2b. A tool moving to its next set is not a bounce ==');
+ /* 2026-10-27: Panning left by a click and back 5.5 s later, once the
+    next recording had opened over the VACC. Staged by setting when the
+    last input was, since virtual time cannot stage the 5.5 s. */
+ const was2=await count();
+ W().eval("_lastGesture = Date.now(); setMode('strata')");
+ await sleep(120);
+ W().eval("_lastGesture = Date.now(); setMode(null)");
+ await sleep(120);
+ W().eval("_lastGesture = Date.now() - 5000; setMode('strata')");
+ await sleep(2500);
+ const now2=await count();
+ ck('left by hand and back in after a load: nothing filed',
+    now2 === was2, was2+' -> '+now2);
+ W().eval("_lastGesture = Date.now(); setMode(null)");
+ await sleep(120);
+ W().eval("_lastGesture = Date.now(); setMode('strata')");
+ await sleep(120);
+ W().eval("_lastGesture = Date.now() - 5000; setMode(null)");
+ await sleep(2500);
+ const now3=await count();
+ ck('but into a mode by hand and out again unasked is still filed',
+    now3 > now2, now2+' -> '+now3);
+
  p('\n== 3. The threshold is real, checked on what it recorded ==');
  /* Not by sleeping. Under --virtual-time-budget the timer clock
     fast-forwards while `Date.now()` in the page does not keep step, so a
     3.6s sleep here is a fraction of that to the detector and a slow bounce
     cannot be staged. What can be checked is that it applies its own rule. */
- const all = await (await W().fetch('/api/errors?limit=400')).json();
+ const all = await (await W().fetch('/api/errors?limit=400&tests=all')).json();
  const mine = (all.errors || []).filter(
    (e) => /mode[.]bounce/.test(e.where || ''));
  p('  ' + mine.length + ' bounce(s) on record');
@@ -102,9 +126,12 @@ const ck=(n,c,d)=>{p((c?'ok    ':'FAIL  ')+n+(c||!d?'':'   ['+d+']'));if(!c)bad+
     list -- above genuine faults on the Errors page. Resolved rather than
     deleted: the log is append-only by design, and a row saying "this was
     the harness" beats a gap. */
- const filed = await (await W().fetch('/api/errors?limit=400')).json();
+ const filed = await (await W().fetch('/api/errors?limit=400&tests=all')).json();
  const sigs = new Set((filed.errors || [])
-   .filter((e) => /mode[.]bounce/.test(e.where || ''))
+   /* A test's only. Before 2026-10-28 this read the list without them,
+      so what it resolved as "filed by this harness" was everybody's real
+      bounces and none of its own. */
+   .filter((e) => /mode[.]bounce/.test(e.where || '') && e.test)
    .map((e) => (e.where || '') + '||' + (e.message || '')));
  for (const sig of sigs) {
    try {
