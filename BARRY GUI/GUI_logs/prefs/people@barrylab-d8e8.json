@@ -2,6 +2,10 @@
   "_at": {},
   "_keys": {
     "added": {
+      "Aggie Krempasky": [
+        "set",
+        "2026-11-02T19:24:47.345410+00:00"
+      ],
       "Avery (AI)": [
         "set",
         "2026-10-23T13:41:57.178508+00:00"
@@ -26,6 +30,10 @@
         "set",
         "2026-10-27T19:34:07.080471+00:00"
       ],
+      "Jeremy": [
+        "set",
+        "2026-11-02T19:24:47.325283+00:00"
+      ],
       "Rain": [
         "set",
         "2026-09-09T15:09:21.659088+00:00"
@@ -40,7 +48,7 @@
       ],
       "Shahriar Tafti": [
         "set",
-        "2026-10-30T14:50:44.771664+00:00"
+        "2026-10-30T15:46:26.890641+00:00"
       ],
       "Sylvia Clouse": [
         "set",
@@ -113,7 +121,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-30T14:50:44.771664+00:00",
+    "at": "2026-11-02T19:24:47.345410+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -241,13 +249,33 @@
         "theexaminedexistence@gmail.com"
       ],
       "at": "2026-09-08T21:24:21.570229+00:00",
-      "by": "Rain Younger",
-      "edited_at": "2026-10-30T14:50:44.771663+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-10-30T15:46:26.890238+00:00",
       "email": "sakhava1@uvm.edu",
       "id": "Shahriar Tafti",
       "initials": "ST",
       "name": "Shahriar Tafti",
       "role": "Gradstudent"
+    },
+    {
+      "at": "2026-11-02T19:24:47.325281+00:00",
+      "by": "Rain Younger",
+      "edited_at": "2026-11-02T19:24:47.325282+00:00",
+      "email": "jeremy.barry@uvm.edu",
+      "id": "Jeremy",
+      "initials": "JB",
+      "name": "Jeremy",
+      "role": "PI"
+    },
+    {
+      "at": "2026-11-02T19:24:47.345408+00:00",
+      "by": "Rain Younger",
+      "edited_at": "2026-11-02T19:24:47.345409+00:00",
+      "email": "akrempas@uvm.edu",
+      "id": "Aggie Krempasky",
+      "initials": "AK",
+      "name": "Aggie Krempasky",
+      "role": "Undergraduate Student"
     }
   ]
 }

@@ -13,13 +13,13 @@
     "panning_at": "2026-10-30T15:29:41.827279+00:00",
     "panning_span": "2026-10-22T14:33:27.710295+00:00",
     "pipeline_folders": "2026-09-23T13:26:19.592745+00:00",
-    "radio": "2026-10-13T19:54:21.520703+00:00",
+    "radio": "2026-10-28T17:17:36.508868+00:00",
     "recent_scripts": "2026-10-12T15:37:32.641324+00:00",
     "result_group": "2026-10-23T13:56:44.359945+00:00",
     "spotter_at": "2026-10-22T15:55:55.110663+00:00",
     "spotter_light": "2026-10-16T17:21:44.827873+00:00",
     "support_panels": "2026-10-29T17:30:31.258405+00:00",
-    "updated": "2026-10-30T15:30:29.926017+00:00",
+    "updated": "2026-10-30T21:58:13.757581+00:00",
     "vacc_signed_ack": "2026-10-20T16:14:37.060022+00:00",
     "xf_chan_column": "2026-10-29T17:32:06.632090+00:00",
     "xf_overview_aid": "2026-10-22T17:56:53.803893+00:00",
@@ -80,7 +80,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-23T16:27:41.933056+00:00"
+        "2026-10-28T17:17:18.128997+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -101,6 +101,10 @@
       "MSI": [
         "set",
         "2026-09-09T15:20:28.901605+00:00"
+      ],
+      "ip0af50ae7.int.uvm.edu": [
+        "set",
+        "2026-10-19T16:43:47.171542+00:00"
       ]
     },
     "vacc": {
@@ -127,11 +131,15 @@
       "LCOM549913": [
         "set",
         "2026-10-14T16:17:09.961180+00:00"
+      ],
+      "ip0af50ae7.int.uvm.edu": [
+        "set",
+        "2026-10-19T16:43:02.388087+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-30T15:30:29.926017+00:00",
+    "at": "2026-10-30T21:58:13.757581+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -575,8 +583,8 @@
   },
   "radio": {
     "agreed": true,
-    "small": true,
-    "station": "DA7wDV4MbNo",
+    "small": false,
+    "station": "rFZHOHl-L8A",
     "volume": 55
   },
   "recent_scripts": [
@@ -790,20 +798,22 @@
   },
   "themes": {
     "BarryLab": "horizon-night",
-    "DESKTOP-4H65AI7": "jirai-shiro",
+    "DESKTOP-4H65AI7": "halloween",
     "DESKTOP-AH45FAE": "horizon-night",
     "DESKTOP-NR2H5O7": "horizon-night",
     "Home": "dark",
-    "LCOM549913": "halloween"
+    "LCOM549913": "halloween",
+    "ip0af50ae7.int.uvm.edu": "halloween"
   },
-  "updated": "2026-10-30T11:30:29-04:00",
+  "updated": "2026-10-30T17:58:13-04:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": true,
     "DESKTOP-AH45FAE": true,
     "DESKTOP-NR2H5O7": true,
     "Home": true,
-    "LCOM549913": true
+    "LCOM549913": true,
+    "ip0af50ae7.int.uvm.edu": true
   },
   "vacc_signed_ack": 1792512852.3774557,
   "xf_chan_column": "full",
