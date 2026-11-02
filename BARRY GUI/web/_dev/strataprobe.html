@@ -1,0 +1,90 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — StrataScope reads every recording as an H3</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:30vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:70vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "StrataScope shits the bed when it comes to non-H3 recordings. Assume
+   everything is H3 and just read the first 64 channels, even if it's 128"
+   (2026-10-13).
+
+   On the 64-channel demo, with the session's probe set to an H10-D in this
+   window only (nothing is written to the recording): StrataScope must lay
+   out ONE pane, its lanes the recording's channels in their own order (no
+   six-column split), the steps must not refuse, and leaving must give the
+   pane its channels back. The probe is put back in a finally. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const PATH = 'demo:long-session';
+const GID = 'demo-long-session';
+
+(async () => {
+  const f = document.getElementById('app');
+  let W = null, sess = null, was = null;
+  try {
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    W = () => f.contentWindow;
+    for (let i = 0; i < 300 && typeof W().setView !== 'function'; i++) await sleep(100);
+    await sleep(800);
+    const run = (src) => W().eval(src);
+    run("setView('xplore')");
+    await run('BARRY.views.xplore.open(' + JSON.stringify(PATH) + ')');
+    await sleep(1200);
+    sess = run('BARRY.views.xplore.current()');
+    was = sess.probe;
+    sess.probe = 'h10d';                 // this window only
+    const n = sess.info.channels.length;
+    p('demo: ' + n + ' channels, probe set to h10d in the view\n');
+
+    await run('BARRY.strata.enter(' + JSON.stringify(GID) + ')');
+    for (let i = 0; i < 100 && !run('BARRY.strata.active'); i++) await sleep(100);
+    await sleep(1500);
+    const lanes = run('BARRY.views.xplore.laneRows(0)') || { numbers: [] };
+    const want = sess.info.channels.slice(0, 64).map((c) => c.number);
+    ck('one pane, not a column split',
+       f.contentDocument.querySelectorAll('.pane').length >= 1
+         && run('BARRY.views.xplore.laneRows(1)') == null,
+       'second pane: ' + JSON.stringify(run('BARRY.views.xplore.laneRows(1)')));
+    ck('its lanes are the first 64 channels in the recording’s order',
+       lanes.numbers.length === Math.min(64, n)
+         && lanes.numbers.every((c, i) => c === want[i]),
+       lanes.numbers.slice(0, 8).join(',') + ' (' + lanes.numbers.length + ')');
+    const st = (run('BARRY.strata.state') || {}).channels || [];
+    ck('the sheet covers at most 64 channels', st.length > 0 && st.length <= 64,
+       String(st.length));
+    const res = await W().fetch('/api/strata/' + GID + '/status', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: PATH }) }).then((r) => r.json());
+    ck('the steps do not refuse it', !!res.ok, res.error);
+    ck('... and read at most 64 channels',
+       ((res.plan || {}).channel_numbers || []).length <= 64,
+       String(((res.plan || {}).channel_numbers || []).length));
+
+    run('BARRY.strata.exit()');
+    await sleep(800);
+    const after = run('BARRY.views.xplore.laneRows(0)') || { numbers: [] };
+    ck('leaving gives the pane its channels back', after.numbers.length === n,
+       after.numbers.length + ' of ' + n);
+  } catch (e) {
+    ck('no exception', false, e && (e.stack || e.message));
+  } finally {
+    try {
+      if (W && W().BARRY && W().eval('BARRY.strata.active')) W().eval('BARRY.strata.exit()');
+    } catch (e) { /* gone */ }
+    if (sess) sess.probe = was;
+    p('\n' + (bad ? bad + ' FAILED' : 'all ok'));
+    document.title = bad ? 'FAIL ' + bad : 'PASS';
+    f.src = 'about:blank';
+  }
+})();
+</script>

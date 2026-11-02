@@ -1,0 +1,266 @@
+{
+  "_at": {
+    "assignee": "2026-09-09T02:02:26.430035+00:00",
+    "created": "2026-09-03T21:07:03.090459+00:00",
+    "gid": "2026-09-03T21:07:03.090459+00:00",
+    "imports": "2026-09-03T21:07:03.090459+00:00",
+    "kind": "2026-09-03T21:07:03.090459+00:00",
+    "labels": "2026-09-03T21:07:03.090459+00:00",
+    "name": "2026-09-03T21:07:03.090459+00:00",
+    "schema": "2026-09-03T21:07:03.090459+00:00",
+    "session_label": "2026-09-03T21:07:03.090459+00:00",
+    "source": "2026-09-03T21:07:03.090459+00:00",
+    "updated": "2026-09-10T17:48:50.255297+00:00"
+  },
+  "_keys": {
+    "events": {
+      "e291d5bb5b9": [
+        "set",
+        "2026-09-08T17:44:57.279648+00:00"
+      ],
+      "e3d2defa539": [
+        "set",
+        "2026-09-10T17:48:50.255297+00:00"
+      ],
+      "e5dfd63eb4a": [
+        "set",
+        "2026-09-10T17:48:50.255297+00:00"
+      ],
+      "e62ee8d8402": [
+        "set",
+        "2026-09-08T17:44:57.279648+00:00"
+      ],
+      "e673323af3a": [
+        "set",
+        "2026-09-08T17:44:57.279648+00:00"
+      ],
+      "e9dd7c2a260": [
+        "set",
+        "2026-09-08T17:44:57.279648+00:00"
+      ],
+      "eb7e5505239": [
+        "set",
+        "2026-09-10T17:48:50.255297+00:00"
+      ],
+      "ed4c5eaf58d": [
+        "set",
+        "2026-09-10T17:48:50.255297+00:00"
+      ],
+      "eeb3ea8fc07": [
+        "set",
+        "2026-09-08T17:44:57.279648+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-10T17:48:50.255297+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "assignee": "Shahriar Tafti",
+  "created": {
+    "at": "2026-09-03T17:07:03-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "events": [
+    {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
+      "id": "e9dd7c2a260",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        }
+      ],
+      "start": 193.924
+    },
+    {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
+      "id": "e291d5bb5b9",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        }
+      ],
+      "start": 431.096
+    },
+    {
+      "at": "2026-09-10T17:47:03+00:00",
+      "by": "Rain Younger",
+      "id": "ed4c5eaf58d",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "spike"
+        }
+      ],
+      "start": 1026.128
+    },
+    {
+      "at": "2026-09-10T17:47:05+00:00",
+      "by": "Rain Younger",
+      "id": "e5dfd63eb4a",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
+      "start": 1030.473
+    },
+    {
+      "at": "2026-09-10T17:47:12+00:00",
+      "by": "Rain Younger",
+      "id": "eb7e5505239",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "flag"
+        }
+      ],
+      "start": 1761.085
+    },
+    {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
+      "id": "eeb3ea8fc07",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
+      "start": 1911.941
+    },
+    {
+      "at": "2026-09-10T17:47:20+00:00",
+      "by": "Rain Younger",
+      "id": "e3d2defa539",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
+      "start": 2189.143
+    },
+    {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
+      "id": "e673323af3a",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
+      "start": 2425.46
+    },
+    {
+      "at": "2026-09-03T17:07:03-0400",
+      "by": "snapshot import",
+      "id": "e62ee8d8402",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-03T17:07:03-0400",
+          "by": "snapshot import",
+          "label": "garbage"
+        }
+      ],
+      "start": 2517.264
+    }
+  ],
+  "gid": "s9a24ec997705",
+  "imports": [
+    {
+      "at": "2026-09-03T17:07:03-0400",
+      "n": 9,
+      "skipped": 0,
+      "source": {
+        "bank_entry": "acff04747da7",
+        "by": "snapshot import",
+        "folder": "M11_HF2_s11jul25",
+        "kind": "snapshot folders"
+      }
+    }
+  ],
+  "kind": "ds",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "spike",
+      "keys": [
+        "1",
+        "d"
+      ],
+      "name": "Dentate Spike"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "2",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "id": "flag",
+      "keys": [
+        "3",
+        "f"
+      ],
+      "name": "Flag"
+    },
+    {
+      "color": "#8b5cf6",
+      "id": "review",
+      "keys": [
+        "4",
+        "r"
+      ],
+      "name": "Flag for Deep Review"
+    }
+  ],
+  "name": "M11_HF2_s11jul25",
+  "schema": 1,
+  "session_label": "PTEN m11 s11 2023-07-25",
+  "source": {
+    "bank_entry": "acff04747da7",
+    "by": "snapshot import",
+    "folder": "M11_HF2_s11jul25",
+    "kind": "snapshot folders"
+  },
+  "updated": {
+    "at": "2026-09-10T13:48:50-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

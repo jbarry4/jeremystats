@@ -1,0 +1,88 @@
+{
+  "_at": {
+    "created": "2026-09-18T19:17:35.200940+00:00",
+    "duration_s": "2026-09-18T19:17:35.200940+00:00",
+    "first_seen_by": "2026-09-18T19:17:35.200940+00:00",
+    "fs": "2026-09-18T19:17:35.200940+00:00",
+    "gid": "2026-09-18T19:18:54.907208+00:00",
+    "key": "2026-09-18T19:18:54.907208+00:00",
+    "label": "2026-09-18T19:18:54.907208+00:00",
+    "loose_key": "2026-09-18T19:18:54.907208+00:00",
+    "mouse": "2026-09-18T19:18:54.907208+00:00",
+    "n_channels": "2026-09-18T19:17:35.200940+00:00",
+    "project": "2026-09-18T19:18:54.907208+00:00",
+    "project_source": "2026-09-18T19:18:54.907208+00:00",
+    "retired": "2026-09-22T18:18:09.822595+00:00",
+    "schema": "2026-09-18T19:18:54.907208+00:00",
+    "session": "2026-09-18T19:18:54.907208+00:00",
+    "start": "2026-09-18T19:18:54.907208+00:00",
+    "updated": "2026-09-22T18:18:09.822595+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260918_151549\\FAKEPROJ\\fake_m912\\m912s1_2026-09-18\\2026-09-18_15-15-49": [
+        "set",
+        "2026-09-18T19:24:59.889120+00:00"
+      ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-18T19:18:17.091702+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-22T18:18:09.822595+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.18.2",
+    "at": "2026-09-18T15:17:35-04:00",
+    "commit": "f693752",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "duration_s": 3.4133333333333336,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s3fb1136deeae",
+  "key": "m912_s001_2026-09-18_15-15-49",
+  "label": "m912 s1 2026-09-18",
+  "loose_key": "m912_s001",
+  "mouse": 912,
+  "n_channels": 2,
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260918_151549\\FAKEPROJ\\fake_m912\\m912s1_2026-09-18\\2026-09-18_15-15-49"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-18T15:18:17-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260918_151549\\FAKEPROJ\\fake_m912\\m912s1_2026-09-18\\2026-09-18_15-15-49",
+      "root": "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260918_151549",
+      "scan": "scan_be3c893fc1"
+    }
+  },
+  "session": 1,
+  "start": "2026-09-18T19:15:49+00:00",
+  "updated": {
+    "app_version": "2026.09.22.2",
+    "at": "2026-09-22T14:18:09-04:00",
+    "commit": "d21dd4c",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "Home",
+    "machine": "Homebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

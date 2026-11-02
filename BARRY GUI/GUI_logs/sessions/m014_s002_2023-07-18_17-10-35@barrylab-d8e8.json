@@ -1,0 +1,76 @@
+{
+  "_at": {
+    "created": "2026-10-15T17:04:58.911672+00:00",
+    "gid": "2026-10-15T17:04:58.911672+00:00",
+    "group": "2026-10-15T17:04:58.911672+00:00",
+    "key": "2026-10-15T17:04:58.911672+00:00",
+    "label": "2026-10-15T17:04:58.911672+00:00",
+    "loose_key": "2026-10-15T17:04:58.911672+00:00",
+    "mouse": "2026-10-15T17:04:58.911672+00:00",
+    "project": "2026-10-15T17:04:58.911672+00:00",
+    "project_source": "2026-10-15T17:04:58.911672+00:00",
+    "retired": "2026-10-15T17:04:58.911672+00:00",
+    "schema": "2026-10-15T17:04:58.911672+00:00",
+    "session": "2026-10-15T17:04:58.911672+00:00",
+    "start": "2026-10-15T17:04:58.911672+00:00",
+    "updated": "2026-10-15T17:05:31.676396+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2023-07-18_17-10-18": [
+        "set",
+        "2026-10-15T17:05:31.676396+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2023-07-18_17-11-37": [
+        "set",
+        "2026-10-15T17:05:31.676396+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2023-07-18_17-42-55": [
+        "set",
+        "2026-10-15T17:05:31.676396+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-15T17:05:31.676396+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.14.8",
+    "at": "2026-10-15T13:04:58-04:00",
+    "commit": "98135766",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "s376ead3b4ef3",
+  "group": null,
+  "key": "m014_s002_2023-07-18_17-10-35",
+  "label": "KCNT1 m14 s2 2023-07-18",
+  "loose_key": "m014_s002",
+  "mouse": 14,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2023-07-18_17-10-18",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2023-07-18_17-11-37",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2023-07-18_17-42-55"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 2,
+  "start": "2023-07-18T21:10:35+00:00",
+  "updated": {
+    "app_version": "2026.10.14.8",
+    "at": "2026-10-15T13:05:31-04:00",
+    "commit": "98135766",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

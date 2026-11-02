@@ -1,0 +1,394 @@
+{
+  "_at": {
+    "added": "2026-09-24T19:07:27.448309+00:00",
+    "by_label": "2026-09-24T19:07:27.448309+00:00",
+    "curation_label": "2026-09-24T19:07:27.448309+00:00",
+    "duration_s": "2026-09-24T19:07:27.448309+00:00",
+    "events": "2026-09-24T19:07:27.448309+00:00",
+    "gid": "2026-09-24T19:07:27.448309+00:00",
+    "id": "2026-09-24T19:07:27.448309+00:00",
+    "label_names": "2026-09-24T19:07:27.448309+00:00",
+    "mouse": "2026-09-24T19:07:27.448309+00:00",
+    "n": "2026-09-24T19:07:27.448309+00:00",
+    "name": "2026-09-24T19:07:27.448309+00:00",
+    "note": "2026-09-24T19:07:27.448309+00:00",
+    "project": "2026-09-24T19:07:27.448309+00:00",
+    "recording_start": "2026-09-24T19:07:27.448309+00:00",
+    "schema": "2026-09-24T19:07:27.448309+00:00",
+    "session": "2026-09-24T19:07:27.448309+00:00",
+    "session_key": "2026-09-24T19:07:27.448309+00:00",
+    "session_label": "2026-09-24T19:07:27.448309+00:00",
+    "session_loose_key": "2026-09-24T19:07:27.448309+00:00",
+    "session_path": "2026-09-24T19:07:27.448309+00:00",
+    "source": "2026-09-24T19:07:27.448309+00:00",
+    "specified": "2026-09-24T19:07:27.448309+00:00",
+    "type": "2026-09-24T19:07:27.448309+00:00",
+    "type_name": "2026-09-24T19:07:27.448309+00:00",
+    "units": "2026-09-24T19:07:27.448309+00:00",
+    "version": "2026-09-24T19:07:27.448309+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "be6dabf96138": [
+        "set",
+        "2026-09-24T19:07:27.448309+00:00"
+      ],
+      "v0-6d4f4e21": [
+        "set",
+        "2026-09-24T19:07:27.448309+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-24T19:07:27.448309+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-24T15:07:27-04:00",
+    "by": "import_ied",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "by_label": {
+    "Solid": 18
+  },
+  "curation_label": null,
+  "duration_s": 1201.6981333333333,
+  "events": [
+    {
+      "end": 43.867533,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 43.867367
+    },
+    {
+      "end": 227.792233,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 227.792067
+    },
+    {
+      "end": 228.841033,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 228.840867
+    },
+    {
+      "end": 328.195767,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 328.1956
+    },
+    {
+      "end": 329.711067,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 329.7109
+    },
+    {
+      "end": 330.878833,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 330.878667
+    },
+    {
+      "end": 420.554033,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 420.553867
+    },
+    {
+      "end": 425.4815,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 425.481333
+    },
+    {
+      "end": 717.961167,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 717.961
+    },
+    {
+      "end": 765.642,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 765.641833
+    },
+    {
+      "end": 791.919733,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 791.919567
+    },
+    {
+      "end": 1041.6145,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 1041.614333
+    },
+    {
+      "end": 1086.0509,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 1086.050733
+    },
+    {
+      "end": 1108.562433,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 1108.562267
+    },
+    {
+      "end": 1161.608733,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 1161.608567
+    },
+    {
+      "end": 1185.523033,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 1185.522867
+    },
+    {
+      "end": 1190.4436,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 1190.443433
+    },
+    {
+      "end": 1190.728967,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 1190.7288
+    }
+  ],
+  "gid": "s8fdc9981f949",
+  "id": "04b094b59329",
+  "label_names": {
+    "flag": "Flag",
+    "garbage": "Garbage",
+    "solid": "Solid",
+    "sputter": "Sputter"
+  },
+  "mouse": 3,
+  "n": 18,
+  "name": "IED spikes (confirmed)",
+  "note": "Confirmed IEDs, imported from PTEN_M3_pten_m3s7sept22 (Handsorted). All 18 are Solid: this folder's spreadsheet is a separate, later, solid-only run of point markers, and its Solid folder holds exactly one stub per row numbered 1 to 18 against it. The 67-row ets.mat beside it is a DIFFERENT detection run -- every row there is a 750 to 50,000 sample window and the times do not line up -- so that run's Garbage sort was not merged in. Times are the MIDPOINT of the table's on/off pair at 30000 Hz, which is what the review images are aligned to; the onset is 2*start - end. `Evt###` is a 1-based row of that table. Both established by measurement -- see tools/import_ied.py.",
+  "project": "PTEN",
+  "recording_start": "2023-09-22T16:15:23",
+  "schema": 1,
+  "session": 7,
+  "session_key": "m003_s007_2023-09-22_16-15-23",
+  "session_label": "PTEN m3 s7 2023-09-22",
+  "session_loose_key": "m003_s007",
+  "session_path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M3_s7\\2023-09-22_16-15-23",
+  "source": {
+    "detector": "ETS",
+    "file": "C:\\Users\\Z390\\Desktop\\IED DATA\\Take 3\\PTEN_M3_pten_m3s7sept22 (Handsorted)\\ets_converted_events.xlsx",
+    "parameters": {
+      "below_categories": {},
+      "fs": 30000.0,
+      "index_base": 1,
+      "solid_only": true,
+      "sorted_in": null,
+      "stamp": "midpoint",
+      "withdrawn": 0
+    },
+    "pipeline": "IED hand-sort (ETS)",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ied",
+  "type_name": "IED",
+  "units": "seconds relative to the start of the recording",
+  "version": 1,
+  "versions": [
+    {
+      "at": "2026-09-24T15:07:27-04:00",
+      "by": "import_ied",
+      "by_label": {
+        "unspecified": 18
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-6d4f4e21",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 18,
+      "note": "Imported from IED hand-sort (ETS). 18 candidates, none decided yet.",
+      "snap": [
+        [
+          43.867367,
+          null
+        ],
+        [
+          227.792067,
+          null
+        ],
+        [
+          228.840867,
+          null
+        ],
+        [
+          328.1956,
+          null
+        ],
+        [
+          329.7109,
+          null
+        ],
+        [
+          330.878667,
+          null
+        ],
+        [
+          420.553867,
+          null
+        ],
+        [
+          425.481333,
+          null
+        ],
+        [
+          717.961,
+          null
+        ],
+        [
+          765.641833,
+          null
+        ],
+        [
+          791.919567,
+          null
+        ],
+        [
+          1041.614333,
+          null
+        ],
+        [
+          1086.050733,
+          null
+        ],
+        [
+          1108.562267,
+          null
+        ],
+        [
+          1161.608567,
+          null
+        ],
+        [
+          1185.522867,
+          null
+        ],
+        [
+          1190.443433,
+          null
+        ],
+        [
+          1190.7288,
+          null
+        ]
+      ],
+      "synthesized": true,
+      "v": 0
+    },
+    {
+      "at": "2026-09-24T15:07:27-04:00",
+      "by": "import_ied",
+      "by_label": {
+        "Solid": 18
+      },
+      "changed": 18,
+      "from_v": 0,
+      "gained": 0,
+      "id": "be6dabf96138",
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {
+        "undecided \u2192 solid": 18
+      },
+      "n": 18,
+      "note": "",
+      "snap": [
+        [
+          43.867367,
+          "solid"
+        ],
+        [
+          227.792067,
+          "solid"
+        ],
+        [
+          228.840867,
+          "solid"
+        ],
+        [
+          328.1956,
+          "solid"
+        ],
+        [
+          329.7109,
+          "solid"
+        ],
+        [
+          330.878667,
+          "solid"
+        ],
+        [
+          420.553867,
+          "solid"
+        ],
+        [
+          425.481333,
+          "solid"
+        ],
+        [
+          717.961,
+          "solid"
+        ],
+        [
+          765.641833,
+          "solid"
+        ],
+        [
+          791.919567,
+          "solid"
+        ],
+        [
+          1041.614333,
+          "solid"
+        ],
+        [
+          1086.050733,
+          "solid"
+        ],
+        [
+          1108.562267,
+          "solid"
+        ],
+        [
+          1161.608567,
+          "solid"
+        ],
+        [
+          1185.522867,
+          "solid"
+        ],
+        [
+          1190.443433,
+          "solid"
+        ],
+        [
+          1190.7288,
+          "solid"
+        ]
+      ],
+      "v": 1
+    }
+  ]
+}

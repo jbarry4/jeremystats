@@ -1,0 +1,128 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — every tool page in one order</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?menu=0"></iframe>
+<script>
+/* "Every ToolKit tool gets the same order: header, picker, run bar,
+   settings, result, Bank, then a link to the next step" (2026-10-20).
+
+   What this holds every tool page to, by walking ToolKit itself:
+     - every page opens on a header (a .step-head);
+     - every bundle step but the last ends with "Next: <Step> — … →" in the
+       page's own host, below the tool, and the last has none;
+     - the activity feed sits under the Next, never between the tool and it;
+     - nothing on the page is cut short with an ellipsis;
+     - in every table, a column of numbers is right-aligned and a column of
+       words left-aligned.
+   Read-only: it opens pages and reads them, and presses nothing that
+   writes. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 20000) {
+  const t0 = Date.now();
+  for (;;) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    if (Date.now() - t0 > ms) return null;
+    await sleep(150);
+  }
+}
+
+(async () => { try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = frame.contentDocument;
+  const errs = [];
+  W.addEventListener('error', (e) => errs.push(e.message));
+  await until(() => W.eval('typeof BARRY === "object" && BARRY.views.toolkit'));
+  W.eval("setView('toolkit')");
+  await sleep(800);
+  const tk = W.eval('BARRY.views.toolkit');
+  const bundles = tk.bundles();
+  check('ToolKit lists its bundles', bundles.length >= 4,
+        bundles.map((b) => b.name).join(', '));
+
+  const ellipsed = () => Array.from(D.querySelectorAll('#tkMain *')).filter((n) => {
+    const cs = W.getComputedStyle(n);
+    return cs.textOverflow === 'ellipsis' && n.scrollWidth > n.clientWidth + 1;
+  }).length;
+
+  for (const b of bundles) {
+    head(b.name);
+    for (let i = 0; i < b.steps.length; i++) {
+      const s = b.steps[i];
+      if (s.soon) { say('note', s.name + ' is not built yet; skipped'); continue; }
+      tk.pick(s.id, b.id);
+      await until(() => D.querySelector('#tkMain .step-head, #tkMain .tk-head'), 15000);
+      await sleep(900);
+      check(s.name + ': opens on a header',
+            !!D.querySelector('#tkMain .step-head, #tkMain .tk-head strong'));
+      const nextBtn = D.querySelector('#tkNext .handoff-go');
+      if (i < b.steps.length - 1) {
+        const want = b.steps[i + 1].name;
+        check(s.name + ': ends with Next: ' + want,
+              !!nextBtn && nextBtn.textContent.indexOf('Next: ' + want) === 0,
+              nextBtn ? nextBtn.textContent : 'no Next');
+      } else {
+        check(s.name + ': the last step has no Next', !nextBtn,
+              nextBtn ? nextBtn.textContent : '');
+      }
+      const feed = D.querySelector('#tkFeed .tf');
+      if (feed && nextBtn) {
+        check(s.name + ': the activity feed is under the Next',
+              !!(nextBtn.compareDocumentPosition(feed)
+                 & W.Node.DOCUMENT_POSITION_FOLLOWING));
+      }
+      const cut = ellipsed();
+      check(s.name + ': nothing is cut short', cut === 0, cut + ' element(s)');
+    }
+  }
+
+  head('Tables');
+  /* The rule itself, on a table built for it. */
+  const t = D.createElement('table');
+  t.innerHTML = '<thead><tr><th>mouse</th><th>events</th></tr></thead>'
+    + '<tbody><tr><td>m2</td><td>53</td></tr><tr><td>m12</td><td>1,204</td></tr>'
+    + '</tbody>';
+  D.body.appendChild(t);
+  W.eval('BARRY.ui.alignTable')(t);
+  const cells = t.querySelectorAll('td');
+  check('a column of words is marked text', cells[0].dataset.al === 'text');
+  check('a column of numbers is marked num', cells[1].dataset.al === 'num');
+  check('and its header follows it', t.querySelectorAll('th')[1].dataset.al === 'num');
+  check('words sit left', W.getComputedStyle(cells[0]).textAlign === 'left');
+  check('numbers sit right', W.getComputedStyle(cells[1]).textAlign === 'right');
+  t.remove();
+  check('number order: m1, m3, m12', JSON.stringify(
+    W.eval('BARRY.ui.natSort')(['m12', 'm3', 'm1'])) === '["m1","m3","m12"]');
+
+  if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  // Blank the frame, or the app's polling keeps the runner waiting.
+  frame.src = 'about:blank';
+  document.title = bad ? 'toolframe: ' + bad + ' FAILED' : 'toolframe: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'toolframe: harness CRASH';
+} })();
+</script>

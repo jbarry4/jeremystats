@@ -1,0 +1,58 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-10-29
+computer    Strawbarry (barrylab-d8e8)
+person      Rain Younger
+build       2026.10.27.1 4f5d121d
+written     2026-10-29T18:09:35-04:00
+faults      4 error(s), 1 distinct
+activity    1710 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x4    10:49:28-10:53:22  rootcanal/fit: This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.
+
+==========================================================================
+1/1  rootcanal/fit  x4
+==========================================================================
+first       2026-10-29T10:49:28-04:00
+latest      2026-10-29T10:53:22-04:00
+who         Rain Younger
+signature   rootcanal/fit||This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.
+
+message
+    This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.
+
+context
+    entry_id           41dd94702761
+    from_version       vk-b8455d7848f5
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 10343, in api_rootcanal_fit
+        rec, p, got, rh, _stamps = _rootcanal_setup(body)
+                                   ^^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\barry\OneDrive\Desktop\jeremystats\BARRY GUI\backend\app.py", line 9836, in _rootcanal_setup
+        raise rootcanal.RootCanalError(
+    backend.rootcanal.RootCanalError: This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.
+
+--- around 2026-10-29T10:49:28-04:00 ---
+    10:47:39   -109.0s  rootcanal.read  {"entry":"bfa98498290b","from_version":"vk-e9c26d782a38","n":191,"read":"d029ea158841"}
+    10:47:39   -108.7s  rootcanal.read  [toolkit]  {"entry":"bfa98498290b","from_version":"vk-e9c26d782a38","gid":"s45bae70722f2"}
+    10:49:28     +0.0s  >>> rootcanal/fit: This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.
+
+--- around 2026-10-29T10:53:21-04:00 ---
+    10:53:21     +0.0s  >>> rootcanal/fit: This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.
+    10:53:45    +24.0s  rootcanal.read  {"entry":"41dd94702761","from_version":"vk-b8455d7848f5","n":113,"read":"60aed3ff1b24"}
+    10:53:45    +24.9s  rootcanal.read  [toolkit]  {"entry":"41dd94702761","from_version":"vk-b8455d7848f5","gid":"s79ba9ba163c4"}
+    10:55:12   +111.0s  curation.archive  {"gid":"sf357f48d27eb","kind":"pooled.ea4eeaa794729"}
+
+--- around 2026-10-29T10:53:22-04:00 ---
+    10:53:22     +0.0s  >>> rootcanal/fit: This set has not been read at these settings on this machine yet. Read it first -- it takes a few minutes, once, and every change after that is instant.
+    10:53:45    +23.0s  rootcanal.read  {"entry":"41dd94702761","from_version":"vk-b8455d7848f5","n":113,"read":"60aed3ff1b24"}
+    10:53:45    +23.9s  rootcanal.read  [toolkit]  {"entry":"41dd94702761","from_version":"vk-b8455d7848f5","gid":"s79ba9ba163c4"}
+    10:55:12   +110.0s  curation.archive  {"gid":"sf357f48d27eb","kind":"pooled.ea4eeaa794729"}

@@ -1,0 +1,255 @@
+{
+ "axes": [
+  {
+   "key": "amp_uV",
+   "label": "max amplitude",
+   "unit": "µV"
+  },
+  {
+   "key": "hw_ms",
+   "label": "half-width",
+   "unit": "ms"
+  },
+  {
+   "key": "hf_db",
+   "label": "500–1000 Hz power",
+   "unit": "dB re baseline"
+  }
+ ],
+ "bad": {
+  "59": "dead (0.5 uV against a median of 52)"
+ },
+ "centres": [
+  {
+   "cls": "ds",
+   "drawn": false,
+   "n": 4,
+   "raw": [
+    1149.2417296271187,
+    19.974694847457627,
+    10.707485830508475
+   ],
+   "z": [
+    4.7936097258463786e-15,
+    -7.747148218386692e-16,
+    1.1805476015282453e-15
+   ]
+  }
+ ],
+ "clusters": [
+  {
+   "call": "ds",
+   "call_by": "margin",
+   "centre_raw": [
+    1149.2417296271187,
+    19.974694847457627,
+    10.707485830508475
+   ],
+   "centre_z": [
+    4.7936097258463786e-15,
+    -7.747148218386692e-16,
+    1.1805476015282453e-15
+   ],
+   "drawn": false,
+   "n": 4,
+   "name": null,
+   "rank": 0
+  }
+ ],
+ "cols": {
+  "amp": [
+   381.8755,
+   436.9944,
+   257.8189,
+   477.8797
+  ],
+  "axes": [
+   3,
+   3,
+   3,
+   3
+  ],
+  "cls": [
+   "ds",
+   "ds",
+   "ds",
+   "ds"
+  ],
+  "cluster": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "contact": [
+   30,
+   42,
+   17,
+   42
+  ],
+  "flags": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "hf": [
+   9.8147,
+   10.1312,
+   3.1013,
+   12.8961
+  ],
+  "hf_contact": [
+   6,
+   2,
+   39,
+   3
+  ],
+  "hw": [
+   48.0817,
+   26.0246,
+   28.254,
+   43.2171
+  ],
+  "i": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "pol": [
+   1,
+   1,
+   -1,
+   1
+  ],
+  "retried": [
+   null,
+   null,
+   null,
+   null
+  ],
+  "row": [
+   29,
+   41,
+   16,
+   41
+  ],
+  "t": [
+   937.737697,
+   956.527384,
+   1940.318562,
+   2179.795044
+  ]
+ },
+ "counts": {
+  "ds": 4,
+  "excluded": 0,
+  "ied": 0,
+  "partial": 0,
+  "unmeasured": 0,
+  "wide": 0
+ },
+ "entry_id": "6a2ade1040d3",
+ "from": {
+  "artifact_id": "292d870b84ff",
+  "kind": "pool",
+  "margin": {
+   "artifact_id": "96e3abd92e02",
+   "mode": "fixed",
+   "version": 1
+  },
+  "nickname": "PTEN CTL Baseline Full Incisor",
+  "version": 1
+ },
+ "from_version": null,
+ "gid": "sd94396e874c7",
+ "k": 1,
+ "margin_used": {
+  "artifact_id": "96e3abd92e02",
+  "digest": "e602dc511801",
+  "k": 1,
+  "mode": "fixed",
+  "name": "Clusters of PTEN CTL Baseline Full Incisor",
+  "nickname": "PTEN CTL Baseline Full Incisor v1 clusters",
+  "version": 1,
+  "version_id": "613e63008e4b"
+ },
+ "measure": {
+  "band_hi": 1000.0,
+  "band_lo": 500.0,
+  "cross_ms": 100.0,
+  "filt": "ds",
+  "filter_label": "DS filter, 5–100 Hz, 60 Hz mains out",
+  "hi_hz": 100.0,
+  "lo_hz": 5.0,
+  "mains_out": true,
+  "order": 3,
+  "win_ms": 25.0
+ },
+ "missed": [],
+ "mouse": 51,
+ "mouse_key": "PTEN|m51",
+ "n": 4,
+ "params": {
+  "band_hi": 1000.0,
+  "band_lo": 500.0,
+  "centres": null,
+  "cluster_calls": {},
+  "cluster_names": {},
+  "complete_only": false,
+  "cross_ms": 100.0,
+  "drawn": [],
+  "entry_id": "6a2ade1040d3",
+  "filt": "ds",
+  "flank_ms": [
+   30.0,
+   60.0
+  ],
+  "flips": [],
+  "from_version": null,
+  "hf_base_off_ms": 150.0,
+  "hf_base_win_ms": 40.0,
+  "hf_win_ms": 25.0,
+  "hi_hz": 100.0,
+  "k": 1,
+  "lo_hz": 5.0,
+  "mains_out": true,
+  "margin": {
+   "artifact_id": "96e3abd92e02",
+   "mode": "fixed",
+   "version": 1
+  },
+  "n_init": 10,
+  "order": 3,
+  "pad_s": 0.3,
+  "read": "5c3632bd1972",
+  "read_fs": 5000.0,
+  "retry": [],
+  "seed": 0,
+  "snip_fs": 2000.0,
+  "snip_ms": 250.0,
+  "stamps_hash": "d37c1670d964",
+  "win_ms": 25.0
+ },
+ "project": "PTEN",
+ "read": "5c3632bd1972",
+ "read_on": "Bluebarry",
+ "retry_cross_ms": 200.0,
+ "rows_digest": "bee2df9fd366",
+ "rule": "k = 1: one cluster, so no split -- every event is called DS (4 DS, 0 IED).",
+ "scale": {
+  "mean": [
+   1149.2417296271165,
+   19.974694847457634,
+   10.70748583050847
+  ],
+  "sd": [
+   474.32663159303416,
+   9.17166828012576,
+   4.514066617307214
+  ]
+ },
+ "schema": "rootcanal.single/1",
+ "session_label": "PTEN m51 s1 2025-04-08"
+}

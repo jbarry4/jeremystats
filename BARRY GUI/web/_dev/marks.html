@@ -57,7 +57,7 @@ const hd = (t) => p('\n== ' + t + ' ==');
   /* By bare name, not off window: `const _modalStack = []` at the top
      level of a classic script goes into the global lexical environment, so
      `window._modalStack` is undefined while `_modalStack` in an eval in that
-     frame is not. The same trap as BARRY itself. */
+     frame is not. The same trap as Jarvis itself. */
   const stacked = () => val(
     'typeof _modalStack === "undefined" ? -1 : _modalStack.length');
   /* Bookmark rows, by kind rather than by position.

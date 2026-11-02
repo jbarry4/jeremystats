@@ -1,0 +1,45 @@
+{
+  "_at": {
+    "gid": "2026-09-14T16:40:35.515013+00:00",
+    "label": "2026-09-14T16:40:35.515013+00:00",
+    "path": "2026-09-14T16:40:35.515013+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "436141239b91": [
+        "set",
+        "2026-09-14T16:40:35.515013+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T16:40:35.515013+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:40:35.512993+00:00",
+      "by": "Rain Younger",
+      "concat_duration_s": 1762.2890333333332,
+      "gap_map_sha": "f350ac4b4812f620",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "436141239b91",
+      "level": "ok",
+      "machine": "Strawbarry",
+      "max_time_error_ms": 0.0,
+      "mismatches": 0,
+      "n_gaps": 0,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 1,
+      "seconds_lost": 0.0,
+      "sub_threshold_lost_s": 0.0,
+      "true_duration_s": 1762.282031
+    }
+  ],
+  "gid": "s45ee574d9dff",
+  "label": "m5 s26 2024-01-19",
+  "path": "E:\\Data\\m5s26jan19\\2024-01-19_12-53-25"
+}

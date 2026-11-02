@@ -15,7 +15,7 @@ asking anyone -- whereas one clone editing a file another has deleted is the
 one conflict shape this whole design exists to avoid, so do it deliberately
 and early rather than letting it happen lazily on the first write.
 
-Booting BARRY does the same thing automatically. This is here for the case
+Booting Jarvis does the same thing automatically. This is here for the case
 where you would rather do it in one step, see the count, and commit before
 anything else touches the logs.
 

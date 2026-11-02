@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Pose — Checkup with Tooth Fairy</title>
+<style>html,body{margin:0;height:100%}iframe{border:0;width:100vw;height:100vh;display:block}</style>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Opens Checkup on its sets, as they are, for a screenshot of the header's
+   Tooth Fairy batch button and its icon. Reads only: nothing is opened,
+   closed or swept. Leaves Checkup's pane on Sets, the one preference it
+   touches. */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 400, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(gap);
+  }
+  return null;
+}
+(async () => {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  await untilN(() => typeof W.setView === 'function');
+  try { W.localStorage.setItem('barry.checkupPane', 'sets'); } catch (e) {}
+  W.setView('toolkit');
+  await untilN(() => D.querySelectorAll('.tk-step').length);
+  const btn = Array.from(D.querySelectorAll('.tk-step')).find(
+    (x) => ((x.querySelector('strong') || {}).textContent || '').trim()
+             === 'Checkup');
+  if (btn) btn.click();
+  await untilN(() => D.getElementById('tfBatchOpen'));
+  await sleep(500);
+  document.title = 'posed';
+})();
+</script>

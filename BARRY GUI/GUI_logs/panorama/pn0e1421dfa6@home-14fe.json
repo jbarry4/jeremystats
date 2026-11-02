@@ -1,0 +1,202 @@
+{
+  "_at": {
+    "archived": "2026-09-22T19:35:34.247517+00:00",
+    "created": "2026-09-22T19:35:34.247517+00:00",
+    "grouping": "2026-09-22T19:35:34.247517+00:00",
+    "name": "2026-09-22T19:35:34.247517+00:00",
+    "note": "2026-09-22T19:35:34.247517+00:00",
+    "open": "2026-09-22T19:35:34.247517+00:00",
+    "params": "2026-09-22T19:35:34.247517+00:00",
+    "params_hash": "2026-09-22T19:35:34.247517+00:00",
+    "schema": "2026-09-22T19:35:34.247517+00:00",
+    "set_id": "2026-09-22T19:35:34.247517+00:00",
+    "updated": "2026-09-22T19:35:34.247517+00:00"
+  },
+  "_keys": {
+    "members": {
+      "demo-ds-tutorial": [
+        "set",
+        "2026-09-22T19:35:34.247517+00:00"
+      ],
+      "demo-long-session": [
+        "set",
+        "2026-09-22T19:35:34.247517+00:00"
+      ],
+      "s058294e1529d": [
+        "set",
+        "2026-09-22T19:35:34.247517+00:00"
+      ],
+      "s161c71a5e17c": [
+        "set",
+        "2026-09-22T19:35:34.247517+00:00"
+      ]
+    },
+    "state": {
+      "demo-ds-tutorial": [
+        "set",
+        "2026-09-22T19:35:34.247517+00:00"
+      ],
+      "demo-long-session": [
+        "set",
+        "2026-09-22T19:35:34.247517+00:00"
+      ],
+      "s058294e1529d": [
+        "set",
+        "2026-09-22T19:35:34.247517+00:00"
+      ],
+      "s161c71a5e17c": [
+        "set",
+        "2026-09-22T19:35:34.247517+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-22T19:35:34.247517+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "archived": false,
+  "created": {
+    "app_version": "2026.09.22.2",
+    "at": "2026-09-22T15:35:34-04:00",
+    "commit": "d21dd4c",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "Home",
+    "machine": "Homebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "grouping": "auto",
+  "members": [
+    {
+      "added": {
+        "app_version": "2026.09.22.2",
+        "at": "2026-09-22T15:35:34-04:00",
+        "commit": "d21dd4c",
+        "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+        "host": "Home",
+        "machine": "Homebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      },
+      "channel": 1,
+      "channel_from": "fallback",
+      "channel_label": "CSC1",
+      "enabled": true,
+      "gid": "s161c71a5e17c",
+      "id": "s161c71a5e17c",
+      "label": "DEMO m1 s1 (dentate spikes)",
+      "path": null,
+      "region": "hil"
+    },
+    {
+      "added": {
+        "app_version": "2026.09.22.2",
+        "at": "2026-09-22T15:35:34-04:00",
+        "commit": "d21dd4c",
+        "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+        "host": "Home",
+        "machine": "Homebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      },
+      "channel": 1,
+      "channel_from": "fallback",
+      "channel_label": "CSC1",
+      "enabled": true,
+      "gid": "s058294e1529d",
+      "id": "s058294e1529d",
+      "label": "DEMO m2 s3 (a longer one)",
+      "path": null,
+      "region": "hil"
+    },
+    {
+      "added": {
+        "app_version": "2026.09.22.2",
+        "at": "2026-09-22T15:35:34-04:00",
+        "commit": "d21dd4c",
+        "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+        "host": "Home",
+        "machine": "Homebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      },
+      "channel": 1,
+      "channel_from": "fallback",
+      "channel_label": "CSC1",
+      "enabled": true,
+      "gid": "demo-ds-tutorial",
+      "id": "demo-ds-tutorial",
+      "label": "DEMO m1 s1 (dentate spikes)",
+      "path": "demo:ds-tutorial",
+      "region": "hil"
+    },
+    {
+      "added": {
+        "app_version": "2026.09.22.2",
+        "at": "2026-09-22T15:35:34-04:00",
+        "commit": "d21dd4c",
+        "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+        "host": "Home",
+        "machine": "Homebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      },
+      "channel": 1,
+      "channel_from": "fallback",
+      "channel_label": "CSC1",
+      "enabled": true,
+      "gid": "demo-long-session",
+      "id": "demo-long-session",
+      "label": "DEMO m2 s3 (a longer one)",
+      "path": "demo:long-session",
+      "region": "hil"
+    }
+  ],
+  "name": "HARNESS bulk",
+  "note": null,
+  "open": true,
+  "params": {
+    "bins": 48,
+    "f_hi": 200.0,
+    "f_lo": 2.0,
+    "hist_scale": "log",
+    "line_hz": 60.0,
+    "step_s": 1.0,
+    "sub_s": 2.0,
+    "t1": 90.0,
+    "win_s": 8.0
+  },
+  "params_hash": "ea0f8f7b9dee",
+  "saved": [],
+  "schema": 1,
+  "set_id": "pn0e1421dfa6",
+  "state": {
+    "demo-ds-tutorial": {
+      "at": "2026-09-22T15:35:34-0400",
+      "status": "waiting"
+    },
+    "demo-long-session": {
+      "at": "2026-09-22T15:35:34-0400",
+      "status": "waiting"
+    },
+    "s058294e1529d": {
+      "at": "2026-09-22T15:35:34-0400",
+      "status": "waiting"
+    },
+    "s161c71a5e17c": {
+      "at": "2026-09-22T15:35:34-0400",
+      "status": "waiting"
+    }
+  },
+  "updated": {
+    "app_version": "2026.09.22.2",
+    "at": "2026-09-22T15:35:34-04:00",
+    "commit": "d21dd4c",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "Home",
+    "machine": "Homebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

@@ -33,10 +33,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   W.eval("setView('toolkit')");
   await sleep(400);
   const seen = {};
-  for (const [re, name] of [[/Event curation/, 'curate'],
+  for (const [re, name] of [[/Event curation|Checkup/, 'curate'],
                             [/StrataScope/, 'strata'],
                             [/Bad channels/, 'bad']]) {
-    const b = Array.from(D.querySelectorAll('.tk-tool'))
+    const b = Array.from(D.querySelectorAll('.tk-tool, .tk-step'))
       .find((t) => re.test(t.textContent));
     if (!b) continue;
     /* Clear whatever is cached for that pane, or a second visit has nothing

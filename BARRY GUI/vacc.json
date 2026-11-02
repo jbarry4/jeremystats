@@ -1,0 +1,30 @@
+{
+  "_note": "Where the VACC is and which shares it mounts. Tracked on purpose, so a clone knows the lab-wide facts. Who you are on it is NOT here: that lives in GUI_logs/.vacc.json, which git ignores.",
+  "_path_map": "A share this lab keeps recordings on, and the path the cluster mounts it at. Measured: 2732 of 4574 recorded paths are on bigdata_jbarry, so most recordings need no transfer at all. A drive letter is NOT a rule here -- Y: means different things on different machines and is discovered per machine.",
+  "enabled": true,
+  "host": "login.vacc.uvm.edu",
+  "partition": "general",
+  "_env": "The Python the cluster runs Jarvis with. An account's own environment (env, or <workspace>/env) when it has one; otherwise the lab's, built once and readable by everyone in pi-jbarry4. Without either, a login falls back to the cluster's system Python (3.9, no numpy), which is the error 'does not have numpy ... into /usr' -- measured 2026-10-14 on a colleague's laptop.",
+  "modules": ["miniforge/26.7.2-py3.14"],
+  "env": "",
+  "lab_env": "/users/s/a/sakhava1/jarvis/env",
+  "path_map": [
+    {
+      "unc": "//netfiles03.uvm.edu/bigdata_jbarry",
+      "vacc": "/netfiles/bigdata_jbarry"
+    }
+  ],
+  "_shared": "The lab's shared space on the cluster. One account owns it (Shahriar's, sakhava1); everybody else reaches it with their own netid, and Jarvis says who to ask when an account is refused. Jarvis Data under it is where uploads go, mirrored as <project>/<mouse>/<recording>/. Processing space: scratch may be purged, and the local copy stays the source of truth.",
+  "shared": {
+    "root": "/gpfs2/scratch/sakhava1",
+    "data": "Jarvis Data",
+    "owner": "Shahriar",
+    "ondemand": "https://ondemand.vacc.uvm.edu/pun/sys/dashboard/files/fs//gpfs2/scratch/sakhava1"
+  },
+  "_temp": "The lab's temporary space (gpfs3tmp), purged on a schedule. NOT unlimited: the lab group's quota there is 1000 GB (hard limit 1010 GB); an upload reads the room left before it sends anything. The other place an upload may go; it asks every time, scratch first.",
+  "temp": {
+    "root": "/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp",
+    "owner": "Shahriar",
+    "ondemand": "https://ondemand.vacc.uvm.edu/pun/sys/dashboard/files/fs//gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp"
+  }
+}

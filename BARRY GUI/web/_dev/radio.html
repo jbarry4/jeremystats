@@ -8,7 +8,7 @@
 </style>
 <div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
 <script>
-/* The radio is the only part of BARRY that reaches the internet, so most of
+/* The radio is the only part of Jarvis that reaches the internet, so most of
    what is worth checking is about restraint:
 
      nothing loads until somebody says yes,
@@ -19,7 +19,7 @@
 
    The stream itself is not fetched here. This runs on a machine that may
    have no network, and a harness that fails because YouTube is unreachable
-   would be testing YouTube. What is checked is the iframe BARRY builds:
+   would be testing YouTube. What is checked is the iframe Jarvis builds:
    where it points, what it is allowed to do, and when it exists. */
 const out = document.getElementById('out');
 const p = (m) => { out.textContent += m + '\n'; };

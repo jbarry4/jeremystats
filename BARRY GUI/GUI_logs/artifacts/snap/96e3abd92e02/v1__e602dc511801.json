@@ -1,0 +1,50 @@
+{
+ "calls_by_hand": [],
+ "clusters": [
+  {
+   "call": "ds",
+   "centre_raw": [
+    1149.2417296271187,
+    19.974694847457627,
+    10.707485830508475
+   ],
+   "n": 1475,
+   "rank": 0
+  }
+ ],
+ "k": 1,
+ "measure": {
+  "band_hi": 1000.0,
+  "band_lo": 500.0,
+  "cross_ms": 100.0,
+  "filt": "ds",
+  "filter_label": "DS filter, 5–100 Hz, 60 Hz mains out",
+  "hi_hz": 100.0,
+  "lo_hz": 5.0,
+  "mains_out": true,
+  "order": 3,
+  "win_ms": 25.0
+ },
+ "rule": "Pooled over 9 recordings from 9 mice, in pooled raw units: k = 1: one cluster, so no split -- every event is called DS (1475 DS, 0 IED, 2 not measured; 6 resolved only with a half-width search widened past 50 ms).",
+ "scale": {
+  "mean": [
+   1149.2417296271165,
+   19.974694847457634,
+   10.70748583050847
+  ],
+  "sd": [
+   474.32663159303416,
+   9.17166828012576,
+   4.514066617307214
+  ]
+ },
+ "source": {
+  "kind": "pool",
+  "n_events": 1475,
+  "pool": {
+   "artifact_id": "292d870b84ff",
+   "nickname": "PTEN CTL Baseline Full Incisor",
+   "version": 1
+  }
+ }
+}

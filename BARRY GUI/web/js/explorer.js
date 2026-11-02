@@ -73,7 +73,7 @@ BARRY.views.explorer = (function () {
     // Keep IED first and Misc last, matching the sidebar's mental model.
     const names = Array.from(bySection.keys()).sort((a, b) => {
       const rank = (n) => (n === 'IED Pipeline' ? 0 : n === 'Misc' ? 2 : 1);
-      return rank(a) - rank(b) || a.localeCompare(b);
+      return rank(a) - rank(b) || BARRY.ui.natCompare(a, b);
     });
 
     // Favourites and recents ride above the real sections. They are views
@@ -108,10 +108,11 @@ BARRY.views.explorer = (function () {
       ]));
 
       const box = el('div', { class: 'tree-items' });
-      for (const it of group) {
+      const itemRow = (it) => {
         const on = favs().indexOf(it.rel) >= 0;
-        box.appendChild(el('div', {
-          class: 'tree-item' + (current && current.rel === it.rel ? ' active' : ''),
+        return el('div', {
+          class: 'tree-item' + (current && current.rel === it.rel ? ' active' : '')
+                 + (it.archived ? ' is-archived' : ''),
           title: it.rel,
           onclick: (e) => { if (!e.target.closest('.tree-fav')) select(it.rel); },
         }, [
@@ -123,9 +124,21 @@ BARRY.views.explorer = (function () {
             title: on ? 'Remove from favourites' : 'Add to favourites',
             onclick: (e) => { e.stopPropagation(); toggleFav(it.rel); },
           }),
-        ]));
-      }
+        ]);
+      };
+      /* Archived scripts sink to the bottom of their section, behind the
+         one toggle every list uses (2026-10-20) -- unless one of them is
+         the script open now, which is never hidden. */
+      const [liveIts, goneIts] = BARRY.ui.splitArchived(group, (it) => !!it.archived);
+      for (const it of liveIts) box.appendChild(itemRow(it));
       section.appendChild(box);
+      const tail = BARRY.ui.archivedTail({
+        key: 'explorer-' + name, items: goneIts, noun: ['script', 'scripts'],
+        forceOpen: !!(current && goneIts.some((it) => it.rel === current.rel)),
+        render: (xs) => el('div', { class: 'tree-items' }, xs.map(itemRow)),
+        onToggle: () => renderTree(),
+      });
+      if (tail) section.appendChild(tail);
       host.appendChild(section);
     }
   }
@@ -181,7 +194,7 @@ BARRY.views.explorer = (function () {
         }),
         el('button', {
           class: 'btn ghost sm', text: 'Copy command',
-          title: 'The exact command line that reproduces this run outside BARRY',
+          title: 'The exact command line that reproduces this run outside Jarvis',
           onclick: () => BARRY.copy(runCommand(), 'Command'),
         }),
         el('button', {
@@ -280,12 +293,45 @@ BARRY.views.explorer = (function () {
   /* ======================================================================
      Feature 2 -- Searchable source, with the line numbers people quote
      ====================================================================== */
+  /* The lines as they were read, lowercased once.
+
+     `markSourceHits` below cannot search the spans' own textContent: each
+     one carries a four-space line number in front of the code, so a query
+     of digits would match line numbers rather than source. Kept here, in
+     the order the spans are in, so the two are indexed alike. */
+  let sourceHay = [];
+
+  /* Re-mark the lines already on screen.
+
+     Called instead of re-rendering, so the search box keeps focus and the
+     caret keeps its place. Cheap enough to run per keystroke behind the
+     140 ms debounce: a class toggle per line, no nodes created. */
+  function markSourceHits() {
+    const pre = $('.src-lines');
+    if (!pre) return;
+    const q = sourceQuery.trim().toLowerCase();
+    const kids = pre.children;
+    let n = 0, first = null;
+    for (let i = 0; i < kids.length; i++) {
+      const hit = !!q && sourceHay[i] !== undefined
+        && sourceHay[i].includes(q);
+      if (hit) { n += 1; if (!first) first = kids[i]; }
+      // toggle() with a second argument writes only when it differs.
+      kids[i].classList.toggle('hit', hit);
+    }
+    const hint = $('#scriptDetail .sec-head .hint');
+    if (hint) hint.textContent = q ? n + ' line(s)' : '';
+    if (first) first.scrollIntoView({ block: 'center' });
+  }
+
   function sourceBlock() {
     const src = current.source || '';
     const lines = src.split(/\r?\n/);
     const q = sourceQuery.trim().toLowerCase();
     const hits = q ? lines.reduce((n, ln, i) =>
       (ln.toLowerCase().includes(q) ? n.concat(i + 1) : n), []) : [];
+
+    sourceHay = lines.map((ln) => ln.toLowerCase());
 
     const pre = el('pre', { class: 'src-lines' });
     lines.forEach((ln, i) => {
@@ -304,17 +350,25 @@ BARRY.views.explorer = (function () {
                     text: 'Source \u00b7 ' + lines.length + ' lines' }),
         el('div', { class: 'spacer' }),
         el('div', { class: 'search-wrap inline', style: 'max-width:260px' }, [
-          el('svg', { class: 'search-icon', viewBox: '0 0 20 20',
-                      html: '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/>' }),
+          BARRY.ui.magnifier(),
           el('input', {
             type: 'search', placeholder: 'Find in this file\u2026',
             value: sourceQuery,
-            oninput: (e) => {
+            /* Mark the lines; do not rebuild the view.
+
+               This called renderDetail(), which empties #scriptDetail -- and
+               this input lives inside it. So every keystroke destroyed the
+               element being typed into, rebuilt one span per source line
+               (three thousand of them for a long script), and dropped focus,
+               which is why searching a file meant typing one letter at a
+               time and clicking back in.
+
+               The spans are already here and already carry their line
+               number. A search only changes which of them are marked. */
+            oninput: debounceInput((e) => {
               sourceQuery = e.target.value;
-              renderDetail();
-              const first = $('.src-line.hit');
-              if (first) first.scrollIntoView({ block: 'center' });
-            },
+              markSourceHits();
+            }, 140),
           }),
         ]),
         el('span', { class: 'hint',
@@ -392,7 +446,7 @@ BARRY.views.explorer = (function () {
     return el('div', { class: 'coll-row', style: 'margin-bottom:9px' }, chips);
   }
 
-  /* The command BARRY itself would run, spelled out. For Python with edits
+  /* The command Jarvis itself would run, spelled out. For Python with edits
      it names the constants to change, since the real run uses a temp copy. */
   function runCommand() {
     if (!current) return '';
@@ -413,7 +467,7 @@ BARRY.views.explorer = (function () {
     }
     let cmd = '"' + (cat.python || 'python') + '" -u "' + abs + '"';
     if (changed.length) {
-      cmd += '\n\n# BARRY overrides these top-level constants in a temp copy;\n'
+      cmd += '\n\n# Jarvis overrides these top-level constants in a temp copy;\n'
            + '# to reproduce by hand, edit them in the file first:\n'
            + changed.map((k) => '#   ' + k + ' = '
                                 + JSON.stringify(edits[k])).join('\n');

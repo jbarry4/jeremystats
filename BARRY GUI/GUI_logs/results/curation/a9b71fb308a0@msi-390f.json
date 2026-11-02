@@ -1,0 +1,25 @@
+{
+  "_at": {
+    "key": "2026-09-09T04:20:58.666068+00:00",
+    "rel": "2026-09-09T04:20:58.666068+00:00",
+    "starred": "2026-09-13T16:42:15.255308+00:00",
+    "updated": "2026-09-13T16:42:15.255308+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-13T16:42:15.255308+00:00",
+    "machine": "msi-390f",
+    "schema": 1
+  },
+  "key": "toolkit/bad-channels_all_20260908_234521.csv",
+  "rel": "ToolKit/bad-channels_all_20260908_234521.csv",
+  "starred": false,
+  "tags": [],
+  "updated": {
+    "at": "2026-09-13T12:42:15-04:00",
+    "email": "seclouse@uvm.edu",
+    "host": "MSI",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Sylvia Clouse"
+  }
+}

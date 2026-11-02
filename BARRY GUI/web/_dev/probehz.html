@@ -81,13 +81,34 @@ async function untilN(fn, tries = 300, gap = 90) {
   const probes = JSON.parse(W.eval(
     'JSON.stringify(BARRY.views.xplore.state.probes.map(function(p){'
     + 'return {id:p.id, n:(p.columns||[]).length}; }))'));
-  check('two probes are offered', probes.length === 2, JSON.stringify(probes));
+  /* Asserted by what each template IS, not by how many there are.
+     Pinning the count meant adding the dual-array template -- two
+     implants, hippocampus and M2 -- failed a page that has nothing to do
+     with it, and said "two probes are offered" as though that were the
+     property under test. */
+  check('the templates this page needs are there',
+        probes.some((p) => p.id === 'h3') && probes.some((p) => p.id === 'h10d'),
+        JSON.stringify(probes));
   const h10 = probes.find((p) => p.id === 'h10d');
   check('the H10 has six columns', h10 && h10.n === 6, JSON.stringify(h10));
+  const h3 = probes.find((p) => p.id === 'h3');
+  check('and the H3 has none, because it is one line of contacts',
+        h3 && !h3.n, JSON.stringify(h3));
 
   head('Switching to H10 lays out six columns');
   const sel = D.getElementById('xfProbe');
   check('there is a probe control', !!sel);
+  /* CSD first, then the probe.
+
+     Switching probe used to force CSD, and this harness asserted that --
+     but it was changed on purpose: a voltage raster silently becoming a CSD
+     every time somebody changed probe is a worse fault than having to pick
+     the panel. `layoutProbe` keeps what the panes are showing, so what is
+     worth checking is that it CARRIES CSD across rather than losing it. */
+  W.eval('(function(){var S=BARRY.views.xplore.state;'
+         + 'S.panes.forEach(function(q){if(q)q.panel="csd"});'
+         + 'BARRY.views.xplore.render();}())');
+  await sleep(700);
   sel.value = 'h10d';
   sel.dispatchEvent(new W.Event('change', { bubbles: true }));
   await sleep(900);
@@ -99,7 +120,9 @@ async function untilN(fn, tries = 300, gap = 90) {
     + ' ch:(p.channels||[]).slice(0,3)}; }))'));
   panes.forEach((p) => say('note', '  ' + (p ? (p.tag + '  ' + p.panel
     + '  ' + p.n + ' contacts  first indices ' + JSON.stringify(p.ch)) : 'empty')));
-  check('every pane is a CSD', panes.every((p) => p && p.panel === 'csd'));
+  check('the panel on screen was carried across, not replaced',
+        panes.every((p) => p && p.panel === 'csd'),
+        panes.map((p) => p && p.panel).join(','));
   check('the six columns are W1 W3 W4 W2 W6 W5',
         JSON.stringify(panes.map((p) => p && p.tag))
         === JSON.stringify(['W1', 'W3', 'W4', 'W2', 'W6', 'W5']),
@@ -137,7 +160,11 @@ async function untilN(fn, tries = 300, gap = 90) {
       .filter((im) => im.naturalWidth > 0).length >= 6, 400);
   const nDrew = Array.from(D.querySelectorAll('.pane-img-host img'))
     .filter((im) => im.naturalWidth > 0).length;
-  check('all six drew', drew >= 0, nDrew + ' of 6');
+  /* Six real images with pixels in them. An image panel is an `<img>`;
+     traces are a canvas, so this count is only meaningful once the panes
+     are actually a raster kind -- which is why CSD is chosen above rather
+     than assumed. */
+  check('all six drew', nDrew >= 6, nDrew + ' of 6');
   check('and each pane is labelled with its column',
         D.querySelectorAll('.pane-col-tag').length === 6,
         D.querySelectorAll('.pane-col-tag').length + ' tags');

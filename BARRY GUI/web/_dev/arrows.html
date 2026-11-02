@@ -234,7 +234,9 @@ async function until(fn, ms) {
   say('=== and it exports the same way it looks ===', 'hd');
   const exp = await fetch('/api/deck/export', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: deckId, format: 'png' }),
+    // Scratch: thirty "arrow harness_*.png" were committed to Storyboards,
+    // twenty-three of them byte-identical to each other.
+    body: JSON.stringify({ id: deckId, format: 'png', lane: 'scratch' }),
   });
   check('the deck exports without error', exp.ok, 'HTTP ' + exp.status);
   if (exp.ok) {

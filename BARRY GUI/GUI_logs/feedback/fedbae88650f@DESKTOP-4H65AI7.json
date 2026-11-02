@@ -1,0 +1,30 @@
+{
+ "id": "fedbae88650f",
+ "kind": "bug",
+ "title": "Auto/Pinned on Theta Power Raster",
+ "detail": "When you click on Auto to pin the theta power raster it breaks things",
+ "wants": "",
+ "context": {
+  "path": "D:\\PTEN\\PTEN\\M8_Pten\\M8s9feb8\\2024-02-09_16-43-46",
+  "view": "errors",
+  "agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+  "panels": [
+   "traces"
+  ],
+  "screen": "1745x835",
+  "window": {
+   "t0": 1876.2900000000002,
+   "span": 1.22
+  },
+  "recording": "PTEN m8 s9 2024-02-09"
+ },
+ "state": "open",
+ "at": "2026-09-11T16:15:56+00:00",
+ "by": "Shahriar Tafti",
+ "machine": "DESKTOP-4H65AI7",
+ "shard": "DESKTOP-4H65AI7",
+ "screenshots": [],
+ "recent": null,
+ "notes": [],
+ "from_cloud": true
+}

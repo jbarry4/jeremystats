@@ -1,0 +1,5 @@
+# Jarvis Panorama -- convergence -- Untitled set -- 3 recordings -- 2-200 Hz -- dominant by peak -- one vote per recording -- taken 2026-09-15T19:20:18
+gid,recording,group,n_windows,n_used,n_nopeak,nopeak_fraction,modal_hz,median_hz,aperiodic_exponent
+s45bae70722f2,PTEN m1 s2 2023-10-02,PTEN,193,193,0,0.0,157.34876153198798,163.46770100380675,2.90972661210536
+s5b932a8e933d,PTEN m1 s8 2023-10-05,PTEN,193,193,0,0.0,157.34876153198798,109.01868166971019,3.5754071237445677
+s79ba9ba163c4,PTEN m2 s3 2024-01-23,CTL,193,193,0,0.0,41.07050052914291,41.358242193543354,3.5111452643236083

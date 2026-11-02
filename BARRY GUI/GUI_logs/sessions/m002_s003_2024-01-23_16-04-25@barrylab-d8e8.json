@@ -10,22 +10,40 @@
     "fs": "2026-09-04T15:57:01.575589+00:00",
     "gid": "2026-09-02T23:51:19.789623+00:00",
     "group": "2026-09-04T15:57:01.575589+00:00",
+    "hemisphere": "2026-09-09T00:00:18.414809+00:00",
+    "hemisphere_source": "2026-09-09T00:00:18.414809+00:00",
     "key": "2026-09-04T15:57:01.575589+00:00",
     "label": "2026-09-04T15:57:01.575589+00:00",
     "loose_key": "2026-09-04T15:57:01.575589+00:00",
     "mouse": "2026-09-04T15:57:01.575589+00:00",
-    "n_channels": "2026-09-04T15:57:01.575589+00:00",
+    "n_channels": "2026-09-23T18:06:23.815181+00:00",
+    "probe": "2026-10-20T14:58:32.412619+00:00",
+    "probe_source": "2026-10-20T14:58:32.412619+00:00",
     "project": "2026-09-04T15:57:01.575589+00:00",
     "project_source": "2026-09-04T15:57:01.575589+00:00",
     "retired": "2026-09-04T15:57:01.575589+00:00",
     "schema": "2026-09-04T15:57:01.575589+00:00",
     "session": "2026-09-04T15:57:01.575589+00:00",
     "start": "2026-09-04T15:57:01.575589+00:00",
-    "updated": "2026-09-08T21:24:21.381369+00:00",
-    "view_state": "2026-09-08T21:24:21.381369+00:00"
+    "updated": "2026-10-27T15:46:07.142382+00:00",
+    "view_state": "2026-10-27T15:46:07.142382+00:00"
   },
   "_keys": {
+    "channel_banks": {
+      "b1": [
+        "set",
+        "2026-09-23T18:08:51.499202+00:00"
+      ],
+      "b2": [
+        "set",
+        "2026-09-23T18:08:51.499202+00:00"
+      ]
+    },
     "paths": {
+      "D:\\Data\\Archive\\PTEN Project\\Control\\M2_s3\\2024-01-23_16-04-25": [
+        "set",
+        "2026-09-23T18:08:52.649878+00:00"
+      ],
       "D:\\PTEN\\CTL\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25": [
         "set",
         "2026-09-04T15:57:01.575589+00:00"
@@ -36,11 +54,15 @@
       ],
       "Y:\\ProcessedPtenData\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25": [
         "set",
-        "2026-09-04T15:57:01.575589+00:00"
+        "2026-09-10T03:42:51.097524+00:00"
       ],
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M2_s3_baseline": [
         "set",
-        "2026-09-04T15:57:01.575589+00:00"
+        "2026-09-10T03:42:51.097524+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25": [
+        "set",
+        "2026-10-23T19:20:15.175680+00:00"
       ]
     },
     "seen": {
@@ -55,11 +77,23 @@
       "StrawBarry": [
         "set",
         "2026-09-08T21:21:44.929605+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-10-27T15:42:27.028292+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-10-22T20:03:26.611591+00:00"
+      ],
+      "lcom549913-e62b": [
+        "set",
+        "2026-09-23T18:06:23.815181+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T21:24:21.381369+00:00",
+    "at": "2026-10-27T15:46:07.142382+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -67,6 +101,20 @@
     59
   ],
   "bad_channels_note": "Bad channels from the Toothy workbook.",
+  "channel_banks": [
+    {
+      "first": 1,
+      "id": "b1",
+      "last": 64,
+      "region": null
+    },
+    {
+      "first": 65,
+      "id": "b2",
+      "last": 128,
+      "region": null
+    }
+  ],
   "condition": "base",
   "converted": true,
   "created": {
@@ -80,17 +128,23 @@
   "fs": 30000.0,
   "gid": "s79ba9ba163c4",
   "group": "PTEN",
+  "hemisphere": "R",
+  "hemisphere_source": "EEGData_FeederSheet_PTEN_with_DKO.xlsx",
   "key": "m002_s003_2024-01-23_16-04-25",
   "label": "PTEN m2 s3 2024-01-23",
   "loose_key": "m002_s003",
   "mouse": 2,
-  "n_channels": 64,
+  "n_channels": 128,
   "paths": [
     "D:\\PTEN\\CTL\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25",
     "G:\\PTEN\\M2_s3",
     "Y:\\ProcessedPtenData\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25",
-    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M2_s3_baseline"
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M2_s3_baseline",
+    "D:\\Data\\Archive\\PTEN Project\\Control\\M2_s3\\2024-01-23_16-04-25",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25"
   ],
+  "probe": "h3",
+  "probe_source": "manual",
   "project": "PTEN",
   "project_source": "guessed",
   "retired": false,
@@ -116,17 +170,49 @@
       "path": "Y:\\ProcessedPtenData\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25",
       "root": null,
       "scan": null
+    },
+    "barrylab-d8e8": {
+      "at": "2026-10-27T11:42:26-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\ProcessedPtenData\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25",
+      "root": null,
+      "scan": null
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-10-22T16:03:23-04:00",
+      "by": "Shahriar Tafti",
+      "copies": {
+        "D:\\PTEN\\CTL\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25": {
+          "at": "2026-10-20T12:04:30-04:00",
+          "n_channels": 64
+        }
+      },
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\CTL\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25",
+      "root": null,
+      "scan": null
+    },
+    "lcom549913-e62b": {
+      "at": "2026-09-23T14:06:23-04:00",
+      "by": "Isabella Piatek",
+      "machine": "Blackbarry",
+      "path": "D:\\Data\\Archive\\PTEN Project\\Control\\M2_s3\\2024-01-23_16-04-25",
+      "root": "D:/Data/Archive/PTEN Project/Control",
+      "scan": "scan_32b06421c0"
     }
   },
   "session": 3,
   "start": "2024-01-23T16:04:25",
   "updated": {
-    "at": "2026-09-08T17:24:21-04:00",
+    "app_version": "2026.10.26.2",
+    "at": "2026-10-27T11:46:07-04:00",
+    "commit": "475259cf",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
-    "machine": "StrawBarry",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Rain Younger"
   },
   "view_state": {
     "channels": [
@@ -163,21 +249,22 @@
       61,
       63
     ],
-    "clim": null,
-    "even_only": false,
+    "climBy": null,
     "fdefault": null,
     "flock": true,
-    "gain": 1,
-    "hp": 5,
+    "gain": 2.5,
+    "hp": 1,
     "invert": true,
-    "lp": 100,
+    "lp": 70,
+    "marks_fade": null,
+    "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
-    "probe": null,
+    "probe": "h3",
     "spacing": 50,
     "span": 1,
     "stft_mode": null,
-    "t0": 2665.806,
+    "t0": 2570.920654,
     "ylim": null
   }
 }

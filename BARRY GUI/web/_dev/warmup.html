@@ -1,0 +1,176 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>warmup: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:560px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:560px;top:0;width:1366px;height:768px;border:0}</style></head>
+<body><pre id="log"></pre>
+<iframe id="plain" src="/?linkhold=0&menu=0"></iframe>
+<script>
+/* The start screen's warm-up (web/js/warmup.js): from the moment the
+   preferences are in, every list into its kept copy, the last recording,
+   the analysis engines and recent strips -- one step at a time, at
+   background priority -- and "Who's working?".
+
+   1. A harness frame does NOT warm up: no /api/warmup request, no step.
+   2. With ?warm=1 it does: every step ends (done, not needed, or left for
+      later), in order, with words beside it; the lists are in BARRY.data
+      afterwards; the rail line is there while it runs and gone after.
+   3. Who's working: asked when the last answer is old, not when it is
+      fresh; no harness or AI names offered; "Still <name>" answers it.
+
+   Nothing written but this browser's localStorage, which is put back. No
+   person is clicked: that would set this computer's profile. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(100);
+  }
+  return null;
+}
+
+(async () => {
+  const plain = document.getElementById('plain');
+  let warmFrame = null, wasWho = null, W2 = null;
+  try {
+    await new Promise((r) => plain.addEventListener('load', r, { once: true }));
+    const W = () => plain.contentWindow;
+    // BARRY is a const in the frame, not a property of its window: eval.
+    const bOf = (w) => { try { return w.eval('typeof BARRY === "object" ? BARRY : null'); }
+                         catch (e) { return null; } };
+    await until(() => { const b = bOf(W()); return b && b.state.catalog && b.warmup; }, 30000);
+    say('=== 1. a harness frame does not warm up ===');
+    await sleep(2500);
+    const B = bOf(W());
+    check('wanted() says no inside a /_dev/ frame', B.warmup.wanted() === false);
+    check('and nothing was started', B.warmup.state().started === false);
+    const asked = W().performance.getEntriesByType('resource')
+      .filter((e) => /\/api\/warmup\//.test(e.name));
+    check('no /api/warmup request was made', asked.length === 0,
+          asked.map((e) => e.name).join(' '));
+    plain.src = 'about:blank';
+
+    say('');
+    say('=== 2. with ?warm=1 it gets everything ready ===');
+    /* Under the runner's virtual time a few seconds of real importing are
+       minutes of page time, so the engines are imported here first, with a
+       request this page waits on for real; the frame's step then finds them
+       already in. The overview strips of thirty recordings take longer than
+       any harness should, so that step is checked for starting, not for
+       finishing (memory: virtual time cannot time). */
+    try { await (await fetch('/api/warmup/engines')).json(); } catch (e) { /* checked below */ }
+    warmFrame = document.createElement('iframe');
+    warmFrame.src = '/?linkhold=0&menu=0&warm=1';
+    document.body.appendChild(warmFrame);
+    await new Promise((r) => warmFrame.addEventListener('load', r, { once: true }));
+    W2 = () => warmFrame.contentWindow;
+    const D2 = () => warmFrame.contentDocument;
+    await until(() => { const b = bOf(W2()); return b && b.warmup && b.warmup.state().started; },
+                30000);
+    const B2 = bOf(W2());
+    check('it started on its own after the first view', B2.warmup.state().started);
+    const rail = await until(() => D2().querySelector('.wu-rail'), 8000);
+    check('a line in the rail says it is getting ready',
+          !!rail && /Getting ready/.test(rail.textContent), rail && rail.textContent);
+    const seen = [];
+    const off = B2.warmup.on((st) => {
+      const run = st.steps.find((s) => s.state === 'run');
+      if (run && seen[seen.length - 1] !== run.id) seen.push(run.id);
+    });
+    const terminal = (s) => s.state === 'done' || s.state === 'skip' || s.state === 'fail';
+    const upTo = (st) => st.steps.filter((s) => s.id !== 'overviews');
+    await until(() => upTo(B2.warmup.state()).every(terminal)
+                && B2.warmup.state().steps.some((s) => s.id === 'overviews'
+                                                && s.state !== 'wait'), 240000);
+    off();
+    const st = B2.warmup.state();
+    check('every step up to the strips finished',
+          upTo(st).every(terminal), st.steps.map((s) => s.id + ':' + s.state).join(' '));
+    const strips = st.steps.find((s) => s.id === 'overviews');
+    check('and the strips step started after them', strips && strips.state !== 'wait',
+          strips && strips.state);
+    const ids = st.steps.map((s) => s.id);
+    check('one step at a time, in order',
+          seen.every((id, i) => i === 0 || ids.indexOf(id) > ids.indexOf(seen[i - 1])),
+          seen.join(' > '));
+    check('only one running at a time',
+          st.steps.filter((s) => s.state === 'run').length <= 1);
+    const rec = st.steps.find((s) => s.id === 'recordings');
+    check('the recordings step says how many', rec && rec.state === 'done'
+          && /\d[\d,]* recordings?/.test(rec.note), rec && rec.note);
+    const eng = st.steps.find((s) => s.id === 'engines');
+    check('the engines step says how many are ready', eng && /\d+ of \d+ ready/.test(eng.note),
+          eng && eng.note);
+    check('every finished step says something', upTo(st).every((s) => !!s.note),
+          upTo(st).filter((s) => !s.note).map((s) => s.id).join(' '));
+    check('the registry is in the kept copy', !!B2.data.peek('/api/registry'));
+    check('the bank list too', !!B2.data.peek('/api/bank'));
+    check('the people list too', !!B2.data.peek('/api/people'));
+    check('the rail line is still there while the strips are kept',
+          st.finished || !!D2().querySelector('.wu-rail'));
+
+    say('');
+    say('=== 3. who is working ===');
+    wasWho = W2().localStorage.getItem('barry.who_at');
+    const named = B2.profile.who();
+    if (!named) {
+      say('  (nobody is set on this computer: the picker always shows)', 'note');
+    }
+    W2().localStorage.setItem('barry.who_at', String(Date.now()));
+    check('a fresh answer is not asked again', !named || B2.warmup.needsWho() === false);
+    W2().localStorage.setItem('barry.who_at', String(Date.now() - 9 * 3600 * 1000));
+    check('one older than eight hours is', B2.warmup.needsWho() === true);
+    const box = B2.warmup.whoBlock();
+    D2().body.appendChild(box);
+    const grid = await until(() => box.querySelector('.wu-person'), 8000);
+    check('the picker offers people', !!grid);
+    const names = Array.from(box.querySelectorAll('.wu-pname')).map((n) => n.textContent);
+    check('no harness or AI names among them',
+          !names.some((n) => /harness|@test|\(AI\)|^import_/i.test(n)), names.join(' | '));
+    check('and at most six people, plus the two ways out',
+          box.querySelectorAll('.wu-person').length <= 8, String(names.length));
+    const keep = box.querySelector('.wu-keep');
+    if (named) {
+      check('"Still <name>" is offered', !!keep && keep.textContent.indexOf(named) >= 0,
+            keep && keep.textContent);
+      const before = Number(W2().localStorage.getItem('barry.who_at'));
+      keep.click();
+      await sleep(100);
+      check('and answers it without writing a profile',
+            Number(W2().localStorage.getItem('barry.who_at')) > before
+            && /Working as/.test(box.textContent), box.textContent);
+    }
+    box.remove();
+    const tips = B2.warmup.prompts();
+    D2().body.appendChild(tips);
+    check('a tip line has words in it', tips.textContent.length > 10, tips.textContent);
+    tips.remove();
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  } finally {
+    try {
+      if (W2) {
+        if (wasWho == null) W2().localStorage.removeItem('barry.who_at');
+        else W2().localStorage.setItem('barry.who_at', wasWho);
+      }
+    } catch (e) { /* the frame is going anyway */ }
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'warmup: ' + fails + ' FAILED' : 'warmup: passed';
+  if (warmFrame) warmFrame.src = 'about:blank';
+  plain.src = 'about:blank';
+})();
+</script>
+</body></html>

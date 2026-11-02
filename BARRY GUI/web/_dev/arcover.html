@@ -1,0 +1,324 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — The Arc: before a Coupling run</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Coupling's overview: what will be computed, from what, and why, shown
+   before the Run button is pressed.
+
+   Every number on it is a claim about the brain or about the analysis,
+   and the failure that matters is the page saying something different
+   from the server. So nearly every check here compares the DOM against
+   `barryArc.overview.over` -- the exact object the panel drew from -- and
+   not against values written into this file. Real banked recordings: J4,
+   which has four probes that ended up somewhere else and ten slides, and
+   J5, which has no histology row at all.
+
+   Nothing is computed. The overview opens no recording file, and the one
+   run this asks for is refused by the server before it reads anything,
+   which is the path under test. The parameters are put back to their
+   defaults before the end. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  const $ = (q) => doc().querySelector(q);
+  const $$ = (q) => Array.from(doc().querySelectorAll(q));
+  const errs = [];
+  win().addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  win().addEventListener('unhandledrejection',
+                         (e) => errs.push('rejected: ' + e.reason));
+  await untilN(() => typeof win().setView === 'function');
+  await sleep(700);
+  const ev = (src) => win().eval(src);
+  const val = (expr) => ev('(' + expr + ')');
+  const O = () => val('window.barryArc.overview.over');
+
+  /* ---------------------------------------------------------------- */
+  head('getting there');
+  ev('setView("toolkit")');
+  await sleep(300);
+  check('the Coupling step opens',
+        val('BARRY.views.toolkit.pick("coupling")') === true);
+  /* The ToolKit renders, loads its session list, and renders AGAIN --
+     rebuilding this panel. Anything picked before that is picked into a
+     panel about to be thrown away. Wait for the host to stop being
+     replaced. See arcmatrix.html, which learnt this the hard way. */
+  let host = $('#cpMain'), steady = 0;
+  for (let i = 0; i < 120 && steady < 15; i++) {
+    await sleep(100);
+    const now = $('#cpMain');
+    steady = (now && now === host) ? steady + 1 : 0;
+    host = now;
+  }
+  check('the panel has settled', steady >= 15);
+
+  const rows = ((await (await fetch('/api/arc/coupling/recordings')).json())
+                .rows || []);
+  const J4 = rows.find((r) => r.mouse === 4 && r.banked && r.reachable)
+          || rows.find((r) => r.mouse === 4 && r.banked);
+  const J5 = rows.find((r) => r.mouse === 5 && r.banked);
+  check('a banked J4 recording exists to test against', !!J4);
+  check('a banked J5 recording exists to test against', !!J5);
+  if (!J4) throw new Error('nothing to test');
+
+  val('window.barryArc.overview.pick(' + JSON.stringify(J4.gid) + ')');
+  await untilN(() => O() && (O().ok || O().error)
+                  && $$('.arc-ov-sec').length === 3, 150);
+  check('the overview loads, with three sections',
+        $$('.arc-ov-sec').length === 3,
+        (O() || {}).error || $$('.arc-ov-sec').length);
+  check('it sits above the Run button',
+        (() => {
+          const ov = $('.arc-ov'), bar = $('.arc-cp-bar');
+          return ov && bar && (ov.compareDocumentPosition(bar)
+                               & win().Node.DOCUMENT_POSITION_FOLLOWING);
+        })());
+  const o = O();
+  check('every section says something while folded',
+        $$('.arc-ov-sum').every((s) => (s.textContent || '').trim().length > 8),
+        $$('.arc-ov-sum').map((s) => s.textContent).join(' | '));
+
+  /* ---------------------------------------------------------------- */
+  head('the parameters');
+  const psec = $('details.arc-ov-sec-params');
+  check('folded, it has not built its body yet',
+        !$('.arc-ov-params'), 'a folded section should cost nothing');
+  psec.open = true;
+  await untilN(() => $('.arc-ov-params'), 30, 50);
+  check('opened, it builds', !!$('.arc-ov-params'));
+  const specs = o.params || [];
+  const editable = specs.filter((p) => !p.fixed);
+  const nums = editable.filter((p) => !p.choices);
+  const sels = editable.filter((p) => p.choices);
+  check('one number field per numeric parameter',
+        $$('.arc-ov-params input[type=number]').length === nums.length,
+        $$('.arc-ov-params input[type=number]').length + ' vs ' + nums.length);
+  check('one choice per choice parameter',
+        $$('.arc-ov-params select').length === sels.length);
+  check('the fixed ones are shown and cannot be edited',
+        $$('.arc-ov-field.fixed').length === specs.filter((p) => p.fixed).length
+        && $$('.arc-ov-field.fixed input, .arc-ov-field.fixed select')
+             .length === 0);
+  const inputs = $$('.arc-ov-params input[type=number]');
+  check('each field shows the value that will be used',
+        nums.every((p, i) => Number(inputs[i].value) === Number(o.defaults[p.id])),
+        nums.map((p, i) => p.id + '=' + inputs[i].value).join(' '));
+  /* A number field states its range in words; a choice field's range is
+     its list of options, so that is what is checked for it. */
+  check('each number field says what it is for, and its range',
+        $$('.arc-ov-field:not(.fixed)').filter(
+          (f) => f.querySelector('input[type=number]')).every(
+          (f) => / to /.test((f.querySelector('.hint') || {}).textContent
+                             || '')));
+  check('each choice offers exactly the choices the server allows',
+        sels.every((p) => {
+          const opts = $$('.arc-ov-params select')[sels.indexOf(p)]
+            .querySelectorAll('option');
+          return opts.length === p.choices.length;
+        }));
+  const padSpec = specs.find((p) => p.id === 'pad_s');
+  check('the baseline cannot be set past what the clipping was measured over',
+        padSpec && padSpec.max === o.measured_pad_s,
+        padSpec && padSpec.max + ' vs ' + o.measured_pad_s);
+
+  /* Change one to something the server will refuse, and run. */
+  const iAt = nums.findIndex((p) => p.id === 'summary_hz');
+  inputs[iAt].value = '30';
+  inputs[iAt].dispatchEvent(new (win().Event)('change', { bubbles: true }));
+  await sleep(150);
+  check('a changed field is marked as changed',
+        $$('.arc-ov-field.changed').length === 1);
+  check('and the folded summary says so',
+        /changed from the default/.test(
+          ($$('.arc-ov-sum')[0] || {}).textContent || ''));
+  check('the value that will be sent is the one on screen',
+        val('window.barryArc.overview.params.summary_hz') === 30);
+
+  await val('window.barryArc.overview.run()');
+  await untilN(() => $('.arc-ov-refused'), 80, 100);
+  const refused = $('.arc-ov-refused');
+  check('the server refuses a coherence frequency outside the band',
+        !!refused && /outside/.test(refused.textContent),
+        refused ? refused.textContent : 'no refusal shown');
+  check('the refusal is shown where the fields are, not only as a toast',
+        !!refused && !!refused.closest('.arc-ov-sec'));
+  check('and nothing was run',
+        val('window.barryArc.matrix.run') === null);
+
+  const reset = $$('.arc-ov-params ~ .head-actions button, .arc-ov-body button')
+    .find((b) => /defaults/.test(b.textContent));
+  check('there is a way back to the defaults', !!reset && !reset.disabled);
+  reset.click();
+  await sleep(150);
+  check('it puts every value back',
+        editable.every((p) => String(val('window.barryArc.overview.params.'
+                                         + p.id)) === String(o.defaults[p.id])));
+  check('and clears the refusal', !$('.arc-ov-refused'));
+
+  /* ---------------------------------------------------------------- */
+  head('where each probe is');
+  const probe = o.probe || [];
+  const prows = $$('.arc-pr');
+  check('one row per probe', prows.length === 12 && probe.length === 12,
+        prows.length);
+  check('each row carries the verdict the server gave it',
+        prows.every((r, i) => r.classList.contains(probe[i].verdict)),
+        prows.map((r, i) => probe[i].verdict).join(','));
+  const moved = probe.filter((p) => p.verdict === 'relocated');
+  check('J4 has four probes somewhere else', moved.length === 4,
+        moved.map((p) => p.actual).join(', '));
+  check('each says where it really is, and what it was aimed at',
+        moved.every((p) => prows[probe.indexOf(p)].textContent
+                             .includes('aimed at ' + p.intended)
+                           && prows[probe.indexOf(p)].textContent
+                             .includes(p.actual)));
+  check('the reason is on the row',
+        prows.every((r, i) => r.title === probe[i].why));
+
+  const want = Object.values(o.slides || {}).reduce((n, l) => n + l.length, 0);
+  const thumbs = $$('.arc-thumb img');
+  check('a thumbnail for every slide the server matched',
+        thumbs.length === want && want > 0, thumbs.length + ' vs ' + want);
+  check('they ask for the thumbnail, not the full copy',
+        thumbs.every((i) => /kind=thumb/.test(i.src)));
+  await untilN(() => thumbs.every((i) => i.complete), 100, 100);
+  check('and they load', thumbs.every((i) => i.naturalWidth > 0),
+        thumbs.filter((i) => !i.naturalWidth).length + ' did not');
+  check('a slide whose own name disagrees shows its words',
+        $$('.arc-thumb-w').some((w) => /insular|Missed|Maybe/i
+                                         .test(w.textContent)));
+
+  /* ---------------------------------------------------------------- */
+  head('one slide, big');
+  $$('.arc-thumb')[0].click();
+  await untilN(() => $('.arc-slide-img') && $('.arc-slide-img').naturalWidth
+                   || $('.arc-slide .empty-state'), 150, 100);
+  const big = $('.arc-slide-img');
+  check('it opens and loads the full copy',
+        !!big && big.naturalWidth > 1000 && /kind=web/.test(big.src),
+        big ? big.naturalWidth + 'px' : 'no image');
+  check('the probe it is evidence for is named',
+        /Aimed at/.test(($('.arc-slide-meta') || {}).textContent || ''));
+  const scaleOf = () => {
+    const m = /scale\(([\d.]+)\)/.exec(big.style.transform || '');
+    return m ? Number(m[1]) : null;
+  };
+  const before = scaleOf();
+  const stage = $('.arc-slide-stage');
+  const r = stage.getBoundingClientRect();
+  stage.dispatchEvent(new (win().WheelEvent)('wheel', {
+    deltaY: -400, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2,
+    bubbles: true, cancelable: true }));
+  await sleep(50);
+  check('the wheel zooms in', scaleOf() > before, before + ' -> ' + scaleOf());
+  stage.dispatchEvent(new (win().MouseEvent)('dblclick', { bubbles: true }));
+  await sleep(50);
+  check('double-click fits it back', Math.abs(scaleOf() - before) < 1e-6,
+        scaleOf() + ' vs ' + before);
+  doc().dispatchEvent(new (win().KeyboardEvent)('keydown', { key: 'Escape',
+                                                              bubbles: true }));
+  await sleep(150);
+  check('Escape closes it', !$('.arc-slide')
+        && $('#bigModal').classList.contains('hidden'));
+
+  /* ---------------------------------------------------------------- */
+  head('which wire, per cue pair');
+  const csRows = () => $$('.arc-cs-row:not(.head):not(.foot)');
+  const gridMatches = (evn) => {
+    const e = (O().events || []).find((x) => x.pair_id === evn);
+    const wins = O().windows;
+    return csRows().every((row, i) => {
+      const cells = Array.from(row.querySelectorAll('.arc-cs-c'));
+      return cells.length === 4 && cells.every((c, j) => {
+        const w = e.regions[i].windows[wins[j]];
+        const want = w.channel != null ? String(w.channel)
+          : (w.blocked === 'histology' ? '—' : '✕');
+        return c.textContent === want && c.title === (w.why || '');
+      });
+    });
+  };
+  check('twelve regions by four windows', csRows().length === 12
+        && csRows().every((r) => r.querySelectorAll('.arc-cs-c').length === 4));
+  check('every cell is the server’s answer for that pair, with its reason',
+        gridMatches(1));
+  const nav = $$('.arc-cs-nav button');
+  check('there is no earlier pair than the first',
+        nav[0] && nav[0].disabled);
+  nav[1].click();
+  await untilN(() => /Cue pair 2 /.test(($('.arc-cs-at') || {}).textContent
+                                        || ''), 30, 50);
+  check('▶ steps to the next cue pair',
+        val('window.barryArc.overview.pair') === 2);
+  check('and the grid follows it', gridMatches(2));
+  check('the pair the Run button will use is the one on the grid',
+        !!$('.arc-cp-pairs .mini.on')
+        && $('.arc-cp-pairs .mini.on').textContent === '2');
+
+  /* ---------------------------------------------------------------- */
+  head('a rat nobody has scored');
+  if (J5) {
+    val('window.barryArc.overview.pick(' + JSON.stringify(J5.gid) + ')');
+    await untilN(() => O() && O().rat === 5 && $$('.arc-pr').length === 12,
+                 150);
+    check('J5 says it has no row, and that nothing will be computed',
+          /no row/.test(($$('.arc-ov-sum')[1] || {}).textContent || ''),
+          ($$('.arc-ov-sum')[1] || {}).textContent);
+    check('every probe is marked not scored',
+          $$('.arc-pr-v.unscored').length === 12);
+    check('and every cell of the grid is ruled out by histology',
+          $$('.arc-cs-c').length === 48
+          && $$('.arc-cs-c.hist').length === 48);
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('nothing broke on the way');
+  check('the parameters were left at their defaults',
+        editable.every((p) => String(val('window.barryArc.overview.params.'
+                                         + p.id)) === String(o.defaults[p.id])));
+  check('no uncaught errors', errs.length === 0, errs.join(' | '));
+
+  say('note', '');
+  say('note', out.querySelectorAll('.ok').length + ' passed, '
+              + bad + ' failed');
+  document.title = 'arcover: ' + out.querySelectorAll('.ok').length
+                 + ' pass ' + bad + ' fail';
+} catch (e) {
+  say('bad', 'CRASH ' + (e && e.message));
+  say('note', String((e && e.stack) || ''));
+  document.title = 'arcover CRASH';
+} })();
+</script>

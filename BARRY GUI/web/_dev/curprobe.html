@@ -54,8 +54,8 @@ async function untilN(fn, tries = 250, gap = 100) {
   const s0 = await flags('start');
 
   W.eval("setView('toolkit')");
-  await untilN(() => D.querySelector('.tk-tool'), 200);
-  btn(D, /Event curation/).click();
+  await untilN(() => D.querySelector('.tk-tool, .tk-step'), 200);
+  btn(D, /Event curation|Checkup/).click();
   await untilN(() => D.querySelector('#curBench'), 300);
   await sleep(800);
 

@@ -233,7 +233,7 @@ BARRY.eventImport = (function () {
 
     const first = preview.events.slice(0, 8);
     return el('div', {}, [
-      el('div', { class: 'fb-stats', style: 'margin-bottom:8px' }, [
+      el('div', { class: 'chip-row', style: 'margin-bottom:8px' }, [
         el('span', { class: 'stat-chip good', text: preview.n + ' events' }),
         el('span', { class: 'stat-chip', text: 'read as ' + preview.units_used }),
         preview.span ? el('span', { class: 'stat-chip',

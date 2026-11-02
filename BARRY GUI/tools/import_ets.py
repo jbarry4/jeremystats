@@ -11,7 +11,7 @@ name is the only record of which recording it belongs to, the filter settings
 live in the file name, and nothing says whether anyone has looked at the times
 yet.
 
-This reads the tree, matches each folder to a recording BARRY already knows by
+This reads the tree, matches each folder to a recording Jarvis already knows by
 mouse and session, and files the times in the Event Bank as **unspecified**
 dentate-spike candidates. Unspecified is the point: a detector saying "there
 is something at 315.275 s" and a person saying "that is a dentate spike" are
@@ -73,7 +73,7 @@ def main():
                     help="the ETS folder (default: %(default)s)")
     ap.add_argument("--logs", default=os.path.join(APP, "GUI_logs"))
     ap.add_argument("--by", default=None,
-                    help="who is importing (default: the git user BARRY uses)")
+                    help="who is importing (default: the git user Jarvis uses)")
     ap.add_argument("--write", action="store_true",
                     help="actually bank it; without this it only reports")
     ap.add_argument("--replace", action="store_true",
@@ -113,7 +113,7 @@ def main():
             rows.append((name, mouse, session, 0, None, "unreadable: %s" % exc))
             continue
 
-        # Which recording is this? Matched the way everything else in BARRY
+        # Which recording is this? Matched the way everything else in Jarvis
         # is matched, so an ETS folder lines up with the same recording the
         # bad channels and the layer labels are on.
         ident = {
@@ -179,7 +179,7 @@ def main():
     print("%d timestamps in total" % sum(r[3] for r in rows))
     if missing:
         print()
-        print("Unmatched. Scan the drive these live on so BARRY registers "
+        print("Unmatched. Scan the drive these live on so Jarvis registers "
               "them, then run this again:")
         for r in missing:
             print("   %s  (%s)" % (r[0], r[5]))

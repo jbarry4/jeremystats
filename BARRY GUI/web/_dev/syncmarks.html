@@ -1,0 +1,180 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>syncmarks: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:620px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:620px;top:0;right:0;bottom:0;width:calc(100vw - 620px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Has it reached the shared database, on the page (js/syncstate.js).
+
+   The corner's "Sync now" is gone and the chip in its place says where the
+   shared copy stands. Event Bank rows, workbench cards (Checkup's sets,
+   StrataScope's sheets) and artifacts carry a mark per record, and the marks
+   change in place when the answer changes -- no list is rebuilt.
+
+   /api/cloud/items is answered from this page with states set here, so every
+   state is shown on purpose rather than whichever this machine happens to be
+   in. Nothing is sent anywhere and nothing is written. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(80);
+  }
+  return null;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const ev = (c) => W().eval(c);
+  let realApi = null;
+  try {
+    await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.syncState')
+                      && W().api, 30000);
+    const B = ev('BARRY');
+    realApi = W().api;
+    let answer = null;
+    const asked = [];
+    W().api = async (path, opts) => {
+      if (String(path).indexOf('/api/cloud/items') === 0) {
+        asked.push(path);
+        return JSON.parse(JSON.stringify(answer));
+      }
+      return realApi(path, opts);
+    };
+    const ok = (items, extra) => Object.assign({
+      ok: true, on: true, configured: true, auto: true,
+      last_push: '2026-10-02T12:00:00+00:00',
+      last: { at: '2026-10-02T12:00:00+00:00', ok: true, error: null,
+              failures: 0, running: false },
+      waiting: 0, items,
+    }, extra || {});
+
+    say('=== the corner ===');
+    check('there is no Sync now button', !D().getElementById('syncNowBtn'));
+    const chip = D().getElementById('syncBtn');
+    check('the chip that replaced it opens the panel, with an icon',
+          !!chip && !!chip.querySelector('svg'));
+
+    answer = ok({ bank: {}, curation: { 'zz1__ds': { state: 'synced' } },
+                  layers: {}, artifacts: {} });
+    await B.syncState.refresh();
+    const label = () => D().getElementById('syncLabel').textContent;
+    check('everything up: it says so', label() === 'All shared', label());
+    check('and its title says where GUI_logs stands too',
+          /GUI_logs|what is synced/i.test(chip.title), chip.title);
+
+    say('');
+    say('=== a mark on a workbench card ===');
+    const card = B.ui.workbenchCard({ title: 'zz harness set', owner: {},
+      sync: { kind: 'curation', id: 'zz1__ds' } });
+    D().body.appendChild(card);
+    const m = card.querySelector('.sync-mark');
+    check('the card carries a mark', !!m);
+    check('a synced set reads shared', m && m.textContent === 'shared'
+          && m.classList.contains('synced'), m && m.className);
+
+    say('');
+    say('=== it changes in place ===');
+    answer = ok({ bank: {}, curation: { 'zz1__ds': { state: 'waiting' } } },
+                { waiting: 1 });
+    await B.syncState.refresh();
+    check('the same node now reads sending', m.isConnected
+          && m.textContent === 'sending' && m.classList.contains('waiting'),
+          m.className + ' ' + m.textContent);
+    check('and the chip counts it', label() === '1 sending', label());
+
+    answer = ok({ curation: { 'zz1__ds': { state: 'waiting' } } }, {
+      waiting: 1,
+      last: { at: '2026-10-02T12:01:00+00:00', ok: false, failures: 2,
+              error: 'GET /rest/v1/barry_watermarks?select=*&limit=100 -> '
+                   + 'HTTP 522 {"type":"https://developers.cloudflare.com/",'
+                   + '"title":"Error 522: Connection timed out"}' },
+    });
+    await B.syncState.refresh();
+    check('a failed sync turns waiting into not sent',
+          m.textContent === 'not sent' && m.classList.contains('stuck'),
+          m.className + ' ' + m.textContent);
+    check('saying what happened in words, not the raw 522',
+          /not answering/.test(m.title) && /522/.test(m.title)
+          && !/cloudflare\.com/.test(m.title), m.title);
+    check('and that nothing is lost', /Nothing is lost/.test(m.title), m.title);
+    check('the chip says how many are held back',
+          label() === '1 not sent' && chip.classList.contains('sync-bad'),
+          label() + ' ' + chip.className);
+
+    answer.waiting = 0;
+    answer.items.curation['zz1__ds'] = { state: 'synced' };
+    await B.syncState.refresh();
+    check('a failure with nothing held back is the database being away',
+          label() === 'Database away' && chip.classList.contains('sync-warn')
+          && m.textContent === 'shared', label() + ' / ' + m.textContent);
+
+    say('');
+    say('=== the other states ===');
+    answer = ok({ curation: { 'zz1__ds': { state: 'local', why: 'demo' } } });
+    await B.syncState.refresh();
+    check('a demo record says it stays here, and why',
+          m.textContent === 'this computer' && /never shared/i.test(m.title),
+          m.textContent + ' / ' + m.title);
+    const fresh = B.syncState.mark('curation', 'zz-not-in-the-answer');
+    D().body.appendChild(fresh);
+    check('a record newer than the answer reads sending',
+          fresh.textContent === 'sending', fresh.textContent);
+    answer = { ok: true, on: false, configured: false, items: {}, waiting: 0,
+               last: {} };
+    await B.syncState.refresh();
+    check('a machine not connected says not shared, everywhere',
+          m.textContent === 'not shared' && fresh.textContent === 'not shared'
+          && label() === 'Not shared', m.textContent + ' / ' + label());
+
+    say('');
+    say('=== the lists that carry one ===');
+    answer = ok({ bank: {}, curation: {}, layers: {}, artifacts: {} });
+    await B.syncState.refresh();
+    ev("setView('eventbank')");
+    const row = await until(() => D().querySelector('.bank-row'), 20000);
+    if (row) {
+      const bm = row.querySelector('.sync-mark');
+      check('an Event Bank row carries a mark', !!bm);
+      const rb = row.getBoundingClientRect(), mb = bm && bm.getBoundingClientRect();
+      check('inside its row, on the first line',
+            mb && mb.right <= rb.right + 1 && mb.top < rb.top + rb.height / 2,
+            mb && JSON.stringify([mb.top, rb.top, rb.height]));
+      const nm = row.querySelector('.bank-name').getBoundingClientRect();
+      check('without covering the name', mb && nm.right <= mb.left + 1,
+            mb && nm.right + ' vs ' + mb.left);
+    } else {
+      say('    no bank entries on this machine to show a row', 'note');
+    }
+    card.remove(); fresh.remove();
+    check('no request left the page for any of this',
+          asked.every((p) => p.indexOf('/api/cloud/items') === 0), asked.length);
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  } finally {
+    if (realApi) W().api = realApi;
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'syncmarks: ' + fails + ' FAILED' : 'syncmarks: passed';
+  // The app's polling would hold the runner's clock; see the memory note.
+  frame.src = 'about:blank';
+})();
+</script>
+</body></html>

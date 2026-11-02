@@ -1,0 +1,1 @@
+{"flip": false, "rule": "tort", "features": "minmax", "depth_feat": false, "mult_on": true, "depth_weight": 25.0, "min_sep": 5, "delta_cut": [0.4578973414179104]}

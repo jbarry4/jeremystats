@@ -1,0 +1,20 @@
+feature       Solid      Garbage    Unrev      AUC      per recording m5_s7 m13_s2 m13_s17 m28_s2 m34_s5
+amp_rel       1          0.664      0.553      0.84     0.91 0.80 0.85 0.85 0.61
+amp_uv        2.08e+03   1.38e+03   1.09e+03   0.79     0.91 0.80 0.85 0.85 0.61
+top_ratio     1.31       1.12       1.07       0.86     0.91 0.82 0.91 0.89 0.55
+orig_n_cross  6          5          2          0.67     0.72 0.85 0.46 0.92 0.84
+car_keep      0.847      0.701      0.737      0.71     0.79 0.57 0.86 0.62 0.62
+common_mode   0.384      0.444      0.413      0.34     0.27 0.39 0.27 0.40 0.34
+hf_ll_share   0.51       0.648      0.559      0.28     0.24 0.32 0.08 0.24 0.41
+hf_frac       0.0301     0.0202     0.0069     0.60     0.61 0.70 0.46 0.71 0.86
+mains_frac    0.0176     0.0103     0.0111     0.71     0.70 0.70 0.69 0.73 0.84
+width_ms      18.5       22         20.5       0.45     0.50 0.41 0.47 0.34 0.36
+top_is_bad    0          0          0          0.50     0.50 0.50 0.50 0.50 0.48
+neighbours    0          0          1          0.46     0.60 0.42 0.49 0.56 0.42
+polarity      -1         -1         -1         0.45     0.29 0.46 0.46 0.45 0.46
+
+m5_s7    dominant channel CSC50  tops: garbage  70%  unreviewed  49%  solid   0%
+m13_s2   dominant channel CSC36  tops: garbage  77%  unreviewed  77%  solid  91%
+m13_s17  dominant channel CSC64  tops: garbage  32%  unreviewed  39%  solid   0%
+m28_s2   dominant channel CSC28  tops: garbage  56%  unreviewed  88%  solid   0%
+m34_s5   dominant channel CSC8   tops: garbage   4%  unreviewed  16%  solid   0%

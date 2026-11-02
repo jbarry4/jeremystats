@@ -1,0 +1,155 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-10-21
+computer    Bluebarry (desktop-4h65ai7-d565)
+person      Shahriar Tafti
+build       2026.10.21.4 7b5f52b1
+written     2026-10-21T19:08:49-04:00
+faults      3 error(s), 2 distinct
+left out    51 test fault(s) (harness pages, the test client)
+activity    953 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x2    18:54:48-18:56:27  unhandled:/api/arc/monolith/data/joefigs: deadlock detected by _ModuleLock('scipy.spatial.distance') at 1851892144720
+  2. x1    11:16:37-11:16:37  cloud.sync: POST /rest/v1/prefs timed out after 60s
+
+==========================================================================
+1/2  unhandled:/api/arc/monolith/data/joefigs  x2
+==========================================================================
+first       2026-10-21T18:54:48-04:00
+latest      2026-10-21T18:56:27-04:00
+who         Shahriar Tafti
+signature   unhandled:/api/arc/monolith/data/joefigs||deadlock detected by _ModuleLock('scipy.spatial.distance') at N
+
+message
+    deadlock detected by _ModuleLock('scipy.spatial.distance') at 1851892144720
+
+context
+    method             GET
+    path               /api/arc/monolith/data/joefigs
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+        rv = self.dispatch_request()
+      File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+        return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 25591, in api_arc_monolith_data
+        from . import joefigs as figsmod
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\joefigs.py", line 41, in <module>
+        from . import joe
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\joe.py", line 55, in <module>
+        from scipy.signal import butter, filtfilt, hilbert
+      File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\scipy\signal\__init__.py", line 307, in <module>
+        from ._support_alternative_backends import *
+      File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\scipy\signal\_support_alternative_backends.py", line 7, in <module>
+        from ._signal_api import *   # noqa: F403
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\Z390\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\scipy\signal\_signal_api.py", line 16, in <module>
+        from ._spline_filters import *         # noqa: F403
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    _frozen_importlib._DeadlockError: deadlock detected by _ModuleLock('scipy.spatial.distance') at 1851892144720
+
+--- around 2026-10-21T18:54:48-04:00 ---
+    (12 earlier action(s) in the window not shown; the nearest 30 are)
+    18:50:43   -245.0s  link.scope  [pipeline]  {"scope":"session"}
+    18:50:43   -244.9s  link.scope  [pipeline]  {"scope":"session"}
+    18:51:17   -210.1s  link.scope  [pipeline]  {"scope":"session"}
+    18:51:27   -201.0s  client.error  [sessions]  {"detail":"Error: Could not reach the server: harness: no\n    at apiCall (http://127.0.0.1:8791/js/core.js?v=18e0acaa5925f89c:609:11)\n    at async api (http://127.0.0.1:8791/js/core.js?v=18e0acaa5925f89c:574:17)\n    at async live (http://127.0.0.1:8791/js/data.js?v=18e0acc8d2b0cd90:77:15)\n    at async http://127.0.0.1:8791/js/data.js?v=18e0acc8d2b0cd90:122:19","message":"Could not reach the server: harness: no","where":"promise"}
+    18:51:31   -196.3s  link.scope  [pipeline]  {"scope":"session"}
+    18:51:46   -181.7s  link.scope  [pipeline]  {"scope":"session"}
+    18:51:48   -179.5s  people.edit  [pipeline]  {"name":"zz edit probe"}
+    18:52:01   -166.4s  link.scope  [pipeline]  {"scope":"session"}
+    18:52:18   -149.6s  link.scope  [sessions]  {"scope":"session"}
+    18:52:21   -146.8s  link.scope  [pipeline]  {"scope":"session"}
+    18:52:30   -138.0s  session.annotate  rec=m002_s001_2022-03-18_15-22-43  {"quality":"review"}
+    18:52:44   -124.0s  session.annotate  {"quality":"exclude"}
+    18:52:49   -118.4s  link.scope  [sessions]  {"scope":"session"}
+    18:52:49   -118.4s  link.scope  [pipeline]  {"scope":"session"}
+    18:53:19    -88.1s  link.scope  [pipeline]  {"scope":"session"}
+    18:53:23    -84.0s  sessions.mode  [sessions]  {"mode":"housekeeping"}
+    18:53:26    -81.0s  sessions.mode  [sessions]  {"mode":"scan"}
+    18:53:39    -68.9s  link.scope  [pipeline]  {"scope":"session"}
+    18:54:04    -43.8s  script.favourite  [explorer]  {"on":true,"rel":"IED/03_IED_Detection/vacc_ied_detect.m"}
+    18:54:05    -42.9s  script.favourite  [explorer]  {"on":false,"rel":"IED/03_IED_Detection/vacc_ied_detect.m"}
+    18:54:05    -42.4s  pipeline.preflight  [pipeline]  {"folder":"D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43","level":"warn","track":"session"}
+    18:54:06    -42.0s  repo.grep  {"hits":3,"pattern":"def detect_spikes","regex":false}
+    18:54:07    -40.4s  deck.present  [storyboard]  {"deck":"deck_75e86456","slides":1}
+    18:54:08    -39.2s  session.open  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"channels":128,"duration_s":925.6277333333334,"fs":30000,"path":"D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43","restored":["6 bad channel(s)","view restored"]}
+    18:54:08    -39.2s  events.import  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    18:54:10    -37.8s  measure.toggle  [xplore]  {"on":true}
+    18:54:10    -37.5s  measure.toggle  [xplore]  {"on":false}
+    18:54:11    -36.1s  window.change  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"scope":"session","span":4,"t0":923.6209}
+    18:54:11    -36.1s  mark.goto  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"kind":"event","name":"Stopping Recording","t":925.6209}
+    18:54:42     -5.8s  link.scope  [pipeline]  {"scope":"session"}
+    18:54:48     +0.0s  >>> unhandled:/api/arc/monolith/data/joefigs: deadlock detected by _ModuleLock('scipy.spatial.distance') at 2380916242384
+    18:55:05    +17.3s  link.scope  [pipeline]  {"scope":"session"}
+    18:55:58    +70.9s  link.scope  [pipeline]  {"scope":"session"}
+    18:55:59    +71.1s  session.open  [xplore]  rec=demo_long-session  {"channels":64,"duration_s":900,"fs":30000,"path":"demo:long-session","restored":["view restored"]}
+
+--- around 2026-10-21T18:56:27-04:00 ---
+    18:51:27   -300.0s  client.error  [sessions]  {"detail":"Error: Could not reach the server: harness: no\n    at apiCall (http://127.0.0.1:8791/js/core.js?v=18e0acaa5925f89c:609:11)\n    at async api (http://127.0.0.1:8791/js/core.js?v=18e0acaa5925f89c:574:17)\n    at async live (http://127.0.0.1:8791/js/data.js?v=18e0acc8d2b0cd90:77:15)\n    at async http://127.0.0.1:8791/js/data.js?v=18e0acc8d2b0cd90:122:19","message":"Could not reach the server: harness: no","where":"promise"}
+    18:51:31   -295.3s  link.scope  [pipeline]  {"scope":"session"}
+    18:51:46   -280.7s  link.scope  [pipeline]  {"scope":"session"}
+    18:51:48   -278.5s  people.edit  [pipeline]  {"name":"zz edit probe"}
+    18:52:01   -265.4s  link.scope  [pipeline]  {"scope":"session"}
+    18:52:18   -248.6s  link.scope  [sessions]  {"scope":"session"}
+    18:52:21   -245.8s  link.scope  [pipeline]  {"scope":"session"}
+    18:52:30   -237.0s  session.annotate  rec=m002_s001_2022-03-18_15-22-43  {"quality":"review"}
+    18:52:44   -223.0s  session.annotate  {"quality":"exclude"}
+    18:52:49   -217.4s  link.scope  [sessions]  {"scope":"session"}
+    18:52:49   -217.4s  link.scope  [pipeline]  {"scope":"session"}
+    18:53:19   -187.1s  link.scope  [pipeline]  {"scope":"session"}
+    18:53:23   -183.0s  sessions.mode  [sessions]  {"mode":"housekeeping"}
+    18:53:26   -180.0s  sessions.mode  [sessions]  {"mode":"scan"}
+    18:53:39   -167.9s  link.scope  [pipeline]  {"scope":"session"}
+    18:54:04   -142.8s  script.favourite  [explorer]  {"on":true,"rel":"IED/03_IED_Detection/vacc_ied_detect.m"}
+    18:54:05   -141.9s  script.favourite  [explorer]  {"on":false,"rel":"IED/03_IED_Detection/vacc_ied_detect.m"}
+    18:54:05   -141.4s  pipeline.preflight  [pipeline]  {"folder":"D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43","level":"warn","track":"session"}
+    18:54:06   -141.0s  repo.grep  {"hits":3,"pattern":"def detect_spikes","regex":false}
+    18:54:07   -139.4s  deck.present  [storyboard]  {"deck":"deck_75e86456","slides":1}
+    18:54:08   -138.2s  session.open  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"channels":128,"duration_s":925.6277333333334,"fs":30000,"path":"D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43","restored":["6 bad channel(s)","view restored"]}
+    18:54:08   -138.2s  events.import  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    18:54:10   -136.8s  measure.toggle  [xplore]  {"on":true}
+    18:54:10   -136.5s  measure.toggle  [xplore]  {"on":false}
+    18:54:11   -135.1s  window.change  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"scope":"session","span":4,"t0":923.6209}
+    18:54:11   -135.1s  mark.goto  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"kind":"event","name":"Stopping Recording","t":925.6209}
+    18:54:42   -104.8s  link.scope  [pipeline]  {"scope":"session"}
+    18:55:05    -81.7s  link.scope  [pipeline]  {"scope":"session"}
+    18:55:58    -28.1s  link.scope  [pipeline]  {"scope":"session"}
+    18:55:59    -27.9s  session.open  [xplore]  rec=demo_long-session  {"channels":64,"duration_s":900,"fs":30000,"path":"demo:long-session","restored":["view restored"]}
+    18:56:27     +0.0s  >>> unhandled:/api/arc/monolith/data/joefigs: deadlock detected by _ModuleLock('scipy.spatial.distance') at 1851892144720
+    18:57:30    +63.5s  link.scope  [pipeline]  {"scope":"session"}
+    18:57:30    +64.0s  session.open  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"channels":128,"duration_s":925.6277333333334,"fs":30000,"path":"D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43","restored":["6 bad channel(s)","view restored"]}
+    18:57:30    +64.0s  events.import  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    18:57:32    +65.4s  filter.change  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"highpass":3,"lowpass":0,"notch":60,"pane":null,"via":"manual"}
+
+==========================================================================
+2/2  cloud.sync  x1
+==========================================================================
+first       2026-10-21T11:16:37-04:00
+latest      2026-10-21T11:16:37-04:00
+who         Shahriar Tafti
+signature   cloud.sync||POST /rest/vN/prefs timed out after Ns
+
+message
+    POST /rest/v1/prefs timed out after 60s
+
+--- around 2026-10-21T11:16:37-04:00 ---
+    11:12:04   -272.2s  link.scope  [pipeline]  {"scope":"session"}
+    11:14:46   -110.2s  link.scope  [pipeline]  {"scope":"session"}
+    11:15:18    -78.3s  panes.shape  [xplore]  {"n":3,"shape":"top1"}
+    11:15:20    -76.3s  panes.shape  [xplore]  {"n":3,"shape":"top2"}
+    11:15:25    -71.6s  panes.shape  [xplore]  {"n":4,"shape":"apart"}
+    11:15:28    -68.9s  panes.shape  [xplore]  {"n":2,"shape":"rows"}
+    11:16:37     +0.0s  >>> cloud.sync: POST /rest/v1/prefs timed out after 60s
+    11:17:05    +28.7s  link.scope  [pipeline]  {"scope":"session"}
+    11:18:33   +117.0s  session.open  [xplore]  rec=m061_s007_2025-07-11_15-53-22  {"channels":64,"duration_s":2218.154666666667,"fs":30000,"path":"D:\\PTEN\\CTL\\PTENDKOM61\\m61s7jul11\\2025-07-11_15-53-22","restored":["1 bad channel(s)","view restored"]}
+    11:18:33   +117.0s  window.change  [xplore]  rec=m053_s007_2025-03-04_17-03-31  {"scope":"session","span":1,"t0":2041.1633}
+    11:18:34   +117.0s  events.import  [xplore]  rec=m061_s007_2025-07-11_15-53-22  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}

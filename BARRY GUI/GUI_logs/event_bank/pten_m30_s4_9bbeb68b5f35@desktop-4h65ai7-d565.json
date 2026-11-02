@@ -1,54 +1,84 @@
 {
   "_at": {
     "added": "2026-09-09T02:03:41.626307+00:00",
-    "by_label": "2026-09-08T18:36:00.374760+00:00",
-    "events": "2026-09-02T23:21:29.363060+00:00",
-    "gid": "2026-09-02T23:21:29.363060+00:00",
-    "id": "2026-09-02T23:21:29.363060+00:00",
-    "label_names": "2026-09-08T18:36:00.374760+00:00",
-    "mouse": "2026-09-02T23:21:29.363060+00:00",
-    "n": "2026-09-02T23:21:29.363060+00:00",
-    "name": "2026-09-02T23:21:29.363060+00:00",
-    "note": "2026-09-02T23:21:29.363060+00:00",
-    "project": "2026-09-02T23:21:29.363060+00:00",
-    "recording_start": "2026-09-02T23:21:29.363060+00:00",
-    "schema": "2026-09-02T23:21:29.363060+00:00",
-    "session": "2026-09-02T23:21:29.363060+00:00",
-    "session_key": "2026-09-02T23:21:29.363060+00:00",
-    "session_label": "2026-09-02T23:21:29.363060+00:00",
-    "session_loose_key": "2026-09-02T23:21:29.363060+00:00",
+    "aligned": "2026-09-22T19:09:10.789719+00:00",
+    "by_label": "2026-09-22T19:09:10.789719+00:00",
+    "curation_label": "2026-09-12T20:47:49.321493+00:00",
+    "events": "2026-09-22T19:09:10.789719+00:00",
+    "gid": "2026-09-12T20:47:49.321493+00:00",
+    "id": "2026-09-12T20:47:49.321493+00:00",
+    "label_names": "2026-09-12T20:47:49.321493+00:00",
+    "mouse": "2026-09-12T20:47:49.321493+00:00",
+    "n": "2026-09-22T19:09:10.789719+00:00",
+    "name": "2026-09-12T20:47:49.321493+00:00",
+    "note": "2026-09-12T20:47:49.321493+00:00",
+    "project": "2026-09-12T20:47:49.321493+00:00",
+    "recording_start": "2026-09-12T20:47:49.321493+00:00",
+    "schema": "2026-09-12T20:47:49.321493+00:00",
+    "session": "2026-09-12T20:47:49.321493+00:00",
+    "session_key": "2026-09-12T20:47:49.321493+00:00",
+    "session_label": "2026-09-12T20:47:49.321493+00:00",
+    "session_loose_key": "2026-09-12T20:47:49.321493+00:00",
     "session_path": "2026-09-02T23:21:29.363060+00:00",
-    "source": "2026-09-02T23:21:29.363060+00:00",
-    "specified": "2026-09-02T23:21:29.363060+00:00",
-    "type": "2026-09-02T23:21:29.363060+00:00",
-    "type_name": "2026-09-02T23:21:29.363060+00:00",
-    "units": "2026-09-02T23:21:29.363060+00:00",
-    "version": "2026-09-08T18:36:00.374760+00:00"
+    "source": "2026-09-12T20:47:49.321493+00:00",
+    "specified": "2026-09-12T20:47:49.321493+00:00",
+    "type": "2026-09-12T20:47:49.321493+00:00",
+    "type_name": "2026-09-12T20:47:49.321493+00:00",
+    "units": "2026-09-12T20:47:49.321493+00:00",
+    "version": "2026-10-09T16:41:05.264778+00:00"
   },
   "_keys": {
     "history": {
       "{\"at\": \"2026-09-08T22:02:29-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": []}": [
         "set",
-        "2026-09-09T02:02:29.419865+00:00"
+        "2026-09-12T20:47:49.321493+00:00"
       ],
       "{\"at\": \"2026-09-08T22:03:41-04:00\", \"by\": \"Shahriar Tafti\", \"renamed\": {\"fields\": 3, \"from\": \"theexaminedexistence@gmail.com\", \"to\": \"Shahriar Tafti\"}}": [
         "set",
-        "2026-09-09T02:03:41.626307+00:00"
+        "2026-09-12T20:47:49.321493+00:00"
+      ],
+      "{\"at\": \"2026-09-12T16:47:49-04:00\", \"by\": \"Rain Younger\", \"changed\": [\"events\"], \"now_n\": 42, \"was_n\": 42, \"why\": \"re-banked from the curation set\"}": [
+        "set",
+        "2026-09-12T20:47:49.321493+00:00"
       ]
     },
     "versions": {
+      "698d9e61403a": [
+        "set",
+        "2026-09-12T20:47:49.321493+00:00"
+      ],
+      "br-d92647505a": [
+        "gone",
+        "2026-10-09T16:41:05.264778+00:00"
+      ],
       "v0-0f99edcd": [
         "set",
-        "2026-09-09T02:03:41.626307+00:00"
+        "2026-09-12T20:47:49.321493+00:00"
       ],
       "v1-ccf59e0d": [
         "set",
-        "2026-09-09T02:03:41.626307+00:00"
+        "2026-09-12T20:47:49.321493+00:00"
+      ],
+      "{\"at\": \"2026-09-22T15:09:10-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"Dentate Spike\": 6}, \"machine\": \"BarryLab\", \"n\": 6, \"note\": \"Aligned to the mean magnitude over 16 channels, \\u00b1100 ms, reading v2. 6 stamp(s) moved by 14.7 to 42.1 ms; 36 left where they were. No labels changed.\", \"snap\": [[104.321138, \"spike\"], [336.408131, \"spike\"], [575.462693, \"spike\"], [769.75329, \"spike\"], [781.674287, \"spike\"], [874.297206, \"spike\"]], \"v\": 3}": [
+        "set",
+        "2026-09-22T19:09:54.587244+00:00"
+      ],
+      "{\"at\": \"2026-10-09T12:40:10-04:00\", \"by\": \"Avery (AI)\", \"by_label\": {\"flag\": 10, \"garbage\": 63}, \"machine\": \"BarryLab\", \"n\": 73, \"note\": \"Tooth Fairy sweep, run ai20261007-231323-671d, up to 5% of real spikes allowed to be called Garbage: 0 DS, 0 Flag for Deep Review, 10 Flag, 63 Garbage. Calls by a model, banked for the record and for training on edge cases later -- not a person's pass.\", \"snap_elsewhere\": true, \"v\": 4}": [
+        "set",
+        "2026-10-09T16:41:05.264778+00:00"
+      ],
+      "{\"at\": \"2026-10-09T12:40:50-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"garbage\": 73}, \"machine\": \"BarryLab\", \"n\": 73, \"note\": \"\", \"snap\": [[95.703362, \"garbage\"], [102.440317, \"garbage\"], [104.293305, \"garbage\"], [146.504023, \"garbage\"], [252.818315, \"garbage\"], [264.783235, \"garbage\"], [336.363758, \"garbage\"], [387.367418, \"garbage\"], [393.648376, \"garbage\"], [404.9803, \"garbage\"], [459.414937, \"garbage\"], [564.419237, \"garbage\"], [574.001174, \"garbage\"], [575.445164, \"garbage\"], [580.707129, \"garbage\"], [618.951874, \"garbage\"], [675.766495, \"garbage\"], [708.356278, \"garbage\"], [723.230179, \"garbage\"], [769.730869, \"garbage\"], [781.638789, \"garbage\"], [787.071753, \"garbage\"], [795.575697, \"garbage\"], [874.267172, \"garbage\"], [937.183753, \"garbage\"], [963.500577, \"garbage\"], [971.359525, \"garbage\"], [1001.431324, \"garbage\"], [1004.043307, \"garbage\"], [1047.04602, \"garbage\"], [1051.702989, \"garbage\"], [1055.511964, \"garbage\"], [1065.467897, \"garbage\"], [1070.374865, \"garbage\"], [1086.542757, \"garbage\"], [1086.723756, \"garbage\"], [1200.157, \"garbage\"], [1201.003994, \"garbage\"], [1224.912834, \"garbage\"], [1234.907768, \"garbage\"], [1248.947674, \"garbage\"], [1256.346625, \"garbage\"], [1276.61349, \"garbage\"], [1285.040434, \"garbage\"], [1291.095393, \"garbage\"], [1303.515311, \"garbage\"], [1307.380285, \"garbage\"], [1307.461284, \"garbage\"], [1315.176233, \"garbage\"], [1348.997007, \"garbage\"], [1356.564957, \"garbage\"], [1370.545864, \"garbage\"], [1386.467758, \"garbage\"], [1400.757662, \"garbage\"], [1406.666623, \"garbage\"], [1417.336552, \"garbage\"], [1473.209179, \"garbage\"], [1474.015174, \"garbage\"], [1498.511011, \"garbage\"], [1540.438731, \"garbage\"], [1645.61303, \"garbage\"], [1671.345858, \"garbage\"], [1676.109827, \"garbage\"], [1682.885782, \"garbage\"], [1715.367565, \"garbage\"], [1731.567457, \"garbage\"], [1758.986274, \"garbage\"], [1784.701103, \"garbage\"], [1822.784849, \"garbage\"], [1830.777796, \"garbage\"], [1842.708716, \"garbage\"], [1855.003634, \"garbage\"], [1918.61621, \"garbage\"]], \"v\": 5}": [
+        "set",
+        "2026-10-09T16:41:07.228208+00:00"
+      ],
+      "{\"at\": \"2026-10-09T12:40:50-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"garbage\": 73}, \"machine\": \"BarryLab\", \"n\": 73, \"note\": \"\", \"snap_elsewhere\": true, \"v\": 5}": [
+        "gone",
+        "2026-10-09T16:41:07.228208+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T02:03:41.626307+00:00",
+    "at": "2026-10-09T16:41:07.228208+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -57,135 +87,120 @@
     "by": "Shahriar Tafti",
     "machine": "DESKTOP-4H65AI7"
   },
-  "by_label": {
-    "garbage": 42
+  "aligned": {
+    "at": "2026-09-22T15:09:10-04:00",
+    "band": [
+      5.0,
+      100.0
+    ],
+    "by": "Rain Younger",
+    "cand_dist_ms": 12.0,
+    "cand_height_sd": 0.0,
+    "channels": [
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53
+    ],
+    "csd_smooth": true,
+    "dist_ms": 100.0,
+    "estimator": "mad",
+    "invert": true,
+    "left_out": [
+      8,
+      41,
+      59
+    ],
+    "lfp_fs": 1000.0,
+    "line_hz": 60.0,
+    "measure": "csd",
+    "n_channels": 16,
+    "order": 3,
+    "profile": {
+      "37": -0.15129,
+      "38": -0.123945,
+      "39": -0.020559,
+      "40": 0.121584,
+      "41": 0.249664,
+      "42": 0.462503,
+      "43": 0.38212,
+      "44": 0.021855,
+      "45": -0.027848,
+      "46": 0.079065,
+      "47": 0.243446,
+      "48": 0.438909,
+      "49": 0.41105,
+      "50": 0.21301,
+      "51": -0.070152,
+      "52": -0.213587
+    },
+    "screened": {
+      "41": "not ticked",
+      "59": "dead (0.5 uV against a median of 61)",
+      "8": "not ticked"
+    },
+    "smooth_ms": 0.0,
+    "source_version": 2,
+    "source_version_id": "698d9e61403a",
+    "spacing_um": 30.0,
+    "tool": "jarvis.braces/1",
+    "version": 3,
+    "window_ms": 100.0
   },
+  "by_label": {
+    "Dentate Spike": 6
+  },
+  "curation_label": "*",
   "events": [
     {
-      "start": 102.446
+      "from_t": 104.294,
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 104.321138
     },
     {
-      "start": 104.294
+      "from_t": 336.366,
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 336.408131
     },
     {
-      "start": 336.366
+      "from_t": 575.448,
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 575.462693
     },
     {
-      "start": 387.369
+      "from_t": 769.737,
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 769.75329
     },
     {
-      "start": 404.983
+      "from_t": 781.644,
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 781.674287
     },
     {
-      "start": 459.418
-    },
-    {
-      "start": 564.423
-    },
-    {
-      "start": 575.448
-    },
-    {
-      "start": 580.71
-    },
-    {
-      "start": 769.737
-    },
-    {
-      "start": 781.644
-    },
-    {
-      "start": 795.581
-    },
-    {
-      "start": 874.273
-    },
-    {
-      "start": 963.508
-    },
-    {
-      "start": 1004.05
-    },
-    {
-      "start": 1070.382
-    },
-    {
-      "start": 1086.731
-    },
-    {
-      "start": 1234.916
-    },
-    {
-      "start": 1248.957
-    },
-    {
-      "start": 1276.621
-    },
-    {
-      "start": 1291.094
-    },
-    {
-      "start": 1303.524
-    },
-    {
-      "start": 1307.47
-    },
-    {
-      "start": 1315.185
-    },
-    {
-      "start": 1356.574
-    },
-    {
-      "start": 1370.554
-    },
-    {
-      "start": 1400.765
-    },
-    {
-      "start": 1406.676
-    },
-    {
-      "start": 1473.218
-    },
-    {
-      "start": 1474.024
-    },
-    {
-      "start": 1498.521
-    },
-    {
-      "start": 1540.448
-    },
-    {
-      "start": 1645.624
-    },
-    {
-      "start": 1671.356
-    },
-    {
-      "start": 1676.12
-    },
-    {
-      "start": 1682.898
-    },
-    {
-      "start": 1758.998
-    },
-    {
-      "start": 1784.714
-    },
-    {
-      "start": 1822.796
-    },
-    {
-      "start": 1830.79
-    },
-    {
-      "start": 1842.72
-    },
-    {
-      "start": 1855.016
+      "from_t": 874.273,
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 874.297206
     }
   ],
   "gid": "sec05b6b24732",
@@ -203,6 +218,16 @@
         "from": "theexaminedexistence@gmail.com",
         "to": "Shahriar Tafti"
       }
+    },
+    {
+      "at": "2026-09-12T16:47:49-04:00",
+      "by": "Rain Younger",
+      "changed": [
+        "events"
+      ],
+      "now_n": 42,
+      "was_n": 42,
+      "why": "re-banked from the curation set"
     }
   ],
   "id": "9bbeb68b5f35",
@@ -213,9 +238,9 @@
     "spike": "Dentate Spike"
   },
   "mouse": 30,
-  "n": 42,
-  "name": "DS candidates (ETS)",
-  "note": "Imported from ets_hp_1_lp_300_nf.mat. Not yet curated: every time in here is a detector's candidate, not a confirmed dentate spike.",
+  "n": 6,
+  "name": "m30s4jul1",
+  "note": "",
   "project": "PTEN",
   "recording_start": "2024-07-01T15:55:11",
   "schema": 1,
@@ -234,11 +259,11 @@
     "pipeline": "ETS dentate-spike export",
     "run_id": null
   },
-  "specified": false,
+  "specified": true,
   "type": "ds",
   "type_name": "ds",
   "units": "seconds relative to the start of the recording",
-  "version": 1,
+  "version": 5,
   "versions": [
     {
       "at": "2026-09-02T19:00:02-04:00",
@@ -618,6 +643,551 @@
         ]
       ],
       "v": 1
+    },
+    {
+      "at": "2026-09-12T16:47:49-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "garbage": 36,
+        "spike": 6
+      },
+      "changed": 42,
+      "gained": 0,
+      "id": "698d9e61403a",
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {
+        "undecided \u2192 Dentate Spike": 6,
+        "undecided \u2192 Garbage": 36
+      },
+      "n": 42,
+      "note": "Gui final curation\n-RY",
+      "snap": [
+        [
+          102.446,
+          "garbage"
+        ],
+        [
+          104.294,
+          "spike"
+        ],
+        [
+          336.366,
+          "spike"
+        ],
+        [
+          387.369,
+          "garbage"
+        ],
+        [
+          404.983,
+          "garbage"
+        ],
+        [
+          459.418,
+          "garbage"
+        ],
+        [
+          564.423,
+          "garbage"
+        ],
+        [
+          575.448,
+          "spike"
+        ],
+        [
+          580.71,
+          "garbage"
+        ],
+        [
+          769.737,
+          "spike"
+        ],
+        [
+          781.644,
+          "spike"
+        ],
+        [
+          795.581,
+          "garbage"
+        ],
+        [
+          874.273,
+          "spike"
+        ],
+        [
+          963.508,
+          "garbage"
+        ],
+        [
+          1004.05,
+          "garbage"
+        ],
+        [
+          1070.382,
+          "garbage"
+        ],
+        [
+          1086.731,
+          "garbage"
+        ],
+        [
+          1234.916,
+          "garbage"
+        ],
+        [
+          1248.957,
+          "garbage"
+        ],
+        [
+          1276.621,
+          "garbage"
+        ],
+        [
+          1291.094,
+          "garbage"
+        ],
+        [
+          1303.524,
+          "garbage"
+        ],
+        [
+          1307.47,
+          "garbage"
+        ],
+        [
+          1315.185,
+          "garbage"
+        ],
+        [
+          1356.574,
+          "garbage"
+        ],
+        [
+          1370.554,
+          "garbage"
+        ],
+        [
+          1400.765,
+          "garbage"
+        ],
+        [
+          1406.676,
+          "garbage"
+        ],
+        [
+          1473.218,
+          "garbage"
+        ],
+        [
+          1474.024,
+          "garbage"
+        ],
+        [
+          1498.521,
+          "garbage"
+        ],
+        [
+          1540.448,
+          "garbage"
+        ],
+        [
+          1645.624,
+          "garbage"
+        ],
+        [
+          1671.356,
+          "garbage"
+        ],
+        [
+          1676.12,
+          "garbage"
+        ],
+        [
+          1682.898,
+          "garbage"
+        ],
+        [
+          1758.998,
+          "garbage"
+        ],
+        [
+          1784.714,
+          "garbage"
+        ],
+        [
+          1822.796,
+          "garbage"
+        ],
+        [
+          1830.79,
+          "garbage"
+        ],
+        [
+          1842.72,
+          "garbage"
+        ],
+        [
+          1855.016,
+          "garbage"
+        ]
+      ],
+      "v": 2
+    },
+    {
+      "at": "2026-09-22T15:09:10-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "Dentate Spike": 6
+      },
+      "machine": "BarryLab",
+      "n": 6,
+      "note": "Aligned to the mean magnitude over 16 channels, \u00b1100 ms, reading v2. 6 stamp(s) moved by 14.7 to 42.1 ms; 36 left where they were. No labels changed.",
+      "snap": [
+        [
+          104.321138,
+          "spike"
+        ],
+        [
+          336.408131,
+          "spike"
+        ],
+        [
+          575.462693,
+          "spike"
+        ],
+        [
+          769.75329,
+          "spike"
+        ],
+        [
+          781.674287,
+          "spike"
+        ],
+        [
+          874.297206,
+          "spike"
+        ]
+      ],
+      "v": 3
+    },
+    {
+      "at": "2026-10-09T12:40:10-04:00",
+      "by": "Avery (AI)",
+      "by_label": {
+        "flag": 10,
+        "garbage": 63
+      },
+      "machine": "BarryLab",
+      "n": 73,
+      "note": "Tooth Fairy sweep, run ai20261007-231323-671d, up to 5% of real spikes allowed to be called Garbage: 0 DS, 0 Flag for Deep Review, 10 Flag, 63 Garbage. Calls by a model, banked for the record and for training on edge cases later -- not a person's pass.",
+      "snap_elsewhere": true,
+      "v": 4
+    },
+    {
+      "at": "2026-10-09T12:40:50-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "garbage": 73
+      },
+      "machine": "BarryLab",
+      "n": 73,
+      "note": "",
+      "snap": [
+        [
+          95.703362,
+          "garbage"
+        ],
+        [
+          102.440317,
+          "garbage"
+        ],
+        [
+          104.293305,
+          "garbage"
+        ],
+        [
+          146.504023,
+          "garbage"
+        ],
+        [
+          252.818315,
+          "garbage"
+        ],
+        [
+          264.783235,
+          "garbage"
+        ],
+        [
+          336.363758,
+          "garbage"
+        ],
+        [
+          387.367418,
+          "garbage"
+        ],
+        [
+          393.648376,
+          "garbage"
+        ],
+        [
+          404.9803,
+          "garbage"
+        ],
+        [
+          459.414937,
+          "garbage"
+        ],
+        [
+          564.419237,
+          "garbage"
+        ],
+        [
+          574.001174,
+          "garbage"
+        ],
+        [
+          575.445164,
+          "garbage"
+        ],
+        [
+          580.707129,
+          "garbage"
+        ],
+        [
+          618.951874,
+          "garbage"
+        ],
+        [
+          675.766495,
+          "garbage"
+        ],
+        [
+          708.356278,
+          "garbage"
+        ],
+        [
+          723.230179,
+          "garbage"
+        ],
+        [
+          769.730869,
+          "garbage"
+        ],
+        [
+          781.638789,
+          "garbage"
+        ],
+        [
+          787.071753,
+          "garbage"
+        ],
+        [
+          795.575697,
+          "garbage"
+        ],
+        [
+          874.267172,
+          "garbage"
+        ],
+        [
+          937.183753,
+          "garbage"
+        ],
+        [
+          963.500577,
+          "garbage"
+        ],
+        [
+          971.359525,
+          "garbage"
+        ],
+        [
+          1001.431324,
+          "garbage"
+        ],
+        [
+          1004.043307,
+          "garbage"
+        ],
+        [
+          1047.04602,
+          "garbage"
+        ],
+        [
+          1051.702989,
+          "garbage"
+        ],
+        [
+          1055.511964,
+          "garbage"
+        ],
+        [
+          1065.467897,
+          "garbage"
+        ],
+        [
+          1070.374865,
+          "garbage"
+        ],
+        [
+          1086.542757,
+          "garbage"
+        ],
+        [
+          1086.723756,
+          "garbage"
+        ],
+        [
+          1200.157,
+          "garbage"
+        ],
+        [
+          1201.003994,
+          "garbage"
+        ],
+        [
+          1224.912834,
+          "garbage"
+        ],
+        [
+          1234.907768,
+          "garbage"
+        ],
+        [
+          1248.947674,
+          "garbage"
+        ],
+        [
+          1256.346625,
+          "garbage"
+        ],
+        [
+          1276.61349,
+          "garbage"
+        ],
+        [
+          1285.040434,
+          "garbage"
+        ],
+        [
+          1291.095393,
+          "garbage"
+        ],
+        [
+          1303.515311,
+          "garbage"
+        ],
+        [
+          1307.380285,
+          "garbage"
+        ],
+        [
+          1307.461284,
+          "garbage"
+        ],
+        [
+          1315.176233,
+          "garbage"
+        ],
+        [
+          1348.997007,
+          "garbage"
+        ],
+        [
+          1356.564957,
+          "garbage"
+        ],
+        [
+          1370.545864,
+          "garbage"
+        ],
+        [
+          1386.467758,
+          "garbage"
+        ],
+        [
+          1400.757662,
+          "garbage"
+        ],
+        [
+          1406.666623,
+          "garbage"
+        ],
+        [
+          1417.336552,
+          "garbage"
+        ],
+        [
+          1473.209179,
+          "garbage"
+        ],
+        [
+          1474.015174,
+          "garbage"
+        ],
+        [
+          1498.511011,
+          "garbage"
+        ],
+        [
+          1540.438731,
+          "garbage"
+        ],
+        [
+          1645.61303,
+          "garbage"
+        ],
+        [
+          1671.345858,
+          "garbage"
+        ],
+        [
+          1676.109827,
+          "garbage"
+        ],
+        [
+          1682.885782,
+          "garbage"
+        ],
+        [
+          1715.367565,
+          "garbage"
+        ],
+        [
+          1731.567457,
+          "garbage"
+        ],
+        [
+          1758.986274,
+          "garbage"
+        ],
+        [
+          1784.701103,
+          "garbage"
+        ],
+        [
+          1822.784849,
+          "garbage"
+        ],
+        [
+          1830.777796,
+          "garbage"
+        ],
+        [
+          1842.708716,
+          "garbage"
+        ],
+        [
+          1855.003634,
+          "garbage"
+        ],
+        [
+          1918.61621,
+          "garbage"
+        ]
+      ],
+      "v": 5
     }
   ]
 }

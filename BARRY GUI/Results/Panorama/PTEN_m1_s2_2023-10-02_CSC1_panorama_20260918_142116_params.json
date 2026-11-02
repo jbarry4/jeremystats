@@ -1,0 +1,116 @@
+{
+ "channel": {
+  "bad": false,
+  "index": 0,
+  "label": "CSC1",
+  "number": 1
+ },
+ "counting": "peak",
+ "fit_engine": {
+  "aperiodic_mode": "fixed",
+  "available": true,
+  "max_n_peaks": 6,
+  "min_peak_height": 0.05,
+  "name": "fooof",
+  "peak_width_limits": [
+   1.0,
+   12.0
+  ],
+  "version": "1.1.1"
+ },
+ "gaps": {
+  "checked": true,
+  "concat_duration_s": 1709.8357,
+  "dropped_s": 0.0242,
+  "n": 1,
+  "n_dropped": 1,
+  "n_paused": 0,
+  "n_segments": 2,
+  "paused_s": 0,
+  "seconds": 0.0242,
+  "tail_s": 0.0,
+  "true_duration_s": 1709.859213
+ },
+ "label": "PTEN m1 s2 2023-10-02 CSC1 panorama",
+ "notes": [
+  "decimating 30,000 to 188 Hz, which is what makes 75 Hz answerable",
+  "2 s transform, so 0.5 Hz bins",
+  "each column averages 7 sub-windows over 8 s",
+  "1,702 windows, one every 1 s",
+  "bridging 60 Hz and its harmonics, 2 Hz either side"
+ ],
+ "plan": {
+  "bins": 48,
+  "chunks": 57,
+  "cmap": "jet",
+  "decimate": 160,
+  "f_hi": 75.0,
+  "f_lo": 2.0,
+  "fit": {
+   "aperiodic_mode": "fixed",
+   "max_n_peaks": 6,
+   "min_peak_height": 0.05,
+   "peak_width_limits": [
+    1.0,
+    12.0
+   ]
+  },
+  "fs": 30000.0,
+  "fs_used": 187.5,
+  "hist_scale": "log",
+  "line_half_bw": 2.0,
+  "line_hz": 60.0,
+  "megasamples": 0.3205984,
+  "n_avg": 7,
+  "n_channels": 1,
+  "n_windows": 1702,
+  "nperseg": 375,
+  "resolution_hz": 0.5,
+  "scale": "log10",
+  "span_s": 1709.8581333333334,
+  "step_s": 1.0,
+  "sub_s": 2.0,
+  "t0": 0.0,
+  "t1": 1709.8581333333334,
+  "win_s": 8.0
+ },
+ "provenance": {
+  "app_version": "2026.09.17.9",
+  "at": "2026-09-18T14:21:17-04:00",
+  "commit": "644b0e4",
+  "email": "Isabella.Piatek@uvm.edu",
+  "host": "LCOM549913",
+  "machine": "Blackbarry",
+  "os": "Windows",
+  "user": "Isabella Piatek"
+ },
+ "spec": {
+  "bins": 48,
+  "channels": [
+   0
+  ],
+  "cmap": "jet",
+  "even_only": false,
+  "f_hi": 75.0,
+  "f_lo": 2.0,
+  "hist_scale": "log",
+  "line_hz": 60.0,
+  "path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M1_s2\\2023-10-02_16-58-03",
+  "scale": "log10",
+  "step_s": 1.0,
+  "sub_s": 2.0,
+  "t0": 0.0,
+  "t1": 1709.8581333333334,
+  "win_s": 8.0
+ },
+ "summary": {
+  "close_call_frac": 0.7775,
+  "median_hz": 36.55285941183798,
+  "modal_hz": 42.571492654617,
+  "n_nopeak": 0,
+  "n_rejected": 8,
+  "n_used": 1690,
+  "n_windows": 1698
+ },
+ "tool": "panorama"
+}

@@ -6,35 +6,43 @@
     "fs": "2026-09-04T15:57:01.604947+00:00",
     "gid": "2026-09-04T15:57:01.604947+00:00",
     "group": "2026-09-04T15:57:01.604947+00:00",
-    "key": "2026-09-04T15:57:01.604947+00:00",
-    "label": "2026-09-04T15:57:01.604947+00:00",
-    "loose_key": "2026-09-04T15:57:01.604947+00:00",
-    "mouse": "2026-09-04T15:57:01.604947+00:00",
+    "key": "2026-09-10T03:01:04.864559+00:00",
+    "label": "2026-09-10T03:01:04.864559+00:00",
+    "loose_key": "2026-09-10T03:01:04.864559+00:00",
+    "mouse": "2026-09-10T03:01:04.864559+00:00",
     "n_channels": "2026-09-04T15:57:01.604947+00:00",
-    "project": "2026-09-04T15:57:01.604947+00:00",
-    "project_source": "2026-09-04T15:57:01.604947+00:00",
-    "retired": "2026-09-08T18:33:51.514730+00:00",
-    "schema": "2026-09-04T15:57:01.604947+00:00",
-    "session": "2026-09-04T15:57:01.604947+00:00",
-    "start": "2026-09-04T15:57:01.604947+00:00",
-    "updated": "2026-09-08T18:33:51.514730+00:00"
+    "project": "2026-09-10T03:01:04.864559+00:00",
+    "project_source": "2026-09-10T03:01:04.864559+00:00",
+    "retired": "2026-09-10T03:01:04.864559+00:00",
+    "schema": "2026-09-10T03:01:04.864559+00:00",
+    "session": "2026-09-10T03:01:04.864559+00:00",
+    "start": "2026-09-10T03:01:04.864559+00:00",
+    "updated": "2026-10-23T19:20:27.369335+00:00"
   },
   "_keys": {
     "paths": {
       "Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s1aug22\\2023-08-22_15-15-31": [
         "set",
-        "2026-09-04T15:57:01.604947+00:00"
+        "2026-09-10T03:47:34.686896+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M7_HF5_pten\\M7s1aug22\\2023-08-22_15-15-31": [
+        "set",
+        "2026-10-23T19:20:27.369335+00:00"
       ]
     },
     "seen": {
       "BarryLab": [
         "set",
         "2026-09-04T15:57:01.604947+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-10-08T19:04:12.282342+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:33:51.514730+00:00",
+    "at": "2026-10-23T19:20:27.369335+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -55,12 +63,13 @@
   "mouse": 7,
   "n_channels": 64,
   "paths": [
-    "Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s1aug22\\2023-08-22_15-15-31"
+    "Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s1aug22\\2023-08-22_15-15-31",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\ProcessedPtenData\\M7_HF5_pten\\M7s1aug22\\2023-08-22_15-15-31"
   ],
   "project": "PTEN",
   "project_source": "guessed",
   "retired": false,
-  "schema": 2,
+  "schema": 1,
   "seen": {
     "BarryLab": {
       "at": "2026-09-04T11:26:29-04:00",
@@ -68,16 +77,26 @@
       "path": "Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s1aug22\\2023-08-22_15-15-31",
       "root": "Y:/ProcessedPtenData",
       "scan": "scan_894736ef4e"
+    },
+    "barrylab-d8e8": {
+      "at": "2026-10-08T15:04:12-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s1aug22\\2023-08-22_15-15-31",
+      "root": "Y:/ProcessedPtenData/M7_HF5_pten",
+      "scan": "scan_06bdcb2242"
     }
   },
   "session": 1,
-  "start": "2023-08-22T15:15:31",
+  "start": "2023-08-22T15:15:31+00:00",
   "updated": {
-    "at": "2026-09-08T14:33:51-04:00",
-    "email": "rain.younger@uvm.edu",
+    "app_version": "2026.10.23.5",
+    "at": "2026-10-23T15:20:27-04:00",
+    "commit": "be1e2ae4",
+    "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
-    "machine": "StrawBarry",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Shahriar Tafti"
   }
 }

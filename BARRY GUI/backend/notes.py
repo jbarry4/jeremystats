@@ -6,7 +6,7 @@ CHANGELOG.md. Not a constant in the code as well, because two sources of the
 same fact drift -- and the one that drifts is always the one nobody thought
 to update.
 
-Versions are dated rather than numbered. BARRY ships continuously out of the
+Versions are dated rather than numbered. Jarvis ships continuously out of the
 repo: there is no release to number, only the state everybody last pulled.
 So "2026.09.08" says something useful on its own, and the commit beside it
 says what this machine is actually running -- which is the question when a

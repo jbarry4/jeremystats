@@ -1,0 +1,54 @@
+<!doctype html>
+<meta charset="utf-8"><title>strata steps shot</title>
+<style>html,body{margin:0;height:100%}iframe{width:100vw;height:100vh;border:0}</style>
+<iframe id="f" src="/"></iframe>
+<script>
+/* Opens StrataScope's steps on a recording and leaves a step open, for a
+   screenshot. ?gid=&path=&step=1 -- the demo by default.
+
+   Entering StrataScope opens the recording's layer sheet, which makes one
+   if there was none. With ?keep=1 (a screenshot) it stays open for the
+   shot; without it (the harness suite runs every page here) it lets go
+   after a moment and takes away a sheet it made. */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+(async () => {
+  const Q = new URLSearchParams(location.search);
+  const gid = Q.get('gid') || 'demo-ds-tutorial';
+  const path = Q.get('path') || 'demo:ds-tutorial';
+  const step = Q.get('step') || '1';
+  const keep = Q.get('keep') === '1';
+  const f = document.getElementById('f');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow;
+  for (let i = 0; i < 300 && typeof W.setView !== 'function'; i++) await sleep(100);
+  await sleep(800);
+  const had = await W.fetch('/api/layers/' + encodeURIComponent(gid))
+    .then((r) => r.json()).then((j) => !!(j && j.ok)).catch(() => true);
+  W.eval("setView('xplore')");
+  await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  await sleep(1500);
+  await W.eval('BARRY.strata.enter(' + JSON.stringify(gid) + ')');
+  for (let i = 0; i < 400; i++) {
+    const s = W.eval('BARRY.strataSteps._state()');
+    if (s && s.sug) break;
+    await sleep(100);
+  }
+  if (step !== 'none') await W.eval('BARRY.strataSteps._openStep(' + JSON.stringify(step) + ')');
+  await sleep(3000);
+  W.eval('BARRY.strata.alignRail()');
+  document.title = 'shot ready';
+  if (keep) return;
+  await sleep(1000);
+  try {
+    W.eval('BARRY.strata.exit()');
+    await sleep(300);
+    if (!had) {
+      await W.fetch('/api/layers/' + encodeURIComponent(gid) + '/delete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: '{}' });
+    }
+  } catch (e) { /* the shot is what this page is for */ }
+  f.src = 'about:blank';
+  document.title = 'shot done';
+})();
+</script>

@@ -1,0 +1,86 @@
+{
+  "_at": {
+    "created": "2026-09-02T23:21:29.041334+00:00",
+    "duration_s": "2026-09-02T23:21:29.041334+00:00",
+    "first_seen_by": "2026-09-02T23:21:29.041334+00:00",
+    "fs": "2026-09-02T23:21:29.041334+00:00",
+    "gid": "2026-09-02T23:21:29.041334+00:00",
+    "group": "2026-09-02T23:21:29.041334+00:00",
+    "key": "2026-09-02T23:21:29.041334+00:00",
+    "label": "2026-09-02T23:21:29.041334+00:00",
+    "loose_key": "2026-09-02T23:21:29.041334+00:00",
+    "mouse": "2026-09-02T23:21:29.041334+00:00",
+    "n_channels": "2026-09-02T23:21:29.041334+00:00",
+    "project": "2026-09-02T23:21:29.041334+00:00",
+    "project_source": "2026-09-02T23:21:29.041334+00:00",
+    "retired": "2026-09-03T13:40:56.461811+00:00",
+    "schema": "2026-09-02T23:21:29.041334+00:00",
+    "session": "2026-09-02T23:21:29.041334+00:00",
+    "start": "2026-09-02T23:21:29.041334+00:00",
+    "updated": "2026-09-10T03:47:07.095756+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\PTEN\\CTL\\M6_PtenMissCTL\\M6s2sept13\\2023-09-13_16-43-37": [
+        "set",
+        "2026-09-02T23:21:29.041334+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\M6_PtenMissCTL\\M6s2sept13\\2023-09-13_16-43-37": [
+        "set",
+        "2026-09-10T03:47:07.095756+00:00"
+      ]
+    },
+    "seen": {
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-02T23:21:29.041334+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-10T03:47:07.095756+00:00",
+    "machine": "desktop-nr2h5o7-8845",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-02T18:50:19-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 802.048,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "saa68f470ec62",
+  "group": "PTEN",
+  "key": "m006_s002_2023-09-13_16-43-37",
+  "label": "PTEN m6 s2 2023-09-13",
+  "loose_key": "m006_s002",
+  "mouse": 6,
+  "n_channels": 64,
+  "paths": [
+    "D:\\PTEN\\CTL\\M6_PtenMissCTL\\M6s2sept13\\2023-09-13_16-43-37",
+    "Y:\\ProcessedPtenData\\M6_PtenMissCTL\\M6s2sept13\\2023-09-13_16-43-37"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:19-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "D:\\PTEN\\CTL\\M6_PtenMissCTL\\M6s2sept13\\2023-09-13_16-43-37",
+      "root": "D:/PTEN",
+      "scan": "scan_765fa11e51"
+    }
+  },
+  "session": 2,
+  "start": "2023-09-13T16:43:37",
+  "updated": {
+    "at": "2026-09-09T23:47:07-04:00",
+    "machine": "DESKTOP-NR2H5O7",
+    "os": "Windows",
+    "user": "asull"
+  }
+}

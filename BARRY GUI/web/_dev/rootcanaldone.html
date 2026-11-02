@@ -1,0 +1,248 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>rootcanaldone: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Root Canal Single: every set it has already been run on (2026-10-20).
+
+   WHAT WAS ASKED: "Root Canal in the single view needs a way to see every
+   session with Root Canal already ran. Similar to the Checkup view."
+
+   On this machine's real bank, results and saved singles:
+     - the list is above the chooser, a toggle saying how many, matching
+       /api/rootcanal/done;
+     - Checkup's shelf: named columns, a row per set with what Root Canal
+       left on it, who last touched it and when, and Open;
+     - the chips' counts are the rows', and pressing one shows only those;
+       the search narrows by every word; the order can be changed;
+     - Open on a set whose read is here asks for the CACHED read only, and
+       never starts one; the list folds to its line, the set is the one
+       picked, and its row says Open again;
+     - Open on a set read only elsewhere starts nothing and says where.
+
+   IT WRITES NOTHING. Every read that is not "cached only" is refused here,
+   as are saves, commits and imports; preference writes are held and the
+   activity log is quiet. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(150);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  const W = () => frame.contentWindow;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  await until(() => ev('!!(BARRY.prefs && BARRY.rootcanal)'), 10000, 'the modules');
+  const RC = 'BARRY.rootcanal';
+  let viewWas = null;
+  try { viewWas = ev('localStorage.getItem("barry.rootcanal.view")'); } catch (e) { /* none */ }
+
+  ev('(function(){ var W = window; if (W.__rcdPrefSet) return;'
+     + ' W.__rcdPrefSet = BARRY.prefs.set; W.__rcdMem = {}; W.__rcdPrefGet = BARRY.prefs.get;'
+     + ' BARRY.prefs.set = function(k, v) { W.__rcdMem[k] = v; return v; };'
+     + ' BARRY.prefs.get = function(k, d) { if (k in W.__rcdMem) return W.__rcdMem[k];'
+     + '   return W.__rcdPrefGet.apply(BARRY.prefs, arguments); };'
+     + ' W.__rcdLog = BARRY.activity.log; BARRY.activity.log = function(){}; })()');
+  ev('(function(){ var W = window; if (W.__rcdFetch) return; W.__rcdFetch = W.fetch;'
+     + ' W.__rcdReads = []; W.__rcdRefused = [];'
+     + ' var json = function(o, st) { return Promise.resolve(new Response(JSON.stringify(o),'
+     + '   { status: st || 200, headers: { "Content-Type": "application/json" } })); };'
+     + ' W.fetch = function(u, o) { var s = String(u).split("?")[0];'
+     + '  var post = o && o.method === "POST";'
+     + '  if (post && /\\/api\\/rootcanal\\/read$/.test(s)) {'
+     + '    var b = JSON.parse(o.body || "{}"); W.__rcdReads.push(b);'
+     + '    if (!b.only_cached) { W.__rcdRefused.push(s);'
+     + '      return json({ ok: false, error: "harness: no new reads" }, 400); } }'
+     + '  if (post && /\\/api\\/rootcanal\\/(commit|batch|single\\/save|single\\/import|names|pool\\/save)$/.test(s)) {'
+     + '    W.__rcdRefused.push(s); return json({ ok: false, error: "harness: no writes" }, 400); }'
+     + '  return W.__rcdFetch.apply(this, arguments); }; })()');
+  const Q = () => ev(RC + '._done()');
+  const st = () => ev(RC + '._state ? ' + RC + '._state() : null');
+  const rowsShown = () => Array.from(D().querySelectorAll('.rc-done-list .rc-done-row'));
+  const toggle = () => D().querySelector('.rc-done-toggle');
+  const chipBtn = (id) => D().querySelector('.rc-done-show .rc-done-chip[data-v="' + id + '"]');
+  const toasts = () => Array.from(D().querySelectorAll('#toasts .toast')).map((n) => n.textContent);
+
+  try {
+    head('ABOVE THE CHOOSER, SAYING HOW MANY');
+    ev(RC + '._setView("single")');
+    ev('setView("toolkit")');
+    await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
+    const step = Array.from(D().querySelectorAll('.tk-step'))
+      .find((b) => /Root Canal/.test(b.textContent) && /IEDs/.test(b.textContent))
+      || Array.from(D().querySelectorAll('.tk-step')).find((b) => /Root Canal/.test(b.textContent));
+    if (step) step.click();
+    await until(() => D().querySelector('.rc-viewseg'), 15000, 'Root Canal');
+    ev(RC + '._setView("single")');
+    await until(() => Q().rows && D().querySelector('.rc-donelist .rc-done-list'), 60000,
+                'the list');
+    const api = await ev('api("/api/rootcanal/done?type=ds")');
+    const N = (api.sets || []).length;
+    say('       ' + N + ' set(s) Root Canal has been run on', 'dim');
+    ok('precondition: Root Canal has been run on some sets here', N >= 3, String(N));
+    // Under its toggle, in the set card (2026-10-21): it opened above the
+    // card, which moved the toggle away from the pointer.
+    ok('the list drops down under its toggle, inside the set card',
+       !!D().querySelector('.rc-choose .rc-choose-top + .rc-donelist'));
+    ok('a toggle that says what it is and how many',
+       toggle() && toggle().textContent === '▾  Already through Root Canal  ·  ' + N + ' sets',
+       toggle() && toggle().textContent);
+    ok('built from Checkup’s shelf: its toggle, its box, its columns, its rows',
+       toggle().classList.contains('cur-shelf-toggle')
+       && !!D().querySelector('.rc-done-shelf.cur-shelf')
+       && !!D().querySelector('.rc-done-cols.cur-shelf-cols')
+       && rowsShown().every((r) => r.classList.contains('cur-shelf-row')));
+    const cols = Array.from(D().querySelectorAll('.rc-done-cols span')).map((n) => n.textContent)
+      .filter(Boolean);
+    ok('named columns', JSON.stringify(cols) === JSON.stringify(['Set', 'Recording',
+       'What Root Canal left', 'Last by', 'Last touched']), JSON.stringify(cols));
+    ok('a row per set', rowsShown().length === N, rowsShown().length + ' of ' + N);
+    const bad = rowsShown().filter((r) => !r.querySelector('.csr-name').textContent
+      || !r.querySelector('.csr-sess').textContent || !r.querySelector('.csr-did .flagchip')
+      || !r.querySelector('.rc-done-open'));
+    ok('each with its set, its recording, what was left on it and Open', !bad.length,
+       bad.slice(0, 3).map((r) => r.textContent.slice(0, 80)).join(' | '));
+    const order = (api.sets || []).map((r) => r.entry_id);
+    ok('newest first', JSON.stringify(rowsShown().map((r) => r.dataset.entry)) === JSON.stringify(order));
+
+    head('CHIPS WITH COUNTS, A SEARCH, AN ORDER');
+    const S = api.sets || [];
+    const want = { all: N, saved: S.filter((r) => r.saved).length,
+                   banked: S.filter((r) => r.banked).length,
+                   readonly: S.filter((r) => r.reads && !r.saved && !r.banked).length,
+                   here: S.filter((r) => r.reads && r.reads.here).length };
+    const got = {};
+    for (const k of Object.keys(want)) {
+      const b = chipBtn(k);
+      got[k] = b ? Number(b.querySelector('.rc-bulk-chip-n').textContent) : null;
+    }
+    ok('every chip counts its rows', JSON.stringify(got) === JSON.stringify(want),
+       JSON.stringify([got, want]));
+    chipBtn('here').click();
+    await until(() => rowsShown().length === want.here, 4000, 'the chip');
+    ok('pressed, only those are shown, and it says how many of how many',
+       rowsShown().length === want.here
+       && rowsShown().every((r) => /read here/.test(r.querySelector('.csr-did').textContent))
+       && (D().querySelector('.rc-done-count') || {}).textContent === want.here + ' of ' + N
+       && chipBtn('here').getAttribute('aria-pressed') === 'true');
+    chipBtn('here').click();
+    await until(() => rowsShown().length === N, 4000, 'all again');
+    ok('pressed again, all of them', rowsShown().length === N && Q().show === 'all');
+    const m0 = S.find((r) => r.mouse != null);
+    const word = m0 ? 'm' + m0.mouse : null;
+    if (word) {
+      const inp = D().querySelector('.rc-done-find input');
+      inp.focus();
+      inp.value = word;
+      inp.dispatchEvent(new (W().Event)('input', { bubbles: true }));
+      await until(() => rowsShown().length < N, 4000, 'the search');
+      const sh = rowsShown();
+      ok('a word typed narrows it to the sets it matches (' + word + ')', sh.length >= 1
+         && sh.length < N && sh.some((r) => r.dataset.entry === m0.entry_id),
+         sh.length + ' of ' + N);
+      ok('and the search box keeps the caret while the list changes',
+         D().activeElement === D().querySelector('.rc-done-find input'));
+      inp.value = '';
+      inp.dispatchEvent(new (W().Event)('input', { bubbles: true }));
+      await until(() => rowsShown().length === N, 4000, 'cleared');
+    }
+    const sortSel = D().querySelector('.rc-done-sort');
+    sortSel.value = 'name';
+    sortSel.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    await sleep(300);
+    const byName = rowsShown().map((r) => S.find((x) => x.entry_id === r.dataset.entry));
+    const okOrder = byName.every((r, i) => i === 0 || String(byName[i - 1].project || '~')
+      .localeCompare(String(r.project || '~')) <= 0);
+    ok('ordered by recording: project, then mouse and session', okOrder && rowsShown().length === N);
+    sortSel.value = 'recent';
+    sortSel.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    await sleep(300);
+
+    head('OPEN: A SET WHOSE READ IS HERE');
+    const here = S.find((r) => !r.saved && r.reads && r.reads.here && r.readable !== false);
+    ok('precondition: a set read here with no saved version', !!here);
+    if (here) {
+      const n0 = ev('window.__rcdReads.length');
+      D().querySelector('.rc-done-row[data-entry="' + here.entry_id + '"] .rc-done-open').click();
+      await until(() => ev('window.__rcdReads.length') > n0, 8000, 'the read asked for');
+      const rq = ev('window.__rcdReads')[n0];
+      ok('it asks for the cached read only, for that set', rq && rq.only_cached === true
+         && rq.entry_id === here.entry_id, JSON.stringify(rq));
+      ok('and nothing is started: no read, no write', !ev('window.__rcdRefused.length'));
+      ok('it is the set picked', ev(RC + '._q ? ' + RC + '._q().entry : null') === here.entry_id
+         || ((st() || {}).q || {}).entry === here.entry_id
+         || !!D().querySelector('.rc-done-row.on[data-entry="' + here.entry_id + '"]'));
+      await until(() => toggle() && /^▸/.test(toggle().textContent), 4000, 'the fold');
+      ok('the list folds to its line', /^▸  Already through Root Canal  ·  \d+ sets$/
+         .test(toggle().textContent) && D().querySelector('.rc-done-shelf').hidden);
+      toggle().click();
+      await until(() => rowsShown().length, 4000, 'unfolded');
+      const onRow = D().querySelector('.rc-done-row.on');
+      ok('unfolded, its row is marked and says Open again', !!onRow
+         && onRow.dataset.entry === here.entry_id
+         && onRow.querySelector('.rc-done-open').textContent === 'Open again');
+    }
+
+    head('OPEN: A SET READ ONLY ELSEWHERE');
+    const away = S.find((r) => !r.saved && r.reads && !r.reads.here && !(r.banked
+      && r.banked.last.here) && r.readable !== false);
+    if (!away) {
+      say('       no set here is read only on another machine; skipped', 'dim');
+    } else {
+      const n1 = ev('window.__rcdReads.length');
+      D().querySelector('.rc-done-row[data-entry="' + away.entry_id + '"] .rc-done-open').click();
+      await until(() => toasts().some((t) => /^Its read is on /.test(t)), 6000, 'the toast');
+      ok('it asks for no read at all', ev('window.__rcdReads.length') === n1);
+      ok('and says where its read is', toasts().some((t) => /^Its read is on .+, not this one\. Press Read to read it here/.test(t)),
+         toasts().slice(-2).join(' | '));
+      ok('nothing refused, because nothing was tried', !ev('window.__rcdRefused.length'));
+    }
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+  } finally {
+    try {
+      ev('(function(){ var W = window; if (W.__rcdFetch) { W.fetch = W.__rcdFetch; delete W.__rcdFetch; }'
+         + ' if (W.__rcdLog) { BARRY.activity.log = W.__rcdLog; delete W.__rcdLog; }'
+         + ' if (W.__rcdPrefSet) { BARRY.prefs.set = W.__rcdPrefSet; BARRY.prefs.get = W.__rcdPrefGet;'
+         + ' delete W.__rcdPrefSet; delete W.__rcdPrefGet; } })()');
+      ev('(function(v){ try { if (v == null) localStorage.removeItem("barry.rootcanal.view");'
+         + ' else localStorage.setItem("barry.rootcanal.view", v); } catch (e) {} })('
+         + JSON.stringify(viewWas == null ? null : viewWas) + ')');
+    } catch (e) { /* gone */ }
+    await sleep(500);
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'rootcanaldone: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

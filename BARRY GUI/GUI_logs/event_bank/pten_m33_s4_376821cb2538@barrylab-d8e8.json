@@ -1,0 +1,3370 @@
+{
+  "_at": {
+    "added": "2026-10-19T18:50:42.096368+00:00",
+    "by_label": "2026-10-19T18:50:42.096368+00:00",
+    "curation_label": "2026-10-19T18:50:42.096368+00:00",
+    "duration_s": "2026-10-19T18:50:42.096368+00:00",
+    "events": "2026-10-19T18:50:42.096368+00:00",
+    "gid": "2026-10-19T18:50:42.096368+00:00",
+    "id": "2026-10-19T18:50:42.096368+00:00",
+    "label_names": "2026-10-19T18:50:42.096368+00:00",
+    "mouse": "2026-10-19T18:50:42.096368+00:00",
+    "n": "2026-10-19T18:50:42.096368+00:00",
+    "name": "2026-10-19T18:50:42.096368+00:00",
+    "note": "2026-10-19T18:50:42.096368+00:00",
+    "project": "2026-10-19T18:50:42.096368+00:00",
+    "recording_start": "2026-10-19T18:50:42.096368+00:00",
+    "schema": "2026-10-19T18:50:42.096368+00:00",
+    "session": "2026-10-19T18:50:42.096368+00:00",
+    "session_key": "2026-10-19T18:50:42.096368+00:00",
+    "session_label": "2026-10-19T18:50:42.096368+00:00",
+    "session_loose_key": "2026-10-19T18:50:42.096368+00:00",
+    "session_path": "2026-10-19T18:50:42.096368+00:00",
+    "source": "2026-10-19T18:50:42.096368+00:00",
+    "specified": "2026-10-19T18:50:42.096368+00:00",
+    "type": "2026-10-19T18:50:42.096368+00:00",
+    "type_name": "2026-10-19T18:50:42.096368+00:00",
+    "units": "2026-10-19T18:50:42.096368+00:00",
+    "version": "2026-10-19T18:50:42.096368+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "6b5129ad1a20": [
+        "set",
+        "2026-10-19T18:50:42.096368+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-19T18:50:42.096368+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-19T14:50:42-04:00",
+    "by": "Rain Younger",
+    "machine": "BarryLab"
+  },
+  "by_label": {
+    "unspecified": 340
+  },
+  "curation_label": null,
+  "duration_s": 1941.23093333333,
+  "events": [
+    {
+      "amplitude": 132.853,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 3.521476
+    },
+    {
+      "amplitude": 141.498,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 4.247971
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 6.664954,
+      "start": 6.653954
+    },
+    {
+      "amplitude": 152.55,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 10.14043
+    },
+    {
+      "amplitude": 129.273,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 11.334422
+    },
+    {
+      "amplitude": 108.681,
+      "channel": 42,
+      "origin": "doppler",
+      "start": 12.699412
+    },
+    {
+      "amplitude": 199.667,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 19.083868
+    },
+    {
+      "origin": "incisor",
+      "start": 21.923686
+    },
+    {
+      "amplitude": 221.854,
+      "channel": 28,
+      "origin": "doppler",
+      "start": 22.019848
+    },
+    {
+      "origin": "incisor",
+      "start": 29.612915
+    },
+    {
+      "amplitude": 187.414,
+      "channel": 28,
+      "origin": "doppler",
+      "start": 30.938286
+    },
+    {
+      "origin": "incisor",
+      "start": 32.677481
+    },
+    {
+      "amplitude": 154.749,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 34.246763
+    },
+    {
+      "channel": 40,
+      "origin": "both",
+      "pair_t": 36.766246,
+      "start": 36.764132
+    },
+    {
+      "channel": 26,
+      "origin": "both",
+      "pair_t": 42.398707,
+      "start": 42.397188
+    },
+    {
+      "amplitude": 166.962,
+      "channel": 38,
+      "origin": "doppler",
+      "start": 43.803697
+    },
+    {
+      "amplitude": 208.317,
+      "channel": 24,
+      "origin": "doppler",
+      "start": 44.91019
+    },
+    {
+      "origin": "incisor",
+      "start": 45.416107
+    },
+    {
+      "amplitude": 314.925,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 48.388666
+    },
+    {
+      "amplitude": 162.65,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 67.867031
+    },
+    {
+      "amplitude": 106.867,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 98.027323
+    },
+    {
+      "channel": 28,
+      "origin": "both",
+      "pair_t": 101.817297,
+      "start": 101.816214
+    },
+    {
+      "amplitude": 126.389,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 104.087781
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 107.911255,
+      "start": 107.912898
+    },
+    {
+      "amplitude": 178.255,
+      "channel": 24,
+      "origin": "doppler",
+      "start": 108.53925
+    },
+    {
+      "amplitude": 130.847,
+      "channel": 20,
+      "origin": "doppler",
+      "start": 120.20567
+    },
+    {
+      "origin": "incisor",
+      "start": 120.368639
+    },
+    {
+      "amplitude": 108.484,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 125.062136
+    },
+    {
+      "amplitude": 127.214,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 125.438633
+    },
+    {
+      "origin": "incisor",
+      "start": 125.942321
+    },
+    {
+      "origin": "incisor",
+      "start": 126.091218
+    },
+    {
+      "amplitude": 177.91,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 126.536626
+    },
+    {
+      "amplitude": 214.716,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 127.204621
+    },
+    {
+      "amplitude": 180.089,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 144.8005
+    },
+    {
+      "amplitude": 133.767,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 148.645973
+    },
+    {
+      "amplitude": 120.404,
+      "channel": 2,
+      "origin": "doppler",
+      "start": 149.13497
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 153.978936,
+      "start": 153.977936
+    },
+    {
+      "origin": "incisor",
+      "start": 157.682054
+    },
+    {
+      "channel": 38,
+      "origin": "both",
+      "pair_t": 157.866909,
+      "start": 157.86609
+    },
+    {
+      "origin": "incisor",
+      "start": 159.323899
+    },
+    {
+      "origin": "incisor",
+      "start": 159.673034
+    },
+    {
+      "amplitude": 242.955,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 159.711397
+    },
+    {
+      "origin": "incisor",
+      "start": 160.596556
+    },
+    {
+      "amplitude": 113.03,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 163.071874
+    },
+    {
+      "amplitude": 161.353,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 174.900792
+    },
+    {
+      "amplitude": 118.789,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 175.310789
+    },
+    {
+      "amplitude": 124.422,
+      "channel": 14,
+      "origin": "doppler",
+      "start": 177.679273
+    },
+    {
+      "amplitude": 129.133,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 181.193248
+    },
+    {
+      "amplitude": 165.667,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 228.859419
+    },
+    {
+      "amplitude": 124.582,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 259.414208
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 271.084627,
+      "start": 271.066594
+    },
+    {
+      "amplitude": 195.595,
+      "channel": 38,
+      "origin": "doppler",
+      "start": 273.404611
+    },
+    {
+      "amplitude": 137.001,
+      "channel": 36,
+      "origin": "doppler",
+      "start": 288.825005
+    },
+    {
+      "origin": "incisor",
+      "start": 295.733946
+    },
+    {
+      "amplitude": 79.704,
+      "channel": 28,
+      "origin": "doppler",
+      "start": 300.298926
+    },
+    {
+      "amplitude": 109.382,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 309.871859
+    },
+    {
+      "origin": "incisor",
+      "start": 312.132083
+    },
+    {
+      "origin": "incisor",
+      "start": 325.996454
+    },
+    {
+      "channel": 38,
+      "origin": "both",
+      "pair_t": 327.964234,
+      "start": 327.964734
+    },
+    {
+      "origin": "incisor",
+      "start": 331.155899
+    },
+    {
+      "origin": "incisor",
+      "start": 340.261516
+    },
+    {
+      "amplitude": 167.617,
+      "channel": 24,
+      "origin": "doppler",
+      "start": 343.02363
+    },
+    {
+      "amplitude": 271.914,
+      "channel": 38,
+      "origin": "doppler",
+      "start": 344.429621
+    },
+    {
+      "amplitude": 194.052,
+      "channel": 36,
+      "origin": "doppler",
+      "start": 345.864111
+    },
+    {
+      "origin": "incisor",
+      "start": 345.995097
+    },
+    {
+      "origin": "incisor",
+      "start": 346.092245
+    },
+    {
+      "amplitude": 157.314,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 364.359483
+    },
+    {
+      "amplitude": 115.106,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 371.96493
+    },
+    {
+      "amplitude": 137.194,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 374.511913
+    },
+    {
+      "amplitude": 163.054,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 377.080395
+    },
+    {
+      "amplitude": 132.791,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 395.21677
+    },
+    {
+      "amplitude": 221.849,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 409.930168
+    },
+    {
+      "amplitude": 158.637,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 413.599643
+    },
+    {
+      "amplitude": 172.59,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 420.420096
+    },
+    {
+      "amplitude": 181.361,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 427.586546
+    },
+    {
+      "amplitude": 138.354,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 440.559457
+    },
+    {
+      "amplitude": 163.585,
+      "channel": 36,
+      "origin": "doppler",
+      "start": 443.839434
+    },
+    {
+      "amplitude": 167.19,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 457.45584
+    },
+    {
+      "amplitude": 196.124,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 459.248328
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 468.563763,
+      "start": 468.563763
+    },
+    {
+      "amplitude": 184.198,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 469.306258
+    },
+    {
+      "amplitude": 177.751,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 483.169162
+    },
+    {
+      "amplitude": 163.354,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 484.478653
+    },
+    {
+      "amplitude": 143.844,
+      "channel": 22,
+      "origin": "doppler",
+      "start": 488.551625
+    },
+    {
+      "amplitude": 159.263,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 491.746103
+    },
+    {
+      "amplitude": 159.746,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 496.396071
+    },
+    {
+      "amplitude": 182.512,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 524.966874
+    },
+    {
+      "amplitude": 168.039,
+      "channel": 34,
+      "origin": "doppler",
+      "start": 525.591369
+    },
+    {
+      "amplitude": 142.084,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 528.33085
+    },
+    {
+      "amplitude": 156.078,
+      "channel": 20,
+      "origin": "doppler",
+      "start": 529.066345
+    },
+    {
+      "amplitude": 127.032,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 530.620835
+    },
+    {
+      "origin": "incisor",
+      "start": 551.172293
+    },
+    {
+      "amplitude": 153.853,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 561.036624
+    },
+    {
+      "amplitude": 196.252,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 566.282588
+    },
+    {
+      "amplitude": 165.364,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 576.754016
+    },
+    {
+      "origin": "incisor",
+      "start": 579.965525
+    },
+    {
+      "amplitude": 160.043,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 585.682454
+    },
+    {
+      "channel": 28,
+      "origin": "both",
+      "pair_t": 622.157202,
+      "start": 622.158398
+    },
+    {
+      "amplitude": 266.726,
+      "channel": 28,
+      "origin": "doppler",
+      "start": 635.071613
+    },
+    {
+      "amplitude": 163.745,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 635.639109
+    },
+    {
+      "amplitude": 122.132,
+      "channel": 6,
+      "origin": "doppler",
+      "start": 646.584033
+    },
+    {
+      "amplitude": 173.274,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 654.800477
+    },
+    {
+      "amplitude": 127.086,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 657.747956
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 660.374438,
+      "start": 660.382564
+    },
+    {
+      "amplitude": 115.916,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 666.546896
+    },
+    {
+      "amplitude": 145.115,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 681.722291
+    },
+    {
+      "amplitude": 126.776,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 684.582771
+    },
+    {
+      "amplitude": 183.644,
+      "channel": 28,
+      "origin": "doppler",
+      "start": 718.412537
+    },
+    {
+      "channel": 16,
+      "origin": "both",
+      "pair_t": 729.893458,
+      "start": 729.892958
+    },
+    {
+      "amplitude": 198.095,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 732.736938
+    },
+    {
+      "amplitude": 131.751,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 755.814279
+    },
+    {
+      "amplitude": 157.213,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 758.56076
+    },
+    {
+      "amplitude": 144.045,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 785.626573
+    },
+    {
+      "amplitude": 140.245,
+      "channel": 34,
+      "origin": "doppler",
+      "start": 828.273278
+    },
+    {
+      "channel": 24,
+      "origin": "both",
+      "pair_t": 828.924274,
+      "start": 828.924308
+    },
+    {
+      "amplitude": 170.042,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 840.557693
+    },
+    {
+      "amplitude": 141.97,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 855.754589
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 858.49807,
+      "start": 858.492074
+    },
+    {
+      "amplitude": 131.22,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 859.309064
+    },
+    {
+      "amplitude": 137.006,
+      "channel": 20,
+      "origin": "doppler",
+      "start": 859.89556
+    },
+    {
+      "origin": "incisor",
+      "start": 865.179622
+    },
+    {
+      "amplitude": 154.707,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 868.863998
+    },
+    {
+      "amplitude": 178.953,
+      "channel": 28,
+      "origin": "doppler",
+      "start": 876.713444
+    },
+    {
+      "channel": 28,
+      "origin": "both",
+      "pair_t": 907.737729,
+      "start": 907.730403
+    },
+    {
+      "amplitude": 206.996,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 923.266622
+    },
+    {
+      "origin": "incisor",
+      "start": 933.262462
+    },
+    {
+      "amplitude": 211.349,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 935.704036
+    },
+    {
+      "origin": "incisor",
+      "start": 941.786494
+    },
+    {
+      "amplitude": 168.323,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 941.951993
+    },
+    {
+      "origin": "incisor",
+      "start": 942.226075
+    },
+    {
+      "amplitude": 87.564,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 944.544475
+    },
+    {
+      "amplitude": 175.532,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 946.888959
+    },
+    {
+      "channel": 26,
+      "origin": "both",
+      "pair_t": 947.930452,
+      "start": 947.930641
+    },
+    {
+      "origin": "incisor",
+      "start": 967.419899
+    },
+    {
+      "amplitude": 140.927,
+      "channel": 28,
+      "origin": "doppler",
+      "start": 970.625295
+    },
+    {
+      "origin": "incisor",
+      "start": 971.303091
+    },
+    {
+      "amplitude": 256.707,
+      "channel": 38,
+      "origin": "doppler",
+      "start": 971.654788
+    },
+    {
+      "channel": 26,
+      "origin": "both",
+      "pair_t": 973.321276,
+      "start": 973.327784
+    },
+    {
+      "origin": "incisor",
+      "start": 975.614278
+    },
+    {
+      "channel": 24,
+      "origin": "both",
+      "pair_t": 978.083243,
+      "start": 978.080828
+    },
+    {
+      "amplitude": 135.016,
+      "channel": 36,
+      "origin": "doppler",
+      "start": 985.211694
+    },
+    {
+      "origin": "incisor",
+      "start": 986.539773
+    },
+    {
+      "amplitude": 195.336,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 987.912176
+    },
+    {
+      "origin": "incisor",
+      "start": 987.989159
+    },
+    {
+      "amplitude": 122.81,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 992.049147
+    },
+    {
+      "amplitude": 154.009,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 993.656136
+    },
+    {
+      "amplitude": 210.856,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 994.49963
+    },
+    {
+      "origin": "incisor",
+      "start": 994.567478
+    },
+    {
+      "amplitude": 122.702,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 994.866628
+    },
+    {
+      "amplitude": 120.856,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1005.955051
+    },
+    {
+      "channel": 40,
+      "origin": "both",
+      "pair_t": 1006.848545,
+      "start": 1006.847983
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 1008.91753,
+      "start": 1008.91803
+    },
+    {
+      "channel": 26,
+      "origin": "both",
+      "pair_t": 1010.127522,
+      "start": 1010.127016
+    },
+    {
+      "amplitude": 121.856,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1011.615012
+    },
+    {
+      "amplitude": 137.594,
+      "channel": 40,
+      "origin": "doppler",
+      "start": 1012.620505
+    },
+    {
+      "amplitude": 263.004,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 1013.917496
+    },
+    {
+      "channel": 36,
+      "origin": "both",
+      "pair_t": 1015.381986,
+      "start": 1015.379913
+    },
+    {
+      "amplitude": 176.365,
+      "channel": 24,
+      "origin": "doppler",
+      "start": 1015.908482
+    },
+    {
+      "origin": "incisor",
+      "start": 1016.389811
+    },
+    {
+      "amplitude": 85.331,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1016.540978
+    },
+    {
+      "amplitude": 151.591,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1017.502471
+    },
+    {
+      "origin": "incisor",
+      "start": 1025.940058
+    },
+    {
+      "origin": "incisor",
+      "start": 1036.285742
+    },
+    {
+      "amplitude": 112.218,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1040.365813
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 1043.938289,
+      "start": 1043.937729
+    },
+    {
+      "amplitude": 137.042,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 1046.252773
+    },
+    {
+      "channel": 24,
+      "origin": "both",
+      "pair_t": 1047.281765,
+      "start": 1047.281501
+    },
+    {
+      "amplitude": 149.331,
+      "channel": 24,
+      "origin": "doppler",
+      "start": 1048.291258
+    },
+    {
+      "amplitude": 149.371,
+      "channel": 36,
+      "origin": "doppler",
+      "start": 1049.197752
+    },
+    {
+      "origin": "incisor",
+      "start": 1052.434663
+    },
+    {
+      "amplitude": 136.799,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 1053.084225
+    },
+    {
+      "origin": "incisor",
+      "start": 1053.457678
+    },
+    {
+      "amplitude": 130.56,
+      "channel": 40,
+      "origin": "doppler",
+      "start": 1054.460216
+    },
+    {
+      "amplitude": 118.826,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 1054.851713
+    },
+    {
+      "origin": "incisor",
+      "start": 1055.162358
+    },
+    {
+      "amplitude": 141.209,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1055.589208
+    },
+    {
+      "channel": 28,
+      "origin": "both",
+      "pair_t": 1058.351189,
+      "start": 1058.35117
+    },
+    {
+      "channel": 16,
+      "origin": "both",
+      "pair_t": 1059.975178,
+      "start": 1059.97515
+    },
+    {
+      "origin": "incisor",
+      "start": 1061.050117
+    },
+    {
+      "origin": "incisor",
+      "start": 1063.979778
+    },
+    {
+      "amplitude": 120.698,
+      "channel": 14,
+      "origin": "doppler",
+      "start": 1064.587146
+    },
+    {
+      "origin": "incisor",
+      "start": 1064.616546
+    },
+    {
+      "origin": "incisor",
+      "start": 1064.951868
+    },
+    {
+      "amplitude": 149.878,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1064.996143
+    },
+    {
+      "channel": 36,
+      "origin": "both",
+      "pair_t": 1067.696124,
+      "start": 1067.694549
+    },
+    {
+      "channel": 26,
+      "origin": "both",
+      "pair_t": 1068.32412,
+      "start": 1068.324398
+    },
+    {
+      "amplitude": 195.667,
+      "channel": 24,
+      "origin": "doppler",
+      "start": 1069.224614
+    },
+    {
+      "origin": "incisor",
+      "start": 1077.747601
+    },
+    {
+      "amplitude": 179.479,
+      "channel": 38,
+      "origin": "doppler",
+      "start": 1077.838054
+    },
+    {
+      "origin": "incisor",
+      "start": 1079.134341
+    },
+    {
+      "amplitude": 227.797,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1079.156045
+    },
+    {
+      "amplitude": 144.319,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1080.158038
+    },
+    {
+      "origin": "incisor",
+      "start": 1080.503866
+    },
+    {
+      "amplitude": 154.364,
+      "channel": 40,
+      "origin": "doppler",
+      "start": 1081.958526
+    },
+    {
+      "amplitude": 182.102,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1124.963729
+    },
+    {
+      "amplitude": 185.298,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 1132.269678
+    },
+    {
+      "amplitude": 127.984,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1133.131672
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 1133.49617,
+      "start": 1133.49517
+    },
+    {
+      "amplitude": 199.147,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1139.21913
+    },
+    {
+      "amplitude": 137.391,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1157.702003
+    },
+    {
+      "amplitude": 268.383,
+      "channel": 36,
+      "origin": "doppler",
+      "start": 1167.647934
+    },
+    {
+      "origin": "incisor",
+      "start": 1167.685731
+    },
+    {
+      "channel": 28,
+      "origin": "both",
+      "pair_t": 1170.271416,
+      "start": 1170.271797
+    },
+    {
+      "amplitude": 143.691,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1186.786302
+    },
+    {
+      "channel": 40,
+      "origin": "both",
+      "pair_t": 1187.199299,
+      "start": 1187.202566
+    },
+    {
+      "amplitude": 103.753,
+      "channel": 14,
+      "origin": "doppler",
+      "start": 1187.659796
+    },
+    {
+      "channel": 36,
+      "origin": "both",
+      "pair_t": 1188.43879,
+      "start": 1188.43879
+    },
+    {
+      "amplitude": 175.806,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1190.408277
+    },
+    {
+      "origin": "incisor",
+      "start": 1190.586692
+    },
+    {
+      "origin": "incisor",
+      "start": 1191.913766
+    },
+    {
+      "amplitude": 134.304,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1192.81826
+    },
+    {
+      "amplitude": 160.017,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1193.504755
+    },
+    {
+      "amplitude": 150.954,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 1195.041745
+    },
+    {
+      "channel": 28,
+      "origin": "both",
+      "pair_t": 1196.705733,
+      "start": 1196.706153
+    },
+    {
+      "amplitude": 242.655,
+      "channel": 40,
+      "origin": "doppler",
+      "start": 1199.538214
+    },
+    {
+      "amplitude": 122.185,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1200.179709
+    },
+    {
+      "amplitude": 107.159,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1201.700199
+    },
+    {
+      "amplitude": 85.053,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1202.802191
+    },
+    {
+      "amplitude": 136.288,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1203.154689
+    },
+    {
+      "amplitude": 131.568,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1205.171175
+    },
+    {
+      "channel": 38,
+      "origin": "both",
+      "pair_t": 1206.760664,
+      "start": 1206.760664
+    },
+    {
+      "amplitude": 179.051,
+      "channel": 24,
+      "origin": "doppler",
+      "start": 1207.25166
+    },
+    {
+      "amplitude": 158.457,
+      "channel": 34,
+      "origin": "doppler",
+      "start": 1210.24564
+    },
+    {
+      "channel": 28,
+      "origin": "both",
+      "pair_t": 1210.649137,
+      "start": 1210.648602
+    },
+    {
+      "origin": "incisor",
+      "start": 1210.812155
+    },
+    {
+      "amplitude": 152.029,
+      "channel": 38,
+      "origin": "doppler",
+      "start": 1211.898128
+    },
+    {
+      "amplitude": 205.823,
+      "channel": 28,
+      "origin": "doppler",
+      "start": 1216.232098
+    },
+    {
+      "amplitude": 157.932,
+      "channel": 14,
+      "origin": "doppler",
+      "start": 1219.468576
+    },
+    {
+      "amplitude": 185.362,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 1221.132565
+    },
+    {
+      "channel": 28,
+      "origin": "both",
+      "pair_t": 1225.510034,
+      "start": 1225.529534
+    },
+    {
+      "origin": "incisor",
+      "start": 1225.839726
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 1226.19503,
+      "start": 1226.19553
+    },
+    {
+      "channel": 26,
+      "origin": "both",
+      "pair_t": 1227.971017,
+      "start": 1227.971766
+    },
+    {
+      "amplitude": 144.673,
+      "channel": 40,
+      "origin": "doppler",
+      "start": 1229.227509
+    },
+    {
+      "origin": "incisor",
+      "start": 1229.700266
+    },
+    {
+      "amplitude": 158.402,
+      "channel": 24,
+      "origin": "doppler",
+      "start": 1231.233995
+    },
+    {
+      "origin": "incisor",
+      "start": 1232.123489
+    },
+    {
+      "amplitude": 147.165,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 1232.727484
+    },
+    {
+      "amplitude": 118.647,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1237.014955
+    },
+    {
+      "origin": "incisor",
+      "start": 1237.263004
+    },
+    {
+      "origin": "incisor",
+      "start": 1238.407445
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 1238.984441,
+      "start": 1238.985343
+    },
+    {
+      "origin": "incisor",
+      "start": 1264.937466
+    },
+    {
+      "amplitude": 155.682,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1265.116761
+    },
+    {
+      "origin": "incisor",
+      "start": 1267.724243
+    },
+    {
+      "amplitude": 154.514,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1271.843714
+    },
+    {
+      "origin": "incisor",
+      "start": 1281.551742
+    },
+    {
+      "origin": "incisor",
+      "start": 1282.435519
+    },
+    {
+      "amplitude": 148.969,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1287.969103
+    },
+    {
+      "channel": 34,
+      "origin": "both",
+      "pair_t": 1289.949089,
+      "start": 1289.947533
+    },
+    {
+      "amplitude": 90.44,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1291.33808
+    },
+    {
+      "amplitude": 141.435,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1292.038575
+    },
+    {
+      "amplitude": 133.448,
+      "channel": 20,
+      "origin": "doppler",
+      "start": 1293.629064
+    },
+    {
+      "channel": 24,
+      "origin": "both",
+      "pair_t": 1294.596557,
+      "start": 1294.596782
+    },
+    {
+      "origin": "incisor",
+      "start": 1298.848456
+    },
+    {
+      "origin": "incisor",
+      "start": 1302.138868
+    },
+    {
+      "origin": "incisor",
+      "start": 1302.251369
+    },
+    {
+      "channel": 36,
+      "origin": "both",
+      "pair_t": 1305.504982,
+      "start": 1305.505982
+    },
+    {
+      "origin": "incisor",
+      "start": 1306.241977
+    },
+    {
+      "amplitude": 136.219,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1306.290976
+    },
+    {
+      "channel": 24,
+      "origin": "both",
+      "pair_t": 1307.006471,
+      "start": 1306.999373
+    },
+    {
+      "origin": "incisor",
+      "start": 1307.271932
+    },
+    {
+      "origin": "incisor",
+      "start": 1312.380934
+    },
+    {
+      "channel": 26,
+      "origin": "both",
+      "pair_t": 1314.095922,
+      "start": 1314.096326
+    },
+    {
+      "amplitude": 147.184,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1316.739404
+    },
+    {
+      "origin": "incisor",
+      "start": 1316.93084
+    },
+    {
+      "origin": "incisor",
+      "start": 1318.351543
+    },
+    {
+      "origin": "incisor",
+      "start": 1320.68363
+    },
+    {
+      "amplitude": 154.371,
+      "channel": 20,
+      "origin": "doppler",
+      "start": 1320.838876
+    },
+    {
+      "amplitude": 114.518,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1321.848369
+    },
+    {
+      "origin": "incisor",
+      "start": 1324.147708
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 1331.346803,
+      "start": 1331.338246
+    },
+    {
+      "amplitude": 191.383,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1332.600794
+    },
+    {
+      "amplitude": 212.749,
+      "channel": 36,
+      "origin": "doppler",
+      "start": 1337.704759
+    },
+    {
+      "amplitude": 133.01,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1384.540436
+    },
+    {
+      "amplitude": 341.432,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 1389.6699
+    },
+    {
+      "origin": "incisor",
+      "start": 1393.029692
+    },
+    {
+      "amplitude": 259.942,
+      "channel": 38,
+      "origin": "doppler",
+      "start": 1400.925823
+    },
+    {
+      "origin": "incisor",
+      "start": 1402.426815
+    },
+    {
+      "origin": "incisor",
+      "start": 1402.426929
+    },
+    {
+      "amplitude": 167.502,
+      "channel": 24,
+      "origin": "doppler",
+      "start": 1402.67731
+    },
+    {
+      "origin": "incisor",
+      "start": 1403.112264
+    },
+    {
+      "channel": 24,
+      "origin": "both",
+      "pair_t": 1410.908254,
+      "start": 1410.905997
+    },
+    {
+      "amplitude": 139.61,
+      "channel": 2,
+      "origin": "doppler",
+      "start": 1412.537742
+    },
+    {
+      "amplitude": 108.356,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1415.211724
+    },
+    {
+      "origin": "incisor",
+      "start": 1426.488214
+    },
+    {
+      "amplitude": 260.792,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 1426.516146
+    },
+    {
+      "origin": "incisor",
+      "start": 1433.50161
+    },
+    {
+      "amplitude": 146.249,
+      "channel": 26,
+      "origin": "doppler",
+      "start": 1438.261565
+    },
+    {
+      "origin": "incisor",
+      "start": 1439.005059
+    },
+    {
+      "amplitude": 166.017,
+      "channel": 24,
+      "origin": "doppler",
+      "start": 1439.144059
+    },
+    {
+      "origin": "incisor",
+      "start": 1443.784479
+    },
+    {
+      "amplitude": 128.645,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1443.994525
+    },
+    {
+      "amplitude": 137.054,
+      "channel": 36,
+      "origin": "doppler",
+      "start": 1449.634486
+    },
+    {
+      "amplitude": 185.567,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1455.023449
+    },
+    {
+      "amplitude": 110.136,
+      "channel": 14,
+      "origin": "doppler",
+      "start": 1455.904443
+    },
+    {
+      "amplitude": 148.863,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1459.852415
+    },
+    {
+      "amplitude": 223.397,
+      "channel": 40,
+      "origin": "doppler",
+      "start": 1462.282399
+    },
+    {
+      "amplitude": 164.967,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1465.136879
+    },
+    {
+      "amplitude": 143.251,
+      "channel": 24,
+      "origin": "doppler",
+      "start": 1465.886374
+    },
+    {
+      "origin": "incisor",
+      "start": 1465.970945
+    },
+    {
+      "channel": 18,
+      "origin": "both",
+      "pair_t": 1471.759833,
+      "start": 1471.748073
+    },
+    {
+      "amplitude": 179.204,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1485.960735
+    },
+    {
+      "amplitude": 143.04,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1503.119117
+    },
+    {
+      "amplitude": 136.716,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1515.944528
+    },
+    {
+      "amplitude": 155.906,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1518.375511
+    },
+    {
+      "origin": "incisor",
+      "start": 1547.297494
+    },
+    {
+      "channel": 28,
+      "origin": "both",
+      "pair_t": 1547.54481,
+      "start": 1547.543935
+    },
+    {
+      "amplitude": 232.41,
+      "channel": 36,
+      "origin": "doppler",
+      "start": 1573.360631
+    },
+    {
+      "amplitude": 175.711,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1580.981079
+    },
+    {
+      "amplitude": 190.835,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1588.902024
+    },
+    {
+      "channel": 40,
+      "origin": "both",
+      "pair_t": 1595.448479,
+      "start": 1595.449983
+    },
+    {
+      "amplitude": 133.245,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1616.91233
+    },
+    {
+      "amplitude": 186.149,
+      "channel": 40,
+      "origin": "doppler",
+      "start": 1624.865276
+    },
+    {
+      "origin": "incisor",
+      "start": 1652.972039
+    },
+    {
+      "amplitude": 150.457,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1656.574057
+    },
+    {
+      "amplitude": 189.653,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1661.413023
+    },
+    {
+      "amplitude": 153.682,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1664.908999
+    },
+    {
+      "amplitude": 182.082,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1668.836472
+    },
+    {
+      "amplitude": 83.715,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1670.806958
+    },
+    {
+      "amplitude": 161.563,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1680.179393
+    },
+    {
+      "amplitude": 232.537,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1711.185679
+    },
+    {
+      "amplitude": 187.13,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1732.487532
+    },
+    {
+      "amplitude": 132.727,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1763.944315
+    },
+    {
+      "amplitude": 178.524,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1764.65431
+    },
+    {
+      "amplitude": 177.706,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1765.797802
+    },
+    {
+      "amplitude": 205.195,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1767.241292
+    },
+    {
+      "amplitude": 161.563,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1782.684685
+    },
+    {
+      "amplitude": 165.55,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1792.765616
+    },
+    {
+      "origin": "incisor",
+      "start": 1794.192606
+    },
+    {
+      "amplitude": 167.668,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1796.329091
+    },
+    {
+      "amplitude": 113.008,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1871.453072
+    },
+    {
+      "amplitude": 175.887,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1887.889459
+    },
+    {
+      "amplitude": 175.076,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1893.059923
+    },
+    {
+      "amplitude": 190.644,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1898.475885
+    },
+    {
+      "amplitude": 99.338,
+      "channel": 20,
+      "origin": "doppler",
+      "start": 1920.393734
+    },
+    {
+      "amplitude": 147.487,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1921.858224
+    },
+    {
+      "channel": 16,
+      "origin": "both",
+      "pair_t": 1926.935689,
+      "start": 1926.916636
+    },
+    {
+      "amplitude": 182.524,
+      "channel": 18,
+      "origin": "doppler",
+      "start": 1927.510685
+    },
+    {
+      "amplitude": 122.166,
+      "channel": 16,
+      "origin": "doppler",
+      "start": 1929.003175
+    }
+  ],
+  "gid": "s6cdd64d005c4",
+  "id": "376821cb2538",
+  "label_names": {},
+  "mouse": 33,
+  "n": 340,
+  "name": "PTEN m33 s4 2024-06-14 \u2014 pooled (Incisor + Doppler, 20 ms)",
+  "note": "",
+  "project": "PTEN",
+  "recording_start": "2024-06-14T11:46:54",
+  "schema": 1,
+  "session": 4,
+  "session_key": "m033_s004_2024-06-14_11-46-54",
+  "session_label": "PTEN m33 s4 2024-06-14",
+  "session_loose_key": "m033_s004",
+  "session_path": null,
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {
+      "ds_entry": "a28cf9b10de0",
+      "ds_name": "PTEN m33 s4 2024-06-14  \u00b7  Incisor CSC23\u2013CSC58",
+      "ds_version": "7",
+      "ied_entry": "19f4c9248794",
+      "ied_name": "PTEN m33 s4 2024-06-14  \u00b7  Doppler 20\u2013300 Hz",
+      "ied_version": "2",
+      "rule": "time only, any channel; one to one, nearest first; Incisor's time kept, Doppler's as pair_t",
+      "stats": {
+        "doppler_only": 211,
+        "ds_left_out": 0,
+        "ied_left_out": 0,
+        "incisor_only": 78,
+        "merged": 51,
+        "n": 340,
+        "n_ds": 129,
+        "n_ied": 262,
+        "window_ms": 20.0
+      },
+      "window_ms": 20.0
+    },
+    "pipeline": "The Confluence: Junction (Incisor + Doppler, 20 ms)",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "pooled",
+  "type_name": "Pooled spike",
+  "units": "seconds relative to the start of the recording",
+  "version": 0,
+  "versions": [
+    {
+      "at": "2026-10-19T14:50:42-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 340
+      },
+      "changed": 0,
+      "from_id": null,
+      "from_v": null,
+      "gained": 0,
+      "id": "6b5129ad1a20",
+      "imported": true,
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 340,
+      "note": "Junction's pool: 78 from Incisor, 211 from Doppler, 51 merged within 20 ms.",
+      "snap": [
+        [
+          3.521476,
+          null
+        ],
+        [
+          4.247971,
+          null
+        ],
+        [
+          6.653954,
+          null
+        ],
+        [
+          10.14043,
+          null
+        ],
+        [
+          11.334422,
+          null
+        ],
+        [
+          12.699412,
+          null
+        ],
+        [
+          19.083868,
+          null
+        ],
+        [
+          21.923686,
+          null
+        ],
+        [
+          22.019848,
+          null
+        ],
+        [
+          29.612915,
+          null
+        ],
+        [
+          30.938286,
+          null
+        ],
+        [
+          32.677481,
+          null
+        ],
+        [
+          34.246763,
+          null
+        ],
+        [
+          36.764132,
+          null
+        ],
+        [
+          42.397188,
+          null
+        ],
+        [
+          43.803697,
+          null
+        ],
+        [
+          44.91019,
+          null
+        ],
+        [
+          45.416107,
+          null
+        ],
+        [
+          48.388666,
+          null
+        ],
+        [
+          67.867031,
+          null
+        ],
+        [
+          98.027323,
+          null
+        ],
+        [
+          101.816214,
+          null
+        ],
+        [
+          104.087781,
+          null
+        ],
+        [
+          107.912898,
+          null
+        ],
+        [
+          108.53925,
+          null
+        ],
+        [
+          120.20567,
+          null
+        ],
+        [
+          120.368639,
+          null
+        ],
+        [
+          125.062136,
+          null
+        ],
+        [
+          125.438633,
+          null
+        ],
+        [
+          125.942321,
+          null
+        ],
+        [
+          126.091218,
+          null
+        ],
+        [
+          126.536626,
+          null
+        ],
+        [
+          127.204621,
+          null
+        ],
+        [
+          144.8005,
+          null
+        ],
+        [
+          148.645973,
+          null
+        ],
+        [
+          149.13497,
+          null
+        ],
+        [
+          153.977936,
+          null
+        ],
+        [
+          157.682054,
+          null
+        ],
+        [
+          157.86609,
+          null
+        ],
+        [
+          159.323899,
+          null
+        ],
+        [
+          159.673034,
+          null
+        ],
+        [
+          159.711397,
+          null
+        ],
+        [
+          160.596556,
+          null
+        ],
+        [
+          163.071874,
+          null
+        ],
+        [
+          174.900792,
+          null
+        ],
+        [
+          175.310789,
+          null
+        ],
+        [
+          177.679273,
+          null
+        ],
+        [
+          181.193248,
+          null
+        ],
+        [
+          228.859419,
+          null
+        ],
+        [
+          259.414208,
+          null
+        ],
+        [
+          271.066594,
+          null
+        ],
+        [
+          273.404611,
+          null
+        ],
+        [
+          288.825005,
+          null
+        ],
+        [
+          295.733946,
+          null
+        ],
+        [
+          300.298926,
+          null
+        ],
+        [
+          309.871859,
+          null
+        ],
+        [
+          312.132083,
+          null
+        ],
+        [
+          325.996454,
+          null
+        ],
+        [
+          327.964734,
+          null
+        ],
+        [
+          331.155899,
+          null
+        ],
+        [
+          340.261516,
+          null
+        ],
+        [
+          343.02363,
+          null
+        ],
+        [
+          344.429621,
+          null
+        ],
+        [
+          345.864111,
+          null
+        ],
+        [
+          345.995097,
+          null
+        ],
+        [
+          346.092245,
+          null
+        ],
+        [
+          364.359483,
+          null
+        ],
+        [
+          371.96493,
+          null
+        ],
+        [
+          374.511913,
+          null
+        ],
+        [
+          377.080395,
+          null
+        ],
+        [
+          395.21677,
+          null
+        ],
+        [
+          409.930168,
+          null
+        ],
+        [
+          413.599643,
+          null
+        ],
+        [
+          420.420096,
+          null
+        ],
+        [
+          427.586546,
+          null
+        ],
+        [
+          440.559457,
+          null
+        ],
+        [
+          443.839434,
+          null
+        ],
+        [
+          457.45584,
+          null
+        ],
+        [
+          459.248328,
+          null
+        ],
+        [
+          468.563763,
+          null
+        ],
+        [
+          469.306258,
+          null
+        ],
+        [
+          483.169162,
+          null
+        ],
+        [
+          484.478653,
+          null
+        ],
+        [
+          488.551625,
+          null
+        ],
+        [
+          491.746103,
+          null
+        ],
+        [
+          496.396071,
+          null
+        ],
+        [
+          524.966874,
+          null
+        ],
+        [
+          525.591369,
+          null
+        ],
+        [
+          528.33085,
+          null
+        ],
+        [
+          529.066345,
+          null
+        ],
+        [
+          530.620835,
+          null
+        ],
+        [
+          551.172293,
+          null
+        ],
+        [
+          561.036624,
+          null
+        ],
+        [
+          566.282588,
+          null
+        ],
+        [
+          576.754016,
+          null
+        ],
+        [
+          579.965525,
+          null
+        ],
+        [
+          585.682454,
+          null
+        ],
+        [
+          622.158398,
+          null
+        ],
+        [
+          635.071613,
+          null
+        ],
+        [
+          635.639109,
+          null
+        ],
+        [
+          646.584033,
+          null
+        ],
+        [
+          654.800477,
+          null
+        ],
+        [
+          657.747956,
+          null
+        ],
+        [
+          660.382564,
+          null
+        ],
+        [
+          666.546896,
+          null
+        ],
+        [
+          681.722291,
+          null
+        ],
+        [
+          684.582771,
+          null
+        ],
+        [
+          718.412537,
+          null
+        ],
+        [
+          729.892958,
+          null
+        ],
+        [
+          732.736938,
+          null
+        ],
+        [
+          755.814279,
+          null
+        ],
+        [
+          758.56076,
+          null
+        ],
+        [
+          785.626573,
+          null
+        ],
+        [
+          828.273278,
+          null
+        ],
+        [
+          828.924308,
+          null
+        ],
+        [
+          840.557693,
+          null
+        ],
+        [
+          855.754589,
+          null
+        ],
+        [
+          858.492074,
+          null
+        ],
+        [
+          859.309064,
+          null
+        ],
+        [
+          859.89556,
+          null
+        ],
+        [
+          865.179622,
+          null
+        ],
+        [
+          868.863998,
+          null
+        ],
+        [
+          876.713444,
+          null
+        ],
+        [
+          907.730403,
+          null
+        ],
+        [
+          923.266622,
+          null
+        ],
+        [
+          933.262462,
+          null
+        ],
+        [
+          935.704036,
+          null
+        ],
+        [
+          941.786494,
+          null
+        ],
+        [
+          941.951993,
+          null
+        ],
+        [
+          942.226075,
+          null
+        ],
+        [
+          944.544475,
+          null
+        ],
+        [
+          946.888959,
+          null
+        ],
+        [
+          947.930641,
+          null
+        ],
+        [
+          967.419899,
+          null
+        ],
+        [
+          970.625295,
+          null
+        ],
+        [
+          971.303091,
+          null
+        ],
+        [
+          971.654788,
+          null
+        ],
+        [
+          973.327784,
+          null
+        ],
+        [
+          975.614278,
+          null
+        ],
+        [
+          978.080828,
+          null
+        ],
+        [
+          985.211694,
+          null
+        ],
+        [
+          986.539773,
+          null
+        ],
+        [
+          987.912176,
+          null
+        ],
+        [
+          987.989159,
+          null
+        ],
+        [
+          992.049147,
+          null
+        ],
+        [
+          993.656136,
+          null
+        ],
+        [
+          994.49963,
+          null
+        ],
+        [
+          994.567478,
+          null
+        ],
+        [
+          994.866628,
+          null
+        ],
+        [
+          1005.955051,
+          null
+        ],
+        [
+          1006.847983,
+          null
+        ],
+        [
+          1008.91803,
+          null
+        ],
+        [
+          1010.127016,
+          null
+        ],
+        [
+          1011.615012,
+          null
+        ],
+        [
+          1012.620505,
+          null
+        ],
+        [
+          1013.917496,
+          null
+        ],
+        [
+          1015.379913,
+          null
+        ],
+        [
+          1015.908482,
+          null
+        ],
+        [
+          1016.389811,
+          null
+        ],
+        [
+          1016.540978,
+          null
+        ],
+        [
+          1017.502471,
+          null
+        ],
+        [
+          1025.940058,
+          null
+        ],
+        [
+          1036.285742,
+          null
+        ],
+        [
+          1040.365813,
+          null
+        ],
+        [
+          1043.937729,
+          null
+        ],
+        [
+          1046.252773,
+          null
+        ],
+        [
+          1047.281501,
+          null
+        ],
+        [
+          1048.291258,
+          null
+        ],
+        [
+          1049.197752,
+          null
+        ],
+        [
+          1052.434663,
+          null
+        ],
+        [
+          1053.084225,
+          null
+        ],
+        [
+          1053.457678,
+          null
+        ],
+        [
+          1054.460216,
+          null
+        ],
+        [
+          1054.851713,
+          null
+        ],
+        [
+          1055.162358,
+          null
+        ],
+        [
+          1055.589208,
+          null
+        ],
+        [
+          1058.35117,
+          null
+        ],
+        [
+          1059.97515,
+          null
+        ],
+        [
+          1061.050117,
+          null
+        ],
+        [
+          1063.979778,
+          null
+        ],
+        [
+          1064.587146,
+          null
+        ],
+        [
+          1064.616546,
+          null
+        ],
+        [
+          1064.951868,
+          null
+        ],
+        [
+          1064.996143,
+          null
+        ],
+        [
+          1067.694549,
+          null
+        ],
+        [
+          1068.324398,
+          null
+        ],
+        [
+          1069.224614,
+          null
+        ],
+        [
+          1077.747601,
+          null
+        ],
+        [
+          1077.838054,
+          null
+        ],
+        [
+          1079.134341,
+          null
+        ],
+        [
+          1079.156045,
+          null
+        ],
+        [
+          1080.158038,
+          null
+        ],
+        [
+          1080.503866,
+          null
+        ],
+        [
+          1081.958526,
+          null
+        ],
+        [
+          1124.963729,
+          null
+        ],
+        [
+          1132.269678,
+          null
+        ],
+        [
+          1133.131672,
+          null
+        ],
+        [
+          1133.49517,
+          null
+        ],
+        [
+          1139.21913,
+          null
+        ],
+        [
+          1157.702003,
+          null
+        ],
+        [
+          1167.647934,
+          null
+        ],
+        [
+          1167.685731,
+          null
+        ],
+        [
+          1170.271797,
+          null
+        ],
+        [
+          1186.786302,
+          null
+        ],
+        [
+          1187.202566,
+          null
+        ],
+        [
+          1187.659796,
+          null
+        ],
+        [
+          1188.43879,
+          null
+        ],
+        [
+          1190.408277,
+          null
+        ],
+        [
+          1190.586692,
+          null
+        ],
+        [
+          1191.913766,
+          null
+        ],
+        [
+          1192.81826,
+          null
+        ],
+        [
+          1193.504755,
+          null
+        ],
+        [
+          1195.041745,
+          null
+        ],
+        [
+          1196.706153,
+          null
+        ],
+        [
+          1199.538214,
+          null
+        ],
+        [
+          1200.179709,
+          null
+        ],
+        [
+          1201.700199,
+          null
+        ],
+        [
+          1202.802191,
+          null
+        ],
+        [
+          1203.154689,
+          null
+        ],
+        [
+          1205.171175,
+          null
+        ],
+        [
+          1206.760664,
+          null
+        ],
+        [
+          1207.25166,
+          null
+        ],
+        [
+          1210.24564,
+          null
+        ],
+        [
+          1210.648602,
+          null
+        ],
+        [
+          1210.812155,
+          null
+        ],
+        [
+          1211.898128,
+          null
+        ],
+        [
+          1216.232098,
+          null
+        ],
+        [
+          1219.468576,
+          null
+        ],
+        [
+          1221.132565,
+          null
+        ],
+        [
+          1225.529534,
+          null
+        ],
+        [
+          1225.839726,
+          null
+        ],
+        [
+          1226.19553,
+          null
+        ],
+        [
+          1227.971766,
+          null
+        ],
+        [
+          1229.227509,
+          null
+        ],
+        [
+          1229.700266,
+          null
+        ],
+        [
+          1231.233995,
+          null
+        ],
+        [
+          1232.123489,
+          null
+        ],
+        [
+          1232.727484,
+          null
+        ],
+        [
+          1237.014955,
+          null
+        ],
+        [
+          1237.263004,
+          null
+        ],
+        [
+          1238.407445,
+          null
+        ],
+        [
+          1238.985343,
+          null
+        ],
+        [
+          1264.937466,
+          null
+        ],
+        [
+          1265.116761,
+          null
+        ],
+        [
+          1267.724243,
+          null
+        ],
+        [
+          1271.843714,
+          null
+        ],
+        [
+          1281.551742,
+          null
+        ],
+        [
+          1282.435519,
+          null
+        ],
+        [
+          1287.969103,
+          null
+        ],
+        [
+          1289.947533,
+          null
+        ],
+        [
+          1291.33808,
+          null
+        ],
+        [
+          1292.038575,
+          null
+        ],
+        [
+          1293.629064,
+          null
+        ],
+        [
+          1294.596782,
+          null
+        ],
+        [
+          1298.848456,
+          null
+        ],
+        [
+          1302.138868,
+          null
+        ],
+        [
+          1302.251369,
+          null
+        ],
+        [
+          1305.505982,
+          null
+        ],
+        [
+          1306.241977,
+          null
+        ],
+        [
+          1306.290976,
+          null
+        ],
+        [
+          1306.999373,
+          null
+        ],
+        [
+          1307.271932,
+          null
+        ],
+        [
+          1312.380934,
+          null
+        ],
+        [
+          1314.096326,
+          null
+        ],
+        [
+          1316.739404,
+          null
+        ],
+        [
+          1316.93084,
+          null
+        ],
+        [
+          1318.351543,
+          null
+        ],
+        [
+          1320.68363,
+          null
+        ],
+        [
+          1320.838876,
+          null
+        ],
+        [
+          1321.848369,
+          null
+        ],
+        [
+          1324.147708,
+          null
+        ],
+        [
+          1331.338246,
+          null
+        ],
+        [
+          1332.600794,
+          null
+        ],
+        [
+          1337.704759,
+          null
+        ],
+        [
+          1384.540436,
+          null
+        ],
+        [
+          1389.6699,
+          null
+        ],
+        [
+          1393.029692,
+          null
+        ],
+        [
+          1400.925823,
+          null
+        ],
+        [
+          1402.426815,
+          null
+        ],
+        [
+          1402.426929,
+          null
+        ],
+        [
+          1402.67731,
+          null
+        ],
+        [
+          1403.112264,
+          null
+        ],
+        [
+          1410.905997,
+          null
+        ],
+        [
+          1412.537742,
+          null
+        ],
+        [
+          1415.211724,
+          null
+        ],
+        [
+          1426.488214,
+          null
+        ],
+        [
+          1426.516146,
+          null
+        ],
+        [
+          1433.50161,
+          null
+        ],
+        [
+          1438.261565,
+          null
+        ],
+        [
+          1439.005059,
+          null
+        ],
+        [
+          1439.144059,
+          null
+        ],
+        [
+          1443.784479,
+          null
+        ],
+        [
+          1443.994525,
+          null
+        ],
+        [
+          1449.634486,
+          null
+        ],
+        [
+          1455.023449,
+          null
+        ],
+        [
+          1455.904443,
+          null
+        ],
+        [
+          1459.852415,
+          null
+        ],
+        [
+          1462.282399,
+          null
+        ],
+        [
+          1465.136879,
+          null
+        ],
+        [
+          1465.886374,
+          null
+        ],
+        [
+          1465.970945,
+          null
+        ],
+        [
+          1471.748073,
+          null
+        ],
+        [
+          1485.960735,
+          null
+        ],
+        [
+          1503.119117,
+          null
+        ],
+        [
+          1515.944528,
+          null
+        ],
+        [
+          1518.375511,
+          null
+        ],
+        [
+          1547.297494,
+          null
+        ],
+        [
+          1547.543935,
+          null
+        ],
+        [
+          1573.360631,
+          null
+        ],
+        [
+          1580.981079,
+          null
+        ],
+        [
+          1588.902024,
+          null
+        ],
+        [
+          1595.449983,
+          null
+        ],
+        [
+          1616.91233,
+          null
+        ],
+        [
+          1624.865276,
+          null
+        ],
+        [
+          1652.972039,
+          null
+        ],
+        [
+          1656.574057,
+          null
+        ],
+        [
+          1661.413023,
+          null
+        ],
+        [
+          1664.908999,
+          null
+        ],
+        [
+          1668.836472,
+          null
+        ],
+        [
+          1670.806958,
+          null
+        ],
+        [
+          1680.179393,
+          null
+        ],
+        [
+          1711.185679,
+          null
+        ],
+        [
+          1732.487532,
+          null
+        ],
+        [
+          1763.944315,
+          null
+        ],
+        [
+          1764.65431,
+          null
+        ],
+        [
+          1765.797802,
+          null
+        ],
+        [
+          1767.241292,
+          null
+        ],
+        [
+          1782.684685,
+          null
+        ],
+        [
+          1792.765616,
+          null
+        ],
+        [
+          1794.192606,
+          null
+        ],
+        [
+          1796.329091,
+          null
+        ],
+        [
+          1871.453072,
+          null
+        ],
+        [
+          1887.889459,
+          null
+        ],
+        [
+          1893.059923,
+          null
+        ],
+        [
+          1898.475885,
+          null
+        ],
+        [
+          1920.393734,
+          null
+        ],
+        [
+          1921.858224,
+          null
+        ],
+        [
+          1926.916636,
+          null
+        ],
+        [
+          1927.510685,
+          null
+        ],
+        [
+          1929.003175,
+          null
+        ]
+      ],
+      "tag": "junction",
+      "v": 0
+    }
+  ]
+}

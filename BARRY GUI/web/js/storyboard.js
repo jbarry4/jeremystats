@@ -1577,7 +1577,7 @@ BARRY.views.storyboard = (function () {
     if (it) col.appendChild(alignBar());
 
     if (!it) {
-      col.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+      col.appendChild(el('div', { class: 'section-label',
         text: 'Slide' }));
       col.appendChild(field('Background', colorField(
         current().background || '#ffffff',
@@ -1601,7 +1601,7 @@ BARRY.views.storyboard = (function () {
       return col;
     }
 
-    col.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    col.appendChild(el('div', { class: 'section-label',
       text: it.type === 'result' ? 'Result' : it.type }));
 
     if (it.type === 'text') {

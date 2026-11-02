@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-10-12T14:04:13.278251+00:00",
+    "gid": "2026-10-12T14:04:13.278251+00:00",
+    "group": "2026-10-12T14:04:13.278251+00:00",
+    "key": "2026-10-12T14:04:13.278251+00:00",
+    "label": "2026-10-12T14:04:13.278251+00:00",
+    "loose_key": "2026-10-12T14:04:13.278251+00:00",
+    "mouse": "2026-10-12T14:04:13.278251+00:00",
+    "project": "2026-10-12T14:04:13.278251+00:00",
+    "project_source": "2026-10-12T14:04:13.278251+00:00",
+    "retired": "2026-10-12T14:04:13.278251+00:00",
+    "schema": "2026-10-12T14:04:13.278251+00:00",
+    "session": "2026-10-12T14:04:13.278251+00:00",
+    "start": "2026-10-12T14:04:13.278251+00:00",
+    "updated": "2026-10-12T14:06:14.347660+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-18_14-57-06": [
+        "set",
+        "2026-10-12T14:06:14.347660+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-12T14:06:14.347660+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.09.6",
+    "at": "2026-10-12T10:04:13-04:00",
+    "commit": "021cb243",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s61cb60f8983d",
+  "group": null,
+  "key": "m003_s003_2023-10-18_14-57-19",
+  "label": "PTEN m3 s3 2023-10-18",
+  "loose_key": "m003_s003",
+  "mouse": 3,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-18_14-57-06"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 3,
+  "start": "2023-10-18T18:57:19+00:00",
+  "updated": {
+    "app_version": "2026.10.09.6",
+    "at": "2026-10-12T10:06:14-04:00",
+    "commit": "021cb243",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

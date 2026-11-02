@@ -1,0 +1,26 @@
+{
+  "_at": {
+    "key": "2026-09-09T22:45:04.029862+00:00",
+    "rel": "2026-09-09T22:45:04.029862+00:00",
+    "starred": "2026-09-09T22:45:04.029862+00:00",
+    "title": "2026-09-09T22:45:04.029862+00:00",
+    "updated": "2026-09-09T22:45:04.029862+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-09T22:45:04.029862+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "key": "storyboards/arrow harness_6.png",
+  "rel": "Storyboards/arrow harness_6.png",
+  "starred": false,
+  "title": "arrow harness_6",
+  "updated": {
+    "at": "2026-09-09T18:45:04-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

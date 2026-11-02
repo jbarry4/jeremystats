@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-10-30T15:36:53.188642+00:00",
+    "gid": "2026-10-30T15:36:53.188642+00:00",
+    "group": "2026-10-30T15:36:53.188642+00:00",
+    "key": "2026-10-30T15:42:50.164992+00:00",
+    "label": "2026-10-30T15:36:53.188642+00:00",
+    "loose_key": "2026-10-30T15:36:53.188642+00:00",
+    "mouse": "2026-10-30T15:36:53.188642+00:00",
+    "project": "2026-10-30T15:36:53.188642+00:00",
+    "project_source": "2026-10-30T15:36:53.188642+00:00",
+    "retired": "2026-10-30T15:36:53.188642+00:00",
+    "schema": "2026-10-30T15:36:53.188642+00:00",
+    "session": "2026-10-30T15:36:53.188642+00:00",
+    "start": "2026-10-30T15:36:53.188642+00:00",
+    "updated": "2026-10-30T15:42:50.164992+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Summer'24\\Knct1_818\\kcnt1_818_s2jul18\\2024-07-18_14-18-18": [
+        "set",
+        "2026-10-30T15:42:50.164992+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-30T15:42:50.164992+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.28.2",
+    "at": "2026-10-30T11:36:53-04:00",
+    "commit": "9de27b58",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s811dcf18c4fc",
+  "group": null,
+  "key": null,
+  "label": "KCNT1 s2 2024-07-18",
+  "loose_key": null,
+  "mouse": null,
+  "paths": [
+    "Y:\\Jeremy3\\KCNT1\\Summer'24\\Knct1_818\\kcnt1_818_s2jul18\\2024-07-18_14-18-18"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 2,
+  "start": "2024-07-18T18:18:18+00:00",
+  "updated": {
+    "app_version": "2026.10.28.2",
+    "at": "2026-10-30T11:42:50-04:00",
+    "commit": "9de27b58",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

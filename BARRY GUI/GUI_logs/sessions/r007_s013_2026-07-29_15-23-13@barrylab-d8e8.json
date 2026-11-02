@@ -1,0 +1,78 @@
+{
+  "_at": {
+    "created": "2026-09-25T16:48:47.081568+00:00",
+    "gid": "2026-09-25T20:26:02.215809+00:00",
+    "group": "2026-09-25T16:48:47.081568+00:00",
+    "key": "2026-09-25T16:48:47.081568+00:00",
+    "label": "2026-09-25T20:26:02.215809+00:00",
+    "loose_key": "2026-09-25T16:48:47.081568+00:00",
+    "mouse": "2026-09-25T16:48:47.081568+00:00",
+    "probe": "2026-09-25T16:48:47.081568+00:00",
+    "probe_source": "2026-09-25T16:48:47.081568+00:00",
+    "project": "2026-09-25T16:48:47.081568+00:00",
+    "project_source": "2026-09-25T16:48:47.081568+00:00",
+    "retired": "2026-09-25T16:48:47.081568+00:00",
+    "schema": "2026-09-25T16:48:47.081568+00:00",
+    "session": "2026-09-25T16:48:47.081568+00:00",
+    "start": "2026-09-25T16:48:47.081568+00:00",
+    "updated": "2026-09-25T20:26:02.215809+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J7\\Cond3\\J7_Cond3_FP1\\2026-07-29_15-23-13": [
+        "set",
+        "2026-09-25T18:41:35.634396+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J7\\Cond3\\J7_Cond3_FP2\\2026-07-29_17-14-51": [
+        "set",
+        "2026-09-25T16:50:29.171459+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J7\\Cond3\\J7_Cond3_SPC\\2026-07-29_15-42-33": [
+        "set",
+        "2026-09-25T18:41:35.634396+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T20:26:02.215809+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-25T12:48:47-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "s88d070648616",
+  "group": null,
+  "key": "r007_s013_2026-07-29_15-23-13",
+  "label": "DEWEY r7 s13 Con3 FP1 2026-07-29",
+  "loose_key": "r007_s013",
+  "mouse": 7,
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J7\\Cond3\\J7_Cond3_FP2\\2026-07-29_17-14-51",
+    "E:\\Joe Multisite 2026 data\\J7\\Cond3\\J7_Cond3_FP1\\2026-07-29_15-23-13",
+    "E:\\Joe Multisite 2026 data\\J7\\Cond3\\J7_Cond3_SPC\\2026-07-29_15-42-33"
+  ],
+  "probe": "dewey32",
+  "probe_source": "manual",
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 13,
+  "start": "2026-07-29T19:23:13+00:00",
+  "updated": {
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-25T16:26:02-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

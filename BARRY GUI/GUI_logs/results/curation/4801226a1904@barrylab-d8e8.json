@@ -1,0 +1,25 @@
+{
+  "_at": {
+    "key": "2026-09-18T18:15:51.728300+00:00",
+    "rel": "2026-09-18T18:15:51.728300+00:00",
+    "starred": "2026-09-18T18:15:51.728300+00:00",
+    "updated": "2026-09-18T18:15:51.728300+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-18T18:15:51.728300+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "key": "kcnt1/m306/s1 2026-02-24/panorama/kcnt1_m306_s1_2026-02-24_csc1_panorama_20260915_171128_windows.csv",
+  "rel": "KCNT1/m306/s1 2026-02-24/Panorama/KCNT1_m306_s1_2026-02-24_CSC1_panorama_20260915_171128_windows.csv",
+  "starred": false,
+  "updated": {
+    "app_version": "2026.09.17.2",
+    "at": "2026-09-18T14:15:51-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

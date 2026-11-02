@@ -1,0 +1,83 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the Monolith's filtered ranking is the server's</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14; color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 40vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 60vw; height: 100vh; border: 0; border-left: 1px solid #243; background: #fff; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app"></iframe>
+<script>
+/* The points-of-interest filter ranks entries in the browser (monolith.js,
+   rankPoints) by what is meant to be the server's own rule (monolith.py,
+   points()). Two copies of one rule drift apart quietly, so this checks
+   them against each other on the BUILT Monolith: with no filter, the
+   browser's ranking of every entry must be exactly the server's top 50 --
+   the same entries in the same order, with the same "more like it" counts
+   -- in both layers.
+
+   It needs a built Monolith (Drift -> Monolith -> Fetch). Without one it
+   says so and reports no checks, rather than passing. It reads only; the
+   tour is kept from starting by marking it seen, and what this browser
+   remembered is put back. */
+const out = document.getElementById('out');
+let bad = 0, n = 0;
+const say = (c, m) => { const d = document.createElement('div'); d.className = c; d.textContent = m; out.appendChild(d); if (c === 'bad') bad += 1; if (c !== 'note') n += 1; };
+const check = (name, c, d) => say(c ? 'ok' : 'bad', name + (c || d === undefined ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, tries = 200, gap = 50) {
+  for (let i = 0; i < tries; i++) { try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ } await sleep(gap); }
+  return null;
+}
+(async () => {
+  const KEYS = ['barry.monolith.tour.seen', 'barry.monolith.view'];
+  const kept = {};
+  try { for (const k of KEYS) kept[k] = localStorage.getItem(k); localStorage.setItem(KEYS[0], 'harness'); localStorage.removeItem(KEYS[1]); } catch (e) { /* none */ }
+  const restore = () => { try { for (const k of KEYS) { if (kept[k] == null) localStorage.removeItem(k); else localStorage.setItem(k, kept[k]); } } catch (e) { /* none */ } };
+  try {
+    const r = await fetch('/api/arc/monolith/data/summary', { cache: 'no-cache' });
+    if (!r.ok) {
+      say('note', 'No Monolith is built here, so there is nothing to compare: no checks.');
+      document.title = 'monolithrank: no Monolith built';
+      restore();
+      return;
+    }
+    const f = document.getElementById('app');
+    f.src = '/monolith.html';
+    await new Promise((res) => f.addEventListener('load', res, { once: true }));
+    const W = () => f.contentWindow;
+    const M = await until(() => W().MONO && W().MONO.ready && W().MONO, 600);
+    check('the built Monolith loads', !!M);
+    if (!M) { document.title = 'FAIL: did not load'; restore(); return; }
+    const S = M.data.S;
+    const F0 = { measure: 'any', region: 'any', withRegion: 'any', from: 1, to: 55, named: true, bins: true, win: 'any', dir: 'either', bb: 'show' };
+    for (const layer of S.layers) {
+      if (layer !== M.state.layer) {
+        // The page's own layer switch: it loads the layer's arrays first.
+        W().document.querySelector('#controls .seg button[data-id="' + layer + '"]').click();
+        await until(() => M.state.layer === layer && M.data.edges[layer], 600);
+      }
+      const server = (S.top || {})[layer] || [];
+      const mine = M.filteredPoints(layer, F0);
+      const key = (t) => [t.w, t.band, t.m, t.pair, t.rank, t.n_more].join('/');
+      const diff = server.findIndex((t, i) => !mine[i] || key(t) !== key(mine[i]));
+      check(layer + ': the browser ranks the same ' + server.length + ' points as the server, in the same order, with the same “more like it”',
+            server.length === mine.length && diff < 0,
+            diff >= 0 ? '#' + (diff + 1) + ' server ' + key(server[diff]) + ' vs browser ' + (mine[diff] ? key(mine[diff]) : '—') : mine.length + ' vs ' + server.length);
+      const est = server.every((t, i) => mine[i] && Math.abs(mine[i].est - t.est) < 1e-5 * Math.max(1, Math.abs(t.est)) && mine[i].same === t.same && mine[i].k === t.k);
+      check(layer + ': and the same numbers (est, rats the same way, rats)', est);
+    }
+  } catch (e) {
+    say('bad', 'harness threw: ' + (e && e.stack || e));
+  }
+  restore();
+  document.getElementById('app').src = 'about:blank';
+  document.title = bad ? 'monolithrank: ' + bad + ' FAILED' : 'monolithrank: ' + n + ' pass 0 fail';
+})();
+</script>

@@ -18,7 +18,7 @@ const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
  await sleep(900);
  // hover state so the controls are visible in the capture
  D.querySelectorAll('.ver-ops').forEach(n=>n.style.opacity='1');
- const pip=Array.from(D.querySelectorAll('.ver-pip')).slice(-1)[0];
+ const pip=Array.from(D.querySelectorAll('.ver-strip .vtree-row'))[0];
  if(pip) pip.click();
  await sleep(1200);
  D.querySelectorAll('.ver-ops').forEach(n=>n.style.opacity='1');

@@ -1,0 +1,190 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>vaccquiet: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:700px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:700px;top:0;right:0;bottom:0;width:calc(100vw - 700px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Is the mode quiet when nothing is happening, and is it still readable?
+
+   Two failures this is here to catch, and they are opposite.
+
+   The first is a pulse attached to the mode rather than to the work. The app
+   calls itself "a workbench that sits next to MATLAB all day"; a glow that
+   breathes at you for eight hours whether or not the cluster is doing
+   anything is both a lie and the reason somebody quietly stops using the
+   feature. So: with the mode on and no job running, NOTHING new may animate.
+
+   The second is contrast. Every theme was built to clear 7:1 on body text
+   and 4.5:1 on each on- pair, and those ratios were measured rather than
+   eyeballed. The mode is additive precisely so it cannot break them -- this
+   measures them again with it on, because "cannot" is a claim. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(60);
+  }
+  return false;
+}
+
+/* sRGB relative luminance, WCAG 2.1. Custom properties come back as the
+   literal token text, so the theme colours are the plain hex the file
+   declares and parse without help. */
+function lum(hex) {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec((hex || '').trim());
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  const p = [0, 2, 4].map((i) => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2];
+}
+function ratio(a, b) {
+  const la = lum(a), lb = lum(b);
+  if (la === null || lb === null) return null;
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'), 25000);
+  const D = () => frame.contentDocument;
+  const root = () => D().documentElement;
+  const tok = (n) => getComputedStyle(root()).getPropertyValue(n).trim();
+  const themes = ev('THEMES').map((t) => t.id);
+  const wasOn = ev('BARRY.state.vacc') === true;
+
+  /* A set, not a count. The app has spinners and skeletons that come and go
+     while it settles, so a count taken twice a second apart differs by
+     whatever finished loading in between -- measured: 4 then 2, with the
+     mode having added nothing. What is being asserted is that no NEW kind of
+     animation appears, which a set difference says and a tally does not. */
+  const animating = () => {
+    const out = [];
+    D().querySelectorAll('*').forEach((n) => {
+      const a = getComputedStyle(n).animationName;
+      if (a && a !== 'none') out.push(a);
+      const b = getComputedStyle(n, '::after').animationName;
+      if (b && b !== 'none') out.push(b + '::after');
+      const c = getComputedStyle(n, '::before').animationName;
+      if (c && c !== 'none') out.push(c + '::before');
+    });
+    return out;
+  };
+
+  say('=== the mode alone animates nothing ===');
+  ev('applyVacc(false)'); ev('BARRY.vaccBusy.reset()');
+  await sleep(200);
+  const quietOff = new Set(animating());
+  ev('applyVacc(true)');
+  await sleep(300);
+  const quietOn = new Set(animating());
+  const added = [...quietOn].filter((x) => !quietOff.has(x));
+  check('turning the mode on starts no new animation',
+        added.length === 0,
+        'off {' + [...quietOff].join(' ') + '} added {' + added.join(' ') + '}');
+  check('and the pulse in particular is not running',
+        !quietOn.has('fireBeat::after'), [...quietOn].join(' '));
+  check('the rail pseudo-element is there but transparent',
+        getComputedStyle(D().querySelector('#rail'), '::after').opacity === '0',
+        getComputedStyle(D().querySelector('#rail'), '::after').opacity);
+
+  say('');
+  say('=== and it pulses only while a job is actually being polled ===');
+  ev('BARRY.vaccBusy.start()');
+  await sleep(250);
+  check('busy raises the attribute', root().dataset.vaccBusy === '1',
+        String(root().dataset.vaccBusy));
+  const busy = new Set(animating());
+  check('the pulse is running now', busy.has('fireBeat::after'),
+        [...busy].join(' '));
+  check('and the pulse is the only thing being busy added',
+        [...busy].filter((x) => !quietOn.has(x)).join(' ') === 'fireBeat::after',
+        [...busy].filter((x) => !quietOn.has(x)).join(' ') || 'nothing');
+
+  // Two jobs at once, and the first to finish must not stop the pulse.
+  ev('BARRY.vaccBusy.start()');
+  ev('BARRY.vaccBusy.stop()');
+  await sleep(120);
+  check('two jobs, one finished, still busy', root().dataset.vaccBusy === '1',
+        'count=' + ev('BARRY.vaccBusy.count'));
+  ev('BARRY.vaccBusy.stop()');
+  await sleep(200);
+  check('the last one finishing stops it', !root().dataset.vaccBusy,
+        'count=' + ev('BARRY.vaccBusy.count'));
+  ev('BARRY.vaccBusy.stop()');
+  check('and it never goes negative', ev('BARRY.vaccBusy.count') === 0,
+        'count=' + ev('BARRY.vaccBusy.count'));
+
+  say('');
+  say('=== reduced motion stops the movement, not the look ===');
+  // Asserted against the stylesheet rather than the rendered frame: the
+  // headless browser cannot be told to prefer reduced motion per-frame, and
+  // a check that silently never runs is worse than one that reads the rule.
+  let rule = null;
+  for (const sheet of D().styleSheets) {
+    let rules;
+    try { rules = sheet.cssRules; } catch (e) { continue; }
+    for (const r of rules) {
+      if (r.type === CSSRule.MEDIA_RULE
+          && /prefers-reduced-motion/.test(r.conditionText || '')) {
+        for (const inner of r.cssRules) {
+          if (/data-vacc-busy/.test(inner.selectorText || '')) rule = inner;
+        }
+      }
+    }
+  }
+  check('a reduced-motion rule names the pulse', !!rule,
+        rule ? rule.selectorText : 'no rule found');
+  // `animationName`, not the `animation` shorthand: the shorthand serialises
+  // to "auto ease 0s 1 normal none running none" and never equals "none".
+  check('and it stops the animation',
+        !!rule && rule.style.animationName === 'none',
+        rule ? JSON.stringify(rule.style.animationName) : '');
+  check('while leaving something visible',
+        !!rule && parseFloat(rule.style.opacity) > 0,
+        rule ? rule.style.opacity : '');
+
+  say('');
+  say('=== contrast still clears, with the mode on ===');
+  ev('BARRY.vaccBusy.reset()');
+  for (const id of themes) {
+    ev("applyTheme('" + id + "', false)");
+    await sleep(140);
+    const body = ratio(tok('--text'), tok('--bg'));
+    const onAcc = ratio(tok('--on-accent'), tok('--accent'));
+    const onErr = ratio(tok('--on-err'), tok('--err'));
+    const ok = body !== null && body >= 7
+      && onAcc !== null && onAcc >= 4.5
+      && onErr !== null && onErr >= 4.5;
+    check(id.padEnd(15) + ' body 7:1, on- pairs 4.5:1', ok,
+          'body ' + (body || 0).toFixed(1) + '  on-accent '
+          + (onAcc || 0).toFixed(1) + '  on-err ' + (onErr || 0).toFixed(1));
+  }
+
+  ev("applyTheme(themeForThisMachine() || 'dark', false)");
+  ev('applyVacc(' + (wasOn ? 'true' : 'false') + ')');
+  ev('BARRY.vaccBusy.reset()');
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'vaccquiet: ' + fails + ' FAILED' : 'vaccquiet: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'vaccquiet CRASH'; });
+</script></body></html>

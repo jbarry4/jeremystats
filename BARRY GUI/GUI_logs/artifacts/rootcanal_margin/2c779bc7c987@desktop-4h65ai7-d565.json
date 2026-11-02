@@ -1,0 +1,97 @@
+{
+  "_at": {
+    "added": "2026-10-20T18:45:09.285560+00:00",
+    "deleted": "2026-10-20T18:45:09.285560+00:00",
+    "id": "2026-10-20T18:45:09.285560+00:00",
+    "kind": "2026-10-20T18:45:09.285560+00:00",
+    "name": "2026-10-20T18:45:09.285560+00:00",
+    "nickname": "2026-10-20T18:45:09.285560+00:00",
+    "schema": "2026-10-20T18:45:09.285560+00:00",
+    "subject": "2026-10-20T18:45:09.285560+00:00",
+    "subject_key": "2026-10-20T18:45:09.285560+00:00",
+    "version": "2026-10-20T18:45:09.285560+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "7f07c7bc24f5": [
+        "set",
+        "2026-10-20T18:45:09.285560+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-20T18:45:09.285560+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-20T14:45:09-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "2c779bc7c987",
+  "kind": "rootcanal_margin",
+  "name": "Root Canal margin \u00b7 k=2 \u00b7 a pool of 9",
+  "nickname": "PTEN CTL Baseline",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "gids": [
+      "s016e132432c8",
+      "s0a9e96cf1739",
+      "s37c7c8edfe10",
+      "s43b16cd74bcb",
+      "s79ba9ba163c4",
+      "s8d7f397b9708",
+      "s9eb56573e0b4",
+      "sd42a6992b76c",
+      "sd94396e874c7"
+    ],
+    "k": 2,
+    "margin_key": "a679aa07f8e04adfa3e52a80f8f15db5",
+    "name": "Root Canal margin \u00b7 k=2 \u00b7 a pool of 9",
+    "source": "pool"
+  },
+  "subject_key": "rootcanal_margin|a679aa07f8e04adfa3e52a80f8f15db5",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.10.20.5",
+      "at": "2026-10-20T14:45:09-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "f729a289",
+      "digest": "e39e7c11b9bb",
+      "id": "7f07c7bc24f5",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "ds": 1,
+        "events": 1475,
+        "filter": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+        "ied": 1,
+        "k": 2,
+        "source": "pool"
+      },
+      "note": null,
+      "params": {
+        "k": 2,
+        "measure": {
+          "band_hi": 1000.0,
+          "band_lo": 500.0,
+          "cross_ms": 100.0,
+          "filt": "ds",
+          "filter_label": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+          "hi_hz": 100.0,
+          "lo_hz": 5.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 25.0
+        },
+        "source": "pool"
+      },
+      "params_hash": "64726dbd52b4",
+      "v": 1
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "format": "png",
+  "id": "01973a0f1df2",
+  "kind": "figure",
+  "label": "rebuild harness",
+  "output": {
+    "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/rebuild%20harness_20260909_165743.png",
+    "path": "C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\rebuild harness_20260909_165743.png",
+    "rel": "rebuild harness_20260909_165743.png"
+  },
+  "panels": [
+    {
+      "col": 0,
+      "panel": "traces",
+      "row": 0,
+      "title": "Traces"
+    }
+  ],
+  "parameters": {
+    "bad_channels": [
+      8
+    ],
+    "cmap": "jet",
+    "cols": 1,
+    "highpass": 1,
+    "lowpass": 70,
+    "notch": 60,
+    "page": "letter_landscape",
+    "rows": 1,
+    "t0": 12.5,
+    "t1": 17.5
+  },
+  "problems": [],
+  "provenance": {
+    "at": "2026-09-09T16:57:43-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "recipe": {
+    "bad_channels": [
+      8
+    ],
+    "channels": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "cmap": "jet",
+    "cols": 1,
+    "dpi": 150,
+    "event_count": 2,
+    "events": [
+      {
+        "label": "harness mark",
+        "t": 13
+      },
+      {
+        "label": "harness mark 2",
+        "t": 15.25
+      }
+    ],
+    "events_truncated": false,
+    "gain": 2,
+    "height_in": 8.5,
+    "highpass": 1,
+    "identity": {},
+    "lowpass": 70,
+    "metadata": {
+      "author": "harness",
+      "notes": ""
+    },
+    "notch": 60,
+    "page": "letter_landscape",
+    "panels": [
+      {
+        "cmap": "jet",
+        "col": 0,
+        "colspan": 1,
+        "panel": "traces",
+        "row": 0,
+        "rowspan": 1,
+        "session_id": "default",
+        "title": "Traces"
+      }
+    ],
+    "rows": 1,
+    "schema": 1,
+    "session_label": "harness",
+    "sessions": {
+      "default": {
+        "even_only": true,
+        "invert": true,
+        "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0522\\m22s4bjun18\\2026-06-18_17-13-10"
+      }
+    },
+    "show_metadata": true,
+    "spacing_um": 50,
+    "subtitle": "",
+    "t0": 12.5,
+    "t1": 17.5,
+    "title": "rebuild harness",
+    "width_in": 11
+  },
+  "schema": 1,
+  "script": "Xplorefinder figure",
+  "session": {},
+  "status": "done"
+}

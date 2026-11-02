@@ -1,0 +1,168 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — quality flags survive a refresh</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 52vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 48vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Pressing good / review / exclude on a Sessions card saved the flag, lit
+   the button from the local guess, and on the next refresh the card showed
+   no flag at all. The write landed; the registry row never carried
+   `quality` back, and the card is drawn from the registry row.
+
+   Two things are checked. That flags already on record show on their cards
+   when the view is opened cold. And the reported sequence itself: press a
+   flag, reload the page, and the flag is still lit.
+
+   The second one writes to a real record, so it takes a recording whose
+   flag it can read first, changes it, and puts the original back in a
+   `finally` -- confirmed by reading it back. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+const f = document.getElementById('app');
+const win = () => f.contentWindow;
+const doc = () => f.contentDocument;
+
+async function registryRows() {
+  const body = await (await fetch('/api/registry')).json();
+  return (body.tree || []).flatMap((p) => p.mice.flatMap((m) => m.sessions));
+}
+
+/* The Sessions view, open, with the live catalogue answer on screen rather
+   than last time's from the browser stash. */
+async function openSessions() {
+  const ready = await untilN(() => typeof win().setView === 'function');
+  if (ready < 0) return false;
+  win().setView('sessions');
+  const live = await untilN(() => {
+    const sub = (doc().querySelector('#sessSub') || {}).textContent || '';
+    return doc().querySelector('#sessTree .sess-card')
+      && !/reading the latest|Reading the catalogue/.test(sub);
+  }, 600, 100);
+  return live >= 0;
+}
+
+/* Narrow the list to one recording by its label, and hand back its card. */
+async function cardFor(label) {
+  const box = doc().querySelector('#sessSearch');
+  box.value = label;
+  box.dispatchEvent(new Event('input', { bubbles: true }));
+  await sleep(400);
+  const cards = doc().querySelectorAll('#sessTree .sess-card');
+  return cards.length === 1 ? cards[0] : null;
+}
+
+const lit = (card) => [...card.querySelectorAll('.flag-btn.on')]
+  .map((b) => b.textContent.trim());
+
+(async () => { let target = null; try {
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  check('the application loads and the catalogue lands', await openSessions(),
+        'no live Sessions list within 60s');
+
+  head('flags on record show when the view opens');
+  const rows = await registryRows();
+  check('the registry row carries the flag at all',
+        rows.some((r) => 'quality' in r), 'no row has a quality field');
+  const byLabel = {};
+  rows.forEach((r) => { byLabel[r.label] = (byLabel[r.label] || 0) + 1; });
+  const pick = (q) => rows.find((r) => r.quality === q && r.seen_here
+                                       && r.label && byLabel[r.label] === 1);
+  const picks = ['good', 'exclude', 'review'].map(pick).filter(Boolean);
+  check('there is a flagged recording on this machine to look at',
+        picks.length > 0, 'nothing flagged and seen here');
+  for (const r of picks) {
+    const card = await cardFor(r.label);
+    if (!card) {
+      check(r.label + ' has one card', false,
+            doc().querySelectorAll('#sessTree .sess-card').length + ' cards');
+      continue;
+    }
+    const on = lit(card);
+    check(r.label + ' shows "' + r.quality + '"',
+          on.length === 1 && on[0] === r.quality,
+          'lit: ' + JSON.stringify(on));
+  }
+
+  head('press a flag, reload, and it is still there');
+  /* The most recently written flagged record, so the borrowed write lands
+     on a record somebody has just been working on rather than stirring one
+     nobody has touched in months. */
+  const when = (r) => ((r.updated || {}).at) || '';
+  target = rows.filter((r) => r.quality && r.seen_here && r.label
+                              && byLabel[r.label] === 1)
+    .sort((a, b) => (when(b) > when(a) ? 1 : -1))[0] || null;
+  if (!target) {
+    say('note', 'skipped: no flagged recording to borrow');
+  } else {
+    const want = target.quality === 'review' ? 'good' : 'review';
+    const card = await cardFor(target.label);
+    const btn = card && card.querySelector('.flag-btn.' + want);
+    check('the card has a "' + want + '" button', !!btn);
+    if (btn) {
+      btn.click();
+      await sleep(1500);                    // the POST, which is not awaited
+      const after = (await registryRows()).find((r) => r.gid === target.gid);
+      check('the press reached the record',
+            after && after.quality === want,
+            'record says ' + JSON.stringify(after && after.quality));
+
+      win().location.reload();
+      await new Promise((r) => f.addEventListener('load', r, { once: true }));
+      check('the view comes back after the reload', await openSessions());
+      const again = await cardFor(target.label);
+      const on = again ? lit(again) : [];
+      check('after the reload the card still says "' + want + '"',
+            on.length === 1 && on[0] === want,
+            again ? 'lit: ' + JSON.stringify(on) : 'no card');
+    }
+  }
+} catch (e) {
+  say('bad', 'harness threw: ' + e.message);
+} finally {
+  /* Put the borrowed recording's flag back, and prove it is back. */
+  if (target) {
+    try {
+      await fetch('/api/session/note', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity: { gid: target.gid },
+                               quality: target.quality }),
+      });
+      const back = (await registryRows()).find((r) => r.gid === target.gid);
+      check('the borrowed recording is "' + target.quality + '" again',
+            back && back.quality === target.quality,
+            'record says ' + JSON.stringify(back && back.quality));
+    } catch (e) { say('bad', 'restore threw: ' + e.message); }
+  }
+  head(bad === 0 ? 'flags stay put' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+  f.src = 'about:blank';
+} })();
+</script>

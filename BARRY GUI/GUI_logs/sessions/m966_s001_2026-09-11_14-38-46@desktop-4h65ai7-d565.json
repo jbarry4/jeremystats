@@ -1,0 +1,62 @@
+{
+  "_at": {
+    "created": "2026-09-11T18:39:34.717315+00:00",
+    "gid": "2026-09-11T18:39:34.717315+00:00",
+    "group": "2026-09-11T18:39:34.717315+00:00",
+    "key": "2026-09-11T18:39:34.717315+00:00",
+    "label": "2026-09-11T18:39:34.717315+00:00",
+    "loose_key": "2026-09-11T18:39:34.717315+00:00",
+    "mouse": "2026-09-11T18:39:34.717315+00:00",
+    "project": "2026-09-11T18:39:34.717315+00:00",
+    "project_source": "2026-09-11T18:39:34.717315+00:00",
+    "retired": "2026-09-11T18:41:43.299976+00:00",
+    "schema": "2026-09-11T18:39:34.717315+00:00",
+    "session": "2026-09-11T18:39:34.717315+00:00",
+    "start": "2026-09-11T18:39:34.717315+00:00",
+    "updated": "2026-09-11T18:41:43.299976+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260911_143846\\FAKEPROJ\\fake_m966\\m966s1_2026-09-11\\2026-09-11_14-38-46": [
+        "set",
+        "2026-09-11T18:39:51.652576+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-11T18:41:43.299976+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-11T14:39:34-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s6ada3cc64ab3",
+  "group": null,
+  "key": "m966_s001_2026-09-11_14-38-46",
+  "label": "m966 s1 2026-09-11",
+  "loose_key": "m966_s001",
+  "mouse": 966,
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260911_143846\\FAKEPROJ\\fake_m966\\m966s1_2026-09-11\\2026-09-11_14-38-46"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 1,
+  "start": "2026-09-11T14:38:46",
+  "updated": {
+    "at": "2026-09-11T14:41:43-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

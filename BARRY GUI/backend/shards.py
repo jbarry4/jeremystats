@@ -1,5 +1,5 @@
 """
-shards.py -- Why BARRY's logs can never produce a git conflict.
+shards.py -- Why Jarvis's logs can never produce a git conflict.
 
 The rule
 --------
@@ -97,6 +97,31 @@ EPOCH = "0000-00-00T00:00:00"
 
 _LOCK = threading.RLock()
 
+#: Paths under GUI_logs whose files are written once, by one machine, and
+#: never edited -- so they cannot conflict on a pull even without a machine
+#: tag in the name. A run record; a feedback screenshot; an artifact
+#: version's payload, which is content-addressed (`v<N>__<digest>.json`) and
+#: compared rather than rewritten if it is written again (artifacts.py,
+#: `_write_snap`). Read by app.conflict_audit and tools/conflict_check.py.
+WRITE_ONCE = ("runs/", "feedback/screenshots/", "artifacts/snap/")
+
+#: Called with the Book after this machine writes or erases one of its
+#: records, or None. app.py sets it so a change to something shared asks for
+#: a push straight away, whoever made it -- a request, or a job finishing in
+#: a thread, which no request ever sees. Must be cheap and must not raise
+#: into the write; it is called with the module lock held.
+ON_CHANGE = None
+
+
+def _changed(book):
+    hook = ON_CHANGE
+    if hook is None:
+        return
+    try:
+        hook(book)
+    except Exception:                                    # noqa: BLE001
+        pass
+
 # Merge kinds. See the module docstring.
 LWW, FIRST, UNION, MAPLWW, BYID = "lww", "first", "union", "maplww", "byid"
 
@@ -166,13 +191,13 @@ def machine_id():
     exact failure this module exists to prevent -- so the network MAC is mixed
     in and shows up as a four-character tag.
 
-    BARRY_MACHINE overrides it, which is how the tests pretend to be a second
+    Jarvis_MACHINE overrides it, which is how the tests pretend to be a second
     computer.
     """
     global _MACHINE
     if _MACHINE:
         return _MACHINE
-    forced = os.environ.get("BARRY_MACHINE")
+    forced = os.environ.get("Jarvis_MACHINE")
     if forced:
         _MACHINE = _slug(forced)[:32] or "machine"
         return _MACHINE
@@ -387,11 +412,26 @@ class Book:
     decision is the one that stands.
     """
 
-    def __init__(self, dirpath, spec=None, store=None, ext=".json"):
+    def __init__(self, dirpath, spec=None, store=None, ext=".json",
+                 extra_dirs=None):
         self.dir = os.path.abspath(dirpath)
         self.spec = dict(spec or {})
         self.store = store
         self.ext = ext
+        # OTHER MACHINES' SHARDS, PULLED FROM THE SHARED DATABASE (2026-10-06,
+        # Braces sets and AI Beta runs). Read with the rest, never written:
+        # this machine writes only its own shard, in `dir`. They live under
+        # GUI_logs/.cache, which git ignores, so a pull can never leave a
+        # tracked file that a later `git pull` refuses to overwrite. The same
+        # shard arriving by git as well is harmless: records merge by their
+        # own stamps, so two copies of one shard are one shard.
+        self.extra = [os.path.abspath(d) for d in (extra_dirs or [])]
+        # The compiled-record cache and its stamp. See all(). Its own lock
+        # rather than the module's: two threads reading a store must not
+        # queue behind each other, and this guards nothing else.
+        self._all_sig = None
+        self._all_recs = None
+        self._all_lock = threading.Lock()
         os.makedirs(self.dir, exist_ok=True)
 
     # -- naming ---------------------------------------------------------
@@ -399,44 +439,97 @@ class Book:
         return os.path.join(self.dir,
                             "%s%s%s%s" % (base, SIGIL, machine_id(), self.ext))
 
+    def read_mine(self, base):
+        """This machine's own shard, unmerged.
+
+        For records that are ABOUT this machine -- who is at it, what it is
+        called. `read` merges every machine's answer with last-write-wins,
+        which is right for a recording's bad channels and wrong for an
+        identity: it hands whoever typed most recently everybody else's
+        name.
+        """
+        return _read_json(self.mine(base)) or {}
+
+    def _scan(self):
+        """One directory pass: every shard grouped by base, and the stamp.
+
+        `shard_files` used to list the WHOLE directory once per base, and
+        `all()` asked it for every base -- so reading a store was
+        O(bases x files). Measured on this repo's own GUI_logs/sessions,
+        1,689 shards over 697 bases: 3.88 s and 1,177,233 split_name calls,
+        against 8.2 ms for the single pass below. `bases()` was quadratic on
+        top of that, testing `b not in seen` against a list.
+
+        The signature comes out of the same pass. On Windows scandir hands
+        back mtime and size from the directory read that yielded the name,
+        so covering every file costs nothing beyond the walk -- the trade
+        store.py:_runs_fingerprint already makes, and for the same reason:
+        folder mtimes do not move when a `git pull` overwrites a shard in
+        place, so the stamp has to be over the files themselves.
+
+        Two orderings are load-bearing and are preserved exactly:
+
+          - within a base, shards come in filename order. Sorting by machine
+            instead would move `~legacy` from the front to the back (`~` is
+            0x7E, past every letter), and a legacy shard is the one that must
+            be merged FIRST so a real edit beats it.
+          - `bases()` follows first appearance in filename order, which is
+            NOT sorted base order: `@` is 0x40, past the digits, so
+            "m12@x.json" sorts before "m1@x.json". Dicts keep insertion
+            order, so building the index in filename order gives `bases()`
+            back unchanged.
+        """
+        rows, sig = [], []
+        for k, d in enumerate([self.dir] + self.extra):
+            try:
+                with os.scandir(d) as it:
+                    for entry in it:
+                        name = entry.name
+                        if not name.endswith(self.ext):
+                            continue
+                        try:
+                            st = entry.stat()
+                        except OSError:
+                            continue
+                        base, machine = split_name(name, self.ext)
+                        if not base:
+                            continue
+                        # Sorted by name first, then the tracked folder
+                        # before the pulled one, so the order within a base
+                        # is the one it always was.
+                        rows.append((name, k, base, machine,
+                                     os.path.join(d, name)))
+                        sig.append((k, name, st.st_mtime_ns, st.st_size))
+            except OSError:
+                if k == 0:
+                    return {}, ()
+                continue                 # no pulled folder yet: nothing pulled
+        rows.sort()
+        sig.sort()
+        idx = {}
+        for name, _k, base, machine, path in rows:
+            idx.setdefault(base, []).append((machine, path))
+        return idx, tuple(sig)
+
     def shard_files(self, base):
-        out = []
-        for name in sorted(_listdir(self.dir)):
-            b, m = split_name(name, self.ext)
-            if b == base:
-                out.append((m, os.path.join(self.dir, name)))
-        return out
+        return self._scan()[0].get(base, [])
 
     def signature(self):
         """A cheap value that changes whenever any shard here does.
 
-        One directory listing and a stat per file. Enough to cache a derived
-        answer against, and correct across two BARRYs sharing one GUI_logs --
-        which a timer or an invalidate-on-my-own-writes flag would not be.
+        Enough to cache a derived answer against, and correct across two
+        Jarviss sharing one GUI_logs -- which a timer or an
+        invalidate-on-my-own-writes flag would not be.
         """
-        out = []
-        for name in sorted(_listdir(self.dir)):
-            if not name.endswith(self.ext):
-                continue
-            try:
-                st = os.stat(os.path.join(self.dir, name))
-            except OSError:
-                continue
-            out.append((name, st.st_mtime_ns, st.st_size))
-        return tuple(out)
+        return self._scan()[1]
 
     def bases(self):
-        seen = []
-        for name in sorted(_listdir(self.dir)):
-            b, _m = split_name(name, self.ext)
-            if b and b not in seen:
-                seen.append(b)
-        return seen
+        return list(self._scan()[0].keys())
 
     # -- reading --------------------------------------------------------
-    def read(self, base):
+    def _compile(self, files):
         shards = []
-        for machine, path in self.shard_files(base):
+        for machine, path in files:
             rec = _read_json(path)
             if rec:
                 if machine == LEGACY:
@@ -447,20 +540,54 @@ class Book:
                 shards.append((machine, rec))
         return merge(shards, self.spec)
 
+    def read(self, base):
+        return self._compile(self.shard_files(base))
+
     def all(self):
-        return [r for r in (self.read(b) for b in self.bases()) if r]
+        """Every record in the store, merged, read from disk at most once
+        per change.
+
+        One scan for the whole store, not one per base -- going through
+        read() here is what made this quadratic. What is left after that fix
+        is the JSON: 1,702 session shards still parse in ~350 ms, and
+        /api/registry asks three times. So the compiled list is kept and
+        re-used until the directory stamp moves.
+
+        The stamp is the safety, not a timer: it covers every file's mtime
+        and size, so it changes the moment any shard is written -- by this
+        machine or by a colleague's `git pull` overwriting one in place.
+        This is the same bargain sessreg.Registry.all() already strikes, and
+        for the same reason.
+
+        Shallow copies, because callers edit what they are handed and
+        editing this list would be editing the cache. Shallow is enough: the
+        write paths all go through read() on a single base, which compiles
+        fresh objects, so nothing mutates the nested values under here.
+        """
+        idx, sig = self._scan()
+        with self._all_lock:
+            if sig != self._all_sig or self._all_recs is None:
+                self._all_recs = [r for r in
+                                  (self._compile(f) for f in idx.values()) if r]
+                self._all_sig = sig
+            return [dict(r) for r in self._all_recs]
 
     def machines(self, base):
         return [m for m, _p in self.shard_files(base)]
 
     # -- writing --------------------------------------------------------
-    def write(self, base, rec):
+    def write(self, base, rec, stamp=None):
         """Persist `rec` as this machine's shard of `base`.
 
         Only what actually changed since read() handed the record over is
         re-stamped. Everything else keeps the provenance it arrived with, so
         writing back a record you only partly edited cannot clobber a
         colleague's newer change, and cannot undo their deletion.
+
+        `stamp` is for a change that was made somewhere else and is only
+        being taken on here (`EventBank.absorb_live`): it keeps the time it
+        was made, so it cannot outrank a later change from a third machine.
+        A UTC ISO time with microseconds, as `_now` writes.
         """
         with _LOCK:
             sync = rec.pop("_sync", None) or {}
@@ -471,7 +598,7 @@ class Book:
 
             path = self.mine(base)
             prev = _read_json(path) or {}
-            at = _now()
+            at = stamp or _now()
 
             body = {k: v for k, v in rec.items() if k not in META}
             stamps = dict(prev.get("_at") or {})
@@ -520,8 +647,25 @@ class Book:
             if keys:
                 out["_keys"] = keys
             _write_json(path, out)
+            # Drop the compiled cache outright rather than trusting the
+            # directory stamp to have moved.
+            #
+            # The stamp is mtime and size, and Windows updates a file time
+            # from a system clock that ticks about every 15 ms -- the same
+            # tick `_now()` above works around. So a write that lands inside
+            # one tick AND happens to leave the file the same length is
+            # invisible to it, and a decision changed from one four-letter
+            # label to another does exactly that. Rare, and silent when it
+            # happens, which is the bad combination.
+            #
+            # Only this machine's writes go through here; a colleague's
+            # arrive by pull, where the stamp is reliable and this cannot
+            # help. So it closes the local window and leaves the remote one
+            # to the stamp, which is where it was already correct.
+            self._all_sig = None
             if self.store:
                 self.store._stage(path)
+            _changed(self)
             merged = self.read(base)
             return merged if merged is not None else rec
 
@@ -584,6 +728,33 @@ class Book:
                         self.store._stage(path)
                 except OSError:
                     pass
+            if gone:
+                _changed(self)
+            return gone
+
+    def erase_if(self, base, stale):
+        """Remove only the shards of `base` that `stale(shard)` picks.
+
+        For a deletion that must not take a later record with it. One base
+        can hold an old machine's copy of something deleted and a new
+        machine's copy of something started again under the same name, and
+        the merged record cannot tell them apart: FIRST hands it the oldest
+        shard's birth stamp. Each shard is judged on its own.
+        """
+        with _LOCK:
+            gone = 0
+            for _m, path in self.shard_files(base):
+                if not stale(_read_json(path) or {}):
+                    continue
+                try:
+                    os.remove(path)
+                    gone += 1
+                    if self.store:
+                        self.store._stage(path)
+                except OSError:
+                    pass
+            if gone:
+                _changed(self)
             return gone
 
     # -- migration ------------------------------------------------------
@@ -763,7 +934,7 @@ def _write_json(path, data):
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     # A private scratch name per process and per attempt. A shared
-    # "<name>.tmp" is contended: two BARRYs against the same GUI_logs -- one
+    # "<name>.tmp" is contended: two Jarviss against the same GUI_logs -- one
     # per person, or a stale one still running -- fight over it and one gets
     # "Permission denied" on a file it is perfectly entitled to write. Seen
     # in the wild on cloud_state.json.tmp.
@@ -780,7 +951,7 @@ def _write_json(path, data):
         raise
 
     # Windows refuses the rename if anything has the target open even for a
-    # moment -- an indexer, a backup agent, OneDrive, another BARRY. That is
+    # moment -- an indexer, a backup agent, OneDrive, another Jarvis. That is
     # transient, so it is retried rather than lost.
     last = None
     for attempt in range(6):

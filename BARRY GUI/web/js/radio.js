@@ -6,7 +6,7 @@
    do that loses the keyboard focus the mode depends on -- so the player is
    in here, minimised to a pill, out of the way.
 
-   The one thing in BARRY that reaches the internet
+   The one thing in Jarvis that reaches the internet
    ------------------------------------------------
    Everything else is local: the server binds to 127.0.0.1 and the README
    says nothing leaves the machine. A YouTube embed breaks that, so:
@@ -81,7 +81,7 @@ BARRY.radio = (function () {
     chip.title = on
       ? 'Radio on — ' + s.name + '. Click to turn it off.'
       : 'A radio to work to. Streams from YouTube, which is the only thing '
-        + 'in BARRY that leaves this machine.';
+        + 'in Jarvis that leaves this machine.';
     const label = chip.querySelector('span');
     if (label) label.textContent = on ? s.name : 'Radio';
   }
@@ -115,7 +115,7 @@ BARRY.radio = (function () {
     if (!agreed) {
       const ok = await BARRY.confirm(
         'Play a radio stream from YouTube?',
-        'This is the only part of BARRY that reaches the internet. '
+        'This is the only part of Jarvis that reaches the internet. '
         + 'Everything else runs against 127.0.0.1 and nothing leaves this '
         + 'machine — turning the radio on loads a player from '
         + 'youtube.com, which will see this machine’s address the way '
@@ -255,7 +255,7 @@ BARRY.radio = (function () {
       }),
       el('p', { class: 'radio-note' }, [
         el('span', { text: 'Streaming from youtube.com. Volume and playback '
-                         + 'are in the player; BARRY only decides whether it '
+                         + 'are in the player; Jarvis only decides whether it '
                          + 'is here at all. If it refuses to play, the '
                          + 'stream itself has usually ended — ' }),
         /* A way out of an error only YouTube can explain. Their embed

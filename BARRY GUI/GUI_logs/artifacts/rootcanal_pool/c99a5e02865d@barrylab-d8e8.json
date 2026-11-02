@@ -1,0 +1,564 @@
+{
+  "_at": {
+    "added": "2026-10-02T21:35:36.352660+00:00",
+    "deleted": "2026-10-02T21:35:36.352660+00:00",
+    "id": "2026-10-02T21:35:36.352660+00:00",
+    "kind": "2026-10-02T21:35:36.352660+00:00",
+    "name": "2026-10-02T21:35:36.352660+00:00",
+    "nickname": "2026-10-02T21:35:36.352660+00:00",
+    "schema": "2026-10-02T21:35:36.352660+00:00",
+    "subject": "2026-10-02T21:35:36.352660+00:00",
+    "subject_key": "2026-10-02T21:35:36.352660+00:00",
+    "version": "2026-10-02T21:35:36.352660+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "b54888399426": [
+        "set",
+        "2026-10-02T21:35:36.352660+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-02T21:35:36.352660+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-02T17:35:35-04:00",
+    "by": "Rain Younger",
+    "machine": "Strawbarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "c99a5e02865d",
+  "kind": "rootcanal_pool",
+  "name": "Root Canal pool \u00b7 PTEN \u00b7 18 recordings, 17 mice",
+  "nickname": "PTEN CNO All CTL & PTEN (No DKO)",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "gids": [
+      "s0a1cd99454b9",
+      "s0d29c92fef19",
+      "s110a7941c417",
+      "s1563f9c932bc",
+      "s5b932a8e933d",
+      "s81e818bd402d",
+      "s838980579a4b",
+      "s83ce541881d3",
+      "s8d50a361b096",
+      "s9a24ec997705",
+      "s9eb56573e0b4",
+      "sb00c1b34d80b",
+      "sddf3e5010ff2",
+      "se0695d94e768",
+      "se942a3f42a33",
+      "sec05b6b24732",
+      "sef04f3b4eb4d",
+      "sf357f48d27eb"
+    ],
+    "n_mice": 17,
+    "n_recordings": 18,
+    "name": "Root Canal pool \u00b7 PTEN \u00b7 18 recordings, 17 mice",
+    "pool_key": "5dc6b0352dec4279995feb45c5482659",
+    "projects": [
+      "PTEN"
+    ]
+  },
+  "subject_key": "rootcanal_pool|5dc6b0352dec4279995feb45c5482659",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.10.01.2",
+      "at": "2026-10-02T17:35:35-04:00",
+      "by": "Rain Younger",
+      "commit": null,
+      "digest": "d0adaae6f748",
+      "id": "b54888399426",
+      "inputs": [
+        {
+          "banked": false,
+          "entry_id": "5b468d0d40f5",
+          "key": "u:5b468d0d40f5:be2fd2d87a9c",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "be2fd2d87a9c",
+          "rows_digest": "78f17c7a2916"
+        },
+        {
+          "banked": false,
+          "entry_id": "acff04747da7",
+          "key": "u:acff04747da7:f078f24a403f",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "f078f24a403f",
+          "rows_digest": "cf24751101cf"
+        },
+        {
+          "banked": false,
+          "entry_id": "72f3eed667cd",
+          "key": "u:72f3eed667cd:c0c300acd334",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "c0c300acd334",
+          "rows_digest": "a7e91a29bcf9"
+        },
+        {
+          "banked": false,
+          "entry_id": "46ca2186d3a7",
+          "key": "u:46ca2186d3a7:49e19d164dc8",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "49e19d164dc8",
+          "rows_digest": "45942758d512"
+        },
+        {
+          "banked": false,
+          "entry_id": "d6cb3f9d6b68",
+          "key": "u:d6cb3f9d6b68:d53204b5be5c",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "d53204b5be5c",
+          "rows_digest": "9b694596283b"
+        },
+        {
+          "banked": false,
+          "entry_id": "0f4b3b8ac1a3",
+          "key": "u:0f4b3b8ac1a3:3653dc802af4",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "3653dc802af4",
+          "rows_digest": "db39e812f6a8"
+        },
+        {
+          "banked": false,
+          "entry_id": "d980fae07186",
+          "key": "u:d980fae07186:094dd4b8911b",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "094dd4b8911b",
+          "rows_digest": "5a59f565419e"
+        },
+        {
+          "banked": false,
+          "entry_id": "03adeaf1032e",
+          "key": "u:03adeaf1032e:c85bff1d9a2c",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "c85bff1d9a2c",
+          "rows_digest": "dfc7d0ea0219"
+        },
+        {
+          "banked": false,
+          "entry_id": "9bbeb68b5f35",
+          "key": "u:9bbeb68b5f35:62da7b9a586d",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "62da7b9a586d",
+          "rows_digest": "9b5e55a09810"
+        },
+        {
+          "banked": false,
+          "entry_id": "8fc4e2c68124",
+          "key": "u:8fc4e2c68124:3c022fdb7cbf",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "3c022fdb7cbf",
+          "rows_digest": "adbdf28cb756"
+        },
+        {
+          "banked": false,
+          "entry_id": "7d5fa32206b4",
+          "key": "u:7d5fa32206b4:82f667c6b2b2",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "82f667c6b2b2",
+          "rows_digest": "c7b4699867ec"
+        },
+        {
+          "banked": false,
+          "entry_id": "572f9942ffcc",
+          "key": "u:572f9942ffcc:b424da313519",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "b424da313519",
+          "rows_digest": "08bf7224a7eb"
+        },
+        {
+          "banked": false,
+          "entry_id": "900c7dc74289",
+          "key": "u:900c7dc74289:8c76ff335e7e",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "8c76ff335e7e",
+          "rows_digest": "6ada36eb1e7d"
+        },
+        {
+          "banked": false,
+          "entry_id": "e73ccb52bcb0",
+          "key": "u:e73ccb52bcb0:0375eeacac60",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "0375eeacac60",
+          "rows_digest": "09cfe6625d44"
+        },
+        {
+          "banked": false,
+          "entry_id": "3fc6bf1e2588",
+          "key": "u:3fc6bf1e2588:8ddf80324321",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "8ddf80324321",
+          "rows_digest": "468f333e410f"
+        },
+        {
+          "banked": false,
+          "entry_id": "986752ab1974",
+          "key": "u:986752ab1974:2e37a28135f5",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "2e37a28135f5",
+          "rows_digest": "5e7c4770700b"
+        },
+        {
+          "banked": false,
+          "entry_id": "b2e39287f096",
+          "key": "u:b2e39287f096:b0ed9ccfab3e",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "b0ed9ccfab3e",
+          "rows_digest": "7ea39a4af992"
+        },
+        {
+          "banked": false,
+          "entry_id": "87884241ed99",
+          "key": "u:87884241ed99:761d1e04c77e",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "761d1e04c77e",
+          "rows_digest": "57eb4628be9e"
+        }
+      ],
+      "machine": "Strawbarry",
+      "n_summary": {
+        "delta_bic": 1872.6193850740092,
+        "events": 5037,
+        "members": 18,
+        "mice": 17,
+        "switch_rate": 0.1816557474687314,
+        "unbanked": 18
+      },
+      "note": null,
+      "params": {
+        "band": [
+          500.0,
+          1000.0
+        ],
+        "dbic_scale": [
+          [
+            2.0,
+            "no support for two groups"
+          ],
+          [
+            6.0,
+            "positive support for two groups"
+          ],
+          [
+            10.0,
+            "strong support for two groups"
+          ],
+          [
+            null,
+            "very strong support for two groups"
+          ]
+        ],
+        "gmm": {
+          "compare": [
+            1,
+            2
+          ],
+          "covariance": "full",
+          "min_n": 20,
+          "n_init": 5,
+          "random_state": 0
+        },
+        "k": 2,
+        "n_init": 10,
+        "random_state": 0,
+        "scale": "pooled raw"
+      },
+      "params_hash": "0ffe3a8a575f",
+      "v": 1
+    }
+  ]
+}

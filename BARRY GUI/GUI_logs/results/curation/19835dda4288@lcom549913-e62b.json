@@ -1,0 +1,26 @@
+{
+  "_at": {
+    "key": "2026-09-18T18:04:35.470930+00:00",
+    "rel": "2026-09-18T18:04:35.470930+00:00",
+    "starred": "2026-09-18T18:04:35.470930+00:00",
+    "updated": "2026-09-18T18:04:35.470930+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-18T18:04:35.470930+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "key": "panorama/pten_m1_s8_2023-10-05_csc1_panorama_20260918_140413_psd.csv",
+  "rel": "Panorama/PTEN_m1_s8_2023-10-05_CSC1_panorama_20260918_140413_psd.csv",
+  "starred": false,
+  "updated": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T14:04:35-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

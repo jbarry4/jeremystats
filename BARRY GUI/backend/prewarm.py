@@ -72,7 +72,9 @@ def key_for(session, spec):
     clean = {k: v for k, v in (spec or {}).items()
              if k not in _IGNORE and not k.startswith("_")}
     blob = json.dumps(
-        [session.get("path"), session.get("even_only"), clean],
+        # `False` where whether it was an even-only read used to be: the
+        # read is always every channel now, and a constant keeps old keys.
+        [session.get("path"), False, clean],
         sort_keys=True, default=str)
     return hashlib.sha1(blob.encode("utf-8")).hexdigest()
 
@@ -93,8 +95,25 @@ def get(session, spec):
             _STATS["miss"] += 1
             return None
         _CACHE.move_to_end(k)            # least-recently-used at the front
+        # Used now: the shared budget (membudget) drops the oldest-used
+        # entry across every cache, so "used" has to mean used.
+        _CACHE[k] = (hit[0], hit[1], time.time())
         _STATS["hit"] += 1
         return hit[0]
+
+
+def budget_items():
+    """For backend/membudget.py: (key, bytes, last used) of every panel."""
+    with _LOCK:
+        return [(k, v[1], v[2]) for k, v in _CACHE.items()]
+
+
+def budget_drop(key):
+    with _LOCK:
+        v = _CACHE.pop(key, None)
+        if v is not None:
+            _BYTES[0] -= v[1]
+            _STATS["evicted"] += 1
 
 
 def put(session, spec, payload):
@@ -188,6 +207,12 @@ def request(session, specs, supersede=True):
     useful -- moving to a different recording, or changing the filters,
     invalidates every window that was waiting.
     """
+    # Nothing is drawn ahead off the cluster. Each render there is a full-rate
+    # read on a login node somebody else is also using, and a speculative one
+    # would also sit in front of the window actually asked for on the one
+    # link. A recording read off the cluster draws each window when shown.
+    if (session or {}).get("source") == "vacc":
+        return 0
     _ensure_worker()
     queued = 0
     with _QUEUE_CV:

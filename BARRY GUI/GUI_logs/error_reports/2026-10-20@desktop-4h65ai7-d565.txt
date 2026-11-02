@@ -1,0 +1,420 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-10-20
+computer    Bluebarry (desktop-4h65ai7-d565)
+person      Shahriar Tafti
+build       2026.10.21.2 9f425ed1
+written     2026-10-21T14:29:48-04:00
+faults      10 error(s), 5 distinct
+left out    117 test fault(s) (harness pages, the test client)
+activity    1421 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x1    14:55:23-14:55:23  rootcanal/commit: The read on file holds 431 events and this version has 243, so they are not the same set. Read it again.
+  2. x2    12:04:53-14:26:10  doppler/estimate: Nothing is left to read in CSC9000 to CSC9001: every channel there is marked bad, or this recording has none. Widen the range.
+  3. x3    11:57:01-12:19:24  rootcanal/pool-fit: The border hb-1 is not on this machine.
+  4. x3    11:56:18-12:18:52  rootcanal/pool-fit: The border hb-other is not on this machine.
+  5. x1    11:12:30-11:12:30  rootcanal/pool-fit: A margin is named by its artifact id (and optionally a version and a mode).
+
+==========================================================================
+1/5  rootcanal/commit  x1
+==========================================================================
+first       2026-10-20T14:55:23-04:00
+latest      2026-10-20T14:55:23-04:00
+who         Shahriar Tafti
+signature   rootcanal/commit||The read on file holds N events and this version has N, so they are not the same set. Read it again.
+
+message
+    The read on file holds 431 events and this version has 243, so they are not the same set. Read it again.
+
+context
+    entry_id           46fd29a77cc7
+    from_version       null
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 9978, in api_rootcanal_commit
+        so. `written` reports which of the two writes happened.
+                                       ^^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 9223, in _rootcanal_setup
+                "change after that is instant.")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ...<2 lines>...
+            raise rootcanal.RootCanalError(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    backend.rootcanal.RootCanalError: The read on file holds 431 events and this version has 243, so they are not the same set. Read it again.
+
+--- around 2026-10-20T14:55:23-04:00 ---
+    14:50:43   -279.6s  rootcanal.open_from_batch  [toolkit]  {"entry":"93cf98061019"}
+    14:51:14   -249.0s  rootcanal.commit  {"ds_version":"9","entry":"93cf98061019","from_version":null,"ied_entry":"d762c0086b74","kept":31,"read":"d6f9949f9a83","removed":29}
+    14:51:17   -245.5s  rootcanal.commit  [toolkit]  {"ds_version":"9","entry":"93cf98061019","gid":"sd0d0bded958b","ied_entry":"d762c0086b74","kept":31,"removed":29}
+    14:51:24   -238.7s  rootcanal.open_from_batch  [toolkit]  {"entry":"852640a8846a"}
+    14:51:34   -229.0s  rootcanal.commit  {"ds_version":"18","entry":"852640a8846a","from_version":null,"ied_entry":"c3281ad8b703","kept":33,"read":"416ff3701c57","removed":50}
+    14:51:37   -225.2s  rootcanal.commit  [toolkit]  {"ds_version":"18","entry":"852640a8846a","gid":"s45bae70722f2","ied_entry":"c3281ad8b703","kept":33,"removed":50}
+    14:51:42   -220.2s  rootcanal.open_from_batch  [toolkit]  {"entry":"eb879cc295c6"}
+    14:52:20   -183.0s  rootcanal.commit  {"ds_version":"8","entry":"eb879cc295c6","from_version":null,"ied_entry":"e43121bb53ae","kept":553,"read":"5e5199e5856b","removed":217}
+    14:52:23   -179.7s  rootcanal.commit  [toolkit]  {"ds_version":"8","entry":"eb879cc295c6","gid":"sc74c98b2495d","ied_entry":"e43121bb53ae","kept":553,"removed":217}
+    14:52:37   -166.0s  rootcanal.open_from_batch  [toolkit]  {"entry":"852640a8846a"}
+    14:52:43   -159.0s  rootcanal.open_from_batch  [toolkit]  {"entry":"93cf98061019"}
+    14:52:50   -152.3s  rootcanal.open_from_batch  [toolkit]  {"entry":"66a070f2749d"}
+    14:53:08   -135.0s  rootcanal.commit  {"ds_version":"11","entry":"66a070f2749d","from_version":null,"ied_entry":"8d69ec89ed02","kept":35,"read":"0a208d5e9ac2","removed":32}
+    14:53:11   -131.4s  rootcanal.commit  [toolkit]  {"ds_version":"11","entry":"66a070f2749d","gid":"s500a5aec223e","ied_entry":"8d69ec89ed02","kept":35,"removed":32}
+    14:53:20   -122.4s  rootcanal.open_from_batch  [toolkit]  {"entry":"7e31c748f710"}
+    14:53:41   -102.0s  rootcanal.commit  {"ds_version":"10","entry":"7e31c748f710","from_version":null,"ied_entry":"2d280ee6126d","kept":77,"read":"c454852eb54a","removed":147}
+    14:53:43    -99.0s  rootcanal.commit  [toolkit]  {"ds_version":"10","entry":"7e31c748f710","gid":"sba57286bdee3","ied_entry":"2d280ee6126d","kept":77,"removed":147}
+    14:53:53    -89.6s  rootcanal.open_from_batch  [toolkit]  {"entry":"46fd29a77cc7"}
+    14:54:14    -69.0s  rootcanal.commit  {"ds_version":"9","entry":"46fd29a77cc7","from_version":null,"ied_entry":"aa63b568bddb","kept":243,"read":"3c855c001a2f","removed":188}
+    14:54:17    -65.6s  rootcanal.commit  [toolkit]  {"ds_version":"9","entry":"46fd29a77cc7","gid":"s38b9e61c5684","ied_entry":"aa63b568bddb","kept":243,"removed":188}
+    14:55:23     +0.0s  >>> rootcanal/commit: The read on file holds 431 events and this version has 243, so they are not the same set. Read it again.
+
+==========================================================================
+2/5  doppler/estimate  x2
+==========================================================================
+first       2026-10-20T12:04:53-04:00
+latest      2026-10-20T14:26:10-04:00
+who         Shahriar Tafti
+signature   doppler/estimate||Nothing is left to read in CSCN to CSCN: every channel there is marked bad, or this recording has none. Widen the range.
+
+message
+    Nothing is left to read in CSC9000 to CSC9001: every channel there is marked bad, or this recording has none. Widen the range.
+
+context
+    path               D:\KCNT1\urethane\hom\KCNTM2_homRQ\KCNTM2_S1_03182022\2022-03-18_15-22-43
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 5275, in api_doppler_estimate
+        spec = _doppler_spec(body, sess)
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 5226, in _doppler_spec
+        raise ValueError(
+        ...<2 lines>...
+            "range." % (rng[0], rng[1]))
+    ValueError: Nothing is left to read in CSC9000 to CSC9001: every channel there is marked bad, or this recording has none. Widen the range.
+
+--- around 2026-10-20T12:04:53-04:00 ---
+    12:01:22   -210.5s  link.scope  [toolkit]  {"scope":"session"}
+    12:01:27   -205.1s  rootcanal.retry  [toolkit]  {"gid":"s38b9e61c5684","n":2}
+    12:01:29   -203.9s  rootcanal.flip  [toolkit]  {"gid":"s38b9e61c5684","i":0,"to":"ds"}
+    12:01:29   -203.7s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[-0.33985996476410435,0.46030783910635875,0.224032604823047]}
+    12:01:29   -203.3s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[0.008068558688145119,0.16030783910635873,0.09503082830482269]}
+    12:01:33   -199.2s  rootcanal.single_save  [toolkit]  {"artifact":"harness-single","confirmed":false,"entry":"46fd29a77cc7","version":3}
+    12:01:34   -198.9s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":false,"version":1}
+    12:01:34   -198.5s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":true,"version":2}
+    12:01:34   -198.2s  rootcanal.stats  [toolkit]  {"level":"single","n":120,"tests":["sigclust","stability","gmm"],"verdict":"could be forced"}
+    12:04:11    -42.0s  link.scope  [pipeline]  {"scope":"session"}
+    12:04:34    -18.7s  link.scope  [pipeline]  {"scope":"session"}
+    12:04:53     +0.0s  >>> doppler/estimate: Nothing is left to read in CSC9000 to CSC9001: every channel there is marked bad, or this recording has none. Widen the range.
+    12:05:01     +8.6s  link.scope  [pipeline]  {"scope":"session"}
+    12:05:03    +10.4s  link.scope  [toolkit]  {"scope":"session"}
+    12:05:08    +15.8s  rootcanal.retry  [toolkit]  {"gid":"s38b9e61c5684","n":2}
+    12:05:10    +17.0s  rootcanal.flip  [toolkit]  {"gid":"s38b9e61c5684","i":0,"to":"ds"}
+    12:05:10    +17.3s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[-0.33985996476410435,0.46030783910635875,0.224032604823047]}
+    12:05:10    +17.6s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[0.008068558688145119,0.16030783910635873,0.09503082830482269]}
+    12:05:14    +21.8s  rootcanal.single_save  [toolkit]  {"artifact":"harness-single","confirmed":false,"entry":"46fd29a77cc7","version":3}
+    12:05:15    +22.1s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":false,"version":1}
+    12:05:15    +22.5s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":true,"version":2}
+    12:05:15    +22.8s  rootcanal.stats  [toolkit]  {"level":"single","n":120,"tests":["sigclust","stability","gmm"],"verdict":"could be forced"}
+    12:05:25    +32.4s  link.scope  [pipeline]  {"scope":"session"}
+    12:06:05    +72.7s  link.scope  [pipeline]  {"scope":"session"}
+    12:06:10    +77.2s  link.scope  [pipeline]  {"scope":"session"}
+    12:06:11    +78.1s  session.open  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"channels":128,"duration_s":925.6277333333334,"fs":30000,"path":"D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43","restored":["4 bad channel(s)","view restored"]}
+    12:06:11    +78.1s  events.import  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    (40 later action(s) in the window not shown)
+
+--- around 2026-10-20T14:26:10-04:00 ---
+    14:21:16   -294.0s  rootcanal.batch  {"force":false,"n":9}
+    14:21:32   -277.9s  rootcanal.open_from_batch  [toolkit]  {"entry":"841aad39cfff"}
+    14:22:23   -227.0s  rootcanal.commit  {"ds_version":"11","entry":"841aad39cfff","from_version":null,"ied_entry":null,"kept":51,"read":"fd3eecdb78a0","removed":0}
+    14:22:27   -222.3s  rootcanal.commit  [toolkit]  {"ds_version":"11","entry":"841aad39cfff","gid":"s79ba9ba163c4","ied_entry":null,"kept":51,"removed":0}
+    14:23:15   -174.3s  rootcanal.open_from_batch  [toolkit]  {"entry":"3fc6bf1e2588"}
+    14:23:41   -148.1s  link.scope  [pipeline]  {"scope":"session"}
+    14:24:47    -83.0s  rootcanal.commit  {"ds_version":"8","entry":"3fc6bf1e2588","from_version":null,"ied_entry":null,"kept":174,"read":"cdfcb2512f96","removed":0}
+    14:24:52    -77.8s  link.scope  [pipeline]  {"scope":"session"}
+    14:25:08    -62.0s  rootcanal.commit  {"ds_version":"8","entry":"3fc6bf1e2588","from_version":null,"ied_entry":null,"kept":174,"read":"cdfcb2512f96","removed":0}
+    14:25:29    -40.0s  link.scope  [pipeline]  {"scope":"session"}
+    14:25:30    -39.5s  rootcanal.open_from_batch  [toolkit]  {"entry":"841aad39cfff"}
+    14:25:46    -23.0s  link.scope  [pipeline]  {"scope":"session"}
+    14:25:54    -16.0s  rootcanal.commit  {"ds_version":"11","entry":"841aad39cfff","from_version":null,"ied_entry":null,"kept":53,"read":"fd3eecdb78a0","removed":0}
+    14:26:10     +0.0s  >>> doppler/estimate: Nothing is left to read in CSC9000 to CSC9001: every channel there is marked bad, or this recording has none. Widen the range.
+    14:26:40    +30.4s  link.scope  [pipeline]  {"scope":"session"}
+    14:26:43    +33.1s  session.open  [toolkit]  rec=m002_s002_2022-03-18_15-38-40  {"channels":128,"duration_s":2210.7648,"fs":30000,"path":"D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S2_03182022\\2022-03-18_15-38-40","restored":["65 bad channel(s)","view restored"]}
+    14:26:43    +33.2s  events.import  [toolkit]  rec=m002_s002_2022-03-18_15-38-40  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+
+==========================================================================
+3/5  rootcanal/pool-fit  x3
+==========================================================================
+first       2026-10-20T11:57:01-04:00
+latest      2026-10-20T12:19:24-04:00
+who         Shahriar Tafti
+signature   rootcanal/pool-fit||The border hb-N is not on this machine.
+
+message
+    The border hb-1 is not on this machine.
+
+context
+    members            ["u:c0e55458531c:39c1c9f64a2c","u:39d439a95f7c:54775b49c294","u:841aad39cfff:01a913aa64df"]
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 11703, in api_rootcanal_pool_fit
+        _members, res = _rootcanal_pool_fit(body)
+                        ~~~~~~~~~~~~~~~~~~~^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 11683, in _rootcanal_pool_fit
+        _rootcanal_border_on(res, body.get("border"),
+        ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+                             (res.get("params") or {}).get("measure"))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 13443, in _rootcanal_border_on
+        pay, used = _rootcanal_border_load(ref)
+                    ~~~~~~~~~~~~~~~~~~~~~~^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 13410, in _rootcanal_border_load
+        raise rcborder.BorderError(
+            "The border %s is not on this machine." % aid)
+    backend.rcborder.BorderError: The border hb-1 is not on this machine.
+
+--- around 2026-10-20T11:57:01-04:00 ---
+    11:54:23   -157.1s  link.scope  [pipeline]  {"scope":"session"}
+    11:54:50   -130.4s  link.scope  [toolkit]  {"scope":"session"}
+    11:54:55   -125.0s  rootcanal.retry  [toolkit]  {"gid":"s38b9e61c5684","n":2}
+    11:54:57   -123.8s  rootcanal.flip  [toolkit]  {"gid":"s38b9e61c5684","i":0,"to":"ds"}
+    11:54:57   -123.6s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[-0.33985996476410435,0.46030783910635875,0.224032604823047]}
+    11:54:57   -123.2s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[0.008068558688145119,0.16030783910635873,0.09503082830482269]}
+    11:55:01   -119.1s  rootcanal.single_save  [toolkit]  {"artifact":"harness-single","confirmed":false,"entry":"46fd29a77cc7","version":3}
+    11:55:02   -118.8s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":false,"version":1}
+    11:55:02   -118.4s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":true,"version":2}
+    11:55:02   -118.0s  rootcanal.stats  [toolkit]  {"level":"single","n":120,"tests":["sigclust","stability","gmm"],"verdict":"could be forced"}
+    11:57:01     +0.0s  >>> rootcanal/pool-fit: The border hb-1 is not on this machine.
+    11:57:38    +37.9s  link.scope  [pipeline]  {"scope":"session"}
+
+--- around 2026-10-20T12:07:52-04:00 ---
+    (70 earlier action(s) in the window not shown; the nearest 30 are)
+    12:07:26    -26.0s  bank.delete  {"id":"89cdfc111750"}
+    12:07:26    -26.0s  bank.delete  {"id":"15e625c4c700"}
+    12:07:26    -26.0s  bank.delete  {"id":"7fc12f5d3c29"}
+    12:07:26    -26.0s  bank.delete  {"id":"da6b6ea55fea"}
+    12:07:26    -26.0s  bank.delete  {"id":"a31890bdd9e5"}
+    12:07:27    -25.0s  bank.delete  {"id":"e5229f7ab59e"}
+    12:07:27    -25.0s  bank.delete  {"id":"d4dbe67cdbb9"}
+    12:07:27    -25.0s  bank.delete  {"id":"4308f4deeb1d"}
+    12:07:27    -25.0s  bank.delete  {"id":"5ea07d4232f4"}
+    12:07:27    -25.0s  bank.delete  {"id":"eac34ad5b82b"}
+    12:07:27    -25.0s  bank.delete  {"id":"afbb570bde0a"}
+    12:07:27    -25.0s  bank.delete  {"id":"9af5b78e55ae"}
+    12:07:27    -25.0s  bank.delete  {"id":"131ad0f526b0"}
+    12:07:27    -25.0s  bank.delete  {"id":"54280d0fcbda"}
+    12:07:27    -25.0s  bank.delete  {"id":"e601e2d528b3"}
+    12:07:27    -25.0s  bank.delete  {"id":"723444ba9ebd"}
+    12:07:27    -25.0s  bank.delete  {"id":"cb4a7bc5d4fc"}
+    12:07:28    -24.0s  bank.delete  {"id":"7c48116e9228"}
+    12:07:28    -24.0s  bank.delete  {"id":"1c2e6de91123"}
+    12:07:28    -24.0s  bank.delete  {"id":"16b8d1b614a8"}
+    12:07:28    -24.0s  bank.delete  {"id":"415ed8155829"}
+    12:07:28    -24.0s  bank.delete  {"id":"823638f57f5c"}
+    12:07:28    -24.0s  bank.delete  {"id":"d413fdf459a6"}
+    12:07:28    -24.0s  bank.delete  {"id":"ec2b047d0283"}
+    12:07:28    -24.0s  bank.delete  {"id":"fe4f07bccd74"}
+    12:07:29    -23.0s  bank.add  {"id":"e54dd62ed2b7","mouse":99,"n":3,"pipeline":"The Arc · Spark · harness","project":"HARNESS","session":1,"type":"ttl"}
+    12:07:34    -18.0s  bank.delete  {"id":"e54dd62ed2b7"}
+    12:07:37    -15.0s  bank.add  {"id":"d576ece78ee8","mouse":99,"n":3,"pipeline":"The Arc · Spark · harness","project":"HARNESS","session":2,"type":"ttl"}
+    12:07:41    -11.0s  bank.delete  {"id":"d576ece78ee8"}
+    12:07:44     -8.0s  bank.delete  {"id":"aa0672f0e455"}
+    12:07:52     +0.0s  >>> rootcanal/pool-fit: The border hb-1 is not on this machine.
+    12:08:00     +8.2s  link.scope  [pipeline]  {"scope":"session"}
+    12:08:00     +8.8s  session.open  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"channels":128,"duration_s":925.6277333333334,"fs":30000,"path":"D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43","restored":["4 bad channel(s)","view restored"]}
+    12:08:00     +8.8s  events.import  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    12:08:02    +10.8s  events.import  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"file":"import","n":40,"total":42,"units":"seconds"}
+    12:08:13    +21.0s  bank.add  rec=m002_s001_2022-03-18_15-22-43  {"id":"6390caadfd76","mouse":2,"n":40,"pipeline":"harness: bankback","project":"KCNT1","session":1,"type":"spike"}
+    12:08:35    +43.0s  bank.delete  {"id":"6390caadfd76"}
+    12:08:47    +55.3s  link.scope  [pipeline]  {"scope":"session"}
+    12:08:52    +60.6s  link.scope  [pipeline]  {"scope":"session"}
+    12:09:22    +90.2s  link.scope  [pipeline]  {"scope":"session"}
+    12:09:28    +96.9s  session.open  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"channels":128,"duration_s":925.6277333333334,"fs":30000,"path":"D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43","restored":["4 bad channel(s)","view restored"]}
+    12:09:28    +96.9s  events.import  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    12:09:29    +97.4s  session.open  [xplore]  rec=m002_s002_2022-03-18_15-38-40  {"channels":128,"duration_s":2210.7648,"fs":30000,"path":"D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S2_03182022\\2022-03-18_15-38-40","restored":["65 bad channel(s)","view restored"]}
+    12:09:29    +97.4s  events.import  [xplore]  rec=m002_s002_2022-03-18_15-38-40  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    12:09:29    +97.9s  session.open  [xplore]  rec=m002_s003_2022-03-18_16-19-08  {"channels":128,"duration_s":115.9168,"fs":30000,"path":"D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S3_03182022\\2022-03-18_16-19-08","restored":["1 bad channel(s)","view restored"]}
+    12:09:29    +97.9s  probe.layout  [xplore]  rec=m002_s003_2022-03-18_16-19-08  {"columns":[64,64],"panel":"traces","probe":"dual"}
+    (18 later action(s) in the window not shown)
+
+--- around 2026-10-20T12:19:24-04:00 ---
+    12:14:28   -295.2s  rootcanal.retry  [toolkit]  {"gid":"s38b9e61c5684","n":2}
+    12:14:30   -294.0s  rootcanal.flip  [toolkit]  {"gid":"s38b9e61c5684","i":0,"to":"ds"}
+    12:14:30   -293.7s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[-0.33985996476410435,0.46030783910635875,0.224032604823047]}
+    12:14:30   -293.3s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[0.008068558688145119,0.16030783910635873,0.09503082830482269]}
+    12:14:34   -289.2s  rootcanal.single_save  [toolkit]  {"artifact":"harness-single","confirmed":false,"entry":"46fd29a77cc7","version":3}
+    12:14:35   -289.0s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":false,"version":1}
+    12:14:35   -288.6s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":true,"version":2}
+    12:14:35   -288.2s  rootcanal.stats  [toolkit]  {"level":"single","n":120,"tests":["sigclust","stability","gmm"],"verdict":"could be forced"}
+    12:18:10    -73.2s  link.scope  [pipeline]  {"scope":"session"}
+    12:19:24     +0.0s  >>> rootcanal/pool-fit: The border hb-1 is not on this machine.
+
+==========================================================================
+4/5  rootcanal/pool-fit  x3
+==========================================================================
+first       2026-10-20T11:56:18-04:00
+latest      2026-10-20T12:18:52-04:00
+who         Shahriar Tafti
+signature   rootcanal/pool-fit||The border hb-other is not on this machine.
+
+message
+    The border hb-other is not on this machine.
+
+context
+    members            ["u:3fc6bf1e2588:8ddf80324321","u:7d5fa32206b4:82f667c6b2b2","u:46ca2186d3a7:49e19d164dc8"]
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 11703, in api_rootcanal_pool_fit
+        _members, res = _rootcanal_pool_fit(body)
+                        ~~~~~~~~~~~~~~~~~~~^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 11683, in _rootcanal_pool_fit
+        _rootcanal_border_on(res, body.get("border"),
+        ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+                             (res.get("params") or {}).get("measure"))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 13443, in _rootcanal_border_on
+        pay, used = _rootcanal_border_load(ref)
+                    ~~~~~~~~~~~~~~~~~~~~~~^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 13410, in _rootcanal_border_load
+        raise rcborder.BorderError(
+            "The border %s is not on this machine." % aid)
+    backend.rcborder.BorderError: The border hb-other is not on this machine.
+
+--- around 2026-10-20T11:56:18-04:00 ---
+    11:51:32   -285.7s  link.scope  [pipeline]  {"scope":"session"}
+    11:54:23   -114.1s  link.scope  [pipeline]  {"scope":"session"}
+    11:54:50    -87.4s  link.scope  [toolkit]  {"scope":"session"}
+    11:54:55    -82.0s  rootcanal.retry  [toolkit]  {"gid":"s38b9e61c5684","n":2}
+    11:54:57    -80.8s  rootcanal.flip  [toolkit]  {"gid":"s38b9e61c5684","i":0,"to":"ds"}
+    11:54:57    -80.6s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[-0.33985996476410435,0.46030783910635875,0.224032604823047]}
+    11:54:57    -80.2s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[0.008068558688145119,0.16030783910635873,0.09503082830482269]}
+    11:55:01    -76.1s  rootcanal.single_save  [toolkit]  {"artifact":"harness-single","confirmed":false,"entry":"46fd29a77cc7","version":3}
+    11:55:02    -75.8s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":false,"version":1}
+    11:55:02    -75.4s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":true,"version":2}
+    11:55:02    -75.0s  rootcanal.stats  [toolkit]  {"level":"single","n":120,"tests":["sigclust","stability","gmm"],"verdict":"could be forced"}
+    11:56:18     +0.0s  >>> rootcanal/pool-fit: The border hb-other is not on this machine.
+    11:57:38    +80.9s  link.scope  [pipeline]  {"scope":"session"}
+
+--- around 2026-10-20T12:06:45-04:00 ---
+    12:04:11   -154.0s  link.scope  [pipeline]  {"scope":"session"}
+    12:04:34   -130.7s  link.scope  [pipeline]  {"scope":"session"}
+    12:05:01   -103.4s  link.scope  [pipeline]  {"scope":"session"}
+    12:05:03   -101.6s  link.scope  [toolkit]  {"scope":"session"}
+    12:05:08    -96.2s  rootcanal.retry  [toolkit]  {"gid":"s38b9e61c5684","n":2}
+    12:05:10    -95.0s  rootcanal.flip  [toolkit]  {"gid":"s38b9e61c5684","i":0,"to":"ds"}
+    12:05:10    -94.7s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[-0.33985996476410435,0.46030783910635875,0.224032604823047]}
+    12:05:10    -94.4s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[0.008068558688145119,0.16030783910635873,0.09503082830482269]}
+    12:05:14    -90.2s  rootcanal.single_save  [toolkit]  {"artifact":"harness-single","confirmed":false,"entry":"46fd29a77cc7","version":3}
+    12:05:15    -89.9s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":false,"version":1}
+    12:05:15    -89.5s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":true,"version":2}
+    12:05:15    -89.2s  rootcanal.stats  [toolkit]  {"level":"single","n":120,"tests":["sigclust","stability","gmm"],"verdict":"could be forced"}
+    12:05:25    -79.6s  link.scope  [pipeline]  {"scope":"session"}
+    12:06:05    -39.3s  link.scope  [pipeline]  {"scope":"session"}
+    12:06:10    -34.8s  link.scope  [pipeline]  {"scope":"session"}
+    12:06:11    -33.9s  session.open  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"channels":128,"duration_s":925.6277333333334,"fs":30000,"path":"D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S1_03182022\\2022-03-18_15-22-43","restored":["4 bad channel(s)","view restored"]}
+    12:06:11    -33.9s  events.import  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"auto":true,"file":"Events.nev","n":2,"relative_to":"recording","source":"nev"}
+    12:06:17    -27.3s  bank.add  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"entries":1,"n":1}
+    12:06:20    -24.8s  events.import  [xplore]  rec=m002_s001_2022-03-18_15-22-43  {"file":"import","n":1,"total":3,"units":"seconds"}
+    12:06:32    -13.0s  bank.add  {"id":"aa0672f0e455","mouse":99,"n":2,"pipeline":"harness: seed","project":"HARNESS","session":1,"type":"ied"}
+    12:06:45     +0.0s  >>> rootcanal/pool-fit: The border hb-other is not on this machine.
+    12:06:46     +1.0s  bank.delete  {"id":"99d72400ff27"}
+    12:06:46     +1.0s  bank.delete  {"id":"a91999a35992"}
+    12:06:46     +1.0s  bank.delete  {"id":"8fb1c58db20d"}
+    12:06:46     +1.0s  bank.delete  {"id":"ea75e8047d4a"}
+    12:06:46     +1.0s  bank.delete  {"id":"fc544ee44fda"}
+    12:06:46     +1.0s  bank.delete  {"id":"3c68c60d40ff"}
+    12:06:46     +1.0s  bank.delete  {"id":"58fdc59d059d"}
+    12:06:46     +1.0s  bank.delete  {"id":"7291ef96b924"}
+    12:06:47     +2.0s  bank.delete  {"id":"93972269d668"}
+    12:06:47     +2.0s  bank.delete  {"id":"42ec4fdc7c20"}
+    12:06:47     +2.0s  bank.delete  {"id":"2ed9621fad3c"}
+    12:06:48     +3.0s  bank.delete  {"id":"89cdfc111750"}
+    12:06:48     +3.0s  bank.delete  {"id":"15e625c4c700"}
+    12:06:48     +3.0s  bank.delete  {"id":"7fc12f5d3c29"}
+    12:06:48     +3.0s  bank.delete  {"id":"da6b6ea55fea"}
+    (71 later action(s) in the window not shown)
+
+--- around 2026-10-20T12:18:52-04:00 ---
+    12:14:03   -288.3s  link.scope  [pipeline]  {"scope":"session"}
+    12:14:11   -281.0s  vacc.signout  {"netid":"sakhava1"}
+    12:14:12   -280.0s  vacc.signin  {"key_was_there":true,"made_key":false,"netid":"sakhava1","refused_first":[]}
+    12:14:23   -268.6s  link.scope  [toolkit]  {"scope":"session"}
+    12:14:28   -263.2s  rootcanal.retry  [toolkit]  {"gid":"s38b9e61c5684","n":2}
+    12:14:30   -262.0s  rootcanal.flip  [toolkit]  {"gid":"s38b9e61c5684","i":0,"to":"ds"}
+    12:14:30   -261.7s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[-0.33985996476410435,0.46030783910635875,0.224032604823047]}
+    12:14:30   -261.3s  rootcanal.centre  [toolkit]  {"gid":"s38b9e61c5684","k":0,"z":[0.008068558688145119,0.16030783910635873,0.09503082830482269]}
+    12:14:34   -257.2s  rootcanal.single_save  [toolkit]  {"artifact":"harness-single","confirmed":false,"entry":"46fd29a77cc7","version":3}
+    12:14:35   -257.0s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":false,"version":1}
+    12:14:35   -256.6s  rootcanal.single_open  [toolkit]  {"artifact":"harness-single","here":true,"version":2}
+    12:14:35   -256.2s  rootcanal.stats  [toolkit]  {"level":"single","n":120,"tests":["sigclust","stability","gmm"],"verdict":"could be forced"}
+    12:18:10    -41.2s  link.scope  [pipeline]  {"scope":"session"}
+    12:18:52     +0.0s  >>> rootcanal/pool-fit: The border hb-other is not on this machine.
+
+==========================================================================
+5/5  rootcanal/pool-fit  x1
+==========================================================================
+first       2026-10-20T11:12:30-04:00
+latest      2026-10-20T11:12:30-04:00
+who         Shahriar Tafti
+signature   rootcanal/pool-fit||A margin is named by its artifact id (and optionally a version and a mode).
+
+message
+    A margin is named by its artifact id (and optionally a version and a mode).
+
+context
+    members            ["u:841aad39cfff:01a913aa64df","u:c0e55458531c:39c1c9f64a2c","u:af587732a900:6182a80d3639","u:39d439a95f7c:54775b49c294","u:6a2ade1040d3:5cdb0ebe287f","u:dbf2676df67a:f90c134c439d","u:3fc6bf1e2588:8ddf80324321","u:adc84ab8c916:b2c0380f768b","u:9b801cb6e235:45397eaf12a2"]
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 11224, in api_rootcanal_pool_fit
+        body = request.get_json(force=True) or {}
+                            ^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 11145, in _rootcanal_pool_fit
+                                          saved=body.get("saved"))
+        ...<2 lines>...
+                              cluster_calls=body.get("cluster_calls"),
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\rootcanal.py", line 452, in __init__
+        raise RootCanalError(
+            "A margin is named by its artifact id (and optionally a "
+            "version and a mode).")
+    backend.rootcanal.RootCanalError: A margin is named by its artifact id (and optionally a version and a mode).
+
+--- around 2026-10-20T11:12:30-04:00 ---
+    11:10:49   -101.0s  bank.delete  {"id":"38e200ea3375"}
+    11:10:49   -101.0s  bank.delete  {"id":"abd7cd89926f"}
+    11:10:49   -101.0s  bank.delete  {"id":"cfc179ca8cbf"}
+    11:10:49   -101.0s  bank.delete  {"id":"bd1e430bb50d"}
+    11:10:49   -101.0s  bank.delete  {"id":"ebd7e0c826c2"}
+    11:10:50   -100.0s  bank.delete  {"id":"15edf88a9c34"}
+    11:10:50   -100.0s  bank.delete  {"id":"d26ac1fb266b"}
+    11:10:50   -100.0s  bank.delete  {"id":"e2fedada93af"}
+    11:10:50   -100.0s  bank.delete  {"id":"c29b7de500ca"}
+    11:10:51    -99.0s  bank.delete  {"id":"c402f4a1ec4e"}
+    11:10:51    -99.0s  bank.delete  {"id":"524e5c537274"}
+    11:10:51    -99.0s  bank.delete  {"id":"f05308cb9f1f"}
+    11:10:52    -98.0s  bank.delete  {"id":"148da87e6da1"}
+    11:10:52    -98.0s  bank.delete  {"id":"d2c8bdf02fa2"}
+    11:11:11    -79.0s  bank.version.archive  {"changed":["archived"],"entry":"3b3111be3118","version":"8b6551d8ad94"}
+    11:11:15    -75.0s  bank.version.archive  {"changed":["archived"],"entry":"96ccc0c35b19","version":"v0-d8055e7b"}
+    11:11:18    -72.0s  bank.version.archive  {"changed":["archived"],"entry":"96ccc0c35b19","version":"654ce9978492"}
+    11:11:39    -50.9s  rootcanal.pool_open  [toolkit]  {"artifact":"789627824001","version":2}
+    11:11:48    -41.7s  rootcanal.pool_fit  [toolkit]  {"focus":null,"members":9}
+    11:12:19    -11.0s  doppler.batch  {"blocked":0,"n":13}
+    11:12:30     +0.0s  >>> rootcanal/pool-fit: A margin is named by its artifact id (and optionally a version and a mode).
+    11:12:34     +4.8s  rootcanal.pool_fit  [toolkit]  {"focus":null,"members":9}
+    11:12:55    +25.4s  rootcanal.border_archive  [toolkit]  {"archived":true,"artifact":"3c5b39973fb1"}
+    11:12:56    +26.3s  rootcanal.border_archive  [toolkit]  {"archived":true,"artifact":"15226fe7fabc"}
+    11:12:57    +27.4s  rootcanal.border_archive  [toolkit]  {"archived":true,"artifact":"568cf6685aa5"}
+    11:13:16    +46.5s  rootcanal.pool_open  [toolkit]  {"artifact":"789627824001","version":2}
+    11:13:22    +52.3s  rootcanal.pool_fit  [toolkit]  {"focus":null,"members":9}
+    11:13:27    +57.0s  rootcanal.pool_fit  [toolkit]  {"focus":null,"members":9}
+    11:13:44    +74.0s  rootcanal.border.save  {"artifact":"11a8e9ce8aa5","grace":0.05,"level":"pool","version":1}
+    11:13:44    +74.7s  rootcanal.border_save  [toolkit]  {"artifact":"11a8e9ce8aa5","grace":0.05}
+    11:13:46    +76.1s  rootcanal.pool_fit  [toolkit]  {"focus":null,"members":9}
+    11:14:01    +91.8s  rootcanal.pool_fit  [toolkit]  {"focus":null,"members":9}
+    11:14:26   +116.6s  link.scope  [pipeline]  {"scope":"session"}

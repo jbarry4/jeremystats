@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StrataScope evidence</title>
+<!-- StrataScope's aid window. With no step open it is the four live panes
+     the aid window always was (an XploreFinder instance, in a frame); with a
+     step open it swaps to that step's evidence: triggered averages, depth
+     curves, the coherence matrix, ICA. It follows the labelling window over
+     /api/link (channel strata-steps:<gid>) and asks /api/strata/<gid>/* for
+     the numbers itself. Behaviour: js/strataaids.js. -->
+<link rel="icon" type="image/svg+xml" href="img/jarvis.svg">
+<!-- The name hidden on this machine (js/jarvis.js). The tab icon is the
+     one place this standalone page wears it; the live panes are the app. -->
+<script>
+  try {
+    if (localStorage.getItem('barry.jarvis') === 'off') {
+      document.querySelector('link[rel="icon"]').href = 'img/workbench.svg';
+    }
+  } catch (e) { /* private window: the default, which is shown */ }
+</script>
+<link rel="stylesheet" href="app.css">
+<style>
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); }
+  /* app.css holds the page still (html, body { overflow: hidden }), which
+     is right for the app and left this page with no way to scroll its
+     evidence (2026-10-12). The header stays put and the evidence scrolls
+     under it. */
+  body { font-family: var(--sans, system-ui, sans-serif); font-size: var(--fs-12);
+         display: flex; flex-direction: column; }
+  .sa-head { flex: none; }
+  .sa-head {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 12px; border-bottom: 2px solid var(--accent);
+    background: var(--bg-2);
+  }
+  .sa-head strong { font-size: var(--fs-13); }
+  .sa-sub { color: var(--text-3); }
+  .sa-live { position: absolute; left: 0; right: 0; bottom: 0; border: 0;
+             width: 100%; }
+  .sa-body { padding: 10px 12px 24px; display: none; flex: 1 1 auto;
+             min-height: 0; overflow-y: auto; }
+  body.steps .sa-body { display: block; }
+  body.steps .sa-live { visibility: hidden; pointer-events: none; }
+  .sa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+             gap: 12px; }
+  .sa-card { background: var(--bg-2); border: 1px solid var(--line);
+             border-radius: var(--radius-sm); padding: 8px; min-width: 0; }
+  .sa-card h3 { margin: 0 0 4px; font-size: var(--fs-12); font-weight: 600; }
+  .sa-card p { margin: 2px 0 6px; color: var(--text-3); font-size: var(--fs-105); }
+  .sa-card canvas { width: 100%; display: block; }
+  .sa-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: var(--fs-10);
+               color: var(--text-2); margin-top: 4px; }
+  .sa-legend i { display: inline-block; width: 12px; height: 3px; margin-right: 4px;
+                 vertical-align: middle; border-radius: 2px; }
+  .sa-say { color: var(--text-2); padding: 18px 4px; }
+  .sa-ica { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px; }
+  .sa-comp { border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+             padding: 4px; font-size: var(--fs-10); color: var(--text-2); }
+  .sa-comp b { color: var(--text); }
+  .sa-comp.slow { border-color: var(--c2); }
+  .sa-comp.fast { border-color: var(--warn); }
+  .sa-comp.picked { box-shadow: 0 0 0 2px var(--accent); }
+  .sa-comp.weak { opacity: .55; }
+  /* Method B: one card per frequency, a verdict per blade. */
+  .sa-expect { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+               gap: 12px; }
+  .sa-exp { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px; }
+  .sa-exp.match { border-left: 3px solid var(--ok); }
+  .sa-exp.off { border-left: 3px solid var(--err); }
+  .sa-exp h4 { margin: 0 0 2px; font-size: var(--fs-12); display: flex;
+               align-items: center; gap: 6px; flex-wrap: wrap; }
+  .sa-swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .sa-badge { margin-left: auto; padding: 1px 8px; border-radius: 999px;
+              font-size: var(--fs-105); font-weight: 600; }
+  .sa-badge.match { color: var(--ok); background: var(--ok-soft); }
+  .sa-badge.off { color: var(--err); background: var(--err-soft); }
+  .sa-badge.none { color: var(--text-2); background: var(--bg-hover); }
+  .sa-pics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+             gap: 8px; }
+  .sa-pic { margin: 0; min-width: 0; }
+  .sa-mean { margin: 6px 0 0; padding: 6px 8px; border-radius: var(--radius-sm);
+             background: var(--bg-hover); color: var(--text-2); font-size: var(--fs-105); }
+  .sa-exp-why { margin: 2px 0 6px; color: var(--text-3); font-size: var(--fs-105); }
+  .sa-verdicts { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
+  .sa-verdict { display: flex; gap: 6px; align-items: baseline; font-size: var(--fs-115); }
+  .sa-verdict b { width: 14px; text-align: center; }
+  .sa-verdict .sa-move { margin-left: auto; flex: none; align-self: center; }
+  .sa-verdict.match { color: var(--ok); }
+  .sa-verdict.off { color: var(--err); }
+  .sa-verdict.none { color: var(--text-3); }
+  .sa-checks li { margin: 3px 0; }
+  /* The theta phase x depth gamma map (beta) and its animated "?". */
+  .sa-pm-head { display: flex; align-items: center; gap: 8px; }
+  .sa-beta { font-size: var(--fs-10); font-weight: 700; letter-spacing: .06em;
+             text-transform: uppercase; color: var(--accent);
+             border: 1px solid var(--accent-line); border-radius: 999px;
+             padding: 0 7px; }
+  .sa-q { margin-left: auto; width: 22px; height: 22px; border-radius: 50%;
+          border: 1px solid var(--accent-line); background: var(--accent-soft);
+          color: var(--accent); font-weight: 700; cursor: pointer; }
+  .sa-q:hover { background: var(--accent); color: var(--bg); }
+  .sa-sugg-list { display: flex; flex-direction: column; gap: 4px; }
+  .sa-sugg { display: grid; grid-template-columns: 110px 130px minmax(160px, 1fr) auto;
+             align-items: center; gap: 2px 10px; padding: 5px 8px;
+             border-radius: var(--radius-sm); background: var(--bg-hover);
+             font-size: var(--fs-115); }
+  .sa-sugg.match { border-left: 3px solid var(--ok); }
+  .sa-sugg.off { border-left: 3px solid var(--warn); }
+  .sa-sugg.unsure { border-left: 3px solid var(--line); }
+  .sa-sugg.unsure .sa-sugg-math { color: var(--text-3); }
+  .sa-sugg-now { color: var(--text-2); }
+  .sa-sugg.match .sa-sugg-math { color: var(--ok); }
+  .sa-sugg.off .sa-sugg-math { color: var(--warn); font-weight: 600; }
+  .sa-sugg-why { grid-column: 1 / -1; color: var(--text-3); font-size: var(--fs-105); }
+  @media (max-width: 560px) {
+    .sa-sugg { grid-template-columns: 1fr auto; }
+  }
+  .sa-pm-ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+               margin: 4px 0 8px; }
+  .sa-pm-note { color: var(--text-3); font-size: var(--fs-105); }
+  .sa-pm-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+               gap: 12px; }
+  .sa-pm-fig { margin: 0; min-width: 0; }
+  .sa-pm-fig figcaption { display: flex; align-items: center; gap: 6px;
+                          font-size: var(--fs-115); margin-bottom: 4px; }
+  .sa-explain { position: fixed; inset: 0; z-index: 50; display: flex;
+                align-items: center; justify-content: center; padding: 16px;
+                background: rgba(0, 0, 0, .55); animation: sa-fade .18s ease-out; }
+  .sa-ex-card { position: relative; width: min(640px, 100%); max-height: 100%;
+                overflow-y: auto; background: var(--bg-2); border: 1px solid var(--line);
+                border-radius: var(--radius-sm); padding: 12px 14px;
+                box-shadow: 0 18px 50px rgba(0, 0, 0, .45);
+                animation: sa-pop .26s cubic-bezier(.2, 1.4, .4, 1); }
+  .sa-ex-title { margin: 0 24px 6px 0; font-size: var(--fs-13); }
+  .sa-ex-text { margin: 8px 0; color: var(--text-2); font-size: var(--fs-115);
+                line-height: 1.5; min-height: 4.5em; }
+  .sa-ex-cv { width: 100%; display: block; border-radius: var(--radius-sm);
+              background: var(--bg); }
+  .sa-ex-x { position: absolute; top: 8px; right: 10px; border: 0; background: none;
+             color: var(--text-2); font-size: 18px; cursor: pointer; }
+  .sa-ex-nav { display: flex; align-items: center; gap: 8px; }
+  .sa-ex-dots { flex: 1; display: flex; justify-content: center; gap: 6px; }
+  .sa-ex-dot { width: 9px; height: 9px; border-radius: 50%; border: 0; padding: 0;
+               background: var(--line); cursor: pointer; transition: transform .2s; }
+  .sa-ex-dot.on { background: var(--accent); transform: scale(1.35); }
+  @keyframes sa-fade { from { opacity: 0; } }
+  @keyframes sa-pop { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+  @media (prefers-reduced-motion: reduce) {
+    .sa-explain, .sa-ex-card { animation: none; }
+  }
+  .sa-checks li.warn { color: var(--warn); }
+</style>
+</head>
+<body>
+<div class="sa-head" id="saHead">
+  <strong id="saTitle">StrataScope</strong>
+  <span class="sa-sub" id="saSub">waiting for the labelling window</span>
+  <span style="flex:1"></span>
+  <button class="mini" id="saToggle" type="button">Live panes</button>
+</div>
+<iframe class="sa-live" id="saLive" title="Live panes"></iframe>
+<div class="sa-body" id="saBody"></div>
+<script src="js/strataaids.js"></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+{
+  "_at": {
+    "created": "2026-10-01T16:31:26.604532+00:00",
+    "duration_s": "2026-10-01T16:31:26.604532+00:00",
+    "first_seen_by": "2026-10-01T16:31:26.604532+00:00",
+    "fs": "2026-10-01T16:31:26.604532+00:00",
+    "gid": "2026-10-01T16:31:26.604532+00:00",
+    "group": "2026-10-01T16:31:26.604532+00:00",
+    "key": "2026-10-06T18:49:03.153803+00:00",
+    "label": "2026-10-01T16:31:26.604532+00:00",
+    "n_channels": "2026-10-01T16:31:26.604532+00:00",
+    "project": "2026-10-01T16:31:26.604532+00:00",
+    "project_source": "2026-10-01T16:31:26.604532+00:00",
+    "retired": "2026-10-06T18:49:03.153803+00:00",
+    "schema": "2026-10-01T16:31:26.604532+00:00",
+    "session": "2026-10-01T16:31:26.604532+00:00",
+    "start": "2026-10-01T16:31:26.604532+00:00",
+    "updated": "2026-10-06T18:49:03.153803+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Fall'24\\Kcnt1_462\\kcnt_462_s4Nov21\\2024-11-21_11-36-57": [
+        "set",
+        "2026-10-01T16:31:26.604532+00:00"
+      ]
+    },
+    "seen": {
+      "barrylab-d8e8": [
+        "set",
+        "2026-10-01T16:31:26.604532+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-06T18:49:03.153803+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.01.2",
+    "at": "2026-10-01T12:31:26-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "duration_s": 1620.5141333333333,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "sce760c185539",
+  "group": "KCNT1",
+  "key": null,
+  "label": "KCNT1 s4 2024-11-21",
+  "n_channels": 64,
+  "paths": [
+    "Y:\\Jeremy3\\KCNT1\\Fall'24\\Kcnt1_462\\kcnt_462_s4Nov21\\2024-11-21_11-36-57"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "barrylab-d8e8": {
+      "at": "2026-10-01T12:31:26-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\Jeremy3\\KCNT1\\Fall'24\\Kcnt1_462\\kcnt_462_s4Nov21\\2024-11-21_11-36-57",
+      "root": "Y:/Jeremy3/KCNT1",
+      "scan": "scan_22235c040e"
+    }
+  },
+  "session": 4,
+  "start": "2024-11-21T11:36:57",
+  "updated": {
+    "app_version": "2026.10.06.2",
+    "at": "2026-10-06T14:49:03-04:00",
+    "commit": "c10a6dbc",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

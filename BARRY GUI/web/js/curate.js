@@ -34,6 +34,18 @@ BARRY.curate = (function () {
   let span = 1.0;         // seconds of recording shown around it
   let history = [];       // {id, from} so undo means something
   let saving = 0;
+  /* HOLDING A KEY DOWN (2026-10-09). The keyboard repeats a held key about
+     thirty times a second, and every repeat was a decision: a held `g`
+     called thirty candidates Garbage a second, each with its own redraw and
+     its own save, the saves queued behind each other on the server, and
+     leaving in the middle of that left a dozen of them in flight. Each of
+     those then reported a failure -- it read the set back off `set_`, which
+     leaving had emptied -- although every one of them had saved. So a held
+     key decides once; holding n or p still walks, at most every NAV_MS; and
+     a failure is said once, however many there were. */
+  const NAV_MS = 110;
+  let lastNav = 0;
+  let failN = 0, failMsg = '', failT = null;
   /* Which candidates the arrows visit.
 
        left   the ones with no decision yet -- the first pass
@@ -48,13 +60,25 @@ BARRY.curate = (function () {
   /* Bumped whenever a decision changes, so another window can tell a move
      (cheap, nothing to re-read) from a relabel (its copy is now stale). */
   let markRev = 0;
+  /* What this set has been banked as, and which of those versions the
+     decisions on screen came from. Carried in the same fetch that opens the
+     set -- the bar says which version you are writing onto, and that is not
+     a question worth a second round trip on a network share. */
+  let vhist = [];
 
   /* ---------- presence ----------
      Saying "somebody is in this set" often enough that the answer is still
-     true, and rarely enough that it is not a request per keystroke. Half the
-     server's TTL, so a single dropped beat does not make somebody vanish
-     mid-sentence. */
-  const PRESENCE_BEAT = 20000;
+     true, and rarely enough that it is not a request per keystroke. A third
+     of the server's TTL (presence.TTL_S, 180 s), so a single dropped beat
+     does not make somebody vanish mid-sentence.
+
+     Cost (constitution §11, rule 5): one beat a minute, at most two Supabase
+     requests each -- ~120 an hour while a set is open and the window is in
+     front. None while it is hidden: a set left open behind other windows
+     stops being reported after the TTL, and the first beat on coming back
+     reclaims it. This was every 20 s, three requests a beat, hidden or not,
+     and each beat scheduled a push. */
+  const PRESENCE_BEAT = 60000;
   let beatTimer = null;
   let decidedAtEntry = 0;      // so "this visit" means this visit
   let beatOthers = [];         // who else is in here, as of the last beat
@@ -68,7 +92,7 @@ BARRY.curate = (function () {
     // See the same note in strata.js: one mode at a time, or the two stack
     // their toolbars and their key handlers on top of each other.
     // `active` is a getter, not a method -- calling it throws.
-    if (BARRY.strata && BARRY.strata.active) BARRY.strata.exit();
+    BARRY.modes.leaveAllBut('curate');   // every other mode; see core.js
     if (set_) exit();
     let data;
     try {
@@ -79,25 +103,44 @@ BARRY.curate = (function () {
       return false;
     }
     set_ = data.set;
+    vhist = data.history || [];
     kind = { id: set_.kind, labels: set_.labels || [] };
 
     const known = (data.session || {});
-    const path = (known.here || [])[0];
+    /* This computer first, the cluster second (BARRY.vacc.reach). A set
+       banked off the cluster by Incisor used to open onto "none of its
+       paths are reachable" -- right after the recording had been read
+       there. Off the cluster each window is a round trip, about a second,
+       and the toast says so rather than leaving the wait unexplained. */
+    const got = BARRY.vacc.reachFor(Object.assign({ gid: gid }, known),
+                                    'curate');
+    const path = got.path;
     if (!path) {
-      toast('None of this recording’s paths are reachable from this '
-            + 'machine, so there is nothing to look at.', 'err', 9000);
+      toast(got.why || ('None of this recording’s paths are reachable from '
+            + 'this machine, so there is nothing to look at.'), 'err', 9000);
       return false;
+    }
+    if (got.where === 'vacc') {
+      toast('Opening it off the cluster — each window is a round trip, '
+            + 'about a second.', 'ok', 6000);
     }
 
     setView('xplore');
     sess = await BARRY.views.xplore.open(path);
     if (!sess) return false;
 
-    // One second either way. A dentate spike is a few tens of
-    // milliseconds and what you need around it is enough context to tell it
-    // from an artifact -- 0.6 s was tight enough that a spike near the edge
-    // of the window had nothing on one side of it.
-    span = (opts && opts.span) || 1.0;
+    /* One second either way, the FIRST time. A dentate spike is a few
+       tens of milliseconds and what you need around it is enough context
+       to tell it from an artifact -- 0.6 s was tight enough that a spike
+       near the edge of the window had nothing on one side of it.
+
+       Remembered after that. This line used to reset it on every entry,
+       and entry happens every time a set is picked up -- from four call
+       sites, none of which pass a span -- so widening the window lasted
+       until the next set and no longer. */
+    span = (opts && opts.span)
+        || parseFloat(BARRY.prefs.get('curate_span', 0)) || 1.0;
+    if (!(span > 0)) span = 1.0;
     index = 0;
     history = [];
     /* Open on a pass that has something in it.
@@ -137,7 +180,35 @@ BARRY.curate = (function () {
       review = events().some((e) => e.label && flagIds().has(e.label))
       ? 'flag' : 'all';
     }
-    goTo(firstWanted(), true);
+
+    /* Back where you left off, if you have been here before.
+
+       The pass is restored first, because landing on candidate 208 while
+       the Undecided pass is showing would put you on a candidate the pass
+       does not contain -- and n/p would then walk away from it. A
+       remembered pass with nothing in it is dropped rather than restored:
+       that happens when somebody finishes the undecided pass and comes back,
+       and opening on an empty screen is the fault this is next to. */
+    const back = recallWhere();
+    if (back) {
+      const was = review;
+      review = back.review;
+      if (!nWanted()) review = was;
+      goTo(back.index, true, true);
+      /* Said out loud. Landing in the middle of a set with no explanation
+         reads as a bug, and the whole point is to be able to trust it -- so
+         it names the number, and says when the candidate itself has gone
+         and this is the next one along. */
+      const total = nWanted();
+      const at = events().slice(0, index + 1).filter(wanted).length;
+      toast(back.gone
+        ? 'Back where you were — that candidate is no longer in this '
+          + 'set, so this is the next one along (' + at + ' of ' + total + ').'
+        : 'Back where you left off: ' + at + ' of ' + total + '.',
+        null, 5000);
+    } else {
+      goTo(firstWanted(), true, true);
+    }
     render();
 
     BARRY.activity.log('curation.enter', {
@@ -154,8 +225,23 @@ BARRY.curate = (function () {
     toldTaken = false;
     beat(true);
     if (beatTimer) clearInterval(beatTimer);
-    beatTimer = setInterval(() => beat(false), PRESENCE_BEAT);
+    beatTimer = setInterval(() => { if (!away()) beat(false); },
+                            PRESENCE_BEAT);
     return true;
+  }
+
+  /* Hidden, or nobody at the keyboard for ten minutes (BARRY.idle): stop
+     saying somebody is in this set, because nobody is. The TTL frees it for
+     a colleague; coming back says so at once rather than a minute later. */
+  function away() {
+    return BARRY.idle ? BARRY.idle.away() : document.hidden;
+  }
+  if (BARRY.idle) {
+    BARRY.idle.onWake(() => { if (beatTimer && set_) beat(false); });
+  } else {
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && beatTimer && set_) beat(false);
+    });
   }
 
   /* One beat: where we are, and who else is here.
@@ -216,6 +302,17 @@ BARRY.curate = (function () {
 
   function exit() {
     if (!set_) return;
+    /* Banked on the way out, always (2026-10-21), when there are decisions
+       the bank does not have: after the set is let go, so it cannot hold up
+       the leaving; quietBank waits for any save still in flight. */
+    /* Not banked on leaving any more (2026-10-26): a set banks itself
+       once, when the last candidate is first decided; after that, by hand. */
+    /* The place, written now rather than in 350 ms. Preference writes are
+       coalesced, and leaving is exactly the moment somebody is about to do
+       something else -- the whole point is that it survives a tab switch,
+       so it must not depend on a timer that has not fired yet. */
+    rememberWhere();
+    try { BARRY.prefs.flush(); } catch (e) { /* the timer will get it */ }
     BARRY.activity.log('curation.leave', {
       gid: set_.gid, kind: set_.kind, left: left(),
     }, sess);
@@ -235,6 +332,7 @@ BARRY.curate = (function () {
     }
     if (aidWin && !aidWin.closed) { try { aidWin.close(); } catch (e) {} }
     aidWin = null;
+    if (BARRY.supportPanels) BARRY.supportPanels.restoreMain();
     setMode(null);
     /* What the sitting came to, on the way out -- but only if there was a
        sitting. `quiet` makes it say nothing for a set somebody opened,
@@ -244,7 +342,8 @@ BARRY.curate = (function () {
     if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
       BARRY.views.toolkit.curationChanged();
     }
-    set_ = null; kind = null; sess = null; history = [];
+    set_ = null; kind = null; sess = null; history = []; vhist = [];
+    marksStamp = 0;
     const bar = $('#curBar');
     if (bar) bar.remove();
     document.removeEventListener('keydown', keys, true);
@@ -263,25 +362,35 @@ BARRY.curate = (function () {
     // Same reasoning as StrataScope: what you are deciding -- is this
     // deflection a dentate spike or one bad wire -- is read off the traces,
     // so they get the window and the aids get their own.
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    /* The main window as this person laid it out in Profile › Support panel
+       preferences (2026-10-22), or the traces alone, as always. Its first
+       pane is always the traces, which everything below reads. */
+    const mp = BARRY.supportPanels
+      ? BARRY.supportPanels.applyMain('curate', [{ panel: 'traces' }], sess,
+                                      { col: 0.5, row: 0.5 })
+      : (BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 }), null);
+    if (mp && mp.span) span = mp.span;
     openAids();
   }
 
   function openAids() {
     if (aidWin && !aidWin.closed) { try { aidWin.focus(); } catch (e) {} return; }
-    const every8 = (sess.info.channels || [])
-      .filter((c, i) => i % 8 === 0).map((c) => c.index);
-    aidWin = BARRY.views.xplore.popOutPanes(sess, [
-      { panel: 'csd' },
-      { panel: 'theta' },
-      { panel: 'voltage' },
-      { panel: 'spectrogram', tfChannels: every8, tfMode: 'stack',
-        fmin: 1, fmax: 250 },
-    ], { role: 'aids', name: 'barry-curate-aids', width: 720, height: 1000,
-         // Folded on arrival. These four are for glancing at: the headers,
-         // control strips and channel lists cost more of a short pane than
-         // they are worth, and every one of them has a sliver to bring it
-         // back if you want it.
+    /* The CSD raster alone. There were four -- CSD, theta, a voltage raster
+       and a stacked spectrogram -- and the CSD is the one a dentate spike
+       is judged on, so it gets the whole window instead of a quarter of it.
+       Each of the others is still a panel switch away in that window. */
+    // What this person chose for Checkup's window (Profile › Support panel
+    // preferences), or the CSD alone.
+    const plan = BARRY.supportPanels
+      ? BARRY.supportPanels.plan('curate', [{ panel: 'csd' }], sess)
+      : { specs: [{ panel: 'csd' }] };
+    if (!plan) return;
+    aidWin = BARRY.views.xplore.popOutPanes(sess, plan.specs, {
+         ...BARRY.supportPanels.opts(plan),
+         role: 'aids', name: 'barry-curate-aids', width: 720, height: 1000,
+         // Folded on arrival. It is for glancing at: the header, control
+         // strip and channel list cost more of the pane than they are
+         // worth, and each has a sliver to bring it back if you want it.
          chrome: 'notabs,noheads,nostrip,nochannels' });
   }
 
@@ -331,6 +440,10 @@ BARRY.curate = (function () {
      does the aid window -- a separate page with no curate module in it. This
      is the only path by which any of them learn about a candidate. */
   let lastChange = null;
+  /* Bumped whenever the set is re-read because something else changed it
+     (a Tooth Fairy sweep), and sent on every pointer from then on: a window
+     that sees a stamp it does not hold reads the set again. */
+  let marksStamp = 0;
 
   function publishMarks(opts) {
     if (!sess || !set_) return;
@@ -347,7 +460,7 @@ BARRY.curate = (function () {
     // caller that actually settles the position does the publishing.
     if (opts && opts.local) return;
     if (BARRY.views.xplore.publishCuration) {
-      BARRY.views.xplore.publishCuration(sess, {
+      BARRY.views.xplore.publishCuration(sess, Object.assign({
         gid: set_.gid, kind: set_.kind, index,
         at: (current() || {}).start, n: events().length,
         rev: markRev,
@@ -357,17 +470,138 @@ BARRY.curate = (function () {
            something -- the live slot holds the latest value, so a burst of
            fast keystrokes can coalesce. */
         changed: lastChange,
-      });
+      }, marksStamp ? { marks: marksStamp } : {},
+      (opts && opts.withMarks) ? {
+        /* Every mark, for a change made somewhere else -- a Tooth Fairy sweep
+           relabelling a few hundred candidates at once. Without them the
+           support panels kept their old colours: a jump in the revision is
+           not a reason to re-read, and a single `changed` cannot say what
+           happened to three hundred. */
+        events: sess.curationMarks.events,
+        labels: sess.curationMarks.labels,
+      } : {}));
     }
   }
 
-  function goTo(i, quiet) {
+  /* The span, and the one place it is written down.
+
+     Kept in preferences rather than in this closure because the closure
+     is rebuilt on every `enter()`, which is every time a set is picked
+     up. `curate_span` is in PREFS_LOCAL: how wide somebody likes their
+     window is about this screen, not about the project. */
+  function setSpan(v) {
+    const want = Math.max(0.05, parseFloat(v) || 1);
+    if (Math.abs(want - span) < 1e-6) return;
+    span = want;
+    BARRY.prefs.set('curate_span', span);
+  }
+
+  /* What the pane is actually showing. Curation centres the window on
+     each candidate, and it used to do that with its own remembered span
+     whatever the pane had been zoomed to -- so widening the view to see
+     what surrounded a spike was undone by moving to the next one. */
+  function paneSpan() {
+    try {
+      // The same two cases `winOf` has in xplore.js: an unlinked pane
+      // carries its own window, a linked one reads the session's.
+      const XF = BARRY.views.xplore.state;
+      const pane = (XF.panes || [])[0];
+      const s = (XF.linkMode === 'none' && pane && pane.t0 != null)
+        ? pane.span
+        : (sess ? sess.span : null);
+      return (s > 0) ? s : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /* ==================================================================
+     Where you were
+
+     Leaving a set keeps the decisions and used to lose the place. Coming
+     back to 430 candidates with no idea whether you had reached 134 or 208
+     means re-reviewing the overlap to be safe, every time -- which is the
+     cost of a tab switch, paid in minutes.
+
+     Kept per (recording, kind) in the synced preferences, which is where
+     `span` already lives and what that file's own header calls "where was
+     I". BY EVENT, NOT BY INDEX: a set can gain or lose candidates between
+     sittings -- a re-import, a dedupe, a snapshot folder absorbed -- and an
+     index would then point at a different spike with perfect confidence.
+     The id is what survives that; the time is the fallback for a set
+     rebuilt from a snapshot, which does not carry ids.
+     ================================================================== */
+  const WHERE_KEY = 'curate_at';
+  // Enough to cover everything anybody has open at once, several times
+  // over. Trimmed rather than unbounded: this file syncs.
+  const WHERE_MAX = 60;
+
+  const whereKey = (gid, k) => String(gid) + ':' + String(k);
+
+  function rememberWhere() {
+    if (!set_ || !kind) return;
+    const ev = current();
+    if (!ev) return;
+    const all = Object.assign({}, BARRY.prefs.get(WHERE_KEY, {}) || {});
+    all[whereKey(set_.gid, set_.kind)] = {
+      id: ev.id || null,
+      t: ev.start,
+      review: review,
+      n: events().length,
+      at: Date.now(),
+    };
+    const keys = Object.keys(all);
+    if (keys.length > WHERE_MAX) {
+      keys.sort((a, b) => (all[b].at || 0) - (all[a].at || 0));
+      for (const k of keys.slice(WHERE_MAX)) delete all[k];
+    }
+    BARRY.prefs.set(WHERE_KEY, all);
+  }
+
+  /* Where to land, and what to say about it. Returns null for a set nobody
+     has been in, which opens at the start as it always did. */
+  function recallWhere() {
+    if (!set_) return null;
+    const got = (BARRY.prefs.get(WHERE_KEY, {}) || {})[
+      whereKey(set_.gid, set_.kind)];
+    if (!got) return null;
+    const all = events();
+    let i = -1;
+    if (got.id) i = all.findIndex((e) => e.id === got.id);
+    if (i < 0 && got.t != null) {
+      // Same candidate, no id to prove it: four places is 0.1 ms, which is
+      // the tolerance the bank calls one event written twice.
+      const want = Math.round(got.t * 1e4);
+      i = all.findIndex((e) => Math.round(e.start * 1e4) === want);
+    }
+    if (i < 0 && got.t != null) {
+      // The one you were on is gone. The next one along is where you would
+      // have got to, which is better than the top of the set.
+      i = all.findIndex((e) => e.start > got.t);
+    }
+    if (i < 0) return null;
+    return { index: i, review: got.review || 'left', gone: !got.id
+             || all[i].id !== got.id };
+  }
+
+  function goTo(i, quiet, ownSpan) {
     const n = events().length;
     if (!n) return;
     index = Math.max(0, Math.min(n - 1, i));
     const ev = current();
     if (sess.curation) sess.curation.index = index;
+    rememberWhere();
     publishMarks();
+    // Somebody zoomed the pane: that is the window they want, so take it
+    // rather than putting it back. Only a real change counts -- the
+    // centring below sets the span itself, so every jump reports one.
+    // Not on the way in (Spotter's rule): the pane then still shows what
+    // the recording was last looked at with, and the span this mode chose
+    // -- its own, or Profile's -- wins.
+    const shown = ownSpan ? null : paneSpan();
+    if (shown && Math.abs(shown - span) > Math.max(0.02, span * 0.02)) {
+      setSpan(shown);
+    }
     // Centred, so the thing is where the eye already is.
     BARRY.views.xplore.setWindow(0, Math.max(0, ev.start - span / 2), span);
     if (!quiet) render();
@@ -416,6 +650,9 @@ BARRY.curate = (function () {
     const ev = current();
     if (!ev) return;
     const was = ev.label || null;
+    // The set this decision belongs to, kept: by the time the save answers,
+    // the mode may have moved on to another set or left altogether.
+    const own = set_;
 
     // Optimistic: the key press has to feel instant. The write follows, and
     // a failure puts it back and says so rather than pretending.
@@ -439,14 +676,24 @@ BARRY.curate = (function () {
     updateSaving();
     try {
       const res = await apiPost(
-        '/api/curation/' + encodeURIComponent(set_.gid) + '/'
-        + encodeURIComponent(set_.kind) + '/label',
+        '/api/curation/' + encodeURIComponent(own.gid) + '/'
+        + encodeURIComponent(own.kind) + '/label',
         { event: ev.id, label: labelId });
-      if (res.progress) set_._progress = res.progress;
+      if (res.progress) own._progress = res.progress;
       if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
         BARRY.views.toolkit.curationChanged();
       }
+      // The last one decided: banked, always (2026-10-21).
+      if (set_ === own && labelId && !left()) {
+        quietBank(own.gid, own.kind, 'Every candidate decided in Checkup.');
+      }
     } catch (e) {
+      if (set_ !== own) {
+        // Left, or onto another set, before this one answered: nothing on
+        // screen is this set's any more, so only say it did not save.
+        saidFailure(e.message);
+        return;
+      }
       /* Put back everything the optimistic step did, not only the
          label. The history entry it pushed stayed behind, so `u`
          later "undid" a decision that had never saved and wrote the
@@ -470,7 +717,7 @@ BARRY.curate = (function () {
         exit();
         return;
       }
-      toast('That did not save: ' + e.message, 'err', 8000);
+      saidFailure(e.message);
       render();
     } finally {
       saving -= 1;
@@ -478,9 +725,156 @@ BARRY.curate = (function () {
     }
   }
 
+  /* ---------- banking without being asked ----------
+
+     The same route as the dialog, so a bank that would hold nothing new
+     writes nothing (the server answers `replaced`, no new version). Said in
+     a toast when a version was written; quiet otherwise. */
+  async function quietBank(gid, kind, why) {
+    // A harness's throwaway set is not banked (`BARRY.testNoAutobank`).
+    if (BARRY.testNoAutobank) return;
+    for (let i = 0; i < 60 && saving > 0; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    let res;
+    try {
+      res = await apiPost(BARRY.ui.setUrl(gid, kind, 'bank'), {
+        note: why, auto: true,
+        added_by: (BARRY.profile && BARRY.profile.who && BARRY.profile.who())
+                  || undefined,
+      });
+    } catch (e) {
+      // Nothing decided yet is not a failure worth a toast.
+      if (!/nothing has been curated/i.test(e.message || '')) {
+        toast('Could not bank automatically: ' + e.message
+              + ' Bank the results by hand to keep them.', 'warn', 9000);
+      }
+      return;
+    }
+    // Once only (2026-10-26): the server banks a set by itself the first
+    // time every event is decided and never again, and says so here.
+    if (res.skipped || !(res.entries || []).length) return;
+    const it = (res.entries || [])[0] || {};
+    if (it.replaced && !it.new_version) return;          // nothing new
+    toast('Banked automatically as ' + BARRY.ui.versionLabel(it.version)
+          + ': ' + (it.n || 0) + ' decided.', 'ok', 6000);
+    if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
+      BARRY.views.toolkit.curationChanged();
+    }
+  }
+
+  /* ---------- All Garbage (the secret) ---------- */
+  function garbageId() {
+    const g = (kind && kind.labels || []).find((l) => l.id === 'garbage');
+    return g ? g.id : null;
+  }
+
+  /* Every candidate in the set, Garbage, in one write -- and one step of
+     undo that puts every one of them back the way it was. */
+  async function allGarbage() {
+    const own = set_;
+    const gid_ = garbageId();
+    if (!own || !gid_) return false;
+    await settled();
+    if (set_ !== own) return false;
+    const evs = events();
+    const step_ = { bulk: evs.map((e) => ({ id: e.id, from: e.label || null })) };
+    const pairs = {};
+    for (const e of evs) pairs[e.id] = gid_;
+    saving += 1;
+    updateSaving();
+    try {
+      const res = await apiPost(
+        '/api/curation/' + encodeURIComponent(own.gid) + '/'
+        + encodeURIComponent(own.kind) + '/label', { labels: pairs });
+      if (res.progress) own._progress = res.progress;
+    } catch (e) {
+      toast('All Garbage did not save: ' + e.message, 'err', 9000);
+      return false;
+    } finally {
+      saving -= 1;
+      updateSaving();
+    }
+    if (set_ !== own) return true;
+    for (const e of evs) e.label = gid_;
+    history.push(step_);
+    markRev += 1;
+    lastChange = null;
+    publishMarks({ withMarks: true });
+    if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
+    if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
+      BARRY.views.toolkit.curationChanged();
+    }
+    render();
+    toast('All ' + evs.length + ' candidates are Garbage. u puts them back.',
+          'ok', 9000);
+    BARRY.activity.log('curation.all_garbage',
+                       { gid: own.gid, kind: own.kind, n: evs.length }, sess);
+    return true;
+  }
+
+  /* Undoing All Garbage: every candidate back to what it was, in one write. */
+  async function undoBulk(last) {
+    const own = set_;
+    const pairs = {};
+    for (const b of last.bulk) pairs[b.id] = b.from;
+    const now = {};
+    for (const e of events()) now[e.id] = e.label || null;
+    for (const e of events()) {
+      if (e.id in pairs) e.label = pairs[e.id];
+    }
+    markRev += 1;
+    lastChange = null;
+    publishMarks({ withMarks: true });
+    if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
+    render();
+    try {
+      await apiPost('/api/curation/' + encodeURIComponent(own.gid) + '/'
+                    + encodeURIComponent(own.kind) + '/label',
+                    { labels: pairs });
+      toast('Put back the way they were.', 'ok', 4000);
+    } catch (e) {
+      if (set_ === own) {
+        for (const e2 of events()) {
+          if (e2.id in now) e2.label = now[e2.id];
+        }
+        history.push(last);
+        markRev += 1;
+        publishMarks({ withMarks: true });
+        render();
+      }
+      toast('That undo did not save: ' + e.message, 'err', 8000);
+    }
+  }
+
+  /* One toast for a run of failures, not one each. */
+  function saidFailure(msg) {
+    failN += 1;
+    failMsg = msg || failMsg;
+    if (failT) clearTimeout(failT);
+    failT = setTimeout(() => {
+      toast((failN === 1 ? 'That did not save: '
+             : failN + ' decisions did not save: ') + failMsg, 'err', 9000);
+      failN = 0;
+      failT = null;
+    }, 400);
+  }
+
+  /* Until every decision made so far has reached the server. Banking reads
+     the set as the server holds it, so a version banked while saves were
+     still queued was missing the last few decisions. */
+  async function settled(maxMs) {
+    const until = Date.now() + (maxMs || 30000);
+    while (saving > 0 && Date.now() < until) {
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    return saving === 0;
+  }
+
   async function undo() {
     const last = history.pop();
     if (!last) { toast('Nothing to undo.', null, 2000); return; }
+    if (last.bulk) { await undoBulk(last); return; }
     const at = events().findIndex((e) => e.id === last.id);
     if (at < 0) return;
     const was = events()[at].label || null;
@@ -518,8 +912,8 @@ BARRY.curate = (function () {
     let bar = $('#curBar');
     if (!bar) {
       bar = el('div', { class: 'cur-bar', id: 'curBar' });
-      const body = $('#xfBody');
-      if (body) body.appendChild(bar); else document.body.appendChild(bar);
+      // In the middle of the one mode bar (core.js `BARRY.modeSlot`).
+      BARRY.modeSlot().appendChild(bar);
       document.addEventListener('keydown', keys, true);
     }
     bar.innerHTML = '';
@@ -535,25 +929,49 @@ BARRY.curate = (function () {
             + (ev && ev.channel != null ? '  ·  CSC ' + ev.channel : '') }),
       el('span', { class: 'cur-count',
         text: (index + 1) + ' / ' + n }),
+      verChip(),
     ]));
 
     bar.appendChild(el('div', { class: 'cur-prog' }, [
       el('i', { style: 'width:' + (n ? (done / n * 100) : 0) + '%' }),
       el('span', { text: done + ' decided · ' + left() + ' left' }),
-    ]));
+      // The secret (allgarbage.js). Only where Garbage is a word.
+      (BARRY.allGarbage && garbageId()) ? BARRY.allGarbage.keyhole(() =>
+        BARRY.allGarbage.unlock({
+          count: n,
+          decided: events().filter((e) => e.label
+                                       && e.label !== garbageId()).length,
+          onAll: allGarbage,
+        })) : null,
+    ].filter(Boolean)));
 
     const cats = el('div', { class: 'cur-cats' });
     for (const lab of (kind.labels || [])) {
+      /* A computed label is not a button.
+
+         X-ray works DS1 and DS2 out from a PCA over every event in the set
+         at once, so there is no sense in which somebody could press it for
+         the candidate in front of them -- and a button that cannot be
+         pressed meaningfully is worse than no button. They still appear
+         everywhere a label is READ: the counts, the version history, the
+         marks on the trace.
+
+         `keys` is read defensively as well. It was `lab.keys.join(...)`,
+         which is a TypeError on any label without them -- so the first
+         keyless label added to a vocabulary would have taken out the whole
+         category bar rather than its own button. */
+      if (lab.computed) continue;
+      const keys = lab.keys || [];
       const on = ev && ev.label === lab.id;
       cats.appendChild(el('button', {
         class: 'cur-cat' + (on ? ' on' : ''),
         style: '--cat:' + lab.color,
-        title: lab.name + '   (' + lab.keys.join(' or ') + ')',
+        title: lab.name + (keys.length ? '   (' + keys.join(' or ') + ')' : ''),
         onclick: () => assign(on ? null : lab.id),
       }, [
-        el('kbd', { text: lab.keys[0] }),
+        keys.length ? el('kbd', { text: keys[0] }) : null,
         el('span', { text: lab.name }),
-      ]));
+      ].filter(Boolean)));
     }
     bar.appendChild(cats);
 
@@ -610,27 +1028,53 @@ BARRY.curate = (function () {
             : ''),
         }))),
       ]),
-      el('div', { class: 'ctl' }, [
-        el('label', { text: 'Window s' }),
-        el('input', {
-          type: 'number', step: '0.1', value: String(span),
-          style: 'width:56px',
-          onchange: (e) => {
-            span = Math.max(0.05, parseFloat(e.target.value) || 1);
-            goTo(index);
-          },
-        }),
-      ]),
       el('span', { class: 'cur-saving', id: 'curSaving', text: '' }),
-      el('div', { style: 'flex:1' }),
-      el('button', { class: 'btn ghost sm', text: 'List all\u2026',
-                     title: 'Every candidate in this set, by time or by '
-                          + 'category. Click one to go to it.',
-                     onclick: listAll }),
-      el('button', { class: 'btn ghost sm', text: 'Bank the results…',
-                     onclick: bank }),
-      el('button', { class: 'btn ghost sm', text: 'Leave', onclick: exit }),
     ]));
+
+    /* The bar's end (ui.modeEnd): the occasional controls under More, the
+       next step of The Dentist, and Bank -- then the shell's Simplify, ?
+       and Leave, the last thing on the right. */
+    bar.appendChild(BARRY.ui.modeEnd({
+      more: [
+        el('div', { class: 'ctl' }, [
+          el('label', { text: 'Window s' }),
+          el('input', {
+            type: 'number', step: '0.1', value: String(span),
+            style: 'width:56px',
+            onchange: (e) => {
+              setSpan(Math.max(0.05, parseFloat(e.target.value) || 1));
+              goTo(index);
+            },
+          }),
+        ]),
+        el('button', { class: 'btn ghost sm', text: 'List all\u2026',
+                       title: 'Every candidate in this set, by time or by '
+                            + 'category. Click one to go to it.',
+                       onclick: listAll }),
+        /* Tooth Fairy, AI Beta's best model: sorts the whole set, asks
+           before it starts, and writes nothing unless its summary is
+           accepted (toothfairy.js). */
+        (BARRY.ui.kindBase(set_.kind) === 'ds' && BARRY.toothFairy) ? el('button', {
+          class: 'btn ghost sm tf-btn',
+          title: 'Let Tooth Fairy read every candidate and call each one DS, '
+               + 'Flag for Deep Review, Flag or Garbage. It asks first, and '
+               + 'nothing changes unless you accept its summary.',
+          onclick: toothFairySweep,
+        }, [BARRY.toothFairy.icon(), 'Tooth Fairy\u2026']) : null,
+      ],
+      next: {
+        text: 'Next: Braces \u2014 line them up \u2192',
+        title: 'Step 3 of The Dentist: Braces lines the stamps up on their '
+             + 'peaks. Your decisions stay as they are.',
+        onclick: () => {
+          if (BARRY.views.toolkit) BARRY.views.toolkit.pick('braces', 'dentist');
+          setView('toolkit');
+        },
+      },
+      bank: { text: 'Bank the results\u2026', onclick: bank,
+              title: 'Write these decisions as a new version of the banked '
+                   + 'entry' },
+    }));
 
     // Only the overlay changed, so repaint rather than refetch. The window
     // move in goTo() is what asks the server for new samples, and it does
@@ -641,6 +1085,214 @@ BARRY.curate = (function () {
   function updateSaving() {
     const n = $('#curSaving');
     if (n) n.textContent = saving ? 'saving…' : '';
+  }
+
+  /* ==================================================================
+     Which version you are working on
+     ==================================================================
+     A set is one row per recording per kind, but the bank behind it keeps
+     every pass anybody has ever banked. Until now the bench silently wrote
+     onto whatever was newest, which is right nine times in ten and wrong in
+     exactly the case that matters: going back to an older pass because the
+     first one used the wrong channel.
+
+     So the version is said on the bar, and it is a button. Switching puts
+     the current one down and picks the chosen one up -- the decisions on
+     screen become that version's, and every keystroke after it writes onto
+     it. That is destructive to what is on the bench, so the dialog says so
+     in the count of candidates it is about to re-stamp.
+     ================================================================== */
+
+  /* Which banked version the decisions here came from, with its lineage
+     name. `based_on` is the stored integer, which is what the cloud table
+     is keyed on; the name is worked out from what each version was banked
+     from. Null until a set has been picked up from a version at least once
+     -- 44 of the 45 sets here predate that being askable. */
+  function verNow() {
+    if (!set_) return null;
+    const bo = set_.based_on;
+    if (bo === null || bo === undefined) return null;
+    for (const ent of vhist) {
+      for (const x of BARRY.vers.labelRows(ent.versions || [])) {
+        if (x.row.v === bo) {
+          return { entry: ent.entry, v: x.row.v, name: x.name, row: x.row };
+        }
+      }
+    }
+    return null;
+  }
+
+  function verChip() {
+    if (!BARRY.vers.askable(vhist)) return null;
+    const now = verNow();
+    return el('button', {
+      class: 'cur-ver' + (now ? '' : ' none'),
+      text: now ? 'from v' + now.name : 'pick a version',
+      title: now
+        ? 'The decisions here came from v' + now.name + ', and banking '
+          + 'writes the next one onto it. Click to work from a different '
+          + 'version instead.'
+        : 'This set was not picked up from any particular banked version, '
+          + 'so banking lands on whatever is newest. Click to choose one.',
+      onclick: switchVersion,
+    });
+  }
+
+  /* ---------- Tooth Fairy ---------- */
+  function toothFairySweep() {
+    if (!set_) return;
+    BARRY.toothFairy.open({
+      gid: set_.gid, kind: set_.kind,
+      name: set_.name || set_.session_label || '',
+      n: events().length,
+      decided: events().filter((e) => e.label).length,
+      colors: Object.fromEntries((kind.labels || []).map((l) => [l.id, l.color])),
+      // Accepted: its calls are on the set now, so read it again and go
+      // straight to the flags, which is the work Tooth Fairy leaves.
+      onDone: () => refreshSet('flag'),
+    });
+  }
+
+  /* Re-read the set after something else wrote to it, as switching
+     versions does, and optionally move to a pass. */
+  async function refreshSet(pass) {
+    if (!set_) return;
+    const gid = set_.gid, kd = set_.kind;
+    let data;
+    try {
+      data = await api('/api/curation/' + encodeURIComponent(gid) + '/'
+                       + encodeURIComponent(kd));
+    } catch (e) {
+      toast('Could not re-read the set: ' + e.message, 'err', 9000);
+      return;
+    }
+    set_ = data.set;
+    vhist = data.history || [];
+    kind = { id: set_.kind, labels: set_.labels || [] };
+    history = [];
+    markRev += 1;
+    if (index >= events().length) index = Math.max(0, events().length - 1);
+    if (sess) sess.curation = { kind: set_.kind, set: set_, index };
+    if (pass) {
+      const was = review;
+      review = pass;
+      if (!nWanted()) review = was;
+    }
+    lastChange = null;
+    marksStamp = Date.now();
+    publishMarks({ withMarks: true });
+    // This window's panes read the marks too, and nothing else here moves
+    // the window, so nothing else would repaint them.
+    if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
+    if (!wanted(current())) {
+      const i = events().findIndex(wanted);
+      if (i >= 0) { goTo(i, true); }
+    }
+    render();
+  }
+
+  /* Put this version down and pick that one up, without leaving the mode.
+
+     Restore is what does it: it stamps the chosen version's snapshot back
+     over the candidates AND records what the set is now based on, so the
+     next bank lands as a pass on that version rather than on top of
+     whatever happened to be newest. */
+  async function switchVersion() {
+    if (!set_) return;
+    if (!BARRY.vers.askable(vhist)) {
+      toast('There is only one banked version of this set, so there is '
+            + 'nothing to switch to. Bank a pass and there will be.',
+            null, 6000);
+      return;
+    }
+    const now = verNow();
+    const gid = set_.gid, kd = set_.kind;
+    const pick = await BARRY.pickVersion(vhist, {
+      title: 'Switch to another version',
+      sub: set_.name || '',
+      lead: 'Switching puts this version down and picks the chosen one up. '
+          + 'The decisions on screen become that version\u2019s, and '
+          + 'everything you press after it is written onto that line. '
+          + 'Nothing is deleted \u2014 every version stays in the bank.',
+      labels: (kind && kind.labels) || [],
+      mode: 'switch',
+      current: now ? { entry: now.entry, v: now.v } : null,
+      danger: true, verb: 'Switch to', okLabel: 'Switch',
+    });
+    if (!pick) return;
+    if (now && pick.entry === now.entry && pick.v === now.v) {
+      toast('Already working from v' + now.name + '.', null, 4000);
+      return;
+    }
+
+    let res;
+    try {
+      res = await apiPost('/api/curation/' + encodeURIComponent(gid) + '/'
+                          + encodeURIComponent(kd) + '/restore',
+                          { entry: pick.entry,
+                            // By id: the number repeats (the route resolves a ref).
+                            version: (pick.row && pick.row.id != null) ? pick.row.id : pick.v });
+    } catch (e) {
+      toast('Could not switch to v' + pick.name + ': ' + e.message, 'err', 9000);
+      return;
+    }
+
+    /* Re-read rather than patch. The restore touched an unknown number of
+       candidates on the server and set what the record is based on; guessing
+       either of those from here is how the bar ends up claiming a version
+       the next bank will not use. */
+    let data;
+    try {
+      data = await api('/api/curation/' + encodeURIComponent(gid) + '/'
+                       + encodeURIComponent(kd));
+    } catch (e) {
+      toast('Switched, but could not re-read the set: ' + e.message,
+            'err', 9000);
+      return;
+    }
+    set_ = data.set;
+    vhist = data.history || [];
+    kind = { id: set_.kind, labels: set_.labels || [] };
+    /* Undo does not cross a switch. It goes back one decision at a time and
+       the decisions it remembers belong to the version that was just put
+       down -- replaying one onto this version would put a call nobody made
+       into a pass they did not make it in. */
+    history = [];
+    markRev += 1;
+    if (index >= events().length) index = Math.max(0, events().length - 1);
+    if (sess) sess.curation = { kind: set_.kind, set: set_, index };
+    /* Same reason as on the way in: a version with everything decided has an
+       empty undecided pass, and landing on a blank screen after a switch
+       reads as the switch having emptied the set. */
+    if (!events().some((e) => !e.label) && review === 'left') {
+      review = events().some((e) => e.label && flagIds().has(e.label))
+        ? 'flag' : 'all';
+    }
+    publishMarks();
+    if (!wanted(current())) {
+      const i = events().findIndex(wanted);
+      if (i >= 0) { goTo(i, true); }
+    }
+    render();
+
+    const changed = (res && res.changed) || 0;
+    toast('Now working from v' + pick.name + '. '
+          + (changed ? changed + ' decision(s) changed to match it'
+                     : 'Nothing on the bench had to change')
+          + ((res && res.missing)
+              ? ', ' + res.missing + ' of its candidate(s) are not in this '
+                + 'set any more' : '')
+          + '. Banking from here '
+          + BARRY.vers.describe(
+              (vhist.find((e) => e.entry === pick.entry) || {}).versions || [],
+              pick.row) + '.', 'ok', 9000);
+    BARRY.activity.log('curation.version', {
+      gid, kind: kd, entry: pick.entry, version: pick.v,
+      label: pick.name, changed,
+    }, sess);
+    if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
+      BARRY.views.toolkit.curationChanged();
+    }
   }
 
   function keys(e) {
@@ -669,18 +1321,32 @@ BARRY.curate = (function () {
     // Any other modified key belongs to the browser or the app, not here.
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-    const map = {
+    const nav = {
       n: () => step(1), arrowright: () => step(1),
       p: () => step(-1), arrowleft: () => step(-1),
-      u: undo, backspace: undo,
-      escape: exit,
     };
-    if (map[k]) { e.preventDefault(); e.stopPropagation(); map[k](); return; }
+    if (nav[k]) {
+      e.preventDefault(); e.stopPropagation();
+      // Held, it walks -- but no faster than a window can be drawn.
+      const now = Date.now();
+      if (e.repeat && now - lastNav < NAV_MS) return;
+      lastNav = now;
+      nav[k]();
+      return;
+    }
+    const once = { u: undo, backspace: undo, escape: exit };
+    if (once[k]) {
+      e.preventDefault(); e.stopPropagation();
+      // Held, undo would walk back through the afternoon. Once per press.
+      if (!e.repeat) once[k]();
+      return;
+    }
 
     for (const lab of (kind.labels || [])) {
       if ((lab.keys || []).includes(k)) {
         e.preventDefault(); e.stopPropagation();
-        assign(lab.id);
+        // A decision is a key press, not a key held down.
+        if (!e.repeat) assign(lab.id);
         return;
       }
     }
@@ -746,7 +1412,7 @@ BARRY.curate = (function () {
       ]) : null;
     }).filter(Boolean);
 
-    showModal(el('div', { class: 'rcpt-wrap' }, [
+    showModal(el('div', { class: 'modal rcpt-wrap' }, [
       el('div', { class: 'mh' }, [
         el('h3', { text: 'Session receipt' }),
         el('span', { class: 'sub', text: r.session || r.name || gid }),
@@ -831,138 +1497,76 @@ BARRY.curate = (function () {
     return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
   }
 
-  function bankDialog(entry, who, at) {
-    return new Promise((resolve) => {
-      const labs = (kind && kind.labels)
-        || (at && at.labels) || [];
-      const nameOf = (id) => (labs.find((l) => l.id === id) || {}).name
-                          || (id === 'unspecified' ? 'undecided' : id);
-      /* The mix, from the set if it is still open and from the last
-         progress the server reported if it is not -- leaving curation
-         empties events() and the dialog would then claim the set was
-         empty. */
-      const tally = {};
-      const live = events();
-      if (live.length) {
-        for (const e of live) {
-          if (e.label) tally[e.label] = (tally[e.label] || 0) + 1;
-        }
-      } else {
-        const by = ((at && at.progress) || {}).by_label || {};
-        for (const k in by) tally[k] = by[k];
+  /* What only Checkup knows about a bank, for the shared dialog to show
+     (BARRY.ui.bankDialog, constitution §6e): the mix this version will
+     hold, and the history it joins. The dialog, the name, the note, who,
+     and the continue/branch sentence are the shared one's.
+
+     This was a dialog of its own. It titled itself "version N" off the
+     stored number -- which is the sync key, not the name, so a branch read
+     as the wrong version -- and when the profile had no name it stopped to
+     ask "Who is banking these?" in a prompt. */
+  function bankParts(entry, at) {
+    const labs = (kind && kind.labels)
+      || (at && at.labels) || [];
+    const nameOf = (id) => (labs.find((l) => l.id === id) || {}).name
+                        || (id === 'unspecified' ? 'undecided' : id);
+    /* The mix, from the set if it is still open and from the last
+       progress the server reported if it is not -- leaving curation
+       empties events() and the dialog would then claim the set was
+       empty. */
+    const tally = {};
+    /* Only when the open set IS the one being banked. The bench banks any
+       set, and reading whatever Checkup had open would show one set's mix
+       on another's dialog. */
+    const mine = !!(set_ && at && set_.gid === at.gid && set_.kind === at.kind);
+    const live = mine ? events() : [];
+    if (live.length) {
+      for (const e of live) {
+        if (e.label) tally[e.label] = (tally[e.label] || 0) + 1;
       }
-      const stillLeft = live.length
-        ? left() : (((at && at.progress) || {}).left || 0);
-      const vs = (entry && entry.versions) || [];
-      /* Highest so far plus one, which is what the server does. The
-         count is not the same number: the detector's import sits at
-         version zero, so an entry with v0 and v1 has two versions
-         and its next one is v2. The dialog offered to write v3 and
-         the server wrote v2. */
-      const next = vs.reduce((hi, v) => Math.max(hi, v.v || 0), 0) + 1;
+    } else {
+      const by = ((at && at.progress) || {}).by_label || {};
+      for (const k in by) tally[k] = by[k];
+    }
+    const stillLeft = live.length
+      ? left() : (((at && at.progress) || {}).left || 0);
+    const vs = (entry && entry.versions) || [];
 
-      const wrap = el('div', { class: 'modal bank-dialog' });
-      wrap.appendChild(el('div', { class: 'modal-head' }, [
-        el('h2', { text: vs.length ? 'Bank this as version ' + next
-                                   : 'Bank this set' }),
-        el('p', { class: 'sub', text: (at && at.name) || '' }),
-      ]));
-
-      /* What is about to be written. */
-      wrap.appendChild(el('div', { class: 'section-label',
-                                   text: 'What this version will hold' }));
-      wrap.appendChild(el('div', { class: 'ver-mix' },
-        Object.keys(tally).sort((a, b) => tally[b] - tally[a]).map(
-          (k) => el('span', { class: 'ver-chip',
-                              text: nameOf(k) + ' ' + tally[k] }))
+    const what = el('div', { class: 'bank-dialog' }, [
+      el('div', { class: 'section-label', text: 'What this version will hold' }),
+      el('div', { class: 'ver-mix' },
+        Object.keys(tally).sort((x, y) => tally[y] - tally[x]).map(
+          (k) => el('span', { class: 'ver-chip', text: nameOf(k) + ' ' + tally[k] }))
         .concat(stillLeft
           ? [el('span', { class: 'ver-chip',
                           text: stillLeft + ' still undecided, not banked' })]
-          : [])));
+          : [])),
+    ]);
 
-      if (vs.length) {
-        /* "Already banked as N versions" is wrong when the history it is
-           about to join belongs to the detector's export rather than to a
-           previous bank of this set -- v0 was nobody banking anything. */
-        wrap.appendChild(el('div', { class: 'section-label',
+    let extra;
+    if (vs.length) {
+      /* "Already banked as N versions" is wrong when the history it is
+         about to join belongs to the detector's export rather than to a
+         previous bank of this set -- v0 was nobody banking anything. */
+      extra = el('div', {}, [
+        el('div', { class: 'section-label',
           text: entry && entry.adopted
             ? 'Carrying on from ' + (entry.source || 'the detector')
               + '  ·  ' + vs.length + ' version'
               + (vs.length === 1 ? '' : 's') + ' so far'
             : 'Already banked as ' + vs.length + ' version'
-              + (vs.length === 1 ? '' : 's') }));
-        const list = el('div', { class: 'ver-list compact' });
-        for (let i = vs.length - 1; i >= 0; i--) {
-          const v = vs[i];
-          list.appendChild(el('div', { class: 'ver-row' }, [
-            el('div', { class: 'ver-top' }, [
-              el('span', { class: 'ver-n', text: 'v' + v.v }),
-              v.imported ? el('span', { class: 'flagchip',
-                                        text: 'the import' }) : null,
-              el('span', { class: 'ver-when',
-                           title: BARRY.whenRaw(v.at),
-                           text: BARRY.when(v.at, 'minute') }),
-              el('span', { class: 'ver-who', text: v.by || 'unknown' }),
-              el('span', { class: 'ver-count', text: (v.n || 0) + ' events' }),
-            ]),
-            v.note ? el('div', { class: 'ver-note', text: v.note })
-                   : el('div', { class: 'ver-note none', text: 'no note' }),
-            /* What each version holds, so the history is readable as a
-               history rather than as a list of dates. */
-            v.by_label && Object.keys(v.by_label).length
-              ? el('div', { class: 'ver-mix small' },
-                  Object.keys(v.by_label)
-                    .sort((a, b) => v.by_label[b] - v.by_label[a])
-                    .map((k) => el('span', { class: 'ver-chip',
-                                             text: nameOf(k) + ' '
-                                                 + v.by_label[k] })))
-              : null,
-            v.changed
-              ? el('div', { class: 'ver-shifts' }, [
-                  el('span', { class: 'ver-since',
-                               text: v.changed + ' decision'
-                                   + (v.changed === 1 ? '' : 's')
-                                   + ' changed' })])
-              : null,
-          ].filter(Boolean)));
-        }
-        wrap.appendChild(list);
-      } else {
-        wrap.appendChild(el('p', { class: 'hint',
-          text: 'This set has not been banked before. From now on each bank '
-              + 'writes a version onto the same entry, so the entry keeps '
-              + 'its whole history rather than the bank filling up with '
-              + 'copies.' }));
-      }
-
-      const box = el('textarea', {
-        class: 'ver-note-input', rows: '3',
-        placeholder: 'What changed in this pass? (optional)',
-      });
-      wrap.appendChild(el('div', { class: 'section-label',
-                                   text: 'Note for version ' + next }));
-      wrap.appendChild(box);
-      wrap.appendChild(el('p', { class: 'hint',
-        text: 'Banking as ' + who + '.' }));
-
-      let settled = false;
-      const done = (val) => {
-        if (settled) return;
-        settled = true;
-        closeModal();
-        resolve(val);
-      };
-      wrap.appendChild(el('div', { class: 'modal-foot' }, [
-        el('div', { style: 'flex:1' }),
-        el('button', { class: 'btn ghost', text: 'Cancel',
-                       onclick: () => done(null) }),
-        el('button', { class: 'btn', text: vs.length
-                         ? 'Bank as v' + next : 'Bank',
-                       onclick: () => done(box.value || '') }),
-      ]));
-      showModal(wrap);
-      setTimeout(() => { try { box.focus(); } catch (e) {} }, 30);
-    });
+              + (vs.length === 1 ? '' : 's') }),
+        BARRY.ui.versionTree({ versions: vs, readonly: true, notes: true }),
+      ]);
+    } else {
+      extra = el('p', { class: 'hint',
+        text: 'This set has not been banked before. From now on each bank '
+            + 'writes a version onto the same entry, so the entry keeps '
+            + 'its whole history rather than the bank filling up with '
+            + 'copies.' });
+    }
+    return { what, extra };
   }
 
   /* How the list was last looked at, kept across openings so a person who
@@ -983,7 +1587,7 @@ BARRY.curate = (function () {
       tally[k] = (tally[k] || 0) + 1;
     }
 
-    wrap.appendChild(el('div', { class: 'modal-head' }, [
+    wrap.appendChild(el('div', { class: 'mh' }, [
       el('h2', { text: 'Everything in this set' }),
       el('p', { class: 'sub',
                 text: events().length + ' candidates  \u00b7  '
@@ -1134,7 +1738,7 @@ BARRY.curate = (function () {
     wrap.appendChild(controls);
     wrap.appendChild(chips);
     wrap.appendChild(rowsHost);
-    wrap.appendChild(el('div', { class: 'modal-foot' }, [
+    wrap.appendChild(el('div', { class: 'mf' }, [
       el('div', { style: 'flex:1' }),
       el('button', { class: 'btn', text: 'Close', onclick: closeModal }),
     ]));
@@ -1176,26 +1780,63 @@ BARRY.curate = (function () {
         return t;
       })(), left: left() },
     };
-    /* Who is in the profile. Asking again every time was a field to retype
-       and a chance to type it differently. */
+    return bankAt(at);
+  }
+
+  /* Banking a curation set, given the set rather than reading it off this
+     module -- so Spotter banks through exactly this dialog and exactly this
+     route instead of a second copy of both.
+
+     `at` is `{gid, kind, name, labels, progress: {by_label, left}}`. The
+     dialog below already falls back to `at.progress` whenever Checkup has
+     no set open, which is always true while Spotter is the mode -- that
+     fallback is what lets it be shared at all. */
+  async function bankAt(at) {
+    if (!at || !at.gid) return;
+    if (banking) {
+      toast('Already opening the banking dialog\u2026', null, 2500);
+      return;
+    }
     banking = true;
     try {
-      const who = (BARRY.profile && BARRY.profile.who())
-        || await askPath('Who is banking these?', 'your name or email', '');
-      if (!who) return;
       /* What it has been banked as before, so the note is written knowing
-         what it follows rather than into a blank box. */
+         what it follows rather than into a blank box -- and which version
+         this pass was picked up from, so the dialog can say whether it
+         continues that line or branches off it. */
       let known = null;
       try {
         known = await api('/api/curation/' + encodeURIComponent(at.gid) + '/'
                           + encodeURIComponent(at.kind) + '/banked');
       } catch (e) { /* never banked, or an older server; the dialog copes */ }
-      const note = await bankDialog(known && known.entry, who, at);
-      if (note === null) return;
-      const res = await apiPost(
-        '/api/curation/' + encodeURIComponent(at.gid) + '/'
-        + encodeURIComponent(at.kind) + '/bank',
-        { added_by: who, note: note });
+      const entry = known && known.entry;
+      const parts = bankParts(entry, at);
+      /* Who comes from the profile, and only from it; the shared dialog
+         refuses to bank for nobody and says where to fix that. */
+      let res = null;
+      const ok = await BARRY.ui.bankDialog({
+        kind: 'version',
+        entry: { name: (entry && entry.name) || at.name,
+                 versions: (entry && entry.versions) || [] },
+        fromV: known ? known.based_on : null,
+        what: parts.what,
+        extra: parts.extra,
+        onBank: async ({ note, who }) => {
+          // Every decision on the server first, or the version is short.
+          if (set_ && set_.gid === at.gid && saving > 0) {
+            toast('Saving the last ' + saving + ' decision'
+                  + (saving === 1 ? '' : 's') + ' first\u2026', null, 3000);
+            if (!(await settled())) {
+              throw new Error('some decisions are still saving; try again '
+                              + 'in a moment');
+            }
+          }
+          res = await apiPost(
+            '/api/curation/' + encodeURIComponent(at.gid) + '/'
+            + encodeURIComponent(at.kind) + '/bank',
+            { added_by: who, note: note });
+        },
+      });
+      if (!ok || !res) return;
       /* One entry, one version. Says which version, and what is in it, so
          the toast confirms the thing that was written rather than a count
          of records. */
@@ -1237,6 +1878,8 @@ BARRY.curate = (function () {
   let lastDraw = null;
 
   function draw(ctx, s, win, x0, plotW, y0, plotH, P) {
+    // The marks' strength, handed in by the pane (Marks › Faded).
+    const A = ctx.globalAlpha;
     if (!s || !s.curation || !set_) {
       lastDraw = { ok: false, why: !s ? 'no session'
                    : (!s.curation ? 'session has no curation'
@@ -1271,7 +1914,7 @@ BARRY.curate = (function () {
 
       // The one being decided gets a full-height line; the others get a tick,
       // so the candidate in question is never ambiguous.
-      ctx.globalAlpha = isNow ? 0.95 : (e.label ? 0.55 : 0.4);
+      ctx.globalAlpha = (isNow ? 0.95 : (e.label ? 0.55 : 0.4)) * A;
       ctx.strokeStyle = isNow ? (e.label ? c : P.accent) : c;
       ctx.lineWidth = isNow ? 2 : 1;
       if (!isNow && !e.label) ctx.setLineDash([3, 3]); else ctx.setLineDash([]);
@@ -1284,7 +1927,7 @@ BARRY.curate = (function () {
 
       if (isNow) {
         ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = A;
         ctx.fillStyle = e.label ? c : P.accent;
         ctx.beginPath();
         ctx.arc(x, y0 + 7, 4.5, 0, Math.PI * 2);
@@ -1308,6 +1951,8 @@ BARRY.curate = (function () {
 
   return {
     enter, exit, draw, receipt,
+    // Spotter banks through this, not through a copy of it.
+    bankAt,
     // Diagnostics for the marker: what the last paint saw and drew.
     lastDraw: () => lastDraw,
     at: () => index,
@@ -1340,7 +1985,7 @@ BARRY.curate = (function () {
     get review() { return review; },
     /* Point at a different session object for the same recording.
 
-       Toggling even-only reopens the recording, which replaces the session
+       Toggling invert reopens the recording, which replaces the session
        object. This module keeps its own reference; without being told, it
        carries on drawing onto the replaced one, and the candidate marks
        look to you like they have been lost. */
@@ -1354,9 +1999,392 @@ BARRY.curate = (function () {
       render();
     },
     get active() { return !!set_; },
+    /* The version facts, for the harness and for anything that wants to say
+       which pass is on the bench without re-deriving the lineage. */
+    get version() {
+      const v = verNow();
+      return v ? { entry: v.entry, v: v.v, name: v.name } : null;
+    },
+    get banked() { return vhist; },
+    switchVersion: () => switchVersion(),
+    /* Re-read the set after something else wrote to it -- what an
+       accepted Tooth Fairy sweep does -- and tell every window. */
+    refresh: (pass) => refreshSet(pass),
     get state() {
       return set_ ? { gid: set_.gid, kind: set_.kind, index,
                       total: events().length, left: left() } : null;
     },
   };
 })();
+
+/* ==========================================================================
+   BARRY.vers -- which version you are about to work on, and what that does.
+
+   The Event Bank numbers versions with a plain integer, because the cloud
+   table's `version` is an integer column and cloudsync casts to int. The
+   name a person says out loud -- "1.1" -- is not that number: it is worked
+   out from which version each one was banked FROM, and the rule lives in
+   backend/versions.py. This is the same walk in JavaScript.
+
+   Why here rather than asked for: the consequence of a click has to be on
+   screen BEFORE the click, and there are eight radio buttons in the worst
+   real case (entry 7d5fa32206b4). Asking the server what each one would be
+   called if it existed is eight round trips on a network share to answer a
+   question nobody has committed to yet.
+
+   Kept in step with label_rows() in backend/versions.py, and the harness
+   (_dev/curversion.html) re-derives every label the server already sent for
+   every set and compares. If the two ever drift that fails loudly, rather
+   than the interface quietly promising the wrong outcome.
+   ========================================================================== */
+BARRY.vers = (function () {
+  /* "1.10" after "1.9", not before. Same reason as the Python: a history
+     that lists itself in the wrong order is worse than one with no numbers
+     at all. */
+  function key(vid) {
+    if (vid === null || vid === undefined) return [];
+    const out = [];
+    for (const part of String(vid).trim().replace(/^[vV]+/, '').split('.')) {
+      const p = part.trim();
+      if (!p) continue;
+      const n = parseInt(p, 10);
+      // Not a number: sorts last rather than throwing, so one odd id in a
+      // history does not take the whole list down with it.
+      if (!isFinite(n) || String(n) !== p) return [1e9];
+      out.push(n);
+    }
+    return out;
+  }
+
+  const fmt = (parts) => parts.map((p) => String(Math.trunc(p))).join('.') || '0';
+
+  const parentOf = (vid) => {
+    const k = key(vid);
+    return k.length > 1 ? fmt(k.slice(0, -1)) : null;
+  };
+
+  const num = (v) => {
+    const n = parseInt(v, 10);
+    return isFinite(n) ? n : 1e9;
+  };
+
+  const bump = (k) => k.slice(0, -1).concat([k[k.length - 1] + 1]);
+
+  /* [{row, name}] in creation order, for one entry's whole history.
+
+     Rows rather than a lookup keyed on the version number, because that
+     number is not unique in this bank: entry 7d5fa32206b4 holds seven
+     versions numbered 0,1,2,3,4,3,4 -- two machines minted 3 and 4
+     independently and the union rightly kept both. Keyed on the number,
+     two of those would share a name and a third would vanish from the list. */
+  function labelRows(rows) {
+    const got = (rows || []).slice().sort((a, b) => {
+      const d = num(a.v) - num(b.v);
+      if (d) return d;
+      const x = String(a.at || ''), y = String(b.at || '');
+      return x < y ? -1 : x > y ? 1 : 0;
+    });
+    /* Kept in step with versions.label_rows, which names what the server
+       sends: `from_id` first where it resolves, because it names one
+       version and only one; children counted per parent NAME, not per
+       parent number, because two parents can share a number. This copy
+       had neither, so on a history that needed them it named a version
+       differently from the bank. */
+    const name = {}, kids = {}, used = new Set(), byUid = {};
+
+    /* The name, or the next one along if something already holds it. Two
+       versions with one name is worse than an ugly name -- the history gets
+       read to settle which pass a number refers to, and a duplicate makes
+       that unanswerable. */
+    const take = (want) => {
+      let k = key(want);
+      while (used.has(fmt(k))) k = bump(k);
+      const got_ = fmt(k);
+      used.add(got_);
+      return got_;
+    };
+
+    // Nothing built on the parent yet means continue its line; something
+    // already built on it means branch. That is the whole rule.
+    const childOf = (parName) => {
+      const seen = kids[parName] || 0;
+      kids[parName] = seen + 1;
+      const base = key(parName);
+      return take(seen === 0 ? fmt(bump(base)) : fmt(base.concat([seen])));
+    };
+
+    let trunk = 0;
+    const out = [];
+    for (const r of got) {
+      let nm;
+      const par = r.from_v;
+      const parUid = r.from_id;
+      if (parUid !== null && parUid !== undefined && parUid in byUid) {
+        nm = childOf(byUid[parUid]);
+      } else if (par === null || par === undefined || !(par in name)) {
+        // A root. The detector's import is 0 and the first pass is 1; a
+        // version whose parent this machine has never seen is treated as one
+        // rather than dropped, because a branch can arrive from the cloud
+        // ahead of what it came from and still has to appear.
+        nm = take(String(trunk));
+        trunk = key(nm)[key(nm).length - 1] + 1;
+      } else {
+        // The LAST version with that number, as in label_rows: a branch
+        // made off "v3" means the v3 that was there when it was made.
+        nm = childOf(name[par]);
+      }
+      name[r.v] = nm;
+      if (r.id !== null && r.id !== undefined) byUid[r.id] = nm;
+      out.push({ row: r, name: nm });
+    }
+    return out;
+  }
+
+  /* What banking after picking `row` up would produce.
+
+     Simulated by re-walking the history with one extra row on the end,
+     rather than reasoned about. The name depends both on how many versions
+     already sit on the same parent and on which names are already taken, and
+     a shortcut gets the second one wrong: on the demo entry, where no
+     version records what it came from, picking up v1 continues the trunk at
+     5 because 2, 3 and 4 are spoken for -- not at 2. */
+  function nextFor(rows, row) {
+    const all = rows || [];
+    const top = all.reduce((hi, r) => Math.max(hi, num(r.v)), -1);
+    /* With the parent's id, which is what the bank records now that
+       eventbank.add resolves the version it was based on (parent_ref). */
+    const probe = { v: top + 1, from_v: row.v, from_id: row.id,
+                    at: '9999', _probe: true };
+    const named = labelRows(all.concat([probe]));
+    const mine = named.find((x) => x.row._probe);
+    const was = named.find((x) => x.row === row);
+    const from = was ? was.name
+                     : String(row.label != null ? row.label : row.v);
+    const to = mine ? mine.name : '';
+    return { from, to, branches: parentOf(to) !== parentOf(from) };
+  }
+
+  /* The same sentence backend/versions.py describe() produces, because it is
+     the sentence the user asked for: the consequence, not the number. */
+  function describe(rows, row) {
+    const n = nextFor(rows, row);
+    return n.branches
+      ? 'branches off v' + n.from + ' as v' + n.to
+        + ', leaving what came after it alone'
+      : 'continues from v' + n.from + ' as v' + n.to;
+  }
+
+  /* What a fresh pick-up defaults to: the highest stored number, which is
+     what the server's based_on_default() picks and so what happens if this
+     sends nothing. The highest LABEL would be a different row -- "1.10" and
+     "2" are not comparable as lineage, and the question being answered is
+     "what did I last see", which is about time. */
+  function newest(rows) {
+    let best = null;
+    for (const r of (rows || [])) if (!best || num(r.v) >= num(best.v)) best = r;
+    return best;
+  }
+
+  const usable = (rows) => (rows || []).filter((r) => r.has_snap);
+
+  /* Does this set have anything worth asking about? One version is not a
+     choice, and a set nobody has ever banked has no versions at all -- 1 of
+     the 45 sets here is in that state and must keep picking up in one click. */
+  function askable(history) {
+    let n = 0;
+    for (const e of (history || [])) n += usable(e.versions).length;
+    return n > 1;
+  }
+
+  /* ------------------------------------------------------------------
+     The list on screen
+     ------------------------------------------------------------------
+     The version tree, BARRY.ui.versionTree -- the one control every tool
+     chooses a version with (constitution §6e), because two visual
+     languages for one question is how people learn to distrust both.
+
+     `mode` is 'pickup' or 'switch', and the only difference is what it says
+     about the decisions that are already there. Switching always puts that
+     version's decisions on the bench; picking up only does so when the
+     chosen version is not the one the set already reflects. */
+
+  function chooser(history, opts) {
+    const o = opts || {};
+    const labs = o.labels || [];
+    const nameOf = (id) => (labs.find((l) => l.id === id) || {}).name
+                        || (id === 'unspecified' ? 'undecided' : id);
+    const said = el('div', { class: 'ver-said' });
+    const host = el('div', { class: 'ver-pick' });
+    let pick = null;
+
+    const entries = (history || []).filter((e) => (e.versions || []).length);
+    const many = entries.length > 1;
+
+    const announce = () => {
+      said.innerHTML = '';
+      if (pick) {
+        said.appendChild(el('p', { class: 'confirm-sub',
+                                   text: pick.lineage }));
+        said.appendChild(el('p', {
+          class: 'confirm-sub' + (pick.restores ? ' warn' : ''),
+          text: pick.bench }));
+        if (pick.row.note) {
+          said.appendChild(el('p', { class: 'hint',
+                                     text: '“' + pick.row.note + '”' }));
+        }
+      }
+      if (typeof o.onpick === 'function') o.onpick(pick);
+    };
+
+    /* One version tree per entry (constitution §6e): the lineage, newest
+       on top, with the consequence of picking each one on its row -- which
+       version you are about to make is the thing being decided, and it
+       cannot be what you find out afterwards. It was a radio list, oldest
+       first, with the lineage only in words. */
+    const trees = [];
+    for (const ent of entries) {
+      const rows = ent.versions || [];
+      const tip = newest(rows);
+      if (many) {
+        host.appendChild(el('div', { class: 'section-label',
+          text: ent.name + '  ·  ' + (ent.n || 0) + ' candidates' }));
+      }
+      /* Matched on the version ITSELF, not on its number: the stored number
+         is not unique (two machines both mint the next one and the union
+         keeps both), so every row gets a key of its own here, including the
+         histories that predate ids -- they are the ones most likely to
+         collide. */
+      const keyOf = new Map(rows.map((v, i) => [v,
+        String(v.id != null ? v.id : 'row' + i)]));
+      const choiceOf = (v) => {
+        const nxt = nextFor(rows, v);
+        const restores = o.mode === 'switch' || v !== tip;
+        return {
+          entry: ent.entry, v: v.v, row: v, name: nxt.from, next: nxt.to,
+          branches: nxt.branches, restores,
+          lineage: 'Banking after this ' + describe(rows, v) + '.',
+          bench: restores
+            ? 'The decisions on the set are replaced by v' + nxt.from
+              + '’s — ' + (v.n || 0) + ' candidate(s) re-stamped '
+              + 'from its snapshot. Anything decided since then and never '
+              + 'banked goes with it.'
+            : 'The decisions already on the set are left exactly as they '
+              + 'are. This only says where the next bank lands.',
+        };
+      };
+      const tree = BARRY.ui.versionTree({
+        producer: ent.pipeline, producerType: ent.type,
+        versions: rows,
+        idOf: (v) => keyOf.get(v),
+        disabled: (v) => (v.has_snap ? null
+          : 'no snapshot kept — cannot be worked from. Only the recent '
+            + 'versions keep a candidate-by-candidate snapshot, so there is '
+            + 'nothing to put on the bench; its counts and its note are '
+            + 'still here.'),
+        state: (v) => [
+          v.imported ? 'the detector' : null,
+          o.current && o.current.entry === ent.entry && o.current.v === v.v
+            ? 'on the bench' : null,
+        ].filter(Boolean),
+        line: (v) => (v.has_snap ? describe(rows, v) : null),
+        notes: (v) => Object.keys(v.by_label || {})
+          .sort((x, y) => v.by_label[y] - v.by_label[x])
+          .map((k) => nameOf(k) + ' ' + v.by_label[k]).join('  ·  ')
+          || ((v.n || 0) + ' events'),
+        onpick: (v) => {
+          pick = choiceOf(v);
+          for (const other of trees) if (other !== tree) other.choose(null);
+          announce();
+        },
+      });
+      trees.push(tree);
+      host.appendChild(el('div', { class: 'ver-pick-list' }, [tree]));
+      for (const v of rows) {
+        if (o.start && o.start(v, ent, tip) && v.has_snap && !pick) {
+          pick = choiceOf(v);
+          tree.choose(keyOf.get(v));
+        }
+      }
+    }
+
+    const wrap = el('div', {}, [host, said]);
+    announce();
+    return { node: wrap, get pick() { return pick; } };
+  }
+
+  return { key, fmt, parentOf, labelRows, nextFor, describe, newest,
+           usable, askable, chooser };
+})();
+
+/* ==========================================================================
+   Asking which version -- the dialog both doors use.
+
+   Two doors lead here: picking a set up off the ToolKit shelf, and switching
+   while it is already on the bench. Same list, same rules, different weight
+   -- switching replaces what is on the bench, so its button is the danger
+   one and the sentence under the list says so before it is pressed.
+
+   Resolves to the chosen {entry, v, name, restores} or to null.
+   ========================================================================== */
+BARRY.pickVersion = function pickVersion(history, opts) {
+  const o = opts || {};
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (val) => {
+      if (settled) return;
+      settled = true;
+      closeModal();
+      resolve(val);
+    };
+
+    const ok = el('button', { class: 'btn' + (o.danger ? ' danger' : ''),
+                              text: o.okLabel || 'Use this version' });
+    const pick = BARRY.vers.chooser(history, {
+      labels: o.labels,
+      mode: o.mode,
+      current: o.current,
+      /* Default to the newest, which is what happens anyway if nothing is
+         sent -- so the default choice and the default behaviour agree. A
+         version with no snapshot cannot take the default, and the dialog
+         then opens with nothing chosen rather than with something that
+         would fail at the click. */
+      start: (v, ent, tip) => v === tip,
+      onpick: (p) => {
+        ok.disabled = p ? null : 'disabled';
+        ok.textContent = p
+          ? (o.verb || 'Use') + ' v' + p.name
+          : (o.okLabel || 'Use this version');
+      },
+    });
+    ok.addEventListener('click', () => done(pick.pick));
+
+    /* mh / mb / mf, not a nested .modal. showModal drops whatever it is
+       given straight into #bigModalBox, which is itself .modal.big and the
+       flex column -- its three parts have to be that column's children or
+       the body does not scroll and the footer falls out the bottom. */
+    showModal(el('div', {}, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: o.title || 'Which version to work from' }),
+        o.sub ? el('span', { class: 'sub', text: o.sub }) : null,
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'close-x', onclick: () => done(null),
+          html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+      ].filter(Boolean)),
+      el('div', { class: 'mb' }, [
+        el('div', { class: 'ver-pick-wrap' }, [
+          o.lead ? el('p', { class: 'confirm-msg', text: o.lead }) : null,
+          pick.node,
+        ].filter(Boolean)),
+      ]),
+      el('div', { class: 'mf' }, [
+        el('div', { class: 'spacer' }),
+        el('button', { class: 'btn ghost', text: 'Cancel',
+                       onclick: () => done(null) }),
+        ok,
+      ]),
+    ]));
+  });
+};
+
+// One mode at a time, kept by the registry in core.js.
+BARRY.modes.register('curate', BARRY.curate);

@@ -104,7 +104,7 @@ let filed = [];
 
   const unfiled = await fetch('/api/results?folder=~unfiled')
     .then((r) => r.json());
-  // Everything BARRY saves lands in a folder named for its recording, so
+  // Everything Jarvis saves lands in a folder named for its recording, so
   // "unfiled" -- loose in the top of Results/ -- is usually empty. What
   // matters is that it means that, and never includes something in a folder.
   check('unfiled means loose in the top of Results',

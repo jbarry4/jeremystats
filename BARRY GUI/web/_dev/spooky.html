@@ -1,0 +1,195 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>spooky: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:520px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:520px;top:0;right:0;bottom:0;width:calc(100vw - 520px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Halloween (js/spooky.js): the palette is a theme like the others, and the
+   spooky layer comes and goes with it.
+
+   Every one of the seven Easter eggs is found here the way a person would
+   find it -- a click on the creature, a click in the yard, "boo" typed at
+   the page -- and the found list is put back afterwards, along with the
+   theme. Applied with remember=false, so no preference is written. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(60);
+  }
+  return null;
+}
+const KEYS = ['barry.spooky.eggs', 'barry.spooky.squished', 'barry.spooky.hinted'];
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const ev = (c) => W().eval(c);
+  const saved = {};
+  try {
+    await until(() => W().BARRY && W().BARRY.spooky && typeof W().applyTheme === 'function',
+                30000);
+    await until(() => D().querySelector('#rail .rail-scroll .nav-item'), 20000);
+    const B = ev('BARRY');
+    for (const k of KEYS) saved[k] = W().localStorage.getItem(k);
+    for (const k of KEYS) W().localStorage.removeItem(k);
+    const $ = (s) => D().querySelector(s);
+    const $$ = (s) => Array.from(D().querySelectorAll(s));
+    const bubbles = () => $$('.spk-say').map((b) => b.textContent);
+    const center = (n) => { const r = n.getBoundingClientRect();
+                            return [r.left + r.width / 2, r.top + r.height / 2]; };
+    const eggs = () => B.spooky.state().eggs;
+
+    say('=== the theme ===');
+    const ids = ev('THEMES').map((t) => t.id);
+    check('Halloween is in the picker', ids.includes('halloween'), ids.join(' '));
+    W().applyTheme('halloween', false);
+    await sleep(150);
+    const tok = (n) => getComputedStyle(D().documentElement).getPropertyValue(n).trim();
+    check('pumpkin accent, slime trace', tok('--accent') === '#ff7a1a'
+          && tok('--trace') === '#9be564', tok('--accent') + ' ' + tok('--trace'));
+    const ramp = ['--c1', '--c2', '--c3', '--c4', '--c5'].map(tok);
+    check('five distinct chart colours', new Set(ramp).size === 5, ramp.join(' '));
+    check('dark controls', getComputedStyle(D().documentElement).colorScheme === 'dark');
+
+    say('');
+    say('=== the layer ===');
+    const layer = $('#spooky');
+    check('the spooky layer is up', !!layer && B.spooky.state().on);
+    const cs = layer && getComputedStyle(layer);
+    check('it takes no clicks itself', cs && cs.pointerEvents === 'none');
+    check('it sits under toasts and dialogs', cs && +cs.zIndex < 60, cs && cs.zIndex);
+    check('two cobwebs', $$('#spooky .spk-web svg').length === 2);
+    const yard = $('#rail .rail-foot .spk-yard');
+    check('the yard is in the rail foot: moon, pumpkin, cauldron',
+          !!yard && !!yard.querySelector('.spk-moon') && !!yard.querySelector('.spk-pumpkin')
+          && !!yard.querySelector('.spk-cauldron'));
+    const nav = $('#rail .nav-item');
+    const [nx, ny] = center(nav);
+    const hit = D().elementFromPoint(nx, ny);
+    check('a nav button is still the thing under the pointer',
+          hit && (hit === nav || nav.contains(hit)), hit && hit.className);
+
+    say('');
+    say('=== the seven things to find ===');
+    B.spooky.spawn('crawl', 'top');
+    const sp = await until(() => $('#spooky .spk-spider:not(.squished)'));
+    check('a spider crawls', !!sp && sp.getAnimations().length > 0);
+    sp.dispatchEvent(new (W().MouseEvent)('click', { bubbles: true }));
+    check('clicking it squashes it', sp.classList.contains('squished'));
+    check('with a splat', !!$('#spooky .spk-splat'));
+    check('and it counts as found', eggs().includes('spider'), eggs().join(','));
+    const told = await until(() => bubbles().find((b) => /1 of 7 spooky things found/.test(b)),
+                             4000);
+    check('and says how many of seven', !!told, bubbles().join(' | '));
+
+    B.spooky.spawn('dangle');
+    const dg = await until(() => $('#spooky .spk-dangle .spk-spider'));
+    check('a spider lets itself down on silk', !!dg && !!$('#spooky .spk-dangle .silk'));
+    dg.dispatchEvent(new (W().MouseEvent)('click', { bubbles: true }));
+    check('clicking it sends it back up', eggs().includes('dangler'));
+
+    B.spooky.spawn('ghost');
+    const gh = await until(() => $('#spooky .spk-ghost'));
+    gh.dispatchEvent(new (W().MouseEvent)('click', { bubbles: true }));
+    check('the ghost, clicked, says BOO', bubbles().includes('BOO!'), bubbles().join(' | '));
+    check('and counts', eggs().includes('ghost'));
+
+    const pumpkin = yard.querySelector('.spk-pumpkin');
+    pumpkin.click();
+    check('the pumpkin: a treat', bubbles().includes('Treat!'));
+    check('candy falls', $$('#spooky .spk-candy').length >= 10, $$('#spooky .spk-candy').length);
+    check('and counts', eggs().includes('pumpkin'));
+    pumpkin.click();
+    pumpkin.click();
+    check('every third time, a trick', bubbles().includes('Trick!'));
+    const swarm = await until(() => $$('#spooky .spk-spider:not(.squished)').length >= 4, 4000);
+    check('a trick is a swarm of spiders', !!swarm,
+          $$('#spooky .spk-spider').length + ' spiders');
+
+    yard.querySelector('.spk-moon').click();
+    check('the moon: a witch crosses', !!$('#spooky .spk-witch'));
+    check('and counts', eggs().includes('moon'));
+
+    const pot = yard.querySelector('.spk-cauldron');
+    pot.click();
+    check('the cauldron: the brew changes colour',
+          !!pot.style.getPropertyValue('--brew'), pot.style.getPropertyValue('--brew'));
+    check('with a chant', bubbles().some((b) => /Double, double/.test(b)), bubbles().join(' | '));
+    check('and counts', eggs().includes('cauldron'));
+
+    // Typed into a text box, "boo" is just a word.
+    const input = D().createElement('input');
+    D().body.appendChild(input);
+    input.focus();
+    const ghostsBefore = $$('#spooky .spk-ghost').length;
+    for (const k of 'boo') {
+      input.dispatchEvent(new (W().KeyboardEvent)('keydown', { key: k, bubbles: true }));
+    }
+    check('typing boo in a text box does nothing',
+          !eggs().includes('boo') && $$('#spooky .spk-ghost').length === ghostsBefore);
+    input.remove();
+    for (const k of 'boo') {
+      D().body.dispatchEvent(new (W().KeyboardEvent)('keydown', { key: k, bubbles: true }));
+    }
+    check('typing boo at the page brings a ghost', $$('#spooky .spk-ghost').length > ghostsBefore);
+    check('and that is the seventh', eggs().length === 7, eggs().join(','));
+    const all = await until(() => bubbles().find((b) => /You found all 7/.test(b)), 4000);
+    check('finding all seven is celebrated', !!all, bubbles().join(' | '));
+    check('the pumpkin keeps count in its tooltip',
+          /7 of 7 spooky things found/.test(pumpkin.title), pumpkin.title);
+
+    say('');
+    say('=== the welcome, once ===');
+    W().applyTheme('dark', false);
+    await sleep(80);
+    W().localStorage.removeItem('barry.spooky.hinted');
+    B.spooky.sync('halloween', true);
+    const hi = await until(() => bubbles().find((b) => /Happy Halloween! There are 7/.test(b)), 4000);
+    check('choosing it says hello', !!hi);
+    B.spooky.sync('dark', false);
+    B.spooky.sync('halloween', true);
+    await sleep(1400);
+    check('but only the first time', !bubbles().some((b) => /Happy Halloween! There are/.test(b)));
+
+    say('');
+    say('=== and gone ===');
+    W().applyTheme('dark', false);
+    await sleep(80);
+    const st = B.spooky.state();
+    check('switching away removes every creature, timer and node',
+          !st.on && st.live === 0 && st.timers === 0 && !$('#spooky') && !$('.spk-yard'),
+          JSON.stringify(st));
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  } finally {
+    try {
+      for (const k of KEYS) {
+        if (saved[k] == null) W().localStorage.removeItem(k);
+        else W().localStorage.setItem(k, saved[k]);
+      }
+      W().applyTheme(W().themeForThisMachine(), false);
+    } catch (e) { /* the frame is going anyway */ }
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'spooky: ' + fails + ' FAILED' : 'spooky: passed';
+  frame.src = 'about:blank';
+})();
+</script>
+</body></html>

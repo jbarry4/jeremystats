@@ -1,0 +1,402 @@
+{
+ "calls_by_hand": [],
+ "clusters": [
+  {
+   "call": "ds",
+   "centre_raw": [
+    869.3018979518071,
+    19.008610361445783,
+    8.378890722891565
+   ],
+   "n": 831,
+   "rank": 0
+  },
+  {
+   "call": "ied",
+   "centre_raw": [
+    1509.47438124031,
+    21.217873333333333,
+    13.703972558139535
+   ],
+   "n": 644,
+   "rank": 1
+  }
+ ],
+ "k": 2,
+ "measure": {
+  "band_hi": 1000.0,
+  "band_lo": 500.0,
+  "cross_ms": 100.0,
+  "filt": "ds",
+  "filter_label": "DS filter, 5–100 Hz, 60 Hz mains out",
+  "hi_hz": 100.0,
+  "lo_hz": 5.0,
+  "mains_out": true,
+  "order": 3,
+  "win_ms": 25.0
+ },
+ "rule": "Pooled over 9 recordings from 9 mice, in pooled raw units: the cluster whose centre has more 500–1000 Hz power is called IED: +13.7 dB against +8.4 dB for the other, which is called DS (831 DS, 644 IED, 2 not measured; 6 resolved only with a half-width search widened past 50 ms).",
+ "scale": {
+  "mean": [
+   1149.2417296271165,
+   19.974694847457634,
+   10.70748583050847
+  ],
+  "sd": [
+   474.32663159303416,
+   9.17166828012576,
+   4.514066617307214
+  ]
+ },
+ "source": {
+  "focus": null,
+  "group": null,
+  "kind": "pool",
+  "members": [
+   {
+    "banked": false,
+    "entry_id": "841aad39cfff",
+    "key": "s:4d6fea9f0d53:2",
+    "params": {
+     "band_hi": 1000.0,
+     "band_lo": 500.0,
+     "centres": null,
+     "cluster_calls": {},
+     "cluster_names": {},
+     "complete_only": true,
+     "cross_ms": 100.0,
+     "drawn": [],
+     "filt": "ds",
+     "flank_ms": [
+      30.0,
+      60.0
+     ],
+     "flips": [],
+     "hi_hz": 100.0,
+     "k": 2,
+     "lo_hz": 5.0,
+     "mains_out": true,
+     "margin": null,
+     "n_init": 10,
+     "order": 3,
+     "retry": [],
+     "seed": 0,
+     "win_ms": 25.0
+    },
+    "read": "fd3eecdb78a0",
+    "rows_digest": "b187297be236",
+    "single": {
+     "artifact_id": "4d6fea9f0d53",
+     "nickname": "banked as v11",
+     "version": 2
+    }
+   },
+   {
+    "banked": false,
+    "entry_id": "c0e55458531c",
+    "key": "s:5e2b01269161:1",
+    "params": {
+     "band_hi": 1000.0,
+     "band_lo": 500.0,
+     "centres": null,
+     "cluster_calls": {},
+     "cluster_names": {},
+     "complete_only": true,
+     "cross_ms": 100.0,
+     "drawn": [],
+     "filt": "ds",
+     "flank_ms": [
+      30.0,
+      60.0
+     ],
+     "flips": [],
+     "hi_hz": 100.0,
+     "k": 2,
+     "lo_hz": 5.0,
+     "mains_out": true,
+     "margin": null,
+     "n_init": 10,
+     "order": 3,
+     "retry": [],
+     "seed": 0,
+     "win_ms": 25.0
+    },
+    "read": "0d7d8f50ab15",
+    "rows_digest": "6742aa36edef",
+    "single": {
+     "artifact_id": "5e2b01269161",
+     "nickname": "banked as v10",
+     "version": 1
+    }
+   },
+   {
+    "banked": false,
+    "entry_id": "af587732a900",
+    "key": "s:6ffd9785706d:1",
+    "params": {
+     "band_hi": 1000.0,
+     "band_lo": 500.0,
+     "centres": null,
+     "cluster_calls": {},
+     "cluster_names": {},
+     "complete_only": true,
+     "cross_ms": 100.0,
+     "drawn": [],
+     "filt": "ds",
+     "flank_ms": [
+      30.0,
+      60.0
+     ],
+     "flips": [],
+     "hi_hz": 100.0,
+     "k": 2,
+     "lo_hz": 5.0,
+     "mains_out": true,
+     "margin": null,
+     "n_init": 10,
+     "order": 3,
+     "retry": [],
+     "seed": 0,
+     "win_ms": 25.0
+    },
+    "read": "8a57a52f0d2b",
+    "rows_digest": "2305101b7aab",
+    "single": {
+     "artifact_id": "6ffd9785706d",
+     "nickname": "banked as v9",
+     "version": 1
+    }
+   },
+   {
+    "banked": false,
+    "entry_id": "39d439a95f7c",
+    "key": "s:08994c0181de:1",
+    "params": {
+     "band_hi": 1000.0,
+     "band_lo": 500.0,
+     "centres": null,
+     "cluster_calls": {},
+     "cluster_names": {},
+     "complete_only": true,
+     "cross_ms": 100.0,
+     "drawn": [],
+     "filt": "ds",
+     "flank_ms": [
+      30.0,
+      60.0
+     ],
+     "flips": [],
+     "hi_hz": 100.0,
+     "k": 2,
+     "lo_hz": 5.0,
+     "mains_out": true,
+     "margin": null,
+     "n_init": 10,
+     "order": 3,
+     "retry": [],
+     "seed": 0,
+     "win_ms": 25.0
+    },
+    "read": "438a7811fddf",
+    "rows_digest": "ac8094ec04d8",
+    "single": {
+     "artifact_id": "08994c0181de",
+     "nickname": "banked as v9",
+     "version": 1
+    }
+   },
+   {
+    "banked": false,
+    "entry_id": "6a2ade1040d3",
+    "key": "s:ff8ff015efe6:1",
+    "params": {
+     "band_hi": 1000.0,
+     "band_lo": 500.0,
+     "centres": null,
+     "cluster_calls": {},
+     "cluster_names": {},
+     "complete_only": true,
+     "cross_ms": 100.0,
+     "drawn": [],
+     "filt": "ds",
+     "flank_ms": [
+      30.0,
+      60.0
+     ],
+     "flips": [],
+     "hi_hz": 100.0,
+     "k": 2,
+     "lo_hz": 5.0,
+     "mains_out": true,
+     "margin": null,
+     "n_init": 10,
+     "order": 3,
+     "retry": [],
+     "seed": 0,
+     "win_ms": 25.0
+    },
+    "read": "5c3632bd1972",
+    "rows_digest": "3e3af067fe61",
+    "single": {
+     "artifact_id": "ff8ff015efe6",
+     "nickname": "banked as v10",
+     "version": 1
+    }
+   },
+   {
+    "banked": false,
+    "entry_id": "dbf2676df67a",
+    "key": "s:deb6a2b3a4b0:1",
+    "params": {
+     "band_hi": 1000.0,
+     "band_lo": 500.0,
+     "centres": null,
+     "cluster_calls": {},
+     "cluster_names": {},
+     "complete_only": true,
+     "cross_ms": 100.0,
+     "drawn": [],
+     "filt": "ds",
+     "flank_ms": [
+      30.0,
+      60.0
+     ],
+     "flips": [],
+     "hi_hz": 100.0,
+     "k": 2,
+     "lo_hz": 5.0,
+     "mains_out": true,
+     "margin": null,
+     "n_init": 10,
+     "order": 3,
+     "retry": [],
+     "seed": 0,
+     "win_ms": 25.0
+    },
+    "read": "e71371416371",
+    "rows_digest": "6ab9835287cf",
+    "single": {
+     "artifact_id": "deb6a2b3a4b0",
+     "nickname": "banked as v11",
+     "version": 1
+    }
+   },
+   {
+    "banked": false,
+    "entry_id": "3fc6bf1e2588",
+    "key": "s:72a0f7928dfc:1",
+    "params": {
+     "band_hi": 1000.0,
+     "band_lo": 500.0,
+     "centres": null,
+     "cluster_calls": {},
+     "cluster_names": {},
+     "complete_only": true,
+     "cross_ms": 100.0,
+     "drawn": [],
+     "filt": "ds",
+     "flank_ms": [
+      30.0,
+      60.0
+     ],
+     "flips": [],
+     "hi_hz": 100.0,
+     "k": 2,
+     "lo_hz": 5.0,
+     "mains_out": true,
+     "margin": null,
+     "n_init": 10,
+     "order": 3,
+     "retry": [],
+     "seed": 0,
+     "win_ms": 25.0
+    },
+    "read": "cdfcb2512f96",
+    "rows_digest": "9bcd784adfd8",
+    "single": {
+     "artifact_id": "72a0f7928dfc",
+     "nickname": "banked as v8",
+     "version": 1
+    }
+   },
+   {
+    "banked": false,
+    "entry_id": "adc84ab8c916",
+    "key": "s:2416047cb6cb:1",
+    "params": {
+     "band_hi": 1000.0,
+     "band_lo": 500.0,
+     "centres": null,
+     "cluster_calls": {},
+     "cluster_names": {},
+     "complete_only": true,
+     "cross_ms": 100.0,
+     "drawn": [],
+     "filt": "ds",
+     "flank_ms": [
+      30.0,
+      60.0
+     ],
+     "flips": [],
+     "hi_hz": 100.0,
+     "k": 2,
+     "lo_hz": 5.0,
+     "mains_out": true,
+     "margin": null,
+     "n_init": 10,
+     "order": 3,
+     "retry": [],
+     "seed": 0,
+     "win_ms": 25.0
+    },
+    "read": "10d4684ca3a7",
+    "rows_digest": "c4160b725b18",
+    "single": {
+     "artifact_id": "2416047cb6cb",
+     "nickname": "banked as v12",
+     "version": 1
+    }
+   },
+   {
+    "banked": false,
+    "entry_id": "9b801cb6e235",
+    "key": "s:bdeb87febb92:1",
+    "params": {
+     "band_hi": 1000.0,
+     "band_lo": 500.0,
+     "centres": null,
+     "cluster_calls": {},
+     "cluster_names": {},
+     "complete_only": true,
+     "cross_ms": 100.0,
+     "drawn": [],
+     "filt": "ds",
+     "flank_ms": [
+      30.0,
+      60.0
+     ],
+     "flips": [],
+     "hi_hz": 100.0,
+     "k": 2,
+     "lo_hz": 5.0,
+     "mains_out": true,
+     "margin": null,
+     "n_init": 10,
+     "order": 3,
+     "retry": [],
+     "seed": 0,
+     "win_ms": 25.0
+    },
+    "read": "e3d333c9e67b",
+    "rows_digest": "eb295d9fb146",
+    "single": {
+     "artifact_id": "bdeb87febb92",
+     "nickname": "banked as v9",
+     "version": 1
+    }
+   }
+  ],
+  "n_events": 1475,
+  "pool_artifact": null
+ }
+}

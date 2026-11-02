@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-09-18T19:03:51.368970+00:00",
+    "gid": "2026-09-18T19:03:51.368970+00:00",
+    "group": "2026-09-18T19:03:51.368970+00:00",
+    "key": "2026-09-18T19:03:51.368970+00:00",
+    "label": "2026-09-18T19:03:51.368970+00:00",
+    "loose_key": "2026-09-18T19:03:51.368970+00:00",
+    "mouse": "2026-09-18T19:03:51.368970+00:00",
+    "project": "2026-09-18T19:03:51.368970+00:00",
+    "project_source": "2026-09-18T19:03:51.368970+00:00",
+    "retired": "2026-09-18T19:03:51.368970+00:00",
+    "schema": "2026-09-18T19:03:51.368970+00:00",
+    "session": "2026-09-18T19:03:51.368970+00:00",
+    "start": "2026-09-18T19:03:51.368970+00:00",
+    "updated": "2026-09-18T19:06:16.333229+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\KCNT1\\urethane\\het\\KCNTM19_hetYH\\kcnt1m19s1dec13\\2022-12-13_09-59-11": [
+        "set",
+        "2026-09-18T19:06:16.333229+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-18T19:06:16.333229+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T15:03:51-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s6d69763e131c",
+  "group": null,
+  "key": "m019_s001_2022-12-13_09-59-11",
+  "label": "KCNT1 m19 s1 2022-12-13",
+  "loose_key": "m019_s001",
+  "mouse": 19,
+  "paths": [
+    "D:\\KCNT1\\urethane\\het\\KCNTM19_hetYH\\kcnt1m19s1dec13\\2022-12-13_09-59-11"
+  ],
+  "project": "KCNT1 Urethane",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 1,
+  "start": "2022-12-13T14:59:11+00:00",
+  "updated": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T15:06:16-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

@@ -3,8 +3,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BARRY GUI</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23154734'/%3E%3Cpath d='M4 18h3l3-9 4 15 4-12 3 7 2-3h5' fill='none' stroke='%23FFB81C' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Jarvis</title>
+<!-- The boot icon, before core.js repaints it in the live theme. A
+     file rather than an inline copy: two copies of one mark drift the
+     first time either is edited. -->
+<link rel="icon" type="image/svg+xml" href="img/jarvis.svg">
+<!-- The name, hidden on this machine (js/jarvis.js). The tab's title and
+     icon are on screen before any script below has run, so they are the
+     two this has to settle here; jarvis.js takes over from the first frame
+     it controls. -->
+<script>
+  try {
+    if (localStorage.getItem('barry.jarvis') === 'off') {
+      document.documentElement.dataset.jarvis = 'off';
+      document.title = 'Workbench';
+      document.querySelector('link[rel="icon"]').href = 'img/workbench.svg';
+    }
+  } catch (e) { /* private window: the name shows, which is the default */ }
+</script>
+<!-- Jarvis Light (js/lite.js): a speed setting for a slower computer, on
+     before the first paint so the boot screen is already still. `?lite=` in
+     the address wins; a frame inside a /_dev/ harness starts without it. -->
+<script>
+  try {
+    var liteQ = (location.search.match(/[?&]lite=(on|off|1|0)(?:&|$)/) || [])[1];
+    var liteDev = false;
+    try {
+      liteDev = window.top !== window && /\/_dev\//.test(parent.location.pathname);
+    } catch (e) { /* another origin's frame: not a harness */ }
+    if (liteQ ? (liteQ === 'on' || liteQ === '1')
+              : (!liteDev && localStorage.getItem('barry.lite') === 'on')) {
+      document.documentElement.dataset.lite = 'on';
+    }
+  } catch (e) { /* the full drawing, which is the default */ }
+</script>
 <link rel="stylesheet" href="app.css">
 <!-- The boot overlay's own styles, inline and before app.css, so the first
      paint has them. Deliberately duplicating a few colours rather than using
@@ -21,21 +53,77 @@
   :root[data-theme="light"] #boot { background: #f6f7f9; color: #5a6b78; }
   #boot.gone { opacity: 0; visibility: hidden; pointer-events: none; }
   .boot-in { display: flex; flex-direction: column; align-items: center;
-             gap: 14px; transform: translateY(-6px); }
-  .boot-mark {
-    width: 46px; height: 46px; border-radius: 11px;
-    background: #154734; display: grid; place-items: center;
-    box-shadow: 0 0 0 0 rgba(255, 184, 28, .45);
-    animation: bootPulse 1.9s ease-out infinite;
+             gap: 16px; transform: translateY(-6px); }
+
+  /* The scope. A trace being recorded, which is what this application is
+     for -- a sweep runs left to right, the line is drawn behind it, and a
+     dentate spike goes past every couple of seconds. The waveform is real
+     path data, not a spinner wearing a costume: it is the same shape as the
+     mark in the rail and on the favicon. */
+  .boot-scope {
+    width: 320px; max-width: 76vw; height: 84px;
+    border: 1px solid rgba(255, 184, 28, .18);
+    border-radius: 10px;
+    background:
+      linear-gradient(180deg, rgba(255,184,28,.05), transparent 60%),
+      #0a1310;
+    overflow: hidden; position: relative;
   }
-  .boot-mark svg { width: 30px; height: 30px; display: block; }
-  @keyframes bootPulse {
-    0%   { box-shadow: 0 0 0 0 rgba(255, 184, 28, .40); }
-    70%  { box-shadow: 0 0 0 16px rgba(255, 184, 28, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 184, 28, 0); }
+  :root[data-theme="light"] .boot-scope {
+    background: linear-gradient(180deg, rgba(21,71,52,.05), transparent 60%),
+                #ffffff;
+    border-color: rgba(21, 71, 52, .2);
   }
-  .boot-name { color: #c9d6de; font-size: 13px; letter-spacing: .04em; }
+  .boot-trace { width: 100%; height: 100%; display: block; }
+  .boot-base {
+    stroke: rgba(255, 184, 28, .13); stroke-width: 1;
+  }
+  :root[data-theme="light"] .boot-base { stroke: rgba(21, 71, 52, .14); }
+  .boot-wave {
+    fill: none; stroke-width: 1.8; stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  /* The trace already on the screen, so the scope is never empty. */
+  .boot-wave.dim { stroke: rgba(255, 184, 28, .17); }
+  :root[data-theme="light"] .boot-wave.dim { stroke: rgba(21, 71, 52, .2); }
+  /* And the bright one, drawn by its own dash offset as the head goes past.
+     `pathLength="1000"` on the element is what makes that exact: the dash
+     lengths are then in thousandths of the path rather than in user units
+     somebody has to measure and keep in step with the `d`. */
+  .boot-wave.live {
+    stroke-dasharray: 1000; stroke-dashoffset: 1000;
+    animation: bootDraw 2.6s cubic-bezier(.4, 0, .2, 1) infinite;
+  }
+  :root[data-theme="light"] .boot-wave.live { stroke: #154734; }
+  /* The recording head, running with the line rather than ahead of it. */
+  .boot-sweep {
+    stroke: #FFB81C; stroke-width: 1.5;
+    filter: drop-shadow(0 0 4px rgba(255, 184, 28, .7));
+    animation: bootSweep 2.6s cubic-bezier(.4, 0, .2, 1) infinite;
+  }
+  :root[data-theme="light"] .boot-sweep { stroke: #154734; filter: none; }
+  @keyframes bootDraw {
+    0%   { stroke-dashoffset: 1000; opacity: 1; }
+    72%  { stroke-dashoffset: 0; opacity: 1; }
+    92%  { stroke-dashoffset: 0; opacity: 0; }
+    100% { stroke-dashoffset: 1000; opacity: 0; }
+  }
+  @keyframes bootSweep {
+    0%   { transform: translateX(0); opacity: 0; }
+    6%   { opacity: 1; }
+    72%  { transform: translateX(320px); opacity: 1; }
+    78%  { transform: translateX(320px); opacity: 0; }
+    100% { transform: translateX(320px); opacity: 0; }
+  }
+
+  .boot-name {
+    color: #c9d6de; font-size: 13px; letter-spacing: .16em;
+    text-transform: uppercase;
+  }
   :root[data-theme="light"] .boot-name { color: #2d3b45; }
+  /* Hidden on this machine: the stand-in, from the first paint. */
+  :root[data-jarvis="off"] .boot-name { font-size: 0; }
+  :root[data-jarvis="off"] .boot-name::after { content: "Workbench"; font-size: 13px; }
   .boot-what { font-size: 11px; opacity: .8; min-height: 1.6em; }
   /* A track that fills rather than a spinner: a spinner says "busy", a bar
      that moves says "getting somewhere", and this is a sequence of known
@@ -49,6 +137,7 @@
     height: 100%; width: 18%; border-radius: 2px; background: #FFB81C;
     animation: bootSlide 1.25s ease-in-out infinite;
   }
+  :root[data-theme="light"] .boot-fill { background: #154734; }
   @keyframes bootSlide {
     0%   { transform: translateX(-110%); width: 26%; }
     50%  { width: 52%; }
@@ -60,10 +149,21 @@
   }
   .boot-slow.on { opacity: .75; }
   @media (prefers-reduced-motion: reduce) {
-    .boot-mark, .boot-fill { animation: none; }
+    .boot-fill, .boot-wave, .boot-sweep { animation: none; }
     .boot-fill { width: 100%; }
+    .boot-wave.live { stroke-dashoffset: 0; }
+    .boot-sweep { opacity: 0; }
     #boot { transition: none; }
   }
+  /* Jarvis Light: the same stops, from the first paint. The boot screen is
+     on for as long as the scripts take to arrive, which on a slow computer
+     is the longest it is ever up. */
+  :root[data-lite="on"] .boot-fill, :root[data-lite="on"] .boot-wave,
+  :root[data-lite="on"] .boot-sweep { animation: none; }
+  :root[data-lite="on"] .boot-fill { width: 100%; }
+  :root[data-lite="on"] .boot-wave.live { stroke-dashoffset: 0; }
+  :root[data-lite="on"] .boot-sweep { opacity: 0; filter: none; }
+  :root[data-lite="on"] #boot { transition: none; }
 </style>
 </head>
 <body>
@@ -73,14 +173,46 @@
      scripts themselves parsing. -->
 <div id="boot">
   <div class="boot-in">
-    <div class="boot-mark">
-      <svg viewBox="0 0 32 32" aria-hidden="true">
-        <path d="M4 18h3l3-9 4 15 4-12 3 7 2-3h5" fill="none"
-              stroke="#FFB81C" stroke-width="2.4"
-              stroke-linecap="round" stroke-linejoin="round"/>
+    <div class="boot-scope">
+      <!-- A trace being recorded, because that is what this application is
+           for. The sweep runs left to right, the line is drawn behind it,
+           and a dentate spike goes past every couple of seconds -- the same
+           shape as the mark in the rail and on the favicon. It is a real
+           waveform, drawn once into the path below, not a spinner wearing a
+           costume. -->
+      <svg class="boot-trace" viewBox="0 0 320 84" aria-hidden="true"
+           preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="bootFade" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#FFB81C" stop-opacity="0"/>
+            <stop offset=".25" stop-color="#FFB81C" stop-opacity=".55"/>
+            <stop offset="1" stop-color="#FFB81C" stop-opacity="1"/>
+          </linearGradient>
+        </defs>
+        <line class="boot-base" x1="0" y1="52" x2="320" y2="52"/>
+        <!-- The trace already on the screen. Without it the scope is empty
+             for the first third of every sweep, and on a boot that takes
+             half a second that is all anybody ever sees. -->
+        <path class="boot-wave dim" pathLength="1000" d="
+          M0 52 L14 51 L22 53 L30 52 L38 50 L46 53 L54 52
+          L62 52 L66 56 L72 14 L79 62 L86 44 L92 52
+          L104 51 L112 53 L120 52 L128 50 L136 53 L146 52
+          L154 52 L158 57 L164 22 L171 60 L178 46 L184 52
+          L196 51 L206 53 L214 52 L222 50 L230 53 L238 52
+          L246 52 L250 55 L256 18 L263 61 L270 45 L276 52
+          L288 51 L298 53 L306 52 L314 51 L320 52"/>
+        <path class="boot-wave live" stroke="url(#bootFade)" pathLength="1000" d="
+          M0 52 L14 51 L22 53 L30 52 L38 50 L46 53 L54 52
+          L62 52 L66 56 L72 14 L79 62 L86 44 L92 52
+          L104 51 L112 53 L120 52 L128 50 L136 53 L146 52
+          L154 52 L158 57 L164 22 L171 60 L178 46 L184 52
+          L196 51 L206 53 L214 52 L222 50 L230 53 L238 52
+          L246 52 L250 55 L256 18 L263 61 L270 45 L276 52
+          L288 51 L298 53 L306 52 L314 51 L320 52"/>
+        <line class="boot-sweep" x1="0" y1="6" x2="0" y2="78"/>
       </svg>
     </div>
-    <div class="boot-name">BARRY</div>
+    <div class="boot-name">Jarvis</div>
     <div class="boot-track"><div class="boot-fill"></div></div>
     <div class="boot-what" id="bootWhat">starting up…</div>
     <div class="boot-slow" id="bootSlow"></div>
@@ -92,9 +224,14 @@
   <!-- ================= LEFT RAIL ================= -->
   <nav id="rail">
     <div class="brand">
-      <div class="brand-mark">B</div>
+      <!-- The mark: a power symbol whose stroke is a dentate spike. Drawn
+           into this box by js/jarvis.js in the theme's own colours -- the
+           same function that draws the tab icon, the reveal and the desktop
+           icon. Empty here because the boot overlay covers the rail until
+           the script has filled it. -->
+      <span class="brand-mark" aria-hidden="true"></span>
       <div class="brand-text">
-        <strong>BARRY</strong>
+        <strong>Jarvis</strong>
         <span class="brand-line">
           <span id="repoName">repo</span>
           <!-- The version, and what changed in it. Beside the repo name
@@ -190,9 +327,25 @@
     </div><!-- /.rail-scroll -->
 
     <div class="rail-foot">
-      <button class="chip-btn" id="syncBtn" title="GUI_logs sync status">
-        <svg viewBox="0 0 20 20"><path d="M3 10a7 7 0 0 1 12-5M17 10a7 7 0 0 1-12 5"/><path d="M15 2v3h-3M5 18v-3h3"/></svg>
-        <span id="syncLabel">Sync</span>
+      <!-- Where the shared copy stands, and the way into the panel that
+           explains it. There was a "Sync now" beside it: the background
+           sync already pushes a change within seconds, so the button mostly
+           reported the database being briefly away, as an error, as though
+           the click had failed. js/syncstate.js draws this. -->
+      <div class="rail-sync">
+        <button class="chip-btn sync-go" id="syncBtn"
+                title="What is synced, and how">
+          <svg viewBox="0 0 20 20"><path d="M3 10a7 7 0 0 1 12-5M17 10a7 7 0 0 1-12 5"/><path d="M15 2v3h-3M5 18v-3h3"/></svg>
+          <span id="syncLabel">Sync</span>
+        </button>
+      </div>
+      <!-- Only while the name is hidden: the way back, and the reveal that
+           comes with it (js/jarvis.js). The theme picker has the same
+           switch both ways. -->
+      <button class="chip-btn jv-activate hidden" id="jarvisActivate"
+              title="Bring the name and logo back">
+        <svg viewBox="0 0 20 20"><path d="M6.2 5.6a6.2 6.2 0 1 0 7.6 0"/><path d="M10 2.5v7"/></svg>
+        <span>Activate</span>
       </button>
       <button class="chip-btn" id="tourBtn" title="Show me around">
         <svg viewBox="0 0 20 20"><path d="M10 3 2 7l8 4 8-4z"/><path d="M5 9v4c0 1.7 2.2 3 5 3s5-1.3 5-3V9"/></svg>
@@ -202,7 +355,16 @@
         <svg viewBox="0 0 20 20"><path d="M10 3a7 7 0 1 0 7 7 5.5 5.5 0 0 1-7-7z"/></svg>
         <span>Theme</span>
       </button>
-      <!-- Off by default, and the only thing in BARRY that reaches the
+      <!-- VACC Mode. Hidden until the server says the cluster is configured,
+           the same way the cloud key only asks to be typed when there is
+           somewhere for it to go -- a switch for a machine you have no
+           account on is a switch that does nothing and says nothing. -->
+      <button class="chip-btn" id="vaccToggle"
+              title="VACC Mode — light the interface up while the cluster is live">
+        <svg viewBox="0 0 20 20"><path d="M10 2.5 5.5 11h3.2l-1.2 6.5L14.5 9h-3.2z"/></svg>
+        <span>VACC</span>
+      </button>
+      <!-- Off by default, and the only thing in Jarvis that reaches the
            internet. It says so before it is turned on. -->
       <button class="chip-btn" id="radioBtn" title="A radio to work to">
         <svg viewBox="0 0 20 20"><path d="M4 8h12v8H4z"/><circle cx="8" cy="12" r="2"/><path d="M13 11h2M13 13h2M6 8 15 4"/></svg>
@@ -244,12 +406,12 @@
         </div>
 
         <div class="folder-bar hidden" id="pipeFolderBar">
-          <div class="fb-path">
-            <span class="fb-label">Folder</span>
+          <div class="fbar-path">
+            <span class="fbar-label">Folder</span>
             <code id="pipeFolderPath"></code>
           </div>
-          <div class="fb-stats" id="pipeFolderStats"></div>
-          <div class="fb-actions">
+          <div class="chip-row" id="pipeFolderStats"></div>
+          <div class="fbar-actions">
             <button class="btn ghost sm" id="pipeReveal">Open in Explorer</button>
             <button class="btn ghost sm" id="pipeRecheck">Re-check</button>
             <button class="btn ghost sm" id="pipeClear">Clear</button>
@@ -307,8 +469,13 @@
           <div class="seg" id="xfLayoutSeg" title="Pane layout">
             <button class="active" data-panes="1">1</button>
             <button data-panes="2">2</button>
+            <button data-panes="3">3</button>
             <button data-panes="4">4</button>
           </div>
+          <!-- How the panes are arranged, for the count chosen: two side by
+               side or stacked; three across, one on top or one below; four
+               with the top and bottom widths together or apart. -->
+          <div class="seg sm xf-shape" id="xfShapeSeg" title="How the panes are arranged" hidden></div>
           <!-- Probe geometry. An H10-D is six independent columns, and a CSD
                is only meaningful down one of them, so switching to it lays
                out six panes rather than changing a label. -->
@@ -328,18 +495,23 @@
             </select>
           </div>
           <button class="btn ghost sm" id="xfView">View…</button>
-          <button class="btn ghost sm" id="xfAddSession">Open session…</button>
+          <button class="btn ghost sm" id="xfAddSession">Open recording…</button>
           <button class="btn sm" id="xfFigure">Figure builder</button>
         </div>
       </header>
 
-      <!-- Named across the top whenever a mode is on. Hidden otherwise;
-           see .mode-banner in app.css. -->
+      <!-- THE BANNER (back, 2026-10-21: "I really liked the banner for what
+           view you're in"): the mode named across the top of the workspace
+           in its colour, what it does beside it, then Simplify and Leave --
+           Leave always last, far right; Esc does the same. Hidden unless an
+           add-on is on; see .mode-banner in app.css. -->
       <div class="mode-banner" id="modeBanner">
         <b id="modeName"></b>
         <span class="mode-what" id="modeWhat"></span>
         <div class="spacer"></div>
-        <button id="modeLeave">Leave this mode</button>
+        <button type="button" class="mode-simplify" id="modeSimplify"
+                aria-pressed="false">Simplify</button>
+        <button type="button" class="mode-leave" id="modeLeave">Leave</button>
       </div>
 
       <div class="xf-body" id="xfBody">
@@ -347,17 +519,31 @@
           <div class="dz-inner">
             <svg viewBox="0 0 24 24" class="dz-icon"><path d="M2 12h3l2-7 3 14 3-11 2 6 2-2h5"/></svg>
             <div class="dz-text">
-              <strong>Drop a CSC session here</strong>
+              <strong>Drop a recording here</strong>
               <span>a folder of CSC*.ncs, a single .ncs, or a converted .mat</span>
             </div>
             <div class="dz-actions">
               <button class="btn" id="xfPickFolder">Browse folder…</button>
               <button class="btn ghost" id="xfPickFile">Open file…</button>
-              <button class="btn ghost" id="xfGoSessions">Browse all sessions</button>
+              <button class="btn ghost" id="xfGoSessions">Browse all recordings</button>
             </div>
           </div>
         </div>
         <div class="pane-grid hidden" id="paneGrid"></div>
+        <!-- ONE OVERVIEW STRIP (2026-10-21): with two or more panes, the
+             strip is not copied under each one; the focused pane's sits here,
+             across the bottom (xplore.js placeGlobalStrip). -->
+        <div class="xf-strip" id="xfStrip" hidden></div>
+        <!-- THE MODE'S OWN TOOLS (2026-10-20): one compact bar at the bottom
+             of the workspace whenever an add-on is on. The mode puts its
+             tools in it (#modeSlot, BARRY.modeSlot()); the fold arrow
+             shrinks it to one line. Which mode, Simplify and Leave are on the
+             banner across the top (#modeBanner). -->
+        <div class="mode-bar" id="modeBar">
+          <button type="button" class="mode-fold" id="modeFold" aria-expanded="true"
+                  title="Fold the bar to one line (the keys still work)"></button>
+          <div class="mode-slot" id="modeSlot"></div>
+        </div>
       </div>
     </section>
 
@@ -371,16 +557,23 @@
         <div class="head-actions">
           <div class="seg" id="sessModeSeg" title="Two views of the same thing">
             <button class="active" data-mode="scan">Scan a drive</button>
-            <button data-mode="housekeeping">Everything BARRY knows</button>
+            <button data-mode="housekeeping">Everything Jarvis knows</button>
+            <!-- The third view of the same thing: what the cluster holds.
+                 Hidden until there is a cluster configured, the same way the
+                 mode chip in the rail is -- a source you have no account on
+                 is not a view of anything. -->
+            <button data-mode="vacc" id="sessModeVacc" hidden>Everything VACC knows</button>
           </div>
           <button class="btn ghost sm" id="sessHealth" title="Validate every listed recording">Health check all</button>
           <button class="btn ghost sm" id="sessCompare" title="Side-by-side metadata">Compare</button>
-          <button class="btn ghost sm" id="sessReveal">Open root</button>
+          <button class="btn ghost sm" id="sessReveal" title="Open the data root in the file browser">Open folder</button>
           <button class="btn sm" id="sessScan">Scan a root…</button>
         </div>
       </header>
 
       <div class="pad hidden" id="hkBody"></div>
+
+      <div class="pad hidden" id="vaccBody"></div>
 
       <div class="pad" id="sessScanPad">
         <div class="root-bar" id="rootBar">
@@ -389,9 +582,12 @@
             <button class="btn" id="rootGo">Scan</button>
             <button class="btn ghost" id="rootBrowse">Browse…</button>
           </div>
+          <!-- The scan's two settings live behind this button, and the
+               button says so when they are not at their defaults. They used
+               to sit here as a checkbox and a number box beside the recent
+               roots: three unrelated things on one line. -->
           <div class="rb-opts">
-            <label class="toggle sm"><input type="checkbox" id="rootHeaders" checked><span>Read headers (exact IDs)</span></label>
-            <label class="mini-field">Depth <input type="number" id="rootDepth" value="6" min="1" max="12"></label>
+            <div id="rootOptsBar"></div>
             <span class="recent-label">Recent:</span>
             <span id="rootRecent" class="recent-list"></span>
           </div>
@@ -426,7 +622,7 @@
         <div class="head-actions">
           <button class="btn ghost sm active" id="histTimelineToggle" title="Show the activity timeline">Timeline</button>
           <button class="btn ghost sm" id="histExport" title="Export what is listed as CSV">Export CSV</button>
-          <button class="btn ghost sm" id="histReveal">Open GUI_logs</button>
+          <button class="btn ghost sm" id="histReveal" title="Open GUI_logs in the file browser">Open folder</button>
           <button class="btn ghost sm" id="histRefresh">Refresh</button>
         </div>
       </header>
@@ -468,9 +664,12 @@
           <p class="sub" id="errSub">Everything that failed, with full context — saved to GUI_logs/errors.</p>
         </div>
         <div class="head-actions">
+          <!-- A developer's check, so first and quiet, never in the
+               primary's place at the end (2026-10-20). -->
+          <button class="mini" id="errTest" title="Write one test entry, to check the log end to end">Write a test entry</button>
           <select id="errDay" class="mini-select"></select>
+          <button class="btn ghost sm" id="errReport" title="This computer's errors for the chosen day, each with what it was doing before and after, as one file in GUI_logs/error_reports. Written by itself every evening.">End-of-day report</button>
           <button class="btn ghost sm" id="errRefresh">Refresh</button>
-          <button class="btn ghost sm" id="errTest">Write test entry</button>
         </div>
       </header>
       <div class="pad" id="errBody"></div>
@@ -484,10 +683,10 @@
           <p class="sub" id="resultsSub">Everything the GUI has saved, in the repo's Results folder.</p>
         </div>
         <div class="head-actions">
-          <button class="btn ghost sm" id="resManifest" title="Export a CSV of what is listed">Manifest CSV</button>
-          <button class="btn ghost sm" id="resOpenDir">Open Results folder</button>
+          <button class="btn ghost sm" id="resManifest" title="Export a CSV of what is listed">Export CSV</button>
+          <button class="btn ghost sm" id="resOpenDir" title="Open the Results folder in the file browser">Open folder</button>
           <button class="btn ghost sm" id="resGithub">View on GitHub</button>
-          <button class="btn ghost sm" id="resRefresh">Rescan</button>
+          <button class="btn ghost sm" id="resRefresh" title="Read the Results folder again">Refresh</button>
         </div>
       </header>
       <div class="pad" id="resultsBody"></div>
@@ -501,8 +700,8 @@
           <p class="sub" id="bankSub">Detected events, filed by project, mouse, session and type.</p>
         </div>
         <div class="head-actions">
-          <button class="btn ghost sm" id="bankReveal">Open folder</button>
           <button class="btn ghost sm" id="bankExport">Export CSV</button>
+          <button class="btn ghost sm" id="bankReveal">Open folder</button>
           <button class="btn ghost sm" id="bankRefresh">Refresh</button>
         </div>
       </header>
@@ -528,11 +727,38 @@
           <h1>ToolKit</h1>
           <p class="sub">Jobs that run across many recordings at once.</p>
         </div>
-        <div class="head-actions">
-          <button class="btn ghost sm" id="tkRefresh">Refresh</button>
-        </div>
       </header>
       <div class="pad" id="tkBody"></div>
+    </section>
+
+    <!-- ---------- COMODULOGRAM ----------
+         Its own view because it lives in its own window: Braid opens
+         /?role=comod#comod, and comparing two maps means keeping them both
+         up, which a dialog cannot do. -->
+    <section class="view" id="view-comod">
+      <header class="view-head">
+        <div class="head-titles">
+          <h1>Comodulogram</h1>
+          <p class="sub">Phase-amplitude coupling for one window of one
+            channel.</p>
+        </div>
+      </header>
+      <div class="pad" id="comodBody"></div>
+    </section>
+
+    <!-- ---------- POWER SPECTRUM ----------
+         Its own window for the same reason the comodulogram has one: Braid
+         opens /?role=spectrum#spectrum, and the thing people do with a
+         spectrum is hold it up against another one. -->
+    <section class="view" id="view-spectrum">
+      <header class="view-head">
+        <div class="head-titles">
+          <h1>Power spectrum</h1>
+          <p class="sub">How much power at which frequency, over a whole
+            recording or a window of it.</p>
+        </div>
+      </header>
+      <div class="pad" id="spectrumBody"></div>
     </section>
 
     <!-- ---------- MISC ---------- -->
@@ -593,6 +819,19 @@
 </div>
 
 <script src="js/core.js"></script>
+<script src="js/lite.js"></script>
+<script src="js/jarvisfx.js"></script>
+<script src="js/jarvis.js"></script>
+<script src="js/jarvisshow.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/motion.js"></script>
+<script src="js/supportpanels.js"></script>
+<script src="js/startmenu.js"></script>
+<script src="js/stash.js"></script>
+<script src="js/data.js"></script>
+<script src="js/warmup.js"></script>
+<script src="js/welcome.js"></script>
+<script src="js/syncstate.js"></script>
 <script src="js/features.js"></script>
 <script src="js/activity.js"></script>
 <script src="js/pipeline.js"></script>
@@ -600,18 +839,49 @@
 <script src="js/xplore.js"></script>
 <script src="js/eventimport.js"></script>
 <script src="js/figure.js"></script>
-<script src="js/figrebuild.js"></script>
+<script src="js/figreplay.js"></script>
 <script src="js/sessions.js"></script>
 <script src="js/logs.js"></script>
 <script src="js/results.js"></script>
+<script src="js/artifacts.js"></script>
 <script src="js/eventbank.js"></script>
 <script src="js/storyboard.js"></script>
 <script src="js/hk_views.js"></script>
 <script src="js/housekeeping.js"></script>
 <script src="js/kilosort.js"></script>
+<script src="js/toolfeed.js"></script>
 <script src="js/toolkit.js"></script>
 <script src="js/curate.js"></script>
+<script src="js/aibeta.js"></script>
+<script src="js/toothfairy.js"></script>
+<script src="js/allgarbage.js"></script>
+<script src="js/stratasteps.js"></script>
 <script src="js/strata.js"></script>
+<script src="js/incisor.js"></script>
+    <script src="js/doppler.js"></script>
+    <script src="js/chipforge.js"></script>
+    <script src="js/setpicker.js"></script>
+    <script src="js/spotter.js"></script>
+    <script src="js/eye.js"></script>
+    <script src="js/junction.js"></script>
+    <script src="js/panning.js"></script>
+<script src="js/braces.js"></script>
+<script src="js/rootcanal.js"></script>
+<script src="js/dspca.js"></script>
+<script src="js/arc.js"></script>
+<script src="js/circuit.js"></script>
+<script src="js/drift.js"></script>
+<script src="js/driftprecon.js"></script>
+<script src="js/driftmono.js"></script>
+<script src="js/panorama.js"></script>
+<script src="js/horizon.js"></script>
+<script src="js/vacc.js"></script>
+<script src="js/vaccfx.js"></script>
+<script src="js/spooky.js"></script>
+<script src="js/cfcscope.js"></script>
+<script src="js/comod.js"></script>
+<script src="js/spectrum.js"></script>
+<script src="js/cfcguide.js"></script>
 <script src="js/tour.js"></script>
 <script src="js/tourmodules.js"></script>
 <script src="js/radio.js"></script>

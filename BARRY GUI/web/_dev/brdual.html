@@ -1,0 +1,137 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>brdual: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:520px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:520px;width:calc(100vw - 520px);height:50vh;border:0}
+#a{top:0}#b{top:50vh}</style></head>
+<body><pre id="log"></pre><iframe id="a" src="/"></iframe><iframe id="b" src="/"></iframe>
+<script>
+/* The review's "Both" is two lines on one trace (2026-10-27: "two
+   overlapping lines, not two separate windows ... also on the support
+   panel"). Two frames, as toothfairyxwin.html does it: A is Lock's review
+   of an alignment already banked (so nothing it does can be written --
+   decisions are refused on a committed set, and autobank is held), B is
+   another window on the same recording, standing in for the support
+   window, with a traces pane of its own.
+
+     A    Both keeps ONE traces pane, reads the IED band beside the dentate-
+          spike one (`_win2`, point for point), and says so in the switch;
+          DS takes it away again
+     B    learns the second band from the pointer and draws it too, and
+          loses it when A goes back to one band, and when A leaves */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const head = (t) => { say(''); say('=== ' + t + ' ===', 'hd'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (await fn()) return true; } catch (e) {}
+    await sleep(120);
+  }
+  return false;
+}
+
+(async () => {
+  const fa = document.getElementById('a'), fb = document.getElementById('b');
+  await Promise.all([fa, fb].map((f) => new Promise((r) =>
+    f.addEventListener('load', r, { once: true }))));
+  const A = fa.contentWindow, B = fb.contentWindow;
+  await until(() => A.eval('typeof BARRY') === 'object' && A.eval('BARRY.state.catalog')
+                    && B.eval('typeof BARRY') === 'object' && B.eval('BARRY.state.catalog'),
+              40000);
+  const BA = A.eval('BARRY'), BB = B.eval('BARRY');
+  const realA = BA.prefs.set, realB = BB.prefs.set;
+  BA.prefs.set = function () {}; BB.prefs.set = function () {};
+  A.eval('BARRY.testNoAutobank = true');
+  try {
+    // An alignment already banked, whose recording is here.
+    const sets = await (await A.fetch('/api/braces/sets?type=pooled')).json();
+    let pick = null;
+    for (const s of (sets.sets || []).filter((x) => x.committed)) {
+      const one = await (await A.fetch('/api/braces/set/' + s.set_id)).json();
+      if (one.session_path) { pick = { id: s.set_id, path: one.session_path }; break; }
+    }
+    if (!pick) {
+      say('  note  no banked Lock alignment whose recording is here; nothing to check', 'note');
+      return;
+    }
+    say('  note  ' + pick.id + ' on ' + pick.path, 'note');
+
+    head('B: another window on the recording');
+    B.eval("setView('xplore')");
+    await B.eval('BARRY.views.xplore.open(' + JSON.stringify(pick.path) + ')');
+    await until(() => B.eval('BARRY.views.xplore.state.order.length') > 0, 30000);
+    B.eval("BARRY.views.xplore.setPanes([{panel:'traces'}], {col:1,row:1})");
+    const bSess = () => B.eval('(function(){var X=BARRY.views.xplore.state;'
+      + 'return X.sessions[X.active];})()');
+
+    head('A: Lock’s review, Both');
+    A.eval("setView('toolkit'); BARRY.views.toolkit.pick('lock','confluence')");
+    await until(() => A.eval('!!BARRY.lock'), 10000);
+    await A.eval('BARRY.lock._open(' + JSON.stringify(pick.id) + ')');
+    await A.eval('BARRY.lock._enter()');
+    await until(() => A.document.getElementById('brViewBar'), 30000);
+    A.eval("BARRY.lock._setTraceBand('both')");
+    const aPanes = () => A.eval('BARRY.views.xplore.state.panes');
+    const aTraces = () => aPanes().filter((p) => p.panel === 'traces');
+    await until(() => aTraces()[0] && aTraces()[0]._win2, 30000);
+    check('one traces pane, not two', aTraces().length === 1, aTraces().length + ' traces panes');
+    const t0 = aTraces()[0];
+    check('its own band is the dentate-spike one', t0.filt && t0.filt.hp === 5,
+          JSON.stringify(t0.filt));
+    check('the IED band is read beside it, point for point',
+          t0._win2 && t0._win && t0._win2.n_points === t0._win.n_points
+            && t0._win2.series.length === t0._win.series.length
+            && (t0._win2.dual || {}).hp === 1,
+          t0._win2 ? t0._win2.n_points + ' / ' + t0._win.n_points : 'none');
+    check('the switch says Both, with a key of the two colours',
+          /Both/.test((A.document.querySelector('.br-trace-seg .active') || {}).textContent || '')
+            && A.document.querySelectorAll('.br-dual-key i').length === 2);
+
+    head('B follows');
+    const gotB = await until(() => {
+      const s = bSess();
+      const p = B.eval('BARRY.views.xplore.state.panes')[0];
+      return s && s.dual && s.dual.hp === 1 && p && p._win2;
+    }, 30000);
+    check('the other window draws the second band too', gotB,
+          JSON.stringify((bSess() || {}).dual || null));
+
+    head('back to one band');
+    A.eval("BARRY.lock._setTraceBand('ds')");
+    await until(() => !A.eval('BARRY.views.xplore.state.sessions[BARRY.views.xplore.state.active].dual'), 10000);
+    check('A draws one band again', !aTraces()[0].filt || aTraces()[0].filt.hp === 5);
+    const goneB = await until(() => !((bSess() || {}).dual), 30000);
+    check('and so does B', goneB);
+
+    A.eval("BARRY.lock._setTraceBand('both')");
+    await until(() => (bSess() || {}).dual, 30000);
+    A.eval('BARRY.lock._exitView()');
+    const leftB = await until(() => !((bSess() || {}).dual), 30000);
+    check('leaving the review takes it from B as well', leftB);
+  } catch (e) {
+    say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+    fails++;
+  } finally {
+    try { if (A.eval('BARRY.lock._view()')) A.eval('BARRY.lock._exitView()'); } catch (e) {}
+    BA.prefs.set = realA; BB.prefs.set = realB;
+  }
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'brdual: ' + fails + ' FAILED' : 'brdual: passed';
+  fa.src = 'about:blank'; fb.src = 'about:blank';
+})().catch((e) => {
+  say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+  document.title = 'brdual CRASH';
+});
+</script></body></html>

@@ -1,0 +1,223 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>brsettings: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Braces' and Lock's settings, One and Many, change in place (2026-10-27:
+   "the settings panel is glitchy for one and many").
+
+   Measured, not looked at: a MutationObserver on the ToolKit pane counts
+   which of the page's parts are replaced when a setting is pressed, and
+   whether "Working it out…" flashes where the plan was. On the real bank,
+   writing nothing -- nothing is run or sent, and preference writes are held
+   for the run.
+
+     One    pressing a measure, the filter, a group, or changing the window
+            replaces only the settings (and the plan when it must be read
+            again), never the picker, the Alignments list or the list of
+            alignments of the set; the plan is not blanked while it is read
+            again; and the button shows the choice at once
+     Many   the same presses show the choice at once (the filter did not),
+            and the two cluster switches are chips: "Send to the VACC" on by
+            itself where there is a cluster, "Read again" off */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const head = (t) => { say(''); say('=== ' + t + ' ===', 'hd'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              30000);
+  const W = frame.contentWindow, D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const txt = (n) => (n ? n.textContent.trim() : '');
+  const B = ev('BARRY');
+  const realSet = B.prefs.set;
+  B.prefs.set = function () { /* held for the run */ };
+
+  /* Which parts of the page a press replaced, and whether the plan was
+     ever blanked while it happened. */
+  function watch() {
+    const host = $('#tkResult');
+    const seen = { replaced: new Set(), blank: false };
+    const obs = new W.MutationObserver((ms) => {
+      for (const m of ms) {
+        for (const n of m.addedNodes) {
+          if (n.nodeType !== 1) continue;
+          const part = n.closest('[data-sec]') || n;
+          const sec = part.dataset && part.dataset.sec;
+          if (m.target === host || (part.parentNode && part.parentNode.dataset
+                                    && part.parentNode.dataset.sec)) {
+            if (sec) seen.replaced.add(sec);
+          }
+          if (/Working it out/.test(n.textContent || '')) seen.blank = true;
+        }
+      }
+    });
+    obs.observe(host, { childList: true, subtree: true });
+    seen.stop = () => obs.disconnect();
+    return seen;
+  }
+  const parts = () => $$('#tkResult [data-sec]').map((n) => n.dataset.sec);
+
+  async function onePage(tool, label) {
+    head(label + ': One');
+    ev("BARRY." + tool + "._reset()");
+    ev("BARRY.views.toolkit.pick('" + tool + "', '"
+       + (tool === 'lock' ? 'confluence' : 'dentist') + "')");
+    await until(() => $('.br-pick .br-tile') && (B[tool]._state().plan || {}).ok !== undefined
+                      && $('.br-measure'), 40000);
+    await sleep(800);
+    say('  note  parts: ' + parts().join(', '), 'note');
+    check('the page is built of kept parts', parts().length >= 5, parts().join(','));
+    const pickNode = $('.br-pick');
+    // A measure.
+    let w = watch();
+    const other = $$('.br-measure button').find((b) => !b.classList.contains('active'));
+    other.click();
+    await sleep(500);
+    w.stop();
+    check('a measure shows at once', other.classList.contains('active')
+          || $$('.br-measure button.active').map(txt).join() === txt(other),
+          $$('.br-measure button.active').map(txt).join());
+    check('and replaces neither the picker nor the lists',
+          !w.replaced.has('pick') && !w.replaced.has('recent')
+            && !w.replaced.has('aligns') && pickNode.isConnected,
+          [...w.replaced].join(','));
+    $$('.br-measure button')[0].click();
+    await sleep(400);
+    if (tool === 'lock') {
+      w = watch();
+      $$('.br-band button').find((b) => /IED/.test(txt(b))).click();
+      await sleep(150);
+      check('the filter shows at once', /IED/.test(txt($('.br-band button.active'))));
+      await until(() => ((B.lock._state().plan || {}).spec || {}).band
+                        && B.lock._state().plan.spec.band[0] === 1, 30000);
+      await sleep(300);
+      w.stop();
+      check('and the plan is read again without blanking it', !w.blank);
+      check('nor replacing the picker', !w.replaced.has('pick') && pickNode.isConnected,
+            [...w.replaced].join(','));
+      $$('.br-band button').find((b) => /Dentate/.test(txt(b))).click();
+      await until(() => (((B.lock._state().plan || {}).spec || {}).band || [])[0] === 5,
+                  30000);
+      w = watch();
+      const g = $('.br-origin');
+      const was = g.classList.contains('held');
+      g.click();
+      await sleep(400);
+      w.stop();
+      check('a group flips in place', $('.br-origin').classList.contains('held') === !was);
+      check('without replacing the picker', !w.replaced.has('pick'),
+            [...w.replaced].join(','));
+      $('.br-origin').click();
+      await sleep(400);
+    }
+    w = watch();
+    const win = $('.br-window');
+    win.value = '150';
+    win.dispatchEvent(new W.Event('change', { bubbles: true }));
+    await sleep(400);
+    w.stop();
+    check('the window changes without replacing the picker',
+          !w.replaced.has('pick') && pickNode.isConnected, [...w.replaced].join(','));
+    const win2 = $('.br-window');
+    win2.value = '200';
+    win2.dispatchEvent(new W.Event('change', { bubbles: true }));
+    await sleep(300);
+  }
+
+  async function manyPage(tool, label) {
+    head(label + ': Many');
+    const manyB = $$('.br-mode .seg button').find((b) => /many/i.test(b.textContent));
+    manyB.click();
+    await until(() => $$('.br-bulk-row').length && $('.br-bulk-settings'), 20000);
+    await sleep(400);
+    const other = $$('.br-bulk-settings .br-measure button')
+      .find((b) => !b.classList.contains('active'));
+    other.click();
+    await sleep(300);
+    check('a measure shows at once',
+          $$('.br-bulk-settings .br-measure button.active').map(txt).join() === txt(other),
+          $$('.br-bulk-settings .br-measure button.active').map(txt).join());
+    $$('.br-bulk-settings .br-measure button')[0].click();
+    await sleep(300);
+    if (tool === 'lock') {
+      $$('.br-bulk-settings .br-band button').find((b) => /IED/.test(txt(b))).click();
+      await sleep(300);
+      check('the filter shows at once',
+            /IED/.test(txt($('.br-bulk-settings .br-band button.active'))),
+            txt($('.br-bulk-settings .br-band button.active')));
+      $$('.br-bulk-settings .br-band button').find((b) => /Dentate/.test(txt(b))).click();
+      await sleep(300);
+    }
+    const chips = $$('.br-bulk-settings .br-chip');
+    check('the cluster choices are chips, not checkboxes',
+          chips.length >= 1 && !$$('.br-bulk-settings input[type=checkbox]').length,
+          chips.map(txt).join(' | '));
+    const vacc = chips.find((c) => /VACC/.test(txt(c)));
+    const cluster = !!ev('!!(BARRY.state.vacc && BARRY.vacc && (BARRY.vacc.last || {}).configured)');
+    if (cluster) {
+      check('"Send to the VACC" is on by itself', vacc
+            && vacc.getAttribute('aria-pressed') === 'true');
+      vacc.click();
+      await sleep(250);
+      const v2 = $$('.br-bulk-settings .br-chip').find((c) => /VACC/.test(txt(c)));
+      check('and turns off with a press', v2 && v2.getAttribute('aria-pressed') === 'false');
+      v2.click();
+      await sleep(250);
+    } else {
+      say('  note  no cluster set up here: the VACC chip is not offered', 'note');
+    }
+    const again = $$('.br-bulk-settings .br-chip').find((c) => /again/i.test(txt(c)));
+    check('"Read again" is off to start with',
+          again && again.getAttribute('aria-pressed') === 'false');
+    $$('.br-mode .seg button').find((b) => /one/i.test(b.textContent)).click();
+    await sleep(300);
+  }
+
+  try {
+    await onePage('braces', 'Braces');
+    await manyPage('braces', 'Braces');
+    await onePage('lock', 'Lock');
+    await manyPage('lock', 'Lock');
+  } catch (e) {
+    say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+    fails++;
+  } finally {
+    B.prefs.set = realSet;
+    try { ev("BARRY.views.toolkit.pick('bad')"); } catch (e) {}
+  }
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'brsettings: ' + fails + ' FAILED' : 'brsettings: passed';
+  frame.src = 'about:blank';
+})().catch((e) => {
+  say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+  document.title = 'brsettings CRASH';
+});
+</script></body></html>

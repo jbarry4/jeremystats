@@ -1,0 +1,282 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>projchan: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:700px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:700px;top:0;right:0;bottom:0;width:calc(100vw - 700px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Two filters that are not yes-or-no.
+
+   Every other filter in Sessions is a flag, and the whole list builds itself
+   from one array. Project is a set, because "PTEN and KCNT1 but not the
+   urethane work" is an ordinary thing to want. Channels is a comparison,
+   because the question people actually have is "which of these are the dual
+   implants" -- and that is `more than 64`, not `exactly 128`: asking for 128
+   silently misses the six recordings whose continuation files put the count
+   at 190 or 192, which are exactly the ones worth finding.
+
+   The assertion that matters for both is that they DIVIDE the list rather
+   than empty it, and that a recording with no channel count lands in
+   neither side of the comparison. A missing number is not a small number,
+   and reading it as one is the mistake `canOpen` in sessions.js already
+   carries a comment about. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(80);
+  }
+  return null;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              25000);
+
+  /* Everything Jarvis knows, which is the housekeeping tree and NOT the
+     card list.
+
+     Worth stating, because the first version of this page counted
+     `.sess-card` and found 587 of them in housekeeping mode -- they are in
+     the DOM the whole time, inside `#sessScanPad`, which the mode switch
+     hides with a class. `querySelectorAll` does not care about `display`,
+     so the page was measuring invisible elements belonging to a view that
+     was not on screen, and would have gone on passing while the filters it
+     was meant to test did nothing. Everything below is scoped to
+     `#hkBody`. */
+  ev("setView('sessions')");
+  await until(() => D().querySelector('#sessModeSeg'), 30000);
+  ev("BARRY.views.sessions.setMode('housekeeping')");
+  const rows = await until(
+    () => { const n = $$('#hkBody .hk-row'); return n.length ? n : null; },
+    40000);
+  check('there are recordings to filter', !!rows, rows ? rows.length : 0);
+  if (!rows) {
+    document.title = 'projchan: ' + (fails || 1) + ' FAILED';
+    return;
+  }
+  check('and the pad they live in is the one on screen',
+        !D().querySelector('#hkBody').classList.contains('hidden'));
+  const total = rows.length;
+  say('    ' + total + ' row(s) with nothing filtered', 'note');
+
+  const nCards = () => $$('#hkBody .hk-row').length;
+  /* Every branch open, so a row that is filtered out and a row that is
+     merely inside a collapsed branch cannot be confused. */
+  const expandAll = async () => {
+    for (let i = 0; i < 4; i++) {
+      const shut = $$('#hkBody .hk-branch:not(.open), #hkBody .hk-mouse:not(.open)');
+      if (!shut.length) break;
+      shut.forEach((b) => b.click());
+      await sleep(250);
+    }
+  };
+
+  /* Dismissed with MOUSEDOWN, not click.
+
+     `openPopover` closes on an outside `mousedown`, and it also treats a
+     second click on its own button as "close". So dismissing with
+     `body.click()` did nothing, the popover stayed open, and the next
+     click on the button toggled it shut -- which read as "the popover
+     never opens" and is the opposite of what was happening. Measured with
+     web/_dev/_popprobe.html: an in-page click opened it, the same click
+     from this frame closed it. */
+  const dismiss = async () => {
+    const W = frame.contentWindow;
+    D().body.dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true }));
+    await sleep(220);
+  };
+  const openPop = async (label) => {
+    await dismiss();
+    /* By `data-filter`, not by label: the buttons rename themselves to
+       say what is on -- "PTEN" rather than "Project" -- which is right for
+       a person reading the bar and fatal for anything looking one up. */
+    const btn = D().querySelector('#hkBody .hk-bar [data-filter="' + label + '"]');
+    if (!btn) return null;
+    btn.click();
+    await sleep(420);
+    return D().querySelector('.ctl-pop');
+  };
+  const open = () => openPop('project');
+  const shut = dismiss;
+
+  say('');
+  say('=== project, as a set ===');
+  let pop = await open();
+  check('the filter popover opens', !!pop,
+        $$('#hkBody .hk-bar button').map((b) => b.textContent).join(' | '));
+  if (!pop) { document.title = 'projchan: ' + (fails || 1) + ' FAILED'; return; }
+
+  const projOpts = Array.from(pop.querySelectorAll('[data-project]'));
+  check('it offers the projects', projOpts.length > 1,
+        projOpts.map((n) => n.dataset.project).join(', '));
+  say('    ' + projOpts.map((n) => n.dataset.project).join(' | '), 'note');
+  /* The lab's projects are offered whether or not any are on screen, so
+     the choice does not appear and disappear as the list is narrowed by
+     something else. */
+  const names = projOpts.map((n) => n.dataset.project);
+  check('the lab’s own projects are among them',
+        ['KCNT1', 'PTEN'].every((p) => names.indexOf(p) >= 0),
+        names.join(', '));
+  check('including the urethane work, which is a separate project',
+        names.indexOf('KCNT1 Urethane') >= 0, names.join(', '));
+
+  const first = projOpts.find((n) => n.dataset.project === 'PTEN')
+             || projOpts[0];
+  const firstName = first.dataset.project;
+  first.querySelector('input').click();
+  await sleep(500);
+  const nOne = nCards();
+  say('    ' + firstName + ' alone: ' + nOne + ' card(s)', 'note');
+  check('picking one narrows the list', nOne < total, nOne + ' of ' + total);
+  check('and does not empty it', nOne > 0, String(nOne));
+
+  pop = await open();
+  const second = Array.from(pop.querySelectorAll('[data-project]'))
+    .find((n) => n.dataset.project !== firstName
+                 && n.dataset.project !== 'Unfiled');
+  const secondName = second && second.dataset.project;
+  if (second) {
+    second.querySelector('input').click();
+    await sleep(500);
+    const nTwo = nCards();
+    say('    plus ' + secondName + ': ' + nTwo + ' card(s)', 'note');
+    /* A set, not a radio: adding a second project must ADD recordings.
+       This is the check that separates the two designs. */
+    check('adding a second project widens rather than replaces',
+          nTwo > nOne, nTwo + ' vs ' + nOne);
+    check('and is still a subset of everything', nTwo <= total,
+          nTwo + ' of ' + total);
+    // Off again.
+    pop = await open();
+    const back = Array.from(pop.querySelectorAll('[data-project]'))
+      .find((n) => n.dataset.project === secondName);
+    if (back) { back.querySelector('input').click(); await sleep(450); }
+  }
+
+  say('');
+  say('=== the control says what is on ===');
+  await shut();
+  const barText = $$('#hkBody .hk-bar button').map((n) => n.textContent)
+    .join(' | ');
+  check('the toolbar names the project rather than just saying "Project"',
+        barText.indexOf(firstName) >= 0, barText.slice(0, 130));
+
+  say('');
+  say('=== clearing it gives everything back ===');
+  pop = await open();
+  const onNow = Array.from(pop.querySelectorAll('[data-project]'))
+    .filter((n) => n.querySelector('input').checked);
+  for (const n of onNow) { n.querySelector('input').click(); await sleep(250); }
+  await sleep(500);
+  check('every card is back', nCards() === total,
+        nCards() + ' vs ' + total);
+
+  say('');
+  say('=== channels, as a comparison ===');
+  pop = await openPop('channels');
+  check('there is a channel control', !!pop);
+  if (!pop) { document.title = 'projchan: ' + fails + ' FAILED'; return; }
+  const sel = pop.querySelector('.ctl-pop-row select');
+  const num = pop.querySelector('.ctl-pop-num');
+  check('there is a channel comparison', !!sel && !!num);
+  if (!sel) { document.title = 'projchan: ' + fails + ' FAILED'; return; }
+  const ops = Array.from(sel.options).map((o) => o.value);
+  check('it offers more than, fewer than and exactly',
+        ['gt', 'lt', 'eq'].every((o) => ops.indexOf(o) >= 0), ops.join(', '));
+  check('the number is disabled until a comparison is picked',
+        num.disabled === true);
+
+  num.value = '64';
+  sel.value = 'gt';
+  sel.dispatchEvent(new frame.contentWindow.Event('change', { bubbles: true }));
+  await sleep(600);
+  const nGt = nCards();
+  say('    more than 64 channels: ' + nGt + ' card(s)', 'note');
+  check('it narrows to the bigger recordings', nGt < total,
+        nGt + ' of ' + total);
+  check('and finds some', nGt > 0, String(nGt));
+
+  pop = await openPop('channels');
+  const sel2 = pop.querySelector('.ctl-pop-row select');
+  sel2.value = 'lt';
+  sel2.dispatchEvent(new frame.contentWindow.Event('change', { bubbles: true }));
+  await sleep(600);
+  const nLt = nCards();
+  say('    fewer than 64 channels: ' + nLt + ' card(s)', 'note');
+
+  pop = await openPop('channels');
+  const sel3 = pop.querySelector('.ctl-pop-row select');
+  sel3.value = 'eq';
+  sel3.dispatchEvent(new frame.contentWindow.Event('change', { bubbles: true }));
+  await sleep(600);
+  const nEq = nCards();
+  say('    exactly 64 channels: ' + nEq + ' card(s)', 'note');
+
+  /* The three sides must not add up to everything, and that is the point
+     rather than an accident: a recording nobody has read a header for has
+     no channel count and belongs to none of them. If they summed to the
+     total, a missing number would be being read as a small one. */
+  const covered = nGt + nLt + nEq;
+  check('the three comparisons do not overlap each other',
+        covered <= total, covered + ' vs ' + total);
+  say('    ' + (total - covered) + ' card(s) are in none of them', 'note');
+  check('a recording with no channel count is in neither side',
+        covered < total,
+        'if this fails, a missing number is being read as zero');
+
+  say('');
+  say('=== and both together ===');
+  pop = await open();
+  const anyProj = Array.from(pop.querySelectorAll('[data-project]'))
+    .find((n) => n.dataset.project === 'KCNT1')
+    || Array.from(pop.querySelectorAll('[data-project]'))[0];
+  anyProj.querySelector('input').click();
+  await sleep(600);
+  const nBoth = nCards();
+  say('    ' + anyProj.dataset.project + ' with exactly 64 channels: '
+      + nBoth + ' card(s)', 'note');
+  check('two filters narrow further than one', nBoth <= nEq,
+        nBoth + ' vs ' + nEq);
+
+  pop = await open();
+  for (const n of Array.from(pop.querySelectorAll('[data-project]'))
+    .filter((x) => x.querySelector('input').checked)) {
+    n.querySelector('input').click(); await sleep(250);
+  }
+  const cpop = await openPop('channels');
+  if (cpop) {
+    const s4 = cpop.querySelector('.ctl-pop-row select');
+    s4.value = '';
+    s4.dispatchEvent(new frame.contentWindow.Event('change', { bubbles: true }));
+    await sleep(600);
+  }
+  await shut();
+  check('turning both off gives every recording back', nCards() === total,
+        nCards() + ' vs ' + total);
+
+  say('');
+  say('ran ' + checks + ' checks');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'projchan: ' + fails + ' FAILED'
+                         : 'projchan: passed';
+})().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+                    document.title = 'projchan CRASH'; });
+</script></body></html>

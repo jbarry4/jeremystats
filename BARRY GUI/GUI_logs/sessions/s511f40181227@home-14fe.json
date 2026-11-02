@@ -1,0 +1,42 @@
+{
+  "_at": {
+    "created": "2026-09-09T20:07:17.103768+00:00",
+    "gid": "2026-09-09T20:07:17.103768+00:00",
+    "key": "2026-09-10T00:05:03.871063+00:00",
+    "label": "2026-09-09T20:07:17.103768+00:00",
+    "project": "2026-09-09T20:07:17.103768+00:00",
+    "project_source": "2026-09-09T20:07:17.103768+00:00",
+    "retired": "2026-09-10T00:05:03.871063+00:00",
+    "schema": "2026-09-09T20:07:17.103768+00:00",
+    "updated": "2026-09-10T00:05:03.871063+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-10T00:05:03.871063+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-09T16:07:17-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s511f40181227",
+  "key": null,
+  "label": "PTEN_CFCs",
+  "paths": [],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "updated": {
+    "at": "2026-09-09T20:05:03-04:00",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "Home",
+    "machine": "Homebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

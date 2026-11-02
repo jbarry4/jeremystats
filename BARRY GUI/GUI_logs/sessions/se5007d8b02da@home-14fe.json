@@ -1,0 +1,78 @@
+{
+  "_at": {
+    "created": "2026-09-09T02:32:41.519554+00:00",
+    "first_seen_by": "2026-09-09T02:32:41.519554+00:00",
+    "gid": "2026-09-09T02:32:41.519554+00:00",
+    "key": "2026-09-22T18:15:42.084198+00:00",
+    "label": "2026-09-09T02:32:41.519554+00:00",
+    "notes": "2026-09-09T02:32:41.519554+00:00",
+    "project": "2026-09-09T02:32:41.519554+00:00",
+    "project_source": "2026-09-09T02:32:41.519554+00:00",
+    "retired": "2026-09-22T18:15:42.084198+00:00",
+    "schema": "2026-09-09T02:32:41.519554+00:00",
+    "start": "2026-09-09T02:32:41.519554+00:00",
+    "updated": "2026-09-22T18:15:42.084198+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\info\\Downloads\\TEST_DATA": [
+        "set",
+        "2026-09-09T02:32:41.519554+00:00"
+      ],
+      "Y:\\ProcessedPtenData\\PTEN_CFCs\\VACC\\CFC\\Other": [
+        "set",
+        "2026-09-09T02:32:41.519554+00:00"
+      ]
+    },
+    "seen": {
+      "Home": [
+        "set",
+        "2026-09-09T02:32:41.519554+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-22T18:15:42.084198+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-04T11:50:39-04:00",
+    "machine": "BarryLab",
+    "os": "Windows",
+    "user": "barry"
+  },
+  "first_seen_by": "opened",
+  "gid": "se5007d8b02da",
+  "key": null,
+  "label": "2022-08-02",
+  "notes": "",
+  "paths": [
+    "Y:\\ProcessedPtenData\\PTEN_CFCs\\VACC\\CFC\\Other",
+    "C:\\Users\\info\\Downloads\\TEST_DATA"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "Home": {
+      "at": "2026-09-05T14:45:57-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "C:\\Users\\info\\Downloads\\TEST_DATA",
+      "root": null,
+      "scan": null
+    }
+  },
+  "start": "2022-08-02T17:11:19",
+  "updated": {
+    "app_version": "2026.09.22.2",
+    "at": "2026-09-22T14:15:42-04:00",
+    "commit": "d21dd4c",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "Home",
+    "machine": "Homebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

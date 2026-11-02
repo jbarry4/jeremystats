@@ -1,0 +1,233 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>incisorpick: running</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1400px; height:1000px; border:1px solid #333; background:#fff; }
+ h4 { color:#9cf; margin:14px 0 4px; font-weight:normal; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">Incisor's channel pick (2026-10-14): which channels THIS scan
+reads -- all, the first half, the second half, the even ones, the odd ones,
+or CSC ranges -- with the channels marked bad left out inside any of them.
+Asked for because the only way to scan one probe of a 128-channel recording
+was to untick the other 64, which marks them bad for that session in every
+tool. So the checks are as much about what a pick must NOT do as what it
+does: it marks nothing bad, puts no bad channel back, and the count the
+panel shows is the server's own.</p>
+<p class="note">IT WRITES NOTHING. It only asks for estimates, and every
+bad-channel write the page could make is counted (there must be none).</p>
+<div id="out"></div>
+<iframe id="A"></iframe>
+<script>
+let bad = 0, good = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1;
+                        if (c === 'ok') good += 1; };
+const head = (t) => { const h = document.createElement('h4');
+                      h.textContent = t; out.appendChild(h); };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c ? '' : '   [' + d + ']'));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 20000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(150);
+  }
+  return null;
+}
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const EV = (src) => { try { return W().eval(src); } catch (e) { return null; } };
+const JEV = (src) => { const r = EV('JSON.stringify(' + src + ')');
+                       try { return r ? JSON.parse(r) : null; }
+                       catch (e) { return null; } };
+const post = async (url, obj) => (await fetch(url, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(obj),
+})).json();
+const nums = (list) => (list || []).map(Number).sort((a, b) => a - b);
+const same = (a, b) => nums(a).join(',') === nums(b).join(',');
+
+/* Cheapest first, as incisorsel.html does: local before the share, fewest
+   channels first, but at least eight so a half is not one channel. */
+async function candidates() {
+  const reg = await (await fetch('/api/registry')).json();
+  const list = [];
+  for (const p of (reg.tree || [])) {
+    for (const m of (p.mice || [])) {
+      for (const s of (m.sessions || [])) {
+        const local = (s.here || []).find((x) => !/^\\\\/.test(x));
+        const path = local || (s.here || [])[0];
+        const n = Number(s.n_channels) || 1e9;
+        if (!path || n < 8) continue;
+        list.push({ row: s, path, remote: local ? 0 : 1, n });
+      }
+    }
+  }
+  list.sort((a, b) => (a.remote - b.remote) || (a.n - b.n));
+  return list;
+}
+
+/* What a pick should take, worked out here from the channel list the server
+   gave -- independently of the server's own rule. */
+function expect(channels, pick) {
+  const all = nums(channels.map((c) => c.number));
+  let want;
+  if (!pick) want = all;
+  else if (pick.mode === 'first') want = all.slice(0, Math.ceil(all.length / 2));
+  else if (pick.mode === 'second') want = all.slice(Math.ceil(all.length / 2));
+  else if (pick.mode === 'even') want = all.filter((n) => n % 2 === 0);
+  else if (pick.mode === 'odd') want = all.filter((n) => n % 2 === 1);
+  else want = all.filter((n) => pick.ranges.some((r) => n >= r[0] && n <= r[1]));
+  const badSet = new Set(channels.filter((c) => c.bad).map((c) => Number(c.number)));
+  return { want, read: want.filter((n) => !badSet.has(n)) };
+}
+
+(async () => { try {
+  head('A recording to estimate');
+  const list = await candidates();
+  let cand = null, base = null;
+  for (const c of list.slice(0, 10)) {
+    const b = await post('/api/incisor/estimate', { path: c.path });
+    if (b.ok) { cand = c; base = b; break; }
+  }
+  ck('a recording with an estimate', !!cand, 'none of the first ten');
+  if (!cand) { document.title = 'incisorpick: 1 FAILED'; return; }
+  const path = cand.path;
+  const chans = base.channels || [];
+  const was = nums(chans.filter((c) => c.bad).map((c) => c.number));
+  say('note', '  ' + (cand.row.label || cand.row.gid) + ', ' + chans.length
+              + ' channels, marked bad: ' + (was.join(', ') || 'none'));
+  const allNums = nums(chans.map((c) => c.number));
+  const lo = allNums[0], hi = allNums[allNums.length - 1];
+  const mid = allNums[Math.floor(allNums.length / 3)];
+
+  head('The server: each pick reads what it says, less the bad ones');
+  const PICKS = [
+    ['first', { mode: 'first' }], ['second', { mode: 'second' }],
+    ['even', { mode: 'even' }], ['odd', { mode: 'odd' }],
+    ['ranges', { mode: 'ranges', ranges: [[lo, lo + 2], [mid, mid]] }],
+  ];
+  for (const [name, pick] of PICKS) {
+    const got = await post('/api/incisor/estimate', { path, channel_pick: pick });
+    const e = expect(chans, pick);
+    ck(name + ': it reads ' + e.read.length + ' channels, the pick less the bad',
+       got.ok && got.plan.n_channels === e.read.length,
+       got.error || (got.plan && got.plan.n_channels) + ' vs ' + e.read.length);
+    ck(name + ': and marks nothing bad',
+       got.ok && same(got.plan.bad_channels, was),
+       JSON.stringify(got.plan && got.plan.bad_channels));
+    ck(name + ': each channel says whether the pick takes it',
+       got.ok && (got.channels || []).every((c) =>
+         c.picked === e.want.includes(Number(c.number))),
+       'picked flags disagree');
+  }
+  const half = await post('/api/incisor/estimate', { path, channel_pick: { mode: 'first' } });
+  const hw = expect(chans, { mode: 'first' }).want;
+  ck('the first half is said in words, with its CSC numbers',
+     half.pick_words === 'the first half (CSC' + hw[0] + '-CSC' + hw[hw.length - 1] + ')',
+     half.pick_words);
+  const none = await post('/api/incisor/estimate',
+    { path, channel_pick: { mode: 'ranges', ranges: [[hi + 1000, hi + 1001]] } });
+  ck('a range with no channel in it is refused, in a sentence',
+     none.ok === false && /Nothing is left to scan/.test(none.error || ''),
+     none.error || 'accepted');
+  const silly = await post('/api/incisor/estimate', { path, channel_pick: { mode: 'middle' } });
+  ck('and so is a pick that is not one',
+     silly.ok === false && /not a channel pick/.test(silly.error || ''),
+     silly.error || 'accepted');
+
+  head('The panel');
+  A.src = '/#toolkit';
+  await until(() => EV('typeof BARRY !== "undefined" && !!BARRY.incisor'), 40000);
+  // Count every bad-channel write the page makes. There must be none.
+  EV('(function(){ var W = window; W.__ipWrites = 0; var f = W.fetch;'
+     + ' W.fetch = function(u, o) { if (String(u).indexOf("/api/session/bad") >= 0'
+     + '   && o && o.method === "POST") W.__ipWrites++; return f.apply(this, arguments); }; })()');
+  const tool = await until(() => Array.from(
+    D().querySelectorAll('#tkBody .tk-tool, #tkBody .tk-step'))
+    .find((b) => /Incisor/.test(b.textContent)), 15000);
+  if (tool) tool.click();
+  await until(() => /Which recording/.test((D().getElementById('tkResult') || {})
+    .textContent || ''), 15000);
+  EV('BARRY.incisor._state().q.gid = ' + JSON.stringify(cand.row.gid));
+  EV('BARRY.incisor._state().q.path = ' + JSON.stringify(path));
+  EV('BARRY.incisor._state().q.pick = null');
+  EV('(async function(){ await BARRY.incisor._refresh(); BARRY.incisor.paint(); })()');
+  const text = () => (D().querySelector('.inc-selection') || {}).textContent || '';
+  const headText = () => ((D().querySelector('.inc-sel-head') || {}).textContent || '');
+  await until(() => /will be read/.test(text()), 40000);
+  const seg = () => Array.from(D().querySelectorAll('.inc-pick-seg button'));
+  ck('step 2 offers All, First half, Second half, Even, Odd and a range',
+     seg().map((b) => b.textContent).join('|')
+       === 'All|First half|Second half|Even|Odd|Range…',
+     seg().map((b) => b.textContent).join('|'));
+  ck('every channel at first', /^\d+ of \d+ channels will be read$/.test(headText())
+     && (seg()[0] || {}).className === 'active', headText());
+  ck('and it says a pick marks nothing bad',
+     /marks nothing bad/.test((D().querySelector('.inc-pick-why') || {}).textContent || ''));
+
+  seg()[1].click();
+  const eF = expect(chans, { mode: 'first' });
+  await until(() => headText().indexOf(eF.read.length + ' of ') === 0
+                    && /first half/.test(headText()), 40000);
+  ck('First half: the server’s count, and what it is, at the top',
+     headText().indexOf(eF.read.length + ' of ' + chans.length + ' channels will be '
+                        + 'read: the first half (CSC' + eF.want[0]) === 0, headText());
+  ck('the scan asks for it', JSON.stringify(JEV('BARRY.incisor._state().q.pick'))
+     === JSON.stringify({ mode: 'first' }));
+  D().querySelector('.inc-chan-edit') && (D().querySelector('.inc-chan-edit').open = true);
+  await sleep(200);
+  const nOut = D().querySelectorAll('.inc-chan.out').length;
+  ck('the channels it leaves out are dimmed in the grid, not struck as bad',
+     nOut === chans.filter((c) => !c.bad && !eF.want.includes(Number(c.number))).length
+     && D().querySelectorAll('.inc-chan.bad').length === was.length,
+     nOut + ' out, ' + D().querySelectorAll('.inc-chan.bad').length + ' bad');
+  ck('and are still ticked: they are not bad',
+     Array.from(D().querySelectorAll('.inc-chan.out input')).every((i) => i.checked));
+
+  seg()[5].click();
+  await until(() => D().querySelector('.inc-pick-in'), 5000);
+  const inp = D().querySelector('.inc-pick-in');
+  ck('Range… opens a field for CSC numbers and ranges', !!inp);
+  inp.value = 'CSC' + lo + '-' + (lo + 2) + ', ' + mid;
+  D().querySelector('.inc-pick-go').click();
+  const eR = expect(chans, { mode: 'ranges', ranges: [[lo, lo + 2], [mid, mid]] });
+  await until(() => headText().indexOf(eR.read.length + ' of ') === 0
+                    && /CSC /.test(headText()), 40000);
+  ck('typed as “CSC' + lo + '-' + (lo + 2) + ', ' + mid + '”, it reads those',
+     headText().indexOf(eR.read.length + ' of ') === 0, headText());
+  ck('and asks for them as ranges', JSON.stringify(JEV('BARRY.incisor._state().q.pick'))
+     === JSON.stringify({ mode: 'ranges', ranges: [[lo, lo + 2], [mid, mid]] }),
+     JSON.stringify(JEV('BARRY.incisor._state().q.pick')));
+
+  seg()[0].click();
+  await until(() => /^\d+ of \d+ channels will be read$/.test(headText()), 40000);
+  ck('All goes back to every channel not marked bad',
+     headText() === base.plan.n_channels + ' of ' + chans.length + ' channels will be read',
+     headText());
+  ck('and nothing was written: no bad-channel change was sent',
+     EV('window.__ipWrites') === 0, String(EV('window.__ipWrites')));
+  const after = await post('/api/incisor/estimate', { path });
+  ck('the record holds the bad channels it held to begin with',
+     same(after.plan.bad_channels, was), JSON.stringify(after.plan.bad_channels));
+
+  head(bad ? bad + ' problem(s)' : 'All good.');
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+} finally {
+  document.title = 'incisorpick: ' + good + ' ok, ' + bad + ' fail';
+  try { A.src = 'about:blank'; } catch (e) { /* ok */ }
+}
+})();
+</script>

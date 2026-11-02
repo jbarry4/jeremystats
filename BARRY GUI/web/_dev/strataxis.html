@@ -1,0 +1,241 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>strataxis — the layer overlay only paints where a lane is a channel</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1500px; height:900px; border:1px solid #333; background:#fff; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ h2 { color:#9cf; font-size:12px; margin:14px 0 2px; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">The layer overlay was extended from the traces onto every
+image panel. That is right for a panel whose rows are channels — the CSD, a
+stacked time-frequency view — and wrong for one whose y axis is frequency. A
+single-channel spectrogram or scalogram sets rows_meta = None
+(analysis.py:705) and the band-power map has no "rows" key at all
+(analysis.py:972), so neither can say which channel a lane is. The overlay's
+fallback is "every selected channel, evenly spaced down the plot", which on
+those panels paints the layer colours straight across a frequency axis.
+
+This drives the real BARRY.strata.draw with a recording canvas and counts what
+it paints, for each shape of panel answer the server actually sends.</p>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 400, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  /* BARRY is a top-level const in core.js, so it is not a property of the
+     frame's window and W.BARRY is undefined forever. setView is a function
+     declaration, so it does land there, and only once core.js has run. */
+  await untilN(() => typeof W.setView === 'function');
+
+  // A 64-channel recording, the built-in one by preference: this paints
+  // layers and has no business touching a real session's sheet.
+  let gid = null, label = '';
+  const reg = await (await fetch('/api/registry')).json();
+  const wide = [];
+  for (const p of (reg.tree || [])) {
+    for (const m of p.mice) {
+      for (const s of m.sessions) {
+        if (s.n_channels >= 64 && (s.here || []).length) wide.push(s);
+      }
+    }
+  }
+  const pick = wide.find((s) => String(s.gid || '').startsWith('demo-'))
+            || wide[0];
+  if (pick) { gid = pick.gid; label = pick.label; }
+  if (!gid) { say('bad', 'no 64-channel recording reachable'); return; }
+  say('note', '  ' + label);
+
+  W.eval("setView('toolkit')");
+  await sleep(300);
+  await W.eval('BARRY.strata.enter(' + JSON.stringify(gid) + ')');
+  await untilN(() => W.eval('!!BARRY.strata.active'));
+  check('StrataScope opened', !!W.eval('BARRY.strata.active'));
+  await untilN(() => D.querySelector('.strata-rows .strata-row'), 300);
+  await sleep(2500);
+
+  /* One probe, run for each shape of panel answer. Returns how many fills
+     the overlay made and how tall the tallest was, because "painted
+     nothing" and "painted one hairline" are different answers and only the
+     count distinguishes them. */
+  const probe = (panelArg) => JSON.parse(W.eval(
+    '(function(){'
+    + '  var cv = document.createElement("canvas");'
+    + '  cv.width = 400; cv.height = 300;'
+    + '  var ctx = cv.getContext("2d");'
+    + '  var fills = [], strokes = 0;'
+    + '  var rf = ctx.fillRect.bind(ctx);'
+    + '  ctx.fillRect = function (x, y, w, h) { fills.push(h); rf(x,y,w,h); };'
+    + '  var rs = ctx.stroke.bind(ctx);'
+    + '  ctx.stroke = function () { strokes += 1; rs(); };'
+    + '  var sess = { strata: { gid: ' + JSON.stringify(gid) + ' } };'
+    + '  var err = null;'
+    + '  try {'
+    + '    BARRY.strata.draw(ctx, sess, { t0: 0, t1: 10 }, 0, 400, 0, 300,'
+    + '                      { accent: "#4bc7f0" }, ' + panelArg + ');'
+    + '  } catch (e) { err = String(e && e.message || e); }'
+    + '  return JSON.stringify({ fills: fills.length, strokes: strokes,'
+    + '                          err: err });'
+    + '})()'));
+
+  head('1. Precondition: it paints where a lane IS a channel');
+  /* Without this the whole file is vacuous. If the wash happens to be off,
+     or the sheet has no labelled channel, every case below paints nothing
+     and the bug would report as fixed. */
+  const traces = probe('undefined');
+  say('note', '  traces (no panel object): ' + traces.fills + ' fills, '
+      + traces.strokes + ' strokes' + (traces.err ? '  err=' + traces.err : ''));
+  check('the traces get the overlay — no panel object at all',
+        traces.fills > 0, JSON.stringify(traces));
+
+  const rows = [];
+  for (let i = 1; i <= 32; i++) rows.push({ number: i, label: 'CSC' + i });
+  const csd = probe(JSON.stringify({ rows: rows }));
+  say('note', '  CSD-shaped (32 named rows): ' + csd.fills + ' fills');
+  check('and a raster that names its rows gets it too',
+        csd.fills > 0, JSON.stringify(csd));
+
+  head('2. The bug: a frequency axis is not a channel axis');
+  /* Exactly what analysis.py sends. Not a guess at the shape: the
+     single-channel time-frequency branch sets rows_meta = None and then
+     serialises it as "rows": null, and _panel_bandpower never adds the key
+     at all. */
+  const spec = probe(JSON.stringify(
+    { panel: 'spectrogram', rows: null, freqs: [2, 200] }));
+  say('note', '  single-channel spectrogram ("rows": null): '
+      + spec.fills + ' fills, ' + spec.strokes + ' strokes');
+  check('a single-channel spectrogram gets NO layer bands — its y axis is Hz',
+        spec.fills === 0, spec.fills + ' fills painted onto a frequency axis');
+
+  const bp = probe(JSON.stringify(
+    { panel: 'bandpower', centers: [4, 8, 12], profile: [1, 2, 3] }));
+  say('note', '  band-power map (no "rows" key): ' + bp.fills + ' fills, '
+      + bp.strokes + ' strokes');
+  check('nor does the band-power map — same reason',
+        bp.fills === 0, bp.fills + ' fills painted onto a frequency axis');
+
+  const scal = probe(JSON.stringify({ panel: 'scalogram', rows: [] }));
+  say('note', '  scalogram (empty rows): ' + scal.fills + ' fills');
+  check('nor a raster that reports an empty row list',
+        scal.fills === 0, scal.fills + ' fills');
+
+  head('3. And the boundary lines go with them');
+  /* The boundary rule is drawn in the same pass and off the same lane
+     arithmetic, so it lands in the wrong place for the same reason. It is
+     thinner than the wash, which is exactly why it would survive a fix
+     aimed only at the fill. */
+  check('no boundary rules on the spectrogram either',
+        spec.strokes === 0, spec.strokes + ' strokes');
+  check('nor on the band-power map', bp.strokes === 0, bp.strokes + ' strokes');
+
+  head('4. Nothing threw');
+  check('the overlay never threw on any panel shape',
+        !traces.err && !csd.err && !spec.err && !bp.err && !scal.err,
+        [traces.err, csd.err, spec.err, bp.err, scal.err].join(' | '));
+
+  head('5. With the labelling mode shut, off the payload alone');
+  /* What sess.strata was put there for (strata.js:144), the way curate.js
+     publishes sess.curationMarks: a pop-out page has its own session
+     objects and none of the module's state. The guard used to be `!sheet`,
+     which enter() sets and exit() clears, so any window not doing the
+     labelling stopped at the first line and the payload was never once
+     drawn from.
+
+     The sheet comes off the same route a pop-out would ask, rather than
+     out of the module -- and the mode is shut first, so anything that
+     paints here paints from the payload and nothing else. */
+  W.eval('BARRY.strata.exit()');
+  await sleep(400);
+  check('the labelling mode is shut', !W.eval('!!BARRY.strata.active'));
+
+  let sheet = null;
+  try {
+    sheet = await (await fetch('/api/layers/' + encodeURIComponent(gid))).json();
+  } catch (e) { sheet = null; }
+  const labels = (sheet && sheet.sheet && sheet.sheet.labels) || null;
+  /* Regions are a separate route: /api/layers/<gid> answers with the
+     sheet and the session, and the region vocabulary is shared across all
+     recordings, so it lives at /api/layers/regions. */
+  let regions = [];
+  try {
+    const rr = await (await fetch('/api/layers/regions')).json();
+    regions = rr.regions || [];
+  } catch (e) { regions = []; }
+  // The channel list off the sheet's own keys, so the numbers are the
+  // ones the labels are filed under rather than an assumed 1..N.
+  const nums = labels
+    ? Object.keys(labels).map(Number).sort((a, b) => a - b) : [];
+
+  check('the sheet is reachable with the mode shut, and has labels',
+        nums.length > 0, 'labels=' + (labels ? Object.keys(labels).length : 'none'));
+  if (nums.length) {
+    say('note', '  ' + nums.length + ' labelled channels, '
+        + regions.length + ' regions, from /api/layers');
+    const pay = { gid: gid, labels: labels, regions: regions,
+                  channels: nums.map((n) => ({ number: n })) };
+    const off = (panelArg) => JSON.parse(W.eval(
+      '(function(){'
+      + '  var cv = document.createElement("canvas");'
+      + '  cv.width = 400; cv.height = 300;'
+      + '  var ctx = cv.getContext("2d");'
+      + '  var fills = 0;'
+      + '  var rf = ctx.fillRect.bind(ctx);'
+      + '  ctx.fillRect = function (x,y,w,h) { fills += 1; rf(x,y,w,h); };'
+      + '  var p = ' + 
+        JSON.stringify(JSON.stringify(pay)) + ';'
+      + '  p = JSON.parse(p);'
+      + '  var sess = { strata: { gid: p.gid, labels: p.labels,'
+      + '                         regions: p.regions },'
+      + '               info: { channels: p.channels } };'
+      + '  var err = null;'
+      + '  try { BARRY.strata.draw(ctx, sess, { t0: 0, t1: 10 },'
+      + '        0, 400, 0, 300, { accent: "#4bc7f0" }, '
+      + panelArg + '); }'
+      + '  catch (e) { err = String(e && e.message || e); }'
+      + '  return JSON.stringify({ fills: fills, err: err });'
+      + '})()'));
+
+    const shut = off('undefined');
+    say('note', '  payload-only draw: ' + shut.fills + ' fills'
+        + (shut.err ? '  err=' + shut.err : ''));
+    check('a pop-out carrying only sess.strata gets the layer bands',
+          shut.fills > 0, JSON.stringify(shut));
+
+    /* The two fixes have to compose: no module state to fall back on,
+       and still no bands on a frequency axis. */
+    const shutBp = off(JSON.stringify({ panel: 'bandpower', centers: [4, 8] }));
+    check('and a frequency-axis panel still gets none of them',
+          shutBp.fills === 0, shutBp.fills + ' fills');
+  }
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.message || e));
+} finally {
+  say('note', '');
+  say(bad ? 'bad' : 'ok', bad ? (bad + ' failed') : 'all good');
+  document.title = 'strataxis ' + (bad ? bad + ' FAIL' : 'ok');
+} })();
+</script>

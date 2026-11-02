@@ -1,0 +1,68 @@
+{
+  "_at": {
+    "created": "2026-09-22T20:09:54.775144+00:00",
+    "id": "2026-09-22T20:09:54.775144+00:00",
+    "schema": "2026-09-22T20:09:54.775144+00:00",
+    "slides": "2026-09-22T20:09:54.775144+00:00",
+    "title": "2026-09-22T20:09:54.775144+00:00",
+    "updated": "2026-09-22T20:09:54.775144+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-22T20:09:54.775144+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.22.2",
+    "at": "2026-09-22T16:09:54-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "id": "deck_bd30d27b",
+  "schema": 1,
+  "slides": [
+    {
+      "id": "p1",
+      "items": [
+        {
+          "a": [
+            0,
+            0
+          ],
+          "alpha": 1,
+          "b": [
+            1,
+            1
+          ],
+          "color": "#c0392b",
+          "filled": false,
+          "h": 0.4000806614236741,
+          "id": "i1f8m7vj",
+          "shape": "arrow",
+          "type": "shape",
+          "w": 0.3992740471869329,
+          "width": 2,
+          "x": 0.1996370235934664,
+          "y": 0.19832627545876186,
+          "z": 3
+        }
+      ],
+      "notes": "",
+      "show_notes": false,
+      "title": "One"
+    }
+  ],
+  "title": "arrow probe",
+  "updated": {
+    "app_version": "2026.09.22.2",
+    "at": "2026-09-22T16:09:54-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

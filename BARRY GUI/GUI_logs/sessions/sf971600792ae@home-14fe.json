@@ -1,0 +1,76 @@
+{
+  "_at": {
+    "created": "2026-09-21T11:56:53.955093+00:00",
+    "first_seen_by": "2026-09-21T11:56:53.955093+00:00",
+    "gid": "2026-09-21T11:56:53.955093+00:00",
+    "key": "2026-09-22T18:15:42.414764+00:00",
+    "label": "2026-09-21T11:56:53.955093+00:00",
+    "project": "2026-09-21T11:56:53.955093+00:00",
+    "project_source": "2026-09-21T11:56:53.955093+00:00",
+    "retired": "2026-09-22T18:15:42.414764+00:00",
+    "schema": "2026-09-21T11:56:53.955093+00:00",
+    "start": "2026-09-21T11:56:53.955093+00:00",
+    "updated": "2026-09-22T18:15:42.414764+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J4\\Precon1\\J4_Precon1_SPC\\2026-07-22_10-48-48": [
+        "set",
+        "2026-09-21T11:56:53.955093+00:00"
+      ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-21T11:56:53.955093+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-22T18:15:42.414764+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.18.4",
+    "at": "2026-09-21T07:56:53-04:00",
+    "commit": "f693752",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "first_seen_by": "opened",
+  "gid": "sf971600792ae",
+  "key": null,
+  "label": "2026-07-22",
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J4\\Precon1\\J4_Precon1_SPC\\2026-07-22_10-48-48"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-21T07:56:49-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "E:\\Joe Multisite 2026 data\\J4\\Precon1\\J4_Precon1_SPC\\2026-07-22_10-48-48",
+      "root": null,
+      "scan": null
+    }
+  },
+  "start": "2026-07-22T10:48:48",
+  "updated": {
+    "app_version": "2026.09.22.2",
+    "at": "2026-09-22T14:15:42-04:00",
+    "commit": "d21dd4c",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "Home",
+    "machine": "Homebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

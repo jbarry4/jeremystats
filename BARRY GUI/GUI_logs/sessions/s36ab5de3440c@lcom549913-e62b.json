@@ -1,0 +1,62 @@
+{
+  "_at": {
+    "created": "2026-09-14T16:22:29.121399+00:00",
+    "gid": "2026-09-14T16:22:29.121399+00:00",
+    "group": "2026-09-14T16:22:29.121399+00:00",
+    "key": "2026-09-14T16:24:12.403808+00:00",
+    "label": "2026-09-14T16:22:29.121399+00:00",
+    "loose_key": "2026-09-14T16:22:29.121399+00:00",
+    "mouse": "2026-09-14T16:22:29.121399+00:00",
+    "project": "2026-09-14T16:22:29.121399+00:00",
+    "project_source": "2026-09-14T16:22:29.121399+00:00",
+    "retired": "2026-09-14T16:22:29.121399+00:00",
+    "schema": "2026-09-14T16:22:29.121399+00:00",
+    "session": "2026-09-14T16:22:29.121399+00:00",
+    "start": "2026-09-14T16:22:29.121399+00:00",
+    "updated": "2026-09-14T16:24:12.403808+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "D:\\PTEN\\PTEN\\m27_ptenblind\\New folder\\2024-07-03_12-14-01": [
+        "set",
+        "2026-09-14T16:24:12.403808+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T16:24:12.403808+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-14T12:22:29-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s36ab5de3440c",
+  "group": null,
+  "key": null,
+  "label": "PTEN m27 2024-07-03",
+  "loose_key": null,
+  "mouse": 27,
+  "paths": [
+    "D:\\PTEN\\PTEN\\m27_ptenblind\\New folder\\2024-07-03_12-14-01"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": null,
+  "start": "2024-07-03T16:14:01+00:00",
+  "updated": {
+    "at": "2026-09-14T12:24:12-04:00",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

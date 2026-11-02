@@ -1,0 +1,210 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — gain across a probe layout</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Gain is a property of the recording, and every pane showing that
+   recording draws at the same scale.
+
+   It was applied to one pane. `sess.gain` was set -- which is right, and is
+   why the number in every control strip agreed -- and then a single
+   `drawPane(index)` redrew only the pane whose control had been touched. On
+   a one-pane H3 layout that is every pane there is, so the fault was
+   invisible; on a probe layout the gain control changed one pane of six and
+   the other five kept a canvas drawn at the old scale.
+
+   That shape of bug cannot be caught by reading `sess.gain` afterwards --
+   it was always correct. This reads the CANVAS PIXELS of every pane before
+   and after, which is the only evidence that distinguishes "the value
+   changed" from "the picture changed".
+
+   `?session=<a CSC folder>` opens a real recording; without one the checks
+   say so and are skipped rather than passing vacuously. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  const errs = [];
+  win().addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  await untilN(() => typeof win().setView === 'function');
+  await sleep(700);
+  const run = (src) => win().eval(src);
+  const val = (expr) => run('(' + expr + ')');
+
+  /* A fingerprint of what a canvas is actually showing. Summing the pixel
+     bytes is enough: raising the gain moves ink, and moving ink changes the
+     sum. Comparing images would be more precise and no more true. */
+  /* ONE canvas per pane, not one per <canvas>. A pane stacks several --
+     the traces, a raster grid, a track strip -- and indexing the flat list
+     reads pane 0's grid as if it were pane 1, which is how a first run of
+     this reported that panes 0 and 2 redrew and 1 and 3 did not. */
+  function paneCanvas(i) {
+    const boxes = doc().querySelectorAll('#paneGrid > *');
+    const box = boxes[i];
+    if (!box) return null;
+    return box.querySelector('canvas:not(.raster-grid):not(.track-canvas)')
+        || box.querySelector('canvas');
+  }
+
+  function inkOf(i) {
+    const c = paneCanvas(i);
+    if (!c || !c.width || !c.height) return null;
+    try {
+      const g = c.getContext('2d');
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let sum = 0;
+      for (let k = 0; k < d.length; k += 37) sum += d[k];
+      return sum;
+    } catch (e) { return null; }
+  }
+
+  /* The gain input specifically. A control strip holds several number
+     inputs -- spacing, the amplitude limit -- so taking the first one read
+     a different control entirely and then reported that four strips
+     disagreed about the gain when what differed was what they were. */
+  function gainInputs() {
+    const strips = doc().querySelectorAll('#xfMaster .ctl, #paneGrid .ctl');
+    const out = [];
+    for (const c of strips) {
+      const lab = c.querySelector('label');
+      if (!lab || !/^gain$/i.test((lab.textContent || '').trim())) continue;
+      const i = c.querySelector('input[type=number]');
+      if (i) out.push(i);
+    }
+    return out;
+  }
+
+  const qs = new URLSearchParams(location.search);
+  const folder = qs.get('session');
+
+  head('a recording with more than one pane');
+  if (!folder) {
+    say('note', 'no ?session=<CSC folder> given, so there is no real '
+              + 'recording to lay out. Skipped.');
+  } else {
+    run('setView("xplore")');
+    const opened = await untilN(
+      () => val('!!BARRY.views.xplore.current()'), 20, 100);
+    if (opened < 0) {
+      await run('BARRY.views.xplore.open(' + JSON.stringify(folder) + ')');
+    }
+    await untilN(() => val('!!BARRY.views.xplore.current()'), 250);
+    await sleep(600);
+
+    /* Four panes of the same recording, which is what every probe layout
+       and every 2/4 split is. The bug needs only that there is more than
+       one. */
+    run('BARRY.views.xplore.setPanes([{panel:"traces"},{panel:"traces"},'
+        + '{panel:"traces"},{panel:"traces"}], {col:0.5,row:0.5})');
+    await untilN(() => doc().querySelectorAll('#paneGrid > *').length >= 4,
+                 200);
+    await sleep(900);
+
+    const n = doc().querySelectorAll('#paneGrid > *').length;
+    check('four panes are laid out', n >= 4, 'got ' + n);
+    /* `XF` is a const inside the module, not a global -- the state is
+       reachable as `BARRY.views.xplore.state`, which is what it is
+       published for. */
+    check('they are all the same recording',
+          val('BARRY.views.xplore.state.panes.slice(0,4).every('
+              + 'function (p) { return p && p.sessionId === '
+              + 'BARRY.views.xplore.state.active; })') === true);
+
+    const before = [0, 1, 2, 3].map(inkOf);
+    check('every pane has drawn something',
+          before.every((v) => v !== null && v > 0),
+          JSON.stringify(before));
+
+    head('turning the gain up redraws every pane');
+    /* An absolute value, twice, rather than multiplying what is there.
+       The view state persists between runs, so multiplying walked the gain
+       into its own clamp at 200 and the second run had nothing to change. */
+    run('BARRY.views.xplore.current().gain = 2');
+    await sleep(120);
+    const g0 = val('BARRY.views.xplore.current().gain');
+    /* Through the control strip, not through the API -- the control is
+       where the fault was. */
+    /* When several panes are views of one recording the strips are lifted
+       into a single master strip, so the control is not inside the pane
+       any more -- which is also the layout the bug needed. */
+    const input = gainInputs()[0];
+    check('the gain control was reachable', !!input);
+    if (input) {
+      const Ev = win().Event;
+      input.value = '8';
+      input.dispatchEvent(new Ev('change', { bubbles: true }));
+    }
+    await sleep(900);
+
+    const g1 = val('BARRY.views.xplore.current().gain');
+    check('the gain actually changed', g1 > g0, g0 + ' -> ' + g1);
+
+    const after = [0, 1, 2, 3].map(inkOf);
+    const moved = [0, 1, 2, 3].filter((i) =>
+      before[i] !== null && after[i] !== null && before[i] !== after[i]);
+    /* The whole point. Before the fix this was [0] and nothing else. */
+    check('EVERY pane redrew, not just the one that was touched',
+          moved.length === 4,
+          'panes that changed: ' + JSON.stringify(moved));
+
+    head('and so does the keyboard');
+    const b2 = [0, 1, 2, 3].map(inkOf);
+    const KEv = win().KeyboardEvent;
+    doc().dispatchEvent(new KEv('keydown', { key: 'ArrowUp', bubbles: true }));
+    await sleep(900);
+    const a2 = [0, 1, 2, 3].map(inkOf);
+    const moved2 = [0, 1, 2, 3].filter((i) =>
+      b2[i] !== null && a2[i] !== null && b2[i] !== a2[i]);
+    check('up-arrow redraws every pane too', moved2.length === 4,
+          'panes that changed: ' + JSON.stringify(moved2));
+
+    head('the control strips agree with each other');
+    const shown = gainInputs().map((i) => i.value);
+    check('every strip shows the same gain',
+          shown.length < 2 || new Set(shown).size === 1,
+          JSON.stringify(shown));
+  }
+
+  head('nothing threw');
+  check('no uncaught errors', errs.length === 0, errs.join(' ; '));
+
+  document.title = (bad ? bad + ' FAIL' : 'all ok') + ' — gain';
+  say(bad ? 'bad' : 'ok', bad ? bad + ' failed' : 'all checks passed');
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.message));
+  document.title = 'harness threw — gain';
+} })();
+</script>

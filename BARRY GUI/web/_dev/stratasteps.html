@@ -1,0 +1,688 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — StrataScope steps</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:26vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:74vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* StrataScope's steps (web/js/stratasteps.js, backend/stratasteps.py).
+
+   On the short demo recording, which the steps can read in about twenty
+   seconds and which is not anybody's data. Checks that:
+
+     - the step row is there and the depth strip sits on the rail's lanes
+     - a read can be started from the bar when there is none (precondition:
+       this establishes it rather than assuming it)
+     - Step 1 proposes dashed lines with anchors, leads and votes
+     - dragging a dashed line on the strip moves it, by whole channels
+     - clicking a vote makes it the lead
+     - the dashed lines reach the traces
+     - Accept writes the labels and marks the step done
+     - painting Theta Walk on the Step 0 strip saves it, and finishing Step 0
+       after Step 1 marks Step 1 as needing a look
+     - Step 4 shows the checks
+
+   It writes to the demo's layer sheet, so it reads the sheet first and
+   puts back exactly what it found -- labels and every strata_* field -- in
+   a finally. It never signs off: a sign-off is a version, and versions
+   cannot be taken back. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+const GID = 'demo-ds-tutorial';
+const PATH = 'demo:ds-tutorial';
+
+(async () => {
+  const f = document.getElementById('app');
+  let W = null, before = null;
+  const post = (url, body) => W().fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  }).then((r) => r.json());
+
+  const restore = async () => {
+    if (!before) return;
+    try {
+      // A sheet this run made is taken away again, not left behind empty.
+      if (!before.existed) {
+        await post('/api/layers/' + GID + '/delete', {});
+        return;
+      }
+      await post('/api/layers/' + GID + '/clear', {});
+      if (Object.keys(before.labels || {}).length) {
+        await post('/api/layers/' + GID + '/set', { labels: before.labels });
+      }
+      const now = (await W().fetch('/api/layers/' + GID).then((r) => r.json()))
+        .sheet.strata || {};
+      const was = before.strata || {};
+      const patch = {
+        states: was.states || {}, wheel: was.wheel || [],
+        checks: was.checks || [], signed: was.signed || {},
+      };
+      for (const k of ['params', 'confidence', 'steps', 'anchors']) {
+        const m = {};
+        for (const key of Object.keys(now[k] || {})) m[key] = null;
+        Object.assign(m, was[k] || {});
+        patch[k] = m;
+      }
+      await post('/api/strata/' + GID + '/state', { patch });
+    } catch (e) { p('restore failed: ' + e.message); }
+  };
+
+  try {
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    W = () => f.contentWindow;
+    const D = () => f.contentDocument;
+    await untilN(() => typeof W().setView === 'function');
+    await sleep(900);
+    const run = (src) => W().eval(src);
+    const val = (expr) => run('(' + expr + ')');
+    const SS = () => val('BARRY.strataSteps');
+
+    // The sheet as it was, before anything here touches it.
+    run("setView('xplore')");
+    await run('BARRY.views.xplore.open(' + JSON.stringify(PATH) + ')');
+    await sleep(1500);
+    const got = await W().fetch('/api/layers/' + GID).then((r) => r.json());
+    before = got.ok ? { existed: true, labels: got.sheet.labels || {},
+                        strata: got.sheet.strata || {} }
+                    : { existed: false, labels: {}, strata: {} };
+
+    hd('entering');
+    // The mode's own aid window is not opened from a headless run: its
+    // polling would hold virtual time to the wall clock.
+    run('window.__aid = null; window.open = function (u) { window.__aid = u; return null; };');
+    run("window.__errs = []; window.addEventListener('error', function (e) { window.__errs.push(e.message + ' @' + (e.error && e.error.stack || '').split(String.fromCharCode(10))[1]); }); window.addEventListener('unhandledrejection', function (e) { window.__errs.push(String(e.reason && e.reason.stack || e.reason)); });");
+    const entered = await run('BARRY.strata.enter(' + JSON.stringify(GID) + ')');
+    const aidUrl = val('window.__aid');
+    ck('it asks for the steps’ aid window, framing the live panes',
+       /strata-aids\.html/.test(aidUrl || '') && /live=/.test(aidUrl || ''),
+       String(aidUrl).slice(0, 90));
+    ck('StrataScope opens on the demo', entered === true);
+    await untilN(() => SS().active && SS()._state().status, 200);
+    ck('the steps are there', SS().active);
+    ck('five steps in the row', D().querySelectorAll('.ss-step').length === 5,
+       D().querySelectorAll('.ss-step').length);
+
+    // A read, if there is none yet.
+    let st = SS()._state().status || {};
+    if (!(st.scanned && st.current)) {
+      const btn = Array.from(D().querySelectorAll('.ss-read button'))
+        .find((b) => /Read/.test(b.textContent));
+      ck('a read can be started from the bar', !!btn);
+      if (btn) btn.click();
+      const waited = await untilN(() => {
+        const s = SS()._state().status || {};
+        return s.scanned && s.current && SS()._state().sug;
+      }, 1200, 100);
+      ck('the read finished and the proposals came back', waited >= 0);
+    } else {
+      await untilN(() => SS()._state().sug, 300);
+      ck('already read, and the proposals came back', !!SS()._state().sug);
+    }
+
+    hd('the depth strip');
+    await sleep(500);
+    run('BARRY.strata.alignRail()');
+    await sleep(300);
+    const strip = D().querySelector('.ss-strip');
+    const rows = D().querySelector('.strata-rows');
+    ck('the strip is drawn', !!strip && strip.width > 0);
+    if (strip && rows) {
+      const a = strip.getBoundingClientRect(), b = rows.getBoundingClientRect();
+      ck('the strip sits on the rail’s lanes (top)', Math.abs(a.top - b.top) <= 1,
+         a.top + ' vs ' + b.top);
+      ck('... and is as tall', Math.abs(a.height - b.height) <= 1,
+         a.height + ' vs ' + b.height);
+      ck('the rows stop where the strip starts', b.right <= a.left + 1,
+         b.right + ' vs ' + a.left);
+    }
+
+    hd('Step 1');
+    D().querySelectorAll('.ss-step')[1].click();
+    await untilN(() => SS()._state().ghost && SS()._state().ghost.step === '1', 100);
+    let gh = SS()._state().ghost;
+    ck('Step 1 proposes lines', gh && gh.lines.filter((l) => l.at != null).length >= 2,
+       gh && gh.lines.length);
+    const paneH = () => {
+      const h = D().querySelector('#paneGrid .pane .pane-canvas-host');
+      return h ? h.getBoundingClientRect().height : 0;
+    };
+    ck('Step 1 opens in a drawer beside the traces',
+       !!D().querySelector('.ss-drawer .ss-anchors'));
+    ck('... and the traces keep their height (the lanes are what you drag on)',
+       paneH() >= 200, Math.round(paneH()) + ' px');
+    ck('anchors are listed with a lead each',
+       D().querySelectorAll('.ss-anchor').length >= 2
+       && Array.from(D().querySelectorAll('.ss-anchor .ss-lead b'))
+         .every((b) => /ch \d+/.test(b.textContent)));
+
+    // The dashed lines reach the traces.
+    let calls = 0;
+    const real = SS().drawGhost;
+    SS().drawGhost = function () { calls += 1; return real.apply(this, arguments); };
+    run('BARRY.views.xplore.redraw()');
+    await sleep(400);
+    SS().drawGhost = real;
+    ck('the traces draw the dashed lines', calls > 0, calls);
+
+    // Drag the first placed line down three channels on the strip.
+    const line = gh.lines.find((l) => l.at != null && l.at + 3 < 30);
+    // Re-found: every render rebuilds the rail, strip and all.
+    const strip2 = D().querySelector('.ss-strip');
+    if (line && strip2) {
+      const strip = strip2;
+      const r = strip.getBoundingClientRect();
+      const n = val('BARRY.strata.state.channels.length');
+      const lane = r.height / n;
+      const from = line.at;
+      const x = r.left + 40;
+      const y0 = r.top + line.at * lane;
+      const ev = (type, y, target) => (target || W()).dispatchEvent(
+        new (W().MouseEvent)(type, { bubbles: true, clientX: x, clientY: y,
+                                     button: 0 }));
+      ev('mousedown', y0, strip);
+      ev('mousemove', y0 + 1.5 * lane);
+      ev('mousemove', y0 + 3 * lane);
+      ev('mouseup', y0 + 3 * lane);
+      await sleep(200);
+      ck('dragging a dashed line moves it by whole channels', line.at === from + 3,
+         from + ' -> ' + line.at);
+    } else ck('a line to drag', false);
+
+    /* With a CSD in the pane instead of the traces: dragging a line moves it
+       on the raster too, with no new fetch -- it used to stay where it was
+       until the raster was next loaded (2026-10-12). */
+    run("BARRY.views.xplore.setPanes([{ panel: 'csd' }])");
+    await untilN(() => {
+      const pn = val('BARRY.views.xplore._pane(0)');
+      return pn && pn._panelData && pn._panelData.rows && pn._panelData.rows.length;
+    }, 300);
+    await sleep(1200);
+    const stripR = D().querySelector('.ss-strip');
+    const lineR = SS()._state().ghost.lines.find((l) => l.at != null && l.at + 2 < 28);
+    if (stripR && lineR) {
+      let rasterCalls = 0;
+      const realG = SS().drawGhost;
+      const rows = val('BARRY.views.xplore._pane(0)._panelData.rows.length');
+      SS().drawGhost = function (ctx, chans) {
+        if (chans && chans.length === rows) rasterCalls += 1;
+        return realG.apply(this, arguments);
+      };
+      const r = stripR.getBoundingClientRect();
+      const lanes = val('BARRY.strata.state.channels.length');
+      const ln = r.height / lanes;
+      // The line's lane on the strip: the first drawn channel at or after
+      // its row (a CSD draws fewer rows than the probe has channels).
+      const laneNums = val('BARRY.strata.state.channels.map(function (c) { return c.number; })');
+      const all = SS()._state().sug.channels;
+      let li = laneNums.length;
+      for (let k = lineR.at; k < all.length; k++) {
+        const j = laneNums.indexOf(all[k]);
+        if (j >= 0) { li = j; break; }
+      }
+      const yA = r.top + li * ln;
+      const fire = (type, y, target) => (target || W()).dispatchEvent(
+        new (W().MouseEvent)(type, { bubbles: true, clientX: r.left + 40,
+                                     clientY: y, button: 0 }));
+      const before = lineR.at;
+      fire('mousedown', yA, stripR);
+      fire('mousemove', yA + 2 * ln);
+      fire('mouseup', yA + 2 * ln);
+      await sleep(300);
+      SS().drawGhost = realG;
+      ck('on a CSD, a dragged line is redrawn on the raster', rasterCalls > 0
+         && lineR.at !== before, rasterCalls + ' raster redraws, line '
+         + before + ' -> ' + lineR.at);
+    } else ck('a line to drag on the CSD', false);
+    run("BARRY.views.xplore.setPanes([{ panel: 'traces' }])");
+    await sleep(1200);
+
+    // A vote becomes the lead.
+    const vote = D().querySelector('.ss-anchor .ss-vote');
+    if (vote) {
+      const key = SS()._state().sug.steps['1'].anchors[0].key;
+      const row = SS()._state().sug.steps['1'].anchors[0].votes[0].row;
+      vote.click();
+      await untilN(() => SS()._state().overrides[key] === row
+                         && SS()._state().sug.steps['1'].anchors[0].lead.row === row, 100);
+      ck('clicking a vote makes it the lead',
+         SS()._state().sug.steps['1'].anchors[0].lead.row === row,
+         SS()._state().sug.steps['1'].anchors[0].lead.row + ' vs ' + row);
+    } else p('(no votes on this recording to click)');
+
+    // Accept.
+    gh = SS()._state().ghost;
+    const accept = Array.from(D().querySelectorAll('.ss-anchors .btn'))
+      .find((b) => /^Accept/.test(b.textContent));
+    ck('there is an Accept button', !!accept);
+
+    // Only the step is in colour: rows it would not write are greyed, and
+    // the brushes for layers it does not write.
+    ck('rows outside the step are greyed on the rail',
+       D().querySelectorAll('.strata-rows .strata-row.out').length > 0
+       && D().querySelectorAll('.strata-rows .strata-row:not(.out)').length > 0);
+    ck('brushes for other layers are greyed',
+       D().querySelectorAll('.strata-brush.out').length > 0);
+    const names = Array.from(D().querySelectorAll('.strata-brush span'))
+      .map((x) => x.textContent.trim());
+    ck('CA1, DG and DG2 are not offered as labels',
+       !names.some((n) => n === 'CA1' || n === 'DG' || n === 'DG2'),
+       names.join(', '));
+    const refused = await post('/api/layers/' + GID + '/set',
+                               { labels: { 1: 'ca1_sr' } });
+    ck('and labelling with one is refused', refused && refused.ok === false,
+       JSON.stringify(refused).slice(0, 120));
+    ck('the proposal is there to hatch', (SS().proposedLabels() || new Map()).size > 0);
+
+    const sheet0 = (await W().fetch('/api/layers/' + GID).then((r) => r.json())).sheet;
+    if (accept) accept.click();
+    await untilN(() => D().querySelector('.ss-confirm'), 50);
+    const conf = D().querySelector('.ss-confirm');
+    ck('Accept first says what it would change', !!conf);
+    ck('... and has written nothing yet',
+       JSON.stringify(((await W().fetch('/api/layers/' + GID).then((r) => r.json()))
+         .sheet || {}).labels || {}) === JSON.stringify(sheet0.labels || {}));
+    if (conf) {
+      ck('the change list names channels and both labels',
+         /Ch \d+/.test(conf.textContent) || /No channel changes/.test(conf.textContent),
+         conf.textContent.slice(0, 120));
+      const go = Array.from(conf.querySelectorAll('.btn'))
+        .find((b) => /Continue/.test(b.textContent));
+      if (go) go.click();
+    }
+    await untilN(() => D().querySelectorAll('.ss-step')[1].classList
+      .contains('done'), 100);
+    await sleep(500);
+    const sheet1 = (await W().fetch('/api/layers/' + GID).then((r) => r.json())).sheet;
+    ck('Step 1 is marked done on the sheet',
+       ((sheet1.strata.steps || {})['1'] || {}).status === 'done');
+    ck('Step 1 wrote labels', Object.keys(sheet1.labels || {}).length > 0,
+       Object.keys(sheet1.labels || {}).length);
+    ck('... and confidences', Object.keys(sheet1.strata.confidence || {}).length > 0);
+    ck('... and the anchors', sheet1.strata.anchors && sheet1.strata.anchors.sp != null);
+    ck('the step row ticks Step 1',
+       D().querySelectorAll('.ss-step')[1].classList.contains('done'));
+
+    hd('Step 0');
+    D().querySelectorAll('.ss-step')[0].click();
+    await untilN(() => D().querySelector('.ss-tw') && SS()._state().guide, 150);
+    // Settled: opening the step renders twice (the guide arrives between).
+    await sleep(600);
+    const tw = D().querySelector('.ss-tw');
+    ck('with Step 0 open the traces still have room', paneH() >= 160,
+       Math.round(paneH()) + ' px');
+    ck('the Theta Walk strip is drawn', !!tw && tw.width > 0);
+    if (tw) {
+      const r = tw.getBoundingClientRect();
+      const y = r.top + 60;
+      const ev = (type, x, target) => (target || W()).dispatchEvent(
+        new (W().MouseEvent)(type, { bubbles: true, clientX: x, clientY: y,
+                                     button: 0 }));
+      // Forty-odd seconds of it: Method B needs thirty.
+      ev('mousedown', r.left + 0.15 * r.width, tw);
+      ev('mousemove', r.left + 0.4 * r.width);
+      ev('mousemove', r.left + 0.55 * r.width);
+      ev('mouseup', r.left + 0.55 * r.width);
+      await sleep(2500);
+      const s0 = (await W().fetch('/api/layers/' + GID).then((r2) => r2.json())).sheet;
+      const tw0 = ((s0.strata.states || {}).theta_walk || []);
+      ck('painting saves a Theta Walk bout', tw0.length >= 1, JSON.stringify(tw0));
+
+      // A painted bout's edge can be taken hold of and moved (2026-10-12).
+      const tw1 = D().querySelector('.ss-tw');
+      if (tw1 && tw0.length) {
+        const r1 = tw1.getBoundingClientRect();
+        const end0 = tw0[tw0.length - 1][1];
+        ev('mousedown', r1.left + 0.55 * r1.width, tw1);
+        ev('mousemove', r1.left + 0.58 * r1.width);
+        ev('mousemove', r1.left + 0.62 * r1.width);
+        ev('mouseup', r1.left + 0.62 * r1.width);
+        await sleep(2500);
+        const s1 = (await W().fetch('/api/layers/' + GID).then((r2) => r2.json())).sheet;
+        const tw2 = ((s1.strata.states || {}).theta_walk || []);
+        const end1 = tw2.length ? tw2[tw2.length - 1][1] : null;
+        ck('dragging a bout’s edge moves that edge',
+           tw2.length === tw0.length && end1 > end0 + 0.02 * (end0 || 1),
+           JSON.stringify(tw0) + ' -> ' + JSON.stringify(tw2));
+      }
+
+      // The auto painter's shortest bout redraws the finder's bouts.
+      const minIn = D().querySelector('.ss-finder input[data-k="min_bout_s"]');
+      ck('the auto painter has a shortest-bout setting', !!minIn);
+      if (minIn) {
+        const ghostN = () => ((SS()._state().guide || {}).guide || {}).ghost.length;
+        minIn.value = '100000';
+        minIn.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+        for (let k = 0; k < 200 && ghostN() !== 0; k++) {
+          await W().fetch('/api/cfc/job/none').catch(() => null);
+          await sleep(50);
+        }
+        ck('... which redraws the finder’s bouts', ghostN() === 0, ghostN());
+        const again = D().querySelector('.ss-finder input[data-k="min_bout_s"]');
+        if (again) {
+          again.value = '';
+          again.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+          await sleep(1500);
+        }
+      }
+    }
+    const fin = Array.from(D().querySelectorAll('.ss-zero .btn'))
+      .find((b) => /Done/.test(b.textContent));
+    ck('Step 0 has a Done button', !!fin);
+    if (fin) fin.click();
+    await sleep(3000);
+    ck('finishing Step 0 after Step 1 marks Step 1 as needing a look',
+       D().querySelectorAll('.ss-step')[1].classList.contains('stale'),
+       D().querySelectorAll('.ss-step')[1].className);
+
+    hd('Step 2, then Step 3 builds on it');
+    D().querySelectorAll('.ss-step')[2].click();
+    await untilN(() => SS()._state().ghost && SS()._state().ghost.step === '2', 100);
+    const acc2 = Array.from(D().querySelectorAll('.ss-drawer .btn'))
+      .find((b) => /^Accept/.test(b.textContent));
+    if (acc2) {
+      acc2.click();
+      await untilN(() => D().querySelector('.ss-confirm'), 50);
+      const go2 = Array.from(D().querySelectorAll('.ss-confirm .btn'))
+        .find((b) => /Continue/.test(b.textContent));
+      if (go2) go2.click();
+      await untilN(() => (SS()._state().open === '3') && SS()._state().ghost
+                         && SS()._state().ghost.step === '3', 150);
+      await sleep(600);
+    }
+    const sh2 = (await W().fetch('/api/layers/' + GID).then((r) => r.json())).sheet;
+    const allCh = SS()._state().sug.channels;
+    const hilRows = allCh.map((c, i) => (sh2.labels[String(c)] === 'hil' ? i : -1))
+      .filter((i) => i >= 0);
+    const l3 = SS()._state().ghost.lines;
+    const top3 = (l3.find((l) => l.above === 'dg_gcl1' && l.below === 'hil') || {}).at;
+    ck('Step 3 starts the hilus where Step 2 accepted it',
+       hilRows.length > 0 && top3 === hilRows[0], top3 + ' vs ' + hilRows[0]);
+    const prop3 = SS().proposedLabels() || new Map();
+    ck('... and would leave every accepted hilus channel as hilus',
+       hilRows.every((i) => prop3.get(allCh[i]) === 'hil'));
+
+    hd('Step 3: IML optional');
+    if (SS()._state().open !== '3') D().querySelectorAll('.ss-step')[3].click();
+    await untilN(() => D().querySelector('.ss-drawer .ss-anchors'), 100);
+    const imlIds = () => ((SS()._state().ghost || {}).lines || [])
+      .filter((l) => /iml/.test(l.above + '|' + l.below)).length;
+    // IML is folded into the molecular layer unless asked for (2026-10-13).
+    ck('Step 3 leaves IML out by default (part of the MML)', imlIds() === 0, imlIds());
+    const ownIml = Array.from(D().querySelectorAll('.ss-drawer button'))
+      .find((b) => /its own \(IML\)/.test(b.textContent));
+    ck('there is a switch to give IML its own lines', !!ownIml);
+    if (ownIml) {
+      ownIml.click();
+      await untilN(() => imlIds() > 0, 200);
+      ck('... which draws IML', imlIds() > 0, imlIds());
+      const back = Array.from(D().querySelectorAll('.ss-drawer button'))
+        .find((b) => /part of MML/.test(b.textContent));
+      if (back) back.click();
+      await untilN(() => imlIds() === 0, 200);
+      ck('... and "part of MML" folds it back in', imlIds() === 0, imlIds());
+    }
+    // Fissure to hilus in equal thirds (OML, MML, GCL) was tried and taken
+    // out the same day: no paper cuts it that way.
+    ck('there is no "in thirds" choice',
+       !Array.from(D().querySelectorAll('.ss-drawer button'))
+         .some((b) => /in thirds/.test(b.textContent)));
+
+    hd('Step 3: Method B');
+    const runBtn = Array.from(D().querySelectorAll('.ss-drawer .btn'))
+      .find((b) => /Run ICA/.test(b.textContent));
+    if (runBtn) {
+      // A small fit (2 s rather than 20 s on the demo): this checks the
+      // plumbing, not the decomposition. Put back with the rest of the
+      // sheet in the finally.
+      await post('/api/strata/' + GID + '/state',
+                 { patch: { params: { ica_max_fit: 50000, ica_n_components: 6 } } });
+      runBtn.click();
+      /* Waited on with real requests: the fit takes real seconds on the
+         server, and a timer here runs on the virtual clock, which gets
+         through a two-minute wait in a fraction of one. Three runs since
+         2026-10-13 (25-200, 90-160, 55-90 Hz), so a longer wait. */
+      for (let k = 0; k < 8000; k++) {
+        if ((SS()._state().sug || {}).ica_ready) break;
+        await W().fetch('/api/cfc/job/none').catch(() => null);
+        await sleep(50);
+      }
+      await sleep(800);
+    }
+    ck('ICA runs from Step 3', !!(SS()._state().sug || {}).ica_ready);
+    const help = D().querySelector('.ss-drawer .ss-help');
+    ck('Method B has a ? to explain it', !!help);
+    if (help) {
+      help.click();
+      await sleep(300);
+      ck('... which says how it works',
+         /independent component analysis/.test(
+           (D().querySelector('.ss-drawer') || {}).textContent || ''));
+    }
+    const chip = D().querySelector('.ss-drawer .ss-verdict');
+    ck('each Method B check can be clicked', !!chip);
+    if (chip) {
+      chip.click();
+      await sleep(300);
+      const txt = (D().querySelector('.ss-drawer') || {}).textContent || '';
+      ck('... and says what it means against Method A',
+         /Matches\.|Does not match\.|Nothing reliable means/.test(txt),
+         txt.slice(0, 80));
+    }
+    // An off verdict offers to move the line that would take its sink in.
+    const ghostAts = () => JSON.stringify(((SS()._state().ghost || {}).lines || [])
+      .map((l) => l.at));
+    let moved = null;
+    const nOff = D().querySelectorAll('.ss-drawer .ss-verdict.off').length;
+    for (let k = 0; k < nOff && moved === null; k++) {
+      const offs = D().querySelectorAll('.ss-drawer .ss-verdict.off');
+      if (!offs[k]) break;
+      offs[k].click();
+      await sleep(300);
+      const mvb = D().querySelector('.ss-drawer .ss-move');
+      if (mvb) {
+        const before = ghostAts();
+        mvb.click();
+        await sleep(300);
+        moved = before !== ghostAts();
+      }
+    }
+    if (moved !== null) {
+      ck('an off Method B verdict moves its line from the drawer', moved);
+    } else {
+      /* The demo's sources happen to sit where Method A put them, so ask
+         about one that does not: a slow source two channels above OML1. */
+      const omlTop = ((SS()._state().ghost || {}).lines || [])
+        .find((l) => l.below === 'dg_oml1');
+      if (omlTop && omlTop.at >= 2) {
+        const at0 = omlTop.at;
+        const node = SS()._icaCompare({ row: at0 - 2, agree: false, off: -2,
+                                        region: 'dg_oml1', kind: 'slow',
+                                        blade: 'upper' });
+        const b = node && node.querySelector && node.querySelector('.ss-move');
+        ck('Method B’s explanation offers Move for a sink outside its layer',
+           !!b, node ? node.textContent.slice(0, 80) : 'nothing');
+        if (b) {
+          b.click();
+          await sleep(300);
+          ck('... which moves that line to take the sink in',
+             omlTop.at === at0 - 2, at0 + ' -> ' + omlTop.at);
+          omlTop.at = at0;               // put the proposal back as it was
+          SS()._openStep('3');
+          await sleep(300);
+        }
+      }
+    }
+    /* "ICA line recommendations line up with channel lines" (2026-10-12):
+       every mark a check makes sits on lane edges, as the step's lines do. */
+    const chks = (((SS()._state().sug || {}).steps || {})['3'] || {}).ica_checks || [];
+    const marks = chks.filter((c) => c.row != null).map((c) => SS()._icaMark(c));
+    ck('every ICA mark is on channel edges',
+       marks.every((m) => !m || (Number.isInteger(m.a) && Number.isInteger(m.b)
+         && (m.edge == null || m.edge === m.a || m.edge === m.b))),
+       JSON.stringify(marks));
+
+    /* The evidence window's Method B: one card per frequency, each saying
+       whether it matches, and the every-component grid folded away
+       (2026-10-12: "a lot of colours and lines"). Posed on Step 3 while
+       this run's ICA is still the sheet's. */
+    const af = document.createElement('iframe');
+    af.style.cssText = 'position:fixed;left:-2000px;top:0;width:1100px;height:900px;border:0';
+    document.body.appendChild(af);
+    af.src = '/strata-aids.html?step=3&gid=' + encodeURIComponent(GID)
+      + '&path=' + encodeURIComponent(PATH);
+    await new Promise((r) => af.addEventListener('load', r, { once: true }));
+    const A = () => af.contentDocument;
+    for (let k = 0; k < 600; k++) {
+      if (A().querySelectorAll('.sa-exp').length >= 3) break;
+      await W().fetch('/api/cfc/job/none').catch(() => null);
+      await sleep(50);
+    }
+    await sleep(300);
+    const cards = Array.from(A().querySelectorAll('.sa-exp'));
+    ck('Method B evidence: a card each for slow, mid and fast gamma',
+       !!A().querySelector('.sa-exp.slow') && !!A().querySelector('.sa-exp.mid')
+         && !!A().querySelector('.sa-exp.fast'),
+       cards.length + ' cards: '
+         + ((A().body || {}).textContent || '').replace(/\s+/g, ' ').slice(0, 300));
+    ck('... each saying whether it matches',
+       cards.length === 3 && cards.every((c) => /Matches|Does not match|Can.t tell|Not checked/
+         .test((c.querySelector('.sa-badge') || {}).textContent || '')),
+       cards.map((c) => (c.querySelector('.sa-badge') || {}).textContent).join(' | '));
+    ck('... a card that can’t tell says what that means',
+       cards.every((c) => !c.classList.contains('none')
+         || /Can.t tell means/.test((c.querySelector('.sa-mean') || {}).textContent || '')));
+    ck('... and every component stays folded until asked for',
+       !A().querySelector('.sa-ica'));
+    const fold = Array.from(A().querySelectorAll('button'))
+      .find((b) => /Every component/.test(b.textContent));
+    if (fold) fold.click();
+    await sleep(300);
+    ck('... which opens them', !!A().querySelector('.sa-ica .sa-comp'));
+    ck('Step 3 evidence shows theta\u2019s sink in the molecular layer',
+       Array.from(A().querySelectorAll('.sa-card h3'))
+         .some((h) => /sink in the molecular layer/.test(h.textContent)));
+
+    // The theta phase x depth gamma map (beta): worked out on the server
+    // in real seconds, so waited on with real requests.
+    for (let k = 0; k < 1200; k++) {
+      if (A().querySelectorAll('.sa-pm-fig').length >= 3
+          || /Could not draw it/.test((A().querySelector('.sa-pm') || {}).textContent || '')) break;
+      await W().fetch('/api/cfc/job/none').catch(() => null);
+      await sleep(50);
+    }
+    // Said line by line ("now above ch X, phase map: above ch Y, Move"),
+    // the maps folded away (2026-10-13: "too much going on").
+    const sug = A().querySelectorAll('.sa-pm .sa-sugg');
+    ck('the phase map says, line by line, where each line is and where it '
+       + 'would put it', sug.length >= 2
+         && Array.from(sug).every((r) => /now above/.test(r.textContent)),
+       ((A().querySelector('.sa-pm') || {}).textContent || '').slice(0, 200));
+    ck('... with the maps folded away', !A().querySelector('.sa-pm-fig'));
+    const showMaps = Array.from(A().querySelectorAll('.sa-pm button'))
+      .find((b) => /Show the maps/.test(b.textContent));
+    if (showMaps) showMaps.click();
+    for (let k = 0; k < 40 && A().querySelectorAll('.sa-pm-fig').length < 3; k++) {
+      await sleep(50);
+    }
+    const figs = A().querySelectorAll('.sa-pm-fig');
+    ck('... which open to slow, mid and fast gamma', figs.length === 3, figs.length);
+    const q = A().querySelector('.sa-pm .sa-q');
+    ck('the phase map has a ?', !!q);
+    if (q) {
+      q.click();
+      await sleep(200);
+      const ex = A().getElementById('saExplain');
+      ck('... which opens the animated explanation', !!ex
+         && !!ex.querySelector('canvas') && ex.querySelectorAll('.sa-ex-dot').length === 5,
+         ex ? ex.textContent.slice(0, 80) : 'nothing');
+      const t1 = (A().querySelector('.sa-ex-title') || {}).textContent;
+      const next = ex && Array.from(ex.querySelectorAll('button'))
+        .find((b) => /Next/.test(b.textContent));
+      if (next) next.click();
+      await sleep(100);
+      const t2 = (A().querySelector('.sa-ex-title') || {}).textContent;
+      ck('... and Next moves it on', !!t2 && t2 !== t1, t1 + ' -> ' + t2);
+      const x = ex && ex.querySelector('.sa-ex-x');
+      if (x) x.click();
+      await sleep(100);
+      ck('... and \u00d7 closes it', !A().getElementById('saExplain'));
+    }
+
+    /* Move: the evidence window asks the labelling window to move a line,
+       over the link. Sent here as the evidence window sends it. */
+    const lines3 = (SS()._state().ghost || {}).lines || [];
+    const target = lines3.find((l) => l.below === 'dg_oml1');
+    if (target) {
+      const from = target.at;
+      const to = Math.max(1, from - 2);
+      await post('/api/link', { channel: 'strata-cmd:' + GID, origin: 'strata-aid',
+                                value: { at: Date.now(), above: target.above,
+                                         below: target.below, to } });
+      for (let k = 0; k < 400; k++) {
+        const l = ((SS()._state().ghost || {}).lines || [])
+          .find((x) => x.below === 'dg_oml1');
+        if (l && l.at === to) break;
+        await W().fetch('/api/cfc/job/none').catch(() => null);
+        await sleep(50);
+      }
+      const after = ((SS()._state().ghost || {}).lines || [])
+        .find((x) => x.below === 'dg_oml1');
+      ck('Move in the evidence window moves the line in the labelling window',
+         !!after && after.at === to, from + ' -> ' + (after && after.at));
+    }
+    af.src = 'about:blank';
+    await sleep(100);
+    af.remove();
+
+    hd('Step 4');
+    D().querySelectorAll('.ss-step')[4].click();
+    await untilN(() => D().querySelectorAll('.ss-checks li').length > 0
+                       && SS()._state().checks, 150);
+    ck('the checks are listed', D().querySelectorAll('.ss-checks li').length > 0,
+       D().querySelectorAll('.ss-checks li').length);
+    ck('sign off shows everything: no channel greyed',
+       D().querySelectorAll('.strata-rows .strata-row.out').length === 0);
+
+    hd('leaving');
+    run('BARRY.strata.exit()');
+    await sleep(300);
+    ck('the steps let go on the way out', !SS().active);
+    ck('the strip goes with the rail', !D().querySelector('.ss-strip'));
+  } catch (e) {
+    ck('no exception', false, e && (e.stack || e.message));
+  } finally {
+    await restore();
+    const after = await W().fetch('/api/layers/' + GID).then((r) => r.json())
+      .catch(() => null);
+    if (before && !before.existed) {
+      ck('the sheet this run made is gone again', !(after && after.ok));
+    } else if (after && after.ok && before) {
+      const same = JSON.stringify(after.sheet.labels || {})
+        === JSON.stringify(before.labels || {});
+      ck('the sheet’s labels are back as they were', same);
+    }
+    p('\n' + (bad ? bad + ' FAILED' : 'all ok'));
+    document.title = bad ? 'FAIL ' + bad : 'PASS';
+    // Blank the frame: the app's long polls pin virtual time to the wall.
+    f.src = 'about:blank';
+  }
+})();
+</script>

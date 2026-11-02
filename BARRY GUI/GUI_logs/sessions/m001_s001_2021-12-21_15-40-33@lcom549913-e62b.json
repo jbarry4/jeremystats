@@ -1,0 +1,90 @@
+{
+  "_at": {
+    "created": "2026-10-12T14:03:46.781760+00:00",
+    "gid": "2026-10-12T14:03:46.781760+00:00",
+    "group": "2026-10-12T14:03:46.781760+00:00",
+    "key": "2026-10-12T14:03:46.781760+00:00",
+    "label": "2026-10-12T14:03:46.781760+00:00",
+    "loose_key": "2026-10-12T14:03:46.781760+00:00",
+    "mouse": "2026-10-12T14:03:46.781760+00:00",
+    "project": "2026-10-12T14:03:46.781760+00:00",
+    "project_source": "2026-10-12T14:03:46.781760+00:00",
+    "retired": "2026-10-12T14:03:46.781760+00:00",
+    "schema": "2026-10-12T14:03:46.781760+00:00",
+    "session": "2026-10-12T14:03:46.781760+00:00",
+    "start": "2026-10-12T14:03:46.781760+00:00",
+    "updated": "2026-10-12T14:05:50.936510+00:00"
+  },
+  "_keys": {
+    "channel_banks": {
+      "b1": [
+        "set",
+        "2026-10-12T14:03:46.781760+00:00"
+      ],
+      "b2": [
+        "set",
+        "2026-10-12T14:03:46.781760+00:00"
+      ]
+    },
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M6ptenko\\m1s1dec21\\2021-12-21_15-40-33": [
+        "set",
+        "2026-10-12T14:05:50.936510+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-12T14:05:50.936510+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "channel_banks": [
+    {
+      "first": 1,
+      "id": "b1",
+      "last": 64,
+      "region": null
+    },
+    {
+      "first": 65,
+      "id": "b2",
+      "last": 128,
+      "region": null
+    }
+  ],
+  "created": {
+    "app_version": "2026.10.09.6",
+    "at": "2026-10-12T10:03:46-04:00",
+    "commit": "021cb243",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s71ef4518fd3d",
+  "group": null,
+  "key": "m001_s001_2021-12-21_15-40-33",
+  "label": "PTEN m1 s1 2021-12-21",
+  "loose_key": "m001_s001",
+  "mouse": 1,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M6ptenko\\m1s1dec21\\2021-12-21_15-40-33"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 1,
+  "start": "2021-12-21T20:40:33+00:00",
+  "updated": {
+    "app_version": "2026.10.09.6",
+    "at": "2026-10-12T10:05:50-04:00",
+    "commit": "021cb243",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

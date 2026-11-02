@@ -1,8 +1,8 @@
 """
-BARRY GUI -- launcher.
+Jarvis -- launcher.
 
-Windows: double-click "Start BARRY GUI.bat"
-macOS:   double-click "Start BARRY GUI.command"
+Windows: double-click "Activate Jarvis.bat" (or its .lnk, which has the icon)
+macOS:   double-click "Activate Jarvis.command"
 Either:  python start.py
 
 Starts the local server and opens your browser. Nothing is installed and
@@ -22,12 +22,142 @@ import webbrowser
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-BANNER = r"""
-  ___   _   ___ _____   __  ___ _   _ ___
- | _ ) /_\ | _ \ _ \ \ / / / __| | | |_ _|
- | _ \/ _ \|   /   /\ V / | (_ | |_| || |
- |___/_/ \_\_|_\_|_\ |_|   \___|\___/|___|
-"""
+# The wordmark, in blocks. Looks like something worth opening; costs nothing
+# but a few lines of text.
+BLOCK = """\
+     \u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2557   \u2588\u2588\u2557\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557
+     \u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u2588\u2588\u2551   \u2588\u2588\u2551\u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2550\u2550\u255d
+     \u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2554\u255d\u2588\u2588\u2551   \u2588\u2588\u2551\u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557
+\u2588\u2588   \u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2550\u2588\u2588\u2557\u255a\u2588\u2588\u2557 \u2588\u2588\u2554\u255d\u2588\u2588\u2551\u255a\u2550\u2550\u2550\u2550\u2588\u2588\u2551
+\u255a\u2588\u2588\u2588\u2588\u2588\u2554\u255d\u2588\u2588\u2551  \u2588\u2588\u2551\u2588\u2588\u2551  \u2588\u2588\u2551 \u255a\u2588\u2588\u2588\u2588\u2554\u255d \u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2551
+ \u255a\u2550\u2550\u2550\u2550\u255d \u255a\u2550\u255d  \u255a\u2550\u255d\u255a\u2550\u255d  \u255a\u2550\u255d  \u255a\u2550\u2550\u2550\u255d  \u255a\u2550\u255d\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u255d"""
+
+# The same word for a console that cannot encode a block. cmd.exe on an older
+# machine is codepage 437, where every character above is unprintable -- and
+# an exception from the banner would stop the launcher before it started.
+PLAIN = r"""
+     _   _    ______     _____ ____
+    | | / \  |  _ \ \   / /_ _/ ___|
+ _  | |/ _ \ | |_) \ \ / / | |\___ \
+| |_| / ___ \|  _ < \ V /  | | ___) |
+ \___/_/   \_\_| \_\ \_/  |___|____/"""
+
+
+def _fits(text):
+    """Can this console actually encode that?
+
+    Asked rather than assumed. `sys.stdout.encoding` is utf-8 on a modern
+    Windows console and cp437 on an old one, and the difference is an
+    exception on the first line of main().
+    """
+    enc = getattr(sys.stdout, "encoding", None) or "ascii"
+    try:
+        text.encode(enc)
+        return True
+    except (UnicodeEncodeError, LookupError, AttributeError):
+        return False
+
+
+def _colour():
+    """Turn on ANSI if this console will take it, and say whether it did.
+
+    Windows 10 understands the escape codes but only once virtual-terminal
+    processing is enabled; a console that never got it prints them as
+    literal garbage, which is worse than plain text.
+    """
+    if not (sys.stdout and getattr(sys.stdout, "isatty", lambda: False)()):
+        return False
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.GetStdHandle(-11)
+        mode = ctypes.c_ulong()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False
+        return bool(kernel32.SetConsoleMode(handle, mode.value | 0x0004))
+    except Exception:                              # noqa: BLE001
+        return False
+
+
+def _greeting():
+    """What time it is, said the way a person would."""
+    hour = time.localtime().tm_hour
+    if hour < 5:
+        return "Still up?"
+    if hour < 12:
+        return "Good morning."
+    if hour < 18:
+        return "Good afternoon."
+    return "Good evening."
+
+
+def _name_hidden():
+    """Has this machine been told to keep the name out of sight?
+
+    The switch is in the interface (web/js/jarvis.js) and is stored the way
+    the theme is: a map keyed by hostname in the shared preferences, merged
+    per key, newest stamp wins. Read straight off the shard files rather
+    than through the store, because the banner is printed before the
+    dependencies are checked and must not import anything that needs them.
+    Any trouble reading is "not hidden", which is the default.
+    """
+    import glob
+    import json
+    import platform
+    host = platform.node()
+    newest, hidden = "", False
+    pattern = os.path.join(HERE, "GUI_logs", "prefs", "workbench@*.json")
+    for path in glob.glob(pattern):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                shard = json.load(fh)
+            op, at = ((shard.get("_keys") or {}).get("jarvis") or {}).get(host)[:2]
+        except (OSError, ValueError, AttributeError, TypeError):
+            continue
+        if at and at > newest:
+            newest = at
+            hidden = (op == "set"
+                      and (shard.get("jarvis") or {}).get(host) is False)
+    return hidden
+
+
+def _console_title(text):
+    """Retitle the console window; the .bat names it before Python starts."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetConsoleTitleW(text)
+    except Exception:                              # noqa: BLE001
+        pass
+
+
+def banner():
+    """The thing the window opens with."""
+    art = BLOCK if _fits(BLOCK) else PLAIN
+    tint = _colour()
+    cyan, dim, bold, off = (("\033[38;5;45m", "\033[38;5;245m",
+                             "\033[1m", "\033[0m")
+                            if tint else ("", "", "", ""))
+    # Hidden on this machine: no wordmark, and the window is not called
+    # Jarvis either. The interface has the switch that brings both back.
+    hidden = _name_hidden()
+    if hidden:
+        _console_title("Workbench")
+    lines = [""]
+    lines.append("  " + dim + "Hello. " + off + bold + _greeting() + off)
+    lines.append("")
+    if not hidden:
+        for row in art.strip("\n").splitlines():
+            lines.append("  " + cyan + row + off)
+        lines.append("")
+    lines.append("  " + dim
+                 + "a workbench for the recordings on this machine" + off)
+    return "\n".join(lines)
 
 REQUIRED = [("flask", "flask"), ("numpy", "numpy"),
             ("scipy", "scipy"), ("matplotlib", "matplotlib")]
@@ -76,97 +206,18 @@ def free_port(preferred=8733):
     return 0        # let the OS choose
 
 
-def ask_for_key(logs_dir):
-    """First start on a new machine: get the key, once.
-
-    The repo carries the project id, so a clone already knows where to sync.
-    What it deliberately does not carry is the key -- so somebody has to hand
-    it over exactly once per machine, and the sensible moment is now, in the
-    window they are already looking at, rather than in a README they will
-    read afterwards.
-
-    Skipping is a first-class answer. BARRY writes locally first and works
-    completely without the network; the sync is an addition, never a
-    prerequisite, and starting up must never depend on someone having a
-    password to hand.
-    """
-    from backend import cloud
-
-    cfg = cloud.load_config(logs_dir)
-
-    if cfg.get("key_in_repo"):
-        print()
-        print("  !! cloud.json in the repo contains a key. That file is")
-        print("     tracked by git, so the key should be treated as public:")
-        print("     rotate it in the Supabase dashboard, then paste the new")
-        print("     one below. BARRY is ignoring the one in the file.")
-
-    if not cfg.get("needs_key"):
-        if cfg.get("enabled"):
-            print("  Sync    : %s" % cfg.get("project"))
-        return
-
-    print()
-    print("  This copy syncs to Supabase project '%s'," % cfg.get("project"))
-    print("  but this machine has not been given the key yet.")
-    print()
-    print("  Get it from the Supabase dashboard:")
-    print("     Project Settings -> API Keys -> secret / service_role")
-    print()
-    print("  It is stored in GUI_logs/.cloud.json, which git ignores, and")
-    print("  never goes into the repo.")
-    print()
-    print("  Press Enter to skip -- BARRY works fine without it, and you")
-    print("  can add it later from the Sync panel.")
-    print()
-
-    if not sys.stdin or not sys.stdin.isatty():
-        print("  (not a terminal, so skipping the question)")
-        return
-
-    for attempt in range(3):
-        try:
-            key = input("  Supabase secret key: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print()
-            return
-        if not key:
-            print("  Skipped. Sync is off until a key is set.")
-            return
-        ok, why = cloud.looks_like_a_key(key)
-        if not ok:
-            print("  %s" % why)
-            continue
-
-        cloud.save_config(logs_dir, key=key)
-        c = cloud.Cloud(logs_dir)
-        print("  Checking...")
-        ping = c.ping()
-        if not ping["reachable"]:
-            print("  Could not reach the project: %s"
-                  % (ping.get("error") or "")[:160])
-            print("  Saved anyway; BARRY will keep trying in the background.")
-            return
-        if not ping["schema"]:
-            print("  Connected, but the tables are not there yet. Run the SQL")
-            print("  in supabase/ (01_schema, 02_rls, 03_storage), then")
-            print("  python tools/cloud_migrate.py --write")
-            return
-        n = sum(v for v in (ping.get("counts") or {}).values()
-                if isinstance(v, int))
-        print("  Connected. %d row(s) already up there." % n)
-        return
-
-    print("  Skipping for now. Add it later from the Sync panel.")
-
-
 def main():
-    print(BANNER)
+    print(banner())
     if not check_deps():
         pause()
         return 1
 
-    from backend.app import app, refresh_catalog, REPO_ROOT, LOGS_DIR
+    # This is the app, so it syncs. Tools and the harness import the same
+    # module for its routes and do not set this, so they no longer run a
+    # background sync loop of their own (backend/app.py, _cloud_loop).
+    os.environ.setdefault("Jarvis_CLOUD_SYNC", "on")
+    from backend.app import (app, refresh_catalog, warm_start,
+                             REPO_ROOT, LOGS_DIR)
     from backend import runner, sysinfo, video
 
     sysdesc = sysinfo.describe()
@@ -181,12 +232,15 @@ def main():
     print("  MATLAB  : " + (matlab or "not found (MATLAB stages disabled)"))
     print("  ffmpeg  : " + (ffmpeg or "not found (session video disabled)"))
 
-    # Before anything starts serving: if this machine has never been given
-    # the sync key, ask for it here, where somebody is looking.
+    # How the two accounts stand, one line each. Asking for them is Setup's
+    # job now (setup.py -> backend/onboard.py, the user's ruling of
+    # 2026-10-20): activating Jarvis just opens it.
     try:
-        ask_for_key(LOGS_DIR)
+        from backend import onboard
+        print("  " + onboard.cloud_line(LOGS_DIR))
+        print("  " + onboard.vacc_line(LOGS_DIR))
     except Exception as exc:                       # noqa: BLE001
-        print("  (could not check the sync settings: %s)" % exc)
+        print("  (could not read the account settings: %s)" % exc)
 
     stale = runner.sweep_temp_files(REPO_ROOT)
     if stale:
@@ -204,6 +258,30 @@ def main():
     print("  Stop    : Ctrl+C in this window\n")
 
     threading.Timer(0.9, lambda: webbrowser.open(url)).start()
+
+    # The warm start, and this is the only place it is switched on.
+    #
+    # It hands the interface last boot's answer to the three roll-ups that
+    # take five seconds each from cold, then recomputes all three behind the
+    # page and tells it which -- if any -- actually changed. See
+    # backend/warmcache.py for what bounds it; the short version is that the
+    # window shuts as soon as the real answers are in hand or as soon as
+    # somebody clicks something, whichever comes first.
+    #
+    # Only here, so a server started by the harness suite or by a script
+    # reads the store live exactly as it always did.
+    if os.environ.get("JARVIS_WARM", "1") != "0":
+        warm_start()
+
+    # The Precon1 -> Precon4 analysis carries on by itself if Jarvis or the
+    # computer stopped while it ran (backend/preconrun.py). Only here, for
+    # the same reason as the warm start: a harness server or a script that
+    # imports the app must never start an hour of work.
+    try:
+        from backend.app import resume_precon
+        resume_precon(port)
+    except Exception as exc:                       # noqa: BLE001
+        print("  (could not check for an interrupted analysis: %s)" % exc)
 
     # Threaded so a long-running job's log stream never blocks the UI.
     try:

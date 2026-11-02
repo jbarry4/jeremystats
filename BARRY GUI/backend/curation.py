@@ -80,6 +80,52 @@ KINDS = {
              "color": "#E5A823", "flagged": True},
             {"id": "review", "name": "Flag for Deep Review",
              "keys": ["4", "r"], "color": "#8b5cf6", "flagged": True},
+            # DS1 and DS2 -- what X-ray writes, and the reason it writes a
+            # LABEL rather than a field of its own.
+            #
+            # `EventBank.add` whitelists what an event is -- start, end,
+            # channel, amplitude, label, label_id, from_t, align_flag -- and
+            # a `ds_type` beside those would be dropped on the way in. Worse,
+            # `SNAP_FIELDS` is start, label and label_id, so a new field
+            # would not survive a version restore either: you could go back
+            # to v4 and silently lose the classification.
+            #
+            # As labels they cost nothing and gain everything already built:
+            # `by_label` counts them, the per-version snapshot carries them,
+            # the bank's CSV export has a `label_name` column, and
+            # Xplorefinder colours them apart with nothing new written. The
+            # IED vocabulary above already has two `good` labels, so this is
+            # the shape rather than an invention.
+            #
+            # APPENDED, never replacing `spike`. Every set on disk was
+            # curated under the old vocabulary and still means what it meant;
+            # only a commit from X-ray moves an event onto one of these.
+            #
+            # `computed`, which is what the absence of keys used to imply
+            # and now states. Checkup shows a button per label and binds a
+            # key to each, and neither is right for these: DS1/DS2 is worked
+            # out from a PCA over every event at once, so a button offering
+            # it one candidate at a time would be offering a call that
+            # cannot be made that way -- and two more keys would change a
+            # tool this work does not otherwise touch. Everything that asks
+            # "is this a real event" reads `good` and is unaffected.
+            # Colours match `dspca.CLASS_COLORS[0:2]`, which the scatter, the
+            # profile and the class rasters all draw from.
+            #
+            # TWO, because there are two (the user, 2026-10-02: "it goes up
+            # to 2"). DS3 to DS5 used to be here because X-ray's panel let
+            # somebody ask for up to five classes; nobody ever committed
+            # one, and every set card showed three empty chips for them.
+            # The panel now asks for two, and `RETIRED` below takes them
+            # out of the vocabulary each older set copied in.
+            #
+            # The colours are `dspca.CLASS_COLORS`, written out rather than
+            # imported: that module pulls in scipy and scikit-learn, and the
+            # curation vocabulary must not depend on either.
+            {"id": "ds1", "name": "Dentate Spike (DS1)",
+             "color": "#1a7f37", "good": True, "computed": True},
+            {"id": "ds2", "name": "Dentate Spike (DS2)",
+             "color": "#7b3fa0", "good": True, "computed": True},
         ],
     },
     "ied": {
@@ -99,7 +145,54 @@ KINDS = {
              "color": "#E5A823", "flagged": True},
         ],
     },
+    # The Confluence: Incisor's dentate spikes and Doppler's discharges pooled
+    # into one list (backend/confluence.py), sorted in Panning. Spike or not
+    # -- whether a spike is a dentate spike or an IED is Root Canal's call,
+    # afterwards, in its three-axis space, so it is not asked here.
+    # Not `spike`: the bank already has entries of type `spike` -- unit
+    # spikes, threshold crossings (eventbank.EVENT_TYPES) -- and a filter
+    # preset of that name at 300 Hz. A pooled set is its own kind.
+    "pooled": {
+        "id": "pooled",
+        "name": "Pooled spikes — spike or not",
+        "blurb": "Incisor's and Doppler's events, pooled: a spike, or not.",
+        "labels": [
+            {"id": "spike", "name": "Spike", "keys": ["1", "s"],
+             "color": "#2f9e6e", "good": True},
+            {"id": "garbage", "name": "Garbage", "keys": ["2", "g"],
+             "color": "#dc2626"},
+            {"id": "flag", "name": "Flag", "keys": ["3", "f"],
+             "color": "#E5A823", "flagged": True},
+        ],
+    },
 }
+
+#: Where a pooled event came from (backend/confluence.py). Carried on the
+#: bank's events and on a curation set's candidates.
+ORIGINS = ("incisor", "doppler", "both")
+
+
+def _stamp_of(ev):
+    """Whose stamp a pooled candidate's `start` is -- 'incisor', 'doppler',
+    or None when its origin is not known. One both detectors found is filed
+    under Incisor's unless it carries `stamp: "doppler"` (confluence.KEEPS).
+    """
+    o = (ev or {}).get("origin")
+    if o == "both":
+        return "doppler" if ev.get("stamp") == "doppler" else "incisor"
+    return o if o in ("incisor", "doppler") else None
+
+
+# Labels a set may still carry in the vocabulary it copied in, and that are
+# shown only where a candidate actually holds one. See the DS vocabulary.
+RETIRED = frozenset({"ds3", "ds4", "ds5"})
+
+
+def live_labels(rec):
+    """A set's vocabulary without the retired labels nothing uses."""
+    used = {e.get("label") for e in (rec.get("events") or [])}
+    return [l for l in (rec.get("labels") or [])
+            if l.get("id") not in RETIRED or l.get("id") in used]
 
 
 class CurationError(Exception):
@@ -110,6 +203,49 @@ def _usable_keys(keys):
     return [k for k in (keys or []) if k.lower() not in RESERVED_KEYS]
 
 
+# --------------------------------------------------------------------------
+# A set's identity: its recording, its kind -- and, for a new set, its bank
+# entry (2026-10-20)
+# --------------------------------------------------------------------------
+# The user's ruling: working sets are purely bank-identity based. A set used
+# to be one per (recording, kind), so two Doppler runs on one recording
+# shared one set: starting from the second replaced the first, and the
+# decisions of one run were on the bench while another run's versions were
+# being chosen -- which is how flags appeared to carry across M3S2's
+# versions. A NEW set belongs to one bank entry. Its kind says so,
+# `<kind>.e<entry id>` ("ied.e3b3111be3118"): the routes keep their shape
+# (/api/curation/<gid>/<kind>/...), every caller already passes a set's kind
+# through, and only what MEANS a kind -- the vocabulary, the bank type --
+# reads the base. The sets made before stay `ds`/`ied`/`pooled` (the user
+# chose new sets only).
+ENTRY_SEP = ".e"
+
+
+def kind_of(kind):
+    """The base kind: "ied" for "ied.e3b3111be3118", and for "ied"."""
+    return str(kind or "").split(".", 1)[0]
+
+
+def entry_of(kind):
+    """The bank entry a per-entry set belongs to; None for an older set."""
+    k = str(kind or "")
+    if ENTRY_SEP not in k:
+        return None
+    entry = k.split(ENTRY_SEP, 1)[1]
+    return entry or None
+
+
+def set_kind(kind, entry):
+    """The kind of the set for one bank entry: "ied" + entry -> "ied.e..."."""
+    base = kind_of(kind)
+    if not entry:
+        return base
+    entry = str(entry)
+    if not entry.isalnum() or len(entry) > 40:
+        raise CurationError("%r is not a bank entry id." % entry)
+    return base + ENTRY_SEP + entry
+
+
 def vocabulary(kind):
     """A kind's categories, with any key the mode needs stripped out.
 
@@ -117,11 +253,89 @@ def vocabulary(kind):
     with an older vocabulary -- which may still carry a reserved key -- are
     cleaned up when they are read, instead of quietly breaking navigation for
     whoever opens them next.
+
+    The built-in ones first, in their order, then every category somebody
+    added to this kind (`Categories`), in the order they were added.
     """
+    kind = kind_of(kind)
     out = []
     for lab in KINDS[kind]["labels"]:
         out.append(dict(lab, keys=_usable_keys(lab.get("keys"))))
-    return out
+    return out + custom_labels(kind)
+
+
+# --------------------------------------------------------------------------
+# Categories somebody added
+# --------------------------------------------------------------------------
+#
+# Spotter can add a category -- "Polyspike", "Spike-wave" -- and it is then a
+# category of EVERY set of that kind, on every recording: one vocabulary, so
+# a count of polyspikes on one recording means the same as on the next. Two
+# routes carry it to other computers, and either is enough:
+#
+#   the store    GUI_logs/categories/, sharded per machine like everything
+#                else there, which travels with the repository;
+#   the sets     a set that has used a category carries it in its own
+#                `labels`, and curation sets go through the cloud sync --
+#                so a category reaches a colleague the moment a set using it
+#                does, without a new table to migrate.
+#
+# Added, never renamed or removed here: a candidate already labelled with
+# one has to go on meaning what it meant. Keys are the free digits after the
+# built-in four, so the keyboard keeps working the way it always has.
+
+CUSTOM_KEYS = ("5", "6", "7", "8", "9", "0")
+_CURATE = None          # the process's Curation, for the module functions
+
+
+def _slug(name):
+    out = "".join(c if c.isalnum() else "-" for c in str(name).lower())
+    while "--" in out:
+        out = out.replace("--", "-")
+    return out.strip("-")[:24] or "category"
+
+
+def custom_labels(kind):
+    """Every category added to `kind`: the store's, then any a set carries
+    that the store has not got (one that arrived through the cloud sync)."""
+    kind = kind_of(kind)
+    if _CURATE is None or kind not in KINDS:
+        return []
+    return _CURATE.customs(kind)
+
+
+def _with_customs(labels, kind):
+    """A set's vocabulary with every added category it does not carry yet,
+    so a category made on one recording is offered on all of them."""
+    have = {l.get("id") for l in (labels or [])}
+    return list(labels or []) + [dict(l) for l in custom_labels(kind)
+                                 if l["id"] not in have]
+
+
+class Categories:
+    """The added categories, one record per kind, merged per label id."""
+
+    def __init__(self, logs_dir, store):
+        self.dir = os.path.join(logs_dir, "categories")
+        os.makedirs(self.dir, exist_ok=True)
+        self.book = shards.Book(self.dir, {
+            "labels": shards.BYID,
+            "created": shards.FIRST,
+        }, store)
+        self.store = store
+
+    def for_kind(self, kind):
+        rec = self.book.read(shards.safe_base(kind)) or {}
+        return [dict(l) for l in (rec.get("labels") or [])
+                if isinstance(l, dict) and l.get("id")]
+
+    def add(self, kind, lab):
+        base = shards.safe_base(kind)
+        rec = self.book.read(base) or {}
+        rec.setdefault("kind", kind)
+        rec["labels"] = list(rec.get("labels") or []) + [lab]
+        self.book.write(base, rec)
+        return lab
 
 
 def _now():
@@ -251,6 +465,82 @@ class Curation:
         self.book.absorb_legacy()
         self.store = store
         os.makedirs(self.dir, exist_ok=True)
+        self.categories = Categories(logs_dir, store)
+        self._custom_memo = {}
+        global _CURATE
+        _CURATE = self
+
+    # ------------------------------------------------------------------
+    # Added categories
+    # ------------------------------------------------------------------
+    def customs(self, kind):
+        """See `custom_labels`. Built-in ids never count, whatever a set
+        holds: those are the vocabulary's own."""
+        # A second's memo: the workbench summarises forty sets at once, and
+        # each asks. Cleared the moment a category is added.
+        kind = kind_of(kind)
+        now = time.time()
+        hit = self._custom_memo.get(kind)
+        if hit and now - hit[0] < 1.0:
+            return [dict(l) for l in hit[1]]
+        builtin = {l["id"] for l in KINDS[kind]["labels"]} | set(RETIRED)
+        out, seen = [], set()
+        for lab in self.categories.for_kind(kind):
+            if lab["id"] not in builtin and lab["id"] not in seen:
+                seen.add(lab["id"])
+                out.append(dict(lab, keys=_usable_keys(lab.get("keys"))))
+        for rec in self.all():
+            if kind_of(rec.get("kind")) != kind:
+                continue
+            for lab in rec.get("labels") or []:
+                if (isinstance(lab, dict) and lab.get("custom")
+                        and lab.get("id") not in builtin
+                        and lab.get("id") not in seen):
+                    seen.add(lab["id"])
+                    out.append(dict(lab, keys=_usable_keys(lab.get("keys"))))
+        self._custom_memo[kind] = (now, out)
+        return [dict(l) for l in out]
+
+    @shards.atomic
+    def add_category(self, kind, name, color, good=False):
+        """A new category for every set of `kind`. Refuses a name already in
+        use and a colour that is not one."""
+        kind = kind_of(kind)
+        if kind not in KINDS:
+            raise CurationError("Unknown kind %r." % kind)
+        name = " ".join(str(name or "").split())
+        if not name:
+            raise CurationError("A category needs a name.")
+        if len(name) > 32:
+            raise CurationError("Keep the name to 32 characters or fewer; it "
+                                "goes on a button.")
+        color = str(color or "").strip()
+        if not (len(color) == 7 and color[0] == "#" and all(
+                c in "0123456789abcdefABCDEF" for c in color[1:])):
+            raise CurationError("Pick a colour for it.")
+        vocab = vocabulary(kind)
+        same = next((l for l in vocab if str(l.get("name", "")).strip()
+                     .lower() == name.lower()), None)
+        if same:
+            raise CurationError("There is already a category called %s."
+                                % same.get("name"))
+        taken_ids = {l.get("id") for l in vocab} | set(RETIRED)
+        base = _slug(name)
+        lid, n = base, 2
+        while lid in taken_ids:
+            lid = "%s-%d" % (base, n)
+            n += 1
+        taken_keys = {str(k).lower() for l in vocab for k in (l.get("keys") or [])}
+        key = next((k for k in CUSTOM_KEYS if k not in taken_keys), None)
+        prov = self.store.provenance() if self.store else {"at": _now()}
+        lab = {"id": lid, "name": name, "color": color.lower(),
+               "keys": [key] if key else [], "custom": True,
+               "created": prov}
+        if good:
+            lab["good"] = True
+        out = self.categories.add(kind, lab)
+        self._custom_memo.pop(kind, None)
+        return out
 
     # ------------------------------------------------------------------
     # Files
@@ -273,14 +563,28 @@ class Curation:
     # Reading
     # ------------------------------------------------------------------
     def get(self, gid, kind):
-        if kind not in KINDS:
+        if kind_of(kind) not in KINDS:
             raise CurationError("Unknown kind %r." % kind)
         rec = self._read(gid, kind)
         if rec:
+            # Every added category is offered on every set, whether or not
+            # this one has used it yet (`_with_customs`).
+            rec["labels"] = _with_customs(live_labels(rec), kind)
             # An old set may carry a key the mode has since reserved.
             for lab in rec.get("labels") or []:
                 lab["keys"] = _usable_keys(lab.get("keys"))
         return rec
+
+    def _adopt_custom(self, rec, label):
+        """True if `label` is an added category of this set's kind, and puts
+        it into the set's own vocabulary -- which is what carries it to
+        other computers through the cloud sync."""
+        lab = next((l for l in custom_labels(rec.get("kind"))
+                    if l["id"] == label), None)
+        if lab is None:
+            return False
+        rec["labels"] = list(rec.get("labels") or []) + [dict(lab)]
+        return True
 
     def all(self):
         return self.book.all()
@@ -297,6 +601,14 @@ class Curation:
         done = 0
         for e in evs:
             lab = e.get("label")
+            # The word counts as no decision, not as a decision called
+            # "unspecified". It is not in either vocabulary and should never
+            # be stored -- but a sync did store it, on seven candidates, and
+            # this counter reported them as done: `left` 0, `percent` 100,
+            # on a set nobody had finished. A count that a stray value in
+            # the data can invert is worth making stubborn.
+            if lab == "unspecified":
+                lab = None
             if lab:
                 done += 1
                 by[lab] = by.get(lab, 0) + 1
@@ -309,17 +621,24 @@ class Curation:
         }
 
     def summary(self, rec):
-        kind = KINDS.get(rec.get("kind")) or {}
+        kind = KINDS.get(kind_of(rec.get("kind"))) or {}
         return {
             "gid": rec.get("gid"),
             "kind": rec.get("kind"),
+            # The base kind, for whatever filters or names by kind, and the
+            # bank entry a per-entry set belongs to (None for an older one).
+            "kind_base": kind_of(rec.get("kind")),
+            "entry": entry_of(rec.get("kind")),
             "kind_name": kind.get("name") or rec.get("kind"),
             "name": rec.get("name"),
             "session_label": rec.get("session_label"),
             "source": rec.get("source") or {},
             "created": rec.get("created") or {},
             "updated": rec.get("updated") or {},
-            "labels": rec.get("labels") or kind.get("labels") or [],
+            "labels": _with_customs(live_labels(rec) or kind.get("labels")
+                                    or [], rec.get("kind"))
+                      if kind_of(rec.get("kind")) in KINDS
+                      else (live_labels(rec) or kind.get("labels") or []),
             "archived": bool(rec.get("archived")),
             # The workbench facts. A set is either something somebody is
             # working on or it is not, and the list is unreadable without
@@ -330,6 +649,13 @@ class Curation:
             "opened_by": rec.get("opened_by"),
             "closed_at": rec.get("closed_at"),
             "progress": self.progress(rec),
+            # When two candidates were last made one (Panning). A merge can
+            # change what a banked version would hold without changing a
+            # single count, so "is the bank up to date" has to know it.
+            "last_merge": max([str(e.get("merged_at")) for e in
+                               (rec.get("events") or [])
+                               if e.get("merged_at")] or [None],
+                              key=lambda v: v or ""),
         }
 
     def summaries(self):
@@ -348,7 +674,7 @@ class Curation:
         curation says what they actually are. Conflating the two is how a
         detector's guesses end up in a figure as findings.
         """
-        if kind not in KINDS:
+        if kind_of(kind) not in KINDS:
             raise CurationError("Unknown kind %r." % kind)
         if not gid:
             raise CurationError(
@@ -401,7 +727,11 @@ class Curation:
                 "label": UNSPECIFIED,
             }
             if isinstance(ev, dict):
-                for k in ("end", "channel", "amplitude", "note"):
+                # `origin` and `pair_t` for a pooled spike: which detector
+                # found it, and where the other one put it -- and `stamp`,
+                # whose of its two times `start` is.
+                for k in ("end", "channel", "amplitude", "note", "origin",
+                          "pair_t", "stamp"):
                     if ev.get(k) is not None:
                         item[k] = ev[k]
                 # An import that already carries a decision keeps it --
@@ -487,7 +817,7 @@ class Curation:
             "schema": SCHEMA,
             "gid": gid,
             "kind": kind,
-            "name": name or (KINDS[kind]["name"] + " candidates"),
+            "name": name or (KINDS[kind_of(kind)]["name"] + " candidates"),
             "session_label": session_label,
             # A set arrives closed. It joins the workbench when somebody
             # opens it, not merely because it exists.
@@ -543,7 +873,7 @@ class Curation:
             })
         return {
             "schema": self.HANDOFF_SCHEMA,
-            "what": "BARRY curation handoff",
+            "what": "Jarvis curation handoff",
             "from": {
                 "who": prov.get("user"),
                 "machine": prov.get("machine") or platform.node(),
@@ -568,7 +898,7 @@ class Curation:
         schema = bundle.get("schema")
         if schema and int(schema) > self.HANDOFF_SCHEMA:
             raise CurationError(
-                "That handoff was written by a newer BARRY (schema %s, this "
+                "That handoff was written by a newer Jarvis (schema %s, this "
                 "one reads %s). Update this copy first rather than importing "
                 "it half-understood." % (schema, self.HANDOFF_SCHEMA))
 
@@ -595,8 +925,8 @@ class Curation:
                 "overruled": 0,    # we disagreed and hers is newer
                 "kept": 0,         # we disagreed and ours stands
                 "disagreed": [], "unchanged": 0}
-        if not gid or kind not in KINDS:
-            line["error"] = "That set says it is a %r set, which this BARRY " \
+        if not gid or kind_of(kind) not in KINDS:
+            line["error"] = "That set says it is a %r set, which this Jarvis " \
                             "does not know about." % (kind,)
             return line
 
@@ -608,7 +938,7 @@ class Curation:
             rec = {
                 "schema": SCHEMA, "gid": gid, "kind": kind,
                 "name": incoming.get("name")
-                        or (KINDS[kind]["name"] + " candidates"),
+                        or (KINDS[kind_of(kind)]["name"] + " candidates"),
                 "session_label": incoming.get("session_label"),
                 "labels": incoming.get("labels") or vocabulary(kind),
                 "source": incoming.get("source") or {},
@@ -753,6 +1083,171 @@ class Curation:
                 self.store._stage(path)
         return out
 
+    def retime(self, gid, kind, mapping, target, basis_from, gap_map_sha,
+               dry_run=True, who=None):
+        """Shift every event's time in place, keeping its id and its decision.
+
+        `mapping` takes one time and returns `(new_time, segment)`, or
+        `(None, None)` when there is no answer. An event this cannot place
+        stops the whole operation rather than being left behind at the old
+        time -- a set half on one clock and half on another is worse than
+        one wholly on the wrong clock, because nothing about it looks wrong.
+
+        `dry_run=True` by default, and the dry run returns exactly what the
+        write would do.
+        """
+        rec = self.get(gid, kind)
+        if not rec:
+            raise CurationError("No %s set for %s." % (kind, gid))
+
+        basis = (rec.get("time_basis") or {}).get("kind")
+        if basis == target:
+            raise CurationError(
+                "This set is already on %s." % target)
+        if basis and basis != basis_from:
+            raise CurationError(
+                "This set says it is on %s, not %s." % (basis, basis_from))
+
+        evs = rec.get("events") or []
+        ids_before = [e.get("id") for e in evs]
+        decided_before = sum(1 for e in evs if e.get("label"))
+        labels_before = {}
+        for e in evs:
+            if e.get("label"):
+                labels_before[e["label"]] = labels_before.get(e["label"], 0) + 1
+
+        plan, unplaceable, shifts = [], [], []
+        for e in evs:
+            try:
+                t = float(e.get("start"))
+            except (TypeError, ValueError):
+                unplaceable.append(e)
+                continue
+            new_t, seg = mapping(t)
+            if new_t is None:
+                unplaceable.append(e)
+                continue
+            plan.append((e, round(float(new_t), 6), seg))
+            shifts.append(round((float(new_t) - t) * 1e3, 4))
+
+        line = {
+            "gid": gid, "kind": kind,
+            "name": rec.get("name"),
+            "session_label": rec.get("session_label"),
+            "was": len(evs),
+            "moving": len(plan),
+            "unplaceable": len(unplaceable),
+            "unplaceable_times": [e.get("start") for e in unplaceable[:10]],
+            "decided": decided_before,
+            "by_label": labels_before,
+            "shift_min_ms": min(shifts) if shifts else 0.0,
+            "shift_max_ms": max(shifts) if shifts else 0.0,
+            "from": basis_from, "to": target,
+            "gap_map_sha": gap_map_sha,
+            "dry_run": bool(dry_run),
+            "sample": [
+                {"id": e.get("id"), "was": e.get("start"), "now": t,
+                 "label": e.get("label"),
+                 "shift_ms": round((t - float(e["start"])) * 1e3, 3)}
+                for e, t, _s in plan[:8]
+            ],
+        }
+        if unplaceable:
+            line["error"] = ("%d event(s) have no time on the other clock. "
+                             "Nothing was written -- a set half on one clock "
+                             "is worse than one wholly on the wrong one."
+                             % len(unplaceable))
+            return line
+        if dry_run:
+            return line
+
+        prov = self.store.provenance() if self.store else {}
+        stamp = _now()
+        by = (who or prov.get("user") or "unknown")
+
+        # Read the shard this machine owns, not the merged record. The
+        # merge is a read-time union of every machine's file; writing it
+        # back would claim every other machine's decisions as this one's.
+        path = self.book.mine(self.base(gid, kind))
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                shard = json.load(fh)
+        except (OSError, ValueError):
+            shard = None
+        if not shard:
+            raise CurationError(
+                "This machine holds no shard of that set, so there is "
+                "nothing here to re-time. Run it where the set was curated.")
+
+        want = {}
+        for e, t, _seg in plan:
+            if e.get("id"):
+                want[e["id"]] = t
+
+        keys = (shard.get("_keys") or {}).get("events") or {}
+        touched, missing = 0, 0
+        for ev in shard.get("events") or []:
+            eid = ev.get("id")
+            if not eid or eid not in want:
+                missing += 1
+                continue
+            was = ev.get("start")
+            ev["start"] = want[eid]
+            # `end` rides along so a span does not become a different
+            # length than it was recorded as.
+            if ev.get("end") is not None:
+                try:
+                    ev["end"] = round(float(ev["end"])
+                                      + (want[eid] - float(was)), 6)
+                except (TypeError, ValueError):
+                    pass
+            # What was applied, per event, so a second run compares and
+            # skips instead of shifting again.
+            ev["retimed"] = {"from": was, "shift_ms":
+                             round((want[eid] - float(was)) * 1e3, 4),
+                             "gap_map_sha": gap_map_sha}
+            # And the merge stamp. Without this a colleague's untouched
+            # copy of this id is newer and wins: the correction works here
+            # and silently reverts on the next sync.
+            keys[eid] = ["set", stamp]
+            touched += 1
+
+        shard.setdefault("_keys", {})["events"] = keys
+        shard["events"] = sorted(shard.get("events") or [],
+                                 key=lambda e: e.get("start") or 0)
+        shard["time_basis"] = {
+            "kind": target,
+            "converted_from": basis_from,
+            "gap_map_sha": gap_map_sha,
+            "tool": "jarvis.retime/1",
+            "at": stamp,
+            "by": by,
+        }
+        shard["updated"] = (self.store.provenance() if self.store
+                            else {"at": stamp})
+        shards.write_json_atomic(path, shard)
+        if self.store:
+            self.store._stage(path)
+
+        # Post-conditions, checked against the merged record afterwards --
+        # which is what everyone else will read. Every one of these is a
+        # way the operation could have looked fine and not been.
+        after = self.get(gid, kind) or {}
+        ids_after = [e.get("id") for e in (after.get("events") or [])]
+        line["touched"] = touched
+        line["not_in_my_shard"] = missing
+        line["now"] = len(ids_after)
+        line["ids_held"] = sorted(ids_before) == sorted(ids_after)
+        line["new_ids"] = len(set(ids_after) - set(ids_before))
+        line["lost_ids"] = len(set(ids_before) - set(ids_after))
+        line["decided_after"] = sum(1 for e in (after.get("events") or [])
+                                    if e.get("label"))
+        line["decisions_held"] = line["decided_after"] == decided_before
+        line["tombstones"] = len((after.get("_tombstones")
+                                  or shard.get("_tombstones") or []))
+        line["time_basis"] = shard["time_basis"]
+        return line
+
     def backfill(self, dry_run=False):
         """Give a decision that arrived without provenance the provenance
         its own record implies.
@@ -821,6 +1316,132 @@ class Curation:
             if not dry_run:
                 self._write(rec)
         return out
+
+    @shards.atomic
+    def merge_events(self, gid, kind, keep_id, drop_id, stamp=None):
+        """Two candidates that are one event, made one -- Panning's merge.
+
+        Returns (survivor, progress, dropped_id).
+
+        `stamp` is whose time the merged event is filed under, "incisor"
+        (the default, and the rule below) or "doppler" (2026-10-19: "allow
+        the user to choose merge to Doppler or to Incisor"). Doppler's
+        means the survivor is the one carrying Doppler's time; it is refused
+        when neither does, rather than quietly keeping Incisor's. Either way
+        it is a choice of which candidate survives, so still no time moves.
+
+        The SURVIVOR is whichever of the two carries Incisor's time -- a
+        dentate-spike detector stamps the spike's own peak -- and otherwise
+        the earlier one, whichever was clicked first. So no candidate's time
+        ever changes: the bank matches versions on time, and a merge that
+        moved the surviving stamp would read in the history as one event
+        lost and an unrelated one gained, on top of the one really removed.
+        `pair_t` keeps the other time. The survivor keeps its decision, or
+        takes the other's when it has none; its origin is the two together.
+        The other candidate is removed, which the shard merge records as a
+        tombstone, so another machine's copy does not bring it back.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        evs = rec.get("events") or []
+        a = next((e for e in evs if e.get("id") == keep_id), None)
+        b = next((e for e in evs if e.get("id") == drop_id), None)
+        if not a or not b or a is b:
+            raise CurationError("Pick two different candidates in this set.")
+        oa, ob = a.get("origin"), b.get("origin")
+        want = str(stamp or "incisor").strip().lower()
+        if want not in ("incisor", "doppler"):
+            raise CurationError("A merge keeps Incisor's time or Doppler's.")
+
+        def has(e, src):
+            # Whether this candidate's own time is `src`'s stamp.
+            return _stamp_of(e) == src
+        ha, hb = has(a, want), has(b, want)
+        if want == "doppler" and not (ha or hb):
+            raise CurationError("Neither of those two carries Doppler's time, "
+                                "so there is no Doppler stamp to keep.")
+        if hb and not ha:
+            lead, other = b, a
+        elif ha or float(a["start"]) <= float(b["start"]):
+            lead, other = a, b
+        else:
+            lead, other = b, a
+        lead_stamp = _stamp_of(lead)
+        srcs = set()
+        for o in (oa, ob):
+            if o == "both":
+                srcs |= {"incisor", "doppler"}
+            elif o:
+                srcs.add(o)
+        if not lead.get("label") and other.get("label"):
+            for k in ("label", "by", "at"):
+                if other.get(k) is not None:
+                    lead[k] = other[k]
+        lead["pair_t"] = round(float(other["start"]), 6)
+        if srcs:
+            lead["origin"] = "both" if len(srcs) > 1 else next(iter(srcs))
+        # Which of its two times `start` is, once it has two detectors'.
+        if lead.get("origin") == "both" and lead_stamp:
+            lead["stamp"] = lead_stamp
+        if lead.get("channel") is None and other.get("channel") is not None:
+            lead["channel"] = other["channel"]
+        lead["merged_by"] = (self.store.provenance() if self.store
+                             else {}).get("user")
+        lead["merged_at"] = _now()
+        gone = other.get("id")
+        rec["events"] = [e for e in evs if e.get("id") != gone]
+        self._write(rec)
+        return lead, self.progress(rec), gone
+
+    #: What an undone merge may put back on the survivor, and what the
+    #: candidate it took in may come back with. Whitelisted: these arrive
+    #: from the page, which held them from before the merge.
+    _UNMERGE_KEEP = ("origin", "pair_t", "stamp", "label", "by", "at",
+                     "channel", "merged_by", "merged_at")
+    _UNMERGE_BACK = ("start", "end", "channel", "amplitude", "origin",
+                     "pair_t", "stamp", "label", "by", "at", "note")
+
+    @shards.atomic
+    def unmerge(self, gid, kind, keep_id, before, dropped):
+        """Panning's undo of a merge (Z): the survivor as it was, and the
+        candidate it took in, back. Returns (survivor, restored, progress).
+
+        The one that comes back gets a NEW id. Its old id was removed, and
+        the shard merge tombstoned it so another machine's copy would not
+        bring it back; reusing it would be asking every machine to agree
+        that a deleted candidate is not deleted after all. Its time is what
+        identifies it here anyway, and the time is the same.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        evs = rec.get("events") or []
+        a = next((e for e in evs if e.get("id") == keep_id), None)
+        if not a:
+            raise CurationError("That candidate is no longer in this set, so "
+                                "the merge cannot be undone here.")
+        try:
+            start = float((dropped or {}).get("start"))
+        except (TypeError, ValueError):
+            raise CurationError("Say where the other candidate was.")
+        was = before or {}
+        for k in self._UNMERGE_KEEP:
+            if was.get(k) is not None:
+                a[k] = was[k]
+            elif k == "label":
+                a[k] = UNSPECIFIED
+            else:
+                a.pop(k, None)
+        back = {"id": _eid()}
+        for k in self._UNMERGE_BACK:
+            if (dropped or {}).get(k) is not None:
+                back[k] = dropped[k]
+        back["start"] = round(start, 6)
+        back.setdefault("label", UNSPECIFIED)
+        rec["events"] = sorted(evs + [back], key=lambda e: e["start"])
+        self._write(rec)
+        return a, back, self.progress(rec)
 
     @shards.atomic
     def set_order(self, gid, kind, how, scores=None):
@@ -930,7 +1551,7 @@ class Curation:
         return out
 
     def _label_ids(self, kind):
-        return {l["id"] for l in KINDS[kind]["labels"]}
+        return {l["id"] for l in KINDS[kind_of(kind)]["labels"]}
 
     @shards.atomic
     def archive(self, gid, kind, on=True):
@@ -971,7 +1592,8 @@ class Curation:
         if not rec:
             raise CurationError("No curation set for that recording.")
         valid = {l["id"] for l in (rec.get("labels") or [])}
-        if label is not None and label not in valid:
+        if label is not None and label not in valid \
+                and not self._adopt_custom(rec, label):
             raise CurationError(
                 "%r is not one of this set's categories (%s)."
                 % (label, ", ".join(sorted(valid))))
@@ -998,9 +1620,14 @@ class Curation:
         if label is None:
             hit.pop("by", None)
             hit.pop("at", None)
+            # See `label_many`: an undo needs a time of its own or it cannot
+            # be ordered against somebody else's decision on the same
+            # candidate, and it must not be `at`.
+            hit["cleared_at"] = _now()
         else:
             hit["by"] = who
             hit["at"] = _now()
+            hit.pop("cleared_at", None)
         self._write(rec)
         return hit, self.progress(rec)
 
@@ -1026,7 +1653,9 @@ class Curation:
             if not e:
                 continue
             if label is not None and label not in valid:
-                continue
+                if not self._adopt_custom(rec, label):
+                    continue
+                valid.add(label)
             # The same care `label` takes over one candidate. This is the
             # back end of the fill-down sweep AND of putting a banked
             # version back, and without it either one overwrote a
@@ -1038,6 +1667,13 @@ class Curation:
             if label is None:
                 e.pop("by", None)
                 e.pop("at", None)
+                # When it was un-decided, so the undo can be ordered against
+                # somebody else's decision on the same candidate. Not in
+                # `at`: that means "when this was decided", is read that way
+                # by the receipt and the review list, and a stamp there on a
+                # candidate with no label is how a decision nobody made gets
+                # counted.
+                e["cleared_at"] = stamp
             else:
                 e["by"] = who
                 e["at"] = stamp
@@ -1047,8 +1683,16 @@ class Curation:
         return n, self.progress(rec)
 
     @shards.atomic
-    def open_set(self, gid, kind, on=True, who=None, unarchive=False):
+    def open_set(self, gid, kind, on=True, who=None, unarchive=False,
+                 based_on=None):
         """Put a set on the workbench, or take it off.
+
+        `based_on` is which banked version this pass was picked up from.
+        Remembered so that banking it afterwards lands in the right place
+        in the history: a pass worked from v1 while v2 and v3 exist is a
+        branch off v1, not a fourth pass on top of them. Left out, it
+        means whatever was newest, which is what every pick-up meant
+        before there was a choice.
 
         Closing is not archiving and it is not finishing: nothing is
         hidden, nothing is required first, and the decisions are already
@@ -1087,9 +1731,45 @@ class Curation:
                 rec.pop("archived_by", None)
             if not (rec.get("assignee") or "").strip() and who:
                 rec["assignee"] = who
+            if based_on is not None:
+                rec["based_on"] = based_on
+                rec["based_on_at"] = _now()
         else:
             rec["open"] = False
             rec["closed_at"] = _now()
+            # `based_on` stays. Putting a set down does not decide where
+            # the work belongs in the history -- banking does, and that
+            # can happen long after, from the shelf.
+        return self._write(rec)
+
+    @shards.atomic
+    def set_based_on(self, gid, kind, v):
+        """Say which banked version the work now on the bench came from.
+
+        Called when a version is put back into the set: from that moment
+        the decisions on the bench are that version's, plus whatever is
+        done to them next, so that is what the next bank branches from.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        if v is None:
+            rec.pop("based_on", None)
+            rec.pop("based_on_at", None)
+        else:
+            rec["based_on"] = v
+            rec["based_on_at"] = _now()
+        return self._write(rec)
+
+    @shards.atomic
+    def mark_autobanked(self, gid, kind, version=None):
+        """Say that this set has banked itself, once (2026-10-26): "it
+        should only bank automatically ONCE after all events are decided for
+        the first time. Never again." Every later change is banked by hand."""
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        rec["autobanked"] = {"at": _now(), "version": version}
         return self._write(rec)
 
     @shards.atomic
@@ -1125,6 +1805,30 @@ class Curation:
 
     def delete(self, gid, kind):
         return bool(self.book.erase(self.base(gid, kind)))
+
+    def delete_made_before(self, gid, kind, gone_at):
+        """Erase the copies of a set made before `gone_at` -- a deletion
+        that came back -- and keep any copy of a set started again since.
+
+        Judged shard by shard (`Book.erase_if`), because a set's id is its
+        recording and kind and is reused: a merge can put a deleted set's
+        old shard beside a new set's, and the merged record carries the old
+        one's `created` (FIRST), which a later write then copies into the new
+        shard too. So a shard is stale only when it was created before the
+        deletion AND nothing was imported into it after: an import's own
+        stamp is the start that came later. A stamp that cannot be read is
+        no evidence, and nothing is erased on it. Returns how many shards
+        went.
+        """
+        from . import tombs
+
+        def stale(shard):
+            if not tombs.newer(gone_at, (shard.get("created") or {}).get("at")):
+                return False
+            return not any(tombs.newer((i or {}).get("at"), gone_at)
+                           for i in (shard.get("imports") or [])
+                           if isinstance(i, dict))
+        return self.book.erase_if(self.base(gid, kind), stale)
 
     # ------------------------------------------------------------------
     # Out
@@ -1181,6 +1885,12 @@ class Curation:
                 item["end"] = e["end"]
             if e.get("channel") is not None:
                 item["channel"] = e["channel"]
+            # A pooled spike says where it came from in every version, so
+            # Root Canal can still tell Incisor's from Doppler's after
+            # Panning has banked it (and after a merge made it "both").
+            for k in ("origin", "pair_t", "stamp"):
+                if e.get(k) is not None:
+                    item[k] = e[k]
             item["label"] = names.get(lab, lab) if lab else "unspecified"
             item["label_id"] = lab or "unspecified"
             if e.get("by"):

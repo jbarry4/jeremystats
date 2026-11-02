@@ -1,0 +1,596 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>circuit: running</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Circuit, step 3 of The Arc: the panel, the matrix, the ring, and the
+   Results viewer drawing the same thing.
+
+   Every geometric claim is checked from COORDINATES read off the SVG and
+   from the PAYLOAD, never by counting what was drawn and agreeing with
+   it: twelve nodes at 30 degree steps starting 15 degrees clockwise of the
+   top, all on one circle; right hemisphere right of centre and the left
+   its mirror; every edge ending exactly on its two nodes; grey nodes with
+   no edges; the set of edges equal, key for key, to the payload's present
+   cells at or above the threshold, at three thresholds; the matrix's value
+   cells equal to the present cells, n and warn as the payload says, absent
+   cells blank; the crosshair lighting only left and up.
+
+   The payload is REAL: a circuit built by backend/circuit.py from cached
+   Coupling runs of DEWEY r7 s1 Precon1 (fixtures/circuit_s360e48254222.json,
+   made through tools/check_circuit.py's build path). It is handed in with
+   `barryCircuit._show` when the Circuit routes are not in the running
+   server, and the harness says which path it took. The Results check makes
+   a real artifact on a `harness-` gid through /api/artifacts/_test/make and
+   erases exactly that one in a `finally`.
+
+   Negative controls: a clone of the ring with one edge removed, one with a
+   fake edge on a grey node, and one with a node nudged off its angle, must
+   each FAIL the check that passes on the real one. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || d === undefined ? '' : '   [' + d + ']'));
+const note = (m) => say('note', m);
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+/* ---- independent readings of the payload ---- */
+const isGrey = (P, n) => (P.grey || []).indexOf(n) >= 0
+  || ((P.regions || []).find((r) => r.region === n) || {}).status === 'grey';
+function present(P, w, m) {
+  const cells = ((P.cells || {})[w] || {})[m] || {};
+  return Object.keys(cells).filter((k) => {
+    const [a, b] = k.split('|');
+    return !isGrey(P, a) && !isGrey(P, b);
+  });
+}
+function expectEdges(P, w, m, thr) {
+  const cells = P.cells[w][m];
+  return present(P, w, m).filter((k) => Math.abs(cells[k].mean) >= thr).sort();
+}
+
+/* ---- independent readings of the ring ---- */
+function nodesOf(svg) {
+  return Array.from(svg.querySelectorAll('.cir-node')).map((g) => {
+    const c = g.querySelector('circle');
+    return { region: g.dataset.region, grey: g.classList.contains('grey'),
+             x: Number(c.getAttribute('cx')), y: Number(c.getAttribute('cy')) };
+  });
+}
+function geometry(svg) {
+  const ns = nodesOf(svg);
+  const cx = ns.reduce((s, n) => s + n.x, 0) / ns.length;
+  const cy = ns.reduce((s, n) => s + n.y, 0) / ns.length;
+  ns.forEach((n) => {
+    n.r = Math.hypot(n.x - cx, n.y - cy);
+    // Clockwise from the top: atan2(dx, -dy).
+    n.deg = (Math.atan2(n.x - cx, -(n.y - cy)) * 180 / Math.PI + 360) % 360;
+  });
+  return { nodes: ns, cx: cx, cy: cy };
+}
+function geometryOK(svg) {
+  const g = geometry(svg);
+  if (g.nodes.length !== 12) return 'node count ' + g.nodes.length;
+  const r0 = g.nodes[0].r;
+  for (let i = 0; i < 12; i++) {
+    const n = g.nodes[i];
+    if (Math.abs(n.r - r0) > 0.05) return n.region + ' r ' + n.r.toFixed(2) + ' vs ' + r0.toFixed(2);
+    const want = 15 + 30 * i;
+    const d = Math.abs(((n.deg - want + 540) % 360) - 180);
+    if (d > 0.05) return n.region + ' at ' + n.deg.toFixed(2) + ' deg, want ' + want;
+  }
+  return '';
+}
+function edgesOf(svg) {
+  return Array.from(svg.querySelectorAll('line.cir-edge')).map((l) => ({
+    key: l.dataset.key,
+    x1: Number(l.getAttribute('x1')), y1: Number(l.getAttribute('y1')),
+    x2: Number(l.getAttribute('x2')), y2: Number(l.getAttribute('y2')),
+  }));
+}
+function edgeSetOK(svg, P, w, m, thr) {
+  const got = edgesOf(svg).map((e) => e.key).sort();
+  const want = expectEdges(P, w, m, thr);
+  if (got.length !== want.length) return 'drew ' + got.length + ', payload says ' + want.length;
+  for (let i = 0; i < want.length; i++) {
+    if (got[i] !== want[i]) return 'first difference ' + got[i] + ' vs ' + want[i];
+  }
+  return '';
+}
+function greyEdgesOK(svg, P) {
+  const grey = (P.grey || []);
+  const hits = edgesOf(svg).filter((e) => {
+    const [a, b] = e.key.split('|');
+    return grey.indexOf(a) >= 0 || grey.indexOf(b) >= 0;
+  });
+  return hits.length ? hits.length + ' edges touch a grey node: ' + hits[0].key : '';
+}
+function endpointsOK(svg) {
+  const at = {};
+  nodesOf(svg).forEach((n) => { at[n.region] = n; });
+  for (const e of edgesOf(svg)) {
+    const [a, b] = e.key.split('|');
+    const A = at[a], B = at[b];
+    if (!A || !B) return 'edge ' + e.key + ' names a node that is not drawn';
+    if (Math.abs(e.x1 - A.x) > 0.02 || Math.abs(e.y1 - A.y) > 0.02
+        || Math.abs(e.x2 - B.x) > 0.02 || Math.abs(e.y2 - B.y) > 0.02) {
+      return 'edge ' + e.key + ' does not end on its nodes';
+    }
+  }
+  return '';
+}
+
+(async () => {
+  const f = document.getElementById('app');
+  const made = [];
+  try {
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  const $ = (q) => doc().querySelector(q);
+  const $$ = (q) => Array.from(doc().querySelectorAll(q));
+  const errs = [];
+  win().addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  win().addEventListener('unhandledrejection',
+                         (e) => errs.push('rejected: ' + e.reason));
+  await untilN(() => typeof win().setView === 'function');
+  await sleep(700);
+  const ev = (src) => win().eval(src);
+  const val = (expr) => ev('(' + expr + ')');
+
+  const FIX = await (await fetch('/_dev/fixtures/circuit_s360e48254222.json')).json();
+  win().__fix = FIX;
+
+  /* ---------------------------------------------------------------- */
+  head('the step is built, and paints');
+  check('Circuit is marked built in The Arc',
+        val('window.barryArc.step("circuit").built') === true);
+  check('BARRY.circuit is there', val('!!window.barryCircuit && typeof window.barryCircuit.paint') === 'function');
+  ev('setView("toolkit")');
+  await sleep(300);
+  check('the Circuit step opens', val('BARRY.views.toolkit.pick("circuit")') === true);
+  await untilN(() => $('#tkResult .step-head') && $('#cirMain'), 300);
+  const hd = $('#tkResult .step-head');
+  check('it draws the step header', !!hd && /Circuit/.test(hd.textContent),
+        hd ? hd.textContent.slice(0, 60) : 'none');
+  check('and says step 3 of The Arc',
+        !!hd && (hd.querySelector('.step-n') || {}).textContent === 'step 3 of The Arc');
+  const stepBtn = $$('.tk-step').find((b) => /Circuit/.test(b.textContent));
+  check('its ToolKit step is not disabled', !!stepBtn && !stepBtn.disabled
+        && !stepBtn.classList.contains('off'));
+
+  /* Wait for the ToolKit's second render: the host must stop being
+     REPLACED (arcmatrix.html learnt this the hard way). */
+  let host = $('#cirMain'), steady = 0;
+  for (let i = 0; i < 150 && steady < 15; i++) {
+    await sleep(100);
+    const now = $('#cirMain');
+    steady = (now && now === host) ? steady + 1 : 0;
+    host = now;
+  }
+  check('the panel has stopped being rebuilt under us', steady >= 15);
+  await untilN(() => $('#cirPick .arc-row, #cirPick .empty-state'), 300);
+
+  /* ---------------------------------------------------------------- */
+  head('the routes');
+  const probe = await fetch('/api/arc/circuit/recordings');
+  let routes = false, rows = [];
+  try { const j = await probe.json(); routes = probe.ok && j.ok !== false; rows = j.rows || []; }
+  catch (e) { routes = false; }
+  if (!routes) {
+    note('/api/arc/circuit/recordings answered ' + probe.status
+         + ' -- the Circuit routes are not in the running server, so the '
+         + 'recorded payload is handed in below.');
+    const miss = $('#cirPick .cir-missing');
+    check('the panel says the route is missing, as an empty-state', !!miss);
+    check('  and names what to do next (restart Jarvis)',
+          !!miss && /Restart Jarvis/.test(miss.textContent), miss ? miss.textContent.slice(0, 120) : '');
+    check('  and does not pretend there are no recordings',
+          !$('#cirPick .arc-row'));
+    check('  ...and it is on the screen', !!miss && miss.isConnected);
+  } else {
+    note('Driving the real routes: ' + rows.length + ' recordings.');
+    const btns = $$('#cirPick .arc-row');
+    check('one row per recording the route lists', btns.length === rows.length,
+          btns.length + ' vs ' + rows.length);
+    const offWant = rows.filter((r) => !(r.banked && (r.reachable || r.vacc))).length;
+    check('the ones that cannot be used are shown and disabled',
+          btns.filter((b) => b.disabled).length === offWant);
+    const r = rows.find((x) => x.banked && x.reachable && (x.cue_types || []).length);
+    if (r) {
+      val('window.barryCircuit.pick(' + JSON.stringify(r.gid) + ')');
+      await untilN(() => $$('.cir-cues button').length, 100);
+      const cues = $$('.cir-cues button');
+      check('the cue pairings offered are the recording’s own',
+            cues.map((b) => b.dataset.cue).join(',')
+            === r.cue_types.map((c) => c.cue_type).join(','));
+      check('  each with its pair count',
+            cues.every((b, i) => b.textContent.indexOf('×' + r.cue_types[i].n_pairs) >= 0));
+      const tr = $('.cir-kinds button[data-kind="transition"]');
+      check('transition is disabled exactly when it was not measured',
+            !!tr && tr.disabled === !r.transition_measured);
+      if (tr && tr.disabled) {
+        check('  and says why', /Spark/.test(tr.title));
+      }
+      await untilN(() => { const s = val('window.barryCircuit.state'); return s.plan && (s.plan.ok || s.plan.error); }, 1500);
+      const plan = val('window.barryCircuit.state.plan');
+      if (plan && !plan.error) {
+        check('the plan draws three sections', $$('.cir-plan .arc-ov-sec').length === 3);
+        check('the cost sentence is the server’s',
+              !!$('.cir-cost strong') && $('.cir-cost strong').textContent === (plan.cost || {}).sentence);
+        const tabs = $$('.cir-plan .inc-tab');
+        check('two where-tabs, This computer then VACC',
+              tabs.length === 2 && /This computer/.test(tabs[0].textContent)
+              && /VACC/.test(tabs[1].textContent));
+        const vaccOn = val('!!(BARRY.state.vacc && BARRY.vacc && (BARRY.vacc.last||{}).configured)');
+        check('VACC is disabled exactly when it cannot run, with the reason',
+              tabs[1].disabled === !(vaccOn && (plan.cost || {}).vacc_can !== false)
+              && (!tabs[1].disabled || tabs[1].title.length > 10));
+        const bar = $('.cir-runbar');
+        const btns2 = bar ? Array.from(bar.querySelectorAll('button')) : [];
+        const prim = btns2.filter((b) => b.classList.contains('btn') && !b.classList.contains('ghost'));
+        check('one primary, "Make the circuit", last', prim.length === 1
+              && btns2[btns2.length - 1] === prim[0] && prim[0].textContent === 'Make the circuit');
+        const pd = $('details.cir-ov-pairs'); pd.open = true; await sleep(80);
+        check('every planned pair is listed, the cached ones marked',
+              $$('.cir-pair').length === (plan.pairs || []).length
+              && $$('.cir-pair.cached').length === (plan.pairs || []).filter((p) => p.cached).length);
+      } else {
+        note('The plan answered: ' + (plan && plan.error));
+      }
+    } else {
+      note('No banked, reachable recording with a cue pairing to pick.');
+    }
+
+    head('many at once, against the real batch plan (nothing is run)');
+    $$('.arc-mode .seg button')[1].click();
+    await untilN(() => $('#cirBatch .cir-batch .cir-brow'), 300);
+    check('the batch surface draws a row per banked recording',
+          $$('#cirBatch .cir-brow').length === rows.filter((x) => x.banked).length,
+          $$('#cirBatch .cir-brow').length);
+    const primOf = () => $$('#cirBatch .cir-bbar button');
+    check('before anything is ticked the primary is disabled and last',
+          (() => { const b = primOf(); const l = b[b.length - 1];
+                   return l && l.classList.contains('btn') && !l.classList.contains('ghost') && l.disabled; })());
+    const two = rows.filter((x) => x.banked && x.reachable).slice(0, 2);
+    for (const x of two) val('window.barryCircuit.batch.want(' + JSON.stringify(x.gid) + ')');
+    await untilN(() => val('window.barryCircuit.batch.plan') || $('#cirBatch .cir-bplan .arc-ov-refused, #cirBatch .cir-bplan .cir-missing'), 600);
+    const bp = val('window.barryCircuit.batch.plan');
+    if (bp) {
+      note('Batch plan for ' + two.map((x) => x.gid).join(', ') + ': ' + bp.sentence);
+      check('the plan states the server’s sentence before anything runs',
+            $('#cirBatch .cir-bplan strong').textContent === bp.sentence);
+      const vs = $$('#cirBatch .cir-bp-v').map((n) => n.textContent);
+      check('to make / already made / blocked are all stated', vs.length === 3);
+      check('  and "already" counts what the server said',
+            (bp.already || []).length ? vs[1].indexOf(String(bp.already.length)) === 0 : /none/.test(vs[1]));
+      const last = primOf()[primOf().length - 1];
+      check('the primary names how many it will make',
+            last && last.textContent.indexOf('Make ' + (bp.todo || []).length + ' circuit') === 0,
+            last && last.textContent);
+    } else {
+      note('The batch plan was refused: ' + ($('#cirBatch .cir-bplan') || {}).textContent);
+      check('a refused batch plan is shown where the plan goes', !!$('#cirBatch .cir-bplan .arc-ov-refused, #cirBatch .cir-bplan .cir-missing'));
+    }
+    for (const x of two) val('window.barryCircuit.batch.want(' + JSON.stringify(x.gid) + ', false)');
+    check('  ...and it was on the screen (batch)', !!$('#cirBatch .cir-batch') && $('#cirBatch .cir-batch').isConnected);
+    $$('.arc-mode .seg button')[0].click();
+    await untilN(() => $('#cirMain'), 100);
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('the recorded circuit, in the panel');
+  // A known view: the window and method with the most warn cells.
+  let W = null, M = null, best = -1;
+  for (const w of FIX.windows) for (const m of FIX.methods) {
+    const n = Object.values(FIX.cells[w][m]).filter((c) => c.warn).length;
+    if (n > best) { best = n; W = w; M = m; }
+  }
+  note('Real payload: ' + FIX.source.session_label + ', ' + FIX.cue_label
+       + ', ' + FIX.n_pairs + ' pairs, grey ' + FIX.grey.join(', ')
+       + '. Viewing ' + W + ' / ' + M + ' (' + best + ' warn cells).');
+  const show = async (P) => {
+    ev('window.barryCircuit._pref.win.state = ' + JSON.stringify(W) + ';'
+       + 'window.barryCircuit._pref.method = ' + JSON.stringify(M) + ';'
+       + 'window.barryCircuit._pref.sel = null;'
+       + 'delete window.barryCircuit._pref.thr[' + JSON.stringify(M) + '];');
+    win().__p = P;
+    val('window.barryCircuit._show(window.__p, { name: "harness", version: 1 })');
+    await untilN(() => $('#cirMain .cir-view .cir-ring') && $('#cirMain .cir-mx'), 100, 50);
+    await untilN(() => val('!!window.barryCircuit.regions'), 100, 50);
+    return { svg: $('#cirMain .cir-ring'), grid: $('#cirMain .cir-mx') };
+  };
+  let { svg, grid } = await show(FIX);
+  check('the matrix and the ring draw', !!svg && !!grid);
+  if (!svg || !grid) throw new Error('nothing drawn');
+
+  head('the ring: geometry, from the coordinates');
+  let g = geometry(svg);
+  check('twelve nodes', g.nodes.length === 12, g.nodes.length);
+  check('in the payload’s region order',
+        g.nodes.map((n) => n.region).join(',') === FIX.region_order.join(','));
+  const geo = geometryOK(svg);
+  check('all on one circle, at 15 + 30i degrees clockwise from the top', !geo, geo);
+  check('the right hemisphere is right of centre, the left is left of it',
+        g.nodes.every((n) => /^Right/.test(n.region) ? n.x > g.cx + 1 : n.x < g.cx - 1));
+  check('the left is the right’s mirror image',
+        g.nodes.filter((n) => /^Right/.test(n.region)).every((n) => {
+          const m = g.nodes.find((x) => x.region === n.region.replace('Right', 'Left'));
+          return m && Math.abs(m.y - n.y) < 0.05 && Math.abs((g.cx - m.x) - (n.x - g.cx)) < 0.05;
+        }));
+  check('ACC is the top pair', ['Right ACC', 'Left ACC'].every((r) => {
+          const n = g.nodes.find((x) => x.region === r);
+          return n && g.nodes.every((o) => o.y >= n.y - 0.05);
+        }));
+  const greyNodes = g.nodes.filter((n) => n.grey).map((n) => n.region).sort();
+  check('the grey nodes are exactly the payload’s grey regions',
+        greyNodes.join(',') === FIX.grey.slice().sort().join(','), greyNodes.join(','));
+  const gOK = greyEdgesOK(svg, FIX);
+  check('grey nodes have no edges', !gOK, gOK);
+  const ep = endpointsOK(svg);
+  check('every edge ends exactly on its two nodes', !ep, ep);
+  /* Readable labels: the abbreviation on the node, the region's name by
+     it, and the FULL name on hover. */
+  const nodeG = svg.querySelector('.cir-node[data-region="Right ACC"]');
+  check('the node says ACC, not a two-letter code',
+        nodeG && nodeG.querySelector('.cir-node-t').textContent === 'ACC');
+  check('the label beside it says Right ACC',
+        nodeG && /^Right ACC/.test(nodeG.querySelector('.cir-node-l').textContent));
+  check('hovering it names the region in full',
+        nodeG && /anterior cingulate cortex/i.test(nodeG.querySelector('title').textContent),
+        nodeG ? nodeG.querySelector('title').textContent.slice(0, 80) : '');
+  const colours = val('Object.keys(window.barryCircuit.regions || {}).length');
+  check('the node colours came from /api/probes (12 regions)', colours === 12, colours);
+  const rp = svg.querySelector('.cir-node[data-region="Right POR"] circle');
+  check('a grey node is not painted its atlas colour',
+        rp && rp.getAttribute('fill').toLowerCase() !== val('window.barryCircuit.regions["Right POR"].color').toLowerCase());
+  check('  ...and all of that was on the screen (geometry)', svg.isConnected);
+
+  head('the ring: the threshold slider');
+  const auto = Number(svg.dataset.threshold);
+  let es = edgeSetOK(svg, FIX, W, M, auto);
+  check('at the default (the median, ' + auto + ') the edges are exactly the present cells at or above it', !es, es);
+  check('  which is not all of them',
+        expectEdges(FIX, W, M, auto).length < present(FIX, W, M).length);
+  for (const thr of [0, 0.05, 0.2]) {
+    const s = $('#cirMain .cir-thr');
+    s.value = String(thr);
+    s.dispatchEvent(new (win().Event)('input', { bubbles: true }));
+    await sleep(60);
+    svg = $('#cirMain .cir-ring');
+    es = edgeSetOK(svg, FIX, W, M, thr);
+    check('at ' + thr + ': ' + expectEdges(FIX, W, M, thr).length + ' edges, the exact set of present cells with |mean| >= ' + thr, !es, es);
+  }
+  const at0 = expectEdges(FIX, W, M, 0).length;
+  check('at 0 every present cell is an edge', at0 === present(FIX, W, M).length);
+  check('the slider kept its focus-free place and the ring is live', svg.isConnected);
+  const tg = greyEdgesOK(svg, FIX);
+  check('grey nodes still have no edges at the lowest threshold', !tg, tg);
+
+  head('the matrix');
+  ({ svg, grid } = await show(FIX));
+  const P = FIX, order = P.region_order, N = order.length;
+  const cellsDOM = Array.from(grid.querySelectorAll('.arc-mx-cell'));
+  check('N squared cells', cellsDOM.length === N * N, cellsDOM.length);
+  const valCells = cellsDOM.filter((c) => c.dataset.state === 'value');
+  const keys = Array.from(new Set(valCells.map((c) => c.dataset.key))).sort();
+  const want = present(P, W, M).sort();
+  check('the value cells are exactly the present cells', keys.join(';') === want.join(';'),
+        keys.length + ' vs ' + want.length);
+  check('  drawn in both triangles', valCells.length === 2 * want.length);
+  const cellsP = P.cells[W][M];
+  check('every cell shows its n as the payload says',
+        valCells.every((c) => c.querySelector('.cir-mx-n').textContent === String(cellsP[c.dataset.key].n)));
+  const warnDOM = Array.from(new Set(valCells.filter((c) => c.classList.contains('warn')).map((c) => c.dataset.key))).sort();
+  const warnP = want.filter((k) => cellsP[k].warn).sort();
+  check('the warn cells are exactly the payload’s (' + warnP.length + ')',
+        warnDOM.join(';') === warnP.join(';'), warnDOM.length + ' vs ' + warnP.length);
+  const w1 = valCells.find((c) => c.classList.contains('warn'));
+  check('  and a warn cell says how many of how many',
+        !w1 || w1.title.indexOf(cellsP[w1.dataset.key].warn) >= 0);
+  const G = P.grey.length;
+  const greyCells = cellsDOM.filter((c) => c.dataset.state === 'grey');
+  check('grey rows and columns: ' + (N * N - N - (N - G) * (N - G - 1)) + ' grey cells',
+        greyCells.length === N * N - N - (N - G) * (N - G - 1), greyCells.length);
+  check('  every one of them in a grey row or column', greyCells.every((c) =>
+    P.grey.indexOf(order[+c.dataset.r]) >= 0 || P.grey.indexOf(order[+c.dataset.c]) >= 0));
+  check('  and carrying the reason', greyCells.every((c) => /not computed/.test(c.title)
+    && c.title.length > 60));
+  check('  with their headers marked grey', grid.querySelectorAll('.arc-mx-head.grey').length === 2 * G);
+  check('grey cells are empty, not zero', greyCells.every((c) => !c.textContent.trim()));
+
+  // Absent: take three real cells away and the matrix must go blank there.
+  const P2 = JSON.parse(JSON.stringify(FIX));
+  const gone = want.slice(0, 3);
+  gone.forEach((k) => { delete P2.cells[W][M][k]; });
+  ({ svg, grid } = await show(P2));
+  const abs = Array.from(grid.querySelectorAll('.arc-mx-cell[data-state="absent"]'));
+  const absKeys = Array.from(new Set(abs.map((c) => c.dataset.key))).sort();
+  check('a cell with no value is drawn absent', absKeys.join(';') === gone.slice().sort().join(';'),
+        absKeys.join(';'));
+  check('  blank, not zero', abs.every((c) => !c.textContent.trim() && !c.style.backgroundColor));
+  const s0 = $('#cirMain .cir-thr');
+  s0.value = '0'; s0.dispatchEvent(new (win().Event)('input', { bubbles: true }));
+  await sleep(60);
+  svg = $('#cirMain .cir-ring');
+  check('  and it has no edge on the ring, even at threshold 0',
+        !edgesOf(svg).some((e) => gone.indexOf(e.key) >= 0) && !edgeSetOK(svg, P2, W, M, 0));
+  check('  ...and all of that was on the screen (matrix)', grid.isConnected && svg.isConnected);
+
+  /* A payload that (wrongly) carries a value for a grey region: grey wins.
+     The contract says such a cell is absent; a renderer that trusted the
+     cells over the histology would draw an edge to a node it greys out. */
+  const P3 = JSON.parse(JSON.stringify(FIX));
+  const live1 = FIX.region_order.find((n) => !isGrey(FIX, n));
+  const gk = FIX.region_order.indexOf(FIX.grey[0]) < FIX.region_order.indexOf(live1)
+    ? FIX.grey[0] + '|' + live1 : live1 + '|' + FIX.grey[0];
+  P3.cells[W][M][gk] = { n: 8, mean: 0.9, sd: 0.01, of: 8, warn: null,
+                         values: [{ pair_id: FIX.pairs[0].pair_id, v: 0.9 }] };
+  ({ svg, grid } = await show(P3));
+  const s3 = $('#cirMain .cir-thr');
+  s3.value = '0'; s3.dispatchEvent(new (win().Event)('input', { bubbles: true }));
+  await sleep(60);
+  svg = $('#cirMain .cir-ring');
+  check('a value filed against a grey region draws no edge (grey wins)',
+        !edgesOf(svg).some((e) => e.key === gk));
+  check('  and its matrix cell stays grey',
+        Array.from(grid.querySelectorAll('.arc-mx-cell')).filter((c) => c.dataset.key === gk).length === 0);
+
+  head('following a cell back to its two names');
+  ({ svg, grid } = await show(FIX));
+  const at = (r, c) => grid.querySelector('.arc-mx-cell[data-r="' + r + '"][data-c="' + c + '"]');
+  const hover = async (n) => { n.dispatchEvent(new (win().MouseEvent)('mouseover', { bubbles: true })); await sleep(50); };
+  await hover(at(9, 2));
+  const lit = Array.from(grid.querySelectorAll('.arc-mx-cell.lit'));
+  check('the trail is 9 + 2 + 1 cells long', lit.length === 12, lit.length);
+  check('only left along the row and up the column', lit.every((n) =>
+    (+n.dataset.r === 9 && +n.dataset.c <= 2) || (+n.dataset.c === 2 && +n.dataset.r <= 9)));
+  check('and its two headers light', grid.querySelectorAll('.arc-mx-head.lit-head').length === 2);
+
+  head('what a mean is made of');
+  const pickKey = want.find((k) => cellsP[k].n < P.n_pairs) || want[0];
+  grid.querySelector('.cir-val[data-key="' + pickKey + '"]').click();
+  await sleep(60);
+  const det = $('#cirMain .cir-detail-in');
+  check('clicking a cell opens its values', !!det);
+  const dv = det ? Array.from(det.querySelectorAll('.cir-dv')) : [];
+  check('one row per cue pair of the recording', dv.length === P.pairs.length, dv.length);
+  const withV = dv.filter((d) => !d.classList.contains('none'));
+  check('the ones with a value are exactly the cell’s n (' + cellsP[pickKey].n + ')',
+        withV.length === cellsP[pickKey].n);
+  check('each value is the payload’s', cellsP[pickKey].values.every((x) => {
+    const row = dv.find((d) => +d.dataset.pair === x.pair_id);
+    return row && row.querySelector('.cir-dv-v').textContent === Number(x.v).toFixed(4);
+  }));
+  check('the strip has one dot per value', det && det.querySelectorAll('.cir-strip-dot').length === cellsP[pickKey].n);
+  svg = $('#cirMain .cir-ring');
+  const selEdge = svg.querySelector('.cir-edge.sel');
+  check('the ring marks the same pair (if it is drawn at this threshold)',
+        !selEdge || selEdge.dataset.key === pickKey);
+
+  head('downloading it');
+  const text = new (win().XMLSerializer)().serializeToString(svg);
+  const parsed = new DOMParser().parseFromString(
+    text.indexOf('xmlns=') >= 0 ? text : text.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"'),
+    'image/svg+xml');
+  check('the SVG serialises to a document that parses', !parsed.querySelector('parsererror'));
+  check('  with no CSS variables left in it (it must stand alone)', !/var\(--/.test(text));
+  const img = new Image();
+  const loaded = await new Promise((res) => {
+    img.onload = () => res(img.naturalWidth > 0);
+    img.onerror = () => res(false);
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+      text.indexOf('xmlns=') >= 0 ? text : text.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"'));
+  });
+  check('  and loads as an image, which is what the PNG is drawn from', loaded);
+  check('Download SVG and Download PNG are offered',
+        $$('#cirMain .cir-dl button').map((b) => b.textContent).join(',') === 'Download SVG,Download PNG');
+
+  head('negative controls: break it, and the check must say so');
+  ({ svg, grid } = await show(FIX));
+  const thrN = Number(svg.dataset.threshold);
+  check('the real ring passes the edge-set check', !edgeSetOK(svg, FIX, W, M, thrN));
+  const c1 = svg.cloneNode(true);
+  const one = c1.querySelector('line.cir-edge');
+  if (one) one.parentNode.remove();
+  check('  a clone missing one edge FAILS it', !!edgeSetOK(c1, FIX, W, M, thrN), edgeSetOK(c1, FIX, W, M, thrN));
+  const c2 = svg.cloneNode(true);
+  const fake = c2.querySelector('line.cir-edge').cloneNode(true);
+  fake.dataset.key = FIX.grey[0] + '|' + FIX.region_order.find((n) => !isGrey(FIX, n));
+  c2.querySelector('.cir-edges').appendChild(fake);
+  check('  a clone with a fake edge on a grey node FAILS the grey check', !!greyEdgesOK(c2, FIX), greyEdgesOK(c2, FIX));
+  const c3 = svg.cloneNode(true);
+  const moved = c3.querySelectorAll('.cir-node circle')[4];
+  moved.setAttribute('cx', String(Number(moved.getAttribute('cx')) + 6));
+  check('  a clone with one node nudged FAILS the geometry check', !!geometryOK(c3), geometryOK(c3));
+  check('the real ring still passes after the clones were broken', !geometryOK(svg) && !greyEdgesOK(svg, FIX));
+
+  /* ---------------------------------------------------------------- */
+  head('Results draws the same circuit');
+  const panelEdges = edgesOf(svg).map((e) => e.key).sort().join(';');
+  const panelNodes = nodesOf(svg).map((n) => n.region + '@' + n.x.toFixed(2) + ',' + n.y.toFixed(2)).join(';');
+  const panelCells = Array.from(grid.querySelectorAll('.arc-mx-cell')).map((c) => c.dataset.state).join('');
+  check('the viewer is registered with the artifact store',
+        val('BARRY.artifacts.viewers().indexOf("circuit") >= 0'));
+  const gid = 'harness-circuit-' + Date.now().toString(36);
+  const mk = await (await fetch('/api/artifacts/_test/make', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind: 'circuit', payload: FIX,
+      subject: { gid: gid, project: 'DEWEY', mouse: 7, session: 1, phase: 'Precon',
+                 phase_n: 1, cue_type: FIX.cue_type, window_kind: FIX.kind },
+      nickname: 'harness circuit' }) })).json();
+  check('a real artifact was made for it', mk.ok && mk.artifact && mk.artifact.id, mk.error);
+  if (mk.ok) {
+    made.push(mk.artifact.id);
+    val('BARRY.artifacts.reload(), BARRY.artifacts.open(' + JSON.stringify(mk.artifact.id) + ')');
+    await untilN(() => $('.art-view[data-viewer="registered"] .cir-ring'), 300);
+    const rsvg = $('.art-view .cir-ring');
+    const rgrid = $('.art-view .cir-mx');
+    check('Results draws it with the registered viewer, not as JSON', !!rsvg && !!rgrid);
+    if (rsvg) {
+      check('  the same nodes in the same places',
+            nodesOf(rsvg).map((n) => n.region + '@' + n.x.toFixed(2) + ',' + n.y.toFixed(2)).join(';') === panelNodes);
+      check('  the same edges', edgesOf(rsvg).map((e) => e.key).sort().join(';') === panelEdges);
+      check('  the same matrix, cell for cell',
+            Array.from(rgrid.querySelectorAll('.arc-mx-cell')).map((c) => c.dataset.state).join('') === panelCells);
+      check('  its own geometry holds', !geometryOK(rsvg) && !greyEdgesOK(rsvg, FIX) && !endpointsOK(rsvg));
+      check('  Results owns the nickname and the version, so the viewer adds no second editor',
+            !$('.art-view .cir-nick-edit'));
+      const row = $('.art-row[data-id="' + mk.artifact.id + '"]');
+      check('  its list row carries the viewer’s summary', !!row && !!row.querySelector('.art-extra'),
+            row ? row.textContent.slice(0, 100) : 'no row');
+      check('  ...and it is on the screen', rsvg.isConnected);
+    }
+  }
+
+  head('nothing broke on the way');
+  check('no uncaught errors', errs.length === 0, errs.join(' | '));
+  } catch (e) {
+    say('bad', 'CRASH ' + (e && e.message));
+    note(String((e && e.stack) || ''));
+    document.title = 'circuit CRASH';
+  } finally {
+    if (made.length) {
+      try {
+        const r = await (await fetch('/api/artifacts/_test/erase', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: made }) })).json();
+        check('the harness artifact was erased, and only it',
+              (r.erased || []).length === made.length && !(r.refused || []).length);
+      } catch (e) { say('bad', 'could not erase ' + made.join(',') + ': ' + e.message); }
+    }
+  }
+  say('note', '');
+  say('note', out.querySelectorAll('.ok').length + ' passed, ' + bad + ' failed');
+  if (!/CRASH/.test(document.title)) {
+    document.title = 'circuit: ' + out.querySelectorAll('.ok').length + ' pass '
+                   + bad + ' fail';
+  }
+})();
+</script>

@@ -1,0 +1,52 @@
+{
+  "_at": {
+    "created": "2026-09-16T14:37:44.043683+00:00",
+    "gid": "2026-09-16T14:37:44.043683+00:00",
+    "group": "2026-09-16T14:37:44.043683+00:00",
+    "key": "2026-09-16T14:37:44.043683+00:00",
+    "label": "2026-09-16T14:37:44.043683+00:00",
+    "loose_key": "2026-09-16T14:37:44.043683+00:00",
+    "mouse": "2026-09-16T14:37:44.043683+00:00",
+    "project": "2026-09-16T14:37:44.043683+00:00",
+    "project_source": "2026-09-16T14:37:44.043683+00:00",
+    "retired": "2026-09-16T14:37:44.043683+00:00",
+    "schema": "2026-09-16T14:37:44.043683+00:00",
+    "session": "2026-09-16T14:37:44.043683+00:00",
+    "start": "2026-09-16T14:37:44.043683+00:00",
+    "updated": "2026-09-16T14:37:44.043683+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-16T14:37:44.043683+00:00",
+    "machine": "msi-390f",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-16T10:37:44-04:00",
+    "email": "seclouse@uvm.edu",
+    "host": "MSI",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Sylvia Clouse"
+  },
+  "gid": "sdc8229e27f2a",
+  "group": null,
+  "key": "split_bddbb0c3",
+  "label": "unidentified",
+  "loose_key": null,
+  "mouse": null,
+  "paths": [],
+  "project": "KCNT1",
+  "project_source": "inherited",
+  "retired": true,
+  "schema": 1,
+  "session": null,
+  "start": null,
+  "updated": {
+    "at": "2026-09-16T10:37:44-04:00",
+    "email": "seclouse@uvm.edu",
+    "host": "MSI",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Sylvia Clouse"
+  }
+}

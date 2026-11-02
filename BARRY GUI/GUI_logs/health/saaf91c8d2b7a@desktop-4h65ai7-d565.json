@@ -1,0 +1,45 @@
+{
+  "_at": {
+    "gid": "2026-09-14T16:22:37.718293+00:00",
+    "label": "2026-09-14T16:22:37.718293+00:00",
+    "path": "2026-09-14T16:22:37.718293+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "75ef25c3bdc7": [
+        "set",
+        "2026-09-14T16:22:37.718293+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T16:22:37.718293+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:22:37.717837+00:00",
+      "by": "Shahriar Tafti",
+      "concat_duration_s": 531.6287666666667,
+      "gap_map_sha": "581193f3fd089cd8",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "75ef25c3bdc7",
+      "level": "ok",
+      "machine": "Bluebarry",
+      "max_time_error_ms": 0.0,
+      "mismatches": 0,
+      "n_gaps": 0,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 1,
+      "seconds_lost": 0.0,
+      "sub_threshold_lost_s": 0.001,
+      "true_duration_s": 531.625878
+    }
+  ],
+  "gid": "saaf91c8d2b7a",
+  "label": "KCNT1 m591 s1 2026-08-10",
+  "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0591\\KCNT1_m0591_s01_081026\\2026-08-10_13-39-51"
+}

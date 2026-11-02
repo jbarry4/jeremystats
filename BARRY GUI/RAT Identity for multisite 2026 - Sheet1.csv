@@ -1,0 +1,9 @@
+Rat ID,A,B,C,D
+J3,Click,Low,Noise,High
+J4,High,Noise,Low,Click
+J6,Noise,High,Click,Low
+J7,Noise,Low,Click,High
+J8,Click,High,Noise,Low
+J9,High,Click,Low,Noise
+J10,Low,Noise,High,Click
+J11,Low,Click,High,Noise

@@ -1,0 +1,81 @@
+{
+  "_at": {
+    "created": "2026-10-12T14:04:00.564084+00:00",
+    "gid": "2026-10-12T14:04:00.564084+00:00",
+    "group": "2026-10-12T14:04:00.564084+00:00",
+    "key": "2026-10-12T14:04:00.564084+00:00",
+    "label": "2026-10-12T14:04:00.564084+00:00",
+    "loose_key": "2026-10-12T14:04:00.564084+00:00",
+    "mouse": "2026-10-12T14:04:00.564084+00:00",
+    "project": "2026-10-12T14:04:00.564084+00:00",
+    "project_source": "2026-10-12T14:04:00.564084+00:00",
+    "retired": "2026-10-12T14:04:00.564084+00:00",
+    "schema": "2026-10-12T14:04:00.564084+00:00",
+    "session": "2026-10-12T14:04:00.564084+00:00",
+    "start": "2026-10-12T14:04:00.564084+00:00",
+    "updated": "2026-10-12T14:06:03.028578+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_16-57-17": [
+        "set",
+        "2026-10-12T14:06:03.028578+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_16-58-42": [
+        "set",
+        "2026-10-12T14:06:03.028578+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_17-00-08": [
+        "set",
+        "2026-10-12T14:06:03.028578+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_17-02-56": [
+        "set",
+        "2026-10-12T14:06:03.028578+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-12T14:06:03.028578+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.09.6",
+    "at": "2026-10-12T10:04:00-04:00",
+    "commit": "021cb243",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s24a347096b92",
+  "group": null,
+  "key": "m002_s008_2024-02-06_16-57-37",
+  "label": "PTEN m2 s8 2024-02-06",
+  "loose_key": "m002_s008",
+  "mouse": 2,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_16-57-17",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_16-58-42",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_17-00-08",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\M2_PTENCTL\\M2s8jan26\\2024-02-06_17-02-56"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 8,
+  "start": "2024-02-06T21:57:37+00:00",
+  "updated": {
+    "app_version": "2026.10.09.6",
+    "at": "2026-10-12T10:06:03-04:00",
+    "commit": "021cb243",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

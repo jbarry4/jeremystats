@@ -1,0 +1,95 @@
+{
+  "_at": {
+    "created": "2026-10-12T14:04:41.995517+00:00",
+    "gid": "2026-10-12T14:04:41.995517+00:00",
+    "group": "2026-10-12T14:04:41.995517+00:00",
+    "key": "2026-10-12T14:04:41.995517+00:00",
+    "label": "2026-10-12T14:04:41.995517+00:00",
+    "loose_key": "2026-10-12T14:04:41.995517+00:00",
+    "mouse": "2026-10-12T14:04:41.995517+00:00",
+    "project": "2026-10-12T14:04:41.995517+00:00",
+    "project_source": "2026-10-12T14:04:41.995517+00:00",
+    "retired": "2026-10-12T14:04:41.995517+00:00",
+    "schema": "2026-10-12T14:04:41.995517+00:00",
+    "session": "2026-10-12T14:04:41.995517+00:00",
+    "start": "2026-10-12T14:04:41.995517+00:00",
+    "updated": "2026-10-12T14:06:26.125135+00:00"
+  },
+  "_keys": {
+    "channel_banks": {
+      "b1": [
+        "set",
+        "2026-10-12T14:04:41.995517+00:00"
+      ],
+      "b2": [
+        "set",
+        "2026-10-12T14:04:41.995517+00:00"
+      ]
+    },
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M18_RQ\\kcntm18s1bnov14\\2022-11-14_16-47-19": [
+        "set",
+        "2026-10-12T14:06:26.125135+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M18_RQ\\kcntm18s1nov14\\2022-11-14_16-32-14": [
+        "set",
+        "2026-10-12T14:06:26.125135+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-12T14:06:26.125135+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "channel_banks": [
+    {
+      "first": 1,
+      "id": "b1",
+      "last": 64,
+      "region": null
+    },
+    {
+      "first": 65,
+      "id": "b2",
+      "last": 128,
+      "region": null
+    }
+  ],
+  "created": {
+    "app_version": "2026.10.09.6",
+    "at": "2026-10-12T10:04:41-04:00",
+    "commit": "021cb243",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "sa2b4263b717e",
+  "group": null,
+  "key": "m018_s001_2022-11-14_16-32-14",
+  "label": "KCNT1 m18 s1 2022-11-14",
+  "loose_key": "m018_s001",
+  "mouse": 18,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M18_RQ\\kcntm18s1nov14\\2022-11-14_16-32-14",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M18_RQ\\kcntm18s1bnov14\\2022-11-14_16-47-19"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 1,
+  "start": "2022-11-14T21:32:14+00:00",
+  "updated": {
+    "app_version": "2026.10.09.6",
+    "at": "2026-10-12T10:06:26-04:00",
+    "commit": "021cb243",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

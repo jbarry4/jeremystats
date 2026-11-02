@@ -1,0 +1,192 @@
+{
+  "_at": {
+    "archived": "2026-09-15T23:13:40.389643+00:00",
+    "created": "2026-09-15T23:13:40.389643+00:00",
+    "grouping": "2026-09-15T23:13:40.389643+00:00",
+    "name": "2026-09-15T23:13:40.389643+00:00",
+    "note": "2026-09-15T23:13:40.389643+00:00",
+    "open": "2026-09-15T23:13:40.389643+00:00",
+    "params": "2026-09-15T23:13:40.389643+00:00",
+    "params_hash": "2026-09-15T23:13:40.389643+00:00",
+    "schema": "2026-09-15T23:13:40.389643+00:00",
+    "set_id": "2026-09-15T23:13:40.389643+00:00",
+    "updated": "2026-09-15T23:20:19.439855+00:00"
+  },
+  "_keys": {
+    "members": {
+      "s45bae70722f2": [
+        "set",
+        "2026-09-15T23:13:40.389643+00:00"
+      ],
+      "s5b932a8e933d": [
+        "set",
+        "2026-09-15T23:13:40.389643+00:00"
+      ],
+      "s79ba9ba163c4": [
+        "set",
+        "2026-09-15T23:13:40.389643+00:00"
+      ]
+    },
+    "saved": {
+      "out7ba94fa2": [
+        "set",
+        "2026-09-15T23:20:19.439855+00:00"
+      ]
+    },
+    "state": {
+      "s45bae70722f2": [
+        "set",
+        "2026-09-15T23:14:04.898641+00:00"
+      ],
+      "s5b932a8e933d": [
+        "set",
+        "2026-09-15T23:14:19.266635+00:00"
+      ],
+      "s79ba9ba163c4": [
+        "set",
+        "2026-09-15T23:14:35.483881+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-15T23:20:19.439855+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "archived": false,
+  "created": {
+    "at": "2026-09-15T19:13:40-04:00",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "grouping": "auto",
+  "members": [
+    {
+      "added": {
+        "at": "2026-09-15T19:13:40-04:00",
+        "email": "sakhava1@uvm.edu",
+        "host": "DESKTOP-4H65AI7",
+        "machine": "Bluebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      },
+      "channel": 14,
+      "channel_from": "layers",
+      "channel_label": "CSC14",
+      "enabled": true,
+      "gid": "s45bae70722f2",
+      "id": "s45bae70722f2",
+      "label": "PTEN m1 s2 2023-10-02",
+      "path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens2oct2\\2023-10-02_16-58-03",
+      "region": "ca1_slm"
+    },
+    {
+      "added": {
+        "at": "2026-09-15T19:13:40-04:00",
+        "email": "sakhava1@uvm.edu",
+        "host": "DESKTOP-4H65AI7",
+        "machine": "Bluebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      },
+      "channel": 14,
+      "channel_from": "layers",
+      "channel_label": "CSC14",
+      "enabled": true,
+      "gid": "s5b932a8e933d",
+      "id": "s5b932a8e933d",
+      "label": "PTEN m1 s8 2023-10-05",
+      "path": "D:\\PTEN\\PTEN\\M1_Pten\\M1ptens8oct4\\2023-10-05_14-09-57",
+      "region": "ca1_slm"
+    },
+    {
+      "added": {
+        "at": "2026-09-15T19:13:40-04:00",
+        "email": "sakhava1@uvm.edu",
+        "host": "DESKTOP-4H65AI7",
+        "machine": "Bluebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      },
+      "channel": 20,
+      "channel_from": "layers",
+      "channel_label": "CSC20",
+      "enabled": true,
+      "gid": "s79ba9ba163c4",
+      "id": "s79ba9ba163c4",
+      "label": "PTEN m2 s3 2024-01-23",
+      "path": "D:\\PTEN\\CTL\\M2_CTL\\M2ctls3jan23\\2024-01-23_16-04-25",
+      "region": "ca1_slm"
+    }
+  ],
+  "name": "Untitled set",
+  "note": null,
+  "open": true,
+  "params": {
+    "bins": 48,
+    "f_hi": 200.0,
+    "f_lo": 2.0,
+    "hist_scale": "log",
+    "line_hz": 60.0,
+    "step_s": 1.0,
+    "sub_s": 2.0,
+    "t0": 0.0,
+    "t1": 200.0,
+    "win_s": 8.0
+  },
+  "params_hash": "3e0ee950f70d",
+  "saved": [
+    {
+      "at": "2026-09-15T19:20:19-0400",
+      "id": "out7ba94fa2",
+      "kind": "convergence",
+      "result_rel": "Panorama/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018.png",
+      "run": "43d467dbcfef"
+    }
+  ],
+  "schema": 1,
+  "set_id": "pnb4a9d10da1",
+  "state": {
+    "s45bae70722f2": {
+      "at": "2026-09-15T19:14:04-0400",
+      "job": "219bfd01f7cb",
+      "modal_hz": 157.34876153198798,
+      "n_nopeak": 0,
+      "n_used": 193,
+      "n_windows": 193,
+      "seconds": 16.02,
+      "status": "done"
+    },
+    "s5b932a8e933d": {
+      "at": "2026-09-15T19:14:19-0400",
+      "job": "219bfd01f7cb",
+      "modal_hz": 157.34876153198798,
+      "n_nopeak": 0,
+      "n_used": 193,
+      "n_windows": 193,
+      "seconds": 14.12,
+      "status": "done"
+    },
+    "s79ba9ba163c4": {
+      "at": "2026-09-15T19:14:35-0400",
+      "job": "219bfd01f7cb",
+      "modal_hz": 41.07050052914291,
+      "n_nopeak": 0,
+      "n_used": 193,
+      "n_windows": 193,
+      "seconds": 16.17,
+      "status": "done"
+    }
+  },
+  "updated": {
+    "at": "2026-09-15T19:20:19-04:00",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

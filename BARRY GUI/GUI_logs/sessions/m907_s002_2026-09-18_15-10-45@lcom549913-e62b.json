@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-09-18T19:11:28.942476+00:00",
+    "gid": "2026-09-18T19:11:28.942476+00:00",
+    "group": "2026-09-18T19:11:28.942476+00:00",
+    "key": "2026-09-18T19:11:28.942476+00:00",
+    "label": "2026-09-18T19:11:28.942476+00:00",
+    "loose_key": "2026-09-18T19:11:28.942476+00:00",
+    "mouse": "2026-09-18T19:11:28.942476+00:00",
+    "project": "2026-09-18T19:11:28.942476+00:00",
+    "project_source": "2026-09-18T19:11:28.942476+00:00",
+    "retired": "2026-09-18T19:18:05.325568+00:00",
+    "schema": "2026-09-18T19:11:28.942476+00:00",
+    "session": "2026-09-18T19:11:28.942476+00:00",
+    "start": "2026-09-18T19:11:28.942476+00:00",
+    "updated": "2026-09-18T19:18:05.325568+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260918_151002\\FAKEPROJ\\fake_m907\\m907s2_2026-09-18\\2026-09-18_15-10-45": [
+        "set",
+        "2026-09-18T19:11:41.877177+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-18T19:18:05.325568+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T15:11:28-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s97137f6e5695",
+  "group": null,
+  "key": "m907_s002_2026-09-18_15-10-45",
+  "label": "m907 s2 2026-09-18",
+  "loose_key": "m907_s002",
+  "mouse": 907,
+  "paths": [
+    "C:\\Users\\Z390\\AppData\\Local\\Temp\\barry_fakedrive\\fakedrive_20260918_151002\\FAKEPROJ\\fake_m907\\m907s2_2026-09-18\\2026-09-18_15-10-45"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 2,
+  "start": "2026-09-18T19:10:45+00:00",
+  "updated": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T15:18:05-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

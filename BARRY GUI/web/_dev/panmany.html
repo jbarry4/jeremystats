@@ -1,0 +1,366 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>panmany: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Panning, the 2026-10-19 asks: merge to Incisor's time or to Doppler's,
+   label many at once, and the list of a pool.
+
+   IT WRITES NOTHING. On the demo recording, with the pool answered here: the
+   page's `fetch` is wrapped for the set's routes and presence (proven with a
+   probe before anything is pressed), the activity log is quiet, the span and
+   where-you-were preferences are caught rather than written, and all of it
+   is put back in a `finally`. What reached the routes is recorded and
+   asserted on. The routes themselves are checked against a throwaway bank by
+   tools/test_confluence.py and tools/test_confluence_routes.py. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const head = (t) => { say(''); say('=== ' + t + ' ===', 'hd'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              30000);
+  const W = frame.contentWindow, D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const txt = (n) => (n ? n.textContent.trim() : '');
+  const G = 'demo-ds-tutorial';
+  try {
+    W.eval(`(function(){
+      var evs=[], id=0;
+      function add(t,o,p,lab,st){ var e={id:'e'+(id++),start:t,origin:o,label:lab||null,channel:12};
+        if(p!=null) e.pair_t=p; if(st) e.stamp=st; evs.push(e); }
+      add(8.0,'both',8.0027); add(10.37,'incisor',null,'spike');
+      add(12.74,'doppler'); add(15.11,'incisor'); add(15.1141,'doppler');
+      add(17.48,'both',17.4827); add(19.85,'incisor',null,'spike');
+      add(19.853,'doppler'); add(22.22,'doppler'); add(24.59,'incisor');
+      add(24.5912,'incisor'); add(27.003,'both',27.0,null,'doppler');
+      window.__pmSet={gid:'${G}',kind:'pooled',name:'harness pool, not banked',
+        labels:[{id:'spike',name:'Spike',keys:['1','s'],color:'#2f9e6e',good:true},
+                {id:'garbage',name:'Garbage',keys:['2','g'],color:'#dc2626'},
+                {id:'flag',name:'Flag',keys:['3','f'],color:'#E5A823',flagged:true}],
+        events:evs};
+      window.__pmSent=[]; window.__pmPrefs={};
+      window.__pmRealFetch=window.fetch;
+      window.fetch=function(u,o){ var p=String(u).split('?')[0];
+        var fake=function(obj){return Promise.resolve(new Response(JSON.stringify(obj),
+          {status:200,headers:{'Content-Type':'application/json'}}));};
+        if(p.indexOf('/api/curation/${G}/pooled')===0){
+          var b=null; try{ b=o&&o.body?JSON.parse(o.body):null; }catch(e){}
+          window.__pmSent.push({p:p,b:b});
+          if(p==='/api/curation/${G}/pooled') return fake({ok:true,
+            set:JSON.parse(JSON.stringify(window.__pmSet)), banked:null,
+            session:{gid:'${G}',here:['demo:ds-tutorial'],reachable:true,demo:true}});
+          if(p.slice(-8)==='/receipt') return fake({ok:true,sitting:{n:0},labels:[],progress:{}});
+          if(p.slice(-8)==='/unmerge') return fake({ok:true,restored:{id:'r'+Date.now()}});
+          return fake({ok:true}); }
+        if(p.indexOf('/api/presence/')===0) return fake({ok:true,others:[]});
+        if(p==='/api/__pmprobe') return fake({ok:true,probe:'stubbed'});
+        return window.__pmRealFetch.apply(this,arguments); };
+      BARRY.activity.__pmLog=BARRY.activity.log; BARRY.activity.log=function(){};
+      BARRY.prefs.__pmSet=BARRY.prefs.set;
+      BARRY.prefs.set=function(k,v){ if(/_span$|_at$|autobank/i.test(k)) { window.__pmPrefs[k]=v; return; }
+        return BARRY.prefs.__pmSet.apply(this,arguments); };
+    })()`);
+    // The stub has to be the thing answering before anything is pressed.
+    const probe = await W.eval("apiPost('/api/curation/" + G + "/pooled/__probe', {x:1})"
+                               + ".then(function(r){return JSON.stringify(r);})");
+    const sentProbe = ev("window.__pmSent.length");
+    if (!(sentProbe === 1 && /"ok":true/.test(probe))) {
+      throw new Error('the fetch stub did not answer the probe; stopping before '
+                      + 'anything writes: ' + probe);
+    }
+    ev("window.__pmSent.length = 0");
+    say('  the fetch stub answers the page’s own apiPost', 'note');
+
+    /* -------------------------------------------------------------- */
+    head('Junction: aligned or not, said outright');
+    /* Read-only: the recordings list and the plan write nothing, and
+       Merge is never pressed here. */
+    ev('BARRY.junction._reset()');
+    ev("BARRY.views.toolkit.pick('junction', 'confluence')");
+    await until(() => $('#tkResult .jn-rec') || $('#tkResult .empty-state'), 30000);
+    const recs = $$('#tkResult .jn-rec');
+    if (!recs.length) {
+      say('  no recording here has both an Incisor and a Doppler entry; '
+          + 'Junction checks skipped', 'note');
+    } else {
+      check('every recording says, for each detector, aligned or not aligned',
+            recs.every((r) => r.querySelectorAll('.jn-tag .jn-al-w').length === 2
+              && Array.from(r.querySelectorAll('.jn-al-w')).every(
+                (w) => /^(✓ aligned|not aligned)$/.test(txt(w)))),
+            txt(recs[0]));
+      recs[0].click();
+      await until(() => $('#jnPool .jn-aligned') && ev('!!BARRY.junction._plan()'),
+                  20000);
+      const sides = $$('#tkResult .jn-side');
+      check('each side carries the label for what goes in',
+            sides.length === 2 && sides.every((s) => s.querySelector('.jn-side-hd .jn-al')),
+            sides.map((s) => txt(s.querySelector('.jn-side-hd'))).join(' | '));
+      const line = txt($('#jnPool .jn-aligned'));
+      const prm = JSON.parse(ev('JSON.stringify(BARRY.junction._plan().params)'));
+      check('the pool says which inputs are aligned, as the server does',
+            /Incisor (✓ aligned|not aligned)/.test(line)
+            && /Doppler (✓ aligned|not aligned)/.test(line)
+            && (prm.ds_aligned ? /Incisor ✓ aligned/ : /Incisor not aligned/).test(line)
+            && (prm.ied_aligned ? /Doppler ✓ aligned/ : /Doppler not aligned/).test(line),
+            line + ' / ' + JSON.stringify(prm));
+      const keepBtn = () => $$('#tkResult .jn-keep .seg button')
+        .find((b) => /Doppler/.test(txt(b)));
+      check('merged events can keep Doppler’s time', !!keepBtn());
+      const before = JSON.parse(ev('JSON.stringify(BARRY.junction._plan().stats)'));
+      keepBtn().click();
+      await until(() => ev("(BARRY.junction._plan()||{stats:{}}).stats.keep") === 'doppler',
+                  15000);
+      const after = JSON.parse(ev('JSON.stringify(BARRY.junction._plan().stats)'));
+      check('the plan keeps Doppler’s, and merges the same pairs',
+            after.keep === 'doppler' && after.merged === before.merged
+            && after.n === before.n, JSON.stringify([before.merged, after.merged]));
+      check('and the field says what it does',
+            /Doppler’s time/.test(txt($('#tkResult .jn-keep')))
+            && keepBtn().classList.contains('active'));
+      ev('BARRY.junction._reset()');
+    }
+
+    /* -------------------------------------------------------------- */
+    head('opening the pool');
+    const entered = await W.eval("BARRY.panning.enter('" + G + "')");
+    await until(() => $('#panBar') && $('#panWin'), 20000);
+    check('it opens (demo recording, answered here)', !!entered && !!$('#panBar'));
+    const evs = () => JSON.parse(ev('JSON.stringify(BARRY.panning.events())'));
+    const st = () => JSON.parse(ev('JSON.stringify(BARRY.panning.state)'));
+    const cur = () => evs()[st().index];
+    const at = (t) => evs().findIndex((e) => Math.abs(e.start - t) < 1e-6);
+    const n0 = st().total;
+    const posts = (re) => JSON.parse(ev('JSON.stringify(window.__pmSent)'))
+      .filter((x) => re.test(x.p));
+
+    /* -------------------------------------------------------------- */
+    head('merge to Incisor or to Doppler');
+    ev('BARRY.panning.goTo(' + at(24.59) + ')');
+    await sleep(250);
+    const mI = () => $('#panBar .pan-merge.incisor');
+    const mD = () => $('#panBar .pan-merge.doppler');
+    check('two merge buttons, one for each detector’s time',
+          !!mI() && !!mD() && /Incisor/.test(txt(mI())) && /Doppler/.test(txt(mD())),
+          txt($('#panBar .cur-cats')));
+    check('with two of Incisor’s, Merge to Doppler is off, and says why',
+          mD() && mD().disabled && /Doppler’s time/.test(mD().title),
+          mD() ? mD().title.slice(0, 120) : 'none');
+    check('and Merge to Incisor is on', mI() && !mI().disabled);
+
+    ev('BARRY.panning.goTo(' + at(15.11) + ')');
+    ev('BARRY.panning._mark(' + JSON.stringify(evs()[at(15.1141)].id) + ')');
+    await sleep(200);
+    check('with Doppler’s beside it, both are on',
+          mI() && !mI().disabled && mD() && !mD().disabled);
+    // Pressed with the key, the way it is used.
+    D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'd', bubbles: true }));
+    await until(() => posts(/\/merge$/).length === 1, 4000);
+    await sleep(250);
+    const m1 = posts(/\/merge$/)[0] || {};
+    check('D merges, and asks the route for Doppler’s time',
+          m1.b && m1.b.stamp === 'doppler', JSON.stringify(m1.b));
+    const kept = evs()[at(15.1141)] || {};
+    check('the survivor is the one at Doppler’s time; its time did not move',
+          at(15.1141) >= 0 && at(15.11) < 0 && kept.origin === 'both'
+          && kept.stamp === 'doppler' && Math.abs(kept.pair_t - 15.11) < 1e-9
+          && st().total === n0 - 1, JSON.stringify(kept));
+    check('the bar says whose time it is, and where the other put it',
+          /at Doppler’s time/.test(txt($('#panBar .pan-from')))
+          && /Incisor −4\.1 ms/.test(txt($('#panBar .cur-where'))),
+          txt($('#panBar .cur-where')).slice(0, 200));
+
+    await W.eval('BARRY.panning.undo()');
+    await sleep(300);
+    const back = evs()[at(15.1141)] || {};
+    check('Z undoes it: both back, and the stamp taken off',
+          at(15.11) >= 0 && back.origin === 'doppler' && !back.stamp
+          && back.pair_t == null && st().total === n0, JSON.stringify(back));
+
+    ev('BARRY.panning.goTo(' + at(15.11) + ')');
+    ev('BARRY.panning._mark(' + JSON.stringify(evs()[at(15.1141)].id) + ')');
+    await W.eval("BARRY.panning.merge('incisor')");
+    await sleep(300);
+    const m2 = posts(/\/merge$/)[1] || {};
+    const ki = evs()[at(15.11)] || {};
+    check('M still keeps Incisor’s', m2.b && m2.b.stamp === 'incisor'
+          && ki.origin === 'both' && ki.stamp === 'incisor'
+          && Math.abs(ki.pair_t - 15.1141) < 1e-9, JSON.stringify([m2.b, ki]));
+    await W.eval('BARRY.panning.undo()');
+    await sleep(300);
+
+    const dz = evs()[at(27.003)] || {};
+    check('a pool filed at Doppler’s time arrives as Doppler’s',
+          dz.stamp === 'doppler' && dz.pair_t === 27.0, JSON.stringify(dz));
+
+    /* -------------------------------------------------------------- */
+    head('label many');
+    ev('BARRY.panning.bulkDialog()');
+    await until(() => $('.pan-bulk-modal'), 4000);
+    check('Label many opens', !!$('.pan-bulk-modal'));
+    // Every merged and every Incisor-only one, undecided, becomes a spike.
+    const opt = (label) => $$('.pan-bulk-opt').find(
+      (n) => n.textContent.indexOf(label) === 0 || n.querySelector('span')
+             && txt(n).indexOf(label) >= 0);
+    const setBox = (label, on) => {
+      const o = opt(label);
+      const box = o && o.querySelector('input');
+      if (box && box.checked !== on) box.click();
+    };
+    setBox('Merged', true); setBox('Incisor only', true); setBox('Doppler only', false);
+    await sleep(120);
+    const want = evs().filter((e) => (e.origin === 'both' || e.origin === 'incisor')
+                                     && !e.label).map((e) => e.id).sort();
+    const okBtn = () => $$('.pan-bulk-modal .mf .btn').find((b) => /^Label/.test(txt(b)));
+    check('it counts what it would do before doing it',
+          okBtn() && txt(okBtn()) === 'Label ' + want.length + ' Spike'
+          && /become Spike/.test(txt($('.pan-bulk-say'))),
+          (okBtn() ? txt(okBtn()) : 'no button') + ' / ' + txt($('.pan-bulk-say')));
+    okBtn().click();
+    await until(() => posts(/\/label$/).length >= 1, 4000);
+    await sleep(250);
+    const lb = posts(/\/label$/).slice(-1)[0] || {};
+    const sentIds = Object.keys((lb.b || {}).labels || {}).sort();
+    check('one write, with exactly those events and Spike on each',
+          posts(/\/label$/).length === 1
+          && JSON.stringify(sentIds) === JSON.stringify(want)
+          && sentIds.every((k) => lb.b.labels[k] === 'spike'),
+          JSON.stringify(lb.b));
+    check('and they are spikes on screen',
+          want.every((id) => (evs().find((e) => e.id === id) || {}).label === 'spike'));
+    check('nothing Doppler-only was touched',
+          evs().filter((e) => e.origin === 'doppler').every((e) => !e.label));
+    await W.eval('BARRY.panning.undo()');
+    await sleep(300);
+    const un = posts(/\/label$/).slice(-1)[0] || {};
+    check('Z puts every one back, in one write',
+          posts(/\/label$/).length === 2
+          && Object.keys((un.b || {}).labels || {}).length === want.length
+          && want.every((id) => (evs().find((e) => e.id === id) || {}).label === null),
+          JSON.stringify(un.b));
+
+    /* -------------------------------------------------------------- */
+    head('the list');
+    D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'l', bubbles: true }));
+    await until(() => $('.pan-list-modal'), 4000);
+    const rows = () => $$('.pan-list-modal .cur-list-row');
+    check('L opens the list, one row per event', rows().length === evs().length,
+          rows().length + ' rows / ' + evs().length);
+    check('each row says where it came from',
+          rows().every((r) => r.querySelector('.pan-list-from .pan-od')));
+    check('one row is marked here', !!$('.pan-list-modal .cur-list-row.here'));
+    const pill = (re) => $$('.pan-list-modal .pill.pan-o').find((b) => re.test(txt(b)));
+    pill(/^Merged/).click(); await sleep(80);
+    pill(/^Incisor only/).click(); await sleep(80);
+    const nD = evs().filter((e) => e.origin === 'doppler').length;
+    check('origins can be left out: Doppler only, alone',
+          rows().length === nD && rows().every((r) => /Doppler only/.test(txt(r))),
+          rows().length + ' rows, ' + nD + ' of Doppler’s');
+    const byOrigin = $$('.pan-list-modal .cur-list-bar .seg button')
+      .find((b) => txt(b) === 'By origin');
+    byOrigin.click(); await sleep(80);
+    check('By origin groups them under a heading',
+          $$('.pan-list-modal .cl-head').length === 1
+          && /Doppler only/.test(txt($('.pan-list-modal .cl-head'))));
+    const byTime = $$('.pan-list-modal .cur-list-bar .seg button')
+      .find((b) => txt(b) === 'By time');
+    byTime.click(); await sleep(80);
+    check('and back to By time', $$('.pan-list-modal .cl-head').length === 0
+          && byTime.classList.contains('active'));
+    // Label everything shown, through the list.
+    const gBtn = $$('.pan-list-bulk .cur-cat').find((b) => txt(b) === 'Garbage');
+    check('the list offers to label what it shows',
+          !!gBtn && /Label all|Label the/.test(txt($('.pan-list-bulk'))),
+          txt($('.pan-list-bulk')));
+    gBtn.click();
+    await until(() => $$('#bigModalBox .btn').some((b) => /^Label \d/.test(txt(b))), 4000);
+    const conf = $$('#bigModalBox .btn').find((b) => /^Label \d/.test(txt(b)));
+    check('it asks first, with the count', !!conf && txt(conf) === 'Label ' + nD,
+          conf ? txt(conf) : 'no confirm');
+    conf.click();
+    await until(() => posts(/\/label$/).length === 3, 4000);
+    await sleep(250);
+    const lg = posts(/\/label$/).slice(-1)[0] || {};
+    check('one write, Garbage on Doppler’s alone',
+          Object.keys((lg.b || {}).labels || {}).length === nD
+          && evs().filter((e) => e.origin === 'doppler').every((e) => e.label === 'garbage')
+          && evs().filter((e) => e.origin !== 'doppler' && e.label === 'garbage').length === 0,
+          JSON.stringify(lg.b));
+    check('the list is still open, and shows the new decisions',
+          !!$('.pan-list-modal') && rows().every((r) => /Garbage/.test(txt(r))),
+          rows().map((r) => txt(r.querySelector('.cl-lab'))).join(','));
+    // Search, then click a row to go to it.
+    pill(/^Merged/).click(); await sleep(80);
+    const search = $('.pan-list-modal .cur-list-search');
+    search.value = '0:27';
+    search.dispatchEvent(new W.Event('input', { bubbles: true }));
+    await sleep(120);
+    check('the search finds an event by its time',
+          rows().length === 1 && /0:27\.003/.test(txt(rows()[0])),
+          rows().map(txt).join(' | '));
+    check('and says whose time a merged one is at',
+          /Doppler’s time/.test(txt(rows()[0])) && /Incisor −3\.0 ms/.test(txt(rows()[0])),
+          txt(rows()[0]));
+    rows()[0].click();
+    await sleep(300);
+    check('clicking it closes the list and goes there',
+          !$('.pan-list-modal') && Math.abs((cur() || {}).start - 27.003) < 1e-6,
+          JSON.stringify(cur()));
+    await W.eval('BARRY.panning.undo()');
+    await sleep(300);
+    check('Z takes the Garbage back off, all at once',
+          evs().filter((e) => e.origin === 'doppler').every((e) => !e.label));
+  } catch (e) {
+    say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+    fails++;
+  } finally {
+    try { ev('BARRY.panning.active && BARRY.panning.exit()'); } catch (e) {}
+    try { ev('closeModal(); closeModal(); closeModal();'); } catch (e) {}
+    await sleep(200);
+    try {
+      ev(`(function(){
+        if (window.__pmRealFetch) { window.fetch=window.__pmRealFetch; delete window.__pmRealFetch; }
+        if (BARRY.activity.__pmLog) { BARRY.activity.log=BARRY.activity.__pmLog; delete BARRY.activity.__pmLog; }
+        if (BARRY.prefs.__pmSet) { BARRY.prefs.set=BARRY.prefs.__pmSet; delete BARRY.prefs.__pmSet; }
+      })()`);
+      say('  wrote nothing outside this page: prefs it tried to keep -- '
+          + ev("JSON.stringify(Object.keys(window.__pmPrefs || {}))"), 'note');
+    } catch (e) {}
+    try { ev("setView('toolkit')"); } catch (e) {}
+  }
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'panmany: ' + fails + ' FAILED' : 'panmany: passed';
+  // The app's polling pins virtual time to the wall; let the runner go.
+  frame.src = 'about:blank';
+})().catch((e) => {
+  say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+  document.title = 'panmany CRASH';
+});
+</script></body></html>

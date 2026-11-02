@@ -1,0 +1,46 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Pose — All Garbage, the heavens open</title>
+<style>html,body{margin:0;height:100%}iframe{border:0;width:100vw;height:100vh;display:block}</style>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* POSE, for screenshots: Checkup's secret, the heavens open over the app
+   with the All Garbage button on its pillar. No set is open and nothing is
+   written: the button's press is answered here. `?at=pin` stops at the
+   PIN boxes instead; `?at=armed` presses once, to the "Truly?" state. */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(gap);
+  }
+  return null;
+}
+(async () => {
+  const Q = new URLSearchParams(location.search);
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  await untilN(() => typeof W.setView === 'function');
+  W.eval('window.__agDone = false; BARRY.allGarbage.unlock({ count: 997, '
+         + 'decided: 120, onAll: () => { window.__agDone = true; return true; } })');
+  const boxes = await untilN(() => {
+    const b = D.querySelectorAll('#bigModal .ag-digit');
+    return b.length === 6 ? Array.from(b) : null;
+  });
+  if (Q.get('at') === 'pin') {
+    '6969'.split('').forEach((d, k) => { boxes[k].value = d; });
+    boxes[4].focus();
+    document.title = 'posed';
+    return;
+  }
+  '696969'.split('').forEach((d, k) => {
+    boxes[k].value = d;
+    boxes[k].dispatchEvent(new W.Event('input', { bubbles: true }));
+  });
+  await untilN(() => D.getElementById('agHeaven'));
+  await sleep(4500);
+  if (Q.get('at') === 'armed') D.getElementById('agAllGarbage').click();
+  document.title = 'posed';
+})();
+</script>

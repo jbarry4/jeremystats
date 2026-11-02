@@ -1,0 +1,44 @@
+{
+  "_at": {
+    "gid": "2026-10-02T11:52:11.785328+00:00",
+    "label": "2026-10-02T11:52:11.785328+00:00",
+    "path": "2026-10-02T11:52:11.785328+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "299fc01a16e6": [
+        "set",
+        "2026-10-02T11:52:11.785328+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-02T11:52:11.785328+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-10-01T17:31:17.846799+00:00",
+      "by": "Shahriar Tafti",
+      "concat_duration_s": 971.555166666667,
+      "gap_map_sha": "613c709e51d6bd80",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "299fc01a16e6",
+      "level": "ok",
+      "machine": "Bluebarry",
+      "max_time_error_ms": 0,
+      "mismatches": 0,
+      "n_gaps": 0,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 1,
+      "seconds_lost": 0,
+      "true_duration_s": 971.554776
+    }
+  ],
+  "gid": "s1d3b44879cf4",
+  "label": "KCNT1 m5 s2 2022-07-15",
+  "path": "D:\\KCNT1\\urethane\\wt\\KCNTM5_wt\\KCNT1M5s2jul15\\2022-07-15_16-16-47"
+}

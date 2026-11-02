@@ -1,0 +1,35 @@
+{
+  "_at": {
+    "created": "2026-09-14T15:22:36.978962+00:00",
+    "id": "2026-09-14T15:22:36.978962+00:00",
+    "schema": "2026-09-14T15:22:36.978962+00:00",
+    "slides": "2026-09-14T15:22:36.978962+00:00",
+    "title": "2026-09-14T15:22:36.978962+00:00",
+    "updated": "2026-09-14T15:22:36.978962+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-14T15:22:36.978962+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "at": "2026-09-14T11:22:36-04:00",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "id": "deck_a487ba7a",
+  "schema": 1,
+  "slides": [],
+  "title": null,
+  "updated": {
+    "at": "2026-09-14T11:22:36-04:00",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

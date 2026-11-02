@@ -1,0 +1,169 @@
+{
+  "_at": {
+    "archived": "2026-10-27T19:42:06.000316+00:00",
+    "by": "2026-10-27T19:42:06.000316+00:00",
+    "created": "2026-10-27T19:42:06.000316+00:00",
+    "draft": "2026-10-27T19:42:06.000316+00:00",
+    "draft_at": "2026-10-27T19:42:06.000316+00:00",
+    "gid": "2026-10-27T19:42:06.000316+00:00",
+    "id": "2026-10-27T19:42:06.000316+00:00",
+    "recording": "2026-10-27T19:42:06.000316+00:00",
+    "schema": "2026-10-27T19:42:06.000316+00:00",
+    "status": "2026-10-27T19:42:06.000316+00:00",
+    "title": "2026-10-27T19:42:06.000316+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-27T19:42:06.000316+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "archived": false,
+  "by": "Isabella Piatek",
+  "created": "2026-10-27T19:42:06+00:00",
+  "draft": {
+    "cols": 1,
+    "footer": {
+      "notes": ""
+    },
+    "gap_mm": 4,
+    "height_mm": null,
+    "id": "f303ad7f1e0",
+    "panels": [
+      {
+        "axes": {},
+        "col": 0,
+        "colspan": 1,
+        "labels": {},
+        "link": {},
+        "params": {
+          "bad_channels": [
+            59
+          ],
+          "channels": [
+            1,
+            3,
+            5,
+            7,
+            9,
+            11,
+            13,
+            15,
+            17,
+            19,
+            21,
+            23,
+            25,
+            27,
+            29,
+            31,
+            33,
+            35,
+            37,
+            39,
+            41,
+            43,
+            45,
+            47,
+            49,
+            51,
+            53,
+            55,
+            57,
+            59,
+            61,
+            63
+          ],
+          "clim": null,
+          "cmap": "jet",
+          "events": [
+            {
+              "start": -1.7e-05
+            },
+            {
+              "start": 1313.847955
+            }
+          ],
+          "events_source": null,
+          "full_rate": false,
+          "gain": 2.25,
+          "highpass": 5,
+          "lowpass": 100,
+          "max_cols": 1800,
+          "notch": 60,
+          "spacing_um": 50,
+          "t0": 1171.602529,
+          "t1": 1172.002529
+        },
+        "plot": "traces",
+        "row": 0,
+        "rowspan": 1,
+        "title": "",
+        "tool": "xplore",
+        "uid": "p1"
+      }
+    ],
+    "profile": "nature",
+    "recording": {
+      "fs_text": "30000 Hz",
+      "gid": "s08c93e795383",
+      "identity": {
+        "confidence": "high",
+        "gid": "s08c93e795383",
+        "group": "PTEN",
+        "key": "m006_s008_2023-09-14_18-04-54",
+        "label": "PTEN m6 s8 2023-09-14",
+        "loose_key": "m006_s008",
+        "mouse": 6,
+        "mouse_folder": "Control",
+        "mouse_source": "session_folder:m<n>s<n>",
+        "path": "D:\\Data\\Archive\\PTEN Project\\Control\\M6_s8\\2023-09-14_18-04-54",
+        "rec_folder": "2023-09-14_18-04-54",
+        "session": 8,
+        "session_folder": "M6_s8",
+        "start": "2023-09-14T18:04:54",
+        "subject_prefix": "m",
+        "time_source": "header"
+      },
+      "invert": true,
+      "label": "PTEN m6 s8 2023-09-14",
+      "path": "D:\\Data\\Archive\\PTEN Project\\Control\\M6_s8\\2023-09-14_18-04-54"
+    },
+    "rows": 1,
+    "schema": "fig/2",
+    "subtitle": "",
+    "title": "PTEN m6 s8 2023-09-14",
+    "width": "double"
+  },
+  "draft_at": "2026-10-27T19:42:06+00:00",
+  "gid": "s08c93e795383",
+  "id": "f303ad7f1e0",
+  "recording": {
+    "fs_text": "30000 Hz",
+    "gid": "s08c93e795383",
+    "identity": {
+      "confidence": "high",
+      "gid": "s08c93e795383",
+      "group": "PTEN",
+      "key": "m006_s008_2023-09-14_18-04-54",
+      "label": "PTEN m6 s8 2023-09-14",
+      "loose_key": "m006_s008",
+      "mouse": 6,
+      "mouse_folder": "Control",
+      "mouse_source": "session_folder:m<n>s<n>",
+      "path": "D:\\Data\\Archive\\PTEN Project\\Control\\M6_s8\\2023-09-14_18-04-54",
+      "rec_folder": "2023-09-14_18-04-54",
+      "session": 8,
+      "session_folder": "M6_s8",
+      "start": "2023-09-14T18:04:54",
+      "subject_prefix": "m",
+      "time_source": "header"
+    },
+    "invert": true,
+    "label": "PTEN m6 s8 2023-09-14",
+    "path": "D:\\Data\\Archive\\PTEN Project\\Control\\M6_s8\\2023-09-14_18-04-54"
+  },
+  "schema": "fig/2",
+  "status": "draft",
+  "title": "PTEN m6 s8 2023-09-14",
+  "versions": []
+}

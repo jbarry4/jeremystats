@@ -1,0 +1,56 @@
+{
+  "_at": {
+    "created": "2026-09-18T19:17:57.537930+00:00",
+    "gid": "2026-09-18T19:17:57.537930+00:00",
+    "group": "2026-09-18T19:17:57.537930+00:00",
+    "key": "2026-09-18T19:17:57.537930+00:00",
+    "label": "2026-09-18T19:17:57.537930+00:00",
+    "loose_key": "2026-09-18T19:17:57.537930+00:00",
+    "mouse": "2026-09-18T19:17:57.537930+00:00",
+    "project": "2026-09-18T19:17:57.537930+00:00",
+    "project_source": "2026-09-18T19:17:57.537930+00:00",
+    "retired": "2026-09-18T19:17:57.537930+00:00",
+    "schema": "2026-09-18T19:17:57.537930+00:00",
+    "session": "2026-09-18T19:17:57.537930+00:00",
+    "start": "2026-09-18T19:17:57.537930+00:00",
+    "updated": "2026-09-18T19:17:57.537930+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-18T19:17:57.537930+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T15:17:57-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "sb9c2bb117580",
+  "group": null,
+  "key": "m906_s002_2026-09-18_15-09-45",
+  "label": "m906 s2 2026-09-18",
+  "loose_key": "m906_s002",
+  "mouse": 906,
+  "paths": [],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 2,
+  "start": "2026-09-18T19:09:45+00:00",
+  "updated": {
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T15:17:57-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "_at": {
+    "kind": "2026-10-14T17:49:34.273787+00:00"
+  },
+  "_keys": {
+    "labels": {
+      "ds-like": [
+        "set",
+        "2026-10-14T17:49:34.273787+00:00"
+      ],
+      "weak-ied": [
+        "set",
+        "2026-10-14T17:51:47.770468+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-14T17:51:47.770468+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "kind": "ied",
+  "labels": [
+    {
+      "color": "#f97316",
+      "created": {
+        "app_version": "2026.10.14.5",
+        "at": "2026-10-14T13:49:34-04:00",
+        "commit": "8d0daabe",
+        "email": "sakhava1@uvm.edu",
+        "host": "DESKTOP-4H65AI7",
+        "machine": "Bluebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      },
+      "custom": true,
+      "id": "ds-like",
+      "keys": [
+        "5"
+      ],
+      "name": "DS-Like"
+    },
+    {
+      "color": "#ec4899",
+      "created": {
+        "app_version": "2026.10.14.5",
+        "at": "2026-10-14T13:51:47-04:00",
+        "commit": "8d0daabe",
+        "email": "sakhava1@uvm.edu",
+        "host": "DESKTOP-4H65AI7",
+        "machine": "Bluebarry",
+        "os": "Windows",
+        "user": "Shahriar Tafti"
+      },
+      "custom": true,
+      "good": true,
+      "id": "weak-ied",
+      "keys": [
+        "6"
+      ],
+      "name": "Weak IED"
+    }
+  ]
+}

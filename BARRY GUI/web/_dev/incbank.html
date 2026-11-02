@@ -1,0 +1,166 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Incisor banks through the one dialog</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 52vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 48vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Incisor banks a detector's output as a new entry, through
+   BARRY.ui.bankDialog (constitution §6e).
+
+   The network is stood in for: `api` is replaced in the frame so that
+   /api/incisor/events answers with three candidates, /api/bank/add records
+   what it was sent and answers (or refuses), and the curation read says
+   there is nothing on the bench. So this banks nothing, and what it checks
+   is exactly the part that changed -- the dialog, and what it sends. The
+   scan itself is incisor.html's. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || d === undefined ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 200, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const ready = await untilN(() => typeof W().setView === 'function'
+                                   && W().eval('BARRY.incisor && BARRY.incisor._bank'));
+  check('the application loads, with the hook', !!ready);
+  if (!ready) { document.title = 'FAIL'; return; }
+  const B = W().eval('BARRY');
+  const txt = (n) => (n ? n.textContent : '').replace(/\s+/g, ' ').trim();
+  const modal = () => D().getElementById('bigModalBox');
+  const open = () => !D().getElementById('bigModal').classList.contains('hidden');
+  const btn = (label) => Array.from(modal().querySelectorAll('.mf button'))
+    .find((b) => b.textContent === label);
+
+  const realApi = W().api;
+  const realWho = B.profile.who;
+  const realEnter = B.curate.enter;
+  const sent = [];
+  let refuse = null;
+  W().api = async (path, opts) => {
+    const body = opts && opts.body ? JSON.parse(opts.body) : null;
+    if (path === '/api/incisor/events') {
+      return { events: [{ start: 1.0, channel: 4, amp: 300 },
+                        { start: 2.5, channel: 4, amp: 280 },
+                        { start: 7.1, channel: 4, amp: 310 }] };
+    }
+    if (path === '/api/bank/add') {
+      sent.push(body);
+      if (refuse) throw new Error(refuse);
+      return { ok: true, entry: { id: 'zz-entry' } };
+    }
+    if (path === '/api/curation/from-bank') { sent.push({ fromBank: body }); return {}; }
+    if (/^\/api\/curation\//.test(path)) return { set: { n: 0 } };
+    return realApi(path, opts);
+  };
+  B.curate.enter = async () => {};
+  B.profile.who = () => 'zz harness';
+  const st = B.incisor._state();
+  const q0 = { gid: st.q.gid, row: st.q.row, path: st.q.path };
+  st.q.gid = 'zz-gid';
+  st.q.row = { gid: 'zz-gid', label: 'zz PTEN m41 s1', project: 'PTEN',
+               mouse: 41, session: 1, key: 'zzk' };
+  const row = { index: 0, number: 4, label: 'CSC4' };
+  const result = { params: { thr: 5 } };
+
+  try {
+    head('the dialog');
+    let p = B.incisor._bank(row, result);
+    await untilN(() => open() && modal().querySelector('.bank-dlg'), 50, 100);
+    check('Bank opens the one bank dialog', !!modal().querySelector('.bank-dlg'));
+    check('titled with what is being banked',
+          /Bank 3 candidate\(s\) from CSC4/.test(txt(modal())), txt(modal()));
+    const nb = modal().querySelector('.bank-dlg-name');
+    check('asking a name, with the session already in it',
+          nb && /zz PTEN m41 s1/.test(nb.value) && /CSC4/.test(nb.value),
+          nb && nb.value);
+    check('saying where it will be filed',
+          /Filed under PTEN \/ m41 \/ s1/.test(txt(modal())));
+    check('and who it is credited to', /Banked by zz harness/.test(txt(modal())));
+    check('the primary says what it does', !!btn('Bank them'));
+
+    head('a refusal stays in the dialog');
+    refuse = 'zz the bank refused';
+    btn('Bank them').click();
+    await sleep(200);
+    check('the refusal is on screen, and the dialog still open',
+          open() && /zz the bank refused/.test(txt(modal())));
+    refuse = null;
+
+    head('banking');
+    nb.value = 'zz a name I chose';
+    modal().querySelector('.bank-dlg-note').value = 'zz why';
+    btn('Bank them').click();
+    await p;
+    const add = sent.filter((x) => x && !x.fromBank).pop() || {};
+    check('it sends the name that was typed', add.name === 'zz a name I chose',
+          add.name);
+    check('and the note', add.note === 'zz why', add.note);
+    check('credited from the profile', add.added_by === 'zz harness',
+          add.added_by);
+    check('as a dentate spike set, filed by the animal',
+          add.type === 'ds' && add.project === 'PTEN' && add.mouse === 41
+          && add.session === 1);
+    check('with its three candidates and the parameters it was made with',
+          (add.events || []).length === 3 && add.parameters
+          && add.parameters.thr === 5 && add.parameters.channel === 4);
+    const fb = (sent.find((x) => x && x.fromBank) || {}).fromBank || {};
+    check('and then opens the new entry to vet',
+          fb.entry === 'zz-entry' && fb.kind === 'ds', JSON.stringify(fb));
+
+    head('nobody set as who you are');
+    B.profile.who = () => '';
+    const before = sent.length;
+    p = B.incisor._bank(row, result);
+    await untilN(() => open() && modal().querySelector('.bank-dlg'), 50, 100);
+    check('Bank no longer does nothing: it says why',
+          /Nobody is set as who you are/.test(txt(modal())));
+    btn('Bank them').click();
+    await sleep(200);
+    check('and does not bank', sent.length === before && open());
+    btn('Cancel').click();
+    await p;
+    check('Cancel leaves nothing banked', sent.length === before);
+  } finally {
+    W().api = realApi;
+    B.profile.who = realWho;
+    B.curate.enter = realEnter;
+    st.q.gid = q0.gid; st.q.row = q0.row; st.q.path = q0.path;
+    try { if (open()) btn('Cancel') && btn('Cancel').click(); } catch (e) { /* gone */ }
+  }
+
+  head(bad === 0 ? 'Incisor banks through the one dialog' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad + ': ' + Array.from(
+    out.querySelectorAll('.bad')).map((d) => d.textContent).join(' | ');
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.stack || e));
+  document.title = 'FAIL threw: ' + e.message;
+} })();
+</script>

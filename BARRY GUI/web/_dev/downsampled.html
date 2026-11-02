@@ -1,0 +1,230 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — DOWNSAMPLED is stated, and can be turned off</title>
+<style>
+ body { background:#111; color:#ddd; font:12px/1.6 Consolas,monospace;
+        margin:0; padding:10px; }
+ iframe { width:1500px; height:900px; border:1px solid #333; background:#fff; }
+ h4 { color:#9cf; margin:14px 0 4px; font-weight:normal; }
+ .ok::before { content:'ok    '; color:#7c7; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#89a; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">A panel that ran on every tenth sample cannot be told from
+one that ran on all of them by looking at it. So every panel whose sampling
+limits what it can mean says DOWNSAMPLED, says what it did, and offers to do
+it properly.</p>
+<div id="out"></div>
+<iframe id="A" src="/"></iframe>
+<script>
+let bad = 0;
+const out = document.getElementById('out');
+const say = (c, t) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = t;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const head = (t) => { const h = document.createElement('h4');
+                      h.textContent = t; out.appendChild(h); };
+const ck = (n, c, d) => say(c ? 'ok' : 'bad', n + (c ? '' : '   [' + d + ']'));
+const round = (v, n) => Math.round(v * Math.pow(10, n)) / Math.pow(10, n);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms = 40000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    let v = null;
+    try { v = fn(); } catch (e) { v = null; }
+    if (v) return v;
+    await sleep(200);
+  }
+  return null;
+}
+const A = document.getElementById('A');
+const W = () => A.contentWindow;
+const D = () => A.contentDocument;
+const post = (url, body) => fetch(url, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+}).then((r) => r.json());
+
+const S = 'demo:long-session';
+
+(async () => { try {
+  await until(() => W().BARRY && W().BARRY.state);
+
+  /* ---- what the server admits ------------------------------------- */
+  head('The server says what it did');
+
+  const bp = await post('/api/panel', { path: S, panel: 'bandpower',
+    channel: 0, t0: 100, t1: 160 });
+  ck('band power reports it downsampled', bp.downsampled === true,
+     JSON.stringify(bp.downsampled));
+  const rate = (bp.sampling || []).find((x) => x.what === 'analysis rate');
+  ck('and names the rate it actually ran at',
+     !!rate && rate.to === 3000 && rate.from === 30000,
+     JSON.stringify(rate));
+  ck('and says that step was anti-aliased',
+     !!rate && rate.antialiased === true, JSON.stringify(rate));
+
+  const spec = await post('/api/panel', { path: S, panel: 'spectrogram',
+    channel: 0, t0: 100, t1: 160 });
+  ck('the spectrogram does NOT claim to be downsampled',
+     spec.downsampled === false, JSON.stringify(spec.downsampled));
+
+  /* The one that can invent energy. */
+  const scal = await post('/api/panel', { path: S, panel: 'scalogram',
+    channel: 0, t0: 100, t1: 160 });
+  const stride = (scal.sampling || []).find((x) => x.antialiased === false);
+  ck('the scalogram admits its stride is not anti-aliased', !!stride,
+     JSON.stringify(scal.sampling));
+  if (stride) say('note', '  "' + String(stride.why).slice(0, 104) + '"');
+
+  const win = await post('/api/csc/window', { path: S, t0: 100, t1: 160,
+    channels: [0], px: 1400 });
+  const env = (win.sampling || []).find((x) => x.what === 'envelope');
+  ck('the trace says it is an envelope', !!env && win.downsampled === true,
+     JSON.stringify(win.sampling));
+  ck('and says how long one column is',
+     !!env && env.column_ms > 0, env ? String(env.column_ms) : 'none');
+
+  /* ---- the refusals, which have to be usable ---------------------- */
+  head('Full rate, and when it cannot be given');
+  const tooBig = await post('/api/csc/window', { path: S, t0: 100, t1: 160,
+    channels: [0], px: 1400, full_rate: true });
+  ck('a full-rate window that is too long is refused',
+     tooBig.ok === false, JSON.stringify(tooBig.ok));
+  ck('and the refusal says what WOULD fit',
+     /would fit/.test(tooBig.error || ''), (tooBig.error || '').slice(0, 90));
+
+  const small = await post('/api/csc/window', { path: S, t0: 100, t1: 105,
+    channels: [0], px: 1400, full_rate: true });
+  ck('a short full-rate window is given', small.ok === true,
+     (small.error || '').slice(0, 80));
+  ck('and it is not downsampled', small.downsampled === false
+     && small.full_rate === true,
+     JSON.stringify([small.downsampled, small.full_rate]));
+  if (small.ok) {
+    const n = (small.series[0].min || []).length;
+    say('note', '  ' + n + ' points for 5 s at ' + small.fs + ' Hz');
+    ck('every sample is there', n >= 5 * small.fs * 0.98, String(n));
+  }
+
+  /* ---- the badge on screen --------------------------------------- */
+  head('And it is on the screen');
+  W().eval("setView('xplore')");
+  await sleep(300);
+  await W().eval('BARRY.views.xplore.open(' + JSON.stringify(S) + ')');
+  await until(() => W().eval(
+    'Object.keys(BARRY.views.xplore.state.sessions).length') > 0);
+  /* A 60 s window, so the envelope and the decimation both engage. */
+  W().eval('(function(){var S=BARRY.views.xplore.state;'
+    + 'var s=S.sessions[S.active]; s.t0=100; s.span=60;})()');
+  W().eval("BARRY.views.xplore.setPanes([{panel:'bandpower'}],"
+           + '{col:1,row:1})');
+  const chip = await until(() => D().querySelector('.panel-input .ds-chip'),
+                           60000);
+  ck('the panel wears a DOWNSAMPLED badge', !!chip,
+     'no .ds-chip in .panel-input');
+  if (chip) {
+    ck('it says DOWNSAMPLED', /DOWNSAMPLED/.test(chip.textContent),
+       chip.textContent);
+    const q = chip.getBoundingClientRect();
+    ck('and it is visible', q.width > 20 && q.height > 8,
+       Math.round(q.width) + 'x' + Math.round(q.height));
+
+    head('Clicking it says what happened');
+    chip.click();
+    const detail = await until(() => D().querySelector('.ds-detail'), 8000);
+    ck('the detail opens', !!detail);
+    if (detail) {
+      const steps = detail.querySelectorAll('.ds-step').length;
+      ck('it lists the steps', steps >= 1, steps + ' steps');
+      say('note', '  ' + detail.textContent.replace(/\s+/g, ' ')
+          .slice(0, 150));
+      const btn = Array.from(detail.querySelectorAll('button'))
+        .find((b) => /full rate/i.test(b.textContent));
+      ck('it offers full rate', !!btn,
+         Array.from(detail.querySelectorAll('button'))
+           .map((b) => b.textContent).join(' | '));
+
+      head('And the offer is honoured');
+      if (btn) {
+        btn.click();
+        /* 60 s of band power at 30 kHz is past the ceiling, so the honest
+           outcome is a refusal that names the window that fits -- not a
+           silent fallback to the decimated answer. */
+        const said = await until(() => {
+          const t = (D().querySelector('.pane-readout, .panel-err') || {})
+            .textContent || '';
+          return /full|samples|would fit|tap/i.test(t) ? t : null;
+        }, 30000);
+        ck('asking for full rate at 60 s is answered in words', !!said,
+           (said || '(nothing said)').slice(0, 110));
+        if (said) say('note', '  "' + said.replace(/\s+/g, ' ')
+                      .slice(0, 150) + '"');
+      }
+    }
+  }
+
+  /* ---- nothing sits on anything else ----------------------------- */
+  head('And nothing overlaps');
+  W().eval("BARRY.views.xplore.setPanes([{panel:'traces'}],{col:1,row:1})");
+  await until(() => D().querySelectorAll('.ch-overlay .ch-lane').length > 8,
+              40000);
+  await sleep(1800);
+
+  const lanes = Array.from(D().querySelectorAll('.ch-overlay .ch-lane'))
+    .map((n) => n.getBoundingClientRect())
+    .filter((r) => r.width > 0 && r.height > 0)
+    .sort((a, b) => a.top - b.top);
+  say('note', '  ' + lanes.length + ' lanes, pitch '
+      + (lanes.length > 1
+         ? round(lanes[1].top - lanes[0].top, 2) + ' px' : 'n/a')
+      + ', lane height '
+      + (lanes.length ? round(lanes[0].height, 2) + ' px' : 'n/a'));
+
+  /* A tenth of a pixel of slack: the rows are a CSS grid of equal
+     fractions, so consecutive tops differ by a fractional pitch and a
+     rounded height can touch the next row without overlapping it. */
+  let clashes = 0, worst = 0;
+  for (let i = 1; i < lanes.length; i++) {
+    const over = lanes[i - 1].bottom - lanes[i].top;
+    if (over > 0.1) { clashes += 1; worst = Math.max(worst, over); }
+  }
+  ck('no channel lane sits on the next one', clashes === 0,
+     clashes + ' of ' + lanes.length + ' overlap, worst by '
+     + round(worst, 2) + ' px');
+
+  const cap = D().querySelector('.panel-input');
+  ck('the caption is on screen', !!cap);
+  if (cap && lanes.length) {
+    const c = cap.getBoundingClientRect();
+    const hit = lanes.filter((r) => !(c.right <= r.left || c.left >= r.right
+                                      || c.bottom <= r.top
+                                      || c.top >= r.bottom));
+    ck('and it does not cross the channel labels', hit.length === 0,
+       hit.length + ' lane(s) under it; caption starts at x='
+       + Math.round(c.left) + ', labels end at x='
+       + Math.round(Math.max.apply(null, lanes.map((r) => r.right))));
+    say('note', '  caption x=' + Math.round(c.left) + '-'
+        + Math.round(c.right) + ', lanes x='
+        + Math.round(lanes[0].left) + '-'
+        + Math.round(Math.max.apply(null, lanes.map((r) => r.right))));
+  }
+
+  /* The badge has to be clickable, which it was not: the strip it lives in
+     is `pointer-events: none`. */
+  const chip2 = D().querySelector('.panel-input .ds-chip');
+  if (chip2) {
+    const cs = W().getComputedStyle(chip2);
+    ck('the badge accepts clicks', cs.pointerEvents !== 'none',
+       cs.pointerEvents);
+  }
+
+  head(bad ? bad + ' problem(s)' : 'All good.');
+  document.title = bad ? 'downsampled: ' + bad + ' FAILED'
+                       : 'downsampled: passed';
+} catch (e) {
+  say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  document.title = 'downsampled: harness CRASH';
+} })();
+</script>

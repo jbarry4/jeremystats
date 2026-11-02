@@ -1,0 +1,193 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — StrataScope rail on the traces</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:26vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:74vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "The pick a layer column is getting mismatched with the raster and the
+   lines" (2026-10-12). Measured here rather than eyeballed: every rail row's
+   centre against the centre of the trace lane for the SAME channel number,
+   read from the geometry the traces pane drew with (pane._geom), with every
+   channel ticked and then with only the even ones -- the case that put a
+   64-row rail over 32 lanes. Also that the depth strip and the dashed lines
+   use the same lanes.
+
+   On the 64-channel demo. It changes which channels are ticked and puts
+   them all back in a finally; it labels nothing. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 250, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(g);
+  }
+  return -1;
+}
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+const GID = 'demo-long-session';
+const PATH = 'demo:long-session';
+
+(async () => {
+  const f = document.getElementById('app');
+  let W = null;
+  try {
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    W = () => f.contentWindow;
+    const D = () => f.contentDocument;
+    await untilN(() => typeof W().setView === 'function');
+    await sleep(900);
+    const run = (src) => W().eval(src);
+    const val = (expr) => run('(' + expr + ')');
+    run('window.open = function () { return null; };');
+    run("setView('xplore')");
+    await run('BARRY.views.xplore.open(' + JSON.stringify(PATH) + ')');
+    await sleep(1500);
+    run("BARRY.views.xplore.select('all')");
+    await sleep(800);
+    await run('BARRY.strata.enter(' + JSON.stringify(GID) + ')');
+    await untilN(() => D().querySelector('.strata-rows .strata-row'), 300);
+    await sleep(2500);
+
+    /* Every rail row against its trace lane, by channel number. */
+    // No alignRail() here on purpose: the rail has to follow the pane by
+    // itself, which is the thing being checked.
+    const measure = () => {
+      const pane = val('BARRY.views.xplore._pane(0)');
+      let laneY, nLanes, laneH;
+      if (pane && pane.panel === 'traces') {
+        // The traces: the geometry drawPane drew with.
+        const g = pane._geom;
+        const host = D().querySelector('#paneGrid .pane .pane-canvas-host');
+        if (!g || !host) return { err: 'no traces geometry' };
+        const hb = host.getBoundingClientRect();
+        laneY = new Map(g.labels.map((num, i) =>
+          [num, hb.top + g.top + (i + 0.5) * g.lane]));
+        nLanes = g.labels.length; laneH = g.lane;
+      } else {
+        // A raster: the rows it reported, over the grid it drew them on.
+        const rows = pane && pane._panelData && pane._panelData.rows;
+        const grid = pane && pane._grid;
+        if (!rows || !grid) return { err: 'no raster rows' };
+        const gb = grid.getBoundingClientRect();
+        laneH = gb.height / rows.length;
+        laneY = new Map(rows.map((r, i) => [r.number, gb.top + (i + 0.5) * laneH]));
+        nLanes = rows.length;
+      }
+      const g = { labels: Array.from(laneY.keys()), lane: laneH };
+      const rows = Array.from(D().querySelectorAll('.strata-rows .strata-row'));
+      let worst = 0, missing = 0, n = 0;
+      for (const r of rows) {
+        const num = Number((r.querySelector('.strata-num') || {}).textContent);
+        const want = laneY.get(num);
+        if (want == null) { missing += 1; continue; }
+        const b = r.getBoundingClientRect();
+        const off = Math.abs((b.top + b.height / 2) - want);
+        worst = Math.max(worst, off);
+        n += 1;
+      }
+      const strip = D().querySelector('.ss-strip');
+      const box = D().querySelector('.strata-rows');
+      let stripOff = null;
+      if (strip && box) {
+        const a = strip.getBoundingClientRect(), b = box.getBoundingClientRect();
+        stripOff = Math.max(Math.abs(a.top - b.top), Math.abs(a.height - b.height));
+      }
+      const first = rows[0] && rows[0].getBoundingClientRect();
+      const last = rows[rows.length - 1] && rows[rows.length - 1].getBoundingClientRect();
+      const bx = box && box.getBoundingClientRect();
+      const firstNum = rows[0] && Number(rows[0].querySelector('.strata-num').textContent);
+      return { worst, missing, n, rows: rows.length, lanes: nLanes,
+               lane: g.lane, stripOff,
+               rowsBox: bx ? [Math.round(bx.top), Math.round(bx.height)] : null,
+               firstRow: first ? [Math.round(first.top), +first.height.toFixed(1)] : null,
+               lastRow: last ? [Math.round(last.top), +last.height.toFixed(1)] : null,
+               firstLaneY: Math.round(laneY.get(firstNum) || -1),
+               laneRows: (() => { const lr = val('BARRY.views.xplore.laneRows(0)');
+                 return lr ? [lr.kind, Math.round(lr.top), Math.round(lr.height), lr.numbers.length] : null; })(),
+               rowsClass: box ? box.className : '' };
+    };
+
+    hd('every channel ticked');
+    let m = measure();
+    p('  ' + JSON.stringify(m));
+    ck('one rail row per drawn lane', m.rows === m.lanes, m.rows + ' vs ' + m.lanes);
+    ck('every row sits on its own channel’s lane (within a third of a lane)',
+       !m.err && m.missing === 0 && m.worst <= m.lane / 3,
+       (m.err || (m.worst.toFixed(1) + ' px off, lane ' + m.lane.toFixed(1)
+                  + ' px, ' + m.missing + ' rows with no lane')));
+
+    hd('only the even channels ticked');
+    run("BARRY.views.xplore.select('even')");
+    await untilN(() => {
+      const g = (val('BARRY.views.xplore._pane(0)') || {})._geom;
+      return g && g.labels.length === 32;
+    }, 200);
+    await sleep(1500);
+    m = measure();
+    p('  ' + JSON.stringify(m));
+    ck('the rail follows: one row per drawn lane', m.rows === m.lanes,
+       m.rows + ' vs ' + m.lanes);
+    ck('every row sits on its own channel’s lane',
+       !m.err && m.missing === 0 && m.worst <= m.lane / 3,
+       (m.err || (m.worst.toFixed(1) + ' px off, lane ' + m.lane.toFixed(1)
+                  + ' px, ' + m.missing + ' rows with no lane')));
+
+    /* The layer bands on the traces are drawn on the drawn lanes too: the
+       overlay is handed the rows the pane drew. */
+    let seen = null;
+    const real = val('BARRY.strata.draw');
+    run('window.__realDraw = BARRY.strata.draw; BARRY.strata.draw = function () {'
+        + ' window.__rows = arguments[8] && arguments[8].rows ? arguments[8].rows.length : null;'
+        + ' return window.__realDraw.apply(this, arguments); };');
+    run('BARRY.views.xplore.redraw()');
+    await sleep(500);
+    seen = val('window.__rows');
+    run('BARRY.strata.draw = window.__realDraw;');
+    ck('the layer overlay on the traces is told which 32 lanes were drawn',
+       seen === 32, String(seen));
+    void real;
+
+    hd('a CSD raster in the pane, the even channels ticked');
+    run("BARRY.views.xplore.setPanes([{ panel: 'csd' }])");
+    await untilN(() => {
+      const pn = val('BARRY.views.xplore._pane(0)');
+      return pn && pn._panelData && pn._panelData.rows
+        && pn._panelData.rows.length;
+    }, 400);
+    await sleep(2000);
+    m = measure();
+    p('  ' + JSON.stringify(m));
+    ck('the rail follows the raster: one row per raster row', m.rows === m.lanes,
+       m.rows + ' vs ' + m.lanes);
+    ck('every row sits on its own channel\u2019s raster row',
+       !m.err && m.missing === 0 && m.worst <= m.lane / 3,
+       (m.err || (m.worst.toFixed(1) + ' px off, lane ' + m.lane.toFixed(1)
+                  + ' px, ' + m.missing + ' rows with no lane')));
+    ck('the depth strip is on the same lanes', m.stripOff != null && m.stripOff <= 1,
+       String(m.stripOff));
+  } catch (e) {
+    ck('no exception', false, e && (e.stack || e.message));
+  } finally {
+    try {
+      W().eval("BARRY.views.xplore.setPanes([{ panel: 'traces' }])");
+      await sleep(400);
+      W().eval("BARRY.views.xplore.select('all')");
+      await sleep(600);
+      W().eval('BARRY.strata.exit()');
+    } catch (e) { /* best effort */ }
+    p('\n' + (bad ? bad + ' FAILED' : 'all ok'));
+    document.title = bad ? 'FAIL ' + bad : 'PASS';
+    f.src = 'about:blank';
+  }
+})();
+</script>

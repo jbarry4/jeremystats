@@ -1,0 +1,150 @@
+{
+  "_at": {
+    "added": "2026-10-20T18:47:16.217341+00:00",
+    "deleted": "2026-10-20T18:47:16.217341+00:00",
+    "id": "2026-10-20T18:47:16.217341+00:00",
+    "kind": "2026-10-20T18:47:16.217341+00:00",
+    "name": "2026-10-20T18:47:16.217341+00:00",
+    "nickname": "2026-10-20T18:47:16.217341+00:00",
+    "schema": "2026-10-20T18:47:16.217341+00:00",
+    "subject": "2026-10-20T18:47:16.217341+00:00",
+    "subject_key": "2026-10-20T18:47:16.217341+00:00",
+    "version": "2026-10-20T18:47:16.217341+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "434e5af361f3": [
+        "set",
+        "2026-10-20T18:47:16.217341+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-20T18:47:16.217341+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-20T14:47:16-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "959031444962",
+  "kind": "rootcanal_border",
+  "name": "Envelope \u00b7 DS \u00b7 258 to 3612 \u00b5V \u00b7 -4.3 to 25.8 dB \u00b7 6.1 to 63.4 ms",
+  "nickname": "border around DS \u00b7 PTEN CTL Baseline Full Incisor JA Management",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "border_key": "2e02e132225e4240a0e4d6f8e148c3f0",
+    "gids": [
+      "s016e132432c8",
+      "s0a9e96cf1739",
+      "s37c7c8edfe10",
+      "s43b16cd74bcb",
+      "s79ba9ba163c4",
+      "s8d7f397b9708",
+      "s9eb56573e0b4",
+      "sd42a6992b76c",
+      "sd94396e874c7"
+    ],
+    "level": "pool",
+    "name": "Envelope \u00b7 DS \u00b7 258 to 3612 \u00b5V \u00b7 -4.3 to 25.8 dB \u00b7 6.1 to 63.4 ms"
+  },
+  "subject_key": "rootcanal_border|2e02e132225e4240a0e4d6f8e148c3f0",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.10.20.5",
+      "at": "2026-10-20T14:47:16-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "f729a289",
+      "digest": "9f12ee92a41e",
+      "id": "434e5af361f3",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 1477,
+        "filter": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+        "grace": 0.05,
+        "group": "ds",
+        "kind": "envelope",
+        "level": "pool",
+        "levels": [
+          {
+            "counts": {
+              "amb": 0,
+              "ds": 1475,
+              "ied": 0,
+              "none": 2
+            },
+            "grace": 0.0,
+            "outside_rate": 0.0,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 12,
+              "ds": 1463,
+              "ied": 0,
+              "none": 2
+            },
+            "grace": 0.01,
+            "outside_rate": 0.008135593220338983,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 71,
+              "ds": 1404,
+              "ied": 0,
+              "none": 2
+            },
+            "grace": 0.05,
+            "outside_rate": 0.04813559322033898,
+            "switch_rate": 0.0
+          }
+        ],
+        "mice": 9,
+        "recordings": 9,
+        "source": null,
+        "strict": {
+          "amp_uV": {
+            "hi": 3611.5571,
+            "lo": 257.8189
+          },
+          "hf_db": {
+            "hi": 25.814,
+            "lo": -4.3046
+          },
+          "hw_ms": {
+            "hi": 63.4237,
+            "lo": 6.1426
+          }
+        }
+      },
+      "nickname": "border around DS \u00b7 PTEN CTL Baseline Full Incisor JA Management",
+      "nickname_at": "2026-10-20T14:47:16-04:00",
+      "note": "JA Management",
+      "params": {
+        "grace": 0.05,
+        "level": "pool",
+        "measure": {
+          "band_hi": 1000.0,
+          "band_lo": 500.0,
+          "cross_ms": 100.0,
+          "filt": "ds",
+          "filter_label": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+          "hi_hz": 100.0,
+          "lo_hz": 5.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 25.0
+        }
+      },
+      "params_hash": "1f471ada8862",
+      "v": 1
+    }
+  ]
+}

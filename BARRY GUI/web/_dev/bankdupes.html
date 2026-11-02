@@ -1,0 +1,309 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>bankdupes: running</title>
+<style>
+  body { font: 12px/1.6 ui-monospace, Consolas, monospace; background:#0a1310;
+         color:#dfeae4; margin:0; display:flex; }
+  #log { width: 820px; padding: 10px; overflow:auto; height:100vh;
+         white-space: pre-wrap; }
+  iframe { flex:1; height:100vh; border:0; }
+  .ok { color:#5cc98d; } .bad { color:#ff6b5e; } .note { color:#6f8c7d; }
+</style></head>
+<body><div id="log"></div><iframe id="app" src="/"></iframe>
+<script>
+/* "For some of the dentate spikes in the event banks there are identical
+   time stamps. Add an option when looking at a single event bank file to
+   remove duplicates and create a new v#."
+
+   Driven through the panel rather than the route, because the route was the
+   easy half. The seed is built here rather than borrowed from the archive:
+   the one real entry with doubles in it is somebody's data, and a harness
+   that collapses it to prove it can is a harness that destroys the evidence
+   it was testing against. What has to hold:
+
+     the panel says a set has doubles before anybody asks it to
+     the collapse REFUSES while two copies of one time disagree and nobody
+       has said which to keep -- this is the whole point, and a default here
+       would quietly throw away a third of somebody's calls
+     first and last give different answers, and the panel shows which
+     it lands as a new version, and the one below it still holds all of the
+       events, so the collapse can be undone by deleting it
+     and running it again finds nothing */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+function say(s, c) {
+  const d = document.createElement('div');
+  d.textContent = s; if (c) d.className = c; L.appendChild(d);
+}
+function check(n, ok, x) {
+  if (ok) { pass++; say('PASS  ' + n, 'ok'); }
+  else { fail++; say('FAIL  ' + n + (x ? '   ' + x : ''), 'bad'); }
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) { /* not ready */ }
+    await sleep(100);
+  }
+  return false;
+}
+const post = async (p, b) => (await fetch(p, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(b || {}),
+})).json();
+const get = async (p) => (await fetch(p)).json();
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              25000);
+  const setView = ev('setView');
+  const D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const text = (s) => { const n = $(s); return n ? n.textContent : ''; };
+
+  /* ---------------- the seed ----------------
+     Fed in this order, and `add` sorts stably, so "the first copy" below
+     means the one written first here. Without that the two policies cannot
+     be told apart and the test would pass whichever the code picked. */
+  const LABELS = { spike: 'Dentate Spike', garbage: 'Garbage', flag: 'Flag' };
+  const SEED = [
+    { start: 1.0, label_id: 'spike', label: 'Dentate Spike' },
+    // Two records of one time that disagree: the case with no right answer.
+    { start: 2.0, label_id: 'spike', label: 'Dentate Spike' },
+    { start: 2.0, label_id: 'garbage', label: 'Garbage' },
+    // Two that agree: nothing to settle.
+    { start: 3.0, label_id: 'spike', label: 'Dentate Spike' },
+    { start: 3.0, label_id: 'spike', label: 'Dentate Spike' },
+    // One decided, one not: the decision wins under either policy.
+    { start: 4.0 },
+    { start: 4.0, label_id: 'flag', label: 'Flag' },
+    { start: 5.0, label_id: 'garbage', label: 'Garbage' },
+  ];
+
+  say('--- seeding ---', 'note');
+  // From a known baseline. A rerun that started from the last run's leavings
+  // would find nothing to collapse and report a clean pass for it.
+  for (const e of (await get('/api/bank')).entries) {
+    if (e.project === 'HARNESS' && e.name === 'dupes seed') {
+      await post('/api/bank/' + e.id + '/delete', {});
+    }
+  }
+  const seed = await post('/api/bank/add', {
+    project: 'HARNESS', mouse: 99, session: 1,
+    session_label: 'harness dupes', type: 'ds', name: 'dupes seed',
+    pipeline: 'harness: duplicate times', added_by: 'harness@test',
+    curated: true, label_names: LABELS, events: SEED,
+  });
+  const id = (seed.entry || {}).id;
+  check('an entry with doubles in it can be seeded', !!id, seed.error || '');
+  if (!id) { document.title = 'bankdupes: ' + pass + ' ok, ' + (++fail) + ' fail'; return; }
+  const baseV = (seed.entry || {}).version;
+
+  /* ---------------- the route refuses to guess ---------------- */
+  say('--- the collapse will not settle a disagreement on its own ---', 'note');
+  let dry = await post('/api/bank/' + id + '/dedupe', { dry_run: true });
+  check('it finds every doubled time', dry.groups === 3, 'groups=' + dry.groups);
+  check('and counts the rows it would remove', dry.removed === 3,
+        'removed=' + dry.removed);
+  check('it names the one that disagrees', dry.conflicts === 1,
+        'conflicts=' + dry.conflicts);
+  check('an undecided copy is not counted as a loss',
+        dry.undecided_dropped === 1, 'undecided=' + dry.undecided_dropped);
+  check('with nobody having said which copy to keep, it refuses',
+        !!dry.error, JSON.stringify(dry.error || ''));
+  /* And the refusal comes back as an ANSWER. `ok:false` makes the client's
+     api() throw, which discards the body -- so a preview that reported its
+     refusal that way left the panel with nothing to put on screen. */
+  check('and the refusal is still a readable answer', dry.ok === true);
+  check('and withholds the mix rather than answering from a fallback',
+        dry.by_label_now === null, JSON.stringify(dry.by_label_now));
+  check('and claims no survivor for the contested time',
+        (dry.rows || []).filter((r) => r.conflict)
+          .every((r) => r.kept_label === null));
+  check('and nothing was written',
+        (await get('/api/bank/' + id)).entry.n === 8);
+
+  const first = await post('/api/bank/' + id + '/dedupe',
+                           { dry_run: true, conflicts: 'first' });
+  const last = await post('/api/bank/' + id + '/dedupe',
+                          { dry_run: true, conflicts: 'last' });
+  check('keeping the first copy leaves three spikes',
+        (first.by_label_now || {})['Dentate Spike'] === 3,
+        JSON.stringify(first.by_label_now));
+  check('keeping the last copy leaves two',
+        (last.by_label_now || {})['Dentate Spike'] === 2,
+        JSON.stringify(last.by_label_now));
+  check('so the choice is a real one, not a formality',
+        JSON.stringify(first.by_label_now) !== JSON.stringify(last.by_label_now));
+  check('a nonsense choice is refused rather than obeyed',
+        /not a way to settle/.test(
+          (await post('/api/bank/' + id + '/dedupe',
+                      { dry_run: true, conflicts: 'whichever' })).error || ''));
+  check('both dry runs left the entry alone',
+        (await get('/api/bank/' + id)).entry.n === 8);
+
+  /* ---------------- the panel ---------------- */
+  say('--- the panel ---', 'note');
+  setView('eventbank');
+  await until(() => $('#bankBody .bank-tree'), 12000);
+  const row = $$('.bank-row').find((r) => r.textContent.indexOf('dupes seed') >= 0);
+  check('the seeded entry is listed', !!row);
+  if (!row) { document.title = 'bankdupes: ' + pass + ' ok, ' + (++fail) + ' fail'; return; }
+  row.click();
+  await until(() => $('#bankEvents .preview-table'), 9000);
+
+  check('the panel says so before anybody asks it to', !!$('.dup-strip'),
+        text('.bank-events').slice(0, 80));
+  check('and says how many times are doubled',
+        /3 times in this set hold more than one event/.test(text('.dup-say')),
+        text('.dup-say'));
+  check('and that one of them disagrees',
+        /1 of them disagree/.test(text('.dup-say')), text('.dup-say'));
+  check('the rows it means are marked in the list',
+        $$('#bankEvents tr.dup').length === 6,
+        $$('#bankEvents tr.dup').length + ' marked');
+  /* The strip sits under the provenance and the whole version history, so
+     on a real entry it is well below the fold. This is the half somebody
+     meets without scrolling. */
+  check('and a chip at the top says so before any scrolling',
+        /3 duplicate times/.test(text('.detail-tags .tag.blocked')),
+        text('.detail-tags'));
+  /* The action is reachable both ways: from the strip, and from the section
+     head, which is where somebody looks who has not got a strip. */
+  check('the section head offers it too',
+        $$('.bank-detail .sec-head .btn').some(
+          (b) => /Duplicate times/.test(b.textContent)));
+
+  $$('.dup-strip .btn').find((b) => /Collapse/.test(b.textContent)).click();
+  await until(() => $('#bigModal .dup-pick'), 9000);
+  check('the dialog opens on the choice', !!$('#bigModal .dup-pick'));
+  check('it says what the set holds now',
+        /8 events sit on 5 distinct times/.test(text('#bigModal .dup-lede')),
+        text('#bigModal .dup-lede'));
+  const goBtn = () => $$('#bigModal .mf .btn')
+    .find((b) => /^Collapse/.test(b.textContent));
+  check('the button names the version it would land as',
+        /v(\d+)$/.test((goBtn() || {}).textContent || ''),
+        (goBtn() || {}).textContent);
+  check('and it will not run until a copy is picked',
+        !!goBtn() && goBtn().disabled);
+  check('the contested time is shown with both calls',
+        /Dentate Spike/.test(text('#bigModal .preview-wrap'))
+        && /Garbage/.test(text('#bigModal .preview-wrap')),
+        text('#bigModal .preview-wrap'));
+  check('with no survivor claimed yet',
+        text('#bigModal .dup-kept').trim() === '—',
+        JSON.stringify(text('#bigModal .dup-kept')));
+  check('and the resulting mix is withheld too',
+        /pick a copy to see this/.test(text('#bigModal .dup-mixes')),
+        text('#bigModal .dup-mixes'));
+
+  $$('#bigModal .dup-opt input')[1].click();   // "keep the last copy"
+  await until(() => !(goBtn() || { disabled: true }).disabled, 9000);
+  check('picking one arms the button', !goBtn().disabled);
+  check('and names the survivor of the contested time',
+        text('#bigModal .dup-kept').trim() === 'Garbage',
+        JSON.stringify(text('#bigModal .dup-kept')));
+  check('and shows what the set would then hold',
+        /Dentate Spike 2/.test(text('#bigModal .dup-mixes')),
+        text('#bigModal .dup-mixes'));
+
+  goBtn().click();
+  await until(() => !$('#bigModal .dup-pick'), 12000);
+  await sleep(900);
+
+  /* ---------------- what it left behind ---------------- */
+  say('--- the new version ---', 'note');
+  const after = (await get('/api/bank/' + id)).entry;
+  check('the duplicates are gone', after.n === 5, 'n=' + after.n);
+  check('and no time is claimed twice',
+        new Set(after.events.map((e) => e.start.toFixed(4))).size === 5);
+  check('the decision that won is the one that was picked',
+        (after.events.find((e) => e.start === 2) || {}).label_id === 'garbage',
+        JSON.stringify(after.events.find((e) => e.start === 2)));
+  check('the undecided copy went, not the decided one',
+        (after.events.find((e) => e.start === 4) || {}).label_id === 'flag');
+  check('it landed as a new version', after.version === baseV + 1,
+        'v' + after.version + ' after v' + baseV);
+  const fresh = after.versions[after.versions.length - 1];
+  check('the version records what it removed',
+        fresh.lost === 3 && fresh.changed === 0 && fresh.gained === 0,
+        JSON.stringify({ lost: fresh.lost, changed: fresh.changed,
+                         gained: fresh.gained }));
+  check('and how the disagreement was settled',
+        (fresh.deduped || {}).policy === 'last'
+        && (fresh.deduped.settled || []).length === 1,
+        JSON.stringify(fresh.deduped));
+  check('its note says what happened without anybody typing one',
+        /Collapsed 3 time/.test(fresh.note || ''), fresh.note);
+  const prev = after.versions[after.versions.length - 2];
+  check('the version below it still holds all eight events',
+        (prev.snap || []).length === 8,
+        'snap=' + (prev.snap || []).length);
+  check('so deleting the new one would put them back', prev.n === 8,
+        'prev.n=' + prev.n);
+
+  /* ---------------- and again ---------------- */
+  const again = await post('/api/bank/' + id + '/dedupe', { dry_run: true });
+  check('running it again finds nothing to collapse',
+        again.groups === 0 && !!again.error, JSON.stringify(again.error || ''));
+  row.click();
+  await until(() => $('#bankEvents .preview-table'), 9000);
+  check('and the panel stops saying there are doubles', !$('.dup-strip'));
+  check('with no rows left marked', $$('#bankEvents tr.dup').length === 0);
+  check('and the chip is gone too', !$('.detail-tags .tag.blocked'),
+        text('.detail-tags'));
+
+  /* ---------------- three copies of one time ----------------
+     The shape the rules have to be applied in ORDER for: an undecided copy
+     and two that disagree. Dropping the undecided one is not a choice
+     anybody needs to be asked about, so the question put to them has to be
+     between the two real calls and nothing else. */
+  say('--- an undecided copy alongside two that disagree ---', 'note');
+  const three = await post('/api/bank/add', {
+    project: 'HARNESS', mouse: 99, session: 2,
+    session_label: 'harness three', type: 'ds', name: 'three copies',
+    pipeline: 'harness: duplicate times', added_by: 'harness@test',
+    curated: true, label_names: LABELS,
+    events: [
+      { start: 10.0 },
+      { start: 10.0, label_id: 'spike', label: 'Dentate Spike' },
+      { start: 10.0, label_id: 'garbage', label: 'Garbage' },
+      { start: 20.0, label_id: 'spike', label: 'Dentate Spike' },
+    ],
+  });
+  const id3 = (three.entry || {}).id;
+  const d3 = await post('/api/bank/' + id3 + '/dedupe', { dry_run: true });
+  check('the undecided copy is dropped without being asked about',
+        d3.undecided_dropped === 1, 'undecided=' + d3.undecided_dropped);
+  check('and only the two real calls are put to anybody',
+        d3.conflicts === 1
+        && JSON.stringify((d3.conflict_rows[0] || {}).calls)
+           === JSON.stringify(['garbage', 'spike']),
+        JSON.stringify(d3.conflict_rows));
+  check('the question is between two copies, not three',
+        (d3.conflict_rows[0] || {}).copies.length === 2);
+  const w3 = await post('/api/bank/' + id3 + '/dedupe',
+                        { dry_run: false, conflicts: 'first' });
+  const a3 = (await get('/api/bank/' + id3)).entry;
+  check('and the picked call is what survives',
+        a3.n === 2
+        && (a3.events.find((e) => e.start === 10) || {}).label_id === 'spike',
+        JSON.stringify(a3.events));
+  check('all three collapsed to one row', w3.removed === 2,
+        'removed=' + w3.removed);
+  await post('/api/bank/' + id3 + '/delete', {});
+
+  await post('/api/bank/' + id + '/delete', {});
+  say('seeds removed', 'note');
+  say(pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'bankdupes: ' + pass + ' ok, ' + fail + ' fail';
+})().catch((e) => {
+  say('CRASH ' + (e && e.stack || e), 'bad');
+  document.title = 'bankdupes: crashed';
+});
+</script></body></html>

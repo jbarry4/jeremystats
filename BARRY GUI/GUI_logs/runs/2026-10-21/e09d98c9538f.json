@@ -1,0 +1,94 @@
+{
+  "format": "csv",
+  "id": "e09d98c9538f",
+  "kind": "toolkit",
+  "label": "Bad channels -- every recorded session",
+  "output": {
+    "github": "https://github.com/jbarry4/jeremystats/tree/master/BARRY%20GUI/Results/_scratch/ToolKit/bad-channels_all_20261021_190041.csv",
+    "path": "C:\\Users\\Z390\\Desktop\\jeremystats\\BARRY GUI\\Results\\_scratch\\ToolKit\\bad-channels_all_20261021_190041.csv",
+    "rel": "_scratch/ToolKit/bad-channels_all_20261021_190041.csv"
+  },
+  "parameters": {
+    "date_from": null,
+    "date_to": null,
+    "form": "long",
+    "group": null,
+    "include_clean": false,
+    "key": null,
+    "mouse": null,
+    "scope": "all"
+  },
+  "provenance": {
+    "app_version": "2026.10.21.4",
+    "at": "2026-10-21T19:00:41-04:00",
+    "commit": "7b5f52b1",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "rows": 443,
+  "schema": 1,
+  "script": "ToolKit bad-channel export",
+  "status": "done",
+  "summary": {
+    "bad_total": 443,
+    "clean": 1666,
+    "distinct_channels": 105,
+    "first_day": "2020-01-01",
+    "last_day": "2026-09-28",
+    "repeat_offenders": [
+      {
+        "channel": 59,
+        "sessions": 98
+      },
+      {
+        "channel": 41,
+        "sessions": 26
+      },
+      {
+        "channel": 8,
+        "sessions": 19
+      },
+      {
+        "channel": 55,
+        "sessions": 13
+      },
+      {
+        "channel": 57,
+        "sessions": 6
+      },
+      {
+        "channel": 47,
+        "sessions": 6
+      },
+      {
+        "channel": 64,
+        "sessions": 5
+      },
+      {
+        "channel": 63,
+        "sessions": 5
+      },
+      {
+        "channel": 62,
+        "sessions": 5
+      },
+      {
+        "channel": 61,
+        "sessions": 5
+      },
+      {
+        "channel": 60,
+        "sessions": 5
+      },
+      {
+        "channel": 58,
+        "sessions": 5
+      }
+    ],
+    "sessions": 1766,
+    "with_bad": 100
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "_at": {
+    "gid": "2026-09-14T16:23:15.196891+00:00",
+    "label": "2026-09-14T16:23:15.196891+00:00",
+    "path": "2026-09-14T16:23:15.196891+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "f1a58f997fc0": [
+        "set",
+        "2026-09-14T16:23:15.196891+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-14T16:23:15.196891+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-09-14T16:23:15.196891+00:00",
+      "by": "Rain Younger",
+      "concat_duration_s": 3042.5642333333335,
+      "gap_map_sha": "0dc9a1fa1ca35e8f",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "f1a58f997fc0",
+      "level": "ok",
+      "machine": "Strawbarry",
+      "max_time_error_ms": 0.0,
+      "mismatches": 0,
+      "n_gaps": 0,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 1,
+      "seconds_lost": 0.0,
+      "sub_threshold_lost_s": 0.001167,
+      "true_duration_s": 3042.554355
+    }
+  ],
+  "gid": "sd1dd1ea0f037",
+  "label": "PTEN m5 s8 2023-11-17",
+  "path": "Y:\\ProcessedPtenData\\M5_Pten\\M5s8nov17\\2023-11-17_15-07-23"
+}

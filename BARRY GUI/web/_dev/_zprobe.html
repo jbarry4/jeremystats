@@ -1,0 +1,98 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>probe</title>
+<style>html,body{margin:0;font:12px/1.5 monospace;background:#0c0f14;color:#dfe6ee}
+#out{padding:10px;width:44vw;white-space:pre-wrap}
+iframe#app{position:fixed;right:0;top:0;width:56vw;height:100vh;border:0}</style>
+<div id="out"></div><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, t = 2000, g = 100) {
+  for (let i = 0; i < t; i++) {
+    try { if (fn()) return i; } catch (e) {}
+    await sleep(g);
+  }
+  return -1;
+}
+(async () => {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  await untilN(() => typeof W().setView === 'function');
+  await sleep(900);
+  const run = (src) => W().eval(src);
+  const val = (e) => run('(' + e + ')');
+  try {
+  run("setView('xplore')");
+  await run('BARRY.views.xplore.open("demo:long-session")');
+  await sleep(2500);
+  const gid = val('BARRY.views.xplore.state.sessions[BARRY.views.xplore.state.order[0]].identity.gid');
+  const path = val('BARRY.views.xplore.state.sessions[BARRY.views.xplore.state.order[0]].path');
+  p('gid ' + gid + '  path ' + JSON.stringify(path));
+  // Make the registry claim this recording is reachable here, which is the
+  // only thing stopping enter() on the demo.
+  run('(function(){var real=window.fetch;window.fetch=function(u,o){'
+    + ' var s=String(u);'
+    + ' if(s.indexOf("/api/registry/")>=0&&!o){'
+    + '  return real.apply(this,arguments).then(function(r){return r.json().then(function(j){'
+    + '   if(j&&j.session){j.session.here=[' + JSON.stringify(path) + '];j.session.reachable=true;}'
+    + '   return new Response(JSON.stringify(j),{status:200,headers:{"Content-Type":"application/json"}});'
+    + '  });});}'
+    + ' return real.apply(this,arguments);};})()');
+  const ok = await run('BARRY.strata.enter(' + JSON.stringify(gid) + ')');
+  await sleep(2000);
+  p('enter -> ' + ok + ' ; active ' + val('BARRY.strata.active')
+    + ' ; rail rows ' + D().querySelectorAll('.strata-row').length);
+  const rows = Array.from(D().querySelectorAll('.strata-row'));
+  const Mouse = W().MouseEvent;
+  if (rows.length > 20) {
+    rows[2].dispatchEvent(new Mouse('mousedown', { bubbles: true }));
+    await sleep(300);
+    rows[20].dispatchEvent(new Mouse('mousedown', { bubbles: true, shiftKey: true }));
+    await sleep(300);
+    const tags = Array.from(D().querySelectorAll('.strata-brush')).filter((b)=>!b.classList.contains('clearone'));
+    tags[1].click();
+    await sleep(1800);
+  }
+  p('labels: ' + val('Object.keys((BARRY.strata.state||{}).labels||{}).length'));
+  p('sess.strata present: ' + val('!!BARRY.views.xplore.state.sessions[BARRY.views.xplore.state.order[0]].strata'));
+  run('window.__calls=[]; (function(){var real=BARRY.strata.draw;'
+    + 'BARRY.strata.draw=function(ctx,s,win,x0,pw,y0,ph,P,res){'
+    + ' window.__calls.push({x0:x0,pw:pw,y0:y0,ph:ph,rows:(res&&res.rows)?res.rows.length:(res?String(res.rows):"noRes")});'
+    + ' return real.apply(this,arguments);};})()');
+  const probe = async (label, setup) => {
+    run('window.__calls=[]');
+    run('(function(){var X=BARRY.views.xplore.state;' + setup
+      + 'BARRY.views.xplore.render();BARRY.views.xplore.refreshAll();})()');
+    await untilN(() => val('window.__calls.length') > 0, 120, 250);
+    await sleep(1500);
+    const calls = val('JSON.stringify(window.__calls)');
+    const pd = val('JSON.stringify((function(){var pn=BARRY.views.xplore.state.panes[0];'
+      + 'var d=pn._panelData;var g=pn._grid;'
+      + 'return {panel:pn.panel,grid:pn.grid,gridBox:g?[g.clientWidth,g.clientHeight]:null,'
+      + 'img:pn._img?[pn._img.style.left,pn._img.style.width]:null,'
+      + 'data:d?{rows:(d.rows?d.rows.length:String(d.rows)),stacked:d.stacked,extent:d.extent,freqs:d.freqs}:null};})())');
+    p('\n-- ' + label + '\n   calls: ' + calls + '\n   pane: ' + pd);
+  };
+  for (const kind of ['traces','voltage','csd','theta','bandpower','spectrogram','scalogram']) {
+    await probe(kind, 'X.panes[0].panel=' + JSON.stringify(kind) + ';X.panes[0].grid=true;'
+      + 'X.panes[0].tfChannels=null;X.panes[0].tfMode=null;');
+  }
+  await probe('spectrogram stacked x4',
+    'X.panes[0].panel="spectrogram";X.panes[0].grid=true;'
+    + 'var sel=Array.from(X.sessions[X.order[0]].sel).slice(0,4);'
+    + 'X.panes[0].tfChannels=sel;X.panes[0].tfMode="stack";');
+  await probe('scalogram stacked x4',
+    'X.panes[0].panel="scalogram";X.panes[0].grid=true;'
+    + 'var sel=Array.from(X.sessions[X.order[0]].sel).slice(0,4);'
+    + 'X.panes[0].tfChannels=sel;X.panes[0].tfMode="stack";');
+  await probe('csd with grid off',
+    'X.panes[0].panel="csd";X.panes[0].grid=false;X.panes[0].tfChannels=null;X.panes[0].tfMode=null;');
+  p('\nDONE');
+  document.title = 'done';
+  } catch (e) { p('THREW ' + e.message + '\n' + e.stack); document.title = 'threw'; }
+})();
+</script>

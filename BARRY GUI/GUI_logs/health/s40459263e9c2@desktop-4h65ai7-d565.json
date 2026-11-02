@@ -1,0 +1,69 @@
+{
+  "_at": {
+    "gid": "2026-09-24T19:33:39.849397+00:00",
+    "label": "2026-09-24T19:33:40.127603+00:00",
+    "path": "2026-09-24T19:33:40.127603+00:00"
+  },
+  "_keys": {
+    "checks": {
+      "3771257a2bc7": [
+        "set",
+        "2026-09-24T19:33:39.849397+00:00"
+      ],
+      "b90e9c9ede90": [
+        "set",
+        "2026-09-24T19:33:40.127603+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-24T19:33:40.127603+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "checks": [
+    {
+      "all_channels": false,
+      "at": "2026-09-24T19:33:39.845062+00:00",
+      "by": "Shahriar Tafti",
+      "concat_duration_s": 360.608,
+      "gap_map_sha": "20391266aa4401b2",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "3771257a2bc7",
+      "level": "ok",
+      "machine": "Bluebarry",
+      "max_time_error_ms": 0.0,
+      "mismatches": 0,
+      "n_gaps": 0,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 1,
+      "seconds_lost": 0.0,
+      "sub_threshold_lost_s": 0.0,
+      "true_duration_s": 360.608
+    },
+    {
+      "all_channels": false,
+      "at": "2026-09-24T19:33:40.124531+00:00",
+      "by": "Shahriar Tafti",
+      "concat_duration_s": 1207.712,
+      "gap_map_sha": "3da128c984d907ac",
+      "gap_rule": "spikeinterface-nonstrict",
+      "id": "b90e9c9ede90",
+      "level": "ok",
+      "machine": "Bluebarry",
+      "max_time_error_ms": 0.0,
+      "mismatches": 0,
+      "n_gaps": 0,
+      "n_ncs": null,
+      "n_probed": 4,
+      "n_segments": 1,
+      "seconds_lost": 0.0,
+      "sub_threshold_lost_s": 0.0,
+      "true_duration_s": 1207.712
+    }
+  ],
+  "gid": "s40459263e9c2",
+  "label": "DEWEY m9 s21 Test1 SPC 2026-08-20",
+  "path": "E:\\Joe Multisite 2026 data\\J9\\J9_Test1\\J9_Test1_SPC\\2026-08-20_12-07-54"
+}

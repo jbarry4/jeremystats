@@ -1,0 +1,205 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the warm start, and nothing moving during it</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:46vw;white-space:pre-wrap}
+ iframe#app{position:fixed;right:0;top:0;width:54vw;height:100vh;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="app"></iframe>
+<script>
+/* Two complaints produced this harness, and it checks both.
+
+   "It takes a minute to load in all the errors and the previous recording."
+   The server now answers three five-second roll-ups out of last boot's
+   cache. The claim under test is not "the cache works" -- tools/
+   test_warmcache.py owns that -- but that a real page load no longer waits
+   on any of them.
+
+   "Do not ever have things loading on startup snap you into places." A
+   recording was reopened 250 ms after the interface appeared and the view
+   was then CHANGED to it. So: what view is up when the overlay lifts, and
+   is it still that view ten seconds later, with the recording loaded and a
+   background refresh landed in between.
+
+   ESTABLISHING THE PRECONDITION IS HALF OF IT
+
+   `restoreLast` only runs when localStorage names a previously open
+   recording. A harness that does not seed one boots into an app with
+   nothing to restore, watches the view not change, and reports that the
+   snap is fixed -- which it would have reported before the fix as well.
+   So the seed goes in first, and the recording having actually opened is
+   itself one of the checks. If that one fails, nothing below it means
+   anything. */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+const hd = (t) => p('\n== ' + t + ' ==');
+async function until(fn, tries, gap) {
+  for (let i = 0; i < (tries || 300); i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap || 100);
+  }
+  return -1;
+}
+
+/* The checked-in demo recording, which is what the suite drives everything
+   with: always present, on no drive that can be unmounted, and nothing that
+   opens it can touch real curation data. */
+const SEED = 'demo:long-session';
+
+(async () => { try {
+  hd('0. Preconditions');
+  // Same origin, so this is the storage the app is about to read.
+  localStorage.setItem('barry.lastSessions', JSON.stringify([SEED]));
+  // A tour offer that fires mid-run is a toast, not a view change, but it
+  // is noise in a harness about noise.
+  localStorage.setItem('barry.tour.offered', '1');
+  ck('a previous recording is on record for the app to restore',
+     JSON.parse(localStorage.getItem('barry.lastSessions') || '[]')[0] === SEED);
+
+  const f = document.getElementById('app');
+  const t0 = performance.now();
+  f.src = '/';
+
+  hd('1. The overlay lifts without waiting for a roll-up');
+  const gone = await until(() => {
+    const d = f.contentDocument;
+    return d && d.getElementById('app') && !d.getElementById('boot');
+  }, 600, 50);
+  ck('the boot overlay came down', gone >= 0);
+
+  const win = f.contentWindow;
+  const doc = f.contentDocument;
+  /* `BARRY` is a top-level `const`, which means it is a global LEXICAL
+     binding and not a property of the window -- `win.BARRY` is undefined
+     from out here and always has been. An indirect eval runs in that
+     realm's global scope and can see it, which is how every harness in
+     this folder reaches in. */
+  const run = (src) => win.eval(src);
+  const val = (expr) => run('(' + expr + ')');
+  const api = () => Array.from(win.performance.getEntriesByType('resource'))
+    .filter((r) => r.name.indexOf('/api/') >= 0);
+
+  /* Which of the three the server answered out of the cache. Read from the
+     page rather than timed, because headless runs under a virtual clock
+     and every duration it reports is fiction -- `served` is a fact. */
+  const warmed = ['sync_status', 'vacc_knows', 'registry'];
+  let state = null;
+  try { state = await (await win.fetch('/api/warm/state')).json(); }
+  catch (e) { /* older server */ }
+  ck('the server has a warm-start state to report', !!state);
+
+  /* The one measurement the virtual clock cannot spoil: a request either
+     finished before the overlay lifted or it did not. */
+  const slow = api().filter((r) => r.duration > 800);
+  ck('no request took the better part of a second during boot',
+     slow.length === 0, slow.map((r) => r.name.split('/api/')[1]).join(', '));
+
+  hd('2. The view is where the address said, and STAYS there');
+  await until(() => typeof win.setView === 'function'
+                    || val('typeof BARRY') === 'object', 100, 50);
+  const view0 = val('BARRY.state.view');
+  ck('landed on the pipeline, which is what no hash means',
+     view0 === 'pipeline', String(view0));
+
+  /* Long enough to cover the reopen (two seconds, then the read) and the
+     warm refresh (the prime, then a poll). Under the virtual clock this
+     costs no real time; in a real browser it is ten seconds. */
+  const seen = new Set();
+  for (let i = 0; i < 140; i++) {
+    seen.add(val('BARRY.state.view'));
+    await sleep(80);
+  }
+
+  const nOpen = val('BARRY.views.xplore.state.order.length');
+  ck('the recording really was reopened -- otherwise nothing below counts',
+     nOpen > 0, nOpen + ' open');
+  ck('and the view never changed while it happened',
+     seen.size === 1 && seen.has('pipeline'),
+     Array.from(seen).join(' -> '));
+  ck('the rail still shows the pipeline as the active one',
+     !!doc.querySelector('.nav-item.active[data-view="pipeline"]'));
+  ck('the address still says pipeline, or says nothing',
+     !win.location.hash || win.location.hash === '#pipeline',
+     win.location.hash);
+
+  hd('3. The background refresh does not move the page');
+  /* Go to Sessions, let its list settle, scroll it, then force the warm
+     refresher to run and check the scroll survived. This is the refresh
+     path itself rather than a simulation of it: `repaintQuietly` and the
+     registry refresher are what the poller calls. */
+  doc.querySelector('.nav-item[data-view="sessions"]').click();
+  await until(() => val('BARRY.state.view') === 'sessions', 100, 50);
+  const tree = doc.getElementById('sessTree');
+  await until(() => tree && tree.children.length > 2, 300, 100);
+  ck('the Sessions list has rows to scroll', !!(tree && tree.children.length > 2),
+     tree ? tree.children.length + ' children' : 'no tree');
+
+  /* The element that actually scrolls, found rather than named.
+
+     `#sessTree` never scrolls -- `#sessScanPad` two levels up does -- and
+     a harness that sets `tree.scrollTop = 120`, reads back 0 and then
+     declares the scroll preserved is a harness that would pass against
+     code which preserves nothing. That is precisely what this did on its
+     first run, and it is why the assertion below that the scroll really
+     moved comes before the assertion that it survived. */
+  let scroller = tree;
+  for (let i = 0; i < 8 && scroller; i++) {
+    if (scroller.scrollHeight > scroller.clientHeight + 2) break;
+    scroller = scroller.parentElement;
+  }
+  ck('found the element the list actually scrolls in',
+     !!scroller && scroller !== doc.documentElement,
+     scroller ? ('#' + scroller.id || scroller.tagName) : 'none');
+  scroller.scrollTop = 120;
+  const was = scroller.scrollTop;
+  ck('and it actually scrolled -- nothing below means anything otherwise',
+     was > 0, String(was));
+
+  ck('the view exposes the quiet repaint the refresher uses',
+     val('typeof BARRY.views.sessions.repaintQuietly') === 'function');
+  run('BARRY.views.sessions.repaintQuietly()');
+  await sleep(60);
+  ck('a quiet repaint leaves the scroll exactly where it was',
+     scroller.scrollTop === was, scroller.scrollTop + ' vs ' + was);
+  ck('and leaves the view alone', val('BARRY.state.view') === 'sessions');
+  ck('and did not empty the list',
+     tree.children.length > 2, tree.children.length + ' children');
+
+  /* Again from a different offset, because restoring to a constant and
+     restoring to where you were look the same from one sample. */
+  const before = tree.children.length;
+  scroller.scrollTop = 140;
+  const was2 = scroller.scrollTop;
+  run('BARRY.views.sessions.repaintQuietly()');
+  await sleep(60);
+  ck('and again from a different offset',
+     scroller.scrollTop === was2, scroller.scrollTop + ' vs ' + was2);
+  ck('with the same rows still there',
+     tree.children.length === before,
+     tree.children.length + ' vs ' + before);
+
+  hd('4. What the page was actually handed');
+  p('   warm state: ' + JSON.stringify(state));
+  for (const n of warmed) {
+    const known = state && state.fresh && (n in state.fresh);
+    p('   ' + n.padEnd(14) + (known
+      ? (state.fresh[n] ? 'rebuilt, and it had changed'
+                        : 'rebuilt, unchanged -- the page did nothing')
+      : 'still rebuilding'));
+  }
+  p('   requests during the run: ' + api().length);
+
+  p('\n' + (bad ? bad + ' FAILED' : 'all checks passed'));
+  document.title = bad ? ('warmboot ' + bad + ' FAILED') : 'warmboot ok';
+} catch (e) {
+  p('\nHARNESS THREW: ' + (e && e.stack || e));
+  document.title = 'warmboot THREW';
+} })();
+</script>

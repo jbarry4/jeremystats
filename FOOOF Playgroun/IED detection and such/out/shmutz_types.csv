@@ -1,0 +1,7 @@
+setting,detections,with_solid,extra,dominant,hf_ll_share,car_keep,amp_rel,top_ratio,orig_n_cross,IED-like,no Solids to compare with
+"original (30 kHz raw, 99.9)",4447,110,4337,1435,1564,159,217,238,275,449,0
+original + 5-10 even rule,881,98,783,142,361,38,22,27,6,187,0
+best overall (detector + channel rule),2491,166,2325,235,260,292,304,567,194,473,0
+"best with CAR, no rule",3123,166,2957,255,304,424,487,760,221,506,0
+"best without CAR, no rule",5144,166,4978,753,1327,641,592,841,256,568,0
+"best without CAR, with rule",2725,166,2559,320,328,331,344,559,182,495,0

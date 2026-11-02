@@ -1,0 +1,182 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Root Canal figures</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 40vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 60vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Root Canal's pictures as figure panels: grab, draw, walk through.
+
+   Establishes its own start: asks the server for a saved Root Canal single
+   whose numbers are on this machine, opens Root Canal on it, and grabs.
+   A machine with none says so and skips -- that is a fact about the
+   machine, not a pass. Everything it saves goes to the by-product lane
+   (?lane=scratch on every /api/figures and /api/figkit/export call), and
+   BARRY.prefs.set is held for the run. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || d === undefined ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return false;
+}
+
+(async () => {
+  const f = document.getElementById('app');
+  let restore = () => {};
+  try {
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    const W = () => f.contentWindow;
+    const D = () => f.contentDocument;
+    const errs = [];
+    W().addEventListener('error', (e) => errs.push(
+      e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+    W().addEventListener('unhandledrejection',
+                         (e) => errs.push('rejected: ' + e.reason));
+    await until(() => typeof W().setView === 'function' && W().eval('BARRY.figure'));
+    await sleep(600);
+    const run = (src) => W().eval(src);
+    const B = () => W().eval('BARRY');
+    const $$ = (sel) => Array.from(D().querySelectorAll(sel));
+
+    const realFetch = W().fetch;
+    W().fetch = function (url, opts) {
+      let u = String(url);
+      if (/^\/api\/(figures|figkit\/export)/.test(u)) {
+        u += (u.indexOf('?') >= 0 ? '&' : '?') + 'lane=scratch';
+      }
+      return realFetch.call(this, u, opts);
+    };
+    const realPrefSet = B().prefs.set;
+    B().prefs.set = () => {};
+    restore = () => { W().fetch = realFetch; B().prefs.set = realPrefSet; };
+
+    head('0. A saved Root Canal single on this machine');
+    const list = await (await realFetch('/api/rootcanal/singles')).json();
+    run("setView('toolkit')");
+    await sleep(800);
+    run("BARRY.views.toolkit.pick('rootcanal')");
+    await sleep(1500);
+    /* The first saved version Root Canal can show here. A version whose
+       set has changed since cannot be refitted ("Read it again"), which is
+       Root Canal's answer, not this harness's question. */
+    let pick = null;
+    let fitted = false;
+    for (const s of (list.singles || []).slice(0, 8)) {
+      const v = (s.versions || []).filter((x) => x.here !== false).pop();
+      if (!v) continue;
+      await run('BARRY.rootcanal._pickSet(' + JSON.stringify(s.entry_id) + ')');
+      await sleep(400);
+      await run('BARRY.rootcanal._openVersion(' + JSON.stringify(s.artifact_id)
+                + ',' + v.v + ')');
+      fitted = await until(() => {
+        const st = run('BARRY.rootcanal._state()');
+        return st.fit && st.fit.ok && !st.fitting;
+      }, 150);
+      if (fitted) { pick = { s, v: v.v }; break; }
+    }
+    if (!pick) { say('note', 'no saved Root Canal single Root Canal can show here; skipped'); return; }
+    say('note', '  using ' + pick.s.session_label + ' (' + pick.s.artifact_id + ' v' + pick.v + ')');
+    check('Root Canal shows the saved version', fitted);
+    const fp = run('BARRY.rootcanal._figureParams()');
+    check('the grab will name the saved version', !!(fp.artifact && fp.artifact.artifact_id),
+          JSON.stringify(fp.artifact));
+
+    head('1. Grab');
+    const btn = await until(() => D().querySelector('.tk-figbar .fig-grab:not([disabled])'), 60);
+    check('the Figure builder button is live on Root Canal', btn);
+    D().querySelector('.tk-figbar .fig-grab').click();
+    const opened = await until(() => D().querySelector('#bigModalBox .fx'), 150);
+    check('the builder opens', opened);
+    const L = () => B().figure.layout();
+    check('the space and the flat views, as two panels',
+          L() && L().panels.map((p) => p.plot).join(',') === 'space,flat',
+          L() && L().panels.map((p) => p.plot).join(','));
+    check('both are Root Canal’s', L() && L().panels.every((p) => p.tool === 'rootcanal'));
+    check('one recording, by its gid', !!(L() && L().recording.gid));
+    const tiled = await until(() => $$('.fx-tile img').filter((i) =>
+      (i.src || '').startsWith('data:image/png')).length === 2, 400);
+    check('both panels are drawn', tiled);
+    const fr = B().figure.frame();
+    check('no panel failed', fr && !(fr.problems || []).length, fr && (fr.problems || []).join(' | '));
+    const foot = (fr && fr.footer || []).join(' ');
+    check('the footer says Root Canal, the set and the counts',
+          /Root Canal/.test(foot) && /set /.test(foot) && /DS/.test(foot), foot);
+    const pal = $$('.fig-palette .fig-chip').map((c) => c.textContent);
+    check('the palette offers the single flat views', pal.indexOf('Amplitude against HF power') >= 0,
+          pal.join(', '));
+
+    head('2. A pair panel, in mV');
+    const chip = $$('.fig-palette .fig-chip').find((c) => /Amplitude against HF/.test(c.textContent));
+    if (chip) chip.click();
+    await until(() => L().panels.length === 3, 40);
+    const p3 = L().panels[2];
+    check('it is added', p3 && p3.plot === 'amp_hf');
+    await until(() => D().querySelector('.fx-tile[data-uid="' + p3.uid + '"] .fx-hit-x'), 300);
+    D().querySelector('.fx-tile[data-uid="' + p3.uid + '"] .fx-hit-x').click();
+    await until(() => D().querySelector('.fx-pop'), 30);
+    const mv = Array.from(D().querySelectorAll('.fx-pop .seg button')).find((b) => b.textContent === 'mV');
+    check('amplitude can be shown in mV', !!mv);
+    if (mv) mv.click();
+    await until(() => (L().panels[2].axes.x || {}).unit === 'mV', 30);
+    check('and is', (L().panels[2].axes.x || {}).unit === 'mV');
+
+    head('3. Export and walk through');
+    await until(() => !D().querySelector('.fx-sheet.busy'), 300);
+    D().getElementById('fxExport').click();
+    const exported = await until(() => ((B().figure.figure() || {}).versions || []).length === 1, 400);
+    check('v1 is made', exported);
+    const fid = (B().figure.figure() || {}).id;
+    D().dispatchEvent(new (W().KeyboardEvent)('keydown', { key: 'Escape', bubbles: true }));
+    await sleep(300);
+    run('BARRY.figreplay.start(' + JSON.stringify(fid) + ', 1)');
+    await until(() => D().querySelector('#bigModalBox .fr #frGo'), 100);
+    const steps = $$('#frSteps .rb-step').map((n) => n.querySelector('.rb-title span').textContent);
+    check('no recording folder is needed: a step per panel, read back, compare',
+          steps.length === 5 && !/Find the recording/.test(steps.join('|')), steps.join(' | '));
+    D().getElementById('frGo').click();
+    const walked = await until(() => {
+      const c = D().getElementById('frCompare');
+      return c && !c.classList.contains('hidden') && c.querySelector('.rb-verdict');
+    }, 900);
+    check('it walks all of it', walked);
+    const states = $$('#frSteps .rb-step').map((n) => n.dataset.state);
+    check('every step is done', states.every((s) => s === 'done'), states.join(','));
+    const verdict = (D().querySelector('#frCompare .rb-verdict') || {}).textContent || '';
+    check('and nothing moved', /Nothing moved/.test(verdict), verdict);
+    run('closeModal()');
+
+    check('no page errors', errs.length === 0, errs.join(' | '));
+  } catch (e) {
+    say('bad', 'crashed: ' + (e && e.message || e));
+    String((e && e.stack) || '').split(/\n/).slice(1, 6)
+      .forEach((ln) => say('bad', '  at ' + ln.trim().slice(0, 140)));
+  } finally {
+    restore();
+    try { f.src = 'about:blank'; } catch (e) { /* gone */ }
+    document.title = bad ? bad + ' failed' : 'all passed';
+    say('note', bad ? bad + ' failed' : 'all passed');
+  }
+})();
+</script>

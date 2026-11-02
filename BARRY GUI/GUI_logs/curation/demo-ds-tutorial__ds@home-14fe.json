@@ -1,0 +1,1349 @@
+{
+  "_at": {
+    "assignee": "2026-09-08T17:47:51.089789+00:00",
+    "based_on": "2026-09-22T19:54:55.097635+00:00",
+    "based_on_at": "2026-09-22T19:54:55.097635+00:00",
+    "closed_at": "2026-09-22T20:21:36.978261+00:00",
+    "created": "2026-09-04T21:16:32.824118+00:00",
+    "gid": "2026-09-04T21:16:32.824118+00:00",
+    "imports": "2026-09-16T19:23:28.198203+00:00",
+    "kind": "2026-09-04T21:16:32.824118+00:00",
+    "labels": "2026-09-04T21:16:32.824118+00:00",
+    "name": "2026-09-04T21:16:32.824118+00:00",
+    "open": "2026-09-22T20:21:36.978261+00:00",
+    "opened_at": "2026-09-22T20:57:12.712633+00:00",
+    "opened_by": "2026-09-08T21:35:15.386841+00:00",
+    "schema": "2026-09-04T21:16:32.824118+00:00",
+    "session_label": "2026-09-04T21:16:32.824118+00:00",
+    "source": "2026-09-04T21:16:32.824118+00:00",
+    "updated": "2026-09-22T20:58:34.251573+00:00"
+  },
+  "_keys": {
+    "events": {
+      "e08d54d6332": [
+        "set",
+        "2026-09-22T20:57:19.052977+00:00"
+      ],
+      "e160d1baeea": [
+        "set",
+        "2026-09-22T20:57:32.886972+00:00"
+      ],
+      "e16c3b0f90a": [
+        "set",
+        "2026-09-22T20:57:17.670544+00:00"
+      ],
+      "e25f6a55fa4": [
+        "set",
+        "2026-09-22T20:57:25.346519+00:00"
+      ],
+      "e28d6c8e928": [
+        "set",
+        "2026-09-22T20:57:21.768545+00:00"
+      ],
+      "e293852f107": [
+        "set",
+        "2026-09-22T20:58:34.311433+00:00"
+      ],
+      "e461eba6e6b": [
+        "set",
+        "2026-09-22T20:57:19.893891+00:00"
+      ],
+      "e4b0f8980cd": [
+        "set",
+        "2026-09-22T20:57:21.033241+00:00"
+      ],
+      "e690fa4cd81": [
+        "set",
+        "2026-09-22T20:58:34.461757+00:00"
+      ],
+      "e6ce7c0db3d": [
+        "set",
+        "2026-09-22T20:57:22.559640+00:00"
+      ],
+      "e75094966d8": [
+        "set",
+        "2026-09-22T20:58:34.370163+00:00"
+      ],
+      "e77ecd41ebe": [
+        "set",
+        "2026-09-22T20:57:24.690999+00:00"
+      ],
+      "e7b1108a8e9": [
+        "set",
+        "2026-09-22T20:58:34.621610+00:00"
+      ],
+      "e7b762573b9": [
+        "set",
+        "2026-09-22T20:57:22.283061+00:00"
+      ],
+      "e9e16e82ff9": [
+        "set",
+        "2026-09-22T20:57:18.620525+00:00"
+      ],
+      "e9f447ddac0": [
+        "set",
+        "2026-09-22T20:57:18.378828+00:00"
+      ],
+      "eacb27094b4": [
+        "set",
+        "2026-09-22T20:58:34.416827+00:00"
+      ],
+      "ed3b49bf97b": [
+        "set",
+        "2026-09-22T20:57:23.900263+00:00"
+      ],
+      "ee5369eaf2b": [
+        "set",
+        "2026-09-22T20:57:33.546029+00:00"
+      ],
+      "ee78e49c9a4": [
+        "set",
+        "2026-09-22T20:57:17.223052+00:00"
+      ],
+      "ee7ec722b92": [
+        "set",
+        "2026-09-22T20:57:18.017769+00:00"
+      ],
+      "eed4f22ea37": [
+        "set",
+        "2026-09-22T20:57:19.537032+00:00"
+      ],
+      "ef18ab13085": [
+        "set",
+        "2026-09-22T20:58:34.512481+00:00"
+      ],
+      "ef47ab02c57": [
+        "set",
+        "2026-09-22T20:58:34.251573+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-22T20:58:34.621610+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "assignee": "Rain",
+  "based_on": 5,
+  "based_on_at": "2026-09-22T15:54:55-0400",
+  "closed_at": null,
+  "created": {
+    "at": "2026-09-04T17:16:32-04:00",
+    "email": "sakhava1@uvm.edu",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "Shahriar"
+  },
+  "events": [
+    {
+      "at": "2026-09-22T16:58:34-0400",
+      "by": "Shahriar Tafti",
+      "id": "ef47ab02c57",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-08T17:04:27-0400",
+          "by": "Rain",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-21T12:32:56-04:00",
+          "by": "Shahriar",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-22T16:58:34-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        }
+      ],
+      "start": 3.4
+    },
+    {
+      "at": "2026-09-22T16:58:34-0400",
+      "by": "Shahriar Tafti",
+      "id": "e293852f107",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-08T17:04:27-0400",
+          "by": "Rain",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-21T12:32:56-04:00",
+          "by": "Shahriar",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-22T16:58:34-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        }
+      ],
+      "start": 7.9
+    },
+    {
+      "at": "2026-09-22T16:58:34-0400",
+      "by": "Shahriar Tafti",
+      "id": "e75094966d8",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-08T17:05:08-0400",
+          "by": "Rain",
+          "label": "flag"
+        },
+        {
+          "at": "2026-09-21T12:32:56-04:00",
+          "by": "Shahriar",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-22T16:58:34-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        }
+      ],
+      "start": 8.2
+    },
+    {
+      "at": "2026-09-22T16:58:34-0400",
+      "by": "Shahriar Tafti",
+      "id": "eacb27094b4",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-08T17:04:27-0400",
+          "by": "Rain",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-18T15:43:45-04:00",
+          "by": "Shahriar",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-22T16:58:34-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 14.6
+    },
+    {
+      "at": "2026-09-22T16:58:34-0400",
+      "by": "Shahriar Tafti",
+      "id": "e690fa4cd81",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-08T13:56:21-0400",
+          "by": "Rain",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-18T15:43:45-04:00",
+          "by": "Shahriar",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-22T16:58:34-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 21.05
+    },
+    {
+      "at": "2026-09-22T16:58:34-0400",
+      "by": "Shahriar Tafti",
+      "id": "ef18ab13085",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-08T17:05:09-0400",
+          "by": "Rain",
+          "label": "review"
+        },
+        {
+          "at": "2026-09-21T12:32:56-04:00",
+          "by": "Shahriar",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-22T16:58:34-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 21.4
+    },
+    {
+      "at": "2026-09-22T16:57:32-0400",
+      "by": "Shahriar Tafti",
+      "id": "e160d1baeea",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-21T12:32:56-04:00",
+          "by": "Shahriar",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-22T16:57:32-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        }
+      ],
+      "start": 27.8
+    },
+    {
+      "at": "2026-09-22T16:57:33-0400",
+      "by": "Shahriar Tafti",
+      "id": "ee5369eaf2b",
+      "label": "garbage",
+      "reviews": [
+        {
+          "at": "2026-09-21T12:32:56-04:00",
+          "by": "Shahriar",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-22T16:57:33-0400",
+          "by": "Shahriar Tafti",
+          "label": "garbage"
+        }
+      ],
+      "start": 33.2
+    },
+    {
+      "at": "2026-09-22T16:58:34-0400",
+      "by": "Shahriar Tafti",
+      "id": "e7b1108a8e9",
+      "label": "flag",
+      "reviews": [
+        {
+          "at": "2026-09-21T12:32:56-04:00",
+          "by": "Shahriar",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-22T16:58:34-0400",
+          "by": "Shahriar Tafti",
+          "label": "flag"
+        }
+      ],
+      "start": 33.9
+    },
+    {
+      "at": "2026-09-22T16:57:17-0400",
+      "by": "Shahriar Tafti",
+      "id": "ee78e49c9a4",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-08T13:56:21-0400",
+          "by": "Rain",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-22T16:57:17-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 41.5
+    },
+    {
+      "at": "2026-09-22T16:57:17-0400",
+      "by": "Shahriar Tafti",
+      "id": "e16c3b0f90a",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-22T16:57:17-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 48.0
+    },
+    {
+      "at": "2026-09-22T16:57:18-0400",
+      "by": "Shahriar Tafti",
+      "id": "ee7ec722b92",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-22T16:57:18-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 55.7
+    },
+    {
+      "at": "2026-09-22T16:57:18-0400",
+      "by": "Shahriar Tafti",
+      "id": "e9f447ddac0",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-22T16:57:18-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 56.1
+    },
+    {
+      "at": "2026-09-22T16:57:18-0400",
+      "by": "Shahriar Tafti",
+      "id": "e9e16e82ff9",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-22T16:57:18-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 62.4
+    },
+    {
+      "at": "2026-09-22T16:57:19-0400",
+      "by": "Shahriar Tafti",
+      "id": "e08d54d6332",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-08T13:56:21-0400",
+          "by": "Rain",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-22T16:57:19-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 69.9
+    },
+    {
+      "at": "2026-09-22T16:57:19-0400",
+      "by": "Shahriar Tafti",
+      "id": "eed4f22ea37",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-22T16:57:19-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 70.3
+    },
+    {
+      "at": "2026-09-22T16:57:19-0400",
+      "by": "Shahriar Tafti",
+      "id": "e461eba6e6b",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-22T16:57:19-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 77.2
+    },
+    {
+      "at": "2026-09-22T16:57:21-0400",
+      "by": "Shahriar Tafti",
+      "id": "e4b0f8980cd",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-22T16:57:21-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 84.6
+    },
+    {
+      "at": "2026-09-22T16:57:21-0400",
+      "by": "Shahriar Tafti",
+      "id": "e28d6c8e928",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-22T16:57:21-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 91.1
+    },
+    {
+      "at": "2026-09-22T16:57:22-0400",
+      "by": "Shahriar Tafti",
+      "id": "e7b762573b9",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-08T13:56:21-0400",
+          "by": "Rain",
+          "label": "spike"
+        },
+        {
+          "at": "2026-09-22T16:57:22-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 91.8
+    },
+    {
+      "at": "2026-09-22T16:57:22-0400",
+      "by": "Shahriar Tafti",
+      "id": "e6ce7c0db3d",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-22T16:57:22-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 98.3
+    },
+    {
+      "at": "2026-09-22T16:57:23-0400",
+      "by": "Shahriar Tafti",
+      "id": "ed3b49bf97b",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-22T16:57:23-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 105.0
+    },
+    {
+      "at": "2026-09-22T16:57:24-0400",
+      "by": "Shahriar Tafti",
+      "id": "e77ecd41ebe",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-22T16:57:24-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 112.7
+    },
+    {
+      "at": "2026-09-22T16:57:25-0400",
+      "by": "Shahriar Tafti",
+      "id": "e25f6a55fa4",
+      "label": "spike",
+      "reviews": [
+        {
+          "at": "2026-09-22T16:57:25-0400",
+          "by": "Shahriar Tafti",
+          "label": "spike"
+        }
+      ],
+      "start": 118.2
+    }
+  ],
+  "gid": "demo-ds-tutorial",
+  "imports": [
+    {
+      "at": "2026-09-04T17:16:32-0400",
+      "n": 24,
+      "skipped": 0,
+      "source": {
+        "kind": "demo",
+        "note": "A made-up recording, so the Guide has something to show on a machine with no data mounted. Nothing here is real."
+      }
+    },
+    {
+      "at": "2026-09-08T13:56:21-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T14:04:42-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T14:05:37-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T14:40:24-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T14:56:41-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T15:06:28-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T15:32:32-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T15:51:01-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T15:52:50-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T16:21:57-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T16:44:20-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T17:04:27-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T17:36:12-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T17:55:57-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T18:19:29-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T18:24:24-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T18:40:34-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T19:10:16-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T19:28:21-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T19:32:45-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T19:48:47-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T20:06:36-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T20:24:16-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T20:39:37-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T20:52:42-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T20:58:25-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T21:12:38-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T21:26:17-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T21:37:59-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T21:48:38-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T22:51:55-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T23:07:01-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-08T23:27:38-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T00:17:12-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T00:48:04-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T01:19:42-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T01:51:17-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T02:29:26-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T03:06:30-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T15:14:12-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T15:32:37-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T15:51:47-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T17:23:50-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T18:34:28-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T19:11:45-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T19:44:50-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T20:15:29-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T20:56:00-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T21:02:30-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-09T21:44:27-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-10T12:47:44-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-10T14:22:24-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-10T15:10:23-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-10T17:16:22-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-10T17:47:20-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-11T11:10:46-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-11T12:37:35-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-11T13:23:11-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-11T13:59:44-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-11T14:08:27-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-11T14:17:27-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-14T09:49:30-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-14T10:37:09-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-14T11:30:15-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-14T12:27:25-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-14T13:32:29-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-14T14:26:12-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-15T16:36:24-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-16T11:14:34-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-16T12:17:54-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    },
+    {
+      "at": "2026-09-16T15:23:28-0400",
+      "disagreed": 0,
+      "labelled": 4,
+      "n": 0,
+      "skipped": 4,
+      "source": {
+        "from": "harness bank"
+      }
+    }
+  ],
+  "kind": "ds",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "spike",
+      "keys": [
+        "1",
+        "d"
+      ],
+      "name": "Dentate Spike"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "2",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "flagged": true,
+      "id": "flag",
+      "keys": [
+        "3",
+        "f"
+      ],
+      "name": "Flag"
+    },
+    {
+      "color": "#8b5cf6",
+      "flagged": true,
+      "id": "review",
+      "keys": [
+        "4",
+        "r"
+      ],
+      "name": "Flag for Deep Review"
+    }
+  ],
+  "name": "DEMO m1 s1 (dentate spikes) (demo set)",
+  "open": true,
+  "opened_at": "2026-09-22T16:57:12-0400",
+  "opened_by": "Shahriar Tafti",
+  "schema": 1,
+  "session_label": "DEMO m1 s1 (dentate spikes)",
+  "source": {
+    "kind": "demo",
+    "note": "A made-up recording, so the Guide has something to show on a machine with no data mounted. Nothing here is real."
+  },
+  "updated": {
+    "app_version": "2026.09.22.3",
+    "at": "2026-09-22T16:58:34-04:00",
+    "commit": "d21dd4c",
+    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "host": "Home",
+    "machine": "Homebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

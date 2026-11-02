@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-10-15T17:07:28.005476+00:00",
+    "gid": "2026-10-15T17:07:28.005476+00:00",
+    "group": "2026-10-15T17:07:28.005476+00:00",
+    "key": "2026-10-15T17:07:28.005476+00:00",
+    "label": "2026-10-15T17:07:28.005476+00:00",
+    "loose_key": "2026-10-15T17:07:28.005476+00:00",
+    "mouse": "2026-10-15T17:07:28.005476+00:00",
+    "project": "2026-10-15T17:07:28.005476+00:00",
+    "project_source": "2026-10-15T17:07:28.005476+00:00",
+    "retired": "2026-10-15T17:07:28.005476+00:00",
+    "schema": "2026-10-15T17:07:28.005476+00:00",
+    "session": "2026-10-15T17:07:28.005476+00:00",
+    "start": "2026-10-15T17:07:28.005476+00:00",
+    "updated": "2026-10-15T17:07:40.610677+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2023-08-28_13-40-21": [
+        "set",
+        "2026-10-15T17:07:40.610677+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-15T17:07:40.610677+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.14.8",
+    "at": "2026-10-15T13:07:28-04:00",
+    "commit": "90f93fb3",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s9da47abc2589",
+  "group": null,
+  "key": "m014_s002_2023-08-28_13-40-34",
+  "label": "KCNT1 m14 s2 2023-08-28",
+  "loose_key": "m014_s002",
+  "mouse": 14,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2023-08-28_13-40-21"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 2,
+  "start": "2023-08-28T17:40:34+00:00",
+  "updated": {
+    "app_version": "2026.10.14.8",
+    "at": "2026-10-15T13:07:40-04:00",
+    "commit": "90f93fb3",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

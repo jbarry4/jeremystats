@@ -1,5 +1,5 @@
 """
-sysinfo.py -- Platform abstraction so BARRY runs identically on Windows and macOS.
+sysinfo.py -- Platform abstraction so Jarvis runs identically on Windows and macOS.
 
 Everything OS-specific lives here: locating MATLAB and ffmpeg, revealing a path
 in the file manager, killing a process tree, and opening the native file picker.
@@ -187,12 +187,12 @@ def find_ffprobe():
 def ffmpeg_install_hint():
     """Copy-pasteable install instructions for whichever OS we are on."""
     if IS_WINDOWS:
-        return ("Install ffmpeg, then restart BARRY GUI:\n"
+        return ("Install ffmpeg, then restart Jarvis:\n"
                 "    winget install Gyan.FFmpeg\n"
                 "or download from https://www.gyan.dev/ffmpeg/builds/ and add "
                 "its bin folder to PATH.")
     if IS_MAC:
-        return ("Install ffmpeg, then restart BARRY GUI:\n"
+        return ("Install ffmpeg, then restart Jarvis:\n"
                 "    brew install ffmpeg\n"
                 "(Homebrew: https://brew.sh)")
     return "Install ffmpeg with your package manager (e.g. apt install ffmpeg)."

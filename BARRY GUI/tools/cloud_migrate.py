@@ -1,11 +1,11 @@
 """
-cloud_migrate.py -- Move everything BARRY knows into Supabase.
+cloud_migrate.py -- Move everything Jarvis knows into Supabase.
 
 Sessions, mice, the event bank, curation decisions, layer sheets, results and
 their filing, storyboards, presets, and the whole history -- runs, activity,
 errors. Then the figures themselves into the storage bucket.
 
-Nothing is deleted locally. The files stay as the offline buffer, and BARRY
+Nothing is deleted locally. The files stay as the offline buffer, and Jarvis
 keeps working with no network; this is the shared copy.
 
 Safe to run twice. Every write is an upsert and the database drops anything

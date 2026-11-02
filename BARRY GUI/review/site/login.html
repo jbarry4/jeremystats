@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>DEWEY Monolith review</title>
+<style>
+:root { --bg: #f6f6f2; --surface: #fff; --ink: #16181b; --ink-3: #6f747d; --line: #e2e1db; --line-2: #cfcec7; --up: #c63a39; --focus: #c98a00; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #111316; --surface: #191c20; --ink: #e9eaec; --ink-3: #8b9099; --line: #2b2f35; --line-2: #3a3f46; --up: #f2807e; --focus: #f2b933; } }
+:root[data-theme="dark"] { --bg: #111316; --surface: #191c20; --ink: #e9eaec; --ink-3: #8b9099; --line: #2b2f35; --line-2: #3a3f46; --up: #f2807e; --focus: #f2b933; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 420px; margin: 12vh auto 0; padding: 0 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+p { margin: 0 0 12px; color: var(--ink-3); font-size: 14px; }
+label { display: block; font-size: 13px; margin-bottom: 4px; }
+input { font: inherit; width: 100%; padding: 8px 10px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface); color: var(--ink); }
+button { font: inherit; margin-top: 12px; width: 100%; padding: 8px; border: 0; border-radius: 6px; background: var(--ink); color: var(--surface); cursor: pointer; }
+#why { color: var(--up); font-size: 13px; margin-top: 10px; min-height: 1.2em; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main>
+  <form class="card" id="f">
+    <h1>The DEWEY Monolith, for review</h1>
+    <p>Barry lab, University of Vermont. Ask Shahriar for the password.</p>
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password" required autofocus>
+    <button type="submit">Sign in</button>
+    <div id="why" role="status"></div>
+  </form>
+</main>
+<script>
+'use strict';
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const why = document.getElementById('why');
+  why.textContent = '';
+  try {
+    const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ password: document.getElementById('pw').value }) });
+    const b = await r.json().catch(() => ({}));
+    if (!r.ok || !b.ok) { why.textContent = b.error || ('Could not sign in (HTTP ' + r.status + ').'); return; }
+    const next = new URLSearchParams(location.search).get('next') || '/';
+    location.href = next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : '/';
+  } catch (err) {
+    why.textContent = 'Could not reach the site: ' + err.message;
+  }
+});
+</script>
+</body>
+</html>

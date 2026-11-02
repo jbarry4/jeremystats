@@ -1,0 +1,1111 @@
+{
+  "_at": {
+    "added": "2026-09-09T02:03:42.549977+00:00",
+    "by_label": "2026-09-12T21:23:12.636226+00:00",
+    "curation_label": "2026-09-12T21:23:12.636226+00:00",
+    "events": "2026-09-12T21:23:12.636226+00:00",
+    "gid": "2026-09-12T21:23:12.636226+00:00",
+    "id": "2026-09-12T21:23:12.636226+00:00",
+    "label_names": "2026-09-12T21:23:12.636226+00:00",
+    "mouse": "2026-09-12T21:23:12.636226+00:00",
+    "n": "2026-09-12T21:23:12.636226+00:00",
+    "name": "2026-09-12T21:23:12.636226+00:00",
+    "note": "2026-09-12T21:23:12.636226+00:00",
+    "project": "2026-09-12T21:23:12.636226+00:00",
+    "recording_start": "2026-09-12T21:23:12.636226+00:00",
+    "schema": "2026-09-12T21:23:12.636226+00:00",
+    "session": "2026-09-12T21:23:12.636226+00:00",
+    "session_key": "2026-09-12T21:23:12.636226+00:00",
+    "session_label": "2026-09-12T21:23:12.636226+00:00",
+    "session_loose_key": "2026-09-12T21:23:12.636226+00:00",
+    "source": "2026-09-12T21:23:12.636226+00:00",
+    "specified": "2026-09-12T21:23:12.636226+00:00",
+    "type": "2026-09-12T21:23:12.636226+00:00",
+    "type_name": "2026-09-12T21:23:12.636226+00:00",
+    "units": "2026-09-12T21:23:12.636226+00:00",
+    "version": "2026-09-22T19:21:55.378338+00:00"
+  },
+  "_keys": {
+    "history": {
+      "{\"at\": \"2026-09-08T22:02:30-04:00\", \"by\": \"Shahriar Tafti\", \"changed\": []}": [
+        "set",
+        "2026-09-12T21:23:12.636226+00:00"
+      ],
+      "{\"at\": \"2026-09-08T22:03:42-04:00\", \"by\": \"Shahriar Tafti\", \"renamed\": {\"fields\": 3, \"from\": \"theexaminedexistence@gmail.com\", \"to\": \"Shahriar Tafti\"}}": [
+        "set",
+        "2026-09-12T21:23:12.636226+00:00"
+      ],
+      "{\"at\": \"2026-09-12T17:23:12-04:00\", \"by\": \"Rain Younger\", \"changed\": [\"events\"], \"now_n\": 67, \"was_n\": 67, \"why\": \"re-banked from the curation set\"}": [
+        "set",
+        "2026-09-12T21:23:12.636226+00:00"
+      ]
+    },
+    "versions": {
+      "ccec6580c698": [
+        "gone",
+        "2026-09-22T19:21:55.378338+00:00"
+      ],
+      "v0-66c8b771": [
+        "set",
+        "2026-09-12T21:23:12.636226+00:00"
+      ],
+      "v1-5f0a9b66": [
+        "set",
+        "2026-09-12T21:23:12.636226+00:00"
+      ],
+      "{\"at\": \"2026-09-12T17:23:12-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"garbage\": 62, \"spike\": 5}, \"machine\": \"BarryLab\", \"n\": 67, \"note\": \"Gui final curation\\n-RY\", \"snap_elsewhere\": true, \"v\": 2}": [
+        "set",
+        "2026-09-12T21:23:24.721575+00:00"
+      ],
+      "{\"at\": \"2026-09-22T15:21:09-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"Dentate Spike\": 5}, \"machine\": \"BarryLab\", \"n\": 5, \"note\": \"Aligned to the mean magnitude over 16 channels, \\u00b1100 ms, reading v2. 5 stamp(s) moved by 13.1 to 31.3 ms; 62 left where they were. No labels changed.\", \"snap\": [[754.085062, \"spike\"], [935.756197, \"spike\"], [967.08115, \"spike\"], [970.125278, \"spike\"], [990.238068, \"spike\"]], \"v\": 3}": [
+        "set",
+        "2026-09-22T19:21:58.260916+00:00"
+      ],
+      "{\"at\": \"2026-09-22T15:21:09-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"Dentate Spike\": 5}, \"machine\": \"BarryLab\", \"n\": 5, \"note\": \"Aligned to the mean magnitude over 16 channels, \\u00b1100 ms, reading v2. 5 stamp(s) moved by 13.1 to 31.3 ms; 62 left where they were. No labels changed.\", \"snap_elsewhere\": true, \"v\": 3}": [
+        "gone",
+        "2026-09-22T19:21:58.260916+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-22T19:21:58.260916+00:00",
+    "machine": "home-14fe",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-02T19:00:02-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "by_label": {
+    "garbage": 62,
+    "spike": 5
+  },
+  "curation_label": "*",
+  "events": [
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 160.623
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 189.752
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 192.674
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 311.456
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 313.687
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 532.904
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 535.952
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 554.295
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 557.844
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 596.157
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 642.885
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 715.463
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 715.73
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 747.426
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 754.063
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 935.728
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 942.513
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 967.052
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 970.094
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 971.419
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 985.84
+    },
+    {
+      "label": "Dentate Spike",
+      "label_id": "spike",
+      "start": 990.225
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 992.339
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1110.388
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1112.07
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1174.409
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1199.122
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1306.367
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1330.102
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1388.51
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1402.344
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1433.232
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1500.388
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1500.555
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1544.927
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1556.216
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1569.266
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1569.414
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1571.693
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1573.494
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1574.149
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1576.281
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1576.812
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1590.005
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1598.729
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1602.199
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1602.611
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1605.977
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1610.013
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1613.235
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1637.415
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1639.224
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1639.411
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1640.622
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1640.759
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1649.278
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1830.565
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1846.611
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1907.008
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1935.322
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1942.088
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 1954.253
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2081.153
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2117.093
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2136.558
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2151.988
+    },
+    {
+      "label": "Garbage",
+      "label_id": "garbage",
+      "start": 2179.162
+    }
+  ],
+  "gid": "sd94396e874c7",
+  "history": [
+    {
+      "at": "2026-09-08T22:02:30-04:00",
+      "by": "Shahriar Tafti",
+      "changed": []
+    },
+    {
+      "at": "2026-09-08T22:03:42-04:00",
+      "by": "Shahriar Tafti",
+      "renamed": {
+        "fields": 3,
+        "from": "theexaminedexistence@gmail.com",
+        "to": "Shahriar Tafti"
+      }
+    },
+    {
+      "at": "2026-09-12T17:23:12-04:00",
+      "by": "Rain Younger",
+      "changed": [
+        "events"
+      ],
+      "now_n": 67,
+      "was_n": 67,
+      "why": "re-banked from the curation set"
+    }
+  ],
+  "id": "6a2ade1040d3",
+  "label_names": {
+    "flag": "Flag",
+    "garbage": "Garbage",
+    "review": "Flag for Deep Review",
+    "spike": "Dentate Spike"
+  },
+  "mouse": 51,
+  "n": 67,
+  "name": "m51s1apr8",
+  "note": "",
+  "project": "PTEN",
+  "recording_start": "2025-04-08T16:58:56",
+  "schema": 1,
+  "session": 1,
+  "session_key": "m051_s001_2025-04-08_16-58-56",
+  "session_label": "PTEN m51 s1 2025-04-08",
+  "session_loose_key": "m051_s001",
+  "source": {
+    "detector": "ets_hp_1_lp_300_nf",
+    "file": "C:\\Users\\Z390\\Desktop\\jeremystats\\DS Analysis\\ETS\\m51s1_ets\\ets_hp_1_lp_300_nf.mat",
+    "parameters": {
+      "filter": "ets_hp_1_lp_300_nf.mat",
+      "variable": "Combined_DS_timestamps_sec"
+    },
+    "pipeline": "ETS dentate-spike export",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording",
+  "version": 3,
+  "versions": [
+    {
+      "at": "2026-09-02T19:00:02-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "unspecified": 67
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-66c8b771",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 67,
+      "note": "Imported from ETS dentate-spike export. 67 candidates, none decided yet.",
+      "snap": [
+        [
+          160.623,
+          null
+        ],
+        [
+          189.752,
+          null
+        ],
+        [
+          192.674,
+          null
+        ],
+        [
+          311.456,
+          null
+        ],
+        [
+          313.687,
+          null
+        ],
+        [
+          532.904,
+          null
+        ],
+        [
+          535.952,
+          null
+        ],
+        [
+          554.295,
+          null
+        ],
+        [
+          557.844,
+          null
+        ],
+        [
+          596.157,
+          null
+        ],
+        [
+          642.885,
+          null
+        ],
+        [
+          715.463,
+          null
+        ],
+        [
+          715.73,
+          null
+        ],
+        [
+          747.426,
+          null
+        ],
+        [
+          754.063,
+          null
+        ],
+        [
+          935.728,
+          null
+        ],
+        [
+          942.513,
+          null
+        ],
+        [
+          967.052,
+          null
+        ],
+        [
+          970.094,
+          null
+        ],
+        [
+          971.419,
+          null
+        ],
+        [
+          985.84,
+          null
+        ],
+        [
+          990.225,
+          null
+        ],
+        [
+          992.339,
+          null
+        ],
+        [
+          1110.388,
+          null
+        ],
+        [
+          1112.07,
+          null
+        ],
+        [
+          1174.409,
+          null
+        ],
+        [
+          1199.122,
+          null
+        ],
+        [
+          1306.367,
+          null
+        ],
+        [
+          1330.102,
+          null
+        ],
+        [
+          1388.51,
+          null
+        ],
+        [
+          1402.344,
+          null
+        ],
+        [
+          1433.232,
+          null
+        ],
+        [
+          1500.388,
+          null
+        ],
+        [
+          1500.555,
+          null
+        ],
+        [
+          1544.927,
+          null
+        ],
+        [
+          1556.216,
+          null
+        ],
+        [
+          1569.266,
+          null
+        ],
+        [
+          1569.414,
+          null
+        ],
+        [
+          1571.693,
+          null
+        ],
+        [
+          1573.494,
+          null
+        ],
+        [
+          1574.149,
+          null
+        ],
+        [
+          1576.281,
+          null
+        ],
+        [
+          1576.812,
+          null
+        ],
+        [
+          1590.005,
+          null
+        ],
+        [
+          1598.729,
+          null
+        ],
+        [
+          1602.199,
+          null
+        ],
+        [
+          1602.611,
+          null
+        ],
+        [
+          1605.977,
+          null
+        ],
+        [
+          1610.013,
+          null
+        ],
+        [
+          1613.235,
+          null
+        ],
+        [
+          1637.415,
+          null
+        ],
+        [
+          1639.224,
+          null
+        ],
+        [
+          1639.411,
+          null
+        ],
+        [
+          1640.622,
+          null
+        ],
+        [
+          1640.759,
+          null
+        ],
+        [
+          1649.278,
+          null
+        ],
+        [
+          1830.565,
+          null
+        ],
+        [
+          1846.611,
+          null
+        ],
+        [
+          1907.008,
+          null
+        ],
+        [
+          1935.322,
+          null
+        ],
+        [
+          1942.088,
+          null
+        ],
+        [
+          1954.253,
+          null
+        ],
+        [
+          2081.153,
+          null
+        ],
+        [
+          2117.093,
+          null
+        ],
+        [
+          2136.558,
+          null
+        ],
+        [
+          2151.988,
+          null
+        ],
+        [
+          2179.162,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "at": "2026-09-02T19:00:02-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "flag": 6,
+        "garbage": 61
+      },
+      "changed": 67,
+      "gained": 0,
+      "id": "v1-5f0a9b66",
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {
+        "undecided \u2192 flag": 6,
+        "undecided \u2192 garbage": 61
+      },
+      "n": 67,
+      "note": "Sorted by dragging the snapshots into folders, before BARRY. 67 of 67 decided.",
+      "rebuilt_from": {
+        "folder": "m51s1apr8",
+        "root": "E:/PTEN_DS_Curation/Visualized_spikes_hp_1_lp_300_nf_CSD_zoomout_50ms_spec_HighMag_090326"
+      },
+      "snap": [
+        [
+          160.623,
+          "garbage"
+        ],
+        [
+          189.752,
+          "garbage"
+        ],
+        [
+          192.674,
+          "garbage"
+        ],
+        [
+          311.456,
+          "garbage"
+        ],
+        [
+          313.687,
+          "garbage"
+        ],
+        [
+          532.904,
+          "flag"
+        ],
+        [
+          535.952,
+          "garbage"
+        ],
+        [
+          554.295,
+          "garbage"
+        ],
+        [
+          557.844,
+          "garbage"
+        ],
+        [
+          596.157,
+          "garbage"
+        ],
+        [
+          642.885,
+          "garbage"
+        ],
+        [
+          715.463,
+          "garbage"
+        ],
+        [
+          715.73,
+          "garbage"
+        ],
+        [
+          747.426,
+          "garbage"
+        ],
+        [
+          754.063,
+          "garbage"
+        ],
+        [
+          935.728,
+          "garbage"
+        ],
+        [
+          942.513,
+          "garbage"
+        ],
+        [
+          967.052,
+          "garbage"
+        ],
+        [
+          970.094,
+          "garbage"
+        ],
+        [
+          971.419,
+          "garbage"
+        ],
+        [
+          985.84,
+          "garbage"
+        ],
+        [
+          990.225,
+          "flag"
+        ],
+        [
+          992.339,
+          "garbage"
+        ],
+        [
+          1110.388,
+          "flag"
+        ],
+        [
+          1112.07,
+          "garbage"
+        ],
+        [
+          1174.409,
+          "garbage"
+        ],
+        [
+          1199.122,
+          "garbage"
+        ],
+        [
+          1306.367,
+          "garbage"
+        ],
+        [
+          1330.102,
+          "garbage"
+        ],
+        [
+          1388.51,
+          "garbage"
+        ],
+        [
+          1402.344,
+          "garbage"
+        ],
+        [
+          1433.232,
+          "garbage"
+        ],
+        [
+          1500.388,
+          "garbage"
+        ],
+        [
+          1500.555,
+          "garbage"
+        ],
+        [
+          1544.927,
+          "garbage"
+        ],
+        [
+          1556.216,
+          "garbage"
+        ],
+        [
+          1569.266,
+          "flag"
+        ],
+        [
+          1569.414,
+          "garbage"
+        ],
+        [
+          1571.693,
+          "garbage"
+        ],
+        [
+          1573.494,
+          "garbage"
+        ],
+        [
+          1574.149,
+          "garbage"
+        ],
+        [
+          1576.281,
+          "garbage"
+        ],
+        [
+          1576.812,
+          "garbage"
+        ],
+        [
+          1590.005,
+          "garbage"
+        ],
+        [
+          1598.729,
+          "garbage"
+        ],
+        [
+          1602.199,
+          "garbage"
+        ],
+        [
+          1602.611,
+          "garbage"
+        ],
+        [
+          1605.977,
+          "flag"
+        ],
+        [
+          1610.013,
+          "garbage"
+        ],
+        [
+          1613.235,
+          "garbage"
+        ],
+        [
+          1637.415,
+          "garbage"
+        ],
+        [
+          1639.224,
+          "garbage"
+        ],
+        [
+          1639.411,
+          "garbage"
+        ],
+        [
+          1640.622,
+          "garbage"
+        ],
+        [
+          1640.759,
+          "flag"
+        ],
+        [
+          1649.278,
+          "garbage"
+        ],
+        [
+          1830.565,
+          "garbage"
+        ],
+        [
+          1846.611,
+          "garbage"
+        ],
+        [
+          1907.008,
+          "garbage"
+        ],
+        [
+          1935.322,
+          "garbage"
+        ],
+        [
+          1942.088,
+          "garbage"
+        ],
+        [
+          1954.253,
+          "garbage"
+        ],
+        [
+          2081.153,
+          "garbage"
+        ],
+        [
+          2117.093,
+          "garbage"
+        ],
+        [
+          2136.558,
+          "garbage"
+        ],
+        [
+          2151.988,
+          "garbage"
+        ],
+        [
+          2179.162,
+          "garbage"
+        ]
+      ],
+      "v": 1
+    },
+    {
+      "at": "2026-09-12T17:23:12-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "garbage": 62,
+        "spike": 5
+      },
+      "machine": "BarryLab",
+      "n": 67,
+      "note": "Gui final curation\n-RY",
+      "snap_elsewhere": true,
+      "v": 2
+    },
+    {
+      "at": "2026-09-22T15:21:09-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "Dentate Spike": 5
+      },
+      "machine": "BarryLab",
+      "n": 5,
+      "note": "Aligned to the mean magnitude over 16 channels, \u00b1100 ms, reading v2. 5 stamp(s) moved by 13.1 to 31.3 ms; 62 left where they were. No labels changed.",
+      "snap": [
+        [
+          754.085062,
+          "spike"
+        ],
+        [
+          935.756197,
+          "spike"
+        ],
+        [
+          967.08115,
+          "spike"
+        ],
+        [
+          970.125278,
+          "spike"
+        ],
+        [
+          990.238068,
+          "spike"
+        ]
+      ],
+      "v": 3
+    }
+  ]
+}

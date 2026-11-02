@@ -1,0 +1,50 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>vaccshot</title>
+<style>html,body{margin:0;height:100%;background:#0a1310}
+iframe{position:fixed;inset:0;width:100vw;height:100vh;border:0}</style></head>
+<body><iframe id="app" src="/"></iframe>
+<script>
+/* Poses "Everything VACC knows" on its card view, for a screenshot.
+
+   A shot-taker, not a harness: it asserts nothing and reports no checks.
+   It exists because the card view is a shelf of cards and the only way to
+   know whether a shelf reads well is to look at it -- `--dump-dom` will
+   happily report a layout that has collapsed into one column.
+
+       python tools/../_dev  ->  served like any other page
+       ?tab=catalogue        ->  the tree instead
+       ?tab=browse           ->  the directory walk */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(80);
+  }
+  return null;
+}
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              30000);
+  await ev('setView("sessions")');
+  await sleep(800);
+  await until(() => ev('BARRY.vacc && BARRY.vacc.counts'), 20000);
+  await ev("BARRY.views.sessions.setMode('vacc')");
+  const want = new URLSearchParams(location.search).get('tab');
+  if (want) {
+    const name = want === 'catalogue' ? 'Catalogue'
+               : want === 'browse' ? 'Directories' : 'Recordings';
+    await until(() => D().querySelector('#vaccBody .vacc-seg'), 30000);
+    const b = Array.from(D().querySelectorAll('#vaccBody .vacc-seg button'))
+      .find((x) => x.textContent === name);
+    if (b) b.click();
+  }
+  await until(() => D().querySelector('#vaccBody .sess-card'), 40000);
+  await sleep(1500);
+  document.title = 'vaccshot: posed';
+})();
+</script></body></html>

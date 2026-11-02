@@ -1,5 +1,5 @@
 """
-store.py -- The GUI_logs store: everything BARRY remembers, on disk, in git.
+store.py -- The GUI_logs store: everything Jarvis remembers, on disk, in git.
 
 Layout -- and every path in it is chosen so that **no two machines ever write
 the same file**, which is what makes a git conflict impossible rather than
@@ -32,6 +32,7 @@ import json
 import os
 import platform
 import time
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -57,6 +58,11 @@ SESSION_SPEC = {
     # One key per machine, written only by that machine.
     "seen": shards.MAPLWW,
     "bookmarks": shards.BYID,
+    # Which probe each block of sixty-four channels is. Merged per bank, so
+    # somebody labelling the cortex bank on the rig and somebody labelling
+    # the hippocampus bank on a laptop both keep their work -- under LWW the
+    # second write would carry the first one's bank back to unlabelled.
+    "channel_banks": shards.BYID,
 }
 
 PRESET_SPEC = {"presets": shards.BYID}
@@ -71,6 +77,29 @@ PREFS_SPEC = {
     # Already a map keyed by hostname, which is the same idea one level down;
     # merging it per key means each machine only ever changes its own entry.
     "themes": shards.MAPLWW,
+    # VACC Mode, keyed by hostname for the same reason and with the same
+    # consequence if it is left out: anything not named here is LWW, so the
+    # rig turning the mode off would replace the whole map and the laptop's
+    # entry would vanish on its next pull.
+    "vacc": shards.MAPLWW,
+    # Whether the name is shown (web/js/jarvis.js), keyed by hostname for the
+    # same reason again -- and start.py reads it to keep the name out of the
+    # terminal on a machine where it is hidden.
+    "jarvis": shards.MAPLWW,
+    # Root Canal's archived borders (2026-10-19): {artifact id: {at}}.
+    # Merged per border, so two people archiving different ones both keep
+    # theirs, and putting one back (a removed key) wins over an older
+    # archive of it. A preference rather than a field on the artifact,
+    # because putting one back has to sync too, and an artifact's soft
+    # delete only ever travels one way.
+    "rootcanal_border_archive": shards.MAPLWW,
+    # Root Canal's folders for saved pools and pools of pools (2026-10-20):
+    # the folders, {id: {name, at, by, gone}}, and which folder each pool is
+    # in, {pool id: folder id or ""}. Merged per key for the same reason as
+    # the archive: two people filing different pools both keep theirs, and
+    # renaming one folder does not undo somebody else's new one.
+    "rootcanal_pool_folders": shards.MAPLWW,
+    "rootcanal_pool_in": shards.MAPLWW,
 }
 
 # Settings that describe this screen rather than this project. Merging them
@@ -79,9 +108,37 @@ PREFS_SPEC = {
 # do not exist on the other machine anyway. Stored per machine like everything
 # else, and simply read from your own shard.
 PREFS_LOCAL = ("theme", "density", "panes", "last_view", "last_session",
+               # How wide somebody likes the curation window. About this
+               # screen and this pair of eyes, not about the project.
+               "curate_span",
+               # And Braces' trace view, the same way (2026-10-13).
+               "braces_span",
+               # And Spotter's and Panning's (2026-10-19).
+               "spotter_span", "panning_span",
                "chrome", "fullscreen", "zoom",
                "recent_scripts", "recent_bookmarks", "pipeline_folders",
-               "scratch_draft")
+               "scratch_draft",
+               # The VACC sign-in this machine's app has already greeted
+               # (2026-10-20): a newer `signed_in_at` in .vacc.json -- a
+               # sign-in done in Setup -- turns VACC Mode on once.
+               "vacc_signed_ack",
+               # Motion: "lively" (default) or "calm" (2026-10-20).
+               "motion",
+               # Jarvis Light, "on" or "off" (2026-10-21): a speed setting
+               # for a slower computer, so about this machine and nobody
+               # else's (web/js/lite.js). The server reads it too, to halve
+               # its cache budget (backend/membudget.py).
+               "lite",
+               # Support panel preferences (2026-10-22). They were shared by
+               # every machine, so whoever changed theirs last changed
+               # everyone's; one person's travels to another now as a
+               # preset they copy (presets kind 'support_panels').
+               "support_panels",
+               # This screen's Xplorefinder: the channel column folded or
+               # not, the overview strip in the main and support windows,
+               # and how faint Faded marks are (2026-10-21/22).
+               "xf_chan_column", "xf_overview_main", "xf_overview_aid",
+               "marks_fade")
 
 TRIAGE_SPEC = {"marks": shards.MAPLWW}
 TRIAGE_BASE = "resolved"
@@ -95,6 +152,9 @@ class Store:
         # two cannot both be built first. None means "no profile", which
         # provenance() handles by falling back to the git identity.
         self.profile = None
+        # Set by the app: whether the request being served is a test's (the
+        # test client, a harness page). record_error marks what it writes.
+        self.test_origin = None
         self.dirs = {
             "runs": os.path.join(self.root, "runs"),
             "sessions": os.path.join(self.root, "sessions"),
@@ -215,6 +275,11 @@ class Store:
     # ------------------------------------------------------------------
     # Provenance -- who/what/where, stamped on every record
     # ------------------------------------------------------------------
+    # Set by app.py once the Device record is built. `None` means "not
+    # wired up", and provenance falls back to the hostname -- which is what
+    # a machine with no name has always done.
+    device = None
+
     def provenance(self):
         """Who did this, and where.
 
@@ -234,9 +299,18 @@ class Store:
                 eff = self.profile.effective()
                 who = eff.get("user")
                 email = eff.get("email")
-                device = eff.get("device")
             except Exception:                        # noqa: BLE001
                 who = None
+        # What this COMPUTER is called, from the computer's own record --
+        # not from whoever is using it. The two used to be one record, so
+        # every path that saved a profile could rename the machine, and
+        # several did: one computer ended up filing under five names while
+        # two different computers were both set to the same one.
+        if self.device is not None:
+            try:
+                device = (self.device.get(self.profile) or {}).get("name")
+            except Exception:                        # noqa: BLE001
+                device = None
         out = {
             "user": who or _git_user() or _os_user(),
             "machine": device or platform.node(),
@@ -249,6 +323,20 @@ class Store:
         # a different question from "what does the lab call it".
         if device and device != platform.node():
             out["host"] = platform.node()
+        # Which code did it.
+        #
+        # "Who made this figure and when" was answerable and "what was it made
+        # with" was not, which is the half that matters six months later when
+        # two figures of the same recording disagree and the question is
+        # whether the detector changed in between. The version is the one in
+        # the changelog -- the thing people actually say to each other -- and
+        # the commit is what pins it, because BARRY ships continuously and a
+        # version covers however many commits happened that day.
+        ver, commit = _code_version()
+        if ver:
+            out["app_version"] = ver
+        if commit:
+            out["commit"] = commit
         return out
 
     # ------------------------------------------------------------------
@@ -436,12 +524,36 @@ class Store:
             rec["updated"] = self.provenance()
             if not rec.get("key"):
                 rec["key"] = identity.get("key")
+            # What a DEWEY recording is called out loud. Derived from the
+            # path and deterministic, so filling a blank cannot disagree with
+            # anything -- but only ever a blank, because a record that
+            # predates the DEWEY rule has these missing rather than wrong.
+            for field in ("phase", "phase_n", "run", "repeat"):
+                if rec.get(field) is None and identity.get(field) is not None:
+                    rec[field] = identity.get(field)
+            # A record with no permanent id cannot be reached by anything:
+            # every by-gid route answers 404, nothing can be attached to it,
+            # and it files itself under the shared `unknown` shard below.
+            #
+            # `Registry.ensure` and `_durable_patch` both mint one, so
+            # opening a recording or scanning for it is covered -- but three
+            # routes write through here directly (a note, a bad channel
+            # list, a saved view state), and one of them created exactly
+            # this: a record holding a note, no id, and no way to remove it.
+            # The id belongs at the choke point.
+            if not rec.get("gid"):
+                rec["gid"] = identity.get("gid") or new_gid()
             # The permanent id is the last resort, not the string
-            # "unknown": every recording BARRY cannot derive a key for would
+            # "unknown": every recording Jarvis cannot derive a key for would
             # otherwise share one filename and overwrite the one before it.
             # Three real recordings went through that file before anyone
             # noticed, and the only reason two survived is that they had
             # already been pushed to the shared copy.
+            #
+            # With an id minted above, "unknown" is now unreachable -- it is
+            # left in as the belt to the braces, and because a fallback that
+            # cannot be hit costs nothing while a missing one costs a file
+            # that overwrites itself.
             base = self.session_base(
                 rec.get("key") or identity.get("loose_key")
                 or rec.get("gid") or identity.get("gid") or "unknown")
@@ -451,13 +563,33 @@ class Store:
         """`bad` is a list of CSC channel NUMBERS (not row indices).
 
         Channel numbers are used deliberately: row indices shift the moment
-        someone toggles even-only or a channel file goes missing, but CSC14 is
-        always CSC14.
+        a channel file goes missing, but CSC14 is always CSC14.
         """
         patch = {"bad_channels": sorted({int(b) for b in bad})}
         if note is not None:
             patch["bad_channels_note"] = note
         return self.upsert_session(identity, patch)
+
+    def change_bad_channels(self, identity, add=(), remove=(), note=None):
+        """Mark some channels bad and clear others, against what is SAVED.
+
+        `set_bad_channels` takes the whole list, and every caller builds that
+        list from its own copy -- the one it read when the recording was
+        opened. Two clicks a moment apart are two requests in flight, and
+        whichever the server happens to take second wins: measured, the
+        second of two near-simultaneous clicks was lost 7 times in 20. And a
+        window that opened the recording before somebody marked a channel
+        somewhere else wiped that mark the next time anything was clicked in
+        it. A change applied here, under the lock, to the list on record
+        cannot do either.
+        """
+        with _LOCK:
+            existing, _how = self.get_session(identity)
+            have = {int(b) for b in ((existing or {}).get("bad_channels")
+                                     or [])}
+            have |= {int(b) for b in add or ()}
+            have -= {int(b) for b in remove or ()}
+            return self.set_bad_channels(identity, have, note)
 
     # ------------------------------------------------------------------
     # Presets
@@ -481,8 +613,14 @@ class Store:
                 preset["label"] = filter_label(
                     preset.get("name", "preset"), preset.get("highpass"),
                     preset.get("lowpass"), preset.get("notch"))
-            items = [p for p in items if p.get("id") != preset["id"]
-                     and p.get("name") != preset.get("name")]
+            # A support panel preset carries its owner in its id, so two
+            # people who share a display name, or name two presets alike,
+            # must not delete each other's (2026-10-22).
+            if kind == "support_panels":
+                items = [p for p in items if p.get("id") != preset["id"]]
+            else:
+                items = [p for p in items if p.get("id") != preset["id"]
+                         and p.get("name") != preset.get("name")]
             items.append(preset)
             items.sort(key=lambda p: (p.get("name") or "").lower())
             doc = self._preset_doc(kind)
@@ -501,12 +639,21 @@ class Store:
     # ------------------------------------------------------------------
     # Errors
     # ------------------------------------------------------------------
-    def record_error(self, where, message, detail=None, context=None):
+    def record_error(self, where, message, detail=None, context=None,
+                     test=False):
         """Append one error to this machine's log for today.
 
         JSONL because it is append-only, and one file per machine per day
         because two people appending to a shared day file is the single most
         reliable way to produce a merge conflict.
+
+        `test` marks a fault a test made on purpose. A harness server's are
+        all marked (tools/harness_run.py sets BARRY_HARNESS_SERVER), and so
+        is anything written while serving a test's request (`test_origin`,
+        set by the app: Flask's test client, a web/_dev page). They are
+        kept, but the Errors view and its badge leave them out unless asked:
+        on 2026-10-20 the badge read 5,233, and a third of that was harness
+        pages failing on purpose.
         """
         rec = {
             "id": uuid.uuid4().hex[:12],
@@ -522,14 +669,22 @@ class Store:
             "shard": shards.machine_id(),
             "user": self.provenance().get("user"),
         }
+        if not test and self.test_origin is not None:
+            try:
+                test = bool(self.test_origin())
+            except Exception:      # noqa: BLE001
+                test = False
+        if test or os.environ.get("BARRY_HARNESS_SERVER"):
+            rec["test"] = True
         try:
             self.error_log.append([rec])
         except Exception:          # noqa: BLE001
             pass                   # never let logging an error raise another
         return rec
 
-    def list_errors(self, limit=300, day=None):
-        return self.error_log.read(limit=limit, day=day)
+    def list_errors(self, limit=300, day=None, keep=None):
+        """Newest first. `keep` filters before the limit counts."""
+        return self.error_log.read(limit=limit, day=day, keep=keep)
 
     def error_days(self):
         return self.error_log.days()
@@ -611,15 +766,18 @@ class Store:
         if not self.auto_stage:
             return
         try:
-            subprocess.run(["git", "add", "--", path], cwd=self.root,
+            subprocess.run([git_exe(), "add", "--", path], cwd=self.root,
                            capture_output=True, timeout=15)
         except Exception:
             pass          # staging is a convenience, never a hard failure
 
     def git_status(self):
         """Summarize what is uncommitted under GUI_logs."""
+        exe = git_exe()
+        if exe is None:
+            return {"ok": False, "missing": True, "error": GIT_MISSING}
         try:
-            res = subprocess.run(["git", "status", "--porcelain", "--", "."],
+            res = subprocess.run([exe, "status", "--porcelain", "--", "."],
                                  cwd=self.root, capture_output=True,
                                  text=True, timeout=20)
         except Exception as exc:
@@ -638,6 +796,63 @@ class Store:
 # ----------------------------------------------------------------------
 # helpers
 # ----------------------------------------------------------------------
+GIT_MISSING = ("Jarvis cannot find git on this computer, so it cannot say "
+               "what is uncommitted in GUI_logs. Records still reach the "
+               "other computers through the shared database. To commit them "
+               "as well, install Git for Windows, or use GitHub Desktop.")
+
+_GIT_EXE = []
+
+
+def git_exe():
+    """The git to run, or None when this computer has none Jarvis can find.
+
+    Not just "git": a computer that only has GitHub Desktop has a git, but
+    not on PATH, and asking for "git" there answered "[WinError 2] The
+    system cannot find the file specified" -- which the Sync panel showed as
+    it was. So: PATH first, then where Git for Windows and GitHub Desktop
+    put theirs. Looked up once; a git installed while Jarvis runs is found
+    at the next start.
+    """
+    if _GIT_EXE:
+        return _GIT_EXE[0]
+    found = shutil.which("git")
+    if not found and os.name == "nt":
+        cands = []
+        for env in ("ProgramFiles", "ProgramW6432", "ProgramFiles(x86)",
+                    "LOCALAPPDATA"):
+            base = os.environ.get(env)
+            if not base:
+                continue
+            cands.append(os.path.join(base, "Git", "cmd", "git.exe"))
+            cands.append(os.path.join(base, "Programs", "Git", "cmd",
+                                      "git.exe"))
+        desk = os.path.join(os.environ.get("LOCALAPPDATA") or "",
+                            "GitHubDesktop")
+        try:
+            apps = sorted((d for d in os.listdir(desk)
+                           if d.startswith("app-")), reverse=True)
+        except OSError:
+            apps = []
+        for d in apps:
+            cands.append(os.path.join(desk, d, "resources", "app", "git",
+                                      "cmd", "git.exe"))
+        found = next((c for c in cands if os.path.isfile(c)), None)
+    _GIT_EXE.append(found)
+    return found
+
+
+def new_gid():
+    """A short, permanent name for a recording.
+
+    The same shape `sessreg.new_gid` makes, and deliberately not derived from
+    anything: a derived id is an id that changes when the thing it was
+    derived from is corrected. Defined here rather than imported because
+    `sessreg` imports this module, and the other direction would be a cycle.
+    """
+    return "s" + uuid.uuid4().hex[:12]
+
+
 def _now():
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
@@ -649,6 +864,50 @@ def _os_user():
         return "unknown"
 
 
+_CODE_VERSION_CACHE = {}
+
+
+def _code_version():
+    """(changelog version, short commit) for the code that is running.
+
+    Cached for the life of the process, deliberately. Both are fixed the
+    moment Python started -- editing the changelog does not change the code
+    already imported -- and provenance() is called on every record written,
+    so shelling out to git each time would put a subprocess in the path of
+    every curation decision.
+
+    Either half may be None: a fresh clone with no commits, or a copy handed
+    over as a zip with no .git at all. A record that can only name one of
+    them still says more than one that names neither.
+    """
+    if "v" in _CODE_VERSION_CACHE:
+        return _CODE_VERSION_CACHE["v"]
+    ver = commit = None
+    try:
+        here = os.path.dirname(os.path.abspath(__file__))
+        app = os.path.dirname(here)
+        with open(os.path.join(app, "CHANGELOG.md"), "r",
+                  encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("## "):
+                    ver = line[3:].strip().split()[0].strip("-— ")
+                    break
+    except Exception:                                # noqa: BLE001
+        ver = None
+    try:
+        res = subprocess.run([git_exe() or "git", "rev-parse", "--short",
+                              "HEAD"],
+                             cwd=os.path.dirname(os.path.dirname(
+                                 os.path.abspath(__file__))),
+                             capture_output=True, text=True, timeout=5)
+        if res.returncode == 0:
+            commit = (res.stdout or "").strip() or None
+    except Exception:                                # noqa: BLE001
+        commit = None
+    _CODE_VERSION_CACHE["v"] = (ver, commit)
+    return ver, commit
+
+
 _GIT_USER_CACHE = {}
 
 
@@ -657,7 +916,7 @@ def _git_user():
         return _GIT_USER_CACHE["v"]
     val = None
     try:
-        res = subprocess.run(["git", "config", "user.email"],
+        res = subprocess.run([git_exe() or "git", "config", "user.email"],
                              capture_output=True, text=True, timeout=10)
         if res.returncode == 0:
             val = (res.stdout or "").strip() or None
@@ -771,7 +1030,7 @@ _DEFAULT_IMPORTS = {
 
 _README = """# GUI_logs
 
-Everything BARRY GUI remembers, kept as plain JSON so it travels through git.
+Everything Jarvis remembers, kept as plain JSON so it travels through git.
 
 ## The rule
 
@@ -838,13 +1097,13 @@ first bad pull.
 
 ## Sync
 
-BARRY never commits or pushes on its own. It only writes files here.
+Jarvis never commits or pushes on its own. It only writes files here.
 
     git add "BARRY GUI/GUI_logs"
     git commit -m "session logs"
     git push
 
-To pick up everyone else's, `git pull` -- new files appear and BARRY reads
+To pick up everyone else's, `git pull` -- new files appear and Jarvis reads
 them on the next refresh.
 
 ## Session identity
@@ -1009,6 +1268,29 @@ def set_prefs(self, patch):
     """Shallow-merge a patch into preferences. A null value clears a key."""
     with _LOCK:
         rec = self.prefs.read(PREFS_BASE) or {}
+        # This machine's own value for every local key the patch does not
+        # set, at its own stamp -- not whichever machine wrote it last,
+        # which writing the merged record back would copy into this file
+        # and so spread the "local" pref after all (2026-10-22).
+        own = shards._read_json(self._prefs_path()) or {}
+        sync = rec.get("_sync") or {}
+        was = sync.get("was") or {}
+        fst = sync.get("fstamps") or {}
+        own_at = own.get("_at") or {}
+        for key in PREFS_LOCAL:
+            if key in (patch or {}):
+                continue
+            if key in own:
+                rec[key] = own[key]
+                was[key] = shards._fingerprint(own[key])
+                if own_at.get(key):
+                    fst[key] = own_at[key]
+            else:
+                rec.pop(key, None)
+                was.pop(key, None)
+        if sync:
+            sync["was"] = was
+            sync["fstamps"] = fst
         for k, v in (patch or {}).items():
             if v is None:
                 rec.pop(k, None)

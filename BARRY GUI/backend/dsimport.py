@@ -3,7 +3,7 @@ dsimport.py -- read a folder of sorted dentate-spike snapshots back in.
 
 The curation that already happened
 ----------------------------------
-Before BARRY there was a folder per recording full of one PNG per candidate
+Before Jarvis there was a folder per recording full of one PNG per candidate
 spike, and sorting meant dragging those PNGs into subfolders named after the
 decision. Thousands of candidates were sorted that way. That work is real
 and it is not going to be redone, so it has to come back in.

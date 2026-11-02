@@ -1,0 +1,80 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — StrataScope's evidence window scrolls</title>
+<style>
+ html,body{margin:0;font:12px/1.6 ui-monospace,monospace;background:#0c0f14;color:#dfe6ee}
+ #out{padding:12px 16px;width:30vw;white-space:pre-wrap}
+ iframe#aid{position:fixed;right:0;top:0;width:66vw;height:520px;border:0;border-left:1px solid #243}
+</style>
+<div id="out"></div><iframe id="aid"></iframe>
+<script>
+/* "You can't scroll in the Evidence window" (2026-10-12). app.css sets
+   html, body { overflow: hidden }, which the aid page inherits, so a step
+   with more pictures than the window is tall had no way to reach them.
+
+   The aid page posed on Step 4 (every picture) of the short demo, in a
+   frame shorter than its content: the evidence has to overflow, be the
+   thing that scrolls, actually move when scrolled -- by a wheel as well as
+   by scrollTop -- and keep its header in view. Reads nothing it writes:
+   a posed aid page only reads. Needs the demo read for StrataScope (the
+   steps harness does that). */
+const out = document.getElementById('out');
+const p = (m) => { out.textContent += m + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let bad = 0;
+const ck = (n, c, d) => {
+  p((c ? 'ok    ' : 'FAIL  ') + n + (c || !d ? '' : '   [' + d + ']'));
+  if (!c) bad++;
+};
+
+(async () => {
+  const f = document.getElementById('aid');
+  try {
+    f.src = '/strata-aids.html?step=4&gid=demo-ds-tutorial&path=demo%3Ads-tutorial';
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    const D = () => f.contentDocument;
+    let n = 0;
+    for (let i = 0; i < 600; i++) {
+      n = D().querySelectorAll('.sa-card').length;
+      if (n >= 4) break;
+      await sleep(100);
+    }
+    ck('the evidence is drawn', n >= 4, n + ' cards');
+    await sleep(500);
+    const body = D().querySelector('.sa-body');
+    const cs = f.contentWindow.getComputedStyle(body);
+    ck('the evidence is a scroller', /auto|scroll/.test(cs.overflowY), cs.overflowY);
+    ck('... with more in it than the window shows',
+       body.scrollHeight > body.clientHeight + 50,
+       body.scrollHeight + ' vs ' + body.clientHeight);
+    body.scrollTop = 300;
+    await sleep(100);
+    ck('setting it scrolls it', body.scrollTop > 0, String(body.scrollTop));
+    body.scrollTop = 0;
+    // A wheel over a picture, which is where somebody's mouse is.
+    const card = D().querySelector('.sa-card canvas') || body;
+    const r = card.getBoundingClientRect();
+    card.dispatchEvent(new (f.contentWindow.WheelEvent)('wheel', {
+      bubbles: true, cancelable: true, deltaY: 400,
+      clientX: r.left + 10, clientY: r.top + 10 }));
+    await sleep(300);
+    // A synthetic wheel event does not scroll by itself in every engine;
+    // what it must not do is be swallowed by something on top.
+    const top = D().elementFromPoint(r.left + 10, r.top + 10);
+    ck('nothing invisible sits over the evidence',
+       !!top && body.contains(top), top ? top.tagName + '.' + top.className : 'nothing');
+    const head = D().querySelector('.sa-head').getBoundingClientRect();
+    body.scrollTop = 400;
+    await sleep(100);
+    const head2 = D().querySelector('.sa-head').getBoundingClientRect();
+    ck('the header stays put while it scrolls', Math.abs(head.top - head2.top) < 1,
+       head.top + ' -> ' + head2.top);
+  } catch (e) {
+    ck('no exception', false, e && (e.stack || e.message));
+  } finally {
+    p('\n' + (bad ? bad + ' FAILED' : 'all ok'));
+    document.title = bad ? 'FAIL ' + bad : 'PASS';
+    f.src = 'about:blank';
+  }
+})();
+</script>

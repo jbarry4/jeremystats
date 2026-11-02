@@ -1,7 +1,7 @@
 """
 people.py -- who has worked on this repo, gathered rather than declared.
 
-There is no sign-up here and there should not be. Every record BARRY writes
+There is no sign-up here and there should not be. Every record Jarvis writes
 already carries who made it: a curation decision has a `by`, a bank entry has
 an `added.by`, a profile shard has a name and a machine, the activity log has
 a user on every line. So the roster is a reading of what is already written,
@@ -25,15 +25,44 @@ from __future__ import annotations
 
 import os
 import platform
+import re
 
 from . import shards
+
+# The one name every test harness's work is credited to (2026-10-23).
+#
+# Harnesses stamp their seeds with names of their own -- "harness@test",
+# "eye harness", "spotter harness", "bankback@harness", "zz edit probe" --
+# and each one turned up on the roster as somebody, eighteen rows of them,
+# offered as owners beside the people. The user's ruling: collapse them
+# into Debug_Bot. tools/collapse_people.py re-credited what was already
+# written; `test_credit` folds whatever a harness writes from now on, at
+# read time, so the harnesses can keep telling their own seeds apart.
+DEBUG_BOT = "Debug_Bot"
+
+# A name a test wrote. Deliberately narrow: "Rain" and "Tooth Fairy (AI)"
+# must never match, and a person whose name contains "test" is not one.
+_TEST_NAME = re.compile(
+    r"harness|@test\b|^test$|^zz\b|probe person|^debug[_ ]bot$", re.I)
+
+
+def is_test_name(name):
+    """Whether `name` is one a test harness stamps on its own records."""
+    got = ("" if name is None else str(name)).strip()
+    return bool(got) and bool(_TEST_NAME.search(got))
+
+
+def test_credit(name):
+    """`name`, or Debug_Bot when a harness wrote it."""
+    return DEBUG_BOT if is_test_name(name) else name
+
 
 # Names that record where something came from rather than a person who could
 # be asked about it. Kept in one place because curation.py needs the same
 # judgement when it picks a default owner.
 NOT_PEOPLE = frozenset({
     "snapshot import", "the import", "unknown", "another machine",
-    "a detector", "barry", "barry curation",
+    "a detector", "barry", "barry curation", DEBUG_BOT.lower(),
 })
 
 
@@ -92,6 +121,10 @@ class People:
     # `roster` tests it, the client tests it to decide whether a name can be
     # removed, and the two drifting apart would make the delete button lie.
     HAND = "added by hand"
+
+    # Set by app.py. Without it `forget` still works and simply does not
+    # survive a sync, which is how it behaved before.
+    tombs = None
 
     # Fields that are not text. `_clean` would turn False into the string
     # "False", which is truthy, so an unarchive would archive.
@@ -171,18 +204,80 @@ class People:
                 return out
         return {"name": name, **{k: "" for k in self.FIELDS}}
 
-    def forget(self, name):
+    def forget(self, name, retire=True):
         """Take a hand-added name off. A name the data carries cannot go:
-        it is on the records whether the roster lists it or not."""
+        it is on the records whether the roster lists it or not.
+
+        `retire` writes a tombstone, and it is what makes this survive.
+        Without one, removing a name is undone by the next sync: another
+        machine still holding it pushes its copy, and the pull writes it
+        back. Measured -- a merged-away name and a harness probe both came
+        back within seconds. The tombstone is read on the way in, so an
+        incoming row cannot resurrect it, and travels like any other so the
+        other machine stops sending it once it pulls.
+        """
         name = _clean(name)
         rec = self.book.read("people") or {}
         rows = [r for r in (rec.get("added") or [])
                 if (r.get("id") or "").lower() != (name or "").lower()]
-        if len(rows) == len(rec.get("added") or []):
+        gone = len(rows) != len(rec.get("added") or [])
+        if gone:
+            rec["added"] = rows
+            self.book.write("people", rec)
+        # Retired only if the name is genuinely gone from the roster.
+        #
+        # Neither "the caller asked" nor "a row was removed" is the right
+        # test, and both were tried. `forget` is called on names the data
+        # carries -- it refuses those, correctly, because the name is on the
+        # records whether the roster lists it or not -- and such a name can
+        # still have a hand-added row that gets removed. Retiring one of
+        # those tells every pull to skip a live colleague, and the first two
+        # versions of this did exactly that to the person with the most work
+        # in the lab.
+        #
+        # So the roster is recompiled and asked. A name that survives is
+        # carried by the data and is not retired; a name that has gone has
+        # gone, whether because nothing carried it or because an alias now
+        # folds it into somebody else -- which is what a merge is.
+        if gone and retire and name and self.tombs is not None:
+            try:
+                still = self.roster() or {}
+                listed = {
+                    (row.get("name") or "").strip().lower()
+                    for row in ((still.get("people") or [])
+                                + (still.get("not_people") or []))
+                }
+                if name.lower() not in listed:
+                    self.tombs.add(
+                        "person", name,
+                        "merged away or removed from the roster")
+            except Exception:                        # noqa: BLE001
+                pass
+        return gone
+
+    def retired(self):
+        """Names that have been merged away or removed, lower-cased."""
+        if self.tombs is None:
+            return set()
+        out = set()
+        try:
+            for row in (self.tombs.all("person") or []):
+                got = row.get("id") if isinstance(row, dict) else None
+                if got:
+                    out.add(str(got).strip().lower())
+        except Exception:                            # noqa: BLE001
+            return set()
+        return out
+
+    def unretire(self, name):
+        """Bring a retired name back -- for one removed by mistake."""
+        name = _clean(name)
+        if not name or self.tombs is None:
             return False
-        rec["added"] = rows
-        self.book.write("people", rec)
-        return True
+        try:
+            return bool(self.tombs.forget("person", name))
+        except Exception:                            # noqa: BLE001
+            return False
 
     def archive(self, name, yes=True):
         """Take somebody off the pickers without taking them off the record.
@@ -266,6 +361,12 @@ class People:
             if not name:
                 return
             name = alias_of.get(name.lower(), name)
+            # What a harness wrote on a record is Debug_Bot's. Only on the
+            # records: a profile or a hand-added row is somebody saying a
+            # name outright, and the people harnesses add and remove their
+            # own probe names and look for them by exactly that name.
+            if where not in ("profile", self.HAND):
+                name = test_credit(name)
             # Keyed case-insensitively. Keyed as-written, "Rain" on a
             # decision and "rain" typed into the editor were two people --
             # and so were "Rain" and "Rain ", which is one stray keystroke
@@ -281,7 +382,7 @@ class People:
             # record; failing that, the one with capitals wins, because the
             # capital was typed on purpose.
             if name != row["name"]:
-                chosen = where in ("profile", HAND_SOURCE)
+                chosen = where in ("profile", self.HAND)
                 better = chosen or (name != name.lower()
                                     and row["name"] == row["name"].lower())
                 if better:
@@ -367,6 +468,18 @@ class People:
         # business to make the totals disagree with the records.
         HAND_SOURCE = self.HAND
         put_away = self.archived()
+        # The hand-written details, from the stored entry.
+        #
+        # A roster row is compiled -- name, email, counts, where they were
+        # seen -- and the details somebody types are not compiled from
+        # anything, so they were simply absent. Which meant the sync built
+        # its payload from these rows and had nothing to send: an edited
+        # role never left the machine it was typed on.
+        typed = {}
+        for row in self._extra():
+            key = _clean(row.get("name") or row.get("id"))
+            if key:
+                typed[key.lower()] = row
         for r in rows:
             r["me"] = bool(me and r["name"] == me)
             got = sorted(folded.get(r["name"]) or [])
@@ -374,6 +487,21 @@ class People:
                 r["aliases"] = got
             if r["name"].lower() in put_away:
                 r["archived"] = True
+            mine = typed.get(r["name"].lower())
+            if mine:
+                for k in ("role", "initials", "orcid", "note"):
+                    if mine.get(k):
+                        r[k] = mine[k]
+                # When somebody last changed this entry by hand. The sync
+                # stamps the cloud row with it rather than with now(), so an
+                # unchanged roster stops looking new on every push.
+                if mine.get("edited_at"):
+                    r["edited_at"] = mine["edited_at"]
+                # An alias written on this entry, even when nothing has been
+                # folded through it yet -- the sync has to carry the
+                # statement, not just its effect.
+                if mine.get("aliases") and not r.get("aliases"):
+                    r["aliases"] = sorted(mine["aliases"])
         rows.sort(key=lambda r: (not r["me"], not r["is_person"],
                                  -r["total"], r["name"].lower()))
         return {

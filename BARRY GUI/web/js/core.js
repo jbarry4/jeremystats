@@ -12,9 +12,73 @@ const BARRY = {
     jobSeq: 0,          // last log line seen for that job
     poll: null,
     theme: 'dark',
+    vacc: false,        // VACC Mode -- the look, not the capability
   },
   views: {},
 };
+
+/* ==========================================================================
+   Is anybody here?
+   After ten minutes with no key, click, scroll or mouse movement, every
+   cloud-backed poll in the page stops (the tool feed, the presence poll, a
+   curation set's beat) and the server stops syncing altogether
+   (backend/app.py IDLE_AFTER). The first input afterwards restarts both at
+   once -- the pollers through onWake, the server through the beacon.
+
+   The beacon (POST /api/cloud/active) goes to this computer's own server,
+   never to Supabase, at most once a minute while somebody is using the page.
+   ========================================================================== */
+BARRY.idle = (function () {
+  const AFTER_MS = 10 * 60 * 1000;   // matches IDLE_AFTER in app.py
+  const TELL_MS = 60 * 1000;
+  let last = Date.now();
+  let told = 0;
+  const wake = [];
+
+  function isIdle() { return Date.now() - last >= AFTER_MS; }
+
+  function tell() {
+    told = Date.now();
+    try {
+      fetch('/api/cloud/active', { method: 'POST' }).catch(() => {});
+    } catch (e) { /* the server will fall back to counting requests */ }
+  }
+
+  function resume() {
+    for (const f of wake) {
+      try { f(); } catch (e) { /* one module's resume is not the others' */ }
+    }
+  }
+
+  function note(back) {
+    const was = isIdle();
+    last = Date.now();
+    if (was || last - told >= TELL_MS) tell();
+    if (was || back) resume();
+  }
+
+  ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart']
+    .forEach((ev) => document.addEventListener(
+      ev, () => note(false), { passive: true, capture: true }));
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) note(true);
+  });
+  tell();                              // a page just opened is somebody
+
+  return {
+    isIdle,
+    /* Should a cloud-backed poll skip this tick? Hidden, or nobody here. */
+    away() { return document.hidden || isIdle(); },
+    /* fn runs when somebody comes back -- to a hidden window, or after being
+       idle -- so a stopped poll can catch up at once. One path for both, so
+       a poll does not fire twice when both happen together. */
+    onWake(fn) { if (typeof fn === 'function') wake.push(fn); },
+    AFTER_MS,
+    /* For web/_dev/idle.html: pretend the last input was `ms` ago, so the
+       ten-minute rule can be checked without waiting ten minutes. */
+    _backdate(ms) { last = Date.now() - ms; },
+  };
+}());
 
 /* ==========================================================================
    Uncaught front-end errors
@@ -33,7 +97,7 @@ function reportClientError(where, message, detail) {
       box.textContent = 'Interface error in ' + where + ': ' + text;
     }
     // Mirrored into the title so it is visible even in a headless capture.
-    document.title = 'BARRY GUI — error: ' + text.slice(0, 120);
+    document.title = 'Jarvis — error: ' + text.slice(0, 120);
   } catch (e) { /* ignore */ }
 
   try { toast('Interface error: ' + text, 'err', 12000); } catch (e) { /* early */ }
@@ -154,7 +218,7 @@ BARRY.hues = function hues(n) {
 /* ==========================================================================
    Picking one recording out of hundreds.
 
-   A <select> was fine when BARRY knew about six recordings. Scanning a drive
+   A <select> was fine when Jarvis knew about six recordings. Scanning a drive
    registers every one it walks past, so the list is now in the hundreds and a
    dropdown is the wrong control entirely -- you cannot type at it, you cannot
    see the project or whether the drive is mounted, and finding m59 s11 means
@@ -383,7 +447,145 @@ BARRY.debug = (function () {
 })();
 
 /* ---------- API ---------- */
+/* The one place that knows a request is outstanding.
+ *
+ * Every view used to answer "is anything happening?" for itself, or more
+ * often not at all -- a mutation would fire, the list would sit there showing
+ * the state before it, and a second later it would snap. api() is the single
+ * chokepoint every one of those goes through, so a counter here covers the
+ * lot, including the call sites nobody has got round to fixing properly.
+ *
+ * Two rules keep it from becoming wallpaper:
+ *
+ *   The pollers never raise it. The job dock ticks every 500ms, sync progress
+ *   every 300ms, presence every 20s. Counting those means the bar is simply
+ *   always on, which tells you nothing.
+ *
+ *   It waits 150ms before showing. Borrowed from BARRY.boot, which says it
+ *   better: complaining immediately teaches people to expect a wait that
+ *   usually is not there. Most requests here finish well inside that and the
+ *   bar never appears at all.
+ */
+const QUIET_PATHS = [
+  '/api/job/', '/api/sync/progress', '/api/sync/status', '/api/presence',
+  '/api/link', '/api/activity', '/api/debug/trace', '/api/cfc/job/',
+  '/api/panorama/estimate', '/api/cfc/estimate', '/api/spectrum/estimate',
+  '/api/discover/', '/api/toolfeed', '/api/errors/client',
+  // The warm-start watch, which ticks for the first fifteen seconds of a
+  // session. It is waiting on work that is deliberately out of the way, and
+  // a progress bar over it would put the wait back on screen.
+  '/api/warm/state',
+];
+
+const BUSY = (function () {
+  let live = 0;
+  let show = null;
+  let bar = null;
+
+  function node() {
+    if (!bar) {
+      bar = el('div', { class: 'net-bar', 'aria-hidden': 'true' });
+      document.body.appendChild(bar);
+    }
+    return bar;
+  }
+  function paint() {
+    if (live > 0) node().classList.add('on');
+    else if (bar) bar.classList.remove('on');
+  }
+  return {
+    start(path) {
+      if (QUIET_PATHS.some((p) => path.startsWith(p))) return false;
+      live += 1;
+      if (live === 1 && !show) show = setTimeout(() => { show = null; paint(); }, 150);
+      return true;
+    },
+    stop(counted) {
+      if (!counted) return;
+      live = Math.max(0, live - 1);
+      if (live === 0) {
+        if (show) { clearTimeout(show); show = null; }
+        paint();
+      }
+    },
+  };
+}());
+
+/* Background requests yield (2026-10-21).
+
+   A browser opens at most six connections to Jarvis. Measured at start-up
+   on the lab desktop: the sync roll-up (19 s), the cloud sync states (6 s),
+   VACC's catalogue check (4 s) and the tool feed held four of them at once,
+   so whatever the person had just clicked queued behind work nobody was
+   waiting for -- "nothing, then everything".
+
+   So the requests nobody is waiting on take at most three of the six, one
+   after another as each frees up, and anything a person asked for never
+   waits behind them. Background is: an explicit `priority: 'background'`
+   (the warm-up, prefetching), and the roll-ups and pollers listed here.
+   The job dock's and the link's polls stay foreground: they are short, and
+   their whole point is to feel live. */
+const BACKGROUND_PATHS = [
+  '/api/sync/status', '/api/cloud/items', '/api/vacc/knows', '/api/presence',
+  '/api/toolfeed', '/api/warm/state', '/api/health/summary', '/api/devices',
+  '/api/digest', '/api/notes',
+];
+const SLOTS = (function () {
+  const MAX = 3;
+  let live = 0;
+  const queue = [];
+  function take() {
+    return new Promise((resolve) => {
+      const go = () => {
+        live += 1;
+        let done = false;
+        resolve(() => {
+          if (done) return;
+          done = true;
+          live -= 1;
+          const next = queue.shift();
+          if (next) next();
+        });
+      };
+      if (live < MAX) go(); else queue.push(go);
+    });
+  }
+  return { take, get live() { return live; }, get queued() { return queue.length; } };
+}());
+BARRY.requestSlots = SLOTS;
+
+/* A wrapper rather than a `finally` threaded through the body: the real api()
+   below has five ways out, four of them throws, and counting down on each one
+   is exactly the kind of bookkeeping that gets a new exit path added past it
+   later and leaves the bar stuck on.
+
+   opts.priority  'background' to wait for one of the background slots
+   opts.etag      sent as If-None-Match; a 304 answers null, and
+   opts.meta      (an object) is filled in with {status, etag, notModified}
+   -- both for BARRY.data (web/js/data.js), which keeps lists between visits. */
 async function api(path, opts) {
+  const route = path.split('?')[0];
+  const pri = opts && opts.priority;
+  const bg = pri === 'background'
+    || (!pri && BACKGROUND_PATHS.some((p) => route.startsWith(p)));
+  const release = bg ? await SLOTS.take() : null;
+  const counted = BUSY.start(route);
+  try {
+    const out = await apiCall(path, opts);
+    // A write under /api/<thing> means every kept answer under it needs a
+    // fresh look; a 304 makes that look nearly free.
+    const method = (opts && opts.method) || 'GET';
+    if (method !== 'GET' && BARRY.data && BARRY.data.invalidate) {
+      try { BARRY.data.invalidate(route); } catch (e) { /* kept answers only */ }
+    }
+    return out;
+  } finally {
+    BUSY.stop(counted);
+    if (release) release();
+  }
+}
+
+async function apiCall(path, opts) {
   const t0 = performance.now();
   const method = (opts && opts.method) || 'GET';
   const record = (status, error) => BARRY.debug.request({
@@ -392,19 +594,34 @@ async function api(path, opts) {
   });
 
   let res;
+  const o = opts || {};
+  const init = Object.assign({ headers: { 'Content-Type': 'application/json' } }, o);
+  // api()'s own options are not fetch's.
+  delete init.priority; delete init.etag; delete init.meta;
+  if (o.etag) {
+    init.headers = Object.assign({}, init.headers, { 'If-None-Match': o.etag });
+  }
   try {
-    res = await fetch(path, Object.assign({
-      headers: { 'Content-Type': 'application/json' },
-    }, opts || {}));
+    res = await fetch(path, init);
   } catch (e) {
     // The request never completed -- server gone, or the tab went offline.
     record(0, e.message);
     throw new Error('Could not reach the server: ' + e.message);
   }
+  if (o.meta) {
+    o.meta.status = res.status;
+    o.meta.etag = res.headers.get('ETag');
+  }
+  // Unchanged since the tag that was sent: nothing to read.
+  if (res.status === 304) {
+    record(304);
+    if (o.meta) o.meta.notModified = true;
+    return null;
+  }
 
   /* 404 or 405 on an /api/ route means the route is not there -- which
      almost always means the server is running older code than the page that
-     just asked for it. That happens whenever BARRY is left running while the
+     just asked for it. That happens whenever Jarvis is left running while the
      repo is updated, and the only symptom is a feature quietly doing
      nothing.
 
@@ -413,16 +630,23 @@ async function api(path, opts) {
      never heard of answers 404 to a GET and 405 to a POST depending on what
      else is registered. Treating only 404 as stale is why a failed bug
      report said "non-JSON response (405)" and nothing else. */
-  const missing = (res.status === 404 || res.status === 405)
-                  && path.startsWith('/api/');
-  if (missing) staleServer(path);
+  /* A route that is not registered, as against one that ran and said no.
+     Both answer 404, and the difference is whether anything answered: a
+     route that ran returns a JSON body with an error in it, and Flask's own
+     404 page does not. Deciding before reading the body told somebody to
+     restart Jarvis because a bank entry could not be found. */
+  const maybeMissing = (res.status === 404 || res.status === 405)
+                       && path.startsWith('/api/');
 
   let data;
+  let missing = false;
   try { data = await res.json(); }
   catch (e) {
     record(res.status, 'non-JSON response');
+    missing = maybeMissing;
     if (missing) {
-      throw new Error('This BARRY is running older code than the files on '
+      staleServer(path);
+      throw new Error('This Jarvis is running older code than the files on '
                       + 'disk, so it has no ' + path.split('?')[0]
                       + '. Restart it and try again.');
     }
@@ -431,9 +655,18 @@ async function api(path, opts) {
   if (!res.ok || data.ok === false) {
     const msg = data.error || ('Request failed (' + res.status + ')');
     record(res.status, msg);
-    throw new Error(msg);
+    // The whole answer rides along, for a refusal that names what it is
+    // about (Root Canal's `away`: the pool members to read again).
+    const err = new Error(msg);
+    err.data = data;
+    throw err;
   }
   record(res.status);
+  /* A payload that says it came out of the warm cache. Noticed here, in the
+     one place every request already passes through, so nothing has to
+     remember to check: a view that asks for a warmed endpoint gets the
+     watch for free, and one that does not is unaffected. */
+  if (data && data.warm && BARRY.warm) BARRY.warm.saw(data.warm);
   return data;
 }
 
@@ -458,14 +691,14 @@ function staleServer(path) {
   if (staleSeen.has(route)) return;
   staleSeen.add(route);
   toast('This page asked the server for ' + route
-        + ' and it does not have it \u2014 BARRY is running older code than '
+        + ' and it does not have it \u2014 Jarvis is running older code than '
         + 'the files on disk. Restart it (close the window and run '
-        + '"Start BARRY GUI" again) to pick up the new version.',
+        + '"Start Jarvis" again) to pick up the new version.',
         'err', 20000);
   showStaleBanner();
 }
 
-/* BARRY is running code older than what is on disk.
+/* Jarvis is running code older than what is on disk.
 
    Distinct from the 404 case below: nothing is missing, so nothing fails
    loudly. The old code simply does the old thing, which is worse -- you
@@ -478,7 +711,7 @@ function showCodeStaleBanner(files, startedAt) {
   codeStaleShown = true;
   const started = fmtWhen(startedAt, 'minute');
   const bar = el('div', { class: 'stale-banner', id: 'codeStaleBanner' }, [
-    el('strong', { text: 'Restart BARRY \u2014 it is running older code' }),
+    el('strong', { text: 'Restart Jarvis \u2014 it is running older code' }),
     el('span', { text: files.length + ' file(s) have been changed since this '
                      + 'server started' + (started ? ' at ' + started : '')
                      + '. Nothing will error; it will just keep doing the '
@@ -504,7 +737,7 @@ function showCodeStaleBanner(files, startedAt) {
 
    A toast goes away; a stale server does not. Everything added since it
    started will fail, some of it silently, so this stays on screen until
-   BARRY is restarted -- which is the only thing that fixes it. */
+   Jarvis is restarted -- which is the only thing that fixes it. */
 function showStaleBanner() {
   if (document.getElementById('staleBanner')) {
     const n = document.getElementById('staleCount');
@@ -512,12 +745,12 @@ function showStaleBanner() {
     return;
   }
   const bar = el('div', { class: 'stale-banner', id: 'staleBanner' }, [
-    el('strong', { text: 'BARRY is running older code than the files on disk' }),
+    el('strong', { text: 'Jarvis is running older code than the files on disk' }),
     el('span', {}, [
       document.createTextNode('  '),
       el('span', { id: 'staleCount', text: String(staleSeen.size) }),
       document.createTextNode(' feature(s) this page expects are missing from '
-                              + 'the running server. Restart BARRY to pick '
+                              + 'the running server. Restart Jarvis to pick '
                               + 'them up \u2014 until then some things will '
                               + 'fail, and saving may not work.'),
     ]),
@@ -640,14 +873,51 @@ function keepFocus(render) {
   return out;
 }
 
+/* Returns a handle, so a message can be corrected rather than repeated.
+ *
+ * Nearly every call here is fire-and-forget and stays that way. But "Saving…"
+ * followed by "Saved" was impossible to say: with no handle, the second one
+ * is a second toast, and the first sits there for its full three seconds
+ * underneath it claiming the work is still going. So the app either said
+ * nothing during the wait or lied afterwards, and mostly chose nothing.
+ *
+ * `ms: 0` means "stay until I say otherwise", which is what a pending message
+ * wants -- the work decides when it is over, not a timer.
+ */
 function toast(msg, kind, ms) {
   const node = el('div', { class: 'toast' + (kind ? ' ' + kind : ''), text: msg });
   $('#toasts').appendChild(node);
-  setTimeout(() => {
+
+  let timer = null;
+  let gone = false;
+
+  const close = () => {
+    if (gone) return;
+    gone = true;
+    if (timer) clearTimeout(timer);
     node.style.opacity = '0';
     node.style.transition = 'opacity .2s';
     setTimeout(() => node.remove(), 220);
-  }, ms || (kind === 'err' ? 6000 : 3200));
+  };
+
+  const arm = (hold, k) => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    if (hold === 0) return;                 // held open on purpose
+    timer = setTimeout(close, hold || (k === 'err' ? 6000 : 3200));
+  };
+  arm(ms, kind);
+
+  return {
+    update(text, nextKind, nextMs) {
+      if (gone) return this;
+      node.textContent = text;
+      node.className = 'toast' + (nextKind ? ' ' + nextKind : '');
+      arm(nextMs === undefined ? null : nextMs, nextKind);
+      return this;
+    },
+    close,
+  };
 }
 
 /* ---------- path prompt modal ---------- */
@@ -848,7 +1118,7 @@ BARRY.sync = { git: null, root: null, index: null };
 
 BARRY.refreshSync = async function refreshSync() {
   let data;
-  try { data = await api('/api/sync/status'); } catch (e) { return; }
+  try { data = await api('/api/sync/status?head=1'); } catch (e) { return; }
   BARRY.sync = data;
   /* Source files written since this server started. The 404-based check
      cannot see this case: the route is still there, it just does something
@@ -861,23 +1131,10 @@ BARRY.refreshSync = async function refreshSync() {
      than only at boot and only again when the Errors view is opened. An
      error recorded while you are somewhere else is exactly the case the
      badge exists for, and it was the one case it missed. */
-  BARRY.setErrorCount(((data.index || {}).counts || {}).errors || 0);
-  const git = data.git || {};
-  const btn = $('#syncBtn');
-  const label = $('#syncLabel');
-  if (!git.ok) {
-    label.textContent = 'Logs';
-    btn.classList.remove('dirty');
-    btn.title = 'GUI_logs at ' + (data.root || '');
-  } else if (git.dirty) {
-    label.textContent = git.dirty + ' to commit';
-    btn.classList.add('dirty');
-    btn.title = git.dirty + ' uncommitted file(s) in GUI_logs — click for details';
-  } else {
-    label.textContent = 'Logs synced';
-    btn.classList.remove('dirty');
-    btn.title = 'GUI_logs has no uncommitted changes';
-  }
+  BARRY.setErrorCount(BARRY.errorBadgeCount(data));
+  /* The chip says where the shared database stands (syncstate.js); the
+     git state of GUI_logs, which it used to say alone, is in its title. */
+  if (BARRY.syncState) BARRY.syncState.paintRail();
 };
 
 /* Whether anything in the logs could ever conflict on a pull.
@@ -894,7 +1151,7 @@ BARRY.refreshSync = async function refreshSync() {
 /* The one thing a clone cannot carry.
 
    The repo says which project to sync to; the key deliberately is not in it,
-   so each machine has to be told once. BARRY asks on startup in the terminal
+   so each machine has to be told once. Jarvis asks on startup in the terminal
    and here, because whichever one somebody is looking at should be enough. */
 function askForKey(c) {
   const input = el('input', {
@@ -935,10 +1192,36 @@ function askForKey(c) {
     ]),
     msg,
     el('p', { class: 'hint',
-      text: 'Kept in GUI_logs/.cloud.json, which git ignores. BARRY works '
+      text: 'Kept in GUI_logs/.cloud.json, which git ignores. Jarvis works '
           + 'perfectly well without it \u2014 the sync is an addition, not a '
           + 'requirement.' }),
   ]);
+}
+
+
+/* 20 -> "20 s", 320 -> "5 min", 1800 -> "30 min". */
+function cloudPace(s) {
+  if (s < 90) return Math.round(s) + ' s';
+  return Math.round(s / 60) + ' min';
+}
+
+
+/* What this computer has asked Supabase for, from the server's own count
+   (cloud.meter) -- the free tier is priced in requests, so this is the
+   number that matters, and the one nothing showed. */
+function cloudBudget(c) {
+  const r = c.requests || {};
+  if (r.requests == null) return null;
+  const kb = Math.round((r.bytes || 0) / 1024);
+  const top = (r.by_caller || []).slice(0, 3)
+    .map((x) => x.key.replace(/^[^.]*\./, '') + ' ' + x.n).join(', ');
+  const hrs = (r.covers_s || 0) < (r.window_s || 3600) * 0.9
+    ? ' since Jarvis started' : ' in the last hour';
+  return el('div', { class: 'hint cloud-budget',
+    text: r.requests + ' request' + (r.requests === 1 ? '' : 's')
+        + ' to Supabase' + hrs + ' (' + kb + ' KB back)'
+        + (top ? ' — ' + top : '')
+        + (r.failed ? '; ' + r.failed + ' failed' : '') });
 }
 
 
@@ -952,7 +1235,7 @@ function cloudNote() {
       box.appendChild(el('div', { class: 'cloud-err',
         text: 'cloud.json in the repo contains a key. That file is tracked '
             + 'by git, so treat the key as public: rotate it in the Supabase '
-            + 'dashboard and paste the new one below. BARRY is ignoring the '
+            + 'dashboard and paste the new one below. Jarvis is ignoring the '
             + 'one in the file.' }));
     }
     if (c.needs_key) { box.appendChild(askForKey(c)); return; }
@@ -994,9 +1277,14 @@ function cloudNote() {
       el('span', { class: 'dot' + (last.ok === false ? ' bad'
                                    : (last.ok ? ' ok' : '')) }),
       el('strong', { text: c.project || 'Supabase' }),
+      /* The pace it is actually on, and why -- it changes with who is
+         working (see _cloud_loop) -- rather than the configured floor. */
       el('span', { class: 'hint',
-        text: c.auto ? 'syncing every ' + c.interval + 's' : 'automatic sync '
-            + 'is off' }),
+        text: !c.auto ? 'automatic sync is off'
+          : (c.pull_interval_s
+            ? 'checking every ' + cloudPace(c.pull_interval_s)
+              + (c.pace ? ' — ' + c.pace : '')
+            : (c.pace || 'syncing')) }),
       el('div', { class: 'spacer' }),
       el('button', {
         class: 'btn ghost sm', text: last.running ? 'Syncing…' : 'Sync now',
@@ -1048,21 +1336,47 @@ function cloudNote() {
           + (last.pulled ? '  ·  brought back ' + last.pulled : '')
           + (last.downloaded ? '  ·  ' + last.downloaded + ' file(s) down'
              : '') }));
-    if (last.error) {
-      box.appendChild(el('pre', { class: 'cloud-err', text: last.error }));
-    }
+    const budget = cloudBudget(c);
+    if (budget) box.appendChild(budget);
+    if (last.error) box.appendChild(cloudErrorNote(last));
     box.appendChild(el('p', { class: 'hint',
-      text: 'BARRY writes here first and syncs in the background, so none of '
+      text: 'Jarvis writes here first and syncs in the background, so none of '
           + 'this is in the way if the network is down.' }));
   }).catch(() => {
     box.innerHTML = '';
     box.appendChild(el('p', { class: 'hint',
-      text: 'This BARRY does not have the Supabase sync — restart it to '
+      text: 'This Jarvis does not have the Supabase sync — restart it to '
           + 'pick up the new version.' }));
   });
   return box;
 }
 
+
+/* The last sync's failure, as a sentence and then, folded, as it came.
+
+   The raw text is PostgREST's or Cloudflare's: a 522 is three lines of JSON
+   that all mean "the database did not answer", and it was printed whole in
+   red as though something here had broken. */
+function cloudErrorNote(last) {
+  const err = String(last.error || '');
+  const code = (err.match(/\bHTTP (\d{3})\b/) || err.match(/\b(5\d\d)\b/)
+                || [])[1];
+  const away = /^5(0[234]|2[0-4])$/.test(code || '')
+    || /timed out|Timeout|cannot reach|not answering/i.test(err);
+  const when = last.at ? new Date(last.at).toLocaleTimeString() : '';
+  const say = away
+    ? 'The shared database did not answer' + (code ? ' (' + code + ')' : '')
+      + (when ? ' at ' + when : '') + '. Jarvis waits and asks again by '
+      + 'itself; everything made here is kept and goes up when it answers.'
+    : 'The last sync failed' + (when ? ' at ' + when : '') + '.';
+  return el('div', { class: 'cloud-err-box' }, [
+    el('p', { class: away ? 'hint warn-text' : 'cloud-err', text: say }),
+    el('details', { class: 'cloud-err-raw' }, [
+      el('summary', { text: 'What it said' }),
+      el('pre', { text: err }),
+    ]),
+  ]);
+}
 
 function conflictNote(c) {
   if (!c) return null;
@@ -1082,9 +1396,12 @@ function conflictNote(c) {
     });
   }
   return el('div', { class: 'sync-warn' }, [
-    el('p', { text: c.shared.length + ' file(s) here are shared between '
-                  + 'machines, so two people editing the same thing would '
-                  + 'collide on a pull:' }),
+    el('p', { text: (c.n_shared || c.shared.length) + ' file(s) here are '
+                  + 'shared between machines, so two people editing the same '
+                  + 'thing would collide on a pull'
+                  + ((c.n_shared || 0) > c.shared.length
+                     ? ' (the first ' + c.shared.length + ' are listed)' : '')
+                  + ':' }),
     el('pre', { text: c.shared.join('\n') }),
     el('p', { class: 'hint',
       text: 'Route whatever writes them through a shards.Book, or add them '
@@ -1093,6 +1410,164 @@ function conflictNote(c) {
   ]);
 }
 
+
+
+/* NOT SHARED YET (2026-10-06): everything made on this machine that has not
+   reached the shared database -- bank entries, curation sets, layer sheets,
+   artifacts (Root Canal singles, pools, margins...), Braces sets and AI
+   Beta runs -- each by its name. Filled after the panel opens, from the
+   same push cursor the marks use, so asking costs nothing at the database.
+
+   Two lists, because they are two different things. What is WAITING will
+   go up by itself and is worth seeing by name. What is kept here ON
+   PURPOSE -- demo records, a sheet whose recording the registry no longer
+   has -- never will, and listing it as "not shared yet" made a clean
+   machine read as ten things behind (2026-10-07: five identical demo bank
+   rows, two demo sets, three sheets). That half is folded, grouped, and
+   says why. */
+const UNSHARED_KIND = {
+  bank: ['Event Bank entry', 'Event Bank entries'],
+  curation: ['Checkup set', 'Checkup sets'],
+  layers: ['layer sheet', 'layer sheets'],
+  artifacts: ['artifact', 'artifacts'],
+  braces: ['Braces set', 'Braces sets'],
+  aibeta: ['AI Beta run', 'AI Beta runs'],
+};
+
+function unsharedNoun(kind, n) {
+  const w = UNSHARED_KIND[kind] || [kind, kind];
+  return n + ' ' + (n === 1 ? w[0] : w[1]);
+}
+
+function unsharedSection() {
+  const box = el('div', { class: 'sync-unshared' }, [
+    el('p', { class: 'hint', text: 'Looking for anything not shared yet\u2026' }),
+  ]);
+  api('/api/cloud/unshared').then((got) => {
+    box.innerHTML = '';
+    if (!got.on) {
+      box.appendChild(el('p', { class: 'hint',
+        text: 'This computer is not connected to the shared database, so '
+            + 'nothing made here leaves it except by git.' }));
+      return;
+    }
+    const rows = got.rows || [];
+    const pending = rows.filter((r) => r.state !== 'local');
+    const kept = rows.filter((r) => r.state === 'local');
+    if (!pending.length) {
+      box.appendChild(el('p', { class: 'hint sync-ok',
+        text: 'Everything made here is in the shared database.' }));
+    } else {
+      const sd = BARRY.syncState && BARRY.syncState.data;
+      const failing = sd && sd.last && sd.last.ok === false;
+      box.appendChild(el('h4', { text: 'Not shared yet' }));
+      box.appendChild(el('p', { class: 'hint',
+        text: pending.length + ' thing' + (pending.length === 1 ? '' : 's')
+          + ' made here ' + (pending.length === 1 ? 'has' : 'have')
+          + ' not reached the shared database. '
+          + (failing ? 'The last sync did not get through, so '
+                       + (pending.length === 1 ? 'it waits' : 'they wait')
+                       + ' for the database to answer.'
+                     : (pending.length === 1 ? 'It goes' : 'They go')
+                       + ' up by itself within a minute.') }));
+      const STATE = { waiting: 'sending', unknown: 'not checked yet' };
+      box.appendChild(el('table', { class: 'sync-unshared-tbl' }, [
+        el('thead', {}, [el('tr', {}, ['What', 'Name', 'State']
+          .map((t) => el('th', { text: t })))]),
+        el('tbody', {}, pending.map((r) => el('tr', {}, [
+          el('td', { text: (UNSHARED_KIND[r.kind] || [r.kind])[0] }),
+          el('td', { text: r.name || r.id, title: r.id }),
+          el('td', { text: STATE[r.state] || r.state }),
+        ]))),
+      ]));
+    }
+    if (kept.length) box.appendChild(keptHere(kept));
+  }).catch((e) => {
+    box.innerHTML = '';
+    box.appendChild(el('p', { class: 'hint',
+      text: 'Could not ask what is not shared yet: ' + e.message }));
+  });
+  return box;
+}
+
+/* What never leaves this computer, folded and grouped by why. */
+function keptHere(rows) {
+  const groups = {};
+  for (const r of rows) (groups[r.why || 'other'] = groups[r.why || 'other']
+                         || []).push(r);
+  const counted = (list) => {
+    const n = {};
+    for (const r of list) n[r.kind] = (n[r.kind] || 0) + 1;
+    return Object.keys(n).map((k) => unsharedNoun(k, n[k])).join(', ');
+  };
+  const parts = [];
+  if (groups.demo) {
+    parts.push(el('p', {}, [
+      el('strong', { text: 'Demo and harness records' }),
+      el('span', { text: ', which are never shared, on purpose: '
+                         + counted(groups.demo) + '.' }),
+    ]));
+  }
+  if (groups['no recording']) {
+    parts.push(el('p', {}, [
+      el('strong', { text: 'Recordings the registry does not have' }),
+      el('span', { text: ' \u2014 the shared database files everything '
+                         + 'under its recording, so these have nowhere to '
+                         + 'go:' }),
+    ]));
+    parts.push(el('ul', {}, groups['no recording'].map((r) => {
+      const what = (UNSHARED_KIND[r.kind] || [r.kind])[0];
+      const n = r.n_labels != null ? r.n_labels + ' label'
+                                     + (r.n_labels === 1 ? '' : 's')
+              : r.n_events != null ? r.n_events + ' event'
+                                     + (r.n_events === 1 ? '' : 's') : null;
+      return el('li', { title: r.id }, [
+        el('span', { text: what + ' \u00b7 ' + (r.name || r.id)
+                           + (n ? ' (' + n + ')' : '') }),
+        el('span', { class: 'hint',
+          text: r.now_gid
+            ? ' \u2014 the recording is in the registry under a newer id ('
+              + r.now_gid + '); this is filed under its old one, ' + r.id
+              + '.'
+            : ' \u2014 no recording with this id (' + r.id + ') or this '
+              + 'name is registered.' }),
+      ]);
+    })));
+  }
+  for (const why of Object.keys(groups)) {
+    if (why === 'demo' || why === 'no recording') continue;
+    const WHY = { 'no table': 'the shared database has no table for these '
+                              + 'yet (supabase/21_shard_files.sql)' };
+    parts.push(el('p', {}, [
+      el('strong', { text: counted(groups[why]) }),
+      el('span', { text: ' \u2014 ' + (WHY[why] || why) + '.' }),
+    ]));
+  }
+  return el('details', { class: 'sync-local' }, [
+    el('summary', { text: rows.length + ' kept on this computer on purpose' }),
+  ].concat(parts));
+}
+
+/* GUI_logs' git state on the panel's top row. "[WinError 2] The system
+   cannot find the file specified" was what a computer with no git on PATH
+   showed here; the server now looks where Git for Windows and GitHub
+   Desktop put theirs, and says so in words when there is none. */
+function gitChip(git) {
+  if (git.ok) {
+    return el('span', { class: 'stat-chip ' + (git.dirty ? 'warn' : 'good'),
+                        text: git.dirty ? git.dirty + ' uncommitted' : 'clean' });
+  }
+  const err = String(git.error || '');
+  const missing = git.missing || /WinError 2|cannot find the file|No such file/i
+    .test(err);
+  return el('span', {
+    class: 'stat-chip' + (missing ? '' : ' warn'),
+    text: missing ? 'git not found' : 'git: not a repository',
+    title: missing ? (git.missing ? err : 'Jarvis cannot find git on this '
+                      + 'computer. Records still reach the other computers '
+                      + 'through the shared database.') : err,
+  });
+}
 
 function showSync() {
   const d = BARRY.sync || {};
@@ -1109,28 +1584,39 @@ function showSync() {
                      onclick: closeModal }),
     ]),
     el('div', { class: 'mb' }, [
-      el('div', { class: 'fb-stats' }, [
+      el('div', { class: 'chip-row' }, [
         el('span', { class: 'stat-chip', text: (counts.runs || 0) + ' runs' }),
         el('span', { class: 'stat-chip', text: (counts.sessions || 0) + ' sessions' }),
         el('span', { class: 'stat-chip', text: (counts.errors || 0) + ' errors' }),
-        git.ok
-          ? el('span', { class: 'stat-chip ' + (git.dirty ? 'warn' : 'good'),
-                         text: git.dirty ? git.dirty + ' uncommitted' : 'clean' })
-          : el('span', { class: 'stat-chip warn', text: git.error || 'not a git repo' }),
+        gitChip(git),
       ]),
-      el('div', { class: 'section-label', text: 'How syncing works' }),
-      el('p', { style: 'font-size:12.5px;line-height:1.7;color:var(--text-2)' , text:
-        'BARRY writes every run, bad-channel mark, preset and error into GUI_logs as '
-        + 'plain JSON — one file per run and per session, so git merges them without '
-        + 'conflict. It never commits or pushes on its own.' }),
-      el('div', { class: 'source-box' }, [
+      /* Two ways a record leaves this computer, one section each. They
+         were one scrolling box -- the database's status, the git
+         commands and a conflict warning together, with the button
+         clipped at its edge and the next heading drawn over its foot. */
+      el('div', { class: 'section-label', text: 'The shared database' }),
+      el('div', { class: 'sync-section' }, [
         cloudNote(),
-        conflictNote(d.conflicts),
-        el('pre', { text: 'git add "BARRY GUI/GUI_logs"\ngit commit -m "session logs"\ngit push\n\n'
-                          + '# to pick up everyone else\'s work:\ngit pull' }),
+        unsharedSection(),
       ]),
-      files.length ? el('div', { class: 'section-label', text: 'Uncommitted files' }) : null,
-      files.length ? el('div', { class: 'source-box' }, [el('pre', { text: files.join('\n') })]) : null,
+      el('div', { class: 'section-label', text: 'Git' }),
+      el('div', { class: 'sync-section sync-git' }, [
+        el('p', { class: 'hint',
+          text: 'GUI_logs is also a folder in the repository: every run, '
+              + 'bad-channel mark, preset and error is a JSON file, one per '
+              + 'machine, so git merges them without conflict. Jarvis never '
+              + 'commits or pushes on its own.' }),
+        conflictNote(d.conflicts),
+        git.ok
+          ? el('pre', { text: 'git add "BARRY GUI/GUI_logs"\ngit commit -m "session logs"\ngit push\n\n'
+                              + '# to pick up everyone else\'s work:\ngit pull' })
+          : null,
+        files.length ? el('details', { class: 'sync-files' }, [
+          el('summary', { text: files.length + ' uncommitted file'
+                                + (files.length === 1 ? '' : 's') }),
+          el('pre', { text: files.join('\n') }),
+        ]) : null,
+      ].filter(Boolean)),
     ]),
     el('div', { class: 'mf' }, [
       el('button', { class: 'btn ghost sm', text: 'Open folder',
@@ -1157,9 +1643,13 @@ function showSync() {
 BARRY.notes = (function () {
   let data = null;
 
-  async function load() {
+  /* Two sizes of one answer. Boot asks only for what the chip shows --
+     `head=1` is about a hundred bytes -- because the full notes are 450 kB
+     and were arriving before the first screen had settled, to paint a chip.
+     `open` asks for the rest when somebody actually wants to read them. */
+  async function load(full) {
     try {
-      data = await api('/api/notes');
+      data = await api(full ? '/api/notes' : '/api/notes?head=1');
     } catch (e) {
       data = null;
     }
@@ -1179,7 +1669,7 @@ BARRY.notes = (function () {
        and "we are both on 65ece68" are different claims, and the second is
        the one that settles an argument about why something behaves
        differently for one of you. */
-    chip.title = 'BARRY ' + v
+    chip.title = 'Jarvis ' + v
       + (run ? '  ·  ' + run.commit + (run.dirty ? ' + local changes' : '')
              + (run.branch ? '  ·  ' + run.branch : '')
              : '')
@@ -1188,7 +1678,12 @@ BARRY.notes = (function () {
   }
 
   function open() {
-    if (!data) { load().then((d) => { if (d) open(); }); return; }
+    // A failed read comes back `ok: false` with no entries, and has to reach
+    // the error toast below rather than doing nothing.
+    if (!data || (data.ok && !data.entries)) {
+      load(true).then((d) => { if (d && (d.entries || !d.ok)) open(); });
+      return;
+    }
     if (!data.ok) {
       toast(data.error || 'There are no patch notes to show.', 'err', 8000);
       return;
@@ -1233,7 +1728,7 @@ BARRY.notes = (function () {
     showModal(el('div', {}, [
       el('div', { class: 'mh' }, [
         el('h3', { text: 'What changed' }),
-        el('span', { class: 'sub', text: 'BARRY ' + (data.version || '') }),
+        el('span', { class: 'sub', text: 'Jarvis ' + (data.version || '') }),
         el('div', { class: 'spacer' }),
         el('button', { class: 'close-x', onclick: closeModal,
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
@@ -1259,10 +1754,25 @@ BARRY.notes = (function () {
 
 BARRY.setErrorCount = function setErrorCount(n) {
   const b = $('#errBadge');
-  if (!b) return;
+  if (!b || n == null) return;
   n = Number(n) || 0;
   b.textContent = String(n);
   b.classList.toggle('hidden', !n);
+  b.title = (n === 1 ? 'One fault' : n + ' faults')
+    + ' from the last week still open. The Errors view lists every one.';
+};
+
+/* The badge counts distinct faults still open from the last week -- what
+   the Errors view lists as unresolved, without a test's faults and without
+   archived computers -- not every row ever written. It read 5,233
+   (2026-10-20), and a number that only grows is not read. `errors_open`
+   comes from the server (app.py `_errors_open`); an older server sends only
+   the raw count. */
+BARRY.errorBadgeCount = function errorBadgeCount(data) {
+  const open = data && data.errors_open;
+  // Not counted yet (the server counts beside the poll): leave the badge.
+  if (open) return open.faults != null ? open.faults : null;
+  return (((data || {}).index || {}).counts || {}).errors || 0;
 };
 
 /* ==========================================================================
@@ -1270,7 +1780,7 @@ BARRY.setErrorCount = function setErrorCount(n) {
    ========================================================================== */
 const VIEWS = ['pipeline', 'explorer', 'xplore', 'sessions', 'history',
                'errors', 'results', 'storyboard', 'misc', 'eventbank',
-               'toolkit'];
+               'toolkit', 'comod', 'spectrum'];
 
 /* ==========================================================================
    The rail: full, icons, away
@@ -1406,15 +1916,117 @@ function wireRail() {
    different keys, dragging means something else. Announced here rather than
    in each mode, so the two cannot drift apart, and so leaving is always the
    same button in the same place.
+
+   THE BANNER AND THE BAR (2026-10-20, banner back 2026-10-21). A mode
+   used to be announced twice -- a banner with "Leave this mode", and the
+   mode's own bar with a Leave of its own: two exits, five shapes of bar.
+   Now the banner across the top names the mode in its colour, says what it
+   does, and ends with Simplify and Leave -- the one Leave, always last,
+   far right; Esc does the same. The mode's tools are one compact bar at
+   the bottom (`#modeBar`, `BARRY.modeSlot()`), which folds to one line.
+
+   `what` is what the ? says; `keys` the keys it lists after it. Every mode
+   is here, so every mode gets a name, a colour and the same bar.
    ========================================================================== */
 const MODES = {
+  spotter: {
+    name: 'Spotter',
+    what: 'One discharge at a time: solid, sputter, or neither · the '
+        + 'channels it was found on are lit',
+    keys: 'Each category\u2019s key is on its button · \u2190 \u2192 step · '
+        + 'C clears · Z undoes',
+  },
   strata: {
     name: 'StrataScope',
     what: 'Labelling layers · drag on the rail to set a boundary '
         + '· the aids are in the second window',
+    keys: '1\u20139 paint a layer · 0 unlabels',
+  },
+  cfc: {
+    name: 'Braid',
+    /* The banner is the promise. The other two modes take a set off
+       somebody, move a bench, write decisions; this one reads. Saying so
+       where it cannot be missed is cheaper than anyone having to wonder,
+       and it is the only reason this mode has a `what` worth the room. */
+    what: 'Looking only · nothing here is saved · C for a '
+        + 'comodulogram of the window',
+  },
+  braces: {
+    name: 'Braces',
+    /* Folds in stages too (2026-10-26: "either fully collapsed or not
+       collapsed at all"): the options first, the buttons kept. */
+    foldStages: 3,
+    foldMiddle: 'Put the options away and keep the buttons; click again to '
+              + 'fold the bar to one line, and again to bring it all back',
+    /* Worth a `what` where curation's is not: this mode draws each stamp
+       TWICE, and a viewer who does not know that is looking at twice as
+       many dentate spikes as the recording has. */
+    what: 'Every stamp drawn where it was and where it goes '
+        + '\u00b7 n / p stop at the ones needing a decision (\u25bc) '
+        + '\u00b7 press any stamp to go to it '
+        + '\u00b7 [ and ] to move it a millisecond',
+    keys: 'n p or \u2190 \u2192 step \u00b7 Enter moves it \u00b7 k leaves it '
+        + '\u00b7 g garbage \u00b7 [ ] nudge 1 ms \u00b7 u undo \u00b7 l the list',
+  },
+  /* Lock's review is Braces' review on a pooled set (braces.js
+     `makeBraces`, 2026-10-22), with one more thing worth the banner: the
+     stamps Braces placed are drawn in their own colour and do not move. */
+  lock: {
+    name: 'Lock',
+    foldStages: 3,
+    foldMiddle: 'Put the options away and keep the buttons; click again to '
+              + 'fold the bar to one line, and again to bring it all back',
+    what: 'Every stamp drawn where it was and where it goes '
+        + '\u00b7 held groups are drawn blue and stay put '
+        + '\u00b7 n / p stop at the ones needing a decision (\u25bc) '
+        + '\u00b7 [ and ] to move one a millisecond',
+    keys: 'n p or \u2190 \u2192 step \u00b7 Enter moves it \u00b7 k leaves it '
+        + '\u00b7 g garbage \u00b7 [ ] nudge 1 ms \u00b7 u undo \u00b7 l the list',
+  },
+  arcconfirm: {
+    name: 'Confirm cue pairs',
+    /* Worth a `what`: the drawing shows pulses that were DROPPED as well
+       as the ones that were kept, and somebody who did not know that would
+       count the dashed ones and think the pairing had missed them. */
+    what: 'Every pulse drawn, dropped ones dashed · the four analysis '
+        + 'windows shaded',
+    keys: '\u2190 \u2192 or n p step pairs',
+  },
+  arcclean: {
+    name: 'Clean cue pairs',
+    what: 'Saturated stretches marked on the channels that saturated '
+        + '· nothing here is saved until you file the pairs',
+    keys: '\u2190 \u2192 or n p step pairs · \u2191 \u2193 pick a channel · '
+        + 'k keeps · x drops · t state / transition · Esc calls off a drag',
+  },
+  coupling: {
+    name: 'Coupling',
+    /* Worth a `what` for the same reason Braid's is: this mode computes and
+       shows, and writes nothing. A saved connectivity matrix is Circuit's
+       job, one step later, and somebody who thought this one was banking
+       would go looking afterwards for numbers that were never kept. */
+    what: 'Looking only · nothing here is saved · pick two '
+        + 'regions and a boundary',
+  },
+  panning: {
+    name: 'Panning',
+    /* Its bar folds in stages (2026-10-22): the tick bars first, then the
+       labelling too, then back. See modeFold. */
+    foldStages: 3,
+    /* Worth a `what`: merging is the one thing here that is not on a
+       button you can see until you need it, and two events a few
+       milliseconds apart look like one line on the traces. */
+    what: 'Each event in the colour of the detector that found it '
+        + '· shift-click a second one on the strip, M to merge '
+        + '· Z undoes',
+    keys: 'Each category\u2019s key is on its button · \u2190 \u2192 step · '
+        + 'M merges · Z undoes',
   },
   curate: {
-    name: 'DS curation',
+    /* Called what its step is called (2026-10-20): the button that opens it
+       says Checkup, and the bar said "DS curation". */
+    name: 'Checkup',
+    keys: 'Each category\u2019s key is on its button · n / p step · u undoes',
     /* No `what`. It said "Y keeps, N rejects", and neither key does
        anything: a set carries its own vocabulary and its own keys, which
        the mode's own bar shows next to each category. A banner that
@@ -1453,7 +2065,19 @@ function setMode(kind, leave) {
       modeNow = kind;
       const stack = (new Error().stack || '').split('\n').slice(2, 5)
         .map((s) => s.trim().replace(/^at\s+/, '')).join(' < ');
-      BARRY.activity.log('mode.change', { from: from, to: to, via: stack });
+      /* How long since the last click or keypress.
+
+         A mode change is meant to be something a person does, so one that
+         happens seconds after the last input is worth being able to see
+         afterwards. Not an error -- entering StrataScope waits on a
+         session opening and that legitimately takes seconds -- but the
+         difference between "the user did this" and "something did this"
+         is exactly what was missing when StrataScope was reported to snap
+         into curation on its own. */
+      BARRY.activity.log('mode.change', {
+        from: from, to: to, via: stack,
+        since_gesture_ms: _lastGesture ? (Date.now() - _lastGesture) : null,
+      });
       noticeBounce(from, to, stack);
     } catch (e) { modeNow = kind; }
   }
@@ -1461,8 +2085,12 @@ function setMode(kind, leave) {
   for (const k of Object.keys(MODES)) app.classList.toggle('mode-' + k, k === kind);
   modeLeaveFn = kind ? (leave || null) : null;
   const m = MODES[kind];
+  // One class for "an add-on is on", so the bar and the frame are one rule
+  // rather than a list of modes that the newest one is missing from.
+  app.classList.toggle('in-mode', !!m);
   const name = document.getElementById('modeName');
   const what = document.getElementById('modeWhat');
+  const keys = document.getElementById('modeKeys');
   const out = document.getElementById('modeLeave');
   if (name) name.textContent = m ? m.name : '';
   if (what) {
@@ -1470,14 +2098,208 @@ function setMode(kind, leave) {
     // Not merely empty: an empty span still takes its margins.
     what.hidden = !(m && m.what);
   }
-  if (out) out.style.display = (m && modeLeaveFn) ? '' : 'none';
-  // Every canvas just changed height by the banner's worth.
+  if (keys) {
+    keys.textContent = m ? [m.keys, 'Esc leaves.'].filter(Boolean).join(' · ')
+                         : '';
+  }
+  if (out) {
+    out.style.display = (m && modeLeaveFn) ? '' : 'none';
+    out.title = m ? 'Leave ' + m.name + '. Everything decided is already '
+                    + 'saved.  (Esc)' : '';
+  }
+  modeHelp(false);
+  modeSimplify(kind, null);
+  modeFold(kind, null);
+  modeReserve(!!m);
+  // The mode's own tools leave with it.
+  if (!m) {
+    const slot = document.getElementById('modeSlot');
+    if (slot) slot.innerHTML = '';
+  }
+  // Every canvas just changed height by the bar's worth.
   window.dispatchEvent(new Event('resize'));
+}
+
+/* Where a mode puts its own tools: the middle of the one bar. Falls back to
+   the workspace for a page that has no bar (a harness frame, an old page). */
+BARRY.modeSlot = function modeSlot() {
+  return document.getElementById('modeSlot')
+    || document.getElementById('xfBody') || document.body;
+};
+
+/* SIMPLIFY (2026-10-20): the traces fill the window -- the channel list,
+   Xplorefinder's header and the pane header strips go -- in the mode it was
+   pressed in, and remembered per add-on. `on` null reads what was
+   remembered; true or false sets it. */
+function modeSimplify(kind, on) {
+  const app = document.getElementById('app');
+  const btn = document.getElementById('modeSimplify');
+  const key = 'xf_simplify_' + (kind || '');
+  let want = false;
+  if (kind && MODES[kind]) {
+    if (on === null || on === undefined) {
+      try { want = !!BARRY.prefs.get(key, false); } catch (e) { want = false; }
+    } else {
+      want = !!on;
+      try { BARRY.prefs.set(key, want); } catch (e) { /* this session only */ }
+    }
+  }
+  if (app) app.classList.toggle('xf-simple', want);
+  if (btn) {
+    btn.setAttribute('aria-pressed', want ? 'true' : 'false');
+    btn.classList.toggle('on', want);
+    btn.title = want
+      ? 'Showing the traces only. Press to bring back the channel list and '
+        + 'the headers.'
+      : 'Let the traces fill the window: hides the channel list, the '
+        + 'Xplorefinder header and the pane headers. Remembered for this '
+        + 'add-on.';
+  }
+  return want;
+}
+
+/* Room for the bar: toasts and side drawers sit above it (`--bottom-bar`),
+   measured -- it wraps to two rows on a narrow window -- and kept measured
+   while the mode is on. */
+let _modeRO = null;
+function modeReserve(on) {
+  const bar = document.getElementById('modeBar');
+  const root = document.documentElement;
+  if (!on || !bar) {
+    if (_modeRO) { _modeRO.disconnect(); _modeRO = null; }
+    root.style.removeProperty('--bottom-bar');
+    return;
+  }
+  const set = () => {
+    const h = Math.ceil(bar.getBoundingClientRect().height);
+    if (h) root.style.setProperty('--bottom-bar', h + 'px');
+  };
+  set();
+  requestAnimationFrame(set);
+  if (!_modeRO && typeof ResizeObserver !== 'undefined') {
+    _modeRO = new ResizeObserver(set);
+    _modeRO.observe(bar);
+  }
+}
+
+/* FOLDING THE BAR (2026-10-20): "this takes up A LOT of space for people
+   with small screens". Folded, the bar is one slim line -- the mode, where
+   you are in it, Leave -- and every key still works. Remembered per
+   add-on, on this computer. */
+/* The tools bar's fold, kept per add-on in localStorage
+   ('barry.modeFold.<kind>'): '0' open, '1' folded to one line. An add-on
+   whose MODES entry says `foldStages: 3` (Panning, 2026-10-22: "first click
+   just the tick bars, second the labelling as well, third it returns") has
+   a stage between: 't', its tick bars put away (`.fold-ticks`, which hides
+   `.mode-strip` canvases) with every tool still showing. `on` is null to
+   read back what was kept, true/false for folded/open, or a stage name
+   ('open' | 'ticks' | 'folded'). Returns the stage now in force. */
+function modeFold(kind, on) {
+  const bar = document.getElementById('modeBar');
+  const btn = document.getElementById('modeFold');
+  const key = 'barry.modeFold.' + (kind || '');
+  const staged = !!(kind && MODES[kind] && MODES[kind].foldStages === 3);
+  let stage = 'open';
+  if (kind && MODES[kind]) {
+    if (on === null || on === undefined) {
+      let v = '0';
+      try { v = localStorage.getItem(key) || '0'; } catch (e) { v = '0'; }
+      stage = v === '1' ? 'folded' : (v === 't' && staged ? 'ticks' : 'open');
+    } else {
+      stage = on === true ? 'folded' : on === false ? 'open'
+        : (on === 'ticks' && !staged ? 'folded' : String(on));
+      try {
+        localStorage.setItem(key, stage === 'folded' ? '1'
+                                  : stage === 'ticks' ? 't' : '0');
+      } catch (e) { /* session */ }
+    }
+  }
+  if (bar) {
+    bar.classList.toggle('folded', stage === 'folded');
+    bar.classList.toggle('fold-ticks', stage === 'ticks');
+  }
+  if (btn) {
+    btn.setAttribute('aria-expanded', stage === 'folded' ? 'false' : 'true');
+    btn.dataset.stage = stage;
+    btn.title = stage === 'folded' ? 'Unfold the bar: every tool back'
+      : stage === 'ticks' ? 'Fold the bar to one line (the keys still work)'
+      : staged ? ((MODES[kind] || {}).foldMiddle
+                  || 'Put the tick bars away; click again to fold the bar to '
+                     + 'one line, and again to bring it all back')
+      : 'Fold the bar to one line (the keys still work)';
+  }
+  return stage;
+}
+
+/* The next stage on a click: open → folded → open, or, staged,
+   open → ticks → folded → open. */
+function modeFoldNext(kind) {
+  const bar = document.getElementById('modeBar');
+  const now = bar && bar.classList.contains('folded') ? 'folded'
+    : (bar && bar.classList.contains('fold-ticks') ? 'ticks' : 'open');
+  const staged = !!(MODES[kind] && MODES[kind].foldStages === 3);
+  const next = staged
+    ? ({ open: 'ticks', ticks: 'folded', folded: 'open' })[now]
+    : (now === 'open' ? 'folded' : 'open');
+  return modeFold(kind, next);
+}
+
+/* The ? beside Leave: what the mode does, and its keys, in one place. */
+function modeHelp(open) {
+  const pop = document.getElementById('modeHelpPop');
+  const btn = document.getElementById('modeHelp');
+  if (!pop || !btn) return;
+  const want = open === undefined ? pop.hidden : !!open;
+  pop.hidden = !want;
+  btn.setAttribute('aria-expanded', want ? 'true' : 'false');
 }
 
 function wireMode() {
   const out = document.getElementById('modeLeave');
   if (out) out.addEventListener('click', () => {
+    const fn = modeLeaveFn;
+    if (fn) fn();
+  });
+  const fold = document.getElementById('modeFold');
+  if (fold) fold.addEventListener('click', () => {
+    if (!modeNow) return;
+    const stage = modeFoldNext(modeNow);
+    window.dispatchEvent(new Event('resize'));
+    // An add-on drawing into the bar (Panning's strips) redraws on this.
+    window.dispatchEvent(new CustomEvent('barry:modefold',
+      { detail: { kind: modeNow, stage } }));
+  });
+  const simple = document.getElementById('modeSimplify');
+  if (simple) simple.addEventListener('click', () => {
+    if (!modeNow) return;
+    modeSimplify(modeNow, !document.getElementById('app')
+      .classList.contains('xf-simple'));
+    // The panes just changed size.
+    window.dispatchEvent(new Event('resize'));
+  });
+  const help = document.getElementById('modeHelp');
+  if (help) help.addEventListener('click', (e) => {
+    e.stopPropagation();
+    modeHelp();
+  });
+  document.addEventListener('mousedown', (e) => {
+    const pop = document.getElementById('modeHelpPop');
+    if (pop && !pop.hidden && !e.target.closest('.mode-help')) modeHelp(false);
+  });
+  /* Esc leaves the mode -- after anything nearer has had it: a field being
+     typed in, an open dialog or popover, the ?'s own panel, and a mode's
+     own handler (dragging, editing), which marks the press handled. */
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || !modeLeaveFn) return;
+    if (BARRY.state && BARRY.state.view && BARRY.state.view !== 'xplore') return;
+    const t = e.target;
+    if (t && (t.isContentEditable
+              || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''))) return;
+    if (document.querySelector('#bigModal:not(.hidden), #pathModal:not(.hidden)')
+        || _openPop) return;
+    const pop = document.getElementById('modeHelpPop');
+    if (pop && !pop.hidden) { modeHelp(false); e.preventDefault(); return; }
+    e.preventDefault();
     const fn = modeLeaveFn;
     if (fn) fn();
   });
@@ -1487,7 +2309,7 @@ function wireMode() {
 /* ==========================================================================
    Profile -- who the work is credited to
    ==========================================================================
-   Everything BARRY writes down carries a name: curation decisions, banked
+   Everything Jarvis writes down carries a name: curation decisions, banked
    event sets, layer sheets, exported figures, runs. That name used to come
    from `git config user.name`, falling back to the Windows account -- so on
    a shared rig every decision was credited to a computer, and two people on
@@ -1498,6 +2320,21 @@ function wireMode() {
    ========================================================================== */
 BARRY.profile = (function () {
   let prof = null;
+  /* What this lab actually is. Free text is how one lab ends up with
+     "undergrad", "Undergraduate" and "Undergraduate Student" as three
+     different roles, and a roster that groups by role then reports three
+     people where there is one kind of person.
+
+     A value already on record that is not in this list is kept and offered
+     -- see `roleField`. The list is a suggestion about the future, not a
+     verdict on what somebody already typed. */
+  const ROLES = [
+    'PI',
+    'Graduate Student',
+    'Undergraduate Student',
+    'Medical Student',
+    'Medical Resident',
+  ];
 
   async function load() {
     try {
@@ -1541,13 +2378,17 @@ BARRY.profile = (function () {
     }
   }
 
-  /* Everyone BARRY has come into contact with. Cached for the dialog's
+  /* Everyone Jarvis has come into contact with. Cached for the dialog's
      lifetime; a fresh copy each time it is opened. */
   let roster = null;
 
   async function people() {
     try {
-      roster = await api('/api/people');
+      // Kept by BARRY.data (web/js/data.js): asked every time, and a 304
+      // when nobody has been added -- so the start screen's "Who's
+      // working?" and this dialog read one copy.
+      roster = BARRY.data ? await BARRY.data.get('/api/people')
+                          : await api('/api/people');
     } catch (e) {
       roster = { people: [], me: null };
     }
@@ -1556,6 +2397,16 @@ BARRY.profile = (function () {
 
   async function open() {
     const cur = prof || {};
+    /* Asked now, not remembered.
+
+       This line used to be built from whatever `/api/profile` last
+       reported, so renaming the computer under Errors -> Device left the
+       dialog claiming the old name until the page was refreshed. It is one
+       request and it is the only thing here that another view can change. */
+    try {
+      const got = await api('/api/device');
+      if (got && got.device) cur.device_name = got.device.name;
+    } catch (e) { /* the note falls back to the hostname */ }
     const f = {};
     /* `mine` marks a field that is about this COMPUTER rather than about a
        person, so it can be taken off screen when the form is about somebody
@@ -1577,6 +2428,10 @@ BARRY.profile = (function () {
       if (mine) mineOnly.push(box);
       return box;
     };
+    /* Nothing is machine-only in this form any more -- the one field that
+       was has moved out entirely. The mechanism stays: the next field that
+       is about the computer rather than the person must not be editable
+       while somebody else's details are in the form. */
 
     /* Who is already here. A row fills the form; the pencil opens that
        person for editing without making them the person at this keyboard,
@@ -1597,13 +2452,44 @@ BARRY.profile = (function () {
     let creating = false;
 
     const fill = (d, asMe) => {
-      for (const k of ['name', 'email', 'role', 'initials']) {
+      for (const k of ['name', 'email', 'initials']) {
         if (f[k]) f[k].value = (d && d[k]) || '';
+      }
+      /* The role is a select, and assigning a value it has no option for
+         silently leaves it blank -- which would then be saved as "no role"
+         over somebody's actual one. So the option is made first. */
+      if (f.role) {
+        const want = ((d && d.role) || '').trim();
+        if (want && !Array.from(f.role.options)
+              .some((o) => o.value.toLowerCase() === want.toLowerCase())) {
+          f.role.appendChild(el('option', {
+            value: want, text: want + '  (as recorded)' }));
+        }
+        f.role.value = want;
       }
       editing = asMe ? null : (d && d.name) || null;
       creating = false;
       paintMode();
       paintKnown();
+      markClean();
+    };
+
+    /* Unsaved changes ask before the form goes (2026-10-23: "your changes
+       are unsaved, are you sure you want to close?"). What the form held
+       when it was opened or last filled is the baseline. */
+    let clean = null;
+    const formNow = () => JSON.stringify(Object.keys(f).sort()
+      .map((k) => [k, f[k] && f[k].value]));
+    function markClean() { clean = formNow(); }
+    const askClose = async () => {
+      if (clean !== null && formNow() !== clean && BARRY.confirm) {
+        const ok = await BARRY.confirm('Close without saving?',
+          'Your changes to this profile are not saved. Support panel '
+          + 'preferences save as you go, so those are kept either way.',
+          'Close without saving');
+        if (!ok) return;
+      }
+      closeModal();
     };
 
     /* Start a new one. Clears the form rather than inheriting whoever was
@@ -1613,12 +2499,166 @@ BARRY.profile = (function () {
       for (const k of ['name', 'email', 'role', 'initials']) {
         if (f[k]) f[k].value = '';
       }
+      // An empty new form is nothing unsaved yet.
+      markClean();
       editing = null;
       creating = true;
       paintMode();
       paintKnown();
       if (f.name) f.name.focus();
     };
+
+    /* The role, as a list, without overwriting anything.
+
+       `cur.role` may be something nobody would pick today -- "Undergraduate"
+       is on this roster and is not in ROLES. A plain select would have
+       silently changed it to the first option the moment the form was
+       opened, so the current value is added as its own option and said to
+       be an old one. */
+    const roleField = () => {
+      const now = (cur.role || '').trim();
+      const known = ROLES.some((r) => r.toLowerCase() === now.toLowerCase());
+      const opts = ROLES.slice();
+      if (now && !known) opts.unshift(now);
+      f.role = el('select', { class: 'prof-role' },
+        [el('option', { value: '', text: '\u2014 not set \u2014' })]
+          .concat(opts.map((r) => el('option', {
+            value: r,
+            text: r + (now && !known && r === now ? '  (as recorded)' : ''),
+            selected: r.toLowerCase() === now.toLowerCase()
+              ? 'selected' : null,
+          }))));
+      return el('div', { class: 'field' }, [
+        el('label', { text: 'Role' }),
+        f.role,
+        now && !known
+          ? el('span', { class: 'hint',
+              text: '"' + now + '" is what is on record for them. Leaving it '
+                  + 'alone keeps it; picking another changes it.' })
+          : null,
+      ].filter(Boolean));
+    };
+
+    /* ==================================================================
+       The cluster account
+       ==================================================================
+       Same kind of fact as the fields above: who this computer is. The
+       name and email say who it credits work to; the netid says who it
+       runs work AS. Somebody setting a machine up should meet both once,
+       in one place, rather than finding the second later behind a chip
+       they had no reason to press.
+
+       Deliberately outside `mineOnly`'s hide-when-editing rule in one
+       respect: it describes the COMPUTER, not the person in the form, so
+       editing somebody else's details must not make it look as though
+       their cluster account is being changed. It is hidden in those modes
+       for exactly that reason.
+
+       Live is drawn separately from signed in, because they are different
+       questions and only one of them is about the person. Signed in means
+       there is an account here; live means the cluster answered. A rig
+       with no network is signed in and not live, and saying "not signed
+       in" for that would send somebody to re-enter a password that was
+       never the problem. */
+    const vaccBox = el('div', { class: 'prof-vacc' });
+    mineOnly.push(vaccBox);
+
+    const paintVaccBox = (st) => {
+      vaccBox.innerHTML = '';
+      vaccBox.appendChild(el('div', { class: 'section-label',
+                                      text: 'VACC account' }));
+
+      if (!BARRY.vacc) {
+        vaccBox.appendChild(el('p', { class: 'hint quiet',
+          text: 'The cluster module is not loaded in this window.' }));
+        return;
+      }
+      if (st === undefined) {
+        vaccBox.appendChild(el('p', { class: 'hint quiet',
+                                      text: 'Asking\u2026' }));
+        return;
+      }
+      if (st && st.have_ssh === false) {
+        /* Nothing below can work, so nothing below is offered. The same
+           rule the sign-in panel follows: a missing capability is stated
+           once rather than discovered by every button failing. */
+        vaccBox.appendChild(el('p', { class: 'warn-line',
+          text: 'There is no ssh client on this computer, so it cannot '
+              + 'reach the cluster at all. On Windows it is "OpenSSH '
+              + 'Client" under Settings \u203a Optional features.' }));
+        return;
+      }
+
+      const d = (BARRY.vacc.last) || {};
+      const signedIn = !!(st && st.configured);
+      const live = !!d.available;
+
+      vaccBox.appendChild(el('p', { class: 'prof-vacc-state' }, [
+        el('span', { class: 'vacc-dot ' + (signedIn ? (live ? 'live' : 'idle')
+                                                    : 'off') }),
+        el('strong', { text: signedIn ? (st.netid || '?') : 'Not signed in' }),
+        el('span', { class: 'hint', text: signedIn
+          ? (live ? '\u00b7 the cluster answered just now'
+                  : '\u00b7 ' + (d.why || 'not reachable from here right now'))
+          : '\u00b7 this computer cannot run anything on VACC yet' }),
+      ]));
+
+      vaccBox.appendChild(el('p', { class: 'hint', style: 'max-width:62ch',
+        text: signedIn
+          ? 'Jobs from this computer run as ' + (st.netid || '?')
+            + ' and their output lands in that account\u2019s space. '
+            + 'Switching asks for a password only if this computer has '
+            + 'never connected to the other account.'
+          : 'All it needs is your UVM NetID \u2014 the part of your email '
+            + 'before the @. A password is asked for once, only if none of '
+            + 'the keys already on this computer work for that account.' }));
+
+      const acts = el('div', { class: 'vacc-actions' });
+      acts.appendChild(el('button', {
+        class: signedIn ? 'btn ghost sm' : 'btn',
+        text: signedIn ? 'Switch account\u2026' : 'Set up VACC\u2026',
+        onclick: () => {
+          /* Closes this first. The sign-in panel is a modal and
+             `showModal` stacks, so opening it over the profile would put
+             the profile back underneath afterwards -- which reads as the
+             form reopening itself. */
+          closeModal();
+          BARRY.vacc.showSignIn();
+        },
+      }));
+      if (signedIn) {
+        acts.appendChild(el('button', {
+          class: 'btn ghost sm', text: 'Sign out',
+          title: 'Forget this account on this computer. The key is left '
+               + 'alone, here and on the cluster \u2014 signing back in, as '
+               + 'anyone, asks for no password.',
+          onclick: async () => {
+            await BARRY.vacc.signOut();
+            loadVaccState();
+          },
+        }));
+      }
+      vaccBox.appendChild(acts);
+    };
+
+    const loadVaccState = () => {
+      paintVaccBox(undefined);
+      if (!BARRY.vacc) { paintVaccBox(null); return; }
+      api('/api/vacc/signin/state')
+        .then((st) => {
+          paintVaccBox(st);
+          /* The status is a separate question from the account, and it is
+             what makes the dot mean anything. Asked after, so the box is
+             on screen while the cluster is being reached. */
+          if (st && st.configured) {
+            BARRY.vacc.status().then(() => paintVaccBox(st)).catch(() => {});
+          }
+        })
+        .catch(() => paintVaccBox(null));
+    };
+    loadVaccState();
+
+    const vaccSection = () => vaccBox;
 
     const modeLine = el('p', { class: 'prof-mode' });
 
@@ -1634,7 +2674,7 @@ BARRY.profile = (function () {
           ? 'Adding somebody new to the roster. Save puts them on it; it '
             + 'does not change who this computer credits work to.'
           : 'This is who this computer credits work to. Save applies it to '
-            + 'everything BARRY records here from now on.');
+            + 'everything Jarvis records here from now on.');
     };
 
     /* Remove, and then say what actually happened.
@@ -1674,7 +2714,7 @@ BARRY.profile = (function () {
           + '.\n\nThe roster is compiled from the work itself, not from a '
           + 'list anybody keeps, so this name is here because the data says '
           + 'so. Taking it off could not un-say it, and a button that looked '
-          + 'like it had would be lying about what BARRY holds.',
+          + 'like it had would be lying about what Jarvis holds.',
           null);
         return;
       }
@@ -1737,8 +2777,6 @@ BARRY.profile = (function () {
       }
     };
 
-    let showArchived = false;
-
     const paintKnown = () => {
       known.innerHTML = '';
       const all = (roster && roster.people) || [];
@@ -1792,7 +2830,7 @@ BARRY.profile = (function () {
              with work behind it therefore cannot be removed: it is stamped
              on those records whether the roster lists it or not, and a
              button that appeared to delete it would be lying about what
-             BARRY holds. Only the hand-added ones can go, which is exactly
+             Jarvis holds. Only the hand-added ones can go, which is exactly
              what a leftover test entry is.
 
              The count is in the tooltip rather than the button being
@@ -1831,28 +2869,25 @@ BARRY.profile = (function () {
 
       for (const p of rows) known.appendChild(chip(p));
 
-      /* The archived, folded away. Counted in the heading rather than
-         hidden without trace: "where did that name go" is the question a
-         silent filter creates. */
-      if (away.length) {
-        known.appendChild(el('button', {
-          class: 'prof-arch-toggle' + (showArchived ? ' on' : ''),
-          text: (showArchived ? '\u25be  ' : '\u25b8  ')
-                + away.length + ' archived',
-          title: 'Archived people are still on every record they are on, '
-               + 'and still counted. They are only kept out of the pickers.',
-          onclick: () => { showArchived = !showArchived; paintKnown(); },
-        }));
-        if (showArchived) {
-          for (const p of away) known.appendChild(chip(p));
-        }
-      }
+      /* The archived, folded away at the bottom behind the one toggle
+         every list uses (ui.archivedTail). Counted rather than hidden
+         without trace: "where did that name go" is the question a silent
+         filter creates. Archived people are still on every record they
+         are on; they are only kept out of the pickers. */
+      const tail = BARRY.ui && BARRY.ui.archivedTail
+        ? BARRY.ui.archivedTail({
+            key: 'people', items: away, noun: ['person', 'people'],
+            render: (xs) => xs.map(chip),
+            onToggle: () => paintKnown(),
+          })
+        : null;
+      if (tail) known.appendChild(tail);
     };
 
     const body = el('div', { class: 'prof-form' }, [
       modeLine,
       el('p', { class: 'confirm-msg',
-        text: 'Everything BARRY records is credited to this: curation '
+        text: 'Everything Jarvis records is credited to this: curation '
             + 'decisions, banked events, layer sheets, exported figures and '
             + 'every run. Set it once.' }),
       el('div', { class: 'section-label', text: 'People already here' }),
@@ -1864,15 +2899,36 @@ BARRY.profile = (function () {
             'What appears under a figure and against every decision.'),
       field('email', 'Email', 'you@uvm.edu',
             'So a decision can be asked about later.'),
-      field('device', 'What the lab calls this machine',
-            (cur.machine || 'this computer'),
-            'The real hostname (' + (cur.machine || '?') + ') is kept as '
-            + 'well, so "which computer" is still answerable. This name is '
-            + 'stamped on every error and action from this computer, so two '
-            + 'machines sharing one cannot be told apart.', true),
-      field('role', 'Role', 'e.g. undergraduate, PhD, PI', null),
+      /* The machine's name is not a field here any more. It belongs to
+         the computer, and while it sat in this form every path that saved
+         a profile could rename the machine -- which is how one computer
+         came to file errors under five names. It lives under Device, in
+         Errors. */
+      el('p', { class: 'hint prof-device-note' }, [
+        el('span', { text: 'This computer is called ' }),
+        el('strong', { text: (cur.device_name || cur.machine || 'unnamed') }),
+        el('span', { text: '. That belongs to the computer rather than to '
+                         + 'you, so it is set under ' }),
+        el('button', {
+          class: 'linkish', text: 'Errors \u2192 Device',
+          onclick: () => {
+            closeModal();
+            setView('errors');
+          },
+        }),
+        el('span', { text: ' and switching profiles leaves it alone.' }),
+      ]),
+      roleField(),
       field('initials', 'Initials', 'e.g. RA',
             'Used where there is no room for a full name.'),
+      /* The cluster account, here rather than in a panel of its own.
+
+         It is the same kind of fact as everything above it: who this
+         computer is. The name and email say who it credits work to; the
+         netid says who it runs work as. Somebody setting up a machine
+         should meet both in one place and once, rather than discovering
+         the second one later behind a chip they had no reason to click. */
+      vaccSection(),
     ]);
 
     const save = el('button', {
@@ -1915,7 +2971,7 @@ BARRY.profile = (function () {
               save.disabled = null;
               const go = await BARRY.confirm(
                 clash.name + ' is already on the roster',
-                'BARRY can update their details instead of adding a second '
+                'Jarvis can update their details instead of adding a second '
                 + clash.name + '. Two entries with the same name cannot be '
                 + 'told apart on any record.',
                 'Update ' + clash.name);
@@ -1950,7 +3006,7 @@ BARRY.profile = (function () {
                 + 'banked sets and their layer sheets. Renaming the roster '
                 + 'entry cannot rename those, so they would be left '
                 + 'crediting somebody the roster no longer lists.'
-                + '\n\nBARRY can add ' + typed + ' as a separate person '
+                + '\n\nJarvis can add ' + typed + ' as a separate person '
                 + 'instead, leaving ' + editing + ' exactly as they are. If '
                 + 'they really are the same person, archive one and add the '
                 + 'other as an alias — that folds the old name without '
@@ -2011,10 +3067,15 @@ BARRY.profile = (function () {
         el('h3', { text: 'Profile' }),
         el('span', { class: 'sub', text: 'who this work is credited to' }),
         el('div', { class: 'spacer' }),
-        el('button', { class: 'close-x', onclick: closeModal,
+        el('button', { class: 'close-x', onclick: askClose, 'aria-label': 'Close',
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
       ]),
-      el('div', { class: 'mb' }, [body]),
+      el('div', { class: 'mb' }, [
+        body,
+        // Which support panels each Xplorefinder add-on opens, and how
+        // (supportpanels.js). Saved as it is changed, not by Save.
+        BARRY.supportPanels ? BARRY.supportPanels.section() : null,
+      ].filter(Boolean)),
       el('div', { class: 'mf' }, [
         /* On the left, away from Save: adding somebody is a different job
            from saving the form, and putting them together is how one gets
@@ -2032,11 +3093,12 @@ BARRY.profile = (function () {
         }) : null,
         el('div', { class: 'spacer' }),
         el('button', { class: 'btn ghost', text: 'Cancel',
-                       onclick: closeModal }),
+                       onclick: askClose }),
         save,
       ].filter(Boolean)),
     ]));
     paintMode();
+    markClean();
     setTimeout(() => { try { f.name.focus(); } catch (e) {} }, 0);
     /* After the modal is up, so the chips land in a box that exists. */
     people().then(paintKnown);
@@ -2048,12 +3110,35 @@ BARRY.profile = (function () {
     load();
   }
 
-  return { load, get, who, open, wire, paintChip };
+  return { load, get, who, open, wire, paintChip, roles: () => ROLES.slice() };
 })();
 
 
 function setView(name) {
   if (!VIEWS.includes(name)) name = 'pipeline';
+
+  /* Tell the view being left that it is being left.
+
+     Nothing did, so anything a view started ran for the rest of the
+     session: ToolKit's presence beat and its mounted tool feed were both
+     still polling from whatever other view you were looking at. Views that
+     hold something on purpose do NOT have one of these -- Xplorefinder's
+     link poll carries facts a popped-out window still needs, and curation's
+     heartbeat is a claim on a set that another machine takes the moment it
+     lapses.
+
+     Wrapped, because a view failing on its way out must not strand you on
+     the one you are leaving. */
+  const from = BARRY.state.view;
+  if (from && from !== name) {
+    const prev = BARRY.views[from];
+    if (prev && prev.onHide) {
+      try { prev.onHide(); } catch (err) {
+        reportClientError('onHide:' + from, err.message, err.stack);
+      }
+    }
+  }
+
   BARRY.state.view = name;
   $$('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.view === name));
   $$('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + name));
@@ -2087,7 +3172,8 @@ document.addEventListener('keydown', () => { _lastGesture = Date.now(); },
 function noticeBounce(from, to, via) {
   const now = Date.now();
   const prev = _lastMode;
-  _lastMode = { at: now, from: from, to: to, via: via };
+  _lastMode = { at: now, from: from, to: to, via: via,
+                byHand: now - _lastGesture < 1000 };
   if (!prev.at) return;
 
   const gap = now - prev.at;
@@ -2095,10 +3181,20 @@ function noticeBounce(from, to, via) {
      "snaps to StrataScope and snaps back", and the same fault entering
      curation would be the same bug. */
   const reversed = prev.to === from && prev.from === to;
-  if (!reversed || gap > 3000) return;
+  /* Ten seconds, not three. "Snaps to event curation and snaps back, and
+     back again" describes something happening over seconds; a bounce with a
+     four-second leg was outside the window and went unrecorded, which is
+     the likeliest reason this watcher has caught nothing but my own
+     harness. */
+  if (!reversed || gap > 10000) return;
   /* A person doing it deliberately is not a fault. Anything within a
      second of a click or a key is theirs. */
   if (now - _lastGesture < 1000) return;
+  /* Nor is one tool moving to another of its sets: left by a click, and
+     back in once the next recording has opened -- 5.5 s over the VACC on
+     2026-10-27, which read as a bounce. The fault is the other way round,
+     into a mode and out again unasked, and that is still reported. */
+  if (to && prev.from === to && prev.byHand) return;
 
   try {
     apiPost('/api/errors/client', {
@@ -2113,6 +3209,12 @@ function noticeBounce(from, to, via) {
         second: { from: from, to: to, via: via },
         ms_since_input: now - _lastGesture,
         view: BARRY.state && BARRY.state.view,
+        /* What else was happening. Without this the report says a mode
+           changed twice and nothing about the load, the sync or the pane
+           rebuild that might have done it -- and by the time anybody looks,
+           the page has been reloaded. */
+        just_before: (BARRY.activity && BARRY.activity.recent
+          ? BARRY.activity.recent().slice(-8) : null),
       },
     }).catch(() => { /* it is a report about a glitch, not a transaction */ });
   } catch (e) { /* never let the watcher break the thing it watches */ }
@@ -2251,16 +3353,28 @@ const THEMES = [
     swatch: ['#fffafc', '#f2d5e2', '#b03a68'] },
   { id: 'jirai-yami', name: 'Jirai Yami',
     swatch: ['#120d1c', '#c9a7ff', '#9ff2d0'] },
+  /* Halloween: the palette is an ordinary theme; the spiders, bats, ghost
+     and the yard in the rail come with it from js/spooky.js. */
+  { id: 'halloween', name: 'Halloween',
+    swatch: ['#0e0a12', '#ff7a1a', '#9be564'] },
 ];
 
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
 
-function applyTheme(theme, remember) {
+function applyTheme(theme, remember, byHand) {
   if (!THEMES.some((t) => t.id === theme)) theme = 'dark';
   BARRY.state.theme = theme;
   document.documentElement.dataset.theme = theme;
   const label = $('#themeToggle span');
   if (label) label.textContent = themeById(theme).name;
+  /* The layer that only one theme has. Here, on every path into a theme --
+     a pick, boot, another window -- so switching away can never leave a
+     spider behind. `byHand` is a person picking it in the picker, which
+     is when the welcome is said -- not a boot restoring it. Decoration: it must never take the theme
+     change down with it. */
+  try {
+    if (BARRY.spooky) BARRY.spooky.sync(theme, !!byHand);
+  } catch (e) { /* the palette has already changed; that is what matters */ }
 
   if (remember !== false) {
     // The theme belongs to the machine, not the person's whole account: the
@@ -2276,9 +3390,23 @@ function applyTheme(theme, remember) {
       BARRY.prefs.set('themes', all);
     }
   }
+  repaintThemedSurfaces();
+}
+
+/* Everything that reads a CSS token once and keeps the answer.
+
+   A canvas paints from `BARRY.token()` at draw time and then holds those
+   colors until something asks it to draw again, so changing the tokens under
+   it leaves the last palette on screen -- the trace stays green on a pink
+   interface until you happen to pan. Which surfaces those are is not
+   obvious and the list has been wrong before, so it lives in one function
+   and every path that changes a token calls it. `applyTheme` is one such
+   path; VACC Mode is about to be the second. */
+function repaintThemedSurfaces() {
   paintFavicon();
-  // The canvas paints from CSS tokens, so it has to be repainted by hand.
   if (BARRY.views.xplore && BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
+  // The explainer's figures, if it happens to be open.
+  if (BARRY.cfcGuide && BARRY.cfcGuide.repaint) BARRY.cfcGuide.repaint();
 }
 
 /* The tab icon is the same trace mark as the brand, drawn in the theme's own
@@ -2304,24 +3432,270 @@ function offerTour() {
 }
 
 function paintFavicon() {
-  const cs = getComputedStyle(document.documentElement);
-  const tok = (n, f) => (cs.getPropertyValue(n) || f).trim();
-  const bg = tok('--accent', '#154734');
-  const ink = tok('--on-accent', '#FFB81C');
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
-    + '<rect width="32" height="32" rx="7" fill="' + bg + '"/>'
-    + '<path d="M4 18h3l3-9 4 15 4-12 3 7 2-3h5" fill="none" stroke="' + ink
-    + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
-    + '</svg>';
-  let link = document.querySelector('link[rel="icon"]');
-  if (!link) {
-    link = document.createElement('link');
-    link.rel = 'icon';
-    document.head.appendChild(link);
-  }
-  link.type = 'image/svg+xml';
-  link.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+  /* The tab icon and the rail badge are one mark in one light, and both are
+     drawn by js/jarvis.js -- which also knows whether the name is hidden on
+     this machine, when the tab gets the plain tile instead. Kept as a name
+     here because every path that changes a token already calls it. */
+  if (BARRY.jarvis) BARRY.jarvis.paint();
 }
+
+/* ==========================================================================
+   VACC Mode
+
+   A second attribute on the root, orthogonal to the theme: `data-theme` says
+   which palette, `data-vacc` says how hard it is running. The CSS layer adds
+   six `--fire-*` tokens and touches none of the thirty a theme defines, which
+   `web/_dev/vaccskin.html` asserts token by token across all ten.
+
+   It is a display preference and nothing else. It never gates a control --
+   turning the glow off because your eyes hurt must not take away the Cancel
+   button for a job still running on a shared cluster. What the cluster can
+   do is `/api/vacc/status`; this is only what it looks like while it does it.
+   ========================================================================== */
+/* The power-up.
+
+   Played when somebody TURNS IT ON, and only then. Deliberately not inside
+   `applyVacc`: that is also called at boot, by the cross-window sync, and
+   by the preferences reconcile, and a morph on any of those means the
+   screen flares every time the app starts or a second window changes its
+   mind. The toggle knows a person pressed it; nothing else does.
+
+   Three beats -- charge, burst, settle -- over about a second. Everything
+   animates opacity and transform only; see the note in app.css for why
+   that is a correctness constraint here rather than a preference.
+
+   Cleans itself up two ways. `animationend` is the normal one, but it does
+   not fire in a background tab, so a timer removes the node regardless: a
+   fixed, full-screen element left behind would be invisible and would sit
+   over the application for the rest of the session. `pointer-events: none`
+   means it would not swallow clicks even then, but "would not do harm" is
+   not the same as "is not there".
+*/
+function vaccMorph(fromEl) {
+  try {
+    if (window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+    if (document.body.classList.contains('solo-window')
+        || document.body.classList.contains('aid-window')) {
+      return;
+    }
+    // Only one at a time: a double click should not stack two of these.
+    const old = document.getElementById('vaccMorph');
+    if (old) old.remove();
+
+    /* Centred on whatever was pressed, so the burst comes out of the
+       control rather than out of the middle of the screen. Falls back to
+       the rail foot, which is where the toggle lives. */
+    const src = fromEl || document.getElementById('vaccToggle');
+    let x = 28, y = window.innerHeight - 60;
+    if (src && src.getBoundingClientRect) {
+      const r = src.getBoundingClientRect();
+      if (r.width || r.height) {
+        x = r.left + r.width / 2;
+        y = r.top + r.height / 2;
+      }
+    }
+
+    const node = el('div', { id: 'vaccMorph' }, [
+      el('div', { class: 'vm-charge' }),
+      el('div', { class: 'vm-sweep' }),
+      el('div', { class: 'vm-bloom' }),
+      el('div', { class: 'vm-ring' }),
+      el('div', { class: 'vm-ring two' }),
+    ]);
+    node.style.setProperty('--vm-x', x + 'px');
+    node.style.setProperty('--vm-y', y + 'px');
+    document.body.appendChild(node);
+
+    /* The rail comes up last, so the chrome looks like it is powering on
+       rather than like it was already lit. One class, removed with the
+       overlay. */
+    const rail = document.getElementById('rail');
+    if (rail) rail.classList.add('vm-lit');
+
+    /* And the surge across the interface, from the same origin. A separate
+       module because it is a different job -- the morph is the flash, this
+       is the wave that reaches each part in turn -- and because they fail
+       independently: a surge that throws must not stop the flash, and
+       neither must stop the mode coming on. */
+    if (BARRY.vaccfx && BARRY.vaccfx.surge) {
+      try { BARRY.vaccfx.surge({ x: x, y: y }); } catch (e2) { /* decoration */ }
+    }
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      node.remove();
+      if (rail) rail.classList.remove('vm-lit');
+    };
+    node.addEventListener('animationend', (e) => {
+      // The last beat, not the first to finish.
+      if (e.target && e.target.classList.contains('two')) finish();
+    });
+    setTimeout(finish, 1600);
+  } catch (e) {
+    /* A decoration must never be able to stop the mode from turning on.
+       If anything here throws, the cluster still comes on and the only
+       thing lost is the flourish. */
+    try {
+      const n = document.getElementById('vaccMorph');
+      if (n) n.remove();
+      const r = document.getElementById('rail');
+      if (r) r.classList.remove('vm-lit');
+    } catch (e2) { /* nothing left to do */ }
+  }
+}
+
+function applyVacc(on, remember) {
+  on = !!on;
+  BARRY.state.vacc = on;
+  if (on) document.documentElement.dataset.vacc = 'on';
+  else delete document.documentElement.dataset.vacc;
+
+  const label = $('#vaccToggle span');
+  if (label) label.textContent = on ? 'VACC on' : 'VACC';
+  const btn = $('#vaccToggle');
+  if (btn) btn.classList.toggle('on', on);
+
+  if (remember !== false) {
+    // Same split as the theme, for the same reason: localStorage so the
+    // first paint is already right with nothing fetched, and a map keyed by
+    // hostname so the rig and the laptop disagree without overwriting each
+    // other. See PREFS_SPEC in store.py -- the key is merged per host.
+    try { localStorage.setItem('barry.vacc', on ? '1' : ''); } catch (e) { /* private */ }
+    const host = ((BARRY.state.catalog || {}).system || {}).hostname;
+    if (host) {
+      const all = Object.assign({}, BARRY.prefs.get('vacc', {}) || {});
+      all[host] = on;
+      BARRY.prefs.set('vacc', all);
+    }
+  }
+  /* The wiring follows the mode, not the gesture.
+
+     Unlike the power-up, this one DOES belong on every path into
+     `applyVacc`: at boot, on the cross-window sync and on the preferences
+     reconcile, because it is part of what the mode looks like rather than
+     a celebration of arriving at it. A window that came up with the mode
+     already on should already be wired. */
+  if (BARRY.vaccfx && BARRY.vaccfx.circuit) {
+    try { BARRY.vaccfx.circuit(on); } catch (e) { /* decoration */ }
+  }
+
+  // Same three surfaces as a theme change: the tokens moved, and anything
+  // holding a color it read earlier is now holding the wrong one.
+  repaintThemedSurfaces();
+
+  /* And anything whose CONTENT depends on the mode, which a theme change
+     never had to care about.
+
+     VACC Mode does not only recolour: it adds the mark on a ToolKit tool
+     and the second button in Incisor's action row. Those are drawn when
+     their view last painted, so without this the switch appeared to do
+     nothing until you navigated away and came back -- the rail chip lit up
+     and the panel it was talking about did not.
+
+     Guarded on the catalog, because `applyVacc` runs during boot -- before
+     any view has been initialised, and before prefs have loaded. Asking a
+     view to redraw at that point renders it out of an empty module and
+     leaves it half-built: three harnesses that had nothing to do with VACC
+     started reporting a spectrum panel with no preset buttons and no number
+     inputs in it. Nothing to repaint yet is the normal state on the way up,
+     and the first real paint happens moments later anyway. */
+  if (BARRY.state.catalog) {
+    try {
+      const tk = BARRY.views.toolkit;
+      if (tk && typeof tk.render === 'function'
+          && BARRY.state.view === 'toolkit') {
+        tk.render();
+      }
+      if (BARRY.incisor && typeof BARRY.incisor.paint === 'function') {
+        BARRY.incisor.paint();
+      }
+    } catch (e) { /* a repaint must never take the switch down with it */ }
+  }
+}
+
+/* ==========================================================================
+   Compact
+
+   A third attribute on the root, beside `data-theme` and `data-vacc`:
+   `data-density="compact"` takes the air out of the interface for a small
+   screen -- the headers above all, which are on screen whatever you are
+   doing (app.css, "Compact"). Geometry only, so it goes with every theme.
+
+   Remembered for this computer: localStorage for a first paint that is
+   already right, and `density` in the preferences, which store.py keeps
+   per machine (PREFS_LOCAL) -- a laptop's choice is not the desktop's.
+   ========================================================================== */
+function applyDensity(compact, remember) {
+  compact = !!compact;
+  BARRY.state.compact = compact;
+  if (compact) document.documentElement.dataset.density = 'compact';
+  else delete document.documentElement.dataset.density;
+  if (remember !== false) {
+    try { localStorage.setItem('barry.density', compact ? 'compact' : ''); }
+    catch (e) { /* private window */ }
+    try { BARRY.prefs.set('density', compact ? 'compact' : 'comfortable'); }
+    catch (e) { /* prefs not up yet; localStorage has it */ }
+  }
+  /* The panes and canvases were laid out for the old geometry. They all
+     listen for the window changing size, which is what this is to them. */
+  try { window.dispatchEvent(new Event('resize')); } catch (e) { /* fine */ }
+}
+
+/* Other windows of the same app, told without being polled.
+
+   A pop-out gets `?vacc=` when it opens and then knows nothing more, so
+   turning the mode off in the main window left every open pane still lit.
+   `localStorage` already carries the value for the no-flash first paint,
+   and the `storage` event fires in every OTHER window of this origin when
+   it changes -- so the sync costs one listener and no traffic.
+
+   `remember: false` on the way back in, or two windows would write the same
+   preference to the shared store in a loop. */
+window.addEventListener('storage', (e) => {
+  if (e.key !== 'barry.density') return;
+  const on = e.newValue === 'compact';
+  if (on !== !!BARRY.state.compact) applyDensity(on, false);
+});
+
+window.addEventListener('storage', (e) => {
+  if (e.key !== 'barry.vacc') return;
+  const on = e.newValue === '1';
+  if (on !== BARRY.state.vacc) applyVacc(on, false);
+});
+
+function vaccForThisMachine() {
+  const host = ((BARRY.state.catalog || {}).system || {}).hostname;
+  const byHost = BARRY.prefs.get('vacc', {}) || {};
+  if (host && Object.prototype.hasOwnProperty.call(byHost, host)) return !!byHost[host];
+  try {
+    return localStorage.getItem('barry.vacc') === '1';
+  } catch (e) { /* private mode */ }
+  return false;
+}
+
+/* Whether a VACC job is being polled right now. The pulse is the only
+   animated thing the mode adds and it runs off this, so that the interface
+   is lit because the cluster is working rather than because somebody once
+   flipped a switch. Reference-counted: two jobs at once must not have the
+   first one to finish stop the pulse for the second. */
+BARRY.vaccBusy = (function () {
+  let n = 0;
+  const paint = () => {
+    if (n > 0) document.documentElement.dataset.vaccBusy = '1';
+    else delete document.documentElement.dataset.vaccBusy;
+  };
+  return {
+    start() { n += 1; paint(); },
+    stop() { n = Math.max(0, n - 1); paint(); },
+    reset() { n = 0; paint(); },
+    get count() { return n; },
+  };
+})();
 
 function themeForThisMachine() {
   const host = ((BARRY.state.catalog || {}).system || {}).hostname;
@@ -2334,16 +3708,49 @@ function themeForThisMachine() {
   return null;
 }
 
+/* Closing the theme picker, whichever way it is closed.
+
+   There are three ways out -- picking a theme, clicking away, and clicking
+   the button again -- and only the middle one used to unbind the document
+   listener that watches for the click-away. So opening the picker and
+   choosing a theme left a `mousedown` handler on `document` holding a
+   removed node, every time, for the life of the page. Ten visits to the
+   theme menu, ten handlers, all still running on every click anywhere.
+
+   Hoisted out of showThemePicker so the "already open, close it" path at
+   the top can reach the listener belonging to the popup it is removing. */
+let themePopShut = null;
+
+function closeThemePicker() {
+  if (themePopShut) { const f = themePopShut; themePopShut = null; f(); }
+}
+
+function densityRow() {
+  const b = el('button', {
+    class: 'theme-opt density-opt' + (BARRY.state.compact ? ' on' : ''),
+    type: 'button', role: 'switch',
+    'aria-checked': String(!!BARRY.state.compact),
+    title: 'Less space between things, and smaller headers, for a small '
+         + 'screen. For this computer only.',
+    onclick: () => {
+      applyDensity(!BARRY.state.compact);
+      b.classList.toggle('on', !!BARRY.state.compact);
+      b.setAttribute('aria-checked', String(!!BARRY.state.compact));
+      BARRY.activity.log('density.change', { compact: !!BARRY.state.compact });
+    },
+  }, [el('span', { class: 'jv-pill' }), el('span', { text: 'Compact' })]);
+  return b;
+}
+
 function showThemePicker() {
-  const existing = $('#themePop');
-  if (existing) { existing.remove(); return; }
+  if ($('#themePop')) { closeThemePicker(); return; }
 
   const pop = el('div', { class: 'theme-pop', id: 'themePop' },
     THEMES.map((t) => el('button', {
       class: 'theme-opt' + (BARRY.state.theme === t.id ? ' on' : ''),
       onclick: () => {
-        applyTheme(t.id);
-        pop.remove();
+        applyTheme(t.id, true, true);
+        closeThemePicker();
         BARRY.activity.log('theme.change', { theme: t.id });
       },
     }, [
@@ -2351,20 +3758,36 @@ function showThemePicker() {
          t.swatch.map((c) => el('i', { style: 'background:' + c }))),
       el('span', { text: t.name }),
     ])).concat([
+      // Compact: the same switch shape as the one below it, and it leaves
+      // the picker open, because what changed is easiest to judge from
+      // the picker you are still looking at.
+      densityRow(),
+      // Jarvis Light: a speed setting for a slower computer, not a colour
+      // (js/lite.js). Leaves the picker open, like Compact.
+      BARRY.lite ? BARRY.lite.pickerRow() : null,
+      // The name and the mark, off or back on with the reveal. Here because
+      // it is how this screen looks, remembered the same way a theme is.
+      BARRY.jarvis ? BARRY.jarvis.pickerRow(closeThemePicker) : null,
       el('div', { class: 'theme-note',
                   text: 'Remembered for this computer only.' }),
     ]));
 
   $('#themeToggle').parentNode.appendChild(pop);
   // Close on the next click anywhere else.
+  const away = (e) => {
+    if (!pop.contains(e.target) && !e.target.closest('#themeToggle')) {
+      closeThemePicker();
+    }
+  };
+  themePopShut = () => {
+    pop.remove();
+    document.removeEventListener('mousedown', away);
+  };
+  // Still on the next tick: the click that opened this is the one that
+  // would otherwise close it again straight away.
   setTimeout(() => {
-    const away = (e) => {
-      if (!pop.contains(e.target) && !e.target.closest('#themeToggle')) {
-        pop.remove();
-        document.removeEventListener('mousedown', away);
-      }
-    };
-    document.addEventListener('mousedown', away);
+    // Unless it has already been shut in the meantime.
+    if (themePopShut) document.addEventListener('mousedown', away);
   }, 0);
 }
 
@@ -2417,10 +3840,37 @@ BARRY.boot = (function () {
     if (slowTimer) { clearTimeout(slowTimer); slowTimer = null; }
     const box = document.getElementById('boot');
     if (!box) return;
-    box.classList.add('gone');
-    // Out of the document once the fade is over, so it cannot take clicks.
-    setTimeout(() => { if (box.parentNode) box.parentNode.removeChild(box); },
-               420);
+    const finish = () => {
+      box.classList.add('gone');
+      // Out of the document once the fade is over, so it cannot take clicks.
+      setTimeout(() => { if (box.parentNode) box.parentNode.removeChild(box); },
+                 420);
+    };
+    /* A title screen and a menu, the way a game starts (2026-10-20): the
+       overlay becomes the title instead of fading, and goes when somebody
+       chooses. Never in a harness, a pop-out or a deep link -- see
+       startmenu.js `wanted`. */
+    const menu = () => {
+      try {
+        if (BARRY.startMenu && BARRY.startMenu.wanted()) {
+          BARRY.startMenu.take(box, finish);
+          return;
+        }
+      } catch (e) {
+        reportClientError('boot.startmenu', e.message, e.stack);
+      }
+      finish();
+    };
+    /* A computer nobody has said who they are on gets the welcome first
+       (welcome.js, 2026-10-23): who you are, the VACC, the recordings --
+       then straight in. Everywhere else it answers false at once and the
+       start menu is exactly as it was. */
+    try {
+      if (BARRY.welcome && BARRY.welcome.maybe(box, finish, menu)) return;
+    } catch (e) {
+      reportClientError('boot.welcome', e.message, e.stack);
+    }
+    menu();
   }
 
   /* A hard limit, whatever happens.
@@ -2431,6 +3881,97 @@ BARRY.boot = (function () {
   setTimeout(clear, 15000);
 
   return { say, clear };
+})();
+
+/* ==========================================================================
+   The warm start, from this side
+   ==========================================================================
+   Three roll-ups take about five seconds each from cold, and the server now
+   answers the first request for each out of last boot's cache so the
+   interface is usable immediately. This is the half that keeps that honest:
+   it waits for the real answer and puts it on screen.
+
+   TWO RULES, AND THEY ARE THE WHOLE POINT
+
+   **Nothing moves.** A refresh that lands eight seconds in must not change
+   the view, scroll anything, open anything, take focus, or blank a list
+   somebody has started reading. That is the complaint this work came from:
+   things loading at startup used to snap you somewhere. A background
+   refresh that does the same thing is the same bug wearing a hat.
+
+   **Most of the time it does nothing at all.** The catalogue does not change
+   while the computer is off, so on an ordinary boot all three recomputed
+   answers are identical to the cached ones. The server compares them and
+   says so, and then there is no refetch, no re-render, and no reason for
+   anybody to know any of this happened. The only boots that repaint are the
+   ones where the page really was showing something out of date.
+   ========================================================================== */
+BARRY.warm = (function () {
+  const handlers = new Map();   // name -> what to do when it really changed
+  const shown = new Set();      // names this page was handed off the cache
+  let timer = null;
+  let stopped = false;
+
+  /* What to do when this endpoint's real answer turns out to differ.
+     Registered by whoever draws it; a name nobody is watching simply goes
+     unrefreshed, which is the right answer for a payload that nothing on
+     screen is currently made of. */
+  function onFresh(name, fn) { handlers.set(name, fn); }
+
+  function saw(mark) {
+    if (!mark || !mark.name || stopped) return;
+    if (mark.served !== 'cache') { shown.delete(mark.name); return; }
+    shown.add(mark.name);
+    schedule(700);
+  }
+
+  function schedule(ms) {
+    if (timer || stopped || !shown.size) return;
+    timer = setTimeout(tick, ms);
+  }
+
+  async function tick() {
+    timer = null;
+    if (stopped || !shown.size) return;
+    let st;
+    try {
+      st = await api('/api/warm/state');
+    } catch (e) {
+      /* An older server that has no such route, or one that has gone away.
+         Either way there is nothing to wait for, and a poller that keeps
+         trying for ever is worse than a page showing the cached answer. */
+      stopped = true;
+      return;
+    }
+    const fresh = st.fresh || {};
+    for (const name of Array.from(shown)) {
+      if (!(name in fresh)) continue;      // not recomputed yet; keep waiting
+      shown.delete(name);
+      if (!fresh[name]) continue;          // recomputed, and identical
+      const fn = handlers.get(name);
+      if (!fn) continue;
+      try {
+        await fn();
+      } catch (err) {
+        reportClientError('warm:' + name, err.message, err.stack);
+      }
+    }
+    if (!shown.size) return;
+    if (st.warming) { schedule(900); return; }
+    /* The prime is over and these names never appeared, which means their
+       rebuild threw. The next request that wants one will compute it live
+       and say so; there is nothing useful to do here, and polling a
+       finished prime is just noise. */
+    stopped = true;
+  }
+
+  /* Whether what is on screen for this name is still the cached answer.
+     Lets a view choose between re-reading now and simply marking itself
+     stale for the next time somebody opens it. */
+  function pending(name) { return shown.has(name); }
+
+  return { saw, onFresh, pending,
+           get watching() { return Array.from(shown); } };
 })();
 
 /* ==========================================================================
@@ -2501,22 +4042,98 @@ BARRY.skeleton = (function () {
     return () => { if (b.parentNode === host) host.removeChild(b); };
   }
 
-  return { block, into };
+  /* For a list that is already on screen, when the person who is looking at
+     it just caused it to be re-read.
+
+     `into` is no use here: it empties the host, and blanking a list somebody
+     is reading to tell them it is being re-read is worse than saying nothing.
+     That is exactly why the three views that use it gate it on the list being
+     empty -- and why deleting a bank entry, which re-reads seven megabytes of
+     shards, showed nothing at all and then snapped to the new list.
+
+     So: leave the rows where they are, dim them, and stop them taking clicks
+     until the answer lands. Same teardown contract as `into`. */
+  function stale(host) {
+    if (!host) return () => {};
+    host.classList.add('is-stale');
+    return () => host.classList.remove('is-stale');
+  }
+
+  return { block, into, stale };
 })();
+
+/* Hold the scroll where it is across a redraw.
+
+   Written because getting this wrong is invisible. A background refresh in
+   the Sessions view saved and restored `#sessTree.scrollTop`, which is
+   always 0 -- the element that actually scrolls is `#sessScanPad`, two
+   levels up. The code read as though it preserved the scroll, the list
+   still jumped to the top, and only a harness that scrolled for real and
+   checked the number afterwards showed it: `tree.scrollTop = 120` left it
+   at 0, because that element has never scrolled in its life.
+
+   So nobody names the element. Hand it the thing being redrawn and it
+   walks up to whatever is doing the scrolling, remembers that, and hands
+   back the way to put it back. Also takes the page in case the layout
+   changes and the window becomes the scroller. */
+BARRY.keepScroll = function keepScroll(node) {
+  const marks = [];
+  let n = node;
+  for (let i = 0; n && i < 8; i++) {
+    if (n.scrollHeight > n.clientHeight + 2) marks.push([n, n.scrollTop]);
+    n = n.parentElement;
+  }
+  const page = document.scrollingElement;
+  const pageTop = page ? page.scrollTop : 0;
+  return function restore() {
+    for (const [el, top] of marks) el.scrollTop = top;
+    if (page) page.scrollTop = pageTop;
+  };
+};
 
 BARRY.init = async function init() {
   // Applied before anything is fetched, so the first paint is already right.
   // A ?theme= in the URL wins but is not remembered -- it is for a link, not
   // a preference.
-  const urlTheme = new URLSearchParams(location.search).get('theme');
+  const q0 = new URLSearchParams(location.search);
+  const urlTheme = q0.get('theme');
   let saved = null;
   try { saved = localStorage.getItem('barry.theme'); } catch (e) { /* ignore */ }
   applyTheme(urlTheme || saved || 'dark', !urlTheme);
 
+  // Compact the same way: before the first paint, from this browser, and
+  // a pop-out takes what its URL says (`?density=compact`).
+  const urlDensity = q0.get('density');
+  let savedDensity = false;
+  try { savedDensity = localStorage.getItem('barry.density') === 'compact'; }
+  catch (e) { /* ignore */ }
+  applyDensity(urlDensity === null ? savedDensity : urlDensity === 'compact',
+               false);
+
+  // VACC Mode reads the same way and for the same reason -- before anything
+  // is fetched, so the first paint is already right. `?vacc=` wins and is not
+  // remembered: it is how a pop-out inherits the window it came from, which
+  // is a link rather than a preference.
+  const urlVacc = q0.get('vacc');
+  let savedVacc = false;
+  try { savedVacc = localStorage.getItem('barry.vacc') === '1'; } catch (e) { /* ignore */ }
+  applyVacc(urlVacc === null ? savedVacc : urlVacc === 'on' || urlVacc === '1',
+            urlVacc === null);
+
   BARRY.boot.say('wiring up the interface');
 
+  // Clicking the section you are already in is "where am I", not "do it
+  // again" -- but every view's onShow is an unconditional reload, so it was
+  // four requests on Errors and two on Results for a stray click.
+  //
+  // The guard belongs here and not inside setView: setView is called 171
+  // times across web/_dev, and several harnesses deliberately set the same
+  // view twice. This is the path a person actually takes.
   $$('.nav-item').forEach((b) =>
-    b.addEventListener('click', () => setView(b.dataset.view)));
+    b.addEventListener('click', () => {
+      if (BARRY.state.view === b.dataset.view) return;
+      setView(b.dataset.view);
+    }));
 
   // The rail's own collapse, and the handle that brings it back.
   wireRail();
@@ -2526,8 +4143,35 @@ BARRY.init = async function init() {
   BARRY.radio.wire();
 
   $('#themeToggle').addEventListener('click', showThemePicker);
+  if (BARRY.jarvis) BARRY.jarvis.wire();
+
+  const vaccBtn = $('#vaccToggle');
+  if (vaccBtn) {
+    vaccBtn.addEventListener('click', () => {
+      const on = !BARRY.state.vacc;
+      applyVacc(on);
+      BARRY.activity.log('vacc.mode', { on: BARRY.state.vacc });
+      /* Turning it on with nobody signed in asks, there and then.
+
+         Signing in used to be four steps nobody would guess: press VACC,
+         notice the chip, open the panel, find the button. Undergraduates
+         rotate through this rig and the SSH part is the least transferable
+         thing in the building -- so the moment somebody says they want the
+         cluster is the moment to ask which account, rather than leaving
+         them to discover that the mode they just switched on does nothing.
+
+         Only on the way ON, and only when there is no account here. A
+         person who signed out on purpose and is toggling the look gets
+         asked once, not every time. */
+      if (on) vaccMorph(vaccBtn);
+      if (on && BARRY.vacc && BARRY.vacc.offerSignIn) {
+        BARRY.vacc.offerSignIn();
+      }
+    });
+  }
 
   $('#syncBtn').addEventListener('click', showSync);
+  if (BARRY.syncState) BARRY.syncState.refresh();
 
   $('#logToggle').addEventListener('click', () =>
     $('#logDock').classList.toggle('collapsed'));
@@ -2568,11 +4212,23 @@ BARRY.init = async function init() {
                   // that was added last rather than renumbering the ten that
                   // people have already learned.
                   't': 'toolkit', 'T': 'toolkit' };
-    if (map[e.key]) setView(map[e.key]);
+    // Same as the rail: pressing 6 while already on Errors should not
+    // reload it.
+    if (map[e.key] && BARRY.state.view !== map[e.key]) setView(map[e.key]);
   });
 
   // Load the catalog, then hand off to each view.
+  //
+  // Both at once. These two are independent -- the catalog is what is in the
+  // repo, preferences are what this person likes -- and they were awaited one
+  // after the other, so a five-second index read was five seconds during
+  // which the preferences request had not been sent yet. Started together,
+  // the boot costs the slower of the two rather than their sum.
+  //
+  // The reconciliation below still needs both, and still waits for both; what
+  // changes is only when the second one is asked for.
   BARRY.boot.say('reading the repository index', '/api/catalog');
+  const prefsReady = BARRY.prefs.load();
   try {
     const cat = await api('/api/catalog');
     BARRY.state.catalog = cat;
@@ -2596,20 +4252,58 @@ BARRY.init = async function init() {
   }
 
   // Preferences gate the views (favourites, smart collections, last
-  // session), so they must be in hand before any view renders.
+  // session), so they must be in hand before any view renders. Started
+  // above, alongside the catalog; this is where it is collected.
   BARRY.boot.say('loading your preferences', '/api/prefs');
-  await BARRY.prefs.load();
+  await prefsReady;
 
   // Preferences and the catalog are both in hand now, so the per-machine
   // choice can be honored -- it may differ from what localStorage had.
-  const mine = themeForThisMachine();
-  if (mine && mine !== BARRY.state.theme) applyTheme(mine);
-  else applyTheme(BARRY.state.theme, true);   // records it for this machine
+  // Not when the address named a theme: `?theme=` wins and is not
+  // remembered, and this reconcile used to put this machine's own theme
+  // straight back over it a second later (found 2026-10-22: a measuring
+  // run asked for `dark` and got Halloween's visitors).
+  if (!new URLSearchParams(location.search).get('theme')) {
+    const mine = themeForThisMachine();
+    if (mine && mine !== BARRY.state.theme) applyTheme(mine);
+    else applyTheme(BARRY.state.theme, true);   // records it for this machine
+  }
+
+  // Same reconciliation for VACC Mode, and skipped entirely when the URL
+  // asked for a particular state -- a pop-out must keep what it was handed
+  // rather than adopting this machine's preference a second later.
+  if (new URLSearchParams(location.search).get('vacc') === null) {
+    const mineVacc = vaccForThisMachine();
+    if (mineVacc !== BARRY.state.vacc) applyVacc(mineVacc);
+  }
+  // Compact, as this machine's preferences have it -- unless the URL said.
+  if (new URLSearchParams(location.search).get('density') === null) {
+    const pd = BARRY.prefs.get('density', null);
+    if (pd === 'compact' || pd === 'comfortable') {
+      const want = pd === 'compact';
+      if (want !== !!BARRY.state.compact) applyDensity(want, false);
+      try { localStorage.setItem('barry.density', want ? 'compact' : ''); }
+      catch (e) { /* ignore */ }
+    }
+  }
+  // Jarvis Light, the same way (js/lite.js keeps the rules: the URL wins,
+  // and a harness frame is left alone).
+  if (BARRY.lite) BARRY.lite.reconcile();
+  // And whether the name is hidden here: the same per-host map, which may
+  // know better than this browser's localStorage. Quietly -- the reveal is
+  // for a person pressing the switch, not for a morning boot.
+  if (BARRY.jarvis) BARRY.jarvis.reconcile();
 
   BARRY.activity.init();
+  // Asked once, here, rather than on a timer: a permanent poller for a
+  // cluster nobody is using is what the tool feed's stop() discipline
+  // exists to prevent. It also decides whether the rail chip appears.
+  if (BARRY.vacc) BARRY.vacc.init();
   // Housekeeping lives inside the Sessions view rather than owning a rail
-  // slot, so it is wired here rather than by the view loop.
-  if (BARRY.views.housekeeping) BARRY.views.housekeeping.init();
+  // slot -- but it is still registered as BARRY.views.housekeeping, so the
+  // loop below was already calling its init(). Calling it here as well bound
+  // #hkRefresh twice, and every click on Refresh then ran two registry reads
+  // and two full renders. The loop covers it.
   if (BARRY.tour) {
     BARRY.tour.init();
     offerTour();
@@ -2629,27 +4323,76 @@ BARRY.init = async function init() {
   const cscPath = params.get('csc');
   const pipeFolder = params.get('folder');
 
+  /* If the first of these came out of the warm cache and the real answer
+     turns out to differ, run it again. `refreshSync` writes a chip, a
+     tooltip and the error badge and nothing else, so doing it twice is
+     invisible unless something actually changed -- which is the whole
+     contract the warm start is asking every refresher to keep. */
+  BARRY.warm.onFresh('sync_status', () => BARRY.refreshSync());
+
   // One call gives both the sync state and the error count for the badge.
   BARRY.refreshSync().then(() => {
-    const n = ((BARRY.sync.index || {}).counts || {}).errors || 0;
-    BARRY.setErrorCount(n);
+    BARRY.setErrorCount(BARRY.errorBadgeCount(BARRY.sync));
   });
 
-  BARRY.boot.say('opening the workspace');
-  setView(location.hash.slice(1) || (cscPath ? 'xplore' : 'pipeline'));
+  /* A window opened for one thing should not offer to navigate away from
+     it. Same idea as `aid-window` for the panel pop-outs: the app is the
+     whole app, it just has no rail here. */
+  if (params.get('role') === 'comod' || params.get('role') === 'spectrum') {
+    document.body.classList.add('solo-window');
+  }
+  /* Where to land.
+
+     NOT "wherever a recording is being opened". A `?csc=` in the address
+     used to send the app straight to XploreFinder, so reopening a window
+     that still carried one -- a restored tab, a shortcut, yesterday's
+     pop-out link -- put somebody in the trace view they had not asked for
+     while a recording they had not asked for loaded underneath them.
+
+     The recording still opens. It opens in the BACKGROUND, and the view is
+     whatever the address actually says: the hash where there is one, which
+     is how the aid windows and Incisor's traces window say they want the
+     trace view, and the pipeline where there is not. */
+  setView(location.hash.slice(1) || 'pipeline');
   window.addEventListener('hashchange', () => setView(location.hash.slice(1)));
   LOG.refreshJobList();
 
-  /* The view is up, so the overlay has done its job.
+  /* Everything Jarvis will want, got ready one thing at a time at
+     background priority -- the lists into their kept copies, the last
+     recording, the analysis engines (web/js/warmup.js). The start screen
+     shows it; nothing waits for it. A beat after the first view's own
+     requests, so they go first. */
+  if (BARRY.warmup && BARRY.warmup.wanted()) {
+    setTimeout(() => {
+      BARRY.warmup.start().catch((e) =>
+        reportClientError('warmup', e.message, e.stack));
+    }, 600);
+  }
 
-     After a frame, so the fade begins over a painted interface rather than
-     over the last of the empty one -- and whatever else is still in flight
-     (the registry, the sync status) is now behind a skeleton in the view
-     that wants it, which is where a wait belongs. */
-  requestAnimationFrame(() => BARRY.boot.clear());
+  /* Everything still in flight that MOVES THE PAGE. The overlay stays up
+     until these land.
+
+     It used to come down a frame after the first view was shown, while the
+     recording open, the job list and the sync check were all still running
+     -- so the interface was live and clickable with three things still to
+     land on it. Clicking during that got you taken somewhere you had not
+     asked to go, which is what "it snaps me back to XploreFinder after I
+     have already clicked" was.
+
+     Only the page-moving ones. A registry read that fills a list behind a
+     skeleton is a wait that belongs in the view that wants it, and holding
+     the whole app for it would trade one annoyance for a slower one. */
+  const settling = [];
 
   if (cscPath && BARRY.views.xplore) {
-    BARRY.views.xplore.open(cscPath).then((sess) => {
+    /* `?sel=even` (or odd, first, second, good) opens on that channel
+       preset. Every channel is read either way; this is the Ch menu's
+       button, pressed on arrival. Incisor's traces window asks for even,
+       because a CSD wants one line of contacts. An old link's `?even=1`
+       is read as `?sel=even`. */
+    const selArg = params.get('sel')
+      || (/^(1|true)$/.test(params.get('even') || '') ? 'even' : null);
+    settling.push(BARRY.views.xplore.open(cscPath).then((sess) => {
       if (!sess) return;
       const t0 = parseFloat(params.get('t0'));
       const span = parseFloat(params.get('span'));
@@ -2661,18 +4404,120 @@ BARRY.init = async function init() {
       if (isFinite(hp)) sess.hp = hp;
       if (isFinite(lp)) sess.lp = lp;
       if (isFinite(nt)) sess.notch = nt;
+      // A support window's own gain (Profile › Support panel preferences).
+      const gn = parseFloat(params.get('gain'));
+      if (isFinite(gn) && gn > 0) sess.gain = gn;
+      // Panels with bands of their own: the recording's band lock off.
+      if (params.get('flock') === '0') sess.flock = false;
       const panel = params.get('panel');
       if (panel && BARRY.views.xplore.state.panes[0]) {
         BARRY.views.xplore.state.panes[0].panel = panel;
       }
+      if (selArg && BARRY.views.xplore.select) {
+        BARRY.views.xplore.select(selArg, sess);
+      }
       BARRY.views.xplore.onShow();
+      /* Loaded behind whatever is on screen. Said once, quietly: a
+         recording that appeared in a view nobody was looking at is a
+         surprise the next time somebody goes there, and a line that names
+         it is cheaper than the surprise. */
+      if (BARRY.state.view !== 'xplore') {
+        toast('Opened ' + (sess.info && sess.info.name ? sess.info.name
+                                                       : 'a recording')
+              + ' in XploreFinder, in the background.', null, 6000);
+      }
       // ?figure=1 opens the builder straight onto this session.
       if (params.get('figure')) {
         setTimeout(() => BARRY.figure.open(BARRY.views.xplore.state, sess), 400);
       }
-    });
+    }));
   }
   if (pipeFolder && BARRY.views.pipeline.setFolder) {
     BARRY.views.pipeline.setFolder(pipeFolder);
   }
+
+  /* Down when the last of them lands, or after a second and a half,
+     whichever comes first.
+
+     The cap is the point. An overlay that waits for a slow drive is an
+     overlay somebody sits behind wondering whether the app has hung -- and
+     the thing being prevented is a click landing in the wrong place, which
+     stops being likely the moment somebody has had time to read the screen.
+     `boot.clear` is idempotent, so both paths racing is fine. */
+  BARRY.boot.say('opening the workspace');
+  Promise.race([
+    Promise.allSettled(settling),
+    new Promise((r) => setTimeout(r, 1500)),
+  ]).then(() => requestAnimationFrame(() => BARRY.boot.clear()));
 };
+
+/* ==========================================================================
+   Xplorefinder modes: one at a time, kept by a registry rather than a habit.
+
+   A mode -- Checkup, StrataScope, Spotter, Braid, the Arc's review -- takes
+   over the panes, the keyboard and the aid window. Two at once leaves two
+   toolbars stacked, two sets of key handlers fighting over the same presses,
+   and an aid window belonging to whichever got there first.
+
+   Each mode used to exit the others itself, by name, and none of them named
+   them all: Checkup left StrataScope and nothing else, StrataScope left
+   Checkup and nothing else, so entering Checkup with Spotter open left both
+   running. Five modes that each list the other four is twenty pairs kept in
+   step by hand, and the sixth breaks them all again.
+
+   So a mode registers once, at load, and its `enter` calls `leaveAllBut`
+   with its own name. Nobody has to know who else exists.
+   ========================================================================== */
+BARRY.modes = (function () {
+  const known = {};
+
+  function register(name, api) {
+    if (name && api) known[name] = api;
+  }
+
+  /* `active` is a getter on every mode, not a method -- calling it throws.
+     Read it inside a try: a mode that half-loaded must not stop another
+     from being entered. */
+  function isOn(api) {
+    try { return !!(api && api.active); } catch (e) { return false; }
+  }
+
+  function leaveAllBut(name) {
+    for (const other of Object.keys(known)) {
+      if (other === name) continue;
+      const api = known[other];
+      if (!isOn(api)) continue;
+      try {
+        api.exit();
+      } catch (err) {
+        // A mode that fails on its way out must not strand you outside the
+        // one you are entering.
+        reportClientError('modes.leave:' + other, err.message, err.stack);
+      }
+    }
+  }
+
+  function active() {
+    return Object.keys(known).filter((n) => isOn(known[n]));
+  }
+
+  return { register, leaveAllBut, active, names: () => Object.keys(known) };
+})();
+
+/* Inside a check page (web/_dev), nothing banks by itself (2026-10-21).
+   Every add-on now banks without being asked -- Checkup, Spotter, Panning,
+   Braces, the Arc's Clean -- and a harness entering and leaving a review
+   on a real proposal would otherwise write a real version. A harness that
+   means to test it sets `BARRY.testNoAutobank = false` itself. */
+try {
+  if (window.top !== window
+      && /\/_dev\//.test(window.top.location.pathname)) {
+    BARRY.testNoAutobank = true;
+    /* And it starts from the defaults, not from how this computer's
+       Xplorefinder was last left (a folded channel column, a hidden
+       overview strip, a fade level): a check page asserts on what it
+       sets up, and a preference it did not set made chan64 and curmarks
+       fail on one machine only (2026-10-22). */
+    BARRY.inCheckPage = true;
+  }
+} catch (e) { /* a cross-origin top is not a check page */ }

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Joe's export</title>
+<style>
+:root {
+  --bg: #f6f6f2; --surface: #ffffff; --surface-2: #fbfbf8; --ink: #16181b; --ink-2: #474c54; --ink-3: #6f747d;
+  --line: #e2e1db; --line-2: #cfcec7; --chip: #efeee9; --focus: #c98a00; --r: 8px;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --jlit: #0072B2; --jcheck: #D55E00;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111316; --surface: #191c20; --surface-2: #1d2025; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
+    --line: #2b2f35; --line-2: #3a3f46; --chip: #23262b; --focus: #f2b933; --jlit: #3A8FD0; --jcheck: #E0702A;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #191c20; --surface-2: #1d2025; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
+  --line: #2b2f35; --line-2: #3a3f46; --chip: #23262b; --focus: #f2b933; --jlit: #3A8FD0; --jcheck: #E0702A;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); }
+main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 64px; }
+footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--ink-3); font-size: 13px; margin-top: 8px; }
+footer button { font: inherit; background: none; border: 0; color: var(--ink-3); text-decoration: underline; cursor: pointer; padding: 0; }
+</style>
+</head>
+<body>
+<main>
+  <div id="root"><p>Loading the list.</p></div>
+  <footer>
+    <span>Barry lab, University of Vermont. Made with Jarvis; questions to Shahriar.</span>
+    <button type="button" id="out">Sign out</button>
+  </footer>
+</main>
+<script src="js/joe_export.js"></script>
+<script>
+'use strict';
+(async () => {
+  const root = document.getElementById('root');
+  try {
+    const r = await fetch('manifest.json', { credentials: 'same-origin', cache: 'no-cache' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    window.JOE_EXPORT.render(root, await r.json(), { url: (n) => 'files/' + encodeURIComponent(n) });
+  } catch (e) {
+    root.textContent = 'Could not read the list of files: ' + e.message;
+  }
+})();
+document.getElementById('out').addEventListener('click', async () => {
+  try { await fetch('/api/logout', { method: 'POST' }); } catch (e) { /* signed out either way below */ }
+  location.href = '/login.html';
+});
+</script>
+</body>
+</html>
