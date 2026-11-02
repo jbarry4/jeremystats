@@ -1,0 +1,56 @@
+Jarvis end-of-day error report
+==========================================================================
+day         2026-10-30
+computer    Bluebarry (desktop-4h65ai7-d565)
+person      Shahriar Tafti
+build       2026.10.28.2 9de27b58
+written     2026-10-30T18:01:22-04:00
+faults      2 error(s), 1 distinct
+left out    4 test fault(s) (harness pages, the test client)
+activity    10 action(s) logged on this computer that day
+
+Each fault below is printed once: how often, when, the message, the context
+it was raised with, its traceback, then what this computer was doing in the
+5 minutes before and 2 after its first and latest occurrences (>>> marks it).
+
+Summary
+--------------------------------------------------------------------------
+  1. x2    11:46:49-11:47:05  rootcanal/pool-fit: The border hb-other is not on this machine.
+
+==========================================================================
+1/1  rootcanal/pool-fit  x2
+==========================================================================
+first       2026-10-30T11:46:49-04:00
+latest      2026-10-30T11:47:05-04:00
+who         Shahriar Tafti
+signature   rootcanal/pool-fit||The border hb-other is not on this machine.
+
+message
+    The border hb-other is not on this machine.
+
+context
+    members            ["u:3fc6bf1e2588:8ddf80324321","u:7d5fa32206b4:82f667c6b2b2","u:46ca2186d3a7:49e19d164dc8"]
+
+traceback
+    Traceback (most recent call last):
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 12445, in api_rootcanal_pool_fit
+        _members, res = _rootcanal_pool_fit(body)
+                        ~~~~~~~~~~~~~~~~~~~^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 12425, in _rootcanal_pool_fit
+        _rootcanal_border_on(res, body.get("border"),
+        ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+                             (res.get("params") or {}).get("measure"))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 14185, in _rootcanal_border_on
+        pay, used = _rootcanal_border_load(ref)
+                    ~~~~~~~~~~~~~~~~~~~~~~^^^^^
+      File "C:\Users\Z390\Desktop\jeremystats\BARRY GUI\backend\app.py", line 14152, in _rootcanal_border_load
+        raise rcborder.BorderError(
+            "The border %s is not on this machine." % aid)
+    backend.rcborder.BorderError: The border hb-other is not on this machine.
+
+--- around 2026-10-30T11:46:49-04:00 ---
+    (nothing in this computer's activity log within 5 minutes before or 2 after)
+
+--- around 2026-10-30T11:47:05-04:00 ---
+    (nothing in this computer's activity log within 5 minutes before or 2 after)

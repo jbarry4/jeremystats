@@ -3,7 +3,8 @@
    (Shahriar, 2026-10-30).
 
    What the lab's last two documents ask for, from tab 11's rat-days:
-   within-region power (each region on its own), oscillation against
+   within-region power (every region together, then each on its own: J
+   Charles's four tiers), oscillation against
    background (FOOOF), which region leads (Granger) and theta-gamma
    coupling on tab 11's hits, the side question (not for Joe), the
    robustness of every result, and the methods written from the run.
@@ -102,18 +103,17 @@ window.MONO_FINAL = (function () {
   /* ---------------- the top ---------------- */
   function intro(D) {
     return card('finalhead', '12 · The final stage', 'final', [
-      el('p', { text: 'Within-region power in each region on its own, the oscillation against its background, which region leads and theta–gamma coupling on tab 11’s results, '
+      el('p', { text: 'Within-region power, every region together and then each on its own, the oscillation against its background, which region leads and theta–gamma coupling on tab 11’s results, '
         + 'whether each result holds without any one rat, and the methods written from this run.' }),
       el('details', { class: 'moremore' }, [
         el('summary', { text: 'More' }),
         el('ul', { class: 'moresteps' }, [
-          el('li', { text: 'Power: Welch power with Dickson’s settings, pooled over each session’s trials (for power, pooling is just the mean), in dB re 1 µV²/Hz; a region is the mean of its two sides. Each region is tested on its own: 2 sessions × 3 periods (baseline, cue 1, cue 2), full 10 s windows, the cue-onset response included.' }),
+          el('li', { text: 'Power: Welch power with Dickson’s settings, pooled over each session’s trials (for power, pooling is just the mean), in dB re 1 µV²/Hz; a region is the mean of its two sides. Four tiers (J Charles): every region in one model, 2 sessions × 3 periods (baseline, cue 1, cue 2) × 5 regions (tier 1) and the same × frequency (tier 2); then each region on its own (tiers 3a and 3b). Full 10 s windows, the cue-onset response included.' }),
           el('li', { text: 'No per-rat normalisation: the rat is the GEE’s cluster, and Session × Period (the key test) cancels slow drift between the days. The GEE for dB is normal with the identity link.' }),
           el('li', { text: 'FOOOF splits each spectrum into a 1/f background (its exponent and offset) and peaks; the theta peak’s frequency and height are tested the same way.' }),
           el('li', { text: 'Granger and theta–gamma coupling run only on the pairs (and their regions) that pass in tab 11, so the switch changes which ones are shown.' }),
           el('li', { text: 'The side question asks whether gamma changes when every trial is its own row, nothing pooled; it is not for Joe.' }),
         ])]),
-      el('p', { class: 'warn', id: 'finaltwenty', text: (D && D.twenty) || '“20 × 16 × 8 × 2”, in the meeting notes, is waiting for confirmation from Joe.' }),
       el('div', { class: 'row gap moretools' }, [
         el('button', { type: 'button', class: 'more-btn', id: 'finalmake', disabled: P.making ? 'disabled' : null, onclick: make,
                        text: P.making ? 'Working: ' + (P.makeNote || 'starting') : D ? 'Work it out again' : 'Work it out' }),
@@ -135,8 +135,22 @@ window.MONO_FINAL = (function () {
         .concat([el('td', { class: 'weakcell', text: x.spf ? pSay(x.spf.p) : 'n/a' })]));
     });
     const figs = ((D.figures || {}).power || []).filter((f) => f.band === P.band);
+    const T = (D.tiers || {})[P.band] || {};
+    const tierRows = [['t1', 'Tier 1 · 2 × 3 × 5'], ['t2', 'Tier 2 · × frequency']].flatMap(([t, say]) => Object.entries((T[t] || {}).key || {}).map(([name, k]) => {
+      const lm = k.lmm || {};
+      const robust = k.errors !== 'model-based';
+      return el('tr', { class: F().passes(k) ? 'sig' : '' }, [el('th', { text: say }), el('td', { text: name }),
+        el('td', { class: robust ? '' : 'weakcell', text: k.p == null ? 'n/a' : 'χ²(' + k.df + ') = ' + n2(k.chi2) + ', ' + pSay(k.p) + ', q ' + n3(k.q) + star(k) + (robust ? '' : ' (model-based)') }),
+        el('td', { text: lm.p == null ? (lm.error || 'n/a') : 'F(' + lm.df1 + ', ' + lm.df2 + ') = ' + n2(lm.F) + ', ' + pSay(lm.p) + ', q ' + n3(lm.q) }),
+        el('td', { text: String(((T[t] || {}).rats || []).length) })]);
+    }));
     return card('finalpower', 'Within-region power · ' + (P.band === 'theta' ? 'Theta 5–12 Hz' : 'Gamma 30–90 Hz'), 'final.power', [
-      el('p', { text: 'Did the cues change power inside each region differently on Precon4 than on Precon1? Session × Period on 2 df (robust), then the three planned contrasts, each a change in dB; corrected across the five regions.' }),
+      el('p', { text: 'Did the cues change power inside the regions differently on Precon4 than on Precon1? First every region in one model (tiers 1 and 2), then each region on its own (tiers 3a and 3b).' }),
+      el('h3', { class: 'moresub', text: 'Every region together (tiers 1 and 2)' }),
+      table('finaltiertable', ['Tier', 'Term', 'GEE', 'Mixed model', 'Rats'], tierRows),
+      el('p', { class: 'small muted', text: 'Corrected across the tier’s two models (theta and gamma). Terms of more than 2 df cannot use the GEE’s robust errors with 8 rats; the mixed model (random intercepts for the rat, its regions and their days) is the one to read for them.' }),
+      el('h3', { class: 'moresub', text: 'Each region on its own (tiers 3a and 3b)' }),
+      el('p', { class: 'small muted', text: 'Session × Period on 2 df (robust), then the three planned contrasts, each a change in dB; each corrected across the ten per-region models of its tier (five regions × two bands).' }),
       table('finalpowertable', ['Region', 'Rats', 'Session × Period, χ²(2)'].concat(CONTRASTS.map((c) => 'Session × (' + c[1].toLowerCase() + ')')).concat(['× Frequency (model-based)']), rows),
       el('h3', { class: 'moresub', text: 'Each region alone' }),
       el('div', { class: 'morefigs' }, figs.filter((f) => f.kind === 'region').map((f) => figCard(f, regionSay(D, f.region)))),
@@ -228,7 +242,7 @@ window.MONO_FINAL = (function () {
       el('p', { text: 'Generated from the numbers above, every time the tab is worked out: what went in, how it was measured, the model, and every result that passes on each side of the switch.' }),
       el('div', { class: 'row gap' }, [el('a', { class: 'more-btn small', href: EXPORT('final_methods.docx'), download: 'final_methods.docx', text: 'Word (.docx)' }),
         el('a', { class: 'more-btn small', href: EXPORT('final_methods.txt'), download: 'final_methods.txt', text: 'Text (.txt)' })]),
-      el('div', { class: 'finalmethods' }, (D.methods || []).map((s) => el('details', { class: 'finalmsec', open: /Waiting/.test(s.title) ? 'open' : null }, [
+      el('div', { class: 'finalmethods' }, (D.methods || []).map((s) => el('details', { class: 'finalmsec', open: /Read first/.test(s.title) ? 'open' : null }, [
         el('summary', { text: s.title }), ...s.paras.map((t) => el('p', { text: t }))])))]);
   }
 

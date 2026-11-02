@@ -1379,7 +1379,12 @@ INV_TTL_S = 300.0
 # at once. And unlike scratch it is not purged, so a listing of it stays true
 # for far longer -- which is also why this one is written to disk and
 # survives a restart, where scratch's deliberately does not.
-INV_TTL_NATIVE_S = 24 * 3600.0
+#
+# Six hours since 2026-10-30, not a day: a walk is shared through the shelf
+# now (`inventory_from_shelf`), so the lab walks the share about once per
+# this, not once per computer -- and a recording added in the morning is not
+# invisible until tomorrow.
+INV_TTL_NATIVE_S = 6 * 3600.0
 # How long a walk of one may take. The 141 s above plus a header read per
 # folder; the default 180 s would cut it off and report a broken cluster.
 INV_TIMEOUT_NATIVE_S = 900
@@ -1475,7 +1480,7 @@ def _inv_load(root):
     return got
 
 
-def _inv_save(root, at, rows):
+def _inv_save(root, at, rows, share=True):
     path = _inv_file(root)
     if not path:
         return
@@ -1486,7 +1491,70 @@ def _inv_save(root, at, rows):
             json.dump({"root": root, "at": at, "list": rows}, fh)
         os.replace(tmp, path)
     except OSError:
-        pass                            # a listing not kept is walked again
+        return                          # a listing not kept is walked again
+    # And on the shelf, for every other computer (2026-10-30: "a long term
+    # lag between syncing all the recordings from the netfiles and having
+    # it be detectable by some of the tools"). Each computer walked the
+    # share for itself and kept its walk for a day, so one that had walked
+    # yesterday did not know about a recording found this morning anywhere
+    # else. A walk anywhere now serves everyone (`inventory_from_shelf`).
+    if share:
+        try:
+            from . import answers
+            answers.share_soon(INV_SHELF, path)
+        except Exception:                                # noqa: BLE001
+            pass
+
+
+#: The shelf (backend/answers.py) a mapped share's listing is kept on.
+INV_SHELF = "inventory"
+#: How often a computer asks the shelf whether somebody else has walked a
+#: mapped share more recently than it has. One `ls`; a fetch only when newer.
+INV_SHELF_EVERY_S = 600.0
+_INV_SHELF_AT = {}
+
+
+def inventory_from_shelf(cfg, root):
+    """Take another computer's walk of a mapped share when it is newer than
+    this one's. True when a newer listing was taken on. Never raises; at
+    most one question every INV_SHELF_EVERY_S per share."""
+    if not is_native_root(cfg, root):
+        return False
+    now = time.time()
+    if now - _INV_SHELF_AT.get(root, 0.0) < INV_SHELF_EVERY_S:
+        return False
+    _INV_SHELF_AT[root] = now
+    path = _inv_file(root)
+    if not path:
+        return False
+    try:
+        from . import answers
+        import tempfile
+        tmpdir = tempfile.mkdtemp(prefix="jarvis-inv-")
+        got_path = os.path.join(tmpdir, os.path.basename(path))
+        if not answers.fetch(INV_SHELF, got_path):
+            return False
+        with open(got_path, "r", encoding="utf-8") as fh:
+            got = json.load(fh) or {}
+        try:
+            os.remove(got_path)
+            os.rmdir(tmpdir)
+        except OSError:
+            pass
+    except Exception:                                    # noqa: BLE001
+        return False
+    if _norm(got.get("root")) != _norm(root):
+        return False
+    at = float(got.get("at") or 0)
+    slot = _inv(root)
+    if not slot["at"]:
+        inventory_age(cfg, root)
+    if at <= (slot["at"] or 0) or not got.get("list"):
+        return False
+    slot.update(at=at, list=list(got.get("list") or []))
+    # Kept here as this computer's own, but not put back up: it came down.
+    _inv_save(root, at, slot["list"], share=False)
+    return True
 
 
 def inventory_age(cfg, root):

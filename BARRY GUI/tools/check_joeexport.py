@@ -103,8 +103,9 @@ if os.path.isfile(FNj):
         check("Part 2's zip holds the methods (Word and text), the rows and SPSS's coefficients, and no side question",
               {"final_methods.docx", "final_methods.txt", "final_long.csv", "final_coefficients_spss.csv"} <= set(z.namelist())
               and not any("side" in n for n in z.namelist()), z.namelist())
-    check("the methods are in the page, and the “20 × 16 × 8 × 2” question waits for Joe at the top",
-          bool(secs["final"].get("methods")) and "waiting for confirmation from Joe" in (man.get("twenty") or "") and man.get("switch", {}).get("default") == "fdr")
+    check("the methods are in the page with the four power tiers; “20 × 16 × 8 × 2” is gone (J Charles: drop it); the switch starts corrected",
+          bool(secs["final"].get("methods")) and "Tier 1" in raw_json and "Tier 3b" in raw_json and "20 × 16" not in raw_json
+          and "twenty" not in man and man.get("switch", {}).get("default") == "fdr")
     check("Granger and coupling figures say which side of the switch they belong to",
           all(f.get("show_in") is not None for g in secs["final"]["groups"] if g["key"] == "F-follow" for f in g["figures"]))
 

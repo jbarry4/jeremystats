@@ -585,6 +585,22 @@ async function api(path, opts) {
   }
 }
 
+/* A frame a web/_dev harness drives says so on every request. What the
+   server files while serving a test's request is marked as a test's
+   (`_request_is_test`), but it knew a harness only by the referrer, and
+   the frame's requests name the frame, not the harness page. On the harness
+   server everything is marked anyway; run against the live app on
+   2026-10-30, rootcanalborder.html's refusal on purpose ("The border
+   hb-other is not on this machine") led that day's error report. */
+const HARNESS_FRAME = (function () {
+  try {
+    for (let w = window; w !== w.parent; w = w.parent) {
+      if (/\/_dev\//.test(w.parent.location.pathname)) return true;
+    }
+  } catch (e) { /* a parent of another origin is no harness of ours */ }
+  return false;
+}());
+
 async function apiCall(path, opts) {
   const t0 = performance.now();
   const method = (opts && opts.method) || 'GET';
@@ -600,6 +616,9 @@ async function apiCall(path, opts) {
   delete init.priority; delete init.etag; delete init.meta;
   if (o.etag) {
     init.headers = Object.assign({}, init.headers, { 'If-None-Match': o.etag });
+  }
+  if (HARNESS_FRAME) {
+    init.headers = Object.assign({}, init.headers, { 'X-Barry-Test': '1' });
   }
   try {
     res = await fetch(path, init);

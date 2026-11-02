@@ -14576,10 +14576,47 @@ def api_rootcanal_pools():
     return jsonify({"ok": True, "pools": out})
 
 
+def _rootcanal_saved_here(members, saved_on=None):
+    """A saved pool's members, with `here`, `event_body` and `read_on` said
+    for THIS machine, the way a fit says them.
+
+    The payload keeps what was true where it was saved. Rain's pool
+    789627824001, saved on Strawbarry, opened on Homebarry on 2026-10-30
+    with every member "here" and its click request ready, so the panel
+    asked for a trace whose read was on Strawbarry and was refused. Not
+    here, the panel says where it was read and reads it here instead.
+    Copies: the payload is not changed.
+    """
+    out = []
+    for m in members or []:
+        pin = m.get("pin") or {}
+        gid = m.get("gid")
+        rh = pin.get("read") or m.get("read")
+        if not (gid and rh):
+            out.append(m)
+            continue
+        here = bool(ROOTCANAL.has_cached(gid, rh, ".npz"))
+        # Here where it was saved: read on the machine that saved it.
+        was_here = m.get("here") is True
+        m = dict(m, here=here)
+        if not here:
+            m["event_body"] = None
+            m["read_on"] = (m.get("read_on") or _rootcanal_read_on(gid, rh)
+                            or (saved_on if was_here else None))
+        else:
+            m["read_on"] = None
+            if not m.get("event_body") and pin.get("params") is not None:
+                m["event_body"] = dict(pin["params"],
+                                       entry_id=m.get("entry_id"), read=rh)
+        out.append(m)
+    return out
+
+
 @app.route("/api/rootcanal/pool/<artifact_id>")
 def api_rootcanal_pool_one(artifact_id):
     """One saved pool's payload, which the panel draws as it is -- no
-    refit, and no recording read."""
+    refit, and no recording read. Only whether each member's read is on
+    this machine is said again (`_rootcanal_saved_here`)."""
     version = request.args.get("version") or None
     try:
         rec = ARTIFACTS.summary(artifact_id)
@@ -14599,6 +14636,9 @@ def api_rootcanal_pool_one(artifact_id):
             payload = dict(payload, params=dict(
                 pp, measure=rootcanal.measure_of(rootcanal.Params(
                     **_rootcanal_fit_part(pin0))), measure_from_pins=True))
+        if mem:
+            payload = dict(payload, members=_rootcanal_saved_here(
+                mem, (row or {}).get("machine")))
     except Exception as exc:                             # noqa: BLE001
         return fail("rootcanal/pool", exc, 400, {"artifact_id": artifact_id})
     return jsonify({"ok": True, "artifact": rec, "version": row.get("v"),
@@ -23439,12 +23479,19 @@ def _request_is_test():
     """Whether the request being served is a test's: Flask's test client
     (every tools/test_*.py; it asks for host "localhost" with no port, which
     no browser does) or a harness page in web/_dev. What it records is
-    marked as a test's (STORE.test_origin)."""
+    marked as a test's (STORE.test_origin).
+
+    The app in a frame a harness drives sends X-Barry-Test (web/js/core.js):
+    its referrer is the frame, not the harness page, so a harness run
+    against the live app filed its refusals on purpose as real faults
+    (rootcanalborder.html, 2026-10-30)."""
     try:
         from flask import has_request_context
         if not has_request_context():
             return False
         if request.host == "localhost":
+            return True
+        if request.headers.get("X-Barry-Test"):
             return True
         return "/_dev/" in (request.referrer or "")
     except Exception:                                    # noqa: BLE001
@@ -28795,6 +28842,12 @@ def _vacc_walk(force=False, wait=True):
     for root in roots:
         native = vaccmod.is_native_root(cfg, root)
         if native:
+            # Somebody else's newer walk first, off the shelf, in the
+            # background: one question every ten minutes at most, and the
+            # listing in hand answers meanwhile (2026-10-30).
+            threading.Thread(target=vaccmod.inventory_from_shelf,
+                             args=(cfg, root), daemon=True,
+                             name="barry-vacc-inv-shelf").start()
             age = vaccmod.inventory_age(cfg, root)
             # The FIRST look at a share is somebody pressing "Set up this
             # computer" or "Find everything on netfiles" in Sessions -- a

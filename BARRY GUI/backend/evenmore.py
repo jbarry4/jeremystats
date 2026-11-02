@@ -423,7 +423,7 @@ def tables(days):
 # --------------------------------------------------------------------------
 # The GEE
 # --------------------------------------------------------------------------
-TERM_SAY = {"day": "Session", "pair": "Pair", "f": "Frequency", "cue": "Cue", "period": "Period", "dir": "Direction"}
+TERM_SAY = {"day": "Session", "pair": "Pair", "f": "Frequency", "cue": "Cue", "period": "Period", "dir": "Direction", "region": "Region"}
 
 
 def _term_say(name):
@@ -505,7 +505,7 @@ def interaction(df, formula, has, fam="gamma"):
             "lo": tr(b - 1.959964 * se), "hi": tr(b + 1.959964 * se)}
 
 
-def lmm_test(df, formula, has, log=True):
+def lmm_test(df, formula, has, log=True, exclude=()):
     """The robustness check the plan asks for: a linear mixed model with a
     random intercept for the rat, on log(y) (coherence and its relatives)
     or y (power in dB), and a Wald F of the coefficients whose names
@@ -522,7 +522,7 @@ def lmm_test(df, formula, has, log=True):
             warnings.simplefilter("ignore")
             m = smf.mixedlm(formula.replace("y ~", "ly ~", 1), d, groups="rat").fit(reml=True)
         names = list(m.fe_params.index)
-        idx = [i for i, n in enumerate(names) if all(h in n for h in has)]
+        idx = [i for i, n in enumerate(names) if all(h in n for h in has) and not any(x in n for x in exclude)]
         if not idx:
             return {"error": "no such term"}
         b = m.fe_params.values[idx]

@@ -6,7 +6,8 @@ same rats, wires and windows as tab 11 (backend/evenmore.py), from the
 same pooled rat-days:
 
   * Within-region power (Within Region Power Analysis Plan, 2026-10-29;
-    Supplemental Notes, 2026-10-30). Each region on its own (RSC, dHC,
+    Supplemental Notes, 2026-10-30; the tiers from J Charles's clarifications,
+    2026-11-02: every region together, then each on its own) (RSC, dHC,
     ACC, OFC, PER; the notes: Region is never a factor), each band on its
     own: 2 (Session) x 3 (Period: baseline, cue 1, cue 2), and the same
     across frequency bins. Welch power with Dickson's settings, pooled
@@ -61,6 +62,9 @@ from . import joe
 SCHEMA = 1
 REGIONS = tuple(s for s, _say in E.STRUCTS)
 REGION_SAY = dict(E.STRUCTS)
+CORRECTION = ("Benjamini–Hochberg (FDR) across the models of a family: the ten pairs for each coherence test; for power, across the "
+              "two models of tiers 1 and 2 (theta, gamma) and across the ten per-region models of tiers 3a and 3b (five regions × two "
+              "bands); the five regions for each FOOOF test; and within each follow-up family (Granger, MI).")
 #: one hue a region (Okabe and Ito), apart from tab 11's pair colours' order
 REGION_COLORS = {"RSC": "#E69F00", "DHC": "#56B4E9", "ACC": "#009E73", "OFC": "#0072B2", "PER": "#D55E00"}
 DB_SAY = "dB re 1 µV²/Hz"
@@ -69,8 +73,6 @@ FOOOF_PARAMS = (("exponent", "Aperiodic exponent", ""), ("offset", "Aperiodic of
                 ("theta_cf", "Theta peak frequency", "Hz"), ("theta_pw", "Theta peak power", "log10 above background"))
 ALPHA = E.ALPHA
 MODES = E.MODES
-TWENTY = ("“20 × 16 × 8 × 2”, in the meeting notes, is waiting for confirmation from Joe. Read as: a 20 s cue pair × 16 trials a "
-          "session × 8 rats × 2 sessions.")
 
 
 class FinalError(Exception):
@@ -154,9 +156,10 @@ def region_rats(PT, ri):
 
 
 def power_models(PT, band):
-    """For each region: E1 (2 x 3 on band dB; Session x Period and its three
-    planned contrasts) and E2 (2 x 3 x F); the tests corrected across the
-    five regions."""
+    """Tier 3 (J Charles, 2026-11-02), for each region on its own: 3a, 2 x 3
+    on band dB (Session x Period and its three planned contrasts); 3b, 2 x
+    3 x F. Corrected afterwards, across all ten per-region models of a tier
+    (five regions, two bands: correct_tier3)."""
     per, rows_all, rows_bins = [], [], []
     for ri, r in enumerate(REGIONS):
         rats = region_rats(PT, ri)
@@ -183,12 +186,95 @@ def power_models(PT, band):
         per.append(x)
         rows_all += rows
         rows_bins += rb
+    return per
+
+
+def correct_tier3(power):
+    """Benjamini-Hochberg across the ten per-region models of each tier (5
+    regions x 2 bands), for each test: 3a's Session x Period and each
+    planned contrast, 3b's Session x Period x Frequency."""
+    per = [x for b in ("theta", "gamma") for x in power.get(b) or []]
     E.fdr_across(per, lambda x: (x["sp"] or {}).get("p"), lambda x, q: x["sp"].__setitem__("q", q))
     E.fdr_across(per, lambda x: (x["spf"] or {}).get("p"), lambda x, q: x["spf"].__setitem__("q", q))
     for a, b, _s in E.CONTRASTS:
         k = E.contrast_key(a, b)
         E.fdr_across(per, lambda x: x["contrasts"][k].get("p"), lambda x, q: x["contrasts"][k].__setitem__("q", q))
-    return per
+
+
+#: Tiers 1 and 2: every region in one model (J Charles, 2026-11-02). The
+#: terms they are read by, each as (name, a coefficient's name has all of
+#: these, and none of those).
+TIER1 = "y ~ C(day, Sum) * C(period, Sum) * C(region, Sum)"
+TIER2 = TIER1 + " * C(f, Sum)"
+TIER1_KEYS = (("Session × Period", ["C(day", "C(period"], ["C(region"]),
+              ("Session × Period × Region", ["C(day", "C(period", "C(region"], []))
+TIER2_KEYS = (("Session × Period × Frequency", ["C(day", "C(period", "C(f"], ["C(region"]),
+              ("Session × Period × Region × Frequency", ["C(day", "C(period", "C(region", "C(f"], []))
+
+
+def lmm_terms(df, formula, keys, vc):
+    """The mixed model beside a tier's GEE: one fit, a random intercept for
+    the rat and variance components for its regions (and their days, and
+    periods), so each rat's own electrode in each region is not counted as
+    noise; then a Wald F for each key term on k and k(n - 1) df."""
+    import warnings
+    import statsmodels.formula.api as smf
+    from scipy.stats import f as fdist
+    out = {}
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            m = smf.mixedlm(formula, df, groups="rat", vc_formula=vc).fit(reml=True)
+    except Exception as exc:                                  # noqa: BLE001
+        return {name: {"error": "%s: %s" % (type(exc).__name__, exc)} for name, _h, _x in keys}
+    names = list(m.fe_params.index)
+    cov = np.asarray(m.cov_params().loc[names, names])
+    n = int(df["rat"].nunique())
+    for name, has, exclude in keys:
+        idx = [i for i, nm in enumerate(names) if all(h in nm for h in has) and not any(x in nm for x in exclude)]
+        b = m.fe_params.values[idx]
+        try:
+            Fv = float(b @ np.linalg.solve(cov[np.ix_(idx, idx)], b)) / len(idx)
+            out[name] = {"F": Fv, "df1": len(idx), "df2": len(idx) * (n - 1), "p": float(fdist.sf(Fv, len(idx), len(idx) * (n - 1)))}
+        except np.linalg.LinAlgError as exc:
+            out[name] = {"error": str(exc)}
+    return out
+
+
+def tier_models(per):
+    """Tiers 1 (2 x 3 x 5 on band dB) and 2 (2 x 3 x 5 x F) for one band:
+    every term of the GEE, and the mixed model beside the key terms."""
+    rows = [r for x in per if x for r in x["rows"]]
+    rb = [r for x in per if x for r in x["rows_bins"]]
+    out = {}
+    for tier, data, formula, keys, extra in (("t1", rows, TIER1, TIER1_KEYS, ("rd",)), ("t2", rb, TIER2, TIER2_KEYS, ("rd", "rdp"))):
+        df = E._frame(data)
+        df["rd"] = df["region"] + " " + df["day"]
+        df["rdp"] = df["rd"] + " " + df["period"]
+        ts, err = E._safe(lambda: E.terms(E.gee(df, formula, "normal")))
+        vc = {"region": "0 + C(region)"}
+        vc.update({k: "0 + C(%s)" % k for k in extra})
+        lm = lmm_terms(df, formula, keys, vc)
+        key = {}
+        for name, _h, _x in keys:
+            t = next((t for t in ts or [] if t["term"] == name), None)
+            key[name] = dict(t or {"term": name}, lmm=lm.get(name) or {})
+        out[tier] = {"terms": ts, "error": err, "key": key, "rats": sorted({r["rat"] for r in data}), "n_rows": len(data)}
+    return out
+
+
+def correct_tiers12(tiers):
+    """Benjamini-Hochberg across a tier's two models (theta, gamma), for each
+    key term: the GEE's p and the mixed model's alike."""
+    for tier, keys in (("t1", TIER1_KEYS), ("t2", TIER2_KEYS)):
+        for name, _h, _x in keys:
+            xs = [tiers[b][tier]["key"][name] for b in ("theta", "gamma") if b in tiers]
+            for x, q in zip(xs, E.bh([x.get("p") for x in xs])):
+                if q is not None:
+                    x["q"] = q
+            for x, q in zip(xs, E.bh([(x.get("lmm") or {}).get("p") for x in xs])):
+                if q is not None:
+                    x["lmm"]["q"] = q
 
 
 # --------------------------------------------------------------------------
@@ -502,7 +588,7 @@ def fig_power_region(PT, band, x, fid, mode):
     fig.text(4 / W, 1 - 3 / H, "%s · %s power · baseline, cue 1, cue 2 · %d rats" % (REGION_SAY[x["region"]], E._band_say(band), len(x["rats"])),
              fontsize=7, fontweight="bold", va="top")
     fig.text(4 / W, 1 - 8 / H, "Welch power (Dickson's settings) pooled over each session's trials, both sides averaged, full 10 s windows; "
-             "Precon1 solid, Precon4 dashed, mean ± s.e.m. * passes: %s across the five regions." % ("FDR q < 0.05" if mode == "fdr" else "p < 0.05, uncorrected"),
+             "Precon1 solid, Precon4 dashed, mean ± s.e.m. * passes: %s across the ten per-region models." % ("FDR q < 0.05" if mode == "fdr" else "p < 0.05, uncorrected"),
              fontsize=5, va="top", color="#4D4D4D")
     E.period_panels(fig, None, band, "power", x["rats"], DB_SAY, REGION_COLORS[x["region"]], "-", 18, 16, H, W,
                     "%s %s power (dB)" % (REGION_SAY[x["region"]], sym), "Change from baseline (dB)", _sigs(x, mode),
@@ -514,20 +600,37 @@ def fig_power_region(PT, band, x, fid, mode):
     return files
 
 
-def fig_power_all(PT, band, per, fid, mode):
-    """Every region, a row each, the plan's example laid out in full."""
+def _tier_lines(tiers, mode):
+    out = []
+    for tier, say in (("t1", "Tier 1 (2 × 3 × 5)"), ("t2", "Tier 2 (× frequency)")):
+        for name, k in tiers[tier]["key"].items():
+            lm = k.get("lmm") or {}
+            g = ("GEE χ²(%d) = %s, %s, q = %s%s" % (k["df"], E.num(k.get("chi2"), "%.2f"), E.p_say(k.get("p")), E.num(k.get("q"), "%.3f"),
+                                                   "" if k.get("errors") == E.ROBUST else " (model-based)")) if k.get("p") is not None else "GEE not fitted"
+            l_ = ("mixed model F(%d, %d) = %s, %s" % (lm["df1"], lm["df2"], E.num(lm["F"], "%.2f"), E.p_say(lm["p"]))) if lm.get("p") is not None else "mixed model not fitted"
+            out.append(("%s, %s: %s; %s%s" % (say, name, g, l_, " *" if E.sig(k, mode) else ""), E.sig(k, mode)))
+    return out
+
+
+def fig_power_all(PT, band, per, fid, mode, tiers=None):
+    """Every region, a row each, the plan's example laid out in full; above
+    them, tiers 1 and 2 (every region in one model)."""
     plt = E._plt()
     keep = [x for x in per if x]
-    W, H = 183.0, 14.0 + 50.0 * len(keep)
+    lines = _tier_lines(tiers, mode) if tiers else []
+    top = 14.0 + 4.0 * len(lines) + (3.0 if lines else 0.0)
+    W, H = 183.0, top + 50.0 * len(keep)
     fig = plt.figure(figsize=(W / 25.4, H / 25.4))
     sym = "θ" if band == "theta" else "γ"
     fig.text(4 / W, 1 - 3 / H, "Within-region %s power · every region · Precon1 solid, Precon4 dashed" % E._band_say(band), fontsize=7.5,
              fontweight="bold", va="top")
     fig.text(4 / W, 1 - 7.5 / H, "dB re 1 µV²/Hz, mean ± s.e.m. of the rats. * Session × Period (a), or Session × (that cue vs baseline) (b, c), "
-             "passes: %s across the five regions." % ("FDR q < 0.05" if mode == "fdr" else "p < 0.05, uncorrected"), fontsize=5, va="top", color="#4D4D4D")
+             "passes: %s across the ten per-region models." % ("FDR q < 0.05" if mode == "fdr" else "p < 0.05, uncorrected"), fontsize=5, va="top", color="#4D4D4D")
+    for k, (s_, on) in enumerate(lines):
+        fig.text(4 / W, 1 - (13.0 + 4.0 * k) / H, s_, fontsize=5.0, va="top", fontweight="bold" if on else "normal")
     for row, x in enumerate(keep):
         ri = REGIONS.index(x["region"])
-        y0 = 14.0 + 50.0 * row
+        y0 = top + 50.0 * row
         E.period_panels(fig, None, band, "power", x["rats"], DB_SAY, REGION_COLORS[x["region"]], "-", 18, y0, H, W,
                         "%s %s power (dB)" % (REGION_SAY[x["region"]], sym), "Change from baseline (dB)", _sigs(x, mode),
                         letters="abc" if row == 0 else "   ",
@@ -758,6 +861,11 @@ def significant(EM, F, mode):
                 c = x["contrasts"].get(E.contrast_key(a, b)) or {}
                 if E.sig(c, mode):
                     out.append(_res("Coherence, %s, %s: Session × (%s)" % (E.PAIR_SAY[x["pair"]], B["band"], say.lower()), c))
+    for band, tiers in (F.get("tiers") or {}).items():
+        for tier, say in (("t1", "tier 1"), ("t2", "tier 2")):
+            for name, k in tiers[tier]["key"].items():
+                if E.sig(k, mode):
+                    out.append(_res("Power, every region (%s), %s: %s" % (say, band, name), k))
     for band, per in F["power"].items():
         for x in per:
             if not x:
@@ -793,7 +901,7 @@ def methods(EM, F, fs_rec):
     n_tr = EM.get("trials") or {}
     tr = sorted(n_tr.values())
     S = []
-    S.append(("Waiting for confirmation", [TWENTY,
+    S.append(("Read first", [
               "Coherence here comes from pooled spectra (every 1 s piece of every trial in a session in one cross-spectrum), not the mean "
               "of per-trial coherence as in Dickson et al. (2022). Mean over rats and pairs, cue pair: " + "; ".join(
                   "%s %s pooled %.3f against %.3f as the mean of trials" % (b, d, EM["flag"][b][d]["pooled"], EM["flag"][b][d]["trialmean"])
@@ -812,7 +920,9 @@ def methods(EM, F, fs_rec):
         "Ten region pairs (RSC–dHC, RSC–ACC, RSC–OFC, RSC–PER, dHC–ACC, dHC–OFC, dHC–PER, ACC–OFC, ACC–PER, OFC–PER). Within a rat, a "
         "region pair's value is the mean of its valid wire pairs, ipsilateral (left–left, right–right) and contralateral (left–right, "
         "right–left) alike; homotopic pairs (one structure, left with right) are never used. A region's power is the mean of its valid "
-        "sides, in dB. A pair or region enters a model only with at least %d rats." % E.MIN_RATS]))
+        "sides, in dB. A pair or region enters a model only with at least %d rats. n = %d rats in all; where histology left a region "
+        "on neither side in a rat, that rat is missing from that region: %s." % (
+            E.MIN_RATS, len(rats), ", ".join("%s %d" % (REGION_SAY[x["region"]], len(x["rats"])) for x in F["power"]["theta"] if x))]))
     S.append(("Preprocessing", [
         "Neuralynx recordings%s, read in µV (ADBitVolts × 10⁶), decimated to 1 kHz (scipy.signal.decimate, an order-8 Chebyshev "
         "anti-aliasing filter run forwards and backwards). No re-referencing: signals as recorded against the acquisition reference."
@@ -846,17 +956,25 @@ def methods(EM, F, fs_rec):
         "more (Pair, and any term with Frequency) cannot be estimated robustly from %d clusters and use the model-based errors, which "
         "rest on the working correlation; those are reported but not relied on. Wald chi-square tests." % (E.ROBUST_MAX_DF, len(rats)),
         "Coherence across sessions (each pair): Late vs Early on the band; Session × Frequency across bins. Phase 2 (each pair): "
-        "Session × Cue (cue 1, cue 2; every Precon trial is a matched pairing, A→B or C→D, pooled). Coherence and power in the three "
-        "periods (each pair; each region on its own, Region is never a factor): Session × Period (2 df), and the planned contrasts "
-        "Session × (cue 1 vs baseline), Session × (cue 2 vs baseline), Session × (cue 2 vs cue 1), each on 1 df; power also Session × "
-        "Period × Frequency. Granger (each pair and band that passed): Late vs Early in each direction and Session × Direction. "
-        "Theta–gamma MI (each region of those pairs): Late vs Early.",
+        "Session × Cue (cue 1, cue 2; every Precon trial is a matched pairing, A→B or C→D, pooled). Coherence in the three periods "
+        "(each pair): Session × Period (2 df), and the planned contrasts Session × (cue 1 vs baseline), Session × (cue 2 vs baseline), "
+        "Session × (cue 2 vs cue 1), each on 1 df. Granger (each pair and band that passed): Late vs Early in each direction and "
+        "Session × Direction. Theta–gamma MI (each region of those pairs): Late vs Early.",
+        "Power, in four tiers, each run once for theta and once for gamma (24 models; J Charles, 2026-11-02). Tier 1: 2 (session: "
+        "Precon1, Precon4) × 3 (period: baseline, cue 1, cue 2) × 5 (region), band power; the key terms Session × Period and Session "
+        "× Period × Region. Tier 2: the same × F (frequency bin), power per bin; the key terms Session × Period × Frequency and Session "
+        "× Period × Region × Frequency. Tier 3a: 2 × 3 in each region separately, band power: Session × Period and the three planned "
+        "contrasts. Tier 3b: 2 × 3 × F in each region separately: Session × Period × Frequency. The per-region tiers are on top of the "
+        "full models, not instead of them, because with 8 rats the full models' many-df terms have little power and cannot use "
+        "robust errors.",
+        "Beside the GEE in tiers 1 and 2, a linear mixed model of the same rows with random intercepts for the rat, for each of its "
+        "regions, and for each region's day (tier 2: and its period), so a rat's own electrode in each region is not counted as noise; "
+        "a Wald F for each key term on k and k(n − 1) degrees of freedom.",
         "Reference category: the tests do not depend on it (sum coding). Coefficients are reported as SPSS reports them, with the last "
         "level of each factor (in ascending order) the reference: Session, Precon4; Period, cue 2; Frequency, the highest bin (11.96 Hz "
         "in theta, 89 Hz in gamma); Direction, the second. The coefficient tables are in the exports.",
-        "Correction: Benjamini–Hochberg (FDR) across the ten pairs for each coherence test, across the five regions for each power and "
-        "FOOOF test, and within each follow-up family (Granger, MI). The results are reported both corrected (q < 0.05) and uncorrected "
-        "(p < 0.05); which pairs are followed up depends on which is used.",
+        "Correction (" + CORRECTION + ") The results are reported both corrected (q < 0.05) and uncorrected (p < 0.05), a switch "
+        "between the two; which pairs are followed up depends on which is used.",
         "Robustness, beside every result that passes: the model refitted eight times, each without one rat (does p stay below 0.05 every "
         "time, and which rat does it lean on); and a linear mixed model with a random intercept for the rat (on the log for coherence, "
         "Granger and MI; on dB for power), a Wald F on k and k(n − 1) degrees of freedom, which is Kenward–Roger's for a within-rat "
@@ -1063,10 +1181,17 @@ def build(progress=None, check=None):
     F = {"power": {}, "fooof": {}, "granger": [], "pac": [], "side": [], "robust": []}
     figs = {"power": [], "fooof": [], "granger": [], "pac": [], "side": []}
     T = E.tables(days)
+    tiers = {}
     for bid, _lo, _hi in E.BANDS:
-        tick("power: the GEEs, %s" % bid)
-        per = power_models(PT, bid)
-        F["power"][bid] = per
+        tick("power: the GEEs, %s, each region (tier 3)" % bid)
+        F["power"][bid] = power_models(PT, bid)
+        tick("power: every region together, %s (tiers 1 and 2)" % bid)
+        tiers[bid] = tier_models(F["power"][bid])
+    correct_tier3(F["power"])
+    correct_tiers12(tiers)
+    F["tiers"] = tiers
+    for bid, _lo, _hi in E.BANDS:
+        per = F["power"][bid]
         bno = 1 if bid == "theta" else 2
         for x in per:
             if not x:
@@ -1084,8 +1209,9 @@ def build(progress=None, check=None):
                                              "body": ("(a) Band power (dB re 1 µV²/Hz), Precon1 solid, Precon4 dashed, mean ± s.e.m. of %d rats. "
                                                       "(b, c) Cue 1 − baseline and cue 2 − baseline across frequency (dB). Welch power with Dickson's "
                                                       "settings pooled over each session's trials, both sides averaged. GEE (normal, identity, "
-                                                      "exchangeable, rat as the cluster): Session × Period (2 df, robust) and its planned contrasts, "
-                                                      "FDR across the five regions; Session × Period × Frequency on model-based errors." % len(x["rats"]))}})
+                                                      "exchangeable, rat as the cluster): Session × Period (2 df, robust) and its planned contrasts "
+                                                      "(tier 3a), and Session × Period × Frequency on model-based errors (tier 3b), each corrected "
+                                                      "across the ten per-region models of its tier (five regions, two bands)." % len(x["rats"]))}})
             if E.sig(x.get("sp"), "raw"):
                 df = E._frame(x["rows"])
                 F["robust"].append(dict(E.robustness("power", bid, None, df,
@@ -1106,10 +1232,23 @@ def build(progress=None, check=None):
                                             passes={m: E.sig(c, m) for m in MODES}))
         tick("power: every region, %s" % bid)
         fid = "P%d_all" % bno
-        fa, fr = both(lambda m, n: fig_power_all(PT, bid, per, n, m), fid)
+        fa, fr = both(lambda m, n: fig_power_all(PT, bid, per, n, m, tiers[bid]), fid)
         figs["power"].append({"id": fid, "kind": "all", "band": bid, "files": fa, "files_raw": fr,
-                              "legend": {"title": "Within-region %s power in every region." % bid,
-                                         "body": "The plan's layout: a row a region; band power by period, then cue 1 − baseline and cue 2 − baseline across frequency."}})
+                              "passes": {m: any(E.sig(k_, m) for t in ("t1", "t2") for k_ in tiers[bid][t]["key"].values()) for m in MODES},
+                              "legend": {"title": "Within-region %s power in every region, with the models of every region together." % bid,
+                                         "body": ("Above, tiers 1 (2 session × 3 period × 5 region, band power) and 2 (the same × frequency bin): "
+                                                  "the GEE (normal, identity, exchangeable, rat as the cluster) and beside it a linear mixed "
+                                                  "model (random intercepts for the rat, its regions and their days), each key term corrected "
+                                                  "across the tier's two models (theta, gamma). Below, the plan's layout: a row a region; band "
+                                                  "power by period, then cue 1 − baseline and cue 2 − baseline across frequency.")}})
+        for name, key in tiers[bid]["t1"]["key"].items():
+            if name == "Session × Period" and E.sig(key, "raw"):
+                df = E._frame([r for x in per if x for r in x["rows"]])
+                F["robust"].append(dict(E.robustness("power", bid, None, df,
+                                                     lambda d_: {"p": E._term_p(E.terms(E.gee(d_, TIER1, "normal")), "Session × Period")},
+                                                     TIER1, ["C(day", ":", "C(period"], log=False, label="Session × Period"),
+                                        name="Power, every region (tier 1): Session × Period", test=key,
+                                        passes={m: E.sig(key, m) for m in MODES}))
     tick("FOOOF: fitting")
     FT = fooof_tables(PT)
     tick("FOOOF: the GEEs")
@@ -1176,7 +1315,8 @@ def build(progress=None, check=None):
            "power": {b: [_clean(x) for x in per] for b, per in F["power"].items()},
            "fooof": {k: [_clean(x) for x in v] for k, v in F["fooof"].items()}, "fooof_params": [list(p) for p in FOOOF_PARAMS],
            "granger": [_clean(x) for x in F["granger"]], "pac": [_clean(x) for x in F["pac"]], "side": [_clean(x) for x in F["side"]],
-           "robust": F["robust"], "figures": figs, "methods": M, "twenty": TWENTY, "modes": {m: E.MODE_SAY[m] for m in MODES}}
+           "robust": F["robust"], "figures": figs, "methods": M, "modes": {m: E.MODE_SAY[m] for m in MODES},
+           "tiers": tiers, "correction": CORRECTION}
     out["exports"] = write_exports(F, PT, EM, M)
     joe._write(_root("final.json"), out)
     return out

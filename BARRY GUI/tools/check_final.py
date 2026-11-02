@@ -99,15 +99,13 @@ if not O:
     print("  (not worked out here: skipped)")
 else:
     EM = E.result()
-    check("power: each region on its own, both bands, Region never a factor",
+    check("power, tier 3: each region on its own in both bands, Region not a factor there",
           all(not any("Region" in t["term"] for t in (x["e1"] or []) + (x["e2"] or [])) for b in O["power"].values() for x in b if x)
           and sorted(O["power"]) == ["gamma", "theta"])
+    from statsmodels.stats.multitest import multipletests
     for b, per in O["power"].items():
-        ps = [x["sp"]["p"] for x in per if x and x.get("sp")]
-        qs = [x["sp"]["q"] for x in per if x and x.get("sp")]
-        from statsmodels.stats.multitest import multipletests
-        check("%s power: Session × Period on 2 robust df, its q Benjamini-Hochberg across the five regions" % b,
-              np.allclose(qs, multipletests(ps, method="fdr_bh")[1]) and all(x["sp"]["df"] == 2 for x in per if x))
+        check("%s power, tier 3a: Session × Period on 2 robust df in every region" % b,
+              all(x["sp"]["df"] == 2 and x["sp"]["errors"] == E.ROBUST for x in per if x))
     for m in E.MODES:
         want = {(h["pair"], h["band"]) for h in O["hits"][m]}
         got = {(x["pair"], x["band"]) for x in O["granger"] if x["in"][m]}
@@ -121,9 +119,25 @@ else:
                                                        "granger": O["granger"], "pac": O["pac"]}, "fdr")]
     meth = " ".join(p for s in O["methods"] for p in s["paras"])
     check("the methods name every result that passes with the correction on (%d)" % len(fdr_sig), all(lbl in meth for lbl in fdr_sig))
-    check("the methods say the reference levels, the clipping rule, the notch and the 20 × 16 × 8 × 2 question",
+    check("the methods say the reference levels, the clipping rule, the notch, the four tiers and the correction families; no 20 × 16 × 8 × 2",
           "Precon4" in meth and "Period, cue 2" in meth and "16 or more consecutive samples" in meth and "59–61 Hz" in meth
-          and "waiting for confirmation from Joe" in meth)
+          and all(t in meth for t in ("Tier 1", "Tier 2", "Tier 3a", "Tier 3b", "24 models", "ten per-region models of tiers 3a and 3b"))
+          and "20 × 16" not in meth)
+    T = O.get("tiers") or {}
+    check("tiers 1 and 2 in both bands: Region a factor, the key terms with the GEE and the mixed model",
+          sorted(T) == ["gamma", "theta"] and all(set(T[b][t]["key"]) == ({"Session × Period", "Session × Period × Region"} if t == "t1"
+                                                                           else {"Session × Period × Frequency", "Session × Period × Region × Frequency"})
+                                                  and all(k.get("p") is not None and (k.get("lmm") or {}).get("p") is not None for k in T[b][t]["key"].values())
+                                                  for b in T for t in ("t1", "t2")))
+    for t in ("t1", "t2"):
+        for name in T["theta"][t]["key"]:
+            ps = [T[b][t]["key"][name]["p"] for b in ("theta", "gamma")]
+            qs = [T[b][t]["key"][name].get("q") for b in ("theta", "gamma")]
+            check("%s, %s: q is Benjamini-Hochberg across the tier's two models (theta, gamma)" % (t, name),
+                  np.allclose(qs, multipletests(ps, method="fdr_bh")[1]))
+    per10 = [x for b in ("theta", "gamma") for x in O["power"][b] if x and x.get("sp")]
+    check("tier 3a: Session × Period's q is Benjamini-Hochberg across the ten per-region models (%d)" % len(per10),
+          np.allclose([x["sp"]["q"] for x in per10], multipletests([x["sp"]["p"] for x in per10], method="fdr_bh")[1]) and len(per10) == 10)
     with zipfile.ZipFile(FS.export_dir("final_files.zip")) as z:
         names = set(z.namelist())
     check("the zip: rows, tests, SPSS's coefficients, R, SPSS, the methods; the side question outside it",

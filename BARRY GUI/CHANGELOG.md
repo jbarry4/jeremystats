@@ -15,6 +15,83 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.02.1 - Monolith tab 12: J Charles's four power tiers
+
+After restarting Jarvis, press Work it out on tab 12. Joe's site is already
+updated.
+
+- **Power now comes in J Charles's four tiers** (from his clarifications,
+  2026-11-02), each run once for theta and once for gamma, 24 models in
+  all:
+  - **Tier 1:** every region in one model, 2 × 3 × 5.
+  - **Tier 2:** the same, across frequency bins.
+  - **Tiers 3a and 3b:** each region on its own, as before.
+- **Tiers 1 and 2 show a linear mixed model beside the GEE.** It has random
+  intercepts for the rat, its regions and their days. With 8 rats, the
+  GEE cannot use robust errors for the many-df terms, so the mixed model
+  is the one to read for those.
+- **The correction follows the tiers.** Tiers 1 and 2 are corrected across
+  their two models (theta and gamma). Tiers 3a and 3b are corrected across
+  their ten per-region models (5 regions × 2 bands). The corrected and
+  uncorrected switch stays.
+- **"20 × 16 × 8 × 2" is gone.** J Charles said it was not a design.
+- **The methods describe the tiers and the correction families.** They
+  also give n per region.
+
+## 2026.11.01.1 - Root Canal: a saved pool says which reads are on this computer
+
+Restart Jarvis. The fix is in the server; a page reload is not enough.
+
+- **Opening a pool saved on another computer asked for a trace that was
+  not here.** On 10-30 Shahriar opened Rain's pool `789627824001` on
+  Homebarry. In the same second the click panel asked for member
+  `adc84ab8c916`'s trace and was refused: "This member's read is not on
+  this machine". The saved pool keeps what was true on Strawbarry, where
+  it was saved: every member "read here", each with its click request
+  ready. `/api/rootcanal/pool/<id>` handed that back unchanged, so the
+  panel believed it. Now the route checks each member's read on the
+  computer that opens it, the same check a fit makes. A member read
+  elsewhere says where it was read, and the panel reads it here, as it
+  already did for a fitted pool. The saved pool itself is not changed.
+  On Bluebarry the same pool has 2 of its 9 members read only on
+  Strawbarry, so it would have failed here too.
+- Check: `tools/check_rootcanal_saved_here.py` (11 checks). 6 fail with
+  the fix taken out.
+
+## 2026.10.31.1 - Harness faults stay out of the reports; tab 10's files asked for at once
+
+Restart Jarvis for the server half of both fixes. A page reload alone
+brings only the frame's new header.
+
+- **A harness's deliberate refusals were filed as real faults.**
+  Bluebarry's 10-30 report led with "The border hb-other is not on this
+  machine". That was `web/_dev/rootcanalborder.html` checking a refusal
+  on purpose. There were two holes:
+  - `tools/harness_run.ps1`, the runner the daily triage uses, started
+    its server without `BARRY_HARNESS_SERVER`. `tools/harness_run.py`
+    always set it. Without it, everything the server filed counted as
+    real. Its deletions would also have written tombstones, and it ran
+    the day-report loop. It sets the flag now.
+  - The server knew a harness only by the referrer. The app in a
+    harness's frame sends the frame's own address as the referrer. Now
+    `api()` in `web/js/core.js` sends `X-Barry-Test` from a frame a
+    `/_dev/` page holds, and `_request_is_test` counts it. That covers a
+    harness opened against the live app too.
+- **`harness_run.ps1 -Names a,b` ran nothing and said "nothing failing".**
+  Under `powershell -File` the list arrives as one argument, "a,b", and
+  no file name contains it. `tools/run_harnesses.py` now splits on
+  commas, and it refuses with the names when a name matches no harness.
+- **Tab 10 (Joe export): files failed when asked for together.** Every
+  file request works out the manifest. That can make a figure's Prism
+  zip, preview or legend file again through one fixed name. Four requests
+  in one second on 10-30 made the same zip together, and three failed
+  (WinError 32, then WinError 2). `joeexport.manifest` now makes them one
+  at a time.
+- Checks: `tools/check_testorigin.py` (10 checks) and
+  `web/_dev/testorigin.html` (3) for the harness fixes, and
+  `tools/check_joeexport_race.py` (8 threads x 4 rounds) for tab 10. Each
+  fails with its fix taken out.
+
 ## 2026.10.30.3 - Sync that works without git; Eye is Braces; Lock fixes
 
 Restart Jarvis on every computer. Then run `supabase/24_arrival_clock.sql`
