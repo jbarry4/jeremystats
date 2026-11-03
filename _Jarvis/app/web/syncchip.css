@@ -1,0 +1,47 @@
+/* syncchip.css -- the two-mark chip: on GitHub, in the shared database.
+
+   Drawn by js/syncchip.js beside a set, a bank entry, a run, a figure, a
+   recording. Two tiny marks, a branch for GitHub and a cylinder for the
+   shared database, each lit or dim. It replaces the dot-and-word sync mark
+   where both used to say half of this.
+
+   Colours are the theme's own tokens, so it reads in all twelve themes:
+     lit       --ok      (pushed / in the shared database)
+     on its way --accent (committed but not pushed / waiting to go up)
+     stuck     --err     (waiting, and the last sync failed)
+     dim       --text-3 at reduced opacity (not yet, or never) */
+.sync-chip {
+  display: inline-flex; align-items: center; gap: 2px; flex: none;
+  vertical-align: middle;
+  padding: 1px 4px; border-radius: 999px;
+  border: 1px solid var(--line);
+  line-height: 1; color: var(--text-3);
+  cursor: default; user-select: none;
+}
+.sync-chip i {
+  display: inline-flex; width: 11px; height: 11px; flex: none;
+  color: var(--text-3); opacity: 0.45;
+  transition: color 0.35s ease, opacity 0.35s ease;
+}
+.sync-chip i svg { width: 100%; height: 100%; display: block; }
+.sync-chip i.lit { color: var(--ok); opacity: 1; }
+.sync-chip i.going { color: var(--accent); opacity: 1; }
+.sync-chip i.stuck { color: var(--err); opacity: 1; }
+/* A road this kind never takes: drawn, so the chip keeps its shape, but
+   fainter than "not yet". */
+.sync-chip i.never { opacity: 0.2; }
+/* Not heard yet: nothing lit, the outline dashed. */
+.sync-chip.pending { border-style: dashed; }
+
+/* Where the dot-and-word mark used to sit, the chip sits. */
+.bank-row .sync-chip { grid-area: sync; justify-self: end; }
+.cur-shelf-grid .csr-when .sync-chip { margin-left: 4px; }
+.cur-set-who .sync-chip { margin-left: 6px; }
+.sess-card .sc-top .sync-chip { margin-left: auto; }
+.res-card .sync-chip { margin-left: 4px; }
+
+/* No movement for a slower computer, or for anyone who asked for none. */
+html[data-lite="on"] .sync-chip i { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .sync-chip i { transition: none; }
+}
