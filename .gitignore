@@ -18,7 +18,7 @@ HOF Scripts/Python Visualizer/**/dist/
 # The files stay on disk as the offline buffer: BARRY records an error
 # whether or not there is a network, which is exactly when it matters most.
 # They are cache now, not transport.
-BARRY GUI/GUI_logs/errors/
+_Jarvis/app/GUI_logs/errors/
 
 # The activity log, for the same reason and with the same trade.
 #
@@ -32,10 +32,23 @@ BARRY GUI/GUI_logs/errors/
 # lab's. The files stay on disk as the offline buffer: BARRY records what
 # happened whether or not there is a network, which is exactly when it
 # matters. They are cache, not transport.
-BARRY GUI/GUI_logs/activity/
+_Jarvis/app/GUI_logs/activity/
 
 # How long each stage of a comodulogram took on THIS machine, so the progress
 # bar's estimate is right on the rig as well as on a laptop. Per machine by
 # nature and worthless anywhere else -- committing it would mean two computers
 # overwriting each other's timings to no purpose.
-BARRY GUI/GUI_logs/.cfc_rates.json
+_Jarvis/app/GUI_logs/.cfc_rates.json
+
+# The launchers folder (2026-11-03). Its shortcut is made on each Windows
+# machine by backend/launchers.py and holds that machine's absolute paths,
+# so it can never be shared; Finder's .DS_Store files are nobody's work.
+_Jarvis/Activate Jarvis.lnk
+.DS_Store
+
+# The app folder before 2026-11-03. git moved everything it tracked into
+# _Jarvis/app; what a pull leaves behind here is machine-local by
+# definition (the Supabase key, the VACC sign-in, the review key, caches)
+# and must never be committed. Jarvis carries it across on its first start
+# (backend/launchers.py leftovers).
+/BARRY GUI/

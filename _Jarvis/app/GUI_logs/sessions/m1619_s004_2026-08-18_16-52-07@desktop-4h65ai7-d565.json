@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-11-02T19:21:18.200976+00:00",
+    "gid": "2026-11-02T19:21:18.200976+00:00",
+    "group": "2026-11-02T19:21:18.200976+00:00",
+    "key": "2026-11-02T19:21:18.200976+00:00",
+    "label": "2026-11-02T19:21:18.200976+00:00",
+    "loose_key": "2026-11-02T19:21:18.200976+00:00",
+    "mouse": "2026-11-02T19:21:18.200976+00:00",
+    "project": "2026-11-02T19:21:18.200976+00:00",
+    "project_source": "2026-11-02T19:21:18.200976+00:00",
+    "retired": "2026-11-02T19:21:18.200976+00:00",
+    "schema": "2026-11-02T19:21:18.200976+00:00",
+    "session": "2026-11-02T19:21:18.200976+00:00",
+    "start": "2026-11-02T19:21:18.200976+00:00",
+    "updated": "2026-11-02T19:23:38.662701+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1619\\KCNT1_m1619_s04_081826\\2026-08-18_16-52-07": [
+        "set",
+        "2026-11-02T19:23:38.662701+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-02T19:23:38.662701+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.11.02.1",
+    "at": "2026-11-02T14:21:18-05:00",
+    "commit": "d2dc07e7",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "sb8416e81d201",
+  "group": null,
+  "key": "m1619_s004_2026-08-18_16-52-07",
+  "label": "KCNT1 m1619 s4 2026-08-18",
+  "loose_key": "m1619_s004",
+  "mouse": 1619,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1619\\KCNT1_m1619_s04_081826\\2026-08-18_16-52-07"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 4,
+  "start": "2026-08-18T20:52:07+00:00",
+  "updated": {
+    "app_version": "2026.11.02.1",
+    "at": "2026-11-02T14:23:38-05:00",
+    "commit": "d2dc07e7",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}
