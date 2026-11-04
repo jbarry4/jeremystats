@@ -19,7 +19,7 @@
     "spotter_at": "2026-10-22T15:55:55.110663+00:00",
     "spotter_light": "2026-10-16T17:21:44.827873+00:00",
     "support_panels": "2026-10-29T17:30:31.258405+00:00",
-    "updated": "2026-10-30T21:58:13.757581+00:00",
+    "updated": "2026-11-02T20:11:02.068171+00:00",
     "vacc_signed_ack": "2026-10-20T16:14:37.060022+00:00",
     "xf_chan_column": "2026-10-29T17:32:06.632090+00:00",
     "xf_overview_aid": "2026-10-22T17:56:53.803893+00:00",
@@ -94,6 +94,10 @@
         "set",
         "2026-09-03T00:09:05.747120+00:00"
       ],
+      "Jeremy-Barrys-MacBook-Pro-191.local": [
+        "set",
+        "2026-09-09T15:49:14.317082+00:00"
+      ],
       "LCOM549913": [
         "set",
         "2026-10-19T16:57:51.196643+00:00"
@@ -139,7 +143,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-30T21:58:13.757581+00:00",
+    "at": "2026-11-02T20:11:02.068171+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -802,10 +806,11 @@
     "DESKTOP-AH45FAE": "horizon-night",
     "DESKTOP-NR2H5O7": "horizon-night",
     "Home": "dark",
+    "Jeremy-Barrys-MacBook-Pro-191.local": "dark",
     "LCOM549913": "halloween",
     "ip0af50ae7.int.uvm.edu": "halloween"
   },
-  "updated": "2026-10-30T17:58:13-04:00",
+  "updated": "2026-11-02T15:11:02-05:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": true,
