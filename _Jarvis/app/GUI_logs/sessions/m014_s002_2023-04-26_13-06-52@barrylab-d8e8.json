@@ -1,7 +1,7 @@
 {
   "_at": {
-    "created": "2026-10-14T19:15:40.665892+00:00",
-    "gid": "2026-10-14T19:15:40.665892+00:00",
+    "created": "2026-10-14T19:13:39.205576+00:00",
+    "gid": "2026-10-14T19:13:39.205576+00:00",
     "group": "2026-10-14T19:15:40.665892+00:00",
     "key": "2026-10-14T19:15:40.665892+00:00",
     "label": "2026-10-14T19:15:40.665892+00:00",
@@ -9,11 +9,11 @@
     "mouse": "2026-10-14T19:15:40.665892+00:00",
     "project": "2026-10-14T19:15:40.665892+00:00",
     "project_source": "2026-10-14T19:15:40.665892+00:00",
-    "retired": "2026-10-14T19:15:40.665892+00:00",
+    "retired": "2026-11-03T20:57:09.541473+00:00",
     "schema": "2026-10-14T19:15:40.665892+00:00",
     "session": "2026-10-14T19:15:40.665892+00:00",
     "start": "2026-10-14T19:15:40.665892+00:00",
-    "updated": "2026-10-14T19:16:11.372292+00:00"
+    "updated": "2026-11-03T20:57:09.541473+00:00"
   },
   "_keys": {
     "channel_banks": {
@@ -34,7 +34,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-14T19:16:11.372292+00:00",
+    "at": "2026-11-03T20:57:09.541473+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -53,14 +53,14 @@
     }
   ],
   "created": {
-    "app_version": "2026.10.13.11",
-    "at": "2026-10-14T15:15:40-04:00",
-    "commit": "8855eda1",
-    "email": "rain.younger@uvm.edu",
-    "host": "BarryLab",
-    "machine": "Strawbarry",
+    "app_version": "2026.10.14.5",
+    "at": "2026-10-14T15:13:39-04:00",
+    "commit": "8d0daabe",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain Younger"
+    "user": "Shahriar Tafti"
   },
   "gid": "sb9d0ef24c025",
   "group": null,
@@ -73,14 +73,14 @@
   ],
   "project": "KCNT1",
   "project_source": "guessed",
-  "retired": false,
+  "retired": true,
   "schema": 1,
   "session": 2,
   "start": "2023-04-26T17:06:52+00:00",
   "updated": {
-    "app_version": "2026.10.13.11",
-    "at": "2026-10-14T15:16:11-04:00",
-    "commit": "8855eda1",
+    "app_version": "2026.11.03.1",
+    "at": "2026-11-03T15:57:09-05:00",
+    "commit": "0aa32f2a",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
