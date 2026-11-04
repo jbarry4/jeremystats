@@ -6719,5 +6719,6 @@
    }
   }
  },
- "model_file": ".cache\\prospector\\pr20261104-071200.joblib"
+ "model_file": "prospector/models/pr20261104-071200@desktop-4h65ai7-d565.joblib",
+ "model_bytes": 5306503
 }

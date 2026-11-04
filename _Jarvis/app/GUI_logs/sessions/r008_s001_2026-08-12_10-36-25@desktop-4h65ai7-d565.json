@@ -23,14 +23,14 @@
     "schema": "2026-09-24T19:39:24.722711+00:00",
     "session": "2026-09-24T19:39:24.722711+00:00",
     "start": "2026-09-24T19:39:24.722711+00:00",
-    "updated": "2026-09-25T20:23:17.171853+00:00",
+    "updated": "2026-11-04T20:49:54.817065+00:00",
     "view_state": "2026-09-24T20:26:53.846632+00:00"
   },
   "_keys": {
     "paths": {
       "E:\\Joe Multisite 2026 data\\J8\\J8_Precon1\\J8_Precon1_FP1\\2026-08-12_10-12-26": [
-        "set",
-        "2026-09-24T20:27:46.353113+00:00"
+        "gone",
+        "2026-11-04T20:49:54.817065+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J8\\J8_Precon1\\J8_Precon1_FP1\\2026-08-12_10-28-07": [
         "set",
@@ -53,7 +53,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-25T20:23:17.171853+00:00",
+    "at": "2026-11-04T20:49:54.817065+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -78,7 +78,6 @@
   "n_channels": 32,
   "paths": [
     "E:\\Joe Multisite 2026 data\\J8\\J8_Precon1\\J8_Precon1_SPC\\2026-08-12_10-36-25",
-    "E:\\Joe Multisite 2026 data\\J8\\J8_Precon1\\J8_Precon1_FP1\\2026-08-12_10-12-26",
     "E:\\Joe Multisite 2026 data\\J8\\J8_Precon1\\J8_Precon1_FP1\\2026-08-12_10-28-07",
     "E:\\Joe Multisite 2026 data\\J8\\J8_Precon1\\J8_Precon1_FP2\\2026-08-12_12-31-01"
   ],
@@ -104,9 +103,9 @@
   "session": 1,
   "start": "2026-08-12T10:36:25",
   "updated": {
-    "app_version": "2026.09.25.3",
-    "at": "2026-09-25T16:23:17-04:00",
-    "commit": "4f8e8ca",
+    "app_version": "2026.11.04.3",
+    "at": "2026-11-04T15:49:54-05:00",
+    "commit": "3dfef0c8",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

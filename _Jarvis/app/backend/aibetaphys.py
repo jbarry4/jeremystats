@@ -366,8 +366,10 @@ FAMILIES = [
               "gap, at the peak Braces' rule assigned and at each of the "
               "five largest CSD peaks within 100 ms of the stamp."}
 ] + [
+    # `prospector`: read only by Prospector's reads (`want_spec`), so not
+    # offered in AI Beta's panel, whose reads never make them.
     {"id": sid, "name": "Spectrogram, 1-%d Hz" % int(top),
-     "group": "pictures",
+     "group": "pictures", "prospector": True,
      "blurb": "Wavelet power from 1 to %d Hz off the raw signal, notched, "
               "on the candidate's own peak channel, 8 contacts above and "
               "below it and the shank's mean, from 200 ms before the stamp "

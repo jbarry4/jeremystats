@@ -3728,6 +3728,8 @@ select { color-scheme: inherit; }
 [data-tool="rootcanal"], [data-producer="root-canal"] { --tc: var(--tool-rootcanal); }
 [data-tool="dspca"], [data-producer="x-ray"] { --tc: var(--tool-dspca); }
 [data-tool="toothfairy"], [data-producer="tooth-fairy"] { --tc: var(--tool-toothfairy); }
+/* Panning's model wears Tooth Fairy's colour: both say "a model made this". */
+[data-tool="prospector"], [data-producer="prospector"] { --tc: var(--tool-toothfairy); }
 [data-tool="eye"], [data-producer="eye"] { --tc: var(--tool-eye); }
 [data-tool="lock"], [data-producer="lock"] { --tc: var(--tool-lock); }
 [data-tool="junction"], [data-producer="junction"] { --tc: var(--tool-junction); }
@@ -15647,6 +15649,33 @@ table.ai-rep-tbl tr.ai-rep-chosen td:first-child { color: var(--accent);
 .tf-mh { align-items: center; gap: var(--sp-8); }
 .tf-top .tf-icon.big { width: 26px; height: 26px; color: var(--text); }
 
+/* Prospector's icon (2026-11-04), inside the same `.tf-icon` box: a
+   prospector's pan with gold in it and a glint over it. The pan in the
+   current colour, the gold and the glint in the accent, the water a paler
+   accent; `.live` swirls the pan and the glint catches the light. */
+.pr-icon .pr-pan { fill: color-mix(in srgb, currentColor 10%, transparent);
+                   stroke: currentColor; stroke-width: 1.6;
+                   stroke-linejoin: round; }
+.pr-icon .pr-rim { fill: none; stroke: currentColor; stroke-width: 1.3; }
+.pr-icon .pr-water { fill: none; stroke-width: 1; stroke-linecap: round;
+                     stroke: color-mix(in srgb, var(--accent) 55%, transparent); }
+.pr-icon .pr-nugget { fill: var(--accent); stroke: none; }
+.pr-icon .pr-glint { fill: var(--accent); stroke: none; }
+.pr-icon .pr-dust { fill: color-mix(in srgb, var(--accent) 60%, white);
+                    stroke: none; opacity: .75; }
+.pr-icon:not(.big) .pr-water, .pr-icon:not(.big) .pr-dust { display: none; }
+.pr-icon.live .pr-panning { transform-origin: 16px 19px;
+                            animation: prSwirl 2.2s ease-in-out infinite; }
+.pr-icon.live .pr-glint { transform-origin: 23.5px 4.8px;
+                          animation: tfTwinkle 2.4s ease-in-out infinite; }
+.pr-icon.live .pr-dust { animation: tfDust 2.4s ease-in-out infinite; }
+.pr-icon.live .pr-dust:nth-of-type(2) { animation-delay: 1.2s; }
+@keyframes prSwirl {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-7deg); }
+  75% { transform: rotate(7deg); }
+}
+
 /* The batch: which sets, and how each is getting on. */
 .tf-pick-wrap { display: flex; flex-direction: column; gap: var(--sp-6); }
 .tf-pick { display: flex; flex-direction: column; max-height: 260px;
@@ -15682,7 +15711,8 @@ div.tf-tile { cursor: default; }
   .tf-stamp { transition: none; transform: none; }
   .tf-stamp.hit, .tf-scope.flash { animation: none; }
   .tf-icon.live .tf-star, .tf-icon.live .tf-wings,
-  .tf-icon.live .tf-dust { animation: none; }
+  .tf-icon.live .tf-dust, .pr-icon.live .pr-panning,
+  .pr-icon.live .pr-glint, .pr-icon.live .pr-dust { animation: none; }
 }
 
 /* Which histology is in force (v2 since 2026-10-05), on every probe-sanity

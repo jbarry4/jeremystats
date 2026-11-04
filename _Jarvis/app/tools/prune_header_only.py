@@ -53,7 +53,7 @@ sys.path.insert(0, APP)
 
 from backend import device as devicemod           # noqa: E402
 from backend import profile as profilemod         # noqa: E402
-from backend import sessreg, store as storemod     # noqa: E402
+from backend import ids, sessreg, store as storemod  # noqa: E402
 from backend import tombs as tombsmod              # noqa: E402
 from backend.paths import LOGS_DIR                 # noqa: E402
 
@@ -65,7 +65,12 @@ UNC = "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\"
 # on it and is not this tool's to remove.
 WORK = ("bad_channels", "bad_channels_note", "bookmarks", "note", "quality",
         "spike_labels", "event_classes", "condition", "hemisphere")
-MANUAL = ("project_source", "probe_source", "hemisphere_source")
+# Not probe_source: every DEWEY record had its probe set in one bulk pass
+# (2026-09-24), which says nothing about that recording.
+MANUAL = ("project_source", "hemisphere_source")
+# Retirements this tool may undo: the size check's own words. A record
+# retired for any other reason was retired by a person for that reason.
+NO_DATA = ("no data in the folder",)
 
 # Folders that hold references to recordings by gid. The registry itself,
 # the logs and the notes are not references.
@@ -87,12 +92,19 @@ def openable(path):
 
 
 def state_of(path):
-    """'header-only', 'data', or 'unreachable' for one recording folder."""
+    """'header-only', 'data', 'gone' or 'unreachable' for one folder.
+
+    'gone' only on the share, where the folder above it answers and the
+    folder does not: a stub somebody deleted. A local drive's missing folder
+    may be another computer's drive, and stays 'unreachable'."""
     p = openable(path)
     try:
         names = [(e.name, e.stat().st_size) for e in os.scandir(p)
                  if e.is_file() and e.name.lower().endswith(".ncs")]
     except OSError:
+        if p.lower().startswith(UNC.lower()) \
+                and os.path.isdir(os.path.dirname(p.rstrip("\\"))):
+            return "gone"
         return "unreachable"
     if names and all(s <= HEADER_BYTES for _n, s in names):
         return "header-only"
@@ -159,13 +171,16 @@ def main():
     reg = sessreg.Registry(store)
     tombs = tombsmod.Tombs(LOGS_DIR, store)
 
-    seen, recs = set(), []
+    seen, recs, retired = set(), [], []
     for r in reg.all():
-        if r.get("gid") and not r.get("retired") and r["gid"] not in seen \
-                and in_scope(r, args.all):
-            seen.add(r["gid"])
+        if not r.get("gid") or r["gid"] in seen or not in_scope(r, args.all):
+            continue
+        seen.add(r["gid"])
+        if not r.get("retired"):
             recs.append(r)
-    paths = sorted({p for r in recs for p in (r.get("paths") or [])
+        elif r.get("retired_reason") in NO_DATA and not r.get("merged_into"):
+            retired.append(r)
+    paths = sorted({p for r in recs + retired for p in (r.get("paths") or [])
                     if isinstance(p, str) and not p.startswith("vacc:")})
     say("%d records, %d paths to look at" % (len(recs), len(paths)))
     t0 = time.time()
@@ -187,6 +202,24 @@ def main():
         else:
             drop.append((r, stubs))
 
+    # Retired for "no data in the folder" while a folder holds the data:
+    # judged by a stub listed first (m531 s1, 2026-11-04). Brought back,
+    # its stubs and deleted stubs dropped, and its start moved off the
+    # stub's clock onto the recording's.
+    revive = []
+    for r in retired:
+        ps = list(r.get("paths") or [])
+        data = [p for p in ps if state.get(p) == "data"]
+        if not data:
+            continue
+        junk = [p for p in ps if state.get(p) in ("header-only", "gone")]
+        start = r.get("start")
+        if junk and str(r.get("project") or "") != "DEWEY":
+            junk_ts = {ids.identify(p).get("start") for p in junk}
+            if start in junk_ts:
+                start = ids.identify(data[0]).get("start") or start
+        revive.append((r, junk, start))
+
     refs = references() if forget else {}
     really = []
     for r in forget:
@@ -206,6 +239,12 @@ def main():
         % (sum(len(s) for _r, s in drop), len(drop)))
     for r, s in drop:
         say("  %s  %s  -%d" % (r["gid"], r.get("label"), len(s)))
+    say("\nBRING BACK %d retired recordings that hold data" % len(revive))
+    for r, junk, start in revive:
+        say("  %s  %s  -%d paths%s" % (
+            r["gid"], r.get("label"), len(junk),
+            "  start %s -> %s" % (r.get("start"), start)
+            if start != r.get("start") else ""))
     if kept:
         say("\nLEFT ALONE: %d header-only records with work on them" % len(kept))
         for r, why in kept:
@@ -250,11 +289,31 @@ def main():
             tombs.add("path", "%s|%s" % (r["gid"], p),
                       note="a folder of headers only")
             dropped += 1
+    back = 0
+    for r, junk, start in revive:
+        base = store.session_base(r.get("key") or "")
+        keep_copy(base)
+        ident = {k: r.get(k) for k in ("key", "loose_key", "mouse", "session",
+                                       "start", "label")}
+        ident["gid"] = r["gid"]
+        patch = {"retired": False, "retired_reason": None, "retired_at": None,
+                 "paths": [p for p in (r.get("paths") or [])
+                           if p not in set(junk)]}
+        if start != r.get("start"):
+            patch["start"] = start
+        store.upsert_session(ident, patch)
+        tombs.forget("session", r["gid"])
+        for p in junk:
+            tombs.add("path", "%s|%s" % (r["gid"], p),
+                      note="a folder of headers only, or one deleted")
+            dropped += 1
+        back += 1
     store.record_activity([{"action": "registry.prune_header_only",
                             "detail": {"forgotten": gone, "paths": dropped,
+                                       "brought_back": back,
                                        "left_alone": len(kept)}}])
-    say("\nforgot %d records, dropped %d paths; backup in %s"
-        % (gone, dropped, backup))
+    say("\nforgot %d records, brought back %d, dropped %d paths; backup in %s"
+        % (gone, back, dropped, backup))
 
 
 if __name__ == "__main__":

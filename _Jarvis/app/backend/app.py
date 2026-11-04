@@ -28,6 +28,7 @@ from flask import Flask, jsonify, request, send_from_directory, Response, send_f
 
 from . import (aibeta as aibetamod,
                toothfairy as tfmod,
+               prospector as prospectormod,
                flights as flightsmod,
                analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                dspcahf,
@@ -814,7 +815,10 @@ def api_discover_status(job_id):
 
         # Attach any stored record (bad channels, notes) to each session, and
         # the permanent id it now certainly has.
-        stored = STORE.all_sessions()
+        # Live records first, so a folder that matches a live record and a
+        # retired one is shown as the live one.
+        stored = sorted(STORE.all_sessions(),
+                        key=lambda r: bool(r.get("retired")))
         for s in data.get("sessions", []):
             rec, how = ids.match(s["identity"], stored)
             s["gid"] = (rec or {}).get("gid")
@@ -823,6 +827,11 @@ def api_discover_status(job_id):
                 "bad_channels": (rec or {}).get("bad_channels", []),
                 "notes": (rec or {}).get("notes"),
                 "quality": (rec or {}).get("quality") or "",
+                # Said, so Sessions never draws a recording every tool has
+                # stopped offering as though it were an ordinary one.
+                "retired": bool((rec or {}).get("retired")),
+                "retired_reason": (rec or {}).get("retired_reason"),
+                "merged_into": (rec or {}).get("merged_into"),
             } if rec else None
     return jsonify({"ok": True, "job": data})
 
@@ -4119,10 +4128,8 @@ def _incisor_vacc_rows(body=None):
     detect_rate = {w: cfcmod.rate_for("ds detect", w)
                    for w in ("vacc:netfiles", "vacc:scratch")}
     todo, blocked = [], []
-    for rec in (REG.all() or []):
+    for rec in REG.live():
         gid = rec.get("gid")
-        if not gid or rec.get("retired"):
-            continue
         label = rec.get("label") or rec.get("key") or gid
         got = vaccmod.resolve_gid(gid, rec.get("paths") or [], cfg,
                                   drives=drives, staged=staged)
@@ -6170,18 +6177,12 @@ def _doppler_members(wanted):
     verdicts = {str(k).rstrip("/"): v for k, v in
                 ((vaccmod.status().get("roots") or {}).items())}
     members, blocked = [], []
-    seen = set()
-    for rec in (REG.all() or []):
+    # One member per RECORDING, as the picker lists them: a gid held by two
+    # records (DEWEY J9 Precon2 is) was otherwise sent twice. `REG.live`.
+    for rec in REG.live():
         gid = rec.get("gid")
-        if not gid or rec.get("retired"):
-            continue
         if wanted and gid not in wanted:
             continue
-        # One member per RECORDING, as the picker lists them: a gid held by
-        # two records (DEWEY J9 Precon2 is) was otherwise sent twice.
-        if gid in seen:
-            continue
-        seen.add(gid)
         label = rec.get("label") or gid
         # The same rule Incisor's batch reads (`vacc.resolve_gid`): on a
         # share the cluster mounts and this account can open, or a copy in
@@ -6306,17 +6307,11 @@ def _doppler_vacc_rows(body=None):
     params = dopplermod.params_from(body)
     storm = params["method"] == "storm"
     todo, blocked = [], []
-    seen = set()
-    for rec in (REG.all() or []):
+    # One row per RECORDING. Some gids are held by more than one record --
+    # the same recording written twice, once with paths and once without --
+    # and walking records listed it two or three times. `REG.live`.
+    for rec in REG.live():
         gid = rec.get("gid")
-        if not gid or rec.get("retired"):
-            continue
-        # One row per RECORDING. Some gids are held by more than one record
-        # -- the same recording written twice, once with paths and once
-        # without -- and walking records listed it two or three times.
-        if gid in seen:
-            continue
-        seen.add(gid)
         label = rec.get("label") or rec.get("key") or gid
         got = vaccmod.resolve_gid(gid, rec.get("paths") or [], cfg,
                                   drives=drives, staged=staged)
@@ -18335,6 +18330,39 @@ def api_confluence_recordings():
                     "window_ms": confluencemod.DEFAULT_WINDOW_MS})
 
 
+def _cf_version_of(ent, ref):
+    """The version `ref` names: its id (minted, or derived for a version
+    written before ids), else the NAME the page was shown.
+
+    The page is sent every version named by `versions.label_rows` -- which
+    renames a second version both machines numbered 2 to 3 -- and Many at
+    once sent that name back, where `_version_ref` read it as the stored
+    number. So the row offered "v3" and the server said there was no
+    version 3, or offered "v2" and the server said two versions are
+    numbered 2 (m1609 s1, 2026-11-04). Resolved here by the same naming the
+    page was shown, so whatever the page offers, the server can find.
+    """
+    s = str(ref).strip()
+    rows = BANK.repaired(ent).get("versions") or []
+    named = versionsmod.label_rows(rows)
+    for v, _name in named:
+        if str(v.get("id")) == s:
+            return v
+    # A name before a stored number: "3" may be the name of a second v2,
+    # while a stored v3 is shown as something else.
+    want = s[1:] if s[:1] in ("v", "V") else s
+    for v, name in named:
+        if str(name) == want:
+            return v
+    try:
+        return BANK._version_ref(ent, s)
+    except eventbank.BankError as exc:
+        names = ", ".join("v%s" % n for _v, n in sorted(
+            named, key=lambda x: versionsmod.key(x[1])))
+        raise eventbank.BankError("%s (Its versions are %s.)"
+                                  % (str(exc).rstrip("."), names or "none"))
+
+
 def _cf_version_events(ent, ref):
     """One version of a banked entry, as events: the newest when `ref` is
     empty, else the one the version tree picked. A version's snapshot holds
@@ -18343,7 +18371,7 @@ def _cf_version_events(ent, ref):
     cur = list(ent.get("events") or [])
     if ref in (None, "", "tip"):
         return cur, None
-    ver = BANK._version_ref(ent, ref)
+    ver = _cf_version_of(ent, ref)
     newest = max([v.get("v") or 0 for v in (ent.get("versions") or [])]
                  or [0])
     if not ver.get("snap"):
@@ -18411,11 +18439,16 @@ def _cf_inputs(body):
 
 
 def _cf_vname(ent, ver):
+    """A version's name as the page was shown it: `label_rows` over the
+    REPAIRED history, the same list `_cf_entry_row` names. Over the raw one
+    a pre-id twin counted twice and the names drifted from the page's, so a
+    pool's recorded version and the page's "pooled already" disagreed."""
+    vers = BANK.repaired(ent).get("versions") or []
     if ver is None:
-        vers = ent.get("versions") or []
         return versionsmod.tip_next(vers)[0] if vers else "0"
-    for v, name in versionsmod.label_rows(list(ent.get("versions") or [])):
-        if v is ver or (v.get("id") and v.get("id") == ver.get("id")):
+    want = ver.get("id") or versionsmod.stable_id(ent.get("id"), ver)
+    for v, name in versionsmod.label_rows(list(vers)):
+        if v.get("id") == want:
             return name
     return str(ver.get("v") or 0)
 
@@ -19417,7 +19450,9 @@ def api_aibeta_state():
         "summary": aibetamod.summary(ds),
         "entries": [{k: e.get(k) for k in keep} for e in ds["entries"]],
         "skipped": ds["skipped"],
-        "families": aibetamod.FAMILIES,
+        # Not Prospector's own inputs (which detector found it, the
+        # spectrograms): AI Beta's reads of a DS set never make them.
+        "families": [f for f in aibetamod.FAMILIES if not f.get("prospector")],
         "models": aibetamod.MODELS,
         "keep_ds": aibetamod.KEEP_DS,
         "folds": aibetamod.N_FOLDS,
@@ -19859,6 +19894,299 @@ def api_tooth_fairy_discard():
     body = request.get_json(force=True, silent=True) or {}
     for sid in (body.get("sids") or []):
         tfmod.forget(sid)
+    return jsonify({"ok": True})
+
+
+# ==========================================================================
+# Prospector -- Panning's model, sweeping pooled sets (2026-11-04)
+#
+# Tooth Fairy's door in Checkup, built again for Panning ("integrate into
+# panning in the same way tooth fairy is in check up"): a sweep writes
+# nothing; accepting it puts its calls -- Spike, Flag · likely spike, Flag ·
+# likely garbage -- on the events no person has decided, and banks every
+# call as a Prospector version of the pool, the AI's first calls, kept to
+# hold against what people decide (backend/prospector.py).
+# ==========================================================================
+_PR_JOB = {"id": None}
+PR_STAGES = [("pr read", 1), ("pr physio", 1), ("pr score", 1)]
+
+
+def _pr_busy():
+    jid = _PR_JOB.get("id")
+    job = cfcmod.get(jid) if jid else None
+    return job if job and job.snapshot()["status"] == "running" else None
+
+
+@app.route("/api/prospector")
+def api_prospector_status():
+    """Whether Prospector can sweep here, and what it was shown to do."""
+    st = prospectormod.status(PROSPECTOR)
+    busy = _pr_busy()
+    st["running"] = busy.snapshot() if busy else None
+    return jsonify(dict(st, ok=True))
+
+
+@app.route("/api/prospector/sweep", methods=["POST"])
+def api_prospector_sweep():
+    """Start a sweep of one pooled set. A job; poll /api/cfc/job/<id>."""
+    body = request.get_json(force=True, silent=True) or {}
+    gid, kind = body.get("gid"), body.get("kind") or "pooled"
+    if curation.kind_of(kind) != "pooled":
+        return jsonify({"ok": False, "error": "Prospector sorts pooled sets "
+                                              "only."}), 400
+    st = prospectormod.status(PROSPECTOR)
+    if not st["ready"]:
+        return jsonify({"ok": False, "error": st["why"]}), 400
+    busy = _pr_busy()
+    if busy:
+        return jsonify({"ok": False, "error": "Prospector is already "
+                                              "sweeping.",
+                        "job": busy.snapshot()}), 409
+    if not CURATE.get(gid, kind):
+        return jsonify({"ok": False, "error": "No such pooled set."}), 404
+
+    def work(job):
+        out = prospectormod.sweep(PROSPECTOR, CURATE, BANK, _tf_open, gid,
+                                  kind, job)
+        out["id"] = job.id
+        prospectormod.remember(job.id, out)
+        STORE.record_activity([{
+            "action": "prospector.sweep",
+            "detail": {"gid": gid, "kind": kind, "run": out["run_id"],
+                       "n": out["n"], "counts": out["counts"]}}])
+        return out
+
+    job = cfcmod.start({"tool": "prospector", "gid": gid}, PR_STAGES, work,
+                       1.0)
+    _PR_JOB["id"] = job.id
+    return jsonify({"ok": True, "job": job.snapshot()})
+
+
+@app.route("/api/prospector/batch", methods=["POST"])
+def api_prospector_batch():
+    """Sweep several pooled sets in turn, in one job; each is held on its
+    own, and one failing does not stop the rest."""
+    body = request.get_json(force=True, silent=True) or {}
+    sets = [(str(x.get("gid")), str(x.get("kind") or "pooled"))
+            for x in (body.get("sets") or [])
+            if isinstance(x, dict) and x.get("gid")
+            and curation.kind_of(x.get("kind") or "pooled") == "pooled"]
+    if not sets:
+        return jsonify({"ok": False, "error": "Choose at least one pool."}), 400
+    st = prospectormod.status(PROSPECTOR)
+    if not st["ready"]:
+        return jsonify({"ok": False, "error": st["why"]}), 400
+    busy = _pr_busy()
+    if busy:
+        return jsonify({"ok": False, "error": "Prospector is already "
+                                              "sweeping.",
+                        "job": busy.snapshot()}), 409
+    missing = [g for g, k in sets if not CURATE.get(g, k)]
+    if missing:
+        return jsonify({"ok": False, "error": "No pooled set for %d of those "
+                                              "recordings." % len(missing)}), 404
+    mid = {(g, k): g + "/" + k for g, k in sets}
+    names = {}
+    for g, k in sets:
+        rec = CURATE.get(g, k) or {}
+        names[(g, k)] = rec.get("session_label") or rec.get("name") or g
+        if curation.entry_of(k) and rec.get("name"):
+            names[(g, k)] = "%s · %s" % (rec.get("session_label") or g,
+                                               rec.get("name"))
+
+    def work(job):
+        job.members_init([{"id": mid[x], "label": names[x]} for x in sets])
+        out = []
+        for k, (g, kind) in enumerate(sets):
+            m = mid[(g, kind)]
+            job.check()
+            job.member(m, status="reading")
+            try:
+                sw = prospectormod.sweep(PROSPECTOR, CURATE, BANK, _tf_open,
+                                         g, kind, job)
+            except Exception as exc:                     # noqa: BLE001
+                if job._cancel:
+                    raise
+                job.member(m, status="failed", error=str(exc)[:200])
+                out.append({"gid": g, "kind": kind, "name": names[(g, kind)],
+                            "error": str(exc)[:300]})
+                continue
+            sid = "%s-%d" % (job.id, k)
+            sw["id"] = sid
+            prospectormod.remember(sid, sw)
+            job.member(m, status="done")
+            out.append({
+                "gid": g, "kind": kind, "name": names[(g, kind)], "sid": sid,
+                "n": sw["n"], "counts": sw["counts"],
+                "agreement": sw.get("agreement"),
+                "already_decided": sw.get("already_decided"),
+                "undecided": sw.get("open_to_it"),
+                "channels_note": sw.get("channels_note"),
+                "cached": sw.get("cached"),
+            })
+        STORE.record_activity([{
+            "action": "prospector.batch",
+            "detail": {"sets": len(sets),
+                       "swept": sum(1 for o in out if o.get("sid")),
+                       "run": st["run_id"]}}])
+        return {"batch": out, "run_id": st["run_id"],
+                "model_name": st["name"]}
+
+    job = cfcmod.start({"tool": "prospector", "batch": len(sets)}, PR_STAGES,
+                       work, 1.0)
+    _PR_JOB["id"] = job.id
+    return jsonify({"ok": True, "job": job.snapshot()})
+
+
+@app.route("/api/prospector/sweep/<sid>/peek")
+def api_prospector_peek(sid):
+    """The events the scanning screen shows while the sweep reads."""
+    job = cfcmod.get(sid)
+    if not job:
+        return jsonify({"ok": False, "error": "No such sweep."}), 404
+    data, rev = job.preview()
+    return jsonify({"ok": True, "peek": data, "rev": rev})
+
+
+def _pr_accept(sid):
+    """Put one held sweep's calls on its pool's events that no person has
+    decided, and bank every call. Returns (http status, body)."""
+    sw = prospectormod.recall(sid)
+    if not sw:
+        return 404, {"ok": False, "error":
+                     "That sweep is no longer held -- they are kept until "
+                     "Jarvis restarts or sixty-four newer ones replace them. "
+                     "Sweep the pool again."}
+    gid, kind = sw["gid"], sw["kind"]
+    rec = CURATE.get(gid, kind)
+    sess = _session_by_gid(gid)
+    if not rec or not sess:
+        return 404, {"ok": False, "error": "That pool or its recording "
+                                           "is gone."}
+    names = {l["id"]: l.get("name") or l["id"]
+             for l in curation.vocabulary("pooled")}
+    names.update({l["id"]: l.get("name") or l["id"]
+                  for l in (rec.get("labels") or [])})
+    # Every call, at its event's own stamp and with where it came from, so
+    # the version reads like any other of the pool (curation.bank_one).
+    events = []
+    for r in sorted(sw["rows"], key=lambda r: r["start"]):
+        ev = {"start": r["start"],
+              "label": names.get(r["label"], r["label"]) if r["label"]
+              else "unspecified",
+              "label_id": r["label"] or "unspecified",
+              "by": prospectormod.BY}
+        for k in ("end", "channel", "origin", "pair_t", "stamp"):
+            if r.get(k) is not None:
+                ev[k] = r[k]
+        events.append(ev)
+    by_label = {}
+    for ev in events:
+        by_label[ev["label_id"]] = by_label.get(ev["label_id"], 0) + 1
+    c = sw["counts"]
+    pol = sw.get("policy") or {}
+    note = ("Prospector sweep, run %s, Spike at %.4f (above %g%% of the "
+            "training recordings' garbage): %d Spike, %d Flag · likely "
+            "spike, %d Flag · likely garbage%s. Calls by a model -- the "
+            "AI's first calls, banked for the record -- not a person's pass."
+            % (sw["run_id"], float(pol.get("t_spike") or 0),
+               100 * float(pol.get("target") or 0), c.get("spike", 0),
+               c.get("likely_spike", 0), c.get("likely_garbage", 0),
+               (", %d could not be read" % c["unread"])
+               if c.get("unread") else ""))
+    own = curation.entry_of(kind)
+    prior = [] if own else _legacy_curated(gid, kind)
+    whole = [p for p in prior if p.get("curation_label") == "*"]
+    keep = own or (whole[0]["id"] if whole else None)
+    adopt = None if own else _legacy_adopt(gid, kind, events)
+    if not keep and adopt:
+        keep = adopt["id"]
+    try:
+        entry = BANK.add({
+            "id": keep,
+            "project": sess.get("project") or sess.get("group"),
+            "mouse": sess.get("mouse"), "session": sess.get("session"),
+            "session_key": sess.get("key"),
+            "session_loose_key": sess.get("loose_key"),
+            "session_label": sess.get("label"),
+            "recording_start": sess.get("start"),
+            "name": rec.get("name"), "type": curation.kind_of(kind),
+            "events": events, "by_label": by_label, "label_names": names,
+            "pipeline": "Jarvis curation (pooled)",
+            "added_by": prospectormod.BY,
+            "version_note": note,
+            "version_tag": prospectormod.TAG,
+            "based_on": rec.get("based_on"),
+            "curated": True, "import_from": adopt,
+            "curation_label": "*", "gid": gid,
+        })
+    except eventbank.BankError as exc:
+        return 400, {"ok": False, "error": str(exc)}
+
+    # Onto the events no person has decided -- and onto the ones only
+    # Prospector has, so a newer run replaces an older one's calls. A
+    # person's call stays.
+    current = {e["id"]: e for e in (rec.get("events") or [])}
+    pairs = {r["id"]: r["label"] for r in sw["rows"]
+             if r["label"] and r["id"] in current
+             and not prospectormod.a_person_decided(current[r["id"]])}
+    applied, prog = CURATE.label_many(gid, kind, pairs, who=prospectormod.BY)
+    prov = STORE.provenance()
+    PROSPECTOR.sweeps.write(sid, {
+        "id": sid, "gid": gid, "kind": kind,
+        "session_label": sw.get("session_label"), "run_id": sw["run_id"],
+        "policy": pol, "counts": c, "basis": sw.get("basis"),
+        "at": sw.get("at"),
+        "accepted_by": prov.get("user"), "accepted_at": aibetamod._now(),
+        "bank": {"entry": entry["id"], "version": entry.get("version")},
+        "applied": applied,
+        "rows": [[r["id"], r["start"], r.get("origin"), r["p"], r["label"],
+                  r["human"], r["human_by"]] for r in sw["rows"]],
+        "columns": ["id", "start", "origin", "p_spike", "prospector",
+                    "person_before", "person_by"],
+    })
+    STORE.record_activity([{
+        "action": "prospector.accept",
+        "detail": {"gid": gid, "kind": kind, "run": sw["run_id"],
+                   "applied": applied, "entry": entry["id"],
+                   "version": entry.get("version"), "counts": c},
+        "session": {"key": sess.get("key"), "label": sess.get("label")}}])
+    prospectormod.forget(sid)
+    return 200, {"ok": True, "gid": gid, "applied": applied,
+                 "kept": len(sw["rows"]) - applied,
+                 "entry": entry["id"], "version": entry.get("version"),
+                 "progress": prog}
+
+
+@app.route("/api/prospector/sweep/<sid>/accept", methods=["POST"])
+def api_prospector_accept(sid):
+    """Put one sweep's calls on the undecided events and bank them."""
+    code, body = _pr_accept(sid)
+    if code == 200:
+        mirror_bank_soon()
+    return jsonify(body), code
+
+
+@app.route("/api/prospector/accept", methods=["POST"])
+def api_prospector_accept_many():
+    """Accept several held sweeps -- a batch's -- each on its own pool."""
+    body = request.get_json(force=True, silent=True) or {}
+    out = []
+    for sid in (body.get("sids") or []):
+        code, res = _pr_accept(sid)
+        out.append(dict(res, sid=sid, status=code))
+    if any(o["status"] == 200 for o in out):
+        mirror_bank_soon()
+    return jsonify({"ok": True, "results": out,
+                    "accepted": sum(1 for o in out if o["status"] == 200)})
+
+
+@app.route("/api/prospector/discard", methods=["POST"])
+def api_prospector_discard():
+    """Let go of held sweeps nobody is going to accept."""
+    body = request.get_json(force=True, silent=True) or {}
+    for sid in (body.get("sids") or []):
+        prospectormod.forget(sid)
     return jsonify({"ok": True})
 
 
@@ -20876,9 +21204,43 @@ def api_registry_audit():
     for rec in REG.all():
         if rec.get("retired"):
             continue
-        here = [p for p in (rec.get("paths") or []) if os.path.isdir(p)]
+        paths = rec.get("paths") or []
+        here = [p for p in paths if os.path.isdir(p)]
         if not here:
             unreachable += 1
+            continue
+        # Every reachable folder, not the first one. A record judged by
+        # here[0] was judged by whichever folder happened to be listed
+        # first -- and on 2026-11-04 five real recordings whose first path
+        # was a folder of headers had been retired as "no data in the
+        # folder", their data sitting one path further down.
+        stubs = [p for p in here if nlx.header_only_folder(p)]
+        real = [p for p in here if p not in stubs]
+        if stubs and real:
+            rows.append({
+                "gid": rec.get("gid"), "label": rec.get("label"),
+                "path": stubs[0], "stubs": stubs, "data_path": real[0],
+                "quality": {"verdict": "stubs", "usable": True,
+                            "reasons": ["%d of its folders hold headers and "
+                                        "no data; %s has the recording. "
+                                        "Drop the empty ones, keep the "
+                                        "record." % (len(stubs), real[0])]},
+                "attached": _attachments(rec)})
+            continue
+        if stubs and len(here) < len(paths):
+            # Empty here, but it has folders on drives this computer
+            # cannot see, and one of those may hold the data.
+            rows.append({
+                "gid": rec.get("gid"), "label": rec.get("label"),
+                "path": stubs[0], "stubs": stubs,
+                "quality": {"verdict": "suspect", "usable": False,
+                            "reasons": ["every folder this computer can "
+                                        "reach is headers only, but %d "
+                                        "more are on drives it cannot "
+                                        "reach -- look there before "
+                                        "retiring it"
+                                        % (len(paths) - len(here))]},
+                "attached": _attachments(rec)})
             continue
         contents = discovery.classify_folder(here[0])
         if not contents:
@@ -20895,8 +21257,8 @@ def api_registry_audit():
             rows.append({"gid": rec.get("gid"), "label": rec.get("label"),
                          "path": here[0], "quality": q,
                          "attached": _attachments(rec)})
-    order = {"reject": 0, "empty": 1, "suspect": 2}
-    rows.sort(key=lambda r: (order.get(r["quality"]["verdict"], 3),
+    order = {"reject": 0, "empty": 1, "stubs": 2, "suspect": 3}
+    rows.sort(key=lambda r: (order.get(r["quality"]["verdict"], 4),
                              str(r.get("label"))))
     return jsonify({"ok": True, "rows": rows, "unreachable": unreachable,
                     "checked": len(REG.all()) - unreachable})
@@ -20914,11 +21276,25 @@ def api_registry_retire():
     body = request.get_json(force=True) or {}
     gids = body.get("gids") or ([body["gid"]] if body.get("gid") else [])
     reason = body.get("reason") or "no data in the folder"
-    done = []
+    done, refused = [], []
+    index = {r.get("gid"): r for r in REG.all() if r.get("gid")}
     for gid in gids:
-        rec = REG.by_gid(gid)
+        rec = index.get(gid)
         if not rec:
             continue
+        # A recording with data in any folder this computer can reach is
+        # not retired for having no data, whatever its first folder holds.
+        # m531 s1, m531 s3, m576 s3, m576 s5 and m13 s3 were, and every
+        # tool stopped offering them while Sessions still showed them.
+        if not body.get("force"):
+            real = [p for p in (rec.get("paths") or [])
+                    if os.path.isdir(p) and not nlx.header_only_folder(p)
+                    and discovery.classify_folder(p)]
+            if real:
+                refused.append({"gid": gid, "label": rec.get("label"),
+                                "why": "%s holds the recording -- drop the "
+                                       "empty folders instead" % real[0]})
+                continue
         ident = {k: rec.get(k) for k in
                  ("key", "loose_key", "mouse", "session", "start", "label")}
         ident["gid"] = gid
@@ -20930,9 +21306,73 @@ def api_registry_retire():
         done.append(gid)
     STORE.record_activity([{
         "action": "registry.retire",
-        "detail": {"n": len(done), "reason": reason},
+        "detail": {"n": len(done), "reason": reason,
+                   "refused": len(refused)},
     }])
-    return jsonify({"ok": True, "retired": done})
+    return jsonify({"ok": True, "retired": done, "refused": refused})
+
+
+@app.route("/api/registry/unretire", methods=["POST"])
+def api_registry_unretire():
+    """Bring a retired recording back, so every tool offers it again.
+
+    The retirement's tombstone is taken back as well: it has been carried
+    up already (the cloud row says retired), and the record written here
+    with `retired: false` is newer, so the next sync carries that instead.
+    """
+    body = request.get_json(force=True) or {}
+    gids = body.get("gids") or ([body["gid"]] if body.get("gid") else [])
+    index = {r.get("gid"): r for r in REG.all() if r.get("gid")}
+    done = []
+    for gid in gids:
+        rec = index.get(gid)
+        if not rec or not rec.get("retired") or rec.get("merged_into"):
+            continue                  # a merged record stays folded in
+        ident = {k: rec.get(k) for k in
+                 ("key", "loose_key", "mouse", "session", "start", "label")}
+        ident["gid"] = gid
+        STORE.upsert_session(ident, {"retired": False,
+                                     "retired_reason": None,
+                                     "retired_at": None})
+        RESULTS.tombs.forget("session", gid)
+        done.append(gid)
+    if done:
+        STORE.record_activity([{"action": "registry.unretire",
+                                "detail": {"n": len(done), "gids": done}}])
+    return jsonify({"ok": True, "unretired": done})
+
+
+@app.route("/api/registry/drop-paths", methods=["POST"])
+def api_registry_drop_paths():
+    """Take folders of headers only off a recording that keeps its data.
+
+    Each one is checked again here rather than taken on the page's word,
+    and only a folder that is headers only is dropped. Remembered with a
+    path tombstone, as `Keep the paths true` does, so a sync does not put it
+    back.
+    """
+    body = request.get_json(force=True) or {}
+    gid = (body.get("gid") or "").strip()
+    rec = {r.get("gid"): r for r in REG.all() if r.get("gid")}.get(gid)
+    if not rec:
+        return jsonify({"ok": False, "error": "No session " + gid}), 404
+    want = set(body.get("paths") or [])
+    drop = [p for p in (rec.get("paths") or [])
+            if p in want and nlx.header_only_folder(p)]
+    if not drop:
+        return jsonify({"ok": False, "error": "None of those folders is "
+                        "headers only now, so nothing was dropped."}), 400
+    ident = {k: rec.get(k) for k in
+             ("key", "loose_key", "mouse", "session", "start", "label")}
+    ident["gid"] = gid
+    STORE.upsert_session(ident, {"paths": [p for p in rec.get("paths") or []
+                                           if p not in drop]})
+    for p in drop:
+        RESULTS.tombs.add("path", "%s|%s" % (gid, p),
+                          note=pathtidymod.REASONS["empty"])
+    STORE.record_activity([{"action": "registry.drop_paths",
+                            "detail": {"gid": gid, "n": len(drop)}}])
+    return jsonify({"ok": True, "dropped": drop})
 
 
 @app.route("/api/registry/<gid>/forget", methods=["POST"])
@@ -25589,6 +26029,9 @@ def api_answers_status():
 # Checkup's AI Beta: its run records and the models they trained, sharded
 # per machine under GUI_logs/aibeta; the features it reads are cache.
 AIBETA = aibetamod.Runs(LOGS_DIR, STORE)
+# Panning's Prospector: its runs, models, which run it is, and every sweep
+# accepted, under GUI_logs/prospector; the reads it caches, under .cache.
+PROSPECTOR = prospectormod.Store(LOGS_DIR, STORE)
 MICE = micebook.MouseBook(LOGS_DIR, STORE)
 # Compiled from what everything else already records, so it cannot
 # drift out of step with the attribution on the data.
@@ -28991,7 +29434,11 @@ def _match_index():
     callers fed it -- so the builder lives here now as well.
     """
     by_key, by_loose = {}, {}
-    for rec in (REG.all() or []):
+    # Live records first: `setdefault` keeps the first one in, and a retired
+    # or merged-away record sharing a loose key with a live one would
+    # otherwise catch its cluster folder, and every tool -- which skips
+    # retired records -- would then leave the live one out as not on VACC.
+    for rec in sorted(REG.all() or [], key=lambda r: bool(r.get("retired"))):
         if not rec.get("gid"):
             continue
         if rec.get("key"):

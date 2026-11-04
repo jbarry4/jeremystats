@@ -1,0 +1,412 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Prospector</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 56vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 44vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Prospector's sweep screen and its batch, start to finish, against a
+   server that is FAKED -- Tooth Fairy's harness (toothfairy.html), for the
+   same screen built a second time (toothfairy.js, makeSweeper).
+
+   Every /api/prospector*, /api/curation and /api/cfc/* request the panel
+   makes is answered here, so the harness never reads a recording, never
+   writes a label or a bank version -- it checks the screen.
+
+   One pool: the dialog shows the pan, says what it will do, offers no
+   tolerance (its bar is fixed) and states the bar and what it did on
+   recordings it never saw; starting shows the scanner under its own ids,
+   so Tooth Fairy's screen could be open beside it; the summary has its
+   three calls -- never Garbage -- an event it could not read says so, a
+   person's decisions are shown in Panning's words; Accept posts once and
+   hands control back.
+
+   A batch: only pooled sets are offered; the table has a column per call;
+   Accept keeps only the ticked pools and lets the rest go. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+const wave = (k, sign) => Array.from({ length: 51 }, (_, i) =>
+  +(Math.exp(-((i - 25) ** 2) / (8 + k)) * sign
+    + 0.05 * Math.sin(i / 3)).toFixed(3));
+const CALLS = ['spike', 'likely_spike', 'likely_garbage'];
+const CHANS = (k) => Array.from({ length: 32 }, (_, c) =>
+  wave(k, 1).map((v) => +(v * 300 * Math.exp(-((c - 20) ** 2) / 40)).toFixed(1)));
+const SAMPLES = Array.from({ length: 12 }, (_, k) => ({
+  i: k * 3, id: 'e' + k, t: 10 + k * 11.1, wave: wave(k, 1),
+  channels: CHANS(k), channel_numbers: Array.from({ length: 32 }, (_, c) => 2 * c + 2),
+  csd: wave(k + 3, -1).map((v) => Math.abs(v)), profile: [],
+  readouts: { amp_uv: 300 + k * 10, half_width_ms: 14.2, rise_ms: 12,
+              csd_peak: 2.1, common_mode: 0.31, mua: 0.2, likeness: 0.6 },
+  p: null, label: null }));
+const ROWS = Array.from({ length: 40 }, (_, k) => ({
+  id: 'e' + k, start: 5 + k * 3.3, p: k === 39 ? null : +(1 - k / 40).toFixed(3),
+  label: k === 39 ? null : k < 15 ? 'spike' : k < 30 ? 'likely_spike'
+    : 'likely_garbage',
+  readable: k !== 39, origin: ['both', 'incisor', 'doppler'][k % 3],
+  human: k % 9 === 0 ? (k === 9 ? 'garbage' : 'spike') : null,
+  human_by: k % 9 === 0 ? 'A person' : null }));
+const COUNTS = { spike: 15, likely_spike: 15, likely_garbage: 9, unread: 1 };
+const RESULT = {
+  id: 'job1', gid: 'demo-ds-tutorial', kind: 'pooled', set_name: 'Fake pool',
+  run_id: 'prFAKE', n: 40, n_readable: 39, counts: COUNTS,
+  already_decided: 5, open_to_it: 35,
+  agreement: { spike: { compared: 2, agree: 2 }, lean: { compared: 3, agree: 2 } },
+  label_colors: {}, rows: ROWS,
+  policy: { t_spike: 0.979, t_lean: 0.5, target: 0.99 },
+  samples: SAMPLES.map((s, k) => Object.assign({}, s,
+    { p: +(0.99 - k * 0.07).toFixed(2), label: CALLS[k % 3] })),
+  model_name: 'Prospector',
+  held_out: { spike_called: 8114, spike_recall: 0.508, garbage_into_spike: 57 },
+};
+
+(async () => {
+  const f = document.getElementById('app');
+  let W = null;
+  try {
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    W = () => f.contentWindow;
+    const D = () => f.contentDocument;
+    const ready = await untilN(() => typeof W().setView === 'function');
+    check('the application loads', !!ready);
+    if (!ready) { document.title = 'FAIL'; return; }
+    check('Prospector is loaded, and Tooth Fairy beside it',
+          W().eval('typeof BARRY.prospector === "object" && '
+                   + 'typeof BARRY.toothFairy === "object" && '
+                   + 'BARRY.prospector !== BARRY.toothFairy'));
+
+    /* The fake server. */
+    const posts = [];
+    let polls = 0;
+    let lastBody = null;
+    let allowDone = false;
+    let bpolls = 0, batchBody = {}, acceptBody = null, discardBody = null;
+    const BATCH_SETS = [
+      { gid: 'ga', kind: 'pooled.eaaa', session_label: 'GA', name: 'pool a',
+        entry: 'aaa', open: true, progress: { total: 50, left: 40 } },
+      { gid: 'gb', kind: 'pooled', session_label: 'GB', open: true,
+        progress: { total: 50, left: 30 } },
+      { gid: 'gc', kind: 'pooled.eccc', session_label: 'GC', open: true,
+        progress: { total: 50, left: 1 } },
+      { gid: 'gd', kind: 'pooled', session_label: 'GD', open: false,
+        progress: { total: 80, left: 80 } },
+      { gid: 'gx', kind: 'pooled', session_label: 'GX', open: true,
+        archived: true, progress: { total: 80, left: 80 } },
+      { gid: 'gt', kind: 'pooled', session_label: 'GT', open: true,
+        test: true, progress: { total: 80, left: 80 } },
+      { gid: 'gs', kind: 'ds', session_label: 'GS', open: true,
+        progress: { total: 20, left: 20 } },
+    ];
+    const realFetch = W().fetch.bind(W());
+    const reply = (obj, status) => Promise.resolve(new (W().Response)(
+      JSON.stringify(obj), { status: status || 200,
+                             headers: { 'Content-Type': 'application/json' } }));
+    W().fetch = (url, opts) => {
+      const u = String(url);
+      const method = (opts && opts.method) || 'GET';
+      if (u.startsWith('/api/prospector') || u.startsWith('/api/cfc/')
+          || u === '/api/curation') {
+        if (method === 'POST') posts.push(u);
+        if (u === '/api/prospector') {
+          return reply({ ok: true, running: null, ready: true, slot: 'prospector',
+            name: 'Prospector', run_id: 'prRUN', model: 'blend',
+            families: ['a', 'b', 'c'], n_recordings: 40, target: 0.99,
+            t_spike: 0.979, t_lean: 0.5, tolerances: [],
+            held_out: RESULT.held_out });
+        }
+        if (u === '/api/curation') {
+          return reply({ ok: true, sets: BATCH_SETS });
+        }
+        if (u === '/api/prospector/batch') {
+          batchBody = JSON.parse((opts && opts.body) || '{}');
+          return reply({ ok: true, job: { id: 'job2', status: 'running',
+                                          stages: [], preview_rev: 0 } });
+        }
+        if (u.startsWith('/api/cfc/job/job2')) {
+          bpolls += 1;
+          const done = bpolls > 5;
+          const ms = (batchBody.sets || []).map((x, k) => ({
+            id: x.gid + '/' + x.kind, label: x.gid.toUpperCase(),
+            status: done ? (k === 1 ? 'failed' : 'done')
+              : k < Math.floor(bpolls / 2) ? 'done'
+              : k === Math.floor(bpolls / 2) ? 'reading' : 'waiting' }));
+          return reply({ ok: true, job: { id: 'job2',
+            status: done ? 'done' : 'running', members: ms,
+            preview_rev: bpolls >= 2 ? 1 : 0, elapsed: bpolls,
+            stages: [{ name: 'pr read', of: 10, done: 10, status: 'done' },
+                     { name: 'pr physio', of: 20, done: 8, status: 'running' },
+                     { name: 'pr score', of: 1, done: 0, status: 'waiting' }] } });
+        }
+        if (u.startsWith('/api/prospector/sweep/job2/peek')) {
+          return reply({ ok: true, rev: 1,
+                         peek: { stage: 'read', samples: SAMPLES.slice(0, 3) } });
+        }
+        if (u.startsWith('/api/cfc/result/job2')) {
+          return reply({ ok: true, result: { run_id: 'prRUN',
+            model_name: 'Prospector',
+            batch: (batchBody.sets || []).map((x, k) => k === 1
+              ? { gid: x.gid, kind: x.kind, name: x.gid.toUpperCase(),
+                  error: 'its recording is not here' }
+              : { gid: x.gid, kind: x.kind, name: x.gid.toUpperCase(),
+                  sid: 'job2-' + k, n: 50,
+                  counts: { spike: 20, likely_spike: 18, likely_garbage: 12 },
+                  agreement: { spike: { compared: 10, agree: 9 },
+                               lean: { compared: 0, agree: 0 } },
+                  already_decided: 10, undecided: k === 2 ? 0 : 40 }) } });
+        }
+        if (u === '/api/prospector/accept') {
+          acceptBody = JSON.parse((opts && opts.body) || '{}');
+          return reply({ ok: true, accepted: (acceptBody.sids || []).length,
+            results: (acceptBody.sids || []).map((sid) => ({ sid: sid,
+              status: 200, ok: true, applied: 40, version: 3 })) });
+        }
+        if (u === '/api/prospector/discard') {
+          discardBody = JSON.parse((opts && opts.body) || '{}');
+          return reply({ ok: true });
+        }
+        if (u === '/api/prospector/sweep') {
+          lastBody = JSON.parse((opts && opts.body) || '{}');
+          return reply({ ok: true, job: { id: 'job1', status: 'running',
+                                          stages: [], preview_rev: 0 } });
+        }
+        if (u.startsWith('/api/cfc/job/job1')) {
+          polls += 1;
+          const done = allowDone && polls > 4;
+          return reply({ ok: true, job: {
+            id: 'job1', status: done ? 'done' : 'running',
+            preview_rev: polls >= 2 ? 1 : 0, elapsed: polls,
+            stages: [{ name: 'pr read', of: 10, done: 10, status: 'done' },
+                     { name: 'pr physio', of: 20, done: done ? 20 : polls * 4,
+                       status: done ? 'done' : 'running', unit: 'stretches' },
+                     { name: 'pr score', of: 40, done: done ? 40 : 0,
+                       status: done ? 'done' : 'waiting' }] } });
+        }
+        if (u.startsWith('/api/prospector/sweep/job1/peek')) {
+          return reply({ ok: true, rev: 1,
+                         peek: { stage: 'read', samples: SAMPLES.slice(0, 3) } });
+        }
+        if (u.startsWith('/api/cfc/result/job1')) {
+          return reply({ ok: true, result: RESULT });
+        }
+        if (u.startsWith('/api/prospector/sweep/job1/accept')) {
+          return reply({ ok: true, applied: 34, kept: 6, entry: 'x',
+                         version: 7 });
+        }
+        return reply({ ok: false, error: 'not faked: ' + u }, 404);
+      }
+      return realFetch(url, opts);
+    };
+
+    head('asking first');
+    W().eval(`window.__prDone = null;
+      BARRY.prospector.open({ gid: 'demo-ds-tutorial', kind: 'pooled',
+        name: 'Fake pool', n: 40, decided: 5,
+        onDone: (r) => { window.__prDone = r; } });`);
+    const dlg = await untilN(() => {
+      const m = D().querySelector('#bigModal:not(.hidden) .tf-confirm');
+      return m && m.isConnected ? m : null;
+    });
+    check('a confirm dialog opens', !!dlg);
+    if (!dlg) throw new Error('no dialog');
+    check('it is titled Prospector',
+          /^Prospector$/.test(dlg.querySelector('h3').textContent));
+    check('it shows the pan, not the tooth',
+          !!dlg.querySelector('.pr-icon svg .pr-pan')
+          && !dlg.querySelector('.tf-tooth'));
+    check('it states the events and that decisions are kept',
+          /40/.test(dlg.textContent) && /never changes those/.test(dlg.textContent),
+          dlg.textContent.slice(0, 200));
+    check('it names its three calls and says it never calls Garbage',
+          /Spike, Flag · likely spike or Flag · likely garbage/.test(dlg.textContent)
+          && /never calls Garbage/.test(dlg.textContent), dlg.textContent.slice(0, 400));
+    check('no tolerance -- its bar is fixed', !dlg.querySelector('.tf-tols'));
+    check('it states the bar, and what it did on recordings it never saw',
+          /0\.979/.test(dlg.textContent) && /8,114/.test(dlg.textContent)
+          && /51% of the real spikes/.test(dlg.textContent)
+          && /57 garbage/.test(dlg.textContent), dlg.textContent.slice(0, 900));
+    await sleep(150);
+    check('nothing has been posted yet', posts.length === 0, posts.join());
+    const go = Array.from(D().querySelectorAll('#bigModal .tf-confirm button'))
+      .find((b) => b.textContent.trim() === 'Start the sweep');
+    check('the primary says what it starts', !!go);
+    go.click();
+
+    head('the scanner');
+    const ov = await untilN(() => D().getElementById('prOv'));
+    check('the sweep screen opens, under its own ids',
+          !!ov && !D().getElementById('tfOv'));
+    check('the sweep was posted once, for the pool',
+          posts.filter((p) => p === '/api/prospector/sweep').length === 1
+          && lastBody && lastBody.kind === 'pooled', posts.join());
+    check('the header names Prospector, with its pan moving',
+          /PROSPECTOR/.test((D().querySelector('#prOv .tf-mark') || {}).textContent || '')
+          && !!D().querySelector('#prOv .pr-icon.live svg'));
+    check('it carries a scope to draw on', !!D().getElementById('prScope'));
+    const read = await untilN(() => {
+      const r = D().getElementById('prRead');
+      return r && r.children.length >= 3 ? r : null;
+    }, 400);
+    check('a sample is scanned and read out', !!read, 'no readouts appeared');
+    const stage = await untilN(() => /physiology/.test(
+      (D().getElementById('prStageText') || {}).textContent || ''), 200);
+    check('the stage says what it is reading', !!stage,
+          (D().getElementById('prStageText') || {}).textContent);
+    allowDone = true;
+
+    head('the verdicts, then the summary');
+    const fedAll = await untilN(() => D().querySelectorAll(
+      '#prLog.stream .tf-logline').length === 40, 900);
+    check('every event is called out in the feed', !!fedAll,
+          D().querySelectorAll('#prLog.stream .tf-logline').length);
+    check('the feed scores in p(spike)',
+          /p\(spike\)/.test((D().getElementById('prLog') || {}).textContent || ''));
+    const tiles = await untilN(() => {
+      const t = D().querySelectorAll('#prSummary .tf-tile');
+      return t.length === 3 ? t : null;
+    }, 900);
+    check('three tiles, and no Garbage among them', !!tiles);
+    if (tiles) {
+      const words = Array.from(tiles).map((t) => t.querySelector('span').textContent);
+      check('Spike, Flag · likely spike, Flag · likely garbage',
+            words.join('|') === 'Spike|Flag · likely spike|Flag · likely garbage',
+            words.join('|'));
+      const nums = Array.from(tiles).map((t) => t.querySelector('b').textContent);
+      check('with the counts it was given', nums.join('|') === '15|15|9',
+            nums.join('|'));
+    }
+    const sumText = (D().getElementById('prSummary') || {}).textContent || '';
+    check('it says what its bar did on recordings it never saw',
+          /51% of the real spikes Spike/.test(sumText)
+          && /0\.7% of its Spike calls were garbage/.test(sumText), sumText.slice(0, 600));
+    check('and how many it could not read', /1 could not be read/.test(sumText));
+    check('and how its Spike calls met a person’s',
+          /a person had said Spike for 100\.0%/.test(sumText), sumText.slice(0, 900));
+    const rows = D().querySelectorAll('#prSummary .tf-list tbody tr');
+    check('every event is listed', rows.length === 40, rows.length);
+    check('each with its call written out, the unread one as such',
+          Array.from(rows).every((r) => /^(Spike|Flag · likely spike|Flag · likely garbage|not read)$/
+            .test(r.querySelector('.tf-pill').textContent.trim()))
+          && Array.from(rows).some((r) => /not read/.test(r.textContent)));
+    check('a person’s decisions in Panning’s words',
+          Array.from(rows).some((r) => /Garbage \(A person\)/.test(r.textContent))
+          && Array.from(rows).some((r) => /Spike \(A person\)/.test(r.textContent)));
+    D().querySelectorAll('#prSummary .tf-tile')[2].click();
+    await sleep(200);
+    const lg = D().querySelectorAll('#prSummary .tf-list tbody tr');
+    check('a tile filters the list to its call', lg.length === 9, lg.length);
+    check('the accept says where its calls go',
+          /35 events no person has decided/.test(sumText)
+          && /Prospector version of this pool/.test(sumText));
+    check('nothing was accepted before the button',
+          !posts.some((p) => /accept/.test(p)), posts.join());
+
+    head('accept');
+    const acc = D().getElementById('prAccept');
+    check('Accept and review is offered', !!acc && /Accept and review/.test(acc.textContent));
+    acc.click();
+    const done = await untilN(() => W().eval('window.__prDone'), 200);
+    check('accepting posts once and hands back', !!done
+          && posts.filter((p) => /accept/.test(p)).length === 1, posts.join());
+    check('the screen closes', !D().getElementById('prOv'));
+
+    head('a batch');
+    W().eval(`window.__prBatchDone = null;
+      BARRY.prospector.openBatch({ onDone: (r) => { window.__prBatchDone = r; } });`);
+    const bd = await untilN(() => {
+      const m = D().querySelector('#bigModal:not(.hidden) .tf-batch');
+      return m && m.isConnected ? m : null;
+    });
+    check('the batch dialog opens', !!bd);
+    if (!bd) throw new Error('no batch dialog');
+    check('it is titled Prospector batch, with the pan',
+          /Prospector batch/.test(bd.querySelector('h3').textContent)
+          && !!bd.querySelector('.pr-icon svg'));
+    const rowsB = () => Array.from(D().querySelectorAll(
+      '#bigModal .tf-batch .tf-pick-row'));
+    check('every pooled set with events is listed -- not a DS set, an '
+          + 'archived one or a harness’s', rowsB().length === 4,
+          rowsB().map((r) => r.textContent).join(' / '));
+    check('a set of one pool is named with its pool',
+          rowsB().some((r) => /GA · pool a/.test(r.textContent)));
+    const goB = () => D().getElementById('prBatchGo');
+    check('the primary counts pools', /Sweep 3 pools/.test(goB().textContent),
+          goB().textContent);
+    Array.from(D().querySelectorAll('#bigModal .tf-batch button'))
+      .find((b) => b.textContent.trim() === 'Everything undecided').click();
+    await sleep(150);
+    check('everything undecided adds the one off the bench',
+          /Sweep 4 pools/.test(goB().textContent), goB().textContent);
+    goB().click();
+    const bov = await untilN(() => D().getElementById('prOv'));
+    check('the batch screen opens', !!bov);
+    check('the batch was posted with each pool’s own kind',
+          (batchBody.sets || []).map((x) => x.gid + '/' + x.kind).join()
+            === 'ga/pooled.eaaa,gb/pooled,gc/pooled.eccc,gd/pooled',
+          JSON.stringify(batchBody));
+    const bt = await untilN(() => {
+      const t = D().querySelectorAll('#prSummary .tf-batch-tbl tbody tr');
+      return t.length === 4 ? t : null;
+    }, 900);
+    check('at the end, a row for every pool', !!bt);
+    const heads = Array.from(D().querySelectorAll('#prSummary .tf-batch-tbl th'))
+      .map((h) => h.textContent);
+    check('a column per call, and no Garbage',
+          heads.join('|') === 'Keep|Pool|Spike|Likely spike|Likely garbage|'
+                            + 'Agreed with a person|', heads.join('|'));
+    if (bt) {
+      const failed = Array.from(bt).filter((r) => r.classList.contains('tf-failed'));
+      check('the one that could not be swept says why, across the calls',
+            failed.length === 1 && /not here/.test(failed[0].textContent)
+            && failed[0].querySelector('.tf-err').getAttribute('colspan') === '3',
+            failed.map((r) => r.textContent).join());
+      check('agreement is with a person’s Spike',
+            Array.from(bt).some((r) => /90% of 10 Spike/.test(r.textContent)));
+    }
+    const accB = D().getElementById('prBatchAccept');
+    check('the primary says how many pools it keeps',
+          !!accB && /Accept 2 pools/.test(accB.textContent), accB && accB.textContent);
+    accB.click();
+    const bdone = await untilN(() => W().eval('window.__prBatchDone'), 200);
+    check('accepting posts the kept sweeps once and hands back', !!bdone
+          && (acceptBody.sids || []).join() === 'job2-0,job2-3',
+          JSON.stringify(acceptBody));
+    check('the one left unticked is let go',
+          !!discardBody && (discardBody.sids || []).join() === 'job2-2',
+          JSON.stringify(discardBody));
+    check('the batch screen closes', !D().getElementById('prOv'));
+  } catch (e) {
+    say('bad', 'harness threw: ' + e.message);
+  } finally {
+    try { if (W) W().eval('closeAllModals && closeAllModals()'); } catch (e) {}
+    head(bad === 0 ? 'Prospector: all checks passed' : bad + ' failed');
+    document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+    f.src = 'about:blank';
+  }
+})();
+</script>

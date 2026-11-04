@@ -1628,6 +1628,41 @@ BARRY.views.sessions = (function () {
     });
   }
 
+  /* A recording found by a scan whose record is retired. Every tool skips
+     retired records, so drawn like an ordinary card it reads as a recording
+     the tools have lost (m531 s1, 2026-11-04: here in Sessions, nowhere in
+     Incisor). Said on the card, with the way back. A merged-away record is
+     not offered back: it is folded into another one. */
+  function retiredChip(s) {
+    const st = s.stored;
+    if (!st || !st.retired) return null;
+    const gid = s.gid || st.gid;
+    return el('button', {
+      class: 'flagchip bad', type: 'button',
+      title: 'Retired' + (st.retired_reason ? ': ' + st.retired_reason : '')
+        + '. No tool offers it while it is retired.'
+        + (st.merged_into ? '\nFolded into ' + st.merged_into + '.'
+                          : '\nClick to bring it back.'),
+      text: st.merged_into ? 'merged away' : 'retired · bring back',
+      disabled: st.merged_into ? 'disabled' : null,
+      onclick: async (e) => {
+        e.stopPropagation();
+        if (st.merged_into || !gid) return;
+        try {
+          const out = await apiPost('/api/registry/unretire', { gid });
+          if (!(out.unretired || []).length) {
+            toast('It could not be brought back.', 'err', 7000);
+            return;
+          }
+          st.retired = false;
+          toast('Back. Every tool offers it again.', 'ok');
+          if (BARRY.viewDirty) BARRY.viewDirty('toolkit');
+          repaintQuietly();
+        } catch (err) { toast(err.message, 'err', 8000); }
+      },
+    });
+  }
+
   function sessionCard(s) {
     const i = s.identity;
     const badN = s.stored ? (s.stored.bad_channels || []).length : 0;
@@ -1746,6 +1781,7 @@ BARRY.views.sessions = (function () {
         s.has_video ? el('span', { class: 'flagchip video', text: 'video' }) : null,
         s.has_tracking ? el('span', { class: 'flagchip', text: 'tracking' }) : null,
         badN ? el('span', { class: 'flagchip bad', text: badN + ' bad' }) : null,
+        retiredChip(s),
         i.confidence !== 'high' ? el('span', { class: 'flagchip bad',
           text: 'id: ' + i.confidence }) : null,
         remembered ? el('span', {

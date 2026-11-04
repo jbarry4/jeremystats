@@ -49,14 +49,16 @@ training recordings held ("0 is the goal"): `aibeta.CATCH` target 1.0.
 from __future__ import annotations
 
 import bisect
+import hashlib
 import json
 import os
 import re
+import threading
 import time
 
 import numpy as np
 
-from . import aibeta, retime, shards
+from . import aibeta, braces, retime, shards
 from . import aibetaphys as phys
 from . import continuity
 from . import versions as versionsmod
@@ -69,6 +71,26 @@ SPIKE_LABELS = {"spike", "dentate spike", "ds1", "ds2"}
 GARBAGE_LABELS = {"garbage"}
 
 ORIGINS = ("incisor", "doppler", "both")
+
+# WHO IT IS when it writes (2026-11-04): a sweep accepted in Panning banks
+# every call as a version of the pool tagged `TAG` and made by `BY`, and puts
+# its calls on the candidates nobody has decided with `BY` as the decider.
+# Training never learns from either (`_is_ai`).
+TAG = "prospector"
+BY = "Prospector (AI)"
+# ITS THREE CALLS (the user, 2026-11-03): Spike, very pure, and two flags it
+# alone can give -- `computed` labels in the pooled vocabulary
+# (curation.KINDS), so no button or key offers them to a person. Never
+# Garbage.
+CALLS = ("spike", "likely_spike", "likely_garbage")
+# Under the Spike bar, a score of at least this leans spike.
+LEAN = 0.5
+# THE SPIKE BAR (the user, 2026-11-04, choosing from the run's table: "0.99
+# 8,114 51% 57 (0.7%)"): above 99% of the training recordings' garbage, as
+# scored by models that had not seen it -- set for the model on every
+# recording the way each test's bar was set (`deploy_bar`).
+DEFAULT_TARGET = 0.99
+
 ORIGIN_FAMILY = {"id": "origin", "name": "Which detector found it",
                  "default": False, "prospector": True,
                  "blurb": "Incisor only, Doppler only, or both within "
@@ -147,10 +169,18 @@ def _pair(a, b, w):
     return out
 
 
+def _is_ai(ver):
+    """A version a model wrote: Tooth Fairy's, an older model's, or
+    Prospector's own (banked by an accepted sweep, `TAG`/`BY`)."""
+    return (aibeta._is_model(ver)
+            or str(ver.get("tag") or "").lower() == TAG
+            or ver.get("by") == BY)
+
+
 def _is_pass(ver):
     """A person's curation pass: their calls, not something a tool made of
     them (an alignment, a model's sweep, Root Canal, X-ray, a re-timing)."""
-    if ver.get("aligned") or aibeta._is_model(ver):
+    if ver.get("aligned") or _is_ai(ver):
         return False
     if str(ver.get("tag") or "").lower() in ("rootcanal", "junction",
                                              "dspca", "xray"):
@@ -173,7 +203,7 @@ def _panning_version(rec):
     if first_lock is None:
         return None, None
     for ver, nm in reversed(named[:first_lock]):
-        if aibeta._is_model(ver):
+        if _is_ai(ver):
             continue
         bl = {str(k).lower(): n for k, n in (ver.get("by_label") or {}).items()}
         if any(k in ("spike", "garbage") and n for k, n in bl.items()):
@@ -635,28 +665,454 @@ def train(data, families, model_id="hgb", folds=None, inner=2, seed=0):
 
 
 class Store:
-    """Prospector's run records (small, committed) and models (cache)."""
+    """Prospector's records, under GUI_logs/prospector and travelling by git
+    as Tooth Fairy's do (aibeta.Runs):
 
-    def __init__(self, logs_dir):
-        self.dir = os.path.join(logs_dir, "prospector", "runs")
-        self.models = os.path.join(logs_dir, ".cache", "prospector")
-        os.makedirs(self.dir, exist_ok=True)
-        os.makedirs(self.models, exist_ok=True)
+      runs/     one record per training run, written once by its machine
+      models/   the model each run made, named like its record
+      model/    which run is Prospector, and at what bar (`set_model`)
+      sweeps/   every sweep somebody accepted: each candidate's score and
+                call beside what a person had said -- the AI's first calls,
+                kept to hold against what people decide afterwards
+
+    The reads, which do not travel, are under GUI_logs/.cache/prospector.
+    """
+
+    SLOT = "prospector"
+
+    def __init__(self, logs_dir, store=None):
+        self.logs = logs_dir
+        self.root = os.path.join(logs_dir, "prospector")
+        self.dir = os.path.join(self.root, "runs")
+        self.models = os.path.join(self.root, "models")
+        self.cache = os.path.join(logs_dir, ".cache", "prospector")
+        for d in (self.dir, self.models, self.cache):
+            os.makedirs(d, exist_ok=True)
+        self.model_book = shards.Book(os.path.join(self.root, "model"), {},
+                                      store)
+        self.sweeps = shards.Book(os.path.join(self.root, "sweeps"), {}, store)
 
     def new_id(self):
         return "pr" + time.strftime("%Y%m%d-%H%M%S")
+
+    def _mine(self, folder, rid, ext):
+        return os.path.join(folder, "%s%s%s%s" % (rid, shards.SIGIL,
+                                                  shards.machine_id(), ext))
 
     def save(self, rec, model=None):
         rid = rec["id"]
         if model is not None:
             import joblib
-            path = os.path.join(self.models, rid + ".joblib")
+            path = self._mine(self.models, rid, ".joblib")
             joblib.dump(model, path, compress=3)
-            rec["model_file"] = os.path.relpath(path, os.path.dirname(
-                os.path.dirname(self.dir)))
-        path = os.path.join(self.dir, "%s@%s.json" % (rid, shards.machine_id()))
+            rec["model_file"] = os.path.relpath(path, self.logs) \
+                .replace("\\", "/")
+            rec["model_bytes"] = os.path.getsize(path)
+        path = self._mine(self.dir, rid, ".json")
         tmp = path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(rec, fh, indent=1, default=str)
         os.replace(tmp, path)
         return path
+
+    def get(self, run_id):
+        """A run's record, whichever machine trained it."""
+        head = str(run_id) + shards.SIGIL
+        try:
+            names = sorted(os.listdir(self.dir))
+        except OSError:
+            return None
+        for name in names:
+            if name.startswith(head) and name.endswith(".json"):
+                try:
+                    with open(os.path.join(self.dir, name),
+                              encoding="utf-8") as fh:
+                        return json.load(fh)
+                except (OSError, ValueError):
+                    return None
+        return None
+
+    def model(self):
+        """{run_id, target, t_spike, t_lean, at, by} for the run that is
+        Prospector, or None."""
+        rec = self.model_book.read(self.SLOT) or {}
+        return rec if rec.get("run_id") else None
+
+    def set_model(self, run_id, t_spike, target=DEFAULT_TARGET, prov=None,
+                  how=None):
+        """Make a run Prospector, sweeping with Spike at `t_spike`."""
+        rec = self.get(run_id)
+        if not rec or not (rec.get("final") or {}).get("results"):
+            raise aibeta.AiBetaError("No finished Prospector run %s here."
+                                     % run_id)
+        prov = prov or {}
+        return self.model_book.write(self.SLOT, {
+            "run_id": run_id, "target": float(target),
+            "t_spike": round(float(t_spike), 6), "t_lean": LEAN,
+            "how": how, "at": aibeta._now(), "by": prov.get("user"),
+            "machine": prov.get("machine")})
+
+    def load_model(self, run_id):
+        """The trained bundle a run saved, from this machine's disk."""
+        rec = self.get(run_id)
+        if not rec:
+            raise aibeta.AiBetaError("No Prospector run %s here." % run_id)
+        rel = rec.get("model_file")
+        path = os.path.join(self.logs, rel) if rel else None
+        if not path or not os.path.exists(path):
+            raise aibeta.AiBetaError(
+                "Run %s's model is not on this machine yet (%s). It is "
+                "filed with the run, so it arrives on the next pull."
+                % (run_id, rel or "no file"))
+        import joblib
+        return rec, joblib.load(path)
+
+
+def deploy_bar(data, families, model_id, target=DEFAULT_TARGET, inner=2,
+               seed=0):
+    """The Spike bar for the model trained on every recording, set the way
+    each held-out test's bar was (`aibeta.train_and_test`): the recordings
+    split `inner` ways by recording, each part scored by a model trained on
+    the rest, and the bar put above `target` of the garbage's scores.
+
+    Not the held-out scores' own quantile. A model trained on half the
+    recordings scores garbage higher than one trained on all but one, so
+    the run's bars sat higher than that quantile would (median 0.973 against
+    0.958 at 0.99, 2026-11-04), and every number the user chose from was
+    measured at the higher ones. Returns (bar, n_garbage)."""
+    from sklearn.model_selection import GroupKFold
+    fams = [f for f in aibeta.FAMILY_IDS if f in families]
+    Xs, ys, gs = [], [], []
+    for entry, feat in data:
+        ok = feat["ok"].astype(bool)
+        Xs.append(np.hstack([feat["fam"][f] for f in fams])[ok])
+        ys.append(np.asarray(feat["y"])[ok].astype(int))
+        gs.extend([entry["mouse_key"]] * int(ok.sum()))
+    X = np.vstack(Xs).astype(np.float64)
+    X[~np.isfinite(X)] = np.nan
+    y = np.concatenate(ys)
+    groups = np.array(gs)
+    p = np.full(y.size, np.nan)
+    for a, b in GroupKFold(n_splits=inner).split(X, y, groups):
+        m = aibeta._fit(model_id, X[a], y[a], seed)
+        p[b] = aibeta._proba(m, X[b])
+    pg = p[np.isfinite(p) & (y == 0)]
+    if target >= 1.0:
+        bar = float(pg.max()) + 1e-9
+    else:
+        bar = float(np.quantile(pg, target)) + 1e-9
+    return bar, int(pg.size)
+
+
+# --------------------------------------------------------------------------
+# Prospector at work: sweeping a pool (2026-11-04)
+# --------------------------------------------------------------------------
+# Tooth Fairy's sweep (toothfairy.py), for Panning ("integrate into panning
+# in the same way tooth fairy is in check up", the user, 2026-11-04). A
+# sweep reads every candidate of one pooled set as training read them --
+# both reads, the even channels -- scores each with the run that is
+# Prospector, and calls it one of its three things. Nothing is written by a
+# sweep. Accepting it (app.py) puts the calls on the candidates no person
+# has decided -- and on the ones only Prospector has, so a newer model can
+# replace an older one's calls -- and banks every call as a version of the
+# pool tagged `TAG`, so what it said can be held against what people then
+# decided.
+_SWEEPS = {}
+_SWEEP_LOCK = threading.Lock()
+MAX_SWEEPS = 64
+READ_WORKERS = 6
+
+
+def remember(sid, rec):
+    with _SWEEP_LOCK:
+        _SWEEPS[sid] = rec
+        while len(_SWEEPS) > MAX_SWEEPS:
+            _SWEEPS.pop(next(iter(_SWEEPS)))
+
+
+def recall(sid):
+    with _SWEEP_LOCK:
+        return _SWEEPS.get(sid)
+
+
+def forget(sid):
+    with _SWEEP_LOCK:
+        _SWEEPS.pop(sid, None)
+
+
+def _bar_summary(bar):
+    """What one of the run's bars did on recordings it never saw."""
+    b = bar or {}
+    out = {k: b.get(k) for k in ("spike_called", "spike_called_true",
+                                 "garbage_into_spike", "spike_recall",
+                                 "lean_spike", "lean_spike_true",
+                                 "lean_garbage", "lean_garbage_true")}
+    out["by_origin"] = {o: {k: v.get(k) for k in ("n_spike", "spike_called",
+                                                 "garbage_into_spike",
+                                                 "spike_recall")}
+                        for o, v in (b.get("by_origin") or {}).items()}
+    return out
+
+
+def status(store):
+    """Whether Prospector can sweep here, and what it was shown to do."""
+    name = "Prospector"
+    av = store.model()
+    if not av:
+        return {"ready": False, "name": name, "slot": TAG,
+                "why": "Prospector has not been chosen yet. Train it with "
+                       "tools/prospector_train.py, then choose its run with "
+                       "tools/prospector_train.py choose <run>."}
+    rec = store.get(av["run_id"])
+    if not rec:
+        return {"ready": False, "name": name, "slot": TAG,
+                "why": "Prospector is run %s, which is not on this machine "
+                       "yet. It arrives with the next pull." % av["run_id"]}
+    rel = rec.get("model_file")
+    if not rel or not os.path.exists(os.path.join(store.logs, rel)):
+        return {"ready": False, "name": name, "slot": TAG,
+                "why": "Prospector's model (%s) is not on this machine yet. "
+                       "It arrives with the next pull." % (rel or "no file")}
+    fin = rec.get("final") or {}
+    res = fin.get("results") or {}
+    target = float(av.get("target") or DEFAULT_TARGET)
+    data = rec.get("data") or {}
+    return {
+        "ready": True, "name": name, "slot": TAG,
+        "run_id": av["run_id"], "chosen_at": av.get("at"),
+        "chosen_by": av.get("by"), "trained_at": rec.get("at"),
+        "model": fin.get("model"), "families": fin.get("families") or [],
+        "n_recordings": data.get("n_recordings"),
+        "n_events": data.get("n_events"),
+        "target": target, "t_spike": av.get("t_spike"),
+        "t_lean": av.get("t_lean", LEAN),
+        "auc": (res.get("pooled") or {}).get("auc"),
+        # The bar chosen, as measured on recordings each model never saw.
+        "held_out": _bar_summary((res.get("bars") or {}).get(repr(target))),
+        "tolerances": [],
+    }
+
+
+def _call(p, ok, t_spike, t_lean=LEAN):
+    """Spike at or over the bar; under it, leaning spike or leaning garbage.
+    Nothing for a candidate that could not be read."""
+    labels = np.full(p.size, None, dtype=object)
+    good = np.asarray(ok, bool) & np.isfinite(p)
+    labels[good & (p >= t_spike)] = "spike"
+    labels[good & (p < t_spike) & (p >= t_lean)] = "likely_spike"
+    labels[good & (p < t_lean)] = "likely_garbage"
+    return labels
+
+
+def a_person_decided(ev):
+    """A candidate somebody decided -- not one only Prospector has."""
+    return bool(ev.get("label")) and ev.get("by") != BY
+
+
+def sweep(store, curate, bank, open_recording, gid, kind, job=None):
+    """Score every candidate in one pooled set. Returns the sweep record."""
+    from . import curation as curmod
+    from . import toothfairy as tf
+    st = status(store)
+    if not st["ready"]:
+        raise aibeta.AiBetaError(st["why"])
+    if curmod.kind_of(kind) != "pooled":
+        raise aibeta.AiBetaError("Prospector sorts pooled sets only.")
+    run_rec, bundle = store.load_model(st["run_id"])
+    # The model's inputs in the order it learned them, checked against the
+    # names it was trained with.
+    fams = [f for f in aibeta.FAMILY_IDS if f in bundle["families"]]
+    if aibeta.feature_names(fams) != list(bundle.get("feature_names") or []):
+        raise aibeta.AiBetaError(
+            "Prospector's inputs have changed since run %s was trained. "
+            "Train it again." % st["run_id"])
+    t_spike = float(st["t_spike"])
+    t_lean = float(st.get("t_lean") or LEAN)
+
+    cur = curate.get(gid, kind)
+    if not cur:
+        raise aibeta.AiBetaError("No pooled set for that recording.")
+    events = sorted(cur.get("events") or [], key=lambda e: float(e["start"]))
+    if not events:
+        raise aibeta.AiBetaError("That pool has no events.")
+    basis, basis_from = tf.set_basis(cur, bank, gid, kind)
+    rec = aibeta.subset_channels(open_recording(gid),
+                                 bundle.get("channels") or "even")
+    which = rec.get("subset") or "all"
+    sess = rec["session"]
+    report = None
+    try:
+        report = continuity.check(sess.get("path"))
+    except Exception:                                    # noqa: BLE001
+        report = None
+    times = []
+    for e in events:
+        t = float(e["start"])
+        if basis == retime.CONCAT and report and report.get("ok"):
+            t, _seg = continuity.concat_to_true(report, t)
+        times.append(None if t is None else float(t))
+
+    read_fams = [f for f in fams if f != "origin"
+                 and f not in aibeta.DERIVED]
+    want_phys = bool(set(read_fams) & aibeta.PHYS_IDS)
+    want_filt = phys.filters_for(read_fams)
+    want_xray = bool(set(read_fams) & set(phys.XR_IDS))
+    want_spec = bool(set(read_fams) & set(phys.SPEC_IDS))
+    key = hashlib.sha1(json.dumps({
+        "t": [None if t is None else round(t, 6) for t in times],
+        "probe": rec["probe"], "bad": sorted(rec["bad"]),
+        "fv": aibeta.FEATURE_VERSION,
+        "pv": phys.PHYS_VERSION if want_phys else None,
+        "filt": sorted(want_filt), "xray": want_xray, "spec": want_spec,
+        "channels": which}, sort_keys=True).encode("utf-8")).hexdigest()[:20]
+    path = os.path.join(store.cache, "sweep_%s__%s.npz"
+                        % (shards.safe_base(gid), key))
+    picks = tf._samples([i for i in range(len(events))
+                         if times[i] is not None], seed=key)
+    fam, ok, cached, traces = None, None, False, {"chans": [], "by_event": {}}
+    if os.path.exists(path):
+        try:
+            with np.load(path, allow_pickle=False) as z:
+                fam = {k[4:]: z[k] for k in z.files if k.startswith("fam_")}
+                ok = z["ok"].astype(bool)
+                if any(f not in fam for f in read_fams):
+                    raise KeyError("an input this read does not hold")
+                if "trace_idx" in z.files:
+                    traces = {"chans": [int(c) for c in z["trace_chans"]],
+                              "by_event": {int(i): z["trace_arr"][n]
+                                           for n, i in enumerate(z["trace_idx"])}}
+                    picks = [int(i) for i in z["trace_idx"]]
+                cached = True
+        except Exception:                                # noqa: BLE001
+            fam = None
+
+    stamps = [t for t in times if t is not None]
+    if fam is None and job and picks:
+        # The scanning screen's candidates first, read on their own, so it
+        # has something real to sweep while the whole pool is read.
+        def show(early):
+            job.set_preview({"stage": "read", "samples": [
+                {"i": int(i), "id": events[i]["id"],
+                 "t": round(float(times[i]), 4), "channels": tr,
+                 "channel_numbers": chans, "wave": [], "csd": [],
+                 "profile": [], "readouts": {"peak_uv": pk, "best_ch": bc},
+                 "p": None, "label": None}
+                for i, (tr, chans, pk, bc) in early.items()]})
+        tf._quick_traces(sess, rec["channels"], rec["probe"], rec["bad"],
+                         times, picks, on_some=show)
+    if fam is None:
+        n1 = len(braces.spans(stamps, window_ms=aibeta.SEARCH_MS
+                              + aibeta.HALF_MS, pad_s=aibeta.PAD_S))
+        if job:
+            job.begin("pr read", of=n1, unit="stretches")
+
+        def tick1(k, n):
+            if job:
+                job.tick("pr read", k)
+        got1 = aibeta.read_entry(sess, rec["channels"], rec["probe"],
+                                 rec["bad"], times, spacing=rec.get("spacing"),
+                                 report=report, job=job, on_span=tick1,
+                                 workers=READ_WORKERS, trace_ids=picks)
+        fam = dict(got1["fam"])
+        ok = got1["ok"].astype(bool)
+        traces = got1.get("traces") or traces
+        picks = [i for i in picks if i in traces.get("by_event", {})]
+        if want_phys:
+            n2 = len(phys.spans(stamps, phys.REACH_MS / 1000.0, phys.PAD_S))
+            if job:
+                job.begin("pr physio", of=n2, unit="stretches")
+                job.set_preview({"stage": "physio", "samples": [
+                    tf._sample_row(i, events, times, fam, None, None, traces)
+                    for i in picks if ok[i]]})
+
+            def tick2(k, n):
+                if job:
+                    job.tick("pr physio", k)
+            got2 = phys.read_physio(sess, rec["channels"], rec["probe"],
+                                    rec["bad"], times, report=report,
+                                    folder=sess.get("path"), job=job,
+                                    on_span=tick2, aibeta=aibeta,
+                                    workers=READ_WORKERS,
+                                    spacing=rec.get("spacing"),
+                                    want_filt=want_filt, want_xray=want_xray,
+                                    want_spec=want_spec)
+            fam.update(got2["fam"])
+            ok = ok & got2["ok"].astype(bool)
+        tr_idx = [i for i in picks if i in traces.get("by_event", {})]
+        extra = {}
+        if tr_idx:
+            extra = {"trace_idx": np.array(tr_idx, dtype=int),
+                     "trace_chans": np.array(traces["chans"], dtype=int),
+                     "trace_arr": np.stack([traces["by_event"][i]
+                                            for i in tr_idx])}
+        np.savez_compressed(path + ".part.npz", ok=ok, **extra,
+                            **{"fam_" + k: v for k, v in fam.items()})
+        os.replace(path + ".part.npz", path)
+
+    if job:
+        job.begin("pr score", of=len(events), unit="candidates")
+    fam["origin"] = origin_block({"events": events,
+                                  "origin": [e.get("origin") for e in events]})
+    if "recording" in fams:
+        fam["recording"] = aibeta.derive_recording(fam, ok)
+    if "wavebits" in fams:
+        fam["wavebits"] = aibeta.derive_wavebits(fam, ok)
+    X = np.hstack([fam[f] for f in fams]).astype(np.float64)
+    X[~np.isfinite(X)] = np.nan
+    p = np.full(len(events), np.nan)
+    if ok.any():
+        p[ok] = bundle["model"].predict_proba(X[ok])[:, 1]
+    labels = _call(p, ok, t_spike, t_lean)
+    if job:
+        job.tick("pr score", len(events))
+
+    vocab = {l["id"]: l for l in curmod.vocabulary("pooled")}
+    vocab.update({l["id"]: l for l in (cur.get("labels") or [])})
+    good = {k for k, l in vocab.items() if l.get("good")}
+    bad = {k for k, l in vocab.items()
+           if not l.get("good") and not l.get("flagged")}
+    rows, counts = [], {c: 0 for c in CALLS + ("unread",)}
+    agree = {"spike": {"compared": 0, "agree": 0},
+             "lean": {"compared": 0, "agree": 0}}
+    for i, e in enumerate(events):
+        lab = labels[i]
+        counts[lab or "unread"] += 1
+        human = e.get("label") if a_person_decided(e) else None
+        hc = 1 if human in good else 0 if human in bad else None
+        if hc is not None and lab:
+            side = "spike" if lab == "spike" else "lean"
+            agree[side]["compared"] += 1
+            agree[side]["agree"] += int(
+                hc == 1 if lab in ("spike", "likely_spike") else hc == 0)
+        row = {"id": e["id"], "start": float(e["start"]),
+               "p": None if not np.isfinite(p[i]) else round(float(p[i]), 4),
+               "label": lab, "readable": bool(ok[i]),
+               "human": human, "human_by": e.get("by") if human else None,
+               "mine": e.get("by") == BY and bool(e.get("label"))}
+        for k in ("origin", "stamp", "pair_t", "channel", "end"):
+            if e.get(k) is not None:
+                row[k] = e[k]
+        rows.append(row)
+    samples = [tf._sample_row(i, events, times, fam, p, labels, traces)
+               for i in picks if ok[i]]
+    return {
+        "gid": gid, "kind": kind, "set_name": cur.get("name"),
+        "session_label": cur.get("session_label"),
+        "run_id": st["run_id"], "model": st["model"], "families": fams,
+        "slot": TAG, "model_name": st["name"],
+        "channels": which, "channels_note": rec.get("subset_note"),
+        "policy": {"t_spike": t_spike, "t_lean": t_lean,
+                   "target": st["target"]},
+        "held_out": st["held_out"],
+        "basis": basis, "basis_from": basis_from, "cached": cached,
+        "n": len(events), "n_readable": int(ok.sum()),
+        "counts": counts,
+        "label_names": {c: (vocab.get(c) or {}).get("name", c) for c in CALLS},
+        "label_colors": {k: l.get("color") for k, l in vocab.items()},
+        "already_decided": sum(1 for e in events if a_person_decided(e)),
+        "open_to_it": sum(1 for e in events if not a_person_decided(e)),
+        "agreement": agree,
+        "samples": samples,
+        "rows": rows,
+        "at": aibeta._now(),
+    }

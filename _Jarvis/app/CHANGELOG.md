@@ -15,6 +15,51 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.04.3 - Prospector: Panning's own model, swept the way Tooth Fairy sweeps Checkup
+
+Prospector is a model for Panning's pools, in the way Tooth Fairy is for
+Checkup's sets. It reads every event the way Tooth Fairy does, plus which
+detector found it, and makes one of three calls:
+
+- **Spike** — only for events it is sure of;
+- **Flag · likely spike**;
+- **Flag · likely garbage**.
+
+It never calls Garbage. The two flags are new labels that only Prospector
+can give: no button or key offers them to a person, and the Flagged pass
+picks them up.
+
+- **Two ways in, the same as Tooth Fairy's:**
+  - **Prospector…** under More in Panning's bar sweeps the pool you have open.
+  - **Prospector batch…** on Panning's page sweeps several pools.
+
+  Both ask first. Both show the same scanning screen, feed and summary.
+  Nothing is written until you accept.
+- **What accepting does:**
+  - The calls go on the events no person has decided. A person's decision
+    is never changed. A newer sweep replaces Prospector's own earlier calls.
+  - Every call is banked as a **Prospector** version of the pool. These are
+    its first calls, kept so they can be compared with what people decide.
+    Lock never treats that version as a sorted pool.
+- **The Spike bar:** 0.99, the setting the user chose. This means the bar
+  sits above 99% of the garbage in the recordings it learned from.
+  - It was tested on 40 finished PTEN pools (22 mice), each recording held
+    out in turn.
+  - At this bar it called 8,114 events Spike. That is 51% of the real
+    spikes, and 57 of those calls (0.7%) were garbage.
+  - Under the bar, events with a score of 0.5 or more are flagged likely
+    spike and the rest likely garbage.
+- **Training:**
+  - `tools/prospector_train.py` builds the training set from the finished
+    pools, reads it, compares inputs and runs the leave-one-recording-out test.
+  - `tools/prospector_train.py choose <run>` makes a run Prospector.
+  - The run (`pr20261104-071200`) and its model are in `GUI_logs/prospector`,
+    so they reach every machine with the next pull.
+- **Panning no longer banks a pool by itself while Prospector's flags are
+  still on it.** A pool banks itself only once. An accepted sweep leaves
+  nothing undecided, so without this change the pool would bank itself as
+  soon as the first flag was settled.
+
 ## 2026.11.04.2 - Joe's figures: axes per set (or fitted), stars on the ring, a note on Granger, tab 13's sanity check report
 
 - **Axes, shared within each set of rats.** Joe's figures used to share

@@ -497,6 +497,28 @@ class Registry:
         # cache. Shallow is enough: the mutations are top-level fields.
         return [dict(r) for r in self._all_recs]
 
+    def live(self):
+        """The recordings a person can be offered: not retired, and one per
+        gid. THE list -- the Sessions tree and every tool's recording list
+        read this, so what one shows and another leaves out can only differ
+        by what that tool needs (a cluster copy, a banked entry), never by
+        which records each happened to count.
+
+        One per gid because a gid can be filed under two names: 102 DEWEY
+        recordings have a shard under their m### key and another under
+        their r### key (measured 2026-11-04), and the tools that took
+        `all()` as it came listed them twice. The first live one wins,
+        which is what Doppler's batch already did.
+        """
+        seen, out = set(), []
+        for rec in self.all():
+            gid = rec.get("gid")
+            if not gid or rec.get("retired") or gid in seen:
+                continue
+            seen.add(gid)
+            out.append(rec)
+        return out
+
     # gid -> record, rebuilt only when the session files change.
     _gid_sig = None
     _gid_map = None
@@ -1033,7 +1055,7 @@ class Registry:
         `attachments` is a callable given a record and returning a dict of
         counts, so this module does not have to know what a storyboard is.
         """
-        live = [r for r in self.all() if not r.get("retired")]
+        live = self.live()
 
         # Ask every drive at once, before asking any record about itself.
         #

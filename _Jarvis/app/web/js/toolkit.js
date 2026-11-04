@@ -1742,6 +1742,18 @@ BARRY.views.toolkit = (function () {
              + 'archived, deleted or unbanked.',
         onclick: closeAllSets,
       }) : null,
+      /* Prospector over several pools at once, as Tooth Fairy batch is on
+         Checkup's page (toothfairy.js). It asks which, and writes nothing
+         until its summary is accepted. */
+      (w.tool === 'panning' && BARRY.prospector) ? el('button', {
+        class: 'btn ghost sm tf-btn', id: 'prBatchOpen',
+        title: 'Let Prospector sweep several pools in turn -- the ones on the '
+             + 'bench, or any you choose -- and keep the calls for the pools '
+             + 'you want.',
+        onclick: () => BARRY.prospector.openBatch({
+          onDone: () => { curStale = true; loadCuration(); },
+        }),
+      }, [BARRY.prospector.icon(), 'Prospector batch…']) : null,
 
     ].filter(Boolean)));
 
@@ -2218,7 +2230,10 @@ BARRY.views.toolkit = (function () {
                        ? ' by ' + st.opened_by : '') : null,
       extras: [presenceLine(st)].filter(Boolean),
       progress: pr.percent || 0,
-      tally: (st.labels || []).map((l) => el('span', {
+      // Prospector's flags only where it has put one (curation.KINDS).
+      tally: (st.labels || []).filter((l) => !l.ai
+                                            || (pr.by_label || {})[l.id])
+        .map((l) => el('span', {
         class: 'cur-tally', style: '--cat:' + l.color,
         text: l.name + '  ' + ((pr.by_label || {})[l.id] || 0),
       })),

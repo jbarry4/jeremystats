@@ -163,6 +163,22 @@ KINDS = {
              "color": "#dc2626"},
             {"id": "flag", "name": "Flag", "keys": ["3", "f"],
              "color": "#E5A823", "flagged": True},
+            # PROSPECTOR'S TWO FLAGS (the user, 2026-11-03: "built into
+            # panning... but not something humans can label"). What
+            # Prospector calls an event it will not call Spike, leaning one
+            # way or the other (prospector.CALLS); it never calls Garbage.
+            # `computed`, as DS1/DS2 are: no button and no key offers them,
+            # so only an accepted sweep puts one on. `flagged`, so the
+            # Flagged pass picks them up -- each still wants a person -- and
+            # neither `good` nor a non-event, so nothing downstream aligns
+            # one or throws one away. `ai` is what Panning reads to count
+            # them as still to do.
+            {"id": "likely_spike", "name": "Flag · likely spike",
+             "color": "#7fb069", "flagged": True, "computed": True,
+             "ai": True},
+            {"id": "likely_garbage", "name": "Flag · likely garbage",
+             "color": "#c8553d", "flagged": True, "computed": True,
+             "ai": True},
         ],
     },
 }
@@ -578,9 +594,17 @@ class Curation:
     def _adopt_custom(self, rec, label):
         """True if `label` is an added category of this set's kind, and puts
         it into the set's own vocabulary -- which is what carries it to
-        other computers through the cloud sync."""
-        lab = next((l for l in custom_labels(rec.get("kind"))
-                    if l["id"] == label), None)
+        other computers through the cloud sync.
+
+        Or one of the kind's own labels that the set's copy predates --
+        Prospector's two flags reaching a pool made before they existed
+        (2026-11-04). Put in only when an event takes one, so an older set
+        does not grow two empty chips."""
+        kind = kind_of(rec.get("kind"))
+        lab = next((l for l in (KINDS.get(kind) or {}).get("labels", [])
+                    if l["id"] == label), None) \
+            or next((l for l in custom_labels(rec.get("kind"))
+                     if l["id"] == label), None)
         if lab is None:
             return False
         rec["labels"] = list(rec.get("labels") or []) + [dict(lab)]

@@ -517,8 +517,17 @@ class Store:
             }
             # Remember every path this session has been seen at, so a colleague
             # on another mount can still tell it is the same recording.
+            #
+            # Except a folder of headers only. Whatever brought it here --
+            # a scan, an open, a cluster find -- it is not a copy of this
+            # recording, and once on record it gets opened, sent to the
+            # cluster and judged in its place: five real recordings were
+            # retired as "no data in the folder" that way (2026-11-04).
+            # Looked at only when the path is new to the record, so the
+            # cost is one listing per new path, not per write.
             path = identity.get("path")
-            if path and path not in rec.get("paths", []):
+            if path and path not in rec.get("paths", []) \
+                    and not _header_only(path):
                 rec.setdefault("paths", []).append(path)
             rec.update(patch)
             rec["updated"] = self.provenance()
@@ -934,6 +943,13 @@ def _run_time(rec):
         if v:
             return str(v)
     return ""
+
+
+def _header_only(path):
+    """`nlx.header_only_folder`, imported when first asked: nlx brings numpy,
+    and this module is loaded by tools that never need it."""
+    from . import nlx
+    return nlx.header_only_folder(path)
 
 
 def _listdir(path):

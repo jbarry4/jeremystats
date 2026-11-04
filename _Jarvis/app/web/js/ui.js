@@ -868,6 +868,9 @@ BARRY.ui = (function () {
      `src` is the entry's pipeline (or source), `type` its kind. */
   const VTAGS = { rootcanal: 'Root Canal', junction: 'Junction',
                   tooth_fairy: 'Tooth Fairy', toothfairy: 'Tooth Fairy',
+                  // Panning's model: its sweep's version is not a Panning
+                  // pass, so Lock never reads it as sorted.
+                  prospector: 'Prospector',
                   braces: 'Braces', eye: 'Eye', lock: 'Lock',
                   dspca: 'X-ray', xray: 'X-ray' };
   const KIND_PASS = { ds: 'Checkup', ied: 'Spotter', pooled: 'Panning' };
