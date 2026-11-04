@@ -3784,7 +3784,8 @@ _WORK_SAY = {"upload": "uploading", "fetch": "fetching and building the "
              "joefigsfp": "measuring FP's fake trials on the VACC, then drawing tab 9's figures",
              "joefigs": "drawing tab 9's figures",
              "evenmore": "working out tab 11 (narrowing down, even more)",
-             "final": "working out tab 12 (the final stage)"}
+             "final": "working out tab 12 (the final stage)",
+             "sanity": "running tab 13's sanity checks"}
 
 
 def work_now():

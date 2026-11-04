@@ -47,7 +47,8 @@ except Exception:                                        # noqa: BLE001
     pass
 
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-BASE = "http://127.0.0.1:8791"
+# 8791 unless JARVIS_HARNESS_PORT says otherwise (harness_run.ps1 -Port).
+BASE = "http://127.0.0.1:%s" % (os.environ.get("JARVIS_HARNESS_PORT") or "8791")
 # Derived, not written down. It was one developer's own path, so the
 # suite could not run on any other machine -- and the failure is a
 # FileNotFoundError on the listdir, which is at least loud. The version

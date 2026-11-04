@@ -66,10 +66,40 @@ window.MONO_RATS = (function () {
   return { get: () => rs, set, q, node, check, SETS };
 })();
 
+/* Only what is significant (2026-11-04): one for tabs 11 and 12, and
+   remembered. On, every table keeps the rows it marks significant under the
+   correction switch and every grid the figures it marks; a table with none
+   says so in a line. "Read this first", the robustness card, the methods and
+   the files stay whole. */
+window.MONO_ONLY = (function () {
+  const KEY = 'barry.final.only';
+  let on = false;
+  try { on = localStorage.getItem(KEY) === '1'; } catch (e) { /* none */ }
+  function set(v) {
+    on = !!v;
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (e) { /* none */ }
+    document.dispatchEvent(new CustomEvent('mono:only', { detail: on }));
+  }
+  /* A table's rows, or a line where none is left. */
+  function rows(el, trs, none) {
+    if (!on) return { rows: trs, none: null };
+    const kept = trs.filter((tr) => tr.classList.contains('sig') || !!tr.querySelector('.sigcell'));
+    return { rows: kept, none: kept.length ? null : el('p', { class: 'muted moreonlynone', text: none || 'Nothing here passes on this side of the switch.' }) };
+  }
+  function node(el, id) {
+    const b = (v, say) => el('button', { type: 'button', class: 'moretile' + (on === v ? ' on' : ''), id: id + '_' + (v ? 'sig' : 'all'),
+                                         'aria-pressed': on === v ? 'true' : 'false', text: say, onclick: () => set(v) });
+    return el('div', { class: 'morefdr', role: 'group', 'aria-label': 'Show everything or only what is significant' }, [
+      el('span', { class: 'morefdrsay', text: 'Show:' }), b(false, 'Everything'), b(true, 'Only significant')]);
+  }
+  return { get: () => on, set, rows, node };
+})();
+
 window.MONO_EVENMORE = (function () {
   const M = () => window.MONO;
   const F = () => window.MONO_FDR;
   const R = () => window.MONO_RATS;
+  const O = () => window.MONO_ONLY;
   /* One result a set of rats, read when first asked for. */
   const P = { sets: {}, errs: {}, loading: false, seq: 0, making: false, makeNote: '', makeErr: null, band: 'theta',
               get data() { return this.sets[R().get()] || null; }, get err() { return this.errs[R().get()] || null; } };
@@ -207,24 +237,29 @@ window.MONO_EVENMORE = (function () {
   }
 
   /* ---------------- the stats tables ---------------- */
+  /* A table; with only what is significant, the rows it marks (a line if none). */
+  function sigTable(cls, id, head, trs, none) {
+    const k = O().rows(el, trs, none);
+    if (k.none) return k.none;
+    return el('div', { class: 'tablewrap' }, el('table', { class: cls, id }, [
+      el('thead', {}, el('tr', {}, head.map((t) => el('th', { text: t })))), el('tbody', {}, k.rows)]));
+  }
+
   function termsTable(ts, err) {
-    if (err) return el('p', { class: 'warn', text: 'Not fitted: ' + err });
-    return el('div', { class: 'tablewrap' }, el('table', { class: 'moretable moreterms' }, [
-      el('thead', {}, el('tr', {}, ['Term', 'χ²', 'df', 'p', 'Errors'].map((t) => el('th', { text: t })))),
-      el('tbody', {}, (ts || []).map((t) => {
+    if (err) return O().get() ? null : el('p', { class: 'warn', text: 'Not fitted: ' + err });
+    return sigTable('moretable moreterms', null, ['Term', 'χ²', 'df', 'p', 'Errors'], (ts || []).map((t) => {
         const robust = t.errors !== 'model-based';
         return el('tr', { class: (robust ? '' : 'weak') + (robust && t.p < 0.05 ? ' sig' : '') }, [
           el('th', { text: t.term }), el('td', { text: n2(t.chi2) }), el('td', { text: String(t.df) }), el('td', { text: pSay(t.p) }),
           el('td', { text: robust ? 'robust' : 'model-based' })]);
-      }))]));
+      }), 'No term passes on robust errors.');
   }
 
   const sw = (D, i) => el('span', { class: 'moresw' + (D.pairs[i].dashed ? ' dashed' : ''), style: '--c:' + D.pairs[i].color });
 
   function pairs1(D, B) {
-    return el('div', { class: 'tablewrap' }, el('table', { class: 'moretable', id: 'moretable1' }, [
-      el('thead', {}, el('tr', {}, ['Pair', 'Rats', 'Wire pairs', 'Late ÷ Early', 'χ²(1)', 'p', 'FDR q', 'Session × frequency'].map((t) => el('th', { text: t })))),
-      el('tbody', {}, B.phase1.pairs.map((x, i) => {
+    return sigTable('moretable', 'moretable1', ['Pair', 'Rats', 'Wire pairs', 'Late ÷ Early', 'χ²(1)', 'p', 'FDR q', 'Session × frequency'],
+      B.phase1.pairs.map((x, i) => {
         if (!x) return el('tr', { class: 'weak' }, [el('th', {}, [sw(D, i), D.pairs[i].say]), el('td', { colspan: '7', text: 'fewer than 4 rats' })]);
         const a = x.a2 || {};
         const sf = (x.b2 || []).find((t) => t.term === 'Session × Frequency');
@@ -235,31 +270,30 @@ window.MONO_EVENMORE = (function () {
           el('td', { text: a.ratio == null ? (x.a2_error || 'n/a') : '×' + a.ratio.toFixed(2) + (a.ratio > 1 ? ' ▲' : ' ▼') }),
           el('td', { text: n2(a.chi2) }), el('td', { text: pSay(a.p) }), el('td', { text: n3(a.q) + star(a) }),
           el('td', { class: 'weakcell', text: sf ? pSay(sf.p) + ', q ' + n3(x.b2_q) : 'n/a' })]);
-      }))]));
+      }), 'No pair changed from Early to Late on this side of the switch.');
   }
 
   function pairs2(D, B) {
-    return el('div', { class: 'tablewrap' }, el('table', { class: 'moretable', id: 'moretable2' }, [
-      el('thead', {}, el('tr', {}, ['Pair', 'Rats', 'Session × Cue', 'FDR q', 'Cue 2 ÷ Cue 1, Precon1', 'Cue 2 ÷ Cue 1, Precon4'].map((t) => el('th', { text: t })))),
-      el('tbody', {}, B.phase2.pairs.map((x, i) => {
+    return sigTable('moretable', 'moretable2', ['Pair', 'Rats', 'Session × Cue', 'FDR q', 'Cue 2 ÷ Cue 1, Precon1', 'Cue 2 ÷ Cue 1, Precon4'],
+      B.phase2.pairs.map((x, i) => {
         if (!x) return el('tr', { class: 'weak' }, [el('th', {}, [sw(D, i), D.pairs[i].say]), el('td', { colspan: '5', text: 'fewer than 4 rats' })]);
         const sc = (x.terms || []).find((t) => t.term === 'Session × Cue');
         const scx = { p: sc ? sc.p : null, q: x.q };
         const day = (d) => { const r = x.days[d] || {}; return r.ratio == null ? (r.error || 'n/a') : '×' + r.ratio.toFixed(2) + ', ' + pSay(r.p) + ', q ' + n3(r.q) + star(r); };
+        const dcell = (d) => el('td', { class: F().passes(x.days[d]) ? 'sigcell' : null, text: day(d) });   // the cue effect each day: the figure's stars
         return el('tr', { class: F().passes(scx) ? 'sig' : '' }, [
           el('th', {}, [sw(D, i), D.pairs[i].say]), el('td', { text: String(x.rats.length) }),
           el('td', { text: sc ? 'χ² ' + n2(sc.chi2) + ', ' + pSay(sc.p) : (x.error || 'n/a') }), el('td', { text: n3(x.q) + star(scx) }),
-          el('td', { text: day('Precon1') }), el('td', { text: day('Precon4') })]);
-      }))]));
+          dcell('Precon1'), dcell('Precon4')]);
+      }), 'No pair’s Session × Cue passes on this side of the switch.');
   }
 
   const CONTRASTS = [['cue1-base10', 'Cue 1 vs baseline'], ['cue2-base10', 'Cue 2 vs baseline'], ['cue2-cue1', 'Cue 2 vs cue 1']];
 
   function pairs3(D, B) {
     const ph = (B.phase3 || {}).pairs || [];
-    return el('div', { class: 'tablewrap' }, el('table', { class: 'moretable', id: 'moretable3' }, [
-      el('thead', {}, el('tr', {}, ['Pair', 'Rats', 'Session × Period, χ²(2)', 'FDR q'].concat(CONTRASTS.map((c) => 'Session × (' + c[1].toLowerCase() + ')')).map((t) => el('th', { text: t })))),
-      el('tbody', {}, ph.map((x, i) => {
+    return sigTable('moretable', 'moretable3', ['Pair', 'Rats', 'Session × Period, χ²(2)', 'FDR q'].concat(CONTRASTS.map((c) => 'Session × (' + c[1].toLowerCase() + ')')),
+      ph.map((x, i) => {
         if (!x) return el('tr', { class: 'weak' }, [el('th', {}, [sw(D, i), D.pairs[i].say]), el('td', { colspan: '6', text: 'fewer than 4 rats' })]);
         const sp = x.sp || {};
         const any = F().passes(sp) || CONTRASTS.some((c) => F().passes(x.contrasts[c[0]]));
@@ -267,7 +301,7 @@ window.MONO_EVENMORE = (function () {
           el('th', {}, [sw(D, i), D.pairs[i].say]), el('td', { text: String(x.rats.length) }),
           el('td', { text: sp.p == null ? (x.error || 'n/a') : n2(sp.chi2) + ', ' + pSay(sp.p) }), el('td', { text: n3(sp.q) + star(sp) })]
           .concat(CONTRASTS.map((c) => { const r = x.contrasts[c[0]] || {}; return el('td', { text: r.ratio == null ? 'n/a' : '×' + r.ratio.toFixed(2) + ', ' + pSay(r.p) + ', q ' + n3(r.q) + star(r) }); })));
-      }))]));
+      }), 'No pair passes, nor any of its three contrasts, on this side of the switch.');
   }
 
   /* ---------------- robustness: leave one rat out, and the mixed model ---------------- */
@@ -312,14 +346,29 @@ window.MONO_EVENMORE = (function () {
       el('div', { class: 'row gap morefiles' }, [link('pdf', 'PDF'), link('svg', 'SVG'), link('png', 'PNG'), link('xlsx', 'Prism .xlsx'), link('pzfx', 'Prism .pzfx')])]);
   }
 
-  function figGrid(D, figs) {
-    const pairs = figs.filter((f) => f.kind === 'pair');
-    const pooled = figs.filter((f) => f.kind === 'pooled');
+  /* With only what is significant, a pair's figure stays with its table row:
+     any test its stars mark (phase 2: Session x Cue or the cue effect on a
+     day; phase 3: Session x Period or a contrast). */
+  function figPasses(B, f) {
+    if (passOf(f)) return true;
+    const x = f.phase === 2 ? (B.phase2.pairs || [])[f.pair] : f.phase === 3 ? ((B.phase3 || {}).pairs || [])[f.pair] : null;
+    if (!x) return false;
+    if (f.phase === 2) {
+      const sc = (x.terms || []).find((t) => t.term === 'Session × Cue');
+      return F().passes({ p: sc ? sc.p : null, q: x.q }) || ['Precon1', 'Precon4'].some((d) => F().passes((x.days || {})[d]));
+    }
+    return F().passes(x.sp) || CONTRASTS.some((c) => F().passes((x.contrasts || {})[c[0]]));
+  }
+
+  function figGrid(D, figs, B) {
+    const only = O().get();
+    const pairs = figs.filter((f) => f.kind === 'pair' && (!only || figPasses(B, f)));
+    const pooled = only ? [] : figs.filter((f) => f.kind === 'pooled');
     return el('div', {}, [
-      el('h3', { class: 'moresub', text: 'Each pair alone' }),
-      el('div', { class: 'morefigs' }, pairs.map((f) => figCard(D, f))),
-      el('h3', { class: 'moresub', text: 'All ten together, with the statistics' }),
-      el('div', {}, pooled.map((f) => figCard(D, f)))]);
+      pairs.length ? el('h3', { class: 'moresub', text: only ? 'The pairs that pass' : 'Each pair alone' }) : null,
+      pairs.length ? el('div', { class: 'morefigs' }, pairs.map((f) => figCard(D, f))) : null,
+      pooled.length ? el('h3', { class: 'moresub', text: 'All ten together, with the statistics' }) : null,
+      pooled.length ? el('div', {}, pooled.map((f) => figCard(D, f))) : null]);
   }
 
   /* ---------------- everything ---------------- */
@@ -355,17 +404,17 @@ window.MONO_EVENMORE = (function () {
       el('div', { class: 'moreomni' }, [
         el('div', {}, [el('h4', { text: 'On the band (A1)' }), termsTable(B.phase1.a1, B.phase1.a1_error)]),
         el('div', {}, [el('h4', { text: 'Across frequency steps (B1)' }), termsTable(B.phase1.b1, B.phase1.b1_error)])]),
-      figGrid(D, B.phase1.figures)]);
+      figGrid(D, B.phase1.figures, B)]);
     const ph2 = card('morephase2', 'Phase 2 · Cue 1 against cue 2, ' + B.say, 'more.phase2', [
       el('p', { text: 'The plan’s section 5, matched pairings only (every Precon trial is one). On each day, is coherence different in cue 2 than in cue 1, and does that difference change from Precon1 to Precon4 (Session × Cue)?' }),
       pairs2(D, B),
       el('h3', { class: 'moresub', text: 'All pairs together (Session × Cue × Pair)' }),
       termsTable(B.phase2.omnibus, B.phase2.error),
-      figGrid(D, B.phase2.figures)]);
+      figGrid(D, B.phase2.figures, B)]);
     const ph3 = B.phase3 ? card('morephase3', 'Baseline, cue 1, cue 2 · ' + B.say, 'more.phase3', [
       el('p', { text: 'The power plan’s three periods, for coherence: did the cues’ effect on each pair change from Precon1 to Precon4 (Session × Period), and against which period? A ratio of ratios above 1 means the cue raised coherence more on Precon4.' }),
       pairs3(D, B),
-      figGrid(D, B.phase3.figures)]) : null;
+      figGrid(D, B.phase3.figures, B)]) : null;
     const rob = card('morerobust', 'Does it hold? Leave one rat out, and a mixed model', 'more.robust', [
       el('p', { text: 'For every result that passes: the GEE fitted again eight times, each without one rat, and a linear mixed model (a random intercept for the rat, Kenward–Roger’s degrees of freedom) on the same rows. Solid: it holds both ways. Shaky: one of the two. Fragile: neither.' }),
       robustTable(D.robust, nameOf11(D), 'morerobusttable')]);
@@ -374,11 +423,12 @@ window.MONO_EVENMORE = (function () {
       el('div', { class: 'row gap' }, (D.exports || []).map((n) => el('a', { class: 'more-btn small', href: R().q('/api/arc/monolith/evenmore/export/' + encodeURIComponent(n)), download: n, text: n }))),
       (D.notes || []).length ? el('details', {}, [el('summary', { text: D.notes.length + ' note' + (D.notes.length === 1 ? '' : 's') + ' from reading the recordings' }),
         el('ul', {}, D.notes.map((n) => el('li', { class: 'small', text: n })))]) : null]);
-    const bar = el('div', { class: 'morebar' }, [tiles, F().node(el, 'morefdr'), R().node(el, 'morerats')]);
+    const bar = el('div', { class: 'morebar' }, [tiles, F().node(el, 'morefdr'), R().node(el, 'morerats'), O().node(el, 'moreonly')]);
     pane.replaceChildren(intro(D), flag(D), bar, ph1, ph2, ph3, rob, ex);
   }
 
   document.addEventListener('mono:fdr', () => { if ($('morepane') && !$('morepane').hidden) render(); });
+  document.addEventListener('mono:only', () => { if ($('morepane') && !$('morepane').hidden) render(); });
   document.addEventListener('mono:rats', () => {
     if (!$('morepane') || $('morepane').hidden) return;
     if (P.data) render(); else load();

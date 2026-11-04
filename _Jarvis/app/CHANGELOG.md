@@ -15,6 +15,105 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.04.2 - Joe's figures: axes per set (or fitted), stars on the ring, a note on Granger, tab 13's sanity check report
+
+- **Axes, shared within each set of rats.** Joe's figures used to share
+  their axes across all four sets, so the sets without J3 and J4 sat in
+  the white space J3's values made.
+  - Each set now shares one axis per kind of graph among its own figures.
+  - The shared limit is reasonable rather than the union. When one panel
+    reaches far past the rest, as ACC–PER does in D2.1.all, it is cut off,
+    and its caption says so.
+  - An **Axes** switch on the site shows every figure fitted to itself
+    instead. That version comes as its own PDF (`…_fitted.pdf`) wherever it
+    differs.
+- **Stars on the node-and-edge plots.** A significant pair's edge carries
+  a star on the line itself. The asterisks elsewhere are larger, so they no
+  longer read as dots.
+- **A note for Joe on every Granger figure**: what it means when both
+  directions change together (in G1 without J3 and J4, both rose: a
+  stronger two-way interaction, not a new leader; that is expected, since
+  Granger causality follows coherence), whether the pair's coherence went
+  the same way, the same pair in the other set of rats, and two cautions.
+- **13 · Sanity check report**, a new tab in Jarvis, also the last
+  section of Joe's site (`backend/sanity.py`). It covers:
+  - whether the right data went in;
+  - whether the right logic was applied: the tabs' own checks, independent
+    refits and FDR recomputed;
+  - whether the words match the numbers;
+  - whether it can be made again from the raw data: commit, versions,
+    exports, the commands.
+
+  It also lists, honestly, what a careful reader should know. Green, amber
+  or red, in words.
+- Joe's site stays under its size limit: figure PDFs are recompressed,
+  about 13% smaller, and previews are WebP, about a third smaller. Each set
+  is drawn in its own process, all four at once.
+
+## 2026.11.04.1 - Joe's figures: stars back, a statistics PDF for each, only what is significant
+
+From Joe's notes. Joe's site is updated. Tab 10 in Jarvis shows the same
+after a restart.
+
+- **Only what is significant.** A Show switch on Joe's site and in tabs 11
+  and 12 hides everything that is not significant.
+  - On the site, it hides every figure whose main test does not pass under
+    the correction switch. That is the same set as each part's
+    *Significant* list. In the figures section, a figure is kept only if it
+    passes every one of its tests. Groups left empty disappear, and in the
+    statistics only the lit comparisons stay.
+  - In Jarvis, every table keeps the rows it marks significant and every
+    grid keeps the figures it marks passing. *Read this first*, the
+    robustness card, the methods and the files stay whole. The switch is
+    shared by the two tabs and remembered.
+- **Stars are back on Joe's figures.** They come from the same tests the
+  statistics print.
+  - Every figure is drawn twice, with the correction on and off. The
+    uncorrected drawing is kept only where it differs (`…_uncorrected.pdf`).
+  - The site's switch picks the drawing.
+  - Each caption says which reading its stars use and which family the
+    correction is across.
+- **A statistics PDF for every figure**, laid out the way SPSS prints it
+  (`backend/joestats.py`). Each one has:
+  - the design, for example *2 (Session: Early or Late) × 3 (Period)
+    generalized estimating equation*, with its family, link and working
+    correlation;
+  - every main effect and interaction, significant or not, with Wald χ²,
+    df, p and FDR q;
+  - the planned contrasts;
+  - post hoc tests for every interaction with Session that reaches
+    p < .05, Bonferroni-adjusted within each set. These are the Session
+    effect at each period, cue or frequency bin, or the same model in each
+    pair or region.
+  - a results paragraph written on Joe's conditioning paragraph: what the
+    figure shows, the design, the significant effects, the rest, the post
+    hocs, and one sentence of interpretation. Significance is read by q
+    where a test is corrected and by p otherwise.
+
+  The paragraph is also the figure's Results on the site. A button in each
+  part downloads every statistics PDF for that set of rats.
+- **Methods.**
+  - New section, *Artefacts from head bumps*. It covers how head bumps
+    were found (hand exclusion on inspection, then automatic saturation),
+    what was removed (a wire for one window, or a region for one window
+    when no wire was left; nothing cut inside a window), and every rat and
+    session's losses. Across the analysis, 17.4% of one-second segments
+    were omitted. Every replacement and omission followed a hand
+    exclusion; the saturation rule removed nothing more. J6 Precon1 lost
+    60%.
+  - A bracket asks Joe who inspected the trials.
+  - One sentence now says why power was not normalised per rat.
+- Tab 11: the uncorrected stars on the all-pairs cue 1 vs cue 2 figure,
+  and the uncorrected "passes" of each pair's cue figure, read a record
+  with no p and so never appeared. They now read Session × Cue's p. Tab
+  11's own drawings pick this up the next time it is worked out.
+- With only significant on, a figure stays whenever its table row does,
+  that is, whenever any test its stars mark passes. Tab 12's robustness
+  card is never filtered again.
+- Tabs 11 and 12's models now get their rows from shared builders
+  (`rows_phase1/2/3`, `power_rows`, `fooof_rows`), so the follow-ups are
+  fitted on exactly the same rows. Every saved result is unchanged.
+
 ## 2026.11.03.2 - Folders of headers only are not recordings
 
 On 2026-11-03 the KCNT1 data on netfiles held 179 folders whose channel files

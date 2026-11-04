@@ -26408,6 +26408,13 @@ def api_arc_monolith_data(name):
             return jsonify({"ok": False, "error": "Tab 12 has not been worked out yet."}), 404
         with open(path, encoding="utf-8") as fh:
             return app.response_class(fh.read(), mimetype="application/json")
+    if name == "sanity":
+        # Tab 13, the sanity check report (backend/sanity.py), off the disk.
+        path = os.path.join(monolithmod._path("sanity"), "sanity.json")
+        if not os.path.isfile(path):
+            return jsonify({"ok": False, "error": "The sanity checks have not been run yet."}), 404
+        with open(path, encoding="utf-8") as fh:
+            return app.response_class(fh.read(), mimetype="application/json")
     if name == "evenmore":
         # Tab 11, read off the disk for the same reason as joefigs.
         root = _mono_set_dir("evenmore")
@@ -26902,6 +26909,25 @@ def api_arc_monolith_final():
     return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
 
 
+@app.route("/api/arc/monolith/sanity", methods=["POST"])
+def api_arc_monolith_sanity():
+    """Tab 13, the sanity check report: the data, the logic, the words and
+    how to make it all again, checked (backend/sanity.py). Refused without
+    `confirm`."""
+    body = request.get_json(silent=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    try:
+        from . import sanity as sanmod
+        w = monolithmod.start_work("sanity", sanmod.work_safe)
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/sanity", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.sanity", "detail": {}}])
+    return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
+
+
 @app.route("/api/arc/monolith/final/file/<path:name>")
 def api_arc_monolith_final_file(name):
     """Tab 12's figure files and Prism tables (as tab 11's)."""
@@ -26976,6 +27002,7 @@ def api_arc_monolith_joeexport_file(name):
     from . import joeexport as jxmod
     types = {".svg": "image/svg+xml", ".png": "image/png", ".pdf": "application/pdf", ".zip": "application/zip",
              ".csv": "text/csv", ".txt": "text/plain", ".py": "text/x-python", ".json": "application/json", ".jpg": "image/jpeg",
+             ".webp": "image/webp",
              ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
              ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation"}
     base = os.path.basename(name)
@@ -26984,7 +27011,7 @@ def api_arc_monolith_joeexport_file(name):
     if base != name or ext not in types or base not in paths:
         return jsonify({"ok": False, "error": "No such file."}), 404
     # previews (an SVG, or since 2026-10-30 a small JPEG) are shown, never saved
-    view = ext in (".svg", ".jpg") and request.args.get("view") == "1"
+    view = ext in (".svg", ".jpg", ".webp") and request.args.get("view") == "1"
     return send_file(paths[base], mimetype=types[ext], as_attachment=not view, download_name=base)
 
 

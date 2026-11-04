@@ -387,7 +387,7 @@ window.MONO_HELP = (function () {
               'The GEE: Gamma family, log link, exchangeable, the rat as the cluster; Late against Early in each pair, corrected across the ten (FDR).',
               'The figures: the means, violins and spectra are for looking; the stars come from the GEE.'],
       look: 'A pair with a star (it passes after correcting for ten), whose rats mostly move the same way in panel c.',
-      traps: 'Pooled spectra are not the mean of trials: they are lower when the timing between two regions varies from trial to trial (the card at the top says by how much). With 8 rats a test of many things at once (Pair, Session × Pair, anything across frequency) cannot use the robust errors; those use the model’s own and are greyed out. Pairs with PER or RSC have 5 to 7 rats, and a GEE with that few can read stronger than it is. The Rats switch takes J3, J4 or both out of everything here and in tab 12: J3’s recordings carry one signal on every wire (a reference problem, not brain), and J4’s Precon1 shows the same signature; the table under “Read this first” shows each rat-day’s.',
+      traps: 'Pooled spectra are not the mean of trials: they are lower when the timing between two regions varies from trial to trial (the card at the top says by how much). With 8 rats a test of many things at once (Pair, Session × Pair, anything across frequency) cannot use the robust errors; those use the model’s own and are greyed out. Pairs with PER or RSC have 5 to 7 rats, and a GEE with that few can read stronger than it is. The Rats switch takes J3, J4 or both out of everything here and in tab 12: J3’s recordings carry one signal on every wire (a reference problem, not brain), and J4’s Precon1 shows the same signature; the table under “Read this first” shows each rat-day’s. Show: Only significant keeps, in every table here and in tab 12, the rows marked significant on this side of the correction switch, and the figures marked passing; Read this first, the robustness card and the files stay whole.',
       cite: ['Dickson, Holmes & Barry (2022). eNeuro 9(2), ENEURO.0414-21.2022, Figure 3.', 'Mancl & DeRouen (2001). Biometrics 57: 126–134 (the small-sample correction).'],
     },
     'more.phase1': {
@@ -414,7 +414,8 @@ window.MONO_HELP = (function () {
       plain: 'What the lab’s last two documents asked for. Within-region power: does a region’s own theta or gamma power respond to the cues differently on Precon4 than on Precon1? In four tiers: every region in one model (tier 1, and tier 2 across frequency), then each region on its own (tiers 3a and 3b). FOOOF: is any change in the rhythm or in the 1/f background? Then, on the pairs tab 11 found: which region leads (Granger) and theta–gamma coupling inside their regions. Every result’s robustness, a side question for us, and the methods, written from this run.',
       steps: ['Power: each 10 s window’s Welch spectrum, pooled over a session’s trials, in dB; both sides averaged.', 'The GEE (normal, identity) on Session × Period, then the three contrasts, corrected across the five regions.',
               'Granger and coupling: only for tab 11’s results on the side of the switch in use.', 'The methods: rebuilt from the numbers every time.',
-              'The Rats switch (shared with tab 11): all rats, or without J3, J4 or both; every number, figure and follow-up here is worked out for each.'],
+              'The Rats switch (shared with tab 11): all rats, or without J3, J4 or both; every number, figure and follow-up here is worked out for each.',
+              'Show: Only significant (shared with tab 11) keeps the rows and figures marked significant on this side of the correction switch.'],
       look: 'A region whose Session × Period passes, and whether the coherence that changed was matched by a power change (a local change) or not (a change in coupling).',
       traps: '“Focal” is a label, not proof: a region’s power can rise because of input from elsewhere. The cue-onset response is inside the windows on purpose.',
     },
@@ -442,6 +443,17 @@ window.MONO_HELP = (function () {
     'final.methods': {
       title: 'The methods',
       plain: 'Written by the code from this run: the rats, windows, wires, filters, spectral settings, models, reference categories, corrections, every result that passes (corrected and uncorrected) and how robust each is. The Word file is the same text.',
+    },
+    sanity: {
+      title: 'Sanity check report',
+      plain: 'The last look before Joe’s results are trusted: Jarvis goes through what he is given (tabs 11 and 12, his figures and his site) and back to the recordings it came from, and says in plain words what it found. Each check has a status in a word and a shape: OK (a ticked circle), Check (a triangle), Problem (a crossed octagon) or Note (a square with an i).',
+      steps: ['The right data went in: the rats, days, recordings and wires are the ones the plan names, and none is missing or doubled.',
+              'The right logic was applied: numbers worked out a second, independent way come out the same, and the models are the ones the methods name.',
+              'The words match the numbers: every legend, sentence and table says what the numbers behind it say.',
+              'It can be made again from the raw data: the commands, the code’s commit, the tools’ versions and the recordings, so anyone can run it again and get the same numbers.',
+              'What a careful reader should know: nothing wrong, but worth reading before a result is believed.'],
+      look: 'The verdict at the top. Green, All clear: every check passed. Amber, Check these: nothing failed, but some checks ask to be read. Red, Problems found: at least one check failed, and its row says what and where. Read these first lists them; each opens its row.',
+      traps: 'A Check is something to read, not a failure: a small sample, a rat left out on purpose, a file changed since the last commit. A Problem means a number, a word or an input is not what it should be; fix it, work the tab out again and run the checks again. The report is as old as its date: run it again after anything is worked out again.',
     },
     'more.phase2': {
       title: 'Phase 2: cue 1 against cue 2',

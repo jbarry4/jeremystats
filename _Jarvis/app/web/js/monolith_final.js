@@ -17,6 +17,7 @@ window.MONO_FINAL = (function () {
   const M = () => window.MONO;
   const F = () => window.MONO_FDR;
   const R = () => window.MONO_RATS;
+  const O = () => window.MONO_ONLY;
   /* One result a set of rats (tab 11's switch), read when first asked for. */
   const P = { sets: {}, errs: {}, em: {}, loading: false, seq: 0, making: false, makeNote: '', makeErr: null, band: 'theta',
               get data() { return this.sets[R().get()] || null; }, get err() { return this.errs[R().get()] || null; } };
@@ -101,10 +102,16 @@ window.MONO_FINAL = (function () {
       el('div', { class: 'row gap morefiles' }, [link('pdf', 'PDF'), link('svg', 'SVG'), link('png', 'PNG'), link('xlsx', 'Prism .xlsx'), link('pzfx', 'Prism .pzfx')])]);
   }
 
-  function table(id, head, rows) {
+  /* A table; with only what is significant (tab 11's switch), the rows it
+     marks, or a line where there are none. */
+  function table(id, head, rows, none, whole) {
+    const k = whole ? { rows } : O().rows(el, rows, none);
+    if (k.none) return k.none;
     return el('div', { class: 'tablewrap' }, el('table', { class: 'moretable', id }, [
-      el('thead', {}, el('tr', {}, head.map((t) => el('th', { text: t })))), el('tbody', {}, rows)]));
+      el('thead', {}, el('tr', {}, head.map((t) => el('th', { text: t })))), el('tbody', {}, k.rows)]));
   }
+  /* A figure marked as passing, or any figure while everything shows. */
+  const shows = (f) => !O().get() || passOf(f);
 
   /* ---------------- the top ---------------- */
   function intro(D) {
@@ -141,7 +148,13 @@ window.MONO_FINAL = (function () {
         .concat(CONTRASTS.map((c) => { const r = (x.contrasts || {})[c[0]] || {}; return el('td', { text: r.diff == null ? 'n/a' : db(r.diff) + ', ' + pSay(r.p) + ', q ' + n3(r.q) + star(r) }); }))
         .concat([el('td', { class: 'weakcell', text: x.spf ? pSay(x.spf.p) : 'n/a' })]));
     });
-    const figs = ((D.figures || {}).power || []).filter((f) => f.band === P.band);
+    // a region's figure stays with its row: its interaction or any of its contrasts (all its stars)
+    const rowPasses = (x) => !!x && (F().passes(x.sp) || CONTRASTS.some((c) => F().passes((x.contrasts || {})[c[0]])));
+    const regionOf = (id) => per.find((x) => x && x.region === id);
+    const figs = ((D.figures || {}).power || []).filter((f) => f.band === P.band && (shows(f) || (f.kind === 'region' ? rowPasses(regionOf(f.region))
+      : per.some(rowPasses))));
+    const regionFigs = figs.filter((f) => f.kind === 'region');
+    const allFigs = figs.filter((f) => f.kind === 'all');
     const T = (D.tiers || {})[P.band] || {};
     const tierRows = [['t1', 'Tier 1 · 2 × 3 × 5'], ['t2', 'Tier 2 · × frequency']].flatMap(([t, say]) => Object.entries((T[t] || {}).key || {}).map(([name, k]) => {
       const lm = k.lmm || {};
@@ -154,15 +167,16 @@ window.MONO_FINAL = (function () {
     return card('finalpower', 'Within-region power · ' + (P.band === 'theta' ? 'Theta 5–12 Hz' : 'Gamma 30–90 Hz'), 'final.power', [
       el('p', { text: 'Did the cues change power inside the regions differently on Precon4 than on Precon1? First every region in one model (tiers 1 and 2), then each region on its own (tiers 3a and 3b).' }),
       el('h3', { class: 'moresub', text: 'Every region together (tiers 1 and 2)' }),
-      table('finaltiertable', ['Tier', 'Term', 'GEE', 'Mixed model', 'Rats'], tierRows),
+      table('finaltiertable', ['Tier', 'Term', 'GEE', 'Mixed model', 'Rats'], tierRows, 'No key term passes in tier 1 or 2 on this side of the switch.'),
       el('p', { class: 'small muted', text: 'Corrected across the tier’s two models (theta and gamma). Terms of more than 2 df cannot use the GEE’s robust errors with 8 rats; the mixed model (random intercepts for the rat, its regions and their days) is the one to read for them.' }),
       el('h3', { class: 'moresub', text: 'Each region on its own (tiers 3a and 3b)' }),
       el('p', { class: 'small muted', text: 'Session × Period on 2 df (robust), then the three planned contrasts, each a change in dB; each corrected across the ten per-region models of its tier (five regions × two bands).' }),
-      table('finalpowertable', ['Region', 'Rats', 'Session × Period, χ²(2)'].concat(CONTRASTS.map((c) => 'Session × (' + c[1].toLowerCase() + ')')).concat(['× Frequency (model-based)']), rows),
-      el('h3', { class: 'moresub', text: 'Each region alone' }),
-      el('div', { class: 'morefigs' }, figs.filter((f) => f.kind === 'region').map((f) => figCard(f, regionSay(D, f.region)))),
-      el('h3', { class: 'moresub', text: 'Every region, the plan’s layout' }),
-      el('div', {}, figs.filter((f) => f.kind === 'all').map((f) => figCard(f, 'Every region')))]);
+      table('finalpowertable', ['Region', 'Rats', 'Session × Period, χ²(2)'].concat(CONTRASTS.map((c) => 'Session × (' + c[1].toLowerCase() + ')')).concat(['× Frequency (model-based)']), rows,
+            'No region passes, nor any of its three contrasts, on this side of the switch.'),
+      regionFigs.length ? el('h3', { class: 'moresub', text: 'Each region alone' }) : null,
+      regionFigs.length ? el('div', { class: 'morefigs' }, regionFigs.map((f) => figCard(f, regionSay(D, f.region)))) : null,
+      allFigs.length ? el('h3', { class: 'moresub', text: 'Every region, the plan’s layout' }) : null,
+      allFigs.length ? el('div', {}, allFigs.map((f) => figCard(f, 'Every region'))) : null]);
   }
 
   /* ---------------- FOOOF ---------------- */
@@ -175,8 +189,8 @@ window.MONO_FINAL = (function () {
     }))));
     return card('finalfooof', 'Oscillation against background (FOOOF)', 'final.fooof', [
       el('p', { text: 'A spectrum is a sloping background (1/f) plus peaks. A change in power can be either; FOOOF separates them. Session × Period for each part, in each region.' }),
-      table('finalfoooftable', ['Session × Period'].concat(D.regions.map((r) => r.say)), rows),
-      el('div', {}, ((D.figures || {}).fooof || []).map((f) => figCard(f, 'Every region')))]);
+      table('finalfoooftable', ['Session × Period'].concat(D.regions.map((r) => r.say)), rows, 'No measure changes in any region on this side of the switch.'),
+      el('div', {}, (O().get() && !rows.some((tr) => tr.querySelector('.sigcell')) ? [] : ((D.figures || {}).fooof || [])).map((f) => figCard(f, 'Every region')))]);
   }
 
   /* ---------------- Granger and PAC on the hits ---------------- */
@@ -194,16 +208,16 @@ window.MONO_FINAL = (function () {
     const pRows = Pm.map((x) => el('tr', { class: F().passes(x.le) ? 'sig' : '' }, [
       el('th', { text: regionSay(D, x.region) }), el('td', { text: String(x.rats.length) }),
       el('td', { text: x.le && x.le.p != null ? '×' + n2(x.le.ratio) + ', ' + pSay(x.le.p) + ', q ' + n3(x.le.q) + star(x.le) : 'n/a' })]));
-    const gF = ((D.figures || {}).granger || []).filter((f) => f.in && f.in[m]);
-    const pF = ((D.figures || {}).pac || []).filter((f) => f.in && f.in[m]);
+    const gF = ((D.figures || {}).granger || []).filter((f) => f.in && f.in[m] && shows(f));
+    const pF = ((D.figures || {}).pac || []).filter((f) => f.in && f.in[m] && shows(f));
     return card('finalfollow', 'On tab 11’s results: which leads, and theta–gamma coupling', 'final.follow', [
       el('p', { id: 'finalhits', text: hits.length ? 'Tab 11’s results on this side of the switch: ' + hits.map((h) => PAIRS[h.pair] + ' (' + h.band + ')').join(', ') + '.'
         : 'Nothing in tab 11 passes on this side of the switch, so there is nothing to follow up.' }),
       gRows.length ? el('h3', { class: 'moresub', text: 'Which region leads (Granger), Late ÷ Early' }) : null,
-      gRows.length ? table('finalgrangertable', ['Pair', 'Rats', 'One way', 'The other', 'Session × Direction'], gRows) : null,
+      gRows.length ? table('finalgrangertable', ['Pair', 'Rats', 'One way', 'The other', 'Session × Direction'], gRows, 'Neither direction changes in any of these pairs on this side of the switch.') : null,
       gF.length ? el('div', { class: 'morefigs' }, gF.map((f) => figCard(f, PAIRS[f.pair] + ', ' + f.band))) : null,
       pRows.length ? el('h3', { class: 'moresub', text: 'Theta–gamma coupling within each region, Late ÷ Early' }) : null,
-      pRows.length ? table('finalpactable', ['Region', 'Rats', 'Modulation index'], pRows) : null,
+      pRows.length ? table('finalpactable', ['Region', 'Rats', 'Modulation index'], pRows, 'Coupling changes in none of these regions on this side of the switch.') : null,
       pF.length ? el('div', { class: 'morefigs' }, pF.map((f) => figCard(f, regionSay(D, f.region)))) : null]);
   }
 
@@ -226,7 +240,8 @@ window.MONO_FINAL = (function () {
     });
     return card('finalrobust', 'Does it hold? Every result, tabs 11 and 12', 'more.robust', [
       el('p', { text: 'Each result that passes on this side of the switch, fitted again without each rat in turn, and in a linear mixed model. Solid: it holds both ways. Shaky: one of the two. Fragile: neither; read it as a lead.' }),
-      body.length ? table('finalrobusttable', ['Result', 'GEE', 'Leave one rat out', 'Linear mixed model', 'Verdict'], body)
+      // already only what passes; its .sig marks "solid", so the switch must not filter it again
+      body.length ? table('finalrobusttable', ['Result', 'GEE', 'Leave one rat out', 'Linear mixed model', 'Verdict'], body, null, true)
         : el('p', { class: 'muted', text: 'Nothing passes on this side of the switch.' })]);
   }
 
@@ -239,8 +254,8 @@ window.MONO_FINAL = (function () {
     });
     return card('finalside', 'Side question (not for Joe): gamma with every trial its own row', 'final.side', [
       el('p', { text: 'Is there a gamma effect if every trial is coded on its own, rather than pooled into one value a session? Each trial’s own coherence is a row; the rat is still the cluster.' }),
-      table('finalsidetable', ['Pair', 'Trials', 'Late ÷ Early (95% interval)'], rows),
-      el('div', {}, ((D.figures || {}).side || []).map((f) => figCard(f, 'Every pair')))], 'finalnotjoe');
+      table('finalsidetable', ['Pair', 'Trials', 'Late ÷ Early (95% interval)'], rows, 'No pair passes on this side of the switch.'),
+      el('div', {}, (O().get() && !rows.some((tr) => tr.classList.contains('sig')) ? [] : ((D.figures || {}).side || [])).map((f) => figCard(f, 'Every pair')))], 'finalnotjoe');
   }
 
   /* ---------------- the methods ---------------- */
@@ -280,11 +295,12 @@ window.MONO_FINAL = (function () {
     const ex = card('finalexport', 'Files', null, [
       el('p', { text: 'Every row each model saw, every test, SPSS’s coefficients (the last level of each factor the reference, as SPSS prints them), scripts for R and SPSS, and the methods.' }),
       el('div', { class: 'row gap' }, (D.exports || []).map((n) => el('a', { class: 'more-btn small', href: EXPORT(n), download: n, text: n })))]);
-    pane.replaceChildren(intro(D), el('div', { class: 'morebar' }, [tiles, F().node(el, 'finalfdr'), R().node(el, 'finalrats')]),
+    pane.replaceChildren(intro(D), el('div', { class: 'morebar' }, [tiles, F().node(el, 'finalfdr'), R().node(el, 'finalrats'), O().node(el, 'finalonly')]),
       power(D), fooof(D), follow(D), robust(D, EM), side(D), methods(D), ex);
   }
 
   document.addEventListener('mono:fdr', () => { if ($('finalpane') && !$('finalpane').hidden) render(); });
+  document.addEventListener('mono:only', () => { if ($('finalpane') && !$('finalpane').hidden) render(); });
   document.addEventListener('mono:rats', () => {
     if (!$('finalpane') || $('finalpane').hidden) return;
     if (P.data && R().get() in P.em) render(); else load();

@@ -745,6 +745,67 @@ table.moretable td.sigcell { color: var(--ink); font-weight: 700; }
 .finalmsec { border-top: 1px solid var(--line); padding: 6px 0; }
 .finalmsec summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .finalmsec p { max-width: 95ch; overflow-wrap: anywhere; line-height: 1.5; font-size: 13.5px; margin: 6px 0; }
+/* 13 · Sanity check report (js/monolith_sanity.js). A status is its word
+   and its shape first; the colour only repeats them. */
+#sanitypane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
+#sanitypane[hidden] { display: none; }
+#sanitypane .card > p { max-width: 90ch; overflow-wrap: anywhere; }
+#sanitypane .tablewrap { max-width: 100%; overflow-x: auto; }
+#sanitypane table.moretable td { overflow-wrap: anywhere; }
+#sanitypane [data-s="ok"] { --sc: var(--ok); }
+#sanitypane [data-s="warn"] { --sc: var(--focus); }
+#sanitypane [data-s="fail"] { --sc: var(--up); }
+#sanitypane [data-s="info"] { --sc: var(--down); }
+.sanchip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; line-height: 18px; padding: 1px 9px 1px 5px;
+  border-radius: 11px; border: 1px solid var(--sc); background: color-mix(in srgb, var(--sc) 13%, var(--surface)); color: var(--ink); white-space: nowrap; }
+.sanicon { width: 14px; height: 14px; flex: none; display: block; }
+.sanicon .f { fill: var(--sc); }
+.sanicon path.k { fill: none; stroke: var(--surface); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sanicon circle.k { fill: var(--surface); stroke: var(--surface); stroke-width: 1; }
+.card.sanverdict { border-left: 6px solid var(--sc); }
+.sanword { display: flex; align-items: center; gap: 10px; font-size: 24px; line-height: 1.2; font-weight: 700; margin: 4px 0 6px; }
+.sanword .sanicon { width: 30px; height: 30px; animation: sanpop .45s cubic-bezier(.2, 1.4, .4, 1) both; }
+.sansay { font-size: 15px; color: var(--ink-2); }
+.sancounts { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 8px 0 10px; }
+.sancounts .sanchip { font-size: 13px; padding: 2px 10px 2px 6px; }
+.santodo ul { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.santodo .linkish { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13.5px; }
+.santodo .linkish:hover { text-decoration: underline; }
+.sanrun { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-top: 6px; }
+.sanrun .more-btn { margin-top: 0; }
+.santally { color: var(--ink-3); }
+ol.sanchecks { list-style: none; margin: 0; padding: 0; }
+.sanrow { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 4px 12px; padding: 9px 4px; border-top: 1px solid var(--line); border-radius: 4px; }
+.sanrow.fresh { animation: sanin .32s ease-out both; animation-delay: calc(var(--i, 0) * 28ms); }
+.sanrow.lit { animation: sanlit 1.4s ease-out; }
+.sanstat { padding-top: 1px; }
+.santitle { font-weight: 600; margin: 0; overflow-wrap: anywhere; }
+.sanid { font: 600 11.5px var(--mono); color: var(--ink-3); margin-right: 7px; }
+.sanresult { margin: 2px 0 0; color: var(--ink-2); overflow-wrap: anywhere; max-width: 90ch; }
+.sanmore { margin-top: 4px; }
+.sanmore[open] { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 10px; }
+.sanmore p, .sanmore li { overflow-wrap: anywhere; font-size: 13px; max-width: 90ch; }
+.sanmore p { margin: 6px 0; }
+.sandetail { margin: 4px 0; padding-left: 1.2em; }
+ol.sanregen { padding-left: 1.5em; margin: 8px 0; }
+ol.sanregen li { margin: 0 0 12px; }
+.sanstep { margin: 0 0 3px; overflow-wrap: anywhere; }
+.sancmd { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+.sancmd code, .sanblock code, .sanfiles code { font: 12px/1.45 var(--mono); overflow-wrap: anywhere; }
+.sancmd code { flex: 1 1 260px; min-width: 0; display: block; background: var(--chip); border-radius: 6px; padding: 5px 8px; white-space: pre-wrap; }
+.sancmd .more-btn { margin-top: 0; }
+pre.sanblock { margin: 6px 0; background: var(--chip); border-radius: 6px; padding: 6px 8px; white-space: pre-wrap; max-width: 100%; }
+dl.sankv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 14px; font-size: 13px; margin: 4px 0 8px; }
+dl.sankv dt { color: var(--ink-3); }
+dl.sankv dd { margin: 0; overflow-wrap: anywhere; font: 12.5px var(--mono); }
+.sandirtysay { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; overflow-wrap: anywhere; }
+#sandirty.small { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.sanfiles { margin: 2px 0 8px; padding-left: 1.2em; }
+@media (max-width: 560px) { .sanrow { grid-template-columns: minmax(0, 1fr); } .sanword { font-size: 21px; } }
+@keyframes sanin { from { opacity: .35; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@keyframes sanpop { from { transform: scale(.6) rotate(-12deg); } to { transform: none; } }
+@keyframes sanlit { from { background: color-mix(in srgb, var(--focus) 22%, transparent); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .sanrow.fresh, .sanrow.lit, .sanword .sanicon { animation: none; } }
 /* 7 · Narrowing down (js/monolith_narrow.js) */
 #narrowpane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
 #narrowpane[hidden] { display: none; }
@@ -854,6 +915,7 @@ svg.narbar { display: block; }
 <script src="js/monolith_joeexport.js"></script>
 <script src="js/monolith_evenmore.js"></script>
 <script src="js/monolith_final.js"></script>
+<script src="js/monolith_sanity.js"></script>
 <script src="js/monolith_tour.js"></script>
 <script src="js/tour.js"></script>
 </body>
