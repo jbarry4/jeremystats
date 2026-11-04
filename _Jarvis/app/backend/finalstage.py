@@ -161,6 +161,21 @@ def region_rats(PT, ri):
     return out
 
 
+def power_rows(PT, band, ri, rats):
+    """One region's rows for tier 3: band dB in each period, and each bin's."""
+    r = REGIONS[ri]
+    rows, rb = [], []
+    for rat in rats:
+        for d in E.DAYS:
+            for w in E.PERIODS:
+                rows.append({"rat": rat, "day": d, "period": E.PERIOD_CODE[w], "region": r, "y": float(PT["band"][w][band][(rat, d)][ri])})
+                for fi, (f, _m) in enumerate(E.bins_of(band)):
+                    v = PT["bins"][w][band][(rat, d)][ri, fi]
+                    if np.isfinite(v):
+                        rb.append({"rat": rat, "day": d, "period": E.PERIOD_CODE[w], "region": r, "f": "f%02d" % fi, "hz": f, "y": float(v)})
+    return rows, rb
+
+
 def power_models(PT, band):
     """Tier 3 (J Charles, 2026-11-02), for each region on its own: 3a, 2 x 3
     on band dB (Session x Period and its three planned contrasts); 3b, 2 x
@@ -172,15 +187,7 @@ def power_models(PT, band):
         if len(rats) < E.MIN_RATS:
             per.append(None)
             continue
-        rows, rb = [], []
-        for rat in rats:
-            for d in E.DAYS:
-                for w in E.PERIODS:
-                    rows.append({"rat": rat, "day": d, "period": E.PERIOD_CODE[w], "region": r, "y": float(PT["band"][w][band][(rat, d)][ri])})
-                    for fi, (f, _m) in enumerate(E.bins_of(band)):
-                        v = PT["bins"][w][band][(rat, d)][ri, fi]
-                        if np.isfinite(v):
-                            rb.append({"rat": rat, "day": d, "period": E.PERIOD_CODE[w], "region": r, "f": "f%02d" % fi, "hz": f, "y": float(v)})
+        rows, rb = power_rows(PT, band, ri, rats)
         df, dfb = E._frame(rows), E._frame(rb)
         ts, err = E._safe(lambda: E.terms(E.gee(df, "y ~ C(day, Sum) * C(period, Sum)", "normal")))
         ts2, err2 = E._safe(lambda: E.terms(E.gee(dfb, "y ~ C(day, Sum) * C(period, Sum) * C(f, Sum)", "normal")))
@@ -325,6 +332,20 @@ def fooof_tables(PT):
     return out
 
 
+def fooof_rows(FT, key, r):
+    """One parameter's rows in one region: the rats with a fit in all six
+    session x period cells."""
+    rows = []
+    for rat in sorted({k[0] for k in FT if k[3] == r}):
+        cells = [FT.get((rat, d, w, r), {}).get(key) for d in E.DAYS for w in E.PERIODS]
+        if not all(c is not None and np.isfinite(c) for c in cells):
+            continue
+        for d in E.DAYS:
+            for w in E.PERIODS:
+                rows.append({"rat": rat, "day": d, "period": E.PERIOD_CODE[w], "region": r, "y": float(FT[(rat, d, w, r)][key])})
+    return rows
+
+
 def fooof_models(FT):
     """Session x Period (and its contrasts) on each parameter in each region,
     corrected across the five regions for each parameter."""
@@ -332,15 +353,7 @@ def fooof_models(FT):
     for key, _say, _u in FOOOF_PARAMS:
         per = []
         for r in REGIONS:
-            rows = []
-            rats = sorted({k[0] for k in FT if k[3] == r})
-            for rat in rats:
-                cells = [FT.get((rat, d, w, r), {}).get(key) for d in E.DAYS for w in E.PERIODS]
-                if not all(c is not None and np.isfinite(c) for c in cells):
-                    continue
-                for d in E.DAYS:
-                    for w in E.PERIODS:
-                        rows.append({"rat": rat, "day": d, "period": E.PERIOD_CODE[w], "region": r, "y": float(FT[(rat, d, w, r)][key])})
+            rows = fooof_rows(FT, key, r)
             n = len({x["rat"] for x in rows})
             if n < E.MIN_RATS:
                 per.append({"region": r, "rats": sorted({x["rat"] for x in rows}), "error": "fewer than %d rats with a fit in all six cells" % E.MIN_RATS,
@@ -814,7 +827,7 @@ def fig_side(side, EM, fid, mode):
             ax.plot([le["lo"], le["hi"]], [row - 0.12, row - 0.12], color=st["color"], lw=0.9)
             ax.plot([le["ratio"]], [row - 0.12], marker="o", ms=3, color=st["color"], mfc=st["mfc"], mew=0.6)
             if E.sig(le, mode):
-                ax.text(le["hi"], row - 0.12, " *", va="center", fontsize=7, fontweight="bold", color=st["color"])
+                ax.text(le["hi"], row - 0.12, " *", va="center", fontsize=10, fontweight="bold", color=st["color"])
         a2 = ((gB["phase1"]["pairs"][p] or {}).get("a2") or {})
         if a2.get("ratio") is not None:
             ax.plot([a2["ratio"]], [row + 0.18], marker="D", ms=2.6, color="#1A1A1A", mfc="white", mew=0.6)

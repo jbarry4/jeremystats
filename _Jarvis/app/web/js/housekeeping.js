@@ -741,6 +741,26 @@ BARRY.views.housekeeping = (function () {
         ...(r.quality.reasons || []).map(
           (x) => el('p', { class: 'hint', text: x })),
         attachedNote(r.attached),
+        /* A recording with data and some folders of headers beside it is
+           not retired -- that hid five real recordings from every tool.
+           Its empty folders are taken off it instead. */
+        r.quality.verdict === 'stubs' ? el('button', {
+          class: 'btn ghost sm', type: 'button',
+          text: 'Drop the ' + (r.stubs || []).length + ' empty folder'
+              + ((r.stubs || []).length === 1 ? '' : 's'),
+          onclick: async (e) => {
+            const b = e.currentTarget;
+            b.disabled = true;
+            try {
+              const out = await apiPost('/api/registry/drop-paths',
+                { gid: r.gid, paths: r.stubs || [] });
+              b.textContent = 'Dropped ' + (out.dropped || []).length;
+            } catch (err) {
+              b.disabled = false;
+              toast(err.message, 'err', 8000);
+            }
+          },
+        }) : null,
       ].filter(Boolean)),
       el('span', { class: 'flagchip bad', text: r.quality.verdict }),
     ])));
@@ -777,7 +797,12 @@ BARRY.views.housekeeping = (function () {
             try {
               const out = await apiPost('/api/registry/retire',
                 { gids, reason: 'no data in the folder' });
-              toast('Retired ' + (out.retired || []).length + '.', 'ok');
+              const no = out.refused || [];
+              toast('Retired ' + (out.retired || []).length + '.'
+                    + (no.length ? '  Kept ' + no.length + ', which hold '
+                       + 'data: ' + no.map((x) => (x.label || x.gid)
+                         + ' (' + x.why + ')').join('; ') : ''),
+                    no.length ? 'warn' : 'ok', no.length ? 12000 : 4000);
               closeModal();
               await load(true);
             } catch (e) { toast(e.message, 'err', 8000); }

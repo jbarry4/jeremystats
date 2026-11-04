@@ -152,7 +152,11 @@ _PUB = threading.local()
 
 
 def pub():
-    """The publication pass on this thread ({record, lims, spans, dir}), or None."""
+    """The publication pass on this thread ({record, lims, spans, dir, axes,
+    cur, cut}), or None. `axes`: "shared" (one axis for every panel of a
+    kind in the set of rats being drawn) or "own" (each figure fitted to
+    itself); `cur` the figure being drawn; `cut` the figures whose own data
+    reach past their shared axis."""
     return getattr(_PUB, "state", None)
 
 
@@ -166,24 +170,46 @@ def using_pub(state):
         _PUB.state = was
 
 
+def _reasonable(lims):
+    """One axis for every panel of a kind: their union, unless a panel
+    reaches far past the rest (one pair's or rat's extremes): then the
+    others' reach, half again, and that panel cut off. Reaches are measured
+    from the panels' median midpoint, each way."""
+    los = [a for a, _b in lims]
+    his = [b for _a, b in lims]
+    lo, hi = min(los), max(his)
+    if len(lims) < 4:
+        return lo, hi
+    mid = float(np.median([(a + b) / 2.0 for a, b in lims]))
+    up = np.percentile([b - mid for b in his], 75)
+    dn = np.percentile([mid - a for a in los], 75)
+    return max(lo, mid - 1.5 * dn), min(hi, mid + 1.5 * up)
+
+
 def _shared(key, lo, hi):
-    """A panel's limits: its own outside the publication pass; there, the
-    union of every panel drawn under `key` (recorded on the first pass)."""
+    """A panel's limits: its own outside the publication pass, and in its
+    "own" axes; in its shared axes, one reasonable axis for every panel
+    drawn under `key` in this set of rats (recorded on the first pass)."""
     s = pub()
     if not s or lo is None or hi is None or not (np.isfinite(lo) and np.isfinite(hi)):
         return lo, hi
     if s["record"]:
-        a, b = s["lims"].get(key, (lo, hi))
-        s["lims"][key] = (min(a, lo), max(b, hi))
+        s["lims"].setdefault(key, []).append((lo, hi))
         return lo, hi
-    return s["lims"].get(key, (lo, hi))
+    if s.get("axes") == "own" or key not in s["lims"]:
+        return lo, hi
+    a, b = _reasonable(s["lims"][key])
+    pad = 0.05 * (hi - lo)                         # autoscale's margin: data reach about this far inside
+    if b < hi - pad or a > lo + pad:
+        s.setdefault("cut", set()).add(s.get("cur"))
+    return a, b
 
 
 def _spanned(key, sub, lo, hi):
     """As _shared, for panels whose levels differ by `sub` (a region's dB):
     each centred on its own levels, every one as tall as the tallest."""
     s = pub()
-    if not s or not (np.isfinite(lo) and np.isfinite(hi)):
+    if not s or not (np.isfinite(lo) and np.isfinite(hi)) or (not s["record"] and s.get("axes") == "own"):
         return lo, hi
     subs = s["spans"].setdefault(key, {})
     if s["record"]:
@@ -214,6 +240,14 @@ def _save_pub(fig, name):
         p = os.path.join(s["dir"], "%s.%s" % (name, ext))
         fig.savefig(p, dpi=dpi, bbox_inches="tight", pad_inches=0.04)
         out[ext] = os.path.basename(p)
+    # the PDF again, its fonts subset and its streams packed (about 13% smaller: Joe's site has a size limit)
+    import fitz
+    p = os.path.join(s["dir"], name + ".pdf")
+    d = fitz.open(p)
+    d.subset_fonts()
+    d.save(p + ".tmp", garbage=4, deflate=True)
+    d.close()
+    os.replace(p + ".tmp", p)
     return out
 
 
@@ -671,8 +705,9 @@ def lmm_test(df, formula, has, log=True, exclude=()):
 
 def sig(x, mode, pk="p", qk="q"):
     """Does a test pass under the switch: FDR's q (on) or the raw p (off).
-    Never, in the publication pass: Joe's figures carry no stars."""
-    if not x or pub():
+    In the publication pass too (2026-11-04: Joe's figures carry their
+    stars again, from the same tests their statistics print)."""
+    if not x:
         return False
     v = x.get(qk) if mode == "fdr" else x.get(pk)
     return v is not None and v < ALPHA
@@ -725,9 +760,9 @@ def _safe(fn, *a):
         return None, str(exc)
 
 
-def phase1(T, band):
-    """A1 (Session x Pair on the band), A2 (Session in each pair, FDR), B1
-    (Session x Pair x Frequency), B2 (Session x Frequency in each pair)."""
+def rows_phase1(T, band):
+    """Phase 1's pairs (those with enough rats) and its rows: band
+    coherence in the cue pair, and each frequency bin's (unfiltered)."""
     keep = [p for p in range(len(PAIRS)) if len(pair_rats(T, p)) >= MIN_RATS]
     rows, rows_b = [], []
     for p in keep:
@@ -737,6 +772,13 @@ def phase1(T, band):
                 for fi, (f, _m) in enumerate(bins_of(band)):
                     rows_b.append({"rat": r, "day": d, "pair": "p%02d" % p, "f": "f%02d" % fi, "hz": f,
                                    "y": float(T["bins"]["pair"][band][(r, d)][p, fi])})
+    return keep, rows, rows_b
+
+
+def phase1(T, band):
+    """A1 (Session x Pair on the band), A2 (Session in each pair, FDR), B1
+    (Session x Pair x Frequency), B2 (Session x Frequency in each pair)."""
+    keep, rows, rows_b = rows_phase1(T, band)
     df, dfb = _frame(rows), _frame(rows_b)
     dfb = dfb[np.isfinite(dfb["y"]) & (dfb["y"] > 0)]
     a1, a1_err = _safe(lambda: terms(gee(df, "y ~ C(day, Sum) * C(pair, Sum)")))
@@ -766,10 +808,8 @@ def _term_p(ts, name):
     return t["p"] if t else None
 
 
-def phase2(T, band):
-    """The matched trials (all of them): cue 1 against cue 2 on each day.
-    Omnibus Session x Cue x Pair; in each pair Session x Cue (FDR), and the
-    cue effect on each day."""
+def rows_phase2(T, band):
+    """Phase 2's pairs and rows: band coherence in cue 1 and in cue 2."""
     keep = [p for p in range(len(PAIRS)) if len(pair_rats(T, p)) >= MIN_RATS]
     rows = []
     for p in keep:
@@ -779,6 +819,21 @@ def phase2(T, band):
                     v = T["band"][cue][band].get((r, d))
                     if v is not None and np.isfinite(v[p]):
                         rows.append({"rat": r, "day": d, "cue": cue, "pair": "p%02d" % p, "y": float(v[p])})
+    return keep, rows
+
+
+def session_cue(x):
+    """A phase 2 pair's Session x Cue as a test {p, q}: its p is a term of
+    the pair's model, its q the pair record's (2026-11-04: reading the record
+    alone has no p, so nothing ever passed uncorrected)."""
+    return {"p": _term_p((x or {}).get("terms"), "Session × Cue"), "q": (x or {}).get("q")} if x else None
+
+
+def phase2(T, band):
+    """The matched trials (all of them): cue 1 against cue 2 on each day.
+    Omnibus Session x Cue x Pair; in each pair Session x Cue (FDR), and the
+    cue effect on each day."""
+    keep, rows = rows_phase2(T, band)
     df = _frame(rows)
     om, om_err = _safe(lambda: terms(gee(df, "y ~ C(day, Sum) * C(cue, Sum) * C(pair, Sum)")))
     per = []
@@ -841,10 +896,9 @@ def fdr_across(items, getp, put):
             put(x, q)
 
 
-def phase3(T, band):
-    """Coherence in the 10 s baseline, cue 1 and cue 2 (pooled spectra, the
-    same pairs): Session x Period in each pair (2 df, robust) and its three
-    planned contrasts, each corrected across the ten pairs."""
+def rows_phase3(T, band):
+    """Phase 3's pairs and rows: band coherence in the 10 s baseline, cue 1
+    and cue 2."""
     rows = []
     keep = [p for p in range(len(PAIRS)) if len(pair_rats(T, p)) >= MIN_RATS]
     for p in keep:
@@ -854,6 +908,14 @@ def phase3(T, band):
                     v = T["band"][w][band].get((r, d))
                     if v is not None and np.isfinite(v[p]) and v[p] > 0:
                         rows.append({"rat": r, "day": d, "period": PERIOD_CODE[w], "pair": "p%02d" % p, "y": float(v[p])})
+    return keep, rows
+
+
+def phase3(T, band):
+    """Coherence in the 10 s baseline, cue 1 and cue 2 (pooled spectra, the
+    same pairs): Session x Period in each pair (2 df, robust) and its three
+    planned contrasts, each corrected across the ten pairs."""
+    keep, rows = rows_phase3(T, band)
     df = _frame(rows)
     per = []
     for p in range(len(PAIRS)):
@@ -1000,6 +1062,13 @@ def draw_ring(ax, deltas, qs, focus=None, vkey=None):
             # the curve's midpoint, with the sign of the change
             cx, cy = 0.25 * x0 + 0.5 * mx + 0.25 * x1, 0.25 * y0 + 0.5 * my + 0.25 * y1
             ax.text(cx, cy, "▲" if v > 0 else "▼", fontsize=4, ha="center", va="center", color=st["color"], zorder=3)
+            if passed:
+                # its test passes: a star on the line itself, a third of the way along (2026-11-04)
+                t = 0.3
+                sx = (1 - t) ** 2 * x0 + 2 * (1 - t) * t * mx + t ** 2 * x1
+                sy = (1 - t) ** 2 * y0 + 2 * (1 - t) * t * my + t ** 2 * y1
+                ax.plot([sx], [sy], marker="*", markersize=7.5, color=st["color"], markeredgecolor="white", markeredgewidth=0.6,
+                        linestyle="none", zorder=5)
     for k, (x, y) in enumerate(pos):
         on = focus is None or k in PAIRS[focus]
         ax.scatter([x], [y], s=18, c="#1A1A1A" if on and focus is not None else "white", edgecolors="#1A1A1A", linewidths=0.5, zorder=4)
@@ -1208,7 +1277,7 @@ def fig_pooled_phase1(T, band, res, deltas, qs, fid, mode="fdr"):
         ax.errorbar([0, 1], mu, yerr=se, color=st["color"], ls=st["ls"], lw=0.9, marker="o", ms=2.2, mfc=st["mfc"], mew=0.6,
                     capsize=1.2, elinewidth=0.5)
         if qs[p]:
-            ax.text(1.12, mu[1], "*", color=st["color"], fontsize=7, va="center", fontweight="bold")
+            ax.text(1.12, mu[1], "*", color=st["color"], fontsize=10, va="center", fontweight="bold")
     ax.set_xticks([0, 1])
     ax.set_xticklabels(["Early", "Late"])
     ax.set_xlim(-0.3, 1.35)
@@ -1327,8 +1396,8 @@ def fig_pooled_phase2(T, band, res, fid, mode="fdr"):
         ax = _ax(fig, 16 + 52 * di, 16, 40, 44, H, W)
         for p in keep:
             mu, _se_ = _cue_panel(ax, T, band, p, res["pairs"][p]["rats"], d, single=False)
-            if di == 1 and sig(res["pairs"][p], mode):
-                ax.text(1.12, mu[1], "*", color=COLORS[p], fontsize=7, va="center", fontweight="bold")
+            if di == 1 and sig(session_cue(res["pairs"][p]), mode):
+                ax.text(1.12, mu[1], "*", color=COLORS[p], fontsize=10, va="center", fontweight="bold")
         if di == 0:
             ax.set_ylabel("Mean %s coherence" % band, fontsize=5.5, labelpad=1)
         axes.append(ax)
@@ -1338,7 +1407,7 @@ def fig_pooled_phase2(T, band, res, fid, mode="fdr"):
     for ax in axes:
         ax.set_ylim(lo, hi)
     lx = _ax(fig, 116, 14, 30, 50, H, W)
-    _legend_rows(lx, [(p, "%s%s" % (PAIR_SAY[p], "  *" if sig(res["pairs"][p], mode) else ""))
+    _legend_rows(lx, [(p, "%s%s" % (PAIR_SAY[p], "  *" if sig(session_cue(res["pairs"][p]), mode) else ""))
                       for p in keep])
     _note(fig, 150 / W, 1 - 16 / H, "Session × Cue × Pair", fontsize=6, fontweight="bold", va="top")
     for k, s in enumerate(_terms_lines(res["omnibus"], res["error"])):
@@ -1455,7 +1524,7 @@ def fig_pooled_phase3(T, band, res, fid, mode="fdr"):
             ax.plot([c["lo"], c["hi"]], [row, row], color=st["color"], lw=0.9, ls=st["ls"])
             ax.plot([c["ratio"]], [row], marker="o", ms=3, color=st["color"], mfc=st["mfc"], mew=0.6)
             if sig(c, mode):
-                ax.text(c["hi"], row, " *", va="center", fontsize=7, fontweight="bold", color=st["color"])
+                ax.text(c["hi"], row, " *", va="center", fontsize=10, fontweight="bold", color=st["color"])
         ax.axvline(1.0, color="#1A1A1A", lw=0.5)
         ax.set_xscale("log")
         ax.set_xlim(*_shared(("p3.forest", band), *ax.get_xlim()))
@@ -1959,7 +2028,7 @@ def _build(days, progress, check, rs):
             fa, fr = both(lambda m, n: fig_pair_phase2(T, bid, p, st, n, m), fid)
             fa.update(_prism("fig_%s_prism" % fid, tables_pair2(T, bid, p, st["rats"]), "Figure %s" % fid))
             figs2.append({"id": fid, "kind": "pair", "phase": 2, "band": bid, "pair": p, "files": fa, "files_raw": fr,
-                          "legend": legend_pair2(bid, p, st), "passes": {m: sig(st, m) for m in MODES}})
+                          "legend": legend_pair2(bid, p, st), "passes": {m: sig(session_cue(st), m) for m in MODES}})
             sc = {"p": _term_p(st["terms"], "Session × Cue"), "q": st.get("q")}
             if sig(sc, "raw"):
                 sub = df2[df2["pair"] == "p%02d" % p]

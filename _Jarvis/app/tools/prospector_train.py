@@ -5,6 +5,10 @@
                                                 compare inputs, then the
                                                 leave-one-recording-out run
     python tools/prospector_train.py build      just the training set, counted
+    python tools/prospector_train.py choose <run> [bar]
+                                                make a run Prospector, the
+                                                one Panning sweeps with;
+                                                bar 0.99 unless said
 
 Three stages, each logged as it goes:
 
@@ -18,9 +22,11 @@ Three stages, each logged as it goes:
   4. FINAL    the best of those, leave one recording out (the user's call),
               the garbage bar set inside the training recordings; its run
               record goes to GUI_logs/prospector/runs, its model to
-              GUI_logs/.cache/prospector.
+              GUI_logs/prospector/models (both travel by git).
 
-Nothing here writes a label, a curation set or a bank version.
+`choose` then sets the run's Spike bar for the model on every recording and
+files it as Prospector (GUI_logs/prospector/model). Nothing here writes a
+label, a curation set or a bank version.
 """
 import json
 import os
@@ -58,7 +64,7 @@ def load_jarvis():
     log("loading Jarvis (for the recordings' openers)")
     from backend import app
     A = app
-    STORE = P.Store(A.LOGS_DIR)
+    STORE = P.Store(A.LOGS_DIR, A.STORE)
 
 
 def report_of_factory():
@@ -99,7 +105,7 @@ def build():
         log("    %-44s %s" % (k, tot[k]))
     for s in ds["skipped"]:
         log("  skipped %s -- %s" % (s["label"], s["why"]))
-    path = os.path.join(STORE.models, "dataset.json")
+    path = os.path.join(STORE.cache, "dataset.json")
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(ds, fh)
     return ds, tot
@@ -195,7 +201,7 @@ def main(argv):
                             "channels": "even"})
     log("  saved %s" % path)
     if out.get("held_out"):
-        hpath = os.path.join(STORE.models, rid + "_held_out.json")
+        hpath = os.path.join(STORE.cache, rid + "_held_out.json")
         with open(hpath, "w", encoding="utf-8") as fh:
             json.dump(out["held_out"], fh)
         log("  every event's held-out score: %s" % hpath)
@@ -211,5 +217,62 @@ def main(argv):
     return 0
 
 
+def choose(run_id, target):
+    """Make a finished run Prospector, its Spike bar set for the model on
+    every recording the way each test's bar was (`prospector.deploy_bar`),
+    from the same training set -- refused if that set has changed since."""
+    rec = STORE.get(run_id)
+    if not rec or not (rec.get("final") or {}).get("results"):
+        log("no finished run %s here" % run_id)
+        return 1
+    fin = rec["final"]
+    if repr(float(target)) not in (fin["results"].get("bars") or {}):
+        log("run %s was not measured at %s; its bars are %s"
+            % (run_id, target, sorted(fin["results"]["bars"])))
+        return 1
+    with open(os.path.join(STORE.cache, "dataset.json"), encoding="utf-8") as fh:
+        ds = json.load(fh)
+    had = {e["entry_id"]: e["version"] for e in rec["data"]["entries"]}
+    now = {e["entry_id"]: e["version"] for e in ds["entries"]}
+    if had != now:
+        log("the training set has changed since %s was trained; train again "
+            "rather than set its bar on other data" % run_id)
+        return 1
+    log("READ: from the cache")
+    data, failed = P.read_all(ds["entries"], A._aibeta_open, A.AIBETA,
+                              want_filt={"notch", "10_40", "5_100", "hp1"},
+                              want_spec=True, log=log, processes=READERS,
+                              logs_dir=A.LOGS_DIR)
+    if failed:
+        log("could not read %d recordings: %s" % (len(failed), failed))
+        return 1
+    log("BAR: %s, %d-way split of the %d recordings, above %g of the garbage"
+        % (fin["model"], fin["inner"], len(data), target))
+    bar, n_g = P.deploy_bar(data, fin["families"], fin["model"], target,
+                            inner=fin["inner"])
+    b = fin["results"]["bars"][repr(float(target))]
+    STORE.set_model(run_id, bar, target, prov=A.STORE.provenance(), how={
+        "inner": fin["inner"], "n_garbage": n_g,
+        "held_out": {k: b[k] for k in ("spike_called", "spike_recall",
+                                       "garbage_into_spike")}})
+    log("Prospector is %s: Spike at p >= %.4f (above %g of %d garbage "
+        "scores); on recordings it never saw that bar called %d Spike, "
+        "%.1f%% of the spikes, %d of them garbage"
+        % (run_id, bar, target, n_g, b["spike_called"],
+           100 * b["spike_recall"], b["garbage_into_spike"]))
+    return 0
+
+
+def entry(argv):
+    if argv[:1] == ["choose"]:
+        if len(argv) < 2:
+            print("python tools/prospector_train.py choose <run> [bar]")
+            return 2
+        load_jarvis()
+        return choose(argv[1], float(argv[2]) if len(argv) > 2
+                      else P.DEFAULT_TARGET)
+    return main(argv)
+
+
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(entry(sys.argv[1:]))

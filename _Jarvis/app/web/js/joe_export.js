@@ -91,6 +91,14 @@ window.JOE_EXPORT = (function () {
 .jx .jx-passlist { margin: 6px 0 4px; padding-left: 20px; font-size: 14px; }
 .jx .jx-passlist li { margin-bottom: 3px; }
 .jx .jx-msec { margin: 0 0 14px; }
+.jx [hidden] { display: none !important; }
+.jx .jx-san-row { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 4px 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.jx .jx-san-row .jx-badge { justify-self: start; }
+.jx .jx-badge.jx-san-ok { background: var(--jlit, #0072B2); border-color: var(--jlit, #0072B2); color: #fff; }
+.jx .jx-badge.jx-san-warn { border-color: var(--jcheck, #D55E00); color: var(--jcheck, #D55E00); }
+.jx .jx-badge.jx-san-fail { background: var(--jcheck, #D55E00); border-color: var(--jcheck, #D55E00); color: #fff; }
+.jx .jx-flag.jx-san-green { border-left-color: var(--jlit, #0072B2); background: color-mix(in srgb, var(--jlit, #0072B2) 9%, transparent); }
+.jx .jx-sanity code { overflow-wrap: anywhere; }
 .jx .jx-msec h3 { margin: 18px 0 6px; }
 @media (max-width: 640px) {
   .jx .jx-fig { grid-template-columns: minmax(0, 1fr); }
@@ -130,7 +138,11 @@ window.JOE_EXPORT = (function () {
     const out = new Map();
     const take = (f) => { if (f && !out.has(f.name)) out.set(f.name, f); };
     (part.files || []).forEach(take);
-    const fig = (fg) => { (fg.views || []).forEach((v) => v.files.forEach(take)); (fg.files || []).forEach(take); take(fg.prism); };
+    const fig = (fg) => {
+      (fg.views || []).forEach((v) => v.files.forEach(take));
+      ['files', 'files_raw', 'files_own', 'files_own_raw'].forEach((k) => (fg[k] || []).forEach(take));
+      take(fg.prism);
+    };
     for (const g of part.groups || []) g.figures.forEach(fig);
     for (const gs of Object.values(part.sets || {})) for (const g of gs) g.figures.forEach(fig);
     (part.figures || []).forEach(fig);
@@ -183,7 +195,23 @@ window.JOE_EXPORT = (function () {
 
   /* The correction switch (2026-10-30): Dickson's way and Part 2 come drawn
      both ways, and one switch at the top picks which every figure shows. */
-  const SW = { mode: 'fdr', figs: [], rs: 'all', setParts: [] };
+  const SW = { mode: 'fdr', figs: [], rs: 'all', setParts: [], only: false, after: [], axes: 'shared' };
+  const passOn = (t) => (t.pass && typeof t.pass === 'object' ? !!t.pass[SW.mode] : !!t.pass);
+
+  /* Only what is significant (2026-11-04): a figure of the publication set
+     when its main test, or any test of a corrected family it stars (a pair's
+     or region's own), passes under the switch; the same set as its part's
+     list. One of the figures section's when it passes every one of its tests. */
+  const sigPub = (fg) => !!(fg.sig && fg.sig[SW.mode]) || (fg.tests || []).some((t) => t.family && t.pass && t.pass[SW.mode]);
+  const sigFig = (fg) => !!(fg.tests && fg.tests.length && fg.tests.every(passOn));
+  const offHere = (fg) => !!(fg.show_in && fg.show_in[SW.mode] === false);
+
+  /* Every figure, part, list and row again, after a switch. */
+  function refresh() {
+    SW.figs.forEach((n) => n.update());
+    SW.setParts.forEach((d) => d());
+    SW.after.forEach((f) => f());
+  }
 
   /* Text Joe can paste: a labelled block of prose with a Copy button. */
   function prose(label, paras, cls) {
@@ -230,21 +258,42 @@ window.JOE_EXPORT = (function () {
       : v.length ? 'does not hold without one rat or in the mixed model' : '';
   }
 
-  /* A figure of the publication set: the drawing, its badge, its words. */
+  /* A figure of the publication set: the drawing, its badge, its words.
+     Since 2026-11-04 its stars follow the switch: the uncorrected drawing
+     (and the caption that says so) where it differs from the corrected. */
   function pubFigure(fg, url, preview, sid) {
-    const img = el('img', { alt: fg.name, loading: 'lazy', src: fg.preview ? preview(fg.preview) : '' });
+    const img = el('img', { alt: fg.name, loading: 'lazy' });
+    const thumb = el('a', { class: 'jx-thumb', target: '_blank', rel: 'noopener', title: 'Open the PDF' }, [img]);
     const badge = el('span', { class: 'jx-badge' });
     const tbox = el('div', {});
+    const cbox = el('div', {});
+    const files = el('div', { class: 'jx-files' });
     const node = el('div', { class: 'jx-pubfig', id: 'jx-fig-' + sid + '-' + fg.id.replace(/\./g, '_') }, [
       el('div', { class: 'jx-figrow' }, [el('span', { class: 'jx-figname', text: fg.name }), badge]),
-      el('a', { class: 'jx-thumb', href: fg.files && fg.files[0] ? url(fg.files[0].name) : (fg.preview ? preview(fg.preview) : '#'), target: '_blank', rel: 'noopener',
-                title: 'Open the PDF' }, [img]),
-      prose('Caption', fg.caption),
+      thumb,
+      cbox,
       prose('Results', fg.results),
+      prose('Sensitivity analyses', fg.sensitivity),
+      prose('Note for Joe', fg.reading),
       prose('Methods note', fg.note),
       tbox,
-      el('div', { class: 'jx-files' }, (fg.files || []).map((f) => fileLink(f, url)).concat(fg.prism ? [fileLink(fg.prism, url)] : []))]);
+      files]);
+    const draw = () => {
+      // the drawing for both switches: axes fitted to it (where that differs), stars corrected or not (where that differs)
+      const own = SW.axes === 'own' && !!fg.files_own;
+      const raw = SW.mode === 'raw' && !!(own ? fg.files_own_raw : fg.files_raw);
+      const fs = own ? (raw ? fg.files_own_raw : fg.files_own) : (raw ? fg.files_raw : (fg.files || []));
+      const pv = own ? (raw ? fg.preview_own_raw : fg.preview_own) : (raw && fg.preview_raw ? fg.preview_raw : fg.preview);
+      img.src = pv ? preview(pv) : '';
+      const pdf = fs.find((f) => !/_statistics\.pdf$/.test(f.name));
+      thumb.href = pdf ? url(pdf.name) : (pv ? preview(pv) : '#');
+      const cap = SW.mode === 'raw' && fg.caption_raw ? fg.caption_raw : fg.caption;
+      const ax = fg.axes_say ? fg.axes_say[SW.axes === 'own' && fg.files_own ? 'own' : 'shared'] : '';
+      cbox.replaceChildren(...[prose('Caption', ax ? cap + ' ' + ax : cap)].filter(Boolean));
+      files.replaceChildren(...fs.map((f) => fileLink(f, url)).concat(fg.prism ? [fileLink(fg.prism, url)] : []));
+    };
     node.update = () => {
+      draw();
       const s = fg.sig || {};
       const yes = !!s[SW.mode];
       const near = !yes && SW.mode === 'fdr' && !!s.raw;
@@ -253,7 +302,7 @@ window.JOE_EXPORT = (function () {
       badge.textContent = (yes ? (SW.mode === 'fdr' ? 'Significant after FDR' : 'Significant, p < .05 uncorrected')
         : near ? 'p < .05 uncorrected only' : 'Not significant') + (held ? '; ' + held : '');
       if (!(fg.tests || []).some((t) => t.primary)) badge.textContent = (fg.tests || []).some((t) => t.pass && t.pass[SW.mode]) ? 'Some tests significant' : 'No test significant';
-      node.hidden = !!(fg.show_in && fg.show_in[SW.mode] === false);
+      node.hidden = offHere(fg) || (SW.only && !sigPub(fg));
       tbox.replaceChildren(...[testsTable(fg)].filter(Boolean));
     };
     node.update();
@@ -268,14 +317,24 @@ window.JOE_EXPORT = (function () {
       SW.figs = SW.figs.filter((n) => box.contains(n) === false);
       const groups = (s.sets || {})[SW.rs] || [];
       const sid = s.id + '-' + SW.rs;
-      const passing = groups.flatMap((g) => g.figures).filter((fg) => fg.sig && fg.sig[SW.mode] && !(fg.show_in && fg.show_in[SW.mode] === false));
+      const passing = groups.flatMap((g) => g.figures).filter((fg) => sigPub(fg) && !offHere(fg));
+      // with only what is significant, a group with none of it is not drawn at all
+      const shown = SW.only ? groups.filter((g) => g.figures.some((fg) => sigPub(fg) && !offHere(fg))) : groups;
       const kids = [
         el('h3', { text: 'Significant ' + (SW.mode === 'fdr' ? 'after FDR correction' : 'at p < .05, uncorrected') + ' (' + passing.length + ')' }),
         passing.length ? el('ul', { class: 'jx-passlist' }, passing.map((fg) => el('li', {}, [
           el('a', { href: '#jx-fig-' + sid + '-' + fg.id.replace(/\./g, '_'), text: fg.name }), heldUp(fg) ? ': ' + heldUp(fg) : ''])))
           : el('p', { class: 'jx-muted', text: 'Nothing in this part passes on this side of the switch.' }),
-        el('div', { class: 'jx-nav' }, groups.map((g) => el('a', { href: '#jx-g-' + sid + '-' + g.key, text: g.title })))];
-      for (const g of groups) {
+        el('div', { class: 'jx-nav' }, shown.map((g) => el('a', { href: '#jx-g-' + sid + '-' + g.key, text: g.title })))];
+      // every figure's statistics in this part and set, one zip
+      const stats = groups.flatMap((g) => g.figures).map((fg) => fg.stats).filter(Boolean);
+      if (stats.length) {
+        const sb = el('button', { type: 'button', class: 'jx-btn', text: 'Download every statistics PDF (' + stats.length + ')' });
+        const ss = el('div', { class: 'jx-status', role: 'status' });
+        sb.addEventListener('click', () => zipDown(stats, () => '', 'Joe_' + s.id + '_' + SW.rs + '_statistics.zip', url, (t) => { ss.textContent = t; }, sb));
+        kids.push(el('div', { class: 'jx-files' }, [sb]), ss);
+      }
+      for (const g of shown) {
         const gb = el('button', { type: 'button', class: 'jx-btn', text: 'Download this group' });
         const gs = el('div', { class: 'jx-status', role: 'status' });
         const gf = filesOf({ figures: g.figures });
@@ -293,10 +352,9 @@ window.JOE_EXPORT = (function () {
 
   function tests(fg) {
     if (!fg.tests || !fg.tests.length) return null;
-    const pass = (t) => (t.pass && typeof t.pass === 'object' ? !!t.pass[SW.mode] : !!t.pass);
     return el('div', { class: 'jx-tests', 'aria-label': fg.tests.length > 1 ? 'Its three tests, FP first' : 'Its test' }, fg.tests.map((t) => el('span', { class: 'jx-test' }, [
-      el('span', { class: 'jx-dot' + (pass(t) ? ' on' : ''), 'aria-hidden': 'true' }),
-      el('span', { text: t.say + (pass(t) ? ': passes' : ': does not pass') })])));
+      el('span', { class: 'jx-dot' + (passOn(t) ? ' on' : ''), 'aria-hidden': 'true' }),
+      el('span', { text: t.say + (passOn(t) ? ': passes' : ': does not pass') })])));
   }
 
   function figure(fg, url, preview) {
@@ -330,7 +388,7 @@ window.JOE_EXPORT = (function () {
         files])]);
     node.update = () => {
       if (keyed) vi = Math.max(0, fg.views.findIndex((v) => v.key === SW.mode));
-      node.hidden = !!(fg.show_in && fg.show_in[SW.mode] === false);
+      node.hidden = offHere(fg) || (SW.only && !sigFig(fg));
       show();
     };
     node.update();
@@ -339,26 +397,27 @@ window.JOE_EXPORT = (function () {
   }
 
   function switchNode(M) {
-    if (!M.switch) return null;
-    const btns = [];
-    const set = (m) => {
-      SW.mode = m;
-      btns.forEach((b) => b.setAttribute('aria-pressed', b.dataset.mode === m ? 'true' : 'false'));
-      SW.figs.forEach((n) => n.update());
-      SW.setParts.forEach((d) => d());                      // their lists of what passes
-    };
-    for (const m of ['fdr', 'raw']) {
-      const b = el('button', { type: 'button', text: M.switch[m], 'data-mode': m, 'aria-pressed': m === SW.mode ? 'true' : 'false', on: { click: () => set(m) } });
-      btns.push(b);
+    const rows = [];
+    if (M.switch) {
+      const btns = [];
+      const set = (m) => {
+        SW.mode = m;
+        btns.forEach((b) => b.setAttribute('aria-pressed', b.dataset.mode === m ? 'true' : 'false'));
+        refresh();                                          // every figure, and the lists of what passes
+      };
+      for (const m of ['fdr', 'raw']) {
+        const b = el('button', { type: 'button', text: M.switch[m], 'data-mode': m, 'aria-pressed': m === SW.mode ? 'true' : 'false', on: { click: () => set(m) } });
+        btns.push(b);
+      }
+      rows.push(el('div', { class: 'jx-switch' }, [el('span', { class: 'jx-muted', text: M.rat_sets ? 'What counts as significant:' : 'Dickson’s way and Part 2, stars and follow-ups:' }),
+        el('div', { class: 'jx-views', role: 'group', 'aria-label': 'Correction for many tests' }, btns)]));
     }
-    const rows = [el('div', { class: 'jx-switch' }, [el('span', { class: 'jx-muted', text: M.rat_sets ? 'What counts as significant:' : 'Dickson’s way and Part 2, stars and follow-ups:' }),
-      el('div', { class: 'jx-views', role: 'group', 'aria-label': 'Correction for many tests' }, btns)])];
     if (M.rat_sets && M.rat_sets.length > 1) {
       const rb = [];
       const setRs = (k) => {
         SW.rs = k;
         rb.forEach((b) => b.setAttribute('aria-pressed', b.dataset.rs === k ? 'true' : 'false'));
-        SW.setParts.forEach((d) => d());
+        refresh();
       };
       for (const s of M.rat_sets) {
         rb.push(el('button', { type: 'button', text: s.say, 'data-rs': s.key, 'aria-pressed': s.key === SW.rs ? 'true' : 'false', on: { click: () => setRs(s.key) } }));
@@ -367,6 +426,37 @@ window.JOE_EXPORT = (function () {
         el('div', { class: 'jx-views', role: 'group', 'aria-label': 'Which rats' }, rb)]));
       if (M.rat_why) rows.push(el('p', { class: 'jx-muted', text: M.rat_why }));
     }
+    if (M.rat_sets) {
+      // the axes (2026-11-04): one per kind of graph in the set of rats, or each graph fitted to itself
+      const ab = [];
+      const setAxes = (v) => {
+        SW.axes = v;
+        ab.forEach((b) => b.setAttribute('aria-pressed', b.dataset.axes === v ? 'true' : 'false'));
+        refresh();
+      };
+      for (const [v, say] of [['shared', 'Shared by each kind of graph'], ['own', 'Fitted to each graph']]) {
+        ab.push(el('button', { type: 'button', text: say, 'data-axes': v, 'aria-pressed': v === SW.axes ? 'true' : 'false', on: { click: () => setAxes(v) } }));
+      }
+      rows.push(el('div', { class: 'jx-switch' }, [el('span', { class: 'jx-muted', text: 'Axes:' }),
+        el('div', { class: 'jx-views', role: 'group', 'aria-label': 'Axes shared by each kind of graph or fitted to each graph' }, ab)]),
+        el('p', { class: 'jx-muted', text: 'Shared: every graph of a kind in this set of rats on one axis, so any two compare directly (an extreme '
+          + 'value may be cut off, and its caption says so). Fitted: each graph on its own axis, every value shown.' }));
+    }
+    const ob = [];
+    const why = el('p', { class: 'jx-muted', id: 'jx-onlysay', hidden: true,
+      text: 'Showing only what is significant: in each part, the figures whose main test passes under the correction above (their badge says so); '
+        + 'in the figures section, those that pass every one of their tests; in the statistics, the lit comparisons. The methods and the files stay.' });
+    const setOnly = (v) => {
+      SW.only = v;
+      ob.forEach((b) => b.setAttribute('aria-pressed', (b.dataset.only === '1') === v ? 'true' : 'false'));
+      why.hidden = !v;
+      refresh();
+    };
+    for (const [v, say] of [[false, 'Everything'], [true, 'Only what is significant']]) {
+      ob.push(el('button', { type: 'button', text: say, 'data-only': v ? '1' : '0', 'aria-pressed': v === SW.only ? 'true' : 'false', on: { click: () => setOnly(v) } }));
+    }
+    rows.push(el('div', { class: 'jx-switch' }, [el('span', { class: 'jx-muted', text: 'Show:' }),
+      el('div', { class: 'jx-views', role: 'group', 'aria-label': 'Show everything or only what is significant' }, ob)]), why);
     return el('div', {}, rows);
   }
 
@@ -388,16 +478,60 @@ window.JOE_EXPORT = (function () {
       .concat(list.map((s, i) => el('div', { class: 'jx-msec', id: 'jx-m-' + i }, [el('h3', { text: s.title }), prose('Copy-ready text', s.paras)]))));
   }
 
+  /* Tab 13's sanity check report (2026-11-04): the verdict, then each
+     check with its status in words, what was found, and how it was checked
+     behind a More; then how to make it all again. */
+  const SAN = { ok: 'OK', warn: 'Check', fail: 'Problem', info: 'Note' };
+  const SANV = { green: 'All clear', amber: 'Check these', red: 'Problems found' };
+  function sanityPart(R) {
+    const c = R.counts || {};
+    const kids = [
+      el('div', { class: 'jx-flag jx-san-' + (R.verdict || 'amber'), role: 'note' }, [el('b', { text: (SANV[R.verdict] || R.verdict) + '. ' }),
+        R.say || '', ' (' + [['ok', 'OK'], ['warn', 'to check'], ['fail', 'problems'], ['info', 'notes']]
+          .map(([k, w]) => (c[k] || 0) + ' ' + w).join(', ') + ')'])];
+    for (const sec of R.sections || []) {
+      kids.push(el('h3', { text: sec.title }));
+      if (sec.say) kids.push(el('p', { class: 'jx-muted', text: sec.say }));
+      for (const ck of sec.checks || []) {
+        const more = [ck.how ? el('p', {}, [el('b', { text: 'How it was checked. ' }), ck.how]) : null]
+          .concat((ck.detail || []).map((d) => el('p', { text: d })));
+        if (ck.table && ck.table.rows && ck.table.rows.length) {
+          more.push(el('div', { class: 'jx-tablewrap' }, el('table', { class: 'jx-tests' }, [
+            el('thead', {}, el('tr', {}, ck.table.head.map((h) => el('th', { text: String(h) })))),
+            el('tbody', {}, ck.table.rows.map((r) => el('tr', {}, r.map((x) => el('td', { text: String(x) })))))])));
+        }
+        kids.push(el('div', { class: 'jx-san-row' }, [
+          el('span', { class: 'jx-badge jx-san-' + ck.status, text: SAN[ck.status] || ck.status }),
+          el('div', {}, [el('div', { class: 'jx-figname', text: ck.title }), el('div', { text: ck.result || '' }),
+            el('details', {}, [el('summary', { text: 'More' })].concat(more.filter(Boolean)))])]));
+      }
+    }
+    if ((R.regenerate || []).length) {
+      kids.push(el('h3', { text: 'Make it all again' }));
+      kids.push(el('ol', { class: 'jx-read' }, R.regenerate.map((g) => el('li', {}, [g.step + ': ', el('code', { text: g.command })]))));
+    }
+    return el('div', { class: 'jx-sanity' }, kids);
+  }
+
   function lights(rows) {
     const cell = (r, b) => {
       const x = r.bands[b];
       return el('td', { class: 'jx-l' }, [el('span', { class: 'jx-light' + (x.lit ? ' on' : '') + (x.lit && r.check ? ' chk' : ''), 'aria-hidden': 'true' }),
         (x.lit ? 'lit, ' : '') + pSay(x.p)]);
     };
-    return el('table', { class: 'jx-lights' }, [
+    const lit = (r) => r.bands.theta.lit || r.bands.gamma.lit;
+    const trs = rows.map((r) => el('tr', {}, [el('td', { text: String(r.no) }), el('td', { text: r.title + (r.check ? ' (check)' : '') }),
+      cell(r, 'theta'), cell(r, 'gamma')]));
+    const none = el('p', { class: 'jx-muted', text: 'No comparison is lit.' });
+    const update = () => {
+      trs.forEach((tr, i) => { tr.hidden = SW.only && !lit(rows[i]); });
+      none.hidden = !(SW.only && !rows.some(lit));
+    };
+    update();
+    SW.after.push(update);
+    return el('div', {}, [el('table', { class: 'jx-lights' }, [
       el('thead', {}, el('tr', {}, [el('th', { text: '#' }), el('th', { text: 'Comparison' }), el('th', { text: 'Theta' }), el('th', { text: 'Gamma' })])),
-      el('tbody', {}, rows.map((r) => el('tr', {}, [el('td', { text: String(r.no) }), el('td', { text: r.title + (r.check ? ' (check)' : '') }),
-        cell(r, 'theta'), cell(r, 'gamma')])))]);
+      el('tbody', {}, trs)]), none]);
   }
 
   function render(root, M, opts) {
@@ -408,6 +542,9 @@ window.JOE_EXPORT = (function () {
     root.replaceChildren();
     SW.figs = [];
     SW.setParts = [];
+    SW.after = [];
+    SW.only = false;
+    SW.axes = 'shared';
     SW.rs = 'all';
     SW.mode = (M && M.switch && M.switch.default) || 'fdr';
     const wrap = el('div', { class: 'jx' });
@@ -442,7 +579,7 @@ window.JOE_EXPORT = (function () {
           : null,
         M.sections.some((s) => s.id === 'dickson')
           ? el('li', { text: M.rat_sets
-            ? 'Coherence between regions, and power, aperiodic activity, directionality and coupling: every figure is drawn without statistics and with its axes shared across pairs, regions and sets of rats, so any two can be compared directly. Under each: its caption, its results as a paragraph, a methods note, and every test behind it. What is significant is marked beside the figure, never in it.'
+            ? 'Coherence between regions, and power, aperiodic activity, directionality and coupling: every figure has its axes shared across pairs, regions and sets of rats, so any two can be compared directly, and asterisks on its significant tests, corrected or uncorrected as the switch says (the caption says which). Under each: its caption, its results as a paragraph, a methods note, and a statistics PDF laid out as SPSS prints it: the design, every effect and interaction, and the post hoc tests of each significant interaction.'
             : 'Dickson’s way asks the plan’s simpler question: did coherence in each of ten region pairs change from Precon1 to Precon4 (and between cue 1 and cue 2, and against the baseline)? A GEE decides, corrected across the ten pairs. Its coherence comes from pooled spectra: read the warning at the top of that section.' })
           : null,
         M.sections.some((s) => s.id === 'final') && !M.rat_sets
@@ -459,23 +596,35 @@ window.JOE_EXPORT = (function () {
       if (s.lights) card.appendChild(lights(s.lights));
       if (s.methods && s.methods.length) card.appendChild(el('div', {}, [el('h3', { text: 'Methods' }), methods(s.methods)]));
       if (s.prose && s.prose.length) card.appendChild(methodsProse(s.prose));
+      if (s.sanity) card.appendChild(sanityPart(s.sanity));
       if (s.sets) card.appendChild(setPart(s, url, preview));
       if (s.groups) {
-        card.appendChild(el('div', { class: 'jx-nav' }, s.groups.map((g) => el('a', { href: '#jx-g-' + g.key.replace('|', '-'), text: g.title }))));
-        for (const g of s.groups) {
+        const navs = s.groups.map((g) => el('a', { href: '#jx-g-' + g.key.replace('|', '-'), text: g.title }));
+        card.appendChild(el('div', { class: 'jx-nav' }, navs));
+        const boxes = [];
+        s.groups.forEach((g, gi) => {
           const gb = el('button', { type: 'button', class: 'jx-btn', text: 'Download this group' });
           const gs = el('div', { class: 'jx-status', role: 'status' });
           const gf = filesOf({ figures: g.figures });
           gb.addEventListener('click', () => zipDown(gf, () => '', 'Joe_figures_' + g.key.replace('|', '_') + '.zip', url, (t) => { gs.textContent = t; }, gb));
-          card.appendChild(el('div', { id: 'jx-g-' + g.key.replace('|', '-') }, [
+          const fns = g.figures.map((fg) => figure(fg, url, preview));
+          const box = el('div', { id: 'jx-g-' + g.key.replace('|', '-') }, [
             el('div', { class: 'jx-head' }, [el('h3', { text: g.title }), gb]),
             g.say ? el('p', { class: 'jx-gsay', text: g.say })
               : g.key !== 'S' && !g.gated ? el('p', { class: 'jx-gsay', text: 'Tab 8’s light did not pass here, so this group is its ring only.' }) : null,
-            gs]
-            .concat(g.figures.map((fg) => figure(fg, url, preview)))));
-        }
+            gs].concat(fns));
+          // with only what is significant, a group left with none of its figures goes, and its link with it
+          const update = () => { box.hidden = SW.only && fns.every((n) => n.hidden); navs[gi].hidden = box.hidden; };
+          update();
+          SW.after.push(update);
+          boxes.push(box);
+          card.appendChild(box);
+        });
+        const none = el('p', { class: 'jx-muted', hidden: true, text: 'Nothing in this part passes every one of its tests.' });
+        SW.after.push(() => { none.hidden = !(SW.only && boxes.every((b) => b.hidden)); });
+        card.appendChild(none);
       }
-      if (!s.files.length && !sFiles.length) card.appendChild(el('p', { class: 'jx-muted', text: 'Not made yet.' }));
+      if (!s.files.length && !sFiles.length && !s.sanity) card.appendChild(el('p', { class: 'jx-muted', text: 'Not made yet.' }));
       wrap.appendChild(card);
     }
   }

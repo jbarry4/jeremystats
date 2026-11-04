@@ -117,6 +117,21 @@ BARRY.panning = (function () {
   const events = () => (set_ && set_.events) || [];
   const current = () => events()[index] || null;
   const left = () => events().filter((e) => !e.label).length;
+  /* Prospector's two flags (curation.KINDS, `ai`): calls only it gives, each
+     still wanting a person. */
+  const PROSPECTOR_BY = 'Prospector (AI)';
+  const aiIds = () => new Set(['likely_spike', 'likely_garbage'].concat(
+    ((kind && kind.labels) || []).filter((l) => l.ai).map((l) => l.id)));
+  const byAPerson = (e) => !!e.label && e.by !== PROSPECTOR_BY;
+  /* Still to do: undecided, or holding one of Prospector's flags. What
+     banking by itself waits for: an accepted sweep leaves nothing
+     undecided, and a set banks itself only once (api_curation_bank's
+     `auto`), so counting its flags as done banked a pool the moment the
+     first of them was settled -- and never again when the last was. */
+  const pending = () => {
+    const ai = aiIds();
+    return events().filter((e) => !e.label || ai.has(e.label)).length;
+  };
 
   const flagIds = () => {
     const out = new Set();
@@ -547,7 +562,7 @@ BARRY.panning = (function () {
       const res = await apiPost(url('label'), { event: ev.id, label: labelId });
       if (res.progress) set_._progress = res.progress;
       // The last one decided: bank it, if banking without asking is on.
-      if (set_ && autoOn() && !left()) {
+      if (set_ && autoOn() && !pending()) {
         quietBank(set_.gid, 'Every event decided in Panning.', setKind);
       }
       if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
@@ -916,7 +931,7 @@ BARRY.panning = (function () {
     BARRY.activity.log('panning.label_many',
                        { gid: own.gid, n: change.length, label: want }, sess);
     // The last ones decided: banked, as a single decision would be.
-    if (set_ === own && want && autoOn() && !left()) {
+    if (set_ === own && want && autoOn() && !pending()) {
       quietBank(own.gid, 'Every event decided in Panning.', own.kind);
     }
     toast(plural(change.length, 'event') + ' '
@@ -1555,7 +1570,18 @@ BARRY.panning = (function () {
                + 'say, every merged and every Incisor-only one is a spike. One '
                + 'step of undo puts them all back.',
           onclick: () => bulkDialog() }),
-      ],
+        /* Prospector, Panning's model, as Tooth Fairy is Checkup's: sorts
+           the whole pool, asks before it starts, and writes nothing unless
+           its summary is accepted (toothfairy.js, makeSweeper). */
+        BARRY.prospector ? el('button', {
+          class: 'btn ghost sm tf-btn',
+          title: 'Let Prospector read every event and call each one Spike, '
+               + 'Flag \u00b7 likely spike or Flag \u00b7 likely garbage. It '
+               + 'never calls Garbage, asks first, and nothing changes unless '
+               + 'you accept its summary.',
+          onclick: prospectorSweep,
+        }, [BARRY.prospector.icon(), 'Prospector\u2026']) : null,
+      ].filter(Boolean),
       next: {
         text: 'Next: Lock \u2014 line them up \u2192',
         title: 'Step 3 of The Confluence: Lock lines the spikes up on their '
@@ -1568,6 +1594,29 @@ BARRY.panning = (function () {
     }));
     updateSaving();
     ensureStrips();
+  }
+
+  /* Prospector over the pool open (toothfairy.js). Accepted, its calls are
+     on the pool: read it again and go straight to the flags, which is the
+     work it leaves. */
+  function prospectorSweep() {
+    if (!set_ || !BARRY.prospector) return;
+    BARRY.prospector.open({
+      gid: set_.gid, kind: setKind,
+      name: set_.name || set_.session_label || '',
+      n: events().length,
+      decided: events().filter(byAPerson).length,
+      colors: Object.fromEntries(((kind && kind.labels) || [])
+        .map((l) => [l.id, l.color])),
+      onDone: async () => {
+        history = [];
+        await reload();
+        if (!set_) return;
+        review = 'flag';
+        if (!wanted(current())) goTo(firstWanted());
+        render(); drawStrips();
+      },
+    });
   }
 
   function toTool(id) {

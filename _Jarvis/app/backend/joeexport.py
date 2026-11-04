@@ -156,18 +156,19 @@ SWITCH = {"default": "fdr", "fdr": "Corrected (FDR q < 0.05)", "raw": "Uncorrect
 
 
 def _preview(add, png, name):
-    """A figure's preview for the page: its 600 dpi PNG at PREVIEW_W px,
-    96 colours (about 80 kB), made again when the PNG is newer. Listed so
-    the page can show it, never offered as a download. Returns its name."""
+    """A figure's preview for the page: its PNG at PREVIEW_W px as a WebP
+    (since 2026-11-04, a third smaller than the 96-colour PNG it was: the
+    site has a size limit), made again when the PNG is newer. Listed so the
+    page can show it, never offered as a download. Returns its name."""
     if not png or not os.path.isfile(png):
         return None
-    out = cache_dir(os.path.splitext(name)[0] + "_preview.png")
+    out = cache_dir(os.path.splitext(name)[0] + "_preview.webp")
     if not os.path.isfile(out) or os.path.getmtime(out) < os.path.getmtime(png):
         from PIL import Image
         im = Image.open(png).convert("RGB")
         im = im.resize((PREVIEW_W, max(1, int(im.height * PREVIEW_W / im.width))), Image.LANCZOS)
-        tmp = out + ".part.png"
-        im.quantize(colors=96, method=Image.Quantize.MEDIANCUT).save(tmp, "PNG", optimize=True)
+        tmp = out + ".part.webp"
+        im.save(tmp, "WEBP", quality=80, method=6)
         os.replace(tmp, out)
     got = add(out)
     return got["name"] if got else None
@@ -304,6 +305,13 @@ def _pub(add):
             for f in g["figures"]:
                 pre = ("Coherence_" if g["section"] == "coh" else "Final_") + setfile.get(rs, rs) + "_Fig" + f["id"]
                 pdf = add(os.path.join(root, rs, f["pdf"]), name=pre + ".pdf", say="PDF") if f.get("pdf") else None
+                # 2026-11-04: its stars uncorrected, where that drawing differs; and its statistics
+                pdf_raw = add(os.path.join(root, rs, f["pdf_raw"]), name=pre + "_uncorrected.pdf", say="PDF, stars uncorrected") if f.get("pdf_raw") else None
+                # its axes fitted to it alone, where that drawing differs (and that one's stars uncorrected)
+                pdf_own = add(os.path.join(root, rs, f["pdf_own"]), name=pre + "_fitted.pdf", say="PDF, axes fitted to it") if f.get("pdf_own") else None
+                pdf_own_raw = (add(os.path.join(root, rs, f["pdf_own_raw"]), name=pre + "_fitted_uncorrected.pdf",
+                                   say="PDF, axes fitted, stars uncorrected") if f.get("pdf_own_raw") else None)
+                stats = add(os.path.join(root, rs, f["stats"]), name=pre + "_statistics.pdf", say="Statistics (PDF)") if f.get("stats") else None
                 prism = None
                 if f.get("prism"):
                     xl = next((p for p in f["prism"] if p.endswith(".xlsx")), None)
@@ -311,9 +319,18 @@ def _pub(add):
                     zp = _prism_zip(pre + "_prism", xl, pz)
                     prism = add(zp, say="Prism (.xlsx and .pzfx)") if zp else None
                 figs.append({"id": f["id"], "name": f["name"], "title": f["title"], "kind": f["kind"], "pub": True, "show_in": f.get("show_in"),
-                             "caption": f["caption"], "note": f["note"], "results": f["results"], "tests": f["tests"], "sig": f["sig"],
-                             "files": [pdf] if pdf else [], "prism": prism,
-                             "preview": _preview(add, os.path.join(root, rs, f["png"]), pre + ".png") if f.get("png") else None})
+                             "caption": f["caption"], "caption_raw": f.get("caption_raw"), "note": f["note"], "results": f["results"],
+                             "sensitivity": f.get("sensitivity") or [], "tests": f["tests"], "sig": f["sig"],
+                             "files": [x for x in (pdf, stats) if x], "files_raw": [x for x in (pdf_raw, stats) if x] if pdf_raw else None,
+                             "files_own": [x for x in (pdf_own, stats) if x] if pdf_own else None,
+                             "files_own_raw": [x for x in (pdf_own_raw, stats) if x] if pdf_own_raw else None,
+                             "axes_say": f.get("axes_say"), "cut": f.get("cut"), "reading": f.get("reading"),
+                             "stats": stats, "prism": prism,
+                             "preview": _preview(add, os.path.join(root, rs, f["png"]), pre + ".png") if f.get("png") else None,
+                             "preview_raw": _preview(add, os.path.join(root, rs, f["png_raw"]), pre + "_uncorrected.png") if f.get("png_raw") else None,
+                             "preview_own": _preview(add, os.path.join(root, rs, f["png_own"]), pre + "_fitted.png") if f.get("png_own") else None,
+                             "preview_own_raw": (_preview(add, os.path.join(root, rs, f["png_own_raw"]), pre + "_fitted_uncorrected.png")
+                                                 if f.get("png_own_raw") else None)})
             parts[g["section"]].setdefault(rs, []).append({"key": g["key"], "title": g["title"], "say": g["say"], "figures": figs})
     files = [add(os.path.join(root, "Methods_for_the_dissertation.docx"), say="The methods (Word)"),
              add(os.path.join(root, "Methods_for_the_dissertation.txt"), say="The same, as text")]
@@ -444,6 +461,13 @@ def _manifest():
                          " Run on %s, its output matched Jarvis’s to %g in every cell." % (str(ag.get("ran_at"))[:10], ag.get("tol"))
                          if ag.get("ok") else ""),
                      "files": [x for x in sc if x]})
+    # 4. the sanity check report (tab 13, backend/sanity.py), when it has been run
+    SR = _scrub(_read(_mono()._path("sanity", "sanity.json")))
+    if SR and SR.get("ok"):
+        sections.append({"id": "sanity", "title": "Sanity check report",
+                         "say": "Whether the right data went in, the right logic was applied, the words match the numbers, and it can "
+                                "be made again from the raw data; checked on %s." % str(SR.get("made"))[:10],
+                         "sanity": SR, "files": []})
     total = sum(os.path.getsize(p) for p in paths.values())
     n_fig = sum(len(g["figures"]) for s in sections for g in s.get("groups") or []) + \
         sum(len(g["figures"]) for s in sections for gs in (s.get("sets") or {}).values() for g in gs)
@@ -453,6 +477,23 @@ def _manifest():
              "switch": SWITCH if any(s["id"] in ("dickson", "final") for s in sections) else None,
              "rat_sets": (pub[0].get("sets") if pub else None), "rat_why": (pub[0].get("why") if pub else None),
              "sections": sections, "site": site_status()}, paths)
+
+
+#: A path of this machine in a sentence: a drive or a share, then anything
+#: (spaces too: "Joe Multisite 2026 data") up to the punctuation that ends it.
+_LOCAL = re.compile(r"(?:[A-Za-z]:\\|\\\\)[^;,()\"'\n]*?(?=\.(?:\s|$)|[;,()\"'\n]|$)")
+
+
+def _scrub(x):
+    """The sanity report as Joe is sent it: no path of this machine (a
+    folder, a log) anywhere in it, each one said by its last name only."""
+    if isinstance(x, dict):
+        return {k: _scrub(v) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_scrub(v) for v in x]
+    if isinstance(x, str):
+        return _LOCAL.sub(lambda m: m.group(0).rstrip("\\").split("\\")[-1] or "a local folder", x).replace("GUI_logs", "the app's logs")
+    return x
 
 
 def site_status():

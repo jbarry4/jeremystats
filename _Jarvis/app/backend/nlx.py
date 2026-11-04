@@ -949,6 +949,26 @@ def data_records(path):
     return max(0, (size - HEADER_BYTES) // RECORD_DTYPE.itemsize)
 
 
+def header_only_folder(folder):
+    """True when `folder` holds channel files and every one of them is a
+    header with no records: what the rig leaves when acquisition is started
+    and stopped before a sample. False for a folder with data, a folder with
+    no .ncs at all (a converted session), and one that cannot be read --
+    not being able to look is not evidence of an empty folder.
+
+    Every channel, not CSC1: on the split urethane recordings CSC1.ncs is a
+    header and CSC1_0001.ncs holds the data (2026-11-03/04, when stub
+    folders had become the identity of five real recordings and got them
+    retired as "no data in the folder").
+    """
+    try:
+        sizes = [e.stat().st_size for e in os.scandir(folder)
+                 if e.name.lower().endswith(".ncs") and e.is_file()]
+    except OSError:
+        return False
+    return bool(sizes) and all(s <= HEADER_BYTES for s in sizes)
+
+
 def _ls(d):
     try:
         return os.listdir(d)

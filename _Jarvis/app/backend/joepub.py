@@ -4,12 +4,18 @@ tabs 11 and 12, for every set of rats, drawn for a dissertation, with the
 words to go under each and the methods behind all of it.
 
   * The figures are tabs 11 and 12's own drawings (evenmore.py and
-    finalstage.py) in their publication pass: no title, no statistic and
-    no star inside a figure (the site says what is significant), and every
-    panel of a kind on one axis across pairs, regions and sets of rats, so
-    two figures can be laid side by side and read on the same scale. Drawn
-    twice: the first pass only records each panel's limits, the second
-    sets their union and saves a PDF and a PNG to preview.
+    finalstage.py) in their publication pass: no title and no statistic
+    inside a figure, and every panel of a kind on one axis across pairs,
+    regions and sets of rats, so two figures can be laid side by side and
+    read on the same scale. Drawn twice: the first pass only records each
+    panel's limits, the second sets their union and saves a PDF and a PNG
+    to preview. Since 2026-11-04 they carry their stars again (Joe asked),
+    from the same tests their statistics PDF prints: drawn once with the
+    correction on and once with it off, the second kept only where it
+    differs; the caption says which the stars are.
+  * For each figure, a statistics PDF laid out as SPSS prints it, with
+    the follow-ups of its interactions and a results paragraph in Joe's
+    register (joestats.py).
   * For each figure: a caption, a methods note and a results paragraph,
     in the register of a thesis (third person, past tense), with every
     test behind it (effect, Wald chi-square, p, the Benjamini-Hochberg q,
@@ -213,16 +219,25 @@ def load_set(rs, every, FT):
     if not EM or not FN:
         raise RuntimeError("Tabs 11 and 12 have not been worked out for %s." % E.RATSET_SAY[rs])
     return {"rs": rs, "days": days, "EM": EM, "FN": FN, "T": E.tables(days), "PT": FS.power_tables(days), "FT": FT,
-            # outside the publication pass: sig() is never true inside it, and the hits decide these
+            # once a set, before any drawing: the hits decide which pairs and regions these follow
             "G": FS.granger_models(days, EM), "PM": FS.pac_models(days, EM)}
 
 
-def draw_set(D):
+def draw_set(D, mode="fdr"):
     """Every figure of one set, in the order the site shows them: tab 11's
-    by band and phase, then tab 12's. [{group, id, fid, kind, files, ...}]"""
+    by band and phase, then tab 12's, its stars under `mode` (the
+    uncorrected drawings are saved as fig_<fid>_raw). [{group, id, fid,
+    kind, files, ...}]"""
     T, EM, FN, PT = D["T"], D["EM"], D["FN"], D["PT"]
-    nq = [False] * len(E.PAIRS)
     out = []
+    s_ = E.pub() or {}
+    own = s_.get("axes") == "own"
+
+    def nm(fid):
+        """The file stem of the figure about to be drawn (and, for the shared
+        axes, which figure a cut-off belongs to)."""
+        s_["cur"] = fid
+        return fid + ("_own" if own else "") + ("_raw" if mode == "raw" else "")
 
     def add(group, fid, kind, files, **kw):
         out.append(dict({"group": group, "fid": fid, "kind": kind, "files": files}, **kw))
@@ -230,47 +245,193 @@ def draw_set(D):
         band = B["band"]
         bno = 1 if band == "theta" else 2
         p1, p2, p3 = B["phase1"], B["phase2"], B["phase3"]
+        qs = [E.sig((p1["pairs"][p] or {}).get("a2"), mode) for p in range(len(E.PAIRS))]
         for p, st in enumerate(p1["pairs"]):
             if st:
                 fid = "%d_1_%02d" % (bno, p + 1)
-                add("C-%s-1" % band, fid, "p1pair", E.fig_pair_phase1(T, band, p, st, p1["deltas"], nq, fid), band=band, pair=p)
+                add("C-%s-1" % band, fid, "p1pair", E.fig_pair_phase1(T, band, p, st, p1["deltas"], qs, nm(fid)), band=band, pair=p)
         fid = "%d_1_all" % bno
-        add("C-%s-1" % band, fid, "p1pool", E.fig_pooled_phase1(T, band, p1, p1["deltas"], nq, fid, "fdr"), band=band)
+        add("C-%s-1" % band, fid, "p1pool", E.fig_pooled_phase1(T, band, p1, p1["deltas"], qs, nm(fid), mode), band=band)
         for p, st in enumerate(p2["pairs"]):
             if st:
                 fid = "%d_2_%02d" % (bno, p + 1)
-                add("C-%s-2" % band, fid, "p2pair", E.fig_pair_phase2(T, band, p, st, fid, "fdr"), band=band, pair=p)
+                add("C-%s-2" % band, fid, "p2pair", E.fig_pair_phase2(T, band, p, st, nm(fid), mode), band=band, pair=p)
         fid = "%d_2_all" % bno
-        add("C-%s-2" % band, fid, "p2pool", E.fig_pooled_phase2(T, band, p2, fid, "fdr"), band=band)
+        add("C-%s-2" % band, fid, "p2pool", E.fig_pooled_phase2(T, band, p2, nm(fid), mode), band=band)
         for p, st in enumerate(p3["pairs"]):
             if st:
                 fid = "%d_3_%02d" % (bno, p + 1)
-                add("C-%s-3" % band, fid, "p3pair", E.fig_pair_phase3(T, band, p, st, fid, "fdr"), band=band, pair=p)
+                add("C-%s-3" % band, fid, "p3pair", E.fig_pair_phase3(T, band, p, st, nm(fid), mode), band=band, pair=p)
         fid = "%d_3_all" % bno
-        add("C-%s-3" % band, fid, "p3pool", E.fig_pooled_phase3(T, band, p3, fid, "fdr"), band=band)
+        add("C-%s-3" % band, fid, "p3pool", E.fig_pooled_phase3(T, band, p3, nm(fid), mode), band=band)
     for band in ("theta", "gamma"):
         bno = 1 if band == "theta" else 2
         per = FN["power"][band]
         for x in per:
             if x:
                 fid = "P%d_%d" % (bno, FS.REGIONS.index(x["region"]) + 1)
-                add("P-%s" % band, fid, "power", FS.fig_power_region(PT, band, x, fid, "fdr"), band=band, region=x["region"])
+                add("P-%s" % band, fid, "power", FS.fig_power_region(PT, band, x, nm(fid), mode), band=band, region=x["region"])
         fid = "P%d_all" % bno
-        add("P-%s" % band, fid, "powerall", FS.fig_power_all(PT, band, per, fid, "fdr", FN["tiers"][band]), band=band)
-    add("F", "F1", "fooof", FS.fig_fooof(FN["fooof"], D["FT"], "F1", "fdr"))
+        add("P-%s" % band, fid, "powerall", FS.fig_power_all(PT, band, per, nm(fid), mode, FN["tiers"][band]), band=band)
+    add("F", "F1", "fooof", FS.fig_fooof(FN["fooof"], D["FT"], nm("F1"), mode))
     n = 0
     for x in D["G"]:
         if x.get("error"):
             continue
         n += 1
-        add("follow", "G%d" % n, "granger", FS.fig_granger(x, "G%d" % n, "fdr"), band=x["band"], pair=x["pair"], show_in=x["in"])
+        add("follow", "G%d" % n, "granger", FS.fig_granger(x, nm("G%d" % n), mode), band=x["band"], pair=x["pair"], show_in=x["in"])
     n = 0
     for x in D["PM"]:
         if x.get("error"):
             continue
         n += 1
-        add("follow", "M%d" % n, "pac", FS.fig_pac(x, "M%d" % n, "fdr"), region=x["region"], show_in=x["in"])
+        add("follow", "M%d" % n, "pac", FS.fig_pac(x, nm("M%d" % n), mode), region=x["region"], show_in=x["in"])
     return out
+
+
+#: What a figure's stars mark, said in its caption under each reading.
+STARS = {
+    "p1pair": ("An asterisk in (c) marks a significant Late versus Early difference", "pairs"),
+    "p1pool": ("Asterisks in the key and in (c) mark the pairs whose Late versus Early difference was significant", "pairs"),
+    "p2pair": ("An asterisk marks a significant difference between cue 2 and cue 1 within that session", "pairs"),
+    "p2pool": ("Asterisks in (b) and in the key mark the pairs with a significant Session × Cue interaction", "pairs"),
+    "p3pair": ("An asterisk in (a) marks a significant Session × Period interaction, and one beside the title of (b) or (c) a significant "
+               "Session × (cue vs baseline) contrast", "pairs"),
+    "p3pool": ("Asterisks mark significant contrasts", "pairs"),
+    "power": ("An asterisk in (a) marks a significant Session × Period interaction, and one beside the title of (b) or (c) a significant "
+              "Session × (cue vs baseline) contrast", "regions10"),
+    "powerall": ("Asterisks mark, in each region's row, a significant Session × Period interaction (a) or Session × (cue vs baseline) "
+                 "contrast (b, c) in that region's own model", "regions10"),
+    "fooof": ("Asterisks mark the regions with a significant Session × Period interaction for that parameter", "regions5"),
+    "granger": ("An asterisk marks a direction whose Late versus Early difference was significant", "granger"),
+    "pac": ("An asterisk in (a) marks a significant Late versus Early difference", "pac")}
+
+
+def stars_say(kind, mode):
+    what, fam = STARS[kind]
+    if mode == "raw":
+        return "%s at p < .05, uncorrected for multiple comparisons; the figure's statistics give each p and its FDR q." % what
+    return "%s after Benjamini–Hochberg correction across %s (q < .05); the figure's statistics give each p and q." % (what, FAMILY[fam])
+
+
+#: The four drawings of a figure: axes shared in its set or fitted to it;
+#: stars corrected or not. The record's key and the file stem's suffix.
+VARIANTS = (("files", "shared", "fdr", ""), ("files_raw", "shared", "raw", "_raw"),
+            ("files_own", "own", "fdr", "_own"), ("files_own_raw", "own", "raw", "_own_raw"))
+
+
+def _draw_one_set(rs, FT):
+    """One set of rats, in a process of its own: its data, every panel
+    measured (so each kind of panel shares one axis in this set), then every
+    figure drawn four ways; a drawing the same as the one it varies is not
+    kept. -> (rs, [figure records with their files], [figures cut off by
+    their shared axis], how many axes were shared)."""
+    import shutil
+    from . import monolith as MO
+    MO.configure(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "GUI_logs"))
+    D = load_set(rs, E.load_days(), FT)
+    state = {"record": True, "lims": {}, "spans": {}, "dir": None}
+    with E.using_pub(state):
+        draw_set(D)
+    shutil.rmtree(_root(rs), ignore_errors=True)
+    drawn, cut = {}, set()
+    for key, axes, mode, _suf in VARIANTS:
+        st = dict(state, record=False, dir=_root(rs), axes=axes, cut=set())
+        with E.using_pub(st):
+            drawn[key] = draw_set(D, mode)
+        if key == "files":
+            cut = {c for c in st["cut"] if c}
+    out = []
+    for i, f in enumerate(drawn["files"]):
+        rec = dict(f)
+        raw, own, own_raw = (drawn[k][i]["files"] for k in ("files_raw", "files_own", "files_own_raw"))
+        drop = lambda fs: [os.remove(_root(rs, v)) for v in fs.values()]      # noqa: E731
+        if _same_png(_root(rs, f["files"]["png"]), _root(rs, raw["png"])):
+            drop(raw)
+        else:
+            rec["files_raw"] = raw
+        if _same_png(_root(rs, f["files"]["png"]), _root(rs, own["png"])):
+            drop(own)
+            drop(own_raw)                                     # the same axes: the shared drawings serve
+        else:
+            rec["files_own"] = own
+            if _same_png(_root(rs, own["png"]), _root(rs, own_raw["png"])):
+                drop(own_raw)
+            else:
+                rec["files_own_raw"] = own_raw
+        out.append(rec)
+    with open(_root(rs, "cut.json"), "w", encoding="utf-8") as fh:
+        json.dump(sorted(cut), fh)
+    return rs, out, sorted(cut), len(state["lims"]) + len(state["spans"])
+
+
+def axes_say(cut):
+    """What a caption says about its axes, in each version."""
+    return {"shared": "The y-axes are shared by every figure of this kind in this set of rats, so figures can be compared directly."
+                      + (" Some of the highest values in this figure reach past that shared axis and are cut off; the version fitted "
+                         "to this figure shows them all." if cut else ""),
+            "own": ("In this version every axis is fitted to this figure alone, so its values cannot be compared by eye with other "
+                    "figures; what the caption says about axes or scales shared with other figures describes the shared version.")}
+
+
+def granger_reading(x, D):
+    """A note for Joe on one Granger figure: what its pattern means, and
+    whether it makes sense (2026-11-04: both directions rose together)."""
+    ab, ba, sd = x.get("ab") or {}, x.get("ba") or {}, x.get("sd") or {}
+    if ab.get("ratio") is None or ba.get("ratio") is None:
+        return None
+    a, b = x["a"], x["b"]
+    out = []
+    B = next((z for z in D["EM"]["bands"] if z["band"] == x["band"]), None)
+    coh = (((B or {}).get("phase1") or {}).get("pairs") or [None] * 10)[x["pair"]] or {}
+    cr = (coh.get("a2") or {}).get("ratio")
+    if (ab["ratio"] > 1) == (ba["ratio"] > 1):
+        word = "rose" if ab["ratio"] > 1 else "fell"
+        out.append("Granger causality %s in both directions (%s → %s ×%.2f; %s → %s ×%.2f), and the test of whether one direction "
+                   "changed more than the other, Session × Direction, %s." % (
+                       word, a, b, ab["ratio"], b, a, ba["ratio"],
+                       "was significant (%s)" % fp(sd["p"]) if (sd.get("p") or 1) < E.ALPHA else "was not (%s)" % fp(sd.get("p"))))
+        out.append("That makes sense. Spectral Granger causality divides the total interdependence of two signals, which follows their "
+                   "coherence, into a part flowing each way and an instantaneous part (Geweke, 1982). When coherence between two regions "
+                   "changes, both directed parts usually change with it. A change in both directions with no Session × Direction effect "
+                   "therefore reads as a %s two-way interaction between %s and %s, not as one region coming to lead the other."
+                   % ("stronger" if word == "rose" else "weaker", a, b)
+                   + ((" Here the pair's %s coherence also %s (×%.2f), as it should." % (x["band"], "rose" if cr > 1 else "fell", cr))
+                      if cr is not None and (cr > 1) == (ab["ratio"] > 1) else
+                      (" Here, though, the pair's %s coherence went the other way (×%.2f), which is unusual: read this one with caution."
+                       % (x["band"], cr)) if cr is not None else ""))
+    else:
+        up, dn = ((a, b, ab), (b, a, ba)) if ab["ratio"] > 1 else ((b, a, ba), (a, b, ab))
+        out.append("Granger causality rose from %s to %s (×%.2f) and fell from %s to %s (×%.2f): a shift in which region leads. Whether "
+                   "the two directions changed differently is the Session × Direction test (%s)." % (
+                       up[0], up[1], up[2]["ratio"], dn[0], dn[1], dn[2]["ratio"], fp(sd.get("p"))))
+    other = "no34" if D["rs"] != "no34" else "all"
+    G2 = (D.get("G_all") or {}).get(other)
+    if G2 is not None:
+        y = next((z for z in G2 if z["pair"] == x["pair"] and z["band"] == x["band"] and not z.get("error")), None)
+        if y and (y.get("ab") or {}).get("ratio") is not None and (y.get("ba") or {}).get("ratio") is not None:
+            out.append("%s, the same pair shows %s → %s ×%.2f and %s → %s ×%.2f%s." % (
+                "Without J3 and J4" if other == "no34" else "With every rat", a, b, y["ab"]["ratio"], b, a, y["ba"]["ratio"],
+                ", the same pattern" if ((y["ab"]["ratio"] > 1) == (ab["ratio"] > 1) and (y["ba"]["ratio"] > 1) == (ba["ratio"] > 1))
+                else ", a different pattern: read this one with caution"))
+        else:
+            out.append("%s this pair is not followed up, because its coherence did not change there." % (
+                "Without J3 and J4," if other == "no34" else "With every rat,"))
+    out.append("Two cautions. Granger causality measures how well one region's past activity predicts the other's, not the direction "
+               "of an anatomical connection. And a signal reaching both electrodes at once (a shared reference, or volume conduction) "
+               "can raise both directions together; that is why the same result without J3 and J4, whose recordings carry such a "
+               "signal, matters.")
+    return out
+
+
+def _same_png(a, b):
+    """Two drawings that differ in nothing a reader could see."""
+    from PIL import Image
+    try:
+        x, y = Image.open(a), Image.open(b)
+        return x.size == y.size and x.convert("RGB").tobytes() == y.convert("RGB").tobytes()
+    except OSError:
+        return False
 
 
 # --------------------------------------------------------------------------
@@ -318,7 +479,10 @@ def texts(f, D):
     gee_coh = ("Tested with a generalized estimating equation (Gamma family, log link, exchangeable working correlation, rat as the "
                "cluster); tests of up to 2 df used robust standard errors with the Mancl–DeRouen small-sample correction, larger tests "
                "model-based standard errors.")
-    out = {"tests": [], "results": []}
+    out = {"tests": [], "results": [], "sensitivity": [], "reading": None}
+    if k == "granger":
+        xg = next((z for z in D["G"] if z["pair"] == f["pair"] and z["band"] == f["band"] and not z.get("error")), None)
+        out["reading"] = granger_reading(xg, D) if xg else None
     if k in ("p1pair", "p2pair", "p3pair"):
         p = f["pair"]
         a, b = E.STRUCTS[E.PAIRS[p][0]][1], E.STRUCTS[E.PAIRS[p][1]][1]
@@ -348,7 +512,7 @@ def texts(f, D):
             out["tests"].append(test_row("Late vs Early", a2, primary=True, robust=rob, family="pairs"))
             out["results"].append(s_change("%s %s–%s coherence" % (BW, a, b), a2, a2.get("q"), FAMILY["pairs"]))
             if rob:
-                out["results"].append(s_robust(_robust(rob)))
+                out["sensitivity"].append(s_robust(_robust(rob)))
         sf = next((t for t in st.get("b2") or [] if t["term"] == "Session × Frequency"), None)
         if sf:
             out["tests"].append(test_row("Session × Frequency", sf, q=st.get("b2_q"), family="pairs"))
@@ -370,6 +534,8 @@ def texts(f, D):
                                 "With %d rats, robust standard errors cannot be estimated for terms with many degrees of freedom; those "
                                 "terms are reported on model-based errors, which assume the working correlation is correct." % len(EM["rats"])])
         out["tests"] = _terms_rows(P1.get("a1"), prefix="Band: ") + _terms_rows(P1.get("b1"), prefix="Bins: ")
+        # what the stars mark: each pair's own Late vs Early
+        out["tests"] += [r for r in (test_row("%s: Late vs Early" % _pair(x["pair"]), x["a2"], family="pairs") for x in keep if x.get("a2")) if r]
         sp = next((t for t in P1.get("a1") or [] if t["term"] == "Session × Pair"), None)
         ss = next((t for t in P1.get("a1") or [] if t["term"] == "Session"), None)
         for t in P1.get("a1") or []:
@@ -398,7 +564,7 @@ def texts(f, D):
             out["results"].append(s_inter("The difference between cue 2 and cue 1 in %s %s–%s coherence" % (band, a, b), "Session × Cue", sc,
                                           st.get("q"), FAMILY["pairs"]))
             if rob:
-                out["results"].append(s_robust(_robust(rob)))
+                out["sensitivity"].append(s_robust(_robust(rob)))
         for d in E.DAYS:
             r = (st.get("days") or {}).get(d) or {}
             if r.get("p") is None:
@@ -415,6 +581,11 @@ def texts(f, D):
         out["note"] = " ".join([pooled % "cue 1 and cue 2 windows (10 s each)", regionpair,
                                 "All pairs were entered into one model with Session, Cue, Pair and their interactions.", gee_coh])
         out["tests"] = _terms_rows(P2.get("omnibus"))
+        for x in [z for z in P2["pairs"] if z]:
+            sc = next((t for t in x.get("terms") or [] if t["term"] == "Session × Cue"), None)
+            r = test_row("%s: Session × Cue" % _pair(x["pair"]), sc, q=x.get("q"), family="pairs") if sc else None
+            if r:
+                out["tests"].append(r)
         for t in P2.get("omnibus") or []:
             out["results"].append(s_term("In the model of all ten pairs", t["term"], t, None, ""))
     elif k == "p3pair":
@@ -437,7 +608,7 @@ def texts(f, D):
             out["results"].append(s_inter("The response of %s %s–%s coherence to the cues, relative to baseline," % (band, a, b), "Session × Period",
                                           sp, sp.get("q"), FAMILY["pairs"]))
             if rob:
-                out["results"].append(s_robust(_robust(rob)))
+                out["sensitivity"].append(s_robust(_robust(rob)))
         for ck, (ca, cb) in CONTRAST_SAY.items():
             c = (st.get("contrasts") or {}).get(ck) or {}
             if c.get("p") is None:
@@ -447,7 +618,7 @@ def texts(f, D):
             out["tests"].append(test_row(say, c, robust=rb, family="pairs"))
             out["results"].append(s_contrast("%s %s–%s coherence" % (band, a, b), ck, c, c.get("q"), FAMILY["pairs"]))
             if rb:
-                out["results"].append(s_robust(_robust(rb)))
+                out["sensitivity"].append(s_robust(_robust(rb)))
     elif k == "p3pool":
         P3 = next(x for x in EM["bands"] if x["band"] == band)["phase3"]
         out["title"] = "All ten pairs · %s · how the cue effect changed" % band
@@ -499,7 +670,7 @@ def texts(f, D):
             out["results"].append(s_inter("The response of %s %s power to the cues, relative to baseline," % (rs, band), "Session × Period", sp,
                                           sp.get("q"), FAMILY["regions10"]))
             if rob:
-                out["results"].append(s_robust(_robust(rob)))
+                out["sensitivity"].append(s_robust(_robust(rob)))
         for ck, (ca, cb) in CONTRAST_SAY.items():
             c = (x.get("contrasts") or {}).get(ck) or {}
             if c.get("p") is None:
@@ -509,7 +680,7 @@ def texts(f, D):
             out["tests"].append(test_row(say, c, robust=rb, family="regions10"))
             out["results"].append(s_contrast("%s %s power" % (rs, band), ck, c, c.get("q"), FAMILY["regions10"], db=True))
             if rb:
-                out["results"].append(s_robust(_robust(rb)))
+                out["sensitivity"].append(s_robust(_robust(rb)))
         spf = x.get("spf") or {}
         if spf.get("p") is not None:
             out["tests"].append(test_row("Session × Period × Frequency", spf, family="regions10"))
@@ -536,6 +707,17 @@ def texts(f, D):
                     out["tests"].append(row)
                     s = s_term("In %s %s power" % (say.lower(), band), name, kk, kk.get("q"), FAMILY["bands"])
                     out["results"].append(s + (" The linear mixed model gave %s." % row["lmm"] if row.get("lmm") else ""))
+        # what the stars mark: each region's own Session x Period and contrasts (tier 3a)
+        for z in per:
+            rs_ = FS.REGION_SAY[z["region"]]
+            r = test_row("%s: Session × Period" % rs_, z.get("sp"), family="regions10")
+            if r:
+                out["tests"].append(r)
+            for ck, (ca, cb) in CONTRAST_SAY.items():
+                c = (z.get("contrasts") or {}).get(ck) or {}
+                r = test_row("%s: Session × (%s vs %s)" % (rs_, ca, cb), c, family="regions10") if c.get("p") is not None else None
+                if r:
+                    out["tests"].append(r)
     elif k == "fooof":
         out["title"] = "Aperiodic and periodic components · every region"
         out["caption"] = ("Aperiodic exponent, aperiodic offset, theta peak frequency and theta peak power (rows) in each region (columns) in the "
@@ -584,7 +766,7 @@ def texts(f, D):
             out["tests"].append(test_row("%s → %s, Late vs Early" % (s1, s2), t, primary=True, robust=rb, family="granger"))
             out["results"].append(s_change("%s Granger causality from %s to %s" % (BW, s1, s2), t, t.get("q"), FAMILY["granger"]))
             if rb:
-                out["results"].append(s_robust(_robust(rb)))
+                out["sensitivity"].append(s_robust(_robust(rb)))
         sd = x.get("sd") or {}
         if sd.get("p") is not None:
             out["tests"].append(test_row("Session × Direction", sd, family="granger"))
@@ -610,7 +792,7 @@ def texts(f, D):
             out["tests"].append(test_row("Late vs Early", t, primary=True, robust=rb, family="pac"))
             out["results"].append(s_change("Theta–gamma modulation index in %s" % rs, t, t.get("q"), FAMILY["pac"]))
             if rb:
-                out["results"].append(s_robust(_robust(rb)))
+                out["sensitivity"].append(s_robust(_robust(rb)))
     out["tests"] = [t for t in out["tests"] if t]
     prim = [t for t in out["tests"] if t["primary"]]
     out["sig"] = {m: any(t["pass"][m] for t in prim) for m in E.MODES}
@@ -636,11 +818,20 @@ GROUP_SAY = {
 
 
 def figure_record(f, D):
+    from . import joestats as JS
     rs = D["rs"]
     T_ = texts(f, D)
     fid = f["fid"]
     coh = f["kind"] in TAB11_KINDS
     no = ("D" if coh else "") + fid.replace("_", ".")        # D: tab 11's (Joe's site has tab 9's Figure 1.1 too)
+    name = "Figure %s · %s" % (no, T_["title"])
+    doc = JS.figure_stats(f, no, D, name)
+    stats = None
+    if doc:
+        doc["sensitivity"] = T_["sensitivity"]
+        doc["reading"] = T_.get("reading")
+        stats = "stats_%s.pdf" % fid
+        JS.write_pdf(doc, _root(rs, stats), "%s (%s)" % (E.RATSET_SAY[rs], ", ".join("J%d" % r for r in doc["rats"])))
     # Prism tables made with tab 11 and 12's own figures for this set
     prism = []
     figs = E.set_root(rs, "figs") if coh else FS.set_root(rs, "figs")
@@ -648,10 +839,16 @@ def figure_record(f, D):
         p = os.path.join(figs, "fig_%s_prism.%s" % (fid, ext))
         if os.path.isfile(p):
             prism.append(p)
+    raw, own, own_raw = (f.get(k) or {} for k in ("files_raw", "files_own", "files_own_raw"))
+    cap = "Figure %s. %s" % (no, T_["caption"])
     return {"id": no, "fid": fid, "kind": f["kind"], "group": f["group"], "band": f.get("band"), "pair": f.get("pair"), "region": f.get("region"),
-            "show_in": f.get("show_in"), "title": T_["title"], "name": "Figure %s · %s" % (no, T_["title"]),
-            "pdf": f["files"].get("pdf"), "png": f["files"].get("png"), "prism": prism,
-            "caption": "Figure %s. %s" % (no, T_["caption"]), "note": T_["note"], "results": T_["results"], "tests": T_["tests"], "sig": T_["sig"]}
+            "show_in": f.get("show_in"), "title": T_["title"], "name": name,
+            "pdf": f["files"].get("pdf"), "png": f["files"].get("png"), "pdf_raw": raw.get("pdf"), "png_raw": raw.get("png"),
+            "pdf_own": own.get("pdf"), "png_own": own.get("png"), "pdf_own_raw": own_raw.get("pdf"), "png_own_raw": own_raw.get("png"),
+            "prism": prism, "caption": cap + " " + stars_say(f["kind"], "fdr"), "caption_raw": cap + " " + stars_say(f["kind"], "raw"),
+            "axes_say": axes_say(fid in D.get("cut", ())), "cut": fid in D.get("cut", ()),
+            "note": T_["note"], "results": doc["paragraph"] if doc else T_["results"], "sensitivity": T_["sensitivity"],
+            "reading": T_.get("reading"), "stats": stats, "tests": T_["tests"], "sig": T_["sig"]}
 
 
 # --------------------------------------------------------------------------
@@ -670,7 +867,8 @@ def _refs_of_recordings():
         p = os.path.join(f["local"], "CSC19.ncs") if f and f.get("local") else None
         if not p or not os.path.isfile(p):
             continue
-        h = open(p, "rb").read(16384).decode("latin-1")
+        with open(p, "rb") as fh:
+            h = fh.read(16384).decode("latin-1")
         ref = re.search(r"-ReferenceChannel\s+\"?([^\r\n\"]*)", h)
         lo = re.search(r"-DspLowCutFrequency\s+([^\r\n]*)", h)
         app = re.search(r"-ApplicationName\s+([^\r\n]*)", h)
@@ -732,10 +930,8 @@ def methods(DA, refs, bip, versions):
         "Electrode placements were verified histologically, and a region in a hemisphere was analysed only when its electrode lay within "
         "the target. No electrode aimed at POR was located in POR, so POR was not analysed. The numbers of rats contributing to each "
         "region were: %s." % ", ".join("%s %d" % (k, v) for k, v in nreg.items()),
-        "Amplifier saturation was assessed for every wire in every window: a wire was excluded from a window when its signal remained "
-        "within 0.5% of the digitiser's limit for at least 16 consecutive samples and such samples covered at least 0.5% of the window "
-        "or any continuous 50 ms. Wires judged faulty on inspection were excluded throughout. In each window of each trial, one wire was "
-        "then used per region and hemisphere: the lowest-numbered wire that was neither excluded nor saturated in that window. A fixed "
+        "Wires judged faulty on inspection were excluded throughout. In each window of each trial, one wire was then used per region "
+        "and hemisphere: the lowest-numbered wire not excluded for an artefact in that window (see Artefacts from head bumps). A fixed "
         "rule was used, rather than averaging the surviving wires, so that every window represents the same kind of measurement; where "
         "no wire survived, that region and hemisphere was treated as missing for that window."]))
     S.append(("Preprocessing", [
@@ -765,9 +961,12 @@ def methods(DA, refs, bip, versions):
     S.append(("Power and its components", [
         "Power spectral density (one-sided, µV²/Hz) was estimated from the same segments in the baseline, cue 1 and cue 2 windows, "
         "averaged over all segments of a session's trials, averaged over the two hemispheres of a region where both were valid, averaged "
-        "within each band and expressed in decibels (dB re 1 µV²/Hz). No per-animal normalisation was applied: between-animal "
-        "differences in overall power were absorbed by the model, and the response to the cues was tested as the Session × Period "
-        "interaction, which compares each window with the baseline recorded in the same session.",
+        "within each band and expressed in decibels (dB re 1 µV²/Hz). Power was not normalised separately for each rat because it was "
+        "analysed in dB, a logarithmic scale on which a rat's overall level (set by electrode impedance, depth and amplifier gain) is an "
+        "additive constant, and every test compared each rat with itself (rat as the cluster): the response to the cues was tested as "
+        "Session × Period, the change from baseline in Late sessions against that in Early sessions, from which any constant offset of a "
+        "rat, or of one of its sessions, cancels. Differences in absolute level between sessions (the main effect of Session) are not "
+        "protected in this way and can reflect recording conditions, such as the change of reference between sessions in three rats.",
         "Spectra from 2 to 55 Hz were parameterised with FOOOF %s (Donoghue et al., 2020; fixed aperiodic mode, peak widths 1–8 Hz, at "
         "most six peaks) for each hemisphere, window and session, and the parameters were averaged across hemispheres: the aperiodic "
         "exponent and offset, and the centre frequency and power above the aperiodic fit of the largest peak between 5 and 12 Hz."
@@ -909,7 +1108,128 @@ def methods(DA, refs, bip, versions):
         "Mancl LA, DeRouen TA (2001) A covariance estimator for GEE with improved small-sample properties. Biometrics 57:126–134.",
         "Tort ABL, Komorowski R, Eichenbaum H, Kopell N (2010) Measuring phase-amplitude coupling between neuronal oscillations of different frequencies. J Neurophysiol 104:1195–1210.",
         "Wilson GT (1972) The factorization of matricial spectral densities. SIAM J Appl Math 23:420–426."]))
+    sat = saturation_paragraphs(saturation_counts())
+    if sat:
+        i = next(k for k, (t, _p) in enumerate(S) if t == "Electrode placement and channel selection")
+        S.insert(i + 1, ("Artefacts from head bumps", sat))
     return [{"title": t, "paras": ps} for t, ps in S]
+
+
+#: The windows head bumps are measured in (tab 8's), and the hand
+#: exclusions that apply to each.
+SAT_WINDOWS = (("base10", "pre"), ("cue1", "cue1"), ("cue2", "cue2"))
+
+
+def _segments(seconds):
+    """1-s segments (1,024 samples, half overlapping) in a window at 1 kHz."""
+    n = int(round(seconds * 1000.0))
+    return 0 if n < E.SEG else 1 + (n - E.SEG) // E.STEP
+
+
+def saturation_counts():
+    """What head bumps cost, per rat and session, read from tab 8's day files
+    (the wire each window used) and the trials' hand exclusions:
+    [{rat, day, trials, windows, hand, replaced, omitted, segments,
+    segments_lost}]. A region-window is one region and hemisphere in one
+    10-s window of one trial (histology-excluded ones are not counted).
+    `hand`: wires excluded by hand in that window reached the region;
+    `replaced`: it used a higher wire than its first; `omitted`: no wire was
+    left (the cause, hand or saturation, in `omitted_hand`)."""
+    from . import coupling
+    from . import monolith as MO
+    from . import sweep
+    man = MO.manifest() or {}
+    names = list(man.get("regions") or sweep.regions())
+    cmap = {k: sorted(int(c) for c in v) for k, v in coupling.dewey_map().items() if k in E.SIDE_NAMES}
+    out = []
+    for d in man.get("days") or []:
+        if d["day"] not in E.DAYS:
+            continue
+        jp = joe._day_path(d, joe.day_key(d, names))
+        if not os.path.isfile(jp):
+            continue
+        arrs, _fp, meta = joe.load_day(jp)
+        wires = arrs["wires"]
+        ri = {nm: meta["regions"].index(nm) for nm in E.SIDE_NAMES}
+        bad = {int(c) for c in d.get("bad") or []}
+        blocked = set((d.get("blocked") or {}).keys())
+        units = list(d.get("units") or [])
+        x = {"rat": int(d["rat"]), "day": d["day"], "trials": len(meta["trials"]), "windows": 0, "hand": 0, "replaced": 0, "replaced_hand": 0,
+             "omitted": 0, "omitted_hand": 0, "segments": 0, "segments_lost": 0, "unread": 0}
+        # trials tab 8 could not read at all ("r3 Precon1 <unit>: why"): their wires are all -1, which is not a head bump
+        unread = {n.split(" ")[2][:-1] for n in meta.get("notes") or [] if len(n.split(" ")) > 3 and n.split(" ")[2].endswith(":")}
+        for ui, tr in enumerate(meta["trials"]):
+            if tr["id"] in unread:
+                x["unread"] += 1
+                continue
+            o, c, f = (float(v) for v in tr["t"])
+            secs = {"base10": 10.0, "cue1": c - o, "cue2": f - c}
+            manual = (units[ui].get("manual") if ui < len(units) else None) or {}
+            for wn, group in SAT_WINDOWS:
+                wi = joe.WINDOWS.index(wn)
+                by_hand = {int(v) for v in manual.get("flat") or []} | {int(v) for v in manual.get(group) or []}
+                for nm in E.SIDE_NAMES:
+                    have = [ch for ch in cmap[nm] if ch not in bad]
+                    if nm in blocked or not have:
+                        continue
+                    n = _segments(secs[wn])
+                    x["windows"] += 1
+                    x["segments"] += n
+                    got = int(wires[wi, ui, ri[nm]])
+                    hand = [ch for ch in have if ch in by_hand]
+                    x["hand"] += bool(hand)
+                    if got < 0:
+                        x["omitted"] += 1
+                        x["omitted_hand"] += len(hand) == len(have)
+                        x["segments_lost"] += n
+                    elif got != have[0]:
+                        x["replaced"] += 1
+                        x["replaced_hand"] += have[0] in by_hand
+        out.append(x)
+    return sorted(out, key=lambda x: (x["rat"], x["day"]))
+
+
+def saturation_paragraphs(rows):
+    if not rows:
+        return []
+    tw = sum(x["windows"] for x in rows)
+    rp = sum(x["replaced"] for x in rows)
+    om = sum(x["omitted"] for x in rows)
+    oh = sum(x["omitted_hand"] for x in rows)
+    rh = sum(x["replaced_hand"] for x in rows)
+    ur = sum(x.get("unread", 0) for x in rows)
+    ts = sum(x["segments"] for x in rows)
+    sl = sum(x["segments_lost"] for x in rows)
+    pc = lambda a, b: "%.1f%%" % (100.0 * a / b) if b else "0%"      # noqa: E731
+    cm = lambda v: "{:,}".format(v)                                   # noqa: E731
+    worst = max(rows, key=lambda x: x["segments_lost"] / max(1, x["segments"]))
+    return [
+        "When an animal knocked its head stage, the signal on many wires at once was driven to the limit of the digitiser or "
+        "distorted by a large movement transient. Such artefacts were removed in two ways, separately for every wire in the 10-s "
+        "baseline, cue 1 and cue 2 windows of every trial. First, every trial was inspected visually, and wires carrying an artefact in "
+        "a window were excluded from that window by hand (in a head bump, typically every wire at once) [confirm who inspected the "
+        "trials and what was counted as an artefact]. Second, saturation "
+        "was detected automatically: a wire was excluded from a window when its signal stayed within 0.5% of the digitiser's limit "
+        "(±2,000 µV) for at least 16 consecutive samples (0.5 ms at 32 kHz) and such runs covered at least 0.5% of the window or one "
+        "continuous 50 ms. Nothing was cut out of a window. An excluded wire was replaced, for that window only, by the region's "
+        "next-lowest usable wire; when no wire of a region and hemisphere remained, that region and hemisphere was omitted from that "
+        "window of that trial, removing all of its 1-s segments from the session's pooled spectra (the 20-s cue-pair window inherited "
+        "the omissions of both cues).",
+        "Across %d rats and %d sessions there were %s region-windows (a region and hemisphere in one 10-s window of one trial). %s (%s) "
+        "used a replacement wire and %s (%s) were omitted, removing %s of %s one-second segments (%s) from the pooled spectra. %s The "
+        "most affected session was J%d %s, which lost %s of its segments. Per rat and session (trials; region-windows with a "
+        "replacement wire; region-windows omitted; segments omitted): %s.%s" % (
+            len({x["rat"] for x in rows}), len(rows), cm(tw), cm(rp), pc(rp, tw), cm(om), pc(om, tw), cm(sl), cm(ts), pc(sl, ts),
+            ("Every replacement and every omission followed a hand exclusion; automatic saturation detection removed no wire that had not "
+             "already been excluded by hand." if rh == rp and oh == om else
+             "%s of the replacements followed a hand exclusion of the region's first wire, the rest saturation or an unreadable channel; %s "
+             "of the omissions followed a hand exclusion of every wire of the region." % (cm(rh), cm(oh))),
+            worst["rat"], worst["day"], pc(worst["segments_lost"], worst["segments"]),
+            "; ".join("J%d %s, %d; %d; %d; %s of %s (%s)" % (x["rat"], x["day"], x["trials"], x["replaced"], x["omitted"],
+                                                             cm(x["segments_lost"]), cm(x["segments"]), pc(x["segments_lost"], x["segments"]))
+                      for x in rows),
+            (" %d trial%s could not be read at all and %s left out of these counts." % (ur, "" if ur == 1 else "s", "is" if ur == 1 else "are"))
+            if ur else "")]
 
 
 def _versions():
@@ -940,23 +1260,30 @@ def build(progress=None, sets=None, draw=True):
     for rs in sets:
         say("%s: the data" % E.RATSET_SAY[rs])
         data[rs] = load_set(rs, every, FT)
-    state = {"record": True, "lims": {}, "spans": {}, "dir": None}
-    recorded = {}
-    with E.using_pub(state):
+    for rs in sets:
+        data[rs]["G_all"] = {k: data[k]["G"] for k in sets}          # the Granger notes compare sets
+    drawn, nlims = {}, 0
+    if draw:
+        from concurrent.futures import ProcessPoolExecutor
+        import importlib
+        say("drawing every set of rats four ways, each set in a process of its own")
+        one = importlib.import_module(__package__ + ".joepub")._draw_one_set      # by its module's name, for the workers
+        with ProcessPoolExecutor(max_workers=len(sets)) as ex:
+            for rs, figs, cut, n in ex.map(one, sets, [FT] * len(sets)):
+                drawn[rs], data[rs]["cut"] = figs, set(cut)
+                nlims += n
+                say("%s: drawn" % E.RATSET_SAY[rs])
+    else:
+        on_disk = lambda rs, stem: {e: "%s.%s" % (stem, e) for e in ("pdf", "png") if os.path.isfile(_root(rs, "%s.%s" % (stem, e)))}  # noqa: E731
         for rs in sets:
             say("%s: measuring every panel" % E.RATSET_SAY[rs])
-            recorded[rs] = draw_set(data[rs])
-    drawn = {}
-    for rs in sets:
-        if not draw:
-            drawn[rs] = [dict(f, files={e: "fig_%s.%s" % (f["fid"], e) for e in ("pdf", "png")
-                                        if os.path.isfile(_root(rs, "fig_%s.%s" % (f["fid"], e)))}) for f in recorded[rs]]
-            continue
-        say("%s: drawing" % E.RATSET_SAY[rs])
-        import shutil
-        shutil.rmtree(_root(rs), ignore_errors=True)
-        with E.using_pub(dict(state, record=False, dir=_root(rs))):
-            drawn[rs] = draw_set(data[rs])
+            state = {"record": True, "lims": {}, "spans": {}, "dir": None}
+            with E.using_pub(state):
+                rec = draw_set(data[rs])
+            nlims += len(state["lims"]) + len(state["spans"])
+            drawn[rs] = [dict(f, **{k: on_disk(rs, "fig_" + f["fid"] + suf) for k, _a, _m, suf in VARIANTS}) for f in rec]
+            cp = _root(rs, "cut.json")
+            data[rs]["cut"] = set(json.load(open(cp, encoding="utf-8"))) if os.path.isfile(cp) else set()
     bip = None
     bp = _root("bipolar.json")
     if os.path.isfile(bp):
@@ -983,7 +1310,7 @@ def build(progress=None, sets=None, draw=True):
     FS.methods_docx(M, _root("Methods_for_the_dissertation.docx"))
     out = {"schema": SCHEMA, "made": time.strftime("%Y-%m-%dT%H:%M:%S"), "versions": versions,
            "sets": [{"key": k, "say": s, "drop": list(d), "file": SET_FILE[k]} for k, s, d in E.RATSETS if k in sets],
-           "why": E.RATSET_WHY, "methods": M, "by_set": by_set, "lims": len(state["lims"]) + len(state["spans"])}
+           "why": E.RATSET_WHY, "methods": M, "by_set": by_set, "lims": nlims}
     joe._write(_root("pub.json"), out)
     return out
 

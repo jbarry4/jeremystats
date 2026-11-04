@@ -60,6 +60,10 @@
         "set",
         "2026-10-20T17:58:42.922968+00:00"
       ],
+      "bank:80c0d55b5f62": [
+        "set",
+        "2026-11-03T19:47:37.995817+00:00"
+      ],
       "bank:8931cc766fe7": [
         "set",
         "2026-10-15T14:04:29.390985+00:00"
@@ -1164,6 +1168,14 @@
         "set",
         "2026-10-07T22:34:38.484221+00:00"
       ],
+      "path:s005e83535b0b|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1_m576_s3_72326\\2026-07-23_14-34-23": [
+        "set",
+        "2026-11-04T20:47:04.525981+00:00"
+      ],
+      "path:s005e83535b0b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1_m576_s3_72326\\2026-07-23_14-34-23": [
+        "set",
+        "2026-11-04T20:47:04.376465+00:00"
+      ],
       "path:s00da8ac343c1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s28jan19-flowerpot4\\2024-01-19_15-17-31": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
@@ -1220,6 +1232,14 @@
         "set",
         "2026-10-23T19:21:57.096929+00:00"
       ],
+      "path:s138295c4e40c|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1m576_s5_72326\\2026-07-23_16-41-05": [
+        "set",
+        "2026-11-04T20:47:06.199784+00:00"
+      ],
+      "path:s138295c4e40c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1m576_s5_72326\\2026-07-23_16-41-05": [
+        "set",
+        "2026-11-04T20:47:06.100600+00:00"
+      ],
       "path:s14f499593e3c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s34jan22\\2024-01-22_12-06-27": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
@@ -1236,6 +1256,10 @@
         "set",
         "2026-10-23T19:21:57.096929+00:00"
       ],
+      "path:s1c73b257d054|Y:\\ProcessedPtenData\\M13_pten\\HF4s4aug1\\2023-08-23_11-24-29": [
+        "set",
+        "2026-11-04T20:46:56.610276+00:00"
+      ],
       "path:s1cc5651e29bf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s18aug12\\2024-08-12_13-39-40": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
@@ -1251,6 +1275,10 @@
       "path:s1f83e06d0029|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s5jan8\\2024-01-08_17-19-00": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s1f887bae4611|E:\\Joe Multisite 2026 data\\J8\\J8_Precon1\\J8_Precon1_FP1\\2026-08-12_10-12-26": [
+        "set",
+        "2026-11-04T20:46:57.330973+00:00"
       ],
       "path:s2011bbcb4d64|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\m5s8jan9\\2024-01-09_14-27-27": [
         "set",
@@ -1275,6 +1303,10 @@
       "path:s2279b53ffcde|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s45jan26\\2024-01-26_13-49-40": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s234fc080573e|E:\\Joe Multisite 2026 data\\J8\\J8_Precon1\\J8_Precon1_FP1\\2026-08-12_10-12-26": [
+        "set",
+        "2026-11-04T20:49:54.901184+00:00"
       ],
       "path:s238f423d3548|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_12-17-32": [
         "set",
@@ -1424,6 +1456,14 @@
         "set",
         "2026-10-23T19:21:57.096929+00:00"
       ],
+      "path:s2ecaf1b278cd|E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP1\\2026-08-19_10-41-10": [
+        "set",
+        "2026-11-04T20:49:55.318340+00:00"
+      ],
+      "path:s2ecaf1b278cd|E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP1\\2026-08-19_10-45-46": [
+        "set",
+        "2026-11-04T20:49:55.407071+00:00"
+      ],
       "path:s2ff694df2bee|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADm1s5apr3\\2023-04-03_17-23-48": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
@@ -1431,6 +1471,18 @@
       "path:s308e358479d0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s14mar20\\2024-03-20_18-38-41": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s3302e616c5e5|E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP1\\2026-07-23_08-39-43": [
+        "set",
+        "2026-11-04T20:46:56.858805+00:00"
+      ],
+      "path:s33970a523516|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-05-37": [
+        "set",
+        "2026-11-04T20:47:02.802495+00:00"
+      ],
+      "path:s33970a523516|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-05-37": [
+        "set",
+        "2026-11-04T20:47:02.701170+00:00"
       ],
       "path:s33de61d7ba0b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s3apr5\\2023-04-05_17-30-54": [
         "set",
@@ -1443,6 +1495,10 @@
       "path:s352ea772fdfa|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-09-22_13-35-21": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s360e48254222|E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP1\\2026-07-23_08-39-43": [
+        "set",
+        "2026-11-04T20:49:54.684222+00:00"
       ],
       "path:s375b44b95da9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\m5s7jan9\\2024-01-09_13-49-55": [
         "set",
@@ -1480,6 +1536,22 @@
         "set",
         "2026-10-23T19:21:57.096929+00:00"
       ],
+      "path:s465a91813836|Y:\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-08-18_13-20-05": [
+        "set",
+        "2026-11-04T20:46:56.043692+00:00"
+      ],
+      "path:s465a91813836|Y:\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-08-18_15-20-10": [
+        "set",
+        "2026-11-04T20:46:56.152288+00:00"
+      ],
+      "path:s465a91813836|Y:\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-08-21_16-24-14": [
+        "set",
+        "2026-11-04T20:46:56.245282+00:00"
+      ],
+      "path:s465a91813836|Y:\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-11-01_14-20-22": [
+        "set",
+        "2026-11-04T20:46:56.348106+00:00"
+      ],
       "path:s49f306485ed1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos2jan21\\2022-01-21_16-34-48": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
@@ -1487,6 +1559,10 @@
       "path:s4ae5ed74335c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s36jan22\\2024-01-22_15-38-39": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s4b1592b98bb0|E:\\Joe Multisite 2026 data\\J11\\J11_Con4\\J11_Con4_FP2\\2026-08-21_10-14-29": [
+        "set",
+        "2026-11-04T20:49:55.642989+00:00"
       ],
       "path:s4b3d2a3821c2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s2apr5\\2023-04-05_16-59-08": [
         "set",
@@ -1608,6 +1684,10 @@
         "set",
         "2026-10-23T19:21:57.096929+00:00"
       ],
+      "path:s565d609b331e|E:\\Joe Multisite 2026 data\\J8\\J8_Precon3\\J8_Precon3_FP1\\2026-08-14_10-08-12": [
+        "set",
+        "2026-11-04T20:49:55.110530+00:00"
+      ],
       "path:s5733437d84ec|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s50feb5\\2024-02-05_15-24-13": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
@@ -1644,6 +1724,10 @@
         "set",
         "2026-10-23T19:21:57.096929+00:00"
       ],
+      "path:s608de2a1c186|E:\\Joe Multisite 2026 data\\J6\\Cond2\\J6_Cond2_FP2\\2026-07-27_13-28-20": [
+        "set",
+        "2026-11-04T20:49:54.473861+00:00"
+      ],
       "path:s61cb60f8983d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-18_14-57-06": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
@@ -1659,6 +1743,14 @@
       "path:s68f90e9606d0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOm56\\m56s11_07012025\\2025-07-01_11-57-56": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s69cf561a98cf|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s1_072226\\2026-07-22_12-20-39": [
+        "set",
+        "2026-11-04T20:47:01.234598+00:00"
+      ],
+      "path:s69cf561a98cf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s1_072226\\2026-07-22_12-20-39": [
+        "set",
+        "2026-11-04T20:47:01.140535+00:00"
       ],
       "path:s6a9d2213791f|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon4\\multi_spcon_J1_precon4_FP2\\2025-09-15_12-31-41": [
         "set",
@@ -1692,6 +1784,10 @@
         "set",
         "2026-10-23T19:21:57.096929+00:00"
       ],
+      "path:s71ac6c8c64e1|Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s3aug22\\2023-08-23_11-23-43": [
+        "set",
+        "2026-11-04T20:46:54.133010+00:00"
+      ],
       "path:s71ef4518fd3d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M6ptenko\\m1s1dec21\\2021-12-21_15-40-33": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
@@ -1699,6 +1795,10 @@
       "path:s72b6f480b5c0|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s9mar18\\2024-03-18_15-12-52": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:s735d75ba7127|E:\\Joe Multisite 2026 data\\J4\\Test2\\J4_Test2_FP1\\2026-07-31_10-42-01": [
+        "set",
+        "2026-11-04T20:49:54.293952+00:00"
       ],
       "path:s73c1e30c08b4|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s5cno60feb4\\2025-02-04_14-54-39": [
         "set",
@@ -2008,6 +2108,10 @@
         "set",
         "2026-10-23T19:21:57.096929+00:00"
       ],
+      "path:sc5851cbdfc47|E:\\Joe Multisite 2026 data\\J8\\J8_Precon3\\J8_Precon3_FP1\\2026-08-14_10-08-12": [
+        "set",
+        "2026-11-04T20:46:57.654460+00:00"
+      ],
       "path:sc6245988b2ad|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s10mar19\\2024-03-19_13-00-39": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
@@ -2144,6 +2248,10 @@
         "set",
         "2026-10-23T19:21:57.096929+00:00"
       ],
+      "path:se2173c4d6eb8|E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP1\\2026-07-23_08-39-43": [
+        "set",
+        "2026-11-04T20:46:57.106848+00:00"
+      ],
       "path:se5d034b6fed2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s1apr6\\2023-04-06_13-39-31": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
@@ -2159,6 +2267,14 @@
       "path:se80dad58a958|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s51feb5\\2024-02-05_15-58-02": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:se86b0e6aa889|Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s9aug24\\2023-09-14_13-06-06": [
+        "set",
+        "2026-11-04T20:46:54.357727+00:00"
+      ],
+      "path:se86b0e6aa889|Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s9aug24\\2023-09-14_17-41-11": [
+        "set",
+        "2026-11-04T20:46:54.460232+00:00"
       ],
       "path:se88c60f8b7fe|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos5jan21\\2022-01-21_18-12-38": [
         "set",
@@ -2215,6 +2331,18 @@
       "path:sfca017658a98|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s13mar20\\2024-03-20_18-08-44": [
         "set",
         "2026-10-23T19:21:57.096929+00:00"
+      ],
+      "path:sfd0eeb56f0ce|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-16_13-09-46": [
+        "set",
+        "2026-11-04T20:46:59.366207+00:00"
+      ],
+      "path:sfd0eeb56f0ce|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-16_13-45-58": [
+        "set",
+        "2026-11-04T20:46:59.483682+00:00"
+      ],
+      "path:sfd0eeb56f0ce|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-16_13-55-25": [
+        "set",
+        "2026-11-04T20:46:59.275239+00:00"
       ],
       "person:Avery (AI)": [
         "set",
@@ -3317,8 +3445,8 @@
         "2026-09-23T14:06:31.294100+00:00"
       ],
       "session:s005e83535b0b": [
-        "set",
-        "2026-09-09T05:32:50.897266+00:00"
+        "gone",
+        "2026-11-04T20:47:04.277855+00:00"
       ],
       "session:s00cb3fe5cae0": [
         "set",
@@ -3331,6 +3459,10 @@
       "session:s03a35695e541": [
         "set",
         "2026-09-25T18:43:58.820127+00:00"
+      ],
+      "session:s04611ef17385": [
+        "set",
+        "2026-11-04T20:46:48.079038+00:00"
       ],
       "session:s04907448c9ce": [
         "set",
@@ -3356,6 +3488,10 @@
         "set",
         "2026-09-16T15:45:49.472197+00:00"
       ],
+      "session:s080eca5bfcd3": [
+        "set",
+        "2026-11-04T20:46:50.536219+00:00"
+      ],
       "session:s093831b658a9": [
         "set",
         "2026-09-18T17:54:22.032044+00:00"
@@ -3375,6 +3511,10 @@
       "session:s0be40f0b4d01": [
         "set",
         "2026-11-03T20:55:22.812107+00:00"
+      ],
+      "session:s0c40d9e394a1": [
+        "set",
+        "2026-11-04T20:46:48.550158+00:00"
       ],
       "session:s0c87c05b2eb8": [
         "set",
@@ -3416,9 +3556,13 @@
         "set",
         "2026-09-09T23:29:01.945076+00:00"
       ],
-      "session:s138295c4e40c": [
+      "session:s121bb0dcd7e7": [
         "set",
-        "2026-09-09T06:43:23.646946+00:00"
+        "2026-11-04T20:46:47.589795+00:00"
+      ],
+      "session:s138295c4e40c": [
+        "gone",
+        "2026-11-04T20:47:06.009847+00:00"
       ],
       "session:s1495529b5ea0": [
         "set",
@@ -3467,6 +3611,10 @@
       "session:s1e39ca71f844": [
         "set",
         "2026-09-10T01:18:57.908072+00:00"
+      ],
+      "session:s1f80dd6e9074": [
+        "set",
+        "2026-11-04T20:46:46.681435+00:00"
       ],
       "session:s1fe5b05730f6": [
         "set",
@@ -3589,8 +3737,8 @@
         "2026-09-18T19:41:12.567963+00:00"
       ],
       "session:s33970a523516": [
-        "set",
-        "2026-09-09T04:59:51.452431+00:00"
+        "gone",
+        "2026-11-04T20:47:02.572265+00:00"
       ],
       "session:s33c5acf3c76c": [
         "set",
@@ -3635,6 +3783,10 @@
       "session:s3b5ff304ae86": [
         "set",
         "2026-09-18T19:25:40.486451+00:00"
+      ],
+      "session:s3cd4f5719149": [
+        "set",
+        "2026-11-04T20:46:49.768850+00:00"
       ],
       "session:s3d3a563febaf": [
         "set",
@@ -3712,6 +3864,10 @@
         "set",
         "2026-09-28T16:45:33.828323+00:00"
       ],
+      "session:s49cb870e03bf": [
+        "set",
+        "2026-11-04T20:46:48.238953+00:00"
+      ],
       "session:s49f993968445": [
         "set",
         "2026-09-14T18:49:44.179465+00:00"
@@ -3731,6 +3887,10 @@
       "session:s4b8d0f933cff": [
         "set",
         "2026-09-10T01:12:15.803168+00:00"
+      ],
+      "session:s4bc570a3f69d": [
+        "set",
+        "2026-11-04T20:46:51.905368+00:00"
       ],
       "session:s4c9fe010535e": [
         "set",
@@ -3768,6 +3928,10 @@
         "set",
         "2026-11-03T20:55:22.812107+00:00"
       ],
+      "session:s50d248444f50": [
+        "set",
+        "2026-11-04T20:46:47.264402+00:00"
+      ],
       "session:s518c073ce179": [
         "set",
         "2026-11-03T20:55:22.812107+00:00"
@@ -3779,6 +3943,10 @@
       "session:s52752d727942": [
         "set",
         "2026-09-21T16:39:13.274986+00:00"
+      ],
+      "session:s53804fac6910": [
+        "set",
+        "2026-11-04T20:46:47.418137+00:00"
       ],
       "session:s5391e0eb5026": [
         "set",
@@ -3827,6 +3995,10 @@
       "session:s5877f139b291": [
         "set",
         "2026-11-03T20:55:22.812107+00:00"
+      ],
+      "session:s58cccc1a83ac": [
+        "set",
+        "2026-11-04T20:46:52.940092+00:00"
       ],
       "session:s59f17ed0cc96": [
         "set",
@@ -3905,8 +4077,8 @@
         "2026-09-09T22:19:40.353235+00:00"
       ],
       "session:s69cf561a98cf": [
-        "set",
-        "2026-09-09T04:28:21.551321+00:00"
+        "gone",
+        "2026-11-04T20:47:01.050642+00:00"
       ],
       "session:s6ada3cc64ab3": [
         "set",
@@ -3935,6 +4107,14 @@
       "session:s6dbdd0aa3864": [
         "set",
         "2026-09-10T02:01:46.776186+00:00"
+      ],
+      "session:s6ef67211fa22": [
+        "set",
+        "2026-11-04T20:46:49.171541+00:00"
+      ],
+      "session:s7042ddf03663": [
+        "set",
+        "2026-11-04T20:46:48.698863+00:00"
       ],
       "session:s707caf655590": [
         "set",
@@ -3984,6 +4164,10 @@
         "set",
         "2026-11-03T20:55:22.812107+00:00"
       ],
+      "session:s763a3783889e": [
+        "set",
+        "2026-11-04T20:46:51.446819+00:00"
+      ],
       "session:s77944cc051c4": [
         "set",
         "2026-11-03T20:55:22.812107+00:00"
@@ -4016,6 +4200,10 @@
         "set",
         "2026-09-18T19:30:37.195687+00:00"
       ],
+      "session:s7bb109e9d25e": [
+        "set",
+        "2026-11-04T20:46:52.175209+00:00"
+      ],
       "session:s7c4f6c0f89e5": [
         "set",
         "2026-09-09T22:54:59.462309+00:00"
@@ -4023,6 +4211,10 @@
       "session:s7e003a8e46eb": [
         "set",
         "2026-09-25T18:43:58.820127+00:00"
+      ],
+      "session:s7f2902b52a8f": [
+        "set",
+        "2026-11-04T20:46:48.385032+00:00"
       ],
       "session:s7f5663bd54b5": [
         "set",
@@ -4064,6 +4256,10 @@
         "set",
         "2026-09-10T21:32:41.364807+00:00"
       ],
+      "session:s8a0ca3029abe": [
+        "set",
+        "2026-11-04T20:46:50.342171+00:00"
+      ],
       "session:s8a509c74a9f3": [
         "set",
         "2026-09-11T17:47:30.866416+00:00"
@@ -4103,6 +4299,10 @@
       "session:s8ede8f90e463": [
         "set",
         "2026-09-10T18:58:57.449608+00:00"
+      ],
+      "session:s8f1496f196f0": [
+        "set",
+        "2026-11-04T20:46:50.072267+00:00"
       ],
       "session:s8f733e144c35": [
         "set",
@@ -4148,6 +4348,10 @@
         "set",
         "2026-09-18T17:27:15.359430+00:00"
       ],
+      "session:s9700ef6926fa": [
+        "set",
+        "2026-11-04T20:46:51.674408+00:00"
+      ],
       "session:s97137f6e5695": [
         "set",
         "2026-09-18T19:17:22.651038+00:00"
@@ -4167,6 +4371,10 @@
       "session:s99945547a2f0": [
         "set",
         "2026-09-18T19:24:15.779145+00:00"
+      ],
+      "session:s99f92525925b": [
+        "set",
+        "2026-11-04T20:46:47.108892+00:00"
       ],
       "session:s9a2db8c53e47": [
         "set",
@@ -4400,6 +4608,10 @@
         "set",
         "2026-09-21T16:34:40.489954+00:00"
       ],
+      "session:sb8e85a40f70e": [
+        "set",
+        "2026-11-04T20:46:50.716235+00:00"
+      ],
       "session:sb931a924b6c0": [
         "set",
         "2026-09-25T18:35:34.285037+00:00"
@@ -4460,6 +4672,10 @@
         "set",
         "2026-09-23T13:09:32.763580+00:00"
       ],
+      "session:sc38e6e11c63d": [
+        "set",
+        "2026-11-04T20:46:51.245381+00:00"
+      ],
       "session:sc455fabdab97": [
         "set",
         "2026-09-25T18:44:33.575606+00:00"
@@ -4500,6 +4716,10 @@
         "set",
         "2026-09-10T01:18:57.908072+00:00"
       ],
+      "session:sc79cbe8e67ee": [
+        "set",
+        "2026-11-04T20:46:46.922581+00:00"
+      ],
       "session:sc7b221af4515": [
         "set",
         "2026-09-09T22:10:59.384629+00:00"
@@ -4515,6 +4735,10 @@
       "session:sc8d60aabf75b": [
         "set",
         "2026-09-21T14:03:42.230380+00:00"
+      ],
+      "session:sc8ff9d49ad23": [
+        "set",
+        "2026-11-04T20:46:47.849723+00:00"
       ],
       "session:sc967d04b70cc": [
         "set",
@@ -4555,6 +4779,10 @@
       "session:sd3030554bb76": [
         "set",
         "2026-11-03T20:55:22.812107+00:00"
+      ],
+      "session:sd38c67386aba": [
+        "set",
+        "2026-11-04T20:46:49.385494+00:00"
       ],
       "session:sd44e720ab209": [
         "set",
@@ -4652,6 +4880,10 @@
         "set",
         "2026-10-22T16:18:33.416597+00:00"
       ],
+      "session:se0dc1b72aca6": [
+        "set",
+        "2026-11-04T20:46:52.707486+00:00"
+      ],
       "session:se138cbe2ba44": [
         "set",
         "2026-11-03T20:55:22.812107+00:00"
@@ -4659,6 +4891,10 @@
       "session:se169051f46a9": [
         "set",
         "2026-09-18T17:25:31.878595+00:00"
+      ],
+      "session:se1d385b5afb4": [
+        "set",
+        "2026-11-04T20:46:50.988295+00:00"
       ],
       "session:se2126ae68ea7": [
         "set",
@@ -4675,6 +4911,10 @@
       "session:se3998a221e85": [
         "set",
         "2026-09-25T20:40:24.794218+00:00"
+      ],
+      "session:se3a912ddfeed": [
+        "set",
+        "2026-11-04T20:46:48.861462+00:00"
       ],
       "session:se4733f79e0c2": [
         "set",
@@ -4789,8 +5029,8 @@
         "2026-10-02T11:52:13.905792+00:00"
       ],
       "session:sfd0eeb56f0ce": [
-        "set",
-        "2026-10-19T15:37:32.951252+00:00"
+        "gone",
+        "2026-11-04T20:46:59.163812+00:00"
       ],
       "session:sfe24ff6003b6": [
         "set",
@@ -4807,7 +5047,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-03T20:55:22.812107+00:00",
+    "at": "2026-11-04T20:49:55.642989+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -4937,6 +5177,15 @@
       "note": "Junction pool made from a Doppler run that predates the gap fix on a recording in more than one segment; deleted 2026-10-20",
       "synced": true,
       "synced_at": "2026-10-20T13:58:42-0400"
+    },
+    "bank:80c0d55b5f62": {
+      "at": "2026-11-03T14:47:31-0500",
+      "by": "barrylab-d8e8",
+      "id": "80c0d55b5f62",
+      "kind": "bank",
+      "note": "deleted in the Event Bank",
+      "synced": true,
+      "synced_at": "2026-11-03T14:47:37-0500"
     },
     "bank:8931cc766fe7": {
       "at": "2026-10-14T19:08:53-0400",
@@ -7421,6 +7670,22 @@
       "synced": true,
       "synced_at": "2026-10-07T18:34:38-0400"
     },
+    "path:s005e83535b0b|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1_m576_s3_72326\\2026-07-23_14-34-23": {
+      "at": "2026-11-04T15:47:04-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s005e83535b0b|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1_m576_s3_72326\\2026-07-23_14-34-23",
+      "kind": "path",
+      "note": "a folder of headers only, or one deleted",
+      "synced": false
+    },
+    "path:s005e83535b0b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1_m576_s3_72326\\2026-07-23_14-34-23": {
+      "at": "2026-11-04T15:47:04-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s005e83535b0b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1_m576_s3_72326\\2026-07-23_14-34-23",
+      "kind": "path",
+      "note": "a folder of headers only, or one deleted",
+      "synced": false
+    },
     "path:s00da8ac343c1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Flower Pot sessions\\m5s28jan19-flowerpot4\\2024-01-19_15-17-31": {
       "at": "2026-10-23T15:20:23-0400",
       "by": "desktop-4h65ai7-d565",
@@ -7547,6 +7812,22 @@
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
     },
+    "path:s138295c4e40c|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1m576_s5_72326\\2026-07-23_16-41-05": {
+      "at": "2026-11-04T15:47:06-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s138295c4e40c|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1m576_s5_72326\\2026-07-23_16-41-05",
+      "kind": "path",
+      "note": "a folder of headers only, or one deleted",
+      "synced": false
+    },
+    "path:s138295c4e40c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1m576_s5_72326\\2026-07-23_16-41-05": {
+      "at": "2026-11-04T15:47:06-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s138295c4e40c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0576\\KCNT1m576_s5_72326\\2026-07-23_16-41-05",
+      "kind": "path",
+      "note": "a folder of headers only, or one deleted",
+      "synced": false
+    },
     "path:s14f499593e3c|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s34jan22\\2024-01-22_12-06-27": {
       "at": "2026-10-23T15:20:23-0400",
       "by": "desktop-4h65ai7-d565",
@@ -7583,6 +7864,14 @@
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
     },
+    "path:s1c73b257d054|Y:\\ProcessedPtenData\\M13_pten\\HF4s4aug1\\2023-08-23_11-24-29": {
+      "at": "2026-11-04T15:46:56-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1c73b257d054|Y:\\ProcessedPtenData\\M13_pten\\HF4s4aug1\\2023-08-23_11-24-29",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
     "path:s1cc5651e29bf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\m28_ptenblind\\m28s18aug12\\2024-08-12_13-39-40": {
       "at": "2026-10-23T15:20:46-0400",
       "by": "desktop-4h65ai7-d565",
@@ -7618,6 +7907,14 @@
       "note": "no longer on netfiles",
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s1f887bae4611|E:\\Joe Multisite 2026 data\\J8\\J8_Precon1\\J8_Precon1_FP1\\2026-08-12_10-12-26": {
+      "at": "2026-11-04T15:46:57-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1f887bae4611|E:\\Joe Multisite 2026 data\\J8\\J8_Precon1\\J8_Precon1_FP1\\2026-08-12_10-12-26",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
     },
     "path:s2011bbcb4d64|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\m5s8jan9\\2024-01-09_14-27-27": {
       "at": "2026-10-23T15:20:22-0400",
@@ -7672,6 +7969,14 @@
       "note": "no longer on netfiles",
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s234fc080573e|E:\\Joe Multisite 2026 data\\J8\\J8_Precon1\\J8_Precon1_FP1\\2026-08-12_10-12-26": {
+      "at": "2026-11-04T15:49:54-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s234fc080573e|E:\\Joe Multisite 2026 data\\J8\\J8_Precon1\\J8_Precon1_FP1\\2026-08-12_10-12-26",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
     },
     "path:s238f423d3548|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_12-17-32": {
       "at": "2026-11-03T15:01:42-0500",
@@ -8006,6 +8311,22 @@
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
     },
+    "path:s2ecaf1b278cd|E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP1\\2026-08-19_10-41-10": {
+      "at": "2026-11-04T15:49:55-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s2ecaf1b278cd|E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP1\\2026-08-19_10-41-10",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
+    "path:s2ecaf1b278cd|E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP1\\2026-08-19_10-45-46": {
+      "at": "2026-11-04T15:49:55-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s2ecaf1b278cd|E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP1\\2026-08-19_10-45-46",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
     "path:s2ff694df2bee|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM1\\FADm1s5apr3\\2023-04-03_17-23-48": {
       "at": "2026-10-23T15:21:06-0400",
       "by": "desktop-4h65ai7-d565",
@@ -8023,6 +8344,30 @@
       "note": "no longer on netfiles",
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s3302e616c5e5|E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP1\\2026-07-23_08-39-43": {
+      "at": "2026-11-04T15:46:56-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s3302e616c5e5|E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP1\\2026-07-23_08-39-43",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
+    "path:s33970a523516|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-05-37": {
+      "at": "2026-11-04T15:47:02-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s33970a523516|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-05-37",
+      "kind": "path",
+      "note": "a folder of headers only, or one deleted",
+      "synced": false
+    },
+    "path:s33970a523516|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-05-37": {
+      "at": "2026-11-04T15:47:02-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s33970a523516|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s3_072226\\2026-07-22_15-05-37",
+      "kind": "path",
+      "note": "a folder of headers only, or one deleted",
+      "synced": false
     },
     "path:s33de61d7ba0b|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s3apr5\\2023-04-05_17-30-54": {
       "at": "2026-10-23T15:21:09-0400",
@@ -8050,6 +8395,14 @@
       "note": "on netfiles only inside an archive now",
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s360e48254222|E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP1\\2026-07-23_08-39-43": {
+      "at": "2026-11-04T15:49:54-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s360e48254222|E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP1\\2026-07-23_08-39-43",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
     },
     "path:s375b44b95da9|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\m5s7jan9\\2024-01-09_13-49-55": {
       "at": "2026-10-23T15:20:22-0400",
@@ -8132,6 +8485,38 @@
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
     },
+    "path:s465a91813836|Y:\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-08-18_13-20-05": {
+      "at": "2026-11-04T15:46:56-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s465a91813836|Y:\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-08-18_13-20-05",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
+    "path:s465a91813836|Y:\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-08-18_15-20-10": {
+      "at": "2026-11-04T15:46:56-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s465a91813836|Y:\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-08-18_15-20-10",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
+    "path:s465a91813836|Y:\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-08-21_16-24-14": {
+      "at": "2026-11-04T15:46:56-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s465a91813836|Y:\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-08-21_16-24-14",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
+    "path:s465a91813836|Y:\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-11-01_14-20-22": {
+      "at": "2026-11-04T15:46:56-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s465a91813836|Y:\\ProcessedPtenData\\M11_Pten\\HF2_s5jul24\\2023-11-01_14-20-22",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
     "path:s49f306485ed1|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos2jan21\\2022-01-21_16-34-48": {
       "at": "2026-10-23T15:20:29-0400",
       "by": "desktop-4h65ai7-d565",
@@ -8149,6 +8534,14 @@
       "note": "no longer on netfiles",
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s4b1592b98bb0|E:\\Joe Multisite 2026 data\\J11\\J11_Con4\\J11_Con4_FP2\\2026-08-21_10-14-29": {
+      "at": "2026-11-04T15:49:55-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s4b1592b98bb0|E:\\Joe Multisite 2026 data\\J11\\J11_Con4\\J11_Con4_FP2\\2026-08-21_10-14-29",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
     },
     "path:s4b3d2a3821c2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s2apr5\\2023-04-05_16-59-08": {
       "at": "2026-10-23T15:21:09-0400",
@@ -8420,6 +8813,14 @@
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
     },
+    "path:s565d609b331e|E:\\Joe Multisite 2026 data\\J8\\J8_Precon3\\J8_Precon3_FP1\\2026-08-14_10-08-12": {
+      "at": "2026-11-04T15:49:55-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s565d609b331e|E:\\Joe Multisite 2026 data\\J8\\J8_Precon3\\J8_Precon3_FP1\\2026-08-14_10-08-12",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
     "path:s5733437d84ec|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\m5s50feb5\\2024-02-05_15-24-13": {
       "at": "2026-10-23T15:20:26-0400",
       "by": "desktop-4h65ai7-d565",
@@ -8501,6 +8902,14 @@
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
     },
+    "path:s608de2a1c186|E:\\Joe Multisite 2026 data\\J6\\Cond2\\J6_Cond2_FP2\\2026-07-27_13-28-20": {
+      "at": "2026-11-04T15:49:54-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s608de2a1c186|E:\\Joe Multisite 2026 data\\J6\\Cond2\\J6_Cond2_FP2\\2026-07-27_13-28-20",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
     "path:s61cb60f8983d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN\\M3_pten\\m3s3sept20\\2023-10-18_14-57-06": {
       "at": "2026-10-23T15:20:19-0400",
       "by": "desktop-4h65ai7-d565",
@@ -8536,6 +8945,22 @@
       "note": "on netfiles only inside an archive now",
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s69cf561a98cf|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s1_072226\\2026-07-22_12-20-39": {
+      "at": "2026-11-04T15:47:01-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s69cf561a98cf|Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s1_072226\\2026-07-22_12-20-39",
+      "kind": "path",
+      "note": "a folder of headers only, or one deleted",
+      "synced": false
+    },
+    "path:s69cf561a98cf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s1_072226\\2026-07-22_12-20-39": {
+      "at": "2026-11-04T15:47:01-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s69cf561a98cf|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0531\\KCNT1m531_s1_072226\\2026-07-22_12-20-39",
+      "kind": "path",
+      "note": "a folder of headers only, or one deleted",
+      "synced": false
     },
     "path:s6a9d2213791f|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J1\\precon4\\multi_spcon_J1_precon4_FP2\\2025-09-15_12-31-41": {
       "at": "2026-10-23T15:20:02-0400",
@@ -8609,6 +9034,14 @@
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
     },
+    "path:s71ac6c8c64e1|Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s3aug22\\2023-08-23_11-23-43": {
+      "at": "2026-11-04T15:46:54-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s71ac6c8c64e1|Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s3aug22\\2023-08-23_11-23-43",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
     "path:s71ef4518fd3d|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M6ptenko\\m1s1dec21\\2021-12-21_15-40-33": {
       "at": "2026-10-23T15:20:13-0400",
       "by": "desktop-4h65ai7-d565",
@@ -8626,6 +9059,14 @@
       "note": "no longer on netfiles",
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:s735d75ba7127|E:\\Joe Multisite 2026 data\\J4\\Test2\\J4_Test2_FP1\\2026-07-31_10-42-01": {
+      "at": "2026-11-04T15:49:54-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s735d75ba7127|E:\\Joe Multisite 2026 data\\J4\\Test2\\J4_Test2_FP1\\2026-07-31_10-42-01",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
     },
     "path:s73c1e30c08b4|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\HeadfixPilot\\PTEN_DKO\\PTENDKOM48\\m48s5cno60feb4\\2025-02-04_14-54-39": {
       "at": "2026-10-23T15:20:52-0400",
@@ -9320,6 +9761,14 @@
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
     },
+    "path:sc5851cbdfc47|E:\\Joe Multisite 2026 data\\J8\\J8_Precon3\\J8_Precon3_FP1\\2026-08-14_10-08-12": {
+      "at": "2026-11-04T15:46:57-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc5851cbdfc47|E:\\Joe Multisite 2026 data\\J8\\J8_Precon3\\J8_Precon3_FP1\\2026-08-14_10-08-12",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
     "path:sc6245988b2ad|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s10mar19\\2024-03-19_13-00-39": {
       "at": "2026-10-23T15:20:32-0400",
       "by": "desktop-4h65ai7-d565",
@@ -9626,6 +10075,14 @@
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
     },
+    "path:se2173c4d6eb8|E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP1\\2026-07-23_08-39-43": {
+      "at": "2026-11-04T15:46:57-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se2173c4d6eb8|E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP1\\2026-07-23_08-39-43",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
     "path:se5d034b6fed2|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM5_old\\FADM5s1apr6\\2023-04-06_13-39-31": {
       "at": "2026-10-23T15:21:09-0400",
       "by": "desktop-4h65ai7-d565",
@@ -9661,6 +10118,22 @@
       "note": "no longer on netfiles",
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:se86b0e6aa889|Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s9aug24\\2023-09-14_13-06-06": {
+      "at": "2026-11-04T15:46:54-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se86b0e6aa889|Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s9aug24\\2023-09-14_13-06-06",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
+    },
+    "path:se86b0e6aa889|Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s9aug24\\2023-09-14_17-41-11": {
+      "at": "2026-11-04T15:46:54-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se86b0e6aa889|Y:\\ProcessedPtenData\\M7_HF5_pten\\M7s9aug24\\2023-09-14_17-41-11",
+      "kind": "path",
+      "note": "a folder of headers only",
+      "synced": false
     },
     "path:se88c60f8b7fe|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Cdrivebckup\\oldptenpilot\\M8ptenko\\M8ptenkos5jan21\\2022-01-21_18-12-38": {
       "at": "2026-10-23T15:20:31-0400",
@@ -9787,6 +10260,30 @@
       "note": "no longer on netfiles",
       "synced": true,
       "synced_at": "2026-10-23T15:21:57-0400"
+    },
+    "path:sfd0eeb56f0ce|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-16_13-09-46": {
+      "at": "2026-11-04T15:46:59-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sfd0eeb56f0ce|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-16_13-09-46",
+      "kind": "path",
+      "note": "a folder of headers only, or one deleted",
+      "synced": false
+    },
+    "path:sfd0eeb56f0ce|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-16_13-45-58": {
+      "at": "2026-11-04T15:46:59-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sfd0eeb56f0ce|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-16_13-45-58",
+      "kind": "path",
+      "note": "a folder of headers only, or one deleted",
+      "synced": false
+    },
+    "path:sfd0eeb56f0ce|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-16_13-55-25": {
+      "at": "2026-11-04T15:46:59-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sfd0eeb56f0ce|\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-16_13-55-25",
+      "kind": "path",
+      "note": "a folder of headers only, or one deleted",
+      "synced": false
     },
     "person:Avery (AI)": {
       "at": "2026-10-23T09:41:57-0400",
@@ -11624,15 +12121,6 @@
       "synced": true,
       "synced_at": "2026-09-16T08:57:20-0400"
     },
-    "session:s005e83535b0b": {
-      "at": "2026-09-09T01:32:45-0400",
-      "by": "desktop-4h65ai7-d565",
-      "id": "s005e83535b0b",
-      "kind": "session",
-      "note": "retired: no data in the folder",
-      "synced": true,
-      "synced_at": "2026-09-09T01:32:50-0400"
-    },
     "session:s00cb3fe5cae0": {
       "at": "2026-09-25T13:07:27-0400",
       "by": "desktop-4h65ai7-d565",
@@ -11659,6 +12147,14 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-25T14:43:58-0400"
+    },
+    "session:s04611ef17385": {
+      "at": "2026-11-04T15:46:48-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s04611ef17385",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:s04907448c9ce": {
       "at": "2026-09-10T14:39:20-0400",
@@ -11714,6 +12210,14 @@
       "synced": true,
       "synced_at": "2026-09-16T11:45:49-0400"
     },
+    "session:s080eca5bfcd3": {
+      "at": "2026-11-04T15:46:50-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s080eca5bfcd3",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
+    },
     "session:s093831b658a9": {
       "at": "2026-09-18T13:54:13-0400",
       "by": "desktop-4h65ai7-d565",
@@ -11758,6 +12262,14 @@
       "note": "forgotten: every folder is headers only",
       "synced": true,
       "synced_at": "2026-11-03T15:55:22-0500"
+    },
+    "session:s0c40d9e394a1": {
+      "at": "2026-11-04T15:46:48-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s0c40d9e394a1",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:s0c87c05b2eb8": {
       "at": "2026-11-03T15:01:35-0500",
@@ -11849,14 +12361,13 @@
       "synced": true,
       "synced_at": "2026-09-09T19:29:01-0400"
     },
-    "session:s138295c4e40c": {
-      "at": "2026-09-09T02:43:17-0400",
+    "session:s121bb0dcd7e7": {
+      "at": "2026-11-04T15:46:47-0500",
       "by": "desktop-4h65ai7-d565",
-      "id": "s138295c4e40c",
+      "id": "s121bb0dcd7e7",
       "kind": "session",
-      "note": "retired: no data in the folder",
-      "synced": true,
-      "synced_at": "2026-09-09T02:43:23-0400"
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:s1495529b5ea0": {
       "at": "2026-09-18T13:32:58-0400",
@@ -11965,6 +12476,14 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-09T21:18:57-0400"
+    },
+    "session:s1f80dd6e9074": {
+      "at": "2026-11-04T15:46:46-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s1f80dd6e9074",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:s1fe5b05730f6": {
       "at": "2026-11-03T15:01:37-0500",
@@ -12236,15 +12755,6 @@
       "synced": true,
       "synced_at": "2026-09-18T15:41:12-0400"
     },
-    "session:s33970a523516": {
-      "at": "2026-09-09T00:59:27-0400",
-      "by": "desktop-4h65ai7-d565",
-      "id": "s33970a523516",
-      "kind": "session",
-      "note": "retired: no data in the folder",
-      "synced": true,
-      "synced_at": "2026-09-09T00:59:51-0400"
-    },
     "session:s33c5acf3c76c": {
       "at": "2026-09-09T18:10:59-0400",
       "by": "desktop-4h65ai7-d565",
@@ -12343,6 +12853,14 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-18T15:25:40-0400"
+    },
+    "session:s3cd4f5719149": {
+      "at": "2026-11-04T15:46:49-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s3cd4f5719149",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:s3d3a563febaf": {
       "at": "2026-09-14T10:03:54-0400",
@@ -12515,6 +13033,14 @@
       "synced": true,
       "synced_at": "2026-09-28T12:45:33-0400"
     },
+    "session:s49cb870e03bf": {
+      "at": "2026-11-04T15:46:48-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s49cb870e03bf",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
+    },
     "session:s49f993968445": {
       "at": "2026-09-14T14:49:26-0400",
       "by": "desktop-4h65ai7-d565",
@@ -12559,6 +13085,14 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-09T21:12:15-0400"
+    },
+    "session:s4bc570a3f69d": {
+      "at": "2026-11-04T15:46:51-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s4bc570a3f69d",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:s4c9fe010535e": {
       "at": "2026-09-25T17:05:01-0400",
@@ -12641,6 +13175,14 @@
       "synced": true,
       "synced_at": "2026-11-03T15:55:22-0500"
     },
+    "session:s50d248444f50": {
+      "at": "2026-11-04T15:46:47-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s50d248444f50",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
+    },
     "session:s518c073ce179": {
       "at": "2026-11-03T15:01:32-0500",
       "by": "desktop-4h65ai7-d565",
@@ -12667,6 +13209,14 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-21T12:39:13-0400"
+    },
+    "session:s53804fac6910": {
+      "at": "2026-11-04T15:46:47-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s53804fac6910",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:s5391e0eb5026": {
       "at": "2026-09-28T12:45:23-0400",
@@ -12775,6 +13325,14 @@
       "note": "forgotten: every folder is headers only",
       "synced": true,
       "synced_at": "2026-11-03T15:55:22-0500"
+    },
+    "session:s58cccc1a83ac": {
+      "at": "2026-11-04T15:46:52-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s58cccc1a83ac",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:s59f17ed0cc96": {
       "at": "2026-09-22T16:41:45-0400",
@@ -12947,15 +13505,6 @@
       "synced": true,
       "synced_at": "2026-09-09T18:19:40-0400"
     },
-    "session:s69cf561a98cf": {
-      "at": "2026-09-09T00:28:08-0400",
-      "by": "desktop-4h65ai7-d565",
-      "id": "s69cf561a98cf",
-      "kind": "session",
-      "note": "retired: no data in the folder",
-      "synced": true,
-      "synced_at": "2026-09-09T00:28:21-0400"
-    },
     "session:s6ada3cc64ab3": {
       "at": "2026-09-11T14:39:27-0400",
       "by": "desktop-4h65ai7-d565",
@@ -13018,6 +13567,22 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-09T22:01:46-0400"
+    },
+    "session:s6ef67211fa22": {
+      "at": "2026-11-04T15:46:49-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s6ef67211fa22",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
+    },
+    "session:s7042ddf03663": {
+      "at": "2026-11-04T15:46:48-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s7042ddf03663",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:s707caf655590": {
       "at": "2026-09-16T11:44:31-0400",
@@ -13127,6 +13692,14 @@
       "synced": true,
       "synced_at": "2026-11-03T15:55:22-0500"
     },
+    "session:s763a3783889e": {
+      "at": "2026-11-04T15:46:51-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s763a3783889e",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
+    },
     "session:s77944cc051c4": {
       "at": "2026-11-03T15:01:31-0500",
       "by": "desktop-4h65ai7-d565",
@@ -13199,6 +13772,14 @@
       "synced": true,
       "synced_at": "2026-09-18T15:30:37-0400"
     },
+    "session:s7bb109e9d25e": {
+      "at": "2026-11-04T15:46:52-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s7bb109e9d25e",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
+    },
     "session:s7c4f6c0f89e5": {
       "at": "2026-09-09T18:53:56-0400",
       "by": "desktop-4h65ai7-d565",
@@ -13216,6 +13797,14 @@
       "note": "retired: no data in the folder",
       "synced": true,
       "synced_at": "2026-09-25T14:43:58-0400"
+    },
+    "session:s7f2902b52a8f": {
+      "at": "2026-11-04T15:46:48-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s7f2902b52a8f",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:s7f5663bd54b5": {
       "at": "2026-09-18T15:23:38-0400",
@@ -13307,6 +13896,14 @@
       "synced": true,
       "synced_at": "2026-09-10T17:32:41-0400"
     },
+    "session:s8a0ca3029abe": {
+      "at": "2026-11-04T15:46:50-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8a0ca3029abe",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
+    },
     "session:s8a509c74a9f3": {
       "at": "2026-09-11T13:46:17-0400",
       "by": "desktop-4h65ai7-d565",
@@ -13396,6 +13993,14 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-10T14:58:57-0400"
+    },
+    "session:s8f1496f196f0": {
+      "at": "2026-11-04T15:46:50-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8f1496f196f0",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:s8f733e144c35": {
       "at": "2026-09-09T18:17:10-0400",
@@ -13496,6 +14101,14 @@
       "synced": true,
       "synced_at": "2026-09-18T13:27:15-0400"
     },
+    "session:s9700ef6926fa": {
+      "at": "2026-11-04T15:46:51-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9700ef6926fa",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
+    },
     "session:s97137f6e5695": {
       "at": "2026-09-18T15:16:47-0400",
       "by": "desktop-4h65ai7-d565",
@@ -13540,6 +14153,14 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-18T15:24:15-0400"
+    },
+    "session:s99f92525925b": {
+      "at": "2026-11-04T15:46:47-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s99f92525925b",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:s9a2db8c53e47": {
       "at": "2026-09-18T15:39:05-0400",
@@ -14063,6 +14684,14 @@
       "synced": true,
       "synced_at": "2026-09-21T12:34:40-0400"
     },
+    "session:sb8e85a40f70e": {
+      "at": "2026-11-04T15:46:50-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb8e85a40f70e",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
+    },
     "session:sb931a924b6c0": {
       "at": "2026-09-25T14:34:47-0400",
       "by": "desktop-4h65ai7-d565",
@@ -14198,6 +14827,14 @@
       "synced": true,
       "synced_at": "2026-09-23T09:09:32-0400"
     },
+    "session:sc38e6e11c63d": {
+      "at": "2026-11-04T15:46:51-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc38e6e11c63d",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
+    },
     "session:sc455fabdab97": {
       "at": "2026-09-25T14:44:00-0400",
       "by": "desktop-4h65ai7-d565",
@@ -14288,6 +14925,14 @@
       "synced": true,
       "synced_at": "2026-09-09T21:18:57-0400"
     },
+    "session:sc79cbe8e67ee": {
+      "at": "2026-11-04T15:46:46-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc79cbe8e67ee",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
+    },
     "session:sc7b221af4515": {
       "at": "2026-09-09T18:10:56-0400",
       "by": "desktop-4h65ai7-d565",
@@ -14323,6 +14968,14 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-21T10:03:42-0400"
+    },
+    "session:sc8ff9d49ad23": {
+      "at": "2026-11-04T15:46:47-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sc8ff9d49ad23",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:sc967d04b70cc": {
       "at": "2026-09-11T13:36:11-0400",
@@ -14413,6 +15066,14 @@
       "note": "forgotten: every folder is headers only",
       "synced": true,
       "synced_at": "2026-11-03T15:55:22-0500"
+    },
+    "session:sd38c67386aba": {
+      "at": "2026-11-04T15:46:49-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sd38c67386aba",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:sd44e720ab209": {
       "at": "2026-11-03T15:01:28-0500",
@@ -14630,6 +15291,14 @@
       "synced": true,
       "synced_at": "2026-10-22T12:18:33-0400"
     },
+    "session:se0dc1b72aca6": {
+      "at": "2026-11-04T15:46:52-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se0dc1b72aca6",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
+    },
     "session:se138cbe2ba44": {
       "at": "2026-11-03T15:01:38-0500",
       "by": "desktop-4h65ai7-d565",
@@ -14647,6 +15316,14 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-18T13:25:31-0400"
+    },
+    "session:se1d385b5afb4": {
+      "at": "2026-11-04T15:46:50-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se1d385b5afb4",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:se2126ae68ea7": {
       "at": "2026-09-30T20:09:20-0400",
@@ -14683,6 +15360,14 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-25T16:40:24-0400"
+    },
+    "session:se3a912ddfeed": {
+      "at": "2026-11-04T15:46:48-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se3a912ddfeed",
+      "kind": "session",
+      "note": "forgotten: every folder is headers only",
+      "synced": false
     },
     "session:se4733f79e0c2": {
       "at": "2026-09-25T12:54:09-0400",
@@ -14926,15 +15611,6 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-10-02T07:52:13-0400"
-    },
-    "session:sfd0eeb56f0ce": {
-      "at": "2026-10-19T11:36:26-0400",
-      "by": "desktop-4h65ai7-d565",
-      "id": "sfd0eeb56f0ce",
-      "kind": "session",
-      "note": "retired: no data in the folder",
-      "synced": true,
-      "synced_at": "2026-10-19T11:37:32-0400"
     },
     "session:sfe24ff6003b6": {
       "at": "2026-09-23T09:09:19-0400",

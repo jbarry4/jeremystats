@@ -16,12 +16,14 @@
     "probe_source": "2026-09-24T20:00:57.558011+00:00",
     "project": "2026-09-24T20:00:57.522686+00:00",
     "project_source": "2026-09-24T20:00:57.522686+00:00",
-    "retired": "2026-09-24T20:09:25.528434+00:00",
+    "retired": "2026-11-04T20:49:07.184737+00:00",
+    "retired_at": "2026-11-04T20:49:07.184737+00:00",
+    "retired_reason": "2026-11-04T20:49:07.184737+00:00",
     "run": "2026-09-24T20:00:57.522686+00:00",
     "schema": "2026-09-24T20:00:57.522686+00:00",
     "session": "2026-09-24T20:00:57.522686+00:00",
     "start": "2026-09-24T20:00:57.522686+00:00",
-    "updated": "2026-09-25T18:30:18.194438+00:00"
+    "updated": "2026-11-04T20:49:07.184737+00:00"
   },
   "_keys": {
     "paths": {
@@ -38,7 +40,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-25T18:30:18.194438+00:00",
+    "at": "2026-11-04T20:49:07.184737+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -68,7 +70,9 @@
   "probe_source": "manual",
   "project": "DEWEY",
   "project_source": "guessed",
-  "retired": false,
+  "retired": true,
+  "retired_at": "2026-11-04T20:49:07.158622+00:00",
+  "retired_reason": "every folder is headers only",
   "run": "FP2",
   "schema": 2,
   "seen": {
@@ -84,9 +88,9 @@
   "session": 4,
   "start": "2026-07-27T08:55:17",
   "updated": {
-    "app_version": "2026.09.25.2",
-    "at": "2026-09-25T14:30:18-04:00",
-    "commit": "4f8e8ca",
+    "app_version": "2026.11.04.3",
+    "at": "2026-11-04T15:49:07-05:00",
+    "commit": "3dfef0c8",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

@@ -13,7 +13,7 @@
       "headers": [{ "key": "Content-Disposition", "value": "inline" }]
     },
     {
-      "source": "/files/(.*)_preview\\.png",
+      "source": "/files/(.*)_preview\\.(png|webp)",
       "headers": [{ "key": "Content-Disposition", "value": "inline" }]
     },
     {

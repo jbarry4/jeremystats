@@ -108,11 +108,21 @@
        p uncorrected; a session's point -> its rats -> a rat's
        presentations -> a presentation's traces; a node's power; sessions
        not run yet; CSV and SVG; 390 px; "On the Monolith"
+     - 13 · SANITY CHECK REPORT (`/data/sanity` stood in by
+       `sanity_fixture.json`, missing until run): Not run yet with its
+       button, posting `/sanity` confirmed once; the verdict first as a
+       word, its sentence and counts the fixture's; a card a section, a
+       row a check with its status as a word and a shape of its own;
+       the failed one says Problem and leads Read these first; More opens
+       how, detail and table; the commands in order, Copy onto a stood-in
+       clipboard (and selected when refused); the commit, the uncommitted
+       file, the tools and the recordings; shown again, nothing redrawn;
+       no word cut short; 390 px
 
    ?stop=<step> leaves the frame at a step for a screenshot: lifted, rats,
    days, units, leaf, help, granger (add &dark=1 for the dark tokens), range, avg, tour<n> (the tour at step n,
    from 0; &phone=1 at 390 px, &dark=1 dark), prog (Monolith Progress; &mode=chg|both, &layout=step,
-   &phone=1, &scroll=<id>), phys (section 6; &phone=1, &scroll=<id>), narrow (section 7, the same). Negative control: a planted edge moved out of the
+   &phone=1, &scroll=<id>), phys (section 6; &phone=1, &scroll=<id>), narrow (section 7, the same), sanity (tab 13, the same, and &dark=1). Negative control: a planted edge moved out of the
    slider's reach is not drawn. */
 const out = document.getElementById('out');
 let bad = 0;
@@ -570,6 +580,8 @@ let FIGS = null, FIGS_MISSING = false, figsPosted = [];
 let JX = null, JX_MISSING = false, jxPosted = [];
 let EM = null, EM_MISSING = true, emPosted = [];
 let FN = null, FN_MISSING = true, fnPosted = [];
+// Tab 13: the report is missing until the checks are run (POST /sanity).
+let SN = null, SN_MISSING = true, snPosted = [], snAsked = [];
 /* Tabs 11 and 12's sets of rats (2026-11-02): a set is the fixture with
    those rats said to be left out; one can be missing, or answered by an
    older Jarvis that ignores ?set= (STALE_SET). */
@@ -904,6 +916,11 @@ window.MONO_FIXTURE = {
       if (FN_MISSING || !FN) throw new Error('Tab 12 has not been worked out yet.');
       return JSON.parse(JSON.stringify(FN));
     }
+    if (path === '/data/sanity') {
+      snAsked.push(path);
+      if (SN_MISSING || !SN) throw new Error('The sanity checks have not been run yet.');
+      return JSON.parse(JSON.stringify(SN));
+    }
     const setM = /^\/data\/(evenmore|final)\?set=(no3|no4|no34)$/.exec(path);
     if (setM) {
       setAsked.push(path);
@@ -939,6 +956,7 @@ window.MONO_FIXTURE = {
     if (path === '/joefigs') { figsPosted.push(body); FIGS_MISSING = false; return { ok: true }; }
     if (path === '/evenmore') { emPosted.push(body); EM_MISSING = false; return { ok: true }; }
     if (path === '/final') { fnPosted.push(body); FN_MISSING = false; return { ok: true }; }
+    if (path === '/sanity') { snPosted.push(body); SN_MISSING = false; return { ok: true }; }
     if (path === '/joeexport/site') {
       jxPosted.push(body);
       return { ok: true, site: { built: true, made: '2026-10-26T12:30:00', bytes: 83600000, deployed: false } };
@@ -962,6 +980,7 @@ window.MONO_FIXTURE = {
   try { JX = await (await fetch('joeexport_fixture.json', { cache: 'no-cache' })).json(); } catch (e) { JX = null; }
   try { EM = await (await fetch('evenmore_fixture.json', { cache: 'no-cache' })).json(); } catch (e) { EM = null; }
   try { FN = await (await fetch('final_fixture.json', { cache: 'no-cache' })).json(); } catch (e) { FN = null; }
+  try { SN = await (await fetch('sanity_fixture.json', { cache: 'no-cache' })).json(); } catch (e) { SN = null; }
   const f = document.getElementById('app');
   // A fresh view: what the page remembers is put back afterwards.
   let kept = null;
@@ -1004,7 +1023,7 @@ window.MONO_FIXTURE = {
 
   head('1 · what was kept, first');
   const tabs = () => Array.from(D().querySelectorAll('#tabs > button[role="tab"]'));
-  check('twelve tabs, in the order they are read', tabs().map((b) => txt(b)).join(' | ') === '1 · What was kept | 2 · The Monolith | 3 · Cue 2 − Cue 1 | 4 · How a number is made | 5 · Events first | 6 · Physical vs balanced cue | 7 · Narrowing down | 8 · Joe’s data | 9 · Joe’s figures | 10 · Joe export | 11 · Narrowing down (even more) | 12 · The final stage',
+  check('thirteen tabs, in the order they are read', tabs().map((b) => txt(b)).join(' | ') === '1 · What was kept | 2 · The Monolith | 3 · Cue 2 − Cue 1 | 4 · How a number is made | 5 · Events first | 6 · Physical vs balanced cue | 7 · Narrowing down | 8 · Joe’s data | 9 · Joe’s figures | 10 · Joe export | 11 · Narrowing down (even more) | 12 · The final stage | 13 · Sanity check report',
         tabs().map((b) => txt(b)).join(' | '));
   check('a fresh page opens on what was kept, the Monolith behind it', M.state.tab === 'cov' && !D().getElementById('covpane').hidden
         && D().getElementById('mainpane').hidden && D().getElementById('tab-cov').getAttribute('aria-selected') === 'true', M.state.tab);
@@ -3508,6 +3527,23 @@ window.MONO_FIXTURE = {
         && jxLt.querySelectorAll('.jx-light.on.chk').length === jxLit.reduce((a, r) => a + (r.check ? (r.bands.theta.lit ? 1 : 0) + (r.bands.gamma.lit ? 1 : 0) : 0), 0),
         txt(jxLt).slice(0, 120));
   check('no word cut short anywhere in the list', !/\.\.\.|…/.test(txt(D().getElementById('joexpane'))));
+  // Only what is significant (2026-11-04): a figure that passes every one of its tests, a lit comparison; the rest hidden, then back.
+  const jxOnly = (v) => D().querySelector('#joexpane .jx-switch button[data-only="' + v + '"]');
+  const jxShown = () => jxCards().filter((c) => !c.hidden && c.offsetParent !== null);
+  const jxAll = jxFigs.filter((x) => x.tests.length && x.tests.every((t) => t.pass));
+  const jxLitRows = jxLit.filter((r) => r.bands.theta.lit || r.bands.gamma.lit).length;
+  check('a Show switch beside the rest: Everything pressed to start with', !!jxOnly('0') && jxOnly('0').getAttribute('aria-pressed') === 'true'
+        && jxShown().length === jxFigs.length);
+  jxOnly('1').click();
+  await sleep(40);
+  const jxRowsShown = () => Array.from(D().querySelectorAll('#joexpane table.jx-lights tbody tr')).filter((r) => !r.hidden).length;
+  check('only what is significant: the figures passing every test (' + jxAll.length + '), their groups, and the lit comparisons (' + jxLitRows + ')',
+        jxOnly('1').getAttribute('aria-pressed') === 'true' && jxShown().map((c) => txt(c.querySelector('.jx-figname'))).join() === jxAll.map((x) => x.name).join()
+        && !D().getElementById('jx-g-S').offsetParent && jxRowsShown() === jxLitRows && !D().getElementById('jx-onlysay').hidden,
+        jxShown().map((c) => txt(c.querySelector('.jx-figname'))).join() + ' | ' + jxRowsShown());
+  jxOnly('0').click();
+  await sleep(40);
+  check('and everything again', jxShown().length === jxFigs.length && jxRowsShown() === jxLit.length && D().getElementById('jx-onlysay').hidden);
   jxPosted = [];
   D().getElementById('joexbuild').click();
   await until(() => jxPosted.length && /last assembled/.test(txt(D().getElementById('joexsitesay'))), 80);
@@ -3530,14 +3566,15 @@ window.MONO_FIXTURE = {
   head('11 · Narrowing down (even more)');
   const EMT = W().MONO_EVENMORE;
   // The band it opens on is remembered per viewer: put back afterwards.
-  let emKept = null, fdrKept = null, fnKept = null, ratsKept = null;
+  let emKept = null, fdrKept = null, fnKept = null, ratsKept = null, onlyKept = null;
   try {
     emKept = localStorage.getItem('barry.evenmore.band'); localStorage.removeItem('barry.evenmore.band');
     fdrKept = localStorage.getItem('barry.final.fdr'); fnKept = localStorage.getItem('barry.final.band');
-    ratsKept = localStorage.getItem('barry.final.rats');
+    ratsKept = localStorage.getItem('barry.final.rats'); onlyKept = localStorage.getItem('barry.final.only');
   } catch (e) { /* none */ }
   W().MONO_FDR.set('fdr');                            // the switch's default, put back afterwards
   W().MONO_RATS.set('all');                           // and every rat in, likewise
+  W().MONO_ONLY.set(false);                           // and everything shown
   EMT.setBand('theta');
   M.showTab('more');
   await until(() => D().getElementById('moremissing'), 120);
@@ -3608,6 +3645,26 @@ window.MONO_FIXTURE = {
         && D().querySelector('#morephase1 .morefig').id === 'morefig_' + emB('gamma').phase1.figures[0].id
         && (() => { try { return localStorage.getItem('barry.evenmore.band') === 'gamma'; } catch (e) { return true; } })());
   check('the files: the GEE rows, the tests, R, SPSS', Array.from(D().querySelectorAll('#moreexport a')).map((a) => a.getAttribute('download')).join() === EM.exports.join());
+  // Only what is significant (2026-11-04): one switch for tabs 11 and 12, remembered.
+  D().getElementById('moreonly_sig').click();
+  await sleep(40);
+  const emOnlyFigs = emB('gamma').phase1.figures.filter((x) => x.kind === 'pair' && x.passes.fdr);
+  check('only significant: phase 1 keeps its passing rows (' + emSig('gamma') + ') and the figures marked passing, the all-ten figure goes; remembered',
+        D().getElementById('moreonly_sig').getAttribute('aria-pressed') === 'true'
+        && (emSig('gamma') ? !!D().getElementById('moretable1') && D().querySelectorAll('#moretable1 tbody tr').length === emSig('gamma')
+            && Array.from(D().querySelectorAll('#moretable1 tbody tr')).every((r) => r.classList.contains('sig'))
+          : !D().getElementById('moretable1') && !!D().querySelector('#morephase1 .moreonlynone'))
+        && emCards().map((c) => c.id).join() === emOnlyFigs.map((x) => 'morefig_' + x.id).join() && !D().querySelector('#morephase1 .morefig.pooled')
+        && !!D().getElementById('moreflag') && !!D().getElementById('morerobust')
+        && (() => { try { return localStorage.getItem('barry.final.only') === '1'; } catch (e) { return true; } })(),
+        emCards().map((c) => c.id).join());
+  check('and its omnibus keeps the terms that pass on robust errors, or says none does',
+        Array.from(D().querySelectorAll('#morephase1 table.moreterms tbody tr')).every((r) => r.classList.contains('sig'))
+        && D().querySelectorAll('#morephase1 .moreomni > div').length === 2);
+  D().getElementById('moreonly_all').click();
+  await sleep(40);
+  check('and everything again', emT1().querySelectorAll('tbody tr').length === 10 && !!D().querySelector('#morephase1 .morefig.pooled')
+        && W().MONO_ONLY.get() === false);
   // Which rats: four buttons beside the correction, every rat in to start with.
   const ratBtns = () => Array.from(D().querySelectorAll('#morepane [id^="morerats_"]'));
   check('the rats switch: all rats, without J3, without J4, without both; All rats pressed to start with',
@@ -3687,6 +3744,25 @@ window.MONO_FIXTURE = {
         && D().getElementById('finalfdr_raw').getAttribute('aria-pressed') === 'true');
   W().MONO_FDR.set('fdr');
   await sleep(30);
+  D().getElementById('finalonly_sig').click();
+  await sleep(40);
+  const fnRowsAll = (id) => Array.from(D().querySelectorAll('#' + id + ' tbody tr'));
+  const fnSigOrNone = (id, card) => (D().getElementById(id) ? fnRowsAll(id).every((r) => r.classList.contains('sig') || !!r.querySelector('.sigcell'))
+    : !!D().querySelector('#' + card + ' .moreonlynone'));
+  check('only significant here too (tab 11’s switch): every table its significant rows or a line saying none, every figure one marked passing',
+        W().MONO_ONLY.get() === true && D().getElementById('finalonly_sig').getAttribute('aria-pressed') === 'true'
+        && fnSigOrNone('finalpowertable', 'finalpower') && fnSigOrNone('finaltiertable', 'finalpower') && fnSigOrNone('finalfoooftable', 'finalfooof')
+        && (() => {                                       // a figure stays with its region's row (its interaction or a contrast)
+          const kept = fnRowsAll('finalpowertable').map((r) => txt(r.querySelector('th')));
+          return Array.from(D().querySelectorAll('#finalpower .morefig:not(.pooled)')).every((c) => !!c.querySelector('.chip.sig')
+            || kept.some((n) => n && txt(c.querySelector('h3')).indexOf(n) >= 0));
+        })()
+        && !!D().getElementById('finalmethods') && !!D().getElementById('finalrobust'),
+        ['finalpowertable', 'finaltiertable', 'finalfoooftable'].map((id) => id + ':' + fnRowsAll(id).length).join());
+  D().getElementById('finalonly_all').click();
+  await sleep(40);
+  check('and everything again', W().MONO_ONLY.get() === false && fnRowsAll('finalpowertable').length === fnPer.length
+        && D().querySelectorAll('#finalpower .morefig').length === FN.figures.power.filter((x) => x.band === 'theta').length);
   setAsked = [];
   D().getElementById('finalrats_no3').click();
   await until(() => /J3 left out/.test(txt(D().getElementById('finalhead'))), 120);
@@ -3709,7 +3785,118 @@ window.MONO_FIXTURE = {
     if (fdrKept == null) localStorage.removeItem('barry.final.fdr'); else localStorage.setItem('barry.final.fdr', fdrKept);
     if (fnKept == null) localStorage.removeItem('barry.final.band'); else localStorage.setItem('barry.final.band', fnKept);
     if (ratsKept == null) localStorage.removeItem('barry.final.rats'); else localStorage.setItem('barry.final.rats', ratsKept);
+    if (onlyKept == null) localStorage.removeItem('barry.final.only'); else localStorage.setItem('barry.final.only', onlyKept);
   } catch (e) { /* none */ }
+  M.showTab('main');
+  await sleep(30);
+
+  head('13 · Sanity check report');
+  const SNT = W().MONO_SANITY;
+  const SN_WORD = { ok: 'OK', warn: 'Check', fail: 'Problem', info: 'Note' };
+  const snChecks = SN.sections.flatMap((s) => s.checks.map((c) => Object.assign({ section: s.id }, c)));
+  M.showTab('sanity');
+  await until(() => D().getElementById('sanmissing'), 120);
+  check('not run yet: said, with a button to run the checks', /Not run yet/.test(txt(D().querySelector('#sanmissing h2')))
+        && txt(D().getElementById('sanmake')) === 'Run the checks' && snAsked.length >= 1 && !SNT.state.data, txt(D().getElementById('sanitypane')));
+  D().getElementById('sanmake').click();
+  await until(() => snPosted.length && D().getElementById('sanverdict'), 120);
+  check('pressed: asked of Jarvis once, confirmed, and the report read', snPosted.length === 1 && snPosted[0].confirm === true
+        && !!D().getElementById('sanverdict') && !!SNT.state.data, JSON.stringify(snPosted));
+  const snPane = D().getElementById('sanitypane');
+  check('the verdict first, as a word with its own shape, and its sentence: the fixture’s', snPane.firstElementChild.id === 'sanverdict'
+        && txt(D().getElementById('sanword')) === { green: 'All clear', amber: 'Check these', red: 'Problems found' }[SN.verdict]
+        && D().getElementById('sanverdict').dataset.verdict === SN.verdict && !!D().querySelector('#sanword svg.sanicon')
+        && txt(D().getElementById('sansay')) === SN.say, txt(D().getElementById('sanword')));
+  check('its counts are the fixture’s, each a number and a word', ['ok', 'warn', 'fail', 'info'].every((k) => {
+    const n = D().getElementById('sancount_' + k);
+    return n && Number(n.dataset.n) === SN.counts[k] && new RegExp('^' + SN.counts[k] + ' [A-Za-z]').test(txt(n));
+  }), ['ok', 'warn', 'fail', 'info'].map((k) => txt(D().getElementById('sancount_' + k))).join(', '));
+  check('when it was made, and Run again beside it', /^Made /.test(txt(D().getElementById('sanmade'))) && txt(D().querySelector('#sanverdict #sanmake')) === 'Run again');
+  check('a card a section, in the report’s order, with its title and its line',
+        Array.from(snPane.querySelectorAll('.sansection')).map((c) => c.id).join() === SN.sections.map((s) => 'sansec_' + s.id).join()
+        && SN.sections.every((s) => txt(D().querySelector('#sansec_' + s.id + ' h2')) === s.title && txt(D().getElementById('sansec_' + s.id)).indexOf(s.say) >= 0));
+  const snRow = (c) => D().querySelector('#sansec_' + c.section + ' #sancheck_' + c.id);
+  check('every check a row in its section, with its title, its result and its status as a word',
+        snChecks.every((c) => snRow(c) && snRow(c).dataset.s === c.status && txt(snRow(c).querySelector('.sanchip')) === SN_WORD[c.status]
+          && txt(snRow(c)).indexOf(c.title) >= 0 && txt(snRow(c)).indexOf(c.result) >= 0)
+        && SN.sections.every((s) => D().querySelectorAll('#sansec_' + s.id + ' .sanrow').length === s.checks.length),
+        snChecks.filter((c) => !snRow(c) || txt(snRow(c).querySelector('.sanchip')) !== SN_WORD[c.status]).map((c) => c.id).join());
+  const snShapes = ['ok', 'warn', 'fail', 'info'].map((k) => {
+    const c = snChecks.find((x) => x.status === k);
+    const s = c && snRow(c) && snRow(c).querySelector('.sanchip svg');
+    return s ? s.innerHTML : '';
+  });
+  check('and a shape of its own: four statuses, four shapes, so colour is never the only sign', snShapes.every(Boolean) && new Set(snShapes).size === 4);
+  const snFail = snChecks.filter((c) => c.status === 'fail');
+  const snTodo = () => Array.from(D().querySelectorAll('#santodo button'));
+  check('the failed check says Problem, and leads Read these first (every problem, then every check)',
+        snFail.length > 0 && snFail.every((c) => txt(snRow(c).querySelector('.sanchip')) === 'Problem')
+        && snTodo().map((b) => b.dataset.check).join() === snFail.concat(snChecks.filter((c) => c.status === 'warn')).map((c) => c.id).join(),
+        snTodo().map((b) => b.dataset.check).join());
+  const snRich = snChecks.find((c) => c.how && (c.detail || []).length && c.table);
+  const snMore = snRow(snRich).querySelector('details.sanmore');
+  check('a row’s More starts closed', !!snMore && !snMore.open);
+  snMore.querySelector('summary').click();
+  await sleep(40);
+  check('and opens on how it was checked, its detail lines and its table', snMore.open && txt(snMore).indexOf(snRich.how) >= 0
+        && snRich.detail.every((x) => txt(snMore).indexOf(x) >= 0)
+        && snMore.querySelectorAll('table thead th').length === snRich.table.head.length
+        && snMore.querySelectorAll('table tbody tr').length === snRich.table.rows.length, txt(snMore).slice(0, 200));
+  snTodo()[0].click();
+  await sleep(40);
+  check('Read these first opens the problem’s own row', snRow(snFail[0]).querySelector('details.sanmore').open);
+  const snSteps = Array.from(D().querySelectorAll('#sanregen > li'));
+  check('make it all again: every command in order, each with its step and a Copy button',
+        snSteps.length === SN.regenerate.length && snSteps.every((li, i) => li.querySelector('code').textContent === SN.regenerate[i].command
+          && txt(li.querySelector('.sanstep')) === SN.regenerate[i].step && txt(li.querySelector('button')) === 'Copy'),
+        snSteps.map((li) => txt(li.querySelector('code'))).join(' | '));
+  // The clipboard is stood in for, so nothing reaches this machine's own:
+  // once it takes the text, once it refuses it.
+  const snCopied = [];
+  const snClip = (ok) => Object.defineProperty(W().navigator, 'clipboard', { configurable: true,
+    value: { writeText: (t) => (ok ? (snCopied.push(t), Promise.resolve()) : Promise.reject(new Error('refused'))) } });
+  snClip(true);
+  D().getElementById('sancopy_1').click();
+  await until(() => txt(D().getElementById('sancopynote')), 40);
+  check('Copy puts its own command on the clipboard, and says so', snCopied.length === 1 && snCopied[0] === SN.regenerate[1].command
+        && txt(D().getElementById('sancopynote')) === 'Copied.', JSON.stringify(snCopied));
+  snClip(false);
+  D().getElementById('sancopyall').click();
+  await until(() => /Ctrl\+C/.test(txt(D().getElementById('sancopynote'))), 40);
+  check('refused, every command is selected and it says how to copy them', /Ctrl\+C/.test(txt(D().getElementById('sancopynote')))
+        && D().getElementById('sanall').open && W().getSelection().toString().replace(/\r/g, '') === SN.regenerate.map((r) => r.command).join('\n'),
+        JSON.stringify(W().getSelection().toString()));
+  delete W().navigator.clipboard;                    // the browser's own again
+  W().getSelection().removeAllRanges();
+  const snVer = D().getElementById('sanversions');
+  check('what it was made with: the commit, the uncommitted file named, every tool’s version, every recording',
+        txt(D().getElementById('sancode')).indexOf(SN.code.commit) >= 0 && SN.code.dirty.every((p) => txt(D().getElementById('sandirty')).indexOf(p) >= 0)
+        && Array.from(snVer.querySelectorAll('dt')).map(txt).join() === Object.keys(SN.versions).join()
+        && Array.from(snVer.querySelectorAll('dd')).map(txt).join() === Object.values(SN.versions).join()
+        && D().querySelectorAll('#saninputs tbody tr').length === SN.inputs.recordings.length
+        && SN.inputs.recordings.every((r, i) => txt(D().querySelectorAll('#saninputs tbody tr')[i]).indexOf(r.folder) >= 0),
+        txt(D().getElementById('sandirty')));
+  const snV0 = D().getElementById('sanverdict'), snAsked0 = snAsked.length;
+  M.showTab('main');
+  await sleep(30);
+  M.showTab('sanity');
+  await sleep(60);
+  check('shown again: the same report, nothing read or drawn again, its open row still open', D().getElementById('sanverdict') === snV0
+        && snAsked.length === snAsked0 && snMore.isConnected && snMore.open);
+  check('no word cut short anywhere in tab 13', !/\.\.\.|…/.test(txt(snPane)));
+  f.style.width = '390px';
+  await sleep(200);
+  check('tab 13 at 390 px: nothing wider than the page', D().documentElement.scrollWidth <= W().innerWidth + 1, D().documentElement.scrollWidth + ' > ' + W().innerWidth);
+  if (STOP === 'sanity') {
+    const sa13 = new URLSearchParams(location.search);
+    if (!sa13.get('phone')) f.style.width = '';
+    if (sa13.get('dark')) D().documentElement.dataset.theme = 'dark';
+    await sleep(600);
+    if (sa13.get('scroll')) D().getElementById(sa13.get('scroll')).scrollIntoView();
+    restore(); document.title = 'stopped at sanity'; return;
+  }
+  f.style.width = '';
+  await sleep(60);
   M.showTab('main');
   await sleep(30);
 

@@ -50,7 +50,7 @@ for f in F["figures"]:
 views = [v for f in listed for v in f["views"]]
 check("every view of every figure as a PDF and nothing else to download, with a preview to look at (%d PDFs; 2026-10-30, \"keep just PDF\")"
       % len(want), want <= set(paths) and all([x["name"].endswith(".pdf") for x in v["files"]] == [True] for v in views)
-      and all(v["preview"] in paths and v["preview"].endswith("_preview.png") for v in views)
+      and all(v["preview"] in paths and v["preview"].endswith("_preview.webp") for v in views)          # WebP since 2026-11-04
       and not any(n.endswith(".svg") or (n.endswith(".png") and not n.endswith("_preview.png")) for n in paths), sorted(want - set(paths))[:4])
 pz = [f for f in listed if f["kind"] != "schematic"]
 okz = True
@@ -100,7 +100,12 @@ if os.path.isfile(PUBj):
     check("the methods cover the recordings to the statistics: events, saturation, the wire rule, decimation, the notch, pooled spectra, "
           "GEE, FDR, the tiers, robustness, the excluded rats, the exploratory survey",
           all(w in meth for w in ("TTL", "saturation", "lowest-numbered", "Chebyshev", "59–61 Hz", "pooled spectra", "generalized estimating",
-                                  "Benjamini–Hochberg", "Tier 1", "Tier 3b", "omitted in turn", "without J3", "DerSimonian–Laird")))
+                                  "Benjamini–Hochberg", "Tier 1", "Tier 3b", "omitted in turn", "without J3", "DerSimonian–Laird",
+                                  "head stage", "excluded from that window by hand", "not normalised separately for each rat")))
+    hb = next((s for s in secs["methods"]["prose"] if s["title"] == "Artefacts from head bumps"), None)
+    check("the head bumps have their own section: how they were found, what was removed, and every rat-day's losses",
+          hb is not None and len(re.findall(r"J\d+ Precon[14], \d+; \d+; \d+; [\d,]+ of [\d,]+", " ".join(hb["paras"]))) == 16,
+          hb and hb["paras"][-1][:200])
     for sid, tab in (("dickson", "tab 11"), ("final", "tab 12")):
         sec = secs[sid]
         for rs in sets_:
@@ -111,18 +116,62 @@ if os.path.isfile(PUBj):
             else:
                 FSr = FS_.result(rs)
                 want = sum(len(v) for k, v in FSr["figures"].items() if k != "side")
-            check("%s, %s: every figure (%d), each one PDF with a preview, a caption, a results paragraph, a methods note and its tests"
-                  % (tab, rs, want), len(figs) == want and all(
-                      [x["name"].endswith(".pdf") for x in f["files"]] == [True] and f["preview"] in paths and f["caption"].startswith("Figure ")
-                      and f["results"] and f["note"] and f["tests"] is not None for f in figs), (len(figs), want))
+            check("%s, %s: every figure (%d), each a PDF with a preview, its statistics PDF, a caption under each reading, a results "
+                  "paragraph, a methods note and its tests" % (tab, rs, want), len(figs) == want and all(
+                      f["files"][0]["name"].endswith(".pdf") and f["stats"] and f["stats"]["name"].endswith("_statistics.pdf")
+                      and f["files"][-1]["name"] == f["stats"]["name"] and f["preview"] in paths
+                      and f["caption"].startswith("Figure ") and "Benjamini–Hochberg" in f["caption"] and "uncorrected" in f["caption_raw"]
+                      and " displayed in Figure %s" % f["id"] in f["results"][0] and f["note"] and f["tests"] is not None for f in figs),
+                  (len(figs), want))
+            fr = [f for f in figs if f.get("files_raw")]
+            check("%s, %s: the uncorrected drawing only where it differs (%d), with its own preview" % (tab, rs, len(fr)),
+                  all(f["files_raw"][0]["name"].endswith("_uncorrected.pdf") and f["preview_raw"] in paths for f in fr))
+            fo = [f for f in figs if f.get("files_own")]
+            check("%s, %s: a version fitted to each figure where it differs (%d of %d), with its preview, and the axes said in each caption"
+                  % (tab, rs, len(fo), len(figs)),
+                  all(f["files_own"][0]["name"].endswith("_fitted.pdf") and f["preview_own"] in paths for f in fo)
+                  and all((f.get("files_own_raw") is None or (f["files_own_raw"][0]["name"].endswith("_fitted_uncorrected.pdf")
+                                                              and f["preview_own_raw"] in paths)) for f in figs)
+                  and all("shared by every figure of this kind" in f["axes_say"]["shared"] and "fitted to this figure alone" in f["axes_say"]["own"]
+                          and (("cut off" in f["axes_say"]["shared"]) == bool(f.get("cut"))) for f in figs))
     import fitz
-    allpdf = [paths[f["files"][0]["name"]] for s in ("dickson", "final") for g in secs[s]["sets"]["all"] for f in g["figures"]]
-    leaks = []
-    for p in allpdf:
-        t = "".join(pg.get_text() for pg in fitz.open(p))
-        if re.search(r"χ|FDR|q = |p = |p < |\*|GEE|passes", t):
-            leaks.append(os.path.basename(p))
-    check("no statistic, star or title inside any figure (%d PDFs read): significance is said on the page" % len(allpdf), not leaks, leaks[:4])
+    allf = [f for s in ("dickson", "final") for g in secs[s]["sets"]["all"] for f in g["figures"]]
+    leaks, stray, missing = [], [], []
+    for f in allf:
+        for mode, fs in (("fdr", f["files"]), ("raw", f.get("files_raw")), ("fdr", f.get("files_own")), ("raw", f.get("files_own_raw"))):
+            if not fs:
+                continue
+            t = "".join(pg.get_text() for pg in fitz.open(paths[fs[0]["name"]]))
+            if re.search(r"χ|FDR|q = |p = |p < |GEE|passes", t):
+                leaks.append(fs[0]["name"])
+            star = "*" in t
+            any_pass = any((x.get("pass") or {}).get(mode) for x in f["tests"])
+            if star and not any_pass:
+                stray.append(fs[0]["name"])
+            # a figure that stars its main test must show the star when that test passes
+            if f["kind"] in ("p1pair", "p3pair", "power", "granger", "pac") and any((x.get("pass") or {}).get(mode) for x in f["tests"] if x["primary"]) and not star:
+                missing.append(fs[0]["name"])
+    check("no statistic or title inside any figure (%d PDFs read)" % len(allf), not leaks, leaks[:4])
+    check("a star only where one of the figure's tests passes under that reading, and on every figure whose main test passes",
+          not stray and not missing, (stray[:4], missing[:4]))
+    bad_stats = []
+    for f in allf:
+        t = "".join(pg.get_text() for pg in fitz.open(paths[f["stats"]["name"]]))
+        prim = [x for x in f["tests"] if x["primary"]]
+        if "generalized estimating equation" not in t or "Results" not in t or "Wald" not in t \
+                or any(("%.2f" % float(re.search(r"= ([\d.]+)", x["stat"]).group(1))) not in t for x in prim):
+            bad_stats.append(f["stats"]["name"])
+    check("each statistics PDF (%d) has the design, the Wald table and the results, and prints its figure's main tests as the page does"
+          % len(allf), not bad_stats, bad_stats[:4])
+    gr = [f for rs in sets_ for g in secs["final"]["sets"][rs] for f in g["figures"] if f["kind"] == "granger"]
+    check("every Granger figure (%d) has its note for Joe: what both directions changing together means, and the cautions" % len(gr),
+          gr and all(f.get("reading") and any("Granger causality" in p for p in f["reading"]) and "Two cautions" in f["reading"][-1] for f in gr))
+    if "sanity" in secs:
+        sr = secs["sanity"]["sanity"]
+        check("the sanity check report is the last section, with its verdict and every check's status, result and how",
+              man["sections"][-1]["id"] == "sanity" and sr.get("verdict") in ("green", "amber", "red")
+              and all(c.get("status") in ("ok", "warn", "fail", "info") and c.get("result") and c.get("how")
+                      for s in sr["sections"] for c in s["checks"]))
     raw_json = json.dumps(man, ensure_ascii=False)
     check("the side question never reaches Joe: no figure, no file, no word of it",
           "side_question" not in raw_json and "Side question" not in raw_json and not any("side" in n.lower() for n in paths))

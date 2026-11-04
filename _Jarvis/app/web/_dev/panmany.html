@@ -160,6 +160,36 @@ async function until(fn, ms) {
       .filter((x) => re.test(x.p));
 
     /* -------------------------------------------------------------- */
+    head('Prospector, Panning’s model (2026-11-04)');
+    /* Read-only: the dialog asks the server whether Prospector is ready and
+       is cancelled; nothing is swept. Its screen and batch are
+       _dev/prospector.html's. */
+    const prBtn = $$('#panBar details.mode-more .tf-btn')
+      .find((b) => /Prospector/.test(txt(b)));
+    check('More offers Prospector…, with its pan', !!prBtn
+          && !!prBtn.querySelector('.pr-icon svg'), prBtn ? txt(prBtn) : 'none');
+    if (prBtn) {
+      prBtn.click();
+      const asked = await until(() => {
+        const m = $('#bigModal:not(.hidden) .tf-confirm');
+        return m && /Prospector/.test(txt(m.querySelector('h3')));
+      }, 15000);
+      if (asked) {
+        const m = $('#bigModal:not(.hidden) .tf-confirm');
+        check('it asks first, about this pool: its events and what a person '
+              + 'decided', /12/.test(txt(m))
+              && /2 already decided by a person/.test(txt(m)), txt(m).slice(0, 300));
+        const cancel = $$('#bigModal .tf-confirm button')
+          .find((b) => txt(b) === 'Cancel');
+        if (cancel) cancel.click();
+        await until(() => !$('#bigModal:not(.hidden) .tf-confirm'), 5000);
+      } else {
+        say('  Prospector is not ready on this server; its dialog check is '
+            + 'skipped', 'note');
+      }
+    }
+
+    /* -------------------------------------------------------------- */
     head('merge to Incisor or to Doppler');
     ev('BARRY.panning.goTo(' + at(24.59) + ')');
     await sleep(250);

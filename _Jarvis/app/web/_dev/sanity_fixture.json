@@ -1,0 +1,109 @@
+{
+  "ok": true,
+  "schema": 1,
+  "made": "2026-11-04T15:10:00",
+  "verdict": "red",
+  "say": "One check failed and four ask to be read: the methods name the wrong correction family; everything else holds.",
+  "counts": {"ok": 6, "warn": 4, "fail": 1, "info": 3},
+  "sections": [
+    {
+      "id": "data",
+      "title": "The right data went in",
+      "say": "Were the recordings, rats, days and wires the ones the plan names?",
+      "checks": [
+        {"id": "D1", "status": "ok", "title": "Every rat-day the plan names was read",
+         "how": "The rat-days in tab 11's results were matched against the plan's list of rats and the two sessions, Precon1 and Precon4.",
+         "result": "16 of 16 rat-days (8 rats, Precon1 and Precon4) were read; none missing, none twice."},
+        {"id": "D2", "status": "ok", "title": "The recordings are the originals",
+         "how": "Each recording folder's files were counted and sized and compared with the copy on the VACC.",
+         "result": "2 of 2 recordings match the VACC copy file for file (33 and 35 files)."},
+        {"id": "D3", "status": "warn", "title": "J3 and J4 share a reference signal",
+         "how": "The zero-lag correlation between every pair of wires was measured on each rat-day, wire minus wire as well as raw.",
+         "result": "J3 on both days and J4 on Precon1 carry one signal on every wire (median r 0.71 and 0.64); the sets without them were worked out too.",
+         "detail": ["J3 Precon1: 0.72 raw, 0.08 wire minus wire.", "J3 Precon4: 0.70 raw, 0.07 wire minus wire.", "J4 Precon1: 0.64 raw, 0.11 wire minus wire."],
+         "table": {"head": ["Rat", "Session", "Median r, raw", "Median r, wire minus wire"],
+                   "rows": [["J3", "Precon1", "0.72", "0.08"], ["J3", "Precon4", "0.70", "0.07"], ["J4", "Precon1", "0.64", "0.11"]]}},
+        {"id": "D4", "status": "info", "title": "Wires used in each region",
+         "how": "Read from the electrode map and tab 8's choice of wires.",
+         "result": "Each region is the mean of its two sides; 3 wires were left out for clipping.",
+         "table": {"head": ["Region", "Wires used", "Left out"],
+                   "rows": [["RSC", "14", "1"], ["dHC", "16", "0"], ["ACC", "16", "1"], ["OFC", "16", "0"], ["PER", "11", "1"]]}}
+      ]
+    },
+    {
+      "id": "logic",
+      "title": "The right logic was applied",
+      "say": "Do the numbers come out the same when worked out a second, independent way?",
+      "checks": [
+        {"id": "L1", "status": "ok", "title": "Coherence worked out again by hand matches tab 11",
+         "how": "For one rat-day, coherence was recomputed with scipy straight from the recording and compared with tab 11's value for every pair.",
+         "result": "10 of 10 pairs agree to within 1e-9."},
+        {"id": "L2", "status": "ok", "title": "Every model clusters by rat",
+         "how": "Each GEE's groups were read back from its fitted model.",
+         "result": "58 of 58 models have 8 clusters (5 to 7 for pairs with PER or RSC), exchangeable working correlation."}
+      ]
+    },
+    {
+      "id": "words",
+      "title": "The words match the numbers",
+      "say": "Does every sentence the reader sees say what the numbers behind it say?",
+      "checks": [
+        {"id": "W1", "status": "ok", "title": "Every legend's numbers are its table's",
+         "how": "Each number in each figure legend was found in the statistics table the figure is drawn from.",
+         "result": "43 of 43 legends checked; every number found."},
+        {"id": "W2", "status": "fail", "title": "The methods name the right correction family",
+         "how": "The methods text's family size was compared with the number of models the code corrects across.",
+         "result": "The methods say the power contrasts are corrected across five regions; the code corrects across ten models (five regions, two bands).",
+         "detail": ["final_methods.docx, section Statistics, paragraph 3.", "Either sentence or code must change; the numbers on the site use ten."]},
+        {"id": "W3", "status": "warn", "title": "Figure G1 reads as a lead it does not show",
+         "how": "The direction in each Granger figure's legend was compared with the two directions' Late to Early ratios.",
+         "result": "In Figure G1 both directions rise (1.42 and 1.37 times); the legend should say the coupling grew both ways, not that one region leads."}
+      ]
+    },
+    {
+      "id": "repro",
+      "title": "It can be made again from the raw data",
+      "say": "Given the raw recordings and this code, would the same numbers come out?",
+      "checks": [
+        {"id": "R1", "status": "ok", "title": "One rat worked out again from its raw recordings",
+         "how": "J6's Precon1 and Precon4 were read from the raw files and taken through tab 11 again in a separate folder.",
+         "result": "20 of 20 values identical to the saved results."},
+        {"id": "R2", "status": "warn", "title": "One file changed since the last commit",
+         "how": "git status was read for the files that make the results.",
+         "result": "backend/finalstage.py differs from the commit; commit it so the run can be named by its commit alone."},
+        {"id": "R3", "status": "info", "title": "Shuffles use a fixed seed",
+         "how": "The seed was read from each result file and the shuffle repeated once.",
+         "result": "Seed 20261030 everywhere; the repeated shuffle gave the same null."}
+      ]
+    },
+    {
+      "id": "concerns",
+      "title": "What a careful reader should know",
+      "say": "Nothing here is wrong, but each is worth reading before a result is believed.",
+      "checks": [
+        {"id": "C1", "status": "info", "title": "Eight rats is a small sample for a GEE",
+         "how": "Each result that passes was fitted again in a linear mixed model with Kenward-Roger degrees of freedom.",
+         "result": "4 of 6 GEE results do not pass in the mixed model; read them as leads."},
+        {"id": "C2", "status": "warn", "title": "Pairs with PER or RSC have fewer rats",
+         "how": "Rats with a usable wire in both regions were counted for every pair.",
+         "result": "PER pairs have 5 or 6 rats and RSC pairs 7; a GEE with that few can read stronger than it is."}
+      ]
+    }
+  ],
+  "regenerate": [
+    {"step": "Tab 11: coherence for every rat-day and every set of rats", "command": "python -m backend.evenmore build"},
+    {"step": "Tab 12: power, FOOOF, Granger and coupling, with the methods", "command": "python -m backend.finalstage"},
+    {"step": "Joe's figures and their statistics", "command": "python -m backend.joepub"},
+    {"step": "Joe's site", "command": "python -m backend.joeexport site"}
+  ],
+  "versions": {"python": "3.11.9", "numpy": "1.26.4", "scipy": "1.13.1", "statsmodels": "0.14.2", "matplotlib": "3.9.2", "fooof": "1.1.0"},
+  "code": {"commit": "dd76ad6412c0f9e3b7a5d2c18e4f60b9a7c3d1e2", "dirty": ["backend/finalstage.py"]},
+  "inputs": {
+    "rat_days": 16,
+    "rats": [3, 4, 6, 7, 8, 9, 10, 11],
+    "recordings": [
+      {"rat": 3, "day": "Precon1", "folder": "E:\\DEWEY\\J3\\2025-03-04_10-12-55_Precon1_FP1_SPC_FP2", "files": 33, "bytes": 4123456789},
+      {"rat": 6, "day": "Precon4", "folder": "\\\\netfiles\\bigdata_jbarry\\Jarvis Data\\DEWEY\\J6\\2025-03-19_09-41-07_Precon4_FP1_SPC_FP2", "files": 35, "bytes": 4389012345}
+    ]
+  }
+}

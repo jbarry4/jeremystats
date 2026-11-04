@@ -15,18 +15,24 @@
    cases.
 
    Backend: /api/toothfairy*, backend/toothfairy.py.
+
+   PROSPECTOR is the same thing for Panning's pools (2026-11-04), made from
+   the same `makeSweeper` -- see the bottom of this file, and
+   /api/prospector*, backend/prospector.py.
    ========================================================================== */
-BARRY.toothFairy = (function () {
-  const ORDER = ['spike', 'review', 'flag', 'garbage'];
-  const WORD = {
-    spike: 'DS', review: 'Flag for Deep Review', flag: 'Flag',
-    garbage: 'Garbage',
-  };
-  /* Measured on this machine, 2026-10-02, both reads, six stretches at a
-     time: 0.19 s a candidate (451, network share), 0.36 (385) and 0.49
-     (173, local disk -- small sets spread thin). Only for the sentence in
-     the confirm dialog. */
-  const SEC_PER_CANDIDATE = 0.4;
+/* MADE TWICE (2026-11-04). Prospector is Panning's model, and the user asked
+   for it "in the same way tooth fairy is in check up": the same two doors,
+   the same dialog, scanning screen, feed, summary and batch, over pooled
+   sets and with its own three calls. Everything that differs is in `cfg`,
+   at the bottom -- as Braces, Lock and Eye are one `makeBraces`. */
+function makeSweeper(cfg) {
+  const ORDER = cfg.order;
+  const WORD = cfg.word;
+  const NAME = cfg.name;
+  const API = cfg.api;
+  // Each one's own element ids ('tfOv', 'prOv'), so both can be open.
+  const I = (n) => cfg.id + n;
+  const SEC_PER_CANDIDATE = cfg.secPerCandidate;
 
   /* THE ICON (asked for 2026-10-09: "a cool icon for the tooth fairy in the
      Check up"). A molar with a fairy's two pairs of wings and a star over
@@ -34,7 +40,7 @@ BARRY.toothFairy = (function () {
      star in the accent. `.tf-icon.live` makes the star twinkle and the
      wings beat, for the dialog and the scanning screen; never on a button,
      where moving things pull the eye for no reason. */
-  const ICON = '<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">'
+  const TF_ICON = '<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">'
     + '<g class="tf-wings">'
     + '<path class="tf-wing" d="M11 12.5C7.5 11.5 4.2 8.6 4.6 5c3.6.2 6.4 3.1 7.3 6.2z"/>'
     + '<path class="tf-wing" d="M11 15.5c-2.8 1-5.6.6-6.6-1.6 2.4-1 4.9-.5 6.9.9z"/>'
@@ -50,20 +56,18 @@ BARRY.toothFairy = (function () {
     + '<circle class="tf-dust" cx="5.4" cy="20.5" r=".7"/>'
     + '<circle class="tf-dust" cx="24" cy="27" r=".6"/>'
     + '</svg>';
+  const ICON = cfg.icon || TF_ICON;
 
   function icon(o) {
     const opt = o || {};
-    return el('span', { class: 'tf-icon' + (opt.live ? ' live' : '')
+    return el('span', { class: 'tf-icon' + (cfg.iconClass ? ' ' + cfg.iconClass : '')
+                               + (opt.live ? ' live' : '')
                                + (opt.big ? ' big' : ''),
                         html: ICON });
   }
-  const STAGE = {
-    'tf read': 'Reading each candidate’s shape',
-    'tf physio': 'Reading the physiology around each one',
-    'tf score': 'Scoring',
-  };
+  const STAGE = cfg.stages;
 
-  let st = null;         // /api/toothfairy
+  let st = null;         // its status, from API
   let ctx = null;        // {gid, kind, name, n, decided, labels, onDone}
   let job = null;
   let pollT = null;
@@ -94,25 +98,24 @@ BARRY.toothFairy = (function () {
     const fromSet = ((result && result.label_colors) || {})[lab]
       || ((ctx && ctx.colors) || {})[lab];
     if (fromSet) return fromSet;
-    return BARRY.token(lab === 'spike' ? '--ok'
-                       : lab === 'garbage' ? '--err' : '--warn');
+    return BARRY.token(cfg.fallbackColor(lab));
   }
 
   /* ---------- asking ---------- */
   async function ready() {
     try {
-      st = await api('/api/toothfairy');
+      st = await api(API);
     } catch (e) {
-      toast('Could not ask whether Tooth Fairy is ready: ' + e.message, 'err',
+      toast('Could not ask whether ' + NAME + ' is ready: ' + e.message, 'err',
             8000);
       return false;
     }
     if (!st.ready) {
-      toast(st.why || 'Tooth Fairy is not ready.', 'warn', 9000);
+      toast(st.why || NAME + ' is not ready.', 'warn', 9000);
       return false;
     }
     if (st.running) {
-      toast('Tooth Fairy is already sweeping. One at a time.', 'warn', 6000);
+      toast(NAME + ' is already sweeping. One at a time.', 'warn', 6000);
       return false;
     }
     return true;
@@ -151,12 +154,16 @@ BARRY.toothFairy = (function () {
   }
 
   function modelLine() {
-    return dl('Tooth Fairy', 'Run ' + st.run_id + ' · '
+    return dl(NAME, 'Run ' + st.run_id + ' · '
       + ({ hgb: 'gradient-boosted trees', forest: 'random forest',
            blend: 'a blend of five sets of boosted trees',
            logistic: 'logistic regression' }[st.model] || st.model)
       + ' · ' + (st.families || []).length + ' kinds of input · trained on '
       + num(st.n_recordings) + ' recordings');
+  }
+  /* What its bar did on recordings it never saw, when it says. */
+  function modelMore() {
+    return cfg.modelMore ? cfg.modelMore(st, { dl, pct, num }) : [];
   }
 
   function dialogHead(title, sub) {
@@ -174,20 +181,18 @@ BARRY.toothFairy = (function () {
   function confirmDialog(replace) {
     const mins = Math.max(1, Math.round((ctx.n || 0) * SEC_PER_CANDIDATE / 60));
     showModal(el('div', { class: 'modal tf-confirm' }, [
-      dialogHead('Tooth Fairy', ctx.name || ''),
+      dialogHead(NAME, ctx.name || ''),
       el('div', { class: 'mb' }, [
-        el('p', { class: 'tf-lede', text:
-          'Tooth Fairy reads every candidate in this set — its shape, the '
-          + 'shank around it, unit firing and the second either side — and '
-          + 'calls each one DS, Flag for Deep Review, Flag or Garbage.' }),
+        el('p', { class: 'tf-lede', text: cfg.words.lede }),
         toleranceField(() => confirmDialog(true)),
         el('dl', { class: 'br-dl tf-dl' }, [
-          dl('Candidates', num(ctx.n) + (ctx.decided
+          dl(cfg.words.Things, num(ctx.n) + (ctx.decided
             ? ' — ' + num(ctx.decided) + ' already decided by a person, '
-              + 'and Tooth Fairy never changes those' : '')),
+              + 'and ' + NAME + ' never changes those' : '')),
           modelLine(),
+          ...modelMore(),
           dl('Time', 'about ' + mins + ' minute' + (mins === 1 ? '' : 's')
-             + ' the first time; a set swept before is quicker'),
+             + ' the first time; ' + cfg.words.aSet + ' swept before is quicker'),
         ]),
         el('p', { class: 'hint', text:
           'Nothing is written while it sweeps. At the end you see every '
@@ -210,7 +215,7 @@ BARRY.toothFairy = (function () {
   async function start() {
     let got;
     try {
-      got = await apiPost('/api/toothfairy/sweep', {
+      got = await apiPost(API + '/sweep', {
         gid: ctx.gid, kind: ctx.kind,
         ds_loss: (st.tolerances || []).length ? tol : null });
     } catch (e) {
@@ -251,7 +256,7 @@ BARRY.toothFairy = (function () {
     if (job.preview_rev !== undefined && job.preview_rev !== peekRev) {
       peekRev = job.preview_rev;
       try {
-        const pk = await api('/api/toothfairy/sweep/' + job.id + '/peek');
+        const pk = await api(API + '/sweep/' + job.id + '/peek');
         const s = (pk.peek && pk.peek.samples) || [];
         if (s.length && phase === 'reading') {
           pool = s.slice();
@@ -290,36 +295,36 @@ BARRY.toothFairy = (function () {
 
   /* ---------- the screen ---------- */
   function showOverlay() {
-    let ov = document.getElementById('tfOv');
+    let ov = document.getElementById(I('Ov'));
     if (!ov) {
-      ov = el('div', { class: 'tf-ov', id: 'tfOv' });
+      ov = el('div', { class: 'tf-ov', id: I('Ov') });
       document.body.appendChild(ov);
     }
     ov.innerHTML = '';
     ov.appendChild(el('div', { class: 'tf-panel' }, [
       el('div', { class: 'tf-top' }, [
         icon({ live: true, big: true }),
-        el('span', { class: 'tf-mark', text: 'TOOTH FAIRY' }),
+        el('span', { class: 'tf-mark', text: cfg.mark }),
         el('span', { class: 'tf-sep', text: '//' }),
         el('span', { class: 'tf-what', text: batch ? 'BATCH' : 'SWEEP' }),
         el('span', { class: 'tf-set', text: batch
-          ? batch.gids.length + ' sets' : (ctx.name || '') }),
+          ? batch.gids.length + ' ' + cfg.words.sets : (ctx.name || '') }),
         el('div', { class: 'spacer' }),
-        BARRY.ui.button({ size: 'sm', text: 'Stop', id: 'tfStop',
+        BARRY.ui.button({ size: 'sm', text: 'Stop', id: I('Stop'),
           title: 'Stop the sweep. Nothing has been written.', onclick: stop }),
       ]),
       el('div', { class: 'tf-scope' }, [
-        el('canvas', { id: 'tfScope' }),
-        el('div', { class: 'tf-read', id: 'tfRead' }),
-        el('div', { class: 'tf-stamp', id: 'tfStamp' }),
+        el('canvas', { id: I('Scope') }),
+        el('div', { class: 'tf-read', id: I('Read') }),
+        el('div', { class: 'tf-stamp', id: I('Stamp') }),
       ]),
       el('div', { class: 'tf-stage' }, [
-        el('span', { id: 'tfStageText', text: 'Opening the recording…' }),
-        el('span', { class: 'tf-eta', id: 'tfEta', text: '' }),
+        el('span', { id: I('StageText'), text: 'Opening the recording…' }),
+        el('span', { class: 'tf-eta', id: I('Eta'), text: '' }),
       ]),
-      el('div', { class: 'br-bar tf-bar' }, [el('i', { id: 'tfBar' })]),
-      el('div', { class: 'tf-log', id: 'tfLog' }),
-      el('div', { id: 'tfSummary' }),
+      el('div', { class: 'br-bar tf-bar' }, [el('i', { id: I('Bar') })]),
+      el('div', { class: 'tf-log', id: I('Log') }),
+      el('div', { id: I('Summary') }),
     ]));
     sizeScope();
     drawIdle();
@@ -333,7 +338,7 @@ BARRY.toothFairy = (function () {
     streamT = null;
     scanT = null;
     scanning = false;
-    const ov = document.getElementById('tfOv');
+    const ov = document.getElementById(I('Ov'));
     if (ov) ov.remove();
   }
 
@@ -342,7 +347,7 @@ BARRY.toothFairy = (function () {
     const now = stages.find((x) => x.status === 'running')
              || stages.find((x) => (x.done || 0) < (x.of || 0))
              || stages[stages.length - 1] || {};
-    const t = document.getElementById('tfStageText');
+    const t = document.getElementById(I('StageText'));
     if (t) {
       t.textContent = (STAGE[now.name] || 'Working')
         + ((now.of || 0) > 1 ? ' — ' + num(Math.min(now.done || 0, now.of))
@@ -350,14 +355,14 @@ BARRY.toothFairy = (function () {
     }
     let total = 0, spent = 0;
     for (const s of stages) {
-      const w = s.name === 'tf physio' ? 4 : s.name === 'tf read' ? 1 : 0.2;
+      const w = /physio$/.test(s.name) ? 4 : /read$/.test(s.name) ? 1 : 0.2;
       if (s.of) { total += w; spent += w * Math.min(1, (s.done || 0) / s.of); }
       else if (s.status === 'done') { total += w; spent += w; }
       else total += w;
     }
-    const bar = document.getElementById('tfBar');
+    const bar = document.getElementById(I('Bar'));
     if (bar) bar.style.width = Math.round(total ? 100 * spent / total : 0) + '%';
-    const eta = document.getElementById('tfEta');
+    const eta = document.getElementById(I('Eta'));
     if (eta) {
       eta.textContent = [
         job && job.eta_s ? 'about ' + Math.max(1, Math.round(job.eta_s / 60))
@@ -369,7 +374,7 @@ BARRY.toothFairy = (function () {
 
   /* ---------- the scope ---------- */
   function sizeScope() {
-    const c = document.getElementById('tfScope');
+    const c = document.getElementById(I('Scope'));
     if (!c) return null;
     const r = c.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
@@ -394,7 +399,7 @@ BARRY.toothFairy = (function () {
   }
 
   function drawIdle() {
-    const c = document.getElementById('tfScope');
+    const c = document.getElementById(I('Scope'));
     if (!c) return;
     const g = c.getContext('2d');
     grid(g, c.width, c.height);
@@ -404,7 +409,7 @@ BARRY.toothFairy = (function () {
     if (idleT) clearTimeout(idleT);
     let f = 0;
     const tickIdle = () => {
-      const cc = document.getElementById('tfScope');
+      const cc = document.getElementById(I('Scope'));
       if (!cc || scanning || phase !== 'reading') { idleT = null; return; }
       f = (f + 0.02) % 1;
       const gg = cc.getContext('2d');
@@ -419,7 +424,7 @@ BARRY.toothFairy = (function () {
      where it is largest (accent), the shank's CSD under it (muted), and a
      scan line revealing both. `frac` is how far the line has got. */
   function drawSample(s, frac, tint) {
-    const c = document.getElementById('tfScope');
+    const c = document.getElementById(I('Scope'));
     if (!c) return;
     const g = c.getContext('2d');
     const w = c.width, h = c.height;
@@ -521,8 +526,8 @@ BARRY.toothFairy = (function () {
     }
     scanning = true;
     const s = queue.shift();
-    const read = document.getElementById('tfRead');
-    const stamp = document.getElementById('tfStamp');
+    const read = document.getElementById(I('Read'));
+    const stamp = document.getElementById(I('Stamp'));
     if (stamp) { stamp.textContent = ''; stamp.className = 'tf-stamp'; }
     if (read) read.innerHTML = '';
     const bits = readouts(s);
@@ -551,7 +556,7 @@ BARRY.toothFairy = (function () {
           void stamp.offsetWidth;
           stamp.className = 'tf-stamp on hit';
           stamp.style.setProperty('--call', colorOf(s.label));
-          const scope = document.querySelector('#tfOv .tf-scope');
+          const scope = document.querySelector('#' + I('Ov') + ' .tf-scope');
           if (scope) {
             scope.style.setProperty('--call', colorOf(s.label));
             scope.classList.remove('flash');
@@ -571,7 +576,7 @@ BARRY.toothFairy = (function () {
   }
 
   function logLine(s) {
-    const log = document.getElementById('tfLog');
+    const log = document.getElementById(I('Log'));
     /* Not while the feed is streaming every call: the feed is the list
        then, and a scan writing into it (and trimming it to six lines)
        scrambled its order. */
@@ -581,7 +586,7 @@ BARRY.toothFairy = (function () {
       el('span', { text: (s.t != null ? s.t.toFixed(3) : '?') + ' s' }),
       el('span', { text: s.label ? WORD[s.label] : 'scanned' ,
                    style: s.label ? 'color:' + colorOf(s.label) : null }),
-      el('span', { text: s.p != null ? 'p(DS) ' + s.p.toFixed(2) : '' }),
+      el('span', { text: s.p != null ? cfg.pWord + ' ' + s.p.toFixed(2) : '' }),
     ]));
     while (log.children.length > 6) log.lastChild.remove();
   }
@@ -592,9 +597,9 @@ BARRY.toothFairy = (function () {
      the summary is the result. */
   function verdictReel() {
     paintStage();
-    const t = document.getElementById('tfStageText');
+    const t = document.getElementById(I('StageText'));
     if (t) t.textContent = 'Classified. Every call, in order…';
-    const stopBtn = document.getElementById('tfStop');
+    const stopBtn = document.getElementById(I('Stop'));
     if (stopBtn) {
       stopBtn.textContent = 'Skip to the summary';
       stopBtn.onclick = () => summary();
@@ -606,7 +611,7 @@ BARRY.toothFairy = (function () {
     queue = ((result && result.samples) || []).slice();
     const reelMs = Math.max(4000, queue.length * 1350);
     scanNext(() => { reelDone = true; maybeSummary(); });
-    const log = document.getElementById('tfLog');
+    const log = document.getElementById(I('Log'));
     if (log) { log.innerHTML = ''; log.classList.add('stream'); }
     const rows = ((result && result.rows) || []).slice()
       .sort((a, b) => a.start - b.start);
@@ -635,13 +640,13 @@ BARRY.toothFairy = (function () {
   }
 
   function feedLine(r) {
-    const log = document.getElementById('tfLog');
+    const log = document.getElementById(I('Log'));
     if (!log) return;
     log.appendChild(el('div', { class: 'tf-logline' }, [
       el('span', { text: r.start.toFixed(3) + ' s' }),
-      el('span', { text: WORD[r.label] || r.label,
+      el('span', { text: WORD[r.label] || r.label || 'not read',
                    style: 'color:' + colorOf(r.label) }),
-      el('span', { text: r.p != null ? 'p(DS) ' + r.p.toFixed(2) : 'unreadable' }),
+      el('span', { text: r.p != null ? cfg.pWord + ' ' + r.p.toFixed(2) : 'unreadable' }),
     ]));
     log.scrollTop = log.scrollHeight;
   }
@@ -655,22 +660,22 @@ BARRY.toothFairy = (function () {
     queue = [];
     scanT = null;
     scanning = false;
-    const ov = document.getElementById('tfOv');
+    const ov = document.getElementById(I('Ov'));
     if (!ov || !result) return;
     const r = result;
-    const host = document.getElementById('tfSummary');
+    const host = document.getElementById(I('Summary'));
     const scope = ov.querySelector('.tf-scope');
     if (scope) scope.classList.add('done');
-    const t = document.getElementById('tfStageText');
-    if (t) t.textContent = 'Done. ' + (r.model_name || 'Tooth Fairy') + ' called '
-      + num(r.n) + ' candidates'
+    const t = document.getElementById(I('StageText'));
+    if (t) t.textContent = 'Done. ' + (r.model_name || NAME) + ' called '
+      + num(r.n) + ' ' + cfg.words.things
       + (r.ds_loss ? ', with up to ' + pct(r.ds_loss, 0) + ' of real spikes '
          + 'allowed to be called Garbage.' : '.');
-    const bar = document.getElementById('tfBar');
+    const bar = document.getElementById(I('Bar'));
     if (bar) bar.style.width = '100%';
-    const eta = document.getElementById('tfEta');
+    const eta = document.getElementById(I('Eta'));
     if (eta) eta.textContent = r.cached ? 'read before, so only scored' : '';
-    const stopBtn = document.getElementById('tfStop');
+    const stopBtn = document.getElementById(I('Stop'));
     if (stopBtn) stopBtn.remove();
     host.innerHTML = '';
 
@@ -690,43 +695,23 @@ BARRY.toothFairy = (function () {
 
     const notes = [];
     if (r.channels_note) notes.push(r.channels_note);
-    const ho = r.held_out || {};
-    const share = (lab, of) => {
-      const b = ho[lab];
-      return b && b.n ? (of === 'ds' ? b.n_ds : b.n_garbage) / b.n : null;
-    };
-    if (ho.spike) {
-      notes.push('On mice it never saw, ' + pct(share('spike', 'ds'))
-        + ' of what Tooth Fairy called DS really was, and '
-        + pct(share('garbage', 'garbage')) + ' of what it called Garbage '
-        + 'really was. Flag for Deep Review is the stretch just under its DS '
-        + 'bar; Flag is everything between.');
-    }
-    if (r.agreement && r.agreement.compared) {
-      notes.push(num(r.already_decided) + ' of these were already decided '
-        + 'by a person. Where both said DS or Garbage, Tooth Fairy agreed on '
-        + pct(r.agreement.agree / r.agreement.compared) + '. Those '
-        + 'decisions stay as they are.');
-    }
-    if (r.n_readable < r.n) {
-      notes.push(num(r.n - r.n_readable) + ' could not be read (too near '
-        + 'either end of the recording, or in a gap) and are marked Flag.');
-    }
+    notes.push(...cfg.notes(r, { pct, num }));
     host.appendChild(el('div', { class: 'tf-notes' },
       notes.map((x) => el('p', { text: x }))));
 
     const rows = (r.rows || []).filter((x) => !filter || x.label === filter);
     host.appendChild(el('div', { class: 'br-scroll tf-list' }, [
       el('table', { class: 'br-tbl ai-tbl' }, [
-        el('thead', {}, [el('tr', {}, ['Time', 'Tooth Fairy', 'p(DS)',
+        el('thead', {}, [el('tr', {}, ['Time', NAME, cfg.pWord,
           'A person said'].map((h) => el('th', { text: h })))]),
         el('tbody', {}, rows.map((x) => el('tr', {}, [
           el('td', { text: x.start.toFixed(3) + ' s' }),
           el('td', {}, [el('span', { class: 'tf-pill',
                                      style: '--call:' + colorOf(x.label),
-                                     text: WORD[x.label] || x.label })]),
+                                     text: WORD[x.label] || x.label
+                                           || 'not read' })]),
           el('td', { text: x.p == null ? '—' : x.p.toFixed(3) }),
-          el('td', { text: x.human ? (WORD[x.human] || x.human)
+          el('td', { text: x.human ? (cfg.humanWord(x.human, WORD) || x.human)
                            + (x.human_by ? ' (' + x.human_by + ')' : '')
                            : '' }),
         ]))),
@@ -734,33 +719,29 @@ BARRY.toothFairy = (function () {
 
     const undecided = (r.n || 0) - (r.already_decided || 0);
     host.appendChild(el('div', { class: 'tf-foot' }, [
-      el('p', { class: 'hint', text:
-        'Accept and review puts Tooth Fairy’s calls on the ' + num(undecided)
-        + ' candidates nobody has decided, and banks every call as a Tooth '
-        + 'Fairy version of this set — kept for the record and for training '
-        + 'on edge cases later. Then work through the flags.' }),
+      el('p', { class: 'hint', text: cfg.words.acceptHint(num(undecided)) }),
       el('div', { class: 'spacer' }),
       BARRY.ui.button({ text: 'Discard', title: 'Close. Nothing is kept.',
                         onclick: discard }),
       BARRY.ui.button({ kind: 'primary', text: 'Accept and review',
-                        id: 'tfAccept', onclick: accept }),
+                        id: I('Accept'), onclick: accept }),
     ]));
   }
 
   async function accept() {
-    const b = document.getElementById('tfAccept');
+    const b = document.getElementById(I('Accept'));
     if (b) b.disabled = true;
     let res;
     try {
-      res = await apiPost('/api/toothfairy/sweep/' + job.id + '/accept', {});
+      res = await apiPost(API + '/sweep/' + job.id + '/accept', {});
     } catch (e) {
       if (b) b.disabled = false;
-      toast('Could not keep Tooth Fairy’s calls: ' + e.message, 'err', 9000);
+      toast('Could not keep ' + NAME + '’s calls: ' + e.message, 'err', 9000);
       return;
     }
-    toast('Tooth Fairy’s calls are on ' + num(res.applied) + ' candidates '
-          + 'and banked as v' + res.version + ' (Tooth Fairy). The Flagged '
-          + 'pass is next.', 'ok', 8000);
+    toast(NAME + '’s calls are on ' + num(res.applied) + ' '
+          + cfg.words.things + ' and banked as v' + res.version + ' ('
+          + NAME + '). The Flagged pass is next.', 'ok', 8000);
     job = null;
     result = null;
     closeOverlay();
@@ -774,7 +755,7 @@ BARRY.toothFairy = (function () {
       ? ((result && result.batch) || []).map((b) => b.sid).filter(Boolean)
       : (job ? [job.id] : []);
     if (sids.length) {
-      apiPost('/api/toothfairy/discard', { sids: sids }).catch(() => {});
+      apiPost(API + '/discard', { sids: sids }).catch(() => {});
     }
     job = null;
     result = null;
@@ -800,7 +781,8 @@ BARRY.toothFairy = (function () {
       return;
     }
     batchSets = (got.sets || [])
-      .filter((x) => BARRY.ui.kindBase(x.kind) === 'ds' && !x.archived
+      .filter((x) => BARRY.ui.kindBase(x.kind) === cfg.kind && !x.archived
+                     && !x.test
                      && ((x.progress || {}).total || 0) > 0)
       .map((x) => ({
         gid: x.gid,
@@ -843,22 +825,18 @@ BARRY.toothFairy = (function () {
             } }),
           el('span', { class: 'tf-pick-name', text: x.name }),
           x.open ? BARRY.ui.chip('on the bench', { flag: true }) : null,
-          el('span', { class: 'tf-pick-n', text: num(x.total) + ' candidates'
+          el('span', { class: 'tf-pick-n', text: num(x.total) + ' ' + cfg.words.things
             + (x.left ? ' · ' + num(x.left) + ' undecided' : ' · all decided') }),
         ].filter(Boolean)))
-      : [el('p', { class: 'hint', text: 'No dentate spike sets to sweep.' })]);
+      : [el('p', { class: 'hint', text: cfg.words.noSets })]);
     showModal(el('div', { class: 'modal tf-confirm tf-batch' }, [
-      dialogHead('Tooth Fairy batch', chosen.length
-        ? chosen.length + ' of ' + batchSets.length + ' sets' : ''),
+      dialogHead(NAME + ' batch', chosen.length
+        ? chosen.length + ' of ' + batchSets.length + ' ' + cfg.words.sets : ''),
       el('div', { class: 'mb' }, [
-        el('p', { class: 'tf-lede', text:
-          'Tooth Fairy sweeps each set you choose, one after another, and '
-          + 'calls every candidate DS, Flag for Deep Review, Flag or '
-          + 'Garbage. At the end you see every set and keep the ones you '
-          + 'want; a person’s decisions are never changed.' }),
+        el('p', { class: 'tf-lede', text: cfg.words.batchLede }),
         toleranceField(() => batchDialog(true)),
         BARRY.ui.field({
-          label: 'Sets',
+          label: cfg.words.Sets,
           control: el('div', { class: 'tf-pick-wrap' }, [
             el('div', { class: 'ai-row' }, [
               BARRY.ui.button({ kind: 'mini', text: 'On the bench',
@@ -874,19 +852,21 @@ BARRY.toothFairy = (function () {
           ]),
         }),
         el('dl', { class: 'br-dl tf-dl' }, [
-          dl('Candidates', num(n) + ' in ' + chosen.length + ' set'
-             + (chosen.length === 1 ? '' : 's')),
+          dl(cfg.words.Things, num(n) + ' in ' + chosen.length + ' '
+             + (chosen.length === 1 ? cfg.words.set : cfg.words.sets)),
           modelLine(),
+          ...modelMore(),
           dl('Time', 'about ' + mins + ' minute' + (mins === 1 ? '' : 's')
-             + ' the first time; sets swept before are quicker'),
+             + ' the first time; ' + cfg.words.sets + ' swept before are quicker'),
         ]),
       ]),
       el('div', { class: 'mf' }, [
         el('div', { class: 'spacer' }),
         BARRY.ui.button({ text: 'Cancel', onclick: closeModal }),
-        BARRY.ui.button({ kind: 'primary', id: 'tfBatchGo',
-          text: chosen.length ? 'Sweep ' + chosen.length + ' set'
-                + (chosen.length === 1 ? '' : 's') : 'Choose a set',
+        BARRY.ui.button({ kind: 'primary', id: I('BatchGo'),
+          text: chosen.length ? 'Sweep ' + chosen.length + ' '
+                + (chosen.length === 1 ? cfg.words.set : cfg.words.sets)
+                : 'Choose ' + cfg.words.aSet,
           disabled: !chosen.length,
           onclick: () => { closeModal(); startBatch(chosen); } }),
       ]),
@@ -896,7 +876,7 @@ BARRY.toothFairy = (function () {
   async function startBatch(chosen) {
     let got;
     try {
-      got = await apiPost('/api/toothfairy/batch', {
+      got = await apiPost(API + '/batch', {
         sets: chosen.map((x) => ({ gid: x.gid, kind: x.kind })),
         gids: chosen.map((x) => x.gid),
         ds_loss: (st.tolerances || []).length ? tol : null });
@@ -920,17 +900,17 @@ BARRY.toothFairy = (function () {
 
   /* Which set is being read, and how every set is getting on. */
   function paintBatchProgress() {
-    const log = document.getElementById('tfLog');
+    const log = document.getElementById(I('Log'));
     if (!log || !job) return;
     const ms = job.members || [];
     const at = ms.findIndex((m) => m.status === 'reading');
     const done = ms.filter((m) => m.status === 'done' || m.status === 'failed');
-    const t = document.getElementById('tfStageText');
+    const t = document.getElementById(I('StageText'));
     if (t && at >= 0) {
       t.textContent = 'Set ' + (at + 1) + ' of ' + ms.length + ' — '
         + ms[at].label + ' · ' + t.textContent;
     }
-    const bar = document.getElementById('tfBar');
+    const bar = document.getElementById(I('Bar'));
     if (bar && ms.length) {
       const part = parseFloat(bar.style.width) / 100 || 0;
       bar.style.width = Math.round(100 * (done.length + (at >= 0 ? part : 0))
@@ -956,46 +936,48 @@ BARRY.toothFairy = (function () {
     scanT = null;
     idleT = null;
     scanning = false;
-    const ov = document.getElementById('tfOv');
+    const ov = document.getElementById(I('Ov'));
     if (!ov || !result) return;
     const sets = result.batch || [];
     const ok = sets.filter((b) => b.sid);
     const keep = new Set(ok.filter((b) => b.undecided > 0).map((b) => b.sid));
     const scope = ov.querySelector('.tf-scope');
     if (scope) scope.remove();
-    const log = document.getElementById('tfLog');
+    const log = document.getElementById(I('Log'));
     if (log) log.remove();
-    const t = document.getElementById('tfStageText');
-    if (t) t.textContent = 'Done. Tooth Fairy swept ' + ok.length + ' of '
-      + sets.length + ' sets'
+    const t = document.getElementById(I('StageText'));
+    if (t) t.textContent = 'Done. ' + NAME + ' swept ' + ok.length + ' of '
+      + sets.length + ' ' + cfg.words.sets
       + (result.ds_loss ? ', with up to ' + pct(result.ds_loss, 0)
          + ' of real spikes allowed to be called Garbage.' : '.');
-    const bar = document.getElementById('tfBar');
+    const bar = document.getElementById(I('Bar'));
     if (bar) bar.style.width = '100%';
-    const stopBtn = document.getElementById('tfStop');
+    const stopBtn = document.getElementById(I('Stop'));
     if (stopBtn) stopBtn.remove();
-    const host = document.getElementById('tfSummary');
+    const host = document.getElementById(I('Summary'));
     const total = (k) => ok.reduce((a, b) => a + ((b.counts || {})[k] || 0), 0);
     host.innerHTML = '';
     host.appendChild(el('div', { class: 'tf-tiles' }, ORDER.map((lab) =>
       el('div', { class: 'tf-tile', style: '--call:' + colorOf(lab) }, [
         el('b', { text: num(total(lab)) }),
         el('span', { text: WORD[lab] }),
-        el('i', { text: 'across ' + ok.length + ' sets' }),
+        el('i', { text: 'across ' + ok.length + ' ' + cfg.words.sets }),
       ]))));
 
-    const go = BARRY.ui.button({ kind: 'primary', id: 'tfBatchAccept',
+    const go = BARRY.ui.button({ kind: 'primary', id: I('BatchAccept'),
       text: '', onclick: () => acceptBatch(Array.from(keep)) });
     const paintGo = () => {
-      go.textContent = keep.size ? 'Accept ' + keep.size + ' set'
-        + (keep.size === 1 ? '' : 's') : 'Choose a set to keep';
+      go.textContent = keep.size ? 'Accept ' + keep.size + ' '
+        + (keep.size === 1 ? cfg.words.set : cfg.words.sets)
+        : 'Choose ' + cfg.words.aSet + ' to keep';
       go.disabled = !keep.size;
     };
     paintGo();
     host.appendChild(el('div', { class: 'br-scroll tf-list' }, [
       el('table', { class: 'br-tbl ai-tbl tf-batch-tbl' }, [
-        el('thead', {}, [el('tr', {}, ['Keep', 'Set', 'DS', 'Deep review',
-          'Flag', 'Garbage', 'Agreed with a person', ''].map((h) =>
+        el('thead', {}, [el('tr', {}, ['Keep', cfg.words.Set]
+          .concat(ORDER.map((lab) => cfg.short[lab]))
+          .concat(['Agreed with a person', '']).map((h) =>
           el('th', { text: h })))]),
         el('tbody', {}, sets.map((b) => {
           const c = b.counts || {};
@@ -1013,12 +995,10 @@ BARRY.toothFairy = (function () {
                 paintGo();
               } })] : []),
             el('td', { class: 'ai-wrap', text: b.name }),
-          ].concat(b.sid ? ORDER.map(cell) : [el('td', { colspan: 4,
+          ].concat(b.sid ? ORDER.map(cell) : [el('td', { colspan: ORDER.length,
               class: 'tf-err', text: b.error || 'Could not be swept.' })])
            .concat([
-            el('td', { text: b.agreement && b.agreement.compared
-              ? pct(b.agreement.agree / b.agreement.compared, 0) + ' of '
-                + num(b.agreement.compared) : '—' }),
+            el('td', { text: cfg.agreed(b.agreement, { pct, num }) }),
             el('td', { class: 'hint', text: b.sid
               ? (b.undecided ? num(b.undecided) + ' undecided'
                              : 'all decided already')
@@ -1028,10 +1008,7 @@ BARRY.toothFairy = (function () {
         })),
       ])]));
     host.appendChild(el('div', { class: 'tf-foot' }, [
-      el('p', { class: 'hint', text:
-        'Keeping a set puts Tooth Fairy’s calls on its undecided candidates '
-        + 'and banks every call as a Tooth Fairy version of it. Sets left '
-        + 'unticked are let go; nothing is written to them.' }),
+      el('p', { class: 'hint', text: cfg.words.batchAcceptHint }),
       el('div', { class: 'spacer' }),
       BARRY.ui.button({ text: 'Discard all', onclick: discard }),
       go,
@@ -1039,29 +1016,30 @@ BARRY.toothFairy = (function () {
   }
 
   async function acceptBatch(sids) {
-    const b = document.getElementById('tfBatchAccept');
+    const b = document.getElementById(I('BatchAccept'));
     if (b) b.disabled = true;
     let res;
     try {
-      res = await apiPost('/api/toothfairy/accept', { sids: sids });
+      res = await apiPost(API + '/accept', { sids: sids });
     } catch (e) {
       if (b) b.disabled = false;
-      toast('Could not keep Tooth Fairy’s calls: ' + e.message, 'err', 9000);
+      toast('Could not keep ' + NAME + '’s calls: ' + e.message, 'err', 9000);
       return;
     }
     const rows = res.results || [];
     const good = rows.filter((x) => x.status === 200);
     const applied = good.reduce((a, x) => a + (x.applied || 0), 0);
     const bad = rows.filter((x) => x.status !== 200);
-    toast('Tooth Fairy’s calls are on ' + num(applied) + ' candidates in '
-          + good.length + ' set' + (good.length === 1 ? '' : 's')
+    toast(NAME + '’s calls are on ' + num(applied) + ' ' + cfg.words.things
+          + ' in ' + good.length + ' '
+          + (good.length === 1 ? cfg.words.set : cfg.words.sets)
           + (bad.length ? '; ' + bad.length + ' could not be kept ('
              + (bad[0].error || '') + ')' : '') + '.',
           bad.length ? 'warn' : 'ok', 9000);
     // What was not kept is let go.
     const rest = ((result && result.batch) || []).map((x) => x.sid)
       .filter((sid) => sid && !sids.includes(sid));
-    if (rest.length) apiPost('/api/toothfairy/discard', { sids: rest }).catch(() => {});
+    if (rest.length) apiPost(API + '/discard', { sids: rest }).catch(() => {});
     job = null;
     result = null;
     batch = null;
@@ -1071,4 +1049,200 @@ BARRY.toothFairy = (function () {
 
   return { open: open, openBatch: openBatch, icon: icon,
            running: () => !!job };
-})();
+}
+
+/* Tooth Fairy, sweeping Checkup's dentate spike sets -- as it always was. */
+BARRY.toothFairy = makeSweeper({
+  id: 'tf', name: 'Tooth Fairy', mark: 'TOOTH FAIRY', api: '/api/toothfairy',
+  kind: 'ds',
+  order: ['spike', 'review', 'flag', 'garbage'],
+  word: {
+    spike: 'DS', review: 'Flag for Deep Review', flag: 'Flag',
+    garbage: 'Garbage',
+  },
+  short: { spike: 'DS', review: 'Deep review', flag: 'Flag',
+           garbage: 'Garbage' },
+  /* Measured on this machine, 2026-10-02, both reads, six stretches at a
+     time: 0.19 s a candidate (451, network share), 0.36 (385) and 0.49
+     (173, local disk -- small sets spread thin). Only for the sentence in
+     the confirm dialog. */
+  secPerCandidate: 0.4,
+  stages: {
+    'tf read': 'Reading each candidate’s shape',
+    'tf physio': 'Reading the physiology around each one',
+    'tf score': 'Scoring',
+  },
+  pWord: 'p(DS)',
+  fallbackColor: (lab) => (lab === 'spike' ? '--ok'
+                           : lab === 'garbage' ? '--err' : '--warn'),
+  humanWord: (h, word) => word[h],
+  agreed: (a, f) => (a && a.compared
+    ? f.pct(a.agree / a.compared, 0) + ' of ' + f.num(a.compared) : '—'),
+  notes: (r, f) => {
+    const out = [];
+    const ho = r.held_out || {};
+    const share = (lab, of) => {
+      const b = ho[lab];
+      return b && b.n ? (of === 'ds' ? b.n_ds : b.n_garbage) / b.n : null;
+    };
+    if (ho.spike) {
+      out.push('On mice it never saw, ' + f.pct(share('spike', 'ds'))
+        + ' of what Tooth Fairy called DS really was, and '
+        + f.pct(share('garbage', 'garbage')) + ' of what it called Garbage '
+        + 'really was. Flag for Deep Review is the stretch just under its DS '
+        + 'bar; Flag is everything between.');
+    }
+    if (r.agreement && r.agreement.compared) {
+      out.push(f.num(r.already_decided) + ' of these were already decided '
+        + 'by a person. Where both said DS or Garbage, Tooth Fairy agreed on '
+        + f.pct(r.agreement.agree / r.agreement.compared) + '. Those '
+        + 'decisions stay as they are.');
+    }
+    if (r.n_readable < r.n) {
+      out.push(f.num(r.n - r.n_readable) + ' could not be read (too near '
+        + 'either end of the recording, or in a gap) and are marked Flag.');
+    }
+    return out;
+  },
+  words: {
+    lede: 'Tooth Fairy reads every candidate in this set — its shape, the '
+        + 'shank around it, unit firing and the second either side — and '
+        + 'calls each one DS, Flag for Deep Review, Flag or Garbage.',
+    batchLede: 'Tooth Fairy sweeps each set you choose, one after another, '
+             + 'and calls every candidate DS, Flag for Deep Review, Flag or '
+             + 'Garbage. At the end you see every set and keep the ones you '
+             + 'want; a person’s decisions are never changed.',
+    things: 'candidates', Things: 'Candidates',
+    set: 'set', sets: 'sets', aSet: 'a set', Set: 'Set', Sets: 'Sets',
+    noSets: 'No dentate spike sets to sweep.',
+    acceptHint: (n) => 'Accept and review puts Tooth Fairy’s calls on the '
+      + n + ' candidates nobody has decided, and banks every call as a Tooth '
+      + 'Fairy version of this set — kept for the record and for training '
+      + 'on edge cases later. Then work through the flags.',
+    batchAcceptHint: 'Keeping a set puts Tooth Fairy’s calls on its '
+      + 'undecided candidates and banks every call as a Tooth Fairy version '
+      + 'of it. Sets left unticked are let go; nothing is written to them.',
+  },
+});
+
+/* PROSPECTOR, Panning's model (2026-11-04): Tooth Fairy's two doors over
+   pooled sets -- "Prospector…" in Panning's bar for the pool open, and
+   "Prospector batch…" on Panning's page for several. Its three calls:
+   Spike, kept for the ones it is sure of, and two flags only it gives
+   (curation.KINDS, `ai`). Never Garbage. backend/prospector.py.
+
+   THE ICON: a prospector's pan with gold in it and a glint over it --
+   "prospectors pan a river for what is worth keeping" (panning.js). The pan
+   in the current colour, the gold and the glint in the accent; `.live`
+   swirls the pan and the glint catches the light. */
+const PR_ICON = '<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">'
+  + '<g class="pr-panning">'
+  + '<path class="pr-pan" d="M3.5 15.5c.6 6.2 6 10 12.5 10s11.9-3.8 12.5-10z"/>'
+  + '<ellipse class="pr-rim" cx="16" cy="15.5" rx="12.5" ry="2.6"/>'
+  + '<path class="pr-water" d="M7.5 19.2c1.6-.9 3.1.9 4.7 0s3.1.9 4.7 0'
+  + ' 3.1.9 4.7 0 3.1.9 3.4.4"/>'
+  + '<path class="pr-nugget" d="M11.2 21.2l1.5-1.3 1.9.4.4 1.5-1.6 1-1.9-.3z"/>'
+  + '<path class="pr-nugget" d="M16.6 22.3l1.2-1.1 1.5.3.2 1.2-1.3.8-1.4-.2z"/>'
+  + '<path class="pr-nugget" d="M20.2 20.1l1-.9 1.2.3.1 1-1.1.6-1.1-.2z"/>'
+  + '</g>'
+  + '<path class="pr-glint" d="M23.5 1.5l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4'
+  + '-2.4-.9 2.4-.9z"/>'
+  + '<circle class="pr-dust" cx="6.5" cy="8.5" r=".8"/>'
+  + '<circle class="pr-dust" cx="28" cy="10" r=".6"/>'
+  + '</svg>';
+
+BARRY.prospector = makeSweeper({
+  id: 'pr', name: 'Prospector', mark: 'PROSPECTOR', api: '/api/prospector',
+  kind: 'pooled',
+  icon: PR_ICON, iconClass: 'pr-icon',
+  order: ['spike', 'likely_spike', 'likely_garbage'],
+  word: {
+    spike: 'Spike', likely_spike: 'Flag · likely spike',
+    likely_garbage: 'Flag · likely garbage',
+  },
+  short: { spike: 'Spike', likely_spike: 'Likely spike',
+           likely_garbage: 'Likely garbage' },
+  // Both of Tooth Fairy's reads, which are what it costs; the same rate.
+  secPerCandidate: 0.4,
+  stages: {
+    'pr read': 'Reading each event’s shape',
+    'pr physio': 'Reading the physiology around each one',
+    'pr score': 'Scoring',
+  },
+  pWord: 'p(spike)',
+  fallbackColor: (lab) => (lab === 'spike' ? '--ok'
+                           : lab === 'likely_garbage' ? '--err' : '--warn'),
+  humanWord: (h, word) => ({ spike: 'Spike', garbage: 'Garbage',
+                             flag: 'Flag' }[h] || word[h]),
+  agreed: (a, f) => {
+    const s = (a || {}).spike || {};
+    return s.compared ? f.pct(s.agree / s.compared, 0) + ' of '
+      + f.num(s.compared) + ' Spike' : '—';
+  },
+  /* The bar, and what it did on recordings it never saw, in the dialogs. */
+  modelMore: (st, f) => {
+    const h = st.held_out || {};
+    const rows = [];
+    if (st.t_spike != null) {
+      rows.push(f.dl('Spike bar', 'a score of ' + Number(st.t_spike).toFixed(3)
+        + ' or more — above ' + f.pct(st.target, 0) + ' of the garbage in '
+        + 'the recordings it learned from'));
+    }
+    if (h.spike_called) {
+      rows.push(f.dl('Tested', 'on recordings it never saw, that bar called '
+        + f.num(h.spike_called) + ' events Spike: '
+        + f.pct(h.spike_recall, 0) + ' of the real spikes, and '
+        + f.num(h.garbage_into_spike) + ' garbage ('
+        + f.pct(h.garbage_into_spike / h.spike_called) + ' of its calls)'));
+    }
+    return rows;
+  },
+  notes: (r, f) => {
+    const out = [];
+    const h = r.held_out || {};
+    if (h.spike_called) {
+      out.push('On recordings it never saw, its Spike bar called '
+        + f.pct(h.spike_recall, 0) + ' of the real spikes Spike, and '
+        + f.pct(h.garbage_into_spike / h.spike_called) + ' of its Spike '
+        + 'calls were garbage. Under the bar, a score of '
+        + Number((r.policy || {}).t_lean || 0.5).toFixed(1) + ' or more is '
+        + 'Flag · likely spike, and the rest Flag · likely garbage: both '
+        + 'want a person.');
+    }
+    const a = (r.agreement || {}).spike || {};
+    if (r.already_decided) {
+      out.push(f.num(r.already_decided) + ' of these were already decided '
+        + 'by a person' + (a.compared ? '. Of those it called Spike, a '
+          + 'person had said Spike for ' + f.pct(a.agree / a.compared) : '')
+        + '. Those decisions stay as they are.');
+    }
+    const un = (r.counts || {}).unread || 0;
+    if (un) {
+      out.push(f.num(un) + ' could not be read (too near either end of the '
+        + 'recording, or in a gap) and get no call.');
+    }
+    return out;
+  },
+  words: {
+    lede: 'Prospector reads every event in this pool — its shape, the shank '
+        + 'around it, unit firing and the second either side, as Tooth Fairy '
+        + 'does, and which detector found it — and calls each one Spike, '
+        + 'Flag · likely spike or Flag · likely garbage. It never calls '
+        + 'Garbage: Spike is for the ones it is sure of, and the rest are '
+        + 'left for you, leaning one way or the other.',
+    batchLede: 'Prospector sweeps each pool you choose, one after another, '
+             + 'and calls every event Spike, Flag · likely spike or Flag · '
+             + 'likely garbage. At the end you see every pool and keep the '
+             + 'ones you want; a person’s decisions are never changed.',
+    things: 'events', Things: 'Events',
+    set: 'pool', sets: 'pools', aSet: 'a pool', Set: 'Pool', Sets: 'Pools',
+    noSets: 'No pooled sets to sweep.',
+    acceptHint: (n) => 'Accept and review puts Prospector’s calls on the '
+      + n + ' events no person has decided, and banks every call as a '
+      + 'Prospector version of this pool — its first calls, kept to hold '
+      + 'against what people decide. Then work through the flags.',
+    batchAcceptHint: 'Keeping a pool puts Prospector’s calls on the events '
+      + 'no person has decided and banks every call as a Prospector version '
+      + 'of it. Pools left unticked are let go; nothing is written to them.',
+  },
+});
