@@ -760,7 +760,8 @@ BARRY.welcome = (function () {
         }
         term.local('matched against the catalogue: ' + n(f.n_matched) + ' already in '
           + word + ', ' + n(f.n_new) + ' new, ' + n(f.n_refused) + ' need a person, '
-          + n(f.n_unidentifiable) + ' name no mouse and session', 'hot');
+          + n(f.n_unidentifiable) + ' name no mouse and session'
+          + (f.n_empty ? ', ' + n(f.n_empty) + ' only headers (never added)' : ''), 'hot');
         for (const r of (f.new || [])) {
           term.local('new      ' + (r.label || r.key) + '  ' + (r.where || '')
             + (r.copies > 1 ? '  · ' + r.copies + ' copies' : ''), 'ok');

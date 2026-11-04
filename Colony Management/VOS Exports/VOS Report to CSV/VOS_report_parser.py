@@ -21,7 +21,7 @@ written to the debug log instead of failing silently.
 
 Usage:
     python VOS_report_parser.py                        # newest 'VOS Report *.pdf' beside this script
-    python VOS_report_parser.py "VOS Report 092326.pdf"
+    python VOS_report_parser.py "VOS Report 110326.pdf"
     python VOS_report_parser.py report.pdf -o out.csv --debug-dir "Debug/2026-07-28"
 """
 
@@ -140,11 +140,26 @@ def get_notes(card_text):
     return m.group(1).strip() if m else ''
 
 
+def tidy_parens(text):
+    """Collapse doubled brackets typed by hand: '1607(M)) x 579(F)' -> '1607(M) x 579(F)'.
+
+    A stray ')' sat between the '(M)' marker and the 'x', so the cross did not
+    match and the father was read as an animal in the cage (110326, CC-30797-2).
+    """
+    text = re.sub(r'\(\s*(?:\(\s*)+', '(', text)
+    return re.sub(r'\)(?:\s*\))+', ')', text)
+
+
+def find_cross(text):
+    return RE_CROSS.search(tidy_parens(text))
+
+
 def is_cross_line(line):
     """True if the line records the parent pairing rather than an animal."""
-    if RE_CROSS.search(line):
+    if find_cross(line):
         return True
-    return line.strip().lower().rstrip(':') in ('parents', 'parent')
+    # 'parents' / 'parents:' alone, or 'parents ...' / 'parents1607(M) ...' with any typo after it
+    return bool(re.match(r'\s*parents?\b|\s*parents?(?=\d)', line, re.I))
 
 
 def parse_animal_line(line):
@@ -204,7 +219,7 @@ def extract_breeder_animals(card_text, notes, m_dob, f_dob, warn):
             else:
                 warn.append(f'breeder card missing {side} Strain (ID) number')
         # Recover a renamed parent from the notes cross, e.g. '1607(M)(previously 586)'.
-        cm = RE_CROSS.search(notes)
+        cm = find_cross(notes)
         if cm:
             for a in animals:
                 if a['tag'] == cm.group('m') and cm.group('mprev'):
@@ -214,7 +229,7 @@ def extract_breeder_animals(card_text, notes, m_dob, f_dob, warn):
         return animals
 
     # Older exports print no IDs on the strain lines; read the cross in the notes.
-    cm = RE_CROSS.search(notes)
+    cm = find_cross(notes)
     if cm:
         left_sex = (cm.group('msex') or 'M').upper()
         right_sex = (cm.group('fsex') or 'F').upper()
@@ -292,10 +307,26 @@ def parse_card(card_text, page_num, position):
         animals = extract_breeder_animals(card_text, notes, m_dob, f_dob, warn)
     else:
         animals = extract_census_animals(notes, warn)
+        # A parent from the cross line should never come back as a pup in the cage.
+        cm = find_cross(notes)
+        if cm:
+            parent_ids = {cm.group('m'), cm.group('f')}
+            for a in animals:
+                if a['tag'] in parent_ids:
+                    warn.append(f'animal {a["tag"]} is also a parent in the cross line')
 
     declared = int(declared_match.group(1)) if declared_match else None
-    if declared is not None and declared != len(animals):
-        warn.append(f'found {len(animals)} IDs but card declares # Animals {declared}')
+    n_ids = len(animals)
+    if declared is not None and declared != n_ids:
+        warn.append(f'found {n_ids} IDs but card declares # Animals {declared}')
+
+    # Notes with no IDs at all (e.g. the PACAP cages): the mice are real but
+    # untagged in VOS, so emit one blank-tag row per declared animal rather
+    # than a single ID-0 row that undercounts the cage.
+    if not animals and declared:
+        animals = [{'tag': '', 'prev': '', 'sex': '', 'dob': '', 'strain': ''}
+                   for _ in range(declared)]
+        warn.append(f'{declared} untagged row(s) added -- card lists no mouse IDs')
 
     base = {
         'Card Type': 'BREEDER' if is_breeder else 'CENSUS',
@@ -312,9 +343,9 @@ def parse_card(card_text, page_num, position):
         'Ref': ref.group(1) if ref else '',
         'Source Page': page_num,
         'Position on Page': position,
-        'Mice In Card': len(animals),
+        'Mice In Card': n_ids,
         'ID Count Matches # Animals': ('' if declared is None
-                                       else ('YES' if declared == len(animals) else 'NO')),
+                                       else ('YES' if declared == n_ids else 'NO')),
         'Parse Warnings': '; '.join(warn),
         'Raw Card Text': flat,
     }
@@ -330,7 +361,7 @@ def parse_card(card_text, page_num, position):
         rec = dict(base)
         sex = a['sex'] or card_sex
         rec.update({
-            'Extracted Sorting ID': int(a['tag']),
+            'Extracted Sorting ID': int(a['tag']) if a['tag'] else 0,
             'Mouse Tag': a['tag'],
             'Previous Tag': a['prev'],
             'Sex': sex,
@@ -405,6 +436,21 @@ def parse_pdf(pdf_path, debug_dir=None):
                     log.append(line)
                     card_dump.append(line + '\n')
 
+    # One mouse lives in one cage: a tag on two cards is a VOS data-entry slip
+    # (110326: 1631 on both CC-31016-1 and CC-31017-1). Flag every copy.
+    cages_by_tag = {}
+    for r in records:
+        if r['Mouse Tag']:
+            cages_by_tag.setdefault(r['Extracted Sorting ID'], []).append(r['Cage Card'])
+    for r in records:
+        cages = cages_by_tag.get(r['Extracted Sorting ID'], [])
+        if r['Mouse Tag'] and len(cages) > 1:
+            others = ', '.join(c for c in cages if c != r['Cage Card']) or r['Cage Card']
+            w = f'tag {r["Mouse Tag"]} also appears on {others}'
+            r['Parse Warnings'] = '; '.join(x for x in (r['Parse Warnings'], w) if x)
+            log.append(f'[WARN] page {r["Source Page"]} card {r["Position on Page"]} '
+                       f'({r["Cage Card"]}): {w}')
+
     log.append(f'Total cards: {total_cards}')
     log.append(f'Total mouse rows: {len(records)}')
     log.append(f'External IDs seen: {sorted(ext_ids)}')
@@ -468,10 +514,15 @@ def main():
         for rec in records:
             writer.writerow({new: rec.get(orig, '') for orig, new in column_map})
 
-    bad = [r for r in records if r['ID Count Matches # Animals'] == 'NO']
-    if bad:
-        print(f'[REVIEW] {len(bad)} row(s) whose card ID count disagrees with "# Animals" '
-              f'-- see the "Parse Warnings" column.')
+    flagged = [r for r in records if r['Parse Warnings']]
+    if flagged:
+        print(f'[REVIEW] {len(flagged)} row(s) need a look -- see the "Parse Warnings" column:')
+        seen = set()
+        for r in flagged:
+            key = (r['Cage Card'], r['Parse Warnings'])
+            if key not in seen:
+                seen.add(key)
+                print(f'    {r["Cage Card"]}: {r["Parse Warnings"]}')
     print('[SUCCESS] Done.')
 
 

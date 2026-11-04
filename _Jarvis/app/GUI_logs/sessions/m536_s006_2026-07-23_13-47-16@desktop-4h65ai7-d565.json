@@ -1,69 +1,29 @@
 {
   "_at": {
-    "created": "2026-11-02T19:20:52.905055+00:00",
-    "gid": "2026-11-02T19:20:52.905055+00:00",
-    "group": "2026-11-02T19:20:52.905055+00:00",
-    "key": "2026-11-02T19:20:52.905055+00:00",
-    "label": "2026-11-02T19:20:52.905055+00:00",
-    "loose_key": "2026-11-02T19:20:52.905055+00:00",
-    "mouse": "2026-11-02T19:20:52.905055+00:00",
-    "project": "2026-11-02T19:20:52.905055+00:00",
-    "project_source": "2026-11-02T19:20:52.905055+00:00",
-    "retired": "2026-11-02T19:20:52.905055+00:00",
-    "schema": "2026-11-02T19:20:52.905055+00:00",
-    "session": "2026-11-02T19:20:52.905055+00:00",
-    "start": "2026-11-02T19:20:52.905055+00:00",
-    "updated": "2026-11-02T19:23:01.800827+00:00"
-  },
-  "_keys": {
-    "paths": {
-      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_13-46-58": [
-        "set",
-        "2026-11-02T19:23:01.800827+00:00"
-      ],
-      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_14-09-03": [
-        "set",
-        "2026-11-02T19:23:01.800827+00:00"
-      ],
-      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_14-11-57": [
-        "set",
-        "2026-11-02T19:23:01.800827+00:00"
-      ],
-      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_14-44-33": [
-        "set",
-        "2026-11-02T19:23:01.800827+00:00"
-      ],
-      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_14-53-44": [
-        "set",
-        "2026-11-02T19:23:01.800827+00:00"
-      ],
-      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_16-50-08": [
-        "set",
-        "2026-11-02T19:23:01.800827+00:00"
-      ],
-      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_16-55-27": [
-        "set",
-        "2026-11-02T19:23:01.800827+00:00"
-      ],
-      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_17-39-17": [
-        "set",
-        "2026-11-02T19:23:01.800827+00:00"
-      ],
-      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_17-45-26": [
-        "set",
-        "2026-11-02T19:23:01.800827+00:00"
-      ]
-    }
+    "created": "2026-11-03T20:58:04.023867+00:00",
+    "gid": "2026-11-03T20:58:04.023867+00:00",
+    "group": "2026-11-03T20:58:04.023867+00:00",
+    "key": "2026-11-03T20:58:04.023867+00:00",
+    "label": "2026-11-03T20:58:04.023867+00:00",
+    "loose_key": "2026-11-03T20:58:04.023867+00:00",
+    "mouse": "2026-11-03T20:58:04.023867+00:00",
+    "project": "2026-11-03T20:58:04.023867+00:00",
+    "project_source": "2026-11-03T20:58:04.023867+00:00",
+    "retired": "2026-11-03T20:58:04.023867+00:00",
+    "schema": "2026-11-03T20:58:04.023867+00:00",
+    "session": "2026-11-03T20:58:04.023867+00:00",
+    "start": "2026-11-03T20:58:04.023867+00:00",
+    "updated": "2026-11-03T20:58:04.023867+00:00"
   },
   "_shard": {
-    "at": "2026-11-02T19:23:01.800827+00:00",
+    "at": "2026-11-03T20:58:04.023867+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "created": {
-    "app_version": "2026.11.02.1",
-    "at": "2026-11-02T14:20:52-05:00",
-    "commit": "d2dc07e7",
+    "app_version": "2026.11.03.2",
+    "at": "2026-11-03T15:58:04-05:00",
+    "commit": "5acf4b4f",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -76,27 +36,17 @@
   "label": "KCNT1 m536 s6 2026-07-23",
   "loose_key": "m536_s006",
   "mouse": 536,
-  "paths": [
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_13-46-58",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_14-09-03",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_14-11-57",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_14-44-33",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_14-53-44",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_16-50-08",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_16-55-27",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_17-39-17",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-23_17-45-26"
-  ],
+  "paths": [],
   "project": "KCNT1",
   "project_source": "guessed",
-  "retired": false,
+  "retired": true,
   "schema": 1,
   "session": 6,
   "start": "2026-07-23T17:47:16+00:00",
   "updated": {
-    "app_version": "2026.11.02.1",
-    "at": "2026-11-02T14:23:01-05:00",
-    "commit": "d2dc07e7",
+    "app_version": "2026.11.03.2",
+    "at": "2026-11-03T15:58:04-05:00",
+    "commit": "5acf4b4f",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

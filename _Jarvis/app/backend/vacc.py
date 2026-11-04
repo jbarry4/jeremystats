@@ -1190,11 +1190,28 @@ find %s -maxdepth 7 \( -name 'CSC1.ncs' -o -name 'CSC1_0001.ncs' \) -print0 2>/d
   d=$(dirname "$f")
   n=$(ls "$d"/CSC*.ncs 2>/dev/null | wc -l)
   sz=$(stat -c %%s "$f" 2>/dev/null)
+  big=$(stat -c %%s "$(ls -S "$d"/CSC*.ncs 2>/dev/null | head -n 1)" 2>/dev/null)
   h=$(head -c 16384 "$f" 2>/dev/null | tr -cd '[:print:]\n' | grep -a -m3 -E 'TimeCreated|Time Opened|SamplingFrequency' | tr '\t\n' '  ')
-  printf 'rec\t%%s\t%%s\t%%s\t%%s\n' "$n" "$sz" "$h" "$d"
+  printf 'rec\t%%s\t%%s\t%%s\t%%s\t%%s\n' "$n" "$sz" "$big" "$h" "$d"
 done
 echo "end=1"
 """
+# The largest channel file is there for one question: is this folder only
+# headers? The rig leaves a folder of exactly-16384-byte files when
+# acquisition is started and stopped before a sample, and on 2026-11-03
+# 179 of 490 folders under Jeremy3/KCNT1 were that. CSC1 alone cannot say:
+# on the split urethane recordings CSC1.ncs is a header and CSC1_0001.ncs
+# holds the data.
+NCS_HEADER_BYTES = 16384
+
+
+def header_only(row):
+    """Every channel file in a walked folder is a header and nothing else.
+
+    False when the walk did not measure it (a listing from before
+    2026-11-03): not knowing is not evidence of an empty folder."""
+    big = (row or {}).get("largest_ncs_bytes")
+    return isinstance(big, int) and 0 < big <= NCS_HEADER_BYTES
 # What the walk looks for, and why it is two names.
 #
 # `CSC1.ncs` alone missed every recording whose files all carry the `_0001`
@@ -1242,7 +1259,7 @@ def inventory(cfg, root=None, timeout=180):
     seen_live = set()
 
     def found(line):
-        bits = line.split("\t", 4)
+        bits = line.split("\t", 5)
         if len(bits) < 4 or bits[0] != "rec":
             return
         path = bits[-1]
@@ -1272,9 +1289,9 @@ def inventory(cfg, root=None, timeout=180):
         if line.strip() == "end=1":
             done = True
             continue
-        # Five fields, or four from an older script. The path is last either
-        # way, and the split stops at four so a path is never cut.
-        bits = line.split("\t", 4)
+        # Six fields, or five or four from an older script. The path is last
+        # every way, and the split stops at five so a path is never cut.
+        bits = line.split("\t", 5)
         if len(bits) < 4 or bits[0] != "rec":
             continue
         try:
@@ -1285,12 +1302,23 @@ def inventory(cfg, root=None, timeout=180):
             first = int(bits[2])
         except ValueError:
             first = 0
-        header, path = ("", bits[3]) if len(bits) == 4 else (bits[3], bits[4])
+        big = None
+        if len(bits) == 6:
+            try:
+                big = int(bits[3])
+            except ValueError:
+                big = None
+            header, path = bits[4], bits[5]
+        elif len(bits) == 5:
+            header, path = bits[3], bits[4]
+        else:
+            header, path = "", bits[3]
         if path in seen:
             continue                     # CSC1.ncs and CSC1_0001.ncs, one folder
         seen.add(path)
         out.append({"path": path, "n_channels": n_ch,
-                    "first_ncs_bytes": first, "header": header.strip()})
+                    "first_ncs_bytes": first, "largest_ncs_bytes": big,
+                    "header": header.strip()})
     if not done:
         _say("the listing of %s was cut short" % root, "warn", name)
         livefeed.task(name, state="fail")

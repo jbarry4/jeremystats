@@ -82,6 +82,58 @@ def listing():
           "CSC1_0001.ncs" in vacc._INVENTORY and "CSC1.ncs" in vacc._INVENTORY)
 
 
+def headers_only():
+    """2026-11-03: 90 folders of headers and nothing else had been
+    registered from Jeremy3/KCNT1. The walk now measures each folder's
+    largest channel, and a folder whose largest is a header is no recording."""
+    print("\nfolders of headers only")
+    base = NF + "/Jeremy3/KCNT1/Summer'26/KCNT1_m0536/s06"
+    lines = "\n".join([
+        # Six fields: CSC1 is a header here, but another channel has data
+        # (the split urethane shape), so this one is a recording.
+        "rec\t128\t16384\t9000000\t%s\t%s/2026-07-21_16-18-04" % (HDR, base),
+        # Six fields, every channel a header: a stub.
+        "rec\t96\t16384\t16384\t%s\t%s/2026-07-22_12-17-32" % (HDR, base),
+        "end=1", ""])
+    real = vacc._ssh
+    vacc._ssh = lambda cfg, cmd, stdin=None, timeout=45: lines
+    try:
+        got = vacc.inventory(CFG, NF)
+    finally:
+        vacc._ssh = real
+    check("six fields read, the path kept whole",
+          [r["path"].rsplit("/", 1)[1] for r in got]
+          == ["2026-07-21_16-18-04", "2026-07-22_12-17-32"], got)
+    check("the largest channel is carried",
+          [r.get("largest_ncs_bytes") for r in got] == [9000000, 16384], got)
+    check("CSC1 a header but data elsewhere is NOT headers only",
+          not vacc.header_only(got[0]), got[0])
+    check("every channel a header is headers only", vacc.header_only(got[1]))
+    check("a listing that never measured it says nothing",
+          not vacc.header_only({"first_ncs_bytes": 16384}))
+    check("the script measures the largest channel", "ls -S" in vacc._INVENTORY)
+
+    rows = [dict(r, native=True) for r in got]
+    out = vaccfind.survey(rows, CFG, lambda path, start: (None, None, None))
+    new = out.pop("_new")
+    check("the stub is counted, not added",
+          out["n_empty"] == 1 and len(new) == 1
+          and new[0]["identity"]["path"].endswith("2026-07-21_16-18-04"),
+          (out["n_empty"], [r["identity"].get("path") for r in new]))
+
+    from backend import pathtidy
+    unc = "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\" \
+          "Summer'26\\KCNT1_m0536\\s06\\"
+    rec = {"gid": "szz000000001", "label": "m536 s6",
+           "paths": [unc + "2026-07-21_16-18-04", unc + "2026-07-22_12-17-32"]}
+    plan = pathtidy.plan([rec], rows, lambda row: rec, gone=[],
+                         empty=vacc.header_only)
+    row = (plan["rows"] or [{}])[0]
+    check("the tidy drops a path to a stub, keeps the real one, learns no stub",
+          row.get("drop") == [[unc + "2026-07-22_12-17-32", "empty"]]
+          and not row.get("add"), row)
+
+
 def unc():
     print("\nthe path map, backwards")
     got = vacc.unc_for(CFG, NF + "/Jeremy3/KCNT1/m1s2/2025-01-01_10-00-00")
@@ -340,6 +392,7 @@ def copies():
 
 def main():
     listing()
+    headers_only()
     unc()
     facts()
     new = survey()

@@ -8,7 +8,7 @@
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "fav_scripts": "2026-09-02T23:21:29.293258+00:00",
     "figure_profile": "2026-10-23T19:05:47.379192+00:00",
-    "gobble": "2026-11-03T15:26:34.605191+00:00",
+    "gobble": "2026-11-03T20:52:21.840661+00:00",
     "lite": "2026-10-23T16:27:51.066433+00:00",
     "lock_hold": "2026-10-28T18:42:51.201738+00:00",
     "lock_trace_band": "2026-10-29T13:02:43.123053+00:00",
@@ -23,13 +23,13 @@
     "spotter_light": "2026-10-16T17:21:44.827873+00:00",
     "support_panels": "2026-10-23T13:14:15.458256+00:00",
     "themes": "2026-09-02T23:21:29.293258+00:00",
-    "updated": "2026-11-03T17:42:36.922920+00:00",
+    "updated": "2026-11-04T15:00:47.331892+00:00",
     "vacc": "2026-09-16T14:55:08.027793+00:00",
     "vacc_signed_ack": "2026-10-20T16:14:37.060022+00:00",
     "xf_chan_column": "2026-10-21T22:08:08.811881+00:00",
     "xf_simplify_curate": "2026-10-21T21:43:37.927942+00:00",
     "xf_simplify_lock": "2026-10-29T12:30:13.790961+00:00",
-    "xf_simplify_panning": "2026-10-29T15:25:08.891261+00:00",
+    "xf_simplify_panning": "2026-11-03T21:01:25.855030+00:00",
     "xf_simplify_spotter": "2026-10-21T14:46:13.790670+00:00"
   },
   "_keys": {
@@ -102,7 +102,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-11-03T15:26:34.605191+00:00"
+        "2026-11-04T14:42:40.124583+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -140,7 +140,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-11-02T22:06:45.377130+00:00"
+        "2026-11-04T14:42:29.189225+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -165,7 +165,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-03T17:42:36.922920+00:00",
+    "at": "2026-11-04T15:00:47.331892+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -593,7 +593,7 @@
   "figure_profile": "nature",
   "gobble": {
     "DESKTOP-4H65AI7": {
-      "chosen": false,
+      "chosen": true,
       "from": "halloween",
       "year": 2026
     }
@@ -703,7 +703,7 @@
   },
   "themes": {
     "BarryLab": "horizon-night",
-    "DESKTOP-4H65AI7": "thanksgiving",
+    "DESKTOP-4H65AI7": "light",
     "DESKTOP-AH45FAE": "horizon-night",
     "DESKTOP-NR2H5O7": "horizon-night",
     "Home": "dark",
@@ -711,7 +711,7 @@
     "LCOM549913": "halloween",
     "ip0af50ae7.int.uvm.edu": "halloween"
   },
-  "updated": "2026-11-03T12:42:36-05:00",
+  "updated": "2026-11-04T10:00:47-05:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": true,
@@ -725,6 +725,6 @@
   "xf_chan_column": "folded",
   "xf_simplify_curate": false,
   "xf_simplify_lock": false,
-  "xf_simplify_panning": true,
+  "xf_simplify_panning": false,
   "xf_simplify_spotter": false
 }

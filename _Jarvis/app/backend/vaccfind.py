@@ -106,9 +106,18 @@ def survey(found, cfg, match):
     Returns the counts, a sample of each pile, and in `_new` every new row
     in full for `register` (the page is sent the sample only).
     """
-    matched, refused, unident = [], [], []
+    matched, refused, unident, empty = [], [], [], []
     groups = {}
     for row in (found or []):
+        if vacc.header_only(row):
+            # A folder of headers and no data is not a recording, and is
+            # not another copy of one either (2026-11-03: 90 of these had
+            # been registered from Jeremy3/KCNT1 and had to be pruned).
+            empty.append({"path": _tail(row["path"]),
+                          "kind": kind_of(cfg, row),
+                          "why": "every channel file is a header with no "
+                                 "data"})
+            continue
         start, fs, duration = facts_of(row)
         rec, how, why = match(row["path"], start)
         kind = kind_of(cfg, row)
@@ -205,10 +214,12 @@ def survey(found, cfg, match):
         "n_new": len(new),
         "n_refused": len(refused),
         "n_unidentifiable": len(unident),
+        "n_empty": len(empty),
         "new_by_project": by_project,
         "new": [public(r) for r in new[:SHOWN]],
         "refused": refused[:SHOWN],
         "unidentifiable": unident[:SHOWN],
+        "empty": empty[:SHOWN],
         "digest": digest(new),
         "_new": new,
     }

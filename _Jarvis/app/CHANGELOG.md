@@ -15,6 +15,33 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.03.2 - Folders of headers only are not recordings
+
+On 2026-11-03 the KCNT1 data on netfiles held 179 folders whose channel files
+were nothing but the 16 KB Neuralynx header. That is what the rig leaves when
+acquisition is started and stopped before a sample. 90 of those folders had
+been registered as recordings, most through *Find everything on netfiles*. The
+rig had kept writing stubs into old session folders for months (m486 s8,
+m536 s6, m14 s2), so one session showed up as dozens.
+
+- **Pruned.** The 90 KCNT1 records that pointed at nothing but headers are
+  forgotten and tombstoned, so a sync or a colleague's copy will not bring
+  them back. 57 header-only paths are dropped from 9 real recordings, which
+  keep their data folder. Nothing on netfiles was touched: the stub folders are
+  still there, for the lab to delete.
+  - Tool: `tools/prune_header_only.py`. It runs as a dry run by default; pass
+    `--all` for every project.
+  - Records with any work on them are skipped.
+- **Never added again.** The VACC walk now measures each folder's largest
+  channel file, not just CSC1. CSC1 alone cannot tell: on the split urethane
+  recordings, CSC1.ncs is a header and CSC1_0001.ncs holds the data.
+  - A folder that is headers only is counted on the Find card ("folders of
+    headers only, no data — never added") and is never registered.
+  - It is never matched as a copy of a recording.
+  - Keep the paths true drops any path to one.
+  - Listings made before this release do not have the measurement, so they
+    filter nothing until the next walk.
+
 ## 2026.11.03.1 - Solid ground: the folder is _Jarvis, a click is a click, and the backend says what it is doing
 
 **After you pull: open the new `_Jarvis` folder and double-click Activate

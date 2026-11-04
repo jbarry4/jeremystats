@@ -240,6 +240,9 @@ def apply_policy(p, pol):
 
 N_FOLDS = 5
 N_INNER = 3
+# `train_and_test` also hands back its raw held-out arrays (`oof_extra`).
+# Off for Tooth Fairy; Prospector turns it on for its own report.
+OOF_EXTRA = False
 # Two versions' stamps for one candidate, before Braces moved anything:
 # the same time to the microsecond, give or take a rounding.
 SAME_EVENT_S = 0.002
@@ -1750,6 +1753,16 @@ def train_and_test(data, families, model_id="hgb", job=None,
         "keep_ds": keep,
         "final_threshold": round(t_final, 4),
     }
+    if OOF_EXTRA:
+        # Unrounded scores and each event's own fold's bar at every
+        # garbage-catch target, set inside its training recordings -- what
+        # a per-recording or per-group picture at those bars needs
+        # (Prospector, 2026-11-03), where a bar a hair above the most
+        # spike-like garbage is the whole point. Not in Tooth Fairy's
+        # records, which are committed: it is megabytes of numbers.
+        results["oof_extra"] = {
+            "p": oof.copy(), "thr_catch": {c_: thr_c[c_].copy()
+                                           for c_ in CATCH}}
     return results, final, names, t_final
 
 

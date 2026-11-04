@@ -25,7 +25,8 @@ So a tidy does two things, both from evidence and never from a guess:
           lab computer can open, mapped drive or not.
   DROP    a path the cluster says is not there any more (checked on the
           cluster itself, one connection, `test -e`), a test's temporary
-          folder, and a path to a file rather than a folder.
+          folder, and a path to a file rather than a folder. Since
+          2026-11-03 also a folder the walk measured as headers only.
 
 What it does not touch: a path on a local drive (`D:\\PTEN\\...`). It may be
 another computer's disk, which nothing here can see, and a path that does not
@@ -61,6 +62,7 @@ REASONS = {
     "archived": "on netfiles only inside an archive now",
     "temp": "a test's temporary folder",
     "file": "a file, not a recording folder",
+    "empty": "a folder of headers only, no data",
 }
 
 
@@ -140,21 +142,24 @@ def archive_for(tail, archives):
     return None
 
 
-def plan(records, inventory, match, gone=None, archives=None):
+def plan(records, inventory, match, gone=None, archives=None, empty=None):
     """What a tidy would change, per recording. Writes nothing.
 
     `match(row)` is the app's one rule for which recording a walked folder
     is (a record, or None). `gone` is the set of tails the cluster said are
     not there (`vacc.missing`), lower-cased; None means it was not asked, and
-    then nothing on the share is dropped.
+    then nothing on the share is dropped. `empty(row)` says a walked folder
+    is headers only (`vacc.header_only`); a path on record to one is dropped.
     """
     tops = tops_of(records, inventory)
     gone = {g.lower() for g in (gone or [])} if gone is not None else None
-    live = {}
+    live, stubs = {}, set()
     for row in inventory or []:
         tail = str(row.get("path") or "")[len(ROOT) + 1:].replace("/", "\\")
         if tail:
             live[tail.lower()] = tail
+            if empty is not None and empty(row):
+                stubs.add(tail.lower())
     learned = {}
     for row in inventory or []:
         rec = match(row)
@@ -185,6 +190,9 @@ def plan(records, inventory, match, gone=None, archives=None):
                 drop.append([p, "file"])
                 continue
             t = tail_of(p, tops)
+            if t is not None and t.lower() in stubs:
+                drop.append([p, "empty"])
+                continue
             if t is None or t.lower() in live or gone is None:
                 continue
             if t.lower() in gone:
