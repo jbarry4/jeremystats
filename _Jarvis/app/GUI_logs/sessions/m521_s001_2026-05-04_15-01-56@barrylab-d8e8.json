@@ -1,6 +1,6 @@
 {
   "_at": {
-    "bad_channels": "2026-11-04T20:07:19.993330+00:00",
+    "bad_channels": "2026-11-04T20:59:43.421817+00:00",
     "created": "2026-11-04T20:02:04.696503+00:00",
     "duration_s": "2026-11-04T20:02:04.696503+00:00",
     "first_seen_by": "2026-11-04T20:02:04.696503+00:00",
@@ -19,7 +19,8 @@
     "schema": "2026-11-04T20:02:04.696503+00:00",
     "session": "2026-11-04T20:02:04.696503+00:00",
     "start": "2026-11-04T20:02:04.696503+00:00",
-    "updated": "2026-11-04T20:07:19.993330+00:00"
+    "updated": "2026-11-04T20:59:43.421817+00:00",
+    "view_state": "2026-11-04T20:59:38.270879+00:00"
   },
   "_keys": {
     "paths": {
@@ -31,16 +32,18 @@
     "seen": {
       "barrylab-d8e8": [
         "set",
-        "2026-11-04T20:02:04.696503+00:00"
+        "2026-11-04T20:59:21.507936+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-04T20:07:19.993330+00:00",
+    "at": "2026-11-04T20:59:43.421817+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
-  "bad_channels": [],
+  "bad_channels": [
+    59
+  ],
   "created": {
     "app_version": "2026.11.03.2",
     "at": "2026-11-04T15:02:04-05:00",
@@ -71,7 +74,7 @@
   "schema": 2,
   "seen": {
     "barrylab-d8e8": {
-      "at": "2026-11-04T15:02:04-05:00",
+      "at": "2026-11-04T15:59:21-05:00",
       "by": "Rain Younger",
       "copies": {
         "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_521\\KCNT1_m521_s1_may04\\2026-05-04_15-01-56": {
@@ -83,20 +86,73 @@
       },
       "machine": "Strawbarry",
       "path": "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_521\\KCNT1_m521_s1_may04\\2026-05-04_15-01-56",
-      "root": "Y:/Jeremy3/KCNT1/Spring'26/KCNT1_521",
-      "scan": "scan_c5ee555d3d"
+      "root": null,
+      "scan": null
     }
   },
   "session": 1,
   "start": "2026-05-04T15:01:56",
   "updated": {
     "app_version": "2026.11.03.2",
-    "at": "2026-11-04T15:07:19-05:00",
-    "commit": "266c9dae",
+    "at": "2026-11-04T15:59:43-05:00",
+    "commit": "a7db71e5",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",
     "user": "Rain Younger"
+  },
+  "view_state": {
+    "channels": [
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63
+    ],
+    "climBy": null,
+    "fdefault": null,
+    "flock": true,
+    "gain": 3.375,
+    "hp": 0,
+    "invert": true,
+    "lp": 0,
+    "marks_fade": null,
+    "marks_view": "show",
+    "normalize": "shared",
+    "notch": 0,
+    "probe": "h3",
+    "spacing": 50,
+    "span": 10,
+    "stft_mode": null,
+    "t0": 10,
+    "ylim": null
   }
 }

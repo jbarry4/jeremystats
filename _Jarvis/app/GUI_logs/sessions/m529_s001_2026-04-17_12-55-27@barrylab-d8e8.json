@@ -19,7 +19,8 @@
     "schema": "2026-11-04T19:57:41.246335+00:00",
     "session": "2026-11-04T19:57:41.246335+00:00",
     "start": "2026-11-04T19:57:41.246335+00:00",
-    "updated": "2026-11-04T20:03:52.987342+00:00"
+    "updated": "2026-11-04T20:39:13.995828+00:00",
+    "view_state": "2026-11-04T20:39:13.995828+00:00"
   },
   "_keys": {
     "paths": {
@@ -31,12 +32,12 @@
     "seen": {
       "barrylab-d8e8": [
         "set",
-        "2026-11-04T19:57:41.246335+00:00"
+        "2026-11-04T20:38:56.212756+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-04T20:03:52.987342+00:00",
+    "at": "2026-11-04T20:39:13.995828+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -73,7 +74,7 @@
   "schema": 2,
   "seen": {
     "barrylab-d8e8": {
-      "at": "2026-11-04T14:57:41-05:00",
+      "at": "2026-11-04T15:38:56-05:00",
       "by": "Rain Younger",
       "copies": {
         "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_529\\KCNT1_m529_s1_apr17\\2026-04-17_12-55-27": {
@@ -85,20 +86,73 @@
       },
       "machine": "Strawbarry",
       "path": "Y:\\Jeremy3\\KCNT1\\Spring'26\\KCNT1_529\\KCNT1_m529_s1_apr17\\2026-04-17_12-55-27",
-      "root": "Y:/Jeremy3/KCNT1/Spring'26/KCNT1_529",
-      "scan": "scan_d4b51799a8"
+      "root": null,
+      "scan": null
     }
   },
   "session": 1,
   "start": "2026-04-17T12:55:27",
   "updated": {
     "app_version": "2026.11.03.2",
-    "at": "2026-11-04T15:03:52-05:00",
-    "commit": "266c9dae",
+    "at": "2026-11-04T15:39:13-05:00",
+    "commit": "a7db71e5",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",
     "user": "Rain Younger"
+  },
+  "view_state": {
+    "channels": [
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63
+    ],
+    "climBy": null,
+    "fdefault": null,
+    "flock": true,
+    "gain": 3.375,
+    "hp": 0,
+    "invert": true,
+    "lp": 0,
+    "marks_fade": null,
+    "marks_view": "show",
+    "normalize": "shared",
+    "notch": 0,
+    "probe": "h3",
+    "spacing": 50,
+    "span": 10,
+    "stft_mode": null,
+    "t0": 10,
+    "ylim": null
   }
 }
