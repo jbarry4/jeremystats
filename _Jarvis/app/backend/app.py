@@ -29227,6 +29227,8 @@ def _vacc_staged(force=False, wait=True):
     # both answer to one recording.
     staged, unknown, by_gid = {}, [], {}
     for row in found:
+        if vaccmod.header_only(row):
+            continue            # headers and no data: not a copy of anything
         rec, how, why = _cluster_match(row["path"], by_key, by_loose,
                                        header_time=_found_time(row))
         if rec is None:
@@ -29735,6 +29737,8 @@ def api_vacc_scan():
 
     added, already, unmatched, ambiguous = [], [], [], []
     for row in found:
+        if vaccmod.header_only(row):
+            continue
         ident = ids.identify(row["path"], header_time=_found_time(row))
         # One rule, shared with the batch matcher -- see `_cluster_match`.
         rec, how, why = _cluster_match(row["path"], by_key, by_loose,
@@ -30071,11 +30075,14 @@ def api_vacc_found_tidy_plan():
     by_key, by_loose = _match_index()
 
     def match(row):
+        if vaccmod.header_only(row):
+            return None         # a folder of headers is never learned
         rec, _how, _why = _cluster_match(row["path"], by_key, by_loose,
                                          header_time=_found_time(row))
         return rec
 
-    plan = pathtidymod.plan(recs, inv, match, gone=gone_t, archives=arch_t)
+    plan = pathtidymod.plan(recs, inv, match, gone=gone_t, archives=arch_t,
+                            empty=vaccmod.header_only)
     for r in plan["rows"]:
         for u in r["add"]:
             livefeedmod.say("+ %s  learns %s" % (r["label"], u), "ok",

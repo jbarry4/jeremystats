@@ -3658,6 +3658,7 @@ BARRY.views.sessions = (function () {
         tile(f.n_new, 'new' + (byProj ? ' — ' + byProj : ''), !!f.n_new),
         tile(f.n_refused, 'need a person to say which'),
         tile(f.n_unidentifiable, 'folders that name no mouse and session — left alone'),
+        tile(f.n_empty, 'folders of headers only, no data — never added'),
       ]));
       const part = (label, rows, line) => (rows && rows.length)
         ? el('details', { class: 'vk-list' }, [
@@ -3677,6 +3678,8 @@ BARRY.views.sessions = (function () {
              (r) => r.path + ' — ' + r.why),
         part(nn(f.n_unidentifiable) + ' whose folder names no mouse and session — rename '
              + 'the folder, then look again', f.unidentifiable, (r) => r.path),
+        part(nn(f.n_empty) + ' of headers only — acquisition started and stopped '
+             + 'before a sample', f.empty, (r) => r.path),
       ].filter(Boolean).forEach((x) => box.appendChild(x));
     }
 

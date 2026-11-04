@@ -1,0 +1,6723 @@
+{
+ "schema": 1,
+ "id": "pr20261104-071200",
+ "at": "2026-11-04T07:12:00-0500",
+ "computed": {
+  "user": "Shahriar Tafti",
+  "machine": "Bluebarry",
+  "os": "Windows",
+  "at": "2026-11-04T07:12:00-05:00",
+  "email": "sakhava1@uvm.edu",
+  "host": "DESKTOP-4H65AI7",
+  "app_version": "2026.11.03.2",
+  "commit": "5acf4b4f"
+ },
+ "rules": "prospector.consolidate as of 2026-11-03: Panning wins, Checkup otherwise, Tooth Fairy-accepted calls count, Toothy-era garbage counts, no Spotter garbage, no KCNT1",
+ "data": {
+  "n_recordings": 40,
+  "n_mice": 22,
+  "n_events": 24390,
+  "n_spike": 15849,
+  "n_garbage": 8541,
+  "tally": {
+   "conflict_checkup_garbage_panning_spike": 164,
+   "conflict_checkup_spike_panning_garbage": 8,
+   "from_panning": 5147,
+   "from_checkup": 6778,
+   "agree": 12486,
+   "dropped_flag": 1,
+   "dropped_doppler_no_call": 300,
+   "earlier_garbage": 94,
+   "toothy_garbage": 264,
+   "lost_to_clock": 0,
+   "both/garbage": 305,
+   "doppler/garbage": 1831,
+   "doppler/spike": 3144,
+   "incisor/garbage": 6411,
+   "incisor/spike": 8592,
+   "both/spike": 4128
+  },
+  "entries": [
+   {
+    "entry_id": "bfa98498290b",
+    "label": "PTEN m1 s2 2023-10-02",
+    "mouse_of": "PTEN m1",
+    "version": "prospector:vk-e01ad7bd7ba0:vk-9b2cf1e1d776:0",
+    "version_name": "Panning v1 + Checkup v13",
+    "n": 293,
+    "n_ds": 196,
+    "n_garbage": 97,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 1,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 164,
+     "from_checkup": 42,
+     "agree": 87,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 14,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "05bf008c6ec3",
+    "label": "PTEN m13 s17 2023-08-04",
+    "mouse_of": "PTEN m13",
+    "version": "prospector:174cb3e1664e:vk-7a761a346154:0",
+    "version_name": "Panning v5 + Checkup v5",
+    "n": 1249,
+    "n_ds": 987,
+    "n_garbage": 262,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 5,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 401,
+     "from_checkup": 254,
+     "agree": 594,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 27,
+     "earlier_garbage": 1,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "afa70b62f372",
+    "label": "PTEN m13 s2 2023-08-01",
+    "mouse_of": "PTEN m13",
+    "version": "prospector:vk-7e6ca766c261:vk-e012eec00756:1",
+    "version_name": "Panning v2 + Checkup v6",
+    "n": 662,
+    "n_ds": 469,
+    "n_garbage": 193,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 1,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 43,
+     "from_checkup": 187,
+     "agree": 432,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 6,
+     "earlier_garbage": 1,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "41dd94702761",
+    "label": "PTEN m2 s3 2024-01-23",
+    "mouse_of": "PTEN m2",
+    "version": "prospector:vk-49aba3016de8:vk-956552d0dbeb:2",
+    "version_name": "Panning v2 + Checkup v7",
+    "n": 260,
+    "n_ds": 118,
+    "n_garbage": 142,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 0,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 197,
+     "from_checkup": 10,
+     "agree": 53,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 7,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "cb74d97dac17",
+    "label": "PTEN m2 s8 2024-01-26",
+    "mouse_of": "PTEN m2",
+    "version": "prospector:vk-d706b96a9a87:vk-29f76b64a760:1",
+    "version_name": "Panning v2 + Checkup v6",
+    "n": 317,
+    "n_ds": 253,
+    "n_garbage": 64,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 0,
+     "conflict_checkup_spike_panning_garbage": 1,
+     "from_panning": 4,
+     "from_checkup": 67,
+     "agree": 246,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 1,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "edc1a5080093",
+    "label": "PTEN m21 s2 2024-07-29",
+    "mouse_of": "PTEN m21",
+    "version": "prospector:vk-edbb7be2b7e4:vk-f60267ca743b:2",
+    "version_name": "Panning v1 + Checkup v6",
+    "n": 272,
+    "n_ds": 75,
+    "n_garbage": 197,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 0,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 208,
+     "from_checkup": 29,
+     "agree": 35,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 3,
+     "earlier_garbage": 2,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "b0bc31123462",
+    "label": "PTEN m21 s6 2024-07-29",
+    "mouse_of": "PTEN m21",
+    "version": "prospector:3f92f6b27876:vk-6e125879bfc4:2",
+    "version_name": "Panning v5 + Checkup v5",
+    "n": 519,
+    "n_ds": 382,
+    "n_garbage": 137,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 10,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 196,
+     "from_checkup": 122,
+     "agree": 201,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 4,
+     "earlier_garbage": 1,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "43a2cfedde17",
+    "label": "PTEN m22 s3 2024-07-15",
+    "mouse_of": "PTEN m22",
+    "version": "prospector:vk-52de02fe6100:36c18b8b4ee6:1",
+    "version_name": "Panning v2 + Checkup v6",
+    "n": 433,
+    "n_ds": 231,
+    "n_garbage": 202,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 3,
+     "conflict_checkup_spike_panning_garbage": 1,
+     "from_panning": 115,
+     "from_checkup": 134,
+     "agree": 184,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 7,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "a4eeaa794729",
+    "label": "PTEN m22 s6 2024-07-15",
+    "mouse_of": "PTEN m22",
+    "version": "prospector:vk-206584c407d3:c7754d634968:2",
+    "version_name": "Panning v5 + Checkup v5",
+    "n": 540,
+    "n_ds": 341,
+    "n_garbage": 199,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 6,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 132,
+     "from_checkup": 138,
+     "agree": 270,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 6,
+     "earlier_garbage": 1,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "f4c18a9a8bd4",
+    "label": "PTEN m26 s2 2024-06-28",
+    "mouse_of": "PTEN m26",
+    "version": "prospector:vk-f29e03d97b98:vk-fc559b811e08:1",
+    "version_name": "Panning v7 + Checkup v6",
+    "n": 336,
+    "n_ds": 282,
+    "n_garbage": 54,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 4,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 215,
+     "from_checkup": 46,
+     "agree": 75,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 15,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "4acbac930c91",
+    "label": "PTEN m26 s5 2024-06-28",
+    "mouse_of": "PTEN m26",
+    "version": "prospector:vk-e2f605dd6dca:vk-bf02d350a442:2",
+    "version_name": "Panning v3 + Checkup v5",
+    "n": 921,
+    "n_ds": 694,
+    "n_garbage": 227,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 2,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 46,
+     "from_checkup": 233,
+     "agree": 642,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 9,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "35c325a44d44",
+    "label": "PTEN m28 s2 2024-06-18",
+    "mouse_of": "PTEN m28",
+    "version": "prospector:4d4dfb34151d:vk-d76e80d27888:1",
+    "version_name": "Panning v1 + Checkup v5",
+    "n": 583,
+    "n_ds": 465,
+    "n_garbage": 118,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 0,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 220,
+     "from_checkup": 86,
+     "agree": 277,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 25,
+     "earlier_garbage": 2,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "0d93df89cafd",
+    "label": "PTEN m28 s7 2024-06-18",
+    "mouse_of": "PTEN m28",
+    "version": "prospector:vk-339b53afbc48:vk-dc169f9cce51:2",
+    "version_name": "Panning v3 + Checkup v5",
+    "n": 622,
+    "n_ds": 472,
+    "n_garbage": 150,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 1,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 35,
+     "from_checkup": 161,
+     "agree": 426,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 3,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "db66d3c694fd",
+    "label": "PTEN m3 s2 2023-09-20",
+    "mouse_of": "PTEN m3",
+    "version": "prospector:vk-4f0909ca9451:vk-842b7a3bcebc:1",
+    "version_name": "Panning v2 + Checkup v5",
+    "n": 258,
+    "n_ds": 179,
+    "n_garbage": 79,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 6,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 132,
+     "from_checkup": 61,
+     "agree": 65,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 8,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "a62d1b78448b",
+    "label": "PTEN m33 s4 2024-06-14",
+    "mouse_of": "PTEN m33",
+    "version": "prospector:vk-c5a468db3ca3:vk-8dff2b4779a3:1",
+    "version_name": "Panning v2 + Checkup v5",
+    "n": 410,
+    "n_ds": 223,
+    "n_garbage": 187,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 11,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 198,
+     "from_checkup": 75,
+     "agree": 137,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 10,
+     "earlier_garbage": 1,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "7a1fb57293ae",
+    "label": "PTEN m33 s8 2024-06-14",
+    "mouse_of": "PTEN m33",
+    "version": "prospector:vk-64d4150b396b:vk-790cfa6f347a:2",
+    "version_name": "Panning v3 + Checkup v6",
+    "n": 712,
+    "n_ds": 448,
+    "n_garbage": 264,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 13,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 128,
+     "from_checkup": 249,
+     "agree": 335,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 3,
+     "earlier_garbage": 72,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "eaecc4a5e194",
+    "label": "PTEN m34 s5 2024-06-10",
+    "mouse_of": "PTEN m34",
+    "version": "prospector:vk-07a8b8359bbe:vk-691ef38ac6cf:1",
+    "version_name": "Panning v2 + Checkup v6",
+    "n": 255,
+    "n_ds": 218,
+    "n_garbage": 37,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 1,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 70,
+     "from_checkup": 22,
+     "agree": 163,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 3,
+     "earlier_garbage": 1,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "b6dad0cf157b",
+    "label": "PTEN m34 s8 2024-06-10",
+    "mouse_of": "PTEN m34",
+    "version": "prospector:vk-a6b3a2d1a5be:cda3d63ee7b7:2",
+    "version_name": "Panning v3 + Checkup v6",
+    "n": 337,
+    "n_ds": 334,
+    "n_garbage": 3,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 0,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 170,
+     "from_checkup": 2,
+     "agree": 165,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 5,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "b60578899091",
+    "label": "PTEN m5 s2 2023-11-16",
+    "mouse_of": "PTEN m5",
+    "version": "prospector:vk-acd715c194ad:vk-a0701d9ffcdf:1",
+    "version_name": "Panning v2 + Checkup v4",
+    "n": 908,
+    "n_ds": 785,
+    "n_garbage": 123,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 1,
+     "conflict_checkup_spike_panning_garbage": 1,
+     "from_panning": 17,
+     "from_checkup": 127,
+     "agree": 764,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 2,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "114ab036831c",
+    "label": "PTEN m5 s7 2023-11-17",
+    "mouse_of": "PTEN m5",
+    "version": "prospector:115ab63018ec:2e15d232dc55:1",
+    "version_name": "Panning v5 + Checkup v7",
+    "n": 826,
+    "n_ds": 664,
+    "n_garbage": 162,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 8,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 30,
+     "from_checkup": 162,
+     "agree": 634,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 1,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "8aad148bd6f6",
+    "label": "PTEN m51 s1 2025-04-08",
+    "mouse_of": "PTEN m51",
+    "version": "prospector:vk-647acb7065ae:vk-29ce41b85844:1",
+    "version_name": "Panning v1 + Checkup v6",
+    "n": 304,
+    "n_ds": 5,
+    "n_garbage": 299,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 0,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 164,
+     "from_checkup": 115,
+     "agree": 25,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 2,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "7bf60917e493",
+    "label": "PTEN m59 s10 2025-07-07",
+    "mouse_of": "PTEN m59",
+    "version": "prospector:vk-9a04b9bc49e1:8c84fe6a8599:1",
+    "version_name": "Panning v3 + Checkup v9",
+    "n": 788,
+    "n_ds": 411,
+    "n_garbage": 377,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 6,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 105,
+     "from_checkup": 325,
+     "agree": 358,
+     "dropped_flag": 1,
+     "dropped_doppler_no_call": 5,
+     "earlier_garbage": 0,
+     "toothy_garbage": 1,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "6d30e61d8ef3",
+    "label": "PTEN m59 s11 2025-07-09",
+    "mouse_of": "PTEN m59",
+    "version": "prospector:vk-d65423b28aa4:99c2c4707aa9:1",
+    "version_name": "Panning v3 + Checkup v7",
+    "n": 947,
+    "n_ds": 656,
+    "n_garbage": 291,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 1,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 46,
+     "from_checkup": 267,
+     "agree": 634,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 5,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "1429bf1f239f",
+    "label": "PTEN m59 s4 2025-07-07",
+    "mouse_of": "PTEN m59",
+    "version": "prospector:vk-5e6facf9156e:vk-647a683d630e:1",
+    "version_name": "Panning v1 + Checkup v8",
+    "n": 1084,
+    "n_ds": 515,
+    "n_garbage": 569,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 6,
+     "conflict_checkup_spike_panning_garbage": 1,
+     "from_panning": 291,
+     "from_checkup": 403,
+     "agree": 390,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 10,
+     "earlier_garbage": 7,
+     "toothy_garbage": 258,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "cb139fb2ea29",
+    "label": "PTEN m6 s4 2023-09-13",
+    "mouse_of": "PTEN m6",
+    "version": "prospector:vk-bb550bd29ffc:vk-6a48b7d6503b:1",
+    "version_name": "Panning v1 + Checkup v6",
+    "n": 295,
+    "n_ds": 208,
+    "n_garbage": 87,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 0,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 70,
+     "from_checkup": 49,
+     "agree": 176,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 4,
+     "earlier_garbage": 1,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "7288d9478f30",
+    "label": "PTEN m6 s8 2023-09-14",
+    "mouse_of": "PTEN m6",
+    "version": "prospector:vk-97c6420dfbeb:361724b77027:1",
+    "version_name": "Panning v7 + Checkup v5",
+    "n": 689,
+    "n_ds": 563,
+    "n_garbage": 126,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 1,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 17,
+     "from_checkup": 125,
+     "agree": 547,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 4,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "d4a4bcb4e47f",
+    "label": "PTEN m60 s1 2025-07-10",
+    "mouse_of": "PTEN m60",
+    "version": "prospector:vk-1976ef710bdf:vk-4ed5b9da3ee8:0",
+    "version_name": "Panning v1 + Checkup v9",
+    "n": 815,
+    "n_ds": 571,
+    "n_garbage": 244,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 5,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 114,
+     "from_checkup": 187,
+     "agree": 514,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 11,
+     "earlier_garbage": 0,
+     "toothy_garbage": 5,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "6f26e207fd03",
+    "label": "PTEN m60 s4 2025-07-10",
+    "mouse_of": "PTEN m60",
+    "version": "prospector:vk-c8274f5bcac8:vk-2828134a61c4:3",
+    "version_name": "Panning v5 + Checkup v4",
+    "n": 747,
+    "n_ds": 402,
+    "n_garbage": 345,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 0,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 60,
+     "from_checkup": 283,
+     "agree": 404,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 2,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "ab69363ee622",
+    "label": "PTEN m61 s1 2025-07-11",
+    "mouse_of": "PTEN m61",
+    "version": "prospector:vk-676f931570ee:95096433d267:1",
+    "version_name": "Panning v2 + Checkup v6",
+    "n": 573,
+    "n_ds": 197,
+    "n_garbage": 376,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 5,
+     "conflict_checkup_spike_panning_garbage": 1,
+     "from_panning": 264,
+     "from_checkup": 182,
+     "agree": 127,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 6,
+     "earlier_garbage": 3,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "a7369cdf5fe8",
+    "label": "PTEN m61 s7 2025-07-11",
+    "mouse_of": "PTEN m61",
+    "version": "prospector:vk-919b853e1c3e:vk-d7911681a30b:3",
+    "version_name": "Panning v5 + Checkup v5",
+    "n": 1115,
+    "n_ds": 377,
+    "n_garbage": 738,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 15,
+     "conflict_checkup_spike_panning_garbage": 2,
+     "from_panning": 161,
+     "from_checkup": 599,
+     "agree": 355,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 8,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "ece9a84acdea",
+    "label": "PTEN m7 s2 2023-08-22",
+    "mouse_of": "PTEN m7",
+    "version": "prospector:vk-7f2c9c880473:vk-ddf073b7dc89:1",
+    "version_name": "Panning v2 + Checkup v8",
+    "n": 245,
+    "n_ds": 87,
+    "n_garbage": 158,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 3,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 171,
+     "from_checkup": 57,
+     "agree": 17,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 9,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "2a8e47760eea",
+    "label": "PTEN m8 s2 2024-02-06",
+    "mouse_of": "PTEN m8",
+    "version": "prospector:vk-5fade3903247:vk-9dbd4da66581:1",
+    "version_name": "Panning v2 + Checkup v6",
+    "n": 454,
+    "n_ds": 365,
+    "n_garbage": 89,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 2,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 209,
+     "from_checkup": 19,
+     "agree": 226,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 4,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "86e4fcb4748a",
+    "label": "PTEN_DKO m41 s1 2024-11-26",
+    "mouse_of": "PTEN m41",
+    "version": "prospector:vk-0296230a9ea3:vk-f49ace178ea6:1",
+    "version_name": "Panning v3 + Checkup v5",
+    "n": 1107,
+    "n_ds": 1003,
+    "n_garbage": 104,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 6,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 99,
+     "from_checkup": 96,
+     "agree": 912,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 13,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "49d60f323885",
+    "label": "PTEN_DKO m41 s6 2024-11-26",
+    "mouse_of": "PTEN m41",
+    "version": "prospector:vk-53f7269c8ef6:vk-019b02dde615:2",
+    "version_name": "Panning v5 + Checkup v4",
+    "n": 1355,
+    "n_ds": 812,
+    "n_garbage": 543,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 1,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 29,
+     "from_checkup": 540,
+     "agree": 786,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 5,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "cf227c79b356",
+    "label": "PTEN_DKO m44 s1 2024-11-11",
+    "mouse_of": "PTEN m44",
+    "version": "prospector:vk-be7f6d9eaec0:vk-5647f0e4eb21:3",
+    "version_name": "Panning v3 + Checkup v4",
+    "n": 317,
+    "n_ds": 109,
+    "n_garbage": 208,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 0,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 206,
+     "from_checkup": 37,
+     "agree": 74,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 6,
+     "earlier_garbage": 1,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "839cdfe3a24d",
+    "label": "PTEN_DKO m44 s5 2024-11-11",
+    "mouse_of": "PTEN m44",
+    "version": "prospector:vk-1a62b0de2da0:vk-0f1aed67cd41:3",
+    "version_name": "Panning v3 + Checkup v4",
+    "n": 349,
+    "n_ds": 213,
+    "n_garbage": 136,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 0,
+     "conflict_checkup_spike_panning_garbage": 1,
+     "from_panning": 161,
+     "from_checkup": 42,
+     "agree": 146,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 17,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "8129819fc559",
+    "label": "PTEN_DKO m53 s1 2025-03-04",
+    "mouse_of": "PTEN m53",
+    "version": "prospector:7cb503a34b5b:vk-c5f83f5de28f:3",
+    "version_name": "Panning v3 + Checkup v4",
+    "n": 607,
+    "n_ds": 419,
+    "n_garbage": 188,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 6,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 35,
+     "from_checkup": 330,
+     "agree": 242,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 0,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "ec08fbcc2292",
+    "label": "PTEN_DKO m53 s7 2025-03-04",
+    "mouse_of": "PTEN m53",
+    "version": "prospector:23c468fb131e:vk-189c68b00f21:3",
+    "version_name": "Panning v3 + Checkup v4",
+    "n": 876,
+    "n_ds": 566,
+    "n_garbage": 310,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 3,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 12,
+     "from_checkup": 460,
+     "agree": 404,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 0,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "8d0f56b8ca44",
+    "label": "PTEN_DKO m56 s2 2025-06-19",
+    "mouse_of": "PTEN m56",
+    "version": "prospector:a6bb7647fa57:vk-533189816753:1",
+    "version_name": "Panning v3 + Checkup v4",
+    "n": 462,
+    "n_ds": 257,
+    "n_garbage": 205,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 14,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 108,
+     "from_checkup": 206,
+     "agree": 148,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 17,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   },
+   {
+    "entry_id": "9ac28fb03357",
+    "label": "PTEN_DKO m56 s8 2025-06-19",
+    "mouse_of": "PTEN m56",
+    "version": "prospector:vk-a7c6e5d69010:vk-be107155039b:2",
+    "version_name": "Panning v5 + Checkup v4",
+    "n": 569,
+    "n_ds": 312,
+    "n_garbage": 257,
+    "tally": {
+     "conflict_checkup_garbage_panning_spike": 17,
+     "conflict_checkup_spike_panning_garbage": 0,
+     "from_panning": 104,
+     "from_checkup": 249,
+     "agree": 216,
+     "dropped_flag": 0,
+     "dropped_doppler_no_call": 13,
+     "earlier_garbage": 0,
+     "toothy_garbage": 0,
+     "lost_to_clock": 0
+    }
+   }
+  ],
+  "failed": {},
+  "skipped": []
+ },
+ "compare": [
+  {
+   "name": "Tooth Fairy's inputs",
+   "families": [
+    "incisor",
+    "shank",
+    "waves",
+    "context",
+    "context500",
+    "dipole",
+    "latency",
+    "mua",
+    "ripple",
+    "state",
+    "template",
+    "clipping",
+    "polarity",
+    "braces",
+    "aligned15",
+    "shape",
+    "fwhole_10_40",
+    "fwhole_5_100",
+    "origin"
+   ],
+   "auc": 0.9388,
+   "seconds": 383.6,
+   "n_features": 712,
+   "bar_1.0": {
+    "spike_recall": 0.1039,
+    "garbage_into_spike": 0,
+    "spike_called": 1646
+   },
+   "bar_0.995": {
+    "spike_recall": 0.3926,
+    "garbage_into_spike": 27,
+    "spike_called": 6250
+   }
+  },
+  {
+   "name": "+ Rain's filters",
+   "families": [
+    "incisor",
+    "shank",
+    "waves",
+    "context",
+    "context500",
+    "dipole",
+    "latency",
+    "mua",
+    "ripple",
+    "state",
+    "template",
+    "clipping",
+    "polarity",
+    "braces",
+    "aligned15",
+    "shape",
+    "fwhole_10_40",
+    "fwhole_5_100",
+    "origin",
+    "fwhole_hp1",
+    "fthin_notch",
+    "ftrace_notch",
+    "fthin_5_100",
+    "ftrace_5_100"
+   ],
+   "auc": 0.9386,
+   "seconds": 784.7,
+   "n_features": 1477,
+   "bar_1.0": {
+    "spike_recall": 0.0566,
+    "garbage_into_spike": 0,
+    "spike_called": 897
+   },
+   "bar_0.995": {
+    "spike_recall": 0.3738,
+    "garbage_into_spike": 25,
+    "spike_called": 5949
+   }
+  },
+  {
+   "name": "+ Rain's filters + spectrogram 1-800 Hz",
+   "families": [
+    "incisor",
+    "shank",
+    "waves",
+    "context",
+    "context500",
+    "dipole",
+    "latency",
+    "mua",
+    "ripple",
+    "state",
+    "template",
+    "clipping",
+    "polarity",
+    "braces",
+    "aligned15",
+    "shape",
+    "fwhole_10_40",
+    "fwhole_5_100",
+    "origin",
+    "fwhole_hp1",
+    "fthin_notch",
+    "ftrace_notch",
+    "fthin_5_100",
+    "ftrace_5_100",
+    "spec800"
+   ],
+   "auc": 0.9382,
+   "seconds": 1202.7,
+   "n_features": 2269,
+   "bar_1.0": {
+    "spike_recall": 0.0468,
+    "garbage_into_spike": 0,
+    "spike_called": 742
+   },
+   "bar_0.995": {
+    "spike_recall": 0.3789,
+    "garbage_into_spike": 18,
+    "spike_called": 6023
+   }
+  },
+  {
+   "name": "+ Rain's filters + spectrogram 1-1000 Hz",
+   "families": [
+    "incisor",
+    "shank",
+    "waves",
+    "context",
+    "context500",
+    "dipole",
+    "latency",
+    "mua",
+    "ripple",
+    "state",
+    "template",
+    "clipping",
+    "polarity",
+    "braces",
+    "aligned15",
+    "shape",
+    "fwhole_10_40",
+    "fwhole_5_100",
+    "origin",
+    "fwhole_hp1",
+    "fthin_notch",
+    "ftrace_notch",
+    "fthin_5_100",
+    "ftrace_5_100",
+    "spec1000"
+   ],
+   "auc": 0.9382,
+   "seconds": 1237.1,
+   "n_features": 2305,
+   "bar_1.0": {
+    "spike_recall": 0.0461,
+    "garbage_into_spike": 0,
+    "spike_called": 731
+   },
+   "bar_0.995": {
+    "spike_recall": 0.3818,
+    "garbage_into_spike": 17,
+    "spike_called": 6068
+   }
+  },
+  {
+   "name": "+ Rain's filters + spectrogram 1-2000 Hz",
+   "families": [
+    "incisor",
+    "shank",
+    "waves",
+    "context",
+    "context500",
+    "dipole",
+    "latency",
+    "mua",
+    "ripple",
+    "state",
+    "template",
+    "clipping",
+    "polarity",
+    "braces",
+    "aligned15",
+    "shape",
+    "fwhole_10_40",
+    "fwhole_5_100",
+    "origin",
+    "fwhole_hp1",
+    "fthin_notch",
+    "ftrace_notch",
+    "fthin_5_100",
+    "ftrace_5_100",
+    "spec2000"
+   ],
+   "auc": 0.938,
+   "seconds": 1265.0,
+   "n_features": 2377,
+   "bar_1.0": {
+    "spike_recall": 0.0401,
+    "garbage_into_spike": 0,
+    "spike_called": 636
+   },
+   "bar_0.995": {
+    "spike_recall": 0.3829,
+    "garbage_into_spike": 21,
+    "spike_called": 6089
+   }
+  }
+ ],
+ "final": {
+  "name": "Tooth Fairy's inputs",
+  "families": [
+   "incisor",
+   "shank",
+   "waves",
+   "context",
+   "context500",
+   "dipole",
+   "latency",
+   "mua",
+   "ripple",
+   "state",
+   "template",
+   "clipping",
+   "polarity",
+   "braces",
+   "aligned15",
+   "shape",
+   "fwhole_10_40",
+   "fwhole_5_100",
+   "origin"
+  ],
+  "model": "blend",
+  "folds": 40,
+  "inner": 2,
+  "seconds": 13253.9,
+  "results": {
+   "pooled": {
+    "n": 24390,
+    "n_ds": 15849,
+    "n_garbage": 8541,
+    "threshold": null,
+    "ds_kept": 15613,
+    "ds_flagged": 236,
+    "garbage_caught": 3893,
+    "garbage_through": 4648,
+    "flagged": 4129,
+    "flag_likely_garbage": 9513,
+    "flag_unsure": 0,
+    "baseline_all_ds": 0.6498,
+    "ds_kept_frac": 0.9851,
+    "garbage_caught_frac": 0.4558,
+    "flagged_frac": 0.1693,
+    "agreement": 0.7998,
+    "at_half": {
+     "accuracy": 0.8655,
+     "balanced": 0.8654,
+     "confusion": {
+      "ds_as_ds": 13723,
+      "ds_as_garbage": 2126,
+      "garbage_as_ds": 1154,
+      "garbage_as_garbage": 7387
+     }
+    },
+    "auc": 0.9423,
+    "garbage_ap": 0.8952,
+    "garbage_rate": 0.3502,
+    "thresholds": [
+     0.0941,
+     0.0938,
+     0.0964,
+     0.0817,
+     0.0932,
+     0.0769,
+     0.093,
+     0.0782,
+     0.0907,
+     0.0872,
+     0.0728,
+     0.0966,
+     0.0878,
+     0.0806,
+     0.0858,
+     0.0807,
+     0.0739,
+     0.0942,
+     0.0765,
+     0.0898,
+     0.0876,
+     0.094,
+     0.0986,
+     0.0979,
+     0.0632,
+     0.092,
+     0.0711,
+     0.0768,
+     0.0868,
+     0.084,
+     0.0871,
+     0.0833,
+     0.0849,
+     0.0783,
+     0.0802,
+     0.0885,
+     0.0864,
+     0.0836,
+     0.0799,
+     0.0767
+    ]
+   },
+   "folds": [
+    {
+     "n": 1353,
+     "n_ds": 810,
+     "n_garbage": 543,
+     "threshold": 0.0941,
+     "ds_kept": 803,
+     "ds_flagged": 7,
+     "garbage_caught": 409,
+     "garbage_through": 134,
+     "flagged": 416,
+     "flag_likely_garbage": 657,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.5987,
+     "ds_kept_frac": 0.9914,
+     "garbage_caught_frac": 0.7532,
+     "flagged_frac": 0.3075,
+     "agreement": 0.8958,
+     "at_half": {
+      "accuracy": 0.9039,
+      "balanced": 0.9173,
+      "confusion": {
+       "ds_as_ds": 688,
+       "ds_as_garbage": 122,
+       "garbage_as_ds": 8,
+       "garbage_as_garbage": 535
+      }
+     },
+     "auc": 0.9866,
+     "garbage_ap": 0.9803,
+     "garbage_rate": 0.4013,
+     "fold": 1,
+     "mice": [
+      "PTEN_DKO m41 s6 2024-11-26"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 1249,
+     "n_ds": 987,
+     "n_garbage": 262,
+     "threshold": 0.0938,
+     "ds_kept": 981,
+     "ds_flagged": 6,
+     "garbage_caught": 118,
+     "garbage_through": 144,
+     "flagged": 124,
+     "flag_likely_garbage": 332,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.7902,
+     "ds_kept_frac": 0.9939,
+     "garbage_caught_frac": 0.4504,
+     "flagged_frac": 0.0993,
+     "agreement": 0.8799,
+     "at_half": {
+      "accuracy": 0.8911,
+      "balanced": 0.8848,
+      "confusion": {
+       "ds_as_ds": 884,
+       "ds_as_garbage": 103,
+       "garbage_as_ds": 33,
+       "garbage_as_garbage": 229
+      }
+     },
+     "auc": 0.9594,
+     "garbage_ap": 0.8678,
+     "garbage_rate": 0.2098,
+     "fold": 2,
+     "mice": [
+      "PTEN m13 s17 2023-08-04"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 1115,
+     "n_ds": 377,
+     "n_garbage": 738,
+     "threshold": 0.0964,
+     "ds_kept": 331,
+     "ds_flagged": 46,
+     "garbage_caught": 501,
+     "garbage_through": 237,
+     "flagged": 547,
+     "flag_likely_garbage": 881,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.3381,
+     "ds_kept_frac": 0.878,
+     "garbage_caught_frac": 0.6789,
+     "flagged_frac": 0.4906,
+     "agreement": 0.7462,
+     "at_half": {
+      "accuracy": 0.8126,
+      "balanced": 0.7442,
+      "confusion": {
+       "ds_as_ds": 201,
+       "ds_as_garbage": 176,
+       "garbage_as_ds": 33,
+       "garbage_as_garbage": 705
+      }
+     },
+     "auc": 0.8901,
+     "garbage_ap": 0.939,
+     "garbage_rate": 0.6619,
+     "fold": 3,
+     "mice": [
+      "PTEN m61 s7 2025-07-11"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 1107,
+     "n_ds": 1003,
+     "n_garbage": 104,
+     "threshold": 0.0817,
+     "ds_kept": 1003,
+     "ds_flagged": 0,
+     "garbage_caught": 23,
+     "garbage_through": 81,
+     "flagged": 23,
+     "flag_likely_garbage": 100,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.9061,
+     "ds_kept_frac": 1.0,
+     "garbage_caught_frac": 0.2212,
+     "flagged_frac": 0.0208,
+     "agreement": 0.9268,
+     "at_half": {
+      "accuracy": 0.953,
+      "balanced": 0.8534,
+      "confusion": {
+       "ds_as_ds": 979,
+       "ds_as_garbage": 24,
+       "garbage_as_ds": 28,
+       "garbage_as_garbage": 76
+      }
+     },
+     "auc": 0.9764,
+     "garbage_ap": 0.8411,
+     "garbage_rate": 0.0939,
+     "fold": 4,
+     "mice": [
+      "PTEN_DKO m41 s1 2024-11-26"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 1084,
+     "n_ds": 515,
+     "n_garbage": 569,
+     "threshold": 0.0932,
+     "ds_kept": 509,
+     "ds_flagged": 6,
+     "garbage_caught": 377,
+     "garbage_through": 192,
+     "flagged": 383,
+     "flag_likely_garbage": 620,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.4751,
+     "ds_kept_frac": 0.9883,
+     "garbage_caught_frac": 0.6626,
+     "flagged_frac": 0.3533,
+     "agreement": 0.8173,
+     "at_half": {
+      "accuracy": 0.9031,
+      "balanced": 0.9005,
+      "confusion": {
+       "ds_as_ds": 437,
+       "ds_as_garbage": 78,
+       "garbage_as_ds": 27,
+       "garbage_as_garbage": 542
+      }
+     },
+     "auc": 0.9705,
+     "garbage_ap": 0.9738,
+     "garbage_rate": 0.5249,
+     "fold": 5,
+     "mice": [
+      "PTEN m59 s4 2025-07-07"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 945,
+     "n_ds": 654,
+     "n_garbage": 291,
+     "threshold": 0.0769,
+     "ds_kept": 650,
+     "ds_flagged": 4,
+     "garbage_caught": 122,
+     "garbage_through": 169,
+     "flagged": 126,
+     "flag_likely_garbage": 318,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.6921,
+     "ds_kept_frac": 0.9939,
+     "garbage_caught_frac": 0.4192,
+     "flagged_frac": 0.1333,
+     "agreement": 0.8169,
+     "at_half": {
+      "accuracy": 0.8931,
+      "balanced": 0.8875,
+      "confusion": {
+       "ds_as_ds": 590,
+       "ds_as_garbage": 64,
+       "garbage_as_ds": 37,
+       "garbage_as_garbage": 254
+      }
+     },
+     "auc": 0.9588,
+     "garbage_ap": 0.9041,
+     "garbage_rate": 0.3079,
+     "fold": 6,
+     "mice": [
+      "PTEN m59 s11 2025-07-09"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 921,
+     "n_ds": 694,
+     "n_garbage": 227,
+     "threshold": 0.093,
+     "ds_kept": 694,
+     "ds_flagged": 0,
+     "garbage_caught": 85,
+     "garbage_through": 142,
+     "flagged": 85,
+     "flag_likely_garbage": 241,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.7535,
+     "ds_kept_frac": 1.0,
+     "garbage_caught_frac": 0.3744,
+     "flagged_frac": 0.0923,
+     "agreement": 0.8458,
+     "at_half": {
+      "accuracy": 0.9283,
+      "balanced": 0.9139,
+      "confusion": {
+       "ds_as_ds": 654,
+       "ds_as_garbage": 40,
+       "garbage_as_ds": 26,
+       "garbage_as_garbage": 201
+      }
+     },
+     "auc": 0.9804,
+     "garbage_ap": 0.9439,
+     "garbage_rate": 0.2465,
+     "fold": 7,
+     "mice": [
+      "PTEN m26 s5 2024-06-28"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 907,
+     "n_ds": 784,
+     "n_garbage": 123,
+     "threshold": 0.0782,
+     "ds_kept": 783,
+     "ds_flagged": 1,
+     "garbage_caught": 29,
+     "garbage_through": 94,
+     "flagged": 30,
+     "flag_likely_garbage": 96,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.8644,
+     "ds_kept_frac": 0.9987,
+     "garbage_caught_frac": 0.2358,
+     "flagged_frac": 0.0331,
+     "agreement": 0.8953,
+     "at_half": {
+      "accuracy": 0.9283,
+      "balanced": 0.8009,
+      "confusion": {
+       "ds_as_ds": 765,
+       "ds_as_garbage": 19,
+       "garbage_as_ds": 46,
+       "garbage_as_garbage": 77
+      }
+     },
+     "auc": 0.9622,
+     "garbage_ap": 0.8198,
+     "garbage_rate": 0.1356,
+     "fold": 8,
+     "mice": [
+      "PTEN m5 s2 2023-11-16"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 876,
+     "n_ds": 566,
+     "n_garbage": 310,
+     "threshold": 0.0907,
+     "ds_kept": 565,
+     "ds_flagged": 1,
+     "garbage_caught": 161,
+     "garbage_through": 149,
+     "flagged": 162,
+     "flag_likely_garbage": 330,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.6461,
+     "ds_kept_frac": 0.9982,
+     "garbage_caught_frac": 0.5194,
+     "flagged_frac": 0.1849,
+     "agreement": 0.8288,
+     "at_half": {
+      "accuracy": 0.9201,
+      "balanced": 0.9199,
+      "confusion": {
+       "ds_as_ds": 521,
+       "ds_as_garbage": 45,
+       "garbage_as_ds": 25,
+       "garbage_as_garbage": 285
+      }
+     },
+     "auc": 0.981,
+     "garbage_ap": 0.9668,
+     "garbage_rate": 0.3539,
+     "fold": 9,
+     "mice": [
+      "PTEN_DKO m53 s7 2025-03-04"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 825,
+     "n_ds": 663,
+     "n_garbage": 162,
+     "threshold": 0.0872,
+     "ds_kept": 663,
+     "ds_flagged": 0,
+     "garbage_caught": 27,
+     "garbage_through": 135,
+     "flagged": 27,
+     "flag_likely_garbage": 123,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.8036,
+     "ds_kept_frac": 1.0,
+     "garbage_caught_frac": 0.1667,
+     "flagged_frac": 0.0327,
+     "agreement": 0.8364,
+     "at_half": {
+      "accuracy": 0.9188,
+      "balanced": 0.8259,
+      "confusion": {
+       "ds_as_ds": 649,
+       "ds_as_garbage": 14,
+       "garbage_as_ds": 53,
+       "garbage_as_garbage": 109
+      }
+     },
+     "auc": 0.9735,
+     "garbage_ap": 0.9044,
+     "garbage_rate": 0.1964,
+     "fold": 10,
+     "mice": [
+      "PTEN m5 s7 2023-11-17"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 813,
+     "n_ds": 569,
+     "n_garbage": 244,
+     "threshold": 0.0728,
+     "ds_kept": 563,
+     "ds_flagged": 6,
+     "garbage_caught": 104,
+     "garbage_through": 140,
+     "flagged": 110,
+     "flag_likely_garbage": 265,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.6999,
+     "ds_kept_frac": 0.9895,
+     "garbage_caught_frac": 0.4262,
+     "flagged_frac": 0.1353,
+     "agreement": 0.8204,
+     "at_half": {
+      "accuracy": 0.8831,
+      "balanced": 0.8732,
+      "confusion": {
+       "ds_as_ds": 511,
+       "ds_as_garbage": 58,
+       "garbage_as_ds": 37,
+       "garbage_as_garbage": 207
+      }
+     },
+     "auc": 0.9544,
+     "garbage_ap": 0.8976,
+     "garbage_rate": 0.3001,
+     "fold": 11,
+     "mice": [
+      "PTEN m60 s1 2025-07-10"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 788,
+     "n_ds": 411,
+     "n_garbage": 377,
+     "threshold": 0.0966,
+     "ds_kept": 409,
+     "ds_flagged": 2,
+     "garbage_caught": 205,
+     "garbage_through": 172,
+     "flagged": 207,
+     "flag_likely_garbage": 377,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.5216,
+     "ds_kept_frac": 0.9951,
+     "garbage_caught_frac": 0.5438,
+     "flagged_frac": 0.2627,
+     "agreement": 0.7792,
+     "at_half": {
+      "accuracy": 0.9162,
+      "balanced": 0.9161,
+      "confusion": {
+       "ds_as_ds": 378,
+       "ds_as_garbage": 33,
+       "garbage_as_ds": 33,
+       "garbage_as_garbage": 344
+      }
+     },
+     "auc": 0.9729,
+     "garbage_ap": 0.97,
+     "garbage_rate": 0.4784,
+     "fold": 12,
+     "mice": [
+      "PTEN m59 s10 2025-07-07"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 747,
+     "n_ds": 402,
+     "n_garbage": 345,
+     "threshold": 0.0878,
+     "ds_kept": 397,
+     "ds_flagged": 5,
+     "garbage_caught": 183,
+     "garbage_through": 162,
+     "flagged": 188,
+     "flag_likely_garbage": 358,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.5382,
+     "ds_kept_frac": 0.9876,
+     "garbage_caught_frac": 0.5304,
+     "flagged_frac": 0.2517,
+     "agreement": 0.7764,
+     "at_half": {
+      "accuracy": 0.8728,
+      "balanced": 0.8734,
+      "confusion": {
+       "ds_as_ds": 348,
+       "ds_as_garbage": 54,
+       "garbage_as_ds": 41,
+       "garbage_as_garbage": 304
+      }
+     },
+     "auc": 0.9551,
+     "garbage_ap": 0.94,
+     "garbage_rate": 0.4618,
+     "fold": 13,
+     "mice": [
+      "PTEN m60 s4 2025-07-10"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 712,
+     "n_ds": 448,
+     "n_garbage": 264,
+     "threshold": 0.0806,
+     "ds_kept": 430,
+     "ds_flagged": 18,
+     "garbage_caught": 115,
+     "garbage_through": 149,
+     "flagged": 133,
+     "flag_likely_garbage": 420,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.6292,
+     "ds_kept_frac": 0.9598,
+     "garbage_caught_frac": 0.4356,
+     "flagged_frac": 0.1868,
+     "agreement": 0.7654,
+     "at_half": {
+      "accuracy": 0.7079,
+      "balanced": 0.7476,
+      "confusion": {
+       "ds_as_ds": 266,
+       "ds_as_garbage": 182,
+       "garbage_as_ds": 26,
+       "garbage_as_garbage": 238
+      }
+     },
+     "auc": 0.8725,
+     "garbage_ap": 0.8244,
+     "garbage_rate": 0.3708,
+     "fold": 14,
+     "mice": [
+      "PTEN m33 s8 2024-06-14"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 688,
+     "n_ds": 563,
+     "n_garbage": 125,
+     "threshold": 0.0858,
+     "ds_kept": 561,
+     "ds_flagged": 2,
+     "garbage_caught": 59,
+     "garbage_through": 66,
+     "flagged": 61,
+     "flag_likely_garbage": 138,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.8183,
+     "ds_kept_frac": 0.9964,
+     "garbage_caught_frac": 0.472,
+     "flagged_frac": 0.0887,
+     "agreement": 0.9012,
+     "at_half": {
+      "accuracy": 0.923,
+      "balanced": 0.8907,
+      "confusion": {
+       "ds_as_ds": 530,
+       "ds_as_garbage": 33,
+       "garbage_as_ds": 20,
+       "garbage_as_garbage": 105
+      }
+     },
+     "auc": 0.976,
+     "garbage_ap": 0.9108,
+     "garbage_rate": 0.1817,
+     "fold": 15,
+     "mice": [
+      "PTEN m6 s8 2023-09-14"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 661,
+     "n_ds": 468,
+     "n_garbage": 193,
+     "threshold": 0.0807,
+     "ds_kept": 468,
+     "ds_flagged": 0,
+     "garbage_caught": 47,
+     "garbage_through": 146,
+     "flagged": 47,
+     "flag_likely_garbage": 148,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.708,
+     "ds_kept_frac": 1.0,
+     "garbage_caught_frac": 0.2435,
+     "flagged_frac": 0.0711,
+     "agreement": 0.7791,
+     "at_half": {
+      "accuracy": 0.8865,
+      "balanced": 0.8285,
+      "confusion": {
+       "ds_as_ds": 453,
+       "ds_as_garbage": 15,
+       "garbage_as_ds": 60,
+       "garbage_as_garbage": 133
+      }
+     },
+     "auc": 0.959,
+     "garbage_ap": 0.9158,
+     "garbage_rate": 0.292,
+     "fold": 16,
+     "mice": [
+      "PTEN m13 s2 2023-08-01"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 622,
+     "n_ds": 472,
+     "n_garbage": 150,
+     "threshold": 0.0739,
+     "ds_kept": 471,
+     "ds_flagged": 1,
+     "garbage_caught": 48,
+     "garbage_through": 102,
+     "flagged": 49,
+     "flag_likely_garbage": 169,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.7588,
+     "ds_kept_frac": 0.9979,
+     "garbage_caught_frac": 0.32,
+     "flagged_frac": 0.0788,
+     "agreement": 0.8344,
+     "at_half": {
+      "accuracy": 0.9084,
+      "balanced": 0.8964,
+      "confusion": {
+       "ds_as_ds": 434,
+       "ds_as_garbage": 38,
+       "garbage_as_ds": 19,
+       "garbage_as_garbage": 131
+      }
+     },
+     "auc": 0.9659,
+     "garbage_ap": 0.9074,
+     "garbage_rate": 0.2412,
+     "fold": 17,
+     "mice": [
+      "PTEN m28 s7 2024-06-18"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 607,
+     "n_ds": 419,
+     "n_garbage": 188,
+     "threshold": 0.0942,
+     "ds_kept": 412,
+     "ds_flagged": 7,
+     "garbage_caught": 116,
+     "garbage_through": 72,
+     "flagged": 123,
+     "flag_likely_garbage": 259,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.6903,
+     "ds_kept_frac": 0.9833,
+     "garbage_caught_frac": 0.617,
+     "flagged_frac": 0.2026,
+     "agreement": 0.8699,
+     "at_half": {
+      "accuracy": 0.8731,
+      "balanced": 0.9037,
+      "confusion": {
+       "ds_as_ds": 345,
+       "ds_as_garbage": 74,
+       "garbage_as_ds": 3,
+       "garbage_as_garbage": 185
+      }
+     },
+     "auc": 0.9714,
+     "garbage_ap": 0.933,
+     "garbage_rate": 0.3097,
+     "fold": 18,
+     "mice": [
+      "PTEN_DKO m53 s1 2025-03-04"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 583,
+     "n_ds": 465,
+     "n_garbage": 118,
+     "threshold": 0.0765,
+     "ds_kept": 461,
+     "ds_flagged": 4,
+     "garbage_caught": 22,
+     "garbage_through": 96,
+     "flagged": 26,
+     "flag_likely_garbage": 127,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.7976,
+     "ds_kept_frac": 0.9914,
+     "garbage_caught_frac": 0.1864,
+     "flagged_frac": 0.0446,
+     "agreement": 0.8285,
+     "at_half": {
+      "accuracy": 0.8268,
+      "balanced": 0.7459,
+      "confusion": {
+       "ds_as_ds": 410,
+       "ds_as_garbage": 55,
+       "garbage_as_ds": 46,
+       "garbage_as_garbage": 72
+      }
+     },
+     "auc": 0.8375,
+     "garbage_ap": 0.6458,
+     "garbage_rate": 0.2024,
+     "fold": 19,
+     "mice": [
+      "PTEN m28 s2 2024-06-18"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 572,
+     "n_ds": 196,
+     "n_garbage": 376,
+     "threshold": 0.0898,
+     "ds_kept": 188,
+     "ds_flagged": 8,
+     "garbage_caught": 169,
+     "garbage_through": 207,
+     "flagged": 177,
+     "flag_likely_garbage": 421,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.3427,
+     "ds_kept_frac": 0.9592,
+     "garbage_caught_frac": 0.4495,
+     "flagged_frac": 0.3094,
+     "agreement": 0.6241,
+     "at_half": {
+      "accuracy": 0.8724,
+      "balanced": 0.8309,
+      "confusion": {
+       "ds_as_ds": 137,
+       "ds_as_garbage": 59,
+       "garbage_as_ds": 14,
+       "garbage_as_garbage": 362
+      }
+     },
+     "auc": 0.9146,
+     "garbage_ap": 0.9381,
+     "garbage_rate": 0.6573,
+     "fold": 20,
+     "mice": [
+      "PTEN m61 s1 2025-07-11"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 566,
+     "n_ds": 310,
+     "n_garbage": 256,
+     "threshold": 0.0876,
+     "ds_kept": 302,
+     "ds_flagged": 8,
+     "garbage_caught": 109,
+     "garbage_through": 147,
+     "flagged": 117,
+     "flag_likely_garbage": 316,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.5477,
+     "ds_kept_frac": 0.9742,
+     "garbage_caught_frac": 0.4258,
+     "flagged_frac": 0.2067,
+     "agreement": 0.7261,
+     "at_half": {
+      "accuracy": 0.841,
+      "balanced": 0.8497,
+      "confusion": {
+       "ds_as_ds": 235,
+       "ds_as_garbage": 75,
+       "garbage_as_ds": 15,
+       "garbage_as_garbage": 241
+      }
+     },
+     "auc": 0.935,
+     "garbage_ap": 0.9145,
+     "garbage_rate": 0.4523,
+     "fold": 21,
+     "mice": [
+      "PTEN_DKO m56 s8 2025-06-19"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 540,
+     "n_ds": 341,
+     "n_garbage": 199,
+     "threshold": 0.094,
+     "ds_kept": 335,
+     "ds_flagged": 6,
+     "garbage_caught": 84,
+     "garbage_through": 115,
+     "flagged": 90,
+     "flag_likely_garbage": 192,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.6315,
+     "ds_kept_frac": 0.9824,
+     "garbage_caught_frac": 0.4221,
+     "flagged_frac": 0.1667,
+     "agreement": 0.7759,
+     "at_half": {
+      "accuracy": 0.8796,
+      "balanced": 0.867,
+      "confusion": {
+       "ds_as_ds": 312,
+       "ds_as_garbage": 29,
+       "garbage_as_ds": 36,
+       "garbage_as_garbage": 163
+      }
+     },
+     "auc": 0.951,
+     "garbage_ap": 0.9166,
+     "garbage_rate": 0.3685,
+     "fold": 22,
+     "mice": [
+      "PTEN m22 s6 2024-07-15"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 519,
+     "n_ds": 382,
+     "n_garbage": 137,
+     "threshold": 0.0986,
+     "ds_kept": 366,
+     "ds_flagged": 16,
+     "garbage_caught": 90,
+     "garbage_through": 47,
+     "flagged": 106,
+     "flag_likely_garbage": 209,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.736,
+     "ds_kept_frac": 0.9581,
+     "garbage_caught_frac": 0.6569,
+     "flagged_frac": 0.2042,
+     "agreement": 0.8786,
+     "at_half": {
+      "accuracy": 0.815,
+      "balanced": 0.8463,
+      "confusion": {
+       "ds_as_ds": 298,
+       "ds_as_garbage": 84,
+       "garbage_as_ds": 12,
+       "garbage_as_garbage": 125
+      }
+     },
+     "auc": 0.9386,
+     "garbage_ap": 0.8704,
+     "garbage_rate": 0.264,
+     "fold": 23,
+     "mice": [
+      "PTEN m21 s6 2024-07-29"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 461,
+     "n_ds": 256,
+     "n_garbage": 205,
+     "threshold": 0.0979,
+     "ds_kept": 214,
+     "ds_flagged": 42,
+     "garbage_caught": 116,
+     "garbage_through": 89,
+     "flagged": 158,
+     "flag_likely_garbage": 303,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.5553,
+     "ds_kept_frac": 0.8359,
+     "garbage_caught_frac": 0.5659,
+     "flagged_frac": 0.3427,
+     "agreement": 0.7158,
+     "at_half": {
+      "accuracy": 0.718,
+      "balanced": 0.7383,
+      "confusion": {
+       "ds_as_ds": 142,
+       "ds_as_garbage": 114,
+       "garbage_as_ds": 16,
+       "garbage_as_garbage": 189
+      }
+     },
+     "auc": 0.8198,
+     "garbage_ap": 0.7624,
+     "garbage_rate": 0.4447,
+     "fold": 24,
+     "mice": [
+      "PTEN_DKO m56 s2 2025-06-19"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 453,
+     "n_ds": 364,
+     "n_garbage": 89,
+     "threshold": 0.0632,
+     "ds_kept": 353,
+     "ds_flagged": 11,
+     "garbage_caught": 31,
+     "garbage_through": 58,
+     "flagged": 42,
+     "flag_likely_garbage": 154,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.8035,
+     "ds_kept_frac": 0.9698,
+     "garbage_caught_frac": 0.3483,
+     "flagged_frac": 0.0927,
+     "agreement": 0.8477,
+     "at_half": {
+      "accuracy": 0.8212,
+      "balanced": 0.8548,
+      "confusion": {
+       "ds_as_ds": 291,
+       "ds_as_garbage": 73,
+       "garbage_as_ds": 8,
+       "garbage_as_garbage": 81
+      }
+     },
+     "auc": 0.9134,
+     "garbage_ap": 0.7007,
+     "garbage_rate": 0.1965,
+     "fold": 25,
+     "mice": [
+      "PTEN m8 s2 2024-02-06"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 433,
+     "n_ds": 231,
+     "n_garbage": 202,
+     "threshold": 0.092,
+     "ds_kept": 231,
+     "ds_flagged": 0,
+     "garbage_caught": 95,
+     "garbage_through": 107,
+     "flagged": 95,
+     "flag_likely_garbage": 205,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.5335,
+     "ds_kept_frac": 1.0,
+     "garbage_caught_frac": 0.4703,
+     "flagged_frac": 0.2194,
+     "agreement": 0.7529,
+     "at_half": {
+      "accuracy": 0.8915,
+      "balanced": 0.8914,
+      "confusion": {
+       "ds_as_ds": 206,
+       "ds_as_garbage": 25,
+       "garbage_as_ds": 22,
+       "garbage_as_garbage": 180
+      }
+     },
+     "auc": 0.9583,
+     "garbage_ap": 0.9567,
+     "garbage_rate": 0.4665,
+     "fold": 26,
+     "mice": [
+      "PTEN m22 s3 2024-07-15"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 409,
+     "n_ds": 223,
+     "n_garbage": 186,
+     "threshold": 0.0711,
+     "ds_kept": 222,
+     "ds_flagged": 1,
+     "garbage_caught": 29,
+     "garbage_through": 157,
+     "flagged": 30,
+     "flag_likely_garbage": 204,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.5452,
+     "ds_kept_frac": 0.9955,
+     "garbage_caught_frac": 0.1559,
+     "flagged_frac": 0.0733,
+     "agreement": 0.6137,
+     "at_half": {
+      "accuracy": 0.7702,
+      "balanced": 0.7723,
+      "confusion": {
+       "ds_as_ds": 167,
+       "ds_as_garbage": 56,
+       "garbage_as_ds": 38,
+       "garbage_as_garbage": 148
+      }
+     },
+     "auc": 0.8687,
+     "garbage_ap": 0.8448,
+     "garbage_rate": 0.4548,
+     "fold": 27,
+     "mice": [
+      "PTEN m33 s4 2024-06-14"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 349,
+     "n_ds": 213,
+     "n_garbage": 136,
+     "threshold": 0.0768,
+     "ds_kept": 206,
+     "ds_flagged": 7,
+     "garbage_caught": 29,
+     "garbage_through": 107,
+     "flagged": 36,
+     "flag_likely_garbage": 205,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.6103,
+     "ds_kept_frac": 0.9671,
+     "garbage_caught_frac": 0.2132,
+     "flagged_frac": 0.1032,
+     "agreement": 0.6734,
+     "at_half": {
+      "accuracy": 0.7393,
+      "balanced": 0.7718,
+      "confusion": {
+       "ds_as_ds": 133,
+       "ds_as_garbage": 80,
+       "garbage_as_ds": 11,
+       "garbage_as_garbage": 125
+      }
+     },
+     "auc": 0.8481,
+     "garbage_ap": 0.757,
+     "garbage_rate": 0.3897,
+     "fold": 28,
+     "mice": [
+      "PTEN_DKO m44 s5 2024-11-11"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 337,
+     "n_ds": 334,
+     "n_garbage": 3,
+     "threshold": 0.0868,
+     "ds_kept": 327,
+     "ds_flagged": 7,
+     "garbage_caught": 1,
+     "garbage_through": 2,
+     "flagged": 8,
+     "flag_likely_garbage": 70,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.9911,
+     "ds_kept_frac": 0.979,
+     "garbage_caught_frac": 0.3333,
+     "flagged_frac": 0.0237,
+     "agreement": 0.9733,
+     "at_half": {
+      "accuracy": 0.7953,
+      "balanced": 0.7315,
+      "confusion": {
+       "ds_as_ds": 266,
+       "ds_as_garbage": 68,
+       "garbage_as_ds": 1,
+       "garbage_as_garbage": 2
+      }
+     },
+     "auc": 0.7236,
+     "garbage_ap": 0.1848,
+     "garbage_rate": 0.0089,
+     "fold": 29,
+     "mice": [
+      "PTEN m34 s8 2024-06-10"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 335,
+     "n_ds": 281,
+     "n_garbage": 54,
+     "threshold": 0.084,
+     "ds_kept": 278,
+     "ds_flagged": 3,
+     "garbage_caught": 19,
+     "garbage_through": 35,
+     "flagged": 22,
+     "flag_likely_garbage": 99,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.8388,
+     "ds_kept_frac": 0.9893,
+     "garbage_caught_frac": 0.3519,
+     "flagged_frac": 0.0657,
+     "agreement": 0.8866,
+     "at_half": {
+      "accuracy": 0.8179,
+      "balanced": 0.8316,
+      "confusion": {
+       "ds_as_ds": 228,
+       "ds_as_garbage": 53,
+       "garbage_as_ds": 8,
+       "garbage_as_garbage": 46
+      }
+     },
+     "auc": 0.921,
+     "garbage_ap": 0.7252,
+     "garbage_rate": 0.1612,
+     "fold": 30,
+     "mice": [
+      "PTEN m26 s2 2024-06-28"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 317,
+     "n_ds": 109,
+     "n_garbage": 208,
+     "threshold": 0.0871,
+     "ds_kept": 108,
+     "ds_flagged": 1,
+     "garbage_caught": 55,
+     "garbage_through": 153,
+     "flagged": 56,
+     "flag_likely_garbage": 189,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.3438,
+     "ds_kept_frac": 0.9908,
+     "garbage_caught_frac": 0.2644,
+     "flagged_frac": 0.1767,
+     "agreement": 0.5142,
+     "at_half": {
+      "accuracy": 0.8202,
+      "balanced": 0.8215,
+      "confusion": {
+       "ds_as_ds": 90,
+       "ds_as_garbage": 19,
+       "garbage_as_ds": 38,
+       "garbage_as_garbage": 170
+      }
+     },
+     "auc": 0.8813,
+     "garbage_ap": 0.9286,
+     "garbage_rate": 0.6562,
+     "fold": 31,
+     "mice": [
+      "PTEN_DKO m44 s1 2024-11-11"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 317,
+     "n_ds": 253,
+     "n_garbage": 64,
+     "threshold": 0.0833,
+     "ds_kept": 253,
+     "ds_flagged": 0,
+     "garbage_caught": 30,
+     "garbage_through": 34,
+     "flagged": 30,
+     "flag_likely_garbage": 84,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.7981,
+     "ds_kept_frac": 1.0,
+     "garbage_caught_frac": 0.4688,
+     "flagged_frac": 0.0946,
+     "agreement": 0.8927,
+     "at_half": {
+      "accuracy": 0.8991,
+      "balanced": 0.9017,
+      "confusion": {
+       "ds_as_ds": 227,
+       "ds_as_garbage": 26,
+       "garbage_as_ds": 6,
+       "garbage_as_garbage": 58
+      }
+     },
+     "auc": 0.9662,
+     "garbage_ap": 0.9123,
+     "garbage_rate": 0.2019,
+     "fold": 32,
+     "mice": [
+      "PTEN m2 s8 2024-01-26"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 304,
+     "n_ds": 5,
+     "n_garbage": 299,
+     "threshold": 0.0849,
+     "ds_kept": 5,
+     "ds_flagged": 0,
+     "garbage_caught": 81,
+     "garbage_through": 218,
+     "flagged": 81,
+     "flag_likely_garbage": 193,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.0164,
+     "ds_kept_frac": 1.0,
+     "garbage_caught_frac": 0.2709,
+     "flagged_frac": 0.2664,
+     "agreement": 0.2829,
+     "at_half": {
+      "accuracy": 0.6513,
+      "balanced": 0.8227,
+      "confusion": {
+       "ds_as_ds": 5,
+       "ds_as_garbage": 0,
+       "garbage_as_ds": 106,
+       "garbage_as_garbage": 193
+      }
+     },
+     "auc": 0.9284,
+     "garbage_ap": 0.9987,
+     "garbage_rate": 0.9836,
+     "fold": 33,
+     "mice": [
+      "PTEN m51 s1 2025-04-08"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 294,
+     "n_ds": 208,
+     "n_garbage": 86,
+     "threshold": 0.0783,
+     "ds_kept": 207,
+     "ds_flagged": 1,
+     "garbage_caught": 20,
+     "garbage_through": 66,
+     "flagged": 21,
+     "flag_likely_garbage": 82,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.7075,
+     "ds_kept_frac": 0.9952,
+     "garbage_caught_frac": 0.2326,
+     "flagged_frac": 0.0714,
+     "agreement": 0.7721,
+     "at_half": {
+      "accuracy": 0.8776,
+      "balanced": 0.8453,
+      "confusion": {
+       "ds_as_ds": 192,
+       "ds_as_garbage": 16,
+       "garbage_as_ds": 20,
+       "garbage_as_garbage": 66
+      }
+     },
+     "auc": 0.9457,
+     "garbage_ap": 0.8675,
+     "garbage_rate": 0.2925,
+     "fold": 34,
+     "mice": [
+      "PTEN m6 s4 2023-09-13"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 292,
+     "n_ds": 196,
+     "n_garbage": 96,
+     "threshold": 0.0802,
+     "ds_kept": 195,
+     "ds_flagged": 1,
+     "garbage_caught": 25,
+     "garbage_through": 71,
+     "flagged": 26,
+     "flag_likely_garbage": 97,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.6712,
+     "ds_kept_frac": 0.9949,
+     "garbage_caught_frac": 0.2604,
+     "flagged_frac": 0.089,
+     "agreement": 0.7534,
+     "at_half": {
+      "accuracy": 0.887,
+      "balanced": 0.8733,
+      "confusion": {
+       "ds_as_ds": 179,
+       "ds_as_garbage": 17,
+       "garbage_as_ds": 16,
+       "garbage_as_garbage": 80
+      }
+     },
+     "auc": 0.9413,
+     "garbage_ap": 0.8869,
+     "garbage_rate": 0.3288,
+     "fold": 35,
+     "mice": [
+      "PTEN m1 s2 2023-10-02"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 271,
+     "n_ds": 75,
+     "n_garbage": 196,
+     "threshold": 0.0885,
+     "ds_kept": 75,
+     "ds_flagged": 0,
+     "garbage_caught": 78,
+     "garbage_through": 118,
+     "flagged": 78,
+     "flag_likely_garbage": 195,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.2768,
+     "ds_kept_frac": 1.0,
+     "garbage_caught_frac": 0.398,
+     "flagged_frac": 0.2878,
+     "agreement": 0.5646,
+     "at_half": {
+      "accuracy": 0.893,
+      "balanced": 0.8684,
+      "confusion": {
+       "ds_as_ds": 61,
+       "ds_as_garbage": 14,
+       "garbage_as_ds": 15,
+       "garbage_as_garbage": 181
+      }
+     },
+     "auc": 0.9354,
+     "garbage_ap": 0.9732,
+     "garbage_rate": 0.7232,
+     "fold": 36,
+     "mice": [
+      "PTEN m21 s2 2024-07-29"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 260,
+     "n_ds": 118,
+     "n_garbage": 142,
+     "threshold": 0.0864,
+     "ds_kept": 118,
+     "ds_flagged": 0,
+     "garbage_caught": 25,
+     "garbage_through": 117,
+     "flagged": 25,
+     "flag_likely_garbage": 81,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.4538,
+     "ds_kept_frac": 1.0,
+     "garbage_caught_frac": 0.1761,
+     "flagged_frac": 0.0962,
+     "agreement": 0.55,
+     "at_half": {
+      "accuracy": 0.65,
+      "balanced": 0.6688,
+      "confusion": {
+       "ds_as_ds": 103,
+       "ds_as_garbage": 15,
+       "garbage_as_ds": 76,
+       "garbage_as_garbage": 66
+      }
+     },
+     "auc": 0.7466,
+     "garbage_ap": 0.8058,
+     "garbage_rate": 0.5462,
+     "fold": 37,
+     "mice": [
+      "PTEN m2 s3 2024-01-23"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 258,
+     "n_ds": 179,
+     "n_garbage": 79,
+     "threshold": 0.0836,
+     "ds_kept": 172,
+     "ds_flagged": 7,
+     "garbage_caught": 41,
+     "garbage_through": 38,
+     "flagged": 48,
+     "flag_likely_garbage": 112,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.6938,
+     "ds_kept_frac": 0.9609,
+     "garbage_caught_frac": 0.519,
+     "flagged_frac": 0.186,
+     "agreement": 0.8256,
+     "at_half": {
+      "accuracy": 0.8023,
+      "balanced": 0.8257,
+      "confusion": {
+       "ds_as_ds": 137,
+       "ds_as_garbage": 42,
+       "garbage_as_ds": 9,
+       "garbage_as_garbage": 70
+      }
+     },
+     "auc": 0.9173,
+     "garbage_ap": 0.8212,
+     "garbage_rate": 0.3062,
+     "fold": 38,
+     "mice": [
+      "PTEN m3 s2 2023-09-20"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 255,
+     "n_ds": 218,
+     "n_garbage": 37,
+     "threshold": 0.0799,
+     "ds_kept": 217,
+     "ds_flagged": 1,
+     "garbage_caught": 4,
+     "garbage_through": 33,
+     "flagged": 5,
+     "flag_likely_garbage": 55,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.8549,
+     "ds_kept_frac": 0.9954,
+     "garbage_caught_frac": 0.1081,
+     "flagged_frac": 0.0196,
+     "agreement": 0.8667,
+     "at_half": {
+      "accuracy": 0.8667,
+      "balanced": 0.8323,
+      "confusion": {
+       "ds_as_ds": 192,
+       "ds_as_garbage": 26,
+       "garbage_as_ds": 8,
+       "garbage_as_garbage": 29
+      }
+     },
+     "auc": 0.8998,
+     "garbage_ap": 0.5579,
+     "garbage_rate": 0.1451,
+     "fold": 39,
+     "mice": [
+      "PTEN m34 s5 2024-06-10"
+     ],
+     "n_recordings": 1
+    },
+    {
+     "n": 245,
+     "n_ds": 87,
+     "n_garbage": 158,
+     "threshold": 0.0767,
+     "ds_kept": 87,
+     "ds_flagged": 0,
+     "garbage_caught": 11,
+     "garbage_through": 147,
+     "flagged": 11,
+     "flag_likely_garbage": 88,
+     "flag_unsure": 0,
+     "baseline_all_ds": 0.3551,
+     "ds_kept_frac": 1.0,
+     "garbage_caught_frac": 0.0696,
+     "flagged_frac": 0.0449,
+     "agreement": 0.4,
+     "at_half": {
+      "accuracy": 0.649,
+      "balanced": 0.7072,
+      "confusion": {
+       "ds_as_ds": 79,
+       "ds_as_garbage": 8,
+       "garbage_as_ds": 78,
+       "garbage_as_garbage": 80
+      }
+     },
+     "auc": 0.8114,
+     "garbage_ap": 0.8831,
+     "garbage_rate": 0.6449,
+     "fold": 40,
+     "mice": [
+      "PTEN m7 s2 2023-08-22"
+     ],
+     "n_recordings": 1
+    }
+   ],
+   "by_recording": [
+    {
+     "label": "PTEN m1 s2 2023-10-02",
+     "entry_id": "bfa98498290b",
+     "mouse": "PTEN m1 s2 2023-10-02",
+     "source": "PTEN pool",
+     "fold": 35,
+     "n": 292,
+     "n_ds": 196,
+     "n_garbage": 96,
+     "ds_kept": 195,
+     "garbage_caught": 25,
+     "flagged": 26,
+     "agreement": 0.7534,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m13 s17 2023-08-04",
+     "entry_id": "05bf008c6ec3",
+     "mouse": "PTEN m13 s17 2023-08-04",
+     "source": "PTEN pool",
+     "fold": 2,
+     "n": 1249,
+     "n_ds": 987,
+     "n_garbage": 262,
+     "ds_kept": 981,
+     "garbage_caught": 118,
+     "flagged": 124,
+     "agreement": 0.8799,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m13 s2 2023-08-01",
+     "entry_id": "afa70b62f372",
+     "mouse": "PTEN m13 s2 2023-08-01",
+     "source": "PTEN pool",
+     "fold": 16,
+     "n": 661,
+     "n_ds": 468,
+     "n_garbage": 193,
+     "ds_kept": 468,
+     "garbage_caught": 47,
+     "flagged": 47,
+     "agreement": 0.7791,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m2 s3 2024-01-23",
+     "entry_id": "41dd94702761",
+     "mouse": "PTEN m2 s3 2024-01-23",
+     "source": "PTEN pool",
+     "fold": 37,
+     "n": 260,
+     "n_ds": 118,
+     "n_garbage": 142,
+     "ds_kept": 118,
+     "garbage_caught": 25,
+     "flagged": 25,
+     "agreement": 0.55,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m2 s8 2024-01-26",
+     "entry_id": "cb74d97dac17",
+     "mouse": "PTEN m2 s8 2024-01-26",
+     "source": "PTEN pool",
+     "fold": 32,
+     "n": 317,
+     "n_ds": 253,
+     "n_garbage": 64,
+     "ds_kept": 253,
+     "garbage_caught": 30,
+     "flagged": 30,
+     "agreement": 0.8927,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m21 s2 2024-07-29",
+     "entry_id": "edc1a5080093",
+     "mouse": "PTEN m21 s2 2024-07-29",
+     "source": "PTEN pool",
+     "fold": 36,
+     "n": 271,
+     "n_ds": 75,
+     "n_garbage": 196,
+     "ds_kept": 75,
+     "garbage_caught": 78,
+     "flagged": 78,
+     "agreement": 0.5646,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m21 s6 2024-07-29",
+     "entry_id": "b0bc31123462",
+     "mouse": "PTEN m21 s6 2024-07-29",
+     "source": "PTEN pool",
+     "fold": 23,
+     "n": 519,
+     "n_ds": 382,
+     "n_garbage": 137,
+     "ds_kept": 366,
+     "garbage_caught": 90,
+     "flagged": 106,
+     "agreement": 0.8786,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m22 s3 2024-07-15",
+     "entry_id": "43a2cfedde17",
+     "mouse": "PTEN m22 s3 2024-07-15",
+     "source": "PTEN pool",
+     "fold": 26,
+     "n": 433,
+     "n_ds": 231,
+     "n_garbage": 202,
+     "ds_kept": 231,
+     "garbage_caught": 95,
+     "flagged": 95,
+     "agreement": 0.7529,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m22 s6 2024-07-15",
+     "entry_id": "a4eeaa794729",
+     "mouse": "PTEN m22 s6 2024-07-15",
+     "source": "PTEN pool",
+     "fold": 22,
+     "n": 540,
+     "n_ds": 341,
+     "n_garbage": 199,
+     "ds_kept": 335,
+     "garbage_caught": 84,
+     "flagged": 90,
+     "agreement": 0.7759,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m26 s2 2024-06-28",
+     "entry_id": "f4c18a9a8bd4",
+     "mouse": "PTEN m26 s2 2024-06-28",
+     "source": "PTEN pool",
+     "fold": 30,
+     "n": 335,
+     "n_ds": 281,
+     "n_garbage": 54,
+     "ds_kept": 278,
+     "garbage_caught": 19,
+     "flagged": 22,
+     "agreement": 0.8866,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m26 s5 2024-06-28",
+     "entry_id": "4acbac930c91",
+     "mouse": "PTEN m26 s5 2024-06-28",
+     "source": "PTEN pool",
+     "fold": 7,
+     "n": 921,
+     "n_ds": 694,
+     "n_garbage": 227,
+     "ds_kept": 694,
+     "garbage_caught": 85,
+     "flagged": 85,
+     "agreement": 0.8458,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m28 s2 2024-06-18",
+     "entry_id": "35c325a44d44",
+     "mouse": "PTEN m28 s2 2024-06-18",
+     "source": "PTEN pool",
+     "fold": 19,
+     "n": 583,
+     "n_ds": 465,
+     "n_garbage": 118,
+     "ds_kept": 461,
+     "garbage_caught": 22,
+     "flagged": 26,
+     "agreement": 0.8285,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m28 s7 2024-06-18",
+     "entry_id": "0d93df89cafd",
+     "mouse": "PTEN m28 s7 2024-06-18",
+     "source": "PTEN pool",
+     "fold": 17,
+     "n": 622,
+     "n_ds": 472,
+     "n_garbage": 150,
+     "ds_kept": 471,
+     "garbage_caught": 48,
+     "flagged": 49,
+     "agreement": 0.8344,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m3 s2 2023-09-20",
+     "entry_id": "db66d3c694fd",
+     "mouse": "PTEN m3 s2 2023-09-20",
+     "source": "PTEN pool",
+     "fold": 38,
+     "n": 258,
+     "n_ds": 179,
+     "n_garbage": 79,
+     "ds_kept": 172,
+     "garbage_caught": 41,
+     "flagged": 48,
+     "agreement": 0.8256,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m33 s4 2024-06-14",
+     "entry_id": "a62d1b78448b",
+     "mouse": "PTEN m33 s4 2024-06-14",
+     "source": "PTEN pool",
+     "fold": 27,
+     "n": 409,
+     "n_ds": 223,
+     "n_garbage": 186,
+     "ds_kept": 222,
+     "garbage_caught": 29,
+     "flagged": 30,
+     "agreement": 0.6137,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m33 s8 2024-06-14",
+     "entry_id": "7a1fb57293ae",
+     "mouse": "PTEN m33 s8 2024-06-14",
+     "source": "PTEN pool",
+     "fold": 14,
+     "n": 712,
+     "n_ds": 448,
+     "n_garbage": 264,
+     "ds_kept": 430,
+     "garbage_caught": 115,
+     "flagged": 133,
+     "agreement": 0.7654,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m34 s5 2024-06-10",
+     "entry_id": "eaecc4a5e194",
+     "mouse": "PTEN m34 s5 2024-06-10",
+     "source": "PTEN pool",
+     "fold": 39,
+     "n": 255,
+     "n_ds": 218,
+     "n_garbage": 37,
+     "ds_kept": 217,
+     "garbage_caught": 4,
+     "flagged": 5,
+     "agreement": 0.8667,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m34 s8 2024-06-10",
+     "entry_id": "b6dad0cf157b",
+     "mouse": "PTEN m34 s8 2024-06-10",
+     "source": "PTEN pool",
+     "fold": 29,
+     "n": 337,
+     "n_ds": 334,
+     "n_garbage": 3,
+     "ds_kept": 327,
+     "garbage_caught": 1,
+     "flagged": 8,
+     "agreement": 0.9733,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m5 s2 2023-11-16",
+     "entry_id": "b60578899091",
+     "mouse": "PTEN m5 s2 2023-11-16",
+     "source": "PTEN pool",
+     "fold": 8,
+     "n": 907,
+     "n_ds": 784,
+     "n_garbage": 123,
+     "ds_kept": 783,
+     "garbage_caught": 29,
+     "flagged": 30,
+     "agreement": 0.8953,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m5 s7 2023-11-17",
+     "entry_id": "114ab036831c",
+     "mouse": "PTEN m5 s7 2023-11-17",
+     "source": "PTEN pool",
+     "fold": 10,
+     "n": 825,
+     "n_ds": 663,
+     "n_garbage": 162,
+     "ds_kept": 663,
+     "garbage_caught": 27,
+     "flagged": 27,
+     "agreement": 0.8364,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m51 s1 2025-04-08",
+     "entry_id": "8aad148bd6f6",
+     "mouse": "PTEN m51 s1 2025-04-08",
+     "source": "PTEN pool",
+     "fold": 33,
+     "n": 304,
+     "n_ds": 5,
+     "n_garbage": 299,
+     "ds_kept": 5,
+     "garbage_caught": 81,
+     "flagged": 81,
+     "agreement": 0.2829,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m59 s10 2025-07-07",
+     "entry_id": "7bf60917e493",
+     "mouse": "PTEN m59 s10 2025-07-07",
+     "source": "PTEN pool",
+     "fold": 12,
+     "n": 788,
+     "n_ds": 411,
+     "n_garbage": 377,
+     "ds_kept": 409,
+     "garbage_caught": 205,
+     "flagged": 207,
+     "agreement": 0.7792,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m59 s11 2025-07-09",
+     "entry_id": "6d30e61d8ef3",
+     "mouse": "PTEN m59 s11 2025-07-09",
+     "source": "PTEN pool",
+     "fold": 6,
+     "n": 945,
+     "n_ds": 654,
+     "n_garbage": 291,
+     "ds_kept": 650,
+     "garbage_caught": 122,
+     "flagged": 126,
+     "agreement": 0.8169,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m59 s4 2025-07-07",
+     "entry_id": "1429bf1f239f",
+     "mouse": "PTEN m59 s4 2025-07-07",
+     "source": "PTEN pool",
+     "fold": 5,
+     "n": 1084,
+     "n_ds": 515,
+     "n_garbage": 569,
+     "ds_kept": 509,
+     "garbage_caught": 377,
+     "flagged": 383,
+     "agreement": 0.8173,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m6 s4 2023-09-13",
+     "entry_id": "cb139fb2ea29",
+     "mouse": "PTEN m6 s4 2023-09-13",
+     "source": "PTEN pool",
+     "fold": 34,
+     "n": 294,
+     "n_ds": 208,
+     "n_garbage": 86,
+     "ds_kept": 207,
+     "garbage_caught": 20,
+     "flagged": 21,
+     "agreement": 0.7721,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m6 s8 2023-09-14",
+     "entry_id": "7288d9478f30",
+     "mouse": "PTEN m6 s8 2023-09-14",
+     "source": "PTEN pool",
+     "fold": 15,
+     "n": 688,
+     "n_ds": 563,
+     "n_garbage": 125,
+     "ds_kept": 561,
+     "garbage_caught": 59,
+     "flagged": 61,
+     "agreement": 0.9012,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m60 s1 2025-07-10",
+     "entry_id": "d4a4bcb4e47f",
+     "mouse": "PTEN m60 s1 2025-07-10",
+     "source": "PTEN pool",
+     "fold": 11,
+     "n": 813,
+     "n_ds": 569,
+     "n_garbage": 244,
+     "ds_kept": 563,
+     "garbage_caught": 104,
+     "flagged": 110,
+     "agreement": 0.8204,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m60 s4 2025-07-10",
+     "entry_id": "6f26e207fd03",
+     "mouse": "PTEN m60 s4 2025-07-10",
+     "source": "PTEN pool",
+     "fold": 13,
+     "n": 747,
+     "n_ds": 402,
+     "n_garbage": 345,
+     "ds_kept": 397,
+     "garbage_caught": 183,
+     "flagged": 188,
+     "agreement": 0.7764,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m61 s1 2025-07-11",
+     "entry_id": "ab69363ee622",
+     "mouse": "PTEN m61 s1 2025-07-11",
+     "source": "PTEN pool",
+     "fold": 20,
+     "n": 572,
+     "n_ds": 196,
+     "n_garbage": 376,
+     "ds_kept": 188,
+     "garbage_caught": 169,
+     "flagged": 177,
+     "agreement": 0.6241,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m61 s7 2025-07-11",
+     "entry_id": "a7369cdf5fe8",
+     "mouse": "PTEN m61 s7 2025-07-11",
+     "source": "PTEN pool",
+     "fold": 3,
+     "n": 1115,
+     "n_ds": 377,
+     "n_garbage": 738,
+     "ds_kept": 331,
+     "garbage_caught": 501,
+     "flagged": 547,
+     "agreement": 0.7462,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m7 s2 2023-08-22",
+     "entry_id": "ece9a84acdea",
+     "mouse": "PTEN m7 s2 2023-08-22",
+     "source": "PTEN pool",
+     "fold": 40,
+     "n": 245,
+     "n_ds": 87,
+     "n_garbage": 158,
+     "ds_kept": 87,
+     "garbage_caught": 11,
+     "flagged": 11,
+     "agreement": 0.4,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN m8 s2 2024-02-06",
+     "entry_id": "2a8e47760eea",
+     "mouse": "PTEN m8 s2 2024-02-06",
+     "source": "PTEN pool",
+     "fold": 25,
+     "n": 453,
+     "n_ds": 364,
+     "n_garbage": 89,
+     "ds_kept": 353,
+     "garbage_caught": 31,
+     "flagged": 42,
+     "agreement": 0.8477,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN_DKO m41 s1 2024-11-26",
+     "entry_id": "86e4fcb4748a",
+     "mouse": "PTEN_DKO m41 s1 2024-11-26",
+     "source": "PTEN pool",
+     "fold": 4,
+     "n": 1107,
+     "n_ds": 1003,
+     "n_garbage": 104,
+     "ds_kept": 1003,
+     "garbage_caught": 23,
+     "flagged": 23,
+     "agreement": 0.9268,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN_DKO m41 s6 2024-11-26",
+     "entry_id": "49d60f323885",
+     "mouse": "PTEN_DKO m41 s6 2024-11-26",
+     "source": "PTEN pool",
+     "fold": 1,
+     "n": 1353,
+     "n_ds": 810,
+     "n_garbage": 543,
+     "ds_kept": 803,
+     "garbage_caught": 409,
+     "flagged": 416,
+     "agreement": 0.8958,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN_DKO m44 s1 2024-11-11",
+     "entry_id": "cf227c79b356",
+     "mouse": "PTEN_DKO m44 s1 2024-11-11",
+     "source": "PTEN pool",
+     "fold": 31,
+     "n": 317,
+     "n_ds": 109,
+     "n_garbage": 208,
+     "ds_kept": 108,
+     "garbage_caught": 55,
+     "flagged": 56,
+     "agreement": 0.5142,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN_DKO m44 s5 2024-11-11",
+     "entry_id": "839cdfe3a24d",
+     "mouse": "PTEN_DKO m44 s5 2024-11-11",
+     "source": "PTEN pool",
+     "fold": 28,
+     "n": 349,
+     "n_ds": 213,
+     "n_garbage": 136,
+     "ds_kept": 206,
+     "garbage_caught": 29,
+     "flagged": 36,
+     "agreement": 0.6734,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN_DKO m53 s1 2025-03-04",
+     "entry_id": "8129819fc559",
+     "mouse": "PTEN_DKO m53 s1 2025-03-04",
+     "source": "PTEN pool",
+     "fold": 18,
+     "n": 607,
+     "n_ds": 419,
+     "n_garbage": 188,
+     "ds_kept": 412,
+     "garbage_caught": 116,
+     "flagged": 123,
+     "agreement": 0.8699,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN_DKO m53 s7 2025-03-04",
+     "entry_id": "ec08fbcc2292",
+     "mouse": "PTEN_DKO m53 s7 2025-03-04",
+     "source": "PTEN pool",
+     "fold": 9,
+     "n": 876,
+     "n_ds": 566,
+     "n_garbage": 310,
+     "ds_kept": 565,
+     "garbage_caught": 161,
+     "flagged": 162,
+     "agreement": 0.8288,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN_DKO m56 s2 2025-06-19",
+     "entry_id": "8d0f56b8ca44",
+     "mouse": "PTEN_DKO m56 s2 2025-06-19",
+     "source": "PTEN pool",
+     "fold": 24,
+     "n": 461,
+     "n_ds": 256,
+     "n_garbage": 205,
+     "ds_kept": 214,
+     "garbage_caught": 116,
+     "flagged": 158,
+     "agreement": 0.7158,
+     "kind": "mixed"
+    },
+    {
+     "label": "PTEN_DKO m56 s8 2025-06-19",
+     "entry_id": "9ac28fb03357",
+     "mouse": "PTEN_DKO m56 s8 2025-06-19",
+     "source": "PTEN pool",
+     "fold": 21,
+     "n": 566,
+     "n_ds": 310,
+     "n_garbage": 256,
+     "ds_kept": 302,
+     "garbage_caught": 109,
+     "flagged": 117,
+     "agreement": 0.7261,
+     "kind": "mixed"
+    }
+   ],
+   "leaned_on": [
+    {
+     "id": "context500",
+     "name": "Context, +-500 ms",
+     "auc_drop": 0.0334
+    },
+    {
+     "id": "shank",
+     "name": "Shank and CSD measures",
+     "auc_drop": 0.021
+    },
+    {
+     "id": "context",
+     "name": "Timing context",
+     "auc_drop": 0.0177
+    },
+    {
+     "id": "origin",
+     "name": "Which detector found it",
+     "auc_drop": 0.006
+    },
+    {
+     "id": "aligned15",
+     "name": "+-15 ms at the aligned peak",
+     "auc_drop": 0.0056
+    },
+    {
+     "id": "waves",
+     "name": "Waveforms",
+     "auc_drop": 0.0046
+    },
+    {
+     "id": "template",
+     "name": "Like the others",
+     "auc_drop": 0.0037
+    },
+    {
+     "id": "polarity",
+     "name": "Polarity reversal",
+     "auc_drop": 0.0018
+    },
+    {
+     "id": "braces",
+     "name": "Braces alignment",
+     "auc_drop": 0.0018
+    },
+    {
+     "id": "fwhole_5_100",
+     "name": "Whole shank CSD, +-50 ms, 5-100 Hz",
+     "auc_drop": 0.0015
+    },
+    {
+     "id": "incisor",
+     "name": "Incisor numbers",
+     "auc_drop": 0.0009
+    },
+    {
+     "id": "clipping",
+     "name": "Saturation",
+     "auc_drop": 0.0007
+    },
+    {
+     "id": "fwhole_10_40",
+     "name": "Whole shank CSD, +-50 ms, 10-40 Hz",
+     "auc_drop": 0.0007
+    },
+    {
+     "id": "ripple",
+     "name": "Ripple",
+     "auc_drop": 0.0003
+    },
+    {
+     "id": "mua",
+     "name": "Unit firing",
+     "auc_drop": 0.0002
+    },
+    {
+     "id": "dipole",
+     "name": "Sink and source",
+     "auc_drop": 0.0001
+    },
+    {
+     "id": "state",
+     "name": "Brain state",
+     "auc_drop": 0.0001
+    },
+    {
+     "id": "latency",
+     "name": "Laminar delay",
+     "auc_drop": -0.0001
+    },
+    {
+     "id": "shape",
+     "name": "Spike shape",
+     "auc_drop": -0.0001
+    }
+   ],
+   "by_kind": {
+    "mixed": {
+     "n_recordings": 40,
+     "n": 24390,
+     "n_ds": 15849,
+     "n_garbage": 8541,
+     "ds_kept": 15613,
+     "garbage_caught": 3893,
+     "flagged": 4129,
+     "auc": 0.9423,
+     "within_auc_median": 0.9435,
+     "within_auc_n": 40
+    }
+   },
+   "tradeoff": [
+    {
+     "keep": 0.99,
+     "ds_kept_frac": 0.994,
+     "garbage_caught_frac": 0.3173,
+     "garbage_caught_mixed_frac": 0.3173,
+     "flagged_frac": 0.115,
+     "garbage_through": 5831
+    },
+    {
+     "keep": 0.98,
+     "ds_kept_frac": 0.9851,
+     "garbage_caught_frac": 0.4558,
+     "garbage_caught_mixed_frac": 0.4558,
+     "flagged_frac": 0.1693,
+     "garbage_through": 4648
+    },
+    {
+     "keep": 0.95,
+     "ds_kept_frac": 0.956,
+     "garbage_caught_frac": 0.6577,
+     "garbage_caught_mixed_frac": 0.6577,
+     "flagged_frac": 0.2589,
+     "garbage_through": 2924
+    },
+    {
+     "keep": 0.9,
+     "ds_kept_frac": 0.905,
+     "garbage_caught_frac": 0.8007,
+     "garbage_caught_mixed_frac": 0.8007,
+     "flagged_frac": 0.3421,
+     "garbage_through": 1702
+    },
+    {
+     "keep": 0.8,
+     "ds_kept_frac": 0.7971,
+     "garbage_caught_frac": 0.9233,
+     "garbage_caught_mixed_frac": 0.9233,
+     "flagged_frac": 0.4551,
+     "garbage_through": 655
+    }
+   ],
+   "catch": [
+    {
+     "target": 1.0,
+     "garbage_caught_frac": 1.0,
+     "garbage_missed": 0,
+     "ds_flagged": 13795,
+     "ds_flagged_frac": 0.8704,
+     "flagged_frac": 0.9158
+    },
+    {
+     "target": 0.999,
+     "garbage_caught_frac": 0.9996,
+     "garbage_missed": 3,
+     "ds_flagged": 11511,
+     "ds_flagged_frac": 0.7263,
+     "flagged_frac": 0.822
+    },
+    {
+     "target": 0.998,
+     "garbage_caught_frac": 0.9992,
+     "garbage_missed": 7,
+     "ds_flagged": 10556,
+     "ds_flagged_frac": 0.666,
+     "flagged_frac": 0.7827
+    },
+    {
+     "target": 0.995,
+     "garbage_caught_frac": 0.9967,
+     "garbage_missed": 28,
+     "ds_flagged": 9162,
+     "ds_flagged_frac": 0.5781,
+     "flagged_frac": 0.7247
+    },
+    {
+     "target": 0.99,
+     "garbage_caught_frac": 0.9933,
+     "garbage_missed": 57,
+     "ds_flagged": 7792,
+     "ds_flagged_frac": 0.4916,
+     "flagged_frac": 0.6673
+    },
+    {
+     "target": 0.98,
+     "garbage_caught_frac": 0.9844,
+     "garbage_missed": 133,
+     "ds_flagged": 6224,
+     "ds_flagged_frac": 0.3927,
+     "flagged_frac": 0.5999
+    },
+    {
+     "target": 0.95,
+     "garbage_caught_frac": 0.9584,
+     "garbage_missed": 355,
+     "ds_flagged": 4281,
+     "ds_flagged_frac": 0.2701,
+     "flagged_frac": 0.5112
+    },
+    {
+     "target": 0.9,
+     "garbage_caught_frac": 0.9088,
+     "garbage_missed": 779,
+     "ds_flagged": 2913,
+     "ds_flagged_frac": 0.1838,
+     "flagged_frac": 0.4377
+    }
+   ],
+   "policy": {
+    "t_ds": 0.957483,
+    "t_review": 0.920583,
+    "t_garbage": 0.168128,
+    "targets": {
+     "ds_catch": 0.99,
+     "review_catch": 0.98,
+     "garbage_purity": 0.9
+    },
+    "held_out": {
+     "spike": {
+      "n": 9045,
+      "n_ds": 8959,
+      "n_garbage": 86
+     },
+     "review": {
+      "n": 1278,
+      "n_ds": 1193,
+      "n_garbage": 85
+     },
+     "flag": {
+      "n": 8035,
+      "n_ds": 5094,
+      "n_garbage": 2941
+     },
+     "garbage": {
+      "n": 6032,
+      "n_ds": 603,
+      "n_garbage": 5429
+     }
+    }
+   },
+   "n_features": 712,
+   "keep_ds": 0.98,
+   "final_threshold": 0.1028,
+   "bars": {
+    "1.0": {
+     "spike_called": 2054,
+     "spike_called_true": 2054,
+     "garbage_into_spike": 0,
+     "spike_recall": 0.1296,
+     "lean_spike": 12823,
+     "lean_spike_true": 11669,
+     "lean_garbage": 9513,
+     "lean_garbage_true": 7387,
+     "by_origin": {
+      "incisor": {
+       "n": 14990,
+       "n_spike": 8583,
+       "n_garbage": 6407,
+       "spike_called": 730,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0851
+      },
+      "doppler": {
+       "n": 4972,
+       "n_spike": 3142,
+       "n_garbage": 1830,
+       "spike_called": 10,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0032
+      },
+      "both": {
+       "n": 4428,
+       "n_spike": 4124,
+       "n_garbage": 304,
+       "spike_called": 1314,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3186
+      }
+     },
+     "by_recording": [
+      {
+       "label": "PTEN m1 s2 2023-10-02",
+       "n": 292,
+       "n_spike": 196,
+       "n_garbage": 96,
+       "spike_called": 8,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0408
+      },
+      {
+       "label": "PTEN m13 s17 2023-08-04",
+       "n": 1249,
+       "n_spike": 987,
+       "n_garbage": 262,
+       "spike_called": 125,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1266
+      },
+      {
+       "label": "PTEN m13 s2 2023-08-01",
+       "n": 661,
+       "n_spike": 468,
+       "n_garbage": 193,
+       "spike_called": 123,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2628
+      },
+      {
+       "label": "PTEN m2 s3 2024-01-23",
+       "n": 260,
+       "n_spike": 118,
+       "n_garbage": 142,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m2 s8 2024-01-26",
+       "n": 317,
+       "n_spike": 253,
+       "n_garbage": 64,
+       "spike_called": 74,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2925
+      },
+      {
+       "label": "PTEN m21 s2 2024-07-29",
+       "n": 271,
+       "n_spike": 75,
+       "n_garbage": 196,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m21 s6 2024-07-29",
+       "n": 519,
+       "n_spike": 382,
+       "n_garbage": 137,
+       "spike_called": 28,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0733
+      },
+      {
+       "label": "PTEN m22 s3 2024-07-15",
+       "n": 433,
+       "n_spike": 231,
+       "n_garbage": 202,
+       "spike_called": 11,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0476
+      },
+      {
+       "label": "PTEN m22 s6 2024-07-15",
+       "n": 540,
+       "n_spike": 341,
+       "n_garbage": 199,
+       "spike_called": 23,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0674
+      },
+      {
+       "label": "PTEN m26 s2 2024-06-28",
+       "n": 335,
+       "n_spike": 281,
+       "n_garbage": 54,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m26 s5 2024-06-28",
+       "n": 921,
+       "n_spike": 694,
+       "n_garbage": 227,
+       "spike_called": 27,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0389
+      },
+      {
+       "label": "PTEN m28 s2 2024-06-18",
+       "n": 583,
+       "n_spike": 465,
+       "n_garbage": 118,
+       "spike_called": 3,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0065
+      },
+      {
+       "label": "PTEN m28 s7 2024-06-18",
+       "n": 622,
+       "n_spike": 472,
+       "n_garbage": 150,
+       "spike_called": 32,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0678
+      },
+      {
+       "label": "PTEN m3 s2 2023-09-20",
+       "n": 258,
+       "n_spike": 179,
+       "n_garbage": 79,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m33 s4 2024-06-14",
+       "n": 409,
+       "n_spike": 223,
+       "n_garbage": 186,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m33 s8 2024-06-14",
+       "n": 712,
+       "n_spike": 448,
+       "n_garbage": 264,
+       "spike_called": 3,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0067
+      },
+      {
+       "label": "PTEN m34 s5 2024-06-10",
+       "n": 255,
+       "n_spike": 218,
+       "n_garbage": 37,
+       "spike_called": 7,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0321
+      },
+      {
+       "label": "PTEN m34 s8 2024-06-10",
+       "n": 337,
+       "n_spike": 334,
+       "n_garbage": 3,
+       "spike_called": 25,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0749
+      },
+      {
+       "label": "PTEN m5 s2 2023-11-16",
+       "n": 907,
+       "n_spike": 784,
+       "n_garbage": 123,
+       "spike_called": 295,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3763
+      },
+      {
+       "label": "PTEN m5 s7 2023-11-17",
+       "n": 825,
+       "n_spike": 663,
+       "n_garbage": 162,
+       "spike_called": 61,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.092
+      },
+      {
+       "label": "PTEN m51 s1 2025-04-08",
+       "n": 304,
+       "n_spike": 5,
+       "n_garbage": 299,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m59 s10 2025-07-07",
+       "n": 788,
+       "n_spike": 411,
+       "n_garbage": 377,
+       "spike_called": 2,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0049
+      },
+      {
+       "label": "PTEN m59 s11 2025-07-09",
+       "n": 945,
+       "n_spike": 654,
+       "n_garbage": 291,
+       "spike_called": 135,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2064
+      },
+      {
+       "label": "PTEN m59 s4 2025-07-07",
+       "n": 1084,
+       "n_spike": 515,
+       "n_garbage": 569,
+       "spike_called": 25,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0485
+      },
+      {
+       "label": "PTEN m6 s4 2023-09-13",
+       "n": 294,
+       "n_spike": 208,
+       "n_garbage": 86,
+       "spike_called": 69,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3317
+      },
+      {
+       "label": "PTEN m6 s8 2023-09-14",
+       "n": 688,
+       "n_spike": 563,
+       "n_garbage": 125,
+       "spike_called": 126,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2238
+      },
+      {
+       "label": "PTEN m60 s1 2025-07-10",
+       "n": 813,
+       "n_spike": 569,
+       "n_garbage": 244,
+       "spike_called": 78,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1371
+      },
+      {
+       "label": "PTEN m60 s4 2025-07-10",
+       "n": 747,
+       "n_spike": 402,
+       "n_garbage": 345,
+       "spike_called": 77,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1915
+      },
+      {
+       "label": "PTEN m61 s1 2025-07-11",
+       "n": 572,
+       "n_spike": 196,
+       "n_garbage": 376,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m61 s7 2025-07-11",
+       "n": 1115,
+       "n_spike": 377,
+       "n_garbage": 738,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m7 s2 2023-08-22",
+       "n": 245,
+       "n_spike": 87,
+       "n_garbage": 158,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m8 s2 2024-02-06",
+       "n": 453,
+       "n_spike": 364,
+       "n_garbage": 89,
+       "spike_called": 4,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.011
+      },
+      {
+       "label": "PTEN_DKO m41 s1 2024-11-26",
+       "n": 1107,
+       "n_spike": 1003,
+       "n_garbage": 104,
+       "spike_called": 193,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1924
+      },
+      {
+       "label": "PTEN_DKO m41 s6 2024-11-26",
+       "n": 1353,
+       "n_spike": 810,
+       "n_garbage": 543,
+       "spike_called": 256,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.316
+      },
+      {
+       "label": "PTEN_DKO m44 s1 2024-11-11",
+       "n": 317,
+       "n_spike": 109,
+       "n_garbage": 208,
+       "spike_called": 1,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0092
+      },
+      {
+       "label": "PTEN_DKO m44 s5 2024-11-11",
+       "n": 349,
+       "n_spike": 213,
+       "n_garbage": 136,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN_DKO m53 s1 2025-03-04",
+       "n": 607,
+       "n_spike": 419,
+       "n_garbage": 188,
+       "spike_called": 120,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2864
+      },
+      {
+       "label": "PTEN_DKO m53 s7 2025-03-04",
+       "n": 876,
+       "n_spike": 566,
+       "n_garbage": 310,
+       "spike_called": 123,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2173
+      },
+      {
+       "label": "PTEN_DKO m56 s2 2025-06-19",
+       "n": 461,
+       "n_spike": 256,
+       "n_garbage": 205,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN_DKO m56 s8 2025-06-19",
+       "n": 566,
+       "n_spike": 310,
+       "n_garbage": 256,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      }
+     ]
+    },
+    "0.999": {
+     "spike_called": 4341,
+     "spike_called_true": 4338,
+     "garbage_into_spike": 3,
+     "spike_recall": 0.2737,
+     "lean_spike": 10536,
+     "lean_spike_true": 9385,
+     "lean_garbage": 9513,
+     "lean_garbage_true": 7387,
+     "by_origin": {
+      "incisor": {
+       "n": 14990,
+       "n_spike": 8583,
+       "n_garbage": 6407,
+       "spike_called": 1880,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.2189
+      },
+      "doppler": {
+       "n": 4972,
+       "n_spike": 3142,
+       "n_garbage": 1830,
+       "spike_called": 118,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0376
+      },
+      "both": {
+       "n": 4428,
+       "n_spike": 4124,
+       "n_garbage": 304,
+       "spike_called": 2343,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.5677
+      }
+     },
+     "by_recording": [
+      {
+       "label": "PTEN m1 s2 2023-10-02",
+       "n": 292,
+       "n_spike": 196,
+       "n_garbage": 96,
+       "spike_called": 20,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.102
+      },
+      {
+       "label": "PTEN m13 s17 2023-08-04",
+       "n": 1249,
+       "n_spike": 987,
+       "n_garbage": 262,
+       "spike_called": 256,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2594
+      },
+      {
+       "label": "PTEN m13 s2 2023-08-01",
+       "n": 661,
+       "n_spike": 468,
+       "n_garbage": 193,
+       "spike_called": 230,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.4915
+      },
+      {
+       "label": "PTEN m2 s3 2024-01-23",
+       "n": 260,
+       "n_spike": 118,
+       "n_garbage": 142,
+       "spike_called": 6,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0508
+      },
+      {
+       "label": "PTEN m2 s8 2024-01-26",
+       "n": 317,
+       "n_spike": 253,
+       "n_garbage": 64,
+       "spike_called": 110,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.4308
+      },
+      {
+       "label": "PTEN m21 s2 2024-07-29",
+       "n": 271,
+       "n_spike": 75,
+       "n_garbage": 196,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m21 s6 2024-07-29",
+       "n": 519,
+       "n_spike": 382,
+       "n_garbage": 137,
+       "spike_called": 57,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1492
+      },
+      {
+       "label": "PTEN m22 s3 2024-07-15",
+       "n": 433,
+       "n_spike": 231,
+       "n_garbage": 202,
+       "spike_called": 54,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2338
+      },
+      {
+       "label": "PTEN m22 s6 2024-07-15",
+       "n": 540,
+       "n_spike": 341,
+       "n_garbage": 199,
+       "spike_called": 50,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1466
+      },
+      {
+       "label": "PTEN m26 s2 2024-06-28",
+       "n": 335,
+       "n_spike": 281,
+       "n_garbage": 54,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m26 s5 2024-06-28",
+       "n": 921,
+       "n_spike": 694,
+       "n_garbage": 227,
+       "spike_called": 205,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2954
+      },
+      {
+       "label": "PTEN m28 s2 2024-06-18",
+       "n": 583,
+       "n_spike": 465,
+       "n_garbage": 118,
+       "spike_called": 41,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0882
+      },
+      {
+       "label": "PTEN m28 s7 2024-06-18",
+       "n": 622,
+       "n_spike": 472,
+       "n_garbage": 150,
+       "spike_called": 123,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2606
+      },
+      {
+       "label": "PTEN m3 s2 2023-09-20",
+       "n": 258,
+       "n_spike": 179,
+       "n_garbage": 79,
+       "spike_called": 2,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0112
+      },
+      {
+       "label": "PTEN m33 s4 2024-06-14",
+       "n": 409,
+       "n_spike": 223,
+       "n_garbage": 186,
+       "spike_called": 1,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0045
+      },
+      {
+       "label": "PTEN m33 s8 2024-06-14",
+       "n": 712,
+       "n_spike": 448,
+       "n_garbage": 264,
+       "spike_called": 26,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.058
+      },
+      {
+       "label": "PTEN m34 s5 2024-06-10",
+       "n": 255,
+       "n_spike": 218,
+       "n_garbage": 37,
+       "spike_called": 14,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0642
+      },
+      {
+       "label": "PTEN m34 s8 2024-06-10",
+       "n": 337,
+       "n_spike": 334,
+       "n_garbage": 3,
+       "spike_called": 75,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2246
+      },
+      {
+       "label": "PTEN m5 s2 2023-11-16",
+       "n": 907,
+       "n_spike": 784,
+       "n_garbage": 123,
+       "spike_called": 420,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.5344
+      },
+      {
+       "label": "PTEN m5 s7 2023-11-17",
+       "n": 825,
+       "n_spike": 663,
+       "n_garbage": 162,
+       "spike_called": 183,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.276
+      },
+      {
+       "label": "PTEN m51 s1 2025-04-08",
+       "n": 304,
+       "n_spike": 5,
+       "n_garbage": 299,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m59 s10 2025-07-07",
+       "n": 788,
+       "n_spike": 411,
+       "n_garbage": 377,
+       "spike_called": 99,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2409
+      },
+      {
+       "label": "PTEN m59 s11 2025-07-09",
+       "n": 945,
+       "n_spike": 654,
+       "n_garbage": 291,
+       "spike_called": 256,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3914
+      },
+      {
+       "label": "PTEN m59 s4 2025-07-07",
+       "n": 1084,
+       "n_spike": 515,
+       "n_garbage": 569,
+       "spike_called": 45,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0874
+      },
+      {
+       "label": "PTEN m6 s4 2023-09-13",
+       "n": 294,
+       "n_spike": 208,
+       "n_garbage": 86,
+       "spike_called": 108,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5192
+      },
+      {
+       "label": "PTEN m6 s8 2023-09-14",
+       "n": 688,
+       "n_spike": 563,
+       "n_garbage": 125,
+       "spike_called": 336,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.595
+      },
+      {
+       "label": "PTEN m60 s1 2025-07-10",
+       "n": 813,
+       "n_spike": 569,
+       "n_garbage": 244,
+       "spike_called": 231,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.406
+      },
+      {
+       "label": "PTEN m60 s4 2025-07-10",
+       "n": 747,
+       "n_spike": 402,
+       "n_garbage": 345,
+       "spike_called": 151,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3756
+      },
+      {
+       "label": "PTEN m61 s1 2025-07-11",
+       "n": 572,
+       "n_spike": 196,
+       "n_garbage": 376,
+       "spike_called": 12,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0612
+      },
+      {
+       "label": "PTEN m61 s7 2025-07-11",
+       "n": 1115,
+       "n_spike": 377,
+       "n_garbage": 738,
+       "spike_called": 1,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0027
+      },
+      {
+       "label": "PTEN m7 s2 2023-08-22",
+       "n": 245,
+       "n_spike": 87,
+       "n_garbage": 158,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m8 s2 2024-02-06",
+       "n": 453,
+       "n_spike": 364,
+       "n_garbage": 89,
+       "spike_called": 74,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2033
+      },
+      {
+       "label": "PTEN_DKO m41 s1 2024-11-26",
+       "n": 1107,
+       "n_spike": 1003,
+       "n_garbage": 104,
+       "spike_called": 434,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.4327
+      },
+      {
+       "label": "PTEN_DKO m41 s6 2024-11-26",
+       "n": 1353,
+       "n_spike": 810,
+       "n_garbage": 543,
+       "spike_called": 308,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3802
+      },
+      {
+       "label": "PTEN_DKO m44 s1 2024-11-11",
+       "n": 317,
+       "n_spike": 109,
+       "n_garbage": 208,
+       "spike_called": 2,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0183
+      },
+      {
+       "label": "PTEN_DKO m44 s5 2024-11-11",
+       "n": 349,
+       "n_spike": 213,
+       "n_garbage": 136,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN_DKO m53 s1 2025-03-04",
+       "n": 607,
+       "n_spike": 419,
+       "n_garbage": 188,
+       "spike_called": 171,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.4081
+      },
+      {
+       "label": "PTEN_DKO m53 s7 2025-03-04",
+       "n": 876,
+       "n_spike": 566,
+       "n_garbage": 310,
+       "spike_called": 236,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.417
+      },
+      {
+       "label": "PTEN_DKO m56 s2 2025-06-19",
+       "n": 461,
+       "n_spike": 256,
+       "n_garbage": 205,
+       "spike_called": 1,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0039
+      },
+      {
+       "label": "PTEN_DKO m56 s8 2025-06-19",
+       "n": 566,
+       "n_spike": 310,
+       "n_garbage": 256,
+       "spike_called": 3,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0097
+      }
+     ]
+    },
+    "0.998": {
+     "spike_called": 5300,
+     "spike_called_true": 5293,
+     "garbage_into_spike": 7,
+     "spike_recall": 0.334,
+     "lean_spike": 9577,
+     "lean_spike_true": 8430,
+     "lean_garbage": 9513,
+     "lean_garbage_true": 7387,
+     "by_origin": {
+      "incisor": {
+       "n": 14990,
+       "n_spike": 8583,
+       "n_garbage": 6407,
+       "spike_called": 2430,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.283
+      },
+      "doppler": {
+       "n": 4972,
+       "n_spike": 3142,
+       "n_garbage": 1830,
+       "spike_called": 235,
+       "garbage_into_spike": 4,
+       "spike_recall": 0.0735
+      },
+      "both": {
+       "n": 4428,
+       "n_spike": 4124,
+       "n_garbage": 304,
+       "spike_called": 2635,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.6385
+      }
+     },
+     "by_recording": [
+      {
+       "label": "PTEN m1 s2 2023-10-02",
+       "n": 292,
+       "n_spike": 196,
+       "n_garbage": 96,
+       "spike_called": 30,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1531
+      },
+      {
+       "label": "PTEN m13 s17 2023-08-04",
+       "n": 1249,
+       "n_spike": 987,
+       "n_garbage": 262,
+       "spike_called": 283,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2867
+      },
+      {
+       "label": "PTEN m13 s2 2023-08-01",
+       "n": 661,
+       "n_spike": 468,
+       "n_garbage": 193,
+       "spike_called": 245,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5235
+      },
+      {
+       "label": "PTEN m2 s3 2024-01-23",
+       "n": 260,
+       "n_spike": 118,
+       "n_garbage": 142,
+       "spike_called": 17,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.1186
+      },
+      {
+       "label": "PTEN m2 s8 2024-01-26",
+       "n": 317,
+       "n_spike": 253,
+       "n_garbage": 64,
+       "spike_called": 116,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.4545
+      },
+      {
+       "label": "PTEN m21 s2 2024-07-29",
+       "n": 271,
+       "n_spike": 75,
+       "n_garbage": 196,
+       "spike_called": 1,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0133
+      },
+      {
+       "label": "PTEN m21 s6 2024-07-29",
+       "n": 519,
+       "n_spike": 382,
+       "n_garbage": 137,
+       "spike_called": 71,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1859
+      },
+      {
+       "label": "PTEN m22 s3 2024-07-15",
+       "n": 433,
+       "n_spike": 231,
+       "n_garbage": 202,
+       "spike_called": 65,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2814
+      },
+      {
+       "label": "PTEN m22 s6 2024-07-15",
+       "n": 540,
+       "n_spike": 341,
+       "n_garbage": 199,
+       "spike_called": 81,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2375
+      },
+      {
+       "label": "PTEN m26 s2 2024-06-28",
+       "n": 335,
+       "n_spike": 281,
+       "n_garbage": 54,
+       "spike_called": 1,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0036
+      },
+      {
+       "label": "PTEN m26 s5 2024-06-28",
+       "n": 921,
+       "n_spike": 694,
+       "n_garbage": 227,
+       "spike_called": 315,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.4539
+      },
+      {
+       "label": "PTEN m28 s2 2024-06-18",
+       "n": 583,
+       "n_spike": 465,
+       "n_garbage": 118,
+       "spike_called": 68,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.1441
+      },
+      {
+       "label": "PTEN m28 s7 2024-06-18",
+       "n": 622,
+       "n_spike": 472,
+       "n_garbage": 150,
+       "spike_called": 144,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3051
+      },
+      {
+       "label": "PTEN m3 s2 2023-09-20",
+       "n": 258,
+       "n_spike": 179,
+       "n_garbage": 79,
+       "spike_called": 2,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0112
+      },
+      {
+       "label": "PTEN m33 s4 2024-06-14",
+       "n": 409,
+       "n_spike": 223,
+       "n_garbage": 186,
+       "spike_called": 3,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0135
+      },
+      {
+       "label": "PTEN m33 s8 2024-06-14",
+       "n": 712,
+       "n_spike": 448,
+       "n_garbage": 264,
+       "spike_called": 35,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0781
+      },
+      {
+       "label": "PTEN m34 s5 2024-06-10",
+       "n": 255,
+       "n_spike": 218,
+       "n_garbage": 37,
+       "spike_called": 30,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1376
+      },
+      {
+       "label": "PTEN m34 s8 2024-06-10",
+       "n": 337,
+       "n_spike": 334,
+       "n_garbage": 3,
+       "spike_called": 87,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2605
+      },
+      {
+       "label": "PTEN m5 s2 2023-11-16",
+       "n": 907,
+       "n_spike": 784,
+       "n_garbage": 123,
+       "spike_called": 511,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.6505
+      },
+      {
+       "label": "PTEN m5 s7 2023-11-17",
+       "n": 825,
+       "n_spike": 663,
+       "n_garbage": 162,
+       "spike_called": 259,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3906
+      },
+      {
+       "label": "PTEN m51 s1 2025-04-08",
+       "n": 304,
+       "n_spike": 5,
+       "n_garbage": 299,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m59 s10 2025-07-07",
+       "n": 788,
+       "n_spike": 411,
+       "n_garbage": 377,
+       "spike_called": 153,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3723
+      },
+      {
+       "label": "PTEN m59 s11 2025-07-09",
+       "n": 945,
+       "n_spike": 654,
+       "n_garbage": 291,
+       "spike_called": 294,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.4495
+      },
+      {
+       "label": "PTEN m59 s4 2025-07-07",
+       "n": 1084,
+       "n_spike": 515,
+       "n_garbage": 569,
+       "spike_called": 61,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1184
+      },
+      {
+       "label": "PTEN m6 s4 2023-09-13",
+       "n": 294,
+       "n_spike": 208,
+       "n_garbage": 86,
+       "spike_called": 127,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.6106
+      },
+      {
+       "label": "PTEN m6 s8 2023-09-14",
+       "n": 688,
+       "n_spike": 563,
+       "n_garbage": 125,
+       "spike_called": 354,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.627
+      },
+      {
+       "label": "PTEN m60 s1 2025-07-10",
+       "n": 813,
+       "n_spike": 569,
+       "n_garbage": 244,
+       "spike_called": 266,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.4675
+      },
+      {
+       "label": "PTEN m60 s4 2025-07-10",
+       "n": 747,
+       "n_spike": 402,
+       "n_garbage": 345,
+       "spike_called": 183,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.4552
+      },
+      {
+       "label": "PTEN m61 s1 2025-07-11",
+       "n": 572,
+       "n_spike": 196,
+       "n_garbage": 376,
+       "spike_called": 20,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.102
+      },
+      {
+       "label": "PTEN m61 s7 2025-07-11",
+       "n": 1115,
+       "n_spike": 377,
+       "n_garbage": 738,
+       "spike_called": 2,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0053
+      },
+      {
+       "label": "PTEN m7 s2 2023-08-22",
+       "n": 245,
+       "n_spike": 87,
+       "n_garbage": 158,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m8 s2 2024-02-06",
+       "n": 453,
+       "n_spike": 364,
+       "n_garbage": 89,
+       "spike_called": 100,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2747
+      },
+      {
+       "label": "PTEN_DKO m41 s1 2024-11-26",
+       "n": 1107,
+       "n_spike": 1003,
+       "n_garbage": 104,
+       "spike_called": 513,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5115
+      },
+      {
+       "label": "PTEN_DKO m41 s6 2024-11-26",
+       "n": 1353,
+       "n_spike": 810,
+       "n_garbage": 543,
+       "spike_called": 375,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.463
+      },
+      {
+       "label": "PTEN_DKO m44 s1 2024-11-11",
+       "n": 317,
+       "n_spike": 109,
+       "n_garbage": 208,
+       "spike_called": 3,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0275
+      },
+      {
+       "label": "PTEN_DKO m44 s5 2024-11-11",
+       "n": 349,
+       "n_spike": 213,
+       "n_garbage": 136,
+       "spike_called": 1,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0047
+      },
+      {
+       "label": "PTEN_DKO m53 s1 2025-03-04",
+       "n": 607,
+       "n_spike": 419,
+       "n_garbage": 188,
+       "spike_called": 195,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.4654
+      },
+      {
+       "label": "PTEN_DKO m53 s7 2025-03-04",
+       "n": 876,
+       "n_spike": 566,
+       "n_garbage": 310,
+       "spike_called": 277,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.4894
+      },
+      {
+       "label": "PTEN_DKO m56 s2 2025-06-19",
+       "n": 461,
+       "n_spike": 256,
+       "n_garbage": 205,
+       "spike_called": 3,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0117
+      },
+      {
+       "label": "PTEN_DKO m56 s8 2025-06-19",
+       "n": 566,
+       "n_spike": 310,
+       "n_garbage": 256,
+       "spike_called": 9,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.029
+      }
+     ]
+    },
+    "0.995": {
+     "spike_called": 6715,
+     "spike_called_true": 6687,
+     "garbage_into_spike": 28,
+     "spike_recall": 0.4219,
+     "lean_spike": 8162,
+     "lean_spike_true": 7036,
+     "lean_garbage": 9513,
+     "lean_garbage_true": 7387,
+     "by_origin": {
+      "incisor": {
+       "n": 14990,
+       "n_spike": 8583,
+       "n_garbage": 6407,
+       "spike_called": 3203,
+       "garbage_into_spike": 5,
+       "spike_recall": 0.3726
+      },
+      "doppler": {
+       "n": 4972,
+       "n_spike": 3142,
+       "n_garbage": 1830,
+       "spike_called": 503,
+       "garbage_into_spike": 21,
+       "spike_recall": 0.1534
+      },
+      "both": {
+       "n": 4428,
+       "n_spike": 4124,
+       "n_garbage": 304,
+       "spike_called": 3009,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.7291
+      }
+     },
+     "by_recording": [
+      {
+       "label": "PTEN m1 s2 2023-10-02",
+       "n": 292,
+       "n_spike": 196,
+       "n_garbage": 96,
+       "spike_called": 40,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2041
+      },
+      {
+       "label": "PTEN m13 s17 2023-08-04",
+       "n": 1249,
+       "n_spike": 987,
+       "n_garbage": 262,
+       "spike_called": 357,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3617
+      },
+      {
+       "label": "PTEN m13 s2 2023-08-01",
+       "n": 661,
+       "n_spike": 468,
+       "n_garbage": 193,
+       "spike_called": 290,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.6132
+      },
+      {
+       "label": "PTEN m2 s3 2024-01-23",
+       "n": 260,
+       "n_spike": 118,
+       "n_garbage": 142,
+       "spike_called": 40,
+       "garbage_into_spike": 12,
+       "spike_recall": 0.2373
+      },
+      {
+       "label": "PTEN m2 s8 2024-01-26",
+       "n": 317,
+       "n_spike": 253,
+       "n_garbage": 64,
+       "spike_called": 137,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.5375
+      },
+      {
+       "label": "PTEN m21 s2 2024-07-29",
+       "n": 271,
+       "n_spike": 75,
+       "n_garbage": 196,
+       "spike_called": 7,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0933
+      },
+      {
+       "label": "PTEN m21 s6 2024-07-29",
+       "n": 519,
+       "n_spike": 382,
+       "n_garbage": 137,
+       "spike_called": 111,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2906
+      },
+      {
+       "label": "PTEN m22 s3 2024-07-15",
+       "n": 433,
+       "n_spike": 231,
+       "n_garbage": 202,
+       "spike_called": 85,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.368
+      },
+      {
+       "label": "PTEN m22 s6 2024-07-15",
+       "n": 540,
+       "n_spike": 341,
+       "n_garbage": 199,
+       "spike_called": 128,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3754
+      },
+      {
+       "label": "PTEN m26 s2 2024-06-28",
+       "n": 335,
+       "n_spike": 281,
+       "n_garbage": 54,
+       "spike_called": 8,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0285
+      },
+      {
+       "label": "PTEN m26 s5 2024-06-28",
+       "n": 921,
+       "n_spike": 694,
+       "n_garbage": 227,
+       "spike_called": 392,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5648
+      },
+      {
+       "label": "PTEN m28 s2 2024-06-18",
+       "n": 583,
+       "n_spike": 465,
+       "n_garbage": 118,
+       "spike_called": 124,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.2602
+      },
+      {
+       "label": "PTEN m28 s7 2024-06-18",
+       "n": 622,
+       "n_spike": 472,
+       "n_garbage": 150,
+       "spike_called": 197,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.4174
+      },
+      {
+       "label": "PTEN m3 s2 2023-09-20",
+       "n": 258,
+       "n_spike": 179,
+       "n_garbage": 79,
+       "spike_called": 10,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0559
+      },
+      {
+       "label": "PTEN m33 s4 2024-06-14",
+       "n": 409,
+       "n_spike": 223,
+       "n_garbage": 186,
+       "spike_called": 11,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0493
+      },
+      {
+       "label": "PTEN m33 s8 2024-06-14",
+       "n": 712,
+       "n_spike": 448,
+       "n_garbage": 264,
+       "spike_called": 60,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1339
+      },
+      {
+       "label": "PTEN m34 s5 2024-06-10",
+       "n": 255,
+       "n_spike": 218,
+       "n_garbage": 37,
+       "spike_called": 61,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2798
+      },
+      {
+       "label": "PTEN m34 s8 2024-06-10",
+       "n": 337,
+       "n_spike": 334,
+       "n_garbage": 3,
+       "spike_called": 128,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.3802
+      },
+      {
+       "label": "PTEN m5 s2 2023-11-16",
+       "n": 907,
+       "n_spike": 784,
+       "n_garbage": 123,
+       "spike_called": 585,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.7436
+      },
+      {
+       "label": "PTEN m5 s7 2023-11-17",
+       "n": 825,
+       "n_spike": 663,
+       "n_garbage": 162,
+       "spike_called": 387,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5837
+      },
+      {
+       "label": "PTEN m51 s1 2025-04-08",
+       "n": 304,
+       "n_spike": 5,
+       "n_garbage": 299,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m59 s10 2025-07-07",
+       "n": 788,
+       "n_spike": 411,
+       "n_garbage": 377,
+       "spike_called": 180,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.438
+      },
+      {
+       "label": "PTEN m59 s11 2025-07-09",
+       "n": 945,
+       "n_spike": 654,
+       "n_garbage": 291,
+       "spike_called": 359,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.5474
+      },
+      {
+       "label": "PTEN m59 s4 2025-07-07",
+       "n": 1084,
+       "n_spike": 515,
+       "n_garbage": 569,
+       "spike_called": 112,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2175
+      },
+      {
+       "label": "PTEN m6 s4 2023-09-13",
+       "n": 294,
+       "n_spike": 208,
+       "n_garbage": 86,
+       "spike_called": 138,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.6538
+      },
+      {
+       "label": "PTEN m6 s8 2023-09-14",
+       "n": 688,
+       "n_spike": 563,
+       "n_garbage": 125,
+       "spike_called": 418,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.7407
+      },
+      {
+       "label": "PTEN m60 s1 2025-07-10",
+       "n": 813,
+       "n_spike": 569,
+       "n_garbage": 244,
+       "spike_called": 312,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.5466
+      },
+      {
+       "label": "PTEN m60 s4 2025-07-10",
+       "n": 747,
+       "n_spike": 402,
+       "n_garbage": 345,
+       "spike_called": 217,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5398
+      },
+      {
+       "label": "PTEN m61 s1 2025-07-11",
+       "n": 572,
+       "n_spike": 196,
+       "n_garbage": 376,
+       "spike_called": 31,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1582
+      },
+      {
+       "label": "PTEN m61 s7 2025-07-11",
+       "n": 1115,
+       "n_spike": 377,
+       "n_garbage": 738,
+       "spike_called": 3,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.008
+      },
+      {
+       "label": "PTEN m7 s2 2023-08-22",
+       "n": 245,
+       "n_spike": 87,
+       "n_garbage": 158,
+       "spike_called": 1,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0115
+      },
+      {
+       "label": "PTEN m8 s2 2024-02-06",
+       "n": 453,
+       "n_spike": 364,
+       "n_garbage": 89,
+       "spike_called": 145,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.3956
+      },
+      {
+       "label": "PTEN_DKO m41 s1 2024-11-26",
+       "n": 1107,
+       "n_spike": 1003,
+       "n_garbage": 104,
+       "spike_called": 650,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.6481
+      },
+      {
+       "label": "PTEN_DKO m41 s6 2024-11-26",
+       "n": 1353,
+       "n_spike": 810,
+       "n_garbage": 543,
+       "spike_called": 433,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5346
+      },
+      {
+       "label": "PTEN_DKO m44 s1 2024-11-11",
+       "n": 317,
+       "n_spike": 109,
+       "n_garbage": 208,
+       "spike_called": 4,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0367
+      },
+      {
+       "label": "PTEN_DKO m44 s5 2024-11-11",
+       "n": 349,
+       "n_spike": 213,
+       "n_garbage": 136,
+       "spike_called": 2,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0094
+      },
+      {
+       "label": "PTEN_DKO m53 s1 2025-03-04",
+       "n": 607,
+       "n_spike": 419,
+       "n_garbage": 188,
+       "spike_called": 207,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.494
+      },
+      {
+       "label": "PTEN_DKO m53 s7 2025-03-04",
+       "n": 876,
+       "n_spike": 566,
+       "n_garbage": 310,
+       "spike_called": 324,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5724
+      },
+      {
+       "label": "PTEN_DKO m56 s2 2025-06-19",
+       "n": 461,
+       "n_spike": 256,
+       "n_garbage": 205,
+       "spike_called": 6,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0234
+      },
+      {
+       "label": "PTEN_DKO m56 s8 2025-06-19",
+       "n": 566,
+       "n_spike": 310,
+       "n_garbage": 256,
+       "spike_called": 15,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0484
+      }
+     ]
+    },
+    "0.99": {
+     "spike_called": 8114,
+     "spike_called_true": 8057,
+     "garbage_into_spike": 57,
+     "spike_recall": 0.5084,
+     "lean_spike": 6763,
+     "lean_spike_true": 5666,
+     "lean_garbage": 9513,
+     "lean_garbage_true": 7387,
+     "by_origin": {
+      "incisor": {
+       "n": 14990,
+       "n_spike": 8583,
+       "n_garbage": 6407,
+       "spike_called": 3910,
+       "garbage_into_spike": 11,
+       "spike_recall": 0.4543
+      },
+      "doppler": {
+       "n": 4972,
+       "n_spike": 3142,
+       "n_garbage": 1830,
+       "spike_called": 900,
+       "garbage_into_spike": 43,
+       "spike_recall": 0.2728
+      },
+      "both": {
+       "n": 4428,
+       "n_spike": 4124,
+       "n_garbage": 304,
+       "spike_called": 3304,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.8004
+      }
+     },
+     "by_recording": [
+      {
+       "label": "PTEN m1 s2 2023-10-02",
+       "n": 292,
+       "n_spike": 196,
+       "n_garbage": 96,
+       "spike_called": 66,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3367
+      },
+      {
+       "label": "PTEN m13 s17 2023-08-04",
+       "n": 1249,
+       "n_spike": 987,
+       "n_garbage": 262,
+       "spike_called": 420,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.4255
+      },
+      {
+       "label": "PTEN m13 s2 2023-08-01",
+       "n": 661,
+       "n_spike": 468,
+       "n_garbage": 193,
+       "spike_called": 323,
+       "garbage_into_spike": 5,
+       "spike_recall": 0.6795
+      },
+      {
+       "label": "PTEN m2 s3 2024-01-23",
+       "n": 260,
+       "n_spike": 118,
+       "n_garbage": 142,
+       "spike_called": 64,
+       "garbage_into_spike": 23,
+       "spike_recall": 0.3475
+      },
+      {
+       "label": "PTEN m2 s8 2024-01-26",
+       "n": 317,
+       "n_spike": 253,
+       "n_garbage": 64,
+       "spike_called": 159,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.6245
+      },
+      {
+       "label": "PTEN m21 s2 2024-07-29",
+       "n": 271,
+       "n_spike": 75,
+       "n_garbage": 196,
+       "spike_called": 17,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2267
+      },
+      {
+       "label": "PTEN m21 s6 2024-07-29",
+       "n": 519,
+       "n_spike": 382,
+       "n_garbage": 137,
+       "spike_called": 145,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3796
+      },
+      {
+       "label": "PTEN m22 s3 2024-07-15",
+       "n": 433,
+       "n_spike": 231,
+       "n_garbage": 202,
+       "spike_called": 107,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.4589
+      },
+      {
+       "label": "PTEN m22 s6 2024-07-15",
+       "n": 540,
+       "n_spike": 341,
+       "n_garbage": 199,
+       "spike_called": 166,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.4839
+      },
+      {
+       "label": "PTEN m26 s2 2024-06-28",
+       "n": 335,
+       "n_spike": 281,
+       "n_garbage": 54,
+       "spike_called": 20,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0712
+      },
+      {
+       "label": "PTEN m26 s5 2024-06-28",
+       "n": 921,
+       "n_spike": 694,
+       "n_garbage": 227,
+       "spike_called": 471,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.6787
+      },
+      {
+       "label": "PTEN m28 s2 2024-06-18",
+       "n": 583,
+       "n_spike": 465,
+       "n_garbage": 118,
+       "spike_called": 206,
+       "garbage_into_spike": 10,
+       "spike_recall": 0.4215
+      },
+      {
+       "label": "PTEN m28 s7 2024-06-18",
+       "n": 622,
+       "n_spike": 472,
+       "n_garbage": 150,
+       "spike_called": 250,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5297
+      },
+      {
+       "label": "PTEN m3 s2 2023-09-20",
+       "n": 258,
+       "n_spike": 179,
+       "n_garbage": 79,
+       "spike_called": 20,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1117
+      },
+      {
+       "label": "PTEN m33 s4 2024-06-14",
+       "n": 409,
+       "n_spike": 223,
+       "n_garbage": 186,
+       "spike_called": 24,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1076
+      },
+      {
+       "label": "PTEN m33 s8 2024-06-14",
+       "n": 712,
+       "n_spike": 448,
+       "n_garbage": 264,
+       "spike_called": 85,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1897
+      },
+      {
+       "label": "PTEN m34 s5 2024-06-10",
+       "n": 255,
+       "n_spike": 218,
+       "n_garbage": 37,
+       "spike_called": 93,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.422
+      },
+      {
+       "label": "PTEN m34 s8 2024-06-10",
+       "n": 337,
+       "n_spike": 334,
+       "n_garbage": 3,
+       "spike_called": 158,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.4701
+      },
+      {
+       "label": "PTEN m5 s2 2023-11-16",
+       "n": 907,
+       "n_spike": 784,
+       "n_garbage": 123,
+       "spike_called": 659,
+       "garbage_into_spike": 5,
+       "spike_recall": 0.8342
+      },
+      {
+       "label": "PTEN m5 s7 2023-11-17",
+       "n": 825,
+       "n_spike": 663,
+       "n_garbage": 162,
+       "spike_called": 471,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.7104
+      },
+      {
+       "label": "PTEN m51 s1 2025-04-08",
+       "n": 304,
+       "n_spike": 5,
+       "n_garbage": 299,
+       "spike_called": 0,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0
+      },
+      {
+       "label": "PTEN m59 s10 2025-07-07",
+       "n": 788,
+       "n_spike": 411,
+       "n_garbage": 377,
+       "spike_called": 214,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5207
+      },
+      {
+       "label": "PTEN m59 s11 2025-07-09",
+       "n": 945,
+       "n_spike": 654,
+       "n_garbage": 291,
+       "spike_called": 413,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.63
+      },
+      {
+       "label": "PTEN m59 s4 2025-07-07",
+       "n": 1084,
+       "n_spike": 515,
+       "n_garbage": 569,
+       "spike_called": 182,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3534
+      },
+      {
+       "label": "PTEN m6 s4 2023-09-13",
+       "n": 294,
+       "n_spike": 208,
+       "n_garbage": 86,
+       "spike_called": 155,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.7308
+      },
+      {
+       "label": "PTEN m6 s8 2023-09-14",
+       "n": 688,
+       "n_spike": 563,
+       "n_garbage": 125,
+       "spike_called": 435,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.7709
+      },
+      {
+       "label": "PTEN m60 s1 2025-07-10",
+       "n": 813,
+       "n_spike": 569,
+       "n_garbage": 244,
+       "spike_called": 370,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.645
+      },
+      {
+       "label": "PTEN m60 s4 2025-07-10",
+       "n": 747,
+       "n_spike": 402,
+       "n_garbage": 345,
+       "spike_called": 256,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.6368
+      },
+      {
+       "label": "PTEN m61 s1 2025-07-11",
+       "n": 572,
+       "n_spike": 196,
+       "n_garbage": 376,
+       "spike_called": 49,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.25
+      },
+      {
+       "label": "PTEN m61 s7 2025-07-11",
+       "n": 1115,
+       "n_spike": 377,
+       "n_garbage": 738,
+       "spike_called": 16,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0424
+      },
+      {
+       "label": "PTEN m7 s2 2023-08-22",
+       "n": 245,
+       "n_spike": 87,
+       "n_garbage": 158,
+       "spike_called": 2,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.023
+      },
+      {
+       "label": "PTEN m8 s2 2024-02-06",
+       "n": 453,
+       "n_spike": 364,
+       "n_garbage": 89,
+       "spike_called": 193,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.5275
+      },
+      {
+       "label": "PTEN_DKO m41 s1 2024-11-26",
+       "n": 1107,
+       "n_spike": 1003,
+       "n_garbage": 104,
+       "spike_called": 746,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.7438
+      },
+      {
+       "label": "PTEN_DKO m41 s6 2024-11-26",
+       "n": 1353,
+       "n_spike": 810,
+       "n_garbage": 543,
+       "spike_called": 499,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.616
+      },
+      {
+       "label": "PTEN_DKO m44 s1 2024-11-11",
+       "n": 317,
+       "n_spike": 109,
+       "n_garbage": 208,
+       "spike_called": 14,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1284
+      },
+      {
+       "label": "PTEN_DKO m44 s5 2024-11-11",
+       "n": 349,
+       "n_spike": 213,
+       "n_garbage": 136,
+       "spike_called": 4,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0188
+      },
+      {
+       "label": "PTEN_DKO m53 s1 2025-03-04",
+       "n": 607,
+       "n_spike": 419,
+       "n_garbage": 188,
+       "spike_called": 231,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5513
+      },
+      {
+       "label": "PTEN_DKO m53 s7 2025-03-04",
+       "n": 876,
+       "n_spike": 566,
+       "n_garbage": 310,
+       "spike_called": 361,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.6378
+      },
+      {
+       "label": "PTEN_DKO m56 s2 2025-06-19",
+       "n": 461,
+       "n_spike": 256,
+       "n_garbage": 205,
+       "spike_called": 17,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0664
+      },
+      {
+       "label": "PTEN_DKO m56 s8 2025-06-19",
+       "n": 566,
+       "n_spike": 310,
+       "n_garbage": 256,
+       "spike_called": 33,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1065
+      }
+     ]
+    },
+    "0.98": {
+     "spike_called": 9758,
+     "spike_called_true": 9625,
+     "garbage_into_spike": 133,
+     "spike_recall": 0.6073,
+     "lean_spike": 5119,
+     "lean_spike_true": 4098,
+     "lean_garbage": 9513,
+     "lean_garbage_true": 7387,
+     "by_origin": {
+      "incisor": {
+       "n": 14990,
+       "n_spike": 8583,
+       "n_garbage": 6407,
+       "spike_called": 4720,
+       "garbage_into_spike": 50,
+       "spike_recall": 0.5441
+      },
+      "doppler": {
+       "n": 4972,
+       "n_spike": 3142,
+       "n_garbage": 1830,
+       "spike_called": 1428,
+       "garbage_into_spike": 74,
+       "spike_recall": 0.4309
+      },
+      "both": {
+       "n": 4428,
+       "n_spike": 4124,
+       "n_garbage": 304,
+       "spike_called": 3610,
+       "garbage_into_spike": 9,
+       "spike_recall": 0.8732
+      }
+     },
+     "by_recording": [
+      {
+       "label": "PTEN m1 s2 2023-10-02",
+       "n": 292,
+       "n_spike": 196,
+       "n_garbage": 96,
+       "spike_called": 89,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.4541
+      },
+      {
+       "label": "PTEN m13 s17 2023-08-04",
+       "n": 1249,
+       "n_spike": 987,
+       "n_garbage": 262,
+       "spike_called": 514,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5208
+      },
+      {
+       "label": "PTEN m13 s2 2023-08-01",
+       "n": 661,
+       "n_spike": 468,
+       "n_garbage": 193,
+       "spike_called": 373,
+       "garbage_into_spike": 11,
+       "spike_recall": 0.7735
+      },
+      {
+       "label": "PTEN m2 s3 2024-01-23",
+       "n": 260,
+       "n_spike": 118,
+       "n_garbage": 142,
+       "spike_called": 85,
+       "garbage_into_spike": 28,
+       "spike_recall": 0.4831
+      },
+      {
+       "label": "PTEN m2 s8 2024-01-26",
+       "n": 317,
+       "n_spike": 253,
+       "n_garbage": 64,
+       "spike_called": 182,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.7154
+      },
+      {
+       "label": "PTEN m21 s2 2024-07-29",
+       "n": 271,
+       "n_spike": 75,
+       "n_garbage": 196,
+       "spike_called": 28,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.3467
+      },
+      {
+       "label": "PTEN m21 s6 2024-07-29",
+       "n": 519,
+       "n_spike": 382,
+       "n_garbage": 137,
+       "spike_called": 202,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.5262
+      },
+      {
+       "label": "PTEN m22 s3 2024-07-15",
+       "n": 433,
+       "n_spike": 231,
+       "n_garbage": 202,
+       "spike_called": 143,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.6061
+      },
+      {
+       "label": "PTEN m22 s6 2024-07-15",
+       "n": 540,
+       "n_spike": 341,
+       "n_garbage": 199,
+       "spike_called": 214,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.6246
+      },
+      {
+       "label": "PTEN m26 s2 2024-06-28",
+       "n": 335,
+       "n_spike": 281,
+       "n_garbage": 54,
+       "spike_called": 48,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.1708
+      },
+      {
+       "label": "PTEN m26 s5 2024-06-28",
+       "n": 921,
+       "n_spike": 694,
+       "n_garbage": 227,
+       "spike_called": 523,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.7536
+      },
+      {
+       "label": "PTEN m28 s2 2024-06-18",
+       "n": 583,
+       "n_spike": 465,
+       "n_garbage": 118,
+       "spike_called": 267,
+       "garbage_into_spike": 18,
+       "spike_recall": 0.5355
+      },
+      {
+       "label": "PTEN m28 s7 2024-06-18",
+       "n": 622,
+       "n_spike": 472,
+       "n_garbage": 150,
+       "spike_called": 325,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.6864
+      },
+      {
+       "label": "PTEN m3 s2 2023-09-20",
+       "n": 258,
+       "n_spike": 179,
+       "n_garbage": 79,
+       "spike_called": 52,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2905
+      },
+      {
+       "label": "PTEN m33 s4 2024-06-14",
+       "n": 409,
+       "n_spike": 223,
+       "n_garbage": 186,
+       "spike_called": 57,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.2511
+      },
+      {
+       "label": "PTEN m33 s8 2024-06-14",
+       "n": 712,
+       "n_spike": 448,
+       "n_garbage": 264,
+       "spike_called": 129,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.2812
+      },
+      {
+       "label": "PTEN m34 s5 2024-06-10",
+       "n": 255,
+       "n_spike": 218,
+       "n_garbage": 37,
+       "spike_called": 126,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.5734
+      },
+      {
+       "label": "PTEN m34 s8 2024-06-10",
+       "n": 337,
+       "n_spike": 334,
+       "n_garbage": 3,
+       "spike_called": 193,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.5749
+      },
+      {
+       "label": "PTEN m5 s2 2023-11-16",
+       "n": 907,
+       "n_spike": 784,
+       "n_garbage": 123,
+       "spike_called": 712,
+       "garbage_into_spike": 11,
+       "spike_recall": 0.8941
+      },
+      {
+       "label": "PTEN m5 s7 2023-11-17",
+       "n": 825,
+       "n_spike": 663,
+       "n_garbage": 162,
+       "spike_called": 565,
+       "garbage_into_spike": 7,
+       "spike_recall": 0.8416
+      },
+      {
+       "label": "PTEN m51 s1 2025-04-08",
+       "n": 304,
+       "n_spike": 5,
+       "n_garbage": 299,
+       "spike_called": 1,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.2
+      },
+      {
+       "label": "PTEN m59 s10 2025-07-07",
+       "n": 788,
+       "n_spike": 411,
+       "n_garbage": 377,
+       "spike_called": 267,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.6472
+      },
+      {
+       "label": "PTEN m59 s11 2025-07-09",
+       "n": 945,
+       "n_spike": 654,
+       "n_garbage": 291,
+       "spike_called": 470,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.7141
+      },
+      {
+       "label": "PTEN m59 s4 2025-07-07",
+       "n": 1084,
+       "n_spike": 515,
+       "n_garbage": 569,
+       "spike_called": 253,
+       "garbage_into_spike": 4,
+       "spike_recall": 0.4835
+      },
+      {
+       "label": "PTEN m6 s4 2023-09-13",
+       "n": 294,
+       "n_spike": 208,
+       "n_garbage": 86,
+       "spike_called": 164,
+       "garbage_into_spike": 4,
+       "spike_recall": 0.7692
+      },
+      {
+       "label": "PTEN m6 s8 2023-09-14",
+       "n": 688,
+       "n_spike": 563,
+       "n_garbage": 125,
+       "spike_called": 477,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.8437
+      },
+      {
+       "label": "PTEN m60 s1 2025-07-10",
+       "n": 813,
+       "n_spike": 569,
+       "n_garbage": 244,
+       "spike_called": 426,
+       "garbage_into_spike": 8,
+       "spike_recall": 0.7346
+      },
+      {
+       "label": "PTEN m60 s4 2025-07-10",
+       "n": 747,
+       "n_spike": 402,
+       "n_garbage": 345,
+       "spike_called": 297,
+       "garbage_into_spike": 5,
+       "spike_recall": 0.7264
+      },
+      {
+       "label": "PTEN m61 s1 2025-07-11",
+       "n": 572,
+       "n_spike": 196,
+       "n_garbage": 376,
+       "spike_called": 63,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.3214
+      },
+      {
+       "label": "PTEN m61 s7 2025-07-11",
+       "n": 1115,
+       "n_spike": 377,
+       "n_garbage": 738,
+       "spike_called": 46,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.122
+      },
+      {
+       "label": "PTEN m7 s2 2023-08-22",
+       "n": 245,
+       "n_spike": 87,
+       "n_garbage": 158,
+       "spike_called": 20,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.1954
+      },
+      {
+       "label": "PTEN m8 s2 2024-02-06",
+       "n": 453,
+       "n_spike": 364,
+       "n_garbage": 89,
+       "spike_called": 225,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.6154
+      },
+      {
+       "label": "PTEN_DKO m41 s1 2024-11-26",
+       "n": 1107,
+       "n_spike": 1003,
+       "n_garbage": 104,
+       "spike_called": 847,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.8415
+      },
+      {
+       "label": "PTEN_DKO m41 s6 2024-11-26",
+       "n": 1353,
+       "n_spike": 810,
+       "n_garbage": 543,
+       "spike_called": 548,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.6753
+      },
+      {
+       "label": "PTEN_DKO m44 s1 2024-11-11",
+       "n": 317,
+       "n_spike": 109,
+       "n_garbage": 208,
+       "spike_called": 28,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.2294
+      },
+      {
+       "label": "PTEN_DKO m44 s5 2024-11-11",
+       "n": 349,
+       "n_spike": 213,
+       "n_garbage": 136,
+       "spike_called": 10,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.0469
+      },
+      {
+       "label": "PTEN_DKO m53 s1 2025-03-04",
+       "n": 607,
+       "n_spike": 419,
+       "n_garbage": 188,
+       "spike_called": 250,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5967
+      },
+      {
+       "label": "PTEN_DKO m53 s7 2025-03-04",
+       "n": 876,
+       "n_spike": 566,
+       "n_garbage": 310,
+       "spike_called": 413,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.7261
+      },
+      {
+       "label": "PTEN_DKO m56 s2 2025-06-19",
+       "n": 461,
+       "n_spike": 256,
+       "n_garbage": 205,
+       "spike_called": 42,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.1523
+      },
+      {
+       "label": "PTEN_DKO m56 s8 2025-06-19",
+       "n": 566,
+       "n_spike": 310,
+       "n_garbage": 256,
+       "spike_called": 84,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.271
+      }
+     ]
+    },
+    "0.95": {
+     "spike_called": 11923,
+     "spike_called_true": 11568,
+     "garbage_into_spike": 355,
+     "spike_recall": 0.7299,
+     "lean_spike": 2954,
+     "lean_spike_true": 2155,
+     "lean_garbage": 9513,
+     "lean_garbage_true": 7387,
+     "by_origin": {
+      "incisor": {
+       "n": 14990,
+       "n_spike": 8583,
+       "n_garbage": 6407,
+       "spike_called": 5853,
+       "garbage_into_spike": 158,
+       "spike_recall": 0.6635
+      },
+      "doppler": {
+       "n": 4972,
+       "n_spike": 3142,
+       "n_garbage": 1830,
+       "spike_called": 2198,
+       "garbage_into_spike": 164,
+       "spike_recall": 0.6474
+      },
+      "both": {
+       "n": 4428,
+       "n_spike": 4124,
+       "n_garbage": 304,
+       "spike_called": 3872,
+       "garbage_into_spike": 33,
+       "spike_recall": 0.9309
+      }
+     },
+     "by_recording": [
+      {
+       "label": "PTEN m1 s2 2023-10-02",
+       "n": 292,
+       "n_spike": 196,
+       "n_garbage": 96,
+       "spike_called": 142,
+       "garbage_into_spike": 4,
+       "spike_recall": 0.7041
+      },
+      {
+       "label": "PTEN m13 s17 2023-08-04",
+       "n": 1249,
+       "n_spike": 987,
+       "n_garbage": 262,
+       "spike_called": 693,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.7001
+      },
+      {
+       "label": "PTEN m13 s2 2023-08-01",
+       "n": 661,
+       "n_spike": 468,
+       "n_garbage": 193,
+       "spike_called": 435,
+       "garbage_into_spike": 18,
+       "spike_recall": 0.891
+      },
+      {
+       "label": "PTEN m2 s3 2024-01-23",
+       "n": 260,
+       "n_spike": 118,
+       "n_garbage": 142,
+       "spike_called": 129,
+       "garbage_into_spike": 46,
+       "spike_recall": 0.7034
+      },
+      {
+       "label": "PTEN m2 s8 2024-01-26",
+       "n": 317,
+       "n_spike": 253,
+       "n_garbage": 64,
+       "spike_called": 205,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.8063
+      },
+      {
+       "label": "PTEN m21 s2 2024-07-29",
+       "n": 271,
+       "n_spike": 75,
+       "n_garbage": 196,
+       "spike_called": 54,
+       "garbage_into_spike": 6,
+       "spike_recall": 0.64
+      },
+      {
+       "label": "PTEN m21 s6 2024-07-29",
+       "n": 519,
+       "n_spike": 382,
+       "n_garbage": 137,
+       "spike_called": 250,
+       "garbage_into_spike": 5,
+       "spike_recall": 0.6414
+      },
+      {
+       "label": "PTEN m22 s3 2024-07-15",
+       "n": 433,
+       "n_spike": 231,
+       "n_garbage": 202,
+       "spike_called": 180,
+       "garbage_into_spike": 9,
+       "spike_recall": 0.7403
+      },
+      {
+       "label": "PTEN m22 s6 2024-07-15",
+       "n": 540,
+       "n_spike": 341,
+       "n_garbage": 199,
+       "spike_called": 270,
+       "garbage_into_spike": 8,
+       "spike_recall": 0.7683
+      },
+      {
+       "label": "PTEN m26 s2 2024-06-28",
+       "n": 335,
+       "n_spike": 281,
+       "n_garbage": 54,
+       "spike_called": 143,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.5089
+      },
+      {
+       "label": "PTEN m26 s5 2024-06-28",
+       "n": 921,
+       "n_spike": 694,
+       "n_garbage": 227,
+       "spike_called": 586,
+       "garbage_into_spike": 4,
+       "spike_recall": 0.8386
+      },
+      {
+       "label": "PTEN m28 s2 2024-06-18",
+       "n": 583,
+       "n_spike": 465,
+       "n_garbage": 118,
+       "spike_called": 363,
+       "garbage_into_spike": 25,
+       "spike_recall": 0.7269
+      },
+      {
+       "label": "PTEN m28 s7 2024-06-18",
+       "n": 622,
+       "n_spike": 472,
+       "n_garbage": 150,
+       "spike_called": 384,
+       "garbage_into_spike": 6,
+       "spike_recall": 0.8008
+      },
+      {
+       "label": "PTEN m3 s2 2023-09-20",
+       "n": 258,
+       "n_spike": 179,
+       "n_garbage": 79,
+       "spike_called": 105,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.581
+      },
+      {
+       "label": "PTEN m33 s4 2024-06-14",
+       "n": 409,
+       "n_spike": 223,
+       "n_garbage": 186,
+       "spike_called": 105,
+       "garbage_into_spike": 4,
+       "spike_recall": 0.4529
+      },
+      {
+       "label": "PTEN m33 s8 2024-06-14",
+       "n": 712,
+       "n_spike": 448,
+       "n_garbage": 264,
+       "spike_called": 192,
+       "garbage_into_spike": 8,
+       "spike_recall": 0.4107
+      },
+      {
+       "label": "PTEN m34 s5 2024-06-10",
+       "n": 255,
+       "n_spike": 218,
+       "n_garbage": 37,
+       "spike_called": 157,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.711
+      },
+      {
+       "label": "PTEN m34 s8 2024-06-10",
+       "n": 337,
+       "n_spike": 334,
+       "n_garbage": 3,
+       "spike_called": 224,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.6677
+      },
+      {
+       "label": "PTEN m5 s2 2023-11-16",
+       "n": 907,
+       "n_spike": 784,
+       "n_garbage": 123,
+       "spike_called": 753,
+       "garbage_into_spike": 22,
+       "spike_recall": 0.9324
+      },
+      {
+       "label": "PTEN m5 s7 2023-11-17",
+       "n": 825,
+       "n_spike": 663,
+       "n_garbage": 162,
+       "spike_called": 648,
+       "garbage_into_spike": 22,
+       "spike_recall": 0.9442
+      },
+      {
+       "label": "PTEN m51 s1 2025-04-08",
+       "n": 304,
+       "n_spike": 5,
+       "n_garbage": 299,
+       "spike_called": 37,
+       "garbage_into_spike": 33,
+       "spike_recall": 0.8
+      },
+      {
+       "label": "PTEN m59 s10 2025-07-07",
+       "n": 788,
+       "n_spike": 411,
+       "n_garbage": 377,
+       "spike_called": 327,
+       "garbage_into_spike": 8,
+       "spike_recall": 0.7762
+      },
+      {
+       "label": "PTEN m59 s11 2025-07-09",
+       "n": 945,
+       "n_spike": 654,
+       "n_garbage": 291,
+       "spike_called": 552,
+       "garbage_into_spike": 13,
+       "spike_recall": 0.8242
+      },
+      {
+       "label": "PTEN m59 s4 2025-07-07",
+       "n": 1084,
+       "n_spike": 515,
+       "n_garbage": 569,
+       "spike_called": 344,
+       "garbage_into_spike": 8,
+       "spike_recall": 0.6524
+      },
+      {
+       "label": "PTEN m6 s4 2023-09-13",
+       "n": 294,
+       "n_spike": 208,
+       "n_garbage": 86,
+       "spike_called": 183,
+       "garbage_into_spike": 8,
+       "spike_recall": 0.8413
+      },
+      {
+       "label": "PTEN m6 s8 2023-09-14",
+       "n": 688,
+       "n_spike": 563,
+       "n_garbage": 125,
+       "spike_called": 510,
+       "garbage_into_spike": 5,
+       "spike_recall": 0.897
+      },
+      {
+       "label": "PTEN m60 s1 2025-07-10",
+       "n": 813,
+       "n_spike": 569,
+       "n_garbage": 244,
+       "spike_called": 488,
+       "garbage_into_spike": 17,
+       "spike_recall": 0.8278
+      },
+      {
+       "label": "PTEN m60 s4 2025-07-10",
+       "n": 747,
+       "n_spike": 402,
+       "n_garbage": 345,
+       "spike_called": 330,
+       "garbage_into_spike": 10,
+       "spike_recall": 0.796
+      },
+      {
+       "label": "PTEN m61 s1 2025-07-11",
+       "n": 572,
+       "n_spike": 196,
+       "n_garbage": 376,
+       "spike_called": 87,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.4439
+      },
+      {
+       "label": "PTEN m61 s7 2025-07-11",
+       "n": 1115,
+       "n_spike": 377,
+       "n_garbage": 738,
+       "spike_called": 102,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.2653
+      },
+      {
+       "label": "PTEN m7 s2 2023-08-22",
+       "n": 245,
+       "n_spike": 87,
+       "n_garbage": 158,
+       "spike_called": 67,
+       "garbage_into_spike": 21,
+       "spike_recall": 0.5287
+      },
+      {
+       "label": "PTEN m8 s2 2024-02-06",
+       "n": 453,
+       "n_spike": 364,
+       "n_garbage": 89,
+       "spike_called": 262,
+       "garbage_into_spike": 5,
+       "spike_recall": 0.706
+      },
+      {
+       "label": "PTEN_DKO m41 s1 2024-11-26",
+       "n": 1107,
+       "n_spike": 1003,
+       "n_garbage": 104,
+       "spike_called": 935,
+       "garbage_into_spike": 10,
+       "spike_recall": 0.9222
+      },
+      {
+       "label": "PTEN_DKO m41 s6 2024-11-26",
+       "n": 1353,
+       "n_spike": 810,
+       "n_garbage": 543,
+       "spike_called": 604,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.7432
+      },
+      {
+       "label": "PTEN_DKO m44 s1 2024-11-11",
+       "n": 317,
+       "n_spike": 109,
+       "n_garbage": 208,
+       "spike_called": 63,
+       "garbage_into_spike": 9,
+       "spike_recall": 0.4954
+      },
+      {
+       "label": "PTEN_DKO m44 s5 2024-11-11",
+       "n": 349,
+       "n_spike": 213,
+       "n_garbage": 136,
+       "spike_called": 47,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.2066
+      },
+      {
+       "label": "PTEN_DKO m53 s1 2025-03-04",
+       "n": 607,
+       "n_spike": 419,
+       "n_garbage": 188,
+       "spike_called": 283,
+       "garbage_into_spike": 0,
+       "spike_recall": 0.6754
+      },
+      {
+       "label": "PTEN_DKO m53 s7 2025-03-04",
+       "n": 876,
+       "n_spike": 566,
+       "n_garbage": 310,
+       "spike_called": 455,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.8004
+      },
+      {
+       "label": "PTEN_DKO m56 s2 2025-06-19",
+       "n": 461,
+       "n_spike": 256,
+       "n_garbage": 205,
+       "spike_called": 84,
+       "garbage_into_spike": 4,
+       "spike_recall": 0.3125
+      },
+      {
+       "label": "PTEN_DKO m56 s8 2025-06-19",
+       "n": 566,
+       "n_spike": 310,
+       "n_garbage": 256,
+       "spike_called": 145,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.4645
+      }
+     ]
+    },
+    "0.9": {
+     "spike_called": 13715,
+     "spike_called_true": 12936,
+     "garbage_into_spike": 779,
+     "spike_recall": 0.8162,
+     "lean_spike": 1162,
+     "lean_spike_true": 787,
+     "lean_garbage": 9513,
+     "lean_garbage_true": 7387,
+     "by_origin": {
+      "incisor": {
+       "n": 14990,
+       "n_spike": 8583,
+       "n_garbage": 6407,
+       "spike_called": 6977,
+       "garbage_into_spike": 413,
+       "spike_recall": 0.7648
+      },
+      "doppler": {
+       "n": 4972,
+       "n_spike": 3142,
+       "n_garbage": 1830,
+       "spike_called": 2702,
+       "garbage_into_spike": 296,
+       "spike_recall": 0.7658
+      },
+      "both": {
+       "n": 4428,
+       "n_spike": 4124,
+       "n_garbage": 304,
+       "spike_called": 4036,
+       "garbage_into_spike": 70,
+       "spike_recall": 0.9617
+      }
+     },
+     "by_recording": [
+      {
+       "label": "PTEN m1 s2 2023-10-02",
+       "n": 292,
+       "n_spike": 196,
+       "n_garbage": 96,
+       "spike_called": 173,
+       "garbage_into_spike": 10,
+       "spike_recall": 0.8316
+      },
+      {
+       "label": "PTEN m13 s17 2023-08-04",
+       "n": 1249,
+       "n_spike": 987,
+       "n_garbage": 262,
+       "spike_called": 829,
+       "garbage_into_spike": 15,
+       "spike_recall": 0.8247
+      },
+      {
+       "label": "PTEN m13 s2 2023-08-01",
+       "n": 661,
+       "n_spike": 468,
+       "n_garbage": 193,
+       "spike_called": 485,
+       "garbage_into_spike": 44,
+       "spike_recall": 0.9423
+      },
+      {
+       "label": "PTEN m2 s3 2024-01-23",
+       "n": 260,
+       "n_spike": 118,
+       "n_garbage": 142,
+       "spike_called": 164,
+       "garbage_into_spike": 66,
+       "spike_recall": 0.8305
+      },
+      {
+       "label": "PTEN m2 s8 2024-01-26",
+       "n": 317,
+       "n_spike": 253,
+       "n_garbage": 64,
+       "spike_called": 220,
+       "garbage_into_spike": 5,
+       "spike_recall": 0.8498
+      },
+      {
+       "label": "PTEN m21 s2 2024-07-29",
+       "n": 271,
+       "n_spike": 75,
+       "n_garbage": 196,
+       "spike_called": 64,
+       "garbage_into_spike": 10,
+       "spike_recall": 0.72
+      },
+      {
+       "label": "PTEN m21 s6 2024-07-29",
+       "n": 519,
+       "n_spike": 382,
+       "n_garbage": 137,
+       "spike_called": 286,
+       "garbage_into_spike": 8,
+       "spike_recall": 0.7277
+      },
+      {
+       "label": "PTEN m22 s3 2024-07-15",
+       "n": 433,
+       "n_spike": 231,
+       "n_garbage": 202,
+       "spike_called": 219,
+       "garbage_into_spike": 18,
+       "spike_recall": 0.8701
+      },
+      {
+       "label": "PTEN m22 s6 2024-07-15",
+       "n": 540,
+       "n_spike": 341,
+       "n_garbage": 199,
+       "spike_called": 315,
+       "garbage_into_spike": 22,
+       "spike_recall": 0.8592
+      },
+      {
+       "label": "PTEN m26 s2 2024-06-28",
+       "n": 335,
+       "n_spike": 281,
+       "n_garbage": 54,
+       "spike_called": 210,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.7367
+      },
+      {
+       "label": "PTEN m26 s5 2024-06-28",
+       "n": 921,
+       "n_spike": 694,
+       "n_garbage": 227,
+       "spike_called": 642,
+       "garbage_into_spike": 13,
+       "spike_recall": 0.9063
+      },
+      {
+       "label": "PTEN m28 s2 2024-06-18",
+       "n": 583,
+       "n_spike": 465,
+       "n_garbage": 118,
+       "spike_called": 430,
+       "garbage_into_spike": 38,
+       "spike_recall": 0.843
+      },
+      {
+       "label": "PTEN m28 s7 2024-06-18",
+       "n": 622,
+       "n_spike": 472,
+       "n_garbage": 150,
+       "spike_called": 431,
+       "garbage_into_spike": 12,
+       "spike_recall": 0.8877
+      },
+      {
+       "label": "PTEN m3 s2 2023-09-20",
+       "n": 258,
+       "n_spike": 179,
+       "n_garbage": 79,
+       "spike_called": 129,
+       "garbage_into_spike": 6,
+       "spike_recall": 0.6872
+      },
+      {
+       "label": "PTEN m33 s4 2024-06-14",
+       "n": 409,
+       "n_spike": 223,
+       "n_garbage": 186,
+       "spike_called": 174,
+       "garbage_into_spike": 25,
+       "spike_recall": 0.6682
+      },
+      {
+       "label": "PTEN m33 s8 2024-06-14",
+       "n": 712,
+       "n_spike": 448,
+       "n_garbage": 264,
+       "spike_called": 247,
+       "garbage_into_spike": 15,
+       "spike_recall": 0.5179
+      },
+      {
+       "label": "PTEN m34 s5 2024-06-10",
+       "n": 255,
+       "n_spike": 218,
+       "n_garbage": 37,
+       "spike_called": 182,
+       "garbage_into_spike": 5,
+       "spike_recall": 0.8119
+      },
+      {
+       "label": "PTEN m34 s8 2024-06-10",
+       "n": 337,
+       "n_spike": 334,
+       "n_garbage": 3,
+       "spike_called": 245,
+       "garbage_into_spike": 1,
+       "spike_recall": 0.7305
+      },
+      {
+       "label": "PTEN m5 s2 2023-11-16",
+       "n": 907,
+       "n_spike": 784,
+       "n_garbage": 123,
+       "spike_called": 787,
+       "garbage_into_spike": 35,
+       "spike_recall": 0.9592
+      },
+      {
+       "label": "PTEN m5 s7 2023-11-17",
+       "n": 825,
+       "n_spike": 663,
+       "n_garbage": 162,
+       "spike_called": 691,
+       "garbage_into_spike": 44,
+       "spike_recall": 0.9759
+      },
+      {
+       "label": "PTEN m51 s1 2025-04-08",
+       "n": 304,
+       "n_spike": 5,
+       "n_garbage": 299,
+       "spike_called": 80,
+       "garbage_into_spike": 75,
+       "spike_recall": 1.0
+      },
+      {
+       "label": "PTEN m59 s10 2025-07-07",
+       "n": 788,
+       "n_spike": 411,
+       "n_garbage": 377,
+       "spike_called": 370,
+       "garbage_into_spike": 17,
+       "spike_recall": 0.8589
+      },
+      {
+       "label": "PTEN m59 s11 2025-07-09",
+       "n": 945,
+       "n_spike": 654,
+       "n_garbage": 291,
+       "spike_called": 597,
+       "garbage_into_spike": 27,
+       "spike_recall": 0.8716
+      },
+      {
+       "label": "PTEN m59 s4 2025-07-07",
+       "n": 1084,
+       "n_spike": 515,
+       "n_garbage": 569,
+       "spike_called": 398,
+       "garbage_into_spike": 12,
+       "spike_recall": 0.7495
+      },
+      {
+       "label": "PTEN m6 s4 2023-09-13",
+       "n": 294,
+       "n_spike": 208,
+       "n_garbage": 86,
+       "spike_called": 196,
+       "garbage_into_spike": 12,
+       "spike_recall": 0.8846
+      },
+      {
+       "label": "PTEN m6 s8 2023-09-14",
+       "n": 688,
+       "n_spike": 563,
+       "n_garbage": 125,
+       "spike_called": 538,
+       "garbage_into_spike": 17,
+       "spike_recall": 0.9254
+      },
+      {
+       "label": "PTEN m60 s1 2025-07-10",
+       "n": 813,
+       "n_spike": 569,
+       "n_garbage": 244,
+       "spike_called": 528,
+       "garbage_into_spike": 30,
+       "spike_recall": 0.8752
+      },
+      {
+       "label": "PTEN m60 s4 2025-07-10",
+       "n": 747,
+       "n_spike": 402,
+       "n_garbage": 345,
+       "spike_called": 361,
+       "garbage_into_spike": 24,
+       "spike_recall": 0.8383
+      },
+      {
+       "label": "PTEN m61 s1 2025-07-11",
+       "n": 572,
+       "n_spike": 196,
+       "n_garbage": 376,
+       "spike_called": 129,
+       "garbage_into_spike": 7,
+       "spike_recall": 0.6224
+      },
+      {
+       "label": "PTEN m61 s7 2025-07-11",
+       "n": 1115,
+       "n_spike": 377,
+       "n_garbage": 738,
+       "spike_called": 162,
+       "garbage_into_spike": 13,
+       "spike_recall": 0.3952
+      },
+      {
+       "label": "PTEN m7 s2 2023-08-22",
+       "n": 245,
+       "n_spike": 87,
+       "n_garbage": 158,
+       "spike_called": 124,
+       "garbage_into_spike": 55,
+       "spike_recall": 0.7931
+      },
+      {
+       "label": "PTEN m8 s2 2024-02-06",
+       "n": 453,
+       "n_spike": 364,
+       "n_garbage": 89,
+       "spike_called": 291,
+       "garbage_into_spike": 6,
+       "spike_recall": 0.783
+      },
+      {
+       "label": "PTEN_DKO m41 s1 2024-11-26",
+       "n": 1107,
+       "n_spike": 1003,
+       "n_garbage": 104,
+       "spike_called": 987,
+       "garbage_into_spike": 21,
+       "spike_recall": 0.9631
+      },
+      {
+       "label": "PTEN_DKO m41 s6 2024-11-26",
+       "n": 1353,
+       "n_spike": 810,
+       "n_garbage": 543,
+       "spike_called": 647,
+       "garbage_into_spike": 3,
+       "spike_recall": 0.7951
+      },
+      {
+       "label": "PTEN_DKO m44 s1 2024-11-11",
+       "n": 317,
+       "n_spike": 109,
+       "n_garbage": 208,
+       "spike_called": 109,
+       "garbage_into_spike": 29,
+       "spike_recall": 0.7339
+      },
+      {
+       "label": "PTEN_DKO m44 s5 2024-11-11",
+       "n": 349,
+       "n_spike": 213,
+       "n_garbage": 136,
+       "spike_called": 106,
+       "garbage_into_spike": 7,
+       "spike_recall": 0.4648
+      },
+      {
+       "label": "PTEN_DKO m53 s1 2025-03-04",
+       "n": 607,
+       "n_spike": 419,
+       "n_garbage": 188,
+       "spike_called": 320,
+       "garbage_into_spike": 2,
+       "spike_recall": 0.7589
+      },
+      {
+       "label": "PTEN_DKO m53 s7 2025-03-04",
+       "n": 876,
+       "n_spike": 566,
+       "n_garbage": 310,
+       "spike_called": 503,
+       "garbage_into_spike": 8,
+       "spike_recall": 0.8746
+      },
+      {
+       "label": "PTEN_DKO m56 s2 2025-06-19",
+       "n": 461,
+       "n_spike": 256,
+       "n_garbage": 205,
+       "spike_called": 133,
+       "garbage_into_spike": 12,
+       "spike_recall": 0.4727
+      },
+      {
+       "label": "PTEN_DKO m56 s8 2025-06-19",
+       "n": 566,
+       "n_spike": 310,
+       "n_garbage": 256,
+       "spike_called": 213,
+       "garbage_into_spike": 7,
+       "spike_recall": 0.6645
+      }
+     ]
+    }
+   }
+  }
+ },
+ "model_file": ".cache\\prospector\\pr20261104-071200.joblib"
+}

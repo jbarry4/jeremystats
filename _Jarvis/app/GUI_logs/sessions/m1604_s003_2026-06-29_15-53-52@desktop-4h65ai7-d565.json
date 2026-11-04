@@ -19,7 +19,8 @@
     "schema": "2026-09-03T00:08:55.572137+00:00",
     "session": "2026-09-03T00:08:55.572137+00:00",
     "start": "2026-09-03T00:08:55.572137+00:00",
-    "updated": "2026-11-02T19:22:05.518628+00:00"
+    "updated": "2026-11-03T21:01:36.616529+00:00",
+    "view_state": "2026-11-03T21:01:36.616529+00:00"
   },
   "_keys": {
     "paths": {
@@ -33,7 +34,7 @@
       ],
       "vacc:sa96e6359f8db": [
         "set",
-        "2026-11-02T19:22:05.518628+00:00"
+        "2026-11-02T19:22:34.104673+00:00"
       ]
     },
     "seen": {
@@ -48,11 +49,15 @@
       "barrylab-d8e8": [
         "set",
         "2026-10-29T17:09:55.258073+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-11-03T21:01:09.567345+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-02T19:22:05.518628+00:00",
+    "at": "2026-11-03T21:01:36.616529+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -115,18 +120,79 @@
       "path": "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1604\\KCNT1_m1604_s3_062926\\2026-06-29_15-53-52",
       "root": "Y:/Jeremy3/KCNT1",
       "scan": "scan_3a20a153a9"
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-11-03T16:01:09-05:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1604\\KCNT1_m1604_s3_062926\\2026-06-29_15-53-52",
+      "root": null,
+      "scan": null
     }
   },
   "session": 3,
   "start": "2026-06-29T15:53:52",
   "updated": {
-    "app_version": "2026.11.02.1",
-    "at": "2026-11-02T14:22:05-05:00",
-    "commit": "d2dc07e7",
+    "app_version": "2026.11.03.2",
+    "at": "2026-11-03T16:01:36-05:00",
+    "commit": "5acf4b4f",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
     "os": "Windows",
     "user": "Shahriar Tafti"
+  },
+  "view_state": {
+    "channels": [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19,
+      21,
+      23,
+      25,
+      27,
+      29,
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63
+    ],
+    "climBy": null,
+    "fdefault": null,
+    "flock": true,
+    "gain": 1,
+    "hp": 1,
+    "invert": true,
+    "lp": 70,
+    "marks_fade": null,
+    "marks_view": "show",
+    "normalize": "shared",
+    "notch": 60,
+    "probe": "h3",
+    "spacing": 50,
+    "span": 0.8,
+    "stft_mode": null,
+    "t0": 0,
+    "ylim": null
   }
 }

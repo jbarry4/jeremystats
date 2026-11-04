@@ -41,6 +41,34 @@ does not show up in it.
   prints around a fault. The 10-20 Root Canal bug showed up there, not in
   the traceback.
 
+## Pass 10: 2026-11-04 (morning, scheduled), 11-03 07:50 to 11-04 08:50
+
+Nothing new. Bluebarry's 11-03 report: 0 faults, 639 actions, 18 left
+out, all `test: true` in the shard: 12 Errors-panel "Test error"
+(`selftest`), 2 `dspca/plan` on "harness dupes" and 4 `ui/mode.bounce`,
+all from `_dev/stratacheck.html` on port 8791. No 11-04 shard yet.
+`git fetch` brought `0aa32f2a` (11-03 13:48) with Strawbarry's 11-02
+report: 0 faults, 6 actions. The cloud `errors` table, read-only, has no
+row from any other machine since `2026-11-03T12:50Z`. Strawbarry did 132
+actions on 11-03 (last at 21:41Z) and filed nothing.
+
+One note for open item **C**: the cloud `activity` table holds two
+`device.rename` rows at 17:11:05Z on 11-03, by "zz probe person", one
+under the machine name "zz test machine". They are `_dev/devicename.html`
+renaming this computer and putting it back. It did put it back:
+`prefs/device@desktop-4h65ai7-d565.json` says "Bluebarry" (its `by` field
+says "zz probe person"). The rows reached the lab's shared history for
+the reason C describes. No code changed. B, C and the double-pool note
+stand as pass 6 left them.
+
+Builds: Bluebarry ran `2026.11.03.2` (`5acf4b4f`), so it has restarted
+since pass 9 and runs passes 4–8's fixes. `2026.11.03.1` is committed and on
+`origin/master`, so the other machines get them on their next pull.
+Strawbarry still ran `2026.11.02.1` (`b6232acc`) on 11-02.
+
+Next pass: Bluebarry's 11-04, then `git fetch` (Strawbarry's 11-03), then
+the cloud `errors` table from `2026-11-04T13:50Z`.
+
 ## Pass 9: 2026-11-03 (morning, scheduled), 11-02 16:40 to 11-03 07:50
 
 Nothing new. Bluebarry's 11-02 report: 0 faults, 83 actions, 2 left out

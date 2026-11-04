@@ -116,9 +116,13 @@ IMG_IDS = tuple("wimg%d" % w for w in IMG_WINDOWS_MS)
 #   ftrace   the peak channel's voltage, +-50 ms at 2 ms (filtered data)
 # Each picture is scaled so its largest value is 1, sign kept. "notch" is
 # the notch alone, with each row's mean over the block taken off.
+#
+# "hp1" (Prospector, 2026-11-03): a high-pass at 1 Hz and nothing above it
+# but the 1 kHz read's own ceiling -- "high pass to see the spikey bits and
+# minimize slow oscillations; to make CSDs more readable".
 FILTERS = (("notch", None), ("1_20", (1.0, 20.0)), ("1_100", (1.0, 100.0)),
            ("5_50", (5.0, 50.0)), ("10_40", (10.0, 40.0)),
-           ("5_100", (5.0, 100.0)))
+           ("5_100", (5.0, 100.0)), ("hp1", (1.0, None)))
 SNAPS = (("fwhole", "Whole shank CSD, +-50 ms"),
          ("fthin", "Voltage, 8 contacts either side, +-25 ms"),
          ("ftrace", "Peak channel trace, +-50 ms"))
@@ -194,7 +198,107 @@ def filters_for(fams):
 
 def _filter_label(fid):
     band = dict(FILTERS)[fid]
-    return "notch only" if band is None else "%g-%g Hz" % band
+    if band is None:
+        return "notch only"
+    if band[1] is None:
+        return "above %g Hz" % band[0]
+    return "%g-%g Hz" % band
+
+
+def _filter(x, fs, band):
+    """One of FILTERS on the notched signal: a band-pass, or a high-pass
+    when the band has no top."""
+    if band[1] is not None:
+        return incisor._filtered(x, fs, band)
+    sos = _sig.butter(incisor.DS_ORDER, band[0] / (fs / 2.0), btype="high",
+                      output="sos")
+    return _sig.sosfiltfilt(sos, x, padtype="odd")
+
+
+# THE SPECTROGRAM (Prospector, 2026-11-03: "Spectrogram 1-1000 Hz; Notch 60;
+# alternatives 1-800, 1-2000"). Off the raw signal, not the 1 kHz read,
+# which cannot hold anything above 500 Hz: brought down to SPEC_FS, notched,
+# and taken through complex Morlet wavelets at SPEC_FREQS, fewer cycles at
+# the bottom so a 1 Hz wavelet still fits inside the second read's reach.
+# Four traces per candidate -- its own peak channel, the contacts 8 above
+# and 8 below it, and the shank's mean -- at SPEC_T_MS around the stamp.
+# Each value is log power against the median of this recording's candidates
+# at the same trace, frequency and time: label-free, as every reference
+# here is. The three families are the same read cut at three tops.
+SPEC_FS = 5000.0
+# Log-spaced to 800 Hz, then the two other tops asked for and one between,
+# so each of the three families ends exactly where it was asked to.
+SPEC_FREQS = tuple(float(f) for f in np.geomspace(1.0, 800.0, 22)) \
+    + (1000.0, 1400.0, 2000.0)
+SPEC_CYCLES = tuple(float(c) for c in np.geomspace(2.0, 10.0,
+                                                   len(SPEC_FREQS)))
+SPEC_T_MS = (-200, -100, -50, -25, 0, 25, 50, 100, 200)
+SPEC_TRACES = ("peak", "above", "below", "shank")
+SPEC_TOPS = (("spec800", 800.0), ("spec1000", 1000.0), ("spec2000", 2000.0))
+SPEC_IDS = tuple(s for s, _t in SPEC_TOPS)
+
+
+def _spec_names(top):
+    return ["sp_%s_f%04d_t%+04d" % (tr, int(round(f)), t)
+            for tr in SPEC_TRACES for f in SPEC_FREQS if f <= top * 1.0001
+            for t in SPEC_T_MS]
+
+
+def _morlet_at(x, fs, cols, freqs=SPEC_FREQS, cycles=SPEC_CYCLES):
+    """|wavelet transform|^2 of each row of `x` at sample columns `cols`:
+    an array rows x freqs x len(cols). The signal's transform is taken
+    once; each frequency costs one inverse, sampled and let go, so a span
+    never holds more than one frequency's full-length power."""
+    n = x.shape[1]
+    sd_max = cycles[0] / (2.0 * np.pi * freqs[0])
+    pad = int(np.ceil(4.0 * sd_max * fs))
+    L = 1 << int(np.ceil(np.log2(n + 2 * pad + 1)))
+    X = np.fft.fft(x, L, axis=-1)
+    out = np.full((x.shape[0], len(freqs), len(cols)), np.nan, np.float32)
+    for k, (f, nc) in enumerate(zip(freqs, cycles)):
+        if f >= fs * 0.45:
+            continue
+        sd = nc / (2.0 * np.pi * f)
+        half = int(np.ceil(4.0 * sd * fs))
+        t = np.arange(-half, half + 1) / fs
+        w = np.exp(2j * np.pi * f * t) * np.exp(-t ** 2 / (2.0 * sd ** 2))
+        w /= np.abs(w).sum()
+        y = np.fft.ifft(X * np.fft.fft(w, L)[None, :], axis=-1)
+        y = y[:, half:half + n][:, cols]
+        out[:, k, :] = (y.real ** 2 + y.imag ** 2).astype(np.float32)
+    return out
+
+
+def _spectra(X, ch_fs, anchor, times, out_, channels, badd, rows, spec, RW):
+    """The spectrogram inputs for the candidates of one span, into
+    `out_[i]["spec"]` as log power, traces x freqs x times."""
+    q = max(1, int(round(ch_fs / SPEC_FS)))
+    fs5 = ch_fs / q
+    x = X
+    for step in incisor._factor(q):
+        x = _sig.decimate(x, step, ftype="iir", zero_phase=True, axis=-1)
+    x = braces._notch(x, fs5, spec)
+    x = braces.repair(x, channels, badd)[rows]
+    nr = x.shape[0]
+    x = np.vstack([x, x.mean(axis=0, keepdims=True)])
+    n = x.shape[1]
+    offs = np.array([int(round(t / 1000.0 * fs5)) for t in SPEC_T_MS])
+    want, where = [], {}
+    for i, st in out_.items():
+        j = int(round((times[i] - anchor) * fs5))
+        idx = j + offs
+        if idx[0] < 0 or idx[-1] >= n:
+            continue
+        where[i] = (len(want), int(st["best"]))
+        want.extend(idx.tolist())
+    if not want:
+        return
+    pw = _morlet_at(x, fs5, np.asarray(want))
+    T = len(SPEC_T_MS)
+    for i, (at, b) in where.items():
+        tr = [b, max(0, b - RW["img"]), min(nr - 1, b + RW["img"]), nr]
+        arr = pw[tr][:, :, at:at + T]
+        out_[i]["spec"] = np.log10(arr + 1e-20).astype(np.float32)
 
 
 FAMILIES = [
@@ -261,6 +365,14 @@ FAMILIES = [
      "blurb": "X-ray's depth band, CSD, depth profile, CSD wave and sink "
               "gap, at the peak Braces' rule assigned and at each of the "
               "five largest CSD peaks within 100 ms of the stamp."}
+] + [
+    {"id": sid, "name": "Spectrogram, 1-%d Hz" % int(top),
+     "group": "pictures",
+     "blurb": "Wavelet power from 1 to %d Hz off the raw signal, notched, "
+              "on the candidate's own peak channel, 8 contacts above and "
+              "below it and the shank's mean, from 200 ms before the stamp "
+              "to 200 ms after, against this recording's usual." % int(top)}
+    for sid, top in SPEC_TOPS
 ]
 
 NAMES = {
@@ -312,6 +424,8 @@ for _f, _b in FILTERS:
     NAMES["ftrace_" + _f] = ["fr_%s_%+d" % (_f, k)
                              for k in range(-TRACE_MS, TRACE_MS + 1,
                                             TRACE_STEP_MS)]
+for _s, _top in SPEC_TOPS:
+    NAMES[_s] = _spec_names(_top)
 FAMILY_IDS = [f["id"] for f in FAMILIES]
 
 
@@ -415,8 +529,12 @@ def _picture(sub, a, half):
 def read_physio(session, channels, probe, bad, times,
                 report=None, folder=None, job=None, on_span=None,
                 aibeta=None, workers=1, spacing=None, want_filt=(),
-                want_xray=False):
+                want_xray=False, want_spec=False):
     """The second read. Returns {"fam": {id: array}, "ok": bool array}.
+
+    `want_spec`: the spectrogram families too (SPEC_IDS), off the raw
+    signal. Off unless asked for: it is the costliest thing here after the
+    read itself.
 
     `spacing` is the distance between neighbouring rows of `channels` when
     that is not the probe's own pitch -- every other contact, say. The
@@ -536,7 +654,7 @@ def read_physio(session, channels, probe, bad, times,
             for fid, fb in FILTERS:
                 if fid == "5_100" or fid not in want_filt:
                     continue
-                y = clean if fb is None else incisor._filtered(clean, fs, fb)
+                y = clean if fb is None else _filter(clean, fs, fb)
                 filt[fid] = braces.repair(y, channels, badd)[rows]
         band = braces.repair(band, channels, badd)[rows]
         clean = braces.repair(clean, channels, badd)[rows]
@@ -590,7 +708,11 @@ def read_physio(session, channels, probe, bad, times,
                          float((dseg[good] == 0).mean()) if dseg.shape[1]
                          else np.nan,
                          float((zmax > 20).mean())],
+                "best": best,
             }
+        if want_spec and out_:
+            _spectra(X, ch_fs, anchor, times, out_, channels, badd, rows,
+                     spec, RW)
         del X, dX, x, clean, band, mua, rip, filt
         return out_
 
@@ -825,6 +947,20 @@ def read_physio(session, channels, probe, bad, times,
     if want_xray and aligned:
         _xray(store, have, shift, aligned, btraces, fs, Bk, spec, RW, fam,
               p.spacing)
+    if want_spec:
+        # Against this recording's own candidates, all of them, at the same
+        # trace, frequency and time: the reference sees no label.
+        got_s = [i for i in have if "spec" in store[i]]
+        if got_s:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                med = np.nanmedian(np.stack([store[i]["spec"]
+                                             for i in got_s]), axis=0)
+            for sid, top in SPEC_TOPS:
+                keep = [k for k, f in enumerate(SPEC_FREQS)
+                        if f <= top * 1.0001]
+                for i in got_s:
+                    fam[sid][i] = (store[i]["spec"] - med)[:, keep, :].ravel()
 
     sp_arr = np.array(speeds, float)
     fin = sp_arr[np.isfinite(sp_arr)]
@@ -840,6 +976,9 @@ def read_physio(session, channels, probe, bad, times,
             fam.pop(k, None)
     if not want_xray:
         for k in XR_IDS:
+            fam.pop(k, None)
+    if not want_spec:
+        for k in SPEC_IDS:
             fam.pop(k, None)
     return {"fam": fam, "ok": ok, "missed": int(n_all - ok.sum()),
             "has_video": bool(nvt[0] is not None),

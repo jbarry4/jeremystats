@@ -31,8 +31,8 @@
     "schema": "2026-09-04T15:57:01.804684+00:00",
     "session": "2026-09-04T15:57:01.804684+00:00",
     "start": "2026-09-04T15:57:01.804684+00:00",
-    "updated": "2026-10-23T19:20:50.175179+00:00",
-    "view_state": "2026-10-13T16:42:24.083849+00:00"
+    "updated": "2026-11-04T15:13:12.047966+00:00",
+    "view_state": "2026-11-04T15:13:12.047966+00:00"
   },
   "_keys": {
     "bookmarks": {
@@ -94,11 +94,11 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-10-13T16:22:45.383223+00:00"
+        "2026-10-29T14:22:45.431449+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-10-20T13:46:03.467402+00:00"
+        "2026-11-04T15:01:21.708331+00:00"
       ],
       "lcom549913-e62b": [
         "set",
@@ -107,7 +107,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-23T19:20:50.175179+00:00",
+    "at": "2026-11-04T15:13:12.047966+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -235,7 +235,7 @@
       "scan": "scan_e4c0479cd6"
     },
     "barrylab-d8e8": {
-      "at": "2026-10-13T12:22:45-04:00",
+      "at": "2026-10-29T10:22:45-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
@@ -243,7 +243,7 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-10-20T09:46:03-04:00",
+      "at": "2026-11-04T10:01:21-05:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\PTEN\\M34_ptenblind\\m34s8jun10\\2024-06-10_17-00-07",
@@ -262,9 +262,9 @@
   "session": 8,
   "start": "2024-06-10T17:00:07",
   "updated": {
-    "app_version": "2026.10.23.5",
-    "at": "2026-10-23T15:20:50-04:00",
-    "commit": "be1e2ae4",
+    "app_version": "2026.11.03.2",
+    "at": "2026-11-04T10:13:12-05:00",
+    "commit": "5acf4b4f",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -306,21 +306,22 @@
       61,
       63
     ],
-    "clim": null,
+    "climBy": null,
     "fdefault": null,
     "flock": true,
     "gain": 2.5,
-    "hp": 5,
+    "hp": 0,
     "invert": true,
-    "lp": 100,
+    "lp": 0,
+    "marks_fade": null,
     "marks_view": "show",
     "normalize": "shared",
-    "notch": 60,
+    "notch": 0,
     "probe": "h3",
     "spacing": 50,
-    "span": 1,
+    "span": 8.9304,
     "stft_mode": null,
-    "t0": 1808.486579,
+    "t0": 464.5075136967895,
     "ylim": null
   }
 }
