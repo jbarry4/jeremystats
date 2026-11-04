@@ -7,7 +7,7 @@
     "density": "2026-10-21T17:07:20.712462+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "figure_profile": "2026-10-23T19:05:47.379192+00:00",
-    "gobble": "2026-11-03T18:58:52.196036+00:00",
+    "gobble": "2026-11-03T20:52:21.840661+00:00",
     "lock_hold": "2026-10-28T18:42:51.201738+00:00",
     "lock_trace_band": "2026-10-29T13:02:43.123053+00:00",
     "marks_fade": "2026-10-30T15:26:47.892423+00:00",
@@ -20,7 +20,7 @@
     "spotter_at": "2026-10-22T15:55:55.110663+00:00",
     "spotter_light": "2026-10-16T17:21:44.827873+00:00",
     "support_panels": "2026-10-29T17:30:31.258405+00:00",
-    "updated": "2026-11-04T15:49:08.002040+00:00",
+    "updated": "2026-11-04T19:30:22.477878+00:00",
     "vacc_signed_ack": "2026-10-20T16:14:37.060022+00:00",
     "xf_chan_column": "2026-10-29T17:32:06.632090+00:00",
     "xf_overview_aid": "2026-10-22T17:56:53.803893+00:00",
@@ -81,7 +81,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-11-03T15:26:34.605191+00:00"
+        "2026-11-04T14:42:40.124583+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -119,7 +119,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-11-02T22:06:45.377130+00:00"
+        "2026-11-04T14:42:29.189225+00:00"
       ],
       "DESKTOP-AH45FAE": [
         "set",
@@ -144,7 +144,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-04T15:49:08.002040+00:00",
+    "at": "2026-11-04T19:30:22.477878+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -571,13 +571,8 @@
   "fav_scripts": [],
   "figure_profile": "nature",
   "gobble": {
-    "BarryLab": {
-      "chosen": true,
-      "from": "horizon-night",
-      "year": 2026
-    },
     "DESKTOP-4H65AI7": {
-      "chosen": false,
+      "chosen": true,
       "from": "halloween",
       "year": 2026
     }
@@ -815,7 +810,7 @@
   },
   "themes": {
     "BarryLab": "horizon-night",
-    "DESKTOP-4H65AI7": "thanksgiving",
+    "DESKTOP-4H65AI7": "light",
     "DESKTOP-AH45FAE": "horizon-night",
     "DESKTOP-NR2H5O7": "horizon-night",
     "Home": "dark",
@@ -823,7 +818,7 @@
     "LCOM549913": "halloween",
     "ip0af50ae7.int.uvm.edu": "halloween"
   },
-  "updated": "2026-11-04T10:49:08-05:00",
+  "updated": "2026-11-04T14:30:22-05:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": true,
