@@ -29,6 +29,10 @@
   },
   "_keys": {
     "versions": {
+      "6e60c8502111": [
+        "set",
+        "2026-11-04T20:13:50.162160+00:00"
+      ],
       "ce266646e381": [
         "set",
         "2026-11-04T19:35:06.477522+00:00"
@@ -36,7 +40,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-04T19:35:06.477522+00:00",
+    "at": "2026-11-04T20:13:50.162160+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -7562,6 +7566,20 @@
         ]
       ],
       "tag": "junction",
+      "v": 0
+    },
+    {
+      "at": "2026-11-04T15:12:46-05:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 861
+      },
+      "id": "6e60c8502111",
+      "imported": true,
+      "machine": "DESKTOP-4H65AI7",
+      "n": 861,
+      "note": "Imported from The Confluence: Junction (Incisor + Doppler, 20 ms). 861 candidates, none decided yet.",
+      "snap_elsewhere": true,
       "v": 0
     }
   ]
