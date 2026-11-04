@@ -142,6 +142,16 @@ BARRY.doppler = (function () {
   let landedAll = false; // the whole landed list, not the latest few
   let revealNext = false;        // the next report drawn plays its reveal
   let pickRev = 0;       // bumps when ticks change in bulk
+  /* Each Many row's channels: the same control Incisor's Many list uses
+     (BARRY.ui.rowChannels, chanpick.js). A change marks the recording's
+     bad channels -- which Doppler's batch already leaves out of every
+     recording it sends -- and re-plans. */
+  const rowChans = BARRY.ui.rowChannels({
+    estimate: (path) => apiPost('/api/doppler/estimate',
+                                Object.assign({ path }, paramsBody())),
+    repaint: () => { pickRev++; paint(); },
+    changed: () => loadVaccList(),
+  });
   let editorOpen = false;
   /* Settings stays open across a repaint. Every change to it re-estimates
      and repaints, and `paint()` rebuilds the panel -- so a `<details>` that
@@ -582,6 +592,19 @@ BARRY.doppler = (function () {
     paint();
   }
 
+  /* A quick pick, a range or a drag in the picker: everything readable
+     that is not picked is left out of this run. */
+  function setExclude(all, onNums) {
+    const keep = new Set(onNums.map(Number));
+    q.exclude = all.map((c) => Number(c.number))
+      .filter((n) => !keep.has(n) && !all.find((c) => Number(c.number) === n
+                                               && c.bad));
+    q.preset = q.exclude.length ? 'custom' : 'all';
+    reset();
+    refreshEstimate().then(paint);
+    paint();
+  }
+
   function excludeEditor(all) {
     const out = new Set(q.exclude);
     const bad = new Set(all.filter((c) => c.bad).map((c) => Number(c.number)));
@@ -608,32 +631,22 @@ BARRY.doppler = (function () {
     }
     wrap.appendChild(segBox);
 
-    const grid = el('div', { class: 'inc-chan-grid' });
     const rng = chRange();
-    for (const c of all) {
-      const n = Number(c.number);
-      const isBad = bad.has(n);
-      // Outside the channel range: not read whatever is ticked here.
-      const beyond = !!rng && (n < rng[0] || n > rng[1]);
-      grid.appendChild(el('label', {
-        class: 'inc-chan' + (isBad ? ' bad' : '') + (out.has(n) ? ' off' : '')
-               + (beyond ? ' beyond' : ''),
-        title: beyond ? c.label + ' is outside ' + rangeWords(rng)
-                        + ', so it is not read'
-          : isBad ? c.label + ' is marked bad, so it is not read anyway'
-          : (out.has(n) ? c.label + ' is left out of this run'
-                        : c.label + ' is read in this run'),
-      }, [
-        el('input', {
-          type: 'checkbox',
-          checked: (!isBad && !out.has(n) && !beyond) ? 'checked' : null,
-          disabled: (isBad || beyond) ? 'disabled' : null,
-          onchange: () => toggleExclude(n),
-        }),
-        el('span', { text: c.label }),
-      ]));
-    }
-    wrap.appendChild(grid);
+    // Outside the channel range: not read whatever is picked here.
+    const beyond = (c) => !!rng && (Number(c.number) < rng[0]
+                                    || Number(c.number) > rng[1]);
+    wrap.appendChild(BARRY.ui.channelPicker({
+      mode: 'pick', channels: all,
+      on: all.filter((c) => !bad.has(Number(c.number))
+                            && !out.has(Number(c.number)) && !beyond(c))
+             .map((c) => Number(c.number)),
+      locked: (c) => (beyond(c) ? 'outside ' + rangeWords(rng)
+                                  + ', so it is not read' : null),
+      // The presets above are this run's quick picks.
+      actions: ['invert', 'banks'],
+      onToggle: (n) => toggleExclude(n),
+      onSet: (onNums) => setExclude(all, onNums),
+    }));
 
     const left = all.filter((c) => out.has(Number(c.number))
                                    && !bad.has(Number(c.number)));
@@ -665,35 +678,23 @@ BARRY.doppler = (function () {
     }, [
       el('summary', { text: 'Add or remove channels, and run again' }),
       el('p', { class: 'hint quiet', style: 'max-width:74ch',
-        text: 'Unticking a channel marks it bad for this recording '
+        text: 'Taking a channel out marks it bad for this recording '
             + 'everywhere. Changing it discards the run on purpose: every '
             + 'event came out of reading a particular set of channels, and '
             + 'a result sitting under a selection it no longer matches is '
             + 'the kind of thing that gets banked by mistake.' }),
     ]);
-    const grid = el('div', { class: 'inc-chan-grid' });
-    for (const c of all) {
-      grid.appendChild(el('label', {
-        class: 'inc-chan' + (c.bad ? ' bad' : ''),
-        title: c.bad ? c.label + ' is marked bad and is not read'
-                     : c.label + ' is read',
-      }, [
-        el('input', {
-          type: 'checkbox', checked: c.bad ? null : 'checked',
-          disabled: savingBad ? 'disabled' : null,
-          onchange: (e) => setBad(c.number, !e.target.checked),
-        }),
-        el('span', { text: c.label }),
-      ]));
-    }
-    d.appendChild(grid);
-    d.appendChild(el('div', { class: 'tk-actions dop-actions' }, [
-      el('button', { class: 'btn ghost sm', text: 'Put them all back',
-        disabled: (savingBad || !bad.length) ? 'disabled' : null,
-        onclick: () => setBadSet([]) }),
-      savingBad ? el('span', { class: 'hint quiet', text: 'Saving…' })
-                : null,
-    ].filter(Boolean)));
+    d.appendChild(BARRY.ui.channelPicker({
+      mode: 'bad', channels: all, busy: savingBad,
+      onToggle: (number, on) => setBad(number, !on),
+      onSet: (onNums) => {
+        const keep = new Set(onNums);
+        setBadSet(all.map((c) => Number(c.number))
+                     .filter((n) => !keep.has(n)));
+      },
+      reset: bad.length ? { text: 'Put them all back',
+                            onclick: () => setBadSet([]) } : null,
+    }));
     return d;
   }
 
@@ -2529,22 +2530,6 @@ BARRY.doppler = (function () {
       .every((w) => hay.includes(w));
   }
 
-  function rowSub(r) {
-    const bad = r.bad_channels || [];
-    // The folder itself, because a recording's id can hold several: a DEWEY
-    // day is one id across FP1, SPC and FP2, and this is the one that runs.
-    const folder = String(r.remote || '').split('/').filter(Boolean)
-      .slice(-2).join('/');
-    return (r.state === 'native' ? 'netfiles, read in place'
-                                 : 'a copy in VACC scratch')
-      + (folder ? ' · ' + folder : '')
-      + ' · ' + (r.n_channels ? r.n_channels + ' channels'
-                              : 'channels read on the cluster')
-      + (r.duration_s ? ' · ' + Math.round(r.duration_s / 60) + ' min' : '')
-      + (bad.length ? ' · ' + bad.length + ' marked bad' : '')
-      + (r.here ? ' · also on this computer' : '');
-  }
-
   function human(sec) {
     const s_ = Math.max(0, Math.round(sec || 0));
     if (s_ < 90) return s_ + ' s';
@@ -2573,14 +2558,8 @@ BARRY.doppler = (function () {
       return box;
     }
     const todo = vaccList.todo || [];
-    const nNative = todo.filter((r) => r.state === 'native').length;
     box.appendChild(el('p', { class: 'hint', style: 'max-width:80ch',
-      text: todo.length.toLocaleString() + ' recordings are VACC loaded: '
-          + nNative.toLocaleString() + ' on the lab’s netfiles share, read '
-          + 'in place, and ' + (todo.length - nNative).toLocaleString()
-          + ' as copies in scratch. Whether this computer has them does '
-          + 'not matter: the run happens where the data is and comes back '
-          + 'here. Ones already run with these settings are marked.' }));
+      text: BARRY.ui.manySentence(todo, 'run') }));
 
     const search = el('input', {
       type: 'search', class: 'inc-search', value: vaccFilter,
@@ -2661,14 +2640,16 @@ BARRY.doppler = (function () {
         }),
         el('div', { class: 'ip-main' }, [
           el('span', { class: 'ip-name', text: r.label }),
-          el('span', { class: 'ip-sub', text: rowSub(r) }),
+          el('span', { class: 'ip-sub', text: BARRY.ui.manyRowSub(r) }),
         ]),
         // THE cluster mark (§6c): one renderer, never a chip of its own.
         BARRY.vacc.mark({ gid: r.gid }, { compact: true }) || el('span', {}),
         el('span', { class: 'ip-done',
                      text: r.answered ? 'already run' : '' }),
+        rowChans.button(r),
       ]);
       list.appendChild(row);
+      if (rowChans.isOpen(r)) list.appendChild(rowChans.editor(r));
     }
     return list;
   }

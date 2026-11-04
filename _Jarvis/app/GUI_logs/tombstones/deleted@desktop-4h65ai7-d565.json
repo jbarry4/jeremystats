@@ -3720,6 +3720,10 @@
         "set",
         "2026-09-16T16:07:10.294257+00:00"
       ],
+      "session:s3179c8e426bf": [
+        "set",
+        "2026-11-04T21:09:54.336276+00:00"
+      ],
       "session:s32906df1b16c": [
         "set",
         "2026-09-25T14:32:01.027157+00:00"
@@ -4291,6 +4295,10 @@
       "session:s8d75aa88ad83": [
         "set",
         "2026-11-03T20:55:22.812107+00:00"
+      ],
+      "session:s8d796a6c7d55": [
+        "set",
+        "2026-11-04T21:07:53.315483+00:00"
       ],
       "session:s8da54a731877": [
         "set",
@@ -5047,7 +5055,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-04T20:49:55.642989+00:00",
+    "at": "2026-11-04T21:09:54.336276+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -12719,6 +12727,14 @@
       "synced": true,
       "synced_at": "2026-09-16T12:07:10-0400"
     },
+    "session:s3179c8e426bf": {
+      "at": "2026-11-04T16:09:54-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s3179c8e426bf",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": false
+    },
     "session:s32906df1b16c": {
       "at": "2026-09-25T10:31:57-0400",
       "by": "desktop-4h65ai7-d565",
@@ -13975,6 +13991,14 @@
       "note": "forgotten: every folder is headers only",
       "synced": true,
       "synced_at": "2026-11-03T15:55:22-0500"
+    },
+    "session:s8d796a6c7d55": {
+      "at": "2026-11-04T16:07:53-0500",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s8d796a6c7d55",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": false
     },
     "session:s8da54a731877": {
       "at": "2026-09-14T12:40:29-0400",

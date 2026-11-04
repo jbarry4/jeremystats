@@ -1295,51 +1295,26 @@ function makeBraces(cfg) {
     if (q.channels == null) {
       q.channels = all.filter((c) => !c.bad).map((c) => c.number);
     }
-    const on = new Set(q.channels);
-    const nBad = all.filter((c) => c.bad).length;
-
+    /* The shared picker (chanpick.js), in place (2026-10-14): a change
+       updates the tiles, the count and the plan's "Measured on" line, and
+       nothing else -- a redraw of the panel for one tick is how the page
+       lost its place. */
     const box = el('div', { class: 'br-chans' });
-    const countLine = () => q.channels.length + ' of ' + all.length
-      + (nBad ? '  ·  ' + nBad + ' marked bad, unticked' : '');
-    const count = el('span', { class: 'br-hint', text: countLine() });
-    box.appendChild(el('div', { class: 'br-chans-head' }, [
-      el('label', { text: 'Channels in the average' }),
-      count,
-      el('div', { style: 'flex:1' }),
-      el('button', { class: 'btn ghost sm', text: 'All',
-        onclick: () => { q.channels = all.map((c) => c.number); render(); } }),
-      el('button', { class: 'btn ghost sm', text: 'Good ones',
-        onclick: () => { q.channels = all.filter((c) => !c.bad)
-                                          .map((c) => c.number);
-                         render(); } }),
-    ]));
-    const grid = el('div', { class: 'br-chan-grid' });
-    for (const c of all) {
-      const id = 'brCh' + c.number;
-      grid.appendChild(el('label', {
-        class: 'br-chan' + (c.bad ? ' bad' : '') + (on.has(c.number) ? ' on' : ''),
-        title: c.bad ? 'Marked bad on this recording' : (c.label || ''),
-      }, [
-        el('input', {
-          type: 'checkbox', id: id,
-          checked: on.has(c.number) ? 'checked' : null,
-          /* In place (2026-10-14): the box, the count over the grid and
-             the plan's "Measured on" line, and nothing else -- a redraw
-             of the panel for one tick is how the page lost its place. */
-          onchange: (e) => {
-            const next = new Set(q.channels);
-            if (e.target.checked) next.add(c.number); else next.delete(c.number);
-            q.channels = [...next].sort((a2, b2) => a2 - b2);
-            e.target.closest('.br-chan').classList.toggle('on', e.target.checked);
-            count.textContent = countLine();
-            const mo = document.querySelector('.br-plan .br-measured');
-            if (mo) mo.textContent = measuredOn();
-          },
-        }),
-        el('span', { text: String(c.number) }),
-      ]));
-    }
-    box.appendChild(grid);
+    const setTo = (nums) => {
+      q.channels = nums.map(Number).sort((a2, b2) => a2 - b2);
+      const mo = document.querySelector('.br-plan .br-measured');
+      if (mo) mo.textContent = measuredOn();
+    };
+    box.appendChild(BARRY.ui.channelPicker({
+      mode: 'pick', channels: all, on: q.channels,
+      title: 'Channels in the average',
+      onToggle: (n, isOn) => {
+        const next = new Set(q.channels);
+        if (isOn) next.add(Number(n)); else next.delete(Number(n));
+        setTo([...next]);
+      },
+      onSet: (nums) => setTo(nums),
+    }));
     return box;
   }
 

@@ -19,6 +19,30 @@ Two card layouts are handled:
 Every card is checked against its own '# Animals' count; mismatches are
 written to the debug log instead of failing silently.
 
+Every warning carries a KIND as well as its words (class Warn), and each
+record lists them in '_issues', so Jarvis (backend/vos.py) can sort them into
+"Cage card naming issue", "Cage card count issue" and so on, rather than
+pattern-matching sentences. The CSV is unchanged.
+
+WHY THE NOVEMBER 2026 CHANGES WERE MADE (the 110326 export)
+  * A father was read as a pup. CC-30797-2's notes say 'parents 1607(M)) x
+    579(F)'; the stray ')' stopped the cross matching, so male 1607 became a
+    fourth mouse in a female cage of three. Now doubled brackets are tidied
+    before looking for the parents (tidy_parens), any line starting
+    'parents' is the parents and never a mouse, a parent turning up as a
+    mouse in its own cage is flagged, and a tidied line is reported as a
+    'typo' so the card can be fixed in VOS.
+  * The PACAP cages were undercounted. CC-28180-4, CC-29184-5 and CC-31516-1
+    (PACAP-IRES-Cre) really have empty notes -- no hidden text in the PDF --
+    and each gave one 'ID 0' row for cages of 2, 3 and 1. Now one blank-tag
+    row per declared mouse, flagged 'untagged'. They are not KCNT1 mice:
+    Jarvis skips them for the KCNT1 sheet.
+  * Mouse 1631 is on two cages, CC-31016-1 and CC-31017-1: split cages made a
+    minute apart on 10/7, so one is probably a typo in VOS. The parser cannot
+    tell which, so both are flagged 'dup_tag', and every report is now checked
+    for a tag on more than one card. Jarvis leaves such a mouse's row in the
+    sheet as it is until VOS is fixed.
+
 Usage:
     python VOS_report_parser.py                        # newest 'VOS Report *.pdf' beside this script
     python VOS_report_parser.py "VOS Report 110326.pdf"
@@ -76,6 +100,21 @@ RE_PARENS     = re.compile(r'\([^)]*(?:\)|$)')
 RE_ID         = re.compile(r'\b(\d{3,4})\b')
 
 SEX_NORMAL = {'M': 'MALE', 'MALE': 'MALE', 'F': 'FEMALE', 'FEMALE': 'FEMALE'}
+
+
+class Warn(str):
+    """A warning's words, plus what kind of problem it is.
+
+    A str, so every '; '.join and print that used plain strings still works.
+    Kinds: untagged (no mouse IDs on the card), count (IDs found != # Animals),
+    dup_tag (one tag on two cards), parent_in_cage, typo (notes needed tidying
+    to read), card_missing (a field the card should have), assumed.
+    """
+
+    def __new__(cls, kind, text):
+        obj = super().__new__(cls, text)
+        obj.kind = kind
+        return obj
 
 
 # --- CARD EXTRACTION -------------------------------------------------------
@@ -187,7 +226,7 @@ def extract_census_animals(notes, warn):
         if tag is not None:
             animals.append({'tag': tag, 'prev': prev, 'sex': '', 'dob': '', 'strain': ''})
     if not animals:
-        warn.append('no animal IDs found in notes')
+        warn.append(Warn('untagged', 'no animal IDs found in notes'))
     return animals
 
 
@@ -217,7 +256,7 @@ def extract_breeder_animals(card_text, notes, m_dob, f_dob, warn):
             if tag:
                 add(side, tag)
             else:
-                warn.append(f'breeder card missing {side} Strain (ID) number')
+                warn.append(Warn('card_missing', f'breeder card missing {side} Strain (ID) number'))
         # Recover a renamed parent from the notes cross, e.g. '1607(M)(previously 586)'.
         cm = find_cross(notes)
         if cm:
@@ -234,7 +273,7 @@ def extract_breeder_animals(card_text, notes, m_dob, f_dob, warn):
         left_sex = (cm.group('msex') or 'M').upper()
         right_sex = (cm.group('fsex') or 'F').upper()
         if not cm.group('msex') and not cm.group('fsex'):
-            warn.append('cross has no (M)/(F) markers; assumed male x female')
+            warn.append(Warn('assumed', 'cross has no (M)/(F) markers; assumed male x female'))
         add(left_sex, cm.group('m'), cm.group('mprev') or '')
         add(right_sex, cm.group('f'), cm.group('fprev') or '')
         return animals
@@ -248,7 +287,7 @@ def extract_breeder_animals(card_text, notes, m_dob, f_dob, warn):
             animals.append({'tag': tag, 'prev': prev, 'sex': '',
                             'dob': m_dob or f_dob, 'strain': ''})
     if not animals:
-        warn.append('breeder card yielded no animal IDs')
+        warn.append(Warn('untagged', 'breeder card yielded no animal IDs'))
     return animals
 
 
@@ -274,7 +313,15 @@ def parse_card(card_text, page_num, position):
     notes = get_notes(card_text)
 
     if not cage:
-        warn.append('no cage card number found')
+        warn.append(Warn('card_missing', 'no cage card number found'))
+
+    # Read correctly either way (tidy_parens), but the card itself still says
+    # it wrong, so it is worth fixing in VOS: '1607(M)) x 579(F)', 110326.
+    for line in notes.split('\n'):
+        tidy = tidy_parens(line)
+        if tidy != line:
+            warn.append(Warn('typo', f"notes say '{line.strip()}' (doubled bracket); "
+                                     f"read as '{tidy.strip()}'"))
 
     card_dob = card_sex = card_strain = ''
     m_dob = f_dob = ''
@@ -299,9 +346,9 @@ def parse_card(card_text, page_num, position):
         sx = RE_SEX.search(card_text)
         card_sex = sx.group(1) if sx else ''
         if not card_sex:
-            warn.append('census card has no Sex')
+            warn.append(Warn('card_missing', 'census card has no Sex'))
         if not card_dob:
-            warn.append('census card has no DOB')
+            warn.append(Warn('card_missing', 'census card has no DOB'))
 
     if is_breeder:
         animals = extract_breeder_animals(card_text, notes, m_dob, f_dob, warn)
@@ -313,12 +360,12 @@ def parse_card(card_text, page_num, position):
             parent_ids = {cm.group('m'), cm.group('f')}
             for a in animals:
                 if a['tag'] in parent_ids:
-                    warn.append(f'animal {a["tag"]} is also a parent in the cross line')
+                    warn.append(Warn('parent_in_cage', f'animal {a["tag"]} is also a parent in the cross line'))
 
     declared = int(declared_match.group(1)) if declared_match else None
     n_ids = len(animals)
     if declared is not None and declared != n_ids:
-        warn.append(f'found {n_ids} IDs but card declares # Animals {declared}')
+        warn.append(Warn('count', f'found {n_ids} IDs but card declares # Animals {declared}'))
 
     # Notes with no IDs at all (e.g. the PACAP cages): the mice are real but
     # untagged in VOS, so emit one blank-tag row per declared animal rather
@@ -326,7 +373,7 @@ def parse_card(card_text, page_num, position):
     if not animals and declared:
         animals = [{'tag': '', 'prev': '', 'sex': '', 'dob': '', 'strain': ''}
                    for _ in range(declared)]
-        warn.append(f'{declared} untagged row(s) added -- card lists no mouse IDs')
+        warn.append(Warn('untagged', f'{declared} untagged row(s) added -- card lists no mouse IDs'))
 
     base = {
         'Card Type': 'BREEDER' if is_breeder else 'CENSUS',
@@ -348,6 +395,8 @@ def parse_card(card_text, page_num, position):
                                        else ('YES' if declared == n_ids else 'NO')),
         'Parse Warnings': '; '.join(warn),
         'Raw Card Text': flat,
+        # Not a CSV column: the same warnings, with their kinds (class Warn).
+        '_issues': [(getattr(w, 'kind', 'other'), str(w)) for w in warn],
     }
 
     if not animals:
@@ -448,6 +497,8 @@ def parse_pdf(pdf_path, debug_dir=None):
             others = ', '.join(c for c in cages if c != r['Cage Card']) or r['Cage Card']
             w = f'tag {r["Mouse Tag"]} also appears on {others}'
             r['Parse Warnings'] = '; '.join(x for x in (r['Parse Warnings'], w) if x)
+            # A new list: the rows of one card share their card's list.
+            r['_issues'] = r.get('_issues', []) + [('dup_tag', w)]
             log.append(f'[WARN] page {r["Source Page"]} card {r["Position on Page"]} '
                        f'({r["Cage Card"]}): {w}')
 

@@ -150,6 +150,51 @@ def main():
               old.get("ok") and old["stats"].get("merged") == 1
               and old["params"]["ds_version"] == "0", old)
 
+        # Two machines both minted the next number (m1609 s1, 2026-11-04):
+        # the page names the second one by `label_rows`, and Many at once
+        # sends that NAME back. It has to find the version the page showed,
+        # not a stored number nobody was shown.
+        print("\na version number two machines both minted")
+        ent = A.BANK.get(ds["id"])
+        v1 = [v for v in ent["versions"] if v.get("v") == 1][0]
+        twin = dict(v1, id="zz-second-v1", by="other machine",
+                    at="2099-01-01T00:00:00+00:00", snap=v0.get("snap"))
+        real_get = A.BANK.get
+        A.BANK.get = lambda eid: (dict(real_get(eid), versions=list(
+            real_get(eid)["versions"]) + [twin])
+            if eid == ds["id"] else real_get(eid))
+        try:
+            named = A.versionsmod.label_rows(
+                A.BANK.repaired(A.BANK.get(ds["id"]))["versions"])
+            shown = {v.get("id"): n for v, n in named}
+            twin_name = shown.get("zz-second-v1")
+            check("the page is shown the twin under a name of its own",
+                  twin_name not in (None, shown.get(v1.get("id"))), shown)
+            by_name = cli.post("/api/confluence/plan", json=dict(
+                body, ds_version=twin_name)).get_json()
+            check("asked by that name, the twin is pooled (its own events)",
+                  by_name.get("ok") and by_name["stats"].get("merged") == 1,
+                  by_name)
+            by_id = cli.post("/api/confluence/plan", json=dict(
+                body, ds_version="zz-second-v1")).get_json()
+            check("asked by its id, the same",
+                  by_id.get("ok") and by_id["stats"].get("merged") == 1, by_id)
+            first = cli.post("/api/confluence/plan", json=dict(
+                body, ds_version=shown.get(v1.get("id")))).get_json()
+            check("and the first one's name still finds the first one",
+                  first.get("ok") and first["stats"].get("merged") == 2, first)
+            check("the pool records the name the page showed",
+                  by_name["params"]["ds_version"] == twin_name,
+                  by_name.get("params"))
+            nope = cli.post("/api/confluence/plan", json=dict(
+                body, ds_version="v9"))
+            check("a version nobody has is refused, naming the ones there are",
+                  nope.status_code == 400 and "Its versions are"
+                  in (nope.get_json() or {}).get("error", ""),
+                  nope.get_json())
+        finally:
+            A.BANK.get = real_get
+
         bad = cli.post("/api/confluence/plan",
                        json={"gid": "g1", "ds_entry": ds3["id"],
                              "ied_entry": ied["id"]})

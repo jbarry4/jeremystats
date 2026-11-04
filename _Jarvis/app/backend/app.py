@@ -18204,7 +18204,13 @@ def _cf_entry_row(rec):
     try:
         named = versionsmod.label_rows(BANK.repaired(rec).get("versions")
                                        or [])
+        # Which ones can be read back here: a version with no snapshot can
+        # only be pooled when it is the newest (its events are the entry's
+        # own), so the tree offers exactly what `_cf_version_events` takes.
+        top = max([v.get("v") or 0 for v, _n in named] or [0])
         row["versions"] = [{"name": nm, "id": v.get("id"), "n": v.get("n"),
+                            "has_snap": bool(v.get("snap"))
+                                        or (v.get("v") or 0) == top,
                             "at": v.get("at"), "by": v.get("by"),
                             "note": v.get("note"),
                             "from_v": v.get("from_v"),
@@ -25993,6 +25999,11 @@ GUIDES = guidesmod.Guides(LOGS_DIR, STORE)
 # recording a figure, versions kept frozen. Its routes live in figroutes.py.
 from . import figroutes as figroutesmod                       # noqa: E402
 FIGURES = figroutesmod.install(app, sys.modules[__name__])
+
+# VOS census -> the Lab Operations Schedule (Misc > VOS log in). Its session,
+# its Chrome and its routes live in vos.py.
+from . import vos as vosmod                                   # noqa: E402
+vosmod.install(app, fail)
 
 # X-ray's vault: one record per (recording, question), and the read cached
 # beside it.

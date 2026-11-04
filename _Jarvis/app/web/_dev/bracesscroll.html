@@ -179,50 +179,50 @@ async function until(fn, ms, what) {
                      === (c.name || c.id));
       if (!(await until(optQ, 4000, 'its card in the menu'))) continue;
       optQ().click();
-      await until(() => D().querySelector('.br-chan-grid')
+      await until(() => D().querySelector('.br-chans .chp-grid')
                         || (ev(BR + '._state().plan') || {}).ok === false, 45000, 'its plan');
-      grid = D().querySelector('.br-chan-grid');
+      grid = D().querySelector('.br-chans .chp-grid');
       if (grid) { say('       on ' + (c.session_label || c.name), 'dim'); break; }
     }
     if (!grid) {
       ok('a set whose plan can be read here, for the grid', false, 'none of the first six');
     } else {
-      const chans = () => [...D().querySelectorAll('.br-chan-grid .br-chan')];
+      const chans = () => [...D().querySelectorAll('.br-chans .chp-t')];
       const pick = chans().find((l) => !l.classList.contains('bad')
                                        && l.classList.contains('on'))
                    || chans()[0];
-      const num = Number(pick.querySelector('span').textContent);
+      const num = Number(pick.dataset.ch);
       const sc = bringDown(pick);
       await sleep(100);
       const before = sc.scrollTop;
       ok('precondition: the panel is scrolled down to the grid',
          before > 100, 'scrollTop ' + before);
       const had = (ev(BR + '._state().q.channels') || []).length;
-      pick.querySelector('input').click();
+      pick.click();
       await sleep(250);
-      const sc2 = scroller(D().querySelector('.br-chan-grid'));
+      const sc2 = scroller(D().querySelector('.br-chans .chp-grid'));
       ok('unticking a channel leaves the panel where it was',
          Math.abs(sc2.scrollTop - before) <= 2,
          'was ' + before + ', now ' + sc2.scrollTop);
       const nowC = ev(BR + '._state().q.channels') || [];
       ok('and the channel is out of the average', nowC.length === had - 1
          && nowC.indexOf(num) < 0, had + ' -> ' + nowC.length);
-      const lab = chans().find((l) => Number(l.querySelector('span').textContent) === num);
-      ok('and its box says so', !!lab && !lab.classList.contains('on')
-         && !lab.querySelector('input').checked);
+      const lab = chans().find((l) => Number(l.dataset.ch) === num);
+      ok('and its tile says so', !!lab && !lab.classList.contains('on')
+         && lab.getAttribute('aria-checked') === 'false');
       ok('and the count over the grid says one fewer',
          new RegExp('^' + (had - 1) + ' of ').test(
-           (D().querySelector('.br-chans .br-chans-head .br-hint') || {}).textContent || ''),
-         (D().querySelector('.br-chans .br-chans-head .br-hint') || {}).textContent);
+           (D().querySelector('.br-chans .chp-count') || {}).textContent || ''),
+         (D().querySelector('.br-chans .chp-count') || {}).textContent);
       ok('and "What it will read" counts one fewer',
          new RegExp((had - 1) + ' channels, averaged').test(
            (D().querySelector('.br-plan') || {}).textContent || ''));
       const at2 = sc2.scrollTop;
-      lab.querySelector('input').click();
+      lab.click();
       await sleep(250);
       ok('ticking it back leaves the panel where it was too',
-         Math.abs(scroller(D().querySelector('.br-chan-grid')).scrollTop - at2) <= 2,
-         'was ' + at2 + ', now ' + scroller(D().querySelector('.br-chan-grid')).scrollTop);
+         Math.abs(scroller(D().querySelector('.br-chans .chp-grid')).scrollTop - at2) <= 2,
+         'was ' + at2 + ', now ' + scroller(D().querySelector('.br-chans .chp-grid')).scrollTop);
       ok('and it is back in', (ev(BR + '._state().q.channels') || []).length === had);
     }
   } catch (err) {

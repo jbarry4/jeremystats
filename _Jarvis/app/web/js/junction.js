@@ -1213,6 +1213,17 @@ BARRY.junction = (function () {
     if (batch) h.appendChild(batchSummary());
   }
 
+  /* A side's count, said with its unit and kept beside its own version.
+     Pushed to the far edge of its column it sat against the NEXT column --
+     Incisor's beside Doppler's version, Doppler's beside the merge -- and
+     read as "no Incisor events, and Doppler's count is what gets merged"
+     (2026-11-04). */
+  function countOf(ent) {
+    return el('b', { class: 'jn-mcount',
+      title: num(ent.n) + ' events in this entry as it stands',
+      text: num(ent.n) + ' events' });
+  }
+
   function manyRow(r) {
     const d = defaultsFor(r);
     const done = pooledDefault(r);
@@ -1238,21 +1249,24 @@ BARRY.junction = (function () {
         el('span', { text: (d.ds.name || d.ds.id) }),
         manyVerPick(r, 'ds'),
         alignWord(d.ds),
-        el('b', { text: num(d.ds.n) }),
+        countOf(d.ds),
       ]),
       el('span', { class: 'jn-mside d' }, [
         el('i', { class: 'jn-dot d' }),
         el('span', { text: (d.ied.name || d.ied.id) }),
         manyVerPick(r, 'ied'),
         alignWord(d.ied),
-        el('b', { text: num(d.ied.n) }),
+        countOf(d.ied),
       ]),
       el('canvas', { class: 'jn-mflow', width: 64, height: 26 }),
       el('span', { class: 'jn-mres' }, res ? resultBits(res, r)
         : [done ? BARRY.ui.chip('pooled already', { flag: true, kind: 'ok' })
                 : el('span', { class: 'hint quiet', text: '' })]),
     ]);
-    requestAnimationFrame(() => drawMini(row.querySelector('.jn-mflow'), res ? 1 : 0));
+    /* Filled only for a pool that landed. A refused row drawn with its
+       strands joined read as "refused, but still pooled" (2026-11-04). */
+    requestAnimationFrame(() => drawMini(row.querySelector('.jn-mflow'),
+                                         res && res.ok ? 1 : 0));
     return row;
   }
 
@@ -1404,10 +1418,18 @@ BARRY.junction = (function () {
     const items = rows.map((r) => {
       const d = defaultsFor(r);
       const it = { gid: r.gid, ds_entry: d.ds.id, ied_entry: d.ied.id };
-      // A version chosen on the row; the newest otherwise.
+      /* A version chosen on the row, sent by its ID; the newest otherwise.
+         The row holds the version's NAME, which is what it shows, and the
+         name was what used to be sent -- read by the server as the stored
+         number, which two machines can both have minted. So the row said
+         "v3" and the server said there was no version 3 (2026-11-04). */
       const m = q.manyV[r.gid] || {};
-      if (m.ds) it.ds_version = m.ds;
-      if (m.ied) it.ied_version = m.ied;
+      for (const side of ['ds', 'ied']) {
+        if (!m[side]) continue;
+        const v = (d[side].versions || []).find(
+          (x) => String(x.name) === String(m[side]));
+        it[side + '_version'] = v && v.id ? v.id : m[side];
+      }
       return it;
     });
     sfx('charge', Math.min(4, 0.9 + rows.length * 0.12));
@@ -1443,7 +1465,8 @@ BARRY.junction = (function () {
                                   + (st.doppler_only || 0), { ms: 520 });
           }
         }
-        pulseMini(rowEl.querySelector('.jn-mflow'));
+        if (res.ok) pulseMini(rowEl.querySelector('.jn-mflow'));
+        else drawMini(rowEl.querySelector('.jn-mflow'), 0);
         if (res.ok && !res.cached) sfx('tick', k % 8);
       };
       if (step) setTimeout(land, k * step); else land();
