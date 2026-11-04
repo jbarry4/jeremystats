@@ -1,0 +1,71 @@
+{
+  "_at": {
+    "created": "2026-11-02T19:20:48.491025+00:00",
+    "gid": "2026-11-02T19:20:48.491025+00:00",
+    "group": "2026-11-02T19:20:53.457824+00:00",
+    "key": "2026-11-02T19:20:53.457824+00:00",
+    "label": "2026-11-02T19:20:53.457824+00:00",
+    "loose_key": "2026-11-02T19:20:53.457824+00:00",
+    "mouse": "2026-11-02T19:20:53.457824+00:00",
+    "project": "2026-11-02T19:20:53.457824+00:00",
+    "project_source": "2026-11-02T19:20:53.457824+00:00",
+    "retired": "2026-11-03T20:57:45.886867+00:00",
+    "schema": "2026-11-02T19:20:53.457824+00:00",
+    "session": "2026-11-02T19:20:53.457824+00:00",
+    "start": "2026-11-02T19:20:53.457824+00:00",
+    "updated": "2026-11-03T20:57:45.886867+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'25\\kcnt1_486\\m486s8aug6\\2026-03-06_09-50-49": [
+        "set",
+        "2026-11-02T19:22:45.053979+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'25\\kcnt1_486\\m486s8aug6\\2026-03-06_11-00-27": [
+        "set",
+        "2026-11-02T19:22:45.053979+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-03T20:57:45.886867+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.11.02.1",
+    "at": "2026-11-02T14:20:48-05:00",
+    "commit": "d2dc07e7",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s264668e9ec3d",
+  "group": null,
+  "key": "m486_s008_2026-03-06_09-51-06",
+  "label": "KCNT1 m486 s8 2026-03-06",
+  "loose_key": "m486_s008",
+  "mouse": 486,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'25\\kcnt1_486\\m486s8aug6\\2026-03-06_09-50-49",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'25\\kcnt1_486\\m486s8aug6\\2026-03-06_11-00-27"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": true,
+  "schema": 1,
+  "session": 8,
+  "start": "2026-03-06T14:51:06+00:00",
+  "updated": {
+    "app_version": "2026.11.03.1",
+    "at": "2026-11-03T15:57:45-05:00",
+    "commit": "0aa32f2a",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}
