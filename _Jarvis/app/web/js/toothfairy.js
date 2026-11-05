@@ -355,6 +355,9 @@ function makeSweeper(cfg) {
     }
     let total = 0, spent = 0;
     for (const s of stages) {
+      // A stage in the plan with nothing to do -- the cluster's, on a
+      // sweep read here -- is not part of the way to go.
+      if (!s.of && s.status === 'waiting') continue;
       const w = /physio$/.test(s.name) ? 4 : /read$/.test(s.name) ? 1 : 0.2;
       if (s.of) { total += w; spent += w * Math.min(1, (s.done || 0) / s.of); }
       else if (s.status === 'done') { total += w; spent += w; }
@@ -1071,6 +1074,9 @@ BARRY.toothFairy = makeSweeper({
     'tf read': 'Reading each candidate’s shape',
     'tf physio': 'Reading the physiology around each one',
     'tf score': 'Scoring',
+    // A recording only the cluster has is read on a compute node.
+    'vacc queue': 'Waiting for the cluster to start the read',
+    'vacc fetch': 'Bringing the read home from the cluster',
   },
   pWord: 'p(DS)',
   fallbackColor: (lab) => (lab === 'spike' ? '--ok'
@@ -1168,6 +1174,10 @@ BARRY.prospector = makeSweeper({
     'pr read': 'Reading each event’s shape',
     'pr physio': 'Reading the physiology around each one',
     'pr score': 'Scoring',
+    // A recording only the cluster has is read on a compute node
+    // (app.py `_pr_read_vacc`); the read then comes home to be scored.
+    'vacc queue': 'Waiting for the cluster to start the read',
+    'vacc fetch': 'Bringing the read home from the cluster',
   },
   pWord: 'p(spike)',
   fallbackColor: (lab) => (lab === 'spike' ? '--ok'

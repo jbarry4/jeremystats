@@ -754,7 +754,7 @@ function quantile(sorted, q) {
        so it can only lower the count). Dashed 5 on, 4 off: about half. */
     const ied = JSON.parse(ev('(function(){ var c = document.createElement("canvas");'
       + ' c.width = c.height = 1; var x = c.getContext("2d");'
-      + ' x.fillStyle = BARRY.token("--err"); x.fillRect(0, 0, 1, 1);'
+      + ' x.fillStyle = BARRY.token("--call-p"); x.fillRect(0, 0, 1, 1);'
       + ' return JSON.stringify(Array.from(x.getImageData(0, 0, 1, 1).data)); })()'));
     let n = 0, hit = 0;
     for (const [id] of FL) {

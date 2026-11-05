@@ -10602,7 +10602,9 @@ def _rootcanal_commit_pooled(body, rec, p, res, rh, events, src_v):
         item = dict(ev)
         hit = cls_at.get(curation._tkey(ev.get("start")))
         if hit is not None and hit.get("cls") in ("ds", "ied"):
-            item["rc_name"] = hit.get("name") or hit["cls"].upper()
+            # A call is shown as DS or P-spike; 'ied' is only its id.
+            item["rc_name"] = hit.get("name") or (
+                "P-spike" if hit["cls"] == "ied" else hit["cls"].upper())
             named[hit["cls"]] += 1
             o = ev.get("origin") or "unknown"
             row = cross.setdefault(o, {"ds": 0, "ied": 0})
@@ -13465,8 +13467,8 @@ def api_rootcanal_names_add():
             raise rootcanal.RootCanalError(
                 "‘%s’ is already on the list as a%s %s name. One name means "
                 "one thing: pick it as it is, or choose another."
-                % (hit["name"], "n" if hit["type"] == "ied" else "",
-                   hit["type"].upper()))
+                % (hit["name"], "",
+                   "P-spike" if hit["type"] == "ied" else hit["type"].upper()))
         if hit:
             return jsonify({"ok": True, "added": False,
                             "names": list(have.values())})
@@ -19653,7 +19655,11 @@ def _tf_tolerance(body):
     return v, None
 
 
-TF_STAGES = [("tf read", 1), ("tf physio", 1), ("tf score", 1)]
+# The cluster's two with nothing to do unless a set's recording is only
+# there (`_pr_read_vacc`, which Tooth Fairy shares with Prospector).
+TF_STAGES = [("tf read", 1), ("tf physio", 1), ("tf score", 1),
+             ("vacc queue", 0), ("vacc fetch", 0)]
+TF_READ_STAGES = ("tf read", "tf physio")
 
 
 @app.route("/api/toothfairy")
@@ -19689,7 +19695,9 @@ def api_tooth_fairy_sweep():
 
     def work(job):
         out = tfmod.sweep(AIBETA, CURATE, BANK, _tf_open, gid, kind, job,
-                          slot="tooth_fairy", ds_loss=ds_loss)
+                          slot="tooth_fairy", ds_loss=ds_loss,
+                          read_remote=_pr_read_vacc(gid, "toothfairy",
+                                                    TF_READ_STAGES))
         out["id"] = job.id
         tfmod.remember(job.id, out)
         STORE.record_activity([{
@@ -19760,7 +19768,9 @@ def api_tooth_fairy_batch():
             job.member(m, status="reading")
             try:
                 sw = tfmod.sweep(AIBETA, CURATE, BANK, _tf_open, g, kind, job,
-                                 slot="tooth_fairy", ds_loss=ds_loss)
+                                 slot="tooth_fairy", ds_loss=ds_loss,
+                                 read_remote=_pr_read_vacc(g, "toothfairy",
+                                                           TF_READ_STAGES))
             except Exception as exc:                     # noqa: BLE001
                 if job._cancel:
                     raise
@@ -19957,8 +19967,11 @@ def _pr_busy():
     return job if job and job.snapshot()["status"] == "running" else None
 
 
-def _pr_read_vacc(gid):
+def _pr_read_vacc(gid, tool="prospector", stages=None):
     """How a sweep reads a pool whose recording only the cluster has.
+
+    Tooth Fairy's sweep reads the same way (`tool` "toothfairy", its own
+    stage names): the two reads are one function, `prospector.read_block`.
 
     Isabella's laptop, 2026-11-05: KCNT1 m1606 s1 opened off the cluster,
     and the sweep's reads -- which open the files on this computer -- said
@@ -19969,6 +19982,7 @@ def _pr_read_vacc(gid):
     the model scores it. Returns `read(spec, dest, job)`."""
     def read(spec, dest, job):
         import subprocess
+        import numpy as np
         place = _vacc_place_for_gid(gid)
         cfg = vaccmod.load_config(LOGS_DIR)
         vaccmod.push_code(cfg, APP_DIR)
@@ -19976,9 +19990,10 @@ def _pr_read_vacc(gid):
         # Measured on this desk: 571 events read in 129 s. A node reading
         # off netfiles is given twice that, and slurm's own margin on top.
         run = vaccrunmod.VaccRun(
-            cfg, "prospector", dict(spec, gid=gid), place["remote"],
+            cfg, tool, dict(spec, gid=gid), place["remote"],
             plan={"seconds": 120.0 + 0.5 * n}, megasamples=100.0,
-            tool_steps=[(s, 1) for s in prospectormod.READ_STAGES],
+            tool_steps=[(s, 1) for s in (stages
+                                         or prospectormod.READ_STAGES)],
             report=None)
         out = run.work(job)
         rel = (out or {}).get("file")
@@ -20054,7 +20069,7 @@ def api_prospector_sweep():
 
     def work(job):
         out = prospectormod.sweep(PROSPECTOR, CURATE, BANK, _tf_open, gid,
-                                  kind, job)
+                                  kind, job, read_remote=_pr_read_vacc(gid))
         out["id"] = job.id
         prospectormod.remember(job.id, out)
         STORE.record_activity([{
@@ -20110,7 +20125,8 @@ def api_prospector_batch():
             job.member(m, status="reading")
             try:
                 sw = prospectormod.sweep(PROSPECTOR, CURATE, BANK, _tf_open,
-                                         g, kind, job)
+                                         g, kind, job,
+                                         read_remote=_pr_read_vacc(g))
             except Exception as exc:                     # noqa: BLE001
                 if job._cancel:
                     raise
@@ -29062,7 +29078,10 @@ syncitemsmod.install(
     app, cloud_sync=CLOUD,
     stores=(BANK.book.dir, CURATE.book.dir, LAYERS.book.dir, ARTIFACTS.root,
             BRACES.dir, AIBETA.dir),
-    registry=REG, last=_cloud_last, touch=cloud_touch, lock=_cloud_lock)
+    registry=REG, last=_cloud_last, touch=cloud_touch, lock=_cloud_lock,
+    # The History page's Feedback list follows this, so a colleague's
+    # report appears as the pull brings it (web/js/logs.js).
+    extra=lambda: {"feedback": FEEDBACK.live()})
 
 
 # Per record, GitHub and the shared database both: the little two-mark chip

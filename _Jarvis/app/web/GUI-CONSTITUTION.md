@@ -513,7 +513,7 @@ needs to know both that it is the third of four and that the two before it
 come first.
 
 **A tool may be a step of two bundles, and is still one tool.** Root Canal is
-step 4 of The Dentist (take the IEDs out of a dentate-spike set) and step 4 of
+step 4 of The Dentist (take the P-spikes out of a dentate-spike set) and step 4 of
 The Confluence (tease a pooled set apart). It is listed in both arrays and
 written once. The step it was opened from is remembered (`q.via`, set by the
 bundle step that was clicked), so `stepOf` numbers it in that bundle, only that
@@ -534,6 +534,12 @@ own. The stream, Junction and Panning all use them, and an event both found
 is drawn two-tone -- half each -- everywhere, never a third colour. (Root
 Canal coloured its dots this way too until 2026-10-21; it now colours them by
 their call only.)
+
+**The two calls are DS and P-spike, and each has one colour: DS blue
+(`--call-ds`), P-spike red (`--call-p`)** -- on dots, chips, legends, cut-offs
+and figures alike (2026-11-05). What a person reads says "P-spike"; the stored
+id stays `ied` (types, calls, groups, keys), so every set made before keeps
+working. Never write "IED" in a string a person sees.
 
 #### Bundles fold
 

@@ -900,9 +900,57 @@ BARRY.views.errors = (function () {
       const res = await api('/api/feedback');
       reports = res.reports || [];
       kinds = res.kinds || [];
-      if (mode === 'feedback') render();
+      fbUser = res.user || fbUser;
+      if (mode === 'feedback' && !typingHere()) render();
     } catch (e) { /* the tab says so below */ }
   }
+
+  /* LIVE (asked for 2026-11-05). Isabella filed a report at 13:33; the pull
+     had it here by 13:37, and this page went on saying "Nothing open" until
+     somebody clicked away and back. The sync-status poll every page already
+     makes now carries the feedback's revision (backend/feedback.py `live`),
+     so the list is read again only when that moves, and a report from
+     somebody else says so in a toast wherever you are. Not while a report
+     or a note is being typed: a redraw would take the words with it, and the
+     list catches up the moment the form closes. */
+  let fbUser = null;
+  let fbRev = null;
+  let fbKnown = null;        // report ids already seen, once first read
+
+  function typingHere() {
+    const a = document.activeElement;
+    const host = $('#errBody');
+    return !!(draft || (a && host && host.contains(a)
+                        && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)));
+  }
+
+  async function onSyncData(d) {
+    const fb = d && d.feedback;
+    if (!fb || !fb.rev || fb.rev === fbRev) return;
+    fbRev = fb.rev;
+    await loadFeedback();
+    const ids = new Set(reports.map((r) => r.id));
+    if (fbKnown) {
+      const fresh = reports.filter((r) => !fbKnown.has(r.id)
+                                          && r.by && r.by !== fbUser);
+      if (fresh.length === 1) {
+        const r = fresh[0];
+        toast('New feedback from ' + r.by + ': “' + (r.title || 'untitled')
+              + '”. It is under History → Feedback.', 'ok', 9000);
+      } else if (fresh.length > 1) {
+        toast(fresh.length + ' new feedback reports, from '
+              + Array.from(new Set(fresh.map((r) => r.by))).join(', ')
+              + '. They are under History → Feedback.', 'ok', 9000);
+      }
+    }
+    fbKnown = ids;
+    // The pill's count, without redrawing whatever list is up.
+    const pill = $('#errFbPill');
+    if (pill) pill.textContent = fbPillText();
+  }
+
+  const fbPillText = () => 'Feedback'
+    + (openReports() ? ' (' + openReports() + ')' : '');
 
   /* A blank report. `context` is what the client knows and the server
      cannot: which view was up, what was open, how big the window is. */
@@ -1279,9 +1327,9 @@ BARRY.views.errors = (function () {
         onclick: () => { mode = 'debug'; render(); },
       }),
       el('button', {
+        id: 'errFbPill',
         class: 'pill' + (mode === 'feedback' ? ' active' : ''),
-        text: 'Feedback'
-            + (openReports() ? ' (' + openReports() + ')' : ''),
+        text: fbPillText(),
         title: 'Report a bug, ask for a feature, or suggest an improvement '
              + '\u2014 with screenshots',
         onclick: () => { mode = 'feedback'; render(); loadFeedback(); },
@@ -2598,6 +2646,9 @@ BARRY.views.errors = (function () {
 
   function init() {
     $('#errRefresh').addEventListener('click', load);
+    if (BARRY.syncState && BARRY.syncState.onData) {
+      BARRY.syncState.onData(onSyncData);
+    }
     $('#errReport').addEventListener('click', dayReport);
     $('#errDay').addEventListener('change', (e) => { day = e.target.value; load(); });
     $('#errTest').addEventListener('click', async () => {

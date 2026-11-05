@@ -3090,7 +3090,7 @@ def _names_and_reference(A, c, unbanked):
     ck("it is read, keyed on project, mouse and session",
        all(isinstance(k_, tuple) and len(k_) == 3 for k_ in ref))
     m3 = ref.get(("PTEN", 3, 2)) or {}
-    ck("PTEN m3 s2 is a baseline session of a P-spike+ PTEN mouse",
+    ck("PTEN m3 s2 is a baseline session of a PTEN mouse in the workbook's IED+ subgroup",
        m3.get("condition") == "Baseline" and m3.get("group") == "PTEN"
        and m3.get("subgroup") == "IED+", m3)
     ck("and KCNT1 m3 s2 is a different session, or none -- never PTEN's",

@@ -50,9 +50,10 @@ PLOTS = [
     {"id": "pooled", "name": "Pooled recordings", "pooled": True, "axes": {}},
 ]
 
-#: Colour-blind-safe and printable: dentate spikes in blue, IEDs in orange,
+#: Printable, and the app's own code (2026-11-05): dentate spikes in blue,
+#: P-spikes (the "ied" call) in red,
 #: an event not measured on every axis hollow and grey.
-COLOUR = {"ds": "#3B6FB6", "ied": "#E66101"}
+COLOUR = {"ds": "#3B6FB6", "ied": "#D62728"}
 UNMEASURED = "#8C8C8C"
 
 

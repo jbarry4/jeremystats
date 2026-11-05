@@ -610,7 +610,18 @@ class Store:
         return self.presets.read(shards.safe_base(kind)) or {"presets": []}
 
     def get_presets(self, kind):
-        return self._preset_doc(kind).get("presets", [])
+        out = self._preset_doc(kind).get("presets", [])
+        # The built-in "IED" filter was written to every machine's presets
+        # once; it is the P-spike filter now (2026-11-05). Renamed on the way
+        # out, on a copy, so nothing stored changes.
+        if kind == "filters":
+            out = [dict(p, name="P-spike",
+                        label=filter_label("P-spike", p.get("highpass"),
+                                           p.get("lowpass"), p.get("notch")))
+                   if (isinstance(p, dict) and p.get("builtin")
+                       and p.get("id") == "ied" and p.get("name") == "IED")
+                   else p for p in out]
+        return out
 
     def save_preset(self, kind, preset):
         with _LOCK:

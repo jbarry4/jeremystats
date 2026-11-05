@@ -677,7 +677,7 @@ const ENTRY = '46fd29a77cc7';
   ok('each chip’s swatch is its centre’s colour, by call', kColourOk());
   ok('and by call that is the call’s colour',
      ((geom().space || {}).centres || []).every((c) =>
-       c.fill === (c.cls === 'ied' ? kTok('--err') : kTok('--ok'))),
+       c.fill === (c.cls === 'ied' ? kTok('--call-p') : kTok('--call-ds'))),
      JSON.stringify(((geom().space || {}).centres || []).map((c) => c.fill)));
   ok('centres are numbered as the chips are',
      ((geom().space || {}).centres || []).map((c) => c.label && c.label.text)
@@ -1133,7 +1133,7 @@ const ENTRY = '46fd29a77cc7';
        .some((b) => /^(DS|P-spike)$/.test(b.textContent.trim())));
   const callChip = D().querySelector('.rc-pickbar .rc-ev-call');
   ok('its call is shown instead, with its cluster',
-     !!callChip && callChip.textContent.indexOf(was.toUpperCase()) === 0
+     !!callChip && callChip.textContent.indexOf(was === 'ied' ? 'P-spike' : was.toUpperCase()) === 0
      && /cluster #\d/.test(callChip.textContent),
      callChip && callChip.textContent);
   /* A result banked before the toggle went can carry flips: they are fit

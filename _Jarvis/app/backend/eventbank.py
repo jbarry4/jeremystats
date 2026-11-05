@@ -31,7 +31,8 @@ _LOCK = threading.Lock()
 # The kinds of thing worth telling apart when you come back to them. Free text
 # is still accepted -- this is the menu, not the whitelist.
 EVENT_TYPES = [
-    {"id": "ied", "name": "IED", "note": "interictal epileptiform discharge"},
+    # Called "IED" until 2026-11-05; the id stays, so every set keeps it.
+    {"id": "ied", "name": "P-spike", "note": "called IED before 2026-11-05"},
     {"id": "seizure", "name": "Seizure", "note": "electrographic seizure"},
     {"id": "spike", "name": "Spike", "note": "threshold-crossing unit or spike"},
     {"id": "ripple", "name": "Ripple", "note": "sharp-wave ripple"},
@@ -325,6 +326,12 @@ class EventBank:
             # Said once, here, so every list reads the one rule rather than
             # working it out again from the versions.
             row["archived"] = entry_archived(row)
+            # Sets banked before 2026-11-05 stored "IED" as their type's
+            # name; it reads "P-spike" now. On this copy only: the stored
+            # record, and what syncs, is untouched.
+            if row.get("type") == "ied" and str(row.get("type_name") or "").strip() in (
+                    "IED", "IEDs", "ied", ""):
+                row["type_name"] = "P-spike"
             out.append(row)
         self._summaries = out
         self._sum_stamp = stamp

@@ -20,6 +20,7 @@ BARRY.syncState = (function () {
   let busy = null;
   let timer = null;
   const marks = new Set();
+  const listeners = [];
 
   /* What each state is called on a mark, and what its title says. Short on
      the mark, because it sits in a row beside a name and a count. */
@@ -168,6 +169,9 @@ BARRY.syncState = (function () {
         busy = null;
       }
       paintAll();
+      for (const fn of listeners) {
+        try { fn(data); } catch (e) { /* one listener cannot stop the rest */ }
+      }
       schedule();
     })();
     return busy;
@@ -185,5 +189,14 @@ BARRY.syncState = (function () {
     else clearTimeout(timer);
   });
 
-  return { mark, refresh, stateOf, paintRail, get data() { return data; } };
+  /* `onData(fn)`: called with each answer, for a page that wants to hear
+     about what arrives on a poll it would otherwise have to make itself --
+     the History page's Feedback (`feedback`, backend/feedback.py `live`). */
+  function onData(fn) {
+    listeners.push(fn);
+    if (data) { try { fn(data); } catch (e) { /* as above */ } }
+  }
+
+  return { mark, refresh, stateOf, paintRail, onData,
+           get data() { return data; } };
 })();

@@ -2589,7 +2589,7 @@ BARRY.rootcanal = (function () {
               refit();
             }),
             onAvg: (c) => showAverage('cluster #' + (c.rank + 1) + ' '
-                                       + (c.name || c.call.toUpperCase()),
+                                       + (c.name || callWord(c.call)),
                                        (fit.events || []).filter(
                                          (e) => e.cluster === c.rank)),
             onRemove: (c) => { q.drawn.splice(c.rank - (fit.k || 0), 1);
@@ -2679,7 +2679,7 @@ BARRY.rootcanal = (function () {
       title: 'Cluster ' + (c.rank + 1) + ' of ' + clusters.length + ': '
            + (c.n || 0) + ' events, centre ' + hz(c.centre_raw[0]) + ' µV, '
            + hz(c.centre_raw[1]) + ' ms, ' + hz(c.centre_raw[2]) + ' dB. '
-           + 'Called ' + c.call.toUpperCase() + ' '
+           + 'Called ' + callWord(c.call) + ' '
            + (c.call_by === 'hand' ? 'by hand' : c.call_by === 'margin'
               ? 'by the calls this ' + (viewMode === 'pooled' ? 'pool' : 'version')
                 + ' carries' : c.call_by === 'drawn'
@@ -2692,7 +2692,7 @@ BARRY.rootcanal = (function () {
     }, [
       el('i', { class: 'rc-swatch', style: 'background:' + cluFill(c.rank, c.call) }),
       el('span', { text: '#' + (c.rank + 1) + ' '
-                         + (c.name ? c.name : c.call.toUpperCase())
+                         + (c.name ? c.name : callWord(c.call))
                          + ' · ' + (c.n || 0)
                          + (c.call_by === 'hand' ? ' · by hand'
                             : c.call_by === 'margin' ? ' · carried'
@@ -3695,7 +3695,7 @@ BARRY.rootcanal = (function () {
          events were flipped by hand still says so. */
       e.cls == null
         ? BARRY.ui.chip('not measured, so no class', { extra: 'rc-ev-call' })
-        : BARRY.ui.chip(e.cls.toUpperCase() + (e.cluster != null
+        : BARRY.ui.chip(callWord(e.cls) + (e.cluster != null
             ? ' · cluster #' + (e.cluster + 1) : ''), {
             kind: e.cls === 'ied' ? 'warn' : null, extra: 'rc-ev-call',
             title: 'Its cluster’s call. An event’s identity follows its '
@@ -5090,12 +5090,19 @@ BARRY.rootcanal = (function () {
       /* Meaning, not looks: a dentate spike is what the set keeps, an IED
          is what comes out of it. The semantic tokens say exactly that in
          every theme. */
-      ds: tok('--ok'), ied: tok('--err'),
+      ds: tok('--call-ds'), ied: tok('--call-p'),
     };
   }
 
+  /* A call as a person reads it (2026-11-05): the stored 'ied' is a
+     P-spike on screen. Never upper-case a call to show it. */
+  const CALL_WORD = { ds: 'DS', ied: 'P-spike' };
+  function callWord(cls) {
+    return CALL_WORD[cls] || String(cls || '').toUpperCase();
+  }
+
   function colOf(cls) {
-    return cls === 'ied' ? tok('--err') : cls === 'ds' ? tok('--ok')
+    return cls === 'ied' ? tok('--call-p') : cls === 'ds' ? tok('--call-ds')
                                                         : tok('--text-3');
   }
 
@@ -7068,7 +7075,7 @@ BARRY.rootcanal = (function () {
           key: 'rootcanal-max',
           // Faded and hidden with the marks (2026-10-21): it is one of them.
           followsMarks: true,
-          label: 'max amp' + (now.cls ? ' · ' + now.cls.toUpperCase() : ''),
+          label: 'max amp' + (now.cls ? ' · ' + callWord(now.cls) : ''),
           colour: colOf(now.cls), number: Number(now.contact),
         }] : []);
       }
@@ -10257,7 +10264,7 @@ BARRY.rootcanal = (function () {
             runPool();
           }),
           onAvg: (c) => showAverage('pooled cluster #' + (c.rank + 1) + ' '
-                                     + (c.name || c.call.toUpperCase()),
+                                     + (c.name || callWord(c.call)),
                                      poolEvents().filter(
                                        (e) => e.cluster === c.rank)),
           onRemove: (c) => { pool.drawn.splice(c.rank - ((f && f.k) || 0), 1);
@@ -10348,8 +10355,8 @@ BARRY.rootcanal = (function () {
           ? 'half-width unresolved' : fmt(e.hw_ms, 1) + ' ms') + '  ·  '
         + (e.hf_db == null || !isFinite(e.hf_db) ? 'no HF' : fmt(e.hf_db, 1) + ' dB') }),
       el('span', { class: 'hint rc-calls', text:
-        'pooled ' + (e.cls_pool ? e.cls_pool.toUpperCase() : '—') + ', single '
-        + (e.cls_single ? e.cls_single.toUpperCase() : '—') }),
+        'pooled ' + (e.cls_pool ? callWord(e.cls_pool) : '—') + ', single '
+        + (e.cls_single ? callWord(e.cls_single) : '—') }),
       e.switched ? BARRY.ui.chip('switched', { kind: 'warn' }) : null,
       e.partial ? BARRY.ui.chip('2 of 3 axes', { kind: 'warn' }) : null,
       e.wide ? BARRY.ui.chip('widened search', { kind: 'warn' }) : null,
@@ -11145,7 +11152,7 @@ BARRY.rootcanal = (function () {
           .map((x) => x.session_label + ', ' + x.why).join('; ') : '') + '.' }));
     }
     const callTd = (v) => el('td', { class: v ? 'rc-call-' + v : null,
-                                     text: v ? v.toUpperCase() : '—' });
+                                     text: v ? callWord(v) : '—' });
     const head = ['session', 't · s', 'amp · µV', 'hw · ms', 'HF · dB',
                   'single', dbl ? 'pool (v0)' : 'pool',
                   dbl ? 'pool of pools' : null, bu ? 'border' : null, 'why']
@@ -11164,7 +11171,7 @@ BARRY.rootcanal = (function () {
           el('td', { text: fmt(r.hf_db, 1) }),
           callTd(r.single), callTd(r.pool), dbl ? callTd(r.double) : null,
           bu ? el('td', { text: r.border === 'amb' ? 'ambiguous'
-            : r.border ? 'solid ' + r.border.toUpperCase() : '—' }) : null,
+            : r.border ? 'solid ' + callWord(r.border) : '—' }) : null,
           el('td', { text: (r.why || []).join('; ') }),
         ].filter(Boolean)))),
       ])]));

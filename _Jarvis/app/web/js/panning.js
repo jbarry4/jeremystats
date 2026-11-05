@@ -123,6 +123,23 @@ BARRY.panning = (function () {
   const aiIds = () => new Set(['likely_spike', 'likely_garbage'].concat(
     ((kind && kind.labels) || []).filter((l) => l.ai).map((l) => l.id)));
   const byAPerson = (e) => !!e.label && e.by !== PROSPECTOR_BY;
+  /* "Likely spike", not "Flag · likely spike": beside Flag itself, the
+     word that says which flag it is is the one worth the room. */
+  const aiWord = (lab) => {
+    const w = String((lab && lab.name) || '').replace(/^Flag\s*·\s*/, '');
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  };
+  /* Dark or light writing on a label's own colour, whichever reads. */
+  const inkOn = (hex) => {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+    if (!m) return '#fff';
+    const v = parseInt(m[1], 16);
+    const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92
+                                                     : Math.pow((c + 0.055) / 1.055, 2.4); };
+    const L = 0.2126 * lin(v >> 16) + 0.7152 * lin((v >> 8) & 255)
+            + 0.0722 * lin(v & 255);
+    return L > 0.2 ? '#101418' : '#ffffff';
+  };
   /* Still to do: undecided, or holding one of Prospector's flags. What
      banking by itself waits for: an accepted sweep leaves nothing
      undecided, and a set banks itself only once (api_curation_bank's
@@ -547,7 +564,11 @@ BARRY.panning = (function () {
     const ev = current();
     if (!ev) return;
     const was = ev.label || null;
+    const wasBy = ev.by;
     ev.label = labelId;
+    // A person's now, as the server will file it: Prospector's badge and
+    // its "decided by a person" count read `by`.
+    ev.by = null;
     bankDirty = true;
     const h = { type: 'label', id: ev.id, from: was };
     history.push(h);
@@ -570,6 +591,7 @@ BARRY.panning = (function () {
       }
     } catch (e) {
       ev.label = was;
+      ev.by = wasBy;
       const back = history.indexOf(h);
       if (back >= 0) history.splice(back, 1);
       markRev += 1;
@@ -802,6 +824,7 @@ BARRY.panning = (function () {
     if (at < 0) return;
     const was = events()[at].label || null;
     events()[at].label = last.from;
+    events()[at].by = null;
     markRev += 1;
     lastChange = { index: at, label: last.from };
     goTo(at);
@@ -893,9 +916,10 @@ BARRY.panning = (function () {
     await settled();
     if (set_ !== own) return false;
     const h = { type: 'bulk', label: want,
-                items: change.map((e) => ({ id: e.id, from: e.label || null })) };
+                items: change.map((e) => ({ id: e.id, from: e.label || null,
+                                            by: e.by })) };
     const pairs = {};
-    for (const e of change) { pairs[e.id] = want; e.label = want; }
+    for (const e of change) { pairs[e.id] = want; e.label = want; e.by = null; }
     history.push(h);
     if (history.length > 500) history.shift();
     bankDirty = true;
@@ -916,7 +940,7 @@ BARRY.panning = (function () {
         const byId = new Map(events().map((x) => [x.id, x]));
         for (const it of h.items) {
           const ev = byId.get(it.id);
-          if (ev) ev.label = it.from;
+          if (ev) { ev.label = it.from; ev.by = it.by; }
         }
         const back = history.indexOf(h);
         if (back >= 0) history.splice(back, 1);
@@ -953,6 +977,7 @@ BARRY.panning = (function () {
       if (!ev) continue;
       now[it.id] = ev.label || null;
       ev.label = it.from;
+      ev.by = null;
       pairs[it.id] = it.from;
     }
     markRev += 1;
@@ -1458,15 +1483,65 @@ BARRY.panning = (function () {
         : null,
     ].filter(Boolean)));
 
-    const decided = events().filter((e) => e.label).length;
-    bar.appendChild(el('div', { class: 'cur-prog' }, [
+    /* Prospector's flags are still to do (curation.progress): "195 decided
+       · 0 left" over 183 flags nobody had looked at was Rain's first
+       reading of a swept pool (2026-11-05). */
+    const ai = aiIds();
+    const nAi = events().filter((e) => ai.has(e.label)).length;
+    const decided = events().filter((e) => e.label).length - nAi;
+    // Short, because the pill is: which of what is left are Prospector's is
+    // on its two chips beside the options, and in the title.
+    bar.appendChild(el('div', {
+      class: 'cur-prog',
+      title: nAi ? pending() + ' left: ' + left() + ' undecided and ' + nAi
+                   + ' of Prospector’s flags, each wanting a person.' : null,
+    }, [
       el('i', { style: 'width:' + (n ? (100 * decided / n) : 0) + '%' }),
-      el('span', { text: decided + ' decided · ' + left() + ' left' }),
+      el('span', { text: decided + ' decided · ' + pending() + ' left' }),
     ]));
 
     const tally = {};
     for (const e of events()) if (e.label) tally[e.label] = (tally[e.label] || 0) + 1;
     const cats = el('div', { class: 'cur-cats' });
+    /* PROSPECTOR'S CALL, LOUD (Rain, 2026-11-05). Its two flags are not
+       Spike, Garbage or Flag, so none of those three lit up on a flagged
+       event and the call was a line of faint text on the trace. Both sit
+       here among the options, with their counts, and the one this event
+       carries is filled in its own colour. Shown, not offered: only
+       Prospector gives these (the user's ruling, 2026-11-03), and a person
+       settles one with Spike, Garbage or Flag. */
+    const aiLabs = ((kind && kind.labels) || []).filter(
+      (l) => l.ai && (tally[l.id] || (ev && ev.label === l.id)));
+    const keyOf = (id) => ((labelOf(id) || {}).keys || [])[0];
+    const settle = ['spike', 'garbage', 'flag']
+      .map((id) => labelOf(id) ? (labelOf(id).name
+                                  + (keyOf(id) ? ' [' + keyOf(id) + ']' : ''))
+                               : null)
+      .filter(Boolean).join(', ');
+    for (const lab of aiLabs) {
+      const on = !!ev && ev.label === lab.id;
+      cats.appendChild(el('span', {
+        class: 'cur-cat pan-ai-call' + (on ? ' on' : ''),
+        style: '--cat:' + lab.color + (on ? ';--ink:' + inkOn(lab.color) : ''),
+        'data-ai': lab.id,
+        title: (on ? 'Prospector called this event ' : 'Prospector’s call ')
+          + '“' + aiWord(lab) + '”. Only Prospector gives it; settle it '
+          + 'with ' + settle + '.',
+      }, [
+        BARRY.prospector ? BARRY.prospector.icon() : null,
+        el('span', { text: aiWord(lab) }),
+        el('span', { class: 'cur-count', text: String(tally[lab.id] || 0) }),
+      ].filter(Boolean)));
+    }
+    if (ev && ev.label && ev.by === PROSPECTOR_BY && !ai.has(ev.label)) {
+      // Its Spike, which lights the Spike button: said whose it is.
+      cats.appendChild(el('span', {
+        class: 'pan-ai-by',
+        title: 'Prospector called this one Spike, past the bar it was given. '
+             + 'Change it like any other call.',
+      }, [BARRY.prospector ? BARRY.prospector.icon() : null,
+          el('span', { text: 'Prospector’s call' })].filter(Boolean)));
+    }
     for (const lab of (kind.labels || [])) {
       if (lab.computed) continue;
       const key = (lab.keys || [])[0];
@@ -2006,6 +2081,8 @@ BARRY.panning = (function () {
         origin: e.origin || null,
         pair_t: e.pair_t != null ? e.pair_t : null,
         stamp: e.stamp || null,
+        // Whose call it is: Prospector's is drawn as a badge (draw).
+        by: e.label ? (e.by || null) : null,
       })),
       mark: mark,
       gid: set_.gid,
@@ -2195,11 +2272,33 @@ BARRY.panning = (function () {
         ctx.fill();
         ctx.font = '11px system-ui, sans-serif';
         ctx.textAlign = 'left';
-        const word = (e.origin === 'both'
+        // Prospector's call is a badge in its colour, not more of the same
+        // faint line: on a flagged event it is the thing being decided.
+        const theirs = lab && e.by === PROSPECTOR_BY;
+        const where = e.origin === 'both'
           ? 'both, at ' + KEEP_WORD[own] + '’s' : e.origin === 'doppler'
-          ? 'Doppler' : e.origin === 'incisor' ? 'Incisor' : '')
-          + (lab ? ' · ' + lab.name : '');
-        if (word) ctx.fillText(word, x + 7, y0 + 24);
+          ? 'Doppler' : e.origin === 'incisor' ? 'Incisor' : '';
+        const word = where + (lab && !theirs ? (where ? ' · ' : '') + lab.name : '');
+        let tx = x + 7;
+        if (word) {
+          ctx.fillText(word, tx, y0 + 24);
+          tx += ctx.measureText(word).width + 8;
+        }
+        if (theirs) {
+          const text = '✦ Prospector: ' + aiWord(lab);
+          ctx.font = '600 12px system-ui, sans-serif';
+          const w = ctx.measureText(text).width + 14;
+          const h = 19;
+          const by = y0 + 24 - 13;
+          ctx.globalAlpha = A;
+          ctx.fillStyle = lab.color;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(tx, by, w, h, 9);
+          else ctx.rect(tx, by, w, h);
+          ctx.fill();
+          ctx.fillStyle = inkOn(lab.color);
+          ctx.fillText(text, tx + 7, y0 + 24 + 1);
+        }
       }
     }
     ctx.restore();

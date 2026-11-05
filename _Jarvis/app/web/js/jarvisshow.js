@@ -97,7 +97,7 @@
     ied: {
       tab: 'P-spikes',
       title: 'Detect P-spikes',
-      lede: 'IEDs, interictal epileptiform discharges, are sharp spikes between '
+      lede: 'P-spikes are sharp spikes between '
         + 'seizures and one of the signatures of epilepsy. Jarvis finds them with a '
         + 'line-length detector: when the trace suddenly travels much further than '
         + 'usual, something sharp just happened.',

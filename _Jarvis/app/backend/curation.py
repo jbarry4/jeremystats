@@ -183,6 +183,10 @@ KINDS = {
     },
 }
 
+#: The calls only a model gives (`ai`): Prospector's two flags.
+AI_LABELS = frozenset(l["id"] for k in KINDS.values()
+                      for l in k.get("labels") or [] if l.get("ai"))
+
 #: Where a pooled event came from (backend/confluence.py). Carried on the
 #: bank's events and on a curation set's candidates.
 ORIGINS = ("incisor", "doppler", "both")
@@ -622,7 +626,7 @@ class Curation:
         """
         evs = rec.get("events") or []
         by = {}
-        done = 0
+        done = ai = 0
         for e in evs:
             lab = e.get("label")
             # The word counts as no decision, not as a decision called
@@ -634,12 +638,21 @@ class Curation:
             if lab == "unspecified":
                 lab = None
             if lab:
-                done += 1
                 by[lab] = by.get(lab, 0) + 1
+                if lab in AI_LABELS:
+                    ai += 1
+                else:
+                    done += 1
         return {
             "total": len(evs),
             "specified": done,
             "left": len(evs) - done,
+            # Prospector's flags are with what is left, not with what is
+            # decided: each is a call only it can give, still wanting a
+            # person. Counted as decided, a pool it had swept read "195 / 195
+            # ✓" on its card and "0 left" in Panning with 183 flags in it
+            # that nobody had looked at (Rain, 2026-11-05).
+            "ai_flags": ai,
             "by_label": by,
             "percent": round(100.0 * done / len(evs), 1) if evs else 0.0,
         }

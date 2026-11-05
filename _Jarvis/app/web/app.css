@@ -64,13 +64,21 @@
   --c4: #f59fb4;
   --c5: #8aa39a;
 
+  /* The two calls (2026-11-05: "P-spikes red; DS blue"). P-spike follows
+     each theme's own red, through var(); DS is one blue on the dark themes
+     and a deeper one on the light ones, set in their blocks below. */
+  --call-ds: #5aa9ff;
+  --call-p: var(--err);
+
   /* Which detector found an event (The Confluence): Incisor's, Doppler's.
      Categorical, so taken from the palette above -- and through var(), so
      every theme's own --c3/--c4 apply. One pair of names, used by the
      ToolKit's stream, Junction and Panning alike (Root Canal until
-     2026-10-21; its dots are coloured by their call now). */
-  --o-incisor: var(--c3);
-  --o-doppler: var(--c4);
+     2026-10-21; its dots are coloured by their call now). Since
+     2026-11-05 they are the two calls' colours: Incisor finds dentate
+     spikes (blue), Doppler finds P-spikes (red). They were --c3 / --c4. */
+  --o-incisor: var(--call-ds);
+  --o-doppler: var(--call-p);
 
   /* One colour per ToolKit tool (2026-10-21: "make them matching colors
      with the toolkits"). Its step number in ToolKit, its icon, and every
@@ -294,6 +302,7 @@
   --glass-bg: color-mix(in srgb, var(--bg-2) 90%, transparent);
 }
 :root[data-theme="light"] {
+  --call-ds: #1f6feb;
   --bg:        #ffffff;
   --bg-2:      #f4f7f5;
   --bg-3:      #e7efea;
@@ -386,6 +395,7 @@
 }
 /* ---- Parchment: warm and light, for a long day of reading ---- */
 :root[data-theme="parchment"] {
+  --call-ds: #1f6feb;
   --bg:        #faf6ef;
   --bg-2:      #f3ece0;
   --bg-3:      #eae1d1;
@@ -471,6 +481,7 @@
 }
 /* ---- Horizon: sky, blush and white ---- */
 :root[data-theme="horizon"] {
+  --call-ds: #1f6feb;
   --bg:        #ffffff;
   --bg-2:      #f4fbff;
   --bg-3:      #e8f5fd;
@@ -618,6 +629,7 @@
    swatch. Warn goes amber-brown rather than rose, or it would be a second
    shade of the accent. */
 :root[data-theme="jirai-shiro"] {
+  --call-ds: #1f6feb;
   --bg:        #fffafc;
   --bg-2:      #fdf1f6;
   --bg-3:      #f8e3ec;
@@ -14786,13 +14798,13 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
 .rc-lg-m { width: 9px; height: 9px; display: inline-block; flex: none;
            box-sizing: border-box; border-radius: var(--r-pill);
            background: var(--text-3); }
-.rc-lg-m.rc-lg-ds { background: var(--ok); }
-.rc-lg-m.rc-lg-ied { background: var(--err); }
+.rc-lg-m.rc-lg-ds { background: var(--call-ds); }
+.rc-lg-m.rc-lg-ied { background: var(--call-p); }
 .rc-lg-m.rc-lg-amb { background: var(--text-3); }
 /* Outside a border, in its own call's colour, faded, with a dotted edge
    (2026-10-19): the dots on the plots are drawn the same way. */
-.rc-lg-m.rc-lg-amb-ds { background: color-mix(in srgb, var(--ok) 55%, var(--text-3)); }
-.rc-lg-m.rc-lg-amb-ied { background: color-mix(in srgb, var(--err) 55%, var(--text-3)); }
+.rc-lg-m.rc-lg-amb-ds { background: color-mix(in srgb, var(--call-ds) 55%, var(--text-3)); }
+.rc-lg-m.rc-lg-amb-ied { background: color-mix(in srgb, var(--call-p) 55%, var(--text-3)); }
 .rc-lg-m.rc-lg-amb-ds, .rc-lg-m.rc-lg-amb-ied { outline: 1px dotted var(--text-3);
   outline-offset: 0; }
 .rc-lg-m.rc-lg-square { border-radius: 0; background: var(--text-2);
@@ -15753,6 +15765,31 @@ table.ai-rep-tbl tr.ai-rep-chosen td:first-child { color: var(--accent);
   75% { transform: rotate(7deg); }
 }
 
+/* Prospector's call among Panning's options (2026-11-05, Rain: the flags
+   were faint text on the trace and lit none of Spike, Garbage or Flag).
+   Shown, not offered -- only Prospector gives them -- so dashed and with
+   its pan, and no hover; the one the event carries is filled in its own
+   colour, which is the loudest thing in the bar. */
+.cur-cat.pan-ai-call {
+  cursor: default; border-style: dashed; border-left-style: solid;
+  color: var(--text-2);
+}
+.cur-cat.pan-ai-call:hover { background: var(--bg); }
+.cur-cat.pan-ai-call.on {
+  background: var(--cat); border: 1px solid var(--cat); color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cat) 45%, transparent),
+              0 0 14px color-mix(in srgb, var(--cat) 55%, transparent);
+}
+.cur-cat.pan-ai-call .cur-count { opacity: .85; }
+.cur-cat.pan-ai-call.on .cur-count { color: inherit; opacity: 1; }
+.pan-ai-by {
+  display: inline-flex; align-items: center; gap: var(--sp-4);
+  font-size: var(--fs-11); color: var(--text-2);
+  padding: 2px 8px; border-radius: 999px;
+  border: 1px dashed var(--line);
+}
+
 /* The batch: which sets, and how each is getting on. */
 .tf-pick-wrap { display: flex; flex-direction: column; gap: var(--sp-6); }
 .tf-pick { display: flex; flex-direction: column; max-height: 260px;
@@ -15872,8 +15909,8 @@ div.tf-tile { cursor: default; }
 .rc-deep-row { cursor: pointer; }
 .rc-deep-row:hover td { background: var(--bg-2); }
 .rc-deep-row.on td { background: var(--bg-3); color: var(--text); }
-.rc-deep-tab td.rc-call-ds { color: var(--ok); }
-.rc-deep-tab td.rc-call-ied { color: var(--err); }
+.rc-deep-tab td.rc-call-ds { color: var(--call-ds); }
+.rc-deep-tab td.rc-call-ied { color: var(--call-p); }
 .rc-deep-note { width: 100%; }
 .rc-deep-recipe { margin-top: 0; }
 

@@ -19,11 +19,15 @@
     "schema": "2026-09-03T00:08:55.908976+00:00",
     "session": "2026-09-03T00:08:55.908976+00:00",
     "start": "2026-09-03T00:08:55.908976+00:00",
-    "updated": "2026-10-03T23:26:15.915631+00:00",
-    "view_state": "2026-10-03T23:05:33.245561+00:00"
+    "updated": "2026-11-05T19:12:46.064511+00:00",
+    "view_state": "2026-10-05T21:26:48.050893+00:00"
   },
   "_keys": {
     "bookmarks": {
+      "9132e421": [
+        "set",
+        "2026-10-05T21:12:02.286222+00:00"
+      ],
       "c746413d": [
         "set",
         "2026-09-04T16:11:53.134177+00:00"
@@ -37,6 +41,10 @@
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58": [
         "set",
         "2026-09-03T00:08:55.908976+00:00"
+      ],
+      "vacc:se0c7b6ba6d5a": [
+        "set",
+        "2026-11-05T19:12:46.064511+00:00"
       ]
     },
     "seen": {
@@ -58,7 +66,7 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-10-02T19:30:55.967509+00:00"
+        "2026-10-29T17:10:00.381230+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
@@ -67,7 +75,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-03T23:26:15.915631+00:00",
+    "at": "2026-11-05T19:12:46.064511+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -86,6 +94,22 @@
       },
       "span": 10,
       "t": 19.350971109932164
+    },
+    {
+      "color": null,
+      "id": "9132e421",
+      "name": "DS2 into CA1",
+      "saved": {
+        "app_version": "2026.10.05.1",
+        "at": "2026-10-05T17:12:02-04:00",
+        "email": "rain.younger@uvm.edu",
+        "host": "BarryLab",
+        "machine": "Strawbarry",
+        "os": "Windows",
+        "user": "Rain Younger"
+      },
+      "span": 0.8,
+      "t": 768.530967520548
     }
   ],
   "created": {
@@ -107,7 +131,8 @@
   "n_channels": 64,
   "paths": [
     "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58"
+    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58",
+    "vacc:se0c7b6ba6d5a"
   ],
   "project": "KCNT1",
   "project_source": "guessed",
@@ -143,12 +168,20 @@
       "scan": null
     },
     "barrylab-d8e8": {
-      "at": "2026-10-02T15:30:55-04:00",
+      "at": "2026-10-29T13:10:00-04:00",
       "by": "Rain Younger",
+      "copies": {
+        "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58": {
+          "at": "2026-10-29T13:10:00-04:00",
+          "duration_s": 1802.3253333333334,
+          "fs": 30000.0,
+          "n_channels": 64
+        }
+      },
       "machine": "Strawbarry",
-      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58",
-      "root": null,
-      "scan": null
+      "path": "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1609\\KCNT1_m1609_s1_071526\\2026-07-15_11-57-58",
+      "root": "Y:/Jeremy3/KCNT1",
+      "scan": "scan_3a20a153a9"
     },
     "desktop-4h65ai7-d565": {
       "at": "2026-10-03T19:26:15-04:00",
@@ -162,9 +195,9 @@
   "session": 1,
   "start": "2026-07-15T11:57:58",
   "updated": {
-    "app_version": "2026.10.03.1",
-    "at": "2026-10-03T19:26:15-04:00",
-    "commit": "deb2b3ac",
+    "app_version": "2026.11.05.3",
+    "at": "2026-11-05T14:12:46-05:00",
+    "commit": "c86cdc8a",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -209,7 +242,7 @@
     "clim": null,
     "fdefault": null,
     "flock": true,
-    "gain": 2.5,
+    "gain": 3.25,
     "hp": 5,
     "invert": true,
     "lp": 100,
@@ -218,9 +251,9 @@
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 1,
+    "span": 0.8,
     "stft_mode": null,
-    "t0": 236.947709,
+    "t0": 1779.125231,
     "ylim": null
   }
 }

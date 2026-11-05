@@ -9345,6 +9345,8 @@ BARRY.views.xplore = (function () {
           const o = { start: e.start, label: e.label || null };
           if (e.origin) o.origin = e.origin;
           if (e.pair_t != null) o.pair_t = e.pair_t;
+          // Whose call: Prospector's is a badge here too (panning.js draw).
+          if (e.label && e.by) o.by = e.by;
           return o;
         }),
         gid: pointer.gid,
@@ -11874,6 +11876,9 @@ BARRY.views.xplore = (function () {
     document.addEventListener('keydown', (e) => {
       if (BARRY.state.view !== 'xplore') return;
       if (isTyping(e)) return;
+      // A key a support window passed on is for the mode only (core.js):
+      // what the mode leaves, that window does in its own panes.
+      if (e.barryAid) return;
       const s = active();
       if (!s) return;
       const fi = XF.focused;

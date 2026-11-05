@@ -440,7 +440,7 @@ const NL = String.fromCharCode(10);
   ok('pooled call: DS and P-spike in their own tokens',
      g.space.pts.every((p) => {
        const e = evAt(p.i);
-       return !e.cls_pool || p.fill === tok(e.cls_pool === 'ied' ? '--err' : '--ok');
+       return !e.cls_pool || p.fill === tok(e.cls_pool === 'ied' ? '--call-p' : '--call-ds');
      }));
   ok('with a legend saying so', /pooled call:/.test(legend())
      && /DS/.test(legend()) && /P-spike/.test(legend()));
@@ -449,7 +449,7 @@ const NL = String.fromCharCode(10);
   ok('single call: each dot in its own member’s call',
      g.space.pts.every((p) => {
        const e = evAt(p.i);
-       return !e.cls_single || p.fill === tok(e.cls_single === 'ied' ? '--err' : '--ok');
+       return !e.cls_single || p.fill === tok(e.cls_single === 'ied' ? '--call-p' : '--call-ds');
      }));
   ev(RC + '._poolColour("switches")');
   g = geom();
