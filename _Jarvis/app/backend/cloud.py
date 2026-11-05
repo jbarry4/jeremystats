@@ -1,0 +1,960 @@
+"""
+cloud.py -- Jarvis's Supabase sync.
+
+Why both this and the files
+---------------------------
+The per-machine JSON files stay. They are what makes Jarvis work on a rig with
+no network, on a drive that is not mounted, and at 2am when the internet is
+out -- and they are why nothing has ever been lost. Postgres is the shared
+source of truth; the files are the local buffer and the offline queue.
+
+That split is also why the sharding work still earns its keep: every local
+record already carries a stamp saying when each thing on it last changed, so
+a machine that has been offline for a week pushes edits that can be ordered
+against what is already on the server rather than clobbering it. The database
+enforces that too -- see barry_keep_newest() in 01_schema.sql -- so no client
+can get it wrong, including this one.
+
+No new dependencies
+-------------------
+Plain urllib against PostgREST. `pip install supabase` would pull in httpx,
+pydantic and a stack of transitive pins into an environment that also has to
+keep Kilosort and MATLAB's Python bridge happy. The REST API is a handful of
+URLs; the trade is not close.
+
+Credentials
+-----------
+Two files, and the difference between them is the whole point.
+
+    _Jarvis/app/cloud.json    tracked. Which project to sync to, and how
+                              often. No key. Everyone who clones gets it.
+    GUI_logs/.cloud.json      gitignored. The key, on this machine only.
+
+So a clone already knows where to go, and only has to be told the key once --
+which Jarvis asks for when it starts rather than making anyone edit a file.
+
+The key is never written to a tracked path: save_shared_config() drops it,
+load_config() refuses to use one found there and says so instead, and
+cloud_setup.py asks git before writing anything. If a key is ever committed
+anyway, rotate it in the Supabase dashboard. That is the only real fix and it
+takes a minute.
+
+The environment beats both, for a rig that would rather keep it in a shell
+profile: Jarvis_SUPABASE_URL and Jarvis_SUPABASE_KEY.
+"""
+from __future__ import annotations
+
+import collections
+import gzip
+import json
+import mimetypes
+import os
+import re
+import sys
+import threading
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
+
+from . import shards
+
+TIMEOUT = 60
+
+
+# ==========================================================================
+# The meter
+# ==========================================================================
+# Every request Jarvis makes to Supabase passes through Cloud._call, so this
+# is where they are counted (constitution §11, "One door"). The unit that
+# costs money is the request -- ~1 KB of response headers and a gateway log
+# line each, whatever the body -- so the question this answers is "how many,
+# and who asked", not "how big".
+#
+# In-process and local only: nothing here is uploaded, and it starts from
+# zero when Jarvis does. `who` is worked out from the call stack rather than
+# passed by every caller, so a new call site is counted without anybody
+# remembering to label it -- which is how the old meter came to measure only
+# the path it was written for.
+_METER_KEEP_S = 24 * 3600
+_METER_LOCK = threading.Lock()
+_METER = collections.deque()     # (t, who, method, table, status, wire_bytes)
+_HERE = os.path.abspath(__file__)
+
+
+def _who():
+    """`module.function` of the first caller outside this file."""
+    try:
+        f = sys._getframe(2)
+    except ValueError:
+        return "?"
+    while f is not None and os.path.abspath(f.f_code.co_filename) == _HERE:
+        f = f.f_back
+    if f is None:
+        return "?"
+    mod = os.path.splitext(os.path.basename(f.f_code.co_filename))[0]
+    return "%s.%s" % (mod, f.f_code.co_name)
+
+
+def _table_of(path):
+    """`sessions` out of /rest/v1/sessions?..., `storage:figures` out of a
+    storage path -- what a request was about, for grouping."""
+    p = (path or "").split("?", 1)[0]
+    if p.startswith("/rest/v1/rpc/"):
+        return "rpc:" + p[len("/rest/v1/rpc/"):]
+    if p.startswith("/rest/v1/"):
+        return p[len("/rest/v1/"):] or "(root)"
+    if p.startswith("/storage/v1/object/list/"):
+        return "storage-list:" + p[len("/storage/v1/object/list/"):]
+    if p.startswith("/storage/v1/object/"):
+        return "storage:" + p[len("/storage/v1/object/"):].split("/", 1)[0]
+    return p or "?"
+
+
+def _meter_note(who, method, path, status, wire):
+    now = time.time()
+    with _METER_LOCK:
+        _METER.append((now, who, method, _table_of(path), status, wire))
+        cutoff = now - _METER_KEEP_S
+        while _METER and _METER[0][0] < cutoff:
+            _METER.popleft()
+
+
+def meter(window_s=3600):
+    """Requests in the last `window_s` seconds: the total, the bytes that
+    came back (headers and compressed body -- what egress counts), and the
+    same broken down by caller and by table, busiest first."""
+    cutoff = time.time() - max(1, float(window_s or 3600))
+    with _METER_LOCK:
+        rows = [r for r in _METER if r[0] >= cutoff]
+    by_who, by_table, failed = {}, {}, 0
+    total_bytes = 0
+    for _t, who, method, table, status, wire in rows:
+        total_bytes += wire
+        for bucket, key in ((by_who, who), (by_table, "%s %s" % (method, table))):
+            slot = bucket.setdefault(key, [0, 0])
+            slot[0] += 1
+            slot[1] += wire
+        if not status or status >= 400:
+            failed += 1
+
+    def ranked(d):
+        return [{"key": k, "n": v[0], "bytes": v[1]}
+                for k, v in sorted(d.items(), key=lambda kv: -kv[1][0])]
+    return {
+        "window_s": int(window_s),
+        "requests": len(rows),
+        "failed": failed,
+        "bytes": total_bytes,
+        "by_caller": ranked(by_who),
+        "by_table": ranked(by_table),
+        # Since this process started, capped at a day: how much of the
+        # window the numbers actually cover.
+        "covers_s": int(time.time() - rows[0][0]) if rows else 0,
+    }
+
+
+_UA = {}
+
+
+def _user_agent(machine):
+    """`Jarvis/<version>+<commit> <machine id>`, on every request.
+
+    So Supabase's own logs can say which computer, running which code, sent
+    what -- the question a stale rig answers wrongly by saying nothing. The
+    version is read once (store._code_version caches it); a failure to read
+    it still names the machine.
+    """
+    if machine in _UA:
+        return _UA[machine]
+    ver = commit = None
+    try:
+        from .store import _code_version
+        ver, commit = _code_version()
+    except Exception:                                    # noqa: BLE001
+        pass
+    tag = "Jarvis/%s%s %s" % (ver or "unknown",
+                              ("+" + commit) if commit else "",
+                              machine or "unknown-machine")
+    _UA[machine] = tag
+    return tag
+
+
+def _gunzip(payload, headers):
+    """The body as sent, uncompressed when the server compressed it."""
+    if payload and (headers.get("Content-Encoding") or "").lower() == "gzip":
+        try:
+            return gzip.decompress(payload)
+        except OSError:
+            return payload
+    return payload
+
+
+def _header_bytes(headers):
+    try:
+        return sum(len(k) + len(v) + 4 for k, v in headers.items())
+    except Exception:                                    # noqa: BLE001
+        return 0
+
+
+def _quiet_rm(path):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
+def _explain(method, path, code, detail):
+    """Turn a PostgREST failure into something worth reading.
+
+    The raw form is `GET /rest/v1/sessions?... -> HTTP 401 {"code":"PGRST303",
+    "message":"JWT issued at future"}`, which says what happened and nothing
+    about what to do. These are the ones that actually come up.
+    """
+    d = detail or ""
+    hint = None
+    if "PGRST303" in d or "issued at future" in d:
+        # Not this machine's clock: Jarvis signs nothing. Supabase's gateway
+        # makes the token from the key on its own clock, and another of its
+        # servers thought that was in the future (2026-11-02).
+        hint = ("Supabase turned down a token its own servers had just "
+                "made, because they briefly disagreed about the time. "
+                "Nothing here caused it -- not the key, not this machine's "
+                "clock -- and the next sync gets past it.")
+    elif "PGRST301" in d or "JWT expired" in d:
+        hint = ("The key has expired, or this machine's clock is behind. "
+                "Check the clock first; if it is right, the key needs "
+                "replacing in the Cloud panel.")
+    elif "PGRST205" in d or "schema cache" in d:
+        hint = ("That table is not in the database yet. Run the files in "
+                "supabase/ against the project (01_schema.sql first), then "
+                "sync again.")
+    elif code == 401 or code == 403:
+        hint = ("The key was refused. Check it in the Cloud panel -- a "
+                "publishable key cannot write, so this needs the secret one.")
+    elif code and int(code) >= 500:
+        hint = ("The database itself returned an error, not a refusal -- "
+                "nothing is wrong with the request or the key. These are "
+                "usually brief; the next sync will pick up where this one "
+                "stopped. If it keeps happening, check the Supabase project "
+                "status page.")
+    elif "22007" in d or "invalid input syntax for type timestamp" in d:
+        hint = ("A timestamp reached the database malformed -- usually a '+' "
+                "in a query string that was read as a space. This is a bug "
+                "here, not a configuration problem; please report it.")
+    base = "%s %s -> HTTP %s %s" % (method, path, code, d)
+    return base + (chr(10) + chr(10) + hint if hint else "")
+
+
+PAGE = 1000            # PostgREST's own default ceiling
+BATCH = 200            # rows per upsert; keeps request bodies sane
+
+# ...and bytes per upsert, because rows are not all small. From 2026-09-30 a
+# push sent up to 200 artifact payloads of up to 10 MB each in ONE request;
+# the free-tier database (half a gigabyte of memory) fell over, every
+# machine retried the same request whenever it came back, and it went down
+# again each time, for a week. A request now carries at most MAX_BODY bytes
+# of rows; a single row bigger than that goes alone; a row bigger than
+# MAX_ROW is not sent at all -- it is kept here and counted in OVERSIZE so
+# it can be said.
+MAX_BODY = 1000000
+MAX_ROW = 4000000
+
+# {table: number of rows held back for being bigger than MAX_ROW}.
+OVERSIZE = {}
+
+
+def _sized_chunks(rows, table):
+    """`rows` in requests of at most BATCH rows and MAX_BODY bytes."""
+    chunk, size = [], 0
+    for r in rows:
+        n = len(json.dumps(r, default=str))
+        if n > MAX_ROW:
+            OVERSIZE[table] = OVERSIZE.get(table, 0) + 1
+            continue
+        if chunk and (len(chunk) >= BATCH or size + n > MAX_BODY):
+            yield chunk
+            chunk, size = [], 0
+        chunk.append(r)
+        size += n
+    if chunk:
+        yield chunk
+
+# Columns this machine tried to send that the database has not got, per
+# table. Kept so a pending migration is something the interface can say
+# rather than something somebody eventually notices.
+PENDING_COLUMNS = {}
+
+
+def missing_column(exc):
+    """The column name out of a PGRST204, or None.
+
+    Postgrest says: Could not find the 'extraction_note' column of
+    'sessions' in the schema cache. That is the only 400 where retrying
+    without the field is the right move -- every other one means the data is
+    wrong rather than the schema being behind.
+    """
+    msg = str(exc)
+    if "PGRST204" not in msg and "in the schema cache" not in msg:
+        return None
+    m = re.search(r"Could not find the '([^']+)' column", msg)
+    return m.group(1) if m else None
+
+
+class CloudError(RuntimeError):
+    pass
+
+
+class NotConfigured(CloudError):
+    pass
+
+
+class CloudAway(CloudError):
+    """Not asked: the database stopped answering a moment ago.
+
+    Raised without a request, by `_call`, while `away()` says so. A
+    CloudError like any other to every caller, which already treat a failed
+    call as "try later"."""
+
+
+# ==========================================================================
+# The database not answering
+# ==========================================================================
+# When Supabase's database stops answering, Cloudflare in front of it holds
+# every request for about twenty seconds and then returns a 522. Every
+# caller -- the sync, the presence beat, the schema probe -- kept asking
+# regardless: 270 requests in one sitting, every one of them failing, each
+# one twenty seconds of a thread, and a sync that read "Syncing..." for
+# minutes. After the first such failure nothing is asked for a while,
+# doubling to five minutes, and the first answer that comes back clears it.
+# Shared by every Cloud in the process: it is one database.
+_AWAY = {"until": 0.0, "n": 0, "why": "", "since": None}
+_AWAY_LOCK = threading.Lock()
+AWAY_FIRST_S = 15
+AWAY_MAX_S = 300
+# The HTTP codes that mean "the server did not answer", not "the server said
+# no". A 4xx is an answer and is never held against the database.
+_UNREACHABLE = {502, 503, 504, 520, 521, 522, 523, 524}
+
+
+def away():
+    """None, or {"until", "why", "since", "failures"} while asking is held."""
+    with _AWAY_LOCK:
+        if time.time() >= _AWAY["until"]:
+            return None
+        return {"until": _AWAY["until"], "why": _AWAY["why"],
+                "since": _AWAY["since"], "failures": _AWAY["n"]}
+
+
+def _went_away(why):
+    with _AWAY_LOCK:
+        _AWAY["n"] += 1
+        wait = min(AWAY_MAX_S, AWAY_FIRST_S * 2 ** (_AWAY["n"] - 1))
+        _AWAY["until"] = time.time() + wait
+        _AWAY["why"] = why
+        if not _AWAY["since"]:
+            _AWAY["since"] = time.time()
+
+
+def _came_back():
+    with _AWAY_LOCK:
+        _AWAY.update(until=0.0, n=0, why="", since=None)
+
+
+# ==========================================================================
+# Configuration
+# ==========================================================================
+def config_path(logs_dir):
+    """This machine's file. Gitignored, and the only place the key lives."""
+    return os.path.join(logs_dir, ".cloud.json")
+
+
+def shared_config_path(logs_dir):
+    """The tracked one, beside the app: which project, and how often.
+
+    Committed on purpose. Somebody who clones the repo should not have to be
+    told the project id as well as the key -- one secret to hand over is
+    enough friction for a lab.
+    """
+    return os.path.join(os.path.dirname(os.path.abspath(logs_dir)),
+                        "cloud.json")
+
+
+def _read(path):
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return json.load(fh) or {}
+    except (OSError, ValueError):
+        return {}
+
+
+def load_config(logs_dir):
+    """Where we sync to, and with what key.
+
+    Environment beats this machine's file, which beats the repo's. A key
+    sitting in the tracked file is ignored and reported rather than used:
+    quietly working would be the surest way for nobody to notice it had been
+    committed.
+    """
+    shared = _read(shared_config_path(logs_dir))
+    leaked = bool(shared.pop("key", None))
+    cfg = dict(shared)
+    cfg.update(_read(config_path(logs_dir)))
+
+    url = os.environ.get("Jarvis_SUPABASE_URL") or cfg.get("url")
+    key = os.environ.get("Jarvis_SUPABASE_KEY") or cfg.get("key")
+    if url and not url.startswith("http"):
+        # A bare project id is what people have to hand.
+        url = "https://%s.supabase.co" % url
+    return {
+        "url": (url or "").rstrip("/"),
+        "key": key or "",
+        "enabled": bool(cfg.get("enabled", True)) and bool(url and key),
+        "auto": bool(cfg.get("auto", True)),
+        # The pull rate. Push runs on its own, faster clock after a
+        # local write -- see _cloud_loop. Two minutes was chosen when
+        # one number governed both halves and meant somebody else's
+        # work took that long to appear.
+        "interval": int(cfg.get("interval", 20)),
+        "upload_results": bool(cfg.get("upload_results", True)),
+        "project": cfg.get("project")
+        or (re.sub(r"^https://([^.]+)\..*$", r"\1", url) if url else None),
+        # A project is set but no key yet -- which is exactly the state a
+        # fresh clone is in, and what makes Jarvis ask for one.
+        "needs_key": bool(url) and not key,
+        "key_in_repo": leaked,
+    }
+
+
+def save_shared_config(logs_dir, **patch):
+    """The tracked file: which project, and how often. Never a key."""
+    patch.pop("key", None)
+    p = shared_config_path(logs_dir)
+    cur = _read(p)
+    cur.update({k: v for k, v in patch.items() if v is not None})
+    cur["_note"] = (
+        "Which Supabase project Jarvis syncs to. Tracked on purpose, so a "
+        "clone knows where to go. The key is NOT here: Jarvis asks for it the "
+        "first time it starts and keeps it in GUI_logs/.cloud.json, which "
+        "git ignores.")
+    tmp = p + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+        json.dump(cur, fh, indent=2, sort_keys=True)
+    os.replace(tmp, p)
+    return cur
+
+
+def save_config(logs_dir, **patch):
+    """This machine's file. The key goes here and nowhere else."""
+    p = config_path(logs_dir)
+    cur = _read(p)
+    cur.update({k: v for k, v in patch.items() if v is not None})
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    tmp = p + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+        json.dump(cur, fh, indent=2, sort_keys=True)
+    os.replace(tmp, p)
+    try:
+        os.chmod(p, 0o600)      # best effort; Windows largely ignores it
+    except OSError:
+        pass
+    return cur
+
+
+def looks_like_a_key(text):
+    """Is this plausibly a Supabase key, and is it the right one?
+
+    Pasting the publishable key is the obvious mistake -- they sit next to
+    each other in the dashboard and differ by one word -- and it fails later
+    with a permissions error that explains nothing.
+    """
+    t = (text or "").strip()
+    if not t:
+        return False, "Nothing pasted."
+    if t.startswith("sb_publishable_") or t.startswith("eyJ") and \
+            "anon" in t:
+        return False, ("That is the publishable key. Jarvis needs the secret "
+                       "one (it starts sb_secret_), because the publishable "
+                       "key is deliberately given no access at all.")
+    if not (t.startswith("sb_secret_") or t.startswith("eyJ")):
+        return False, ("That does not look like a Supabase key. Copy the "
+                       "service_role / secret key from Project Settings -> "
+                       "API Keys.")
+    if len(t) < 20:
+        return False, "That looks truncated."
+    return True, ""
+
+
+# ==========================================================================
+# Timestamps
+# ==========================================================================
+_OFFSET = re.compile(r"([+-]\d{2})(\d{2})$")
+
+
+def ts(value):
+    """Anything Jarvis writes, as something Postgres will accept -- or None.
+
+    Jarvis has three timestamp shapes in its logs: local with a `-0400` style
+    offset, UTC with microseconds from the shard layer, and bare
+    `YYYY-MM-DD HH:MM:SS` from Neuralynx headers. A bad one returns None
+    rather than failing the push, because a missing `made_at` is a small
+    problem and a migration that stops halfway is a large one.
+    """
+    if value is None or value == "":
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            return datetime.fromtimestamp(value, timezone.utc).isoformat()
+        except (OverflowError, OSError, ValueError):
+            return None
+    s = str(value).strip()
+    if not s:
+        return None
+    s = s.replace(" ", "T", 1) if re.match(r"^\d{4}-\d\d-\d\d ", s) else s
+    s = _OFFSET.sub(r"\1:\2", s)          # -0400 -> -04:00
+    try:
+        got = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    # Normalised to UTC, not handed back as written.
+    #
+    # A timestamptz column stores an instant, so the offset in the text was
+    # never information the database kept -- but it WAS information the
+    # incremental push compared, as text, against a UTC "since". Vermont is
+    # UTC-4, so "2026-09-09T14:55:51-04:00" -- written four minutes ago --
+    # sorted before "2026-09-09T18:55:06+00:00" and the row was dropped as
+    # older than the last push. Every edit made during a working day was
+    # invisible to the incremental push and travelled only on a full one.
+    if got.tzinfo is None:
+        # Naive means a Neuralynx header or an old shard write, both of
+        # which are local wall-clock time on the machine that wrote them.
+        got = got.astimezone()
+    return got.astimezone(timezone.utc).isoformat()
+
+
+def now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _one_per_key(rows, on_conflict):
+    """Collapse rows that share a conflict key, keeping the last.
+
+    Postgres refuses a batch that would touch one row twice -- "ON CONFLICT DO
+    UPDATE command cannot affect row a second time" -- and it is right to:
+    it cannot know which of the two duplicates was meant, and applying both
+    in one statement would make the answer depend on arrival order.
+
+    So the choice is made here, where the order is known: the builders append
+    in the order they read their shards, so the later row is the newer fact.
+
+    Without a stated conflict key the primary key is the target, and here
+    that is `id` on every table that has one -- which is where this actually
+    bit: `errors` is keyed on `id`, is not in the ON_CONFLICT map, and two
+    shards holding the same failure produced two rows with one id.
+    """
+    keys = [k.strip() for k in str(on_conflict or "").split(",") if k.strip()]
+    if not keys:
+        if all(isinstance(r, dict) and r.get("id") is not None for r in rows):
+            keys = ["id"]
+        else:
+            return rows
+    seen = {}
+    order = []
+    for r in rows:
+        ident = tuple(r.get(k) for k in keys)
+        if any(v is None for v in ident):
+            # Not identifiable, so not a duplicate of anything; let the
+            # database decide what to do with it.
+            order.append(("keep", r))
+            continue
+        if ident not in seen:
+            order.append(("key", ident))
+        seen[ident] = r
+    out = []
+    for kind, val in order:
+        out.append(val if kind == "keep" else seen[val])
+    return out
+
+
+# ==========================================================================
+# The client
+# ==========================================================================
+class Cloud:
+    def __init__(self, logs_dir, store=None):
+        self.logs_dir = os.path.abspath(logs_dir)
+        self.store = store
+        self.cfg = load_config(self.logs_dir)
+        self.machine = shards.machine_id()
+        self._lock = threading.RLock()
+        self.last = {"at": None, "ok": None, "pushed": 0, "pulled": 0,
+                     "error": None}
+
+    # -- plumbing -------------------------------------------------------
+    @property
+    def configured(self):
+        return bool(self.cfg.get("url") and self.cfg.get("key"))
+
+    def reload(self):
+        self.cfg = load_config(self.logs_dir)
+        return self.cfg
+
+    def _headers(self, extra=None):
+        if not self.configured:
+            raise NotConfigured(
+                "No Supabase project configured. Run "
+                "tools/cloud_setup.py, or set Jarvis_SUPABASE_URL and "
+                "Jarvis_SUPABASE_KEY.")
+        h = {
+            "apikey": self.cfg["key"],
+            "Authorization": "Bearer " + self.cfg["key"],
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            # urllib never asks for compression, so every JSON answer came
+            # back at full size. Measured on `people`: 7,824 bytes plain,
+            # 1,201 gzipped. Egress is what leaves Supabase, so this is a
+            # straight division of every row this client downloads.
+            "Accept-Encoding": "gzip",
+            "User-Agent": _user_agent(self.machine),
+        }
+        h.update(extra or {})
+        return h
+
+    def _call(self, method, path, body=None, headers=None, raw=None,
+              timeout=TIMEOUT):
+        url = self.cfg["url"] + path
+        data = raw if raw is not None else (
+            json.dumps(body, default=str).encode("utf-8")
+            if body is not None else None)
+        req = urllib.request.Request(url, data=data, method=method,
+                                     headers=self._headers(headers))
+        held = away()
+        if held:
+            raise CloudAway(
+                "The shared database is not answering (%s), so it is not "
+                "being asked again until %s. Nothing is lost; it is all "
+                "kept here." % (held["why"], time.strftime(
+                    "%H:%M:%S", time.localtime(held["until"]))))
+        who = _who()
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as res:
+                _came_back()
+                wire = res.read()
+                _meter_note(who, method, path, res.status,
+                            len(wire) + _header_bytes(res.headers))
+                payload = _gunzip(wire, res.headers)
+                if not payload:
+                    return None, res.headers
+                try:
+                    return json.loads(payload.decode("utf-8")), res.headers
+                except ValueError:
+                    return payload, res.headers
+        except urllib.error.HTTPError as exc:
+            if exc.code in _UNREACHABLE:
+                _went_away("HTTP %d" % exc.code)
+            else:
+                _came_back()          # it answered; the answer was no
+            detail = ""
+            try:
+                wire = exc.read()
+                _meter_note(who, method, path, exc.code,
+                            len(wire) + _header_bytes(exc.headers or {}))
+                detail = _gunzip(wire, exc.headers or {}).decode(
+                    "utf-8", "replace")[:600]
+            except Exception:            # noqa: BLE001
+                _meter_note(who, method, path, exc.code, 0)
+            raise CloudError(_explain(method, path, exc.code, detail)) from None
+        except urllib.error.URLError as exc:
+            _meter_note(who, method, path, 0, 0)
+            _went_away("no connection")
+            raise CloudError("cannot reach %s: %s"
+                             % (self.cfg["url"], exc.reason)) from None
+        except TimeoutError:
+            # A read that timed out is not a URLError in urllib, and it is
+            # the same thing: nobody answered.
+            _meter_note(who, method, path, 0, 0)
+            _went_away("timed out")
+            raise CloudError("%s %s timed out after %ds"
+                             % (method, path, timeout)) from None
+
+    # -- tables ---------------------------------------------------------
+    @staticmethod
+    def _safe_query(query):
+        """Percent-encode what a URL cannot carry, leaving the syntax alone.
+
+        PostgREST filters are written as `col=op.value`, and the values here
+        are labels like "PTEN m1 s2 2023-10-02" and Windows paths -- so a raw
+        space, quote or backslash is normal and http.client rejects the
+        request outright. Only the characters that are actually illegal get
+        encoded; =, & and . are the filter's own grammar and stay.
+        """
+        out = []
+        for ch in query or "":
+            # Note what is NOT in this list. "+" has to be encoded: a query
+            # string reads it as a space, so the "+00:00" on every timestamp
+            # arrives as " 00:00" and Postgres rejects it -- which only shows
+            # up on the *second* incremental pull, because the first has no
+            # timestamp to filter on.
+            if ch.isalnum() or ch in "=&.-_~*()!'$,:/?[]@%":
+                out.append(ch)
+            else:
+                out.append("".join("%%%02X" % b
+                                   for b in ch.encode("utf-8")))
+        return "".join(out)
+
+    _HAS_SELECT = re.compile(r"(^|&)select=")
+
+    def select(self, table, query="", limit=PAGE, offset=0, columns=None):
+        """Rows of `table`, with `columns` (a PostgREST select list) or all.
+
+        A caller that already put `select=` in its query keeps it. This used
+        to append `select=*` regardless, so a key-only read sent two select
+        parameters and was right only because PostgREST happens to honour
+        the first -- constitution §11, leak 6.
+        """
+        q = self._safe_query(query)
+        if columns:
+            # Stated twice, the explicit argument wins.
+            q = "&".join(p for p in q.split("&")
+                         if p and not p.startswith("select="))
+            q = (q + "&" if q else "") + "select=" + self._safe_query(columns)
+        elif not self._HAS_SELECT.search(q):
+            q = (q + "&" if q else "") + "select=*"
+        path = "/rest/v1/%s?%s&limit=%d&offset=%d" % (table, q, limit, offset)
+        rows, _h = self._call("GET", path)
+        return rows or []
+
+    def select_all(self, table, query="", columns=None):
+        """Every matching row, paged. PostgREST caps a response; walking the
+        pages here means a caller never silently sees the first thousand."""
+        out, offset = [], 0
+        while True:
+            page = self.select(table, query, limit=PAGE, offset=offset,
+                               columns=columns)
+            out.extend(page)
+            if len(page) < PAGE:
+                return out
+            offset += PAGE
+
+    def upsert(self, table, rows, on_conflict=None):
+        """Insert or update, in batches, ignoring rows the trigger rejects.
+
+        `resolution=merge-duplicates` is what makes this idempotent: running
+        the migration twice, or pushing a record that is already up there,
+        does nothing rather than erroring.
+        """
+        rows = [r for r in (rows or []) if r]
+        if not rows:
+            return 0
+        rows = _one_per_key(rows, on_conflict)
+        prefer = "resolution=merge-duplicates,return=minimal"
+        sent = 0
+        # A column the database has not got yet is dropped and the batch
+        # retried, rather than taking the whole push down with it. One
+        # migration nobody has run used to stop every table after this one
+        # from syncing, for everybody.
+        dropped = set(PENDING_COLUMNS.get(table) or ())
+        for chunk in _sized_chunks(rows, table):
+            path = "/rest/v1/" + table
+            if on_conflict:
+                path += "?on_conflict=" + urllib.parse.quote(on_conflict)
+            # Bounded: each pass either sends the chunk or removes one
+            # column, and there are finitely many columns.
+            for _attempt in range(16):
+                if dropped:
+                    chunk = [{k: v for k, v in r.items() if k not in dropped}
+                             for r in chunk]
+                try:
+                    self._call("POST", path, body=chunk,
+                               headers={"Prefer": prefer})
+                    break
+                except Exception as exc:             # noqa: BLE001
+                    col = missing_column(exc)
+                    if not col or col in dropped:
+                        raise
+                    dropped.add(col)
+            else:
+                raise CloudError(
+                    "%s: gave up after dropping %s" % (table,
+                                                       sorted(dropped)))
+            sent += len(chunk)
+        if dropped:
+            PENDING_COLUMNS.setdefault(table, set()).update(dropped)
+        return sent
+
+    def upsert_returning(self, table, row, on_conflict=None):
+        """Insert or update one row and get it back as the database holds it.
+
+        One request where a write followed by a read was two: the answer
+        includes columns somebody else set on the same row (a presence row
+        another machine has marked taken, say), which is exactly what the
+        read was for.
+        """
+        path = "/rest/v1/" + table
+        if on_conflict:
+            path += "?on_conflict=" + urllib.parse.quote(on_conflict)
+        # A column the database has not got yet is dropped and retried, as
+        # `upsert` does, rather than failing the write.
+        dropped = set(PENDING_COLUMNS.get(table) or ())
+        for _attempt in range(16):
+            body = {k: v for k, v in row.items() if k not in dropped}
+            try:
+                rows, _h = self._call(
+                    "POST", path, body=[body],
+                    headers={"Prefer": "resolution=merge-duplicates,"
+                                       "return=representation"})
+                break
+            except Exception as exc:                     # noqa: BLE001
+                col = missing_column(exc)
+                if not col or col in dropped:
+                    raise
+                dropped.add(col)
+                PENDING_COLUMNS.setdefault(table, set()).add(col)
+        else:
+            raise CloudError("%s: gave up after dropping %s"
+                             % (table, sorted(dropped)))
+        if isinstance(rows, list) and rows:
+            return rows[0]
+        return None
+
+    def patch_rows(self, table, query, values):
+        """Change existing rows, without needing their primary key.
+
+        An upsert cannot do this: it would have to insert when no row matches,
+        and inserting needs the key. "Mark whatever is at this path deleted"
+        is a PATCH, and saying so is the difference between a tombstone that
+        travels and one that silently does nothing.
+        """
+        rows, _h = self._call(
+            "PATCH", "/rest/v1/%s?%s" % (table, self._safe_query(query)),
+            body=values, headers={"Prefer": "return=representation"})
+        return rows or []
+
+    def delete(self, table, query):
+        self._call("DELETE", "/rest/v1/%s?%s"
+                   % (table, self._safe_query(query)),
+                   headers={"Prefer": "return=minimal"})
+
+    def count(self, table, query=""):
+        """How many rows match, without fetching them.
+
+        `query` matters more than it looks: a caller that counts by taking
+        `len(select(...))` is reporting the page size the moment there are
+        more rows than a page, and PostgREST caps a page at a thousand. The
+        digest did exactly that and was out by 992.
+        """
+        q = self._safe_query(query)
+        q = q + ("&" if q else "")
+        path = "/rest/v1/%s?%sselect=*&limit=1" % (table, q)
+        _rows, headers = self._call(
+            "GET", path, headers={"Prefer": "count=exact",
+                                  "Range-Unit": "items", "Range": "0-0"})
+        rng = headers.get("Content-Range") or ""
+        try:
+            return int(rng.split("/")[-1])
+        except (ValueError, IndexError):
+            return None
+
+    # -- storage --------------------------------------------------------
+    def upload(self, bucket, key, path, content_type=None):
+        """Put one file in the bucket. Overwrites, so a re-run is a no-op."""
+        with open(path, "rb") as fh:
+            blob = fh.read()
+        # Not `mimetypes` for a .csv: on Windows it reads the registry, which
+        # says "application/vnd.ms-excel", and the bucket refuses that.
+        ct = content_type or (
+            "text/csv" if path.lower().endswith(".csv") else None) \
+            or mimetypes.guess_type(path)[0] or "application/octet-stream"
+        target = "/storage/v1/object/%s/%s" % (
+            bucket, urllib.parse.quote(key))
+        self._call("POST", target, raw=blob,
+                   headers={"Content-Type": ct, "x-upsert": "true"},
+                   timeout=180)
+        return key
+
+    def download(self, bucket, key, dest):
+        target = "/storage/v1/object/%s/%s" % (
+            bucket, urllib.parse.quote(key))
+        blob, _h = self._call("GET", target, timeout=180)
+        if isinstance(blob, (dict, list)):
+            raise CloudError("expected a file, got JSON for " + key)
+        os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
+        with open(dest, "wb") as fh:
+            fh.write(blob if isinstance(blob, bytes)
+                     else str(blob).encode("utf-8"))
+        return dest
+
+    def list_objects(self, bucket, prefix="", limit=1000):
+        body = {"prefix": prefix, "limit": limit,
+                "sortBy": {"column": "name", "order": "asc"}}
+        rows, _h = self._call("POST", "/storage/v1/object/list/" + bucket,
+                              body=body)
+        return rows or []
+
+    # -- health ---------------------------------------------------------
+    def ping(self):
+        """Is the project there, is the key good, is the schema applied?"""
+        out = {"url": self.cfg.get("url"), "project": self.cfg.get("project"),
+               "machine": self.machine, "reachable": False,
+               "schema": False, "counts": {}, "error": None}
+        try:
+            self._call("GET", "/rest/v1/")
+            out["reachable"] = True
+        except CloudError as exc:
+            out["error"] = str(exc)
+            return out
+        try:
+            for t in ("sessions", "mice", "bank_entries", "curation_events",
+                      "results", "runs", "activity"):
+                out["counts"][t] = self.count(t)
+            out["schema"] = True
+        except CloudError as exc:
+            out["error"] = ("the project is reachable but the schema is not "
+                            "there yet -- run supabase/01_schema.sql. (%s)"
+                            % str(exc)[:160])
+        return out
+
+    # -- sync bookkeeping ------------------------------------------------
+    def _state_path(self):
+        d = os.path.join(self.logs_dir, ".cache")
+        os.makedirs(d, exist_ok=True)
+        return os.path.join(d, "cloud_state.json")
+
+    def state(self):
+        try:
+            with open(self._state_path(), "r", encoding="utf-8") as fh:
+                return json.load(fh) or {}
+        except (OSError, ValueError):
+            return {}
+
+    def save_state(self, patch):
+        """Remember where the sync got to.
+
+        This is a cache, not data: it can be rebuilt by syncing again. So a
+        failure to write it must not be reported as a sync failure, which is
+        what was happening -- two Jarviss against the same GUI_logs contended
+        for a shared "cloud_state.json.tmp" and the "Permission denied" that
+        came back was logged as though the whole sync had broken.
+        """
+        import uuid as _uuid
+        st = self.state()
+        st.update(patch or {})
+        target = self._state_path()
+        # Private per process and attempt, so two Jarviss cannot collide.
+        tmp = "%s.%d.%s.tmp" % (target, os.getpid(), _uuid.uuid4().hex[:6])
+        try:
+            with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+                json.dump(st, fh, indent=2, sort_keys=True)
+        except OSError:
+            _quiet_rm(tmp)
+            return st                       # a cache; nothing is lost
+        # The rename can be refused for a moment by an indexer or a backup
+        # agent. Retried, then given up on quietly.
+        for attempt in range(5):
+            try:
+                os.replace(tmp, target)
+                return st
+            except OSError:
+                time.sleep(0.05 * (attempt + 1))
+        _quiet_rm(tmp)
+        return st
