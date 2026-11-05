@@ -297,9 +297,79 @@ BARRY.rcWorkflow = (function () {
     return { g, w, h: hh };
   }
 
-  const FONT = (px) => px + 'px ' + (tok('--font-ui', 'system-ui') || 'system-ui');
+  const FONT = (px, bold) => (bold ? '600 ' : '') + px + 'px '
+    + (tok('--font-ui', 'system-ui') || 'system-ui');
 
-  /* The 3D view: amplitude across, HF up, half-width into the screen. */
+  /* Ticks at round numbers, written the way Root Canal writes them. */
+  function niceTicks(lo, hi, n) {
+    const span = hi - lo;
+    if (!(span > 0)) return [lo];
+    const raw = span / Math.max(1, n || 4);
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const st = [1, 2, 2.5, 5, 10].map((m) => m * mag)
+      .find((s) => span / s <= (n || 4) + 0.5) || mag * 10;
+    const out = [];
+    for (let v = Math.ceil(lo / st) * st; v <= hi + st * 1e-9; v += st) {
+      out.push(Math.abs(v) < st * 1e-9 ? 0 : v);
+    }
+    return out;
+  }
+  const tickText = (v) => {
+    const a = Math.abs(v);
+    if (a >= 1000) return (v / 1000).toFixed(a >= 10000 ? 0 : 1) + 'k';
+    if (a >= 10 || a === 0) return String(Math.round(v));
+    return String(Math.round(v * 10) / 10);
+  };
+
+  /* A plotting frame: the box, faint grid lines at the ticks, numbers on
+     both axes, and the axis names. Returns the maps from values to pixels. */
+  function axes2d(g, w, h, xr, yr, xl, yl, o) {
+    const opt = o || {};
+    const L = opt.L != null ? opt.L : 46, B = opt.B != null ? opt.B : 34;
+    const T = opt.T != null ? opt.T : 8, R = opt.R != null ? opt.R : 10;
+    const X = (v) => L + ((v - xr[0]) / (xr[1] - xr[0])) * (w - L - R);
+    const Y = (v) => h - B - ((v - yr[0]) / (yr[1] - yr[0])) * (h - B - T);
+    g.font = FONT(10);
+    g.lineWidth = 1;
+    for (const t of niceTicks(xr[0], xr[1], Math.max(2, Math.floor((w - L - R) / 70)))) {
+      g.strokeStyle = tok('--line-soft', tok('--line'));
+      g.beginPath(); g.moveTo(X(t), T); g.lineTo(X(t), h - B); g.stroke();
+      g.fillStyle = tok('--text-3');
+      g.textAlign = 'center';
+      g.fillText((opt.xfmt || tickText)(t), X(t), h - B + 13);
+    }
+    if (!opt.noY) {
+      for (const t of niceTicks(yr[0], yr[1], Math.max(2, Math.floor((h - B - T) / 34)))) {
+        g.strokeStyle = tok('--line-soft', tok('--line'));
+        g.beginPath(); g.moveTo(L, Y(t)); g.lineTo(w - R, Y(t)); g.stroke();
+        g.fillStyle = tok('--text-3');
+        g.textAlign = 'right';
+        g.fillText((opt.yfmt || tickText)(t), L - 5, Y(t) + 3);
+      }
+    }
+    g.strokeStyle = tok('--line');
+    g.strokeRect(L, T, w - L - R, h - B - T);
+    g.fillStyle = tok('--text-2');
+    g.font = FONT(10.5);
+    g.textAlign = 'center';
+    if (xl) g.fillText(xl, (L + w - R) / 2, h - 6);
+    if (yl) {
+      g.save();
+      g.translate(11, (T + h - B) / 2);
+      g.rotate(-Math.PI / 2);
+      g.fillText(yl, 0, 0);
+      g.restore();
+    }
+    g.textAlign = 'left';
+    return { X, Y, L, B, T, R };
+  }
+
+  /* The 3D view: amplitude across, HF up, half-width into the screen.
+
+     THE FRAME IS THE AXES, NOT A BORDER (2026-11-05: "what is the other
+     faint box?"). It spans what is on show, from the lowest value to the
+     highest on each axis, and carries their tick values along its front
+     edges; the borders are the coloured boxes inside it. */
   function project(u, view, s, cx, cy) {
     const cyw = Math.cos(view.yaw), syw = Math.sin(view.yaw);
     const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
@@ -316,37 +386,82 @@ BARRY.rcWorkflow = (function () {
 
   function draw3d(cv, run, kind, stage, opt) {
     const o = opt || {};
-    const s0 = sized(cv, o.h || 380);
+    const s0 = sized(cv, o.h || 420);
     if (!s0) return;
     const { g, w, h } = s0;
     const view = o.view || W.view;
     const R = o.ranges || rangesOf(run);
-    const scale = Math.min(w, h) * 0.34 * (view.zoom || 1);
-    const cx = w / 2, cy = h / 2 + (o.small ? 4 : 10);
+    const scale = Math.min(w * 0.8, h) * (o.small ? 0.36 : 0.31) * (view.zoom || 1);
+    const cx = w / 2, cy = h / 2 + (o.small ? 4 : 0);
     const P = (a, b, c) => project([a, b, c], view, scale, cx, cy);
-    // The cube.
-    g.strokeStyle = tok('--line');
+    const depth = (a, b, c) => P(a, b, c)[2];
+    // Which edges face the viewer: the ticks go on those.
+    const zf = depth(0, -1, 1) > depth(0, -1, -1) ? 1 : -1;      // front, along amp
+    const xf = depth(1, -1, 0) > depth(-1, -1, 0) ? 1 : -1;      // front, along hw
+    // The frame, with its back edges fainter than its front ones.
     g.lineWidth = 1;
-    const C = [-1, 1];
-    for (const a of C) for (const b of C) {
-      line(g, P(-1, a, b), P(1, a, b));
-      line(g, P(a, -1, b), P(a, 1, b));
-      line(g, P(a, b, -1), P(a, b, 1));
+    for (const a of [-1, 1]) for (const b of [-1, 1]) {
+      for (const [p0, p1] of [[[-1, a, b], [1, a, b]], [[a, -1, b], [a, 1, b]],
+                              [[a, b, -1], [a, b, 1]]]) {
+        const front = (p0[2] === zf || p1[2] === zf) && (p0[0] === xf || p1[0] === xf);
+        g.strokeStyle = tok('--line');
+        g.globalAlpha = front ? 0.9 : 0.45;
+        line(g, P(...p0), P(...p1));
+      }
     }
+    g.globalAlpha = 1;
     if (!o.small) {
-      g.fillStyle = tok('--text-2');
+      // A floor grid at the amplitude and half-width ticks.
+      g.strokeStyle = tok('--line-soft', tok('--line'));
+      g.globalAlpha = 0.5;
+      for (const t of niceTicks(R.amp[0], R.amp[1], 5)) {
+        const u = norm(t, R.amp);
+        if (Math.abs(u) < 0.999) line(g, P(u, -1, -1), P(u, -1, 1));
+      }
+      for (const t of niceTicks(R.hw[0], R.hw[1], 5)) {
+        const u = norm(t, R.hw);
+        if (Math.abs(u) < 0.999) line(g, P(-1, -1, u), P(1, -1, u));
+      }
+      g.globalAlpha = 1;
+      // Tick values on the three front edges, and the axis names beyond them.
       g.font = FONT(10);
+      g.fillStyle = tok('--text-3');
+      const tickAlong = (ticks, at, off) => {
+        for (const t of ticks) {
+          const q = at(t);
+          if (!q) continue;
+          g.fillText(tickText(t), q[0] + off[0], q[1] + off[1]);
+        }
+      };
+      const ampEdge = (t) => { const u = norm(t, R.amp);
+        return Math.abs(u) <= 1.001 ? P(u, -1, zf) : null; };
+      const hwEdge = (t) => { const u = norm(t, R.hw);
+        return Math.abs(u) <= 1.001 ? P(xf, -1, u) : null; };
+      const hfEdge = (t) => { const u = norm(t, R.hf);
+        return Math.abs(u) <= 1.001 ? P(-xf, u, zf) : null; };
       g.textAlign = 'center';
-      const lab = (pt, t) => g.fillText(t, pt[0], pt[1]);
-      lab(P(0, -1.18, 1), 'amplitude (µV)  ' + fmt(R.amp[0], 0) + ' – ' + fmt(R.amp[1], 0));
-      lab(P(-1.12, 0, 1), 'HF (dB)');
-      lab(P(-1, -1.18, 0), 'half-width (ms)');
+      tickAlong(niceTicks(R.amp[0], R.amp[1], 5), ampEdge, [0, 15]);
+      tickAlong(niceTicks(R.hw[0], R.hw[1], 4), hwEdge, [0, 15]);
+      const hfLeft = P(-xf, 0, zf)[0] < cx;
+      g.textAlign = hfLeft ? 'right' : 'left';
+      tickAlong(niceTicks(R.hf[0], R.hf[1], 4), hfEdge, [hfLeft ? -6 : 6, 3]);
+      g.font = FONT(11, true);
+      g.fillStyle = tok('--text-2');
+      g.textAlign = 'center';
+      const a0 = P(0, -1, zf), h0 = P(xf, -1, 0), f0 = P(-xf, 1, zf);
+      const out = (q, dx, dy) => [q[0] + dx, q[1] + dy];
+      const am = out(a0, 0, 32), hm = out(h0, 0, 32);
+      g.fillText('max amplitude · µV', am[0], am[1]);
+      g.fillText('half-width · ms', hm[0], hm[1]);
+      g.textAlign = hfLeft ? 'right' : 'left';
+      g.fillText('HF power · dB', f0[0] + (hfLeft ? -6 : 6), f0[1] - 10);
+      g.textAlign = 'left';
     }
-    // The boxes.
-    for (const b of boxesOf(run, kind)) {
-      drawBox(g, b, R, P);
-    }
-    // The dots: the context first, the stage's own on top, far ones first.
+    // The borders.
+    for (const b of boxesOf(run, kind)) drawBox(g, b, R, P, o.small);
+    // The dots: the context first, the stage's own on top, far ones first,
+    // nearer ones a little larger and brighter -- the depth cue Root Canal's
+    // own space uses.
     const set = stageSet(run, kind, stage);
     const shown = [];
     for (const p of set.pts) {
@@ -354,11 +469,15 @@ BARRY.rcWorkflow = (function () {
       const q = P(norm(p.amp, R.amp), norm(p.hf, R.hf), norm(p.hw, R.hw));
       shown.push({ p, q, keep: set.keep(p) });
     }
-    shown.sort((a, b) => (a.keep - b.keep) || (b.q[2] - a.q[2]));
-    const r = o.small ? 1.2 : 2.3;
+    shown.sort((a, b) => (a.keep - b.keep) || (a.q[2] - b.q[2]));
+    let dlo = Infinity, dhi = -Infinity;
+    for (const x of shown) { dlo = Math.min(dlo, x.q[2]); dhi = Math.max(dhi, x.q[2]); }
+    const near = (d) => (dhi > dlo ? (d - dlo) / (dhi - dlo) : 1);
     const pick = W.picked && W.picked.which === set.which ? W.picked.n : null;
     for (const x of shown) {
-      g.globalAlpha = x.keep ? 0.9 : 0.14;
+      const nr = near(x.q[2]);
+      const r = o.small ? 1.2 : 1.8 + 1.4 * nr;
+      g.globalAlpha = x.keep ? 0.45 + 0.5 * nr : 0.1;
       g.fillStyle = colourOf(kind, x.p.cls, set.which);
       g.beginPath();
       g.arc(x.q[0], x.q[1], r, 0, 6.2832);
@@ -371,8 +490,9 @@ BARRY.rcWorkflow = (function () {
         g.strokeStyle = tok('--text');
         g.lineWidth = 2;
         g.beginPath();
-        g.arc(x.q[0], x.q[1], r + 4, 0, 6.2832);
+        g.arc(x.q[0], x.q[1], 7, 0, 6.2832);
         g.stroke();
+        g.lineWidth = 1;
       }
     }
     cv.__pick = { which: set.which, pts: shown.filter((x) => x.keep) };
@@ -387,14 +507,26 @@ BARRY.rcWorkflow = (function () {
     g.setLineDash([]);
   }
 
-  function drawBox(g, b, R, P) {
+  function drawBox(g, b, R, P, small) {
     const lo = [norm(b.lo.amp, R.amp), norm(b.lo.hf, R.hf), norm(b.lo.hw, R.hw)];
     const hi = [norm(b.hi.amp, R.amp), norm(b.hi.hf, R.hf), norm(b.hi.hw, R.hw)];
     if (lo.concat(hi).some((v) => !isFinite(v))) return;
     const c = (i, j, k) => P(i ? hi[0] : lo[0], j ? hi[1] : lo[1], k ? hi[2] : lo[2]);
     g.strokeStyle = b.colour;
-    g.lineWidth = b.dashed ? 1 : 1.8;
-    const dash = b.dashed ? [4, 4] : [];
+    g.lineWidth = b.dashed ? 1 : (small ? 1.3 : 2);
+    const dash = b.dashed ? [5, 4] : [];
+    // A faint fill on the solid box's floor, so it reads as a volume.
+    if (!b.dashed && !small) {
+      g.fillStyle = b.colour;
+      g.globalAlpha = 0.06;
+      g.beginPath();
+      const f = [c(0, 0, 0), c(1, 0, 0), c(1, 0, 1), c(0, 0, 1)];
+      g.moveTo(f[0][0], f[0][1]);
+      for (const q of f.slice(1)) g.lineTo(q[0], q[1]);
+      g.closePath();
+      g.fill();
+      g.globalAlpha = 1;
+    }
     for (const a of [0, 1]) for (const d of [0, 1]) {
       line(g, c(0, a, d), c(1, a, d), dash);
       line(g, c(a, 0, d), c(a, 1, d), dash);
@@ -405,37 +537,35 @@ BARRY.rcWorkflow = (function () {
   /* A 2D view of two axes, with the boxes' edges on it. */
   function draw2d(cv, run, kind, stage, xa, ya, opt) {
     const o = opt || {};
-    const s0 = sized(cv, o.h || 170);
+    const s0 = sized(cv, o.h || 190);
     if (!s0) return;
     const { g, w, h } = s0;
     const R = o.ranges || rangesOf(run);
-    const L = o.small ? 4 : 34, B = o.small ? 4 : 26, T = 6, Rr = 6;
-    const X = (v) => L + ((v - R[xa][0]) / (R[xa][1] - R[xa][0])) * (w - L - Rr);
-    const Y = (v) => h - B - ((v - R[ya][0]) / (R[ya][1] - R[ya][0])) * (h - B - T);
-    g.strokeStyle = tok('--line');
-    g.strokeRect(L, T, w - L - Rr, h - B - T);
-    if (!o.small) {
-      g.fillStyle = tok('--text-2');
-      g.font = FONT(10);
-      g.textAlign = 'center';
-      const wx = AX.find((a) => a[0] === xa), wy = AX.find((a) => a[0] === ya);
-      g.fillText(wx[2] + ' (' + wx[3] + ')', (L + w) / 2, h - 6);
-      g.save();
-      g.translate(11, (T + h - B) / 2);
-      g.rotate(-Math.PI / 2);
-      g.fillText(wy[2] + ' (' + wy[3] + ')', 0, 0);
-      g.restore();
+    const wx = AX.find((a) => a[0] === xa), wy = AX.find((a) => a[0] === ya);
+    let X, Y;
+    if (o.small) {
+      const L = 3, B = 3, T = 3, Rr = 3;
+      X = (v) => L + ((v - R[xa][0]) / (R[xa][1] - R[xa][0])) * (w - L - Rr);
+      Y = (v) => h - B - ((v - R[ya][0]) / (R[ya][1] - R[ya][0])) * (h - B - T);
+      g.strokeStyle = tok('--line');
+      g.strokeRect(L, T, w - L - Rr, h - B - T);
+    } else {
+      const F = axes2d(g, w, h, R[xa], R[ya], wx[2] + ' · ' + wx[3],
+                       wy[2] + ' · ' + wy[3], { L: 44, B: 32 });
+      X = F.X; Y = F.Y;
     }
     const set = stageSet(run, kind, stage);
     const pts = (o.only ? set.pts.filter(o.only) : set.pts).filter(measured);
-    const r = o.small ? 1 : 1.8;
+    const r = o.small ? 1 : 1.6;
     for (const keepPass of [false, true]) {
       for (const p of pts) {
         const k = set.keep(p);
         if (k !== keepPass) continue;
-        g.globalAlpha = k ? 0.85 : 0.12;
+        g.globalAlpha = k ? 0.8 : 0.1;
         g.fillStyle = colourOf(kind, p.cls, set.which);
-        g.fillRect(X(p[xa]) - r, Y(p[ya]) - r, 2 * r, 2 * r);
+        g.beginPath();
+        g.arc(X(p[xa]), Y(p[ya]), r, 0, 6.2832);
+        g.fill();
       }
     }
     g.globalAlpha = 1;
@@ -443,19 +573,28 @@ BARRY.rcWorkflow = (function () {
       const x0 = X(b.lo[xa]), x1 = X(b.hi[xa]), y0 = Y(b.hi[ya]), y1 = Y(b.lo[ya]);
       if (![x0, x1, y0, y1].every(isFinite)) continue;
       g.strokeStyle = b.colour;
-      g.lineWidth = b.dashed ? 1 : 1.6;
-      g.setLineDash(b.dashed ? [4, 4] : []);
+      g.lineWidth = b.dashed ? 1 : (o.small ? 1.2 : 1.8);
+      g.setLineDash(b.dashed ? [5, 4] : []);
       g.strokeRect(x0, y0, x1 - x0, y1 - y0);
       g.setLineDash([]);
+    }
+    if (W.picked && W.picked.which === set.which && !o.small) {
+      const p = pts.find((z) => z.n === W.picked.n);
+      if (p) {
+        g.strokeStyle = tok('--text');
+        g.lineWidth = 2;
+        g.beginPath(); g.arc(X(p[xa]), Y(p[ya]), 6, 0, 6.2832); g.stroke();
+        g.lineWidth = 1;
+      }
     }
     if (!o.small) cv.__pick = { which: set.which, pts: pts.filter((p) => set.keep(p))
       .map((p) => ({ p, q: [X(p[xa]), Y(p[ya])] })) };
   }
 
   /* How far every event is from the box on one axis, in box widths:
-     below 0 inside, above 0 outside, the edge at 0. */
+     below 0 inside (how deep), above 0 outside (how far out). */
   function drawDist(cv, run, kind, axisIx, which) {
-    const s0 = sized(cv, 120);
+    const s0 = sized(cv, 150);
     if (!s0) return;
     const { g, w, h } = s0;
     const key = which === 'b' ? 'db' : 'da';
@@ -467,68 +606,93 @@ BARRY.rcWorkflow = (function () {
       bins[Math.floor(((v - lo) / (hi - lo)) * nb)] += 1;
     }
     const top = Math.max(1, ...bins);
-    const L = 6, B = 22, T = 14;
-    const X = (v) => L + ((v - lo) / (hi - lo)) * (w - 2 * L);
-    const col = which === 'b' ? tok('--call-p') : kind === 'pspike' ? tok('--call-p')
-      : tok('--call-ds');
+    const F = axes2d(g, w, h, [lo, hi], [0, top * 1.08],
+                     AX[axisIx][2] + ': distance from the box, in box widths',
+                     'events', { L: 40, B: 32, T: 18,
+                                 xfmt: (v) => (v > 0 ? '+' : '') + v });
+    const col = which === 'b' || kind === 'pspike' ? tok('--call-p') : tok('--call-ds');
     for (let b = 0; b < nb; b++) {
-      const x0 = X(lo + (b / nb) * (hi - lo)), x1 = X(lo + ((b + 1) / nb) * (hi - lo));
-      const hh = (bins[b] / top) * (h - B - T);
-      const mid = lo + ((b + 0.5) / nb) * (hi - lo);
-      g.fillStyle = mid <= 0 ? col : tok('--text-3');
-      g.fillRect(x0 + 0.5, h - B - hh, Math.max(1, x1 - x0 - 1), hh);
+      const v0 = lo + (b / nb) * (hi - lo), v1 = lo + ((b + 1) / nb) * (hi - lo);
+      const x0 = F.X(v0), x1 = F.X(v1), y = F.Y(bins[b]);
+      g.fillStyle = (v0 + v1) / 2 <= 0 ? col : tok('--text-3');
+      g.globalAlpha = (v0 + v1) / 2 <= 0 ? 0.9 : 0.75;
+      g.fillRect(x0 + 0.5, y, Math.max(1, x1 - x0 - 1), F.Y(0) - y);
     }
+    g.globalAlpha = 1;
     g.strokeStyle = tok('--text');
-    line(g, [X(0), T - 4], [X(0), h - B + 3], [3, 3]);
+    line(g, [F.X(0), F.T - 2], [F.X(0), h - F.B], [3, 3]);
+    g.font = FONT(10, true);
     g.fillStyle = tok('--text-2');
+    g.textAlign = 'right';
+    g.fillText('inside ←', F.X(0) - 5, F.T - 5);
+    g.textAlign = 'left';
+    g.fillText('→ outside', F.X(0) + 5, F.T - 5);
+    const nIn = pts.filter((p) => p[key][axisIx] <= 0).length;
+    g.textAlign = 'right';
     g.font = FONT(10);
-    g.textAlign = 'center';
-    g.fillText('edge', X(0), T - 5 < 8 ? 9 : T - 5);
-    g.fillText('← inside      ' + AX[axisIx][2] + '      outside →', w / 2, h - 6);
+    g.fillText(nIn.toLocaleString() + ' in · ' + (pts.length - nIn).toLocaleString()
+               + ' out on this axis', w - 12, F.T + 12);
+    g.textAlign = 'left';
   }
 
   /* The grace sweep: how many of the target land inside, and how much of
-     the source's own the box leaves out, at every grace. */
+     the border's own events the box leaves out, at every grace -- two
+     y-axes, each in its own colour, the chosen grace marked and said. */
   function drawSweep(cv, run, kind) {
-    const s0 = sized(cv, 170);
+    const s0 = sized(cv, 210);
     if (!s0) return;
     const { g, w, h } = s0;
     const sw = run.sweep || [];
     if (!sw.length) return;
-    const L = 40, Rr = 40, T = 10, B = 26;
-    const gx = (v) => L + (v / 0.1) * (w - L - Rr);
     const nmax = Math.max(1, ...sw.map((s) => s.target_inside));
     const omax = Math.max(0.1, ...sw.map((s) => s.source_outside));
-    const Y1 = (v) => h - B - (v / nmax) * (h - B - T);
-    const Y2 = (v) => h - B - (v / omax) * (h - B - T);
-    g.strokeStyle = tok('--line');
-    g.strokeRect(L, T, w - L - Rr, h - B - T);
     const grp = kind === 'ds' ? tok('--call-ds') : tok('--call-p');
+    const F = axes2d(g, w, h, [0, 0.1], [0, nmax * 1.08], 'grace',
+                     'target events inside', { L: 48, R: 44, B: 32, T: 10,
+                       xfmt: (v) => +(v * 100).toFixed(0) + '%' });
+    const Y2 = (v) => h - F.B - (v / (omax * 1.08)) * (h - F.B - F.T);
+    // The right-hand axis: the share of the border's own events left out.
+    g.font = FONT(10);
+    g.fillStyle = tok('--warn');
+    g.textAlign = 'left';
+    for (const t of niceTicks(0, omax * 1.08, 4)) {
+      g.fillText(+(t * 100).toFixed(1) + '%', w - F.R + 5, Y2(t) + 3);
+    }
     const path = (ys, colour) => {
       g.strokeStyle = colour;
-      g.lineWidth = 2;
+      g.lineWidth = 2.2;
       g.beginPath();
-      sw.forEach((s, k) => { const x = gx(s.grace), y = ys(s);
+      sw.forEach((s, k) => { const x = F.X(s.grace), y = ys(s);
                              if (k) g.lineTo(x, y); else g.moveTo(x, y); });
       g.stroke();
+      g.lineWidth = 1;
     };
-    path((s) => Y1(s.target_inside), grp);
+    path((s) => F.Y(s.target_inside), grp);
     path((s) => Y2(s.source_outside), tok('--warn'));
+    const at = sw.reduce((a, s) => (Math.abs(s.grace - run.grace) < Math.abs(a.grace - run.grace)
+                                    ? s : a), sw[0]);
     g.strokeStyle = tok('--text');
-    line(g, [gx(run.grace), T], [gx(run.grace), h - B], [3, 3]);
-    g.fillStyle = tok('--text-2');
-    g.font = FONT(10);
-    g.textAlign = 'center';
-    for (const t of [0, 0.02, 0.04, 0.06, 0.08, 0.1]) {
-      g.fillText(+(t * 100).toFixed(0) + '%', gx(t), h - B + 13);
+    line(g, [F.X(run.grace), F.T], [F.X(run.grace), h - F.B], [3, 3]);
+    for (const [y, c] of [[F.Y(at.target_inside), grp], [Y2(at.source_outside), tok('--warn')]]) {
+      g.fillStyle = c;
+      g.beginPath(); g.arc(F.X(run.grace), y, 4, 0, 6.2832); g.fill();
     }
-    g.fillText('grace', (L + w - Rr) / 2, h - 3);
-    g.textAlign = 'right';
-    g.fillStyle = grp;
-    g.fillText(String(nmax), L - 4, T + 8);
-    g.textAlign = 'left';
+    g.font = FONT(10.5, true);
+    g.fillStyle = tok('--text');
+    const label = 'grace ' + graceWords(run.grace) + ': '
+      + at.target_inside.toLocaleString() + ' inside · ' + pct(at.source_outside)
+      + ' of its own left out';
+    const lx = Math.min(w - F.R - 6 - g.measureText(label).width,
+                        Math.max(F.L + 6, F.X(run.grace) + 8));
+    g.fillText(label, lx, F.T + 14);
+    g.save();
+    g.translate(w - 8, (F.T + h - F.B) / 2);
+    g.rotate(Math.PI / 2);
+    g.textAlign = 'center';
+    g.font = FONT(10.5);
     g.fillStyle = tok('--warn');
-    g.fillText(pct(omax), w - Rr + 4, T + 8);
+    g.fillText('its own events left out', 0, 0);
+    g.restore();
   }
 
   /* From mice to classes: a band per mouse and class, as wide as how many
@@ -605,86 +769,6 @@ BARRY.rcWorkflow = (function () {
   const shortClass = (c) => ({ inside: 'inside', outside: 'outside',
     ds: 'DS only', pspike: 'P-spike only', both: 'both', neither: 'neither' })[c] || c;
 
-  /* An event's waveform, as the server measured it. */
-  function drawTrace(cv, tr) {
-    const s0 = sized(cv, 150);
-    if (!s0 || !tr) return;
-    const { g, w, h } = s0;
-    const xs = tr.t_ms || [], ys = tr.y || [];
-    const fy = ys.filter(finite);
-    if (!fy.length) return;
-    const L = 40, B = 22, T = 8, Rr = 8;
-    const x0 = xs[0], x1 = xs[xs.length - 1];
-    let lo = Math.min(...fy), hi = Math.max(...fy);
-    if (hi <= lo) hi = lo + 1;
-    const X = (v) => L + ((v - x0) / (x1 - x0)) * (w - L - Rr);
-    const Y = (v) => h - B - ((v - lo) / (hi - lo)) * (h - B - T);
-    g.strokeStyle = tok('--line');
-    g.strokeRect(L, T, w - L - Rr, h - B - T);
-    g.strokeStyle = tok('--text');
-    g.lineWidth = 1.4;
-    g.beginPath();
-    let on = false;
-    xs.forEach((x, k) => {
-      if (!finite(ys[k])) { on = false; return; }
-      if (on) g.lineTo(X(x), Y(ys[k])); else g.moveTo(X(x), Y(ys[k]));
-      on = true;
-    });
-    g.stroke();
-    g.strokeStyle = tok('--accent');
-    if (finite(tr.peak_ms)) line(g, [X(tr.peak_ms), T], [X(tr.peak_ms), h - B], [3, 3]);
-    if (finite(tr.half_uV) && finite(tr.left_ms) && finite(tr.right_ms)) {
-      line(g, [X(tr.left_ms), Y(tr.half_uV)], [X(tr.right_ms), Y(tr.half_uV)]);
-    }
-    g.fillStyle = tok('--text-2');
-    g.font = FONT(10);
-    g.textAlign = 'center';
-    g.fillText('ms from the stamp', (L + w) / 2, h - 5);
-    g.textAlign = 'right';
-    g.fillText(fmt(hi, 0) + ' µV', L - 3, T + 9);
-    g.fillText(fmt(lo, 0), L - 3, h - B);
-  }
-
-  function drawCsd(cv, c) {
-    const s0 = sized(cv, 150);
-    if (!s0 || !c || !(c.rows || []).length) return;
-    const { g, w, h } = s0;
-    const rows = c.rows, n = rows.length, m = rows[0].length;
-    const lim = (c.clim && c.clim[1]) || 1;
-    const L = 40, B = 22, T = 8, Rr = 8;
-    const cw = (w - L - Rr) / m, rh = (h - B - T) / n;
-    const pos = rgb(tok('--call-p')), neg = rgb(tok('--call-ds'));
-    for (let r = 0; r < n; r++) {
-      for (let k = 0; k < m; k++) {
-        const v = Math.max(-1, Math.min(1, rows[r][k] / lim));
-        const col = v >= 0 ? pos : neg;
-        g.fillStyle = 'rgba(' + col.join(',') + ',' + Math.abs(v).toFixed(3) + ')';
-        g.fillRect(L + k * cw, T + r * rh, cw + 0.5, rh + 0.5);
-      }
-    }
-    g.strokeStyle = tok('--line');
-    g.strokeRect(L, T, w - L - Rr, h - B - T);
-    g.fillStyle = tok('--text-2');
-    g.font = FONT(10);
-    g.textAlign = 'center';
-    g.fillText('CSD down the column (sink and source)', (L + w) / 2, h - 5);
-    g.textAlign = 'right';
-    g.fillText('CSC' + c.nums[0], L - 3, T + 9);
-    g.fillText('CSC' + c.nums[n - 1], L - 3, h - B);
-  }
-
-  function rgb(css) {
-    const g = document.createElement('canvas').getContext('2d');
-    g.fillStyle = css;
-    const v = g.fillStyle;
-    if (/^#/.test(v)) {
-      const x = parseInt(v.slice(1), 16);
-      return [(x >> 16) & 255, (x >> 8) & 255, x & 255];
-    }
-    const m = v.match(/\d+/g) || [128, 128, 128];
-    return m.slice(0, 3).map(Number);
-  }
-
   /* ==================================================================
      Picking a dot
      ================================================================== */
@@ -702,6 +786,12 @@ BARRY.rcWorkflow = (function () {
     W.ev = null;
     W.avg = null;
     refresh();
+    // Its four pictures at once, as Root Canal's own click panel does.
+    const run = shownRun();
+    const p = run && pickedPoint(run);
+    const mem = run && ((W.picked.which === 'src' ? run.src_members : run.members) || []);
+    const m = p && mem ? mem[p.m] || {} : {};
+    if (p && m.event_body) loadEvent(m, p);
   }
 
   /* Turned by dragging, on the canvas's own pointer: nothing is left
@@ -879,15 +969,25 @@ BARRY.rcWorkflow = (function () {
         BARRY.ui.button({ kind: open ? 'primary' : 'ghost', size: 'sm',
           text: open ? 'Open below' : 'Open', extra: 'wf-open',
           onclick: () => openWorkflow(r.artifact_id) }),
-        BARRY.ui.button({ kind: 'ghost', size: 'sm',
-          text: r.ran ? 'Run again' : 'Run', extra: 'wf-run',
-          title: 'Define, apply and extract with the inputs this workflow pins.'
-                 + (kind === 'ambiguous' ? ' Nothing is banked: you choose.'
-                    : ' What is inside goes to the Bank, as one entry.'),
-          onclick: () => runWorkflow(r, false) }),
-        stale.length ? BARRY.ui.button({ kind: 'ghost', size: 'sm',
-          text: 'Run with the newest inputs', extra: 'wf-run-fresh',
-          onclick: () => runWorkflow(r, true) }) : null,
+        kind === 'ambiguous'
+          ? BARRY.ui.button({ kind: 'primary', size: 'sm',
+              text: r.ran ? 'Run again' : 'Run', extra: 'wf-run',
+              title: 'Apply both borders to the target. Nothing is banked: tick '
+                     + 'the events you want, then Bank the ticked.',
+              onclick: () => runWorkflow(r, !!stale.length) })
+          : BARRY.ui.button({ kind: 'primary', size: 'sm',
+              text: 'Run and bank…', extra: 'wf-run-bank',
+              title: 'Define the border, apply it, and bank every event inside it '
+                     + 'as one Event Bank entry. A dialog says exactly what will '
+                     + 'be written first.'
+                     + (kind === 'pspike' ? ' The hand-sorted sets are made ready '
+                        + 'first, by themselves.' : ''),
+              onclick: () => runWorkflow(r, !!stale.length, { bank: true }) }),
+        kind === 'ambiguous' ? null : BARRY.ui.button({ kind: 'ghost', size: 'sm',
+          text: 'Run without banking', extra: 'wf-run',
+          title: 'Define and apply, and keep the run as a version, with nothing '
+                 + 'written to the Bank.',
+          onclick: () => runWorkflow(r, !!stale.length, { bank: false }) }),
         BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Edit',
           onclick: () => openBuilder(r) }),
         BARRY.ui.button({ kind: 'ghost', size: 'sm',
@@ -896,10 +996,32 @@ BARRY.rcWorkflow = (function () {
                  + 'syncs, and so do the bank entries they made. Nothing is '
                  + 'deleted; put it back from Show archived.',
           onclick: () => setArchived(r, !isArch) }),
-        r.bank && r.bank.entry_id ? el('span', { class: 'hint',
-          text: 'Banked: ' + (r.bank.n || 0).toLocaleString() + ' events in one '
-                + 'entry (' + r.bank.entry_id + ').' }) : null,
       ].filter(Boolean)),
+      kind === 'ambiguous' ? null : bankLine(r),
+    ].filter(Boolean));
+  }
+
+  /* What this workflow has in the Bank, said plainly, with a door to it. */
+  function bankLine(r) {
+    const b = r.bank;
+    if (!b || !b.entry_id) {
+      return el('div', { class: 'wf-bankline none' }, [
+        el('strong', { text: 'Not banked yet.' }),
+        el('span', { text: 'Press Run and bank to put its extracted events in '
+                     + 'the Event Bank, as one entry.' }),
+      ]);
+    }
+    return el('div', { class: 'wf-bankline' }, [
+      el('strong', { text: 'Banked' }),
+      el('span', { text: (b.n || 0).toLocaleString() + ' events in ‘'
+                   + (b.name || b.entry_id) + '’' + (b.version ? ', v' + b.version : '')
+                   + (b.recordings ? ', from ' + b.recordings + ' recordings' : '')
+                   + (r.bank_current === false ? ' — by an earlier run; the newest '
+                      + 'run was not banked' : '') + '.' }),
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Open in the Event Bank',
+        extra: 'wf-open-bank',
+        onclick: () => (BARRY.views.eventbank && BARRY.views.eventbank.openEntry
+          ? BARRY.views.eventbank.openEntry(b.entry_id) : null) }),
     ]);
   }
 
@@ -954,35 +1076,209 @@ BARRY.rcWorkflow = (function () {
     if (n && n.scrollIntoView) n.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
 
-  async function runWorkflow(r, fresh) {
+  /* RUN, AND BANK ONLY WHEN ASKED (2026-11-05: "make the banking more
+     explicit, not sure what to hit to bank").
+
+     A P-spike workflow's hand-sorted sets are made ready first, by
+     themselves ("have it do this part automatically"): put on the
+     recording's clock, aligned and read here, each one only if it needs it.
+     Then, to bank, the run is previewed and a dialog says exactly what will
+     be written -- how many events, from how many recordings, into which
+     entry, new or its next version -- under a name that can be changed.
+     Nothing is written until its button, which says it banks, is pressed. */
+  async function runWorkflow(r, fresh, opt) {
+    const o = opt || {};
     if (W.busy) return;
-    W.busy = 'Running ‘' + (r.nickname || r.name) + '’';
+    const nick = r.nickname || r.name;
+    const dd = (((W.data[r.artifact_id] || {}).payload) || {}).definition
+               || r.definition || {};
+    let pinFresh = !!fresh;
+    if (r.kind === 'pspike') {
+      const ents = ((dd.source || {}).entries || []).map((e) => e.entry_id);
+      W.busy = 'Making the hand-sorted sets ready';
+      refresh();
+      const ready = await prepareSets(ents, dd.target, (t) => { W.busy = t; refresh(); });
+      if (ready.changed) pinFresh = true;   // the sets have new versions now
+      if (ready.fails.length) {
+        W.busy = null;
+        toast('Not run: ' + ready.fails.length + ' hand-sorted set(s) could '
+              + 'not be made ready — ' + ready.fails.join('; '), 'err', 20000);
+        refresh();
+        return;
+      }
+    }
+    const bank = r.kind !== 'ambiguous' && o.bank !== false;
+    const go = async (extra) => {
+      W.busy = 'Running ‘' + nick + '’';
+      refresh();
+      let got;
+      try {
+        got = await apiPost('/api/rootcanal/workflow/'
+                            + encodeURIComponent(r.artifact_id) + '/run',
+                            Object.assign({ refresh: pinFresh, bank }, extra || {}));
+      } catch (e) {
+        W.busy = null;
+        refresh();
+        throw e;
+      }
+      W.busy = null;
+      const run = got.run || {};
+      const b = run.bank;
+      toast('‘' + nick + '’ v' + got.version + ': ' + (run.kept || 0).toLocaleString()
+            + ' of ' + (run.n || 0).toLocaleString()
+            + (r.kind === 'ambiguous' ? ' events are ambiguous; nothing was banked — '
+               + 'tick the ones you want and press Bank the ticked.'
+               : ' events inside the border. ' + (b ? 'Banked as '
+                 + (b.new ? 'a new entry' : 'v' + (b.version || '?') + ' of')
+                 + ' ‘' + (b.name || b.entry_id) + '’.'
+                 : 'Nothing was banked.'))
+            + (run.diff && run.diff.n ? ' ' + run.diff.n + ' changed class since '
+               + 'the last run.' : ''), 'ok', 12000);
+      BARRY.activity.log('rootcanal.workflow_run', { artifact: r.artifact_id,
+                                                     version: got.version, banked: !!b });
+      delete W.data[r.artifact_id];
+      W.openId = r.artifact_id;
+      W.stage = 'extract';
+      W.list = null;
+      await loadList();
+      await loadOne(r.artifact_id, null);
+      return got;
+    };
+    if (!bank) {
+      try { await go(); } catch (e) {
+        W.busy = null;
+        toast('It did not run: ' + e.message, 'err', 14000);
+        refresh();
+      }
+      return;
+    }
+    // What would be banked, exactly, before anything is.
+    W.busy = 'Working out what would be banked';
     refresh();
-    let got;
+    let pv;
     try {
-      got = await apiPost('/api/rootcanal/workflow/' + encodeURIComponent(r.artifact_id)
-                          + '/run', { refresh: !!fresh });
+      const body = Object.assign({}, dd);
+      if (pinFresh) {
+        for (const k of ['target', 'source']) {
+          if (body[k] && body[k].type !== 'sets') body[k] = Object.assign({}, body[k], { version: null });
+        }
+        if (body.source && body.source.type === 'sets') {
+          body.source = { entries: body.source.entries.map((e) => ({ entry_id: e.entry_id })) };
+        }
+      }
+      pv = await apiPost('/api/rootcanal/workflow/preview', body);
     } catch (e) {
       W.busy = null;
-      toast('It did not run: ' + e.message, 'err', 14000);
+      toast('It did not run: ' + e.message, 'err', 16000);
       refresh();
       return;
     }
     W.busy = null;
-    const run = got.run || {};
-    toast('‘' + (r.nickname || r.name) + '’ v' + got.version + ': '
-          + (run.kept || 0).toLocaleString() + ' of ' + (run.n || 0).toLocaleString()
-          + (r.kind === 'ambiguous' ? ' events are ambiguous. Nothing was banked.'
-             : ' events inside the border' + (run.bank ? ', banked as one entry.' : '.'))
-          + (run.diff && run.diff.n ? ' ' + run.diff.n + ' changed class since '
-             + 'the last run.' : ''), 'ok', 10000);
-    BARRY.activity.log('rootcanal.workflow_run', { artifact: r.artifact_id,
-                                                   version: got.version });
-    delete W.data[r.artifact_id];
-    W.openId = r.artifact_id;
-    W.list = null;
-    await loadList();
-    await loadOne(r.artifact_id, null);
+    refresh();
+    const run = pv.run || {};
+    const kept = run.kept || 0;
+    const recs = new Set((run.cols || {}).g ? run.cols.g.filter((g, j) =>
+      run.cols.cls[j] === 'inside') : []).size;
+    const prior = r.bank && r.bank.entry_id ? r.bank : null;
+    const word = r.kind === 'ds' ? 'dentate spikes' : 'P-spikes';
+    const def = pv.definition || dd;
+    const src = def.source || {};
+    await BARRY.ui.bankDialog({
+      title: 'Run ‘' + nick + '’ and bank ' + kept.toLocaleString() + ' verified ' + word,
+      name: (prior && prior.name) || (KIND_WORDS[r.kind] + ' · ' + nick),
+      what: 'This draws the border around ' + (src.type === 'sets'
+        ? (src.entries || []).length + ' hand-sorted sets' : '‘' + src.nickname
+          + '’ v' + src.version) + ' at grace ' + graceWords(def.grace)
+        + ', applies it to ‘' + ((def.target || {}).nickname || '') + '’ v'
+        + ((def.target || {}).version || '') + ', and banks the '
+        + kept.toLocaleString() + ' of ' + (run.n || 0).toLocaleString()
+        + ' events inside it as ONE Event Bank entry.',
+      facts: [
+        prior ? 'Banked as the NEXT VERSION of ‘' + (prior.name || prior.entry_id)
+                + '’ (entry ' + prior.entry_id + '). The version before stays.'
+              : 'Banked as a NEW entry.',
+        kept.toLocaleString() + ' events from ' + recs + ' recording'
+          + (recs === 1 ? '' : 's') + '; each says which recording and set it came from.',
+        'Type ' + (r.kind === 'ds' ? 'Dentate spike' : 'P-spike') + ', pipeline “Root '
+          + 'Canal workflow” — a border’s call, not a person’s, so not marked curated.',
+        'The workflow keeps this run as its next version, and its border as a '
+          + 'Root Canal border.',
+      ],
+      okText: 'Run and bank ' + kept.toLocaleString() + ' events',
+      onBank: async (b) => { await go({ bank_name: b.name, bank_note: b.note }); },
+    });
+  }
+
+  /* The hand-sorted sets, each made ready to be measured -- on the
+     recording's own clock, aligned (Eye), read here -- doing only what each
+     one needs. `say` hears every step. Returns the sets as they now stand,
+     what could not be done, and whether anything was written. */
+  async function checkSets(entries, target) {
+    const got = await apiPost('/api/rootcanal/workflow/prepare', {
+      entries, target: { artifact_id: (target || {}).artifact_id,
+                         version: (target || {}).version } });
+    return got.sets || [];
+  }
+
+  async function prepareSets(entries, target, say) {
+    const fails = [];
+    let changed = false;
+    const tell = say || (() => {});
+    let sets;
+    try { sets = await checkSets(entries, target); }
+    catch (e) { return { sets: [], fails: ['checking the sets — ' + e.message], changed }; }
+    // 1. Onto the recording's own clock.
+    for (const x of sets.filter((v) => v.clock && v.clock.retime)) {
+      tell('Retiming ' + x.session_label + ' onto the recording’s clock');
+      try {
+        await apiPost('/api/session/retime', { path: x.path, entry_id: x.entry_id,
+                                               gid: x.gid, kind: 'ied', apply: true });
+        changed = true;
+      } catch (e) { fails.push(x.session_label + ': retime — ' + e.message); }
+    }
+    if (changed) sets = await checkSets(entries, target);
+    // 2. Aligned, in Eye's way, and committed as each lands.
+    const need = sets.filter((v) => !v.aligned && !(v.clock && v.clock.retime));
+    if (need.length) {
+      tell('Aligning ' + need.length + ' hand-sorted set' + (need.length === 1 ? '' : 's')
+           + ' in Eye');
+      try {
+        const got = await apiPost('/api/braces/batch', {
+          entries: need.map((v) => ({ id: v.entry_id })), tool: 'eye' });
+        const j = await waitJob((got.job || {}).id, (t) => tell('Aligning in Eye' + t));
+        for (const m of j.members || []) {
+          if (!m.set_id) { if (m.error) fails.push(m.label + ': align — ' + m.error); continue; }
+          try {
+            await apiPost('/api/braces/set/' + encodeURIComponent(m.set_id) + '/commit',
+                          { apply: true });
+            changed = true;
+          } catch (e) { fails.push(m.label + ': commit — ' + e.message); }
+        }
+      } catch (e) { fails.push('align — ' + e.message); }
+      sets = await checkSets(entries, target);
+    }
+    // 3. Read here.
+    for (const x of sets.filter((v) => v.aligned && !v.read)) {
+      tell('Reading ' + x.session_label);
+      try {
+        const got = await apiPost('/api/rootcanal/read', { entry_id: x.entry_id,
+                                                           from_version: x.aligned_ref });
+        if (got.job) {
+          const j = await waitJob(got.job.id, (t) => tell('Reading ' + x.session_label + t));
+          if (j.status !== 'done') fails.push(x.session_label + ': read — '
+                                              + (j.error || j.status));
+        }
+      } catch (e) { fails.push(x.session_label + ': read — ' + e.message); }
+    }
+    sets = await checkSets(entries, target);
+    for (const x of sets) {
+      if (!x.aligned && !fails.some((f) => f.indexOf(x.session_label) === 0)) {
+        fails.push(x.session_label + ': still not aligned');
+      } else if (x.aligned && !x.read && !fails.some((f) => f.indexOf(x.session_label) === 0)) {
+        fails.push(x.session_label + ': still not read here' + (x.read_why ? ' (' + x.read_why + ')' : ''));
+      }
+    }
+    return { sets, fails, changed };
   }
 
   /* ==================================================================
@@ -1195,13 +1491,8 @@ BARRY.rcWorkflow = (function () {
         : A.err ? 'Not averaged: ' + A.err
         : A.label + ': ' + (A.data.n || '?') + ' events'
           + (A.data.n_away ? ', ' + A.data.n_away + ' read elsewhere and not '
-             + 'counted' : '') + '.' }));
-      if (A.data && A.data.trace) {
-        const t = el('canvas', { class: 'wf-ev-cv' });
-        const c = el('canvas', { class: 'wf-ev-cv' });
-        later(() => { drawTrace(t, A.data.trace); drawCsd(c, A.data.csd); });
-        kids.push(el('div', { class: 'wf-ev-pics' }, [t, c]));
-      }
+             + 'counted' : '') + '. Its four pictures are below the 3D view, '
+          + 'where a picked event’s are.' }));
     }
     return el('div', {}, kids);
   }
@@ -1239,6 +1530,20 @@ BARRY.rcWorkflow = (function () {
 
   function inspector(run, kind) {
     const p = pickedPoint(run);
+    // An average on show takes the pictures' place, as in Root Canal.
+    if (W.avg) {
+      return el('div', { class: 'wf-insp' }, [
+        el('div', { class: 'wf-insp-head' }, [
+          el('strong', { text: 'Average · ' + W.avg.label }),
+          W.avg.data && W.avg.data.n_away ? el('span', { class: 'hint', text:
+            W.avg.data.n_away + ' read on another machine, not counted' }) : null,
+          BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Close',
+            onclick: () => { W.avg = null; refresh(); } }),
+        ].filter(Boolean)),
+        pictures(W.avg.busy ? { busy: true } : W.avg.err ? { err: W.avg.err }
+                 : { data: W.avg.data }, null, {}, true),
+      ]);
+    }
     if (!p) {
       return el('div', { class: 'wf-insp wf-insp-empty' }, [el('span', {
         class: 'hint', text: 'Click a dot in any picture to see its three numbers '
@@ -1289,13 +1594,14 @@ BARRY.rcWorkflow = (function () {
     const E = W.ev;
     const kids = [
       el('div', { class: 'wf-insp-head' }, [
-        el('strong', { text: (CLASS_WORDS[p.cls] || 'not measured') }),
         el('span', { class: 'swatch-dot', style: 'background:'
                      + colourOf(kind, p.cls, W.picked.which) }),
-        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Show its waveform',
+        el('strong', { text: (CLASS_WORDS[p.cls] || 'not measured') }),
+        el('span', { class: 'hint', text: (m.session_label || p.gid || '') + ' · '
+          + fmt(p.t, 3) + ' s' }),
+        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Read its traces again',
           extra: 'wf-ev-go', disabled: !m.event_body,
-          title: m.event_body ? 'Its trace on the contact it was measured on, '
-                 + 'and the CSD down the column.'
+          title: m.event_body ? 'Its four pictures, from its own read.'
                  : 'Its read is not on this machine.',
           onclick: () => loadEvent(m, p) }),
         BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Open in Xplorefinder',
@@ -1303,24 +1609,42 @@ BARRY.rcWorkflow = (function () {
         BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Close',
           onclick: () => { W.picked = null; W.ev = null; refresh(); } }),
       ]),
-      el('table', { class: 'wf-cut' }, [
-        el('tr', {}, [el('th', { text: '' }), el('th', { text: 'this event' }),
-          ...boxes.map((b) => el('th', { text: b.label }))]),
-        ...rowsT,
+      el('div', { class: 'wf-insp-top' }, [
+        el('table', { class: 'wf-cut' }, [
+          el('tr', {}, [el('th', { text: '' }), el('th', { text: 'this event' }),
+            ...boxes.map((b) => el('th', {}, [el('i', { class: 'wf-th-sw',
+              style: 'border-color:' + b.colour }), b.label]))]),
+          ...rowsT,
+        ]),
+        el('div', { class: 'wf-insp-hist' }, [
+          el('strong', { text: 'Where it came from' }),
+          el('ol', { class: 'wf-hist' }, hist.map((t) => el('li', { text: t }))),
+        ]),
       ]),
-      el('ul', { class: 'wf-hist' }, hist.map((t) => el('li', { text: t }))),
     ];
-    if (E) {
-      kids.push(el('span', { class: 'hint', text: E.busy ? 'Reading its traces…'
-        : E.err ? 'No traces here: ' + E.err : (E.data.filter_label || '') }));
-      if (E.data && E.data.trace) {
-        const t = el('canvas', { class: 'wf-ev-cv' });
-        const c = el('canvas', { class: 'wf-ev-cv' });
-        later(() => { drawTrace(t, E.data.trace); drawCsd(c, E.data.csd); });
-        kids.push(el('div', { class: 'wf-ev-pics' }, [t, c]));
-      }
-    }
+    kids.push(pictures(E, m.event_body ? null
+      : 'Its read is not on this machine' + (m.read_on ? ' (it was read on '
+        + m.read_on + ')' : '') + ', so its numbers are here and its traces '
+        + 'are not.', { cls: p.cls === 'pspike' ? 'ied' : p.cls === 'inside'
+          ? ((shownDef() || {}).kind === 'pspike' ? 'ied' : 'ds') : p.cls }));
     return el('div', { class: 'wf-insp' }, kids);
+  }
+
+  /* Root Canal's own four pictures -- max-amp contact, spectrum, every
+     contact, CSD -- drawn by Root Canal (rootcanal.js, `drawEvent`), for an
+     event or for an average. */
+  function pictures(E, away, e, average) {
+    if (!H || !H.eventGrid) return null;
+    const words = away ? away : !E ? null : E.busy ? (average ? 'Averaging…'
+      : 'Reading its traces…') : E.err ? (average ? 'Not averaged: '
+      : 'No traces: ') + E.err : null;
+    const d = E && E.data ? E.data : (E && E.err ? { ok: false, error: E.err } : null);
+    const grid = H.eventGrid(d, { average: !!average });
+    later(() => H.drawEvent(d, e || {}));
+    return el('div', { class: 'wf-pics' }, [
+      words ? el('p', { class: 'hint' + (E && E.err ? ' wf-warn' : ''), text: words }) : null,
+      grid,
+    ].filter(Boolean));
   }
 
   async function loadEvent(m, p) {
@@ -1780,9 +2104,8 @@ BARRY.rcWorkflow = (function () {
     W.prep = Object.assign({}, W.prep, { say: 'Checking the sets…', err: null });
     refresh();
     try {
-      const got = await apiPost('/api/rootcanal/workflow/prepare', {
-        entries: Array.from(B.sets), target: { artifact_id: B.target } });
-      W.prep = { sets: got.sets || [], say: null };
+      W.prep = { sets: await checkSets(Array.from(B.sets), { artifact_id: B.target }),
+                 say: null };
     } catch (e) {
       W.prep = { err: e.message };
     }
@@ -1796,7 +2119,7 @@ BARRY.rcWorkflow = (function () {
       catch (e) { return { status: 'error', error: e.message }; }
       if (j.status && j.status !== 'running' && j.status !== 'queued') return j;
       const st = (j.stages || [])[0] || {};
-      if (say) { W.prep.say = say + (st.of ? ' — ' + (st.done || 0) + ' of ' + st.of : ''); refresh(); }
+      if (say) say(st.of ? ' — ' + (st.done || 0) + ' of ' + st.of : '');
       await new Promise((r) => setTimeout(r, 1500));
     }
     return { status: 'error', error: 'it took too long' };
@@ -1804,61 +2127,15 @@ BARRY.rcWorkflow = (function () {
 
   async function prepareAll() {
     const B = W.builder;
-    if (!W.prep || !W.prep.sets) await checkPrep();
-    if (!W.prep || !W.prep.sets) return;
-    W.prep.running = true;
-    const fails = [];
-    // 1. Onto the recording's own clock.
-    for (const s of W.prep.sets.filter((x) => x.clock && x.clock.retime)) {
-      W.prep.say = 'Retiming ' + s.session_label + '…';
-      refresh();
-      try {
-        await apiPost('/api/session/retime', { path: s.path, entry_id: s.entry_id,
-                                               gid: s.gid, kind: 'ied', apply: true });
-      } catch (e) { fails.push(s.session_label + ': retime — ' + e.message); }
-    }
-    await checkPrep();
-    W.prep.running = true;
-    // 2. Aligned, in Eye's way, and committed as each lands.
-    const need = W.prep.sets.filter((x) => !x.aligned && !(x.clock && x.clock.retime));
-    if (need.length) {
-      W.prep.say = 'Aligning ' + need.length + ' set(s)…';
-      refresh();
-      try {
-        const got = await apiPost('/api/braces/batch', {
-          entries: need.map((s) => ({ id: s.entry_id })), tool: 'eye' });
-        const j = await waitJob((got.job || {}).id, 'Aligning');
-        for (const m of j.members || []) {
-          if (!m.set_id) { if (m.error) fails.push(m.label + ': align — ' + m.error); continue; }
-          try {
-            await apiPost('/api/braces/set/' + encodeURIComponent(m.set_id) + '/commit',
-                          { apply: true });
-          } catch (e) { fails.push(m.label + ': commit — ' + e.message); }
-        }
-      } catch (e) { fails.push('align — ' + e.message); }
-    }
-    await checkPrep();
-    W.prep.running = true;
-    // 3. Read here.
-    for (const s of W.prep.sets.filter((x) => x.aligned && !x.read)) {
-      W.prep.say = 'Reading ' + s.session_label + '…';
-      refresh();
-      try {
-        const got = await apiPost('/api/rootcanal/read', { entry_id: s.entry_id,
-                                                           from_version: s.aligned_ref });
-        if (got.job) {
-          const j = await waitJob(got.job.id, 'Reading ' + s.session_label);
-          if (j.status !== 'done') fails.push(s.session_label + ': read — '
-                                              + (j.error || j.status));
-        }
-      } catch (e) { fails.push(s.session_label + ': read — ' + e.message); }
-    }
-    await checkPrep();
-    W.prep.running = false;
+    W.prep = Object.assign({}, W.prep || {}, { running: true, err: null });
+    refresh();
+    const got = await prepareSets(Array.from(B.sets), { artifact_id: B.target },
+      (t) => { if (W.prep) { W.prep.say = t + '…'; refresh(); } });
     W.sources = null;
     await loadSources();
-    W.prep.say = fails.length ? 'Not everything is ready: ' + fails.join('; ')
-      : 'Every set is ready: on its clock, aligned and read here.';
+    W.prep = { sets: got.sets, running: false,
+               say: got.fails.length ? 'Not everything is ready: ' + got.fails.join('; ')
+                 : 'Every set is ready: on its clock, aligned and read here.' };
     refresh();
   }
 

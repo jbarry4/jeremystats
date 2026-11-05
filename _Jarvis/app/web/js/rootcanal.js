@@ -7152,7 +7152,42 @@ BARRY.rootcanal = (function () {
      for Xplorefinder, and Pooled itself -- a stage opened there is the same
      picture with the border applied, its click panel and all. */
   function workflowHelpers() {
+    /* THE CLICK PANEL ITSELF (2026-11-05: "everything you'd see in Root
+       Canal normally"): the same four cells and the same four drawings
+       Single and Pooled use -- the ids are theirs, and the Workflow view
+       has no other copy of them on the page. */
+    const cell = (id, title, sub) => el('div', { class: 'rc-ev-cell' }, [
+      el('div', { class: 'rc-ev-t' }, [
+        el('strong', { text: title }),
+        sub ? el('span', { class: 'hint', text: sub }) : null,
+      ].filter(Boolean)),
+      el('canvas', { class: 'rc-canvas rc-ev', id }),
+    ]);
     return {
+      eventGrid: (d, opt) => {
+        const o = opt || {};
+        const c = (d && d.trace && d.trace.contact != null) ? d.trace.contact : o.contact;
+        return el('div', { class: 'rc-ev-grid wf-ev-grid' }, [
+          cell('rcTrace', o.average ? 'Average, max-amp contact' : 'Max-amp contact',
+               (c != null ? 'CSC' + c : 'the contact the read names')
+               + (d && d.filter_label ? ', ' + d.filter_label : '')),
+          cell('rcSpec', 'Spectrum', o.average ? 'the events’ against their baselines'
+                                               : 'event against its baseline'),
+          cell('rcStack', 'Every contact', 'max contact marked'),
+          cell('rcCsd', 'CSD', ((d && d.csd && d.csd.filter)
+                                || '5–100 Hz, 60 Hz mains taken out') + ' · down the probe'),
+        ]);
+      },
+      drawEvent: (d, e) => {
+        const ok = d && d.ok !== false;
+        const ev = Object.assign({ missing: [], partial: false, wide: false, m: -1 },
+                                 e || {}, { contact: ok && d.trace ? d.trace.contact
+                                                    : (e || {}).contact });
+        drawTrace(ok ? d.trace : null, ev, d);
+        drawSpec(ok ? d.spectrum : null, d);
+        drawStack(ok ? d.stack : null, ev, d);
+        drawCsd(ok ? d.csd : null, ok ? d.stack : null, ev, d);
+      },
       render: () => render(),
       recordingPath: (gid) => recordingPath(gid),
       openPool: async (ref, border) => {

@@ -2456,6 +2456,17 @@ BARRY.views.eventbank = (function () {
     init,
     onShow: load,
     reload: load,
+    /* Open the Event Bank on one entry (2026-11-05: Root Canal's workflows
+       link to what they banked). Selected once the list has loaded. */
+    openEntry: async (id) => {
+      selected = id;
+      if (typeof setView === 'function') setView('eventbank');
+      try { await load(); } catch (e) { /* the view says why */ }
+      selectEntry(id);
+      const row = document.querySelector('#bankBody .bank-row[data-id="'
+                                         + String(id).replace(/"/g, '') + '"]');
+      if (row && row.scrollIntoView) row.scrollIntoView({ block: 'center' });
+    },
     /* For web/_dev/banklayers.html: which sheet the detail pane is showing.
        The harness needs it to ask the server for the same version the panel
        is offering, rather than assuming which sheet it landed on. */

@@ -14614,7 +14614,8 @@ def _wf_compute(defn):
     return run
 
 
-def _wf_extract_bank(rec, defn, run, version_next, prior_entry):
+def _wf_extract_bank(rec, defn, run, version_next, prior_entry,
+                     name=None, user_note=None):
     """Bank what a run extracted: ONE entry for the whole target pool
     (decided 2026-11-05), each event carrying the recording and the set it
     came from. A classifier's call, not a person's."""
@@ -14651,7 +14652,8 @@ def _wf_extract_bank(rec, defn, run, version_next, prior_entry):
             ", ".join(projects) or "Unfiled"),
         "type": "ds" if kind == "ds" else "ied",
         "type_name": "Dentate spike" if kind == "ds" else "P-spike",
-        "name": "%s · %s" % (rcworkflow.WORDS[kind], nick),
+        "name": (name or "").strip() or "%s · %s" % (rcworkflow.WORDS[kind],
+                                                      nick),
         "note": ("Extracted by the Root Canal workflow ‘%s’ v%s: every event "
                  "of ‘%s’ v%s inside the border at grace %s. %s A border's "
                  "call, not a person's. %d recordings in one entry; each "
@@ -14659,7 +14661,9 @@ def _wf_extract_bank(rec, defn, run, version_next, prior_entry):
                  % (nick, version_next, run["target"].get("nickname"),
                     run["target"].get("version"),
                     rcborder.grace_words(run["grace"]), run["rule"],
-                    len(srcs))),
+                    len(srcs))
+                 + ((" " + user_note.strip()) if (user_note or "").strip()
+                    else "")),
         "events": events,
         "curated": False,
         "pipeline": WF_PIPELINE,
@@ -14674,9 +14678,12 @@ def _wf_extract_bank(rec, defn, run, version_next, prior_entry):
                        "sources": sorted(srcs.values(), key=lambda s: str(
                            s.get("session_label") or ""))},
     })
+    vers = made.get("versions") or [] if isinstance(made, dict) else []
     return {"entry_id": made["id"], "n": len(events),
-            "version": (made.get("version") if isinstance(made, dict)
-                        else None)}
+            "name": made.get("name") if isinstance(made, dict) else None,
+            "version": versionsmod.tip_next(vers)[0] if vers else None,
+            "new": not prior_entry,
+            "recordings": len(srcs)}
 
 
 def _wf_border_save(rec, run, prior):
@@ -14743,13 +14750,22 @@ def _wf_row(r):
         stale = _wf_current(defn)
     except Exception:                                    # noqa: BLE001
         stale = []
+    # What it has in the Bank: this run's entry, or the newest run's that
+    # banked, said as not current.
+    bank, current = run.get("bank"), True
+    if not bank:
+        bank, current = (run.get("banked_before") or None), False
+    if bank and not bank.get("name"):
+        ent = BANK.get(bank.get("entry_id")) or {}
+        bank = dict(bank, name=ent.get("name"))
     return {"artifact_id": r["id"], "nickname": r.get("nickname"),
             "name": r.get("name"), "version": r.get("version"),
             "updated": cur.get("at"), "by": cur.get("by"),
             "kind": defn.get("kind") or ns.get("kind"),
             "definition": defn, "ran": bool(run),
             "counts": run.get("counts"), "kept": run.get("kept"),
-            "n": run.get("n"), "bank": run.get("bank"),
+            "n": run.get("n"), "bank": bank,
+            "bank_current": current if bank else None,
             "border_ref": run.get("border_ref"),
             "grace": run.get("grace") or defn.get("grace"),
             "stale": stale, "mismatch": run.get("mismatch") or [],
@@ -14964,9 +14980,25 @@ def api_rootcanal_workflow_run(artifact_id):
         if defn["kind"] != "ambiguous":
             run["border_ref"] = _wf_border_save(
                 rec, run, (last_run or {}).get("border_ref"))
-            run["bank"] = _wf_extract_bank(
-                rec, defn, run, nxt,
-                ((last_run or {}).get("bank") or {}).get("entry_id"))
+            # BANKED ONLY WHEN ASKED (2026-11-05: "not sure what to hit to
+            # bank"): Run and bank says so on its button and in a dialog
+            # that names the entry; a run without it banks nothing.
+            prior_bank = None
+            for v in range(int(rec.get("version") or 1), 0, -1):
+                pb = ((ARTIFACTS.payload(artifact_id, v) or {}).get("run")
+                      or {}).get("bank")
+                if pb and pb.get("entry_id") and BANK.get(pb["entry_id"]):
+                    prior_bank = pb
+                    break
+            if body.get("bank", True):
+                run["bank"] = _wf_extract_bank(
+                    rec, defn, run, nxt,
+                    (prior_bank or {}).get("entry_id"),
+                    name=body.get("bank_name"),
+                    user_note=body.get("bank_note"))
+            else:
+                run["bank"] = None
+                run["banked_before"] = prior_bank
         else:
             # Shown, not banked (decided 2026-11-05): a person chooses.
             run["bank"] = ((last_run or {}).get("bank") or None)
