@@ -422,6 +422,11 @@ def _manifest():
                             "say": "How the data were processed and analysed, from the recordings to the statistics, written to be adapted "
                                    "for the dissertation. Bracketed text marks what still has to be added.",
                             "prose": P.get("methods") or [], "files": mfiles})
+        # how volume conduction was handled (backend/conduction.py, 2026-11-05): first in
+        # the site's Wrapping up tab, before the methods
+        C = _read(os.path.join(_mono()._path("joepub"), "conduction.json"))
+        if C and C.get("ok"):
+            sections.insert(0, {"id": "conduction", "title": "Volume conduction", "say": C["say"], "conduction": C, "files": []})
         E = _read(os.path.join(_mono()._path("evenmore"), "evenmore.json")) or {}
         sections.append({"id": "dickson", "title": "Coherence between regions",
                          "say": "Ten region pairs (RSC, dHC, ACC, OFC and PER, each with each), Early (Precon1) against Late (Precon4), in theta and "

@@ -1,6 +1,6 @@
 {
   "_at": {
-    "bad_channels": "2026-09-16T20:53:46.024224+00:00",
+    "bad_channels": "2026-09-16T21:06:20.651518+00:00",
     "created": "2026-09-02T23:51:19.892969+00:00",
     "duration_s": "2026-09-03T00:08:55.759314+00:00",
     "first_seen_by": "2026-09-03T00:08:55.759314+00:00",
@@ -19,8 +19,8 @@
     "schema": "2026-09-03T00:08:55.759314+00:00",
     "session": "2026-09-03T00:08:55.759314+00:00",
     "start": "2026-09-03T00:08:55.759314+00:00",
-    "updated": "2026-09-16T20:53:46.024224+00:00",
-    "view_state": "2026-09-04T13:25:58.788783+00:00"
+    "updated": "2026-11-05T18:10:46.000436+00:00",
+    "view_state": "2026-11-05T18:10:46.000436+00:00"
   },
   "_keys": {
     "paths": {
@@ -31,6 +31,10 @@
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1606\\KCNT1_m1606_s01_080426\\2026-08-04_11-20-06": [
         "set",
         "2026-09-03T00:08:55.759314+00:00"
+      ],
+      "vacc:s9a8f6138b49e": [
+        "set",
+        "2026-11-05T18:10:46.000436+00:00"
       ]
     },
     "seen": {
@@ -41,11 +45,19 @@
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T13:32:11.422572+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-10-29T17:09:58.002894+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-10-13T16:31:09.663824+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-16T20:53:46.024224+00:00",
+    "at": "2026-11-05T18:10:46.000436+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -71,7 +83,8 @@
   "n_channels": 64,
   "paths": [
     "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1606\\KCNT1_m1606_s01_080426\\2026-08-04_11-20-06",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1606\\KCNT1_m1606_s01_080426\\2026-08-04_11-20-06"
+    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1606\\KCNT1_m1606_s01_080426\\2026-08-04_11-20-06",
+    "vacc:s9a8f6138b49e"
   ],
   "project": "KCNT1",
   "project_source": "guessed",
@@ -91,12 +104,38 @@
       "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1606\\KCNT1_m1606_s01_080426\\2026-08-04_11-20-06",
       "root": null,
       "scan": null
+    },
+    "barrylab-d8e8": {
+      "at": "2026-10-29T13:09:57-04:00",
+      "by": "Rain Younger",
+      "copies": {
+        "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1606\\KCNT1_m1606_s01_080426\\2026-08-04_11-20-06": {
+          "at": "2026-10-29T13:09:57-04:00",
+          "duration_s": 1803.9125333333334,
+          "fs": 30000.0,
+          "n_channels": 64
+        }
+      },
+      "machine": "Strawbarry",
+      "path": "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1606\\KCNT1_m1606_s01_080426\\2026-08-04_11-20-06",
+      "root": "Y:/Jeremy3/KCNT1",
+      "scan": "scan_3a20a153a9"
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-10-13T12:31:08-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1606\\KCNT1_m1606_s01_080426\\2026-08-04_11-20-06",
+      "root": null,
+      "scan": null
     }
   },
   "session": 1,
   "start": "2026-08-04T11:20:06",
   "updated": {
-    "at": "2026-09-16T16:53:46-04:00",
+    "app_version": "2026.10.30.3",
+    "at": "2026-11-05T13:10:46-05:00",
+    "commit": "8d32ac31",
     "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
     "machine": "Blackbarry",
@@ -163,28 +202,28 @@
       55,
       56,
       57,
-      58,
       59,
       60,
       61,
       62,
       63
     ],
-    "clim": null,
-    "even_only": false,
+    "climBy": null,
     "fdefault": null,
     "flock": true,
-    "gain": 1,
-    "hp": 0,
+    "gain": 4.3269230769230775,
+    "hp": 1,
     "invert": true,
-    "lp": 0,
+    "lp": 70,
+    "marks_fade": null,
+    "marks_view": "show",
     "normalize": "shared",
-    "notch": 0,
-    "probe": null,
+    "notch": 60,
+    "probe": "h3",
     "spacing": 50,
-    "span": 10,
+    "span": 0.4,
     "stft_mode": null,
-    "t0": 437.57560625068066,
+    "t0": 1.403161,
     "ylim": null
   }
 }

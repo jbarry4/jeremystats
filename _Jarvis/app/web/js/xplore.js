@@ -5447,7 +5447,7 @@ BARRY.views.xplore = (function () {
       const name = el('input', {
         type: 'text', class: 'cur-search',
         value: (existing && existing.name) || '',
-        placeholder: 'e.g. "first clean IED" or "CNO onset"',
+        placeholder: 'e.g. "first clean P-spike" or "CNO onset"',
       });
       /* Built once, then only the `on` class moves. Rebuilding the row on
          every click replaced every button, which throws away focus and any
@@ -6975,7 +6975,7 @@ BARRY.views.xplore = (function () {
         toast('Detect something first.', 'err'); return;
       }
       const name = await askPath('Name this spike set',
-                                 'e.g. "IED 4SD neg" or "units CSC14"');
+                                 'e.g. "P-spike 4SD neg" or "units CSC14"');
       if (!name) return;
       try {
         const res = await apiPost('/api/spikes/commit', {
@@ -9345,6 +9345,8 @@ BARRY.views.xplore = (function () {
           const o = { start: e.start, label: e.label || null };
           if (e.origin) o.origin = e.origin;
           if (e.pair_t != null) o.pair_t = e.pair_t;
+          // Whose call: Prospector's is a badge here too (panning.js draw).
+          if (e.label && e.by) o.by = e.by;
           return o;
         }),
         gid: pointer.gid,
@@ -11686,7 +11688,7 @@ BARRY.views.xplore = (function () {
 
   async function saveFilterPreset(sess) {
     const name = await askPath('Name this filter preset',
-                               'e.g. "IED tight" or "Ripple 150-250"');
+                               'e.g. "P-spike tight" or "Ripple 150-250"');
     if (!name) return;
     try {
       const res = await apiPost('/api/presets/filters', {
@@ -11874,6 +11876,9 @@ BARRY.views.xplore = (function () {
     document.addEventListener('keydown', (e) => {
       if (BARRY.state.view !== 'xplore') return;
       if (isTyping(e)) return;
+      // A key a support window passed on is for the mode only (core.js):
+      // what the mode leaves, that window does in its own panes.
+      if (e.barryAid) return;
       const s = active();
       if (!s) return;
       const fi = XF.focused;

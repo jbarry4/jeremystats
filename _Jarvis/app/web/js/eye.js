@@ -359,7 +359,7 @@ function makeAligner(cfg) {
     const band = iedBand
       ? (iedBand.highpass + '\u2013' + iedBand.lowpass + ' Hz'
          + (iedBand.notch ? ', ' + iedBand.notch + ' Hz notched' : ''))
-      : 'the IED filter preset';
+      : 'the P-spike filter preset';
     const box = el('div', { class: 'card' }, [
       el('div', { class: 'section-label', text: '2. How far it may look' }),
       BARRY.ui.field({
@@ -377,7 +377,7 @@ function makeAligner(cfg) {
          dentate-spike band is 5-100 Hz, and an IED seen through it has
          lost the slow wave that is half of what it is. */
       el('p', { class: 'hint', style: 'max-width:80ch',
-        text: 'Aligned through the IED filter (' + band + '), not the '
+        text: 'Aligned through the P-spike filter (' + band + '), not the '
             + 'dentate-spike band' + cfg.bandWhy + '. All three measures '
             + 'are computed on every run, so the choice is made with the '
             + 'answers in front of you rather than by accepting a default. '

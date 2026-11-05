@@ -19,9 +19,11 @@ in a folder of their own.
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 import os
 import re
+import threading
 import time
 
 from . import extras, shards
@@ -66,6 +68,8 @@ class Feedback:
         self.shots = os.path.join(self.dir, "screenshots")
         os.makedirs(self.shots, exist_ok=True)
         self.machine = shards.machine_id()
+        self._live = {"rev": None, "open": 0}
+        self._live_lock = threading.Lock()
 
     # -- paths ----------------------------------------------------------
     def _file(self, rec_id):
@@ -362,6 +366,33 @@ class Feedback:
         if not os.path.isfile(path):
             return None
         return path
+
+    def live(self):
+        """{rev, open}: a revision that moves whenever a report is filed,
+        triaged or arrives from another machine, and how many are open.
+
+        Asked on every sync-status poll (syncitems.py), so the History page
+        shows a colleague's report as soon as the pull brings it, without
+        being reopened (asked for 2026-11-05: Isabella filed one at 13:33,
+        it was here at 13:37, and the page went on saying "Nothing open").
+        One listing of the folder per poll; the reports are read again only
+        when that listing changed.
+        """
+        sig = []
+        try:
+            with os.scandir(self.dir) as it:
+                for de in it:
+                    if de.name.endswith(".json") and de.is_file():
+                        st = de.stat()
+                        sig.append((de.name, st.st_mtime_ns, st.st_size))
+        except OSError:
+            pass
+        sig.sort()
+        rev = hashlib.sha1(repr(sig).encode("utf-8")).hexdigest()[:12]
+        with self._live_lock:
+            if self._live["rev"] != rev:
+                self._live = {"rev": rev, "open": self.counts()["open"]}
+            return dict(self._live)
 
     def counts(self):
         out = {"open": 0, "total": 0}

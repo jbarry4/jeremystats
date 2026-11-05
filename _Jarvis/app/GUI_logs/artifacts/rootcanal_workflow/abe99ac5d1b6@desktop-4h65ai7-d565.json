@@ -1,0 +1,75 @@
+{
+  "_at": {
+    "added": "2026-11-05T21:24:10.693320+00:00",
+    "deleted": "2026-11-05T21:24:10.693320+00:00",
+    "id": "2026-11-05T21:24:10.693320+00:00",
+    "kind": "2026-11-05T21:24:10.693320+00:00",
+    "name": "2026-11-05T21:24:10.693320+00:00",
+    "nickname": "2026-11-05T21:24:10.693320+00:00",
+    "schema": "2026-11-05T21:24:10.693320+00:00",
+    "subject": "2026-11-05T21:24:10.693320+00:00",
+    "subject_key": "2026-11-05T21:24:10.693320+00:00",
+    "version": "2026-11-05T21:24:10.693320+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "c6016c596724": [
+        "set",
+        "2026-11-05T21:24:10.693320+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-05T21:24:10.693320+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-05T16:24:10-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "abe99ac5d1b6",
+  "kind": "rootcanal_workflow",
+  "name": "Verified P-spikes \u00b7 Verified P-Spike",
+  "nickname": "Verified P-Spike",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "pspike",
+    "name": "Verified P-spikes \u00b7 Verified P-Spike",
+    "workflow_key": "640618793d514cbf8fe662596eba2580"
+  },
+  "subject_key": "rootcanal_workflow|640618793d514cbf8fe662596eba2580",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.11.05.5",
+      "at": "2026-11-05T16:24:10-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "e899bb65",
+      "digest": "acc1bd6d51a6",
+      "id": "c6016c596724",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": 0.05,
+        "kept": null,
+        "kind": "pspike",
+        "ran": false,
+        "target": "PTEN ALL PTEN Baseline Full Incisor"
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-05T16:24:10-05:00",
+      "note": null,
+      "params": {
+        "kind": "pspike"
+      },
+      "params_hash": "c95d844db2c3",
+      "v": 1
+    }
+  ]
+}

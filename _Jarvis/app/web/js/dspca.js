@@ -1107,7 +1107,7 @@ BARRY.dspca = (function () {
       box.appendChild(el('p', { class: 'confirm-msg', text:
         'Nothing curated is banked against this recording, so there is '
         + 'nothing to classify. Incisor finds the candidates, Checkup goes '
-        + 'through them, Braces times them and Root Canal takes the IEDs '
+        + 'through them, Braces times them and Root Canal takes the P-spikes '
         + 'out; this is step five.' }));
       return box;
     }
@@ -1198,7 +1198,7 @@ BARRY.dspca = (function () {
                + 'banked version of it.',
         },
         disabled: (v) => (v.usable ? null : (v.why_not || 'not readable here')),
-        state: (v) => (v.tag === 'rootcanal' ? ['IEDs out (Root Canal)'] : []),
+        state: (v) => (v.tag === 'rootcanal' ? ['P-spikes out (Root Canal)'] : []),
         onpick: (v) => {
           q.from_version = v ? v.ref : null;
           q.from_auto = false;

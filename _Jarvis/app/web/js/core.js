@@ -137,6 +137,47 @@ function isTyping(e) {
             && t.matches('input, textarea, select, [contenteditable]'));
 }
 
+/* A SUPPORT WINDOW PASSES ITS KEYS TO THE MODE (2026-11-05).
+
+   Checkup, Spotter, Panning, StrataScope, Braces, Lock and Eye each open a
+   second window of panels (xplore.js `popOutPanes`, `role=aids`), and that
+   window is a whole copy of the app with no mode in it. Click a panel there
+   and the keys are its: 1 opened Sessions instead of calling the event a
+   Spike, because in a window with nothing to label 1 is the rail's.
+
+   So every key pressed in a support window goes to the main window first,
+   where the mode is, exactly as if it had been pressed there; whatever the
+   mode takes, this window does not see. What it leaves -- zoom, pan, a key
+   it does not use -- is this window's own, as before. Not Esc, which here
+   closes this window's menus rather than leaving the mode, and nothing
+   typed into a field. The main window marks a passed key (`barryAid`) so
+   only a mode answers it: its own rail and panes are left alone. */
+const AID_WINDOW = new URLSearchParams(location.search).get('role') === 'aids';
+if (AID_WINDOW) {
+  document.addEventListener('keydown', (e) => {
+    if (isTyping(e) || e.key === 'Escape') return;
+    let main = null;
+    try {
+      main = window.opener && !window.opener.closed ? window.opener : null;
+    } catch (err) { main = null; }
+    if (!main || !main.document) return;
+    let fwd;
+    try {
+      fwd = new main.KeyboardEvent('keydown', {
+        key: e.key, code: e.code, location: e.location, repeat: e.repeat,
+        shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, altKey: e.altKey,
+        metaKey: e.metaKey, bubbles: true, cancelable: true,
+      });
+      fwd.barryAid = true;
+      main.document.dispatchEvent(fwd);
+    } catch (err) { return; }
+    if (fwd.defaultPrevented) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, true);
+}
+
 const $  = (sel, root) => (root || document).querySelector(sel);
 const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
@@ -4525,6 +4566,10 @@ BARRY.init = async function init() {
   // Keyboard: 1-4 switch views when not typing.
   document.addEventListener('keydown', (e) => {
     if (isTyping(e)) return;
+    // Not a key a support window passed on (only the mode answers those),
+    // and never in a support window: it is panels for the main window, and
+    // a number there that missed the mode took it to Sessions.
+    if (e.barryAid || AID_WINDOW) return;
     // In rail order, top to bottom, so the number on the button is the key
     // that gets you there.
     //

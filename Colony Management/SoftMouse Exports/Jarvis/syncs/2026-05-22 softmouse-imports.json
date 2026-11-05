@@ -1,0 +1,664 @@
+{
+ "v": 1,
+ "date": "2026-05-22",
+ "time": null,
+ "stamp": "052226",
+ "source": "SoftMouse Imports",
+ "outcome": "applied",
+ "by": null,
+ "machine": null,
+ "sheet": null,
+ "block_at": 7,
+ "mice": 129,
+ "issues": [],
+ "result": null,
+ "csv": null,
+ "list": [
+  [
+   "M461",
+   "Stock",
+   "YH(WT), SST-Cre"
+  ],
+  [
+   "M462",
+   "Stock",
+   "YH(het), SST-Cre"
+  ],
+  [
+   "M464",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M480",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M482",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M484",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M485",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M487",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M488",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M489",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M439",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M445",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M447",
+   "Stock",
+   "YH(hom)"
+  ],
+  [
+   "M499",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M504",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M506",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M509",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M510",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M512",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M301",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M302",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M303",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M304",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M305",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M306",
+   "Stock",
+   "YH(hom)"
+  ],
+  [
+   "M307",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M308",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M310",
+   "Stock",
+   "YH(hom)"
+  ],
+  [
+   "M311",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M312",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M313",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M314",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M315",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M328",
+   "Stock",
+   "YH(WT), PV-Cre(hom)"
+  ],
+  [
+   "M329",
+   "Stock",
+   "YH(WT), SST-Cre(hom)"
+  ],
+  [
+   "M323",
+   "Stock",
+   "YH(hom)"
+  ],
+  [
+   "M325",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M326",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M327",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M317",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M318",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M319",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M320",
+   "Mating",
+   "YH(hom)"
+  ],
+  [
+   "M321",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M322",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M514",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M515",
+   "Mating",
+   "YH(hom)"
+  ],
+  [
+   "M516",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M517",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M518",
+   "Stock",
+   "YH(WT)"
+  ],
+  [
+   "M519",
+   "Stock",
+   "YH(het)"
+  ],
+  [
+   "M520",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M521",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M522",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M523",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M524",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M525",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M526",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M527",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M528",
+   "Stock",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "M529",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M530",
+   "Stock",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "M531",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M532",
+   "Mating",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "M576",
+   "Stock",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "M577",
+   "Stock",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "M578",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M536",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M537",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M538",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M539",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M540",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M541",
+   "Mating",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M542",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M543",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M544",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M545",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M546",
+   "Mating",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "M547",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M548",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M549",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M551",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M556",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M571",
+   "Stock",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "M572",
+   "Stock",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "M573",
+   "Stock",
+   "YH(WT), SST-Cre(het)"
+  ],
+  [
+   "M575",
+   "Mating",
+   "YH(het), SST-Cre(het)"
+  ],
+  [
+   "M557",
+   "Mating",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M558",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M559",
+   "Stock",
+   "PV-Cre(het), YH(het)"
+  ],
+  [
+   "M560",
+   "Stock",
+   "PV-Cre(het), YH(WT)"
+  ],
+  [
+   "M561",
+   "Stock",
+   "PV-Cre(het), YH(WT)"
+  ],
+  [
+   "M562",
+   "Stock",
+   "PV-Cre(het), YH(het)"
+  ],
+  [
+   "M565",
+   "Mating",
+   "PV-Cre(het), YH(het)"
+  ],
+  [
+   "M566",
+   "Stock",
+   "PV-Cre(het), YH(het)"
+  ],
+  [
+   "M567",
+   "Stock",
+   "PV-Cre(het), YH(WT)"
+  ],
+  [
+   "M579",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "M580",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M581",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M583",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M584",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M586",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "M587",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "M588",
+   "Stock",
+   "YH(hom), PV-Cre(het)"
+  ],
+  [
+   "M590",
+   "Stock",
+   "YH(WT), PV-Cre(hom)"
+  ],
+  [
+   "M591",
+   "Stock",
+   "YH(WT), PV-Cre(hom)"
+  ],
+  [
+   "M592",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M593",
+   "Stock",
+   "YH(het), PV-Cre(het)"
+  ],
+  [
+   "M594",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M595",
+   "Stock",
+   "YH(WT), PV-Cre(het)"
+  ],
+  [
+   "M596",
+   "Stock",
+   "YH(het), PV-Cre(hom)"
+  ],
+  [
+   "597",
+   "Weanling",
+   ""
+  ],
+  [
+   "598",
+   "Weanling",
+   ""
+  ],
+  [
+   "599",
+   "Weanling",
+   ""
+  ],
+  [
+   "1600",
+   "Weanling",
+   ""
+  ],
+  [
+   "1601",
+   "Weanling",
+   ""
+  ],
+  [
+   "1602",
+   "Weanling",
+   ""
+  ],
+  [
+   "1603",
+   "Weanling",
+   ""
+  ],
+  [
+   "1604",
+   "Weanling",
+   ""
+  ],
+  [
+   "1605",
+   "Weanling",
+   ""
+  ],
+  [
+   "1606",
+   "Weanling",
+   ""
+  ],
+  [
+   "1613",
+   "Weanling",
+   ""
+  ],
+  [
+   "1614",
+   "Weanling",
+   ""
+  ],
+  [
+   "1615",
+   "Weanling",
+   ""
+  ],
+  [
+   "1616",
+   "Weanling",
+   ""
+  ],
+  [
+   "1617",
+   "Weanling",
+   ""
+  ],
+  [
+   "1618",
+   "Weanling",
+   ""
+  ],
+  [
+   "1619",
+   "Weanling",
+   ""
+  ],
+  [
+   "1620",
+   "Weanling",
+   ""
+  ]
+ ],
+ "ended_list": []
+}

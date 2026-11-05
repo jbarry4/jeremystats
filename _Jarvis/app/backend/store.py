@@ -93,6 +93,8 @@ PREFS_SPEC = {
     # because putting one back has to sync too, and an artifact's soft
     # delete only ever travels one way.
     "rootcanal_border_archive": shards.MAPLWW,
+    # Root Canal's archived workflows (2026-11-05), the same way.
+    "rootcanal_workflow_archive": shards.MAPLWW,
     # Root Canal's folders for saved pools and pools of pools (2026-10-20):
     # the folders, {id: {name, at, by, gone}}, and which folder each pool is
     # in, {pool id: folder id or ""}. Merged per key for the same reason as
@@ -610,7 +612,18 @@ class Store:
         return self.presets.read(shards.safe_base(kind)) or {"presets": []}
 
     def get_presets(self, kind):
-        return self._preset_doc(kind).get("presets", [])
+        out = self._preset_doc(kind).get("presets", [])
+        # The built-in "IED" filter was written to every machine's presets
+        # once; it is the P-spike filter now (2026-11-05). Renamed on the way
+        # out, on a copy, so nothing stored changes.
+        if kind == "filters":
+            out = [dict(p, name="P-spike",
+                        label=filter_label("P-spike", p.get("highpass"),
+                                           p.get("lowpass"), p.get("notch")))
+                   if (isinstance(p, dict) and p.get("builtin")
+                       and p.get("id") == "ied" and p.get("name") == "IED")
+                   else p for p in out]
+        return out
 
     def save_preset(self, kind, preset):
         with _LOCK:
@@ -1022,7 +1035,7 @@ _DEFAULT_FILTERS = {
                 "Hippocampal theta band"),
         _preset("spike", "Spikes", 300, 0, 0,
                 "Unit/spike band"),
-        _preset("ied", "IED", 1, 70, 60,
+        _preset("ied", "P-spike", 1, 70, 60,
                 "Interictal discharge band with line notch"),
         _preset("ripple", "Ripple", 120, 250, 0,
                 "Sharp-wave ripple band"),

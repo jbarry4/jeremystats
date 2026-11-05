@@ -28,7 +28,18 @@ What is guarded:
     files the sweep with every score;
   * training never reads that version as a person's pass;
   * a second sweep replaces Prospector's own calls and never a person's;
-  * AI Beta's panel is not offered Prospector's inputs.
+  * its flags are counted with what is left, not with what is decided;
+  * AI Beta's panel is not offered Prospector's inputs;
+  * a sweep's job has its stages (they were never declared until
+    2026-11-05), the cluster's two idle unless it is used;
+  * a read that needs a recording's files, handed one opened off the
+    cluster, says so in a sentence rather than "[WinError 2]";
+  * the sync-status poll carries the feedback's revision, which moves when
+    a report arrives (the History page follows it).
+
+The cluster read itself was checked against the real cluster on
+2026-11-05: KCNT1 m1606 s1's pool read on a compute node and here gave the
+same 1038 calls, p identical.
 """
 import os
 import shutil
@@ -227,12 +238,57 @@ def main():
               and by[ids[0]]["label"] == "garbage"
               and by[ids[2]]["label"] == "garbage", by)
 
+        print("\nwhat is left")
+        prog = C.Curation.progress(A.CURATE.get("g1", sk))
+        check("its flags are left for a person, and counted as its flags",
+              prog["specified"] == 2 and prog["left"] == 2
+              and prog["ai_flags"] == 2
+              and prog["by_label"].get("likely_spike") == 1, prog)
+
         print("\nAI Beta")
         state = cli.get("/api/aibeta/state").get_json()
         fam_ids = {f.get("id") for f in state.get("families") or []}
         check("its panel is not offered Prospector's inputs",
               "origin" not in fam_ids and not any(
                   str(f).startswith("spec") for f in fam_ids), sorted(fam_ids))
+
+        print("\nits job")
+        from backend import cfc as cfcmod
+        job = cfcmod.Job({"tool": "prospector"}, A.PR_STAGES)
+        names = [s["name"] for s in job.snapshot()["stages"]]
+        check("a sweep's job has its stages, the cluster's among them",
+              {"pr read", "pr physio", "pr score", "vacc queue",
+               "vacc fetch"} <= set(names), names)
+        check("the cluster's have nothing to do unless it is used",
+              all(s["of"] == 0 for s in job.snapshot()["stages"]
+                  if s["name"].startswith("vacc ")))
+
+        print("\na recording read off the cluster")
+        from backend import csc
+        try:
+            csc._read_channel_window({"source": "vacc", "path": "vacc:sX"},
+                                     {"index": 0}, 0.0, 1.0)
+            said = ""
+        except ValueError as exc:
+            said = str(exc)
+        check("a read that needs its files says so, not WinError 2",
+              "off the cluster" in said and "WinError" not in said, said)
+
+        print("\nfeedback, live")
+        from backend import feedback as fbmod
+        saved_fb = A.FEEDBACK
+        try:
+            A.FEEDBACK = fbmod.Feedback(tmp)
+            one = cli.get("/api/cloud/items").get_json().get("feedback") or {}
+            A.FEEDBACK.add({"kind": "bug", "title": "a test report",
+                            "detail": "x"}, user="prospector-test")
+            two = cli.get("/api/cloud/items").get_json().get("feedback") or {}
+            check("the sync poll carries the feedback's revision, and it moves "
+                  "when a report arrives", one.get("rev") and two.get("rev")
+                  and one["rev"] != two["rev"] and two.get("open") == 1,
+                  (one, two))
+        finally:
+            A.FEEDBACK = saved_fb
     finally:
         (A.BANK, A.CURATE, A.PROSPECTOR, A.STORE.record_activity,
          A.mirror_bank_soon, A._session_by_gid) = saved

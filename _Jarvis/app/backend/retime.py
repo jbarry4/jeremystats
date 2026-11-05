@@ -55,6 +55,15 @@ CONCAT_PIPELINES = {
         "Measured on M8s9feb8: all 1224 banked times sit within 1.5 ms of a "
         "Toothy ALL_DS time, including the 314 after the first gap, which "
         "would be 96-122 ms away on any other clock."),
+    # The PTEN P-spike hand-sorts (tools/import_ied.py, from the MATLAB
+    # `ets`): sample index / fs with the pauses squeezed out. Measured
+    # 2026-10-12 on M34 s8: a 125 ms pause puts its last Solid 119 ms from
+    # where Doppler, on the recording's own clock, finds the same event.
+    "IED hand-sort (ETS)": (
+        "Imported from the MATLAB hand-sort's ets, which counts samples with "
+        "the recording's pauses squeezed out. Measured on PTEN M34 s8: a "
+        "125 ms pause puts its last Solid 119 ms from the same event on the "
+        "recording's own clock."),
 }
 
 # Pipelines known NOT to be in concatenated time, so the offer is refused with

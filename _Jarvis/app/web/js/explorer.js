@@ -15,7 +15,7 @@ BARRY.views.explorer = (function () {
   let showSource = false;
   let sourceQuery = '';
   let presets = [];                 // per-script parameter sets, synced
-  const openSections = new Set(['IED Pipeline']);
+  const openSections = new Set(['P-spike Pipeline']);
   const PSEUDO = ['\u2605 Favourites', 'Recent'];
 
   /* ---------- tree ---------- */
@@ -72,7 +72,7 @@ BARRY.views.explorer = (function () {
 
     // Keep IED first and Misc last, matching the sidebar's mental model.
     const names = Array.from(bySection.keys()).sort((a, b) => {
-      const rank = (n) => (n === 'IED Pipeline' ? 0 : n === 'Misc' ? 2 : 1);
+      const rank = (n) => (n === 'P-spike Pipeline' ? 0 : n === 'Misc' ? 2 : 1);
       return rank(a) - rank(b) || BARRY.ui.natCompare(a, b);
     });
 

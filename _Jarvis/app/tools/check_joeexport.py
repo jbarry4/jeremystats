@@ -90,8 +90,8 @@ if os.path.isfile(PUBj):
     PUB = json.load(open(PUBj, encoding="utf-8"))
     from backend import evenmore as E_, finalstage as FS_
     sets_ = [s["key"] for s in PUB["sets"]]
-    check("the methods for the dissertation come first, every section with its words, as Word and as text",
-          man["sections"][0]["id"] == "methods" and len(secs["methods"]["prose"]) >= 10
+    check("the methods for the dissertation come first (after volume conduction, in Wrapping up), every section with its words, as Word and as text",
+          [s["id"] for s in man["sections"] if s["id"] != "conduction"][0] == "methods" and len(secs["methods"]["prose"]) >= 10
           and all(s["paras"] for s in secs["methods"]["prose"])
           and {f["name"] for f in secs["methods"]["files"]} == {"Methods_for_the_dissertation.docx", "Methods_for_the_dissertation.txt"})
     meth = " ".join(p for s in secs["methods"]["prose"] for p in s["paras"])
@@ -172,6 +172,22 @@ if os.path.isfile(PUBj):
               man["sections"][-1]["id"] == "sanity" and sr.get("verdict") in ("green", "amber", "red")
               and all(c.get("status") in ("ok", "warn", "fail", "info") and c.get("result") and c.get("how")
                       for s in sr["sections"] for c in s["checks"]))
+    # how volume conduction was handled (backend/conduction.py, 2026-11-05)
+    cv = (secs.get("conduction") or {}).get("conduction") or {}
+    m_cv = next((s for s in secs["methods"].get("prose") or [] if s["title"] == "Volume conduction"), None)
+    refs = " ".join(next((s["paras"] for s in secs["methods"].get("prose") or [] if s["title"] == "References"), []))
+    check("volume conduction: its own section, first (the site's Wrapping up tab, before the methods), every step with a line and a More, what is still open, "
+          "and a methods section whose citations are in the references",
+          [s["id"] for s in man["sections"]][:2] == ["conduction", "methods"] and len(cv.get("steps") or []) >= 6
+          and all(s.get("title") and s.get("line") and s.get("more") for s in cv["steps"]) and bool(cv.get("open"))
+          and m_cv is not None and all(a in refs for a in ("Nolte G", "Stam CJ", "Vinck M")),
+          ([s["id"] for s in man["sections"]][:3], len(cv.get("steps") or []), m_cv is not None))
+    lag = next((s for s in cv.get("steps") or [] if s["key"] == "lag"), None)
+    lagn = (cv.get("numbers") or {}).get("lag") or []
+    j3 = next((x for x in lagn if x["rat"] == 3 and x["day"] == "Precon4"), None)
+    rest = [x for x in lagn if x["rat"] not in (3, 4)]
+    check("volume conduction: J3's Precon4 excess is at zero lag, as its words say (coherence far above, imaginary part inside the rest)",
+          lag and j3 and rest and j3["coh"] > 2 * max(x["coh"] for x in rest) and j3["icoh"] <= max(x["icoh"] for x in rest), j3)
     raw_json = json.dumps(man, ensure_ascii=False)
     check("the side question never reaches Joe: no figure, no file, no word of it",
           "side_question" not in raw_json and "Side question" not in raw_json and not any("side" in n.lower() for n in paths))

@@ -52,3 +52,6 @@ _Jarvis/Activate Jarvis.lnk
 # and must never be committed. Jarvis carries it across on its first start
 # (backend/launchers.py leftovers).
 /BARRY GUI/
+
+# Plain-text sign-ins: never committed (the repo is public). See backend/softmouse_login.py.
+user_pass.txt

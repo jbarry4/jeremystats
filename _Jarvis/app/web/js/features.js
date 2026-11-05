@@ -123,7 +123,7 @@ BARRY.palette = (function () {
 
     // Views.
     const views = [
-      ['pipeline', 'Pipeline', 'Walk the IED stages'],
+      ['pipeline', 'Pipeline', 'Walk the P-spike stages'],
       ['explorer', 'Explorer', 'Run any script in the repo'],
       ['xplore', 'Xplorefinder 2.0', 'Look at traces'],
       ['sessions', 'Sessions', 'Scan a data root'],

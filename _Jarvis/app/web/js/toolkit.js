@@ -383,7 +383,7 @@ BARRY.views.toolkit = (function () {
        second: it measures at the stamp, so the stamps have to be lined up,
        and X-ray should split dentate spikes, not dentate spikes with the
        interictal discharges Incisor let through still in them. */
-    ['rootcanal', 'Root Canal', 'take the IEDs out'],
+    ['rootcanal', 'Root Canal', 'take the P-spikes out'],
     ['dspca', 'X-ray', 'tell them apart'],
   ];
 
@@ -2221,7 +2221,11 @@ BARRY.views.toolkit = (function () {
         BARRY.setPicker ? BARRY.setPicker.bankChip(st) : null,
       ].filter(Boolean),
       count: pr.specified + ' / ' + pr.total
-             + (done ? '  ✓' : '  ·  ' + pr.left + ' left'),
+             + (done ? '  ✓' : '  ·  ' + pr.left + ' left')
+             // Prospector's flags are left until a person settles them
+             // (curation.progress), and the card says which those are.
+             + (pr.ai_flags ? ', ' + pr.ai_flags + ' of them Prospector’s '
+                              + (pr.ai_flags === 1 ? 'flag' : 'flags') : ''),
       owner: { name: who, onAssign: () => assignSet(st) },
       // The id the push files it under (cloudsync.rows_curation).
       sync: { kind: 'curation', id: st.gid + '__' + st.kind },

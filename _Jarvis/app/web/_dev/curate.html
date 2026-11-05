@@ -427,7 +427,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
   say('=== both vocabularies exist ===', 'hd');
   const kinds = await (await fetch('/api/curation/kinds')).json();
   const ids = (kinds.kinds || []).map((k) => k.id);
-  check('dentate spikes and IEDs', ids.includes('ds') && ids.includes('ied'),
+  check('dentate spikes and P-spikes', ids.includes('ds') && ids.includes('ied'),
         JSON.stringify(ids));
   const reserved = kinds.reserved || [];
   say('  reserved for navigation: ' + reserved.join(' '), 'note');

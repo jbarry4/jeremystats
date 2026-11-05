@@ -67,7 +67,7 @@ ABOUT = {
     },
     "dip": {
         "name": "Dip test",
-        "asks": "Along the DS→IED line, is there a gap -- two humps, or one?",
+        "asks": "Along the DS→P-spike line, is there a gap -- two humps, or one?",
         "pro": "Shape-free: its null is the least favourable single hump.",
         "con": "One dimension only: groups that overlap on that line read "
                "as one.",
@@ -83,7 +83,7 @@ ABOUT = {
     "gmm": {
         "name": "GMM ΔBIC + agreement",
         "asks": "Do two Gaussians fit better than one -- and are those two "
-                "the DS / IED split?",
+                "the DS / P-spike split?",
         "pro": "A likelihood answer, with the check that it is about these "
                "two groups.",
         "con": "Two Gaussians fit a skewed cloud better than one; read the "
@@ -362,8 +362,8 @@ def run(Z, labels, centres_z, tests=TESTS, n_sim=N_SIM, n_boot=N_BOOT,
                 r = dip_test(proj, n_sim=n_sim, seed=seed)
                 r["genuine"] = r["p"] < ALPHA
                 r["say"] = ("dip %.4f, p = %.3f: %s" % (
-                    r["dip"], r["p"], "two humps along the DS→IED line" if
-                    r["genuine"] else "one hump along the DS→IED line"))
+                    r["dip"], r["p"], "two humps along the DS→P-spike line" if
+                    r["genuine"] else "one hump along the DS→P-spike line"))
             elif t == "stability":
                 r = stability(Z, labels, n_boot=n_boot, seed=seed)
                 r["genuine"] = r["ari_mean"] >= 0.9

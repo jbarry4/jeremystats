@@ -98,8 +98,8 @@ def _classify(parts, top, rel):
         if m:
             order = int(m.group(1))
             label = m.group(2).replace("_", " ")
-            return "IED Pipeline", order, f"{m.group(1)} {label}"
-        return "IED Pipeline", 99, "Support"
+            return "P-spike Pipeline", order, f"{m.group(1)} {label}"
+        return "P-spike Pipeline", 99, "Support"
 
     if top == "(root)" or top in MISC_ROOTS:
         return "Misc", 50, top if top != "(root)" else "Loose files"
@@ -368,7 +368,7 @@ def build_sections(items):
         out.append(g)
 
     def rank(g):
-        if g["name"] == "IED Pipeline":
+        if g["name"] == "P-spike Pipeline":
             return (0, g["name"])
         if g["name"] == "Misc":
             return (2, g["name"])

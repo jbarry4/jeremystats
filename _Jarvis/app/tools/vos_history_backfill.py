@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Give Jarvis's VOS History the censuses from before Jarvis synced them.
+"""Give Jarvis's VOS and SoftMouse History what came before Jarvis synced them.
 
 Every census pasted by hand lives in the Lab Operations Schedule's "VOS
 Imports" as a date-stamped block (Extracted Sorting ID / Cage Card / DOB / Sex
 MMDDYY). This reads those blocks out of an .xlsx export of the sheet and
 writes one record per census into Colony Management/VOS Exports/Jarvis/syncs,
 the same shape backend/vos.py writes for its own syncs, so History can say
-what moved between any two of them. A stamp that already has a record (the
-ones Jarvis synced itself) is left alone; running it again adds nothing.
+what moved between any two of them. "SoftMouse Imports" is read the same
+way (Physical Tag / State / Genotype MMDDYY) into SoftMouse Exports/Jarvis/
+syncs. A stamp that already has a record (the ones Jarvis synced itself) is
+left alone; running it again adds nothing.
 
 --from-status also writes the record for the last sync in status.json if it
 has none: the syncs made before the record existed (2026-11-05 10:07).
@@ -29,7 +31,7 @@ import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-from backend import vos  # noqa: E402
+from backend import softmouse, vos  # noqa: E402
 
 SHEET_ID = "1SDXG1GpRhkjq2aKri3n06nOuR8TGio9QuQsyN656ERo"
 STAMPED = re.compile(r"^(Extracted Sorting ID|Cage Card|DOB|Date of Birth|Sex) (\d{6})$")
@@ -89,6 +91,47 @@ def from_sheet(xlsx):
     return wrote
 
 
+SM_STAMPED = re.compile(r"^(Physical Tag|State|Genotype) (\d{6})$")
+
+
+def from_softmouse_sheet(xlsx):
+    """The same for "SoftMouse Imports": Physical Tag / State / Genotype MMDDYY,
+    into SoftMouse Exports/Jarvis/syncs for softmouse.py's History."""
+    import openpyxl
+    ws = openpyxl.load_workbook(xlsx, read_only=True, data_only=True)["SoftMouse Imports"]
+    rows = list(ws.iter_rows(values_only=True))
+    blocks = {}
+    for j, h in enumerate(rows[0]):
+        m = SM_STAMPED.match(str(h or "").strip())
+        if m:
+            blocks.setdefault(m.group(2), {})[m.group(1)] = j
+    have = set()
+    if os.path.isdir(softmouse.HISTORY):
+        for name in os.listdir(softmouse.HISTORY):
+            rec = vos._read(os.path.join(softmouse.HISTORY, name), None)
+            if isinstance(rec, dict) and rec.get("stamp"):
+                have.add(rec["stamp"])
+    wrote = []
+    for stamp, col in sorted(blocks.items(), key=lambda kv: kv[0][4:] + kv[0][:4]):
+        if stamp in have or "Physical Tag" not in col:
+            continue
+        lst = []
+        for r in rows[1:]:
+            get = lambda f: _text(r[col[f]]) if f in col and col[f] < len(r) else ""
+            if get("Physical Tag"):
+                lst.append([get("Physical Tag"), get("State"), get("Genotype")])
+        day = dt.date(2000 + int(stamp[4:]), int(stamp[:2]), int(stamp[2:4]))
+        rec = {"v": 1, "date": day.isoformat(), "time": None, "stamp": stamp,
+               "source": "SoftMouse Imports", "outcome": "applied", "by": None,
+               "machine": None, "sheet": None, "block_at": col["Physical Tag"] + 1,
+               "mice": len(lst), "issues": [], "result": None, "csv": None,
+               "list": lst, "ended_list": []}
+        vos._write(os.path.join(softmouse.HISTORY,
+                                day.isoformat() + " softmouse-imports.json"), rec)
+        wrote.append((stamp, len(lst)))
+    return wrote
+
+
 def from_status():
     """The last sync in status.json, if no record has it."""
     summ = vos._read(vos.STATUS, {}).get("last_sync")
@@ -124,8 +167,11 @@ def main():
                                    % SHEET_ID, xlsx)
     for stamp, n in from_sheet(xlsx):
         print("VOS Imports %s: %d mice" % (stamp, n))
-    print(json.dumps([(h["date"], h["source"], h["mice"], h["diff"] and
-                       {k: len(v) for k, v in h["diff"].items()}) for h in vos.history()]))
+    for stamp, n in from_softmouse_sheet(xlsx):
+        print("SoftMouse Imports %s: %d mice" % (stamp, n))
+    for mod in (vos, softmouse):
+        print(json.dumps([(h["date"], h["source"], h["mice"], h["diff"] and
+                           {k: len(v) for k, v in h["diff"].items()}) for h in mod.history()]))
 
 
 if __name__ == "__main__":

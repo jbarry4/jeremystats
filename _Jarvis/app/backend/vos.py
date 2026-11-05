@@ -366,11 +366,12 @@ def _free_port():
 class _Browser:
     """A Chrome on Jarvis's own profile -- never the everyday one."""
 
-    def __init__(self, headless):
-        os.makedirs(PROFILE, exist_ok=True)
+    def __init__(self, headless, profile=None):
+        profile = profile or PROFILE          # softmouse.py passes its own
+        os.makedirs(profile, exist_ok=True)
         self.port = _free_port()
         args = [_chrome(), "--remote-debugging-port=%d" % self.port,
-                "--remote-allow-origins=*", "--user-data-dir=" + PROFILE,
+                "--remote-allow-origins=*", "--user-data-dir=" + profile,
                 "--no-first-run", "--no-default-browser-check",
                 "--window-size=1100,900"]
         if headless:
@@ -838,8 +839,10 @@ def history():
             if name.endswith(".json"):
                 rec = _read(os.path.join(HISTORY, name), None)
                 if isinstance(rec, dict):
-                    recs.append(rec)
-    recs.sort(key=lambda r: (r.get("date") or "", r.get("time") or ""))
+                    recs.append((name, rec))
+    # The file name carries the seconds, for two syncs in the same minute.
+    recs = [r for _, r in sorted(recs, key=lambda nr: (nr[1].get("date") or "",
+                                                       nr[1].get("time") or "", nr[0]))]
     out, prev = [], None
     for r in recs:
         cur = {}

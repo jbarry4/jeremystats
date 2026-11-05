@@ -51,13 +51,18 @@ def switch_of(e, level):
     return None
 
 
+def _word(call):
+    """A call as a person reads it: DS or P-spike (2026-11-05)."""
+    return "P-spike" if call == "ied" else str(call).upper()
+
+
 def why_of(e, level):
     """Why an event is in the deep dive, in words; empty if it is not."""
     out = []
     sw = switch_of(e, level)
     if sw:
         a, b = sw.split("_to_")
-        out.append("switched %s → %s" % (a.upper(), b.upper()))
+        out.append("switched %s → %s" % (_word(a), _word(b)))
     if e.get("border") == "amb":
         out.append("ambiguous under the border")
     return out

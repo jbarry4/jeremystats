@@ -139,7 +139,7 @@ BARRY.chipForge = (function () {
     ]);
     const caption = el('div', { class: 'cf-caption',
       text: (label.name || 'A new category') + (key ? ' · key ' + key : '')
-          + ' · in every IED set' });
+          + ' · in every P-spike set' });
     stage.appendChild(el('div', { class: 'cf-scrim' }));
     stage.appendChild(svg);
     stage.appendChild(hold);
@@ -307,9 +307,9 @@ BARRY.chipForge = (function () {
         const paintSeg = () => {
           kindSeg.innerHTML = '';
           kindSeg.appendChild(BARRY.ui.seg([
-            ['good', 'An IED', 'Counted as a confirmed discharge, and taken on '
+            ['good', 'A P-spike', 'Counted as a confirmed discharge, and taken on '
                                + 'to Eye with Solid and Sputter'],
-            ['not', 'Not an IED', 'Set aside, like Garbage'],
+            ['not', 'Not a P-spike', 'Set aside, like Garbage'],
           ], st.good ? 'good' : 'not', (v) => { st.good = v === 'good'; paintSeg(); }));
         };
         paintSeg();
@@ -318,7 +318,7 @@ BARRY.chipForge = (function () {
         return el('div', {}, [
           head('A new category'),
           el('div', { class: 'mb' }, [
-            el('p', { class: 'confirm-msg', text: 'A category for every IED '
+            el('p', { class: 'confirm-msg', text: 'A category for every P-spike '
                 + 'set, on every recording, beside Solid, Sputter, Garbage '
                 + 'and Flag.' }),
             BARRY.ui.field({ label: 'Its name', control: name }),
@@ -375,10 +375,10 @@ BARRY.chipForge = (function () {
           el('div', { class: 'mb' }, [
             el('div', { class: 'cf-big' }, [chip(st.name)]),
             el('p', { class: 'confirm-msg', text: '“' + st.name + '” becomes '
-                + 'a category of every IED set, on every recording and on '
+                + 'a category of every P-spike set, on every recording and on '
                 + 'every computer the lab’s records reach'
                 + (key ? ', on key ' + key : '') + ', '
-                + (st.good ? 'counted as an IED.' : 'not counted as an IED.') }),
+                + (st.good ? 'counted as a P-spike.' : 'not counted as a P-spike.') }),
             el('p', { class: 'hint quiet', text: 'It is added for good. It '
                 + 'cannot be renamed or removed from here, because a '
                 + 'candidate labelled with it has to go on meaning what it '

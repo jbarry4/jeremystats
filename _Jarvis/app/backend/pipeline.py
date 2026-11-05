@@ -41,7 +41,7 @@ SESSION_STAGES = [
     {
         "key": "detect",
         "n": 2,
-        "title": "IED Detection",
+        "title": "P-spike Detection",
         "script": "IED/03_IED_Detection/vacc_ied_detect.m",
         "lang": "matlab",
         "func": "vacc_ied_detect",

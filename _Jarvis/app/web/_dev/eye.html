@@ -113,7 +113,7 @@ const getj = (u) => fetch(u).then((r) => r.json());
      the route rather than assumed: a machine with no confirmed IED set must
      say so, one with some must list them. */
   const c0 = await getj('/api/braces/candidates?type=ied');
-  check('the candidate list answers for IEDs', !!c0.ok, c0.error || '');
+  check('the candidate list answers for P-spikes', !!c0.ok, c0.error || '');
   const n0 = (c0.sets || []).length;
   /* The picker hides harness leftovers and opens on Doppler's own runs,
      so "every one" means every real set once "Everything" is chosen --
@@ -127,10 +127,10 @@ const getj = (u) => fetch(u).then((r) => r.json());
   await until(() => $$('#tkResult .eye-set').length === real.length
                     || $('#tkResult .empty-state'), 4000);
   if (!real.length) {
-    check('no real IED sets: the empty state says what fills it', drawn
+    check('no real P-spike sets: the empty state says what fills it', drawn
           && !!$('#tkResult .empty-state'));
   } else {
-    check(real.length + ' real IED set(s): "Everything" shows every one',
+    check(real.length + ' real P-spike set(s): "Everything" shows every one',
           drawn && $$('#tkResult .eye-set').length === real.length,
           $$('#tkResult .eye-set').length + ' drawn');
     check('each is filed under the recording it is on',
@@ -143,7 +143,7 @@ const getj = (u) => fetch(u).then((r) => r.json());
     check('harness leftovers are hidden and counted',
           /left behind by test harnesses/.test($('#tkResult').textContent));
   }
-  check('everything offered is an IED set, not a dentate-spike one',
+  check('everything offered is a P-spike set, not a dentate-spike one',
         (c0.sets || []).every((s) => s.n_good > 0));
 
   /* ---------------------------------------------------------------- */
@@ -186,7 +186,7 @@ const getj = (u) => fetch(u).then((r) => r.json());
     gid: target.gid, project: target.project, mouse: target.mouse,
     session: target.session, session_label: target.label,
     session_path: target.here[0],
-    type: 'ied', type_name: 'IED', curated: true,
+    type: 'ied', type_name: 'P-spike', curated: true,
     name: NAME,
     note: 'Made by web/_dev/eye.html. Deleted on the way out.',
     events: evts,
@@ -196,7 +196,7 @@ const getj = (u) => fetch(u).then((r) => r.json());
     time_basis: 'recording', added_by: WHO,
   });
   entryId = (added.entry || {}).id || null;
-  check('a throwaway curated IED entry was banked', !!entryId,
+  check('a throwaway curated P-spike entry was banked', !!entryId,
         JSON.stringify(added).slice(0, 200));
   if (!entryId) throw new Error('no fixture');
 

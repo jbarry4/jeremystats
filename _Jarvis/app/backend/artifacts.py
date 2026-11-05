@@ -588,6 +588,30 @@ register_kind("rootcanal_dpool", _rcdpool_key,
               "Root Canal pool of pools")
 
 
+# A Root Canal WORKFLOW (2026-11-05): define a border, apply it to a pool,
+# extract what is inside (backend/rcworkflow.py). Its own minted subject;
+# its definition and every run are versions, each pinning the versions of
+# the inputs it read.
+def _rcworkflow_key(subject):
+    _need(subject, ("workflow_key",), "Root Canal workflow")
+    return "rootcanal_workflow|%s" % subject["workflow_key"]
+
+
+def _rcworkflow_summary(payload):
+    p = payload or {}
+    d = p.get("definition") or {}
+    r = p.get("run") or {}
+    return {"kind": d.get("kind"), "grace": d.get("grace"),
+            "ran": bool(r), "kept": r.get("kept"), "events": r.get("n"),
+            "target": (d.get("target") or {}).get("nickname"),
+            "bank": (r.get("bank") or {}).get("entry_id")}
+
+
+register_kind("rootcanal_workflow", _rcworkflow_key,
+              lambda s: s.get("name") or "Root Canal workflow",
+              _rcworkflow_summary, lambda s: [], "Root Canal workflow")
+
+
 # The lab's list of Root Canal cluster names: one artifact, each change a
 # version; read as the union of every version (see app.py, RC_NAMES_SUBJECT).
 def _rcnames_key(subject):

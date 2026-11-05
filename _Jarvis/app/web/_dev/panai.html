@@ -1,0 +1,214 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>panai: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Prospector's calls in Panning, as a person sees them (Rain, 2026-11-05):
+   its two flags were faint text on the trace and lit none of Spike, Garbage
+   or Flag, and a swept pool read "0 left" with its flags unread.
+
+   IT WRITES NOTHING. panmany's way: the demo recording, the pool answered
+   here by a wrapped `fetch` proven with a probe before anything is pressed,
+   the activity log quiet, preferences caught, all put back in `finally`.
+   The progress count itself is curation.progress, checked by
+   tools/test_prospector_routes.py. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const head = (t) => { say(''); say('=== ' + t + ' ===', 'hd'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              30000);
+  const W = frame.contentWindow, D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const txt = (n) => (n ? n.textContent.trim() : '');
+  const G = 'demo-ds-tutorial';
+  try {
+    W.eval(`(function(){
+      var PR='Prospector (AI)';
+      var evs=[
+        {id:'a',start:8.0,origin:'doppler',label:'likely_garbage',by:PR,channel:12},
+        {id:'b',start:10.37,origin:'incisor',label:'likely_spike',by:PR,channel:12},
+        {id:'c',start:12.74,origin:'both',pair_t:12.7427,label:'spike',by:PR,channel:12},
+        {id:'d',start:15.11,origin:'incisor',label:'spike',by:'Rain Younger',channel:12},
+        {id:'e',start:17.48,origin:'doppler',label:null,channel:12}];
+      window.__paSet={gid:'${G}',kind:'pooled',name:'harness pool, not banked',
+        labels:[{id:'spike',name:'Spike',keys:['1','s'],color:'#2f9e6e',good:true},
+                {id:'garbage',name:'Garbage',keys:['2','g'],color:'#dc2626'},
+                {id:'flag',name:'Flag',keys:['3','f'],color:'#E5A823',flagged:true},
+                {id:'likely_spike',name:'Flag · likely spike',color:'#7fb069',
+                 flagged:true,computed:true,ai:true},
+                {id:'likely_garbage',name:'Flag · likely garbage',color:'#c8553d',
+                 flagged:true,computed:true,ai:true}],
+        events:evs};
+      window.__paSent=[]; window.__paPrefs={};
+      window.__paRealFetch=window.fetch;
+      window.fetch=function(u,o){ var p=String(u).split('?')[0];
+        var fake=function(obj){return Promise.resolve(new Response(JSON.stringify(obj),
+          {status:200,headers:{'Content-Type':'application/json'}}));};
+        if(p.indexOf('/api/curation/${G}/pooled')===0){
+          var b=null; try{ b=o&&o.body?JSON.parse(o.body):null; }catch(e){}
+          window.__paSent.push({p:p,b:b});
+          if(p==='/api/curation/${G}/pooled') return fake({ok:true,
+            set:JSON.parse(JSON.stringify(window.__paSet)), banked:null,
+            session:{gid:'${G}',here:['demo:ds-tutorial'],reachable:true,demo:true}});
+          if(p.slice(-8)==='/receipt') return fake({ok:true,sitting:{n:0},labels:[],progress:{}});
+          return fake({ok:true}); }
+        if(p.indexOf('/api/presence/')===0) return fake({ok:true,others:[]});
+        return window.__paRealFetch.apply(this,arguments); };
+      BARRY.activity.__paLog=BARRY.activity.log; BARRY.activity.log=function(){};
+      BARRY.prefs.__paSet=BARRY.prefs.set;
+      BARRY.prefs.set=function(k,v){ if(/_span$|_at$|autobank/i.test(k)) { window.__paPrefs[k]=v; return; }
+        return BARRY.prefs.__paSet.apply(this,arguments); };
+      BARRY.testNoAutobank=true;
+    })()`);
+    const probe = await W.eval("apiPost('/api/curation/" + G + "/pooled/__probe', {x:1})"
+                               + ".then(function(r){return JSON.stringify(r);})");
+    if (!(ev("window.__paSent.length") === 1 && /"ok":true/.test(probe))) {
+      throw new Error('the fetch stub did not answer the probe; stopping before '
+                      + 'anything writes: ' + probe);
+    }
+    ev("window.__paSent.length = 0");
+    say('  the fetch stub answers the page’s own apiPost', 'note');
+
+    head('a pool Prospector has swept');
+    const entered = await W.eval("BARRY.panning.enter('" + G + "')");
+    await until(() => $('#panBar') && $('#panWin'), 20000);
+    check('it opens (demo recording, answered here)', !!entered && !!$('#panBar'));
+    const go = async (i) => { ev('BARRY.panning.goTo(' + i + ')'); await sleep(250); };
+    const chip = (id) => $('#panBar .pan-ai-call[data-ai="' + id + '"]');
+    const prog = () => txt($('#panBar .cur-prog span'));
+    const progWhy = () => ($('#panBar .cur-prog') || {}).title || '';
+
+    check('its flags are still to do: left, not decided',
+          prog() === '2 decided · 3 left', prog());
+    check('and the pill says which of what is left are its flags',
+          /3 left: 1 undecided and 2 of Prospector’s flags/.test(progWhy()),
+          progWhy());
+    const pill = $('#panBar .cur-prog span');
+    check('in full, nothing cut off',
+          pill && pill.scrollWidth <= $('#panBar .cur-prog').clientWidth,
+          pill ? pill.scrollWidth + ' > ' + $('#panBar .cur-prog').clientWidth : '');
+
+    await go(0);
+    check('both flags sit among the options, with their counts',
+          !!chip('likely_spike') && !!chip('likely_garbage')
+          && txt(chip('likely_spike')).endsWith('1')
+          && /^Likely garbage/.test(txt(chip('likely_garbage'))),
+          txt($('#panBar .cur-cats')));
+    check('the one this event carries is lit, in its own colour, and no other',
+          chip('likely_garbage').classList.contains('on')
+          && !chip('likely_spike').classList.contains('on')
+          && /--ink:#ffffff/.test(chip('likely_garbage').getAttribute('style') || ''),
+          chip('likely_garbage').getAttribute('style'));
+    const lit = W.getComputedStyle(chip('likely_garbage'));
+    check('filled, not outlined',
+          lit.backgroundColor.replace(/\s/g, '') === 'rgb(200,85,61)',
+          lit.backgroundColor);
+    check('shown, not offered: not a button, no key, says how to settle it',
+          chip('likely_garbage').tagName === 'SPAN'
+          && !chip('likely_garbage').querySelector('kbd')
+          && /Spike \[1\], Garbage \[2\], Flag \[3\]/.test(chip('likely_garbage').title),
+          chip('likely_garbage').title);
+    check('and its pan is on it', !!chip('likely_garbage').querySelector('.pr-icon svg'));
+    const cnt = chip('likely_garbage').querySelector('.cur-count');
+    check('its count reads on the fill: written in the chip’s own ink',
+          W.getComputedStyle(cnt).color.replace(/\s/g, '') === 'rgb(255,255,255)',
+          W.getComputedStyle(cnt).color);
+
+    await go(1);
+    check('on the next, the other flag is the lit one',
+          chip('likely_spike').classList.contains('on')
+          && !chip('likely_garbage').classList.contains('on'));
+    check('dark writing on the light green', /--ink:#101418/.test(
+          chip('likely_spike').getAttribute('style') || ''));
+
+    await go(2);
+    const spikeBtn = () => $('#panBar .cur-cat[data-cat="spike"]');
+    check('Prospector’s Spike lights Spike, and says whose it is',
+          spikeBtn().classList.contains('on') && !!$('#panBar .pan-ai-by')
+          && !$('#panBar .pan-ai-call.on'), txt($('#panBar .pan-ai-by')));
+
+    await go(3);
+    check('a person’s Spike says nothing about Prospector',
+          spikeBtn().classList.contains('on') && !$('#panBar .pan-ai-by')
+          && !$('#panBar .pan-ai-call.on'));
+
+    head('a person settles a flag');
+    await go(0);
+    ev("BARRY.panning.assign('garbage')");
+    await until(() => JSON.parse(ev('JSON.stringify(window.__paSent)'))
+      .some((x) => /\/label$/.test(x.p) && x.b && x.b.event === 'a'), 5000);
+    const sent = JSON.parse(ev('JSON.stringify(window.__paSent)'))
+      .filter((x) => /\/label$/.test(x.p));
+    check('Garbage goes to the set, on that event',
+          sent.length === 1 && sent[0].b.label === 'garbage', JSON.stringify(sent));
+    check('one flag fewer to check, one more decided',
+          prog() === '3 decided · 2 left'
+          && /1 undecided and 1 of Prospector’s flags/.test(progWhy()),
+          prog() + ' / ' + progWhy());
+    await go(0);
+    check('back on it: Garbage is lit, nothing of Prospector’s',
+          $('#panBar .cur-cat[data-cat="garbage"]').classList.contains('on')
+          && !$('#panBar .pan-ai-call.on') && !$('#panBar .pan-ai-by'));
+    check('the likely-garbage chip is gone with its last event',
+          !chip('likely_garbage') && !!chip('likely_spike'));
+    const marks = JSON.parse(ev(
+      "(function(){var X=BARRY.views.xplore.state,s=X.sessions&&X.sessions[X.active];"
+      + "return JSON.stringify((s&&s.curationMarks)||null);})()"));
+    check('the trace is told whose each call is (its badge)',
+          !!marks && marks.events[1].by === 'Prospector (AI)'
+          && marks.events[0].by === null,
+          JSON.stringify(marks && marks.events.slice(0, 2)));
+  } finally {
+    try { ev('BARRY.panning.active && BARRY.panning.exit()'); } catch (e) {}
+    try { ev('closeModal(); closeModal();'); } catch (e) {}
+    await sleep(200);
+    try {
+      ev(`(function(){
+        if (window.__paRealFetch) { window.fetch=window.__paRealFetch; delete window.__paRealFetch; }
+        if (BARRY.activity.__paLog) { BARRY.activity.log=BARRY.activity.__paLog; delete BARRY.activity.__paLog; }
+        if (BARRY.prefs.__paSet) { BARRY.prefs.set=BARRY.prefs.__paSet; delete BARRY.prefs.__paSet; }
+        delete BARRY.testNoAutobank;
+      })()`);
+      say('  wrote nothing outside this page: prefs it tried to keep -- '
+          + ev("JSON.stringify(Object.keys(window.__paPrefs || {}))"), 'note');
+    } catch (e) {}
+    try { ev("setView('toolkit')"); } catch (e) {}
+  }
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'panai: ' + fails + ' FAILED' : 'panai: passed';
+  // The app's polling pins virtual time to the wall; let the runner go.
+  frame.src = 'about:blank';
+})().catch((e) => {
+  say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+  document.title = 'panai CRASH';
+});
+</script></body></html>

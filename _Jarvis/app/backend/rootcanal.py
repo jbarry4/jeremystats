@@ -407,7 +407,7 @@ class Params:
                                      "numbers and a call.")
             call = str((grp or {}).get("call") or "").lower()
             if call not in ("ds", "ied"):
-                raise RootCanalError("A drawn cluster is called DS or IED, "
+                raise RootCanalError("A drawn cluster is called DS or P-spike, "
                                      "not %r." % (call,))
             if not evs:
                 continue
@@ -438,7 +438,7 @@ class Params:
                                      "%r." % (key,))
             v = str(v or "").strip().lower()
             if v not in ("ds", "ied"):
-                raise RootCanalError("A cluster can be called DS or IED, not "
+                raise RootCanalError("A cluster can be called DS or P-spike, not "
                                      "%r." % (v,))
             self.cluster_calls[str(r)] = v
         # A saved margin to apply, by reference. The app resolves it to its
@@ -488,7 +488,7 @@ class Params:
                 raise RootCanalError("A cluster name is a name: keep it under "
                                      "60 characters, not %d." % len(name))
             if typ not in ("ds", "ied"):
-                raise RootCanalError("A cluster name is a DS name or an IED "
+                raise RootCanalError("A cluster name is a DS name or a P-spike "
                                      "name, not %r." % (typ,))
             self.cluster_names[str(r)] = {"name": name, "type": typ}
         # EVENTS WHOSE HALF-WIDTH WAS NOT FOUND, SEARCHED AGAIN ON REQUEST.
@@ -1517,8 +1517,8 @@ def fit(got, p, margin=None):
     ied_c = int(np.argmax(raw_c[:, 2])) if core["k"] >= 2 else 0
     ds_c = 1 - ied_c if core["k"] == 2 else 0
     rule = (
-        "The cluster whose centre has more %s is called IED: %s dB against "
-        "%s dB for the other, which is called DS (%d DS, %d IED%s%s%s%s%s)."
+        "The cluster whose centre has more %s is called P-spike: %s dB against "
+        "%s dB for the other, which is called DS (%d DS, %d P-spike%s%s%s%s%s)."
         % (p.band_label(), _db_s(raw_c[ied_c, 2]), _db_s(raw_c[ds_c, 2]),
            counts["ds"], counts["ied"],
            (", %d not measured" % counts["unmeasured"])
@@ -1531,7 +1531,7 @@ def fit(got, p, margin=None):
            ("; %d flipped by hand" % len(flipped_used))
            if flipped_used else ""))
     if general:
-        rule = ("%s (%d DS, %d IED%s%s%s%s%s)." % (
+        rule = ("%s (%d DS, %d P-spike%s%s%s%s%s)." % (
             general, counts["ds"], counts["ied"],
             (", %d not measured" % counts["unmeasured"])
             if counts["unmeasured"] else "",
@@ -2019,7 +2019,7 @@ def fit_rows(payload, p, margin=None):
         })
     general = k_sentence(core, p.band_label()) or (
         "Clustered from the saved numbers")
-    rule = "%s (%d DS, %d IED)." % (general.rstrip("."), counts["ds"],
+    rule = "%s (%d DS, %d P-spike)." % (general.rstrip("."), counts["ds"],
                                     counts["ied"])
     return {
         "n": n, "n_used": int(core["n_used"]), "n_placed": int(placed.sum()),
@@ -2049,7 +2049,7 @@ def k_sentence(core, band_label):
         return None
     if k == 1:
         return ("k = 1: one cluster, so no split -- every event is called "
-                "DS%s" % (" (relabelled IED by hand)"
+                "DS%s" % (" (relabelled P-spike by hand)"
                           if calls[0] == "ied" else ""))
     ied = [r for r in range(k) if calls[r] == "ied"]
     ds = [r for r in range(k) if calls[r] == "ds"]
@@ -2060,7 +2060,7 @@ def k_sentence(core, band_label):
                             if "margin" in by else ""))
     body = []
     if ied:
-        body.append("the cluster%s at %s %s called IED"
+        body.append("the cluster%s at %s %s called P-spike"
                     % ("" if len(ied) == 1 else "s", db(ied),
                        "is" if len(ied) == 1 else "are"))
     if ds:
@@ -2074,7 +2074,7 @@ def k_sentence(core, band_label):
             "" if len(hand) == 1 else "s",
             ", ".join(str(r + 1) for r in hand))
     elif "margin" not in by:
-        tail = " (the highest-HF cluster is IED by the rule)"
+        tail = " (the highest-HF cluster is P-spike by the rule)"
     return head + "; ".join(body) + tail + " on " + band_label
 
 

@@ -67,8 +67,8 @@ BARRY.views.misc = (function () {
         el('button', { class: 'btn sm', text: 'Open ' + title }),
       ]),
     ]);
-    moved.appendChild(door('pipeline', 'IED Pipeline',
-      'Point it at a recording folder and walk the IED stages in order, '
+    moved.appendChild(door('pipeline', 'P-spike Pipeline',
+      'Point it at a recording folder and walk the P-spike stages in order, '
       + 'for one session or a cohort.',
       '<svg viewBox="0 0 20 20"><path d="M3 5h5M12 5h5M3 10h14M3 15h5M12 15h5"/><circle cx="10" cy="5" r="2"/><circle cx="10" cy="15" r="2"/></svg>'));
     moved.appendChild(door('explorer', 'Explorer',
@@ -80,6 +80,7 @@ BARRY.views.misc = (function () {
     /* ---- colony ---- */
     host.appendChild(el('div', { class: 'section-label', text: 'Colony' }));
     host.appendChild(vosCard());
+    host.appendChild(smCard());
 
     /* ---- utilities ---- */
     host.appendChild(el('div', { class: 'section-label', text: 'Workbench' }));
@@ -460,6 +461,253 @@ BARRY.views.misc = (function () {
         text: 'Last ' + err.what + ' failed at ' + vosWhen(err.at) + ': ' + err.error }));
     }
     card.appendChild(vosHistory());
+  }
+
+  /* ======================================================================
+     SoftMouse log in -- genotypes and Role, straight from SoftMouse.NET into
+     the same sheet (backend/softmouse.py), through the same web app as VOS.
+     Sync does what used to be Mouse List, export, wait, download, paste and
+     Lab Tools > Sync SoftMouse to KCNT1. It stops and waits here for Apply
+     only when a genotype the sheet already had would be replaced or erased:
+     a fill is news, an overwrite might be a slip in SoftMouse.
+     ====================================================================== */
+  const sm = { st: null, card: null, timer: null, hist: null, histOpen: false, pin: '' };
+
+  function smCard() {
+    const card = el('div', { class: 'card vos-card' });
+    sm.card = card;
+    if (sm.st) smPaint();
+    else card.appendChild(el('p', { class: 'hint', text: 'Asking SoftMouse whether Jarvis is still signed in…' }));
+    const stale = !sm.st || !sm.st.checked || (Date.now() / 1000 - sm.st.checked > 600);
+    smLoad(stale);
+    return card;
+  }
+
+  async function smLoad(check) {
+    const was = sm.st && sm.st.run && sm.st.run.running;
+    try {
+      sm.st = await api('/api/softmouse/status' + (check ? '?check=1' : ''), { priority: 'background' });
+    } catch (e) {
+      sm.st = sm.st || { error: e.message };
+    }
+    if (was && !(sm.st.run && sm.st.run.running)) sm.hist = null;
+    smPaint();
+    if (sm.histOpen && !sm.hist) smHistLoad();
+    clearTimeout(sm.timer);
+    if (sm.st && sm.st.run && sm.st.run.running) {
+      sm.timer = setTimeout(() => {
+        if (sm.card && sm.card.isConnected) smLoad(false);
+      }, 1500);
+    }
+  }
+
+  async function smDo(route, body) {
+    try {
+      sm.st = await apiPost('/api/softmouse/' + route, body || {});
+      if (route === 'unlock') sm.pin = '';
+    } catch (e) { toast(e.message, 'err', 6000); }
+    if (route === 'discard') sm.hist = null;
+    smLoad(false);
+  }
+
+  async function smHistLoad() {
+    try {
+      sm.hist = (await api('/api/softmouse/history', { priority: 'background' })).syncs || [];
+    } catch (e) {
+      sm.hist = { error: e.message };
+    }
+    smPaint();
+  }
+
+  // ids: a run of bare mouse IDs, which wraps instead of one per line.
+  function smList(box, label, rows, open, ids) {
+    if (!rows.length) return;
+    box.appendChild(el('details', { class: 'vos-details', open: open ? 'open' : null }, [
+      el('summary', { text: label + ' (' + rows.length + ')' }),
+      el('ul', { class: ids ? 'vos-ids' : null }, rows.map((t) => el('li', { text: t }))),
+    ]));
+  }
+
+  function smResult(s, title) {
+    const r = s.result || {};
+    const changes = r.changes || [];
+    const over = s.overwrites || [];
+    const box = el('div', { class: 'vos-result' }, [
+      el('div', { class: 'vos-line', text: title }),
+      el('div', { class: 'chip-row' }, [
+        el('span', { class: 'stat-chip', text: s.mice + ' live mice in SoftMouse' }),
+        el('span', { class: 'stat-chip', text: (r.matched || 0) + ' matched in the sheet' }),
+        el('span', { class: 'stat-chip' + (changes.length ? ' warn' : ''),
+                     text: changes.length + ' change' + (changes.length === 1 ? '' : 's') }),
+        el('span', { class: 'stat-chip' + (over.length ? ' warn' : ' good'),
+                     text: over.length + ' known genotype' + (over.length === 1 ? '' : 's') + ' replaced' }),
+      ]),
+    ]);
+    const word = (c) => c.id + ' ' + c.field + ': ' + (c.from || '(blank)') + ' → ' + (c.to || '(blank)');
+    // Open while it is the reason the run is waiting: it is what to check.
+    smList(box, 'Genotypes the sheet had, replaced', over.map(word), !s.applied);
+    smList(box, 'All changes', changes.map(word));
+    smList(box, 'Left as Mating in the sheet', r.matingKept || [], false, true);
+    const issues = s.issues || [];
+    if (issues.length) {
+      box.appendChild(el('details', { class: 'vos-details vos-issues', open: 'open' }, [
+        el('summary', { text: 'Issues to fix (' + issues.length + ')' }),
+        el('ul', {}, issues.map((i) => el('li', {}, [
+          el('strong', { text: i.category + ': ' }),
+          el('span', { text: i.text }),
+        ]))),
+      ]));
+    }
+    if (s.csv) {
+      box.appendChild(el('div', { class: 'card-actions' }, [
+        el('button', { class: 'btn ghost sm', text: 'Show the list',
+                       onclick: () => apiPost('/api/reveal', { path: s.csv }).catch(() => {}) }),
+      ]));
+    }
+    return box;
+  }
+
+  function smHistory() {
+    const d = el('details', { class: 'vos-details vos-history', open: sm.histOpen ? 'open' : null });
+    const h = sm.hist;
+    d.appendChild(el('summary', { text: 'History' + (Array.isArray(h) ? ' (' + h.length + ' lists)' : '') }));
+    d.addEventListener('toggle', () => {
+      sm.histOpen = d.open;
+      if (d.open && !sm.hist) smHistLoad();
+    });
+    if (!h) {
+      if (sm.histOpen) d.appendChild(el('p', { class: 'hint', text: 'Reading the record…' }));
+      return d;
+    }
+    if (h.error) {
+      d.appendChild(el('p', { class: 'hint', text: 'Could not read the record: ' + h.error }));
+      return d;
+    }
+    const day = (r) => new Date(r.date + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+      + (r.time ? ' ' + r.time : '');
+    d.appendChild(el('ul', { class: 'vos-hist' }, h.map((r) => {
+      const f = r.diff;
+      const bits = [r.mice + ' live mice'];
+      if (f) bits.push(f.arrived.length + ' new', f.left.length + ' gone', f.changed.length + ' changed');
+      if ((r.issues || []).length) bits.push(r.issues.length + ' issue' + (r.issues.length === 1 ? '' : 's'));
+      const who = r.source === 'Jarvis'
+        ? 'Jarvis' + (r.by ? ', ' + r.by : '') + (r.machine ? ' on ' + r.machine : '')
+        : 'pasted into SoftMouse Imports';
+      const item = el('details', { class: 'vos-details' }, [
+        el('summary', {}, [
+          el('strong', { text: day(r) }),
+          el('span', { text: ' · ' + who + (r.outcome === 'discarded' ? ' · discarded' : '') + ' · ' + bits.join(', ') }),
+        ]),
+      ]);
+      if (f) {
+        smList(item, 'New to the list', f.arrived, false, true);
+        smList(item, 'Gone from it (ended or moved away)', f.left, false, true);
+        smList(item, 'State or genotype changed', f.changed.map((c) => c.id + ': ' + c.from + ' → ' + c.to));
+      } else {
+        item.appendChild(el('p', { class: 'hint', text: 'The first list on record.' }));
+      }
+      if (r.result) {
+        item.appendChild(smResult(r, r.outcome === 'discarded'
+          ? 'What it would have done to ' + (r.sheet || 'the sheet') + ':'
+          : 'What it did to ' + (r.sheet || 'the sheet') + ':'));
+      }
+      return el('li', {}, [item]);
+    })));
+    return d;
+  }
+
+  function smPaint() {
+    const card = sm.card;
+    if (!card) return;
+    const st = sm.st || {};
+    const run = st.run || {};
+    card.innerHTML = '';
+    card.appendChild(el('h3', { text: 'SoftMouse log in' }));
+
+    // auto.here: the lab's sign-in is kept on this machine, so a lapsed
+    // session signs itself back in when Sync is pressed.
+    const auto = (st.auto || {}).here;
+    let words;
+    if (st.error) words = st.error;
+    else if (auto && st.signed_in === false) words = 'SoftMouse let the session go' + (st.lost_at ? ' at ' + vosWhen(st.lost_at) : '') + '. Sync signs back in by itself.';
+    else if (auto && !st.has_session) words = 'Not signed in yet. Sync signs in by itself with the lab’s saved sign-in.';
+    else if (!st.has_session) words = 'Not signed in yet. Sign in opens Chrome on SoftMouse.NET; type the lab login there once.';
+    else if (st.signed_in === false) words = 'SoftMouse signed Jarvis out' + (st.lost_at ? ' at ' + vosWhen(st.lost_at) : '') + '. Sign in again to sync.';
+    else words = 'Signed in to SoftMouse' + (st.signed_in_at ? ' since ' + vosWhen(st.signed_in_at) : '') + '. Jarvis keeps the session alive while it runs.';
+    card.appendChild(el('p', { text: words }));
+    if (!st.sheet_connected) {
+      card.appendChild(el('p', { class: 'hint', text: 'The sheet is connected under VOS log in; the same web app serves both.' }));
+    }
+
+    if (!auto && !st.error) {
+      const unlock = () => { if (sm.pin.trim()) smDo('unlock', { pin: sm.pin.trim() }); };
+      card.appendChild(el('div', { class: 'field' }, [
+        el('label', { text: 'Lab sign-in PIN' }),
+        el('input', {
+          type: 'password', inputmode: 'numeric', autocomplete: 'off', value: sm.pin,
+          placeholder: 'Hint: ' + ((st.auto || {}).hint || ''),
+          oninput: (e) => { sm.pin = e.target.value; },
+          onkeydown: (e) => { if (e.key === 'Enter') unlock(); },
+        }),
+        el('span', { class: 'hint',
+          text: 'Once per machine: the PIN unlocks the lab’s SoftMouse sign-in from the cloud sync, '
+              + 'and from then on Jarvis signs itself in. Hint: ' + ((st.auto || {}).hint || '') + '.' }),
+      ]));
+      card.appendChild(el('div', { class: 'card-actions' }, [
+        el('button', { class: 'btn ghost sm', text: 'Unlock auto sign-in',
+                       disabled: run.running ? 'disabled' : null, onclick: unlock }),
+      ]));
+    }
+
+    const actions = el('div', { class: 'card-actions' });
+    actions.appendChild(el('button', {
+      class: 'btn ' + (auto || (st.has_session && st.signed_in !== false) ? 'ghost ' : '') + 'sm',
+      text: 'Sign in', disabled: run.running ? 'disabled' : null,
+      onclick: () => smDo('login'),
+    }));
+    actions.appendChild(el('button', {
+      class: 'btn sm', text: 'Sync SoftMouse',
+      disabled: (run.running || !st.sheet_connected || !(st.has_session || auto)) ? 'disabled' : null,
+      title: st.sheet_connected ? 'Read the live mice and update Role, YH, SST and PV'
+                                : 'Connect the sheet under VOS log in first',
+      onclick: () => smDo('sync'),
+    }));
+    if (auto) {
+      actions.appendChild(el('button', {
+        class: 'btn ghost sm', text: 'Forget sign-in here',
+        title: 'Remove the lab’s saved SoftMouse sign-in from this machine (the PIN brings it back)',
+        disabled: run.running ? 'disabled' : null,
+        onclick: () => smDo('forget'),
+      }));
+    }
+    card.appendChild(actions);
+
+    if (run.running) {
+      card.appendChild(loader(run.what === 'login' ? 'Signing in' : 'Syncing', run.step || 'starting'));
+    }
+
+    if (st.hold) {
+      const box = smResult(st.hold, 'Waiting for you: SoftMouse would replace genotypes the sheet already had. '
+        + 'Check the list, then Apply to write it, or Discard.');
+      box.appendChild(el('div', { class: 'card-actions' }, [
+        el('button', { class: 'btn sm', text: 'Apply',
+                       disabled: run.running ? 'disabled' : null,
+                       onclick: () => smDo('apply') }),
+        el('button', { class: 'btn ghost sm', text: 'Discard',
+                       onclick: () => smDo('discard') }),
+      ]));
+      card.appendChild(box);
+    } else if (st.last_sync && !run.running) {
+      card.appendChild(smResult(st.last_sync, 'Last sync ' + vosWhen(st.last_sync.at)
+        + ' to ' + (st.last_sync.sheet || 'the sheet') + '.'));
+    }
+
+    const err = st.last_error;
+    if (err && !run.running && (!st.last_sync || err.at > st.last_sync.at)) {
+      card.appendChild(el('div', { class: 'stat-chip warn vos-err',
+        text: 'Last ' + err.what + ' failed at ' + vosWhen(err.at) + ': ' + err.error }));
+    }
+    card.appendChild(smHistory());
   }
 
   /* ======================================================================

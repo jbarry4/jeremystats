@@ -96,7 +96,7 @@ async function until(fn, ms, what) {
     ev('setView("toolkit")');
     await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
     const step = Array.from(D().querySelectorAll('.tk-step'))
-      .find((b) => /Root Canal/.test(b.textContent) && /IEDs/.test(b.textContent))
+      .find((b) => /Root Canal/.test(b.textContent) && /P-spikes/.test(b.textContent))
       || Array.from(D().querySelectorAll('.tk-step')).find((b) => /Root Canal/.test(b.textContent));
     if (step) step.click();
     await until(() => D().querySelector('.rc-viewseg'), 15000, 'Root Canal');
