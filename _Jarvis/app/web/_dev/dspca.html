@@ -1654,7 +1654,7 @@ const NL = String.fromCharCode(10);
   ok('with the pass run the axis names the band',
      ylOn.some((t) => t.indexOf('500') >= 0 && t.indexOf('1000') >= 0),
      JSON.stringify(ylOn.slice(0, 12)));
-  ok('and calls it POWER, not just a frequency range -- an IED\u2019s '
+  ok('and calls it POWER, not just a frequency range -- a P-spike\u2019s '
      + 'edges raise the whole spectrum and this cannot tell that from '
      + 'an oscillation',
      ylOn.some((t) => /power/i.test(t)), JSON.stringify(ylOn.slice(0, 12)));

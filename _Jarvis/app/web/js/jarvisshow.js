@@ -95,8 +95,8 @@
       ],
     },
     ied: {
-      tab: 'IEDs',
-      title: 'Detect IEDs',
+      tab: 'P-spikes',
+      title: 'Detect P-spikes',
       lede: 'IEDs, interictal epileptiform discharges, are sharp spikes between '
         + 'seizures and one of the signatures of epilepsy. Jarvis finds them with a '
         + 'line-length detector: when the trace suddenly travels much further than '
@@ -489,7 +489,7 @@
         const a = Math.max(0.15, 0.6 - (simT - m.at) * 0.2);
         ctx.fillStyle = alpha(col.hit, a * 0.3);
         ctx.fillRect(x0 + m.x - 9, top - 4, 18, LLy + LLh - top + 4);
-        label(ctx, 'IED', x0 + m.x + 12, top + 4, alpha(col.hit, Math.min(1, a * 1.8)), 10, 'left', 700);
+        label(ctx, 'P-spike', x0 + m.x + 12, top + 4, alpha(col.hit, Math.min(1, a * 1.8)), 10, 'left', 700);
       }
       ctx.lineWidth = 1.2;
       for (let c = 0; c < NCH; c++) {
@@ -566,7 +566,7 @@
         lastStats = simT;
         let busiest = 0;
         perCh.forEach((v, i) => { if (v > perCh[busiest]) busiest = i; });
-        stats([['IEDs detected', String(n)],
+        stats([['P-spikes detected', String(n)],
                ['Per minute', simT < 15 ? 'counting…' : (n / simT * 60).toFixed(0)],
                ['Threshold', '3.4 × the usual line length'],
                ['Busiest channel', n ? 'ch ' + (busiest + 1) : '—']]);

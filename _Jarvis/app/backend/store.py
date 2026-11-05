@@ -1022,7 +1022,7 @@ _DEFAULT_FILTERS = {
                 "Hippocampal theta band"),
         _preset("spike", "Spikes", 300, 0, 0,
                 "Unit/spike band"),
-        _preset("ied", "IED", 1, 70, 60,
+        _preset("ied", "P-spike", 1, 70, 60,
                 "Interictal discharge band with line notch"),
         _preset("ripple", "Ripple", 120, 250, 0,
                 "Sharp-wave ripple band"),

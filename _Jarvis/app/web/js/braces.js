@@ -1345,12 +1345,12 @@ function makeBraces(cfg) {
       cfg.bands ? el('div', { class: 'br-field' }, [
         el('label', { text: 'Filter' }),
         el('div', { class: 'seg sm br-band' }, [
-          ['ds', 'Dentate spike'], ['ied', 'IED'],
+          ['ds', 'Dentate spike'], ['ied', 'P-spike'],
         ].map(([id, label]) => el('button', {
           class: q.band === id ? 'active' : '',
           disabled: off,
           title: (id === 'ds' ? 'The dentate-spike filter, as Braces aligns '
-                   : 'The IED filter, as Lock aligned before 2026-10-26 ')
+                   : 'The P-spike filter, as Lock aligned before 2026-10-26 ')
                  + '(' + bandText(id) + ')',
           onclick: () => {
             if (q.band === id) return;
@@ -4596,7 +4596,7 @@ function makeBraces(cfg) {
         el('label', { text: 'Traces' }),
         el('div', { class: 'seg sm br-trace-seg' }, [
           ['ds', 'DS band', 'The traces through the dentate-spike filter'],
-          ['ied', 'IED band', 'The traces through the IED filter'],
+          ['ied', 'P-spike band', 'The traces through the P-spike filter'],
           ['both', 'Both', 'Two trace panes side by side, one through each'],
         ].map(([id, label, tip]) => el('button', {
           class: view.traceBand === id ? 'active' : '',
@@ -6329,7 +6329,7 @@ BARRY.lock = makeBraces({
           + 'of the signal that cannot have come from somewhere else on the '
           + 'probe — where the current went. Smoothed across depth first, '
           + 'or one noisy contact dominates a derivative. Through the '
-          + 'dentate-spike band by default; the IED band keeps a discharge’s '
+          + 'dentate-spike band by default; the P-spike band keeps a discharge’s '
           + 'slow wave, and is one press away under Filter. '),
   },
 });
@@ -6364,7 +6364,7 @@ BARRY.eye = makeBraces({
   words: {
     blurb: 'Every confirmed discharge onto the part of itself the others are '
          + 'on, so an average of them is of the event and not of the jitter. '
-         + 'A ±200 ms window through the IED band, and one peak per stamp. '
+         + 'A ±200 ms window through the P-spike band, and one peak per stamp. '
          + 'Nothing is written until you accept it.',
     empty: 'Eye works on discharges Spotter has confirmed. Run Doppler to find '
          + 'the candidates and go through them in Spotter — a raw detector '
@@ -6375,7 +6375,7 @@ BARRY.eye = makeBraces({
             + 'it finds in Spotter first.',
     one: 'discharge', many: 'discharges', aOne: 'a discharge',
     setWord: 'confirmed set',
-    band: 'the IED band',
+    band: 'the P-spike band',
     versionSub: 'The stamps as they stand are read unless you pick an earlier '
               + 'version. Picking one branches off it; nothing after it is '
               + 'touched.',

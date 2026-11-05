@@ -877,7 +877,7 @@
       },
       {
         title: 'Event curation',
-        body: 'One tool for both jobs. Dentate spikes and IEDs are the same '
+        body: 'One tool for both jobs. Dentate spikes and P-spikes are the same '
             + 'shape of work \u2014 jump to a candidate, look, press a key, '
             + 'move on \u2014 so they share an engine and differ only in '
             + 'what the categories are called.',

@@ -839,7 +839,7 @@ def bank_note(p):
     out = "Detected by Doppler on the VACC, %s. " % (p.get("detector")
                                                     or "line length")
     if storm:
-        out += ("Validated on the PTEN hand-sorts (every confirmed IED "
+        out += ("Validated on the PTEN hand-sorts (every confirmed P-spike "
                 "caught). Decimated to %d Hz, %sdetected on %s channels, "
                 "kept when %s or more took part. " % (
                     round(float(p.get("fs_work") or 2000)),

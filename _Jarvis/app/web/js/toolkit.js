@@ -383,7 +383,7 @@ BARRY.views.toolkit = (function () {
        second: it measures at the stamp, so the stamps have to be lined up,
        and X-ray should split dentate spikes, not dentate spikes with the
        interictal discharges Incisor let through still in them. */
-    ['rootcanal', 'Root Canal', 'take the IEDs out'],
+    ['rootcanal', 'Root Canal', 'take the P-spikes out'],
     ['dspca', 'X-ray', 'tell them apart'],
   ];
 

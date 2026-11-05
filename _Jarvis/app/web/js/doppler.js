@@ -267,7 +267,7 @@ BARRY.doppler = (function () {
       step: BARRY.ui.stepOf('doppler'),
       blurb: 'Interictal discharges by line length, on the cluster. By '
            + 'default the validated Storm settings, which caught every '
-           + 'hand-sorted IED on the PTEN recordings; the lab’s original '
+           + 'hand-sorted P-spike on the PTEN recordings; the lab’s original '
            + 'MATLAB is one click away in Settings.',
     });
   }
@@ -845,7 +845,7 @@ BARRY.doppler = (function () {
       label: 'Method', inline: true,
       control: BARRY.ui.seg([
         ['storm', 'Validated', 'The Storm method: the settings that caught '
-         + 'every hand-sorted IED with the fewest other candidates'],
+         + 'every hand-sorted P-spike with the fewest other candidates'],
         ['legacy', 'Legacy MATLAB', 'Kleen’s LLspikedetector exactly as the '
          + 'lab ran it -- for comparing with old runs'],
       ], q.method, (m) => { useMethod(m); changedParams(); }),
@@ -853,7 +853,7 @@ BARRY.doppler = (function () {
     d.appendChild(el('p', { class: 'hint', style: 'max-width:80ch',
       text: q.method === 'storm'
         ? 'Validated on the ten PTEN hand-sorts: it catches all 169 '
-          + 'confirmed IEDs with about 15 candidates per IED, and still '
+          + 'confirmed P-spikes with about 15 candidates per P-spike, and still '
           + 'catches all of them one step stricter -- chosen for that margin, '
           + 'not just the count. The lab’s original settings catch 111 of '
           + 'them with 4,447 candidates. '
@@ -881,7 +881,7 @@ BARRY.doppler = (function () {
       grid.appendChild(numField('Merge events closer than', 'merge_s', 50,
         'ms', 'Discharges this close together are one event -- the lab’s '
           + 'own definition. Longer looks cheaper only because it folds '
-          + 'two IEDs into one candidate.', 1000));
+          + 'two P-spikes into one candidate.', 1000));
       grid.appendChild(numField('Shortest event', 'min_event_s', 2.5, 'ms',
         'Shorter crossings are dropped.', 1000));
     }
@@ -1194,7 +1194,7 @@ BARRY.doppler = (function () {
          job can sit in the queue long enough that nobody is watching the
          tab it was started from. */
       toast('Doppler found ' + ((out || {}).n || 0).toLocaleString()
-            + ' IEDs on ' + flightName(f) + '.', 'ok', 8000);
+            + ' P-spikes on ' + flightName(f) + '.', 'ok', 8000);
     }
     chime();
     await refreshLanded(before);
@@ -1553,7 +1553,7 @@ BARRY.doppler = (function () {
       el('span', { class: 'dop-stat-l', text: label }),
     ]);
     const row = el('div', { class: 'dop-stats' }, [
-      one('n', res.n.toLocaleString(), res.n === 1 ? 'IED' : 'IEDs',
+      one('n', res.n.toLocaleString(), res.n === 1 ? 'P-spike' : 'P-spikes',
           'Events the detector kept', true),
       one('rate', String(Math.round(perMin * 10) / 10), 'per minute'),
       one('each', String(Math.round(meanCh * 10) / 10), 'channels each',
@@ -1992,7 +1992,7 @@ BARRY.doppler = (function () {
     drawRaster(1);
     if (i == null) { readout(''); return; }
     const ev = res.events[i];
-    readout('IED ' + (i + 1) + ' of ' + res.n + ' at '
+    readout('P-spike ' + (i + 1) + ' of ' + res.n + ' at '
             + clock(ev.start) + ' · ' + ev.n_channels
             + ' channels · ' + Math.round(ev.peak_uv) + ' µV'
             + (ev.near_stitch ? ' · within 125 ms of a join' : ''));
@@ -2118,7 +2118,7 @@ BARRY.doppler = (function () {
     const p = res.params || {};
     const storm = p.method === 'storm';
     return 'Detected by Doppler on the VACC, ' + p.detector + '. '
-      + (storm ? ('Validated on the PTEN hand-sorts (every confirmed IED '
+      + (storm ? ('Validated on the PTEN hand-sorts (every confirmed P-spike '
                   + 'caught). Decimated to ' + Math.round(p.fs_work || 2000)
                   + ' Hz, '
                   + (p.car ? 'common-average referenced per probe bank, '
@@ -2411,7 +2411,7 @@ BARRY.doppler = (function () {
       ].filter(Boolean)),
       el('span', { class: 'dop-run-n' }, [
         el('strong', { text: (r.n || 0).toLocaleString() }),
-        el('span', { text: (r.n === 1 ? 'IED' : 'IEDs') }),
+        el('span', { text: (r.n === 1 ? 'P-spike' : 'P-spikes') }),
       ]),
     ]);
   }
@@ -2803,7 +2803,7 @@ BARRY.doppler = (function () {
           text: m.error ? ('failed: ' + m.error)
             : (m.cached ? 'already answered' : (MEMBER_WORDS[st] || st)) }),
         r ? el('span', { class: 'dop-batch-n',
-                         text: (r.n || 0).toLocaleString() + ' IEDs' })
+                         text: (r.n || 0).toLocaleString() + ' P-spikes' })
           : null,
       ].filter(Boolean)));
     }

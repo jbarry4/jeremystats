@@ -130,7 +130,7 @@ KINDS = {
     },
     "ied": {
         "id": "ied",
-        "name": "IEDs — solid or sputter",
+        "name": "P-spikes — solid or sputter",
         "blurb": "Candidate interictal discharges: solid, sputter, or "
                  "neither.",
         "labels": [

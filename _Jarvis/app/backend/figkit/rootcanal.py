@@ -192,7 +192,7 @@ class RootCanal(Adapter):
     def _legend(self, ax, prep, st):
         counts = (prep["res"].get("counts") or {})
         bits = []
-        for kind, word in (("ds", "DS"), ("ied", "IED")):
+        for kind, word in (("ds", "DS"), ("ied", "P-spike")):
             n = counts.get(kind)
             if n is None:
                 n = sum(1 for c in prep["cls"] if c == kind)
@@ -229,7 +229,7 @@ class RootCanal(Adapter):
         if q.get("k"):
             bits.append("k = %s" % q["k"])
         if counts:
-            bits.append("%s DS, %s IED%s" % (
+            bits.append("%s DS, %s P-spike%s" % (
                 counts.get("ds", 0), counts.get("ied", 0),
                 (", %s not measured" % counts["unmeasured"])
                 if counts.get("unmeasured") else ""))

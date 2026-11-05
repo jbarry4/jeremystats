@@ -5337,7 +5337,7 @@ def _doppler_autobank(gid, key, out, sess=None, label=None):
                                                          else None),
             "recording_start": reg.get("start"),
             "duration_s": reg.get("duration_s"),
-            "gid": gid, "type": "ied", "type_name": "IED",
+            "gid": gid, "type": "ied", "type_name": "P-spike",
             "name": dopplermod.bank_name(lab, p),
             "note": dopplermod.bank_note(p),
             "events": [{"start": e.get("start"), "end": e.get("end"),
@@ -10618,10 +10618,10 @@ def _rootcanal_commit_pooled(body, rec, p, res, rh, events, src_v):
     words = {"incisor": "Incisor's", "doppler": "Doppler's",
              "both": "both detectors'", "unknown": "unmarked"}
     by_origin = "; ".join(
-        "%s %d DS-like, %d IED-like" % (words.get(o, o), c["ds"], c["ied"])
+        "%s %d DS-like, %d P-spike-like" % (words.get(o, o), c["ds"], c["ied"])
         for o, c in sorted(cross.items()))
     note = ("Root Canal named %d pooled event(s) read from %s: %d DS-like, "
-            "%d IED-like%s. Nothing was removed. %s %s Results bank "
+            "%d P-spike-like%s. Nothing was removed. %s %s Results bank "
             "rootcanal/%s__%s."
             % (named["ds"] + named["ied"], where, named["ds"], named["ied"],
                (", %d not measured" % counts["unmeasured"])
@@ -10790,7 +10790,7 @@ def api_rootcanal_commit():
     if len(ied_src) != counts["ied"]:
         return jsonify({
             "ok": False,
-            "error": "The IED calls could not all be matched onto the set's "
+            "error": "The P-spike calls could not all be matched onto the set's "
                      "stamps by time (%d of %d), so nothing was written. "
                      "This is a bug, not a setting."
                      % (len(ied_src), counts["ied"])}), 500
@@ -10863,7 +10863,7 @@ def api_rootcanal_commit():
                 item["rc_name"] = hit["name"]
             ied_events.append(item)
         ied_note = (
-            "Root Canal: %d event(s) called IED in %s (entry %s, read from "
+            "Root Canal: %d event(s) called P-spike in %s (entry %s, read from "
             "%s)%s. %s %s %s %s"
             % (removed, rec.get("session_label") or rec.get("name"),
                rec["id"], where,
@@ -10877,8 +10877,8 @@ def api_rootcanal_commit():
             ied_made = BANK.add(dict(
                 shared,
                 id=(prior_ied or {}).get("id"),
-                type="ied", type_name="IED",
-                name="Hidden IEDs (Root Canal)",
+                type="ied", type_name="P-spike",
+                name="Hidden P-spikes (Root Canal)",
                 note=("Taken out of the dentate spike set %s by Root "
                       "Canal. A classifier's call, not a person's: these "
                       "are candidates for Checkup." % rec["id"]),
@@ -10912,7 +10912,7 @@ def api_rootcanal_commit():
         k = ev.get("label_id") or ev.get("label") or "unspecified"
         tally[k] = tally.get(k, 0) + 1
     ds_note = (
-        "Root Canal: %d hidden IED(s) taken out of %d dentate spikes read "
+        "Root Canal: %d hidden P-spike(s) taken out of %d dentate spikes read "
         "from %s%s; %d kept as DS%s. %s %s%s %s %s"
         % (removed, res["n"], where,
            (" (%d flipped by hand)" % len(p.flips)) if p.flips else "",
@@ -10920,14 +10920,14 @@ def api_rootcanal_commit():
            (" and %d not measured, kept" % counts["unmeasured"])
            if counts["unmeasured"] else "",
            res["rule"], method + ".",
-           (" IEDs banked to entry %s." % ied_entry) if ied_entry else "",
+           (" P-spikes banked to entry %s." % ied_entry) if ied_entry else "",
            flag_note, link)).strip()
     if user_note:
         ds_note += " " + user_note
     if not ds_out:
         return jsonify({
             "ok": False,
-            "error": "Every event in this set was called IED, so the DS set "
+            "error": "Every event in this set was called P-spike, so the DS set "
                      "would be empty and was not written. That is almost "
                      "certainly the clusters and not the recording -- check "
                      "the centres."}), 400
@@ -10947,7 +10947,7 @@ def api_rootcanal_commit():
             curation_label=rec.get("curation_label") or "*",
             aligned=rec.get("aligned"),
             based_on=src_v if src_v is not None else rec.get("based_on"),
-            pipeline="Root Canal (hidden IEDs out)",
+            pipeline="Root Canal (hidden P-spikes out)",
             added_by=who,
             parameters=dict(p.as_dict(), tool="rootcanal",
                             read_hash=rh, params_hash=answer_hash,
@@ -11074,14 +11074,14 @@ def _rootcanal_unchanged(rec, p, res, counts, removed, kept, ds_version,
         why = ("every event already carries these names in v%s"
                % ds_version)
     elif not removed:
-        why = ("these settings call no event an IED (k = %s: %d DS%s), so "
+        why = ("these settings call no event a P-spike (k = %s: %d DS%s), so "
                "the set would be exactly v%s"
                % (k, counts.get("ds") or 0,
                   (", %d not measured" % counts["unmeasured"])
                   if counts.get("unmeasured") else "", ds_version))
     else:
-        why = ("v%s already holds this set without these %d IED%s, and the "
-               "IED entry already has them"
+        why = ("v%s already holds this set without these %d P-spike%s, and the "
+               "P-spike entry already has them"
                % (ds_version, removed, "" if removed == 1 else "s"))
     msg = ("Nothing to bank: %s, which the bank already holds. Nothing was "
            "written -- no bank version, no result, no saved version. To keep "
@@ -11184,7 +11184,7 @@ def api_rootcanal_batch_plan():
             if (want_type == "ds"
                     and _rootcanal_source_tag(rec, src_v) == "rootcanal"):
                 blocked.append(dict(row, why=(
-                    "Root Canal has already taken the IEDs out of this "
+                    "Root Canal has already taken the P-spikes out of this "
                     "one; cleaning its own output again would take real "
                     "dentate spikes out with them")))
                 continue
@@ -14515,11 +14515,11 @@ def api_rootcanal_switches_bank():
                 "recording_start", "duration_s")}
             got = BANK.add(dict(
                 shared, id=prior_of.get(rec.get("gid")),
-                type="other", type_name="Ambiguous DS / IED",
+                type="other", type_name="Ambiguous DS / P-spike",
                 name="Switching and ambiguous events (Root Canal)",
-                note=("Events whose DS / IED identity did not sit still in "
+                note=("Events whose DS / P-spike identity did not sit still in "
                       "Root Canal's deep dive, from the DS set %s. Banked to "
-                      "be looked at, not as a DS or IED set." % eid),
+                      "be looked at, not as a DS or P-spike set." % eid),
                 events=items, curated=False,
                 pipeline="Root Canal deep dive", added_by=who,
                 parameters={
@@ -18451,7 +18451,7 @@ def _cf_inputs(body):
     if not ds or (ds.get("type") or "") != "ds":
         raise ValueError("Pick the dentate-spike entry to pool.")
     if not ied or (ied.get("type") or "") != "ied":
-        raise ValueError("Pick the IED entry to pool.")
+        raise ValueError("Pick the P-spike entry to pool.")
     for ent in (ds, ied):
         if gid and ent.get("gid") and ent["gid"] != gid:
             raise ValueError("%s was banked against a different recording."
@@ -19944,13 +19944,84 @@ def api_tooth_fairy_discard():
 # hold against what people decide (backend/prospector.py).
 # ==========================================================================
 _PR_JOB = {"id": None}
-PR_STAGES = [("pr read", 1), ("pr physio", 1), ("pr score", 1)]
+# The cluster's two stages are in the plan with nothing to do, so a sweep
+# read on this computer never shows them; one read on a compute node begins
+# them (`_pr_read_vacc`).
+PR_STAGES = [("pr read", 1), ("pr physio", 1), ("pr score", 1),
+             ("vacc queue", 0), ("vacc fetch", 0)]
 
 
 def _pr_busy():
     jid = _PR_JOB.get("id")
     job = cfcmod.get(jid) if jid else None
     return job if job and job.snapshot()["status"] == "running" else None
+
+
+def _pr_read_vacc(gid):
+    """How a sweep reads a pool whose recording only the cluster has.
+
+    Isabella's laptop, 2026-11-05: KCNT1 m1606 s1 opened off the cluster,
+    and the sweep's reads -- which open the files on this computer -- said
+    "[WinError 2] The system cannot find the file specified:
+    'vacc:s9a8f6138b49e'". Now the same reads run on a compute node
+    (vacc_run.py, `prospector.read_node`), the way Root Canal's do, and the
+    .npz comes home in one stream to `dest`, the sweep's own cache, where
+    the model scores it. Returns `read(spec, dest, job)`."""
+    def read(spec, dest, job):
+        import subprocess
+        place = _vacc_place_for_gid(gid)
+        cfg = vaccmod.load_config(LOGS_DIR)
+        vaccmod.push_code(cfg, APP_DIR)
+        n = int(spec.get("n_events") or len(spec.get("times") or []))
+        # Measured on this desk: 571 events read in 129 s. A node reading
+        # off netfiles is given twice that, and slurm's own margin on top.
+        run = vaccrunmod.VaccRun(
+            cfg, "prospector", dict(spec, gid=gid), place["remote"],
+            plan={"seconds": 120.0 + 0.5 * n}, megasamples=100.0,
+            tool_steps=[(s, 1) for s in prospectormod.READ_STAGES],
+            report=None)
+        out = run.work(job)
+        rel = (out or {}).get("file")
+        if not rel or not run.ws:
+            raise aibetamod.AiBetaError(
+                "The cluster finished reading the pool but said nothing "
+                "about where it put the read.")
+        remote = run.ws.rstrip("/") + "/" + rel
+        part = dest + ".incoming"
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        cmd = vaccmod.ssh_cmd(cfg, "cat %s" % vaccmod.q(remote))
+        with open(part, "wb") as fh, open(part + ".err", "wb") as eh:
+            proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=fh,
+                                    stderr=eh, **vaccmod.popen_kwargs())
+            try:
+                while proc.poll() is None:
+                    job.check()
+                    time.sleep(0.4)
+            except BaseException:
+                proc.kill()
+                raise
+        try:
+            if proc.returncode != 0:
+                with open(part + ".err", "rb") as eh:
+                    err = eh.read().decode("utf-8", "replace").strip()
+                raise aibetamod.AiBetaError(
+                    "Bringing the pool's read home from the cluster failed: "
+                    "%s" % (err or "no reason given")[:300])
+            # A read, or it is not kept: the sweep loads it from `dest`.
+            with np.load(part, allow_pickle=False) as z:
+                z["ok"]
+            os.replace(part, dest)
+        finally:
+            for f in (part, part + ".err"):
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
+        try:
+            vaccmod._ssh(cfg, "rm -f %s" % vaccmod.q(remote), timeout=60)
+        except Exception:                                # noqa: BLE001
+            pass
+    return read
 
 
 @app.route("/api/prospector")

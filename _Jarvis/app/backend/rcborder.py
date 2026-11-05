@@ -140,7 +140,7 @@ def fit_strict(U, y, n_q=N_Q):
     if n_i < MIN_EACH or n_d < MIN_EACH:
         raise BorderError(
             "A border is drawn between two identities, and this has %d "
-            "complete events with an IED identity and %d with a DS one; at "
+            "complete events with a P-spike identity and %d with a DS one; at "
             "least %d of each are needed." % (n_i, n_d, MIN_EACH))
     qs = np.linspace(0.02, 0.98, n_q)
     cands = [np.unique(np.quantile(Uc[:, a], qs)) for a in range(3)]
@@ -392,7 +392,7 @@ def rule_words(border, grace):
     """The rule in a sentence, at a grace."""
     lv = level_of(border, grace)
     if is_envelope(border):
-        word = "IED" if border.get("group") == "ied" else "DS"
+        word = "P-spike" if border.get("group") == "ied" else "DS"
         ed = lv["edges"]
         box = ", ".join("%s %s to %s %s" % (lab, _num(ed[k]["lo"]),
                                             _num(ed[k]["hi"]), u)
@@ -416,7 +416,7 @@ def rule_words(border, grace):
               else ("<" if up else ">"))
         return "%s %s %s %s" % (lab, op, _num(v), unit)
 
-    return ("Solid IED: %s. Solid DS: %s. Anything else is ambiguous "
+    return ("Solid P-spike: %s. Solid DS: %s. Anything else is ambiguous "
             "(grace %s)." % (", ".join(side(k, "ied") for k, _l, _u in AXES),
                              ", ".join(side(k, "ds") for k, _l, _u in AXES),
                              grace_words(lv["grace"])))
@@ -435,7 +435,7 @@ def name(border):
             r = s.get(k) or {}
             return "%s to %s" % (_num(r.get("lo")), _num(r.get("hi")))
         return "Envelope · %s · %s µV · %s dB · %s ms" % (
-            "IED" if border.get("group") == "ied" else "DS",
+            "P-spike" if border.get("group") == "ied" else "DS",
             rng("amp_uV"), rng("hf_db"), rng("hw_ms"))
     return "Border · %s µV · %s dB · %s ms" % (
         _num(s.get("amp_uV")), _num(s.get("hf_db")), _num(s.get("hw_ms")))

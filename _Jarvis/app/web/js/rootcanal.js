@@ -1098,7 +1098,7 @@ BARRY.rootcanal = (function () {
         ? 'Teases a pooled set apart — Incisor’s and Doppler’s events '
           + 'together, sorted in Panning and lined up in Lock — by '
           + 'amplitude, half-width and high-frequency power, each dot '
-          + 'coloured by its DS / IED call. Nothing is taken out: each '
+          + 'coloured by its DS / P-spike call. Nothing is taken out: each '
           + 'event is named by its cluster.'
         : 'Takes the interictal discharges out of an aligned set of '
           + 'dentate spikes — amplitude, half-width and high-frequency '
@@ -1519,7 +1519,7 @@ BARRY.rootcanal = (function () {
         title: r.saved.n_versions + ' version' + (r.saved.n_versions === 1
           ? '' : 's') + ' kept. The newest, v' + sv.v + ': '
           + [sv.k != null ? 'k = ' + sv.k : null, sv.filter,
-             sv.ds != null ? sv.ds + ' DS, ' + (sv.ied || 0) + ' IED' : null,
+             sv.ds != null ? sv.ds + ' DS, ' + (sv.ied || 0) + ' P-spike' : null,
              'saved by ' + (sv.by || 'someone')
                + (sv.machine ? ' on ' + sv.machine : '')
                + (sv.at ? ', ' + doneStamp(sv.at) : '')]
@@ -1536,7 +1536,7 @@ BARRY.rootcanal = (function () {
           + (b.at ? ', ' + doneStamp(b.at) : '')
           + (r.banked.n > 1 ? '. Banked ' + r.banked.n + ' times.' : '.'),
         text: 'banked v' + b.ds_version + (b.ds != null
-          ? ' · ' + b.ds + ' DS · ' + (b.ied || 0) + ' IED' : '') }));
+          ? ' · ' + b.ds + ' DS · ' + (b.ied || 0) + ' P-spike' : '') }));
     }
     if (rd) {
       const where = rd.here ? 'read here'
@@ -1800,7 +1800,7 @@ BARRY.rootcanal = (function () {
           'Reading from v' + want.name + ', the version the last Root Canal '
           + 'started from, not from its output: a second pass over a set '
           + 'that has already been cleaned would still split it in two, and '
-          + 'the "IEDs" it found would be the loudest dentate spikes.' }));
+          + 'the "P-spikes" it found would be the loudest dentate spikes.' }));
       }
     }
     if (cur && !cur.aligned) {
@@ -1945,7 +1945,7 @@ BARRY.rootcanal = (function () {
       text: 'Keep banked v' + b.ds_version + ' as a saved version',
       title: 'Banked ' + String(b.at || '').replace('T', ' ').slice(0, 16)
         + (b.k ? ' at k = ' + b.k : '') + ': ' + (b.counts.ds || 0) + ' DS, '
-        + (b.counts.ied || 0) + ' IED. Kept '
+        + (b.counts.ied || 0) + ' P-spike. Kept '
         + (b.here ? 'from its read, refitted' : 'from the numbers the bank '
                     + 'filed (its read is not on this machine)')
         + ', so it can be pooled and reopened like any version.',
@@ -1974,7 +1974,7 @@ BARRY.rootcanal = (function () {
                  x.margin ? 'calls carried from a pool' : null].filter(Boolean);
     const cnt = [ns.events != null ? ns.events + ' events' : null,
                  ns.ds != null ? ns.ds + ' DS' : null,
-                 ns.ied != null ? ns.ied + ' IED' : null,
+                 ns.ied != null ? ns.ied + ' P-spike' : null,
                  (ns.names || []).length ? 'names: ' + ns.names.join(', ')
                                          : null].filter(Boolean);
     return ['v' + x.v + ' · ' + (x.nickname || 'no nickname'),
@@ -2531,7 +2531,7 @@ BARRY.rootcanal = (function () {
         el('p', { class: 'rc-rule', text: fit.rule || '' }),
         el('div', { class: 'chip-row' }, [
           chipC('DS ' + (c.ds || 0), 'ds'),
-          chipC('IED ' + (c.ied || 0), 'ied'),
+          chipC('P-spike ' + (c.ied || 0), 'ied'),
           c.unmeasured ? BARRY.ui.chip((c.unmeasured) + ' not measured', {
             title: 'An unresolved half-width or a missed HF window. Left out '
                  + 'of the clustering and drawn hollow — never filled in.' })
@@ -2620,7 +2620,7 @@ BARRY.rootcanal = (function () {
           extra: 'rc-bank',
           disabled: fitting || !fit.ok || !!savedOnly,
           title: 'Bank the DS class as the next version of this set and the '
-               + 'IED class as a set of candidate IEDs. A dialog first.',
+               + 'P-spike class as a set of candidate P-spikes. A dialog first.',
           onclick: bankDialog }),
       ].filter(Boolean)),
     ];
@@ -2657,8 +2657,8 @@ BARRY.rootcanal = (function () {
       Array.from({ length: K_MAX }, (_, j) => [String(j + 1), String(j + 1),
         j === 0 ? 'One cluster: no split, every event DS — the null a split '
                   + 'is compared against.'
-        : j === 1 ? 'Two clusters: DS and IED, as this tool was built.'
-        : (j + 1) + ' clusters, ranked by HF power; the highest is IED by '
+        : j === 1 ? 'Two clusters: DS and P-spike, as this tool was built.'
+        : (j + 1) + ' clusters, ranked by HF power; the highest is P-spike by '
           + 'the rule, and any can be relabelled.']),
       String(cur), (v) => onPick(Number(v)), { extra: 'rc-kseg' });
   }
@@ -2686,7 +2686,7 @@ BARRY.rootcanal = (function () {
               ? 'as drawn round by hand' : c.call_by === 'name'
               ? 'by its name, ‘' + c.name + '’' : 'by the rule') + '. '
            + (c.name && ex.onName ? 'Press to rename it.'
-              : 'Press to call it ' + (c.call === 'ied' ? 'DS' : 'IED') + '.'),
+              : 'Press to call it ' + (c.call === 'ied' ? 'DS' : 'P-spike') + '.'),
       onclick: () => (c.name && ex.onName ? ex.onName(c)
                       : onToggle(c.rank, c.call === 'ied' ? 'ds' : 'ied')),
     }, [
@@ -2702,8 +2702,8 @@ BARRY.rootcanal = (function () {
       ex.onName ? el('button', { type: 'button', class: 'rc-clu-x rc-clu-name',
         text: c.name ? 'rename' : 'name',
         title: 'Give cluster ' + (c.rank + 1) + ' a name from the lab’s list, '
-             + 'or a new one -- “DS slow”, “IED big”. The name says whether it '
-             + 'is a DS or an IED, travels with the version, the pool and the '
+             + 'or a new one -- “DS slow”, “P-spike big”. The name says whether it '
+             + 'is a DS or a P-spike, travels with the version, the pool and the '
              + 'bank, and becomes a chip to pool by.',
         onclick: () => ex.onName(c) }) : null,
       /* Its average: the four pictures of a dot, over every event in it. */
@@ -2748,13 +2748,13 @@ BARRY.rootcanal = (function () {
                                 placeholder: 'A new name', value: '' });
     const errP = el('p', { class: 'hint rc-warn rc-name-err', text: '' });
     const typeSeg = BARRY.ui.seg([['ds', 'DS', 'A dentate spike name.'],
-                                  ['ied', 'IED', 'An IED name.']],
+                                  ['ied', 'P-spike', 'A P-spike name.']],
       typ, (v) => { typ = v; }, { extra: 'rc-name-type' });
     const use = (nm) => { closeModal(); onDone(nm); };
     const byType = (t) => names.filter((n) => n.type === t);
     const list = (t) => byType(t).length ? el('div', { class: 'chip-row' },
       [el('span', { class: 'rc-sel-k', text: t === 'ds' ? 'DS names'
-                                                       : 'IED names' })]
+                                                       : 'P-spike names' })]
         .concat(byType(t).map((n) => BARRY.ui.button({ kind: 'mini',
           text: n.name, extra: 'rc-name-pick', on: c.name === n.name,
           title: 'Added by ' + (n.by || 'someone')
@@ -2953,8 +2953,8 @@ BARRY.rootcanal = (function () {
      ignoring more and more outliers (backend/rcborder.py `envelope`). A
      border with no `kind` is an older one, and is "between". */
   const isEnv = (b) => !!b && b.kind === 'envelope';
-  const bGroup = (b) => ((b && b.group) === 'ied' ? 'IED' : 'DS');
-  const bOther = (b) => ((b && b.group) === 'ied' ? 'DS' : 'IED');
+  const bGroup = (b) => ((b && b.group) === 'ied' ? 'P-spike' : 'DS');
+  const bOther = (b) => ((b && b.group) === 'ied' ? 'DS' : 'P-spike');
   const bspan = (r) => bnum((r || {}).lo) + '–' + bnum((r || {}).hi);
   const sameG = (a, b) => a != null && b != null
                           && Math.abs(Number(a) - Number(b)) < 1e-9;
@@ -2988,7 +2988,7 @@ BARRY.rootcanal = (function () {
       return 'Envelope · ' + bGroup(r) + ' · '
         + BAX.map(([k, , unit]) => bspan(st[k]) + ' ' + unit).join(' · ');
     }
-    return 'Between DS and IED · '
+    return 'Between DS and P-spike · '
       + BAX.map(([k, , unit]) => bnum(st[k]) + ' ' + unit).join(' · ');
   }
 
@@ -3013,7 +3013,7 @@ BARRY.rootcanal = (function () {
       return (n[b.group === 'ied' ? 'ied' : 'ds'] || 0) + ' inside · '
              + (n.amb || 0) + ' outside';
     }
-    return (n.ds || 0) + ' solid DS · ' + (n.ied || 0) + ' solid IED · '
+    return (n.ds || 0) + ' solid DS · ' + (n.ied || 0) + ' solid P-spike · '
            + (n.amb || 0) + ' ambiguous';
   }
 
@@ -3088,7 +3088,7 @@ BARRY.rootcanal = (function () {
     const rule = isEnv(r)
       ? 'Solid ' + bGroup(r) + ' inside the box, ambiguous outside it on any '
         + 'axis. At no grace the box is ' + edgeWords(r, st) + '.'
-      : 'Solid IED past all three cut-offs, solid DS short of all three, '
+      : 'Solid P-spike past all three cut-offs, solid DS short of all three, '
         + 'anything else ambiguous. The cut-offs: ' + BAX.map(([k, word, unit]) =>
           word + ' ' + bnum(st[k]) + ' ' + unit).join(' · ') + '.';
     const on = r.artifact_id === ctx.pickId();
@@ -3102,7 +3102,7 @@ BARRY.rootcanal = (function () {
           el('strong', { text: r.nickname || r.name || r.artifact_id }),
           v != null ? el('span', { class: 'hint', text: 'v' + v }) : null,
           BARRY.ui.chip(isEnv(r) ? 'drawn around the ' + bGroup(r) + ' events'
-                                 : 'drawn between DS and IED',
+                                 : 'drawn between DS and P-spike',
                         { extra: 'rc-border-kind' }),
           ctx.appliedId === r.artifact_id
             ? BARRY.ui.chip('applied here', { kind: 'ok', extra: 'rc-border-here' })
@@ -3322,7 +3322,7 @@ BARRY.rootcanal = (function () {
                   + 'any axis is ambiguous, drawn in its own call’s colour, '
                   + 'faded, with a dotted edge. An event missing one of the '
                   + 'three numbers counts as outside.'
-                : 'Every event by its three numbers alone: solid DS, solid IED '
+                : 'Every event by its three numbers alone: solid DS, solid P-spike '
                   + 'or ambiguous -- an ambiguous one in its own call’s '
                   + 'colour, faded, with a dotted edge.' }),
             c.none ? BARRY.ui.chip(c.none + ' with no numbers', {
@@ -3346,7 +3346,7 @@ BARRY.rootcanal = (function () {
               + 'outside it shaded.'
             : 'On the flat views it is two dashed lines on each axis, with '
               + 'the ambiguous band between them shaded: where solid DS ends '
-              + '(in the DS colour) and where solid IED begins (in the IED '
+              + '(in the DS colour) and where solid P-spike begins (in the P-spike '
               + 'colour).' }) : null,
         ])
       : el('p', { class: 'rc-border-now rc-border-none',
@@ -3475,14 +3475,14 @@ BARRY.rootcanal = (function () {
         text: env
           ? 'the box: ' + edgeWords(b, lv.edges) + '; it '
             + graceMeans(b, lv.grace)
-          : 'solid IED: ' + edgeWords(b, lv.edges, 'ied') + '; solid DS: '
+          : 'solid P-spike: ' + edgeWords(b, lv.edges, 'ied') + '; solid DS: '
             + edgeWords(b, lv.edges, 'ds')
             + (lv.s_sd ? ' (band ±' + lv.s_sd + ' SD)' : ' (no band)') })]));
     }
     const heads = env
       ? ['grace', 'solid ' + bGroup(b) + ' (inside)', bGroup(b) + ' left outside',
          bOther(b) + ' inside']
-      : ['grace', 'solid DS', 'solid IED', 'ambiguous', 'switches'];
+      : ['grace', 'solid DS', 'solid P-spike', 'ambiguous', 'switches'];
     return el('table', { class: 'tbl rc-border-tab' + (env ? ' rc-border-env' : '') }, [
       el('thead', {}, [el('tr', {}, heads.map((t) => el('th', { text: t })))]),
       el('tbody', {}, rows)]);
@@ -3567,7 +3567,7 @@ BARRY.rootcanal = (function () {
         + 'between the events’ own identities: ' + (lvl === 'double'
           ? 'what each event’s own pool called it (v0)'
           : 'what each event’s single called it')
-        + '. Past all three is solid IED, short of all three solid DS, and '
+        + '. Past all three is solid P-spike, short of all three solid DS, and '
         + 'anything else ambiguous. It is the same border only where things '
         + 'are measured the same way (' + filtWords + ').' }),
       el('p', { class: 'rc-border-strict', text: 'The border: '
@@ -3597,7 +3597,7 @@ BARRY.rootcanal = (function () {
     return BARRY.ui.bankDialog({
       kind: 'entry', name: sugg, what,
       title: env ? 'Save a border around the ' + bGroup(prev) + ' events'
-                 : 'Save a DS / IED border',
+                 : 'Save a DS / P-spike border',
       okText: 'Save the border',
       onBank: async ({ name, note }) => {
         const nick = String(name || '').trim();
@@ -3660,8 +3660,8 @@ BARRY.rootcanal = (function () {
       c.wide ? c.wide + ' by the widened search' : null,
     ].filter(Boolean);
     return 'Bank: ' + nDs + ' DS as ' + (nx ? BARRY.ui.versionLabel(nx) : 'a new version')
-      + ', ' + (c.ied || 0) + ' IED as '
-      + (ied ? 'a new version of its IED set' : 'a new entry')
+      + ', ' + (c.ied || 0) + ' P-spike as '
+      + (ied ? 'a new version of its P-spike set' : 'a new entry')
       + (flags.length ? ' (' + flags.join(', ') + ')' : '');
   }
 
@@ -3876,9 +3876,9 @@ BARRY.rootcanal = (function () {
     const byBorder = !!(fit && fit.border_used);
     return el('div', { class: 'rc-legend' }, [
       item('rc-lg-ds', byBorder ? 'solid DS' : 'DS'),
-      item('rc-lg-ied', byBorder ? 'solid IED' : 'IED'),
+      item('rc-lg-ied', byBorder ? 'solid P-spike' : 'P-spike'),
       byBorder ? item('rc-lg-amb rc-lg-amb-ds', 'outside, called DS') : null,
-      byBorder ? item('rc-lg-amb rc-lg-amb-ied', 'outside, called IED') : null,
+      byBorder ? item('rc-lg-amb rc-lg-amb-ied', 'outside, called P-spike') : null,
       item('rc-lg-square', 'on 2 of 3 axes'),
       item('rc-lg-wide', 'half-width by the widened search'),
       item('rc-lg-flip', 'set by hand'),
@@ -4028,7 +4028,7 @@ BARRY.rootcanal = (function () {
                          + 'they are. Nothing is taken out: a pooled set is '
                          + 'meant to hold both kinds.' }),
         el('li', { text: (c.ds || 0) + ' are named by a DS-like cluster and '
-                         + (c.ied || 0) + ' by an IED-like one, each with its '
+                         + (c.ied || 0) + ' by a P-spike-like one, each with its '
                          + 'cluster’s name' + (c.unmeasured
                            ? '; ' + c.unmeasured + ' could not be measured '
                              + 'and keep no name' : '') + '.' }),
@@ -4050,13 +4050,13 @@ BARRY.rootcanal = (function () {
         c.unmeasured
           ? el('li', { text: c.unmeasured + ' could not be measured and were '
                              + 'never clustered. Nothing showed them to be '
-                             + 'IEDs, so they are counted with the dentate '
+                             + 'P-spikes, so they are counted with the dentate '
                              + 'spikes above; the reply says where they '
                              + 'actually went.' })
           : null,
-        el('li', { text: (c.ied || 0) + ' go to “Hidden IEDs (Root Canal)” '
+        el('li', { text: (c.ied || 0) + ' go to “Hidden P-spikes (Root Canal)” '
                          + 'as candidates, not decisions — a classifier said '
-                         + 'this, not a person, so Checkup’s IED kind can go '
+                         + 'this, not a person, so Checkup’s P-spike kind can go '
                          + 'through them.' }),
         (c.partial || c.wide)
           ? el('li', { text: [
@@ -4116,7 +4116,7 @@ BARRY.rootcanal = (function () {
         el('p', { class: 'hint', text:
           'Reading from the version before it is almost always what was '
           + 'meant: pick it under “Read the stamps from”. Cleaning again '
-          + 'takes events out of a set that has already had its IEDs '
+          + 'takes events out of a set that has already had its P-spikes '
           + 'removed.' }),
       ])]),
       BARRY.ui.modalFoot([], [
@@ -4183,7 +4183,7 @@ BARRY.rootcanal = (function () {
       const nm = rep.named || {};
       toast('Banked: every event named by its cluster, as v' + rep.ds_version
             + ' — ' + (nm.ds || 0) + ' DS-like, ' + (nm.ied || 0)
-            + ' IED-like, nothing removed. The previous version is kept.',
+            + ' P-spike-like, nothing removed. The previous version is kept.',
             'ok', 10000);
       BARRY.activity.log('rootcanal.commit', {
         gid: q.gid, entry: q.entry, ds_version: rep.ds_version,
@@ -4196,9 +4196,9 @@ BARRY.rootcanal = (function () {
     }
     toast('Banked: the set as v' + rep.ds_version + ' with ' + rep.kept
           + ' kept' + (rep.ied_entry
-            ? ', and ' + rep.removed + ' IED' + (rep.removed === 1 ? '' : 's')
-              + ' as v' + rep.ied_version + ' of “Hidden IEDs (Root Canal)”'
-            : ', and no IEDs to bank')
+            ? ', and ' + rep.removed + ' P-spike' + (rep.removed === 1 ? '' : 's')
+              + ' as v' + rep.ied_version + ' of “Hidden P-spikes (Root Canal)”'
+            : ', and no P-spikes to bank')
           + '. The previous version is kept.', 'ok', 10000);
     const want = (expect.ds || 0) + (expect.unmeasured || 0);
     if (rep.kept !== want || rep.removed !== (expect.ied || 0)) {
@@ -5610,7 +5610,7 @@ BARRY.rootcanal = (function () {
     g.fillStyle = k.text;
     g.font = FONT(9.5, true);
     // Numbered as the chips are: "#3 IED" is the third cluster by HF power.
-    const text = '#' + ((c.k || 0) + 1) + ' ' + (c.cls === 'ied' ? 'IED' : 'DS');
+    const text = '#' + ((c.k || 0) + 1) + ' ' + (c.cls === 'ied' ? 'P-spike' : 'DS');
     const at = placeLabel(g, text, x, y, taken);
     g.fillText(text, at.x, at.y);
     g.restore();
@@ -5953,7 +5953,7 @@ BARRY.rootcanal = (function () {
        says how many dots sit on the edge without a value (top left). */
     const gw = bu.grace_words || graceWords(bu.grace);
     const text = env ? bGroup(bu) + ' envelope · grace ' + gw
-                     : 'DS / IED border · grace ' + gw;
+                     : 'DS / P-spike border · grace ' + gw;
     g.save();
     const ft = fitText(g, text, Math.max(40, w - 12), 9, true);
     const lh = ft.pt + 2;
@@ -6658,7 +6658,7 @@ BARRY.rootcanal = (function () {
         onclick: () => showAverage('the ' + evs.length + ' drawn round', evs) }),
       BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Make a DS cluster',
         extra: 'rc-lasso-ds', onclick: () => addDrawn(evs, 'ds') }),
-      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Make an IED cluster',
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Make a P-spike cluster',
         extra: 'rc-lasso-ied', onclick: () => addDrawn(evs, 'ied') }),
       BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Clear',
         extra: 'rc-lasso-clear', onclick: () => setLassoSel([]) }),
@@ -7056,11 +7056,11 @@ BARRY.rootcanal = (function () {
         gid: xt.gid,
         labels: [
           { id: 'DS', name: 'DS', color: colOf('ds') },
-          { id: 'IED', name: 'IED', color: colOf('ied') },
+          { id: 'P-spike', name: 'P-spike', color: colOf('ied') },
         ],
         events: evs.map((e) => ({
           start: e.t,
-          label: e.cls === 'ied' ? 'IED' : e.cls === 'ds' ? 'DS' : null,
+          label: e.cls === 'ied' ? 'P-spike' : e.cls === 'ds' ? 'DS' : null,
         })),
       };
       if (xf.setChannelLines) {
@@ -10309,7 +10309,7 @@ BARRY.rootcanal = (function () {
           + 'placement included.' }),
         el('div', { class: 'chip-row' }, [
           chipC('DS ' + (c.ds || 0), 'ds'),
-          chipC('IED ' + (c.ied || 0), 'ied'),
+          chipC('P-spike ' + (c.ied || 0), 'ied'),
           c.unmeasured ? BARRY.ui.chip(c.unmeasured + ' not measured') : null,
           c.partial ? BARRY.ui.chip(c.partial + ' on 2 of 3 axes', { kind: 'warn' })
                     : null,
@@ -10384,15 +10384,15 @@ BARRY.rootcanal = (function () {
     const kids = [el('span', { class: 'rc-lg-h', text: (COLOURS.find(
       ([id]) => id === mode) || [0, ''])[1] + ':' })];
     if (mode === 'border' && pool.fit && pool.fit.border_used) {
-      kids.push(item('rc-lg-ds', 'solid DS'), item('rc-lg-ied', 'solid IED'),
+      kids.push(item('rc-lg-ds', 'solid DS'), item('rc-lg-ied', 'solid P-spike'),
                 item('rc-lg-amb rc-lg-amb-ds', 'outside, pooled as DS'),
-                item('rc-lg-amb rc-lg-amb-ied', 'outside, pooled as IED'));
+                item('rc-lg-amb rc-lg-amb-ied', 'outside, pooled as P-spike'));
     } else if (mode === 'pool' || mode === 'single' || mode === 'border') {
-      kids.push(item('rc-lg-ds', 'DS'), item('rc-lg-ied', 'IED'));
+      kids.push(item('rc-lg-ds', 'DS'), item('rc-lg-ied', 'P-spike'));
     } else if (mode === 'switches') {
       kids.push(item('rc-lg-same', 'unchanged'),
-                item('rc-lg-d2i', 'DS → IED when pooled'),
-                item('rc-lg-i2d', 'IED → DS when pooled'));
+                item('rc-lg-d2i', 'DS → P-spike when pooled'),
+                item('rc-lg-i2d', 'P-spike → DS when pooled'));
     } else {
       const list = catList(mode);
       list.forEach((key, at) => {
@@ -10738,7 +10738,7 @@ BARRY.rootcanal = (function () {
     if (ag && ag.ari != null && isFinite(ag.ari)) {
       kids.push(el('table', { class: 'tbl rc-gmm-tab rc-gmm-agree' }, [
         el('tbody', {}, [el('tr', {}, [
-          el('th', { text: 'agreement with the DS / IED call (adjusted Rand, '
+          el('th', { text: 'agreement with the DS / P-spike call (adjusted Rand, '
                          + '1 = same split, 0 = chance)' }),
           el('td', { text: Number(ag.ari).toFixed(2) }),
         ])]),
@@ -10747,12 +10747,12 @@ BARRY.rootcanal = (function () {
       const n2 = (a, b) => String(((x[a] || {})[b]) || 0);
       kids.push(el('table', { class: 'tbl rc-gmm-tab rc-gmm-x' }, [
         el('thead', {}, [el('tr', {}, ['k-means call ↓  GMM component →',
-                                       'DS-like', 'IED-like']
+                                       'DS-like', 'P-spike-like']
           .map((t) => el('th', { text: t })))]),
         el('tbody', {}, [
           el('tr', {}, [el('th', { text: 'DS' }), el('td', { text: n2('ds', 'ds_like') }),
                         el('td', { text: n2('ds', 'ied_like') })]),
-          el('tr', {}, [el('th', { text: 'IED' }), el('td', { text: n2('ied', 'ds_like') }),
+          el('tr', {}, [el('th', { text: 'P-spike' }), el('td', { text: n2('ied', 'ds_like') }),
                         el('td', { text: n2('ied', 'ied_like') })]),
         ]),
       ]));
@@ -10900,13 +10900,13 @@ BARRY.rootcanal = (function () {
       g.fillText('← DS side', F.x0 + 4, F.y0 + 11);
       g.fillStyle = colOf('ied');
       g.textAlign = 'right';
-      g.fillText('IED side →', F.x1 - 4, F.y0 + 11);
+      g.fillText('P-spike side →', F.x1 - 4, F.y0 + 11);
       g.textAlign = 'left';
     } else {
       g.fillStyle = colOf('ds');
       g.fillText('DS', F.x1 - 44, F.y0 + 11);
       g.fillStyle = colOf('ied');
-      g.fillText('IED', F.x1 - 24, F.y0 + 11);
+      g.fillText('P-spike', F.x1 - 24, F.y0 + 11);
     }
     GEOM.hist = GEOM.hist || {};
     GEOM.hist[id] = { xl, yl: 'events', n: fin.length, lo, hi,
@@ -11024,8 +11024,8 @@ BARRY.rootcanal = (function () {
             : 'this ' + noun + ', which is not saved: save it first for the '
               + 'entries to name it') + '.' }),
         el('ul', {}, [
-          el('li', { text: 'Of type “Ambiguous DS / IED”, never DS or IED: '
-            + 'nothing that reads a recording’s DS set or its IED candidates '
+          el('li', { text: 'Of type “Ambiguous DS / P-spike”, never DS or P-spike: '
+            + 'nothing that reads a recording’s DS set or its P-spike candidates '
             + 'picks these up.' }),
           el('li', { text: 'Each stamp keeps what the recording’s own set has '
             + 'at that time. Why it is here -- its calls, its border class, '
@@ -11088,7 +11088,7 @@ BARRY.rootcanal = (function () {
         + 'they come from by mouse, type, group, subgroup and condition, '
         + 'export them as a CSV and bank them.' }));
       kids.push(el('p', { class: 'hint rc-deep-recipe', text: 'Steps 7–10: '
-        + 'pool the controls with “every event is DS”, pool the IED mice at '
+        + 'pool the controls with “every event is DS”, pool the P-spike mice at '
         + 'k = 2, pool those two pools (“Pool pools”), draw a border from the '
         + 'identity switches, apply it, then open this.' }));
       if (d && d.err) {
@@ -11104,8 +11104,8 @@ BARRY.rootcanal = (function () {
     const c = d.counts || {};
     const bu = d.border_used;
     kids.push(el('p', { class: 'rc-deep-count', text: c.rows + ' of ' + c.n
-      + ' events: ' + c.switched + ' switched (' + c.ds_to_ied + ' DS → IED, '
-      + c.ied_to_ds + ' IED → DS)'
+      + ' events: ' + c.switched + ' switched (' + c.ds_to_ied + ' DS → P-spike, '
+      + c.ied_to_ds + ' P-spike → DS)'
       + (bu ? ', ' + c.ambiguous + ' ambiguous under the border ‘'
               + bu.nickname + '’ at grace ' + bu.grace_words : '')
       + ', from ' + c.recordings + ' recording'
@@ -11176,7 +11176,7 @@ BARRY.rootcanal = (function () {
     kids.push(el('div', { class: 'rc-deep-scroll rc-deep-sumwrap' }, [
       el('table', { class: 'tbl rc-deep-sum' }, [
         el('thead', {}, [el('tr', {}, [sm.label || d.group, 'recordings', 'events',
-          'switched', 'DS → IED', 'IED → DS', bu ? 'ambiguous' : null]
+          'switched', 'DS → P-spike', 'P-spike → DS', bu ? 'ambiguous' : null]
           .filter(Boolean).map((h) => el('th', { text: h })))]),
         el('tbody', {}, (sm.rows || []).map((x) => el('tr', {}, [
           el('td', { text: x.value }),
@@ -11220,7 +11220,7 @@ BARRY.rootcanal = (function () {
       el('strong', { text: title }),
       el('table', { class: 'tbl rc-sw-tab' }, [
         el('thead', {}, [el('tr', {}, ['', 'events', 'switched', 'rate',
-                                       'DS → IED', 'IED → DS']
+                                       'DS → P-spike', 'P-spike → DS']
           .map((t) => el('th', { text: t })))]),
         el('tbody', {}, rows),
       ]),
@@ -11236,8 +11236,8 @@ BARRY.rootcanal = (function () {
         : 'Identity switches: each event’s own call against the pooled one' }),
       sw2 ? el('p', { class: 'hint rc-sw-single', text: 'Against its single '
         + 'instead: ' + (sw2.switched || 0) + ' of ' + (sw2.n || 0) + ' ('
-        + pct(sw2.rate) + ') -- ' + (sw2.ds_to_ied || 0) + ' DS → IED, '
-        + (sw2.ied_to_ds || 0) + ' IED → DS.' }) : null,
+        + pct(sw2.rate) + ') -- ' + (sw2.ds_to_ied || 0) + ' DS → P-spike, '
+        + (sw2.ied_to_ds || 0) + ' P-spike → DS.' }) : null,
       /* Steps 8-9: the border between these identities, with grace. */
       el('div', { class: 'chip-row rc-border-go-row' }, [
         BARRY.ui.button({ kind: 'mini', extra: 'rc-border-go',
@@ -11245,7 +11245,7 @@ BARRY.rootcanal = (function () {
           title: 'Three cut-offs, in µV, dB and ms, between the events’ own '
                + 'identities (' + (dbl ? 'their own pools’ calls'
                                        : 'their singles’ calls')
-               + '): past all three is solid IED, short of all three solid '
+               + '): past all three is solid P-spike, short of all three solid '
                + 'DS, anything else ambiguous. With grace, the switch rate '
                + 'allowed. Previewed before it is saved. A pool that is all '
                + 'one identity gets a box drawn around it instead.',
@@ -11253,12 +11253,12 @@ BARRY.rootcanal = (function () {
       el('div', { class: 'rc-sw-top' }, [
         el('table', { class: 'tbl rc-crosstab' }, [
           el('thead', {}, [el('tr', {}, [(pool.fit && pool.fit.level === 'double'
-              ? 'pool ↓  double →' : 'single ↓  pooled →'), 'DS', 'IED']
+              ? 'pool ↓  double →' : 'single ↓  pooled →'), 'DS', 'P-spike']
             .map((t) => el('th', { text: t })))]),
           el('tbody', {}, [
             el('tr', {}, [el('th', { text: 'DS' }), el('td', { text: cell('ds', 'ds') }),
                           el('td', { class: 'rc-sw-off', text: cell('ds', 'ied') })]),
-            el('tr', {}, [el('th', { text: 'IED' }),
+            el('tr', {}, [el('th', { text: 'P-spike' }),
                           el('td', { class: 'rc-sw-off', text: cell('ied', 'ds') }),
                           el('td', { text: cell('ied', 'ied') })]),
           ]),

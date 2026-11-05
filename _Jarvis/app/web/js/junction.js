@@ -1343,7 +1343,7 @@ BARRY.junction = (function () {
     function redraw() {
       body.innerHTML = '';
       body.appendChild(col('ds', 'Incisor’s dentate spikes'));
-      body.appendChild(col('ied', 'Doppler’s IEDs'));
+      body.appendChild(col('ied', 'Doppler’s P-spikes'));
       requestAnimationFrame(() => body.querySelectorAll('.vtree')
         .forEach((t) => t.redraw && t.redraw()));
     }

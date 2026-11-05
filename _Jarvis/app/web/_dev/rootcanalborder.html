@@ -334,11 +334,11 @@ function quantile(sorted, q) {
      && items().every((r) => r.classList.contains('inc-pick')
                              && r.querySelector('input[type=radio]')));
   eq('each says its kind', items().map((r) => txt(r, '.rc-border-kind')),
-     ['drawn around the DS events', 'drawn between DS and IED', 'drawn between DS and IED']);
+     ['drawn around the DS events', 'drawn between DS and P-spike', 'drawn between DS and P-spike']);
   eq('its numbers', txt(items()[0], '.rc-border-nums'), 'Envelope · DS · ' + numWords(strict));
   ok('its rule in words', /^Solid DS inside the box, ambiguous outside it on any axis\. At no grace the box is amplitude /
      .test(txt(items()[0], '.rc-border-what'))
-     && /^Solid IED past all three cut-offs, solid DS short of all three/
+     && /^Solid P-spike past all three cut-offs, solid DS short of all three/
        .test(txt(items()[1], '.rc-border-what')), txt(items()[0], '.rc-border-what'));
   eq('the measurement it was made under, and that it is this pool’s',
      txt(items()[0], '.rc-border-meas'), 'Measured on ' + filt + ': the same filter as this pool.');
@@ -422,7 +422,7 @@ function quantile(sorted, q) {
   const dlg = () => D().querySelector('#bigModal .rc-border-dlg');
   ok('it says why it is a box, and what is inside and outside it',
      dlg().querySelector('p').textContent === 'Every event here is DS ('
-       + comp.length + ' DS, 0 IED), so there is nothing to draw a line between. '
+       + comp.length + ' DS, 0 P-spike), so there is nothing to draw a line between. '
        + 'Instead the border is a box around the DS events, in µV, dB and ms: '
        + 'inside it is solid DS, and outside it on any axis is ambiguous.',
      dlg().querySelector('p').textContent);
@@ -434,7 +434,7 @@ function quantile(sorted, q) {
      && dlg().querySelector('.hint').textContent.indexOf(filt) >= 0);
   eq('the table: grace, inside, left outside, the other identity inside',
      Array.from(D().querySelectorAll('#bigModal .rc-border-tab th')).map((t) => t.textContent),
-     ['grace', 'solid DS (inside)', 'DS left outside', 'IED inside']);
+     ['grace', 'solid DS (inside)', 'DS left outside', 'P-spike inside']);
   const lvRows = () => Array.from(D().querySelectorAll('#bigModal .rc-border-lv'));
   const rowTxt = (r) => Array.from(r.children).map((td) => td.textContent.trim()).join(' | ');
   const envRowTxt = (g) => gw(g) + ' | '
@@ -518,8 +518,8 @@ function quantile(sorted, q) {
      txt(card(), '.rc-border-now strong'), 'Classified by ‘harness envelope’ v1 at grace 5%:');
   eq('with how many are inside and outside', txt(card(), '.rc-border-on'),
      cE.ds + ' inside · ' + cE.amb + ' outside');
-  eq('its rule, and that no IED event is inside it', txt(card(), '.rc-border-rule'),
-     envRule(0.05) + ' No IED event here is inside the box.');
+  eq('its rule, and that no P-spike event is inside it', txt(card(), '.rc-border-rule'),
+     envRule(0.05) + ' No P-spike event here is inside the box.');
   ok('and how it is drawn on the flat views',
      /^On the flat views it is the box, outlined, with everything outside it shaded\.$/
        .test(txt(card(), '.rc-border-drawn')));
@@ -560,7 +560,7 @@ function quantile(sorted, q) {
     const lg = Array.from(D().querySelectorAll('.rc-legend .rc-lg, .rc-pool-legend .rc-lg'))
       .map((n) => n.textContent);
     ok('the legend says what the faded ones are',
-       lg.some((t) => /outside, pooled as DS/.test(t)) && lg.some((t) => /outside, pooled as IED/.test(t)),
+       lg.some((t) => /outside, pooled as DS/.test(t)) && lg.some((t) => /outside, pooled as P-spike/.test(t)),
        JSON.stringify(lg));
   }
 
@@ -705,7 +705,7 @@ function quantile(sorted, q) {
 
   const buBw = used({ artifact_id: 'hb-two', nickname: 'harness two-sided',
     grace: 0.01, grace_words: '1%', kind: 'between', group: null,
-    rule: 'Solid IED: harness. Solid DS: harness. Anything else is ambiguous (grace 1%).',
+    rule: 'Solid P-spike: harness. Solid DS: harness. Anything else is ambiguous (grace 1%).',
     strict: rowBw.strict, edges: between,
     ied_above: { amp_uV: true, hf_db: true, hw_ms: false }, counts: bwCounts,
     wrong: 7, switch_rate: 7 / evs.length });
@@ -726,7 +726,7 @@ function quantile(sorted, q) {
               5000, 'the card');
   eq('the card says what it made of the pool',
      txt(card(), '.rc-border-on'), bwCounts.ds + ' solid DS · ' + bwCounts.ied
-       + ' solid IED · ' + bwCounts.amb + ' ambiguous');
+       + ' solid P-spike · ' + bwCounts.amb + ' ambiguous');
   ok('with how many land in the other’s solid class',
      txt(card(), '.rc-border-rule').indexOf(' Here 7 of ' + evs.length
        + ' events with an identity (') > 0);
@@ -745,7 +745,7 @@ function quantile(sorted, q) {
        near(lx.ied, px(fl, 'x', between[kx].ied_at)) && near(lx.ds, px(fl, 'x', between[kx].ds_at))
        && near(ly.ied, px(fl, 'y', between[ky].ied_at)) && near(ly.ds, px(fl, 'y', between[ky].ds_at)),
        JSON.stringify(b.lines));
-    ok(id + ': labelled, whole', !!b.label && b.label.text === 'DS / IED border · grace 1%'
+    ok(id + ': labelled, whole', !!b.label && b.label.text === 'DS / P-spike border · grace 1%'
        && b.label.x >= 0 && b.label.x + b.label.w <= fl.w);
   }
   {
@@ -782,7 +782,7 @@ function quantile(sorted, q) {
         }
       }
     }
-    ok('the IED cut-offs read back dashed, in the IED colour',
+    ok('the P-spike cut-offs read back dashed, in the P-spike colour',
        n >= 12 && hit >= n * 0.25 && hit <= n * 0.85, hit + ' of ' + n + ' samples');
   }
 
@@ -790,7 +790,7 @@ function quantile(sorted, q) {
   ev(RC + '._draw()');
   await sleep(150);
   const b3b = ev(RC + '._border3d()');
-  ok('the 3D view outlines both solid regions, DS and IED',
+  ok('the 3D view outlines both solid regions, DS and P-spike',
      !!b3b && b3b.kind === 'between'
      && JSON.stringify((b3b.boxes || []).map((x) => x.cls).sort())
         === JSON.stringify(['ds', 'ied']), JSON.stringify(b3b));

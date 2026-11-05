@@ -630,7 +630,7 @@
       icon: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="3.5" r="1.7"/>'
           + '<circle cx="19.4" cy="16.3" r="1.7"/><circle cx="4.6" cy="16.3" r="1.7"/>'
           + '<path d="M12 5.2q1.5 7.5 6 9.7M6 15.5q5.5-1.5 6-10.3"/>' },
-    { k: 'ied', title: 'Detect IEDs', line: 'Find the sharp spikes of epilepsy',
+    { k: 'ied', title: 'Detect P-spikes', line: 'Find the sharp spikes of epilepsy',
       icon: '<path d="M2 13h4l1.8-3 2.2 9 3-15.5 2.2 11.5 1.8-4H22"/>' },
   ];
 

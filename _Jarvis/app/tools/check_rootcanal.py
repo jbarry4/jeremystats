@@ -577,13 +577,13 @@ def _synthetic(A, rc, cfcmod, stamp_t, kinds):
        rfl["counts"])
 
     head("K-MEANS AND THE NAMING RULE")
-    ck("every burst event is called IED and every plain one DS",
+    ck("every burst event is called P-spike and every plain one DS",
        all(e["cls"] == "ied" for e in ied) and all(e["cls"] == "ds"
                                                   for e in ds),
        [(k, e["cls"]) for e, k in zip(ev, kinds)])
     ied_c = [c for c in res["centres"] if c["cls"] == "ied"][0]
     ds_c = [c for c in res["centres"] if c["cls"] == "ds"][0]
-    ck("the IED centre is the one with more HF power, in raw dB",
+    ck("the P-spike centre is the one with more HF power, in raw dB",
        ied_c["raw"][2] > ds_c["raw"][2])
     ck("the rule sentence names the band and both centres' dB",
        "500–1000 Hz" in res["rule"] and ("%+.1f" % ied_c["raw"][2])
@@ -616,7 +616,7 @@ def _synthetic(A, rc, cfcmod, stamp_t, kinds):
                    flips=[i_ds, i_flat])
     rf = rc.fit(flat, pf)
     rfl0 = rfl
-    ck("a flipped DS event comes back IED, marked as flipped",
+    ck("a flipped DS event comes back P-spike, marked as flipped",
        rf["events"][i_ds]["cls"] == "ied" and rf["events"][i_ds]["flipped"])
     ck("and it moves one event between the counts",
        rf["counts"]["ied"] == rfl0["counts"]["ied"] + 1
@@ -705,7 +705,7 @@ def _synthetic(A, rc, cfcmod, stamp_t, kinds):
     ck("and with the mains fitted out too (a projection, so still linear)",
        np.allclose((twod[0] + twod[1]) / 2.0, onced, atol=1e-6))
     gi = rc.group_view([rc.group_parts(got, p, [e["i"] for e in ied])], p,
-                       label="IED")
+                       label="P-spike")
     ck("a cluster's average counts every event in it, and carries its spread",
        gi["n"] == len(ied) and len(gi["trace"]["sd"]) == len(gi["trace"]["y"])
        and gi["trace"]["n"] == len(ied))
@@ -942,7 +942,7 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
        and {"z", "raw", "cls", "n"} <= set(fit["centres"][0]),
        fit if not fit.get("ok") else sorted(fit))
     n_ied = sum(1 for k in kinds if k == "ied")
-    ck("and it finds the %d IEDs" % n_ied, fit["counts"]["ied"] == n_ied,
+    ck("and it finds the %d P-spikes" % n_ied, fit["counts"]["ied"] == n_ied,
        fit["counts"])
     r = c.post("/api/rootcanal/fit", json={"entry_id": "rcchk000001",
                                           "filt": "custom", "hi_hz": 5000})
@@ -960,7 +960,7 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
        and {"t_ms", "rows", "nums", "bad", "gain"} <= set(ev["stack"])
        and {"t_ms", "rows", "clim"} <= set(ev["csd"]), sorted(ev))
 
-    head("COMMIT: DS vN+1 AND AN IED ENTRY")
+    head("COMMIT: DS vN+1 AND AN P-spike ENTRY")
     body = {"entry_id": "rcchk000001", "by": who, "note": "check",
             "pngs": {"space": PNG_URI, "flat": "data:image/png;base64,AAAA"}}
     r = c.post("/api/rootcanal/commit", json=body)
@@ -974,14 +974,14 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
     ck("the DS set got exactly one new version, tagged rootcanal",
        len(ds["versions"]) == n_versions0 + 1 and tip.get("tag") ==
        "rootcanal", [(v.get("v"), v.get("tag")) for v in ds["versions"]])
-    ck("holding everything but the %d IEDs (removed %d, kept %d)"
+    ck("holding everything but the %d P-spikes (removed %d, kept %d)"
        % (n_ied, cm["removed"], cm["kept"]),
        cm["removed"] == n_ied and ds["n"] == len(events) - n_ied
        and cm["kept"] == len(stamp_t) - n_ied)
     ied_times = {round(stamp_t[i], 4) for i, k in enumerate(kinds)
                  if k == "ied"}
     left = {round(e["start"], 4) for e in ds["events"]}
-    ck("the IEDs are the ones that left", not (ied_times & left))
+    ck("the P-spikes are the ones that left", not (ied_times & left))
     ck("the rejections Root Canal never read are carried as they were",
        sum(1 for e in ds["events"] if e.get("label_id") == "garbage") == 2)
     kept = [e for e in ds["events"] if e.get("label_id") == "spike"]
@@ -991,8 +991,8 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
     ck("still curated, still aligned",
        ds.get("specified") and ds.get("aligned"))
     ck("the version note says how many and why",
-       ("%d hidden IED" % n_ied) in tip.get("note", "")
-       and "called IED" in tip.get("note", ""), tip.get("note"))
+       ("%d hidden P-spike" % n_ied) in tip.get("note", "")
+       and "called P-spike" in tip.get("note", ""), tip.get("note"))
     part_t = [stamp_t[i] for i, k in enumerate(kinds)
               if k in ("plateau", "long")]
     ck("the note names the partial events, and the search they were "
@@ -1004,15 +1004,15 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
        and "half-width search ±50 ms" in tip.get("note", ""),
        tip.get("note"))
     ied = bank.get(cm["ied_entry"])
-    ck("the IEDs are an IED entry of their own, uncurated",
+    ck("the P-spikes are a P-spike entry of their own, uncurated",
        ied and ied.get("type") == "ied" and not ied.get("specified")
-       and ied.get("name") == "Hidden IEDs (Root Canal)"
+       and ied.get("name") == "Hidden P-spikes (Root Canal)"
        and ied["n"] == n_ied)
     par = (ied.get("source") or {}).get("parameters") or {}
     ck("linked back to the DS entry, its version and the fit",
        par.get("from_entry") == "rcchk000001" and "from_version" in par
        and par.get("band_lo") == 500.0 and "flipped" in par, par)
-    ck("the IED entry's parameters carry partial_t, wide_t and cross_ms",
+    ck("the P-spike entry's parameters carry partial_t, wide_t and cross_ms",
        par.get("partial_t") == part_t and par.get("wide_t") == []
        and par.get("cross_ms") == 50.0, par)
     ck("arriving as candidates, with no label on any of them",
@@ -1112,7 +1112,7 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
                "Nothing to bank: v")
            and "Nothing was written" in cm3["already"]
            and "save them as a version" in cm3["already"], cm3.get("already"))
-    ck("no new DS version, no new IED version, no second IED entry",
+    ck("no new DS version, no new P-spike version, no second P-spike entry",
        len(bank.get("rcchk000001")["versions"]) == n_ds_v
        and len(bank.get(cm["ied_entry"])["versions"]) == n_ied_v
        and sum(1 for e in bank.all() if e.get("type") == "ied")
@@ -1136,15 +1136,15 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
        and len(rec3.get("partial_t")) == 1, rec3 and
        (rec3.get("wide_t"), rec3.get("cross_ms"), rec3.get("partial_t")))
     ied3 = bank.get(cm["ied_entry"])["versions"][-1].get("note", "")
-    ck("as does the IED entry's new version",
+    ck("as does the P-spike entry's new version",
        "widened to 80 ms" in ied3, ied3)
     ck("reading from the named version finds the same read as the live set",
        r.status_code == 200 and cm3["ok"], cm3)
-    ck("the flipped IED stays in the DS set this time",
+    ck("the flipped P-spike stays in the DS set this time",
        cm3.get("removed") == n_ied - 1
        and round(stamp_t[flip_i], 4) in {
            round(e["start"], 4) for e in bank.get("rcchk000001")["events"]})
-    ck("and the SAME IED entry gets a new version, not a second entry",
+    ck("and the SAME P-spike entry gets a new version, not a second entry",
        cm3.get("ied_entry") == cm["ied_entry"]
        and len(bank.get(cm["ied_entry"])["versions"]) == n_ied_v + 1
        and bank.get(cm["ied_entry"])["n"] == n_ied - 1)
@@ -1153,7 +1153,7 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
     rn = c.post("/api/rootcanal/commit", json=dict(
         body, pngs={}, from_version=src["id"],
         cluster_names={"0": {"name": "DS slow", "type": "ds"},
-                       "1": {"name": "IED big", "type": "ied"}}))
+                       "1": {"name": "P-spike big", "type": "ied"}}))
     cmn = rn.get_json()
     dsn = bank.get("rcchk000001")
     named = [e for e in dsn["events"] if e.get("rc_name") == "DS slow"]
@@ -1164,8 +1164,8 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
        "reader picks a DS set's events by",
        named and all(e.get("label_id") == "spike" for e in named))
     iedn = bank.get(cmn.get("ied_entry")) or {}
-    ck("the IEDs carry theirs",
-       iedn.get("events") and all(e.get("rc_name") == "IED big"
+    ck("the P-spikes carry theirs",
+       iedn.get("events") and all(e.get("rc_name") == "P-spike big"
                                   for e in iedn["events"]))
 
     head("CANDIDATES")
@@ -1176,7 +1176,7 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
        row and row[0]["aligned"] is True
        and any(v.get("tag") == "rootcanal" for v in row[0]["versions"])
        and all("name" in v for v in row[0]["versions"]), row)
-    ck("and it says Root Canal has been done, and where the IEDs went",
+    ck("and it says Root Canal has been done, and where the P-spikes went",
        row and row[0]["rootcanal"]["done"]
        and row[0]["rootcanal"]["ied_entry"] == cm["ied_entry"]
        and row[0]["rootcanal"]["version"], row and row[0]["rootcanal"])
@@ -1200,7 +1200,7 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
     blk = {b["entry_id"]: b["why"] for b in pj.get("blocked") or []}
     ck("the batch plan blocks the cleaned set and the unaligned one, and "
        "says why", pj["ok"]
-       and "already taken the IEDs out" in blk.get("rcchk000001", "")
+       and "already taken the P-spikes out" in blk.get("rcchk000001", "")
        and blk.get("rcchk000002") == "Braces hasn't aligned this set yet",
        pj)
 
@@ -1382,9 +1382,9 @@ def _k_and_margins_core():
         ck("two dragged centres for three clusters are refused", True)
     try:
         rc.Params(cluster_calls={"0": "maybe"})
-        ck("a relabel to neither DS nor IED is refused", False)
+        ck("a relabel to neither DS nor P-spike is refused", False)
     except rc.RootCanalError:
-        ck("a relabel to neither DS nor IED is refused", True)
+        ck("a relabel to neither DS nor P-spike is refused", True)
 
     # Three blobs, separated on HF (the third column) and on amplitude.
     blobs = [(100.0, 20.0, 5.0), (300.0, 15.0, 12.0), (600.0, 10.0, 25.0)]
@@ -1396,7 +1396,7 @@ def _k_and_margins_core():
        core["k"] == 3 and list(hf) == sorted(hf), list(hf))
     ck("and each is one blob", sorted(int((core["lab"] == r).sum())
                                       for r in range(3)) == [120, 120, 120])
-    ck("the highest-HF cluster is IED and the rest DS by the rule",
+    ck("the highest-HF cluster is P-spike and the rest DS by the rule",
        core["calls"] == ["ds", "ds", "ied"]
        and core["call_by"] == ["rule"] * 3, core["calls"])
     one_ = rc.cluster_core(X, k=1)
@@ -1410,7 +1410,7 @@ def _k_and_margins_core():
        rl["calls"] == ["ds", "ied", "ied"]
        and rl["call_by"] == ["rule", "hand", "rule"], rl["call_by"])
     six = rc.cluster_core(X, k=6)
-    ck("k = 6 runs, ranked, with one IED by the rule",
+    ck("k = 6 runs, ranked, with one P-spike by the rule",
        six["k"] == 6 and six["calls"].count("ied") == 1
        and list(six["raw_c"][:, 2]) == sorted(six["raw_c"][:, 2]))
     ck("at k = 2 by the rule the original sentence is kept, word for word",
@@ -1465,7 +1465,7 @@ def _k_and_margins_core():
     ck("a pool clusters at k = 3 through the same core",
        r3["k"] == 3 and len(r3["clusters"]) == 3
        and r3["counts"]["ied"] == 120, r3["counts"])
-    ck("its split axis runs DS-called to IED-called",
+    ck("its split axis runs DS-called to P-spike-called",
        r3["split_axis"]["centres_z"] is not None)
     r1 = pool.fit_pool([mem], k=1)
     ck("at k = 1 there is no split axis, and it says why",
@@ -1549,7 +1549,7 @@ def _pool_gmm_agreement():
     """
     from backend import rootcanalpool as pool
     rng = np.random.default_rng(5)
-    head("POOL: THE GMM SAYS WHETHER ITS GROUPS ARE THE DS / IED SPLIT")
+    head("POOL: THE GMM SAYS WHETHER ITS GROUPS ARE THE DS / P-spike SPLIT")
     mu, sd = np.zeros(3), np.ones(3)
 
     # Two separate blobs, and the calls ARE the blobs.
@@ -1562,8 +1562,8 @@ def _pool_gmm_agreement():
        g["delta"] is not None and g["delta"] > 10, g["delta"])
     ck("and the agreement is near total",
        g["agree"] and g["agree"]["ari"] > 0.9, g["agree"])
-    ck("and the sentence says they match the DS / IED call",
-       "match the DS / IED call" in g["verdict"], g["verdict"])
+    ck("and the sentence says they match the DS / P-spike call",
+       "match the DS / P-spike call" in g["verdict"], g["verdict"])
 
     # ONE skewed cloud, cut in two the way k-means would: by HF.
     z = rng.lognormal(0.0, 0.6, size=(900, 3))
@@ -1575,14 +1575,14 @@ def _pool_gmm_agreement():
        g["delta"] is not None and g["delta"] >= 2, g["delta"])
     ck("but the sentence does not call it two populations",
        "Read the split-axis histogram" in g["verdict"]
-       and "match the DS / IED call" not in g["verdict"], g["verdict"])
+       and "match the DS / P-spike call" not in g["verdict"], g["verdict"])
     ck("graded on the Rand index, not on raw agreement",
        "adjusted Rand" in g["verdict"] and "1 is the same split" in g["verdict"],
        g["verdict"])
 
     g = pool.gmm_test(Z, mu, sd)
     ck("without calls there is no agreement to report, and no claim about it",
-       g["agree"] is None and "DS / IED" not in g["verdict"], g["verdict"])
+       g["agree"] is None and "DS / P-spike" not in g["verdict"], g["verdict"])
 
 
 def _border_core():
@@ -1600,7 +1600,7 @@ def _border_core():
     U = B._matrix(hand) * np.array([1.0, 1.0, -1.0])
     t = np.array([1000.0, 10.0, -25.0])
     got = list(B.classify(U, t, t))
-    ck("past all three is solid IED, short of all three solid DS, a mix "
+    ck("past all three is solid P-spike, short of all three solid DS, a mix "
        "ambiguous, a missing axis ambiguous, no numbers unclassified",
        got == ["ied", "ds", "amb", "amb", None], got)
 
@@ -1616,7 +1616,7 @@ def _border_core():
     events = [ev(float(a), float(w), float(h), "ds" if j < n_d else "ied")
               for j, (a, w, h) in enumerate(X)]
     b = B.extract(events, custom=0.02)
-    ck("IEDs are larger, louder and NARROWER: the half-width is passed by "
+    ck("P-spikes are larger, louder and NARROWER: the half-width is passed by "
        "going under it, read from the data",
        b["ied_above"] == {"amp_uV": True, "hf_db": True, "hw_ms": False},
        b["ied_above"])
@@ -1647,7 +1647,7 @@ def _border_core():
     ck("every event is counted once at every grace",
        all(sum(lv["counts"].values()) == len(events) for lv in b["levels"]))
     e0 = lv0["edges"]
-    ck("the band's edges are either side of the strict border, IED's side "
+    ck("the band's edges are either side of the strict border, P-spike's side "
        "further out on every axis",
        e0["amp_uV"]["ied_at"] >= st["amp_uV"] >= e0["amp_uV"]["ds_at"]
        and e0["hf_db"]["ied_at"] >= st["hf_db"] >= e0["hf_db"]["ds_at"]
@@ -1691,7 +1691,7 @@ def _border_core():
     ck("too few of either is refused in a sentence",
        bool(few) and "at least 5 complete events of one identity" in few, few)
     ck("its rule in words, at a grace",
-       B.rule_words(b, 0.05).startswith("Solid IED: max amplitude ≥ ")
+       B.rule_words(b, 0.05).startswith("Solid P-spike: max amplitude ≥ ")
        and "half-width ≤" in B.rule_words(b, 0.05)
        and "half-width >" in B.rule_words(b, 0.05), B.rule_words(b, 0.05))
 
@@ -2101,14 +2101,14 @@ def _pool_synthetic(A):
     truth = [r["truth"] for m in (a, b) for r in m["rows"]]
     agree = np.mean([e["cls_pool"] == tr
                      for e, tr in zip(two["events"], truth)])
-    ck("the pooled k-means recovers the blobs (%.0f%%), IED the higher-HF "
+    ck("the pooled k-means recovers the blobs (%.0f%%), P-spike the higher-HF "
        "one" % (100 * agree), agree > 0.95
        and two["centres"][1]["cls"] == "ied"
        and two["centres"][1]["raw"][2] > two["centres"][0]["raw"][2])
     sv = two["split_axis"]["values"]
     ds_s = [v for v, e in zip(sv, two["events"]) if e["cls_pool"] == "ds"]
     ied_s = [v for v, e in zip(sv, two["events"]) if e["cls_pool"] == "ied"]
-    ck("the split axis puts DS below 0 and IED above it",
+    ck("the split axis puts DS below 0 and P-spike above it",
        np.mean(ds_s) < 0 < np.mean(ied_s)
        and len(sv) == len(two["events"]))
 
@@ -2155,7 +2155,7 @@ def _pool_synthetic(A):
        and abs(S["rate"] - n_sw / float(len(ev))) < 1e-12)
     a_sw = sum(1 for e in ev if e["m"] == 0 and e["switched"])
     rowA = [r for r in S["by_member"] if r["key"] == "A"][0]
-    ck("per member: A's every pooled IED is a DS-to-IED switch (%d)" % a_sw,
+    ck("per member: A's every pooled P-spike is a DS-to-P-spike switch (%d)" % a_sw,
        rowA["switched"] == a_sw == rowA["ds_to_ied"]
        and rowA["ied_to_ds"] == 0 and a_sw >= 25)
     ck("switched is exactly cls_single != cls_pool, event by event",
@@ -2512,8 +2512,8 @@ def _deep_dive(A, c, unbanked):
        bk.get("ok") and len(bk["made"]) == 1
        and len(ent.get("events") or []) == dvb["counts"]["rows"]
        and ent.get("gid") == u["gid"], bk.get("error") or bk)
-    ck("of type “Ambiguous DS / IED”, never DS or IED, so nothing reading "
-       "the DS set or its IED candidates picks it up",
+    ck("of type “Ambiguous DS / P-spike”, never DS or P-spike, so nothing reading "
+       "the DS set or its P-spike candidates picks it up",
        ent.get("type") == "other" and (ent.get("source") or {}).get(
            "pipeline") == "Root Canal deep dive",
        (ent.get("type"), ent.get("source")))
@@ -2779,8 +2779,8 @@ def _pools_of_pools(A, c, unbanked):
         m_["pin"] = dict(m_["pin"], read="b0b0b0b0b0b0")
     brow = A.ARTIFACTS.create("rootcanal_pool",
                               {"pool_key": _uuid.uuid4().hex,
-                               "name": "IED mice"}, pb,
-                              params=pb["params"], nickname="IED mice")
+                               "name": "P-spike mice"}, pb,
+                              params=pb["params"], nickname="P-spike mice")
     b_ = {"artifact_id": brow["id"]}
     pools = [{"artifact_id": a_["artifact_id"], "version": 1},
              {"artifact_id": b_["artifact_id"], "version": 1}]
@@ -2868,7 +2868,7 @@ def _pools_of_pools(A, c, unbanked):
        r2.status_code == 400 and "measured differently" in e2
        and "on DS" in e2, e2)
     sv = c.post("/api/rootcanal/dpool/save", json={
-        "pools": pools, "k": 2, "nickname": "controls + IED mice"}).get_json()
+        "pools": pools, "k": 2, "nickname": "controls + P-spike mice"}).get_json()
     op = c.get("/api/rootcanal/dpool/%s" % sv.get("artifact_id")).get_json()
     ck("it saves, and reopens as saved",
        sv.get("ok") and op.get("ok") and op["payload"]["level"] == "double"
@@ -2891,7 +2891,7 @@ def _pools_of_pools(A, c, unbanked):
     pr = c.post("/api/rootcanal/dpool/propagate", json={
         "pools": pools, "k": 2, "to_pools": True, "to_singles": True,
         "dpool": {"artifact_id": sv["artifact_id"], "version": 1,
-                  "nickname": "controls + IED mice"}}).get_json()
+                  "nickname": "controls + P-spike mice"}}).get_json()
     res_ = pr.get("results") or {}
     ck("each pool gets a new version, and each recording's single one -- "
        "where its read is here; the one read elsewhere is named",
@@ -2902,12 +2902,12 @@ def _pools_of_pools(A, c, unbanked):
     nb = A.ARTIFACTS.payload(b_["artifact_id"], 2) or {}
     want = {e["i"]: e["cls_pool"] for e in d["events"]
             if (e.get("v0") or {}).get("pool") == b_["artifact_id"]}
-    ck("the IED mice's new pool version calls every event as the pool of "
+    ck("the P-spike mice's new pool version calls every event as the pool of "
        "pools did", nb.get("events") and all(
            want.get(e["i"]) == e["cls_pool"] for e in nb["events"]))
     ck("named for where its identity came from",
        (A.ARTIFACTS.get(b_["artifact_id"])["versions"][-1].get("nickname")
-        or "").startswith("from pool of pools ‘controls + IED mice’ v1"))
+        or "").startswith("from pool of pools ‘controls + P-spike mice’ v1"))
 
 
 def _one_measure_and_propagation(A, c, unbanked):
@@ -2963,7 +2963,7 @@ def _one_measure_and_propagation(A, c, unbanked):
 
     head("A POOL'S IDENTITY, BACK INTO ITS SINGLES")
     pb = {"members": mem2, "k": 2, "measure": {"filt": "ds"},
-          "cluster_names": {"1": {"name": "IED big", "type": "ied"}}}
+          "cluster_names": {"1": {"name": "P-spike big", "type": "ied"}}}
     pf = c.post("/api/rootcanal/pool/fit", json=pb).get_json()
     x1 = unbanked[1]
     npz = A.ROOTCANAL.cached_path(x1["gid"], x1["read"], ".npz")
@@ -2996,7 +2996,7 @@ def _one_measure_and_propagation(A, c, unbanked):
     ck("the pool's clusters are kept as a margin of their own, named for "
        "the pool, with their names",
        mg and mg["nickname"] == "Check pool v1 clusters"
-       and any(cl.get("name") == "IED big" for cl in A.ARTIFACTS.payload(
+       and any(cl.get("name") == "P-spike big" for cl in A.ARTIFACTS.payload(
            mg["id"])["clusters"]))
 
 
@@ -3009,20 +3009,20 @@ def _names_and_reference(A, c, unbanked):
     base = rc.fit(got0, p0)
     ds_r = [cl["rank"] for cl in base["clusters"] if cl["call"] == "ds"][0]
     pn = rc.Params(**dict(p0.fit_params(), cluster_names={
-        str(ds_r): {"name": "IED odd", "type": "ied"}}))
+        str(ds_r): {"name": "P-spike odd", "type": "ied"}}))
     rn = rc.fit(got0, pn)
     cl = [x for x in rn["clusters"] if x["rank"] == ds_r][0]
-    ck("a cluster named with an IED name is called IED, by its name",
+    ck("a cluster named with a P-spike name is called P-spike, by its name",
        cl["call"] == "ied" and cl["call_by"] == "name"
-       and cl["name"] == "IED odd", cl)
+       and cl["name"] == "P-spike odd", cl)
     ck("every event in it carries the name",
-       all(e["name"] == "IED odd" for e in rn["events"]
+       all(e["name"] == "P-spike odd" for e in rn["events"]
            if e["cluster"] == ds_r))
     ck("and a named result rebuilds from its params",
        [e["cls"] for e in rc.fit(got0, rc.Params(**rn["params"]))["events"]]
        == [e["cls"] for e in rn["events"]])
     for bad, what in (({"0": {"name": "x", "type": "spike"}}, "a type "
-                       "that is neither DS nor IED"),
+                       "that is neither DS nor P-spike"),
                       ({"0": {"name": "y" * 61, "type": "ds"}},
                        "a name longer than a name")):
         try:
@@ -3048,11 +3048,11 @@ def _names_and_reference(A, c, unbanked):
     from backend import artifacts as artifactsmod
     other = A.ARTIFACTS.find("rootcanal_names", {"list": "lab"})
     A.ARTIFACTS.create("rootcanal_names", {"list": "lab-elsewhere"},
-                       {"names": [{"name": "IED big", "type": "ied",
+                       {"names": [{"name": "P-spike big", "type": "ied",
                                    "at": "2026-10-06T12:00:00"}]})
     ck("two lists made on two machines read as one",
        {n["name"] for n in c.get("/api/rootcanal/names").get_json()["names"]}
-       == {"DS slow", "IED big"} and other is not None)
+       == {"DS slow", "P-spike big"} and other is not None)
 
     head("A SAVED SINGLE'S NAMES, AND A POOL OF ONE NAME")
     sv = c.post("/api/rootcanal/single/save", json={
@@ -3074,12 +3074,12 @@ def _names_and_reference(A, c, unbanked):
        only.get("error"))
     pn2 = c.post("/api/rootcanal/pool/fit", json={
         "members": [{"key": key}], "k": 2,
-        "cluster_names": {"1": {"name": "IED big", "type": "ied"}}}).get_json()
+        "cluster_names": {"1": {"name": "P-spike big", "type": "ied"}}}).get_json()
     ck("a pool's own clusters can be named, and say so on every event",
-       pn2.get("ok") and any(e.get("name_pool") == "IED big"
+       pn2.get("ok") and any(e.get("name_pool") == "P-spike big"
                              for e in pn2["events"])
        and pn2["params"]["cluster_names"] == {
-           "1": {"name": "IED big", "type": "ied"}})
+           "1": {"name": "P-spike big", "type": "ied"}})
 
     head("THE LAB'S SESSION WORKBOOK, AS A REFERENCE")
     app_dir = A.APP_DIR
@@ -3090,7 +3090,7 @@ def _names_and_reference(A, c, unbanked):
     ck("it is read, keyed on project, mouse and session",
        all(isinstance(k_, tuple) and len(k_) == 3 for k_ in ref))
     m3 = ref.get(("PTEN", 3, 2)) or {}
-    ck("PTEN m3 s2 is a baseline session of an IED+ PTEN mouse",
+    ck("PTEN m3 s2 is a baseline session of a P-spike+ PTEN mouse",
        m3.get("condition") == "Baseline" and m3.get("group") == "PTEN"
        and m3.get("subgroup") == "IED+", m3)
     ck("and KCNT1 m3 s2 is a different session, or none -- never PTEN's",

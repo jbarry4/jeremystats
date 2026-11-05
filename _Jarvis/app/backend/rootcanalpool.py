@@ -300,7 +300,7 @@ def gmm_test(Zc, mu, sd, seed=SEED, n_init=GMM_N_INIT, label=None,
             # Worded on the agreement, because that is what decides what
             # the BIC is evidence OF here.
             if delta >= 2 and ari >= 0.5:
-                tail = (" Its two groups match the DS / IED call closely "
+                tail = (" Its two groups match the DS / P-spike call closely "
                         "(adjusted Rand %.2f, %.0f%% of events the same), so "
                         "this reads as two kinds of event." % (ari, 100 * same))
             elif delta >= 2:
@@ -308,7 +308,7 @@ def gmm_test(Zc, mu, sd, seed=SEED, n_init=GMM_N_INIT, label=None,
                 # Percent agreement is not: with a 64/36 call against a
                 # 50/50 component split, chance alone gives about 50%.
                 how = "barely" if ari < 0.2 else "only partly"
-                tail = (" But its two groups are %s the DS / IED split "
+                tail = (" But its two groups are %s the DS / P-spike split "
                         "(adjusted Rand %.2f, where 1 is the same split and "
                         "0 is chance; %.0f%% of events the same): two "
                         "Gaussians fit the cloud's SHAPE better than one, "
@@ -316,7 +316,7 @@ def gmm_test(Zc, mu, sd, seed=SEED, n_init=GMM_N_INIT, label=None,
                         "split-axis histogram before reading this as two "
                         "populations." % (how, ari, 100 * same))
             else:
-                tail = (" Its two groups agree with the DS / IED call on "
+                tail = (" Its two groups agree with the DS / P-spike call on "
                         "%.0f%% of events (adjusted Rand %.2f)."
                         % (100 * same, ari))
     return {
@@ -583,14 +583,14 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
             int(core["held"].sum()), "" if int(core["held"].sum()) == 1 else "s",
             core["n_drawn"], "" if core["n_drawn"] == 1 else "s"))
     if general:
-        rule = ("%s%s (%d DS, %d IED%s)."
+        rule = ("%s%s (%d DS, %d P-spike%s)."
                 % (where, general, counts["ds"], counts["ied"],
                    "".join(extra)))
     else:
         ied_c = int(np.argmax(raw_c[:, 2]))
-        rule = ("%sthe cluster whose centre has more %s is called IED: %s "
+        rule = ("%sthe cluster whose centre has more %s is called P-spike: %s "
                 "dB against %s dB for the other, which is called DS (%d DS, "
-                "%d IED%s)."
+                "%d P-spike%s)."
                 % (where, band_label, rootcanal._db_s(raw_c[ied_c, 2]),
                    rootcanal._db_s(raw_c[1 - ied_c, 2]), counts["ds"],
                    counts["ied"], "".join(extra)))
@@ -635,7 +635,7 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
                        "unit": "z, 0 at the midpoint, DS negative",
                        "why_none": (None if split_ok else
                                     "every cluster has the same call, so "
-                                    "there is no DS-to-IED line")},
+                                    "there is no DS-to-P-spike line")},
         "k": core["k"],
         "clusters": rootcanal.clusters_out(core),
         "counts": dict(counts, excluded=n_excluded),

@@ -268,7 +268,7 @@ function lum(c) {
   check('it builds, then HOLDS rather than leaving by itself',
         J.holding() && !!D().getElementById('jarvisReveal'));
   const goes = Array.from(D().querySelectorAll('#jarvisReveal .jv-go'));
-  check('with four ways on: home, dentate spikes, Monolith, IEDs',
+  check('with four ways on: home, dentate spikes, Monolith, P-spikes',
         goes.map((b) => b.dataset.k).join(',') === 'home,ds,mono,ied',
         goes.map((b) => b.textContent.trim().slice(0, 24)).join(' | '));
   check('and "Who is Jarvis?" under the greeting',

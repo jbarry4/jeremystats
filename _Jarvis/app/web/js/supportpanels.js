@@ -1147,7 +1147,7 @@ BARRY.supportPanels = (function () {
           fld('Filter', [
             sel(filters, fil, isMain
                 ? 'The band-pass this panel reads with; the window’s filter is the '
-                  + 'one the add-on sets (Spotter and Panning use the IED band)'
+                  + 'one the add-on sets (Spotter and Panning use the P-spike band)'
                 : 'The band-pass this panel reads with; the window’s filter is the '
                   + 'main window’s',
                 (v) => keepField(i, { filter: v }, true)),

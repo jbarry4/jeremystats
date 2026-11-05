@@ -67,8 +67,8 @@ BARRY.views.misc = (function () {
         el('button', { class: 'btn sm', text: 'Open ' + title }),
       ]),
     ]);
-    moved.appendChild(door('pipeline', 'IED Pipeline',
-      'Point it at a recording folder and walk the IED stages in order, '
+    moved.appendChild(door('pipeline', 'P-spike Pipeline',
+      'Point it at a recording folder and walk the P-spike stages in order, '
       + 'for one session or a cohort.',
       '<svg viewBox="0 0 20 20"><path d="M3 5h5M12 5h5M3 10h14M3 15h5M12 15h5"/><circle cx="10" cy="5" r="2"/><circle cx="10" cy="15" r="2"/></svg>'));
     moved.appendChild(door('explorer', 'Explorer',
