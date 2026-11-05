@@ -77,6 +77,10 @@ BARRY.views.misc = (function () {
       '<svg viewBox="0 0 20 20"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h4l1.5 2h7.5A1.5 1.5 0 0 1 18 7.5v8A1.5 1.5 0 0 1 16.5 17h-13A1.5 1.5 0 0 1 2 15.5z"/></svg>'));
     host.appendChild(moved);
 
+    /* ---- colony ---- */
+    host.appendChild(el('div', { class: 'section-label', text: 'Colony' }));
+    host.appendChild(vosCard());
+
     /* ---- utilities ---- */
     host.appendChild(el('div', { class: 'section-label', text: 'Workbench' }));
     const cards = el('div', { class: 'card-grid' });
@@ -196,6 +200,267 @@ BARRY.views.misc = (function () {
     if (tail) host.appendChild(tail);
   }
 
+
+  /* ======================================================================
+     VOS log in -- the census, straight from VOS into the Lab Operations
+     Schedule (backend/vos.py). Sign in once through myUVM + Duo; Sync does
+     what used to be filter, Select All, Print, Save as PDF, parse, paste and
+     Lab Tools > Sync VOS Census. If anybody would be newly RETIRED it stops
+     and waits here for Apply, because a half-read colony looks exactly like
+     a colony that died.
+
+     The card repaints only itself, in place, while a run is going: Misc
+     itself is not redrawn every poll.
+     ====================================================================== */
+  const vos = { st: null, card: null, timer: null, url: '', hist: null, histOpen: false };
+
+  function vosCard() {
+    const card = el('div', { class: 'card vos-card' });
+    vos.card = card;
+    if (vos.st) vosPaint();
+    else card.appendChild(el('p', { class: 'hint', text: 'Asking VOS whether Jarvis is still signed in…' }));
+    const stale = !vos.st || !vos.st.checked || (Date.now() / 1000 - vos.st.checked > 600);
+    vosLoad(stale);
+    return card;
+  }
+
+  async function vosLoad(check) {
+    const was = vos.st && vos.st.run && vos.st.run.running;
+    try {
+      vos.st = await api('/api/vos/status' + (check ? '?check=1' : ''), { priority: 'background' });
+    } catch (e) {
+      vos.st = vos.st || { error: e.message };
+    }
+    // A run just ended: it may have added a sync to History.
+    if (was && !(vos.st.run && vos.st.run.running)) vos.hist = null;
+    vosPaint();
+    if (vos.histOpen && !vos.hist) vosHistLoad();
+    clearTimeout(vos.timer);
+    if (vos.st && vos.st.run && vos.st.run.running) {
+      vos.timer = setTimeout(() => {
+        if (vos.card && vos.card.isConnected) vosLoad(false);
+      }, 1500);
+    }
+  }
+
+  async function vosDo(route, body) {
+    try {
+      vos.st = await apiPost('/api/vos/' + route, body || {});
+    } catch (e) { toast(e.message, 'err', 6000); }
+    if (route === 'discard') vos.hist = null;
+    vosLoad(false);
+  }
+
+  async function vosHistLoad() {
+    try {
+      vos.hist = (await api('/api/vos/history', { priority: 'background' })).syncs || [];
+    } catch (e) {
+      vos.hist = { error: e.message };
+    }
+    vosPaint();
+  }
+
+  /* Every census the sheet has been given: the hand-pasted ones out of "VOS
+     Imports" and every Jarvis sync since, each with what changed since the
+     one before (who arrived in the census, who left it, who changed cage).
+     A Jarvis sync also says what it did to the sheet and what it flagged. */
+  function vosHistory() {
+    const d = el('details', { class: 'vos-details vos-history', open: vos.histOpen ? 'open' : null });
+    const h = vos.hist;
+    d.appendChild(el('summary', { text: 'History' + (Array.isArray(h) ? ' (' + h.length + ' censuses)' : '') }));
+    d.addEventListener('toggle', () => {
+      vos.histOpen = d.open;
+      if (d.open && !vos.hist) vosHistLoad();
+    });
+    if (!h) {
+      if (vos.histOpen) d.appendChild(el('p', { class: 'hint', text: 'Reading the record…' }));
+      return d;
+    }
+    if (h.error) {
+      d.appendChild(el('p', { class: 'hint', text: 'Could not read the record: ' + h.error }));
+      return d;
+    }
+    const day = (r) => new Date(r.date + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+      + (r.time ? ' ' + r.time : '');
+    d.appendChild(el('ul', { class: 'vos-hist' }, h.map((r) => {
+      const f = r.diff;
+      const bits = [r.mice + ' mice'];
+      if (f) bits.push(f.arrived.length + ' arrived', f.left.length + ' left', f.moved.length + ' changed cage');
+      if ((r.issues || []).length) bits.push(r.issues.length + ' issue' + (r.issues.length === 1 ? '' : 's'));
+      const who = r.source === 'Jarvis'
+        ? 'Jarvis' + (r.by ? ', ' + r.by : '') + (r.machine ? ' on ' + r.machine : '')
+        : 'pasted into VOS Imports';
+      const item = el('details', { class: 'vos-details' }, [
+        el('summary', {}, [
+          el('strong', { text: day(r) }),
+          el('span', { text: ' · ' + who + (r.outcome === 'discarded' ? ' · discarded' : '') + ' · ' + bits.join(', ') }),
+        ]),
+      ]);
+      // ids: a run of bare mouse IDs, which wraps instead of one per line.
+      const list = (label, rows, ids) => {
+        if (!rows.length) return;
+        item.appendChild(el('details', { class: 'vos-details' }, [
+          el('summary', { text: label + ' (' + rows.length + ')' }),
+          el('ul', { class: ids ? 'vos-ids' : null }, rows.map((t) => el('li', { text: t }))),
+        ]));
+      };
+      if (f) {
+        list('In the census, not in the one before', f.arrived, true);
+        list('In the one before, not in this', f.left, true);
+        list('Changed cage', f.moved.map((m) => m.id + ': ' + (m.from || '(blank)') + ' → ' + (m.to || '(blank)')));
+      } else {
+        item.appendChild(el('p', { class: 'hint', text: 'The first census on record.' }));
+      }
+      if (r.result) {
+        item.appendChild(vosResult(r, r.outcome === 'discarded'
+          ? 'What it would have done to ' + (r.sheet || 'the sheet') + ':'
+          : 'What it did to ' + (r.sheet || 'the sheet') + ':'));
+      }
+      return el('li', {}, [item]);
+    })));
+    return d;
+  }
+
+  function vosWhen(t) {
+    if (!t) return '';
+    const d = new Date(t * 1000);
+    const today = new Date().toDateString() === d.toDateString();
+    return today ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                 : d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+
+  function vosResult(s, title) {
+    const r = s.result || {};
+    const retire = r.newlyRetired || [];
+    const changes = r.changes || [];
+    const box = el('div', { class: 'vos-result' }, [
+      el('div', { class: 'vos-line', text: title }),
+      el('div', { class: 'chip-row' }, [
+        el('span', { class: 'stat-chip', text: s.cages + ' cages, ' + s.rows + ' card rows' }),
+        el('span', { class: 'stat-chip', text: (r.active || 0) + ' mice matched' }),
+        el('span', { class: 'stat-chip' + (changes.length ? ' warn' : ''),
+                     text: changes.length + ' change' + (changes.length === 1 ? '' : 's') }),
+        el('span', { class: 'stat-chip' + ((r.added || []).length ? ' warn' : ''),
+                     text: (r.added || []).length + ' added' }),
+        el('span', { class: 'stat-chip' + (retire.length ? ' warn' : ' good'),
+                     text: retire.length + ' newly retired' }),
+      ]),
+    ]);
+    const list = (label, rows, open, ids) => {
+      if (!rows.length) return;
+      box.appendChild(el('details', { class: 'vos-details', open: open ? 'open' : null }, [
+        el('summary', { text: label }),
+        el('ul', { class: ids ? 'vos-ids' : null }, rows.map((t) => el('li', { text: t }))),
+      ]));
+    };
+    // Open while it is the reason the run is waiting: it is what to check.
+    list('Newly retired (' + retire.length + ')',
+         retire.map((m) => m.id + (m.cage ? ' (was ' + m.cage + ')' : '')), !s.applied);
+    list('Changes (' + changes.length + ')',
+         changes.map((c) => c.id + ' ' + c.field + ': ' + (c.from || '(blank)') + ' → ' + (c.to || '(blank)')));
+    list('Added (' + (r.added || []).length + ')', r.added || [], false, true);
+    list('Left as they are (' + (r.held || []).length + ')', r.held || [], false, true);
+    /* Problems found along the way, in the words the lab uses: "Cage card
+       naming issue: ...", "Spreadsheet issue: ...". Open by default -- these
+       are the things somebody has to go and fix, in VOS or in the sheet. */
+    const issues = s.issues || [];
+    if (issues.length) {
+      box.appendChild(el('details', { class: 'vos-details vos-issues', open: 'open' }, [
+        el('summary', { text: 'Issues to fix (' + issues.length + ')' }),
+        el('ul', {}, issues.map((i) => el('li', {}, [
+          el('strong', { text: i.category + ': ' }),
+          el('span', { text: i.text }),
+        ]))),
+      ]));
+    }
+    list('Skipped (' + (s.skipped || []).length + ' cages)',
+         (s.skipped || []).map((k) => k.cage + ' (' + (k.strain || 'no strain') + ', '
+           + k.mice + ' mouse' + (k.mice === 1 ? '' : 'e') + '): ' + k.why));
+    if (s.pdf) {
+      box.appendChild(el('div', { class: 'card-actions' }, [
+        el('button', { class: 'btn ghost sm', text: 'Show the PDF',
+                       onclick: () => apiPost('/api/reveal', { path: s.pdf }).catch(() => {}) }),
+      ]));
+    }
+    return box;
+  }
+
+  function vosPaint() {
+    const card = vos.card;
+    if (!card) return;
+    const st = vos.st || {};
+    const run = st.run || {};
+    card.innerHTML = '';
+    card.appendChild(el('h3', { text: 'VOS log in' }));
+
+    let words;
+    if (st.error) words = st.error;
+    else if (!st.has_session) words = 'Not signed in yet. Sign in opens Chrome on the myUVM page; approve Duo there once.';
+    else if (st.signed_in === false) words = 'VOS signed Jarvis out' + (st.lost_at ? ' at ' + vosWhen(st.lost_at) : '') + '. Sign in again to sync.';
+    else words = 'Signed in to VOS' + (st.signed_in_at ? ' since ' + vosWhen(st.signed_in_at) : '') + '. Jarvis keeps the session alive while it runs.';
+    card.appendChild(el('p', { text: words }));
+
+    if (!st.sheet_connected) {
+      const input = el('input', {
+        type: 'text', value: vos.url || '',
+        placeholder: 'https://script.google.com/macros/s/…/exec',
+        oninput: (e) => { vos.url = e.target.value; },
+      });
+      card.appendChild(el('div', { class: 'field' }, [
+        el('label', { text: 'Sheet web app URL' }),
+        input,
+        el('span', { class: 'hint',
+          text: 'In the Lab Operations Schedule: Extensions > Apps Script, paste the new VOS_Import.gs, '
+              + 'then Deploy > New deployment > Web app (Execute as: Me, Who has access: Anyone) and copy the /exec link here.' }),
+      ]));
+    }
+
+    const actions = el('div', { class: 'card-actions' });
+    if (!st.sheet_connected) {
+      actions.appendChild(el('button', { class: 'btn sm', text: 'Connect sheet',
+        onclick: () => vosDo('config', { webapp_url: vos.url }) }));
+    }
+    actions.appendChild(el('button', {
+      class: 'btn ' + (st.has_session && st.signed_in !== false ? 'ghost ' : '') + 'sm',
+      text: 'Sign in', disabled: run.running ? 'disabled' : null,
+      onclick: () => vosDo('login'),
+    }));
+    actions.appendChild(el('button', {
+      class: 'btn sm', text: 'Sync VOS',
+      disabled: (run.running || !st.sheet_connected || !st.has_session) ? 'disabled' : null,
+      title: st.sheet_connected ? 'Read the active ' + (st.protocol || '') + ' cages and update the sheet'
+                                : 'Connect the sheet first',
+      onclick: () => vosDo('sync'),
+    }));
+    card.appendChild(actions);
+
+    if (run.running) {
+      card.appendChild(loader(run.what === 'login' ? 'Signing in' : 'Syncing', run.step || 'starting'));
+    }
+
+    if (st.hold) {
+      const box = vosResult(st.hold, 'Waiting for you: this census would mark mice RETIRED. '
+        + 'Check the list, then Apply to write it, or Discard.');
+      box.appendChild(el('div', { class: 'card-actions' }, [
+        el('button', { class: 'btn sm', text: 'Apply',
+                       disabled: run.running ? 'disabled' : null,
+                       onclick: () => vosDo('apply') }),
+        el('button', { class: 'btn ghost sm', text: 'Discard',
+                       onclick: () => vosDo('discard') }),
+      ]));
+      card.appendChild(box);
+    } else if (st.last_sync && !run.running) {
+      card.appendChild(vosResult(st.last_sync, 'Last sync ' + vosWhen(st.last_sync.at)
+        + ' to ' + (st.last_sync.sheet || 'the sheet') + '.'));
+    }
+
+    const err = st.last_error;
+    if (err && !run.running && (!st.last_sync || err.at > st.last_sync.at)) {
+      card.appendChild(el('div', { class: 'stat-chip warn vos-err',
+        text: 'Last ' + err.what + ' failed at ' + vosWhen(err.at) + ': ' + err.error }));
+    }
+    card.appendChild(vosHistory());
+  }
 
   /* ======================================================================
      Feature 1 -- Repo search

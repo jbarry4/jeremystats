@@ -165,7 +165,20 @@ def _preview(add, png, name):
     out = cache_dir(os.path.splitext(name)[0] + "_preview.webp")
     if not os.path.isfile(out) or os.path.getmtime(out) < os.path.getmtime(png):
         from PIL import Image
-        im = Image.open(png).convert("RGB")
+        # A PNG being drawn again is written in place (joefigs._save), so
+        # one read mid-write is not an image yet. 2026-11-04 the list route
+        # failed whole six times on that ("cannot identify image file"). The
+        # last preview stands until the PNG is whole: it is newer than the
+        # preview, so the next listing makes it.
+        try:
+            im = Image.open(png)
+            im.load()
+            im = im.convert("RGB")
+        except OSError:
+            if not os.path.isfile(out):
+                return None
+            got = add(out)
+            return got["name"] if got else None
         im = im.resize((PREVIEW_W, max(1, int(im.height * PREVIEW_W / im.width))), Image.LANCZOS)
         tmp = out + ".part.webp"
         im.save(tmp, "WEBP", quality=80, method=6)

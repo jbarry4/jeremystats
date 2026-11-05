@@ -1,0 +1,713 @@
+{
+ "v": 1,
+ "date": "2026-11-05",
+ "time": "10:10",
+ "stamp": "110526",
+ "source": "Jarvis",
+ "outcome": "applied",
+ "by": "Shahriar",
+ "machine": "Bluebarry",
+ "sheet": "KCNT1 Active 2.0",
+ "block_at": 53,
+ "cages": 39,
+ "rows": 87,
+ "issues": [
+  {
+   "category": "Cage card naming issue",
+   "cage": "CC-31016-1",
+   "mouse": "1631",
+   "text": "mouse 1631 is on CC-31016-1 and CC-31017-1; its row in the sheet is left as it is until VOS is fixed",
+   "hold": true
+  },
+  {
+   "category": "Cage card naming issue",
+   "cage": "CC-30797-2",
+   "mouse": null,
+   "text": "CC-30797-2: notes say 'parents 1607(M)) x 579(F)' (doubled bracket); read as 'parents 1607(M) x 579(F)'",
+   "hold": false
+  }
+ ],
+ "skipped": [
+  {
+   "cage": "CC-28180-4",
+   "strain": "PACAP-IRES-Cre",
+   "mice": 2,
+   "why": "not a KCNT1 cage"
+  },
+  {
+   "cage": "CC-29184-5",
+   "strain": "PACAP-IRES-Cre",
+   "mice": 3,
+   "why": "not a KCNT1 cage"
+  },
+  {
+   "cage": "CC-31516-1",
+   "strain": "PACAP-IRES-Cre",
+   "mice": 1,
+   "why": "not a KCNT1 cage"
+  }
+ ],
+ "result": {
+  "sheet": "KCNT1 Active 2.0",
+  "active": 61,
+  "retiredAlready": 167,
+  "newlyRetired": [
+   {
+    "id": "1619",
+    "cage": "CC-29958-1"
+   },
+   {
+    "id": "588",
+    "cage": "CC-29613-1"
+   },
+   {
+    "id": "543",
+    "cage": "CC-24051-5"
+   },
+   {
+    "id": "1613",
+    "cage": "CC-28383-3"
+   },
+   {
+    "id": "1629",
+    "cage": "CC-28754-2"
+   },
+   {
+    "id": "1636",
+    "cage": "CC-29226-2"
+   }
+  ],
+  "revived": [],
+  "added": [
+   "1652",
+   "1653",
+   "1654",
+   "1655",
+   "1656",
+   "1657",
+   "1658",
+   "1659",
+   "1660",
+   "1661",
+   "1662",
+   "1663",
+   "1664",
+   "1665",
+   "1666",
+   "1667",
+   "1668",
+   "1669"
+  ],
+  "changes": [
+   {
+    "id": "542",
+    "field": "Cage ID",
+    "from": "CC-24051-5",
+    "to": "CC-24051-6"
+   },
+   {
+    "id": "544",
+    "field": "Cage ID",
+    "from": "CC-24051-5",
+    "to": "CC-24051-6"
+   },
+   {
+    "id": "545",
+    "field": "Cage ID",
+    "from": "CC-24051-5",
+    "to": "CC-24051-6"
+   },
+   {
+    "id": "1614",
+    "field": "Cage ID",
+    "from": "CC-28383-3",
+    "to": "CC-31199-1"
+   },
+   {
+    "id": "1637",
+    "field": "Cage ID",
+    "from": "CC-29226-2",
+    "to": "CC-29226-3"
+   }
+  ],
+  "held": [
+   "1631"
+  ],
+  "heldMissing": [],
+  "sheetDuplicates": [],
+  "ok": true,
+  "mode": "apply",
+  "blockAt": 53
+ },
+ "pdf": "VOS Report 110526 1007.pdf",
+ "csv": "VOS Report 110526 1007.csv",
+ "census": [
+  [
+   "537",
+   "CC-24052-6",
+   "2025-10-01",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "538",
+   "CC-24052-6",
+   "2025-10-01",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "539",
+   "CC-28939-2",
+   "2025-10-01",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "540",
+   "CC-24052-6",
+   "2025-10-01",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "542",
+   "CC-24051-6",
+   "2025-10-01",
+   "MALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "544",
+   "CC-24051-6",
+   "2025-10-01",
+   "MALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "545",
+   "CC-24051-6",
+   "2025-10-01",
+   "MALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "547",
+   "CC-24576-4",
+   "2025-10-25",
+   "FEMALE",
+   "FID: Kcnt1-YH; SST-cre (het)"
+  ],
+  [
+   "548",
+   "CC-24576-4",
+   "2025-10-25",
+   "FEMALE",
+   "FID: Kcnt1-YH; SST-cre (het)"
+  ],
+  [
+   "549",
+   "CC-24576-4",
+   "2025-10-25",
+   "FEMALE",
+   "FID: Kcnt1-YH; SST-cre (het)"
+  ],
+  [
+   "551",
+   "CC-24576-4",
+   "2025-10-25",
+   "FEMALE",
+   "FID: Kcnt1-YH; SST-cre (het)"
+  ],
+  [
+   "556",
+   "CC-24575-7",
+   "2025-10-25",
+   "MALE",
+   "Kcnt1-YH; SST-cre (het)"
+  ],
+  [
+   "571",
+   "CC-24575-7",
+   "2025-10-25",
+   "MALE",
+   "Kcnt1-YH; SST-cre (het)"
+  ],
+  [
+   "572",
+   "CC-24575-7",
+   "2025-10-25",
+   "MALE",
+   "Kcnt1-YH; SST-cre (het)"
+  ],
+  [
+   "573",
+   "CC-24575-7",
+   "2025-10-25",
+   "MALE",
+   "Kcnt1-YH; SST-cre (het)"
+  ],
+  [
+   "577",
+   "CC-23782-9",
+   "2025-09-14",
+   "M",
+   "Kcnt1YH; SST-Cre"
+  ],
+  [
+   "579",
+   "CC-28885-2",
+   "2026-03-14",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "583",
+   "CC-27240-6",
+   "2026-03-14",
+   "MALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "584",
+   "CC-27240-6",
+   "2026-03-14",
+   "MALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "594",
+   "CC-27734-4",
+   "2026-04-06",
+   "MALE",
+   "FID: Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "595",
+   "CC-27734-4",
+   "2026-04-06",
+   "MALE",
+   "FID: Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "597",
+   "CC-30646-2",
+   "2026-04-18",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "599",
+   "CC-28080-6",
+   "2026-04-18",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1600",
+   "CC-28884-2",
+   "2026-04-18",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1602",
+   "CC-28884-2",
+   "2026-04-18",
+   "MALE",
+   "Kcnt1-YH;SST"
+  ],
+  [
+   "1603",
+   "CC-28881-2",
+   "2026-04-18",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1606",
+   "CC-28433-3",
+   "2026-04-18",
+   "MALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1607",
+   "CC-28885-2",
+   "2026-03-14",
+   "MALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1608",
+   "CC-27240-6",
+   "2026-03-14",
+   "MALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1609",
+   "CC-29429-2",
+   "2026-03-14",
+   "MALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1610",
+   "CC-27733-8",
+   "2026-04-06",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1612",
+   "CC-27733-8",
+   "2026-04-06",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1614",
+   "CC-31199-1",
+   "2026-05-01",
+   "MALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1616",
+   "CC-30570-1",
+   "2026-05-01",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1617",
+   "CC-28384-5",
+   "2026-05-01",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1620",
+   "CC-28384-5",
+   "2026-05-01",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1621",
+   "CC-28576-3",
+   "2026-05-11",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1623",
+   "CC-28576-3",
+   "2026-05-11",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1625",
+   "CC-28577-3",
+   "2026-05-11",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1626",
+   "CC-28577-3",
+   "2026-05-11",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1627",
+   "CC-28577-3",
+   "2026-05-11",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1630",
+   "CC-28578-4",
+   "2026-05-11",
+   "MALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1631",
+   "CC-31016-1",
+   "2026-05-11",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1631",
+   "CC-31017-1",
+   "2026-05-11",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1632",
+   "CC-29225-2",
+   "2026-06-09",
+   "MALE",
+   "KCNT1;SST-Cre"
+  ],
+  [
+   "1633",
+   "CC-29225-2",
+   "2026-06-09",
+   "MALE",
+   "KCNT1;SST-Cre"
+  ],
+  [
+   "1634",
+   "CC-29225-2",
+   "2026-06-09",
+   "MALE",
+   "KCNT1;SST-Cre"
+  ],
+  [
+   "1635",
+   "CC-29225-2",
+   "2026-06-09",
+   "MALE",
+   "KCNT1;SST-Cre"
+  ],
+  [
+   "1637",
+   "CC-29226-3",
+   "2026-06-09",
+   "FEMALE",
+   "KCNT1;SST-Cre"
+  ],
+  [
+   "1638",
+   "CC-29794-1",
+   "2026-07-08",
+   "MALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1639",
+   "CC-29794-1",
+   "2026-07-08",
+   "MALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1640",
+   "CC-29795-1",
+   "2026-07-08",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1641",
+   "CC-29795-1",
+   "2026-07-08",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1642",
+   "CC-29795-1",
+   "2026-07-08",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1643",
+   "CC-29795-1",
+   "2026-07-08",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1644",
+   "CC-29795-1",
+   "2026-07-08",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1645",
+   "CC-29830-3",
+   "2026-07-11",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1646",
+   "CC-29830-3",
+   "2026-07-11",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1647",
+   "CC-29830-3",
+   "2026-07-11",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1648",
+   "CC-29829-3",
+   "2026-07-11",
+   "MALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1649",
+   "CC-29829-3",
+   "2026-07-11",
+   "MALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1650",
+   "CC-29829-3",
+   "2026-07-11",
+   "MALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1651",
+   "CC-29829-3",
+   "2026-07-11",
+   "MALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1652",
+   "CC-30817-1",
+   "2026-09-09",
+   "MALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1653",
+   "CC-30817-1",
+   "2026-09-09",
+   "MALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1654",
+   "CC-30817-1",
+   "2026-09-09",
+   "MALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1655",
+   "CC-30817-1",
+   "2026-09-09",
+   "MALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1656",
+   "CC-30818-1",
+   "2026-09-09",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1657",
+   "CC-30818-1",
+   "2026-09-09",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1658",
+   "CC-30818-1",
+   "2026-09-09",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1659",
+   "CC-30819-1",
+   "2026-09-09",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1660",
+   "CC-30819-1",
+   "2026-09-09",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1661",
+   "CC-30819-1",
+   "2026-09-09",
+   "FEMALE",
+   "Kcnt1-YH; SST-cre"
+  ],
+  [
+   "1662",
+   "CC-30796-2",
+   "2026-09-08",
+   "MALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1663",
+   "CC-30796-2",
+   "2026-09-08",
+   "MALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1664",
+   "CC-30797-2",
+   "2026-09-08",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1665",
+   "CC-30797-2",
+   "2026-09-08",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1666",
+   "CC-30797-2",
+   "2026-09-08",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1667",
+   "CC-30798-2",
+   "2026-09-08",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1668",
+   "CC-30798-2",
+   "2026-09-08",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ],
+  [
+   "1669",
+   "CC-30798-2",
+   "2026-09-08",
+   "FEMALE",
+   "Kcnt1-YH;PV-Cre"
+  ]
+ ]
+}

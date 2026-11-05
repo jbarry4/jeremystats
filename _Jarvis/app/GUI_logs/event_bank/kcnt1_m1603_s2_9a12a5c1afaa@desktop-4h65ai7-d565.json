@@ -1,10 +1,10 @@
 {
   "_at": {
-    "added": "2026-11-03T20:54:28.578068+00:00",
+    "added": "2026-11-03T19:54:10.172971+00:00",
     "by_label": "2026-11-03T20:54:28.578068+00:00",
-    "curation_label": "2026-11-03T20:54:28.578068+00:00",
+    "curation_label": "2026-11-04T22:13:00.000000+00:00",
     "duration_s": "2026-11-03T20:54:28.578068+00:00",
-    "events": "2026-11-03T20:54:28.578068+00:00",
+    "events": "2026-11-04T22:13:00.000000+00:00",
     "gid": "2026-11-03T20:54:28.578068+00:00",
     "id": "2026-11-03T20:54:28.578068+00:00",
     "label_names": "2026-11-03T20:54:28.578068+00:00",
@@ -21,17 +21,21 @@
     "session_loose_key": "2026-11-03T20:54:28.578068+00:00",
     "session_path": "2026-11-03T20:54:28.578068+00:00",
     "source": "2026-11-03T20:54:28.578068+00:00",
-    "specified": "2026-11-03T20:54:28.578068+00:00",
+    "specified": "2026-11-04T22:13:00.000000+00:00",
     "type": "2026-11-03T20:54:28.578068+00:00",
     "type_name": "2026-11-03T20:54:28.578068+00:00",
     "units": "2026-11-03T20:54:28.578068+00:00",
-    "version": "2026-11-03T20:54:28.578068+00:00"
+    "version": "2026-11-05T15:08:32.769338+00:00"
   },
   "_keys": {
     "versions": {
       "3ceb2c1d00ef": [
         "set",
-        "2026-11-03T20:54:28.578068+00:00"
+        "2026-11-03T20:59:31.117247+00:00"
+      ],
+      "b14bece5b1e7": [
+        "set",
+        "2026-11-05T15:09:13.578995+00:00"
       ],
       "ea8a8f62c2c1": [
         "set",
@@ -40,2755 +44,3200 @@
     }
   },
   "_shard": {
-    "at": "2026-11-03T20:54:31.275227+00:00",
+    "at": "2026-11-05T15:09:13.578995+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": {
-    "at": "2026-11-03T15:54:28-05:00",
+    "at": "2026-11-03T14:54:10-05:00",
     "by": "Rain Younger",
-    "machine": "DESKTOP-4H65AI7"
+    "machine": "BarryLab"
   },
   "by_label": {
     "unspecified": 445
   },
-  "curation_label": null,
+  "curation_label": "*",
   "duration_s": 960.4096,
   "events": [
     {
-      "amplitude": 1110.6027,
       "channel": 51,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 6.820028
     },
     {
-      "amplitude": 701.0498,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 9.081037
     },
     {
-      "amplitude": 1204.7457,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 9.641039
     },
     {
-      "amplitude": 716.622,
       "channel": 48,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "doppler",
       "start": 13.066053
     },
     {
-      "amplitude": 960.2301,
       "channel": 16,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 13.708056
     },
     {
-      "amplitude": 1110.2855,
       "channel": 51,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 25.099102
     },
     {
-      "amplitude": 820.7901,
       "channel": 54,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 25.527104
     },
     {
-      "amplitude": 1698.8888,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 33.126135
     },
     {
-      "amplitude": 1740.2569,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 33.467137,
       "start": 33.467137
     },
     {
-      "amplitude": 1004.9429,
       "channel": 13,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 33.533137
     },
     {
-      "amplitude": 1384.3849,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 33.569137
     },
     {
-      "amplitude": 1185.133,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 34.960143
     },
     {
-      "amplitude": 791.2795,
       "channel": 55,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 35.689146
     },
     {
-      "amplitude": 1018.2085,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 35.808146
     },
     {
-      "amplitude": 991.515,
       "channel": 20,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "doppler",
       "start": 35.836146
     },
     {
-      "amplitude": 1061.0966,
       "channel": 17,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 35.860146
     },
     {
-      "amplitude": 745.0186,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 39.561161
     },
     {
-      "amplitude": 1314.7034,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 39.764162
     },
     {
-      "amplitude": 1285.7975,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 39.970163
     },
     {
-      "amplitude": 817.1454,
       "channel": 55,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 40.210164
     },
     {
-      "amplitude": 803.3277,
       "channel": 12,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 40.466165
     },
     {
-      "amplitude": 1335.9713,
       "channel": 48,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "both",
       "pair_t": 40.514165,
       "start": 40.513165
     },
     {
-      "amplitude": 1337.049,
       "channel": 18,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 40.543165
     },
     {
-      "amplitude": 2757.5078,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 42.832675,
       "start": 42.832175
     },
     {
-      "amplitude": 1903.5481,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 48.334197
     },
     {
-      "amplitude": 826.7255,
       "channel": 54,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 56.034229
     },
     {
-      "amplitude": 1287.8145,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 58.937241
     },
     {
-      "amplitude": 1607.3156,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 59.085241
     },
     {
-      "amplitude": 1909.6944,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 59.380242
     },
     {
-      "amplitude": 875.9883,
       "channel": 13,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 59.440243
     },
     {
-      "amplitude": 1252.4463,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 59.630243
     },
     {
-      "amplitude": 2390.3085,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 59.811244,
       "start": 59.810244
     },
     {
-      "amplitude": 1084.9531,
       "channel": 16,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 63.77926
     },
     {
-      "amplitude": 684.5089,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 63.80626
     },
     {
-      "amplitude": 945.1055,
       "channel": 16,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 63.886261
     },
     {
-      "amplitude": 849.564,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 63.916761
     },
     {
-      "amplitude": 1395.194,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 66.481271
     },
     {
-      "amplitude": 833.2267,
       "channel": 56,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 66.634272
     },
     {
-      "amplitude": 1472.7553,
       "channel": 50,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 66.680272
     },
     {
-      "amplitude": 677.9519,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 67.035274
     },
     {
-      "amplitude": 1385.8218,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 69.760285
     },
     {
-      "amplitude": 1482.5891,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 70.618288
     },
     {
-      "amplitude": 1398.3187,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 74.047302
     },
     {
-      "amplitude": 1245.8929,
       "channel": 50,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 76.489312
     },
     {
-      "amplitude": 1711.9966,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 81.796334
     },
     {
-      "amplitude": 1519.7823,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 82.008335
     },
     {
-      "amplitude": 1200.534,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 82.133335
     },
     {
-      "amplitude": 792.056,
       "channel": 48,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "doppler",
       "start": 84.160343
     },
     {
-      "amplitude": 1317.8258,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 84.618345
     },
     {
-      "amplitude": 877.582,
       "channel": 53,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 85.023347
     },
     {
-      "amplitude": 806.6309,
       "channel": 54,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 87.416357
     },
     {
-      "amplitude": 1162.5861,
       "channel": 18,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 87.513357
     },
     {
-      "amplitude": 686.9719,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 87.764358
     },
     {
-      "amplitude": 773.4194,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 90.69837
     },
     {
-      "amplitude": 1282.6067,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 95.217389
     },
     {
-      "amplitude": 692.6956,
       "channel": 6,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 95.271389
     },
     {
-      "amplitude": 1341.1017,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "both",
       "pair_t": 95.47339,
       "start": 95.47339
     },
     {
-      "amplitude": 2957.9649,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 103.090921,
       "start": 103.089421
     },
     {
-      "amplitude": 876.6154,
       "channel": 56,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 109.355446
     },
     {
-      "amplitude": 2771.0432,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 109.380946,
       "start": 109.382446
     },
     {
-      "amplitude": 977.8798,
       "channel": 10,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 117.379479
     },
     {
-      "amplitude": 1313.5477,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 117.917981,
       "start": 117.918481
     },
     {
-      "amplitude": 661.3998,
       "channel": 9,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 123.527504
     },
     {
-      "amplitude": 678.4678,
       "channel": 6,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 123.731505
     },
     {
-      "amplitude": 629.745,
       "channel": 48,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "doppler",
       "start": 124.490508
     },
     {
-      "amplitude": 1163.3832,
       "channel": 18,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 124.512508
     },
     {
-      "amplitude": 1115.7935,
       "channel": 51,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 125.00251
     },
     {
-      "amplitude": 696.7135,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 127.52052
     },
     {
-      "amplitude": 1469.1252,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 129.88753
     },
     {
-      "amplitude": 852.1664,
       "channel": 58,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 131.898538
     },
     {
-      "amplitude": 1686.6307,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 132.512541,
       "start": 132.510541
     },
     {
-      "amplitude": 1892.5895,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 132.921543
     },
     {
-      "amplitude": 2956.7753,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 133.102043,
       "start": 133.101543
     },
     {
-      "amplitude": 811.2352,
       "channel": 54,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 133.289544
     },
     {
-      "amplitude": 1321.7791,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 142.567582
     },
     {
-      "amplitude": 2032.1618,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 142.746583
     },
     {
-      "amplitude": 2093.6447,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "both",
       "pair_t": 142.747083,
       "start": 142.747583
     },
     {
-      "amplitude": 1352.8795,
       "channel": 48,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 142.909583
     },
     {
-      "amplitude": 651.3966,
       "channel": 2,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 142.996584
     },
     {
-      "amplitude": 942.944,
       "channel": 50,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "doppler",
       "start": 145.812595
     },
     {
-      "amplitude": 1322.0716,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 145.837595
     },
     {
-      "amplitude": 940.1065,
       "channel": 16,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 146.9316
     },
     {
-      "amplitude": 1013.8228,
       "channel": 19,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 147.0186
     },
     {
-      "amplitude": 851.64,
       "channel": 50,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "doppler",
       "start": 149.954112
     },
     {
-      "amplitude": 1080.5096,
       "channel": 16,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 150.160613
     },
     {
-      "amplitude": 927.211,
       "channel": 18,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 153.979628
     },
     {
-      "amplitude": 1392.2153,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 156.528639
     },
     {
-      "amplitude": 941.4966,
       "channel": 16,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 158.530647
     },
     {
-      "amplitude": 956.8246,
       "channel": 16,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 158.656648
     },
     {
-      "amplitude": 771.75,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 158.731648
     },
     {
-      "amplitude": 1130.1716,
       "channel": 6,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 159.135649
     },
     {
-      "amplitude": 1275.3618,
       "channel": 15,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 159.24165
     },
     {
-      "amplitude": 1628.3902,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 159.27065
     },
     {
-      "amplitude": 2079.2749,
       "channel": 50,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 159.430151,
       "start": 159.430651
     },
     {
-      "amplitude": 1187.8497,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 159.802652
     },
     {
-      "amplitude": 1292.1049,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "both",
       "pair_t": 160.130654,
       "start": 160.130654
     },
     {
-      "amplitude": 1176.1149,
       "channel": 16,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 160.206654
     },
     {
-      "amplitude": 1413.7445,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 160.270654
     },
     {
-      "amplitude": 2663.9373,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 165.641176,
       "start": 165.640676
     },
     {
-      "amplitude": 1627.6036,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 169.904193,
       "start": 169.902693
     },
     {
-      "amplitude": 988.7345,
       "channel": 17,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 170.134694
     },
     {
-      "amplitude": 837.3892,
       "channel": 57,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 170.186695
     },
     {
-      "amplitude": 1280.4056,
       "channel": 17,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 170.236695
     },
     {
-      "amplitude": 1974.4256,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 170.627696
     },
     {
-      "amplitude": 2127.612,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 171.022198,
       "start": 171.020698
     },
     {
-      "amplitude": 1261.563,
       "channel": 15,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 171.064698
     },
     {
-      "amplitude": 1950.0083,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 171.162699
     },
     {
-      "amplitude": 1986.9445,
       "channel": 51,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 171.5412,
       "start": 171.5397
     },
     {
-      "amplitude": 707.1125,
       "channel": 10,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 171.658701
     },
     {
-      "amplitude": 1991.9051,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 171.818701
     },
     {
-      "amplitude": 1346.7423,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 172.019702
     },
     {
-      "amplitude": 1487.3678,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 179.727734
     },
     {
-      "amplitude": 966.3311,
       "channel": 17,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 181.645741
     },
     {
-      "amplitude": 1768.1554,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 181.877742
     },
     {
-      "amplitude": 1332.9528,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 182.108743
     },
     {
-      "amplitude": 1101.0468,
       "channel": 19,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 182.455745
     },
     {
-      "amplitude": 1663.6584,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 182.546745
     },
     {
-      "amplitude": 1625.3898,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 182.712746,
       "start": 182.711746
     },
     {
-      "amplitude": 1539.3893,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 183.302748
     },
     {
-      "amplitude": 666.7501,
       "channel": 5,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 188.977771
     },
     {
-      "amplitude": 2068.3462,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 190.066776
     },
     {
-      "amplitude": 956.095,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 190.409777
     },
     {
-      "amplitude": 1305.4212,
       "channel": 18,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 190.493777
     },
     {
-      "amplitude": 994.5055,
       "channel": 17,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 190.594778
     },
     {
-      "amplitude": 1471.3656,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "both",
       "pair_t": 196.910804,
       "start": 196.911804
     },
     {
-      "amplitude": 1366.7734,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 206.433843
     },
     {
-      "amplitude": 1687.5127,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 207.472847,
       "start": 207.474847
     },
     {
-      "amplitude": 888.7659,
       "channel": 53,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 208.095849
     },
     {
-      "amplitude": 2234.5122,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 212.915369,
       "start": 212.916869
     },
     {
-      "amplitude": 1871.0905,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 213.06087
     },
     {
-      "amplitude": 2012.7992,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 216.209882
     },
     {
-      "amplitude": 1624.7828,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 216.930885
     },
     {
-      "amplitude": 982.8702,
       "channel": 15,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 219.583896
     },
     {
-      "amplitude": 806.8173,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 220.337899
     },
     {
-      "amplitude": 1273.9487,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "both",
       "pair_t": 220.360399,
       "start": 220.360899
     },
     {
-      "amplitude": 825.007,
       "channel": 54,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 220.4419
     },
     {
-      "amplitude": 1459.869,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 220.5629
     },
     {
-      "amplitude": 808.9596,
       "channel": 6,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 220.5949
     },
     {
-      "amplitude": 820.934,
       "channel": 54,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 220.788901
     },
     {
-      "amplitude": 1739.3513,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 220.958902
     },
     {
-      "amplitude": 1807.015,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 224.335916
     },
     {
-      "amplitude": 1593.8571,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 224.773917
     },
     {
-      "amplitude": 910.9546,
       "channel": 53,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 226.033923
     },
     {
-      "amplitude": 1708.0017,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 237.75997
     },
     {
-      "amplitude": 1204.6169,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 238.064972
     },
     {
-      "amplitude": 1197.7068,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 243.718995
     },
     {
-      "amplitude": 879.0179,
       "channel": 53,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 244.367997
     },
     {
-      "amplitude": 1096.751,
       "channel": 48,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 244.522498
     },
     {
-      "amplitude": 1001.08,
       "channel": 48,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 246.045504
     },
     {
-      "amplitude": 871.442,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 247.58251
     },
     {
-      "amplitude": 1141.2616,
       "channel": 18,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 247.653011
     },
     {
-      "amplitude": 1231.3397,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 249.183017
     },
     {
-      "amplitude": 1127.9137,
       "channel": 54,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 254.393038
     },
     {
-      "amplitude": 777.1669,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "both",
       "pair_t": 254.438538,
       "start": 254.428038
     },
     {
-      "amplitude": 1755.0822,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 255.825044
     },
     {
-      "amplitude": 1860.1073,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 257.420551,
       "start": 257.421051
     },
     {
-      "amplitude": 1201.281,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 260.434063
     },
     {
-      "amplitude": 713.5105,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 261.276066
     },
     {
-      "amplitude": 1868.3482,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 261.565068
     },
     {
-      "amplitude": 727.16,
       "channel": 18,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 263.533576
     },
     {
-      "amplitude": 1027.8805,
       "channel": 52,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 264.51608
     },
     {
-      "amplitude": 993.952,
       "channel": 18,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "both",
       "pair_t": 264.878081,
       "start": 264.862081
     },
     {
-      "amplitude": 806.1453,
       "channel": 12,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 264.990082
     },
     {
-      "amplitude": 1637.774,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 266.257087
     },
     {
-      "amplitude": 1393.7894,
       "channel": 40,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 266.432087
     },
     {
-      "amplitude": 3130.8987,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 266.470088,
       "start": 266.469088
     },
     {
-      "amplitude": 1003.4561,
       "channel": 14,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 266.518088
     },
     {
-      "amplitude": 1535.3131,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 266.723089
     },
     {
-      "amplitude": 1357.043,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 267.253091,
       "start": 267.254091
     },
     {
-      "amplitude": 1090.5328,
       "channel": 54,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 268.398095
     },
     {
-      "amplitude": 1262.9371,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 268.428096
     },
     {
-      "amplitude": 1236.0271,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 272.303111
     },
     {
-      "amplitude": 793.307,
       "channel": 5,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 273.765117
     },
     {
-      "amplitude": 1242.2721,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 274.46112
     },
     {
-      "amplitude": 696.0203,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 286.360169
     },
     {
-      "amplitude": 1695.8366,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 286.59767,
       "start": 286.59717
     },
     {
-      "amplitude": 815.284,
       "channel": 48,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 287.130172
     },
     {
-      "amplitude": 1344.258,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 288.559178
     },
     {
-      "amplitude": 1216.9286,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 288.720178
     },
     {
-      "amplitude": 1392.6546,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 291.820191
     },
     {
-      "amplitude": 1202.9854,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 293.621198
     },
     {
-      "amplitude": 993.217,
       "channel": 30,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "doppler",
       "start": 293.895199
     },
     {
-      "amplitude": 1356.4066,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 297.350714,
       "start": 297.349214
     },
     {
-      "amplitude": 1330.8528,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 299.780224
     },
     {
-      "amplitude": 2746.3327,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 301.782232,
       "start": 301.781232
     },
     {
-      "amplitude": 1299.6115,
       "channel": 50,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "both",
       "pair_t": 302.152233,
       "start": 302.153233
     },
     {
-      "amplitude": 796.7051,
       "channel": 56,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 302.300234
     },
     {
-      "amplitude": 1009.5366,
       "channel": 17,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 302.536235
     },
     {
-      "amplitude": 748.4745,
       "channel": 11,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 302.765236
     },
     {
-      "amplitude": 794.2617,
       "channel": 12,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 302.882236
     },
     {
-      "amplitude": 1741.9093,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 303.022237
     },
     {
-      "amplitude": 1704.0663,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 304.923245
     },
     {
-      "amplitude": 1195.8752,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 308.116258
     },
     {
-      "amplitude": 879.8295,
       "channel": 53,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 312.175274
     },
     {
-      "amplitude": 820.5948,
       "channel": 56,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 317.730297
     },
     {
-      "amplitude": 1600.277,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 317.775297
     },
     {
-      "amplitude": 1267.4757,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 325.734329
     },
     {
-      "amplitude": 1201.5515,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 331.395353
     },
     {
-      "amplitude": 1685.9712,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 336.293373,
       "start": 336.293373
     },
     {
-      "amplitude": 815.4262,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 336.388373
     },
     {
-      "amplitude": 998.9807,
       "channel": 18,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 336.436373
     },
     {
-      "amplitude": 1523.9675,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 339.246385
     },
     {
-      "amplitude": 1787.3081,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 339.364385
     },
     {
-      "amplitude": 824.9579,
       "channel": 54,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 339.453385
     },
     {
-      "amplitude": 1353.9468,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 339.594386
     },
     {
-      "amplitude": 2183.2716,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 339.712386
     },
     {
-      "amplitude": 2409.9277,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 339.819387,
       "start": 339.819387
     },
     {
-      "amplitude": 815.4069,
       "channel": 56,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 339.900387
     },
     {
-      "amplitude": 878.8037,
       "channel": 53,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 345.40241
     },
     {
-      "amplitude": 1426.2701,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 346.856416
     },
     {
-      "amplitude": 1460.252,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 347.442418
     },
     {
-      "amplitude": 2172.4746,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 348.526422,
       "start": 348.526422
     },
     {
-      "amplitude": 1408.3761,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 348.845424
     },
     {
-      "amplitude": 1400.2515,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 350.537431
     },
     {
-      "amplitude": 634.5879,
       "channel": 8,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 358.525463
     },
     {
-      "amplitude": 657.8534,
       "channel": 4,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 364.639488
     },
     {
-      "amplitude": 703.3533,
       "channel": 10,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 365.238491
     },
     {
-      "amplitude": 807.7242,
       "channel": 12,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 371.857518
     },
     {
-      "amplitude": 1511.4809,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 381.687558
     },
     {
-      "amplitude": 706.003,
       "channel": 10,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 394.678611
     },
     {
-      "amplitude": 847.0801,
       "channel": 13,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 396.111617
     },
     {
-      "amplitude": 708.2873,
       "channel": 10,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 396.80962
     },
     {
-      "amplitude": 1231.7509,
       "channel": 41,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 411.143678
     },
     {
-      "amplitude": 730.559,
       "channel": 6,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 416.204699
     },
     {
-      "amplitude": 717.7148,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 419.098711
     },
     {
-      "amplitude": 1416.1954,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 433.415769
     },
     {
-      "amplitude": 852.5392,
       "channel": 56,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 437.087784
     },
     {
-      "amplitude": 1602.1485,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 437.124284,
       "start": 437.123784
     },
     {
-      "amplitude": 1336.6817,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 443.250809
     },
     {
-      "amplitude": 1945.6386,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 453.491851
     },
     {
-      "amplitude": 1020.824,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 454.187854
     },
     {
-      "amplitude": 1340.0352,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 454.209854
     },
     {
-      "amplitude": 699.8023,
       "channel": 7,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 458.774872
     },
     {
-      "amplitude": 933.21,
       "channel": 40,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 462.008886
     },
     {
-      "amplitude": 1481.1952,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 468.01491
     },
     {
-      "amplitude": 2179.1805,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 470.135919
     },
     {
-      "amplitude": 984.5882,
       "channel": 17,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 470.178919
     },
     {
-      "amplitude": 3000.3517,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 470.243419,
       "start": 470.243919
     },
     {
-      "amplitude": 1216.939,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 474.075935
     },
     {
-      "amplitude": 2031.7066,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 475.944443,
       "start": 475.944943
     },
     {
-      "amplitude": 1653.2349,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 481.633966
     },
     {
-      "amplitude": 2533.2839,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 485.861483,
       "start": 485.860983
     },
     {
-      "amplitude": 948.2157,
       "channel": 55,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 486.352985
     },
     {
-      "amplitude": 1211.5707,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 489.175997
     },
     {
-      "amplitude": 737.8187,
       "channel": 11,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 496.035025
     },
     {
-      "amplitude": 970.9486,
       "channel": 17,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 499.417038
     },
     {
-      "amplitude": 783.2817,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 505.019061
     },
     {
-      "amplitude": 1382.4992,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 507.790072
     },
     {
-      "amplitude": 1597.1125,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 508.889077
     },
     {
-      "amplitude": 878.5776,
       "channel": 55,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 511.653088
     },
     {
-      "amplitude": 634.3108,
       "channel": 8,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 514.001098
     },
     {
-      "amplitude": 1441.4111,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 515.163103
     },
     {
-      "amplitude": 778.883,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 517.326611
     },
     {
-      "amplitude": 1210.6705,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 521.335128
     },
     {
-      "amplitude": 1710.9061,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 521.661129
     },
     {
-      "amplitude": 2887.4422,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 521.76263,
       "start": 521.76213
     },
     {
-      "amplitude": 677.9428,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 523.817138
     },
     {
-      "amplitude": 2401.3632,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 523.970639,
       "start": 523.970139
     },
     {
-      "amplitude": 1486.1766,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 527.003651,
       "start": 527.003151
     },
     {
-      "amplitude": 1789.9563,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 532.231172
     },
     {
-      "amplitude": 1523.8047,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 535.203184
     },
     {
-      "amplitude": 800.5188,
       "channel": 56,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 536.906191
     },
     {
-      "amplitude": 2680.0618,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 536.961192,
       "start": 536.959192
     },
     {
-      "amplitude": 1423.3805,
       "channel": 50,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 540.732207
     },
     {
-      "amplitude": 826.324,
       "channel": 48,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 547.899236
     },
     {
-      "amplitude": 2120.5121,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 549.112241,
       "start": 549.113241
     },
     {
-      "amplitude": 1674.7892,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 550.455247
     },
     {
-      "amplitude": 1562.6978,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "both",
       "pair_t": 550.678748,
       "start": 550.679248
     },
     {
-      "amplitude": 1725.2175,
       "channel": 17,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 550.823248
     },
     {
-      "amplitude": 1813.3515,
       "channel": 30,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 550.900248
     },
     {
-      "amplitude": 1612.3915,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 553.567259
     },
     {
-      "amplitude": 874.8141,
       "channel": 57,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 553.891261
     },
     {
-      "amplitude": 1321.4382,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 556.28627
     },
     {
-      "amplitude": 1348.9638,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 559.286283
     },
     {
-      "amplitude": 868.013,
       "channel": 20,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 562.612296
     },
     {
-      "amplitude": 1415.0411,
       "channel": 17,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 562.948298
     },
     {
-      "amplitude": 1292.1319,
       "channel": 53,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 562.982298
     },
     {
-      "amplitude": 1216.6703,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 564.894306
     },
     {
-      "amplitude": 1370.2366,
       "channel": 48,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 568.886322,
       "start": 568.888322
     },
     {
-      "amplitude": 828.001,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 569.550825
     },
     {
-      "amplitude": 2307.0254,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 577.295856,
       "start": 577.296356
     },
     {
-      "amplitude": 1218.1835,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 578.678362
     },
     {
-      "amplitude": 1531.4588,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 586.403393
     },
     {
-      "amplitude": 807.3186,
       "channel": 57,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 586.751395
     },
     {
-      "amplitude": 2424.6696,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 586.780895,
       "start": 586.781395
     },
     {
-      "amplitude": 847.5588,
       "channel": 54,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 586.862395
     },
     {
-      "amplitude": 2113.9371,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 587.033396
     },
     {
-      "amplitude": 831.3592,
       "channel": 13,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 587.097396
     },
     {
-      "amplitude": 929.6786,
       "channel": 55,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 587.302397
     },
     {
-      "amplitude": 1642.8485,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 587.345397
     },
     {
-      "amplitude": 672.1117,
       "channel": 3,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 587.858399
     },
     {
-      "amplitude": 1296.5655,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 587.894399
     },
     {
-      "amplitude": 1056.7417,
       "channel": 44,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 587.9214
     },
     {
-      "amplitude": 2020.83,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 590.086408,
       "start": 590.087408
     },
     {
-      "amplitude": 1496.1335,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 591.017412
     },
     {
-      "amplitude": 1038.878,
       "channel": 17,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 591.333413
     },
     {
-      "amplitude": 696.94,
       "channel": 5,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 591.386414
     },
     {
-      "amplitude": 1099.2178,
       "channel": 15,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 591.436414
     },
     {
-      "amplitude": 1436.3609,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 592.723419
     },
     {
-      "amplitude": 1305.5439,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 593.01142
     },
     {
-      "amplitude": 640.0421,
       "channel": 8,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 594.945428
     },
     {
-      "amplitude": 1317.2107,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 595.33043
     },
     {
-      "amplitude": 692.2255,
       "channel": 7,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 598.168441
     },
     {
-      "amplitude": 1256.3125,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 600.041449
     },
     {
-      "amplitude": 662.1484,
       "channel": 9,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 601.136453
     },
     {
-      "amplitude": 832.2177,
       "channel": 13,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 601.249454
     },
     {
-      "amplitude": 856.3835,
       "channel": 12,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 601.920457
     },
     {
-      "amplitude": 789.207,
       "channel": 12,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 603.875465
     },
     {
-      "amplitude": 733.4149,
       "channel": 11,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 609.742489
     },
     {
-      "amplitude": 630.6636,
       "channel": 8,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 610.595492
     },
     {
-      "amplitude": 653.9568,
       "channel": 7,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "both",
       "pair_t": 610.746493,
       "start": 610.746493
     },
     {
-      "amplitude": 788.8874,
       "channel": 12,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 613.947506
     },
     {
-      "amplitude": 1163.3511,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 617.38752
     },
     {
-      "amplitude": 651.5067,
       "channel": 2,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 618.047522
     },
     {
-      "amplitude": 922.8426,
       "channel": 15,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 621.752538
     },
     {
-      "amplitude": 712.8913,
       "channel": 10,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 623.085543
     },
     {
-      "amplitude": 764.8118,
       "channel": 11,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 625.681554
     },
     {
-      "amplitude": 748.3948,
       "channel": 11,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 625.839554
     },
     {
-      "amplitude": 678.6773,
       "channel": 8,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 626.760558
     },
     {
-      "amplitude": 710.8021,
       "channel": 2,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 629.051567
     },
     {
-      "amplitude": 1488.9255,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 629.74757
     },
     {
-      "amplitude": 709.4092,
       "channel": 3,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 630.256572
     },
     {
-      "amplitude": 895.1095,
       "channel": 53,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 634.197588
     },
     {
-      "amplitude": 675.9916,
       "channel": 9,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 634.57559
     },
     {
-      "amplitude": 726.1206,
       "channel": 6,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 638.789607
     },
     {
-      "amplitude": 696.5489,
       "channel": 10,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 640.262613
     },
     {
-      "amplitude": 642.3868,
       "channel": 2,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 644.238629
     },
     {
-      "amplitude": 652.3815,
       "channel": 3,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 648.431646
     },
     {
-      "amplitude": 1365.7588,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 654.06867
     },
     {
-      "amplitude": 1172.3668,
       "channel": 50,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 654.835673
     },
     {
-      "amplitude": 655.5757,
       "channel": 1,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 654.911673
     },
     {
-      "amplitude": 1520.2292,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 658.589688
     },
     {
-      "amplitude": 1204.3162,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 659.513692
     },
     {
-      "amplitude": 659.6902,
       "channel": 9,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 665.053714
     },
     {
-      "amplitude": 635.6281,
       "channel": 8,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 665.872718
     },
     {
-      "amplitude": 634.8173,
       "channel": 8,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 667.737725
     },
     {
-      "amplitude": 711.5395,
       "channel": 6,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 667.911726
     },
     {
-      "amplitude": 1212.4479,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 671.132739
     },
     {
-      "amplitude": 1115.5695,
       "channel": 51,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 676.678762
     },
     {
-      "amplitude": 1374.7394,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 683.794791
     },
     {
-      "amplitude": 1237.8699,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 684.982796
     },
     {
-      "amplitude": 1195.0807,
       "channel": 48,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 688.60481
     },
     {
-      "amplitude": 1241.8101,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 688.711811
     },
     {
-      "amplitude": 629.9227,
       "channel": 1,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 693.757831
     },
     {
-      "amplitude": 672.9376,
       "channel": 2,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 694.935836
     },
     {
-      "amplitude": 1169.1044,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 695.82484
     },
     {
-      "amplitude": 1679.8448,
       "channel": 50,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 695.94184
     },
     {
-      "amplitude": 639.1717,
       "channel": 2,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 700.247858
     },
     {
-      "amplitude": 664.3456,
       "channel": 1,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 710.702901
     },
     {
-      "amplitude": 1206.7876,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 717.743929
     },
     {
-      "amplitude": 1233.8775,
       "channel": 48,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 722.321948
     },
     {
-      "amplitude": 1343.1761,
       "channel": 48,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 725.31796
     },
     {
-      "amplitude": 1352.0126,
       "channel": 50,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 727.373969
     },
     {
-      "amplitude": 1358.9834,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 730.08298
     },
     {
-      "amplitude": 663.3147,
       "channel": 9,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 739.506018
     },
     {
-      "amplitude": 1389.7497,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 742.816032
     },
     {
-      "amplitude": 1287.5775,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 745.283042
     },
     {
-      "amplitude": 666.3712,
       "channel": 9,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 752.784072
     },
     {
-      "amplitude": 785.383,
       "channel": 50,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "doppler",
       "start": 753.030073
     },
     {
-      "amplitude": 1207.9241,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 757.05609
     },
     {
-      "amplitude": 1212.4093,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 762.01411
     },
     {
-      "amplitude": 1583.5861,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 764.060118
     },
     {
-      "amplitude": 2086.2452,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 765.794125
     },
     {
-      "amplitude": 1508.2327,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 767.197131
     },
     {
-      "amplitude": 1378.5522,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 769.581141
     },
     {
-      "amplitude": 1212.8443,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 770.652145
     },
     {
-      "amplitude": 700.8222,
       "channel": 6,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 775.962223
     },
     {
-      "amplitude": 1222.3117,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 775.988224
     },
     {
-      "amplitude": 1491.1801,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 776.947227
     },
     {
-      "amplitude": 1601.9819,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 784.98076,
       "start": 784.97426
     },
     {
-      "amplitude": 932.848,
       "channel": 53,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "both",
       "pair_t": 788.882276,
       "start": 788.875276
     },
     {
-      "amplitude": 697.8217,
       "channel": 3,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 792.29929
     },
     {
-      "amplitude": 1253.8553,
       "channel": 48,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 794.6033
     },
     {
-      "amplitude": 1103.299,
       "channel": 51,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 802.533332
     },
     {
-      "amplitude": 1609.5309,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 802.860833,
       "start": 802.854333
     },
     {
-      "amplitude": 1518.006,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 808.737357
     },
     {
-      "amplitude": 1256.2435,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 809.33736
     },
     {
-      "amplitude": 2062.9742,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 809.549361
     },
     {
-      "amplitude": 801.502,
       "channel": 55,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 809.757361
     },
     {
-      "amplitude": 2903.2566,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 809.803362,
       "start": 809.797362
     },
     {
-      "amplitude": 726.329,
       "channel": 16,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "doppler",
       "start": 813.660377
     },
     {
-      "amplitude": 1338.4883,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 819.972403
     },
     {
-      "amplitude": 1202.2293,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 825.351425
     },
     {
-      "amplitude": 2277.0965,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 825.868427,
       "start": 825.864427
     },
     {
-      "amplitude": 661.2419,
       "channel": 2,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 854.444544
     },
     {
-      "amplitude": 1192.2689,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 859.168563
     },
     {
-      "amplitude": 1481.1955,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 859.676565
     },
     {
-      "amplitude": 2033.136,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 859.825566
     },
     {
-      "amplitude": 701.7125,
       "channel": 5,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 868.2676
     },
     {
-      "amplitude": 985.0872,
       "channel": 55,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 872.035616
     },
     {
-      "amplitude": 1402.6351,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 872.267117,
       "start": 872.267617
     },
     {
-      "amplitude": 1201.7561,
       "channel": 48,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 874.875627
     },
     {
-      "amplitude": 1217.6391,
       "channel": 18,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 875.024628
     },
     {
-      "amplitude": 1681.3152,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 875.400129,
       "start": 875.400629
     },
     {
-      "amplitude": 2389.9225,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 883.111661
     },
     {
-      "amplitude": 1893.7015,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 883.237661
     },
     {
-      "amplitude": 1585.3587,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 885.29867
     },
     {
-      "amplitude": 795.1505,
       "channel": 55,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 885.37667
     },
     {
-      "amplitude": 918.615,
       "channel": 48,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "doppler",
       "start": 885.45067
     },
     {
-      "amplitude": 1445.0431,
       "channel": 48,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 888.732684
     },
     {
-      "amplitude": 1638.5393,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 888.942185,
       "start": 888.941685
     },
     {
-      "amplitude": 687.3919,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 889.228686
     },
     {
-      "amplitude": 744.408,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 900.717733
     },
     {
-      "amplitude": 3141.9155,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 902.56174,
       "start": 902.56274
     },
     {
-      "amplitude": 802.2719,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 905.197751
     },
     {
-      "amplitude": 823.726,
       "channel": 55,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 905.341752
     },
     {
-      "amplitude": 1565.272,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 908.511764
     },
     {
-      "amplitude": 943.686,
       "channel": 20,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "doppler",
       "start": 908.924766
     },
     {
-      "amplitude": 1147.3701,
       "channel": 53,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 912.680781
     },
     {
-      "amplitude": 2260.6272,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 912.705282,
       "start": 912.706782
     },
     {
-      "amplitude": 1670.9295,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 912.896782
     },
     {
-      "amplitude": 1792.975,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 913.288784
     },
     {
-      "amplitude": 720.3367,
       "channel": 6,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 921.259816
     },
     {
-      "amplitude": 996.7602,
       "channel": 16,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 921.295817
     },
     {
-      "amplitude": 1186.2588,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 921.651318,
       "start": 921.651818
     },
     {
-      "amplitude": 772.4292,
       "channel": 5,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 924.916831
     },
     {
-      "amplitude": 1406.2685,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 925.028832
     },
     {
-      "amplitude": 2635.5085,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 925.219833
     },
     {
-      "amplitude": 2874.9968,
       "channel": 51,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 925.333833,
       "start": 925.335833
     },
     {
-      "amplitude": 951.3895,
       "channel": 56,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 925.403833
     },
     {
-      "amplitude": 1335.1879,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 927.198841
     },
     {
-      "amplitude": 778.9413,
       "channel": 5,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 927.279841
     },
     {
-      "amplitude": 1239.8276,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 931.029856
     },
     {
-      "amplitude": 1489.7165,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 935.234874
     },
     {
-      "amplitude": 2359.9848,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "incisor",
       "start": 935.393874
     },
     {
-      "amplitude": 2877.9314,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 935.498375,
       "start": 935.498875
     },
     {
-      "amplitude": 2927.7764,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 935.902876,
       "start": 935.903876
     },
     {
-      "amplitude": 1020.4743,
       "channel": 19,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 938.928889
     },
     {
-      "amplitude": 955.6211,
       "channel": 6,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "both",
       "pair_t": 938.960889,
       "start": 938.956889
     },
     {
-      "amplitude": 1343.4945,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 942.864905
     },
     {
-      "amplitude": 843.3136,
       "channel": 54,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 942.968905
     },
     {
-      "amplitude": 1758.0213,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 944.491411,
       "start": 944.491911
     },
     {
-      "amplitude": 792.2496,
       "channel": 56,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 947.563924
     },
     {
-      "amplitude": 1227.2741,
       "channel": 48,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 947.903925
     },
     {
-      "amplitude": 1364.5949,
       "channel": 49,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 950.795937,
       "start": 950.796937
     },
     {
-      "amplitude": 1396.5619,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 951.016938
     },
     {
-      "amplitude": 1401.0689,
       "channel": 48,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 951.222939
     },
     {
-      "amplitude": 1308.7172,
       "channel": 16,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 951.295939
     },
     {
-      "amplitude": 1255.3187,
       "channel": 53,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 951.324939
     },
     {
-      "amplitude": 1556.5978,
       "channel": 49,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 953.669949
     },
     {
-      "amplitude": 1235.5556,
       "channel": 48,
+      "label": "Flag \u00b7 likely spike",
+      "label_id": "likely_spike",
       "origin": "incisor",
       "start": 954.496952
     },
     {
-      "amplitude": 1416.0285,
       "channel": 49,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 956.678961
     },
     {
-      "amplitude": 1984.0799,
       "channel": 48,
+      "label": "Spike",
+      "label_id": "spike",
       "origin": "both",
       "pair_t": 956.880962,
       "start": 956.881962
     },
     {
-      "amplitude": 898.6241,
       "channel": 14,
+      "label": "Flag \u00b7 likely garbage",
+      "label_id": "likely_garbage",
       "origin": "incisor",
       "start": 959.091971
     },
     {
-      "amplitude": 1730.7648,
       "channel": 48,
+      "label": "unspecified",
+      "label_id": "unspecified",
       "origin": "incisor",
       "start": 959.490973
     }
@@ -2839,11 +3288,11 @@
     "pipeline": "The Confluence: Junction (Incisor + Doppler, 20 ms)",
     "run_id": null
   },
-  "specified": false,
+  "specified": true,
   "type": "pooled",
   "type_name": "Pooled spike",
   "units": "seconds relative to the start of the recording",
-  "version": 0,
+  "version": 1,
   "versions": [
     {
       "at": "2026-11-03T14:54:10-05:00",
@@ -2866,1800 +3315,1813 @@
       "by_label": {
         "unspecified": 445
       },
-      "changed": 0,
-      "from_id": null,
-      "from_v": null,
-      "gained": 0,
       "id": "3ceb2c1d00ef",
       "imported": true,
-      "lost": 0,
       "machine": "DESKTOP-4H65AI7",
-      "moves": {},
       "n": 445,
       "note": "Imported from The Confluence: Junction (Incisor + Doppler, 20 ms). 445 candidates, none decided yet.",
+      "snap_elsewhere": true,
+      "v": 0
+    },
+    {
+      "at": "2026-11-04T17:13:00-05:00",
+      "by": "Prospector (AI)",
+      "by_label": {
+        "likely_garbage": 189,
+        "likely_spike": 109,
+        "spike": 146,
+        "unspecified": 1
+      },
+      "from_id": "ea8a8f62c2c1",
+      "from_v": 0,
+      "id": "b14bece5b1e7",
+      "machine": "BarryLab",
+      "n": 445,
+      "note": "Prospector sweep, run pr20261104-071200, Spike at 0.9790 (above 99% of the training recordings' garbage): 146 Spike, 109 Flag \u00b7 likely spike, 189 Flag \u00b7 likely garbage, 1 could not be read. Calls by a model -- the AI's first calls, banked for the record -- not a person's pass.",
       "snap": [
         [
           6.820028,
-          null
+          "likely_garbage"
         ],
         [
           9.081037,
-          null
+          "likely_garbage"
         ],
         [
           9.641039,
-          null
+          "spike"
         ],
         [
           13.066053,
-          null
+          "spike"
         ],
         [
           13.708056,
-          null
+          "likely_spike"
         ],
         [
           25.099102,
-          null
+          "spike"
         ],
         [
           25.527104,
-          null
+          "likely_garbage"
         ],
         [
           33.126135,
-          null
+          "spike"
         ],
         [
           33.467137,
-          null
+          "spike"
         ],
         [
           33.533137,
-          null
+          "likely_garbage"
         ],
         [
           33.569137,
-          null
+          "likely_garbage"
         ],
         [
           34.960143,
-          null
+          "likely_spike"
         ],
         [
           35.689146,
-          null
+          "likely_garbage"
         ],
         [
           35.808146,
-          null
+          "likely_garbage"
         ],
         [
           35.836146,
-          null
+          "likely_garbage"
         ],
         [
           35.860146,
-          null
+          "likely_garbage"
         ],
         [
           39.561161,
-          null
+          "likely_garbage"
         ],
         [
           39.764162,
-          null
+          "likely_spike"
         ],
         [
           39.970163,
-          null
+          "likely_spike"
         ],
         [
           40.210164,
-          null
+          "likely_garbage"
         ],
         [
           40.466165,
-          null
+          "likely_garbage"
         ],
         [
           40.513165,
-          null
+          "likely_garbage"
         ],
         [
           40.543165,
-          null
+          "likely_garbage"
         ],
         [
           42.832175,
-          null
+          "spike"
         ],
         [
           48.334197,
-          null
+          "likely_spike"
         ],
         [
           56.034229,
-          null
+          "likely_garbage"
         ],
         [
           58.937241,
-          null
+          "spike"
         ],
         [
           59.085241,
-          null
+          "spike"
         ],
         [
           59.380242,
-          null
+          "spike"
         ],
         [
           59.440243,
-          null
+          "likely_garbage"
         ],
         [
           59.630243,
-          null
+          "likely_spike"
         ],
         [
           59.810244,
-          null
+          "spike"
         ],
         [
           63.77926,
-          null
+          "likely_garbage"
         ],
         [
           63.80626,
-          null
+          "likely_garbage"
         ],
         [
           63.886261,
-          null
+          "likely_garbage"
         ],
         [
           63.916761,
-          null
+          "likely_spike"
         ],
         [
           66.481271,
-          null
+          "spike"
         ],
         [
           66.634272,
-          null
+          "likely_garbage"
         ],
         [
           66.680272,
-          null
+          "spike"
         ],
         [
           67.035274,
-          null
+          "likely_garbage"
         ],
         [
           69.760285,
-          null
+          "spike"
         ],
         [
           70.618288,
-          null
+          "spike"
         ],
         [
           74.047302,
-          null
+          "spike"
         ],
         [
           76.489312,
-          null
+          "likely_garbage"
         ],
         [
           81.796334,
-          null
+          "spike"
         ],
         [
           82.008335,
-          null
+          "likely_spike"
         ],
         [
           82.133335,
-          null
+          "likely_garbage"
         ],
         [
           84.160343,
-          null
+          "spike"
         ],
         [
           84.618345,
-          null
+          "likely_spike"
         ],
         [
           85.023347,
-          null
+          "likely_spike"
         ],
         [
           87.416357,
-          null
+          "likely_garbage"
         ],
         [
           87.513357,
-          null
+          "likely_garbage"
         ],
         [
           87.764358,
-          null
+          "likely_garbage"
         ],
         [
           90.69837,
-          null
+          "likely_garbage"
         ],
         [
           95.217389,
-          null
+          "likely_garbage"
         ],
         [
           95.271389,
-          null
+          "likely_garbage"
         ],
         [
           95.47339,
-          null
+          "likely_spike"
         ],
         [
           103.089421,
-          null
+          "spike"
         ],
         [
           109.355446,
-          null
+          "likely_garbage"
         ],
         [
           109.382446,
-          null
+          "spike"
         ],
         [
           117.379479,
-          null
+          "likely_spike"
         ],
         [
           117.918481,
-          null
+          "spike"
         ],
         [
           123.527504,
-          null
+          "likely_garbage"
         ],
         [
           123.731505,
-          null
+          "likely_garbage"
         ],
         [
           124.490508,
-          null
+          "likely_garbage"
         ],
         [
           124.512508,
-          null
+          "likely_garbage"
         ],
         [
           125.00251,
-          null
+          "likely_garbage"
         ],
         [
           127.52052,
-          null
+          "likely_garbage"
         ],
         [
           129.88753,
-          null
+          "spike"
         ],
         [
           131.898538,
-          null
+          "likely_garbage"
         ],
         [
           132.510541,
-          null
+          "spike"
         ],
         [
           132.921543,
-          null
+          "spike"
         ],
         [
           133.101543,
-          null
+          "spike"
         ],
         [
           133.289544,
-          null
+          "likely_garbage"
         ],
         [
           142.567582,
-          null
+          "likely_spike"
         ],
         [
           142.746583,
-          null
+          "likely_spike"
         ],
         [
           142.747583,
-          null
+          "likely_spike"
         ],
         [
           142.909583,
-          null
+          "likely_garbage"
         ],
         [
           142.996584,
-          null
+          "likely_garbage"
         ],
         [
           145.812595,
-          null
+          "likely_garbage"
         ],
         [
           145.837595,
-          null
+          "likely_spike"
         ],
         [
           146.9316,
-          null
+          "likely_garbage"
         ],
         [
           147.0186,
-          null
+          "likely_garbage"
         ],
         [
           149.954112,
-          null
+          "likely_garbage"
         ],
         [
           150.160613,
-          null
+          "likely_garbage"
         ],
         [
           153.979628,
-          null
+          "likely_spike"
         ],
         [
           156.528639,
-          null
+          "spike"
         ],
         [
           158.530647,
-          null
+          "likely_garbage"
         ],
         [
           158.656648,
-          null
+          "likely_garbage"
         ],
         [
           158.731648,
-          null
+          "likely_spike"
         ],
         [
           159.135649,
-          null
+          "likely_spike"
         ],
         [
           159.24165,
-          null
+          "likely_garbage"
         ],
         [
           159.27065,
-          null
+          "likely_spike"
         ],
         [
           159.430651,
-          null
+          "spike"
         ],
         [
           159.802652,
-          null
+          "likely_garbage"
         ],
         [
           160.130654,
-          null
+          "likely_spike"
         ],
         [
           160.206654,
-          null
+          "likely_garbage"
         ],
         [
           160.270654,
-          null
+          "spike"
         ],
         [
           165.640676,
-          null
+          "spike"
         ],
         [
           169.902693,
-          null
+          "spike"
         ],
         [
           170.134694,
-          null
+          "likely_garbage"
         ],
         [
           170.186695,
-          null
+          "likely_garbage"
         ],
         [
           170.236695,
-          null
+          "likely_garbage"
         ],
         [
           170.627696,
-          null
+          "likely_spike"
         ],
         [
           171.020698,
-          null
+          "spike"
         ],
         [
           171.064698,
-          null
+          "likely_garbage"
         ],
         [
           171.162699,
-          null
+          "likely_spike"
         ],
         [
           171.5397,
-          null
+          "spike"
         ],
         [
           171.658701,
-          null
+          "likely_garbage"
         ],
         [
           171.818701,
-          null
+          "spike"
         ],
         [
           172.019702,
-          null
+          "likely_spike"
         ],
         [
           179.727734,
-          null
+          "spike"
         ],
         [
           181.645741,
-          null
+          "likely_garbage"
         ],
         [
           181.877742,
-          null
+          "spike"
         ],
         [
           182.108743,
-          null
+          "likely_spike"
         ],
         [
           182.455745,
-          null
+          "likely_garbage"
         ],
         [
           182.546745,
-          null
+          "likely_spike"
         ],
         [
           182.711746,
-          null
+          "spike"
         ],
         [
           183.302748,
-          null
+          "likely_spike"
         ],
         [
           188.977771,
-          null
+          "likely_spike"
         ],
         [
           190.066776,
-          null
+          "spike"
         ],
         [
           190.409777,
-          null
+          "likely_spike"
         ],
         [
           190.493777,
-          null
+          "likely_garbage"
         ],
         [
           190.594778,
-          null
+          "likely_garbage"
         ],
         [
           196.911804,
-          null
+          "likely_spike"
         ],
         [
           206.433843,
-          null
+          "spike"
         ],
         [
           207.474847,
-          null
+          "spike"
         ],
         [
           208.095849,
-          null
+          "likely_spike"
         ],
         [
           212.916869,
-          null
+          "spike"
         ],
         [
           213.06087,
-          null
+          "spike"
         ],
         [
           216.209882,
-          null
+          "spike"
         ],
         [
           216.930885,
-          null
+          "spike"
         ],
         [
           219.583896,
-          null
+          "likely_garbage"
         ],
         [
           220.337899,
-          null
+          "likely_garbage"
         ],
         [
           220.360899,
-          null
+          "likely_spike"
         ],
         [
           220.4419,
-          null
+          "likely_garbage"
         ],
         [
           220.5629,
-          null
+          "likely_spike"
         ],
         [
           220.5949,
-          null
+          "likely_garbage"
         ],
         [
           220.788901,
-          null
+          "likely_garbage"
         ],
         [
           220.958902,
-          null
+          "spike"
         ],
         [
           224.335916,
-          null
+          "spike"
         ],
         [
           224.773917,
-          null
+          "spike"
         ],
         [
           226.033923,
-          null
+          "likely_garbage"
         ],
         [
           237.75997,
-          null
+          "spike"
         ],
         [
           238.064972,
-          null
+          "likely_spike"
         ],
         [
           243.718995,
-          null
+          "spike"
         ],
         [
           244.367997,
-          null
+          "likely_garbage"
         ],
         [
           244.522498,
-          null
+          "likely_spike"
         ],
         [
           246.045504,
-          null
+          "likely_spike"
         ],
         [
           247.58251,
-          null
+          "likely_spike"
         ],
         [
           247.653011,
-          null
+          "likely_garbage"
         ],
         [
           249.183017,
-          null
+          "spike"
         ],
         [
           254.393038,
-          null
+          "likely_garbage"
         ],
         [
           254.428038,
-          null
+          "likely_garbage"
         ],
         [
           255.825044,
-          null
+          "spike"
         ],
         [
           257.421051,
-          null
+          "spike"
         ],
         [
           260.434063,
-          null
+          "likely_spike"
         ],
         [
           261.276066,
-          null
+          "likely_garbage"
         ],
         [
           261.565068,
-          null
+          "spike"
         ],
         [
           263.533576,
-          null
+          "likely_spike"
         ],
         [
           264.51608,
-          null
+          "likely_garbage"
         ],
         [
           264.862081,
-          null
+          "likely_spike"
         ],
         [
           264.990082,
-          null
+          "likely_garbage"
         ],
         [
           266.257087,
-          null
+          "likely_spike"
         ],
         [
           266.432087,
-          null
+          "likely_garbage"
         ],
         [
           266.469088,
-          null
+          "spike"
         ],
         [
           266.518088,
-          null
+          "likely_garbage"
         ],
         [
           266.723089,
-          null
+          "likely_spike"
         ],
         [
           267.254091,
-          null
+          "spike"
         ],
         [
           268.398095,
-          null
+          "likely_garbage"
         ],
         [
           268.428096,
-          null
+          "likely_spike"
         ],
         [
           272.303111,
-          null
+          "likely_spike"
         ],
         [
           273.765117,
-          null
+          "likely_spike"
         ],
         [
           274.46112,
-          null
+          "spike"
         ],
         [
           286.360169,
-          null
+          "likely_garbage"
         ],
         [
           286.59717,
-          null
+          "spike"
         ],
         [
           287.130172,
-          null
+          "likely_spike"
         ],
         [
           288.559178,
-          null
+          "likely_spike"
         ],
         [
           288.720178,
-          null
+          "likely_spike"
         ],
         [
           291.820191,
-          null
+          "spike"
         ],
         [
           293.621198,
-          null
+          "likely_spike"
         ],
         [
           293.895199,
-          null
+          "likely_garbage"
         ],
         [
           297.349214,
-          null
+          "spike"
         ],
         [
           299.780224,
-          null
+          "spike"
         ],
         [
           301.781232,
-          null
+          "spike"
         ],
         [
           302.153233,
-          null
+          "likely_garbage"
         ],
         [
           302.300234,
-          null
+          "likely_garbage"
         ],
         [
           302.536235,
-          null
+          "likely_garbage"
         ],
         [
           302.765236,
-          null
+          "likely_garbage"
         ],
         [
           302.882236,
-          null
+          "likely_garbage"
         ],
         [
           303.022237,
-          null
+          "likely_spike"
         ],
         [
           304.923245,
-          null
+          "spike"
         ],
         [
           308.116258,
-          null
+          "likely_spike"
         ],
         [
           312.175274,
-          null
+          "likely_garbage"
         ],
         [
           317.730297,
-          null
+          "likely_garbage"
         ],
         [
           317.775297,
-          null
+          "spike"
         ],
         [
           325.734329,
-          null
+          "spike"
         ],
         [
           331.395353,
-          null
+          "likely_spike"
         ],
         [
           336.293373,
-          null
+          "spike"
         ],
         [
           336.388373,
-          null
+          "likely_garbage"
         ],
         [
           336.436373,
-          null
+          "likely_garbage"
         ],
         [
           339.246385,
-          null
+          "likely_spike"
         ],
         [
           339.364385,
-          null
+          "spike"
         ],
         [
           339.453385,
-          null
+          "likely_garbage"
         ],
         [
           339.594386,
-          null
+          "likely_garbage"
         ],
         [
           339.712386,
-          null
+          "spike"
         ],
         [
           339.819387,
-          null
+          "spike"
         ],
         [
           339.900387,
-          null
+          "likely_garbage"
         ],
         [
           345.40241,
-          null
+          "likely_garbage"
         ],
         [
           346.856416,
-          null
+          "spike"
         ],
         [
           347.442418,
-          null
+          "spike"
         ],
         [
           348.526422,
-          null
+          "spike"
         ],
         [
           348.845424,
-          null
+          "spike"
         ],
         [
           350.537431,
-          null
+          "spike"
         ],
         [
           358.525463,
-          null
+          "likely_garbage"
         ],
         [
           364.639488,
-          null
+          "likely_garbage"
         ],
         [
           365.238491,
-          null
+          "likely_garbage"
         ],
         [
           371.857518,
-          null
+          "likely_garbage"
         ],
         [
           381.687558,
-          null
+          "spike"
         ],
         [
           394.678611,
-          null
+          "likely_garbage"
         ],
         [
           396.111617,
-          null
+          "likely_garbage"
         ],
         [
           396.80962,
-          null
+          "likely_garbage"
         ],
         [
           411.143678,
-          null
+          "likely_garbage"
         ],
         [
           416.204699,
-          null
+          "likely_garbage"
         ],
         [
           419.098711,
-          null
+          "likely_garbage"
         ],
         [
           433.415769,
-          null
+          "likely_garbage"
         ],
         [
           437.087784,
-          null
+          "likely_garbage"
         ],
         [
           437.123784,
-          null
+          "spike"
         ],
         [
           443.250809,
-          null
+          "likely_spike"
         ],
         [
           453.491851,
-          null
+          "spike"
         ],
         [
           454.187854,
-          null
+          "likely_spike"
         ],
         [
           454.209854,
-          null
+          "spike"
         ],
         [
           458.774872,
-          null
+          "likely_garbage"
         ],
         [
           462.008886,
-          null
+          "likely_spike"
         ],
         [
           468.01491,
-          null
+          "spike"
         ],
         [
           470.135919,
-          null
+          "spike"
         ],
         [
           470.178919,
-          null
+          "likely_garbage"
         ],
         [
           470.243919,
-          null
+          "spike"
         ],
         [
           474.075935,
-          null
+          "spike"
         ],
         [
           475.944943,
-          null
+          "spike"
         ],
         [
           481.633966,
-          null
+          "spike"
         ],
         [
           485.860983,
-          null
+          "spike"
         ],
         [
           486.352985,
-          null
+          "likely_spike"
         ],
         [
           489.175997,
-          null
+          "spike"
         ],
         [
           496.035025,
-          null
+          "likely_spike"
         ],
         [
           499.417038,
-          null
+          "likely_garbage"
         ],
         [
           505.019061,
-          null
+          "likely_garbage"
         ],
         [
           507.790072,
-          null
+          "spike"
         ],
         [
           508.889077,
-          null
+          "spike"
         ],
         [
           511.653088,
-          null
+          "likely_spike"
         ],
         [
           514.001098,
-          null
+          "likely_spike"
         ],
         [
           515.163103,
-          null
+          "spike"
         ],
         [
           517.326611,
-          null
+          "likely_spike"
         ],
         [
           521.335128,
-          null
+          "spike"
         ],
         [
           521.661129,
-          null
+          "spike"
         ],
         [
           521.76213,
-          null
+          "spike"
         ],
         [
           523.817138,
-          null
+          "likely_garbage"
         ],
         [
           523.970139,
-          null
+          "spike"
         ],
         [
           527.003151,
-          null
+          "spike"
         ],
         [
           532.231172,
-          null
+          "spike"
         ],
         [
           535.203184,
-          null
+          "spike"
         ],
         [
           536.906191,
-          null
+          "likely_garbage"
         ],
         [
           536.959192,
-          null
+          "spike"
         ],
         [
           540.732207,
-          null
+          "spike"
         ],
         [
           547.899236,
-          null
+          "likely_spike"
         ],
         [
           549.113241,
-          null
+          "spike"
         ],
         [
           550.455247,
-          null
+          "likely_spike"
         ],
         [
           550.679248,
-          null
+          "likely_spike"
         ],
         [
           550.823248,
-          null
+          "likely_garbage"
         ],
         [
           550.900248,
-          null
+          "likely_garbage"
         ],
         [
           553.567259,
-          null
+          "likely_garbage"
         ],
         [
           553.891261,
-          null
+          "likely_garbage"
         ],
         [
           556.28627,
-          null
+          "spike"
         ],
         [
           559.286283,
-          null
+          "likely_spike"
         ],
         [
           562.612296,
-          null
+          "likely_spike"
         ],
         [
           562.948298,
-          null
+          "likely_garbage"
         ],
         [
           562.982298,
-          null
+          "likely_garbage"
         ],
         [
           564.894306,
-          null
+          "spike"
         ],
         [
           568.888322,
-          null
+          "spike"
         ],
         [
           569.550825,
-          null
+          "likely_spike"
         ],
         [
           577.296356,
-          null
+          "spike"
         ],
         [
           578.678362,
-          null
+          "spike"
         ],
         [
           586.403393,
-          null
+          "spike"
         ],
         [
           586.751395,
-          null
+          "likely_garbage"
         ],
         [
           586.781395,
-          null
+          "spike"
         ],
         [
           586.862395,
-          null
+          "likely_garbage"
         ],
         [
           587.033396,
-          null
+          "spike"
         ],
         [
           587.097396,
-          null
+          "likely_garbage"
         ],
         [
           587.302397,
-          null
+          "likely_garbage"
         ],
         [
           587.345397,
-          null
+          "spike"
         ],
         [
           587.858399,
-          null
+          "likely_garbage"
         ],
         [
           587.894399,
-          null
+          "likely_spike"
         ],
         [
           587.9214,
-          null
+          "likely_garbage"
         ],
         [
           590.087408,
-          null
+          "spike"
         ],
         [
           591.017412,
-          null
+          "spike"
         ],
         [
           591.333413,
-          null
+          "likely_garbage"
         ],
         [
           591.386414,
-          null
+          "likely_spike"
         ],
         [
           591.436414,
-          null
+          "likely_garbage"
         ],
         [
           592.723419,
-          null
+          "spike"
         ],
         [
           593.01142,
-          null
+          "likely_spike"
         ],
         [
           594.945428,
-          null
+          "likely_garbage"
         ],
         [
           595.33043,
-          null
+          "likely_spike"
         ],
         [
           598.168441,
-          null
+          "likely_garbage"
         ],
         [
           600.041449,
-          null
+          "likely_spike"
         ],
         [
           601.136453,
-          null
+          "likely_garbage"
         ],
         [
           601.249454,
-          null
+          "likely_garbage"
         ],
         [
           601.920457,
-          null
+          "likely_garbage"
         ],
         [
           603.875465,
-          null
+          "likely_garbage"
         ],
         [
           609.742489,
-          null
+          "likely_garbage"
         ],
         [
           610.595492,
-          null
+          "likely_garbage"
         ],
         [
           610.746493,
-          null
+          "likely_garbage"
         ],
         [
           613.947506,
-          null
+          "likely_garbage"
         ],
         [
           617.38752,
-          null
+          "likely_spike"
         ],
         [
           618.047522,
-          null
+          "likely_garbage"
         ],
         [
           621.752538,
-          null
+          "likely_garbage"
         ],
         [
           623.085543,
-          null
+          "likely_garbage"
         ],
         [
           625.681554,
-          null
+          "likely_garbage"
         ],
         [
           625.839554,
-          null
+          "likely_garbage"
         ],
         [
           626.760558,
-          null
+          "likely_garbage"
         ],
         [
           629.051567,
-          null
+          "likely_garbage"
         ],
         [
           629.74757,
-          null
+          "likely_spike"
         ],
         [
           630.256572,
-          null
+          "likely_garbage"
         ],
         [
           634.197588,
-          null
+          "likely_garbage"
         ],
         [
           634.57559,
-          null
+          "likely_garbage"
         ],
         [
           638.789607,
-          null
+          "likely_garbage"
         ],
         [
           640.262613,
-          null
+          "likely_garbage"
         ],
         [
           644.238629,
-          null
+          "likely_garbage"
         ],
         [
           648.431646,
-          null
+          "likely_garbage"
         ],
         [
           654.06867,
-          null
+          "likely_garbage"
         ],
         [
           654.835673,
-          null
+          "likely_garbage"
         ],
         [
           654.911673,
-          null
+          "likely_garbage"
         ],
         [
           658.589688,
-          null
+          "likely_spike"
         ],
         [
           659.513692,
-          null
+          "likely_garbage"
         ],
         [
           665.053714,
-          null
+          "likely_garbage"
         ],
         [
           665.872718,
-          null
+          "likely_garbage"
         ],
         [
           667.737725,
-          null
+          "likely_garbage"
         ],
         [
           667.911726,
-          null
+          "likely_garbage"
         ],
         [
           671.132739,
-          null
+          "likely_spike"
         ],
         [
           676.678762,
-          null
+          "likely_garbage"
         ],
         [
           683.794791,
-          null
+          "likely_spike"
         ],
         [
           684.982796,
-          null
+          "likely_garbage"
         ],
         [
           688.60481,
-          null
+          "likely_garbage"
         ],
         [
           688.711811,
-          null
+          "likely_spike"
         ],
         [
           693.757831,
-          null
+          "likely_garbage"
         ],
         [
           694.935836,
-          null
+          "likely_garbage"
         ],
         [
           695.82484,
-          null
+          "likely_spike"
         ],
         [
           695.94184,
-          null
+          "likely_spike"
         ],
         [
           700.247858,
-          null
+          "likely_garbage"
         ],
         [
           710.702901,
-          null
+          "likely_garbage"
         ],
         [
           717.743929,
-          null
+          "likely_garbage"
         ],
         [
           722.321948,
-          null
+          "likely_spike"
         ],
         [
           725.31796,
-          null
+          "likely_spike"
         ],
         [
           727.373969,
-          null
+          "likely_garbage"
         ],
         [
           730.08298,
-          null
+          "likely_garbage"
         ],
         [
           739.506018,
-          null
+          "likely_garbage"
         ],
         [
           742.816032,
-          null
+          "likely_spike"
         ],
         [
           745.283042,
-          null
+          "spike"
         ],
         [
           752.784072,
-          null
+          "likely_garbage"
         ],
         [
           753.030073,
-          null
+          "likely_garbage"
         ],
         [
           757.05609,
-          null
+          "likely_spike"
         ],
         [
           762.01411,
-          null
+          "likely_spike"
         ],
         [
           764.060118,
-          null
+          "likely_spike"
         ],
         [
           765.794125,
-          null
+          "spike"
         ],
         [
           767.197131,
-          null
+          "spike"
         ],
         [
           769.581141,
-          null
+          "spike"
         ],
         [
           770.652145,
-          null
+          "spike"
         ],
         [
           775.962223,
-          null
+          "likely_garbage"
         ],
         [
           775.988224,
-          null
+          "likely_spike"
         ],
         [
           776.947227,
-          null
+          "spike"
         ],
         [
           784.97426,
-          null
+          "spike"
         ],
         [
           788.875276,
-          null
+          "likely_spike"
         ],
         [
           792.29929,
-          null
+          "likely_garbage"
         ],
         [
           794.6033,
-          null
+          "likely_spike"
         ],
         [
           802.533332,
-          null
+          "likely_spike"
         ],
         [
           802.854333,
-          null
+          "spike"
         ],
         [
           808.737357,
-          null
+          "spike"
         ],
         [
           809.33736,
-          null
+          "likely_spike"
         ],
         [
           809.549361,
-          null
+          "spike"
         ],
         [
           809.757361,
-          null
+          "likely_garbage"
         ],
         [
           809.797362,
-          null
+          "spike"
         ],
         [
           813.660377,
-          null
+          "likely_garbage"
         ],
         [
           819.972403,
-          null
+          "spike"
         ],
         [
           825.351425,
-          null
+          "likely_spike"
         ],
         [
           825.864427,
-          null
+          "spike"
         ],
         [
           854.444544,
-          null
+          "likely_garbage"
         ],
         [
           859.168563,
-          null
+          "likely_spike"
         ],
         [
           859.676565,
-          null
+          "spike"
         ],
         [
           859.825566,
-          null
+          "spike"
         ],
         [
           868.2676,
-          null
+          "likely_spike"
         ],
         [
           872.035616,
-          null
+          "likely_garbage"
         ],
         [
           872.267617,
-          null
+          "spike"
         ],
         [
           874.875627,
-          null
+          "likely_spike"
         ],
         [
           875.024628,
-          null
+          "likely_garbage"
         ],
         [
           875.400629,
-          null
+          "spike"
         ],
         [
           883.111661,
-          null
+          "spike"
         ],
         [
           883.237661,
-          null
+          "spike"
         ],
         [
           885.29867,
-          null
+          "spike"
         ],
         [
           885.37667,
-          null
+          "likely_garbage"
         ],
         [
           885.45067,
-          null
+          "likely_spike"
         ],
         [
           888.732684,
-          null
+          "spike"
         ],
         [
           888.941685,
-          null
+          "spike"
         ],
         [
           889.228686,
-          null
+          "likely_garbage"
         ],
         [
           900.717733,
-          null
+          "likely_garbage"
         ],
         [
           902.56274,
-          null
+          "spike"
         ],
         [
           905.197751,
-          null
+          "likely_garbage"
         ],
         [
           905.341752,
-          null
+          "likely_spike"
         ],
         [
           908.511764,
-          null
+          "spike"
         ],
         [
           908.924766,
-          null
+          "spike"
         ],
         [
           912.680781,
-          null
+          "likely_spike"
         ],
         [
           912.706782,
-          null
+          "spike"
         ],
         [
           912.896782,
-          null
+          "spike"
         ],
         [
           913.288784,
-          null
+          "spike"
         ],
         [
           921.259816,
-          null
+          "likely_spike"
         ],
         [
           921.295817,
-          null
+          "likely_garbage"
         ],
         [
           921.651818,
-          null
+          "spike"
         ],
         [
           924.916831,
-          null
+          "likely_spike"
         ],
         [
           925.028832,
-          null
+          "likely_garbage"
         ],
         [
           925.219833,
-          null
+          "spike"
         ],
         [
           925.335833,
-          null
+          "spike"
         ],
         [
           925.403833,
-          null
+          "likely_garbage"
         ],
         [
           927.198841,
-          null
+          "likely_spike"
         ],
         [
           927.279841,
-          null
+          "likely_garbage"
         ],
         [
           931.029856,
-          null
+          "spike"
         ],
         [
           935.234874,
-          null
+          "likely_spike"
         ],
         [
           935.393874,
-          null
+          "spike"
         ],
         [
           935.498875,
-          null
+          "spike"
         ],
         [
           935.903876,
-          null
+          "spike"
         ],
         [
           938.928889,
-          null
+          "likely_garbage"
         ],
         [
           938.956889,
-          null
+          "likely_spike"
         ],
         [
           942.864905,
-          null
+          "likely_spike"
         ],
         [
           942.968905,
-          null
+          "likely_garbage"
         ],
         [
           944.491911,
-          null
+          "spike"
         ],
         [
           947.563924,
-          null
+          "likely_garbage"
         ],
         [
           947.903925,
-          null
+          "likely_spike"
         ],
         [
           950.796937,
-          null
+          "spike"
         ],
         [
           951.016938,
-          null
+          "likely_spike"
         ],
         [
           951.222939,
-          null
+          "likely_spike"
         ],
         [
           951.295939,
-          null
+          "likely_garbage"
         ],
         [
           951.324939,
-          null
+          "likely_garbage"
         ],
         [
           953.669949,
-          null
+          "likely_spike"
         ],
         [
           954.496952,
-          null
+          "likely_spike"
         ],
         [
           956.678961,
-          null
+          "likely_garbage"
         ],
         [
           956.881962,
-          null
+          "spike"
         ],
         [
           959.091971,
-          null
+          "likely_garbage"
         ],
         [
           959.490973,
-          null
+          "unspecified"
         ]
       ],
-      "v": 0
+      "tag": "prospector",
+      "v": 1
     }
   ]
 }

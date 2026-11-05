@@ -188,13 +188,13 @@ function expect(channels, pick) {
      === JSON.stringify({ mode: 'first' }));
   D().querySelector('.inc-chan-edit') && (D().querySelector('.inc-chan-edit').open = true);
   await sleep(200);
-  const nOut = D().querySelectorAll('.inc-chan.out').length;
+  const nOut = D().querySelectorAll('.inc-chan-edit .chp-t.out').length;
   ck('the channels it leaves out are dimmed in the grid, not struck as bad',
      nOut === chans.filter((c) => !c.bad && !eF.want.includes(Number(c.number))).length
-     && D().querySelectorAll('.inc-chan.bad').length === was.length,
-     nOut + ' out, ' + D().querySelectorAll('.inc-chan.bad').length + ' bad');
+     && D().querySelectorAll('.inc-chan-edit .chp-t.bad').length === was.length,
+     nOut + ' out, ' + D().querySelectorAll('.inc-chan-edit .chp-t.bad').length + ' bad');
   ck('and are still ticked: they are not bad',
-     Array.from(D().querySelectorAll('.inc-chan.out input')).every((i) => i.checked));
+     Array.from(D().querySelectorAll('.inc-chan-edit .chp-t.out')).every((t) => t.classList.contains('on')));
 
   seg()[5].click();
   await until(() => D().querySelector('.inc-pick-in'), 5000);

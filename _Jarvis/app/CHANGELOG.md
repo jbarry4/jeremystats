@@ -15,6 +15,100 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.05.1 - A renamed folder says so, tab 10 survives a redraw, a long poll is not "stuck"
+
+From the daily error pass (TRIAGE.md, pass 11). Restart Jarvis for the first
+two fixes: they are in the server. A page reload is enough for the third.
+
+- **A recording renamed while it was open.** On 11-04 Rain renamed
+  `KCNT1_529_s1apr17` to `KCNT1_m529_s1_apr17` on Y: with it open. The next
+  trace window failed with a bare "[WinError 3] The system cannot find the
+  path specified", and Jarvis kept the old folder open in memory, so every
+  later read of it would have failed the same way. Now the trace window
+  says the folder is no longer there and was moved or renamed, lets go of
+  the old opening, and the next read opens the path again
+  (`_session_gone` in `backend/app.py`). Check:
+  `tools/check_csc_folder_gone.py`.
+- **Tab 10's list while a figure is drawn again.** The list of Joe's files
+  failed six times on 11-04 with "cannot identify image file": it read a
+  figure PNG while the figure was still being written. That PNG's preview
+  now waits for the next listing, and the list still loads
+  (`_preview` in `backend/joeexport.py`). Check:
+  `tools/check_joeexport_preview.py`.
+- **"Waiting for the server" all night.** The page's stuck watch counted
+  the cross-window link poll, which the server holds open for 25 s on
+  purpose, as a request somebody was waiting on. It filed one every ten
+  minutes per open window: 210 on Bluebarry and 11 on Strawbarry. Held
+  polls are no longer counted. The stuck record now also puts what it was
+  (route, how long) before the feed lines, so cutting the record at 4000
+  characters no longer loses it (`web/js/solid.js`). Check: a new section
+  in `web/_dev/solid.html`.
+
+## 2026.11.04.4 - One list of recordings, one channel picker, and Junction's versions
+
+**Recordings no tool could see.** m531 s1 was in Sessions and missing from
+Incisor. Its record had been named after a header-only stub folder (12:20:39),
+the Housekeeping check judged it by that stub, and it was retired as "no data
+in the folder". The real recording (13:10:48) was in the same record all
+along. Four more were the same: m531 s3, m576 s3, m576 s5 and m13 s3.
+- **Brought back.** All five are live again. Their stub paths are dropped,
+  and their start is now the recording's own time.
+- **Vetted across every project.** Every recording Jarvis knows was checked
+  against the disk:
+  - 28 records that pointed at nothing but 16 KB stubs (18 DEWEY, 10 PTEN)
+    are retired.
+  - 19 stub paths are dropped from 14 real recordings.
+  - DEWEY records filed under both their m### and r### names are fixed in
+    both places.
+  - No live record now maps to a header-only folder.
+  - Tool: `tools/prune_header_only.py --all`.
+- **It cannot happen again.**
+  - A folder of headers is never added to a record's paths. The check runs
+    once, in `store.upsert_session`, whatever brought the folder: a scan, an
+    open or a cluster find.
+  - The Housekeeping check judges every reachable folder, not the first one.
+    A record with data and stub folders beside it is offered **Drop the
+    empty folders**, never Retire.
+  - Retire refuses a recording with data in any reachable folder and says
+    where the data is.
+- **One list.** `REG.live()` gives one record per recording, never a
+  retired one. The Sessions tree, Incisor's list and Doppler's list all read
+  it, so they can only differ by what a tool needs, never by which records
+  each happened to count. Cluster folders match live records before retired
+  ones.
+- **Sessions says when a recording is retired.** A scan card whose record is
+  retired shows **retired · bring back**. Pressing it makes every tool offer
+  the recording again (`/api/registry/unretire`).
+
+**Channel picking, one control everywhere.** The plain checkbox grids are
+gone. `BARRY.ui.channelPicker` (js/chanpick.js) is a tile per channel, in
+banks of 32, with quick picks (evens, odds, a bank, invert, good ones),
+shift-click for a run and drag to paint. The count sits beside it, a bad
+channel is struck through, and a channel a run cannot read says why. It is
+now used for Incisor's channels, Doppler's channels and its leave-out for
+one run, and Braces' channels in the average.
+
+**Incisor and Doppler, Many at once, in step.**
+- Doppler's Many list has **Channels…** on every row, as Incisor's does. It
+  is the same control (`BARRY.ui.rowChannels`) writing the same record.
+- Both lists use the same sections ("1. Which recordings", "2. Detection,
+  for every recording sent"), the same sentence, the same facts on each row
+  (bad channels named) and the same search, netfiles included.
+
+**Junction.**
+- **Versions.** Many at once sent a version's display name (for example
+  "v3"), and the server read it as a stored number. When two machines had
+  both made a v2, the row could offer "v3" while the server said no v3
+  existed, or refuse with "two versions are numbered 2". Rows now send the
+  version's id. The server finds a version by its id, or by the name the
+  page showed. A refusal names the versions there are.
+  - A version with no snapshot on this computer cannot be chosen.
+- **Refused rows.** A refused row no longer draws its two strands joined,
+  which had read as "refused, but still pooled".
+- **Event counts.** Each side's count sits beside its own version and says
+  "events". Before, the Incisor count sat against Doppler's column and the
+  Doppler count against the merge.
+
 ## 2026.11.04.3 - Prospector: Panning's own model, swept the way Tooth Fairy sweeps Checkup
 
 Prospector is a model for Panning's pools, in the way Tooth Fairy is for

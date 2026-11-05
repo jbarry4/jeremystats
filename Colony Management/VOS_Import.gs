@@ -17,6 +17,11 @@
  * rows, which have to be built from column letters. See buildAgeFormulasV2_.
  *
  * The menu entry for this lives in Dropdown2.0.gs (Lab Tools > Sync VOS Census).
+ *
+ * JARVIS. The same sync can arrive without a CSV: Jarvis (Misc > VOS log in)
+ * reads VOS itself and POSTs the rows to doPost below, which previews first
+ * and writes only when told to. Both ways run syncCensusCore_, so the menu
+ * and Jarvis can never disagree about what a census means.
  */
 
 function showImportDialog() {
@@ -215,7 +220,8 @@ function buildAgeFormulasV2_(cols, n) {
 }
 
 /**
- * The core processing function. Triggered by the HTML Dialogue.
+ * The menu's import: the date picked in the dialog, read out of "VOS Imports".
+ * The work itself is syncCensusCore_, shared with doPost (Jarvis).
  */
 function processImport(targetDateStr) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -224,17 +230,6 @@ function processImport(targetDateStr) {
   if (!vosSheet) {
     throw new Error('Could not find a sheet named "VOS Imports".');
   }
-
-  // Prefers "KCNT1 Active 2.0", falls back to "KCNT1 Active". Shared with the
-  // calendar sync so the project has one definition of "the master sheet".
-  const kcnt1Sheet = getSyncSheet_();
-  if (!kcnt1Sheet) {
-    throw new Error('Could not find a sheet named "' + V2_SHEET_NAMES.join('" or "') +
-                    '". Sheets in this file: ' +
-                    ss.getSheets().map(function (s) { return s.getName(); }).join(', '));
-  }
-
-  const targetName = kcnt1Sheet.getName();
 
   // --- 1. BUILD DICTIONARY FROM VOS IMPORTS ---
   const vosData = vosSheet.getDataRange().getValues();
@@ -286,7 +281,61 @@ function processImport(targetDateStr) {
       };
     }
   }
-  
+
+  const res = syncCensusCore_(importMap, { dryRun: false, label: targetDateStr });
+
+  SpreadsheetApp.getUi().alert(
+    `Sync Complete!\n\n` +
+    `Sheet: ${res.sheet}\n\n` +
+    `Successfully updated ${res.active} active cage cards, DOBs & Sexes.\n` +
+    `Marked ${res.retiredAlready + res.newlyRetired.length} mice as RETIRED.\n` +
+    `Appended ${res.added.length} new mice to the bottom.\n\n` +
+    `(View the Apps Script Execution Log for row-by-row changes).`
+  );
+  return 'Success';
+}
+
+/**
+ * Brings the master sheet in line with one census.
+ *
+ * importMap   mouse ID -> { cage, dob, sex }, from "VOS Imports" (the menu) or
+ *             straight from Jarvis (doPost).
+ * opts.dryRun true: change nothing, only say what would change. This is what
+ *             Jarvis shows before it applies, and how it decides whether a
+ *             person has to look first (anyone newly RETIRED).
+ *
+ * Returns { sheet, active, retiredAlready, newlyRetired: [{id, cage}],
+ *           revived: [id], added: [id], changes: [{id, field, from, to}] }.
+ * Never touches the UI, so it can run from a web app, where getUi() throws.
+ */
+function syncCensusCore_(importMap, opts) {
+  opts = opts || {};
+  const dryRun = !!opts.dryRun;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Prefers "KCNT1 Active 2.0", falls back to "KCNT1 Active". Shared with the
+  // calendar sync so the project has one definition of "the master sheet".
+  const kcnt1Sheet = getSyncSheet_();
+  if (!kcnt1Sheet) {
+    throw new Error('Could not find a sheet named "' + V2_SHEET_NAMES.join('" or "') +
+                    '". Sheets in this file: ' +
+                    ss.getSheets().map(function (s) { return s.getName(); }).join(', '));
+  }
+
+  const targetName = kcnt1Sheet.getName();
+  const report = { sheet: targetName, active: 0, retiredAlready: 0, newlyRetired: [],
+                   revived: [], added: [], changes: [], held: [], heldMissing: [],
+                   sheetDuplicates: [] };
+  const tz = ss.getSpreadsheetTimeZone();
+  const dateKey = function (v) {
+    // Not `instanceof Date`: a Date made in another context fails it.
+    if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) {
+      return Utilities.formatDate(v, tz, 'yyyy-MM-dd');
+    }
+    return String(v == null ? '' : v).trim();
+  };
+  const rowsById = {};
+
   // --- 2. UPDATE EXISTING KCNT1 DATA ---
   const kcnt1Data = kcnt1Sheet.getDataRange().getValues();
   const kcnt1Headers = kcnt1Data[0];
@@ -305,7 +354,7 @@ function processImport(targetDateStr) {
   }
   
   const numRows = kcnt1Data.length;
-  if (numRows <= 1) return 'No data to process.';
+  if (numRows <= 1) return report;
   
   // Grab the existing formatting so we can batch-overwrite it instantly
   const cageRange = kcnt1Sheet.getRange(2, kcntCageColIdx + 1, numRows - 1, 1);
@@ -334,25 +383,52 @@ function processImport(targetDateStr) {
   // Find the TRUE last row by checking the Mouse ID column specifically
   let trueLastRowIndex = 0;
   
-  console.log(`--- INITIATING SYNC FOR VOS CENSUS DATE: ${targetDateStr} ---`);
-  
+  console.log(`--- INITIATING SYNC FOR VOS CENSUS: ${opts.label || ''}${dryRun ? ' (dry run)' : ''} ---`);
+
   for (let r = 1; r < numRows; r++) {
-    const dataIndex = r - 1; 
+    const dataIndex = r - 1;
     const masterMouseId = String(kcnt1Data[r][kcntIdColIdx]).trim();
-    
+
     if (masterMouseId) {
       trueLastRowIndex = r; // Keep pushing the bottom down as long as we find Mouse IDs
     } else {
       continue; // Skip blank rows
     }
-    
+
+    const oldCage = String(cageValues[dataIndex][0]).trim();
+    (rowsById[masterMouseId] = rowsById[masterMouseId] || []).push(r + 1);
+
+    // Held by Jarvis: VOS disagrees with itself about this mouse (one tag on
+    // two cards). It is in the colony, so it is not retired, and its row is
+    // left exactly as it is until somebody fixes VOS.
+    if (importMap.hasOwnProperty(masterMouseId) && importMap[masterMouseId].hold) {
+      processedIds.add(masterMouseId);
+      report.held.push(masterMouseId);
+      continue;
+    }
+
     if (importMap.hasOwnProperty(masterMouseId)) {
-      processedIds.add(masterMouseId); 
-      
+      processedIds.add(masterMouseId);
+
       const newCage = importMap[masterMouseId].cage;
       const newDob = importMap[masterMouseId].dob;
       const newSex = importMap[masterMouseId].sex;
-      
+
+      // What is about to change, said before it does (Jarvis's preview).
+      if (oldCage === 'RETIRED') report.revived.push(masterMouseId);
+      if (oldCage !== String(newCage).trim()) {
+        report.changes.push({ id: masterMouseId, field: 'Cage ID', from: oldCage, to: newCage });
+      }
+      if (dateKey(dobValues[dataIndex][0]) !== dateKey(newDob)) {
+        report.changes.push({ id: masterMouseId, field: 'DOB',
+                              from: dateKey(dobValues[dataIndex][0]), to: dateKey(newDob) });
+      }
+      if (kcntSexColIdx !== -1 && newSex !== '' &&
+          String(sexValues[dataIndex][0]).trim() !== newSex) {
+        report.changes.push({ id: masterMouseId, field: 'Sex',
+                              from: String(sexValues[dataIndex][0]).trim(), to: newSex });
+      }
+
       // Update Cage
       cageValues[dataIndex][0] = newCage;
       cageColors[dataIndex][0] = '#000000';
@@ -372,6 +448,11 @@ function processImport(targetDateStr) {
 
       matchCount++;
     } else {
+      if (oldCage === 'RETIRED') {
+        report.retiredAlready++;
+      } else {
+        report.newlyRetired.push({ id: masterMouseId, cage: oldCage });
+      }
       cageValues[dataIndex][0] = 'RETIRED';
       cageColors[dataIndex][0] = '#a0a0a0'; 
       cageStyles[dataIndex][0] = 'italic';  
@@ -380,7 +461,30 @@ function processImport(targetDateStr) {
     }
   }
   
+  report.active = matchCount;
+  Object.keys(rowsById).forEach(function (id) {
+    if (rowsById[id].length > 1) report.sheetDuplicates.push({ id: id, rows: rowsById[id] });
+  });
+  // A held mouse the sheet has never had: nothing is added for it, since
+  // which cage it is in is the very thing VOS cannot agree on.
+  Object.keys(importMap).forEach(function (id) {
+    if (importMap[id].hold && !processedIds.has(id)) {
+      report.heldMissing.push(id);
+      processedIds.add(id);
+    }
+  });
+
   // --- 3. BATCH WRITE UPDATES TO SPREADSHEET ---
+  // A dry run stops here, apart from naming the mice that would be added.
+  if (dryRun) {
+    for (const mouseId of Object.keys(importMap)) {
+      if (!processedIds.has(mouseId) && (mouseId.match(/\d/g) || []).length >= 2) {
+        report.added.push(mouseId);
+      }
+    }
+    return report;
+  }
+
   cageRange.setValues(cageValues);
   cageRange.setFontColors(cageColors);
   cageRange.setFontStyles(cageStyles);
@@ -424,6 +528,7 @@ function processImport(targetDateStr) {
       
       if (digitCount >= 2) {
         addedCount++;
+        report.added.push(mouseId);
         console.log(`[ADDED] New Mouse Found: ${mouseId} at Row ${nextAvailableRow}`);
         
         // Build a fresh blank row that aligns with the Active Sheet's true width
@@ -464,16 +569,138 @@ function processImport(targetDateStr) {
   }
   
   console.log(`--- SYNC COMPLETE: ${matchCount} Active | ${retiredCount} Retired | ${addedCount} Added ---`);
-  
-  SpreadsheetApp.getUi().alert(
-    `Sync Complete!\n\n` +
-    `Sheet: ${targetName}\n\n` +
-    `Successfully updated ${matchCount} active cage cards, DOBs & Sexes.\n` +
-    `Marked ${retiredCount} mice as RETIRED.\n` +
-    `Appended ${addedCount} new mice to the bottom.\n\n` +
-    `(View the Apps Script Execution Log for row-by-row changes).`
-  );
-  return 'Success';
+  return report;
+}
+
+/* ==========================================================================
+   JARVIS: the census straight from VOS, no CSV pasted
+   ==========================================================================
+   Jarvis (Misc > VOS log in) reads the active X6-041 cages out of VOS, prints
+   their cards to PDF, runs VOS_report_parser.py on them and POSTs the rows
+   here. Same importer as the menu, so the master sheet cannot tell the two
+   apart.
+
+   mode "preview"  changes nothing; answers what WOULD change.
+   mode "apply"    writes the date-stamped block into "VOS Imports" (so the
+                   history is kept the way the hand-made ones are) and runs
+                   the sync.
+
+   SET UP ONCE: Deploy > New deployment > Web app, Execute as: Me, Who has
+   access: Anyone. Paste the /exec URL into Jarvis. The first call Jarvis
+   makes leaves its secret in Script Properties (JARVIS_SECRET); every call
+   after that must carry it. To hand the link to a new machine, run
+   resetJarvisSecret() and let that machine call first.
+*/
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(120000)) {
+    return jarvisJson_({ ok: false, error: 'another sync is running in the sheet; try again in a minute' });
+  }
+  try {
+    const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    checkJarvisSecret_(body.secret);
+
+    const stamp = String(body.stamp || '');
+    if (!/^\d{6}$/.test(stamp)) throw new Error('stamp must be MMDDYY, got "' + stamp + '"');
+    const mice = body.mice || [];
+    // A census with almost nobody in it would mark the colony RETIRED.
+    // Jarvis checks this too; the sheet does not take its word for it.
+    if (mice.length < 10) throw new Error('only ' + mice.length + ' mice in the census; refusing');
+
+    const importMap = {};
+    mice.forEach(function (m) {
+      const id = String(m.id || '').trim();
+      if (!id || id === '0') return;
+      if (m.hold) { importMap[id] = { hold: true }; return; }
+      let sex = String(m.sex || '').trim();
+      if (/^(m|male)$/i.test(sex)) sex = 'M';
+      else if (/^(f|female)$/i.test(sex)) sex = 'F';
+      importMap[id] = { cage: String(m.cage || '').trim(), dob: jarvisDate_(m.dob), sex: sex };
+    });
+
+    const apply = body.mode === 'apply';
+    let blockAt = null;
+    if (apply && body.block) blockAt = writeJarvisBlock_(stamp, body.block);
+    const res = syncCensusCore_(importMap, { dryRun: !apply, label: stamp + ' (Jarvis)' });
+    res.ok = true;
+    res.mode = apply ? 'apply' : 'preview';
+    res.blockAt = blockAt;
+    return jarvisJson_(res);
+  } catch (err) {
+    return jarvisJson_({ ok: false, error: err.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function jarvisJson_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function checkJarvisSecret_(secret) {
+  const props = PropertiesService.getScriptProperties();
+  const known = props.getProperty('JARVIS_SECRET');
+  if (!secret) throw new Error('no secret sent');
+  if (!known) {
+    props.setProperty('JARVIS_SECRET', String(secret));
+    return;
+  }
+  if (known !== String(secret)) throw new Error('wrong secret');
+}
+
+/** Run by hand to let a different machine's Jarvis claim the web app. */
+function resetJarvisSecret() {
+  PropertiesService.getScriptProperties().deleteProperty('JARVIS_SECRET');
+}
+
+/** '2025-09-14' -> a Date at local midnight, as a pasted CSV would become. */
+function jarvisDate_(text) {
+  const m = String(text || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return String(text || '');
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+/**
+ * The census as a date-stamped block in "VOS Imports", beside the hand-made
+ * ones. A second sync on the same day writes over Jarvis's own block for
+ * that day (remembered in Document Properties), never over a pasted one.
+ * Returns the 1-based column the block starts at.
+ */
+function writeJarvisBlock_(stamp, block) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('VOS Imports');
+  if (!sheet) throw new Error('Could not find a sheet named "VOS Imports".');
+  const headers = block.headers || [];
+  const rows = (block.rows || []).map(function (r) {
+    return headers.map(function (_, i) { return r[i] == null ? '' : r[i]; });
+  });
+  const width = headers.length;
+  if (!width) throw new Error('the block has no columns');
+
+  const props = PropertiesService.getDocumentProperties();
+  const known = JSON.parse(props.getProperty('JARVIS_VOS_BLOCKS') || '{}');
+
+  let start = known[stamp];
+  if (start && String(sheet.getRange(1, start).getValue()) !== headers[0]) start = null;
+  if (start) {
+    const old = Math.max(sheet.getLastRow(), 1);
+    sheet.getRange(1, start, old, width).clearContent();
+  } else {
+    start = sheet.getLastColumn() + 1;
+  }
+
+  const needCols = start + width - 1 - sheet.getMaxColumns();
+  if (needCols > 0) sheet.insertColumnsAfter(sheet.getMaxColumns(), needCols);
+  const needRows = rows.length + 1 - sheet.getMaxRows();
+  if (needRows > 0) sheet.insertRowsAfter(sheet.getMaxRows(), needRows);
+
+  sheet.getRange(1, start, 1, width).setValues([headers]);
+  if (rows.length) sheet.getRange(2, start, rows.length, width).setValues(rows);
+
+  known[stamp] = start;
+  props.setProperty('JARVIS_VOS_BLOCKS', JSON.stringify(known));
+  return start;
 }
 
 /**

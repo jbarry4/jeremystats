@@ -2818,6 +2818,31 @@ code { font-family: var(--mono); }
 .misc-moved .card h3 { display: flex; align-items: center; gap: 8px; }
 .misc-moved .card svg { width: 18px; height: 18px; fill: none; stroke: currentColor;
                         stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+/* Misc > Colony > VOS log in (misc.js vosCard). */
+.vos-card { max-width: 820px; margin-bottom: var(--sp-16, 16px); }
+.vos-card .field input[type=text] { width: 100%; box-sizing: border-box; }
+.vos-result { margin-top: var(--sp-12, 12px); padding-top: var(--sp-8, 8px);
+              border-top: 1px solid var(--line-soft); }
+.vos-result .vos-line { color: var(--text-2); margin-bottom: 6px; }
+.vos-result .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.vos-details { margin-top: 6px; font-size: var(--fs-12); }
+.vos-details summary { cursor: pointer; color: var(--text-2); }
+.vos-details ul { margin: 4px 0 0 18px; padding: 0; font-family: var(--mono);
+                  font-size: var(--fs-105); color: var(--text-2); }
+.vos-details li { overflow-wrap: anywhere; }
+.vos-issues ul { font-family: var(--sans); font-size: var(--fs-12); }
+.vos-issues strong { color: var(--warn); font-weight: 600; }
+.vos-err { display: block; margin-top: var(--sp-8, 8px); white-space: normal;
+           overflow-wrap: anywhere; }
+.vos-history { margin-top: var(--sp-12, 12px); }
+.vos-history > summary { font-size: var(--fs-13); }
+.vos-details ul.vos-hist { list-style: none; margin-left: 0; font-family: var(--sans);
+                           font-size: var(--fs-12); }
+.vos-hist > li { padding: 2px 0; border-bottom: 1px solid var(--line-soft); }
+.vos-hist strong { color: var(--text); font-weight: 600; }
+.vos-hist .vos-details .vos-details { margin-left: 14px; }
+.vos-details ul.vos-ids { display: flex; flex-wrap: wrap; gap: 2px 12px; list-style: none;
+                          max-width: 640px; }
 #syncLabel { overflow-wrap: anywhere; white-space: normal; }
 .chip-btn.dirty { border-color: var(--accent-line); color: var(--accent); }
 /* ---------- segmented control ---------- */
@@ -10040,6 +10065,58 @@ div.ss-more p { margin: 0; }
 }
 .inc-chan:hover { background: var(--bg-3); }
 .inc-chan input { margin: 0; cursor: pointer; }
+/* The channel picker (js/chanpick.js): every tool that chooses channels
+   draws this one. Tiles, not checkboxes; a bank of 32 per block; on is the
+   accent, a bad channel is struck through, a locked one is dimmed. Tiles
+   size to their number, so nothing is ever cut short. */
+.chp { display: flex; flex-direction: column; gap: var(--sp-6);
+  margin: 6px 0 4px; }
+.chp-head { display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-6) var(--sp-8); }
+.chp-title { font-size: var(--fs-115); font-weight: 600; color: var(--text-2); }
+.chp-count { font: var(--fs-11) var(--mono); color: var(--text-2); }
+.chp-busy { font-size: var(--fs-11); color: var(--text-3); }
+.chp-quick { display: flex; flex-wrap: wrap; gap: var(--sp-4);
+  margin-left: auto; }
+.chp-q {
+  font: var(--fs-105) var(--mono); color: var(--text-2);
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--r-4); padding: 2px 7px; cursor: pointer;
+  transition: background var(--dur-2) var(--ease-out),
+              border-color var(--dur-2) var(--ease-out);
+}
+.chp-q:hover:not(:disabled) { background: var(--bg-3);
+  border-color: var(--accent-line); color: var(--text); }
+.chp-q:disabled { opacity: 0.5; cursor: default; }
+.chp-bank { display: flex; flex-direction: column; gap: 3px; }
+.chp-bank-h { font: var(--fs-10) var(--mono); color: var(--text-3);
+  letter-spacing: 0.04em; }
+.chp-grid { display: grid; gap: 3px;
+  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); }
+.chp-t {
+  min-width: 34px; height: 24px; padding: 0 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font: var(--fs-11) var(--mono); color: var(--text-3);
+  background: var(--bg-2); border: 1px solid var(--line-soft);
+  border-radius: var(--r-4); cursor: pointer; user-select: none;
+  touch-action: none;
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out),
+              border-color var(--dur-1) var(--ease-out),
+              transform var(--dur-1) var(--ease-snap);
+}
+.chp-t:hover:not(:disabled) { border-color: var(--accent-line); }
+.chp-t:active:not(:disabled) { transform: scale(0.94); }
+.chp-t:focus-visible { outline: var(--focus-ring);
+  outline-offset: var(--focus-offset); }
+.chp-t.on { background: var(--accent-soft); color: var(--text);
+  border-color: var(--accent-line); }
+.chp-t.bad .chp-n { text-decoration: line-through; }
+.chp-t.bad { color: var(--err); background: var(--err-soft);
+  border-color: transparent; }
+.chp-t.locked, .chp-t:disabled { opacity: 0.45; cursor: default; }
+.chp.busy .chp-t { cursor: progress; }
+.row-chans { margin: 2px 0 8px 28px; }
 /* A channel that is out is dimmed and struck through rather than hidden.
    You cannot put back what you cannot see. */
 .inc-chan.bad { color: var(--text-3); }
@@ -16268,8 +16345,12 @@ div.tf-tile { cursor: default; }
 .jn-mside { display: flex; align-items: center; gap: 6px; min-width: 0;
   font-size: var(--fs-12); color: var(--text-2); }
 .jn-mside span { overflow-wrap: anywhere; min-width: 0; }
-.jn-mside b { margin-left: auto; font-variant-numeric: tabular-nums;
-  color: var(--text); }
+.jn-mside b { font-variant-numeric: tabular-nums; color: var(--text); }
+/* Each side is its own column, edged so a number cannot read as the next
+   column's. The count follows its version on the same line. */
+.jn-mrow .jn-mside { border-left: 1px solid var(--line-soft);
+  padding-left: 10px; }
+.jn-mcount { white-space: nowrap; font-weight: 600; }
 .jn-mres { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .jn-mnum { font-weight: 700; font-variant-numeric: tabular-nums; }
 /* Many at once: a search, and which set and version each side pools from.

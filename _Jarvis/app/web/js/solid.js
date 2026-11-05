@@ -250,8 +250,10 @@ BARRY.solid = (function () {
         if (theirs.aborted) ctl.abort();
         else theirs.addEventListener('abort', () => ctl.abort(), { once: true });
       }
-      const f = { id, route, method: ((opts && opts.method) || 'GET').toUpperCase(),
+      const method = ((opts && opts.method) || 'GET').toUpperCase();
+      const f = { id, route, method,
                   t0: Date.now(), bg: !!bg, ctl, control: null, stopped: false,
+                  held: method === 'GET' && HELD.includes(route),
                   view: BARRY.state.view };
       if (!bg) lastMove = Date.now();
       if (!bg && arm.busy && cur && cur.isConnected) {
@@ -781,6 +783,14 @@ BARRY.solid = (function () {
      started or ended, and no unfinished feed line arrived, in the last 10 s.
      A Panorama run shows a loader for minutes while it polls its job, and
      that is not stuck; a loader with nothing at all going on behind it is. */
+  /* Long polls: the server holds these open on purpose until it has news.
+     xplore's GET /api/link waits up to 25 s, and with the browser's six
+     connections shared by every window it often went past 30 s. It was
+     filed as "waiting for the server" once every ten minutes per window:
+     210 times on Bluebarry from 11-03 21:00 to 11-04 21:00, all night with
+     nobody there, and 11 on Strawbarry. Not a request anybody is waiting
+     on, so never stuck. Still counted as movement, as before. */
+  const HELD = ['/api/link'];
   const told = new Map();
   function once(thing) {
     const t = told.get(thing);
@@ -795,7 +805,9 @@ BARRY.solid = (function () {
     let lines = [];
     try { lines = BARRY.feed ? BARRY.feed.recent(20) : []; } catch (e) { /* none */ }
     const view = BARRY.state.view || null;
-    const detail = JSON.stringify(Object.assign({ view, lines }, ctx || {}));
+    /* What it was (kind, route, ms) before the feed lines: the record is cut
+       at 4000 characters, and with the lines first 27 of 268 lost it. */
+    const detail = JSON.stringify(Object.assign({ view }, ctx || {}, { lines }));
     raw('/api/activity', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ entries: [{
@@ -821,7 +833,7 @@ BARRY.solid = (function () {
     if (!arm.stuck || document.hidden) return;
     const now = Date.now();
     for (const f of flights.values()) {
-      if (f.bg) continue;
+      if (f.bg || f.held) continue;
       const ms = now - f.t0;
       if (ms < 30000) continue;
       const l = feedLine('req:' + f.id);
@@ -1092,5 +1104,7 @@ BARRY.solid = (function () {
       return { offline: offline.on, tries: offline.tries, held: held.length,
                busy: busy.size, flights: flights.size, boot };
     },
+    /* One stuck scan now, rather than on the 5 s timer, for solid.html. */
+    _scan() { scan(); },
   };
 }());

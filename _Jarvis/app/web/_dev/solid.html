@@ -63,6 +63,7 @@ async function until(fn, ms) {
   let mode = 'pass';
   let bootNow = 'harness-boot-1';
   const got = [];
+  const acts = [];
   const slowQ = [];
   function json(W, obj, status) {
     return new (W.Response)(JSON.stringify(obj), {
@@ -90,7 +91,7 @@ async function until(fn, ms) {
       const h = i.headers || {};
       const rec = { url: u, method: (i.method || 'GET').toUpperCase(),
                     req: h['X-Jarvis-Req'] || null, body: i.body || null };
-      if (u.startsWith('/api/activity')) return Promise.resolve(json(FW, { ok: true }));
+      if (u.startsWith('/api/activity')) { acts.push(rec); return Promise.resolve(json(FW, { ok: true })); }
       if (mode === 'down') return Promise.reject(new FW.TypeError('Failed to fetch'));
       if (u.startsWith('/api/ping')) {
         got.push(rec);
@@ -302,6 +303,39 @@ async function until(fn, ms) {
     const jl = D().querySelector('.fd-list[data-lane="jarvis"]');
     check('a new boot id is said in the feed', /Server restarted/.test(jl.textContent)
           && /may have stopped/.test(jl.textContent));
+
+    say('');
+    say('=== a held poll is not stuck ===');
+    /* 11-03/04: xplore's GET /api/link long poll (held 25 s by the server)
+       was filed as 'waiting for the server' every ten minutes per window,
+       all night. A plain request 40 s old is the control: it must still
+       be filed, or the scan proves nothing. */
+    acts.length = 0;
+    const tHeld = B.solid.begin('/api/link', {}, false);
+    const tPub = B.solid.begin('/api/link', { method: 'POST' }, false);
+    const tSlow = B.solid.begin('/api/solidtest/stuckctl', {}, false);
+    check('the link GET is a held poll, its POST is not',
+          !!tHeld && tHeld.f.held === true && !!tPub && tPub.f.held === false);
+    tHeld.f.t0 -= 40000; tSlow.f.t0 -= 40000;
+    B.solid._arm({ stuck: true });
+    B.solid._scan();
+    B.solid._arm({ stuck: false });
+    B.solid.end(tHeld); B.solid.end(tPub); B.solid.end(tSlow);
+    /* The record's detail is cut at 4000 characters, so it is searched, not
+       parsed; the route comes before the feed lines so the cut keeps it. */
+    const stuckOf = (route) => acts.filter((a) => {
+      try {
+        const d = JSON.parse(a.body).entries[0].detail;
+        return d.where === 'stuck'
+          && d.detail.indexOf('"route":' + JSON.stringify(route)) >= 0
+          && d.detail.indexOf('"route"') < d.detail.indexOf('"lines"');
+      } catch (e) { return false; }
+    }).length;
+    check('a plain request 40 s old is filed as stuck', stuckOf('/api/solidtest/stuckctl') === 1,
+          acts.length + ' activity posts');
+    check('the held poll 40 s old is not', stuckOf('/api/link') === 0, stuckOf('/api/link'));
+    check('and the post went no further than the stand-in',
+          acts.every((a) => a.url.startsWith('/api/activity')));
 
     say('');
     say('=== the dock ===');

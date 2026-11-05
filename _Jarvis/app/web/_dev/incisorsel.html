@@ -207,14 +207,14 @@ let restore = null;   // {path, was} -- put back in the finally, regardless
        was.every((n) => text().indexOf('CSC' + n) >= 0), text().slice(0, 240));
   }
   ck('there is a way to change that',
-     !!D().querySelector('.inc-chan-edit .inc-chan-grid input'),
+     !!D().querySelector('.inc-chan-edit .chp-t'),
      'no channel editor');
   ck('which lists every channel, not only the ones being read',
-     D().querySelectorAll('.inc-chan-grid .inc-chan').length === nProbe,
-     D().querySelectorAll('.inc-chan-grid .inc-chan').length + ' of ' + nProbe);
+     D().querySelectorAll('.inc-chan-edit .chp-t').length === nProbe,
+     D().querySelectorAll('.inc-chan-edit .chp-t').length + ' of ' + nProbe);
   ck('with the excluded ones shown unticked rather than hidden',
-     D().querySelectorAll('.inc-chan.bad').length === was.length,
-     D().querySelectorAll('.inc-chan.bad').length + ' vs ' + was.length);
+     D().querySelectorAll('.inc-chan-edit .chp-t.bad').length === was.length,
+     D().querySelectorAll('.inc-chan-edit .chp-t.bad').length + ' vs ' + was.length);
 
   head('The traces window opens on a CSD, even channels, five seconds');
   const u = new URL(EV('BARRY.incisor._traceUrl()') || '', location.origin);

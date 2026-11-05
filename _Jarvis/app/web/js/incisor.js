@@ -483,11 +483,18 @@ BARRY.incisor = (function () {
   let vaccFilter = '';
   let showAllScans = false;
   const picked = new Set();  // gids ticked for a run
-  /* The per-recording channel editor, by gid: { est, busy, error }. The
+  /* The per-recording channels of the Many list: the same control
+     Doppler's Many list uses (BARRY.ui.rowChannels, chanpick.js). The
      channel list of a recording only the cluster has comes over the link
      (a header read, a few seconds), so it is asked for when somebody opens
-     the editor, never for every row. */
-  const chanOpen = {};
+     it, never for every row. A change writes the recording's bad channels
+     and re-plans, because the request's hash reads them. */
+  const rowChans = BARRY.ui.rowChannels({
+    estimate: (path) => apiPost('/api/incisor/estimate',
+                                Object.assign({ path }, paramsBody())),
+    repaint: () => paint(),
+    changed: () => loadVaccList(),
+  });
 
   /* The detection parameters, as the plan and the batch are asked them --
      one set for the whole batch (constitution §6d). */
@@ -577,88 +584,16 @@ BARRY.incisor = (function () {
     if (!vaccFilter) return true;
     const hay = [r.label, r.project, r.mouse != null ? 'm' + r.mouse : '',
                  r.session != null ? 's' + r.session : '', r.start,
-                 r.remote].join(' ').toLowerCase();
+                 r.remote, r.state === 'native' ? 'netfiles' : 'scratch']
+      .join(' ').toLowerCase();
     return vaccFilter.toLowerCase().split(/\s+/).filter(Boolean)
       .every((w) => hay.includes(w));
-  }
-
-  function badLabel(r) {
-    const bad = r.bad_channels || [];
-    return (r.n_channels ? r.n_channels + ' channels' : 'channels read on the '
-            + 'cluster')
-      + (bad.length ? ' · ' + bad.length + ' marked bad ('
-         + bad.map((n) => 'CSC' + n).join(', ') + ')' : ' · none marked bad');
-  }
-
-  /* The editor for one recording's channels. The same record as the single
-     panel's (`/api/session/bad-for-path`, by CSC number), reached by the
-     recording's own path here or by `vacc:<gid>` -- so a channel ticked off
-     here is off in the trace view, in a single run and in the next batch. */
-  async function toggleChans(r) {
-    if (chanOpen[r.gid]) { delete chanOpen[r.gid]; paint(); return; }
-    chanOpen[r.gid] = { busy: true };
-    paint();
-    const path = r.here || ('vacc:' + r.gid);
-    try {
-      const got = await apiPost('/api/incisor/estimate',
-                                Object.assign({ path }, paramsBody()));
-      chanOpen[r.gid] = { est: got, path };
-    } catch (e) {
-      chanOpen[r.gid] = { error: e.message, path };
-    }
-    paint();
-  }
-
-  async function setRowBad(r, numbers, change) {
-    const st = chanOpen[r.gid];
-    if (!st || st.busy) return;
-    st.busy = true; paint();
-    try {
-      await apiPost('/api/session/bad-for-path', Object.assign({
-        path: st.path,
-        bad_channels: numbers.map(Number).sort((a, b) => a - b),
-      }, change || {}));
-      const got = await apiPost('/api/incisor/estimate',
-                                Object.assign({ path: st.path }, paramsBody()));
-      chanOpen[r.gid] = { est: got, path: st.path };
-    } catch (e) {
-      st.busy = false;
-      toast(e.message, 'err', 9000);
-    }
-    // The plan reads the new bad set, and with it the request's hash.
-    loadVaccList();
-  }
-
-  function rowChanEditor(r) {
-    const st = chanOpen[r.gid] || {};
-    if (st.error) {
-      return el('p', { class: 'warn-line inc-row-chans', text: st.error });
-    }
-    if (!st.est) {
-      return el('p', { class: 'hint quiet inc-row-chans',
-        text: r.here ? 'Reading its channel list…'
-          : 'Reading its channel list off the cluster — the header only, a '
-            + 'few seconds…' });
-    }
-    const all = st.est.channels || [];
-    const bad = all.filter((c) => c.bad);
-    const box = el('div', { class: 'inc-row-chans' });
-    box.appendChild(chanGrid(all, bad, !!st.busy,
-      // A change, with the list for an older Jarvis. See setBad.
-      (number, isBad) => {
-        const now = new Set(bad.map((c) => Number(c.number)));
-        if (isBad) now.add(Number(number)); else now.delete(Number(number));
-        const n = [Number(number)];
-        setRowBad(r, Array.from(now), isBad ? { add: n } : { remove: n });
-      },
-      () => setRowBad(r, [])));
-    return box;
   }
 
   function vaccPickCard() {
     const box = el('div', { class: 'card' });
     box.appendChild(el('div', { class: 'section-label',
-                                text: 'Recordings' }));
+                                text: '1. Which recordings' }));
     if (!vaccList) {
       box.appendChild(el('p', { class: 'hint quiet',
         text: 'Asking what the cluster can read — the registry, the lab’s '
@@ -673,21 +608,14 @@ BARRY.incisor = (function () {
     const todo = vaccList.todo || [];
     const blocked = vaccList.blocked || [];
     const shown = todo.filter(rowMatches);
-    const nHere = todo.filter((r) => r.here).length;
 
-    box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
-      text: todo.length.toLocaleString() + ' recordings are VACC loaded — '
-          + 'the cluster can read them now — and '
-          + (todo.length - nHere).toLocaleString() + ' of those are not on '
-          + 'this computer at all. That does not matter: the scan runs '
-          + 'where the data is, and comes back here to be looked at. Ones '
-          + 'already scanned with these settings are marked, and are '
-          + 'skipped.' }));
+    box.appendChild(el('p', { class: 'hint', style: 'max-width:80ch',
+      text: BARRY.ui.manySentence(todo, 'scanned') }));
 
     const search = el('input', {
       type: 'search', class: 'inc-search', value: vaccFilter,
-      placeholder: 'Type a mouse, session, date or project…',
-      'aria-label': 'Search…',
+      placeholder: 'Type a mouse, session, date, project or “netfiles”',
+      'aria-label': 'Search the recordings',
     });
     /* Repaint on a pause, not per keystroke, and give the box its focus
        back: a repaint replaces it, and a search box that loses the cursor
@@ -709,7 +637,7 @@ BARRY.incisor = (function () {
       el('button', { class: 'btn ghost sm',
         text: 'Tick the ' + shown.length.toLocaleString() + ' shown',
         onclick: () => { shown.forEach((r) => picked.add(r.gid)); paint(); } }),
-      el('button', { class: 'btn ghost sm', text: 'Only the unscanned shown',
+      el('button', { class: 'btn ghost sm', text: 'Only the ones not yet scanned',
         onclick: () => {
           shown.forEach((r) => { if (r.answered) picked.delete(r.gid);
                                  else picked.add(r.gid); });
@@ -734,7 +662,7 @@ BARRY.incisor = (function () {
     }
     for (const r of shown) {
       const on = picked.has(r.gid);
-      const open = !!chanOpen[r.gid];
+      const open = rowChans.isOpen(r);
       list.appendChild(el('div', { class: 'inc-pick' + (r.answered ? ' done' : '')
                                          + (on ? ' on' : '') }, [
         el('input', {
@@ -745,22 +673,16 @@ BARRY.incisor = (function () {
         }),
         el('div', { class: 'ip-main' }, [
           el('span', { class: 'ip-name', text: r.label }),
-          el('span', { class: 'ip-sub', text: badLabel(r)
-            + (r.here ? ' · also on this computer' : '') }),
+          el('span', { class: 'ip-sub', text: BARRY.ui.manyRowSub(r) }),
         ]),
         // THE cluster mark (§6c): one renderer, never a chip of its own.
         BARRY.vacc.mark({ gid: r.gid }, { compact: true })
           || el('span', {}),
         el('span', { class: 'ip-done',
                      text: r.answered ? 'already scanned' : '' }),
-        el('button', {
-          class: 'mini', text: open ? 'Done' : 'Channels…',
-          title: 'Which of this recording’s channels are read. Unticking one '
-               + 'marks it bad for this recording everywhere.',
-          onclick: () => toggleChans(r),
-        }),
+        rowChans.button(r),
       ]));
-      if (open) list.appendChild(rowChanEditor(r));
+      if (open) list.appendChild(rowChans.editor(r));
     }
     box.appendChild(list);
 
@@ -798,7 +720,7 @@ BARRY.incisor = (function () {
   function vaccRunCard() {
     const box = el('div', { class: 'card' });
     box.appendChild(el('div', { class: 'section-label',
-                                text: 'Detection, for every recording sent' }));
+                                text: '2. Detection, for every recording sent' }));
     box.appendChild(params());
     box.appendChild(batchRangeField());
     const todo = (vaccList && vaccList.todo) || [];
@@ -1453,7 +1375,7 @@ BARRY.incisor = (function () {
     }, [
       el('summary', { text: 'Add or remove channels, and scan again' }),
       el('p', { class: 'hint quiet', style: 'max-width:74ch',
-        text: 'Unticking a channel marks it bad for this session '
+        text: 'Taking a channel out marks it bad for this session '
             + 'everywhere. Changing it discards the scan on purpose: every '
             + 'candidate time came out of reading a particular set of '
             + 'channels, and a result sitting under a selection it no '
@@ -1471,35 +1393,24 @@ BARRY.incisor = (function () {
      and behaves the same wherever it is ticked off. `onToggle(number, bad)`
      is by CSC number, never by row index. */
   function chanGrid(all, bad, busy, onToggle, onReset) {
-    const wrap = el('div', {});
-    const grid = el('div', { class: 'inc-chan-grid' });
-    for (const c of all) {
-      // `picked` is false only where a pick leaves the channel out; a grid
-      // drawn without one (VACC mode's) has no such field.
-      const out = c.picked === false && !c.bad;
-      grid.appendChild(el('label', {
-        class: 'inc-chan' + (c.bad ? ' bad' : '') + (out ? ' out' : ''),
-        title: c.bad ? c.label + ' is marked bad and is not read'
-          : out ? c.label + ' is not in this scan’s channels (' + ((est
-              && est.pick_words) || 'the pick') + '). It is not marked bad.'
-          : c.label + ' is read',
-      }, [
-        el('input', {
-          type: 'checkbox', checked: c.bad ? null : 'checked',
-          disabled: busy ? 'disabled' : null,
-          onchange: (e) => onToggle(c.number, !e.target.checked),
-        }),
-        el('span', { text: c.label }),
-      ]));
-    }
-    wrap.appendChild(grid);
-    wrap.appendChild(el('div', { class: 'tk-actions' }, [
-      el('button', { class: 'btn ghost sm', text: 'Put them all back',
-        disabled: (busy || !bad.length) ? 'disabled' : null,
-        onclick: onReset }),
-      busy ? el('span', { class: 'hint quiet', text: 'Saving…' }) : null,
-    ].filter(Boolean)));
-    return wrap;
+    // `picked` is false only where a pick leaves the channel out; a grid
+    // drawn without one has no such field.
+    return BARRY.ui.channelPicker({
+      mode: 'bad', channels: all, busy,
+      out: (c) => (c.picked === false
+        ? 'not in this scan’s channels (' + ((est && est.pick_words)
+            || 'the pick') + '). It is not marked bad.'
+        : null),
+      onToggle: (number, on) => onToggle(number, !on),
+      // A quick pick or a drag: the whole bad list at once.
+      onSet: (onNums) => {
+        const keep = new Set(onNums);
+        setBadSet(all.map((c) => Number(c.number))
+                     .filter((n) => !keep.has(n)));
+      },
+      reset: bad.length ? { text: 'Put them all back', onclick: onReset }
+                        : null,
+    });
   }
 
   /* One channel is sent as a change, not as this panel's list with one

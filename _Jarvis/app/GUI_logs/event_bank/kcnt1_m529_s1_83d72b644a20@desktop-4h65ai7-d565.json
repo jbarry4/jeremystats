@@ -1,6 +1,6 @@
 {
   "_at": {
-    "added": "2026-11-04T20:30:48.332359+00:00",
+    "added": "2026-11-04T20:30:10.596109+00:00",
     "by_label": "2026-11-04T20:30:48.332359+00:00",
     "curation_label": "2026-11-04T20:30:48.332359+00:00",
     "duration_s": "2026-11-04T20:30:48.332359+00:00",
@@ -31,23 +31,23 @@
     "versions": {
       "673eb0370a8a": [
         "set",
-        "2026-11-04T20:30:51.126390+00:00"
+        "2026-11-05T15:08:48.461944+00:00"
       ],
       "d8da7fbc2e3c": [
         "set",
-        "2026-11-04T20:30:48.332359+00:00"
+        "2026-11-04T20:32:35.903476+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-04T20:30:51.126390+00:00",
+    "at": "2026-11-05T15:08:48.461944+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": {
-    "at": "2026-11-04T15:30:48-05:00",
+    "at": "2026-11-04T15:30:10-05:00",
     "by": "Rain Younger",
-    "machine": "DESKTOP-4H65AI7"
+    "machine": "BarryLab"
   },
   "by_label": {
     "unspecified": 1451
@@ -7576,26 +7576,6 @@
       "machine": "BarryLab",
       "n": 1451,
       "note": "Imported from Incisor (dentate spike). 1451 candidates, none decided yet.",
-      "snap_elsewhere": true,
-      "v": 0
-    },
-    {
-      "at": "2026-11-04T15:30:48-05:00",
-      "by": "Rain Younger",
-      "by_label": {
-        "unspecified": 1451
-      },
-      "changed": 0,
-      "from_id": null,
-      "from_v": null,
-      "gained": 0,
-      "id": "d8da7fbc2e3c",
-      "imported": true,
-      "lost": 0,
-      "machine": "DESKTOP-4H65AI7",
-      "moves": {},
-      "n": 1451,
-      "note": "Imported from Incisor (dentate spike). 1451 candidates, none decided yet.",
       "snap": [
         [
           5.518982,
@@ -13402,6 +13382,20 @@
           null
         ]
       ],
+      "v": 0
+    },
+    {
+      "at": "2026-11-04T15:30:48-05:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 1451
+      },
+      "id": "d8da7fbc2e3c",
+      "imported": true,
+      "machine": "DESKTOP-4H65AI7",
+      "n": 1451,
+      "note": "Imported from Incisor (dentate spike). 1451 candidates, none decided yet.",
+      "snap_elsewhere": true,
       "v": 0
     }
   ]
