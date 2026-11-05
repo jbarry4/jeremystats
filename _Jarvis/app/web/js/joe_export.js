@@ -83,7 +83,7 @@ window.JOE_EXPORT = (function () {
   color: var(--ink-3); }
 .jx .jx-badge.yes { background: var(--jlit, #0072B2); border-color: var(--jlit, #0072B2); color: #fff; }
 .jx .jx-badge.near { border-color: var(--jcheck, #D55E00); color: var(--jcheck, #D55E00); }
-.jx table.jx-tests { border-collapse: collapse; font-size: 13.5px; width: 100%; margin: 6px 0; }
+.jx table.jx-tests { display: table; border-collapse: collapse; font-size: 13.5px; width: 100%; margin: 6px 0; }
 .jx table.jx-tests th, .jx table.jx-tests td { padding: 4px 7px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .jx table.jx-tests tr.yes td, .jx table.jx-tests tr.yes th { font-weight: 650; }
 .jx table.jx-tests th { font-weight: 600; color: var(--ink-2); }
@@ -100,11 +100,23 @@ window.JOE_EXPORT = (function () {
 .jx .jx-flag.jx-san-green { border-left-color: var(--jlit, #0072B2); background: color-mix(in srgb, var(--jlit, #0072B2) 9%, transparent); }
 .jx .jx-sanity code { overflow-wrap: anywhere; }
 .jx .jx-msec h3 { margin: 18px 0 6px; }
+.jx .jx-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 14px 0 -17px; border-bottom: 1px solid var(--line); }
+.jx .jx-tab { font: inherit; font-size: 15px; font-weight: 600; padding: 8px 16px; border: 1px solid transparent; border-bottom: 0;
+  border-radius: 6px 6px 0 0; background: none; color: var(--ink-2); cursor: pointer; margin-bottom: -1px; }
+.jx .jx-tab[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--ink); }
+.jx .jx-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.jx .jx-cv-step { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.jx .jx-cv-no { width: 24px; height: 24px; border-radius: 50%; background: var(--chip); font-size: 13px; font-weight: 650;
+  display: flex; align-items: center; justify-content: center; }
+.jx .jx-conduction table.jx-tests td, .jx .jx-conduction table.jx-tests th { white-space: nowrap; }
+.jx .jx-cv-open { margin: 6px 0 0; padding-left: 20px; }
+.jx .jx-cv-open li { margin-bottom: 6px; }
 @media (max-width: 640px) {
   .jx .jx-fig { grid-template-columns: minmax(0, 1fr); }
   .jx .jx-thumb { max-width: 320px; }
   .jx .jx-pubfig .jx-thumb { max-width: 100%; }
   .jx .jx-prose { font-size: 15.5px; }
+  .jx .jx-tab { padding: 8px 10px; font-size: 14px; }
 }`;
 
   function el(tag, attrs, kids) {
@@ -513,6 +525,36 @@ window.JOE_EXPORT = (function () {
     return el('div', { class: 'jx-sanity' }, kids);
   }
 
+  /* How volume conduction was handled (backend/conduction.py, 2026-11-05):
+     the problem in two paragraphs, then each step with what it found in one
+     line and the rest behind a More, then what is still open. Tab 11 shows
+     the same node through conductionNode. */
+  function conductionPart(C) {
+    const kids = (C.what || []).map((t) => el('p', { text: t }));
+    (C.steps || []).forEach((s, i) => {
+      const more = (s.more || []).map((t) => el('p', { text: t }));
+      if (s.table && s.table.rows && s.table.rows.length) {
+        more.push(el('div', { class: 'jx-tablewrap' }, el('table', { class: 'jx-tests' }, [
+          el('thead', {}, el('tr', {}, s.table.head.map((h) => el('th', { text: String(h) })))),
+          el('tbody', {}, s.table.rows.map((r) => el('tr', { class: r.some((x) => /marked/.test(String(x))) ? 'yes' : null },
+            r.map((x) => el('td', { text: String(x) })))))])));
+      }
+      kids.push(el('div', { class: 'jx-cv-step', 'data-step': s.key }, [
+        el('span', { class: 'jx-cv-no', 'aria-hidden': 'true', text: String(i + 1) }),
+        el('div', {}, [el('div', { class: 'jx-figname', text: s.title }), el('div', { text: s.line || '' }),
+          more.length ? el('details', {}, [el('summary', { text: 'More' })].concat(more)) : null])]));
+    });
+    if ((C.open || []).length) {
+      kids.push(el('h3', { text: 'Still open' }));
+      kids.push(el('ul', { class: 'jx-cv-open' }, C.open.map((t) => el('li', { text: t }))));
+    }
+    return el('div', { class: 'jx-conduction' }, kids);
+  }
+  function conductionNode(C) {
+    style();
+    return el('div', { class: 'jx' }, conductionPart(C));
+  }
+
   function lights(rows) {
     const cell = (r, b) => {
       const x = r.bands[b];
@@ -533,6 +575,10 @@ window.JOE_EXPORT = (function () {
       el('thead', {}, el('tr', {}, [el('th', { text: '#' }), el('th', { text: 'Comparison' }), el('th', { text: 'Theta' }), el('th', { text: 'Gamma' })])),
       el('tbody', {}, trs)]), none]);
   }
+
+  const TABS = [['results', 'Results'], ['sanity', 'Sanity check'], ['wrap', 'Wrapping up']];
+  const TAB_OF = { sanity: 'sanity', conduction: 'wrap', methods: 'wrap' };
+  const TAB_KEY = 'jx.tab';
 
   function render(root, M, opts) {
     style();
@@ -561,6 +607,32 @@ window.JOE_EXPORT = (function () {
     const folder = new Map();
     for (const s of M.sections) for (const f of filesOf(s)) folder.set(f.name, s.title);
     allBtn.addEventListener('click', () => zipDown(all, (f) => folder.get(f.name), 'Joe_export_' + (M.made || '').slice(0, 10) + '.zip', url, say, allBtn));
+    // three tabs (2026-11-05): Results, Sanity check, Wrapping up (volume
+    // conduction and the methods for the dissertation)
+    const panels = {};
+    const tabBtns = [];
+    const tabOf = (s) => s.tab || TAB_OF[s.id] || 'results';
+    const tabs = TABS.filter(([k]) => k === 'results' || M.sections.some((s) => tabOf(s) === k));
+    const setTab = (k, remember) => {
+      if (!panels[k]) k = 'results';
+      SW.tab = k;
+      tabBtns.forEach((b) => { const on = b.dataset.tab === k; b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; });
+      for (const t in panels) panels[t].hidden = t !== k;
+      if (remember) { try { localStorage.setItem(TAB_KEY, k); } catch (e) { /* none */ } }
+    };
+    for (const [k, say] of tabs) {
+      panels[k] = el('div', { class: 'jx-panel', id: 'jx-tab-' + k, role: 'tabpanel', 'aria-labelledby': 'jx-tabbtn-' + k });
+      tabBtns.push(el('button', { type: 'button', role: 'tab', class: 'jx-tab', id: 'jx-tabbtn-' + k, 'data-tab': k, 'aria-controls': 'jx-tab-' + k,
+                                  text: say, on: { click: () => setTab(k, true) } }));
+    }
+    const tabBar = el('div', { class: 'jx-tabs', role: 'tablist', 'aria-label': 'Parts of this page' }, tabBtns);
+    tabBar.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const i = tabs.findIndex(([k]) => k === SW.tab);
+      const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length][0];
+      setTab(n, true);
+      tabBtns.find((b) => b.dataset.tab === n).focus();
+    });
     wrap.appendChild(el('div', { class: 'jx-card' }, [
       el('div', { class: 'jx-head' }, [
         el('div', {}, [
@@ -569,13 +641,17 @@ window.JOE_EXPORT = (function () {
             + day(M.joe_at) + ' and the figures of ' + day(M.figs_at) + '.' })]),
         allBtn]),
       status,
+      tabs.length > 1 ? tabBar : null]));
+    for (const k in panels) wrap.appendChild(panels[k]);
+    const inTab = (k) => M.sections.filter((s) => tabOf(s) === k);
+    panels.results.appendChild(el('div', { class: 'jx-card' }, [
       el('ul', { class: 'jx-read' }, [
         el('li', { text: 'The question, from the proposal: did the cues’ effect on coherence between regions change from Precon1 to Precon4, in theta (5–12 Hz) and gamma (30–90 Hz)?' }),
         el('li', { text: 'A cue effect is the cue window’s coherence minus the baseline’s. Each ring figure has three rows: the Precon1 cue effect, the Precon4 cue effect, and the change in cue effect (Precon4’s minus Precon1’s), which is the question. Supplementary Figure S1 shows it on one pair.' }),
         el('li', { text: 'Every result is held to three tests, FP first: FP (' + (M.fp && M.fp.fake_trials ? M.fp.fake_trials.toLocaleString('en-US') + ' ' : '') + 'fake trials from the same rats’ FP1 and FP2, with no cues), the shuffles (each trial’s baseline and cue swapped at random inside its session) and the rats (every way of flipping the sign of each rat’s change, or a t-test). A filled dot is a test passed (P < 0.05).' }),
         el('li', { text: 'No P value in the figures section is corrected for the number of tests. Read them as leads to test again, not findings.' }),
-        M.rat_sets
-          ? el('li', { text: 'Methods, for the dissertation: how the data were processed and analysed, from the recordings to the statistics, written to be adapted. Each section has a Copy button; the same text comes as Word and as plain text.' })
+        M.rat_sets && panels.wrap
+          ? el('li', { text: 'Wrapping up holds how volume conduction was handled, and the methods for the dissertation: how the data were processed and analysed, from the recordings to the statistics, written to be adapted, each section with a Copy button and the same text as Word and plain text. Sanity check holds the report on whether the right data and logic went in.' })
           : null,
         M.sections.some((s) => s.id === 'dickson')
           ? el('li', { text: M.rat_sets
@@ -586,7 +662,12 @@ window.JOE_EXPORT = (function () {
           ? el('li', { text: 'Part 2 is the final stage: power inside each region, the background under it, and, on the coherence results that pass, which region leads and theta–gamma coupling; with the methods written from the run. Every figure here is a PDF.' })
           : null]),
       switchNode(M),
-      el('div', { class: 'jx-nav' }, M.sections.map((s) => el('a', { href: '#jx-' + s.id, text: s.title })))]));
+      el('div', { class: 'jx-nav' }, inTab('results').map((s) => el('a', { href: '#jx-' + s.id, text: s.title })))]));
+    for (const k in panels) {
+      if (k !== 'results' && inTab(k).length > 1) {
+        panels[k].appendChild(el('div', { class: 'jx-card' }, el('div', { class: 'jx-nav' }, inTab(k).map((s) => el('a', { href: '#jx-' + s.id, text: s.title })))));
+      }
+    }
     for (const s of M.sections) {
       const sFiles = filesOf(s);
       const card = el('div', { class: 'jx-card', id: 'jx-' + s.id }, [
@@ -597,6 +678,7 @@ window.JOE_EXPORT = (function () {
       if (s.methods && s.methods.length) card.appendChild(el('div', {}, [el('h3', { text: 'Methods' }), methods(s.methods)]));
       if (s.prose && s.prose.length) card.appendChild(methodsProse(s.prose));
       if (s.sanity) card.appendChild(sanityPart(s.sanity));
+      if (s.conduction) card.appendChild(conductionPart(s.conduction));
       if (s.sets) card.appendChild(setPart(s, url, preview));
       if (s.groups) {
         const navs = s.groups.map((g) => el('a', { href: '#jx-g-' + g.key.replace('|', '-'), text: g.title }));
@@ -624,10 +706,15 @@ window.JOE_EXPORT = (function () {
         SW.after.push(() => { none.hidden = !(SW.only && boxes.every((b) => b.hidden)); });
         card.appendChild(none);
       }
-      if (!s.files.length && !sFiles.length && !s.sanity) card.appendChild(el('p', { class: 'jx-muted', text: 'Not made yet.' }));
-      wrap.appendChild(card);
+      if (!s.files.length && !sFiles.length && !s.sanity && !s.conduction) card.appendChild(el('p', { class: 'jx-muted', text: 'Not made yet.' }));
+      panels[tabOf(s)].appendChild(card);
     }
+    // the tab: #tab=<key> in the address, else the last one picked, else Results
+    let first = 'results';
+    try { first = localStorage.getItem(TAB_KEY) || first; } catch (e) { /* none */ }
+    const h = /(?:^#|&)tab=(\w+)/.exec(location.hash || '');
+    setTab(h ? h[1] : first, false);
   }
 
-  return { render, filesOf };
+  return { render, filesOf, conductionNode };
 }());

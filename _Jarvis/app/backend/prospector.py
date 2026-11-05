@@ -822,6 +822,155 @@ _SWEEP_LOCK = threading.Lock()
 MAX_SWEEPS = 64
 READ_WORKERS = 6
 
+# The sweep's job stages, declared the way Tooth Fairy's are in aibeta.py:
+# `cfc.Job` keeps only stages its STAGES list names and drops the rest
+# without a word. Until 2026-11-05 these were not declared, so a sweep ran
+# with no stages at all -- its screen said "Working" over an empty bar from
+# start to finish. Seeds are Tooth Fairy's, the same two reads.
+STAGES = (("pr read", "stretches", 0.3),
+          ("pr physio", "stretches", 1.2),
+          ("pr score", "candidates", 0.001))
+READ_STAGES = ("pr read", "pr physio")
+
+
+def register_stages(cfcmod):
+    """Declare the sweep's job stages to the job machinery. Idempotent."""
+    have = {name for name, _unit in cfcmod.STAGES}
+    for name, unit, seed in STAGES:
+        if name not in have:
+            cfcmod.STAGES.append((name, unit))
+        cfcmod._RATES.setdefault(name, seed)
+        cfcmod._FLAT.add(name)
+
+
+def read_block(sess, rec, times, report, picks, read_fams, job=None,
+               stages=READ_STAGES, workers=READ_WORKERS, on_first=None):
+    """Both reads of one pool's events -- what a sweep scores.
+
+    Returns (fam, ok, traces). On this computer for a recording it has, and
+    on a compute node (`read_node`) for one only the cluster has: one
+    function, so the two cannot read differently and the cache a node fills
+    is the cache a local sweep would have filled. `on_first(fam, ok,
+    traces)` is called between the two reads, for the scanning screen.
+    """
+    want_phys = bool(set(read_fams) & aibeta.PHYS_IDS)
+    want_filt = phys.filters_for(read_fams)
+    want_xray = bool(set(read_fams) & set(phys.XR_IDS))
+    want_spec = bool(set(read_fams) & set(phys.SPEC_IDS))
+    stamps = [t for t in times if t is not None]
+    n1 = len(braces.spans(stamps, window_ms=aibeta.SEARCH_MS
+                          + aibeta.HALF_MS, pad_s=aibeta.PAD_S))
+    if job:
+        job.begin(stages[0], of=n1, unit="stretches")
+
+    def tick1(k, n):
+        if job:
+            job.tick(stages[0], k)
+    got1 = aibeta.read_entry(sess, rec["channels"], rec["probe"],
+                             rec["bad"], times, spacing=rec.get("spacing"),
+                             report=report, job=job, on_span=tick1,
+                             workers=workers, trace_ids=picks)
+    fam = dict(got1["fam"])
+    ok = got1["ok"].astype(bool)
+    traces = got1.get("traces") or {"chans": [], "by_event": {}}
+    if on_first:
+        on_first(fam, ok, traces)
+    if want_phys:
+        n2 = len(phys.spans(stamps, phys.REACH_MS / 1000.0, phys.PAD_S))
+        if job:
+            job.begin(stages[1], of=n2, unit="stretches")
+
+        def tick2(k, n):
+            if job:
+                job.tick(stages[1], k)
+        got2 = phys.read_physio(sess, rec["channels"], rec["probe"],
+                                rec["bad"], times, report=report,
+                                folder=sess.get("path"), job=job,
+                                on_span=tick2, aibeta=aibeta,
+                                workers=workers,
+                                spacing=rec.get("spacing"),
+                                want_filt=want_filt, want_xray=want_xray,
+                                want_spec=want_spec)
+        fam.update(got2["fam"])
+        ok = ok & got2["ok"].astype(bool)
+    return fam, ok, traces
+
+
+def save_block(path, fam, ok, traces, picks=None):
+    """A read, as the sweep's cache keeps it. Written whole or not at all.
+    The traces in `picks` order, which is the order the screen shows."""
+    by_event = (traces or {}).get("by_event") or {}
+    tr_idx = [int(i) for i in (picks if picks is not None
+                                else sorted(by_event)) if i in by_event]
+    extra = {}
+    if tr_idx:
+        extra = {"trace_idx": np.array(tr_idx, dtype=int),
+                 "trace_chans": np.array(traces["chans"], dtype=int),
+                 "trace_arr": np.stack([by_event[i] for i in tr_idx])}
+    np.savez_compressed(path + ".part.npz", ok=ok, **extra,
+                        **{"fam_" + k: v for k, v in fam.items()})
+    os.replace(path + ".part.npz", path)
+
+
+def load_block(path, read_fams):
+    """(fam, ok, traces, picks) from a kept read, or None when it is not
+    there or does not hold every input asked for."""
+    if not os.path.exists(path):
+        return None
+    try:
+        with np.load(path, allow_pickle=False) as z:
+            fam = {k[4:]: z[k] for k in z.files if k.startswith("fam_")}
+            ok = z["ok"].astype(bool)
+            if any(f not in fam for f in read_fams):
+                return None
+            traces, picks = {"chans": [], "by_event": {}}, None
+            if "trace_idx" in z.files:
+                traces = {"chans": [int(c) for c in z["trace_chans"]],
+                          "by_event": {int(i): z["trace_arr"][n]
+                                       for n, i in enumerate(z["trace_idx"])}}
+                picks = [int(i) for i in z["trace_idx"]]
+            return fam, ok, traces, picks
+    except Exception:                                    # noqa: BLE001
+        return None
+
+
+def read_node(spec, session, path, out_dir, job):
+    """A pool's reads on a compute node (vacc_run.py, tool `prospector`).
+
+    For a recording only the cluster has: Isabella's laptop, 2026-11-05,
+    swept KCNT1 m1606 s1 -- opened off the cluster -- and the reads, which
+    open the files on this computer, said "[WinError 2] The system cannot
+    find the file specified: 'vacc:s9a8f6138b49e'". The SAME `read_block`
+    runs here, over the channels the desk chose, and its .npz is written
+    beside the run; the desk brings it home into the sweep's cache and
+    scores it there, where the model is. The segmentation is made here, as
+    Incisor's node makes its own.
+    """
+    use = braces.channels_by_number(session, spec.get("channels"))
+    if not use:
+        raise ValueError("None of the channels asked for are in the "
+                         "cluster's copy of this recording.")
+    report = None
+    if session.get("source") == "ncs":
+        report = continuity.check(path)
+        if not report or not report.get("ok"):
+            report = None
+    rec = {"channels": use, "probe": spec.get("probe"),
+           "bad": [int(b) for b in (spec.get("bad") or [])],
+           "spacing": spec.get("spacing")}
+    fam, ok, traces = read_block(
+        session, rec, list(spec.get("times") or []), report,
+        [int(i) for i in (spec.get("picks") or [])],
+        list(spec.get("read_fams") or []), job=job,
+        stages=tuple(spec.get("stages") or READ_STAGES),
+        workers=int(spec.get("workers") or READ_WORKERS))
+    name = "sweep_read.npz"
+    dest = os.path.join(out_dir, name)
+    save_block(dest, fam, ok, traces,
+               picks=[int(i) for i in (spec.get("picks") or [])])
+    return {"file": name, "bytes": os.path.getsize(dest),
+            "n": len(spec.get("times") or []), "n_readable": int(ok.sum())}
+
 
 def remember(sid, rec):
     with _SWEEP_LOCK:
@@ -909,10 +1058,16 @@ def a_person_decided(ev):
     return bool(ev.get("label")) and ev.get("by") != BY
 
 
-def sweep(store, curate, bank, open_recording, gid, kind, job=None):
-    """Score every candidate in one pooled set. Returns the sweep record."""
+def sweep(store, curate, bank, open_recording, gid, kind, job=None,
+          read_remote=None):
+    """Score every candidate in one pooled set. Returns the sweep record.
+
+    `read_remote(spec, dest, job)` is how a recording only the cluster has
+    is read (app.py `_pr_read_vacc`): it runs `read_node` on a compute node
+    and leaves the read at `dest`, which is where a local read is kept."""
     from . import curation as curmod
     from . import toothfairy as tf
+    from . import vaccio
     st = status(store)
     if not st["ready"]:
         raise aibeta.AiBetaError(st["why"])
@@ -940,9 +1095,19 @@ def sweep(store, curate, bank, open_recording, gid, kind, job=None):
                                  bundle.get("channels") or "even")
     which = rec.get("subset") or "all"
     sess = rec["session"]
+    remote = vaccio.is_vacc(sess.get("path"))
+    if remote and basis == retime.CONCAT:
+        # Putting these stamps on the recording's clock needs its
+        # segmentation, which only the cluster can make, and a sweep that
+        # went ahead would read every one in the wrong place.
+        raise aibeta.AiBetaError(
+            "This pool's times are on the old joined-up clock, and its "
+            "recording is only on the cluster, so they cannot be put on the "
+            "recording's own clock here. Sweep it on a computer that has "
+            "the recording.")
     report = None
     try:
-        report = continuity.check(sess.get("path"))
+        report = None if remote else continuity.check(sess.get("path"))
     except Exception:                                    # noqa: BLE001
         report = None
     times = []
@@ -970,23 +1135,36 @@ def sweep(store, curate, bank, open_recording, gid, kind, job=None):
     picks = tf._samples([i for i in range(len(events))
                          if times[i] is not None], seed=key)
     fam, ok, cached, traces = None, None, False, {"chans": [], "by_event": {}}
-    if os.path.exists(path):
-        try:
-            with np.load(path, allow_pickle=False) as z:
-                fam = {k[4:]: z[k] for k in z.files if k.startswith("fam_")}
-                ok = z["ok"].astype(bool)
-                if any(f not in fam for f in read_fams):
-                    raise KeyError("an input this read does not hold")
-                if "trace_idx" in z.files:
-                    traces = {"chans": [int(c) for c in z["trace_chans"]],
-                              "by_event": {int(i): z["trace_arr"][n]
-                                           for n, i in enumerate(z["trace_idx"])}}
-                    picks = [int(i) for i in z["trace_idx"]]
-                cached = True
-        except Exception:                                # noqa: BLE001
-            fam = None
+    kept = load_block(path, read_fams)
+    if kept is not None:
+        fam, ok, traces, kept_picks = kept
+        if kept_picks is not None:
+            picks = kept_picks
+        cached = True
 
-    stamps = [t for t in times if t is not None]
+    if fam is None and remote:
+        # Only the cluster has this recording: the reads run on a compute
+        # node and come home as the read a local sweep would have kept.
+        if read_remote is None:
+            raise aibeta.AiBetaError(
+                "This recording is only on the cluster, and this Prospector "
+                "cannot send its reads there.")
+        read_remote({
+            "channels": [int(c["number"]) for c in rec["channels"]],
+            "probe": rec["probe"], "bad": sorted(int(b) for b in rec["bad"]),
+            "spacing": rec.get("spacing"), "times": times,
+            "picks": [int(i) for i in picks], "read_fams": read_fams,
+            "stages": list(READ_STAGES), "workers": READ_WORKERS,
+            "n_events": len(events)}, path, job)
+        kept = load_block(path, read_fams)
+        if kept is None:
+            raise aibeta.AiBetaError(
+                "The cluster read this pool, but what came home does not "
+                "hold every input Prospector scores. Sweep it again.")
+        fam, ok, traces, kept_picks = kept
+        if kept_picks is not None:
+            picks = kept_picks
+
     if fam is None and job and picks:
         # The scanning screen's candidates first, read on their own, so it
         # has something real to sweep while the whole pool is read.
@@ -1001,53 +1179,18 @@ def sweep(store, curate, bank, open_recording, gid, kind, job=None):
         tf._quick_traces(sess, rec["channels"], rec["probe"], rec["bad"],
                          times, picks, on_some=show)
     if fam is None:
-        n1 = len(braces.spans(stamps, window_ms=aibeta.SEARCH_MS
-                              + aibeta.HALF_MS, pad_s=aibeta.PAD_S))
-        if job:
-            job.begin("pr read", of=n1, unit="stretches")
-
-        def tick1(k, n):
-            if job:
-                job.tick("pr read", k)
-        got1 = aibeta.read_entry(sess, rec["channels"], rec["probe"],
-                                 rec["bad"], times, spacing=rec.get("spacing"),
-                                 report=report, job=job, on_span=tick1,
-                                 workers=READ_WORKERS, trace_ids=picks)
-        fam = dict(got1["fam"])
-        ok = got1["ok"].astype(bool)
-        traces = got1.get("traces") or traces
-        picks = [i for i in picks if i in traces.get("by_event", {})]
-        if want_phys:
-            n2 = len(phys.spans(stamps, phys.REACH_MS / 1000.0, phys.PAD_S))
-            if job:
-                job.begin("pr physio", of=n2, unit="stretches")
+        def first(fam1, ok1, traces1):
+            # The screen's candidates are the ones the first read traced.
+            picks[:] = [i for i in picks if i in traces1.get("by_event", {})]
+            if job and want_phys:
                 job.set_preview({"stage": "physio", "samples": [
-                    tf._sample_row(i, events, times, fam, None, None, traces)
-                    for i in picks if ok[i]]})
-
-            def tick2(k, n):
-                if job:
-                    job.tick("pr physio", k)
-            got2 = phys.read_physio(sess, rec["channels"], rec["probe"],
-                                    rec["bad"], times, report=report,
-                                    folder=sess.get("path"), job=job,
-                                    on_span=tick2, aibeta=aibeta,
-                                    workers=READ_WORKERS,
-                                    spacing=rec.get("spacing"),
-                                    want_filt=want_filt, want_xray=want_xray,
-                                    want_spec=want_spec)
-            fam.update(got2["fam"])
-            ok = ok & got2["ok"].astype(bool)
-        tr_idx = [i for i in picks if i in traces.get("by_event", {})]
-        extra = {}
-        if tr_idx:
-            extra = {"trace_idx": np.array(tr_idx, dtype=int),
-                     "trace_chans": np.array(traces["chans"], dtype=int),
-                     "trace_arr": np.stack([traces["by_event"][i]
-                                            for i in tr_idx])}
-        np.savez_compressed(path + ".part.npz", ok=ok, **extra,
-                            **{"fam_" + k: v for k, v in fam.items()})
-        os.replace(path + ".part.npz", path)
+                    tf._sample_row(i, events, times, fam1, None, None,
+                                   traces1)
+                    for i in picks if ok1[i]]})
+        picks = list(picks)
+        fam, ok, traces = read_block(sess, rec, times, report, picks,
+                                     read_fams, job=job, on_first=first)
+        save_block(path, fam, ok, traces, picks=picks)
 
     if job:
         job.begin("pr score", of=len(events), unit="candidates")

@@ -120,6 +120,7 @@ FEEDBACK = feedbackmod.Feedback(LOGS_DIR)
 rootcanal.register_stages(cfcmod)
 aibetamod.register_stages(cfcmod)
 stratamod.register_stages(cfcmod)
+prospectormod.register_stages(cfcmod)
 cfcmod.configure(LOGS_DIR)
 # Answers worked out from a recording (its overview strip, its band surface),
 # kept on disk keyed on the file's size and mtime: a restart used to read
@@ -26034,6 +26035,11 @@ FIGURES = figroutesmod.install(app, sys.modules[__name__])
 from . import vos as vosmod                                   # noqa: E402
 vosmod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("user"),
                                        _vacc_device()))
+# SoftMouse genotypes -> the same sheet, through the same web app
+# (Misc > SoftMouse log in). softmouse.py.
+from . import softmouse as softmousemod                       # noqa: E402
+softmousemod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("user"),
+                                             _vacc_device()))
 
 # X-ray's vault: one record per (recording, question), and the read cached
 # beside it.
@@ -26890,6 +26896,14 @@ def api_arc_monolith_data(name):
         path = os.path.join(root, "final.json")
         if not os.path.isfile(path):
             return jsonify({"ok": False, "error": "Tab 12 has not been worked out yet."}), 404
+        with open(path, encoding="utf-8") as fh:
+            return app.response_class(fh.read(), mimetype="application/json")
+    if name == "conduction":
+        # Tab 11's volume conduction card (backend/conduction.py), off the
+        # disk; joepub's build writes it.
+        path = os.path.join(monolithmod._path("joepub"), "conduction.json")
+        if not os.path.isfile(path):
+            return jsonify({"ok": False, "error": "Not worded yet: tab 10's publication set makes it."}), 404
         with open(path, encoding="utf-8") as fh:
             return app.response_class(fh.read(), mimetype="application/json")
     if name == "sanity":

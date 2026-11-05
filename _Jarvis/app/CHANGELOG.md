@@ -15,6 +15,30 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.05.2 - Volume conduction: how it was handled, in tab 11 and on Joe's site
+
+- **A new explainer, "Volume conduction: how it was handled".** It is a card in tab 11, under Read this first, and its own section on Joe's site, right after the methods. Both draw the same words, from `backend/conduction.py`. It covers:
+  - what volume conduction is;
+  - seven steps, each with what it found in one line and a More;
+  - what is still open.
+- **The steps:**
+  1. Each rat is compared with itself.
+  2. Every recording was screened for one signal on every wire. 3 of 16 recordings were marked, with a wide gap to the rest.
+  3. That signal is at zero lag. J3 Precon4's gamma coherence was 0.73, but its imaginary coherence was 0.07, inside the other recordings' 0.05–0.13. It was as high across the hemispheres as within one.
+  4. Every set of rats, side by side. 2 of the 3 changes found with every rat hold without J3 and J4.
+  5. The measures that ignore zero lag.
+  6. Granger's caution.
+  7. J8–J10's reference switch.
+- **Nothing new is tested.** The explainer reads the spectra and checks that were already made.
+- **The methods for the dissertation** gain a "Volume conduction" section, with Nolte 2004, Stam 2007 and Vinck 2011 added to the references.
+- **Restart Jarvis** for tab 11's card: it is read through a new route, `/data/conduction`.
+- **Fixed:** tables in Joe's site's sanity report and in this section were laid out as one flex row. They are tables again.
+- **Joe's site (and tab 10) is now three tabs:**
+  - **Results:** the figures, the statistics and the switches.
+  - **Sanity check:** the report.
+  - **Wrapping up:** volume conduction, then the methods for the dissertation.
+- The site opens on Results, remembers the last tab you picked, and `#tab=wrap` (or `sanity`) in the address opens that tab.
+
 ## 2026.11.05.1 - A renamed folder says so, tab 10 survives a redraw, a long poll is not "stuck"
 
 From the daily error pass (TRIAGE.md, pass 11). Restart Jarvis for the first

@@ -299,6 +299,16 @@ def run_tool(tool, spec, bundle, job, csc):
                 "bad": {str(k): v for k, v in (got.get("bad") or {}).items()},
                 "probe": got.get("probe")}
 
+    if tool == "prospector":
+        # Prospector's reads of one pooled set (2026-11-05), for a recording
+        # only the cluster has. The SAME `prospector.read_block` a sweep on
+        # the desk calls, over the channels and times the desk chose; the
+        # .npz is written beside this run, and the desk brings it home into
+        # the sweep's own cache and scores it there, where the model is.
+        from backend import prospector
+        return prospector.read_node(spec, session, path, bundle["_out_dir"],
+                                    job)
+
     if tool == "braces":
         # Braces (and Eye, which is Braces' engine pointed at IEDs) for a
         # recording the desk could not open. The SAME `braces.align` a local

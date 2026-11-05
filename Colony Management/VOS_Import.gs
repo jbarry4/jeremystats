@@ -600,6 +600,10 @@ function doPost(e) {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     checkJarvisSecret_(body.secret);
 
+    // One web app, one secret, two sources. SoftMouse's half is in
+    // SoftMouse_Import.gs.
+    if (body.kind === 'softmouse') return jarvisJson_(softMouseFromJarvis_(body));
+
     const stamp = String(body.stamp || '');
     if (!/^\d{6}$/.test(stamp)) throw new Error('stamp must be MMDDYY, got "' + stamp + '"');
     const mice = body.mice || [];
@@ -617,6 +621,10 @@ function doPost(e) {
       else if (/^(f|female)$/i.test(sex)) sex = 'F';
       importMap[id] = { cage: String(m.cage || '').trim(), dob: jarvisDate_(m.dob), sex: sex };
     });
+    // Counted again after reading: a list whose entries have no "id" (another
+    // kind of list, sent to a script too old to know it) is a census of nobody.
+    const usable = Object.keys(importMap).length;
+    if (usable < 10) throw new Error('only ' + usable + ' mice with an ID in the census; refusing');
 
     const apply = body.mode === 'apply';
     let blockAt = null;
@@ -666,11 +674,16 @@ function jarvisDate_(text) {
  * ones. A second sync on the same day writes over Jarvis's own block for
  * that day (remembered in Document Properties), never over a pasted one.
  * Returns the 1-based column the block starts at.
+ *
+ * sheetName / propKey default to VOS's; SoftMouse passes "SoftMouse Imports"
+ * and its own key, so the two sources never write over each other's blocks.
  */
-function writeJarvisBlock_(stamp, block) {
+function writeJarvisBlock_(stamp, block, sheetName, propKey) {
+  sheetName = sheetName || 'VOS Imports';
+  propKey = propKey || 'JARVIS_VOS_BLOCKS';
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('VOS Imports');
-  if (!sheet) throw new Error('Could not find a sheet named "VOS Imports".');
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) throw new Error('Could not find a sheet named "' + sheetName + '".');
   const headers = block.headers || [];
   const rows = (block.rows || []).map(function (r) {
     return headers.map(function (_, i) { return r[i] == null ? '' : r[i]; });
@@ -679,7 +692,7 @@ function writeJarvisBlock_(stamp, block) {
   if (!width) throw new Error('the block has no columns');
 
   const props = PropertiesService.getDocumentProperties();
-  const known = JSON.parse(props.getProperty('JARVIS_VOS_BLOCKS') || '{}');
+  const known = JSON.parse(props.getProperty(propKey) || '{}');
 
   let start = known[stamp];
   if (start && String(sheet.getRange(1, start).getValue()) !== headers[0]) start = null;
@@ -699,7 +712,7 @@ function writeJarvisBlock_(stamp, block) {
   if (rows.length) sheet.getRange(2, start, rows.length, width).setValues(rows);
 
   known[stamp] = start;
-  props.setProperty('JARVIS_VOS_BLOCKS', JSON.stringify(known));
+  props.setProperty(propKey, JSON.stringify(known));
   return start;
 }
 

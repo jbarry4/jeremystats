@@ -129,9 +129,10 @@ function showSoftMouseDialog() {
 }
 
 /**
- * SOFTMOUSE SYNC: The core processing function.
- * Maps M### to ###, dynamically extracts Genotype data from inside parentheses, 
- * and updates Role, YH, SST, and PV columns.
+ * SOFTMOUSE SYNC: the menu's import -- the date picked in the dialog, read out
+ * of "SoftMouse Imports". The work itself is softMouseSyncCore_, shared with
+ * Jarvis (doPost in VOS_Import.gs -> softMouseFromJarvis_ below), so the two
+ * ways in can never disagree about what a SoftMouse list means.
  */
 function processSoftMouseImport(targetDateStr) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -140,6 +141,86 @@ function processSoftMouseImport(targetDateStr) {
   if (!softSheet) {
     throw new Error('Could not find a sheet named "SoftMouse Imports".');
   }
+
+  // --- 1. BUILD DICTIONARY FROM SOFTMOUSE IMPORTS ---
+  const softData = softSheet.getDataRange().getValues();
+  const softHeaders = softData[0];
+
+  const tagHeader = "Physical Tag " + targetDateStr;
+  const stateHeader = "State " + targetDateStr;
+  const genoHeader = "Genotype " + targetDateStr;
+
+  const tagColIdx = softHeaders.indexOf(tagHeader);
+  const stateColIdx = softHeaders.indexOf(stateHeader);
+  const genoColIdx = softHeaders.indexOf(genoHeader);
+
+  if (tagColIdx === -1 || stateColIdx === -1 || genoColIdx === -1) {
+    throw new Error(`Could not find one of the required columns for date ${targetDateStr}.`);
+  }
+
+  const importMap = {};
+  for (let r = 1; r < softData.length; r++) {
+    const rawTag = String(softData[r][tagColIdx]).trim();
+    if (!rawTag) continue;
+    importMap[softMouseId_(rawTag)] = parseSoftMouseRow_(softData[r][stateColIdx],
+                                                          softData[r][genoColIdx]);
+  }
+
+  const res = softMouseSyncCore_(importMap, { dryRun: false, label: targetDateStr });
+
+  SpreadsheetApp.getUi().alert(
+    `SoftMouse Sync Complete!\n\nSheet: ${res.sheet}\n\n` +
+    `Successfully matched and updated ${res.matched} active mice profiles.`);
+  return 'Success';
+}
+
+/** "M-089" and "M089" both become "089"; "1652" stays "1652". */
+function softMouseId_(rawTag) {
+  return String(rawTag).trim().replace(/^M-?/i, '').trim();
+}
+
+/**
+ * The genotype as the master sheet's dropdowns spell it. SoftMouse writes
+ * "YH(het)"; the YH / SST / PV dropdowns offer WT, Het, Hom.
+ */
+function softMouseGeno_(v) {
+  const t = String(v || '').trim();
+  const canon = { wt: 'WT', het: 'Het', hom: 'Hom' }[t.toLowerCase()];
+  return canon || t;
+}
+
+/**
+ * One SoftMouse mouse: its State and the text inside each gene's brackets,
+ * e.g. "YH(WT), SST-Cre(het)" -> yh WT, sst Het, pv "" (written as N/A).
+ */
+function parseSoftMouseRow_(state, rawGeno) {
+  const g = String(rawGeno || '').trim();
+  const pick = function (re) { const m = g.match(re); return m ? softMouseGeno_(m[1]) : ''; };
+  return {
+    state: String(state || '').trim(),
+    yh: pick(/YH\s*\(([^)]+)\)/i),
+    pv: pick(/PV-Cre\s*\(([^)]+)\)/i),
+    sst: pick(/SST-Cre\s*\(([^)]+)\)/i)
+  };
+}
+
+/**
+ * Brings Role, YH, SST and PV in the master sheet in line with one SoftMouse
+ * list. Maps M### to ###; a gene SoftMouse does not list is written as N/A.
+ *
+ * importMap   mouse ID -> { state, yh, pv, sst }
+ * opts.dryRun true: change nothing, only say what would change. Jarvis shows
+ *             that first, and waits for a person when a genotype the sheet
+ *             already knew (WT / Het / Hom) would be replaced or erased.
+ *
+ * Returns { sheet, matched, changes: [{id, field, from, to}], matingKept: [id],
+ *           notInSheet: [id], sheetDuplicates: [{id, rows}] }.
+ * Never touches the UI, so it can run from the web app.
+ */
+function softMouseSyncCore_(importMap, opts) {
+  opts = opts || {};
+  const dryRun = !!opts.dryRun;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
 
   // Prefers "KCNT1 Active 2.0", falls back to "KCNT1 Active". Shared with the
   // calendar sync so the project has one definition of "the master sheet".
@@ -151,94 +232,42 @@ function processSoftMouseImport(targetDateStr) {
   }
 
   const targetName = kcnt1Sheet.getName();
+  const report = { sheet: targetName, matched: 0, changes: [], matingKept: [],
+                   notInSheet: [], sheetDuplicates: [] };
 
-  // --- 1. BUILD DICTIONARY FROM SOFTMOUSE IMPORTS ---
-  const softData = softSheet.getDataRange().getValues();
-  const softHeaders = softData[0];
-  
-  const tagHeader = "Physical Tag " + targetDateStr;
-  const stateHeader = "State " + targetDateStr;
-  const genoHeader = "Genotype " + targetDateStr;
-  
-  const tagColIdx = softHeaders.indexOf(tagHeader);
-  const stateColIdx = softHeaders.indexOf(stateHeader);
-  const genoColIdx = softHeaders.indexOf(genoHeader);
-  
-  if (tagColIdx === -1 || stateColIdx === -1 || genoColIdx === -1) {
-    throw new Error(`Could not find one of the required columns for date ${targetDateStr}.`);
-  }
-  
-  const importMap = {};
-  
-  // Loop through SoftMouse rows
-  for (let r = 1; r < softData.length; r++) {
-    let rawTag = String(softData[r][tagColIdx]).trim();
-    if (!rawTag) continue;
-    
-    // Clean the ID: Removes "M" and any dashes so "M-089" and "M089" both become "089"
-    let parsedMouseId = rawTag.replace(/^M-?/i, '').trim();
-    
-    let state = String(softData[r][stateColIdx]).trim();
-    let rawGeno = String(softData[r][genoColIdx]).trim();
-    
-    // Dynamic Genotype Parsing
-    let yhVal = "";
-    let pvVal = "";
-    let sstVal = "";
-    
-    if (rawGeno) {
-      // These Regex patterns look for the gene name and capture whatever text is inside the parentheses ()
-      let yhMatch = rawGeno.match(/YH\s*\(([^)]+)\)/i);
-      let pvMatch = rawGeno.match(/PV-Cre\s*\(([^)]+)\)/i);
-      let sstMatch = rawGeno.match(/SST-Cre\s*\(([^)]+)\)/i);
-      
-      // If a match is found, assign the captured text (e.g., "WT", "Het", "Hom"). Otherwise, leave blank.
-      if (yhMatch) yhVal = yhMatch[1].trim();
-      if (pvMatch) pvVal = pvMatch[1].trim();
-      if (sstMatch) sstVal = sstMatch[1].trim();
-    }
-    
-    importMap[parsedMouseId] = {
-      state: state,
-      yh: yhVal,
-      pv: pvVal,
-      sst: sstVal
-    };
-  }
-  
   // --- 2. UPDATE KCNT1 ACTIVE SHEET ---
   const kcnt1Data = kcnt1Sheet.getDataRange().getValues();
   const kcnt1Headers = kcnt1Data[0];
-  
+
   const getIdx = (name) => kcnt1Headers.indexOf(name);
-  
+
   const idIdx = getIdx('Mouse ID');
   const roleIdx = getIdx('Role');
   const yhIdx = getIdx('YH');
   const pvIdx = getIdx('PV');
   const sstIdx = getIdx('SST');
-  
+
   if (idIdx === -1 || roleIdx === -1 || yhIdx === -1 || pvIdx === -1 || sstIdx === -1) {
     const wanted = { 'Mouse ID': idIdx, 'Role': roleIdx, 'YH': yhIdx, 'PV': pvIdx, 'SST': sstIdx };
     const missing = Object.keys(wanted).filter(function (k) { return wanted[k] === -1; });
     throw new Error('Missing column(s) in "' + targetName + '": ' + missing.join(', ') +
                     '. Check the header row for typos or stray spaces.');
   }
-  
+
   const numRows = kcnt1Data.length;
-  if (numRows <= 1) return 'No data to process.';
-  
+  if (numRows <= 1) return report;
+
   // Grab ranges for batch updates
   const roleRange = kcnt1Sheet.getRange(2, roleIdx + 1, numRows - 1, 1);
   const yhRange = kcnt1Sheet.getRange(2, yhIdx + 1, numRows - 1, 1);
   const pvRange = kcnt1Sheet.getRange(2, pvIdx + 1, numRows - 1, 1);
   const sstRange = kcnt1Sheet.getRange(2, sstIdx + 1, numRows - 1, 1);
-  
+
   let roleVals = roleRange.getValues();
   let yhVals = yhRange.getValues();
   let pvVals = pvRange.getValues();
   let sstVals = sstRange.getValues();
-  
+
   // Initialize color/style arrays to black/normal rather than reading from the sheet.
   // If we seeded from the sheet, any cell that was previously gray/italic (N/A) and
   // isn't touched in the loop below would carry that stale formatting back on write.
@@ -250,11 +279,17 @@ function processSoftMouseImport(targetDateStr) {
   let pvStyles   = blankStyleRow();
   let sstColors  = blankRow();
   let sstStyles  = blankStyleRow();
-  
-  let matchCount = 0;
-  
-  // Helper to cleanly assign a value or write "N/A"
-  function applyGenoData(valsArray, colorsArray, stylesArray, rowIndex, incomingValue) {
+
+  const seen = {};
+  const rowsById = {};
+
+  // Helper to cleanly assign a value or write "N/A", saying first what changes.
+  function applyGenoData(field, mouseId, valsArray, colorsArray, stylesArray, rowIndex, incomingValue) {
+    const next = incomingValue !== "" ? incomingValue : 'N/A';
+    const had = String(valsArray[rowIndex][0]).trim();
+    if (had !== next) {
+      report.changes.push({ id: mouseId, field: field, from: had, to: next });
+    }
     if (incomingValue !== "") {
       valsArray[rowIndex][0] = incomingValue;
       colorsArray[rowIndex][0] = '#000000'; // Black text
@@ -267,47 +302,101 @@ function processSoftMouseImport(targetDateStr) {
   }
 
   for (let r = 1; r < numRows; r++) {
-    const dataIndex = r - 1; 
+    const dataIndex = r - 1;
     const masterMouseId = String(kcnt1Data[r][idIdx]).trim();
-    
+
     if (!masterMouseId) continue;
-    
+    (rowsById[masterMouseId] = rowsById[masterMouseId] || []).push(r + 1);
+
     if (importMap.hasOwnProperty(masterMouseId)) {
       const importData = importMap[masterMouseId];
-      
+      seen[masterMouseId] = true;
+
       // Update Role (State) — but NEVER overwrite a manually-set "Mating" status.
       // Mating is hard-coded by hand on the Active sheet and must be preserved.
-      const currentRole = String(kcnt1Data[r][roleIdx] || "").trim().toLowerCase();
-      if (importData.state && currentRole !== 'mating') {
-          roleVals[dataIndex][0] = importData.state;
+      const currentRole = String(kcnt1Data[r][roleIdx] || "").trim();
+      if (importData.state && currentRole.toLowerCase() !== 'mating') {
+        if (currentRole !== importData.state) {
+          report.changes.push({ id: masterMouseId, field: 'Role', from: currentRole, to: importData.state });
+        }
+        roleVals[dataIndex][0] = importData.state;
+      } else if (importData.state && importData.state.toLowerCase() !== 'mating') {
+        report.matingKept.push(masterMouseId);
       }
-      
+
       // Update Genotypes dynamically
-      applyGenoData(yhVals, yhColors, yhStyles, dataIndex, importData.yh);
-      applyGenoData(pvVals, pvColors, pvStyles, dataIndex, importData.pv);
-      applyGenoData(sstVals, sstColors, sstStyles, dataIndex, importData.sst);
-      
-      matchCount++;
+      applyGenoData('YH', masterMouseId, yhVals, yhColors, yhStyles, dataIndex, importData.yh);
+      applyGenoData('PV', masterMouseId, pvVals, pvColors, pvStyles, dataIndex, importData.pv);
+      applyGenoData('SST', masterMouseId, sstVals, sstColors, sstStyles, dataIndex, importData.sst);
+
+      report.matched++;
     }
   }
-  
+
+  Object.keys(rowsById).forEach(function (id) {
+    if (rowsById[id].length > 1 && importMap.hasOwnProperty(id)) {
+      report.sheetDuplicates.push({ id: id, rows: rowsById[id] });
+    }
+  });
+  // SoftMouse knows these and the sheet does not. Nothing is added for them
+  // (the VOS census is what adds a mouse), but they are named.
+  Object.keys(importMap).forEach(function (id) {
+    if (!seen[id]) report.notInSheet.push(id);
+  });
+
+  console.log(`--- SOFTMOUSE SYNC ${opts.label || ''}${dryRun ? ' (dry run)' : ''}: ` +
+              `${report.matched} matched, ${report.changes.length} change(s) ---`);
+  if (dryRun) return report;
+
   // --- 3. BATCH WRITE TO SPREADSHEET ---
   roleRange.setValues(roleVals);
-  
+
   yhRange.setValues(yhVals);
   yhRange.setFontColors(yhColors);
   yhRange.setFontStyles(yhStyles);
-  
+
   pvRange.setValues(pvVals);
   pvRange.setFontColors(pvColors);
   pvRange.setFontStyles(pvStyles);
-  
+
   sstRange.setValues(sstVals);
   sstRange.setFontColors(sstColors);
   sstRange.setFontStyles(sstStyles);
-  
-  SpreadsheetApp.getUi().alert(
-    `SoftMouse Sync Complete!\n\nSheet: ${targetName}\n\n` +
-    `Successfully matched and updated ${matchCount} active mice profiles.`);
-  return 'Success';
+
+  return report;
+}
+
+/**
+ * Jarvis's way in (doPost in VOS_Import.gs, kind "softmouse"). Jarvis reads
+ * the live mice out of SoftMouse itself and sends
+ *   { stamp: MMDDYY, mode: preview|apply, mice: [{tag, state, genotype}],
+ *     block: {headers, rows} }
+ * On apply the block goes into "SoftMouse Imports" beside the hand-pasted
+ * Physical Tag / State / Genotype ones, then the sync runs.
+ */
+function softMouseFromJarvis_(body) {
+  const stamp = String(body.stamp || '');
+  if (!/^\d{6}$/.test(stamp)) throw new Error('stamp must be MMDDYY, got "' + stamp + '"');
+  const mice = body.mice || [];
+  // A list with almost nobody in it would write N/A over the colony's genotypes.
+  if (mice.length < 10) throw new Error('only ' + mice.length + ' mice from SoftMouse; refusing');
+
+  const importMap = {};
+  mice.forEach(function (m) {
+    const id = softMouseId_(m.tag || '');
+    if (id) importMap[id] = parseSoftMouseRow_(m.state, m.genotype);
+  });
+
+  const apply = body.mode === 'apply';
+  let blockAt = null;
+  if (apply && body.block) {
+    blockAt = writeJarvisBlock_(stamp, body.block, 'SoftMouse Imports', 'JARVIS_SOFTMOUSE_BLOCKS');
+  }
+  const res = softMouseSyncCore_(importMap, { dryRun: !apply, label: stamp + ' (Jarvis)' });
+  res.ok = true;
+  // Jarvis checks this: an older script would read the list as a VOS census.
+  res.kind = 'softmouse';
+  res.mode = apply ? 'apply' : 'preview';
+  res.blockAt = blockAt;
+  return res;
 }

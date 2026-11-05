@@ -1058,6 +1058,23 @@ def methods(DA, refs, bip, versions):
         "compares a rat's two sessions, a rat was omitted entirely rather than one of its sessions. The acquisition reference also "
         "differed between Precon1 and Precon4 in three rats (J8, J9, J10); these rats did not show the signature, but the change of "
         "reference is a potential confound of Early versus Late comparisons in them.")
+    S.append(("Volume conduction", [
+        "Coherence is sensitive to volume conduction and to a shared reference: a single source recorded by two electrodes produces "
+        "coherence at zero phase lag without any interaction between the regions. Four features of the design and analysis limit "
+        "this. First, every test compared a rat with itself (Late with Early, or a cue with the baseline before it), with the "
+        "electrodes, the reference and the tissue between them unchanged, so a constant conducted component contributes equally to "
+        "both sides of each comparison; because conducted coherence also scales with the power of its source, power in each region "
+        "was analysed alongside coherence. Second, every recording was screened for a signal common to all channels, and every "
+        "analysis was repeated without the rats in which one was found (see Sensitivity analyses). Third, the screen's finding was "
+        "confirmed with imaginary coherence, which is insensitive to zero-lag coupling (Nolte et al., 2004): in the most affected "
+        "recording, gamma coherence on the baseline was several times that of the other recordings while its imaginary part was "
+        "within their range. Fourth, imaginary coherence and the phase-lag index (Stam et al., 2007) were computed in the planned "
+        "comparisons of the proposal, and these with the weighted and debiased phase-lag indices (Vinck et al., 2011) in the "
+        "exploratory survey.",
+        "The coherence tests reported here use magnitude-squared coherence, which includes any zero-lag component; they were not "
+        "repeated on imaginary coherence. The recordings were analysed against their acquisition reference rather than re-referenced: "
+        "with two wires per region, a local bipolar derivation removes much of the signal of interest, and it was used only as a "
+        "check."]))
     S.append(("Sensitivity analyses", para))
     S.append(("Exploratory analysis across the spectrum", [
         "Before the planned tests, coupling was surveyed across the spectrum to generate hypotheses; none of its results is used for "
@@ -1106,7 +1123,10 @@ def methods(DA, refs, bip, versions):
         "Hartung J, Knapp G (2001) A refined method for the meta-analysis of controlled clinical trials with binary outcome. Stat Med 20:3875–3889.",
         "Liang KY, Zeger SL (1986) Longitudinal data analysis using generalized linear models. Biometrika 73:13–22.",
         "Mancl LA, DeRouen TA (2001) A covariance estimator for GEE with improved small-sample properties. Biometrics 57:126–134.",
+        "Nolte G, Bai O, Wheaton L, Mari Z, Vorbach S, Hallett M (2004) Identifying true brain interaction from EEG data using the imaginary part of coherency. Clin Neurophysiol 115:2292–2307.",
+        "Stam CJ, Nolte G, Daffertshofer A (2007) Phase lag index: assessment of functional connectivity from multi channel EEG and MEG with diminished bias from common sources. Hum Brain Mapp 28:1178–1193.",
         "Tort ABL, Komorowski R, Eichenbaum H, Kopell N (2010) Measuring phase-amplitude coupling between neuronal oscillations of different frequencies. J Neurophysiol 104:1195–1210.",
+        "Vinck M, Oostenveld R, van Wingerden M, Battaglia F, Pennartz CMA (2011) An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias. NeuroImage 55:1548–1565.",
         "Wilson GT (1972) The factorization of matricial spectral densities. SIAM J Appl Math 23:420–426."]))
     sat = saturation_paragraphs(saturation_counts())
     if sat:
@@ -1290,6 +1310,8 @@ def build(progress=None, sets=None, draw=True):
         with open(bp, encoding="utf-8") as fh:
             bip = json.load(fh)
     versions = _versions()
+    from . import conduction
+    conduction.build(say)                       # the volume conduction explainer, from the same measurements (2026-11-05)
     M = methods(data["all"] if "all" in data else data[sets[0]], _refs_of_recordings(), bip, versions)
     by_set = {}
     for rs in sets:
