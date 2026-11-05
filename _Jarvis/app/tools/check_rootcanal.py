@@ -2470,8 +2470,10 @@ def _deep_dive(A, c, unbanked):
        all(pf["events"][r["j"]]["t"] == r["t"]
            and pf["events"][r["j"]]["cls_single"] == r["single"]
            and pf["events"][r["j"]]["cls_pool"] == r["pool"]
-           and r["why"] == ["switched %s → %s" % (r["single"].upper(),
-                                                 r["pool"].upper())]
+           # Shown as DS / P-spike since 2026-11-05; "ied" is only the id.
+           and r["why"] == ["switched %s → %s" % (
+               "P-spike" if r["single"] == "ied" else r["single"].upper(),
+               "P-spike" if r["pool"] == "ied" else r["pool"].upper())]
            for r in dv["rows"]))
     bref = [x for x in A.ARTIFACTS.list(kind="rootcanal_border")
             if x.get("nickname") == "two blobs"]

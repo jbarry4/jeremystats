@@ -47,6 +47,7 @@ from . import (aibeta as aibetamod,
                sessionref as sessionrefmod,
                rcstats,
                rcborder,
+               rcworkflow,
                rcdeep,
                guides as guidesmod,
                versions as versionsmod,
@@ -14311,6 +14312,798 @@ def api_rootcanal_border_one(artifact_id):
                     {"artifact_id": artifact_id})
     return jsonify({"ok": True, "payload": pay,
                     "artifact": ARTIFACTS.summary(artifact_id)})
+
+
+# ==========================================================================
+# ROOT CANAL WORKFLOWS (2026-11-05): define a border, apply it, extract
+# ==========================================================================
+# Three workflows, each its own artifact (backend/rcworkflow.py): verified
+# dentate spikes, verified P-spikes, and the ambiguous ones between. A
+# workflow's definition pins every input it reads -- the source pool or the
+# hand-sorted sets, the target pool, the borders it borrows -- and every run
+# is a new version holding what it found, so a run can always be traced to
+# the exact versions behind it, and a newer input says the workflow is out
+# of date rather than rerunning by itself.
+WF_PIPELINE = "Root Canal workflow"
+# The hand-sorted P-spikes the lab trusts, as they reach the Bank.
+WF_HANDSORT = ("IED hand-sort (ETS)",)
+
+
+def _wf_pool(ref, what):
+    """(record, version, payload) of a saved pool a workflow names."""
+    aid = (ref or {}).get("artifact_id")
+    rec = ARTIFACTS.get(aid) if aid else None
+    if not rec or rec.get("kind") != "rootcanal_pool":
+        raise rcworkflow.WorkflowError(
+            "There is no saved pool %s to use as the %s." % (aid, what))
+    v = (ref or {}).get("version") or rec.get("version")
+    pay = ARTIFACTS.payload(aid, v)
+    if pay is None:
+        raise rcworkflow.WorkflowError(
+            "That version of the pool ‘%s’ was saved on another machine and "
+            "has not reached this one yet." % (rec.get("nickname")
+                                               or rec.get("name")))
+    return rec, int(v), pay
+
+
+def _wf_members(pay):
+    """What the click panel needs of each member of a pool: its key,
+    recording, entry and the event request its read answers."""
+    out = []
+    for m in (pay or {}).get("members") or []:
+        out.append({"key": m.get("key"), "gid": m.get("gid"),
+                    "entry_id": m.get("entry_id"),
+                    "session_label": m.get("session_label"),
+                    "mouse_key": m.get("mouse_key"),
+                    "event_body": m.get("event_body"),
+                    "read_on": m.get("read_on"),
+                    "from_version": (m.get("pin") or {}).get("from_version")})
+    return out
+
+
+def _wf_handsorted():
+    """The Bank's hand-sorted P-spike sets, newest first."""
+    out = []
+    for s in BANK.summaries():
+        if s.get("type") != "ied" or s.get("archived"):
+            continue
+        pipe = ((s.get("source") or {}).get("pipeline") or s.get("pipeline")
+                or "")
+        if pipe not in WF_HANDSORT and "hand-sorted" not in (s.get("name")
+                                                             or ""):
+            continue
+        out.append(s)
+    return natsortmod.sort(out, by=lambda s: s.get("session_label") or "")
+
+
+def _wf_aligned_ref(rec):
+    """The newest aligned version of an entry, as (ref, name), or None."""
+    named = versionsmod.label_rows(rec.get("versions") or [])
+    best = None
+    for ver, nm in named:
+        if ver.get("snap") and ver.get("aligned"):
+            if best is None or versionsmod.key(nm) > versionsmod.key(best[1]):
+                best = (BANK.version_key(ver), nm)
+    return best
+
+
+def _wf_measure_body(measure):
+    return {k: measure[k] for k in RC_MEASURE_KEYS
+            if (measure or {}).get(k) is not None}
+
+
+def _wf_set_events(entries, measure):
+    """The hand-sorted sets measured the way the target was: every event's
+    three numbers, from each set's own read. Refuses, naming every set,
+    when any cannot be measured here."""
+    out, members, stuck = [], [], []
+    for it in entries or []:
+        eid = (it or {}).get("entry_id")
+        rec = BANK.get(eid) if eid else None
+        if not rec:
+            stuck.append("%s (not in the Bank)" % eid)
+            continue
+        body = dict(_wf_measure_body(measure), entry_id=eid,
+                    from_version=it.get("version"), k=1)
+        try:
+            _r, p, got, rh, _st = _rootcanal_setup(body)
+            res = rootcanal.fit(got, p)
+        except Exception as exc:                         # noqa: BLE001
+            stuck.append("%s (%s)" % (rec.get("session_label") or eid, exc))
+            continue
+        m_i = len(members)
+        mk = "%s|m%s" % (rec.get("project") or "?", rec.get("mouse"))
+        members.append({"key": "wf:%s" % eid, "gid": rec.get("gid"),
+                        "entry_id": eid,
+                        "session_label": rec.get("session_label"),
+                        "mouse_key": mk,
+                        "event_body": dict(body, read=rh, k=1),
+                        "from_version": it.get("version")})
+        for e in res.get("events") or []:
+            out.append({"j": len(out), "m": m_i, "i": e.get("i"),
+                        "gid": rec.get("gid"), "key": "wf:%s" % eid,
+                        "entry_id": eid,
+                        "session_label": rec.get("session_label"),
+                        "mouse_key": mk, "mouse_type": None,
+                        "t": e.get("t"), "amp_uV": e.get("amp_uV"),
+                        "hf_db": e.get("hf_db"), "hw_ms": e.get("hw_ms"),
+                        "cls_pool": "ied", "cls_single": "ied",
+                        "partial": bool(e.get("partial"))})
+    if stuck:
+        raise rcworkflow.WorkflowError(
+            "%d of the hand-sorted set(s) could not be measured here: %s. "
+            "Prepare them first (Workflow · Prepare the hand-sorted sets): "
+            "each has to be on the recording's own clock, aligned, and read "
+            "on this machine." % (len(stuck), "; ".join(stuck)))
+    return out, members
+
+
+def _wf_definition(body):
+    """A workflow's definition, checked, with every input pinned to the
+    version it names (or the newest, when it names none)."""
+    kind = str(body.get("kind") or "")
+    if kind not in rcworkflow.KINDS:
+        raise rcworkflow.WorkflowError(
+            "A workflow is one of %s; not %r."
+            % (", ".join(rcworkflow.KINDS), kind))
+    out = {"kind": kind}
+    if kind != "ambiguous":
+        out["grace"] = _rootcanal_border_grace(body.get("grace", 0.05))
+        trec, tv, _tp = _wf_pool(body.get("target"), "target")
+        out["target"] = {"artifact_id": trec["id"], "version": tv,
+                         "nickname": trec.get("nickname") or trec.get("name")}
+        src = body.get("source") or {}
+        if kind == "ds":
+            srec, sv, _sp = _wf_pool(src, "source")
+            out["source"] = {"type": "pool", "artifact_id": srec["id"],
+                             "version": sv,
+                             "nickname": srec.get("nickname")
+                             or srec.get("name")}
+        else:
+            ents = []
+            for it in src.get("entries") or []:
+                rec = BANK.get((it or {}).get("entry_id"))
+                if not rec:
+                    raise rcworkflow.WorkflowError(
+                        "There is no Bank entry %s." % (it or {}).get(
+                            "entry_id"))
+                ref = it.get("version")
+                if not ref:
+                    al = _wf_aligned_ref(rec)
+                    ref = al[0] if al else None
+                ents.append({"entry_id": rec["id"], "version": ref,
+                             "session_label": rec.get("session_label"),
+                             "n": rec.get("n")})
+            if not ents:
+                raise rcworkflow.WorkflowError(
+                    "Pick the hand-sorted sets the P-spike border is drawn "
+                    "around.")
+            out["source"] = {"type": "sets", "entries": ents}
+    else:
+        uses = {}
+        for k in ("ds", "pspike"):
+            ref = (body.get("uses") or {}).get(k) or {}
+            rec = ARTIFACTS.get(ref.get("artifact_id"))
+            if not rec or rec.get("kind") != "rootcanal_workflow":
+                raise rcworkflow.WorkflowError(
+                    "Pick the %s workflow whose border this uses."
+                    % rcworkflow.WORDS_LC[k])
+            pay = ARTIFACTS.payload(rec["id"], ref.get("version")
+                                    or rec.get("version")) or {}
+            if not pay.get("run"):
+                raise rcworkflow.WorkflowError(
+                    "‘%s’ has not been run yet, so it has no border to lend."
+                    % (rec.get("nickname") or rec.get("name")))
+            if (pay.get("definition") or {}).get("kind") != k:
+                raise rcworkflow.WorkflowError(
+                    "‘%s’ is not a %s workflow."
+                    % (rec.get("nickname"), rcworkflow.WORDS_LC[k]))
+            uses[k] = {"artifact_id": rec["id"],
+                       "version": int(ref.get("version") or rec["version"]),
+                       "nickname": rec.get("nickname") or rec.get("name")}
+        out["uses"] = uses
+        t = body.get("target") or None
+        if t:
+            trec, tv, _tp = _wf_pool(t, "target")
+            out["target"] = {"artifact_id": trec["id"], "version": tv,
+                             "nickname": trec.get("nickname")
+                             or trec.get("name")}
+    return out
+
+
+def _wf_run_of(ref):
+    rec = ARTIFACTS.get(ref["artifact_id"])
+    pay = ARTIFACTS.payload(ref["artifact_id"], ref["version"]) or {}
+    run = pay.get("run")
+    if not run:
+        raise rcworkflow.WorkflowError(
+            "‘%s’ v%s holds no run." % ((rec or {}).get("nickname"),
+                                        ref["version"]))
+    return run
+
+
+def _wf_compute(defn):
+    """Define, apply and say what would be extracted. Nothing is saved."""
+    kind = defn["kind"]
+    run = {"kind": kind}
+    if kind == "ambiguous":
+        a, b = _wf_run_of(defn["uses"]["ds"]), _wf_run_of(defn["uses"]["pspike"])
+        tref = defn.get("target") or a["target"]
+        _trec, _tv, tpay = _wf_pool(tref, "target")
+        tgt = rcworkflow.pool_events(tpay)
+        cls = rcworkflow.classes_two(tgt, a["border"], a["grace"],
+                                     b["border"], b["grace"])
+        da = rcworkflow.distances(tgt, a["border"], a["grace"])
+        db = rcworkflow.distances(tgt, b["border"], b["grace"])
+        run.update(
+            borders={"ds": {"border": a["border"], "grace": a["grace"],
+                            "border_ref": a.get("border_ref"),
+                            "workflow": defn["uses"]["ds"]},
+                     "pspike": {"border": b["border"], "grace": b["grace"],
+                                "border_ref": b.get("border_ref"),
+                                "workflow": defn["uses"]["pspike"]}},
+            target=dict(tref, n=len(tgt)),
+            measure=(tpay.get("params") or {}).get("measure"),
+            members=_wf_members(tpay),
+            cols=rcworkflow.columns(tgt, cls, da, db))
+        mism = []
+        for side, x in (("DS", a), ("P-spike", b)):
+            if x.get("target", {}).get("artifact_id") != tref["artifact_id"]:
+                mism.append("the %s border's own workflow was applied to "
+                            "‘%s’, not this target"
+                            % (side, x["target"].get("nickname")))
+        run["mismatch"] = mism
+    else:
+        group = rcworkflow.GROUP[kind]
+        g = defn["grace"]
+        _trec, _tv, tpay = _wf_pool(defn["target"], "target")
+        measure = (tpay.get("params") or {}).get("measure") or {}
+        src = defn["source"]
+        if src["type"] == "pool":
+            _srec, _sv, spay = _wf_pool(src, "source")
+            src_events = rcworkflow.pool_events(spay)
+            src_members = _wf_members(spay)
+            smeas = (spay.get("params") or {}).get("measure") or {}
+        else:
+            src_events, src_members = _wf_set_events(src["entries"], measure)
+            smeas = measure
+        border = rcworkflow.define(src_events, group, g)
+        diff = rootcanal.margin_mismatch(
+            {"measure": smeas}, rootcanal.Params(**_wf_measure_body(measure)))
+        border.update(measure=smeas, level="workflow",
+                      source=dict(src, kind="workflow"),
+                      gids=sorted({e["gid"] for e in src_events
+                                   if e.get("gid")}),
+                      n_recordings=len({e["gid"] for e in src_events
+                                        if e.get("gid")}),
+                      n_mice=len({e["mouse_key"] for e in src_events
+                                  if e.get("mouse_key")}))
+        border["rules"] = {str(lv["grace"]): rcborder.rule_words(
+            border, lv["grace"]) for lv in border["levels"]}
+        border["grace_default"] = g
+        tgt = rcworkflow.pool_events(tpay)
+        cls = rcworkflow.classes_one(tgt, border, g)
+        scls = rcworkflow.classes_one(src_events, border, g)
+        run.update(
+            border=border, grace=g, group=group,
+            rule=rcborder.rule_words(border, g),
+            box=rcworkflow.box_of(border, g),
+            target=dict(defn["target"], n=len(tgt)),
+            measure=measure,
+            mismatch=[("the border's source was measured differently: "
+                       + "; ".join(diff).replace("the margin", "the source")
+                       .replace("its ", "the source's "))] if diff else [],
+            members=_wf_members(tpay), src_members=src_members,
+            sweep=rcworkflow.grace_sweep(src_events, tgt, group),
+            src_cols=rcworkflow.columns(
+                src_events, scls, rcworkflow.distances(src_events, border, g)),
+            cols=rcworkflow.columns(
+                tgt, cls, rcworkflow.distances(tgt, border, g)))
+    run.update(rcworkflow.summary(kind, run["cols"]["cls"]))
+    ev = [{"mouse_key": m, "mouse_type": None, "gid": None}
+          for m in run["cols"]["mouse"]]
+    run["by_mouse"] = rcworkflow.breakdown(ev, run["cols"]["cls"],
+                                           "mouse_key")
+    gids = run["cols"]["gids"]
+    labels = {m["gid"]: m.get("session_label") for m in run["members"]}
+    ev2 = [{"gid": gids[g] if 0 <= g < len(gids) else None,
+            "session_label": labels.get(gids[g]) if 0 <= g < len(gids)
+            else None} for g in run["cols"]["g"]]
+    run["by_recording"] = rcworkflow.breakdown(ev2, run["cols"]["cls"],
+                                               "gid")
+    return run
+
+
+def _wf_extract_bank(rec, defn, run, version_next, prior_entry):
+    """Bank what a run extracted: ONE entry for the whole target pool
+    (decided 2026-11-05), each event carrying the recording and the set it
+    came from. A classifier's call, not a person's."""
+    kind = defn["kind"]
+    col = run["cols"]
+    gids = col["gids"]
+    by_gid = {m["gid"]: m for m in run["members"]}
+    lab = ({"label_id": "spike", "label": "Dentate Spike"} if kind == "ds"
+           else {"label_id": "solid", "label": "Solid"})
+    events, srcs = [], {}
+    for n, c in enumerate(col["cls"]):
+        if c != "inside" or col["t"][n] is None:
+            continue
+        g = gids[col["g"][n]] if 0 <= col["g"][n] < len(gids) else None
+        m = by_gid.get(g) or {}
+        events.append(dict(lab, start=col["t"][n], gid=g,
+                           src_entry=m.get("entry_id"),
+                           src_version=m.get("from_version")))
+        s = srcs.setdefault(m.get("entry_id"), {
+            "entry_id": m.get("entry_id"), "gid": g,
+            "version": m.get("from_version"),
+            "session_label": m.get("session_label"), "n": 0})
+        s["n"] += 1
+    if not events:
+        return None
+    nick = rec.get("nickname") or rec.get("name")
+    projects = sorted({str(e.get("project")) for e in
+                       (BANK.get(s["entry_id"]) or {} for s in srcs.values()
+                        if s.get("entry_id")) if e.get("project")})
+    who = (STORE.provenance() or {}).get("user")
+    made = BANK.add({
+        "id": prior_entry,
+        "project": projects[0] if len(projects) == 1 else (
+            ", ".join(projects) or "Unfiled"),
+        "type": "ds" if kind == "ds" else "ied",
+        "type_name": "Dentate spike" if kind == "ds" else "P-spike",
+        "name": "%s · %s" % (rcworkflow.WORDS[kind], nick),
+        "note": ("Extracted by the Root Canal workflow ‘%s’ v%s: every event "
+                 "of ‘%s’ v%s inside the border at grace %s. %s A border's "
+                 "call, not a person's. %d recordings in one entry; each "
+                 "event says which."
+                 % (nick, version_next, run["target"].get("nickname"),
+                    run["target"].get("version"),
+                    rcborder.grace_words(run["grace"]), run["rule"],
+                    len(srcs))),
+        "events": events,
+        "curated": False,
+        "pipeline": WF_PIPELINE,
+        "added_by": who,
+        "parameters": {"tool": "rootcanal_workflow",
+                       "workflow": {"artifact_id": rec["id"],
+                                    "version": version_next,
+                                    "nickname": nick, "kind": kind},
+                       "grace": run["grace"],
+                       "border": run.get("border_ref"),
+                       "target": run["target"],
+                       "sources": sorted(srcs.values(), key=lambda s: str(
+                           s.get("session_label") or ""))},
+    })
+    return {"entry_id": made["id"], "n": len(events),
+            "version": (made.get("version") if isinstance(made, dict)
+                        else None)}
+
+
+def _wf_border_save(rec, run, prior):
+    """The run's border, saved as an ordinary Root Canal border so the
+    Borders card can apply it anywhere -- a new version of the same border
+    each run."""
+    b = run["border"]
+    nick = "%s border · %s" % (
+        "P-spike" if run["group"] == "ied" else "DS",
+        rec.get("nickname") or rec.get("name"))
+    params = {"measure": b.get("measure"), "grace": run["grace"],
+              "level": "workflow"}
+    if prior and ARTIFACTS.get(prior.get("artifact_id")):
+        out = ARTIFACTS.add_version(prior["artifact_id"], b, params=params,
+                                    note="Workflow run")
+    else:
+        subject = {"border_key": "wf-%s" % uuid.uuid4().hex,
+                   "name": rcborder.name(b), "gids": b.get("gids") or [],
+                   "level": "workflow"}
+        out = ARTIFACTS.create("rootcanal_border", subject, b, params=params,
+                               name=rcborder.name(b), nickname=nick,
+                               version_nickname=nick)
+    return {"artifact_id": out["id"], "version": out.get("version"),
+            "nickname": out.get("nickname") or nick}
+
+
+def _wf_current(defn):
+    """Which inputs have a newer version than the definition pins."""
+    stale = []
+
+    def check(ref, what):
+        rec = ARTIFACTS.get((ref or {}).get("artifact_id"))
+        if rec and ref.get("version") and int(rec.get("version") or 0) > int(
+                ref["version"]):
+            stale.append({"what": what, "artifact_id": rec["id"],
+                          "nickname": rec.get("nickname") or rec.get("name"),
+                          "pinned": ref["version"],
+                          "newest": rec.get("version")})
+    if defn.get("target"):
+        check(defn["target"], "target pool")
+    src = defn.get("source") or {}
+    if src.get("type") == "pool":
+        check(src, "source pool")
+    for it in src.get("entries") or []:
+        rec = BANK.get(it.get("entry_id"))
+        al = _wf_aligned_ref(rec) if rec else None
+        if al and it.get("version") and al[0] != it["version"]:
+            stale.append({"what": "hand-sorted set",
+                          "entry_id": it["entry_id"],
+                          "nickname": it.get("session_label"),
+                          "pinned": it["version"], "newest": al[1]})
+    for k, ref in (defn.get("uses") or {}).items():
+        check(ref, "%s workflow" % rcworkflow.WORDS_LC[k])
+    return stale
+
+
+def _wf_row(r):
+    cur = r.get("current") or {}
+    ns = cur.get("n_summary") or {}
+    pay = ARTIFACTS.payload(r["id"], None) or {}
+    defn = pay.get("definition") or {}
+    run = pay.get("run") or {}
+    try:
+        stale = _wf_current(defn)
+    except Exception:                                    # noqa: BLE001
+        stale = []
+    return {"artifact_id": r["id"], "nickname": r.get("nickname"),
+            "name": r.get("name"), "version": r.get("version"),
+            "updated": cur.get("at"), "by": cur.get("by"),
+            "kind": defn.get("kind") or ns.get("kind"),
+            "definition": defn, "ran": bool(run),
+            "counts": run.get("counts"), "kept": run.get("kept"),
+            "n": run.get("n"), "bank": run.get("bank"),
+            "border_ref": run.get("border_ref"),
+            "grace": run.get("grace") or defn.get("grace"),
+            "stale": stale, "mismatch": run.get("mismatch") or [],
+            "sync": r.get("sync")}
+
+
+@app.route("/api/rootcanal/workflows")
+def api_rootcanal_workflows():
+    """Every saved workflow, newest first, with whether it is out of date."""
+    try:
+        rows = [_wf_row(r) for r in ARTIFACTS.list(kind="rootcanal_workflow")]
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/workflows", exc, 400)
+    rows.sort(key=lambda r: str(r.get("updated") or ""), reverse=True)
+    return jsonify({"ok": True, "workflows": rows})
+
+
+@app.route("/api/rootcanal/workflow/sources")
+def api_rootcanal_workflow_sources():
+    """What a workflow can be built from: the saved pools (source or
+    target) and the hand-sorted P-spike sets, each with its state."""
+    try:
+        pools = []
+        for r in ARTIFACTS.list(kind="rootcanal_pool"):
+            cur = r.get("current") or {}
+            ns = cur.get("n_summary") or {}
+            prm = cur.get("params") or {}
+            pools.append({"artifact_id": r["id"],
+                          "nickname": r.get("nickname") or r.get("name"),
+                          "version": r.get("version"),
+                          "events": ns.get("events"),
+                          "members": ns.get("members"),
+                          "mice": ns.get("mice"),
+                          "all_ds": bool(prm.get("all_ds")),
+                          "filter": ((prm.get("measure") or {})
+                                     .get("filter_label")),
+                          "updated": cur.get("at")})
+        pools = natsortmod.sort(pools, by=lambda p: p.get("nickname") or "")
+        sets = []
+        for s in _wf_handsorted():
+            rec = BANK.get(s["id"]) or {}
+            al = _wf_aligned_ref(rec)
+            sets.append({"entry_id": s["id"], "gid": s.get("gid"),
+                         "session_label": s.get("session_label"),
+                         "name": s.get("name"), "n": s.get("n"),
+                         "session_path": s.get("session_path"),
+                         "aligned": bool(al),
+                         "aligned_ref": al[0] if al else None,
+                         "aligned_name": al[1] if al else None,
+                         # The user's pick (2026-11-05): the hand-sorted
+                         # imports. The confirmed ones are offered too.
+                         "hand_sorted": "hand-sorted" in (s.get("name")
+                                                          or ""),
+                         "basis": retimemod.basis_of(rec).get("basis")})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/workflow-sources", exc, 400)
+    return jsonify({"ok": True, "pools": pools, "sets": sets})
+
+
+@app.route("/api/rootcanal/workflow/prepare", methods=["POST"])
+def api_rootcanal_workflow_prepare():
+    """Where each hand-sorted set stands on the way to being measured:
+    on the recording's own clock, aligned, read here at the target's
+    measurement. Reads headers and files on record; writes nothing.
+    Body: {entries: [entry ids], target: {artifact_id, version}}."""
+    body = request.get_json(force=True) or {}
+    try:
+        _trec, _tv, tpay = _wf_pool(body.get("target"), "target")
+        measure = (tpay.get("params") or {}).get("measure") or {}
+        out = []
+        for eid in body.get("entries") or []:
+            rec = BANK.get(eid)
+            if not rec:
+                out.append({"entry_id": eid, "error": "not in the Bank"})
+                continue
+            row = {"entry_id": eid, "gid": rec.get("gid"),
+                   "session_label": rec.get("session_label"),
+                   "session_path": rec.get("session_path"),
+                   "n": len(rec.get("events") or [])}
+            # The clock, checked on the folder this machine reads the
+            # recording from (the stored path is wherever it was imported).
+            try:
+                try:
+                    sess, _row = _braces_session(rec)
+                    path = (sess or {}).get("path")
+                except Exception:                        # noqa: BLE001
+                    path = rec.get("session_path")
+                row["path"] = path
+                rep = continuitymod.check(path) if path else None
+                gate = retimemod.offer(rep, rec)
+                row["clock"] = {"retime": bool(gate.get("offer")),
+                                "why": gate.get("reason"),
+                                "segments": (rep or {}).get("n_segments")}
+            except Exception as exc:                     # noqa: BLE001
+                row["clock"] = {"retime": False, "why": str(exc)}
+            al = _wf_aligned_ref(rec)
+            row["aligned"] = bool(al)
+            row["aligned_ref"] = al[0] if al else None
+            row["aligned_name"] = al[1] if al else None
+            row["read"] = False
+            if al:
+                try:
+                    _rootcanal_setup(dict(_wf_measure_body(measure),
+                                          entry_id=eid, from_version=al[0],
+                                          k=1))
+                    row["read"] = True
+                except Exception as exc:                 # noqa: BLE001
+                    row["read_why"] = str(exc)
+            out.append(row)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/workflow-prepare", exc, 400)
+    return jsonify({"ok": True, "sets": out, "measure": measure})
+
+
+@app.route("/api/rootcanal/workflow/preview", methods=["POST"])
+def api_rootcanal_workflow_preview():
+    """Everything a run would find -- the border, every event's class, the
+    grace sweep -- with nothing saved or banked."""
+    body = request.get_json(force=True) or {}
+    try:
+        defn = _wf_definition(body)
+        run = _wf_compute(defn)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/workflow-preview", exc, 400,
+                    {"kind": body.get("kind")})
+    return jsonify({"ok": True, "definition": defn, "run": run})
+
+
+@app.route("/api/rootcanal/workflow/save", methods=["POST"])
+def api_rootcanal_workflow_save():
+    """Save a workflow's definition, as a new workflow or the next version
+    of one. Nothing is run: a definition is what Run reads."""
+    body = request.get_json(force=True) or {}
+    nick = str(body.get("nickname") or "").strip()
+    if not nick:
+        return jsonify({"ok": False, "error": "A workflow needs a name before "
+                        "it can be saved -- the one it is found by. Give it "
+                        "one."}), 400
+    try:
+        defn = _wf_definition(body)
+        payload = {"schema": 1, "definition": defn, "run": None}
+        aid = body.get("artifact_id")
+        if aid:
+            have = ARTIFACTS.get(aid)
+            if not have or have.get("kind") != "rootcanal_workflow":
+                raise rcworkflow.WorkflowError("There is no workflow %s." % aid)
+            prev = ARTIFACTS.payload(aid, None) or {}
+            payload["run"] = None
+            payload["was"] = {"version": have.get("version"),
+                              "had_run": bool(prev.get("run"))}
+            out = ARTIFACTS.add_version(aid, payload,
+                                        params={"kind": defn["kind"]},
+                                        note="Definition changed")
+            if nick != out.get("nickname"):
+                out = ARTIFACTS.set_nickname(aid, nick)
+        else:
+            subject = {"workflow_key": uuid.uuid4().hex, "kind": defn["kind"],
+                       "name": "%s · %s" % (rcworkflow.WORDS[defn["kind"]],
+                                            nick)}
+            out = ARTIFACTS.create("rootcanal_workflow", subject, payload,
+                                   params={"kind": defn["kind"]},
+                                   name=subject["name"], nickname=nick,
+                                   version_nickname="defined")
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/workflow-save", exc, 400,
+                    {"kind": body.get("kind")})
+    STORE.record_activity([{"action": "rootcanal.workflow.save",
+                            "detail": {"artifact": out.get("id"),
+                                       "kind": defn["kind"]}}])
+    return jsonify({"ok": True, "artifact_id": out.get("id"),
+                    "version": out.get("version"),
+                    "nickname": out.get("nickname")})
+
+
+@app.route("/api/rootcanal/workflow/<artifact_id>/run", methods=["POST"])
+def api_rootcanal_workflow_run(artifact_id):
+    """Run a workflow: define its border (saved as a border of its own),
+    apply it to the target, and bank what is inside it as one entry. The
+    run is the workflow's next version. `refresh: true` first moves every
+    pin to the newest version of its input."""
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        rec = ARTIFACTS.get(artifact_id)
+        if not rec or rec.get("kind") != "rootcanal_workflow":
+            raise rcworkflow.WorkflowError("There is no workflow %s."
+                                           % artifact_id)
+        prev = ARTIFACTS.payload(artifact_id, None) or {}
+        defn = dict(prev.get("definition") or {})
+        if body.get("refresh"):
+            fresh = dict(defn)
+            for k in ("target", "source"):
+                if (fresh.get(k) or {}).get("type") != "sets" and fresh.get(k):
+                    fresh[k] = dict(fresh[k], version=None)
+            if (fresh.get("source") or {}).get("type") == "sets":
+                fresh["source"] = dict(fresh["source"], entries=[
+                    {"entry_id": it["entry_id"]}
+                    for it in fresh["source"]["entries"]])
+            if fresh.get("uses"):
+                fresh["uses"] = {k: {"artifact_id": v["artifact_id"]}
+                                 for k, v in fresh["uses"].items()}
+            defn = _wf_definition(fresh)
+        else:
+            defn = _wf_definition(defn)
+        run = _wf_compute(defn)
+        last_run = None
+        for v in range(int(rec.get("version") or 1), 0, -1):
+            p = ARTIFACTS.payload(artifact_id, v) or {}
+            if p.get("run"):
+                last_run = p["run"]
+                break
+        nxt = int(rec.get("version") or 0) + 1
+        if defn["kind"] != "ambiguous":
+            run["border_ref"] = _wf_border_save(
+                rec, run, (last_run or {}).get("border_ref"))
+            run["bank"] = _wf_extract_bank(
+                rec, defn, run, nxt,
+                ((last_run or {}).get("bank") or {}).get("entry_id"))
+        else:
+            # Shown, not banked (decided 2026-11-05): a person chooses.
+            run["bank"] = ((last_run or {}).get("bank") or None)
+        if last_run:
+            run["diff"] = rcworkflow.diff(last_run.get("cols"), run["cols"])
+        run["at"] = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+        run["by"] = (STORE.provenance() or {}).get("user")
+        inputs = []
+        for k in ("target", "source"):
+            ref = defn.get(k) or {}
+            if ref.get("artifact_id"):
+                inputs.append({"artifact_id": ref["artifact_id"],
+                               "version": ref["version"],
+                               "kind": "rootcanal_pool"})
+        for ref in (defn.get("uses") or {}).values():
+            inputs.append({"artifact_id": ref["artifact_id"],
+                           "version": ref["version"],
+                           "kind": "rootcanal_workflow"})
+        out = ARTIFACTS.add_version(
+            artifact_id, {"schema": 1, "definition": defn, "run": run},
+            params={"kind": defn["kind"], "grace": defn.get("grace")},
+            inputs=inputs, note="Run")
+        for ref in inputs:
+            try:
+                ARTIFACTS.cite(ref["artifact_id"], ref["version"], out["id"],
+                               out.get("version"))
+            except Exception:                            # noqa: BLE001
+                pass
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/workflow-run", exc, 400,
+                    {"artifact_id": artifact_id})
+    STORE.record_activity([{"action": "rootcanal.workflow.run",
+                            "detail": {"artifact": artifact_id,
+                                       "version": out.get("version"),
+                                       "kept": run.get("kept"),
+                                       "bank": (run.get("bank") or {})
+                                       .get("entry_id")}}])
+    return jsonify({"ok": True, "artifact_id": artifact_id,
+                    "version": out.get("version"), "run": run,
+                    "definition": defn})
+
+
+@app.route("/api/rootcanal/workflow/<artifact_id>")
+def api_rootcanal_workflow_one(artifact_id):
+    """One workflow: a version's definition and run, and every version's
+    line for the lineage."""
+    version = request.args.get("version") or None
+    try:
+        rec = ARTIFACTS.get(artifact_id)
+        if not rec or rec.get("kind") != "rootcanal_workflow":
+            raise rcworkflow.WorkflowError("There is no workflow %s."
+                                           % artifact_id)
+        pay = ARTIFACTS.payload(artifact_id, version)
+        if pay is None:
+            raise rcworkflow.WorkflowError(
+                "That version was saved on another machine and has not "
+                "reached this one yet.")
+        lines = []
+        for v in range(1, int(rec.get("version") or 0) + 1):
+            p = ARTIFACTS.payload(artifact_id, v)
+            if p is None:
+                lines.append({"version": v, "here": False})
+                continue
+            r = p.get("run") or {}
+            d = p.get("definition") or {}
+            lines.append({"version": v, "here": True, "ran": bool(r),
+                          "at": r.get("at"), "by": r.get("by"),
+                          "kept": r.get("kept"), "counts": r.get("counts"),
+                          "grace": r.get("grace") or d.get("grace"),
+                          "bank": r.get("bank"),
+                          "border_ref": r.get("border_ref"),
+                          "diff": {"n": (r.get("diff") or {}).get("n"),
+                                   "moves": (r.get("diff") or {}).get(
+                                       "moves")} if r.get("diff") else None,
+                          "definition": d})
+        stale = _wf_current(pay.get("definition") or {})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/workflow", exc, 400,
+                    {"artifact_id": artifact_id})
+    return jsonify({"ok": True, "payload": pay, "lines": lines,
+                    "stale": stale, "artifact": ARTIFACTS.summary(artifact_id)})
+
+
+@app.route("/api/rootcanal/workflow/<artifact_id>/bank", methods=["POST"])
+def api_rootcanal_workflow_bank(artifact_id):
+    """Bank the events a person picked out of an ambiguous run, as one
+    entry. Body: {version, picks: [event numbers], type: "ds"|"ied"|
+    "other", name}. Asked for 2026-11-05: "let us see it and choose"."""
+    body = request.get_json(force=True) or {}
+    try:
+        rec = ARTIFACTS.get(artifact_id)
+        if not rec or rec.get("kind") != "rootcanal_workflow":
+            raise rcworkflow.WorkflowError("There is no workflow %s."
+                                           % artifact_id)
+        ver = body.get("version") or rec.get("version")
+        run = (ARTIFACTS.payload(artifact_id, ver) or {}).get("run") or {}
+        col = run.get("cols") or {}
+        picks = sorted({int(n) for n in body.get("picks") or []
+                        if 0 <= int(n) < len(col.get("t") or [])})
+        if not picks:
+            raise rcworkflow.WorkflowError("Pick the events to bank first.")
+        etype = body.get("type") if body.get("type") in ("ds", "ied") \
+            else "other"
+        gids = col["gids"]
+        by_gid = {m["gid"]: m for m in run.get("members") or []}
+        lab = ({"label_id": "spike", "label": "Dentate Spike"}
+               if etype == "ds" else {"label_id": "solid", "label": "Solid"}
+               if etype == "ied" else {})
+        events = []
+        for n in picks:
+            g = gids[col["g"][n]] if 0 <= col["g"][n] < len(gids) else None
+            m = by_gid.get(g) or {}
+            events.append(dict(lab, start=col["t"][n], gid=g,
+                               src_entry=m.get("entry_id"),
+                               src_version=m.get("from_version")))
+        nick = rec.get("nickname") or rec.get("name")
+        name = (str(body.get("name") or "").strip()
+                or "Picked from ‘%s’ v%s" % (nick, ver))
+        made = BANK.add({
+            "type": etype,
+            "type_name": {"ds": "Dentate spike", "ied": "P-spike"}.get(
+                etype, "Ambiguous DS / P-spike"),
+            "name": name,
+            "note": ("Picked by hand from the ambiguous events of the Root "
+                     "Canal workflow ‘%s’ v%s." % (nick, ver)),
+            "events": events, "curated": True, "pipeline": WF_PIPELINE,
+            "added_by": (STORE.provenance() or {}).get("user"),
+            "parameters": {"tool": "rootcanal_workflow",
+                           "workflow": {"artifact_id": artifact_id,
+                                        "version": ver, "nickname": nick,
+                                        "kind": "ambiguous"},
+                           "picked": len(picks)},
+        })
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/workflow-bank", exc, 400,
+                    {"artifact_id": artifact_id})
+    return jsonify({"ok": True, "entry_id": made["id"], "n": len(events)})
 
 
 def _rootcanal_border_load(ref):

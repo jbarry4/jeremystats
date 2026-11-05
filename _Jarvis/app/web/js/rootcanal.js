@@ -281,8 +281,10 @@ BARRY.rootcanal = (function () {
      because a browser set to block site data throws on the accessor. */
   const VIEW_KEY = 'barry.rootcanal.view';
   let viewMode = (() => {
-    try { return localStorage.getItem(VIEW_KEY) === 'pooled' ? 'pooled' : 'single'; }
-    catch (e) { return 'single'; }
+    try {
+      const v = localStorage.getItem(VIEW_KEY);
+      return v === 'pooled' || v === 'workflow' ? v : 'single';
+    } catch (e) { return 'single'; }
   })();
 
   /* The pool, while one is open. See "POOLED" below. */
@@ -1055,6 +1057,11 @@ BARRY.rootcanal = (function () {
     box.appendChild(intro());
     box.appendChild(viewBar());
     if (viewMode === 'pooled') { paintPool(box); return; }
+    // The workflows (2026-11-05): their own module, their own part.
+    if (viewMode === 'workflow') {
+      box.appendChild(BARRY.rcWorkflow.node(workflowHelpers()));
+      return;
+    }
     if (!cands) { box.appendChild(loading('Reading the event bank')); return; }
     if (!cands.length) { box.appendChild(nothing()); return; }
     box.appendChild(modeSwitch());
@@ -7110,7 +7117,7 @@ BARRY.rootcanal = (function () {
      artifact of its own, under a label somebody types.
      ================================================================== */
   function setView(mode) {
-    const want = mode === 'pooled' ? 'pooled' : 'single';
+    const want = mode === 'pooled' || mode === 'workflow' ? mode : 'single';
     viewMode = want;
     try { localStorage.setItem(VIEW_KEY, want); } catch (e) { /* fine */ }
     press = null;
@@ -7127,12 +7134,42 @@ BARRY.rootcanal = (function () {
         ['single', 'Single', 'One recording: read it, split it, bank it.'],
         ['pooled', 'Pooled', 'Many recordings in one space: two clear groups, '
                            + 'or one spectrum?'],
+        ['workflow', 'Workflow', 'Define a border, apply it to a pool, extract '
+                               + 'what is inside: verified dentate spikes, '
+                               + 'verified P-spikes, and the ambiguous ones.'],
       ], viewMode, setView, { extra: 'rc-viewseg' }),
       el('span', { class: 'hint', text: viewMode === 'pooled'
         ? 'Root Canal singles pooled into one space. Nothing here is banked; '
           + 'a pool is saved under a label of its own.'
+        : viewMode === 'workflow'
+        ? 'Each workflow is versioned and pinned to what it read; its results '
+          + 'go to the Bank as one entry.'
         : 'One aligned set at a time, banked as the next version of that set.' }),
     ]);
+  }
+
+  /* What the Workflow tab borrows from here: the page, a recording's path
+     for Xplorefinder, and Pooled itself -- a stage opened there is the same
+     picture with the border applied, its click panel and all. */
+  function workflowHelpers() {
+    return {
+      render: () => render(),
+      recordingPath: (gid) => recordingPath(gid),
+      openPool: async (ref, border) => {
+        if (pool.level === 'double') pool.level = 'pool';
+        viewMode = 'pooled';
+        try { localStorage.setItem(VIEW_KEY, 'pooled'); } catch (e) { /* fine */ }
+        render();
+        const got = await openSaved(ref.artifact_id, ref.version);
+        if (got && border) {
+          pool.border = { artifact_id: border.artifact_id,
+                          version: border.version, grace: border.grace };
+          pool.colour = 'border';
+          runPool();
+        }
+        return got;
+      },
+    };
   }
 
   /* One read of the lists at a time (2026-10-19): the ToolKit paints twice

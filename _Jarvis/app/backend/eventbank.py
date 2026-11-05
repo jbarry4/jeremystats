@@ -333,9 +333,48 @@ class EventBank:
                     "IED", "IEDs", "ied", ""):
                 row["type_name"] = "P-spike"
             out.append(row)
+        self._went_into(out)
         self._summaries = out
         self._sum_stamp = stamp
         return out
+
+    @staticmethod
+    def _went_into(rows):
+        """THE SIDE BRANCH (2026-11-05: "a side branch that mentions it
+        went into a Root Canal entry"). An entry a Root Canal workflow
+        extracted names the sets it took its events from; each of those
+        sets is told, on the listing, where its events went -- on the row,
+        and on the version they came from. Worked out on read, never
+        stored: a stored note would be a version, and a version would move
+        the set's tip."""
+        by_id = {r.get("id"): r for r in rows}
+        for r in rows:
+            prm = ((r.get("source") or {}).get("parameters")
+                   or r.get("parameters") or {})
+            if prm.get("tool") != "rootcanal_workflow":
+                continue
+            wf = prm.get("workflow") or {}
+            for s in prm.get("sources") or []:
+                src = by_id.get(s.get("entry_id"))
+                if not src:
+                    continue
+                link = {"entry_id": r.get("id"), "name": r.get("name"),
+                        "n": s.get("n"), "workflow": wf.get("nickname"),
+                        "workflow_id": wf.get("artifact_id"),
+                        "workflow_version": wf.get("version"),
+                        "from_version": s.get("version"),
+                        "archived": bool(r.get("archived"))}
+                src.setdefault("went_into", []).append(link)
+                want = s.get("version")
+                for ver in src.get("versions") or []:
+                    hit = (want is None and ver is (src.get("versions")
+                                                    or [None])[-1]) or (
+                        want is not None and str(want) in (
+                            str(ver.get("id")), str(ver.get("v")),
+                            str(ver.get("label")),
+                            str(EventBank.version_key(ver))))
+                    if hit:
+                        ver.setdefault("went_into", []).append(link)
 
     @staticmethod
     def repaired(rec):
@@ -509,6 +548,13 @@ class EventBank:
             # (2026-10-19): Incisor's unless it says Doppler's.
             if ev.get("stamp") in ("incisor", "doppler"):
                 item["stamp"] = ev["stamp"]
+            # Which recording, and which set of it, an event of a POOL-WIDE
+            # entry came from (Root Canal's workflows, 2026-11-05: one entry
+            # for a whole pool). Facts about where it came from, like
+            # `origin`; an entry of one recording has no need of them.
+            for key in ("gid", "src_entry", "src_version"):
+                if ev.get(key) not in (None, ""):
+                    item[key] = str(ev[key])[:80]
             # Channels this event is not valid on, and the two different
             # reasons it might not be.
             #

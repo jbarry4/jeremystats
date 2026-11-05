@@ -176,8 +176,9 @@ const NL = String.fromCharCode(10);
   if (rcStep) rcStep.click();
   await until(() => D().querySelector('.rc-viewseg'), 10000, 'the bar');
   const segBtns = Array.from(D().querySelectorAll('.rc-viewseg button'));
-  eq('a bar under the header, Single | Pooled',
-     segBtns.map((b) => b.textContent), ['Single', 'Pooled']);
+  // And Workflow since 2026-11-05 (web/_dev/rcworkflow.html).
+  eq('a bar under the header, Single | Pooled | Workflow',
+     segBtns.map((b) => b.textContent), ['Single', 'Pooled', 'Workflow']);
   ok('built as the shared seg control', !!D().querySelector('.seg.rc-viewseg'));
   ok('directly under the step header',
      !!D().querySelector('.step-head + .rc-viewbar'));

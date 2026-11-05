@@ -93,6 +93,8 @@ PREFS_SPEC = {
     # because putting one back has to sync too, and an artifact's soft
     # delete only ever travels one way.
     "rootcanal_border_archive": shards.MAPLWW,
+    # Root Canal's archived workflows (2026-11-05), the same way.
+    "rootcanal_workflow_archive": shards.MAPLWW,
     # Root Canal's folders for saved pools and pools of pools (2026-10-20):
     # the folders, {id: {name, at, by, gone}}, and which folder each pool is
     # in, {pool id: folder id or ""}. Merged per key for the same reason as

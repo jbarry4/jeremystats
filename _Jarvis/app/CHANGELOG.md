@@ -15,6 +15,89 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.05.5 - Root Canal: a Workflow tab (define a border, apply it, extract)
+
+Restart Jarvis: there are new server routes.
+
+### Added
+
+- **Workflow, beside Single and Pooled.** There are three kinds of workflow,
+  each saved, versioned and shared between machines like a pool:
+  - **Verified dentate spikes.** The border is drawn around DS from a pool
+    whose every event is DS (the controls), at a grace you pick (5% by
+    default), and applied to a target pool. Everything inside it is banked
+    as **one Root Canal entry for the whole pool**. Each event keeps the
+    recording and set it came from.
+  - **Verified P-spikes.** The same, with the border drawn around the
+    hand-sorted P-spike sets (the "IED spikes (hand-sorted)" imports are
+    ticked; the confirmed ones are offered unticked). The sets are measured
+    the way the target was.
+  - **Ambiguous.** It borrows both borders. Events outside both, or inside
+    both, are shown, not banked. You tick the ones you want and bank them.
+- **Every stage in 3D.** Define border, Apply border and Extract each draw
+  the dots with the border's box: solid at the grace, dashed at no grace.
+  You can turn and zoom the view and click any dot. A strip per workflow
+  shows the three stages as small pictures with their counts.
+- **Beside the 3D view:**
+  - the three 2D views with the cut-offs;
+  - how far every event is from the box on each axis;
+  - the grace sweep, before the grace is chosen;
+  - the flow from each mouse to each class;
+  - a small picture per mouse with how many came out;
+  - class averages;
+  - and, for Ambiguous, the conflicts.
+- **Trace-back.** A clicked dot shows its three numbers against the
+  cut-offs (inside or outside, and by how many box widths). It also shows
+  its history: recording and time, set and version, pool, border and
+  workflow version, and bank entry. From there, "Show its waveform" draws
+  the trace and the CSD, and "Open in Xplorefinder" opens the recording at
+  that moment. "Open in Pooled" opens the same picture there, with the
+  border applied.
+- **Versions you can rebuild.** Every run is a version that pins the exact
+  versions it read. A newer input marks the workflow **out of date** and
+  offers "Run with the newest inputs"; nothing reruns by itself. Each run
+  says how many events changed class since the run before, and which. "Show
+  this version" and "Rebuild from here" are on every line. Each run's
+  border is saved as an ordinary Root Canal border, so the Borders card can
+  apply it anywhere.
+- **Archive.** Archiving a workflow hides it for everyone and archives the
+  bank entries it made. Nothing is deleted, and it can be put back.
+- **The side branch.** A DS set whose events went into a workflow's entry
+  says so in its version tree, under the version they came from. The note
+  is shown, not stored, so the set's newest version stays where it is.
+- **Preparing the hand-sorted sets.** "Check the sets" shows, for each set,
+  whether it is on the recording's own clock, aligned and read here.
+  "Prepare all" retimes what needs it, aligns the rest in Eye (committed as
+  each lands) and reads each one. Two need retiming: PTEN m5 s7 (up to
+  4.5 ms) and PTEN m34 s8 (up to 121 ms).
+
+### Changed
+
+- **The hand-sort's clock.** "IED hand-sort (ETS)" sets are now known to be
+  in the hand-sort's concatenated time, which squeezes out the recording's
+  pauses (measured on PTEN M34 s8). So the Session view offers to retime
+  them too.
+
+### Checked
+
+- New harness rcworkflow.html: 57 checks, on fixtures. It writes nothing.
+- An end-to-end run of all three workflows in throwaway stores: 29 checks.
+  - Workflow 1 on the real pools: 1,857 of 2,198 events inside the DS
+    border at 5%, banked as one entry, each event with its recording.
+  - Run again: same entry, new version, nothing moved.
+  - A newer pool makes it out of date.
+  - Workflow 2's source was stood in for, because the hand-sorted sets are
+    not read here yet.
+- Suites still passing:
+  - rootcanal 353 of 355. The 2 failures are on the "Lock hasn't lined this
+    set up yet" wording, which was already failing.
+  - rootcanalpool 294 (its view-bar check now includes Workflow).
+  - rootcanalborder, rootcanaldone, rootcanalfolders, rootcanalxplore and
+    confluence.
+  - check_rootcanal 464, and test_retime.
+- Not run for real: "Prepare all". It writes real bank versions (retiming
+  and alignment) when it is pressed.
+
 ## 2026.11.05.4 - Prospector and Tooth Fairy sweep recordings only the cluster has; Prospector's calls are loud in Panning; feedback arrives live; a mode's keys work from its support window
 
 Restart Jarvis: most of this is the server.
