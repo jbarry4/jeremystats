@@ -15,6 +15,35 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.05.1 - A renamed folder says so, tab 10 survives a redraw, a long poll is not "stuck"
+
+From the daily error pass (TRIAGE.md, pass 11). Restart Jarvis for the first
+two fixes: they are in the server. A page reload is enough for the third.
+
+- **A recording renamed while it was open.** On 11-04 Rain renamed
+  `KCNT1_529_s1apr17` to `KCNT1_m529_s1_apr17` on Y: with it open. The next
+  trace window failed with a bare "[WinError 3] The system cannot find the
+  path specified", and Jarvis kept the old folder open in memory, so every
+  later read of it would have failed the same way. Now the trace window
+  says the folder is no longer there and was moved or renamed, lets go of
+  the old opening, and the next read opens the path again
+  (`_session_gone` in `backend/app.py`). Check:
+  `tools/check_csc_folder_gone.py`.
+- **Tab 10's list while a figure is drawn again.** The list of Joe's files
+  failed six times on 11-04 with "cannot identify image file": it read a
+  figure PNG while the figure was still being written. That PNG's preview
+  now waits for the next listing, and the list still loads
+  (`_preview` in `backend/joeexport.py`). Check:
+  `tools/check_joeexport_preview.py`.
+- **"Waiting for the server" all night.** The page's stuck watch counted
+  the cross-window link poll, which the server holds open for 25 s on
+  purpose, as a request somebody was waiting on. It filed one every ten
+  minutes per open window: 210 on Bluebarry and 11 on Strawbarry. Held
+  polls are no longer counted. The stuck record now also puts what it was
+  (route, how long) before the feed lines, so cutting the record at 4000
+  characters no longer loses it (`web/js/solid.js`). Check: a new section
+  in `web/_dev/solid.html`.
+
 ## 2026.11.04.4 - One list of recordings, one channel picker, and Junction's versions
 
 **Recordings no tool could see.** m531 s1 was in Sessions and missing from

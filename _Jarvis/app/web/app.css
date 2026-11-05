@@ -2834,6 +2834,15 @@ code { font-family: var(--mono); }
 .vos-issues strong { color: var(--warn); font-weight: 600; }
 .vos-err { display: block; margin-top: var(--sp-8, 8px); white-space: normal;
            overflow-wrap: anywhere; }
+.vos-history { margin-top: var(--sp-12, 12px); }
+.vos-history > summary { font-size: var(--fs-13); }
+.vos-details ul.vos-hist { list-style: none; margin-left: 0; font-family: var(--sans);
+                           font-size: var(--fs-12); }
+.vos-hist > li { padding: 2px 0; border-bottom: 1px solid var(--line-soft); }
+.vos-hist strong { color: var(--text); font-weight: 600; }
+.vos-hist .vos-details .vos-details { margin-left: 14px; }
+.vos-details ul.vos-ids { display: flex; flex-wrap: wrap; gap: 2px 12px; list-style: none;
+                          max-width: 640px; }
 #syncLabel { overflow-wrap: anywhere; white-space: normal; }
 .chip-btn.dirty { border-color: var(--accent-line); color: var(--accent); }
 /* ---------- segmented control ---------- */

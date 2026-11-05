@@ -885,6 +885,34 @@ def _session_for(path, invert=True):
     return _SESSIONS[key], None
 
 
+def _session_gone(path, exc):
+    """A plain message, when a read failed because the recording's folder is
+    no longer where it was opened; otherwise None.
+
+    2026-11-04, Strawbarry: Rain renamed `KCNT1_529_s1apr17` to
+    `KCNT1_m529_s1_apr17` on Y: while it was open. `_SESSIONS` still held
+    the old folder, so the next trace window raised a bare "[WinError 3]
+    The system cannot find the path specified", and every later read of
+    that path would have hit the same cached session. The cached opening
+    is let go here, so the next request opens the path afresh and gets
+    open_session's own "Path not found". Only checked after a failure, so
+    a read that works never pays for a stat on a network drive.
+    """
+    if not isinstance(exc, OSError) or not path or _scheme_path(path):
+        return None
+    try:
+        if os.path.exists(path):
+            return None
+    except OSError:
+        pass
+    want = os.path.abspath(path) + "|"
+    for key in [k for k in _SESSIONS if k.startswith(want)]:
+        _SESSIONS.pop(key, None)
+    return ("This recording's folder is no longer at %s. It was moved or "
+            "renamed after it was opened here. Open it again from where "
+            "it is now." % path)
+
+
 def _gid_for_path(path):
     """The permanent id of whatever recording lives at this path.
 
@@ -1125,7 +1153,8 @@ def api_csc_window():
             spacing_um=float(body.get("spacing_um", 50) or 50),
             full_rate=bool(body.get("full_rate")))
     except Exception as exc:
-        return fail("csc/window", exc, 400, {"path": body.get("path")})
+        return fail("csc/window", exc, 400, {"path": body.get("path")},
+                    user_message=_session_gone(body.get("path"), exc))
     if not win.get("ok"):
         return jsonify(win), 400
     # The same steps a panel reports, so the trace view can wear the same
@@ -26003,7 +26032,8 @@ FIGURES = figroutesmod.install(app, sys.modules[__name__])
 # VOS census -> the Lab Operations Schedule (Misc > VOS log in). Its session,
 # its Chrome and its routes live in vos.py.
 from . import vos as vosmod                                   # noqa: E402
-vosmod.install(app, fail)
+vosmod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("user"),
+                                       _vacc_device()))
 
 # X-ray's vault: one record per (recording, question), and the read cached
 # beside it.

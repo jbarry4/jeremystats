@@ -212,7 +212,7 @@ BARRY.views.misc = (function () {
      The card repaints only itself, in place, while a run is going: Misc
      itself is not redrawn every poll.
      ====================================================================== */
-  const vos = { st: null, card: null, timer: null, url: '' };
+  const vos = { st: null, card: null, timer: null, url: '', hist: null, histOpen: false };
 
   function vosCard() {
     const card = el('div', { class: 'card vos-card' });
@@ -225,12 +225,16 @@ BARRY.views.misc = (function () {
   }
 
   async function vosLoad(check) {
+    const was = vos.st && vos.st.run && vos.st.run.running;
     try {
       vos.st = await api('/api/vos/status' + (check ? '?check=1' : ''), { priority: 'background' });
     } catch (e) {
       vos.st = vos.st || { error: e.message };
     }
+    // A run just ended: it may have added a sync to History.
+    if (was && !(vos.st.run && vos.st.run.running)) vos.hist = null;
     vosPaint();
+    if (vos.histOpen && !vos.hist) vosHistLoad();
     clearTimeout(vos.timer);
     if (vos.st && vos.st.run && vos.st.run.running) {
       vos.timer = setTimeout(() => {
@@ -243,7 +247,78 @@ BARRY.views.misc = (function () {
     try {
       vos.st = await apiPost('/api/vos/' + route, body || {});
     } catch (e) { toast(e.message, 'err', 6000); }
+    if (route === 'discard') vos.hist = null;
     vosLoad(false);
+  }
+
+  async function vosHistLoad() {
+    try {
+      vos.hist = (await api('/api/vos/history', { priority: 'background' })).syncs || [];
+    } catch (e) {
+      vos.hist = { error: e.message };
+    }
+    vosPaint();
+  }
+
+  /* Every census the sheet has been given: the hand-pasted ones out of "VOS
+     Imports" and every Jarvis sync since, each with what changed since the
+     one before (who arrived in the census, who left it, who changed cage).
+     A Jarvis sync also says what it did to the sheet and what it flagged. */
+  function vosHistory() {
+    const d = el('details', { class: 'vos-details vos-history', open: vos.histOpen ? 'open' : null });
+    const h = vos.hist;
+    d.appendChild(el('summary', { text: 'History' + (Array.isArray(h) ? ' (' + h.length + ' censuses)' : '') }));
+    d.addEventListener('toggle', () => {
+      vos.histOpen = d.open;
+      if (d.open && !vos.hist) vosHistLoad();
+    });
+    if (!h) {
+      if (vos.histOpen) d.appendChild(el('p', { class: 'hint', text: 'Reading the record…' }));
+      return d;
+    }
+    if (h.error) {
+      d.appendChild(el('p', { class: 'hint', text: 'Could not read the record: ' + h.error }));
+      return d;
+    }
+    const day = (r) => new Date(r.date + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+      + (r.time ? ' ' + r.time : '');
+    d.appendChild(el('ul', { class: 'vos-hist' }, h.map((r) => {
+      const f = r.diff;
+      const bits = [r.mice + ' mice'];
+      if (f) bits.push(f.arrived.length + ' arrived', f.left.length + ' left', f.moved.length + ' changed cage');
+      if ((r.issues || []).length) bits.push(r.issues.length + ' issue' + (r.issues.length === 1 ? '' : 's'));
+      const who = r.source === 'Jarvis'
+        ? 'Jarvis' + (r.by ? ', ' + r.by : '') + (r.machine ? ' on ' + r.machine : '')
+        : 'pasted into VOS Imports';
+      const item = el('details', { class: 'vos-details' }, [
+        el('summary', {}, [
+          el('strong', { text: day(r) }),
+          el('span', { text: ' · ' + who + (r.outcome === 'discarded' ? ' · discarded' : '') + ' · ' + bits.join(', ') }),
+        ]),
+      ]);
+      // ids: a run of bare mouse IDs, which wraps instead of one per line.
+      const list = (label, rows, ids) => {
+        if (!rows.length) return;
+        item.appendChild(el('details', { class: 'vos-details' }, [
+          el('summary', { text: label + ' (' + rows.length + ')' }),
+          el('ul', { class: ids ? 'vos-ids' : null }, rows.map((t) => el('li', { text: t }))),
+        ]));
+      };
+      if (f) {
+        list('In the census, not in the one before', f.arrived, true);
+        list('In the one before, not in this', f.left, true);
+        list('Changed cage', f.moved.map((m) => m.id + ': ' + (m.from || '(blank)') + ' → ' + (m.to || '(blank)')));
+      } else {
+        item.appendChild(el('p', { class: 'hint', text: 'The first census on record.' }));
+      }
+      if (r.result) {
+        item.appendChild(vosResult(r, r.outcome === 'discarded'
+          ? 'What it would have done to ' + (r.sheet || 'the sheet') + ':'
+          : 'What it did to ' + (r.sheet || 'the sheet') + ':'));
+      }
+      return el('li', {}, [item]);
+    })));
+    return d;
   }
 
   function vosWhen(t) {
@@ -271,11 +346,11 @@ BARRY.views.misc = (function () {
                      text: retire.length + ' newly retired' }),
       ]),
     ]);
-    const list = (label, rows, open) => {
+    const list = (label, rows, open, ids) => {
       if (!rows.length) return;
       box.appendChild(el('details', { class: 'vos-details', open: open ? 'open' : null }, [
         el('summary', { text: label }),
-        el('ul', {}, rows.map((t) => el('li', { text: t }))),
+        el('ul', { class: ids ? 'vos-ids' : null }, rows.map((t) => el('li', { text: t }))),
       ]));
     };
     // Open while it is the reason the run is waiting: it is what to check.
@@ -283,8 +358,8 @@ BARRY.views.misc = (function () {
          retire.map((m) => m.id + (m.cage ? ' (was ' + m.cage + ')' : '')), !s.applied);
     list('Changes (' + changes.length + ')',
          changes.map((c) => c.id + ' ' + c.field + ': ' + (c.from || '(blank)') + ' → ' + (c.to || '(blank)')));
-    list('Added (' + (r.added || []).length + ')', r.added || []);
-    list('Left as they are (' + (r.held || []).length + ')', r.held || []);
+    list('Added (' + (r.added || []).length + ')', r.added || [], false, true);
+    list('Left as they are (' + (r.held || []).length + ')', r.held || [], false, true);
     /* Problems found along the way, in the words the lab uses: "Cage card
        naming issue: ...", "Spreadsheet issue: ...". Open by default -- these
        are the things somebody has to go and fix, in VOS or in the sheet. */
@@ -384,6 +459,7 @@ BARRY.views.misc = (function () {
       card.appendChild(el('div', { class: 'stat-chip warn vos-err',
         text: 'Last ' + err.what + ' failed at ' + vosWhen(err.at) + ': ' + err.error }));
     }
+    card.appendChild(vosHistory());
   }
 
   /* ======================================================================

@@ -41,6 +41,95 @@ does not show up in it.
   prints around a fault. The 10-20 Root Canal bug showed up there, not in
   the traceback.
 
+## Pass 11: 2026-11-05 (morning, scheduled), 11-04 08:50 to 11-05 09:05
+
+Covered: Strawbarry's 11-03 report (already at HEAD, `0aa728fe`), the raw
+shards `11-04@Strawbarry` (synced) and `11-04@desktop-4h65ai7-d565`, and
+the cloud, read-only: the `errors` table from `2026-11-04T13:50Z`
+(`machine=neq.Bluebarry`; it has no `test` column either), Strawbarry's
+`activity` around its fault, and every `client.error` row since 11-03.
+`git fetch` brought `762235c0`/`ab65b008` (Rain, 11-04 16:05), with no
+report in them. **Bluebarry has no 11-04 report:** its Jarvis stopped at
+16:16 local, before 18:00, and nothing is listening now. The report gets
+written on the first tick after it starts again.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-03 | Strawbarry (Rain) | 0 | 141 actions |
+| 11-04 | Strawbarry (Rain) | 1 | `csc/window` WinError 3 after a folder rename. **Fixed** (1) |
+| 11-04 | Bluebarry | 0 (58 test) | all `test: true`; 6 of them a real race behind a test flag. **Fixed** (2) |
+| 11-03, 11-04 | both | 229 "stuck" rows | `client.error` / `where: stuck` in **activity**, not errors. 210 + 11 were false. **Fixed** (3) |
+
+What changed (CHANGELOG `2026.11.05.1`):
+
+1. **Strawbarry `csc/window`, "[WinError 3] The system cannot find the
+   path specified: Y:\...\KCNT1_529_s1apr17\...\CSC1.ncs"** at 20:02:44Z.
+   The cloud activity shows Rain opening 529 s1 at 19:45 and 19:51Z, then
+   rescanning KCNT1_526, 529, 524 and 521 from 19:56Z: the folders were
+   being renamed to the `m###` pattern (`KCNT1_m529_s1_apr17`, registry
+   row `m529_s001_2026-04-17_12-55-27`, made 20:03Z). `_SESSIONS` kept the
+   opening of the old folder, so the window read a file that was gone, and
+   every later read of that path would have failed the same way. Now
+   `_session_gone` in `backend/app.py` (only after a failed read, so no
+   stat on Y: per window) lets go of the stale opening and says it plainly.
+   `tools/check_csc_folder_gone.py`: 4 of 8 fail with it out, with exactly
+   Rain's WinError 3; 8 ok with it in. Needs a restart.
+2. **Joe export list, "cannot identify image file ...joepub\all\fig_P2_2.png"**
+   (6 times, 14:31 and 15:14–15:15 local, each a different PNG, all whole
+   now: 839 checked). `joefigs._save` writes PNGs in place, and
+   `joeexport._preview` read one mid-write while the other session was
+   redrawing tab 11–13's sets. They were `test: true` only because a
+   harness asked; a person with tab 10 open during a redraw gets the same
+   500. Now an unreadable PNG keeps its last preview (or none) and the
+   next listing makes it. `tools/check_joeexport_preview.py`: 3 of 7 fail
+   with it out, 7 ok with it in. Needs a restart. I did not make
+   `joefigs._save` write atomically: the PDFs and SVGs it writes are
+   published too, and that is the other session's code.
+3. **"Stuck" reports (new since `2026.11.03.x`, `web/js/solid.js` §4).**
+   They go to the `activity` log as `client.error`, `where: "stuck"`, so
+   **the day reports and the error shards never show them: read them from
+   activity**. Of 268 rows since 11-03, 209 on Bluebarry and 11 on
+   Strawbarry were xplore's `GET /api/link`, the long poll the server
+   holds for 25 s on purpose. It was counted as a foreground request; past
+   30 s it was filed once per 10 minutes per window, 12 an hour all night
+   with nobody there. Held polls are now skipped (they still count as
+   movement, as before). Also, the record put its route after 20 feed
+   lines and was cut at 4000 characters, so 27 rows lost what they were;
+   the route and kind now come first. `solid.html` has a new section: a
+   40 s plain request is filed (the control), a 40 s link poll is not.
+   1 fail with the skip taken out, 78 ok with it in. A page reload is enough.
+
+Not changed, for the record:
+
+- The other "stuck" rows are real but slow, not faults: Strawbarry's
+  `csc/open`, `csc/window`, `registry`, `incisor/estimate`,
+  `incisor/batch/plan`, `prefs`, `pick` and `prospector/accept` each went
+  past 30 s on 11-04 while Rain worked off Y:. Worth watching if they grow.
+- 4 registry records still point at the old 529 s1 folder (`sb63dd2b3ae81`,
+  `sbc0daa6c7ae5`, `s480a3e4d88d9`, `sb1b95b460487`), all four the same
+  folder under different gids, and 2 at the old 529 s2 folder
+  (`s6435991bf573`, `s83c30a8c2649`). I checked only 529; 521, 524 and 526
+  were rescanned the same afternoon and likely look the same. Which to
+  retire after a rename is a registry decision; I did not touch them.
+- `tools/check_joeexport_race.py` failed once right after
+  `check_joeexport.py`: "[WinError 5] Access is denied" renaming a Prism
+  zip's `.part` over the zip, most likely a scanner holding the fresh zip.
+  It passes alone (5 ok). The Prism zip path does not retry the
+  `os.replace`; nobody has hit it in the app yet.
+- This pass's harness run touched `prefs/workbench@desktop-4h65ai7-d565.json`
+  at 09:00:01: only its `updated` stamps moved, no values.
+
+Open items B and C and the double-pool note stand as pass 6 left them.
+
+Builds: Strawbarry ran `2026.11.03.2` (`0aa9ad6d`) on 11-04, older than
+everything today. `2026.11.05.1` is uncommitted, so no other machine has it.
+
+Next pass: Bluebarry's 11-04 report (written when its Jarvis next starts)
+and 11-05. Then `git fetch`, then the cloud `errors` table from
+`2026-11-05T14:05Z`, then the `activity` table's `client.error` rows with
+`where: stuck` from the same time. If `/api/link` still appears there, it
+is a machine on a build older than `2026.11.05.1`.
+
 ## Pass 10: 2026-11-04 (morning, scheduled), 11-03 07:50 to 11-04 08:50
 
 Nothing new. Bluebarry's 11-03 report: 0 faults, 639 actions, 18 left

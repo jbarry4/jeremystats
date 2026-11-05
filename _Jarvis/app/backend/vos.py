@@ -31,9 +31,20 @@ VOS keeps a session at all is recorded in status.json as it is learned.
 
 Everything here is machine-local, in %LOCALAPPDATA%\\Jarvis\\vos: the cookies
 are a credential and the web app secret is one too. Nothing goes in the repo
-except the archived PDF + CSV, beside the hand-made ones.
+except the archived PDF + CSV, beside the hand-made ones, and the record of
+each sync.
+
+THE RECORD. Every sync is kept twice. In the sheet, as a date-stamped block
+in "VOS Imports" with the same four columns as the hand-pasted ones (ID, cage,
+DOB, sex). Never the parser's other columns: Raw Card Text carries the cards'
+emergency-contact phone numbers, and the sheet is readable by anyone with its
+link. In Jarvis, as one JSON per sync under VOS Exports/Jarvis/syncs, applied
+or discarded, with who pressed it, what the sheet changed and the whole
+census, so History can say what moved between any two. The censuses from
+before Jarvis came out of "VOS Imports" (tools/vos_history_backfill.py).
 
     GET  /api/vos/status        signed in?, the sheet link, the run, the hold
+    GET  /api/vos/history       every sync, newest first, with what changed
     POST /api/vos/login         open Chrome on the myUVM sign-in
     POST /api/vos/sync          fetch, parse, preview, apply unless held
     POST /api/vos/apply         apply the held preview
@@ -82,6 +93,9 @@ COLONY = os.path.join(REPO_ROOT, "Colony Management")
 PARSER = os.path.join(COLONY, "VOS Exports", "VOS Report to CSV",
                       "VOS_report_parser.py")
 ARCHIVE = os.path.join(COLONY, "VOS Exports", "Jarvis")
+HISTORY = os.path.join(ARCHIVE, "syncs")
+# The block written into "VOS Imports": the hand-pasted blocks' four columns.
+SHEET_COLUMNS = 4
 
 LOGIN_WAIT_S = 600
 KEEPALIVE_S = 30 * 60
@@ -97,7 +111,9 @@ CHROME_PATHS = (
 
 _LOCK = threading.Lock()
 RUN = {"running": False, "what": None, "step": "", "started": None}
-HOLD = {"preview": None, "payload": None}
+HOLD = {"preview": None, "payload": None, "census": None}
+# () -> (person, machine) for the record; app.py passes the profile's.
+WHO = {"fn": None}
 
 
 # --- small files ------------------------------------------------------------
@@ -590,10 +606,14 @@ def _fetch():
         mice.append({"id": mid, "hold": True} if mid in held else
                     {"id": mid, "cage": r["Cage Card"],
                      "dob": _iso_date(r["DOB"]), "sex": r["Sex"]})
-    block = {"headers": [new for _, new in cols],
-             "rows": [[rec.get(orig, "") for orig, _ in cols] for rec in kept]}
+    sheet_cols = cols[:SHEET_COLUMNS]
+    block = {"headers": [new for _, new in sheet_cols],
+             "rows": [[rec.get(orig, "") for orig, _ in sheet_cols] for rec in kept]}
+    census = [[str(r["Extracted Sorting ID"]), r["Cage Card"], _iso_date(r["DOB"]),
+               r["Sex"], r.get("Strain", "")] for r in kept]
     return {"stamp": stamp, "cages": len(ids), "rows": len(records),
-            "mice": mice, "block": block, "issues": issues, "skipped": skipped,
+            "mice": mice, "block": block, "census": census,
+            "issues": issues, "skipped": skipped,
             "pdf": base + ".pdf", "csv": base + ".csv"}
 
 
@@ -739,7 +759,8 @@ def _sync():
     pre = _post_sheet(payload, "preview")
     retire = pre.get("newlyRetired") or []
     if retire:
-        HOLD.update(preview=_summary(got, pre, False), payload=payload)
+        HOLD.update(preview=_summary(got, pre, False), payload=payload,
+                    census=got["census"])
         _status_update(last_fetch=HOLD["preview"])
         _say("%d mouse/mice would be marked RETIRED; waiting for you in Misc"
              % len(retire), level="warn", done=True)
@@ -747,8 +768,9 @@ def _sync():
     _step("writing to the sheet")
     res = _post_sheet(payload, "apply")
     summ = _summary(got, res, True)
-    HOLD.update(preview=None, payload=None)
+    HOLD.update(preview=None, payload=None, census=None)
     _status_update(last_sync=summ, last_fetch=summ, last_error=None)
+    _record(summ, "applied", got["census"])
     _say("synced: %s updated, %d added, %d retired, %d issue(s) to fix in Misc" % (
         res.get("active"), len(res.get("added") or []),
         len(res.get("newlyRetired") or []), len(summ["issues"])),
@@ -764,11 +786,86 @@ def _apply():
     card = [i for i in pre["issues"] if i["category"] != SHEET]
     summ = dict(pre, at=time.time(), applied=True, result=res,
                 sheet=res.get("sheet"), issues=card + sheet_issues(res))
-    HOLD.update(preview=None, payload=None)
+    census = HOLD["census"]
+    HOLD.update(preview=None, payload=None, census=None)
     _status_update(last_sync=summ, last_fetch=summ, last_error=None)
+    _record(summ, "applied", census)
     _say("applied: %s updated, %d added, %d retired" % (
         res.get("active"), len(res.get("added") or []),
         len(res.get("newlyRetired") or [])), done=True)
+
+
+# --- the record of every sync ---------------------------------------------------
+
+RECORD_KEYS = ("date", "time", "stamp", "source", "outcome", "by", "machine",
+               "sheet", "block_at", "cages", "rows", "issues", "skipped", "result",
+               "pdf", "csv")
+
+
+def _record(summ, outcome, census):
+    """One JSON per sync in VOS Exports/Jarvis/syncs. It travels by git like
+    the PDF and CSV beside it, so every machine's History is the lab's."""
+    try:
+        at = dt.datetime.fromtimestamp(summ["at"])
+        person, machine = (WHO["fn"] or (lambda: (None, None)))()
+        res = summ.get("result") or {}
+        rec = {"v": 1, "date": at.date().isoformat(), "time": at.strftime("%H:%M"),
+               "stamp": summ.get("stamp"), "source": "Jarvis", "outcome": outcome,
+               "by": person, "machine": machine, "sheet": summ.get("sheet"),
+               "block_at": res.get("blockAt"), "cages": summ.get("cages"),
+               "rows": summ.get("rows"), "issues": summ.get("issues") or [],
+               "skipped": summ.get("skipped") or [], "result": res,
+               "pdf": os.path.basename(summ.get("pdf") or "") or None,
+               "csv": os.path.basename(summ.get("csv") or "") or None,
+               "census": census or []}
+        _write(os.path.join(HISTORY, at.strftime("%Y-%m-%d %H%M%S") + " jarvis.json"), rec)
+    except Exception as e:                               # noqa: BLE001
+        _say("the sheet is synced, but Jarvis could not keep its record: %s" % e,
+             level="warn")
+
+
+def _id_order(mid):
+    return (0, int(mid), "") if mid.isdigit() else (1, 0, mid)
+
+
+def history():
+    """Every sync, newest first, each with what the census did since the one
+    before it. A discarded sync is compared but never becomes the baseline:
+    it never reached the sheet."""
+    recs = []
+    if os.path.isdir(HISTORY):
+        for name in os.listdir(HISTORY):
+            if name.endswith(".json"):
+                rec = _read(os.path.join(HISTORY, name), None)
+                if isinstance(rec, dict):
+                    recs.append(rec)
+    recs.sort(key=lambda r: (r.get("date") or "", r.get("time") or ""))
+    out, prev = [], None
+    for r in recs:
+        cur = {}
+        for row in r.get("census") or []:
+            had = cur.get(row[0])
+            # One tag on two cards (held): both cages, not whichever came last.
+            if had and row[1] and row[1] not in had[1].split(" / "):
+                row = [row[0], had[1] + " / " + row[1]] + list(row[2:])
+            cur[row[0]] = row
+        diff = None
+        if prev is not None and cur:
+            both = set(cur) & set(prev)
+            diff = {"arrived": sorted(set(cur) - set(prev), key=_id_order),
+                    "left": sorted(set(prev) - set(cur), key=_id_order),
+                    "moved": [{"id": i, "from": prev[i][1], "to": cur[i][1]}
+                              for i in sorted(both, key=_id_order)
+                              if prev[i][1] != cur[i][1]]}
+        item = {k: r.get(k) for k in RECORD_KEYS}
+        for k in ("pdf", "csv"):
+            if item[k]:
+                item[k] = os.path.join(ARCHIVE, item[k])
+        item.update(mice=len(cur), diff=diff, applied=r.get("outcome") == "applied")
+        out.append(item)
+        if cur and r.get("outcome") != "discarded":
+            prev = cur
+    return out[::-1]
 
 
 # --- routes ---------------------------------------------------------------------
@@ -795,8 +892,9 @@ def status():
     }
 
 
-def install(app, fail):
+def install(app, fail, who=None):
     os.makedirs(STATE, exist_ok=True)
+    WHO["fn"] = who
     threading.Thread(target=_keepalive, daemon=True,
                      name="jarvis-vos-keepalive").start()
 
@@ -826,8 +924,17 @@ def install(app, fail):
 
     @app.route("/api/vos/discard", methods=["POST"])
     def api_vos_discard():
-        HOLD.update(preview=None, payload=None)
+        if HOLD["preview"]:
+            _record(dict(HOLD["preview"], at=time.time()), "discarded", HOLD["census"])
+        HOLD.update(preview=None, payload=None, census=None)
         return jsonify(status())
+
+    @app.route("/api/vos/history")
+    def api_vos_history():
+        try:
+            return jsonify({"ok": True, "syncs": history()})
+        except Exception as e:                           # noqa: BLE001
+            return fail("vos history", e)
 
     @app.route("/api/vos/config", methods=["POST"])
     def api_vos_config():
