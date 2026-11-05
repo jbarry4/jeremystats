@@ -2,13 +2,17 @@
   "_at": {},
   "_keys": {
     "added": {
+      "Aggie Krempasky": [
+        "set",
+        "2026-11-02T15:29:30.436270+00:00"
+      ],
       "Avery (AI)": [
         "set",
         "2026-10-23T13:41:57.178508+00:00"
       ],
       "Avery Sullenberger": [
         "set",
-        "2026-10-20T17:00:18.105771+00:00"
+        "2026-10-27T18:15:34.629729+00:00"
       ],
       "Debug_Bot": [
         "set",
@@ -22,9 +26,13 @@
         "set",
         "2026-10-27T19:34:07.080471+00:00"
       ],
+      "Jeremy": [
+        "set",
+        "2026-11-03T18:03:47.357604+00:00"
+      ],
       "Rain Younger": [
         "set",
-        "2026-10-27T17:41:13.998915+00:00"
+        "2026-10-29T17:30:32.405300+00:00"
       ],
       "Shahriar": [
         "set",
@@ -32,7 +40,7 @@
       ],
       "Shahriar Tafti": [
         "set",
-        "2026-10-23T13:44:27.408419+00:00"
+        "2026-10-30T15:46:26.890641+00:00"
       ],
       "Sylvia Clouse": [
         "set",
@@ -97,7 +105,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-27T19:34:07.080471+00:00",
+    "at": "2026-11-03T18:03:47.357604+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -134,6 +142,16 @@
       "name": "unknown"
     },
     {
+      "at": "2026-09-08T21:23:16.555182+00:00",
+      "by": "Isabella Piatek",
+      "edited_at": "2026-10-27T19:34:07.079930+00:00",
+      "email": "Isabella.Piatek@uvm.edu",
+      "id": "Isabella Piatek",
+      "initials": "IP",
+      "name": "Isabella Piatek",
+      "role": "Graduate Student"
+    },
+    {
       "at": "2026-09-09T15:29:28.090683+00:00",
       "by": "Sylvia Clouse",
       "edited_at": "2026-09-14T13:26:54.957070+00:00",
@@ -166,8 +184,8 @@
     },
     {
       "at": "2026-10-20T17:00:18.105309+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-10-20T17:00:18.105322+00:00",
+      "by": "Avery Sullenberger",
+      "edited_at": "2026-10-27T18:15:31.815164+00:00",
       "email": "asullenb@uvm.edu",
       "id": "Avery Sullenberger",
       "initials": "AS",
@@ -196,27 +214,11 @@
     },
     {
       "aliases": [
-        "a colleague",
-        "fatima",
-        "shahriar",
-        "theexaminedexistence@gmail.com"
-      ],
-      "at": "2026-09-08T21:24:21.570229+00:00",
-      "by": "Shahriar Tafti",
-      "edited_at": "2026-10-23T13:44:27.407684+00:00",
-      "email": "sakhava1@uvm.edu",
-      "id": "Shahriar Tafti",
-      "initials": "ST",
-      "name": "Shahriar Tafti",
-      "role": "Graduate Student"
-    },
-    {
-      "aliases": [
         "rain"
       ],
       "at": "2026-09-29T18:04:01.532204+00:00",
       "by": "Rain Younger",
-      "edited_at": "2026-10-27T17:41:13.998914+00:00",
+      "edited_at": "2026-10-29T17:30:32.405299+00:00",
       "email": "rain.younger@uvm.edu",
       "id": "Rain Younger",
       "initials": "RY",
@@ -224,14 +226,40 @@
       "role": "Graduate Student"
     },
     {
-      "at": "2026-09-08T21:23:16.555182+00:00",
+      "aliases": [
+        "a colleague",
+        "fatima",
+        "shahriar",
+        "theexaminedexistence@gmail.com"
+      ],
+      "at": "2026-09-08T21:24:21.570229+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-10-30T15:46:26.890238+00:00",
+      "email": "sakhava1@uvm.edu",
+      "id": "Shahriar Tafti",
+      "initials": "ST",
+      "name": "Shahriar Tafti",
+      "role": "Gradstudent"
+    },
+    {
+      "at": "2026-11-02T15:29:30.436268+00:00",
       "by": "Isabella Piatek",
-      "edited_at": "2026-10-27T19:34:07.079930+00:00",
-      "email": "Isabella.Piatek@uvm.edu",
-      "id": "Isabella Piatek",
-      "initials": "IP",
-      "name": "Isabella Piatek",
-      "role": "Graduate Student"
+      "edited_at": "2026-11-02T15:29:30.436269+00:00",
+      "email": "akrempas@uvm.edu",
+      "id": "Aggie Krempasky",
+      "initials": "AK",
+      "name": "Aggie Krempasky",
+      "role": "Undergraduate Student"
+    },
+    {
+      "at": "2026-11-03T18:03:47.357602+00:00",
+      "by": "Isabella Piatek",
+      "edited_at": "2026-11-03T18:03:47.357603+00:00",
+      "email": "jeremy.barry@uvm.edu",
+      "id": "Jeremy",
+      "initials": "JB",
+      "name": "Jeremy",
+      "role": "PI"
     }
   ]
 }

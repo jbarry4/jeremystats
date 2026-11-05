@@ -1,7 +1,7 @@
 {
   "_at": {
-    "created": "2026-10-15T19:12:32.070092+00:00",
-    "gid": "2026-10-15T19:12:32.070092+00:00",
+    "created": "2026-10-15T17:04:13.332022+00:00",
+    "gid": "2026-10-15T17:04:13.332022+00:00",
     "group": "2026-10-15T19:12:32.070092+00:00",
     "key": "2026-10-15T19:12:32.070092+00:00",
     "label": "2026-10-15T19:12:32.070092+00:00",
@@ -9,11 +9,11 @@
     "mouse": "2026-10-15T19:12:32.070092+00:00",
     "project": "2026-10-15T19:12:32.070092+00:00",
     "project_source": "2026-10-15T19:12:32.070092+00:00",
-    "retired": "2026-10-15T19:12:32.070092+00:00",
+    "retired": "2026-11-05T18:10:59.764974+00:00",
     "schema": "2026-10-15T19:12:32.070092+00:00",
     "session": "2026-10-15T19:12:32.070092+00:00",
     "start": "2026-10-15T19:12:32.070092+00:00",
-    "updated": "2026-10-15T19:12:32.070092+00:00"
+    "updated": "2026-11-05T18:10:59.764974+00:00"
   },
   "_keys": {
     "channel_banks": {
@@ -25,10 +25,16 @@
         "set",
         "2026-10-15T19:12:32.070092+00:00"
       ]
+    },
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2023-04-19_14-08-35": [
+        "set",
+        "2026-10-15T18:31:24.713806+00:00"
+      ]
     }
   },
   "_shard": {
-    "at": "2026-10-15T19:12:32.070092+00:00",
+    "at": "2026-11-05T18:10:59.764974+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -48,13 +54,13 @@
   ],
   "created": {
     "app_version": "2026.10.14.8",
-    "at": "2026-10-15T15:12:32-04:00",
-    "commit": "90f93fb3",
-    "email": "Isabella.Piatek@uvm.edu",
-    "host": "LCOM549913",
-    "machine": "Blackbarry",
+    "at": "2026-10-15T13:04:13-04:00",
+    "commit": "98135766",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Isabella Piatek"
+    "user": "Rain Younger"
   },
   "gid": "s4f7ebce77d1a",
   "group": null,
@@ -62,17 +68,19 @@
   "label": "KCNT1 m14 s2 2023-04-19",
   "loose_key": "m014_s002",
   "mouse": 14,
-  "paths": [],
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2023-04-19_14-08-35"
+  ],
   "project": "KCNT1",
   "project_source": "guessed",
-  "retired": false,
+  "retired": true,
   "schema": 1,
   "session": 2,
   "start": "2023-04-19T18:08:53+00:00",
   "updated": {
-    "app_version": "2026.10.14.8",
-    "at": "2026-10-15T15:12:32-04:00",
-    "commit": "90f93fb3",
+    "app_version": "2026.10.30.3",
+    "at": "2026-11-05T13:10:59-05:00",
+    "commit": "8d32ac31",
     "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
     "machine": "Blackbarry",

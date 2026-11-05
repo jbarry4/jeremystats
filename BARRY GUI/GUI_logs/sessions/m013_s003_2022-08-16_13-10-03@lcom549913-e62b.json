@@ -1,19 +1,23 @@
 {
   "_at": {
-    "created": "2026-10-15T18:29:40.307355+00:00",
-    "gid": "2026-10-15T18:29:40.307355+00:00",
+    "created": "2026-10-15T17:04:08.474237+00:00",
+    "fs": "2026-10-19T15:36:25.669477+00:00",
+    "gid": "2026-10-15T17:04:08.474237+00:00",
     "group": "2026-10-15T19:12:27.036748+00:00",
     "key": "2026-10-15T19:12:27.036748+00:00",
     "label": "2026-10-15T19:12:27.036748+00:00",
     "loose_key": "2026-10-15T19:12:27.036748+00:00",
     "mouse": "2026-10-15T19:12:27.036748+00:00",
+    "n_channels": "2026-10-19T15:36:25.669477+00:00",
     "project": "2026-10-15T19:12:27.036748+00:00",
     "project_source": "2026-10-15T19:12:27.036748+00:00",
-    "retired": "2026-10-19T15:52:18.171969+00:00",
+    "retired": "2026-11-05T18:09:29.002918+00:00",
+    "retired_at": "2026-10-19T15:36:26.849243+00:00",
+    "retired_reason": "2026-10-19T15:36:23.490592+00:00",
     "schema": "2026-10-15T19:12:27.036748+00:00",
     "session": "2026-10-15T19:12:27.036748+00:00",
     "start": "2026-10-15T19:12:27.036748+00:00",
-    "updated": "2026-10-19T15:52:18.171969+00:00"
+    "updated": "2026-11-05T18:09:29.002918+00:00"
   },
   "_keys": {
     "channel_banks": {
@@ -43,10 +47,16 @@
         "set",
         "2026-10-15T18:30:36.408389+00:00"
       ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-10-19T15:36:25.669477+00:00"
+      ]
     }
   },
   "_shard": {
-    "at": "2026-10-19T15:52:18.171969+00:00",
+    "at": "2026-11-05T18:09:29.002918+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -65,21 +75,23 @@
     }
   ],
   "created": {
-    "app_version": "2026.10.15.1",
-    "at": "2026-10-15T14:29:40-04:00",
-    "commit": "3c5e9a56",
-    "email": "sakhava1@uvm.edu",
-    "host": "DESKTOP-4H65AI7",
-    "machine": "Bluebarry",
+    "app_version": "2026.10.14.8",
+    "at": "2026-10-15T13:04:08-04:00",
+    "commit": "98135766",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Shahriar Tafti"
+    "user": "Rain Younger"
   },
+  "fs": 30000.0,
   "gid": "sfd0eeb56f0ce",
   "group": null,
   "key": "m013_s003_2022-08-16_13-10-03",
   "label": "KCNT1 m13 s3 2022-08-16",
   "loose_key": "m013_s003",
   "mouse": 13,
+  "n_channels": 128,
   "paths": [
     "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-16_13-55-25",
     "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-16_14-25-25",
@@ -88,14 +100,26 @@
   ],
   "project": "KCNT1",
   "project_source": "guessed",
-  "retired": true,
+  "retired": false,
+  "retired_at": "2026-10-19T15:36:26.791542+00:00",
+  "retired_reason": "no data in the folder",
   "schema": 1,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-10-19T11:36:25-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-16_13-55-25",
+      "root": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M13_WT\\kcnt1s3aug15\\2022-08-16_13-55-25",
+      "scan": "accepted"
+    }
+  },
   "session": 3,
   "start": "2022-08-16T17:10:03+00:00",
   "updated": {
-    "app_version": "2026.10.15.1",
-    "at": "2026-10-19T11:52:18-04:00",
-    "commit": "269feed6",
+    "app_version": "2026.10.30.3",
+    "at": "2026-11-05T13:09:29-05:00",
+    "commit": "8d32ac31",
     "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
     "machine": "Blackbarry",
