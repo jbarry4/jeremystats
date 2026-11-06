@@ -35,6 +35,7 @@ with one click from the dialog when none is found.
 """
 from __future__ import annotations
 
+import base64
 import glob
 import json
 import os
@@ -59,11 +60,16 @@ TICKETS = os.path.join(LOGS_DIR, "floss")
 WT_ROOT = os.path.join(keymod.STATE, "wt")
 HOME = os.path.join(keymod.STATE, "home")
 RUNLOGS = os.path.join(keymod.STATE, "runs")
+# Screenshots stay on the machine they were taken on: the repo is public,
+# and a screenshot of Jarvis is a screenshot of somebody's data.
+IMAGES = os.path.join(keymod.STATE, "img")
+IMAGE_TYPES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp", "image/gif": ".gif"}
+IMAGE_MAX_BYTES = 8 * 1024 * 1024
 
 NAME = "Hater of AI"              # what the page and the feed call him
 MODEL = os.environ.get("JARVIS_FLOSS_MODEL") or "sonnet"
-MAX_TURNS = 40
-TIMEOUT_S = 15 * 60
+MAX_TURNS = 60
+TIMEOUT_S = 20 * 60
 BUDGET_USD = "2"                   # per run, API keys only (a plan has its own limits)
 
 COPY_DIRS = ("backend", "web", "tools")
@@ -79,8 +85,11 @@ FENCED = (
     "backend/cloud.py", "backend/cloudsync.py", "backend/shards.py",
     "backend/softmouse_login.py", "backend/paths.py", "backend/launchers.py",
 )
-MAX_FILES = 3
-MAX_LINES = 60
+# Widened 2026-11-06 ("expand the scope"): small asked-for changes as well
+# as bug fixes, and room for a fix that touches the page and the server.
+MAX_FILES = 8
+MAX_LINES = 250
+MAX_IMAGES = 6
 
 RUN = {"running": False, "id": None, "what": None, "steps": [], "started": None,
        "proc": None, "stopped": False, "error": None}
@@ -88,7 +97,7 @@ _LOCK = threading.Lock()
 HOOKS = {"who": None, "machine": None, "shard": None, "build": None, "errors": None}
 
 RULES = """\
-You are "Hater of AI", a small bug-fixing helper inside Jarvis, a neuroscience lab's
+You are "Hater of AI", a bug-fixing helper inside Jarvis, a neuroscience lab's
 app (a Flask backend in _Jarvis/app/backend, a vanilla-JS front end in
 _Jarvis/app/web, scripts in _Jarvis/app/tools). Your working directory is a
 private copy of that code as it is on the machine where the bug happened.
@@ -96,26 +105,31 @@ Nothing you change touches the running app: a lab member decides afterwards
 whether to use your change, and a senior engineer (Claude Code on the lab's
 main machine, "the mother AI") reviews and integrates everything you leave.
 
-Your job: find the cause of ONE reported bug and fix it with the smallest
-change that works.
+Your job: one ask from a lab member. Usually a bug: find the cause and fix
+it with the smallest change that works. It may also be a small change they
+want (wording, a layout problem, a missing or broken control, a default, a
+check that is too strict): make it, as small as it can be. Screenshots they
+attached are listed in the brief; read them first.
 
 Hard limits. A change past them is not offered to the lab member; it is
 held for the mother AI:
-- at most 3 files and 60 changed lines in total;
+- at most %(files)d files and %(lines)d changed lines in total;
 - edit only existing .py .js .css .html files under _Jarvis/app/backend,
   _Jarvis/app/web or _Jarvis/app/tools. No new files, no deleted files;
-- no new features, refactors, renames, new dependencies or formatting
-  sweeps; nothing about cloud sync, shards, keys, sign-ins or file
+- no new tools, views or modules, no refactors, renames, new dependencies
+  or formatting sweeps; nothing about cloud sync, shards, keys, sign-ins or file
   locations; no changes to data or to GUI_logs.
-If the honest fix is bigger than that, or the ask is really a feature
-request, make NO edit and say what is needed under "needs". A wrong fix is
+If the honest fix is bigger than that, or the ask is really a new
+feature, make NO edit and say what is needed under "needs". A wrong fix is
 worse than none: if you cannot find the cause with confidence, say so.
 
 Read before you edit. Match the surrounding code's naming, idiom and comment
 density. Words the app shows follow the house rules: plain words, and never
 cut text short with an ellipsis. Check every edit: `python -m py_compile
-FILE` for Python, `node --check FILE` for JavaScript, then `git diff`. You
-cannot run the app or its tests.
+FILE` for Python, `node --check FILE` for JavaScript, then `git diff`, each
+as its own command from your working directory with the file's path (no
+`cd`, no `&&`: anything else is refused). You cannot run the app or its
+tests.
 
 Finish with two or three plain sentences for the person who asked (a lab
 member, not a programmer), then one fenced json block exactly like this:
@@ -260,7 +274,8 @@ def tickets(limit=30):
         except (OSError, ValueError):
             continue
         out.append({k: t.get(k) for k in ("id", "at", "who", "ask", "status", "report",
-                                          "files", "lines", "held_because", "mother")})
+                                          "files", "lines", "held_because", "mother",
+                                          "images")})
     return out
 
 
@@ -297,7 +312,7 @@ def _prepare(tid):
     _git(["init", "-q"], root)
     # His own syntax checks leave bytecode behind; it is not a change he made.
     with open(os.path.join(root, ".git", "info", "exclude"), "a", encoding="utf-8") as fh:
-        fh.write("\n__pycache__/\n*.pyc\n")
+        fh.write("\n__pycache__/\n*.pyc\n.hoa/\n")
     for args in (["config", "core.autocrlf", "false"],
                  ["config", "user.name", "Floss"], ["config", "user.email", "floss@jarvis.local"],
                  ["add", "-A"], ["commit", "-q", "-m", "as it was on this machine"]):
@@ -309,7 +324,7 @@ def _prepare(tid):
     return root, n, head, dirty
 
 
-def _brief(t):
+def _brief(t, root):
     c = t.get("context") or {}
     L = ["A lab member asked for help:", "", t["ask"].strip(), "",
          "On machine %s, Jarvis %s, commit %s." % (t.get("machine"), t.get("build"),
@@ -333,6 +348,10 @@ def _brief(t):
         L += ["", "Other recent errors on this machine (newest first):"]
         L += ["  %s  %s  %s" % (r.get("at"), r.get("where"), str(r.get("message"))[:200])
               for r in recent[:8]]
+    shots = t.get("images") or []
+    if shots:
+        L += ["", "They attached %d screenshot(s). Read each one before anything else:" % len(shots)]
+        L += ["  " + os.path.join(root, ".hoa", s["name"]) for s in shots]
     L += ["", "Code paths in your copy start with %s/." % APP_REL]
     return "\n".join(L)
 
@@ -454,12 +473,17 @@ def _run(t, key, exe):
     try:
         _step(tid, "copying the code as it is on this machine")
         root, n, t["head"], t["dirty"] = _prepare(tid)
+        if t.get("images"):
+            os.makedirs(os.path.join(root, ".hoa"))
+            for s_ in t["images"]:
+                shutil.copyfile(os.path.join(IMAGES, tid, s_["name"]),
+                                os.path.join(root, ".hoa", s_["name"]))
         save(t)
         os.makedirs(RUNLOGS, exist_ok=True)
         os.makedirs(HOME, exist_ok=True)
         rules = os.path.join(RUNLOGS, tid + ".rules.md")
         with open(rules, "w", encoding="utf-8") as fh:
-            fh.write(RULES)
+            fh.write(RULES % {"files": MAX_FILES, "lines": MAX_LINES})
         _step(tid, "looking into it (%d files in its copy)" % n)
         log = open(os.path.join(RUNLOGS, tid + ".jsonl"), "wb")
         err = open(os.path.join(RUNLOGS, tid + ".stderr.txt"), "wb")
@@ -468,7 +492,7 @@ def _run(t, key, exe):
                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=err,
                                     creationflags=_NO_WINDOW, start_new_session=not WIN)
             RUN["proc"] = proc
-            proc.stdin.write(_brief(t).encode("utf-8"))
+            proc.stdin.write(_brief(t, root).encode("utf-8"))
             proc.stdin.close()
             timer = threading.Timer(TIMEOUT_S, _kill, [proc])
             timer.daemon = True
@@ -530,7 +554,25 @@ def _run(t, key, exe):
             RUN.update(running=False, proc=None, what=None)
 
 
-def ask(text, context=None):
+def _keep_images(tid, images):
+    """Data URLs from the page -> files of this ticket's, on this machine."""
+    out = []
+    for i, url in enumerate(images or []):
+        m = re.match(r"data:(image/[a-z]+);base64,(.+)$", str(url), re.S)
+        if not m or m.group(1) not in IMAGE_TYPES:
+            raise ValueError("image %d is not a PNG, JPEG, WebP or GIF" % (i + 1))
+        raw = base64.b64decode(m.group(2))
+        if len(raw) > IMAGE_MAX_BYTES:
+            raise ValueError("image %d is over %d MB" % (i + 1, IMAGE_MAX_BYTES // 2 ** 20))
+        name = "shot-%d%s" % (i + 1, IMAGE_TYPES[m.group(1)])
+        os.makedirs(os.path.join(IMAGES, tid), exist_ok=True)
+        with open(os.path.join(IMAGES, tid, name), "wb") as fh:
+            fh.write(raw)
+        out.append({"name": name, "bytes": len(raw)})
+    return out
+
+
+def ask(text, context=None, images=None):
     text = (text or "").strip()
     if len(text) < 8:
         raise ValueError("say a little more about what went wrong")
@@ -540,19 +582,28 @@ def ask(text, context=None):
     key = keymod.here()
     if not key:
         raise RuntimeError(NAME + " is locked on this machine; type the lab PIN first")
+    if len(images or []) > MAX_IMAGES:
+        raise ValueError("at most %d images" % MAX_IMAGES)
     with _LOCK:
         if RUN["running"]:
             raise RuntimeError(NAME + " is already working on something here")
         tid = time.strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
         RUN.update(running=True, id=tid, what="ask", steps=[], started=time.time(),
                    stopped=False, error=None)
+    try:
+        shots = _keep_images(tid, images)
+    except Exception:
+        with _LOCK:
+            RUN.update(running=False, what=None)
+        raise
     ctx = dict(context or {})
     errs = _hook("errors", []) or []
     ctx["recent"] = [{k: e.get(k) for k in ("at", "where", "message")} for e in errs[:8]]
     t = {"id": tid, "shard": _shard(), "machine": _hook("machine"), "who": _hook("who"),
          "at": _now_iso(), "build": _hook("build"), "ask": text, "context": ctx,
          "status": "working", "report": None, "patch": "", "files": [], "lines": 0,
-         "held_because": [], "applied": None, "undone": None, "mother": None}
+         "held_because": [], "applied": None, "undone": None, "mother": None,
+         "images": shots}
     try:
         save(t)
         threading.Thread(target=_run, args=(t, key, exe), daemon=True,
@@ -643,7 +694,8 @@ def status():
             "engine": {"path": exe, "version": engine_version(exe) if exe else None,
                        "installing": RUN.get("what") == "install"},
             "key": {"here": bool(key), "kind": keymod.kind_of(key), "hint": keymod.HINT},
-            "limits": {"files": MAX_FILES, "lines": MAX_LINES, "model": MODEL},
+            "limits": {"files": MAX_FILES, "lines": MAX_LINES, "images": MAX_IMAGES,
+                       "model": MODEL},
             "run": run, "tickets": tickets()}
 
 
@@ -681,6 +733,17 @@ def install(app, fail, who=None, machine=None, shard=None, build=None, errors=No
     @app.route("/api/floss/status")
     def api_floss_status():
         return jsonify(status())
+
+    @app.route("/api/floss/image")
+    def api_floss_image():
+        from flask import send_file
+        tid = os.path.basename(request.args.get("id") or "")
+        name = os.path.basename(request.args.get("name") or "")
+        path = os.path.join(IMAGES, tid, name)
+        if not tid or not name or not os.path.isfile(path):
+            return jsonify({"ok": False, "error": "that screenshot is not on this machine"}), 404
+        return send_file(path, mimetype={v: k for k, v in IMAGE_TYPES.items()}
+                         .get(os.path.splitext(name)[1], "image/png"))
 
     @app.route("/api/floss/ticket")
     def api_floss_ticket():
@@ -725,7 +788,7 @@ def install(app, fail, who=None, machine=None, shard=None, build=None, errors=No
     def api_floss_ask():
         b = body()
         try:
-            tid = ask(b.get("ask"), b.get("context"))
+            tid = ask(b.get("ask"), b.get("context"), b.get("images"))
         except Exception as e:                           # noqa: BLE001
             return jsonify({"ok": False, "error": str(e)}), 400
         return jsonify(dict(status(), id=tid))

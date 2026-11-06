@@ -20,6 +20,7 @@ BARRY.floss = (function () {
   let ticket = null;      // that ticket, whole (with its patch)
   let after = null;       // what a use/undo said needs doing next
   let draft = '';
+  let shots = [];         // screenshots for the next ask: {name, url}
   let context = null;     // {error, view} handed in by whoever opened it
   let pin = '';
   let poll = null;
@@ -126,21 +127,82 @@ BARRY.floss = (function () {
     ]);
   }
 
+  /* A screenshot, made small enough to send: the longest side at most
+     1800 px, as PNG so the words in it stay sharp. */
+  function shrink(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const src = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(src);
+        const k = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * k);
+        c.height = Math.round(img.naturalHeight * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/png'));
+      };
+      img.onerror = () => { URL.revokeObjectURL(src); reject(new Error('That file is not a picture')); };
+      img.src = src;
+    });
+  }
+
+  async function addShots(files) {
+    const pics = [].slice.call(files || []).filter((f) => /^image\//.test(f.type));
+    for (const f of pics) {
+      if (shots.length >= st.limits.images) {
+        toast('At most ' + st.limits.images + ' pictures for one ask', 'err');
+        break;
+      }
+      try { shots.push({ name: f.name || 'pasted', url: await shrink(f) }); }
+      catch (e) { toast(e.message, 'err'); }
+    }
+    if (pics.length && isOpen()) draw();
+    return pics.length;
+  }
+
+  function shotRow() {
+    if (!shots.length) return null;
+    return el('div', { class: 'hoa-shots' }, shots.map((s, i) => el('div', { class: 'hoa-shot' }, [
+      el('img', { src: s.url, alt: s.name, title: s.name }),
+      el('button', { class: 'hoa-shot-x', type: 'button', title: 'Remove this picture',
+        onclick: () => { shots.splice(i, 1); draw(); },
+        html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
+    ])));
+  }
+
   function askCard() {
     const box = el('textarea', { class: 'floss-ask', rows: 5,
-      placeholder: 'What went wrong? What did you click, what did you expect, '
-        + 'and what happened instead?' });
+      placeholder: 'What went wrong, or what small change do you want? What did you '
+        + 'click, what did you expect, and what happened instead? Paste or drop '
+        + 'screenshots here.' });
     box.value = draft;
     box.addEventListener('input', () => { draft = box.value; });
-    setTimeout(() => box.focus(), 30);
+    // A pasted picture is attached; pasted text goes in as usual.
+    box.addEventListener('paste', (e) => {
+      const files = [].slice.call((e.clipboardData && e.clipboardData.items) || [])
+        .filter((it) => it.kind === 'file').map((it) => it.getAsFile()).filter(Boolean);
+      if (files.some((f) => /^image\//.test(f.type))) { e.preventDefault(); addShots(files); }
+    });
+    box.addEventListener('dragover', (e) => { e.preventDefault(); box.classList.add('drop'); });
+    box.addEventListener('dragleave', () => box.classList.remove('drop'));
+    box.addEventListener('drop', (e) => {
+      e.preventDefault();
+      box.classList.remove('drop');
+      addShots(e.dataTransfer && e.dataTransfer.files);
+    });
+    setTimeout(() => { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }, 30);
+    const picker = el('input', { type: 'file', accept: 'image/*', multiple: 'multiple', hidden: 'hidden' });
+    picker.addEventListener('change', () => { addShots(picker.files); picker.value = ''; });
     const err = context && context.error;
     const send = async () => {
       if (draft.trim().length < 8) { toast('Say a little more about what went wrong', 'err'); return; }
-      const body = { ask: draft, context: { view: (BARRY.state && BARRY.state.view) || null,
-                                            error: err || null } };
+      const body = { ask: draft, images: shots.map((s) => s.url),
+                     context: { view: (BARRY.state && BARRY.state.view) || null, error: err || null } };
       const res = await post('ask', body);
       if (!res) return;
       draft = '';
+      shots = [];
       context = null;
       showing = res.id;
       ticket = null;
@@ -152,11 +214,18 @@ BARRY.floss = (function () {
         el('span', { text: (err.where ? err.where + ': ' : '') + (err.message || '') }),
       ]) : null,
       box,
+      shotRow(),
       el('p', { class: 'hint', text: NAME + ' also reads this machine’s recent errors. He fixes '
-        + 'small things (up to ' + st.limits.files + ' files and ' + st.limits.lines
-        + ' lines) in his own copy of the code; you decide whether to use the fix.' }),
-      el('div', { class: 'coll-row' }, [el('div', { class: 'spacer' }),
-        BARRY.ui.button({ kind: 'primary', size: 'sm', text: 'Ask ' + NAME, onclick: send })]),
+        + 'bugs and makes small changes (up to ' + st.limits.files + ' files and '
+        + st.limits.lines + ' lines) in his own copy of the code; you decide whether to '
+        + 'use what he does. Pictures stay on this computer.' }),
+      el('div', { class: 'hoa-actions' }, [
+        picker,
+        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Attach a picture',
+          onclick: () => picker.click() }),
+        el('div', { class: 'spacer' }),
+        BARRY.ui.button({ kind: 'primary', size: 'sm', text: 'Ask ' + NAME, onclick: send }),
+      ]),
     ]);
   }
 
@@ -193,6 +262,13 @@ BARRY.floss = (function () {
         el('span', { class: 'hint', text: BARRY.when(t.at, 'minute') + (t.who ? ', ' + t.who : '') })]),
       el('blockquote', { class: 'floss-quote', text: t.ask }),
     ];
+    if ((t.images || []).length) {
+      kids.push(el('div', { class: 'hoa-shots' }, t.images.map((s) => {
+        const url = '/api/floss/image?id=' + encodeURIComponent(t.id) + '&name=' + encodeURIComponent(s.name);
+        return el('a', { class: 'hoa-shot', href: url, target: '_blank', title: 'Open full size' },
+                  [el('img', { src: url, alt: s.name })]);
+      })));
+    }
     if (t.status === 'failed') kids.push(el('p', { class: 'floss-bad', text: NAME + ' could not finish: ' + (t.error || 'no reason given') }));
     if (rep.words) kids.push(el('p', { class: 'floss-words', text: rep.words }));
     kids.push(field('Cause', rep.cause), field('Fix', rep.fix),
@@ -313,7 +389,7 @@ BARRY.floss = (function () {
     root.replaceChildren(
       el('div', { class: 'hoa-head' }, [
         el('b', { text: NAME }),
-        el('span', { class: 'hint', text: 'fixes small bugs, leaves the rest for review' }),
+        el('span', { class: 'hint', text: 'fixes bugs and small things, leaves the rest for review' }),
         el('div', { class: 'spacer' }),
         el('button', { class: 'close-x', title: 'Close', onclick: close,
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),

@@ -48,9 +48,14 @@ The dialog says what is missing and fixes it in one click each:
   that may only run `py_compile`, `node --check`, `git diff`, `git status`.
   No Write (no new files), no web, no agents, no MCP. Its own config home,
   so it never sees this machine's personal settings, memory or sign-in.
-- Model `sonnet` (`JARVIS_FLOSS_MODEL` overrides), 40 turns, 15 minutes,
+- Model `sonnet` (`JARVIS_FLOSS_MODEL` overrides), 60 turns, 20 minutes,
   and $2 a run on an API key.
-- After the run, a hard check: at most 3 files and 60 changed lines,
+- Bugs, and small asked-for changes (wording, layout, a broken control,
+  a default); no new tools, views or modules. Up to 6 screenshots per ask
+  (pasted, dropped or attached), kept on that machine only
+  (`%LOCALAPPDATA%\Jarvis\floss\img\<id>`, never git: the repo is public);
+  the ticket lists their names.
+- After the run, a hard check: at most 8 files and 250 changed lines,
   existing `.py .js .css .html` files under `backend/ web/ tools/`, none of
   the fenced files (Floss itself, cloud, shards, sign-ins, paths,
   launchers). Past that, the change is **held**: kept for review, never

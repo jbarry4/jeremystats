@@ -1,0 +1,75 @@
+{
+  "_at": {
+    "added": "2026-11-06T19:41:33.364264+00:00",
+    "deleted": "2026-11-06T19:41:33.364264+00:00",
+    "id": "2026-11-06T19:41:33.364264+00:00",
+    "kind": "2026-11-06T19:41:33.364264+00:00",
+    "name": "2026-11-06T19:41:33.364264+00:00",
+    "nickname": "2026-11-06T19:41:33.364264+00:00",
+    "schema": "2026-11-06T19:41:33.364264+00:00",
+    "subject": "2026-11-06T19:41:33.364264+00:00",
+    "subject_key": "2026-11-06T19:41:33.364264+00:00",
+    "version": "2026-11-06T19:41:33.364264+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "208cdba8acb2": [
+        "set",
+        "2026-11-06T19:41:33.364264+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-06T19:41:33.364264+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-06T14:41:33-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "2ba64f7dec44",
+  "kind": "rootcanal_workflow",
+  "name": "Ambiguous \u00b7 Ambiguous Dataset",
+  "nickname": "Ambiguous Dataset",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "ambiguous",
+    "name": "Ambiguous \u00b7 Ambiguous Dataset",
+    "workflow_key": "90e11971304a461ab0e31849f4d8a495"
+  },
+  "subject_key": "rootcanal_workflow|90e11971304a461ab0e31849f4d8a495",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.11.06.4",
+      "at": "2026-11-06T14:41:33-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "66db6f7a",
+      "digest": "48f243380ba1",
+      "id": "208cdba8acb2",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": null,
+        "kept": null,
+        "kind": "ambiguous",
+        "ran": false,
+        "target": null
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-06T14:41:33-05:00",
+      "note": null,
+      "params": {
+        "kind": "ambiguous"
+      },
+      "params_hash": "ba15d5531fb3",
+      "v": 1
+    }
+  ]
+}

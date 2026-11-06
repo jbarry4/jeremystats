@@ -37,13 +37,17 @@ def edit(rel, old, new):
     p = os.path.join(app, *rel.split("/"))
     s = open(p, encoding="utf-8").read()
     open(p, "w", encoding="utf-8", newline="\n").write(s.replace(old, new))
+if mode == "shot":
+    shot = [ln.strip() for ln in brief.splitlines() if ln.strip().endswith("shot-1.png")]
+    assert shot and open(shot[0], "rb").read()[1:4] == b"PNG", brief
+    mode = "small"
 if mode == "small":
     edit("backend/thing.py", "return a - b", "return a + b")
     # what py_compile leaves behind (2026-11-06: it held a one-line fix)
     os.makedirs(os.path.join(app, "backend", "__pycache__"), exist_ok=True)
     open(os.path.join(app, "backend", "__pycache__", "thing.cpython-314.pyc"), "wb").close()
 elif mode == "big":
-    edit("backend/thing.py", "# end", "\n".join("x%d = %d" % (i, i) for i in range(80)))
+    edit("backend/thing.py", "# end", "\n".join("x%d = %d" % (i, i) for i in range(300)))
 elif mode == "fenced":
     edit("backend/cloud.py", "KEY = 1", "KEY = 2")
 assert "thing" in brief or True
@@ -83,6 +87,7 @@ def main():
         floss.WT_ROOT = os.path.join(tmp, "wt")
         floss.RUNLOGS = os.path.join(tmp, "runs")
         floss.HOME = os.path.join(tmp, "home")
+        floss.IMAGES = os.path.join(tmp, "img")
         floss.HOOKS.update(shard=lambda: "test-shard", who=lambda: "Debug_Bot",
                            machine=lambda: "Testbarry", build=lambda: "0000.00.00.0",
                            errors=lambda: [{"at": "now", "where": "x", "message": "boom"}])
@@ -92,9 +97,9 @@ def main():
         floss_key.here = lambda: "sk-ant-api03-fake"
         thing = os.path.join(be, "thing.py")
 
-        def run(mode):
+        def run(mode, images=None):
             os.environ["FLOSS_FAKE"] = mode
-            tid = floss.ask("add() gives the wrong answer", {"view": "xplore"})
+            tid = floss.ask("add() gives the wrong answer", {"view": "xplore"}, images)
             for _ in range(200):
                 if not floss.RUN["running"]:
                     break
@@ -118,6 +123,19 @@ def main():
         floss.undo(t["id"])
         assert "a - b" in open(thing).read()
         print("ok  a small fix comes back ready, is used, and comes out again")
+
+        png = ("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlE"
+               "QVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+        t = run("shot", [png])
+        assert t["status"] == "ready" and t["images"][0]["name"] == "shot-1.png", t
+        assert os.path.isfile(os.path.join(floss.IMAGES, t["id"], "shot-1.png"))
+        for bad in (["data:text/plain;base64,aGk="], [png] * (floss.MAX_IMAGES + 1)):
+            try:
+                floss.ask("add() gives the wrong answer", None, bad)
+                raise AssertionError("took %r" % bad[0][:20])
+            except ValueError:
+                assert not floss.RUN["running"], "a refused ask left it busy"
+        print("ok  a screenshot reaches the run, is kept here, and only pictures are taken")
 
         # The live code moved on: the fix no longer fits and is refused.
         t = run("small")

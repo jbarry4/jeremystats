@@ -125,7 +125,10 @@ so.
   looks for the cause in a private copy of this machine's code and makes
   the smallest fix it can. You read what it found and choose **Use it
   here** or **Leave it for review**. A used fix can be taken out again.
-- Small by rule, not by request: 3 files and 60 lines at most, existing
+- Bugs, and small changes you ask for (wording, layout, a broken control).
+  Paste, drop or attach screenshots; he reads them first. They stay on
+  this computer, never in git.
+- Limited by rule, not by request: 8 files and 250 lines at most, existing
   code files only, never the sync, sign-ins or his own code. Anything
   bigger is kept for review and never offered here.
 - The first time on a machine, the dialog installs Claude Code (one click)
