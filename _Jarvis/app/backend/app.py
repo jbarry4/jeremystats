@@ -14488,18 +14488,24 @@ def _wf_definition(body):
                 raise rcworkflow.WorkflowError(
                     "Pick the %s workflow whose border this uses."
                     % rcworkflow.WORDS_LC[k])
-            pay = ARTIFACTS.payload(rec["id"], ref.get("version")
-                                    or rec.get("version")) or {}
+            want_v = ref.get("version")
+            if want_v:
+                pay = ARTIFACTS.payload(rec["id"], want_v) or {}
+            else:
+                want_v, _r = _wf_last_run(rec["id"])
+                pay = (ARTIFACTS.payload(rec["id"], want_v) or {}) if want_v \
+                    else {}
             if not pay.get("run"):
                 raise rcworkflow.WorkflowError(
-                    "‘%s’ has not been run yet, so it has no border to lend."
+                    "‘%s’ has not been run yet, so it has no border to lend. "
+                    "Run it first (Run and bank, or Run without banking)."
                     % (rec.get("nickname") or rec.get("name")))
             if (pay.get("definition") or {}).get("kind") != k:
                 raise rcworkflow.WorkflowError(
                     "‘%s’ is not a %s workflow."
                     % (rec.get("nickname"), rcworkflow.WORDS_LC[k]))
             uses[k] = {"artifact_id": rec["id"],
-                       "version": int(ref.get("version") or rec["version"]),
+                       "version": int(want_v),
                        "nickname": rec.get("nickname") or rec.get("name")}
         out["uses"] = uses
         t = body.get("target") or None
@@ -14736,8 +14742,27 @@ def _wf_current(defn):
                           "nickname": it.get("session_label"),
                           "pinned": it["version"], "newest": al[1]})
     for k, ref in (defn.get("uses") or {}).items():
-        check(ref, "%s workflow" % rcworkflow.WORDS_LC[k])
+        lv, _r = _wf_last_run(ref.get("artifact_id"))
+        if lv and ref.get("version") and lv > int(ref["version"]):
+            rec = ARTIFACTS.get(ref["artifact_id"]) or {}
+            stale.append({"what": "%s workflow" % rcworkflow.WORDS_LC[k],
+                          "artifact_id": ref["artifact_id"],
+                          "nickname": rec.get("nickname") or rec.get("name"),
+                          "pinned": ref["version"], "newest": lv})
     return stale
+
+
+def _wf_last_run(aid, upto=None):
+    """(version, run) of the newest version of a workflow that holds a run,
+    at or below `upto`; (None, None) when it never ran. A definition saved
+    after a run (an edit) holds none, and must not hide the run before it."""
+    rec = ARTIFACTS.get(aid) or {}
+    top = int(upto or rec.get("version") or 0)
+    for v in range(top, 0, -1):
+        run = (ARTIFACTS.payload(aid, v) or {}).get("run")
+        if run:
+            return v, run
+    return None, None
 
 
 def _wf_row(r):
@@ -14745,16 +14770,24 @@ def _wf_row(r):
     ns = cur.get("n_summary") or {}
     pay = ARTIFACTS.payload(r["id"], None) or {}
     defn = pay.get("definition") or {}
-    run = pay.get("run") or {}
+    run_v, run = _wf_last_run(r["id"])
+    run = run or {}
     try:
         stale = _wf_current(defn)
     except Exception:                                    # noqa: BLE001
         stale = []
-    # What it has in the Bank: this run's entry, or the newest run's that
-    # banked, said as not current.
+    # What it has in the Bank: the newest run's entry, or the newest run's
+    # that banked, said as not current.
     bank, current = run.get("bank"), True
     if not bank:
         bank, current = (run.get("banked_before") or None), False
+        if not bank:
+            for v in range(int(run_v or 0) - 1, 0, -1):
+                b = ((ARTIFACTS.payload(r["id"], v) or {}).get("run")
+                     or {}).get("bank")
+                if b and b.get("entry_id"):
+                    bank = b
+                    break
     if bank and not bank.get("name"):
         ent = BANK.get(bank.get("entry_id")) or {}
         bank = dict(bank, name=ent.get("name"))
@@ -14763,6 +14796,11 @@ def _wf_row(r):
             "updated": cur.get("at"), "by": cur.get("by"),
             "kind": defn.get("kind") or ns.get("kind"),
             "definition": defn, "ran": bool(run),
+            # The run on show, and whether a newer definition is waiting.
+            "run_version": run_v,
+            "defined_since": (int(r.get("version") or 0)
+                              if run_v and int(r.get("version") or 0) > run_v
+                              else None),
             "counts": run.get("counts"), "kept": run.get("kept"),
             "n": run.get("n"), "bank": bank,
             "bank_current": current if bank else None,
@@ -14967,6 +15005,15 @@ def api_rootcanal_workflow_run(artifact_id):
                 fresh["uses"] = {k: {"artifact_id": v["artifact_id"]}
                                  for k, v in fresh["uses"].items()}
             defn = _wf_definition(fresh)
+        elif body.get("refresh_sets") and (defn.get("source") or {}).get(
+                "type") == "sets":
+            # THE SETS AS PREPARED (2026-11-05). A P-spike workflow saved
+            # before its sets were aligned pinned "as they stood"; its run
+            # prepares them, and then measures the version it prepared --
+            # each set's newest aligned one -- not the stamps from before.
+            defn = _wf_definition(dict(defn, source={"entries": [
+                {"entry_id": it["entry_id"]}
+                for it in defn["source"]["entries"]]}))
         else:
             defn = _wf_definition(defn)
         run = _wf_compute(defn)
@@ -15051,7 +15098,14 @@ def api_rootcanal_workflow_one(artifact_id):
         if not rec or rec.get("kind") != "rootcanal_workflow":
             raise rcworkflow.WorkflowError("There is no workflow %s."
                                            % artifact_id)
-        pay = ARTIFACTS.payload(artifact_id, version)
+        shown_v = version
+        newer = None
+        if version is None:
+            lv, _r = _wf_last_run(artifact_id)
+            top = int(rec.get("version") or 0)
+            if lv and lv < top:
+                shown_v, newer = lv, top
+        pay = ARTIFACTS.payload(artifact_id, shown_v)
         if pay is None:
             raise rcworkflow.WorkflowError(
                 "That version was saved on another machine and has not "
@@ -15079,7 +15133,8 @@ def api_rootcanal_workflow_one(artifact_id):
         return fail("rootcanal/workflow", exc, 400,
                     {"artifact_id": artifact_id})
     return jsonify({"ok": True, "payload": pay, "lines": lines,
-                    "stale": stale, "artifact": ARTIFACTS.summary(artifact_id)})
+                    "stale": stale, "shown": shown_v, "newer_definition": newer,
+                    "artifact": ARTIFACTS.summary(artifact_id)})
 
 
 @app.route("/api/rootcanal/workflow/<artifact_id>/bank", methods=["POST"])

@@ -17774,3 +17774,42 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
   .wf-views { grid-template-columns: minmax(0, 1fr); }
   .wf-stages { grid-template-columns: minmax(0, 1fr); }
 }
+/* Workflow, polished (2026-11-05): the legend names every mark, banking
+   has a card of its own, and the click panel is Root Canal's own. */
+.wf-legend { flex-direction: column; align-items: flex-start; gap: var(--sp-4); }
+.wf-legend-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-12); }
+.wf-lg-h { font-size: var(--fs-11); font-weight: 600; color: var(--text-2);
+  min-width: 46px; text-transform: uppercase; letter-spacing: 0.04em; }
+.wf-lg b { font-weight: 600; color: var(--text-2); margin-left: 2px; }
+.wf-lg i.wf-lg-dot { width: 10px; height: 10px; border-radius: 50%; }
+.wf-lg i.wf-lg-box { width: 16px; height: 11px; border-radius: 2px; background: none;
+  border: 2px solid; }
+.wf-lg i.wf-lg-box.dashed { border-width: 1.5px; border-style: dashed; }
+.wf-lg i.wf-lg-line { width: 18px; height: 3px; border-radius: 2px; }
+.wf-key { display: flex; flex-wrap: wrap; gap: var(--sp-12); font-size: var(--fs-115);
+  margin-bottom: var(--sp-4); }
+.wf-sweep { height: 210px; }
+.wf-dist { height: 150px; }
+.wf-3d { height: 420px; }
+.wf-2d { height: 190px; }
+.wf-bankline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8);
+  font-size: var(--fs-115); padding: var(--sp-6) var(--sp-10);
+  border-radius: var(--radius-sm); border: 1px solid var(--ok);
+  background: color-mix(in srgb, var(--ok) 8%, transparent); }
+.wf-bankline.none { border-color: var(--line); background: var(--bg-2); }
+.wf-bankcard { display: flex; flex-direction: column; gap: var(--sp-6);
+  padding: var(--sp-10); border-radius: var(--radius-sm);
+  border: 2px solid var(--accent-line, var(--accent)); }
+.wf-bankcard.done { border-color: var(--ok); }
+.wf-bankcard-btns { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
+.wf-insp-top { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--sp-12); }
+.wf-insp-hist ol { margin: var(--sp-4) 0 0; }
+.wf-th-sw { display: inline-block; width: 14px; height: 9px; border: 2px solid;
+  border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.wf-pics { display: flex; flex-direction: column; gap: var(--sp-4); }
+.wf-ev-grid { margin-top: var(--sp-4); }
+@media (max-width: 900px) { .wf-insp-top { grid-template-columns: minmax(0, 1fr); } }
+.wf-thumb-empty { display: flex; align-items: center; justify-content: center; text-align: center;
+  font-size: var(--fs-11); color: var(--text-3); border: 1px dashed var(--line);
+  border-radius: var(--radius-sm); padding: var(--sp-6); box-sizing: border-box; }

@@ -41,6 +41,87 @@ does not show up in it.
   prints around a fault. The 10-20 Root Canal bug showed up there, not in
   the traceback.
 
+## Pass 12: 2026-11-06 (morning, scheduled), 11-05 09:05 to 11-06 08:50
+
+Covered: Bluebarry's 11-04 and 11-05 reports, Blackbarry's 11-02 and 11-04
+reports (on disk since 11-05 13:53), and the raw shards
+`11-05@desktop-4h65ai7-d565` and `11-05@Blackbarry`. `git fetch` brought
+`a1e00da3` ("Lock", and two "Curation" commits), with no report in them.
+I also read the cloud, without writing to it: the `errors` table from
+`2026-11-05T14:05Z` (the column is `where_`, not `where`), and the
+`activity` table's `client.error` rows from the same time. Strawbarry
+has no 11-05 report here yet.
+
+| Day | Machine | Real faults | Verdict |
+|---|---|---|---|
+| 11-04 | Bluebarry | 0 (58 test) | as pass 11 read from the shard |
+| 11-02 | Blackbarry (Isabella) | 1 | "JWT issued at future": the one pass 9 fixed, arriving again by git |
+| 11-04 | Blackbarry | 0 | 0 actions, build `2026.10.30.3` |
+| 11-05 | Blackbarry | 1 (shard) | `cloud.sync` HTTP 520 at 18:36Z: Supabase was not answering. Jarvis backed off as it should. Not a fault |
+| 11-05 | Bluebarry (Shahriar) | 3, 2 distinct (78 test) | both Root Canal Workflow. Already fixed by uncommitted `2026.11.05.6`. **Check added** (1) |
+| 11-05 | all | 5 "stuck" rows | slow, not faults (2) |
+
+1. **`rootcanal/workflow-save`, "'Verified P-Spike' has not been run yet,
+   so it has no border to lend"**, kind `ambiguous`, at 17:06:50 and
+   17:07:10. Here is what happened, from the artifact `abe99ac5d1b6`:
+   - v1 was the definition, at 16:24:10;
+   - v2 was the run, at 17:04:05, with 1381 kept;
+   - v3 was the same definition saved again at 17:04:09 ("Definition
+     changed"), with no run of its own.
+
+   `_wf_definition` read only the newest version, so it found no run.
+   The other Claude session's uncommitted `2026.11.05.6` fixes exactly
+   this with `_wf_last_run` (`backend/app.py` changed at 17:08). The
+   tracebacks are the code from before that change: their line numbers
+   are older, and the message has no "Run it first". Nothing checked the
+   fix, so I added `tools/check_wf_border_lend.py`. It builds that history
+   in memory and touches nothing under GUI_logs. On the code on disk:
+   7 ok. With `--head` it compiles HEAD's own `_wf_definition` and
+   `_wf_current` into the process: 3 of 5 fail, with Shahriar's exact
+   message. I did not edit the other session's files. My only changes
+   are the new check and the CHANGELOG entry `2026.11.06.1`, which is a
+   check only and needs no reload.
+
+   **`rootcanal/workflow-run`, "5 of the hand-sorted set(s) could not be
+   measured here … Read it first"** at 16:24:23 (build `2026.11.05.5`,
+   the version stamped on v1). It was a refusal with instructions, not a
+   crash. `2026.11.05.6` now makes the run prepare the sets itself. The
+   real run at 17:04:05 then measured them (1381 kept). No check added:
+   `web/_dev/rcworkflow.html` (65 checks in that session's entry) covers
+   the new run path.
+2. **"Stuck" rows** (cloud `activity`, `where: stuck`):
+   - Strawbarry, 15:22Z and 15:27Z: the old record format, with the route
+     after the feed lines. The second one is `GET /api/link` (37 s), so
+     Strawbarry was on a build older than `2026.11.05.1` then, as pass 11
+     said to expect.
+   - Strawbarry, 17:32Z: the new format. `GET /api/registry` took 30 s
+     just after start-up ("Ready", then "Reading the recording list"):
+     the first registry read is slow.
+   - Blackbarry, 19:04Z and 19:07Z: the new format, so Blackbarry had
+     updated past `2026.10.30.3` by then. `POST /api/csc/window` and
+     `POST /api/session/state` each took 34 s while a curation set was
+     being worked on, 30 minutes after the 520. A save of session state
+     taking 34 s is odd. Watch for it again. With one row there is
+     nothing to go on.
+
+Not changed: on 11-05 at 15:22 and 15:38, two `dspca/plan` "harness dupes"
+rows had no `test` flag. The report already left them out by the
+`harness` pattern, so a harness was running against the live app at
+those times.
+
+Builds: Bluebarry's 11-05 report says `2026.11.05.6 f85d2b51`. That is
+the server that wrote it at 18:05, not the one that hit the faults.
+`2026.11.05.6` and `2026.11.06.1` are uncommitted, so no other machine
+has the fix yet. Bluebarry needs a restart after 17:08 on 11-05 to run
+it.
+
+Next pass: Bluebarry's 11-06 report, and Strawbarry's and Blackbarry's
+11-05 reports when git brings them. Then `git fetch`, then the cloud
+`errors` table (`where_`) and `activity` `client.error` rows from
+`2026-11-06T13:50Z`. If "no border to lend" appears again on a build
+with the fix committed, that is a real failure of `_wf_last_run`. Run
+`tools/check_wf_border_lend.py` first.
+
 ## Pass 11: 2026-11-05 (morning, scheduled), 11-04 08:50 to 11-05 09:05
 
 Covered: Strawbarry's 11-03 report (already at HEAD, `0aa728fe`), the raw

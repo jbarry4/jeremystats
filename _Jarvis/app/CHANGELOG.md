@@ -15,6 +15,99 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.06.1 - A check that Ambiguous borrows the run before an edit
+
+From the daily error pass (TRIAGE.md, pass 12). Nothing the app runs
+changed, so a reload or a restart is not needed for this entry. The fix it
+checks is in 2026.11.05.6, which needs a restart.
+
+- **Checked: "has not been run yet, so it has no border to lend".** On
+  11-05 Shahriar's Ambiguous workflow refused to save twice (17:06 and
+  17:07). Its P-spike workflow had run at 17:04:05 as v2, then its
+  definition was saved again at 17:04:09 as v3, with no run of its own.
+  2026.11.05.6 (`_wf_last_run` in `backend/app.py`) lends the newest
+  version that holds a run. The new check,
+  `tools/check_wf_border_lend.py`, builds that history in memory. It
+  passes 7 of 7 on the code on disk. With `--head` it runs HEAD's own
+  `_wf_definition` and fails 3 of 5 with Shahriar's exact message.
+
+## 2026.11.05.6 - Workflow: banking you can see, P-spike sets made ready by themselves, Root Canal's own click panel
+
+Restart Jarvis: the server changed.
+
+### Changed
+
+- **Banking is its own step.** Each strip has **Run and bank…** and **Run
+  without banking**.
+  - Run and bank first works out what would be banked, then opens a dialog
+    that says:
+    - how many events, and from how many recordings;
+    - whether they go into a new entry or the next version of its entry;
+    - under what name (which can be changed), with a note.
+  - Its button reads "Run and bank N events", and nothing is written until
+    it is pressed.
+  - Run without banking keeps the run as a version and writes nothing to
+    the Bank.
+  - Every workflow says what it has in the Bank, and has an **Open in the
+    Event Bank** button.
+  - The Extract stage has a card for the same thing.
+- **A P-spike workflow makes its hand-sorted sets ready by itself.** Run
+  retimes, aligns (Eye) and reads whichever sets need it, says each step
+  on the strip, then runs on the sets' new versions. Before, it stopped
+  with "could not be measured here: … Read it first".
+- **It measures the sets as prepared.** A P-spike workflow saved before its
+  sets were aligned pointed at their unaligned versions, so it found no
+  reads even once they were ready. Its stages stayed empty because it had
+  never run. A run now always measures each set's newest aligned version.
+  A stage with no run says so instead of showing a blank space.
+- **An edit no longer hides the run before it.** Editing a workflow saves
+  a new definition with no run of its own. Before, that made the workflow
+  read as "not run yet": its strip lost its pictures, and Ambiguous refused
+  to borrow its border ("has not been run yet, so it has no border to
+  lend"). Now:
+  - the strip and the open workflow show the newest run, saying "vN saved
+    since, not run yet";
+  - Ambiguous borrows each workflow's newest run;
+  - Ambiguous is out of date only when a newer run exists.
+  On the real data: DS only 684, P-spike only 208, inside both 1,173,
+  outside both 133, so 1,306 ambiguous.
+- **A clicked dot shows Root Canal's own click panel** as soon as it is
+  clicked: the max-amp contact with its peak and half-width, the spectrum
+  against its baseline, every contact, and the CSD. Averages of a class
+  are drawn the same way.
+- **Every chart has axes with values and a legend that names every mark.**
+  - The legend lists the dots with their counts and shares, each box
+    (solid at the grace, dashed at no grace), and the frame. The faint box
+    is the frame: the axes, from the lowest value on show to the highest.
+    It is not a border.
+  - The 3D view has tick values on its front edges, a floor grid, and
+    depth shading on the dots.
+  - The 2D views and the distance histograms have proper axes and say how
+    many events are in and out on each axis.
+  - The grace sweep has two labelled axes and says what the chosen grace
+    gives.
+  - The flow names its two columns.
+
+### Checked
+
+- rcworkflow.html: 65 checks (was 57). New: the dialog's words, banking
+  under the name and note given, Run without banking writing nothing, the
+  four pictures, and the full legend.
+- The throwaway end-to-end run: 33 checks. A run without banking leaves
+  the Bank as it was; banking again goes into the same entry's next
+  version.
+- These suites pass:
+  - rootcanalpool 294;
+  - rootcanalborder 103;
+  - confluence 56;
+  - bankscroll 17.
+- rootcanal fails on two checks that this change does not touch:
+  - the "Lock hasn't lined this set up yet" wording, which was already
+    failing;
+  - a check that has passed and failed between runs before.
+- rootcanaldone fails one caret check that has also passed and failed
+  between runs before.
+
 ## 2026.11.05.5 - Root Canal: a Workflow tab (define a border, apply it, extract)
 
 Restart Jarvis: there are new server routes.

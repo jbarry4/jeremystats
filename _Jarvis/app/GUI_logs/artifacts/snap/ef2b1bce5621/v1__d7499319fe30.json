@@ -1,0 +1,60 @@
+{
+ "calls_by_hand": [],
+ "clusters": [
+  {
+   "call": "ds",
+   "centre_raw": [
+    869.3018990542616,
+    19.008611483705184,
+    8.3788904993817
+   ],
+   "n": 831,
+   "rank": 0
+  },
+  {
+   "call": "ied",
+   "centre_raw": [
+    1509.4743835093761,
+    21.217871576841485,
+    13.703972405046533
+   ],
+   "n": 644,
+   "rank": 1
+  }
+ ],
+ "k": 2,
+ "measure": {
+  "band_hi": 1000.0,
+  "band_lo": 500.0,
+  "cross_ms": 100.0,
+  "filt": "ds",
+  "filter_label": "DS filter, 5–100 Hz, 60 Hz mains out",
+  "hi_hz": 100.0,
+  "lo_hz": 5.0,
+  "mains_out": true,
+  "order": 3,
+  "win_ms": 25.0
+ },
+ "rule": "Pooled over 9 recordings from 9 mice, in pooled raw units: the cluster whose centre has more 500–1000 Hz power is called P-spike: +13.7 dB against +8.4 dB for the other, which is called DS (831 DS, 644 P-spike, 2 not measured; 6 resolved only with a half-width search widened past 50 ms).",
+ "scale": {
+  "mean": [
+   1149.241731239718,
+   19.97469471087328,
+   10.707485637791066
+  ],
+  "sd": [
+   474.3266317742817,
+   9.17166789615089,
+   4.51406696728512
+  ]
+ },
+ "source": {
+  "kind": "pool",
+  "n_events": 1475,
+  "pool": {
+   "artifact_id": "3fcedd33613b",
+   "nickname": "CTL Baseline",
+   "version": 1
+  }
+ }
+}

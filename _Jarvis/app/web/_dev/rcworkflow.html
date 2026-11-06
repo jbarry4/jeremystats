@@ -22,7 +22,10 @@ iframe{flex:1;height:100vh;border:0}
        the distances, the flow, every mouse and the lineage;
      - a dot clicked shows its numbers against the cut-offs, its history,
        its waveform (from /api/rootcanal/event) and offers Xplorefinder;
-     - out of date says so, and "Run with the newest inputs" asks for it;
+     - out of date says so, and running then takes the newest inputs;
+     - banking is its own step: "Run and bank..." previews, a dialog says
+       what will be written, and only its button banks; "Run without
+       banking" writes nothing to the Bank;
      - archiving writes the shared preference and archives the bank entry;
      - the builder previews and saves what it says; the P-spike one lists
        the hand-sorted sets and checks them;
@@ -136,7 +139,8 @@ function oneRun(kind) {
            mismatch: [], members: mem, src_members: mem, sweep,
            src_cols: src, cols: tgt, counts: cc, n: 240, kept: cc.inside || 0,
            by_mouse: byMouse(tgt), by_recording: [],
-           bank: { entry_id: 'bank-' + kind, n: cc.inside || 0 },
+           bank: { entry_id: 'bank-' + kind, n: cc.inside || 0, recordings: 4,
+                   name: 'Verified ' + kind + ' · harness', version: '3', new: false },
            at: '2026-11-05T12:00:00+00:00', by: 'Debug_Bot',
            diff: { n: 3, moves: { 'inside → outside': 2, 'outside → inside': 1 },
                    examples: [{ gid: 'g0', t: 11.5, was: 'inside', now: 'outside' }] } };
@@ -222,7 +226,16 @@ const FIX = {
   event: { ok: true, filter_label: 'DS filter, 5–100 Hz',
            trace: { t_ms: Array.from({ length: 81 }, (_, k) => -40 + k),
                     y: Array.from({ length: 81 }, (_, k) => 900 * Math.exp(-((k - 40) ** 2) / 60)),
-                    peak_ms: 0, half_uV: 450, left_ms: -6, right_ms: 6 },
+                    peak_ms: 0, peak_uV: 900, baseline: 0, amp_uV: 900, hw_ms: 12, half_uV: 450,
+                    left_ms: -6, right_ms: 6, contact: 4 },
+           spectrum: { f: Array.from({ length: 60 }, (_, k) => 10 + k * 20),
+                       event: Array.from({ length: 60 }, (_, k) => 30 - k * 0.3),
+                       baseline: Array.from({ length: 60 }, (_, k) => 26 - k * 0.32),
+                       band: [500, 1000], contact: 4, db: 6.2, db_flag: true },
+           stack: { t_ms: Array.from({ length: 81 }, (_, k) => -40 + k), gain: 4, contact: 4,
+                    nums: [1, 2, 3, 4, 5, 6, 7, 8], bad: [false, false, false, false, false, false, false, false],
+                    rows: Array.from({ length: 8 }, (_, r) => Array.from({ length: 81 },
+                      (_, k) => -(r === 3 ? 1.5 : 0.4) * Math.exp(-((k - 40) ** 2) / 60))) },
            csd: { rows: Array.from({ length: 8 }, (_, r) => Array.from({ length: 81 },
                     (_, k) => (r - 4) * Math.exp(-((k - 40) ** 2) / 80))),
                   nums: [1, 2, 3, 4, 5, 6, 7, 8], clim: [-4, 4] } },
@@ -248,7 +261,8 @@ const FIX = {
      + '   return W.__wfPrefGet.apply(BARRY.prefs, arguments); };'
      + ' W.__wfLog = BARRY.activity.log; BARRY.activity.log = function(){};'
      + ' W.__wfBd = BARRY.ui.bankDialog; BARRY.ui.bankDialog = async function(o){'
-     + '   W.__wfDlg = o.title; await o.onBank({ name: "harness picks", note: "" }); return true; };'
+     + '   W.__wfDlg = { title: o.title, what: o.what, facts: o.facts, ok: o.okText };'
+     + '   await o.onBank({ name: "harness picks", note: "a note" }); return true; };'
      + ' W.__wfOpen = W.open; W.open = function(u){ W.__wfOpened = u; return { focus: function(){} }; }; })()');
   ev('(function(){ var W = window; if (W.__wfFetch) return; W.__wfFetch = W.fetch;'
      + ' W.__wfSent = [];'
@@ -317,8 +331,16 @@ const FIX = {
     ok('every stage card has its picture drawn',
        Array.from(D().querySelectorAll('.wf-thumb')).filter((c) => inked(c) > 200).length === 9);
     const dsStrip = D().querySelector('.wf-strip[data-wf="wDS"]');
-    ok('the out-of-date one says so, and offers the newest inputs',
-       /out of date/.test(dsStrip.textContent) && !!btn(/^Run with the newest inputs$/, dsStrip));
+    ok('the out-of-date one says so', /out of date/.test(dsStrip.textContent));
+    ok('banking is a button of its own, said as banking: Run and bank…, and Run without banking',
+       !!btn(/^Run and bank…$/, dsStrip) && !!btn(/^Run without banking$/, dsStrip));
+    ok('what it has banked, said plainly, with a door to the Event Bank',
+       /Banked\s*\d+ events in ‘Verified ds · harness’, v3, from 4 recordings/.test(
+         dsStrip.querySelector('.wf-bankline').textContent)
+       && !!btn(/^Open in the Event Bank$/, dsStrip), dsStrip.querySelector('.wf-bankline').textContent);
+    ok('Ambiguous has no bank button: it is chosen from',
+       !btn(/^Run and bank…$/, D().querySelector('.wf-strip[data-wf="wA"]'))
+       && !!btn(/^Run$|^Run again$/, D().querySelector('.wf-strip[data-wf="wA"]')));
     ok('the apply card says the counts', /inside \d+ · outside \d+/.test(
        dsStrip.querySelectorAll('.wf-stage')[1].textContent),
        dsStrip.querySelectorAll('.wf-stage')[1].textContent);
@@ -338,9 +360,11 @@ const FIX = {
     ok('a switch for the three stages', JSON.stringify(stSeg)
        === '["Define border","Apply border","Extract"]', JSON.stringify(stSeg));
     ok('its rule in words', /Solid DS: inside a harness box/.test(D().querySelector('.wf-rule').textContent));
-    ok('the legend says the colours: inside, outside, solid and dashed boxes',
-       /inside: verified DS/.test(D().querySelector('.wf-legend').textContent)
-       && /Dashed: at no grace/.test(D().querySelector('.wf-legend').textContent));
+    const lg = D().querySelector('.wf-legend').textContent;
+    ok('the legend names every mark: the dots with their counts, each box, and the frame',
+       new RegExp('inside: verified DS' + RUN_DS.counts.inside + ' · ').test(lg)
+       && /DS border, grace 5%/.test(lg) && /DS border at no grace \(the widest the box gets\)/.test(lg)
+       && /frame: the axes, lowest to highest value on show/.test(lg), lg);
     const panels = Array.from(D().querySelectorAll('.wf-panel > strong')).map((n) => n.textContent);
     ok('the grace sweep, the distances, the flow, every mouse and the averages',
        JSON.stringify(panels) === JSON.stringify(['Grace', 'How far from the border',
@@ -364,7 +388,7 @@ const FIX = {
       await until(() => S().stage === id && inked(D().querySelector('.wf-3d')) > 1000, 4000, words);
       ok(words + ': the 3D redrawn for it', S().stage === id && inked(D().querySelector('.wf-3d')) > 1000);
     }
-    ok('Extract fades what is not extracted', /Faded: not extracted/.test(D().querySelector('.wf-legend').textContent));
+    ok('Extract fades what is not extracted', /Faded\s*not extracted: outside the border/.test(D().querySelector('.wf-legend').textContent));
     btn(/^Apply border$/, D().querySelector('.wf-stage-seg')).click();
     await until(() => S().stage === 'apply', 3000, 'apply');
 
@@ -391,15 +415,19 @@ const FIX = {
        /Recording: PTEN m\d s1/.test(hist) && /Set: bank entry e\d, version v\d/.test(hist)
        && /Pooled in ‘Harness target’ v1/.test(hist) && /Border ‘DS border · h’ v2/.test(hist)
        && /Classified by the workflow ‘Harness DS’ v2/.test(hist), hist.slice(0, 300));
-    btn(/^Show its waveform$/).click();
-    await until(() => D().querySelectorAll('.wf-insp .wf-ev-cv').length === 2, 4000, 'the traces');
-    await sleep(200);
+    // Its pictures, at once: Root Canal's own four, drawn by Root Canal.
+    const four = ['rcTrace', 'rcSpec', 'rcStack', 'rcCsd'];
+    await until(() => sent().some((x) => x[0] === 'event')
+                && four.every((id) => inked(D().getElementById(id)) > 300), 6000, 'the four');
     const evSent = sent().filter((x) => x[0] === 'event').pop();
-    ok('the trace is asked of the member’s own read, at its event number',
+    ok('picked, its traces are asked for at once, of the member’s own read, at its event number',
        evSent && evSent[1].read === 'r' + pk.p.m && evSent[1].i === pk.p.i,
        evSent && JSON.stringify(evSent[1]));
-    ok('its waveform and its CSD are drawn',
-       Array.from(D().querySelectorAll('.wf-insp .wf-ev-cv')).every((c) => inked(c) > 300));
+    ok('Root Canal’s own four pictures: max-amp contact, spectrum, every contact, CSD',
+       four.every((id) => D().querySelector('.wf-insp #' + id) && inked(D().getElementById(id)) > 300)
+       && JSON.stringify(Array.from(D().querySelectorAll('.wf-insp .rc-ev-t strong')).map((n) => n.textContent))
+          === '["Max-amp contact","Spectrum","Every contact","CSD"]',
+       four.map((id) => id + ':' + inked(D().getElementById(id))).join(' '));
     ev('window.__wfOpened = null');
     // The recording's path comes from the registry; a harness has none, so
     // the press says so instead of opening -- either is the right outcome.
@@ -417,16 +445,44 @@ const FIX = {
     ok('asked of the target pool, every inside event as [member key, event]',
        g.saved.artifact_id === 'pT' && g.events.length === RUN_DS.counts.inside
        && g.events.every((x) => /^u:e\d:r\d$/.test(x[0])), JSON.stringify(g).slice(0, 200));
+    await until(() => /Average · inside/.test((D().querySelector('.wf-insp') || {}).textContent || '')
+                && inked(D().getElementById('rcTrace')) > 300, 4000, 'the average drawn');
+    ok('and drawn as Root Canal draws an average, in the same four pictures',
+       /Average · inside/.test(D().querySelector('.wf-insp').textContent)
+       && /Average, max-amp contact/.test(D().querySelector('.wf-insp').textContent)
+       && inked(D().getElementById('rcCsd')) > 300);
 
-    head('RUN, AND RUN WITH THE NEWEST INPUTS');
-    btn(/^Run with the newest inputs$/, D().querySelector('.wf-strip[data-wf="wDS"]')).click();
-    await until(() => sent().some((x) => x[0] === 'run:wDS'), 4000, 'the run');
-    ok('the run asks to move every pin to the newest',
-       sent().filter((x) => x[0] === 'run:wDS').pop()[1].refresh === true);
+    head('RUN AND BANK: PREVIEWED, SAID IN A DIALOG, BANKED ONLY BY ITS BUTTON');
+    const nPv = sent().filter((x) => x[0] === 'preview').length;
+    btn(/^Run and bank…$/, D().querySelector('.wf-strip[data-wf="wDS"]')).click();
+    await until(() => sent().some((x) => x[0] === 'run:wDS'), 6000, 'the run');
+    ok('what would be banked is worked out first, with nothing saved',
+       sent().filter((x) => x[0] === 'preview').length === nPv + 1);
+    const dlg = JSON.parse(ev('JSON.stringify(window.__wfDlg)'));
+    ok('the dialog says how many, from where, into what: the next version of its entry',
+       new RegExp('and bank ' + RUN_DS.kept + ' verified dentate spikes').test(dlg.title)
+       && /banks the \d+ of 240 events inside it as ONE Event Bank entry/.test(dlg.what)
+       && /NEXT VERSION of ‘Verified ds · harness’/.test(dlg.facts[0])
+       && dlg.ok === 'Run and bank ' + RUN_DS.kept + ' events', JSON.stringify(dlg));
+    const rb = sent().filter((x) => x[0] === 'run:wDS').pop()[1];
+    ok('its button banks, under the name and note given, with the newest inputs (it was out of date)',
+       rb.bank === true && rb.bank_name === 'harness picks' && rb.bank_note === 'a note'
+       && rb.refresh === true, JSON.stringify(rb));
     await until(() => toasts().some((t) => /‘Harness DS’ v3:/.test(t)), 4000, 'the toast');
-    ok('and says what it did', toasts().some((t) => new RegExp(RUN_DS.kept
-       + ' of 240 events inside the border, banked as one entry\\. 3 changed class since the last run').test(t)),
+    ok('and says what it banked, and where', toasts().some((t) => new RegExp(RUN_DS.kept
+       + ' of 240 events inside the border\\. Banked as v3 of ‘Verified ds · harness’\\. 3 changed class').test(t)),
        toasts().slice(-1)[0]);
+    await until(() => S().stage === 'extract' && D().querySelector('.wf-bankcard'), 4000, 'extract');
+    ok('it opens on Extract, where a card says what is banked and offers to bank again',
+       /This run is banked/.test(D().querySelector('.wf-bankcard').textContent)
+       && !!btn(/^Run and bank again…$/, D().querySelector('.wf-bankcard')));
+    const nRun = sent().filter((x) => x[0] === 'run:wDS').length;
+    const nPv2 = sent().filter((x) => x[0] === 'preview').length;
+    btn(/^Run without banking$/, D().querySelector('.wf-strip[data-wf="wDS"]')).click();
+    await until(() => sent().filter((x) => x[0] === 'run:wDS').length > nRun, 6000, 'the plain run');
+    ok('Run without banking asks to bank nothing, with no dialog',
+       sent().filter((x) => x[0] === 'run:wDS').pop()[1].bank === false
+       && sent().filter((x) => x[0] === 'preview').length === nPv2);
 
     head('ARCHIVED: THE SHARED PREFERENCE, AND ITS BANK ENTRY WITH IT');
     await until(() => D().querySelector('.wf-strip[data-wf="wP"]'), 4000, 'the strips again');

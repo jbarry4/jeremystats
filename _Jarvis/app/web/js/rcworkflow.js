@@ -149,7 +149,9 @@ BARRY.rcWorkflow = (function () {
     try {
       const got = await api('/api/rootcanal/workflow/' + encodeURIComponent(id)
                             + (version != null ? '?version=' + version : ''));
-      W.data[id] = { version: (got.artifact || {}).version, shown: version,
+      W.data[id] = { version: (got.artifact || {}).version,
+                     shown: version != null ? version : (got.shown || null),
+                     newer: version != null ? null : (got.newer_definition || null),
                      payload: got.payload || {}, lines: got.lines || [],
                      stale: got.stale || [] };
     } catch (e) {
@@ -473,7 +475,8 @@ BARRY.rcWorkflow = (function () {
     let dlo = Infinity, dhi = -Infinity;
     for (const x of shown) { dlo = Math.min(dlo, x.q[2]); dhi = Math.max(dhi, x.q[2]); }
     const near = (d) => (dhi > dlo ? (d - dlo) / (dhi - dlo) : 1);
-    const pick = W.picked && W.picked.which === set.which ? W.picked.n : null;
+    // The picked ring only on the stage on show, never on a strip's thumbnails.
+    const pick = !o.small && W.picked && W.picked.which === set.which ? W.picked.n : null;
     for (const x of shown) {
       const nr = near(x.q[2]);
       const r = o.small ? 1.2 : 1.8 + 1.4 * nr;
@@ -705,7 +708,7 @@ BARRY.rcWorkflow = (function () {
     const classes = kind === 'ambiguous' ? ['ds', 'pspike', 'both', 'neither']
                                          : ['inside', 'outside'];
     const total = rows.reduce((a, r) => a + (r.n || 0), 0) || 1;
-    const T = 10, B = 10, gap = 4;
+    const T = 26, B = 10, gap = 4;
     const span = h - T - B;
     const lx0 = 110, lx1 = 122, rx0 = w - 150, rx1 = w - 138;
     const usable = (n, k) => span - gap * (k - 1);
@@ -747,6 +750,12 @@ BARRY.rcWorkflow = (function () {
       }
     }
     g.globalAlpha = 1;
+    g.font = FONT(10.5, true);
+    g.fillStyle = tok('--text-2');
+    g.textAlign = 'right';
+    g.fillText('mouse · events', lx1, 14);
+    g.textAlign = 'left';
+    g.fillText('where they went · events', rx0, 14);
     g.font = FONT(10);
     for (const L of left) {
       g.fillStyle = tok('--text-2');
@@ -957,6 +966,9 @@ BARRY.rcWorkflow = (function () {
         r.sync && BARRY.ui.syncChip ? BARRY.ui.syncChip(r.sync) : null,
         isArch ? BARRY.ui.chip('archived', { kind: 'warn' }) : null,
         r.ran ? null : BARRY.ui.chip('not run yet'),
+        r.defined_since ? BARRY.ui.chip('v' + r.defined_since + ' saved since, not run yet',
+          { kind: 'warn', title: 'The pictures are v' + r.run_version + '’s run. Run it to use '
+                                  + 'the newer definition.' }) : null,
         stale.length ? BARRY.ui.chip('out of date', { kind: 'warn',
           title: stale.map((s) => s.what + ' ‘' + s.nickname + '’: pinned at '
                  + s.pinned + ', newest ' + s.newest).join('\n') }) : null,
@@ -999,6 +1011,45 @@ BARRY.rcWorkflow = (function () {
       ].filter(Boolean)),
       kind === 'ambiguous' ? null : bankLine(r),
     ].filter(Boolean));
+  }
+
+  /* EXTRACT, AND WHERE IT GOES: on the Extract stage, the one place a
+     person looks to bank -- what is banked, and the button that banks. */
+  function bankCard(row, run, kind) {
+    const word = kind === 'ds' ? 'dentate spikes' : 'P-spikes';
+    if (W.preview) {
+      return el('div', { class: 'wf-bankcard' }, [
+        el('strong', { text: (run.kept || 0).toLocaleString() + ' verified ' + word
+                             + ' would be banked' }),
+        el('span', { text: 'This is a preview. Save the workflow, then press Run '
+                     + 'and bank on its strip: a dialog says exactly what goes to '
+                     + 'the Event Bank before anything does.' }),
+        BARRY.ui.button({ kind: 'primary', size: 'sm', text: 'Save this workflow',
+          onclick: () => saveBuilder() }),
+      ]);
+    }
+    const b = row.bank;
+    const shownV = (W.data[row.artifact_id] || {}).shown;
+    const thisRun = run.bank && run.bank.entry_id;
+    return el('div', { class: 'wf-bankcard' + (thisRun ? ' done' : '') }, [
+      el('strong', { text: thisRun
+        ? 'This run is banked: ' + (run.bank.n || run.kept || 0).toLocaleString()
+          + ' verified ' + word
+        : (run.kept || 0).toLocaleString() + ' verified ' + word + ' extracted — '
+          + 'not banked by this run' }),
+      bankLine(row),
+      el('div', { class: 'wf-bankcard-btns' }, [
+        BARRY.ui.button({ kind: 'primary', size: 'sm',
+          text: b && b.entry_id ? 'Run and bank again…' : 'Run and bank…',
+          extra: 'wf-run-bank',
+          title: 'Runs the workflow as it is defined and banks what is inside the '
+                 + 'border. A dialog says exactly what is written first.',
+          onclick: () => runWorkflow(row, !!(row.stale || []).length, { bank: true }) }),
+        shownV && shownV !== row.version ? el('span', { class: 'hint', text:
+          'You are looking at v' + shownV + '; the newest is v' + row.version + '.' })
+          : null,
+      ].filter(Boolean)),
+    ]);
   }
 
   /* What this workflow has in the Bank, said plainly, with a door to it. */
@@ -1058,7 +1109,14 @@ BARRY.rcWorkflow = (function () {
       title: 'Open this stage in 3D',
       onclick: () => { W.stage = id; openWorkflow(r.artifact_id); } }, [
       el('span', { class: 'wf-stage-n', text: words }),
-      cv,
+      /* NOT RUN, SAID (2026-11-05: "no visual -- what happened?"). A stage
+         has a picture only once a run has made one; until then the space
+         says why it is empty and what fills it. */
+      run ? cv : el('span', { class: 'wf-thumb wf-thumb-empty', text: id === 'define'
+        ? (kind === 'pspike' ? 'No picture yet: this workflow has not run. Run '
+           + 'and bank makes the hand-sorted sets ready, then draws the border.'
+           : 'No picture yet: this workflow has not run.')
+        : 'No picture until it runs.' }),
       el('span', { class: 'wf-stage-l', text: line1 }),
       el('span', { class: 'hint wf-stage-l', text: line2 }),
     ]);
@@ -1115,7 +1173,8 @@ BARRY.rcWorkflow = (function () {
       try {
         got = await apiPost('/api/rootcanal/workflow/'
                             + encodeURIComponent(r.artifact_id) + '/run',
-                            Object.assign({ refresh: pinFresh, bank }, extra || {}));
+                            Object.assign({ refresh: pinFresh, bank,
+                                            refresh_sets: r.kind === 'pspike' }, extra || {}));
       } catch (e) {
         W.busy = null;
         refresh();
@@ -1158,6 +1217,10 @@ BARRY.rcWorkflow = (function () {
     let pv;
     try {
       const body = Object.assign({}, dd);
+      // A P-spike workflow measures its sets as prepared: their newest aligned versions.
+      if (body.source && body.source.type === 'sets') {
+        body.source = { entries: body.source.entries.map((e) => ({ entry_id: e.entry_id })) };
+      }
       if (pinFresh) {
         for (const k of ['target', 'source']) {
           if (body[k] && body[k].type !== 'sets') body[k] = Object.assign({}, body[k], { version: null });
@@ -1340,12 +1403,16 @@ BARRY.rcWorkflow = (function () {
       el('p', { class: 'hint wf-rule', text: ruleWords(run, kind) }),
       (run.mismatch || []).length ? el('p', { class: 'hint wf-warn',
         text: 'Measured differently: ' + run.mismatch.join('; ') + '.' }) : null,
+      d && d.newer && !W.preview ? el('p', { class: 'hint wf-warn', text: 'Showing v'
+        + d.shown + ', the newest run. v' + d.newer + ' changed the definition and has '
+        + 'not run yet: run it to see what it gives.' }) : null,
       d && (d.stale || []).length && !W.preview ? el('p', { class: 'hint wf-warn',
         text: 'Out of date: ' + d.stale.map((s) => s.what + ' ‘' + s.nickname
           + '’ is at ' + s.newest + ', this pins ' + s.pinned).join('; ')
           + '. Run with the newest inputs to make the next version from them.' })
         : null,
-      legend(kind, W.stage),
+      legend(run, kind, W.stage),
+      W.stage === 'extract' && kind !== 'ambiguous' ? bankCard(row, run, kind) : null,
       el('div', { class: 'wf-views' }, [
         el('div', { class: 'wf-3d-wrap' }, [big,
           el('span', { class: 'hint', text: 'Drag to turn, scroll to zoom, click '
@@ -1354,23 +1421,34 @@ BARRY.rcWorkflow = (function () {
       ]),
       inspector(run, kind),
       el('div', { class: 'wf-panels' }, [
-        kind !== 'ambiguous' ? panel('Grace', 'How the box would change with '
-          + 'the grace: the target events inside it (in the border’s colour) '
-          + 'and the share of the border’s own events it leaves out (amber).',
-          (() => { const cv = el('canvas', { class: 'wf-sweep' });
-                   later(() => drawSweep(cv, run, kind)); return cv; })()) : null,
-        panel('How far from the border', 'Every target event’s distance from '
-          + 'the box on each axis, in box widths: left of the line inside, '
-          + 'right of it outside.', distPanel(run, kind)),
-        panel('Where they went', 'From each mouse to each class, as wide as '
-          + 'how many of its events.', (() => {
+        kind !== 'ambiguous' ? panel('Grace', 'What a different grace would '
+          + 'have done, before choosing one. The dashed line is this run’s.',
+          el('div', {}, [
+            el('div', { class: 'wf-key' }, [
+              el('span', { class: 'wf-lg' }, [el('i', { class: 'wf-lg-line',
+                style: 'background:' + (kind === 'ds' ? tok('--call-ds') : tok('--call-p')) }),
+                el('span', { text: 'target events inside the box (left axis)' })]),
+              el('span', { class: 'wf-lg' }, [el('i', { class: 'wf-lg-line',
+                style: 'background:' + tok('--warn') }),
+                el('span', { text: 'the border’s own events it leaves out (right axis)' })]),
+            ]),
+            (() => { const cv = el('canvas', { class: 'wf-sweep' });
+                     later(() => drawSweep(cv, run, kind)); return cv; })(),
+          ])) : null,
+        panel('How far from the border', 'On each axis, every target event’s '
+          + 'distance from the box’s edge, in box widths: 0 is the edge, −1 the '
+          + 'far side of the box, +0.5 half a box beyond it. Coloured: inside.',
+          distPanel(run, kind)),
+        panel('Where they went', 'Each mouse’s target events, left, to where '
+          + 'the border put them, right; each band as wide as how many.', (() => {
             const cv = el('canvas', { class: 'wf-flow' });
             later(() => drawFlow(cv, run, kind)); return cv; })()),
         kind === 'ambiguous' ? panel('Conflicts', 'Events inside both borders '
           + 'are ambiguous (decided 2026-11-05) and drawn amber.',
           venn(run)) : null,
-        panel('Every mouse', 'Each mouse’s target events on amplitude and HF, '
-          + 'with how many came out.', perMouse(run, kind, R)),
+        panel('Every mouse', 'Each mouse on its own: amplitude across, HF up, '
+          + 'the border’s box drawn in; under it how many came out of how many.',
+          perMouse(run, kind, R)),
         panel('Averages', 'The four pictures averaged over a class, from every '
           + 'recording whose read is on this machine.', averages(run, kind)),
       ].filter(Boolean)),
@@ -1391,29 +1469,52 @@ BARRY.rcWorkflow = (function () {
     return run.rule || '';
   }
 
-  function legend(kind, stage) {
-    const item = (colour, text) => el('span', { class: 'wf-lg' }, [
-      el('i', { style: 'background:' + colour }), el('span', { text })]);
-    const kids = [];
+  /* EVERY MARK ON THE PICTURES, NAMED (2026-11-05: "blue solid is the
+     border with grace, dashed with no grace, and what is the faint box?").
+     The dots with how many of each, every box drawn, and the frame. */
+  function legend(run, kind, stage) {
+    const set = stageSet(run, kind, stage);
+    const n = {};
+    for (const p of set.pts) n[p.cls] = (n[p.cls] || 0) + 1;
+    const tot = set.pts.length || 1;
+    const cnt = (c) => (n[c] || 0).toLocaleString() + ' · ' + pct((n[c] || 0) / tot);
+    const dot = (colour, text, c) => el('span', { class: 'wf-lg' }, [
+      el('i', { class: 'wf-lg-dot', style: 'background:' + colour }),
+      el('span', { text }), c != null ? el('b', { text: cnt(c) }) : null].filter(Boolean));
+    const box = (colour, dashed, text) => el('span', { class: 'wf-lg' }, [
+      el('i', { class: 'wf-lg-box' + (dashed ? ' dashed' : ''),
+                style: 'border-color:' + colour }), el('span', { text })]);
+    const dots = [];
     if (kind === 'ambiguous') {
-      kids.push(item(tok('--call-ds'), 'inside the DS border only'),
-                item(tok('--call-p'), 'inside the P-spike border only'),
-                item(tok('--warn'), 'inside both (ambiguous)'),
-                item(tok('--text-2'), 'outside both (ambiguous)'));
+      dots.push(dot(tok('--call-ds'), 'DS border only', 'ds'),
+                dot(tok('--call-p'), 'P-spike border only', 'pspike'),
+                dot(tok('--warn'), 'inside both: ambiguous', 'both'),
+                dot(tok('--text-2'), 'outside both: ambiguous', 'neither'));
     } else {
       const grp = kind === 'ds' ? tok('--call-ds') : tok('--call-p');
       const w = kind === 'ds' ? 'DS' : 'P-spike';
-      kids.push(item(grp, stage === 'define' ? 'the border’s own ' + w
-                           + ' events, inside it' : 'inside: verified ' + w));
-      kids.push(item(stage === 'define' ? tok('--warn') : tok('--text-3'),
-                     stage === 'define' ? 'left outside by the grace'
-                                        : 'outside'));
+      if (stage === 'define') {
+        dots.push(dot(grp, 'the border’s own ' + w + ' events, inside it', 'inside'),
+                  dot(tok('--warn'), 'its own, left outside by the grace', 'outside'));
+      } else {
+        dots.push(dot(grp, 'inside: verified ' + w, 'inside'),
+                  dot(tok('--text-3'), 'outside the border', 'outside'));
+      }
     }
-    kids.push(el('span', { class: 'hint', text: 'Solid box: the border at its '
-      + 'grace. Dashed: at no grace.' }));
-    if (stage === 'extract') kids.push(el('span', { class: 'hint',
-      text: 'Faded: not extracted.' }));
-    return el('div', { class: 'wf-legend' }, kids);
+    const boxes = boxesOf(run, kind).map((b) => box(b.colour, b.dashed,
+      b.dashed ? b.label + ' (the widest the box gets)' : b.label));
+    boxes.push(box(tok('--line'), false, 'frame: the axes, lowest to highest value on show'));
+    return el('div', { class: 'wf-legend' }, [
+      el('div', { class: 'wf-legend-row' }, [el('span', { class: 'wf-lg-h', text: 'Dots' })]
+        .concat(dots)),
+      el('div', { class: 'wf-legend-row' }, [el('span', { class: 'wf-lg-h', text: 'Boxes' })]
+        .concat(boxes)),
+      stage === 'extract' ? el('div', { class: 'wf-legend-row' }, [
+        el('span', { class: 'wf-lg-h', text: 'Faded' }),
+        el('span', { class: 'hint', text: kind === 'ambiguous'
+          ? 'not ambiguous: they are inside exactly one border'
+          : 'not extracted: outside the border' })]) : null,
+    ].filter(Boolean));
   }
 
   function panel(title, words, body) {

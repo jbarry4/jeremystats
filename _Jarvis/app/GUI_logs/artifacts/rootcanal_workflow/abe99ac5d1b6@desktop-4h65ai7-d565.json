@@ -1,7 +1,7 @@
 {
   "_at": {
     "added": "2026-11-05T21:24:10.693320+00:00",
-    "deleted": "2026-11-05T21:24:10.693320+00:00",
+    "deleted": "2026-11-05T22:04:09.764281+00:00",
     "id": "2026-11-05T21:24:10.693320+00:00",
     "kind": "2026-11-05T21:24:10.693320+00:00",
     "name": "2026-11-05T21:24:10.693320+00:00",
@@ -9,18 +9,26 @@
     "schema": "2026-11-05T21:24:10.693320+00:00",
     "subject": "2026-11-05T21:24:10.693320+00:00",
     "subject_key": "2026-11-05T21:24:10.693320+00:00",
-    "version": "2026-11-05T21:24:10.693320+00:00"
+    "version": "2026-11-05T22:04:09.764281+00:00"
   },
   "_keys": {
     "versions": {
+      "af5e613110d6": [
+        "set",
+        "2026-11-05T22:04:05.513433+00:00"
+      ],
       "c6016c596724": [
         "set",
         "2026-11-05T21:24:10.693320+00:00"
+      ],
+      "cbf708771d79": [
+        "set",
+        "2026-11-05T22:04:09.764281+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-05T21:24:10.693320+00:00",
+    "at": "2026-11-05T22:04:09.764281+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -42,7 +50,7 @@
     "workflow_key": "640618793d514cbf8fe662596eba2580"
   },
   "subject_key": "rootcanal_workflow|640618793d514cbf8fe662596eba2580",
-  "version": 1,
+  "version": 3,
   "versions": [
     {
       "app_version": "2026.11.05.5",
@@ -70,6 +78,63 @@
       },
       "params_hash": "c95d844db2c3",
       "v": 1
+    },
+    {
+      "app_version": "2026.11.05.6",
+      "at": "2026-11-05T17:04:05-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "f85d2b51",
+      "digest": "a07e278e261f",
+      "id": "af5e613110d6",
+      "inputs": [
+        {
+          "artifact_id": "f669e8c87dc9",
+          "kind": "rootcanal_pool",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": 2198,
+        "grace": 0.05,
+        "kept": 1381,
+        "kind": "pspike",
+        "ran": true,
+        "target": "PTEN ALL PTEN Baseline Full Incisor"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.05,
+        "kind": "pspike"
+      },
+      "params_hash": "63d2107536ad",
+      "v": 2
+    },
+    {
+      "app_version": "2026.11.05.6",
+      "at": "2026-11-05T17:04:09-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "f85d2b51",
+      "digest": "b5173a8e388a",
+      "id": "cbf708771d79",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": 0.05,
+        "kept": null,
+        "kind": "pspike",
+        "ran": false,
+        "target": "PTEN ALL PTEN Baseline Full Incisor"
+      },
+      "note": "Definition changed",
+      "params": {
+        "kind": "pspike"
+      },
+      "params_hash": "c95d844db2c3",
+      "v": 3
     }
   ]
 }
