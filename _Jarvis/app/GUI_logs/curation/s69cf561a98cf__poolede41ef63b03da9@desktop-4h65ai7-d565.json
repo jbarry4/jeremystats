@@ -16,7 +16,7 @@
     "schema": "2026-11-04T21:26:01.041396+00:00",
     "session_label": "2026-11-04T21:26:01.041396+00:00",
     "source": "2026-11-04T21:26:01.041396+00:00",
-    "updated": "2026-11-06T19:52:20.497907+00:00"
+    "updated": "2026-11-06T20:19:36.795919+00:00"
   },
   "_keys": {
     "events": {
@@ -122,7 +122,7 @@
       ],
       "e066228d0eb": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-06T20:19:36.795919+00:00"
       ],
       "e0685be2804": [
         "set",
@@ -646,7 +646,7 @@
       ],
       "e2f53ad5b8c": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-06T20:19:36.795919+00:00"
       ],
       "e2f77ba0d23": [
         "set",
@@ -714,11 +714,11 @@
       ],
       "e342e5bf2f9": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-06T20:19:36.795919+00:00"
       ],
       "e346695627f": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-06T20:19:36.795919+00:00"
       ],
       "e34f92463b4": [
         "set",
@@ -1070,7 +1070,7 @@
       ],
       "e4ed55b32ed": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-06T20:19:36.795919+00:00"
       ],
       "e5039207e42": [
         "set",
@@ -1178,7 +1178,7 @@
       ],
       "e57e9af8b83": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-06T20:19:36.795919+00:00"
       ],
       "e57f714cac1": [
         "set",
@@ -1246,7 +1246,7 @@
       ],
       "e5d6a7ffd02": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-06T20:19:36.795919+00:00"
       ],
       "e5d6ab5cfa1": [
         "set",
@@ -1898,7 +1898,7 @@
       ],
       "e8eae924f9a": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-06T20:19:36.795919+00:00"
       ],
       "e8f587402d3": [
         "set",
@@ -2114,11 +2114,11 @@
       ],
       "e9db3c1ca7f": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-06T20:19:36.795919+00:00"
       ],
       "e9df9e237fd": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-06T20:19:36.795919+00:00"
       ],
       "e9dfa089e42": [
         "set",
@@ -2866,11 +2866,11 @@
       ],
       "eda66a63e1c": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-06T20:19:36.795919+00:00"
       ],
       "edb08d32bf6": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-06T20:19:36.795919+00:00"
       ],
       "edb54616830": [
         "set",
@@ -3354,7 +3354,7 @@
       ],
       "efc67aada05": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-06T20:19:36.795919+00:00"
       ],
       "efc7b5d5fa5": [
         "set",
@@ -3415,7 +3415,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-06T19:52:20.497907+00:00",
+    "at": "2026-11-06T20:19:36.795919+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -5131,11 +5131,11 @@
     },
     {
       "amplitude": 400.1955,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-06T19:52:13+00:00",
+      "by": "Maddie Massad",
       "channel": 7,
       "id": "e5d6a7ffd02",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5148,11 +5148,11 @@
     },
     {
       "amplitude": 432.5159,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-06T19:52:57+00:00",
+      "by": "Maddie Massad",
       "channel": 8,
       "id": "efc67aada05",
-      "label": "likely_garbage",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
@@ -5165,11 +5165,11 @@
     },
     {
       "amplitude": 371.7078,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-06T19:53:53+00:00",
+      "by": "Maddie Massad",
       "channel": 7,
       "id": "e57e9af8b83",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5182,11 +5182,11 @@
     },
     {
       "amplitude": 426.002,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-06T19:54:06+00:00",
+      "by": "Maddie Massad",
       "channel": 40,
       "id": "e342e5bf2f9",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "doppler",
       "reviews": [
         {
@@ -5199,11 +5199,11 @@
     },
     {
       "amplitude": 341.8899,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-06T19:54:27+00:00",
+      "by": "Maddie Massad",
       "channel": 5,
       "id": "e8eae924f9a",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5216,11 +5216,11 @@
     },
     {
       "amplitude": 428.32,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-06T19:55:21+00:00",
+      "by": "Maddie Massad",
       "channel": 6,
       "id": "e346695627f",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5233,11 +5233,11 @@
     },
     {
       "amplitude": 436.3987,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-06T19:56:00+00:00",
+      "by": "Maddie Massad",
       "channel": 1,
       "id": "e4ed55b32ed",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "both",
       "pair_t": 324.175336,
       "reviews": [
@@ -5251,11 +5251,11 @@
     },
     {
       "amplitude": 396.2189,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-06T19:57:10+00:00",
+      "by": "Maddie Massad",
       "channel": 1,
       "id": "eda66a63e1c",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5268,11 +5268,11 @@
     },
     {
       "amplitude": 513.9115,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-06T19:57:19+00:00",
+      "by": "Maddie Massad",
       "channel": 1,
       "id": "e9df9e237fd",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5285,11 +5285,11 @@
     },
     {
       "amplitude": 412.5238,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-06T19:58:29+00:00",
+      "by": "Maddie Massad",
       "channel": 16,
       "id": "e066228d0eb",
-      "label": "likely_garbage",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
@@ -5302,11 +5302,11 @@
     },
     {
       "amplitude": 484.7278,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-06T19:59:10+00:00",
+      "by": "Maddie Massad",
       "channel": 3,
       "id": "e2f53ad5b8c",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "both",
       "pair_t": 326.123823,
       "reviews": [
@@ -5320,11 +5320,11 @@
     },
     {
       "amplitude": 502.1197,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-06T19:59:56+00:00",
+      "by": "Maddie Massad",
       "channel": 1,
       "id": "edb08d32bf6",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5337,11 +5337,11 @@
     },
     {
       "amplitude": 380.8082,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-06T20:00:20+00:00",
+      "by": "Maddie Massad",
       "channel": 5,
       "id": "e9db3c1ca7f",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "both",
       "pair_t": 327.265315,
       "reviews": [
@@ -18050,7 +18050,7 @@
   },
   "updated": {
     "app_version": "2026.11.06.4",
-    "at": "2026-11-06T14:52:20-05:00",
+    "at": "2026-11-06T15:19:36-05:00",
     "commit": "66db6f7a",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
