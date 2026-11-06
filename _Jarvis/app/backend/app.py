@@ -4774,6 +4774,11 @@ _VACC_RESUMED = {"done": False, "jobs": []}
 
 def _file_batch_answer(tool, t, out):
     """File one answer of a resumed batch the way the live batch does."""
+    if tool == "rootcanal":
+        # The read is still on the cluster; it comes home exactly as the
+        # live batch brings it.
+        _rootcanal_vacc_adopt(None, t, out)
+        return
     if tool == "braces":
         # Everything filing needs was written into the run record when the
         # set was prepared; the recording is never opened again.
@@ -4825,7 +4830,7 @@ def _resume_vacc_batches(ssh=None):
     out = []
     for rec in VACC_RUNLOG.open_runs():
         tool = rec.get("tool")
-        if tool not in ("incisor", "doppler", "braces") \
+        if tool not in ("incisor", "doppler", "braces", "rootcanal") \
                 or rec.get("kind") != "array":
             continue
         if rec.get("job_id") and cfcmod.exists(rec["job_id"]):
@@ -11201,6 +11206,9 @@ def api_rootcanal_batch_plan():
             row["read"] = rh
             row["probe"] = p.probe
             row["path"] = sess.get("path")
+            # This computer has the recording, or only the cluster does --
+            # in which case the batch reads it there, whatever Where says.
+            row["here"] = not vacciomod.is_vacc(sess.get("path"))
             if _rootcanal_is_read(rec.get("gid"), rh, marked, stamps):
                 done.append(dict(row, cached=True))
             elif _rootcanal_on_shelf(rec.get("gid"), rh):
@@ -11231,21 +11239,34 @@ def api_rootcanal_batch_plan():
         todo.sort(key=key)
         done.sort(key=key)
         blocked.sort(key=key)
+        # Which of the sets still to read a compute node could read: on the
+        # VACC, those go there side by side and the rest are read here.
+        reach = _rootcanal_cluster_reach(todo, reg)
+        if reach is not None:
+            for row in todo:
+                row["cluster"] = bool(reach.get(row.get("gid")))
     except Exception as exc:                             # noqa: BLE001
         return fail("rootcanal/batch-plan", exc, 400)
     return jsonify({"ok": True, "todo": todo, "done": done,
                     "blocked": blocked, "n": len(todo),
-                    "n_done": len(done), "n_blocked": len(blocked)})
+                    "n_done": len(done), "n_blocked": len(blocked),
+                    "vacc": reach is not None})
 
 
 @app.route("/api/rootcanal/batch", methods=["POST"])
 def api_rootcanal_batch():
-    """Read every chosen set, one at a time, in the background.
+    """Read every chosen set in the background.
 
-    One at a time for X-ray's reason: two reads at once over one disk are
-    slower than two in sequence. Nothing is classified or banked -- that is
-    a decision with a person's name on it -- but each set is openable in the
-    panel the moment its row turns done, because its read is on file.
+    Here, one at a time for X-ray's reason: two reads at once over one disk
+    are slower than two in sequence. On the VACC (2026-11-06: "Make Root
+    Canal Many VACC powered"), side by side: `where: "vacc"` sends every set
+    the cluster can read up as ONE array (Braces' batch, `_vacc_run_array`)
+    while this computer reads the rest, and a set only the cluster has goes
+    there whatever `where` says -- it used to be read over the live link.
+    Each read comes home and is filed as one made here. Nothing is
+    classified or banked -- that is a decision with a person's name on it --
+    but each set is openable in the panel the moment its row turns done,
+    because its read is on file.
 
     STOP LANDS MID-RECORDING. The read is handed `stop=job.check`, asked
     before every span of every channel, and a `Canceled` is re-raised rather
@@ -11274,15 +11295,26 @@ def api_rootcanal_batch():
         return jsonify({"ok": False, "error": "None of those exist.",
                         "skipped": skipped}), 400
 
+    on_vacc = str(body.get("where") or "") == "vacc"
+
     def work(job):
         job.members_init(items)
         job.begin(rootcanal.STAGE_SETS, of=len(items), unit="recordings")
-        out = {"read": [], "cached": [], "failed": []}
-        for k, it in enumerate(items):
+        out = {"read": [], "cached": [], "failed": [], "cluster": 0}
+        here, tasks = [], []
+
+        def landed():
+            # The batch's own count ("Batch still reading -- 3 of 12"),
+            # from the rows: both halves move it, in any order.
+            n = sum(1 for m in (job.snapshot().get("members") or [])
+                    if m.get("status") in ("done", "error", "failed",
+                                           "skipped", "stopped"))
+            job.tick(rootcanal.STAGE_SETS, n)
+
+        for it in items:
             eid = it["id"]
             job.check()
-            job.tick(rootcanal.STAGE_SETS, k)
-            job.member(eid, status="running")
+            job.member(eid, status="waiting", step="opening the recording")
             try:
                 rec = BANK.get(eid)
                 src_v = picks.get(eid, body.get("from_version"))
@@ -11291,10 +11323,79 @@ def api_rootcanal_batch():
                 rh = p.read_hash()
                 if (_rootcanal_is_read(gid, rh, marked, stamps, fetch=True)
                         and not force):
-                    job.member(eid, status="done", cached=True, read=rh)
+                    job.member(eid, status="done", cached=True, read=rh,
+                               step=None)
                     out["cached"].append({"entry_id": eid, "read": rh})
                     continue
-                job.member(eid, done=0, of=len(chans), step="reading")
+                there = vacciomod.is_vacc(sess.get("path"))
+                if on_vacc and not there:
+                    try:
+                        _vacc_place_for_gid(gid)
+                        there = True
+                    except Exception:                    # noqa: BLE001
+                        pass    # the cluster cannot read it; this computer can
+                if there:
+                    tasks.append(_rootcanal_vacc_task(rec, sess, chans, stamps,
+                                                      p, marked, src_v))
+                    job.member(eid, status="queued", where="vacc",
+                               step="waiting for the cluster")
+                else:
+                    here.append((eid, rec, src_v, sess, chans, stamps, p,
+                                 marked))
+                    job.member(eid, status="waiting", where="here",
+                               step="waiting its turn on this computer")
+            except cfcmod.Canceled:
+                raise
+            except Exception as exc:                     # noqa: BLE001
+                job.member(eid, status="error", step=None, error=str(exc)[:300])
+                out["failed"].append({"entry_id": eid, "why": str(exc)})
+
+        # The cluster's half goes up first and runs while this computer
+        # reads its own: both halves at once.
+        arr, thread = {}, None
+        if tasks:
+            out["cluster"] = len(tasks)
+
+            def go_cluster():
+                try:
+                    cfg = vaccmod.load_config(LOGS_DIR)
+                    vaccmod.push_code(cfg, APP_DIR)
+                    cap = (INCISOR_NETFILES_CAP
+                           if any(t.get("state") == vaccmod.NATIVE
+                                  for t in tasks) else None)
+                    arr["done"], arr["failed"] = _vacc_run_array(
+                        job, tasks, 0, cap, tool="rootcanal",
+                        adopt=lambda t, got: _rootcanal_vacc_adopt(job, t,
+                                                                   got),
+                        runlog=VACC_RUNLOG,
+                        record={"tool": "rootcanal", "job_id": job.id})
+                except Exception as exc:                 # noqa: BLE001
+                    # Stopped: the array was cancelled on the way out
+                    # (vaccrun.collect), and its rows say so.
+                    stop = isinstance(exc, cfcmod.Canceled)
+                    arr["error"] = None if stop else exc
+                    snap = job.snapshot()
+                    for t in tasks:
+                        row = next((r for r in (snap["members"] or [])
+                                    if r["id"] == t["member"]), {})
+                        if row.get("status") in ("done", "failed", "error",
+                                                 "skipped"):
+                            continue
+                        if stop:
+                            job.member(t["member"], status="stopped",
+                                       step=None)
+                        else:
+                            job.member(t["member"], status="failed",
+                                       step=None, error=str(exc)[:300])
+            thread = threading.Thread(target=go_cluster, daemon=True,
+                                      name="barry-rootcanal-array-" + job.id)
+            thread.start()
+
+        for (eid, rec, src_v, sess, chans, stamps, p, marked) in here:
+            job.check()
+            try:
+                job.member(eid, status="running", done=0, of=len(chans),
+                           step="reading")
 
                 def progress(done, of, _eid=eid):
                     job.member(_eid, done=int(done), of=int(of))
@@ -11303,15 +11404,36 @@ def api_rootcanal_batch():
                     sess, chans, stamps, p, marked, rec, src_v,
                     job=None, stop=job.check, progress=progress)
                 job.member(eid, status="done", done=len(chans),
-                           of=len(chans), read=rh, n=len(stamps))
+                           of=len(chans), read=rh, n=len(stamps), step=None)
                 out["read"].append({"entry_id": eid, "read": rh,
                                     "n": len(stamps)})
             except cfcmod.Canceled:
                 job.member(eid, status="stopped")
                 raise
             except Exception as exc:                     # noqa: BLE001
-                job.member(eid, status="error", error=str(exc))
+                job.member(eid, status="error", step=None,
+                           error=str(exc)[:300])
                 out["failed"].append({"entry_id": eid, "why": str(exc)})
+            landed()
+        if thread is not None:
+            while thread.is_alive():
+                job.check()
+                landed()
+                thread.join(1.0)
+            landed()
+            if arr.get("error") is not None:
+                out["cluster_error"] = str(arr["error"])[:300]
+            for row in (job.snapshot().get("members") or []):
+                if row.get("where") != "vacc":
+                    continue
+                if row.get("status") == "done" and not row.get("cached"):
+                    out["read"].append({"entry_id": row["id"],
+                                        "read": row.get("read"),
+                                        "where": "vacc"})
+                elif row.get("status") in ("failed", "error", "skipped"):
+                    out["failed"].append({"entry_id": row["id"],
+                                          "why": row.get("error")
+                                          or row.get("step")})
         out["skipped"] = skipped
         return out
 
@@ -11320,7 +11442,8 @@ def api_rootcanal_batch():
                        max(0.001, float(len(items))))
     STORE.record_activity([{
         "action": "rootcanal.batch",
-        "detail": {"n": len(items), "force": force},
+        "detail": {"n": len(items), "force": force,
+                   "where": "vacc" if on_vacc else "here"},
     }])
     return jsonify({"ok": True, "job": job.snapshot(), "n": len(items),
                     "skipped": skipped})
@@ -12278,18 +12401,11 @@ def _rootcanal_version_for(rec, rh, hint=None):
         % (rec.get("session_label") or rec.get("name") or rec.get("id")))
 
 
-def _rootcanal_read_vacc(sess, chans, stamps, p, marked, rec, src_v, job,
-                         mid):
-    """A Root Canal read on a compute node, for a recording only the cluster
-    has: the same `rootcanal.read`, its .npz written beside the run and
-    brought home in one stream, then filed as a read made here."""
-    import subprocess
-    gid = rec.get("gid")
-    place = _vacc_place_for_gid(gid)
-    cfg = vaccmod.load_config(LOGS_DIR)
-    vaccmod.push_code(cfg, APP_DIR)
-    where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
-             else "vacc:scratch")
+def _rootcanal_vacc_spec(gid, sess, chans, stamps, p, marked, src_v,
+                         out_name=None):
+    """What a compute node is sent to make one read: the channels, stamps,
+    settings and marked-bad contacts the desk would read with. The node
+    puts its read on the lab's shelf as well, when this process uses it."""
     spec = {"path": incisorvaccmod.path_of(gid), "tool": "rootcanal",
             "invert": bool(sess.get("invert", True)),
             "channels": [int(c["number"]) for c in chans],
@@ -12298,32 +12414,54 @@ def _rootcanal_read_vacc(sess, chans, stamps, p, marked, rec, src_v, job,
                            invert=p.invert, probe=p.probe,
                            spacing=p.spacing),
             "marked": {str(k): v for k, v in marked.items()}}
+    if out_name:
+        spec["out_name"] = out_name
+    shelf = answersmod.remote_dir("rootcanal")
+    if shelf:
+        spec["shelf"] = shelf
+        spec["shelf_name"] = os.path.basename(_rootcanal_npz(gid,
+                                                             p.read_hash()))
+    return spec
+
+
+def _rootcanal_vacc_cost(stamps, p, chans, where):
+    """(seconds to ask Slurm for, megasamples) for one read on a node."""
     span_s = len(stamps) * 2 * (p.snip_ms / 1000.0 + p.pad_s)
     seconds = max(300.0, cfcmod.rate_for("ds read", where) * span_s * 3
                   * max(1, len(chans)) + 120.0)
-    run = vaccrunmod.VaccRun(
-        cfg, "rootcanal", spec, place["remote"], plan={"seconds": seconds},
-        megasamples=max(1.0, span_s * 30000.0 * len(chans) / 1e6),
-        tool_steps=[(rootcanal.STAGE_READ, len(chans))], report=None)
-    out = run.work(_MemberJob(job, mid))
-    rel = (out or {}).get("file")
-    if not rel or not run.ws:
-        raise rootcanal.RootCanalError(
-            "The cluster finished the read but said nothing about where it "
-            "put it.")
-    remote = run.ws.rstrip("/") + "/" + rel
-    rh = p.read_hash()
+    return seconds, max(1.0, span_s * 30000.0 * len(chans) / 1e6)
+
+
+def _rootcanal_land(rec, p, src_v, marked, n_events):
+    """What filing a read made on a node needs, without the recording: kept
+    in the run record so a restart can still file it."""
+    return {"gid": rec.get("gid"), "read": p.read_hash(),
+            "entry_id": rec["id"], "from_version": src_v,
+            "session_label": rec.get("session_label"),
+            "params": p.read_params(), "marked": sorted(marked),
+            "n_events": int(n_events)}
+
+
+def _rootcanal_vacc_home(cfg, remote, land, computed_on, job=None, mid=None,
+                         keep=False, shelved=None):
+    """Bring one read a node made home, and file it as a read made here:
+    one `cat` over ssh into a part file, opened to prove it is a read, then
+    moved into place. `keep` leaves it in memory for a fit that follows."""
+    import subprocess
+    gid, rh = land["gid"], land["read"]
     dest = _rootcanal_npz(gid, rh)
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     part = dest + ".incoming"
-    job.member(mid, step="bringing the read home")
+    if job is not None and mid is not None:
+        job.member(mid, step="bringing the read home")
     cmd = vaccmod.ssh_cmd(cfg, "cat %s" % vaccmod.q(remote))
     with open(part, "wb") as fh, open(part + ".err", "wb") as eh:
         proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=fh,
                                 stderr=eh, **vaccmod.popen_kwargs())
         try:
             while proc.poll() is None:
-                job.check()
+                if job is not None:
+                    job.check()
                 time.sleep(0.4)
         except BaseException:
             proc.kill()
@@ -12343,25 +12481,144 @@ def _rootcanal_read_vacc(sess, chans, stamps, p, marked, rec, src_v, job,
                 os.remove(f)
             except OSError:
                 pass
-    cfcmod.cache_put("rootcanal:%s:%s" % (gid, rh), got)
+    if keep:
+        cfcmod.cache_put("rootcanal:%s:%s" % (gid, rh), got)
     ROOTCANAL.put({
         "gid": gid, "params_hash": rh, "kind": "read",
-        "entry_id": rec["id"], "from_version": src_v,
-        "session_label": rec.get("session_label"),
-        "params": p.read_params(),
-        "marked": sorted(marked),
+        "entry_id": land["entry_id"], "from_version": land["from_version"],
+        "session_label": land.get("session_label"),
+        "params": land["params"],
+        "marked": list(land.get("marked") or []),
         "screened": {str(k): v for k, v in (got.get("bad") or {}).items()},
-        "n_events": len(stamps),
+        "n_events": land.get("n_events"),
         "missed": got.get("missed"),
         "probe": got.get("probe"),
-        "computed_on": {"where": where, "remote": place.get("remote"),
-                        "rid": run.rid},
+        "computed_on": computed_on,
     })
+    if shelved:
+        answersmod.shelved("rootcanal", shelved)
     try:
         vaccmod._ssh(cfg, "rm -f %s" % vaccmod.q(remote), timeout=60)
     except Exception:                                    # noqa: BLE001
         pass
     return rh
+
+
+def _rootcanal_read_vacc(sess, chans, stamps, p, marked, rec, src_v, job,
+                         mid):
+    """A Root Canal read on a compute node, for a recording only the cluster
+    has: the same `rootcanal.read`, its .npz written beside the run and
+    brought home in one stream, then filed as a read made here."""
+    gid = rec.get("gid")
+    place = _vacc_place_for_gid(gid)
+    cfg = vaccmod.load_config(LOGS_DIR)
+    vaccmod.push_code(cfg, APP_DIR)
+    where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
+             else "vacc:scratch")
+    spec = _rootcanal_vacc_spec(gid, sess, chans, stamps, p, marked, src_v)
+    seconds, msamp = _rootcanal_vacc_cost(stamps, p, chans, where)
+    run = vaccrunmod.VaccRun(
+        cfg, "rootcanal", spec, place["remote"], plan={"seconds": seconds},
+        megasamples=msamp,
+        tool_steps=[(rootcanal.STAGE_READ, len(chans))], report=None)
+    out = run.work(_MemberJob(job, mid))
+    rel = (out or {}).get("file")
+    if not rel or not run.ws:
+        raise rootcanal.RootCanalError(
+            "The cluster finished the read but said nothing about where it "
+            "put it.")
+    return _rootcanal_vacc_home(
+        cfg, run.ws.rstrip("/") + "/" + rel,
+        _rootcanal_land(rec, p, src_v, marked, len(stamps)),
+        {"where": where, "remote": place.get("remote"), "rid": run.rid},
+        job=job, mid=mid, keep=True, shelved=(out or {}).get("shelved"))
+
+
+def _rootcanal_vacc_task(rec, sess, chans, stamps, p, marked, src_v):
+    """One set as a task of a VACC array (Root Canal's Many, 2026-11-06):
+    the single cluster read's spec, named for its set so the reads of one
+    array do not land on each other, and what filing it needs."""
+    gid = rec.get("gid")
+    place = _vacc_place_for_gid(gid)
+    where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
+             else "vacc:scratch")
+    rh = p.read_hash()
+    name = "rootcanal_%s__%s.npz" % (re.sub(r"[^A-Za-z0-9_-]", "_",
+                                            str(rec["id"])), rh)
+    spec = _rootcanal_vacc_spec(gid, sess, chans, stamps, p, marked, src_v,
+                                out_name=name)
+    seconds, msamp = _rootcanal_vacc_cost(stamps, p, chans, where)
+    return {
+        "gid": gid, "member": rec["id"],
+        "label": rec.get("session_label") or rec.get("name") or rec["id"],
+        "sess": None, "report": None, "key": None,
+        "spec_local": spec,
+        "spec_remote": dict(spec, path=place["remote"]),
+        "tool_steps": [(rootcanal.STAGE_READ, len(chans))],
+        "seconds": seconds, "megasamples": msamp,
+        "state": place.get("state"),
+        # The duplicate guard's question: this set, these stamps, these
+        # settings, these contacts marked bad.
+        "rq_hash": "rootcanal:%s:%s" % (rh, ",".join(
+            str(k) for k in sorted(marked))),
+        "resume": {"rootcanal": dict(
+            _rootcanal_land(rec, p, src_v, marked, len(stamps)),
+            where=where, remote=place.get("remote"))},
+    }
+
+
+def _rootcanal_vacc_adopt(job, t, out):
+    """File one task's read: home, on file, its row saying where. `job` is
+    None for a batch picked up again after a restart."""
+    land = dict((t.get("resume") or {}).get("rootcanal") or {})
+    remote = (out or {}).get("remote")
+    if not remote:
+        raise rootcanal.RootCanalError(
+            "The cluster finished the read but said nothing about where it "
+            "put it.")
+    cfg = vaccmod.load_config(LOGS_DIR)
+    _rootcanal_vacc_home(
+        cfg, remote, land,
+        {"where": land.get("where"), "remote": land.get("remote"),
+         "batch": True},
+        job=job, mid=t.get("member"), shelved=(out or {}).get("shelved"))
+    if job is not None:
+        job.member(t.get("member"), where="vacc", read=land["read"],
+                   n=int(land.get("n_events") or 0))
+
+
+def _rootcanal_cluster_reach(rows, reg):
+    """{gid: whether a compute node can read it} for these rows, or None
+    when no VACC account is set up here. One drive map and one inventory
+    for the lot, the inventory as it stands (never waited on): a plan of
+    forty sets must not walk the cluster to draw itself."""
+    try:
+        cfg = vaccmod.load_config(LOGS_DIR)
+    except Exception:                                    # noqa: BLE001
+        return None
+    if not (cfg.get("configured") and cfg.get("netid")):
+        return None
+    try:
+        staged, _unknown = _vacc_staged(wait=False)
+    except Exception:                                    # noqa: BLE001
+        staged = {}
+    try:
+        drives = vaccmod.drive_map()
+    except Exception:                                    # noqa: BLE001
+        drives = None
+    out = {}
+    for r in rows:
+        g = r.get("gid")
+        if not g or g in out:
+            continue
+        try:
+            got = vaccmod.resolve_gid(g, (reg.get(g) or {}).get("paths") or [],
+                                      cfg, drives=drives, staged=staged)
+            out[g] = bool(got.get("remote")) and got.get("state") in (
+                vaccmod.NATIVE, vaccmod.STAGED)
+        except Exception:                                # noqa: BLE001
+            out[g] = False
+    return out
 
 
 def _rootcanal_read_anywhere(it, job, mid):
@@ -27007,6 +27264,13 @@ vosmod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("user"),
 from . import softmouse as softmousemod                       # noqa: E402
 softmousemod.install(app, fail, who=lambda: ((PROFILE.effective() or {}).get("user"),
                                              _vacc_device()))
+# Floss, the bug fixer anyone can ask (the rail's Floss chip): Claude Code on
+# the lab's account, in a private copy of the code. floss.py, docs/floss.md.
+from . import floss as flossmod                               # noqa: E402
+flossmod.install(app, fail, who=lambda: (PROFILE.effective() or {}).get("user"),
+                 machine=_vacc_device, shard=shardsmod_id,
+                 build=lambda: NOTES.read().get("version"),
+                 errors=lambda: _list_errors(12)[0])
 
 # X-ray's vault: one record per (recording, question), and the read cached
 # beside it.

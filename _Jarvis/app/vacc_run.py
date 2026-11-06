@@ -290,11 +290,36 @@ def run_tool(tool, spec, bundle, job, csc):
         bad.update(braces.screen(session, use, sspec,
                                  [e["t"] for e in stamps]))
         got = rootcanal.read(session, use, stamps, p, bad, job=job)
-        name = "rootcanal_read.npz"
-        rootcanal.save_read(os.path.join(bundle["_out_dir"], name), got)
-        return {"file": name,
-                "bytes": os.path.getsize(os.path.join(bundle["_out_dir"],
-                                                      name)),
+        # Named per set in a batch (2026-11-06): every task of an array
+        # shares one run folder, so one fixed name would be the last read
+        # filed under every set.
+        name = os.path.basename(spec.get("out_name") or "rootcanal_read.npz")
+        full = os.path.join(bundle["_out_dir"], name)
+        rootcanal.save_read(full, got)
+        shelf = None
+        if spec.get("shelf") and spec.get("shelf_name"):
+            # On the lab's shelf from here (backend/answers.py), so every
+            # machine has the read without the desk sending it back up.
+            # Best effort: the desk brings the read home either way.
+            import gzip
+            import shutil
+            try:
+                os.makedirs(spec["shelf"], exist_ok=True)
+                dest = os.path.join(spec["shelf"],
+                                    os.path.basename(spec["shelf_name"])
+                                    + ".gz")
+                part = os.path.join(spec["shelf"],
+                                    "." + os.path.basename(dest) + ".part")
+                with open(full, "rb") as src, \
+                        gzip.open(part, "wb", compresslevel=1) as dst:
+                    shutil.copyfileobj(src, dst, 1 << 20)
+                os.replace(part, dest)
+                shelf = os.path.basename(spec["shelf_name"])
+            except Exception:                            # noqa: BLE001
+                shelf = None
+        return {"file": name, "remote": full,
+                "bytes": os.path.getsize(full),
+                "shelved": shelf,
                 "missed": got.get("missed"),
                 "bad": {str(k): v for k, v in (got.get("bad") or {}).items()},
                 "probe": got.get("probe")}

@@ -1579,6 +1579,23 @@ const ENTRY = '46fd29a77cc7';
      + ' return W.__hbFetch.apply(this, arguments); }; })()');
   ev('(function(){ var b = ' + RC + '._bulk(); b.plan = null; b.want = {};'
      + ' b.filt = { q: "" }; b.last = null; return 1; })()');
+  /* VACC status, stood in for and put back (uiparts.html's way): off for
+     the checks on this computer, on for the VACC's below. `last` is a
+     getter, so it is redefined rather than assigned. */
+  const hbB = ev('BARRY');
+  const hbLast = Object.getOwnPropertyDescriptor(hbB.vacc, 'last');
+  const hbVacc = hbB.state.vacc;
+  const hbVaccOn = (on) => {
+    hbB.state.vacc = on;
+    Object.defineProperty(hbB.vacc, 'last', { configurable: true,
+      get: () => ({ configured: on, available: on }) });
+  };
+  const hbVaccBack = () => {
+    hbB.state.vacc = hbVacc;
+    if (hbLast) Object.defineProperty(hbB.vacc, 'last', hbLast);
+  };
+  hbVaccOn(false);
+  ev(RC + '._render()');
   const manyB = Array.from(D().querySelectorAll('.rc-mode .seg button'))
     .find((b) => /many/i.test(b.textContent));
   ok('One or many is the run bar’s choice', !!manyB);
@@ -1691,6 +1708,104 @@ const ENTRY = '46fd29a77cc7';
   ok('the hidden ones too',
      listRows().every((r) => !r.querySelector('input').checked));
   eq('nothing was sent to be read', JSON.parse(ev('JSON.stringify(window.__hbSent)')), []);
+
+  /* ================================================================== */
+  head('MANY ON THE VACC (VACC STOOD IN FOR; NOTHING IS READ)');
+
+  /* 2026-11-06: "Make Root Canal Many VACC powered". The plan says which
+     sets the cluster can read (`cluster`) and which only it has (`here`
+     false); hb-0 has no copy there, hb-2 is only there. */
+  ev('(function(){ var p = window.__hbPlan; p.vacc = true;'
+     + ' p.todo.forEach(function(r){ r.here = true; r.cluster = true; });'
+     + ' p.todo.forEach(function(r){ if (r.entry_id === "hb-0") r.cluster = false;'
+     + '   if (r.entry_id === "hb-2") r.here = false; }); return 1; })()');
+  /* Many on this computer until VACC is pressed, so pressing it is a
+     change the bar acts on. */
+  ev('(function(){ var b = ' + RC + '._bulk(); b.plan = null; b.want = {};'
+     + ' b.where = "local"; return 1; })()');
+  hbVaccOn(true);
+  ev(RC + '._render()');
+  const vaccB = Array.from(D().querySelectorAll('.rc-mode .seg button'))
+    .find((b) => /^VACC$/.test(b.textContent.trim()));
+  ok('Where offers the VACC once it is set up', !!vaccB);
+  if (vaccB) vaccB.click();
+  await until(() => listRows().length === 30
+              && ev(RC + '._bulk().at') === 'vacc', 8000, 'Many on the VACC');
+  eq('the bar settles on the VACC, in Many',
+     [ev(RC + '._bulk().at'), ev(RC + '._bulk().on')], ['vacc', true]);
+  ok('and says the sets go up as one batch, side by side',
+     /goes to the VACC as one batch and is read there, side by side/
+       .test((D().querySelector('.rc-mode .hint') || {}).textContent || ''));
+  const rowOf = (id) => D().querySelector('.rc-bulk-card .rc-bulk-row[data-id="'
+                                          + id + '"]');
+  ok('a set the cluster has no copy of says it is read here',
+     /the VACC has no copy, so read here/.test((rowOf('hb-0') || {}).textContent || ''));
+  ok('a set only the cluster has says it is read there',
+     /only on the VACC, so read there/.test((rowOf('hb-2') || {}).textContent || ''));
+  ok('a set both have says nothing about it',
+     !/VACC/.test((rowOf('hb-4') || {}).textContent || ''));
+  for (const id of ['hb-0', 'hb-2', 'hb-4']) rowOf(id).querySelector('input').click();
+  await until(() => wantIds().length === 3, 4000, 'three ticks');
+  const costTxt = () => ((D().querySelector('.rc-bulk-cost') || {}).textContent || '');
+  ok('the cost splits them by where they are read',
+     /2 to read on the VACC \(\S+ events\), side by side/.test(costTxt())
+     && /1 to read on this computer .* the cluster has no copy of it/.test(costTxt()),
+     costTxt());
+  eq('a mixed batch’s primary says how many',
+     D().querySelector('.rc-bulk-go').textContent, 'Read the 3 ticked');
+  rowOf('hb-0').querySelector('input').click();
+  await until(() => wantIds().length === 2, 4000, 'two ticks');
+  eq('all of them on the VACC, it says so',
+     D().querySelector('.rc-bulk-go').textContent, 'Read the 2 ticked on the VACC');
+  D().querySelector('.rc-bulk-go').click();
+  await until(() => JSON.parse(ev('JSON.stringify(window.__hbSent)')).length, 4000,
+              'the batch asked for');
+  const sentV = JSON.parse(ev('JSON.stringify(window.__hbSent)'));
+  eq('the batch is asked for on the VACC, with the ticked sets',
+     [sentV.length, sentV[0] && sentV[0].where, sentV[0] && sentV[0].entries],
+     [1, 'vacc', ['hb-2', 'hb-4']]);
+
+  /* The cluster's rows, in the card's words (vaccrun.collect's states). */
+  ev(RC + '._fakeBulk(' + JSON.stringify([
+    { id: 'hb-2', label: 'HarnessA m3 s1', status: 'queued', where: 'vacc',
+      step: 'queued on 6245967' },
+    { id: 'hb-4', label: 'HarnessA m5 s1', status: 'running', where: 'vacc',
+      step: 'running' },
+    { id: 'hb-6', label: 'HarnessA m7 s1', status: 'failed', where: 'vacc',
+      error: 'harness: the node fell over' },
+    { id: 'hb-8', label: 'HarnessA m9 s1', status: 'done', where: 'vacc' },
+    { id: 'hb-10', label: 'HarnessA m11 s1', status: 'skipped', where: 'vacc',
+      step: 'already running on VACC, from Strawbarry -- following that one' },
+    { id: 'hb-0', label: 'HarnessA m1 s1', status: 'running', where: 'here',
+      done: 3, of: 64 },
+  ]) + ')');
+  await until(() => D().querySelectorAll('.rc-bulk-member').length === 6, 6000,
+              'the batch card');
+  const mRow = (id) => D().querySelector('.rc-bulk-member[data-mid="' + id + '"]');
+  const mTxt = (id) => ((mRow(id) || {}).querySelector
+    ? (mRow(id).querySelector('.dop-batch-state') || {}).textContent : '') || '';
+  eq('each row says where it stands on the cluster',
+     ['hb-2', 'hb-4', 'hb-6', 'hb-8', 'hb-10', 'hb-0'].map(mTxt),
+     ['queued on the VACC (job 6245967)', 'reading on the VACC',
+      'failed: harness: the node fell over',
+      'read on the VACC — open it to look, or bank it',
+      'not sent: already running on VACC, from Strawbarry -- following that one',
+      'reading channel 4 of 64']);
+  eq('and is drawn as queued, running, failed or done',
+     ['hb-2', 'hb-4', 'hb-6', 'hb-8', 'hb-10'].map((id) =>
+       ['queued', 'running', 'failed', 'done'].find((c) =>
+         mRow(id) && mRow(id).classList.contains(c)) || null),
+     ['queued', 'running', 'failed', 'done', 'failed']);
+  ok('a set read on the VACC opens and banks like any other',
+     !!(mRow('hb-8') && mRow('hb-8').querySelector('.rc-bulk-open')
+        && mRow('hb-8').querySelector('.rc-bulk-bank')));
+  ok('the line counts the failed and the ones on the VACC',
+     /2 failed/.test((D().querySelector('.rc-bulk-line') || {}).textContent || '')
+     && /5 on the VACC/.test((D().querySelector('.rc-bulk-line') || {}).textContent || ''),
+     (D().querySelector('.rc-bulk-line') || {}).textContent);
+  ev(RC + '._endBulk()');
+  ev('(function(){ var b = ' + RC + '._bulk(); b.where = "vacc"; return 1; })()');
+  hbVaccBack();
 
   ev('(function(){ var W = window; if (W.__hbFetch) { W.fetch = W.__hbFetch;'
      + ' delete W.__hbFetch; } })()');

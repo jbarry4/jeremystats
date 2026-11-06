@@ -171,6 +171,25 @@ def fetch(tool, dest):
         return False
 
 
+def remote_dir(tool):
+    """The shelf's folder for one tool, in the cluster's terms, or None when
+    this process does not use the shelf. For a compute node that made an
+    answer to put it there itself (2026-11-06, Root Canal's Many on the
+    VACC): sending a read home and then back up is 100 MB twice."""
+    cfg = _cfg()
+    return _dir(cfg, tool) if cfg is not None else None
+
+
+def shelved(tool, name):
+    """A compute node put `name` on the shelf: listed as there, and never
+    queued to be sent up again from here."""
+    with _lock:
+        hit = _listed.get(tool)
+        if hit:
+            hit[1].add(name)
+        _sent[(tool, name)] = _sent.get((tool, name), 0)
+
+
 def _send(tool, path):
     cfg = _cfg()
     if cfg is None or not os.path.exists(path):

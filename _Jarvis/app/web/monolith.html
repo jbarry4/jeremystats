@@ -211,6 +211,18 @@ svg.mfig { display: block; width: 100%; height: auto; }
 .tabs button { font: inherit; font-size: 14px; border: 1px solid transparent; border-bottom: 0; background: none; color: var(--ink-2);
   padding: 7px 14px; border-radius: 8px 8px 0 0; cursor: pointer; margin-bottom: -1px; }
 .tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600; border-color: var(--line-2); }
+.tabs button[hidden] { display: none; }
+/* Follow-up only (2026-11-06): tab 14 alone */
+.followrow { display: flex; justify-content: flex-end; margin: -8px 0 10px; }
+.followtgl { font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--surface);
+  color: var(--ink); cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+.followtgl[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.followtgl .knob { width: 26px; height: 14px; border-radius: 7px; background: var(--line-2); position: relative; flex: none; }
+.followtgl .knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--surface); transition: left .15s; }
+.followtgl[aria-pressed="true"] .knob { background: var(--accent, #0072B2); }
+.followtgl[aria-pressed="true"] .knob::after { left: 14px; }
+.followtgl:focus-visible { outline: 2px solid var(--focus, #0072B2); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .followtgl .knob::after { transition: none; } }
 .avgpick { margin: 0 0 12px; gap: 8px; }
 .avgpick select { font: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface); color: var(--ink); }
 ol.avgflow { list-style: none; margin: 0; padding: 0; }
@@ -916,6 +928,7 @@ svg.narbar { display: block; }
 <script src="js/monolith_evenmore.js"></script>
 <script src="js/monolith_final.js"></script>
 <script src="js/monolith_sanity.js"></script>
+<script src="js/monolith_joeprompt.js"></script>
 <script src="js/monolith_tour.js"></script>
 <script src="js/tour.js"></script>
 </body>
