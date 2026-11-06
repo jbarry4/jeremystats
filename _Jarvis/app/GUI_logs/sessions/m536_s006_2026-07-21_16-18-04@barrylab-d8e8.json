@@ -21,7 +21,7 @@
     "schema": "2026-09-03T00:08:56.770588+00:00",
     "session": "2026-09-03T00:08:56.770588+00:00",
     "start": "2026-09-03T00:08:56.770588+00:00",
-    "updated": "2026-10-30T14:50:28.527460+00:00",
+    "updated": "2026-11-05T18:32:32.025036+00:00",
     "view_state": "2026-09-25T21:42:33.252824+00:00"
   },
   "_keys": {
@@ -80,7 +80,7 @@
       ],
       "Z:\\harness\\split-me": [
         "set",
-        "2026-10-30T14:50:28.527460+00:00"
+        "2026-11-05T18:32:32.025036+00:00"
       ],
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-21_16-18-04": [
         "set",
@@ -155,7 +155,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-30T14:50:28.527460+00:00",
+    "at": "2026-11-05T18:32:32.025036+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -210,31 +210,7 @@
   "note": "",
   "paths": [
     "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-21_16-18-04",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_12-17-32",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_12-18-02",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_13-52-31",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_14-13-26",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_14-30-05",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_15-20-28",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_15-26-16",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_16-28-08",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_16-30-09",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_17-36-24",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_17-42-59",
-    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_18-56-46",
     "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-21_16-18-04",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_12-17-32",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_12-18-02",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_13-52-31",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_14-13-26",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_14-30-05",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_15-20-28",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_15-26-16",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_16-28-08",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_16-30-09",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_17-36-24",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_17-42-59",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_18-56-46",
     "Z:\\harness\\split-me"
   ],
   "project": "KCNT1",
@@ -284,14 +260,14 @@
   "session": 6,
   "start": "2026-07-21T16:18:04",
   "updated": {
-    "app_version": "2026.10.27.1",
-    "at": "2026-10-30T10:50:28-04:00",
-    "commit": "1ef9c73e",
-    "email": "rain.younger@uvm.edu",
+    "app_version": "2026.11.05.1",
+    "at": "2026-11-05T13:32:32-05:00",
+    "commit": "3ae9633b",
+    "email": "akrempas@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Rain Younger"
+    "user": "Aggie Krempasky"
   },
   "view_state": {
     "channels": [

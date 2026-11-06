@@ -1,21 +1,25 @@
 {
   "_at": {
-    "added": "2026-10-20T20:31:54.126741+00:00",
-    "deleted": "2026-10-20T20:31:54.126741+00:00",
+    "added": "2026-10-20T18:34:01.117428+00:00",
+    "deleted": "2026-11-05T21:37:51.517062+00:00",
     "id": "2026-10-20T20:31:54.126741+00:00",
     "kind": "2026-10-20T20:31:54.126741+00:00",
     "name": "2026-10-20T20:31:54.126741+00:00",
-    "nickname": "2026-10-20T20:31:54.126741+00:00",
+    "nickname": "2026-11-05T21:37:51.517062+00:00",
     "schema": "2026-10-20T20:31:54.126741+00:00",
     "subject": "2026-10-20T20:31:54.126741+00:00",
     "subject_key": "2026-10-20T20:31:54.126741+00:00",
-    "version": "2026-10-20T20:31:54.126741+00:00"
+    "version": "2026-11-05T21:37:51.517062+00:00"
   },
   "_keys": {
     "versions": {
       "0c69aacd2cd1": [
         "set",
         "2026-10-20T20:31:54.126741+00:00"
+      ],
+      "6380a5ea77fd": [
+        "set",
+        "2026-11-05T21:37:51.517062+00:00"
       ],
       "e2d340f17b1d": [
         "set",
@@ -24,7 +28,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-20T20:31:54.126741+00:00",
+    "at": "2026-11-05T21:37:51.517062+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -48,7 +52,7 @@
     "session_label": "PTEN m26 s2 2024-06-28"
   },
   "subject_key": "rootcanal_single|39d439a95f7c",
-  "version": 2,
+  "version": 3,
   "versions": [
     {
       "app_version": "2026.10.20.5",
@@ -205,6 +209,91 @@
       },
       "params_hash": "3a1a900666d0",
       "v": 2
+    },
+    {
+      "app_version": "2026.11.05.5",
+      "at": "2026-11-05T16:37:51-05:00",
+      "by": "Aggie Krempasky",
+      "commit": "c0b5e857",
+      "digest": "a1070d51e490",
+      "id": "6380a5ea77fd",
+      "inputs": [
+        {
+          "entry_id": "39d439a95f7c",
+          "from_version": null,
+          "read": "438a7811fddf",
+          "rows_digest": "c8ca5e623ccc"
+        },
+        {
+          "artifact_id": "3fcedd33613b",
+          "kind": "pool",
+          "margin": {
+            "artifact_id": "ef2b1bce5621",
+            "mode": "fixed",
+            "version": 1
+          },
+          "nickname": "CTL Baseline",
+          "version": 1
+        }
+      ],
+      "machine": "Strawbarry",
+      "n_summary": {
+        "ds": 58,
+        "events": 75,
+        "filter": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+        "ied": 17,
+        "k": 2,
+        "names": [],
+        "stats": null
+      },
+      "nickname": "from pool \u2018CTL Baseline\u2019 v1",
+      "nickname_at": "2026-11-05T16:37:51-05:00",
+      "note": "The pool's identity, as a margin applied fixed.",
+      "params": {
+        "band_hi": 1000.0,
+        "band_lo": 500.0,
+        "centres": null,
+        "cluster_calls": {},
+        "cluster_names": {},
+        "complete_only": false,
+        "cross_ms": 100.0,
+        "drawn": [],
+        "filt": "ds",
+        "flank_ms": [
+          30.0,
+          60.0
+        ],
+        "flips": [],
+        "hi_hz": 100.0,
+        "k": 2,
+        "lo_hz": 5.0,
+        "mains_out": true,
+        "margin": {
+          "artifact_id": "ef2b1bce5621",
+          "mode": "fixed",
+          "version": 1
+        },
+        "measure": {
+          "band_hi": 1000.0,
+          "band_lo": 500.0,
+          "cross_ms": 100.0,
+          "filt": "ds",
+          "filter_label": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+          "hi_hz": 100.0,
+          "lo_hz": 5.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 25.0
+        },
+        "n_init": 10,
+        "order": 3,
+        "read": "438a7811fddf",
+        "retry": [],
+        "seed": 0,
+        "win_ms": 25.0
+      },
+      "params_hash": "6d196e2bfc27",
+      "v": 3
     }
   ]
 }
