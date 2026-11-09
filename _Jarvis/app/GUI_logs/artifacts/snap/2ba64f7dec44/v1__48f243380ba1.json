@@ -1,0 +1,19 @@
+{
+ "definition": {
+  "kind": "ambiguous",
+  "uses": {
+   "ds": {
+    "artifact_id": "ab9613cbc7c2",
+    "nickname": "Verified DS Test flow",
+    "version": 2
+   },
+   "pspike": {
+    "artifact_id": "abe99ac5d1b6",
+    "nickname": "Verified P-Spike",
+    "version": 2
+   }
+  }
+ },
+ "run": null,
+ "schema": 1
+}

@@ -1,19 +1,19 @@
 {
   "_at": {
-    "device": "2026-11-05T18:10:49.407421+00:00",
-    "email": "2026-11-05T18:10:49.407421+00:00",
-    "initials": "2026-11-05T18:10:49.407421+00:00",
-    "name": "2026-11-05T18:10:49.407421+00:00",
-    "role": "2026-11-05T18:10:49.407421+00:00"
+    "device": "2026-11-06T21:24:59.296668+00:00",
+    "email": "2026-11-06T21:24:59.296668+00:00",
+    "initials": "2026-11-06T21:24:59.296668+00:00",
+    "name": "2026-11-06T21:24:59.296668+00:00",
+    "role": "2026-11-06T21:24:59.296668+00:00"
   },
   "_shard": {
-    "at": "2026-11-05T18:10:49.407421+00:00",
+    "at": "2026-11-06T21:24:59.296668+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
   "device": "Bluebarry",
-  "email": "akrempas@uvm.edu",
-  "initials": "AK",
-  "name": "Aggie Krempasky",
-  "role": "Undergraduate Student"
+  "email": "rain.younger@uvm.edu",
+  "initials": "RY",
+  "name": "Rain Younger",
+  "role": "Graduate Student"
 }
