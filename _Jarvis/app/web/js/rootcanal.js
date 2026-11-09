@@ -274,7 +274,11 @@ BARRY.rootcanal = (function () {
                  pick: {}, kind: null,
                  // The send in flight and what it sent, a Stop pressed, and
                  // the batch before, said on the picker until the next.
-                 sending: false, sent: null, stopping: false, last: null };
+                 sending: false, sent: null, stopping: false, last: null,
+                 /* Where Many reads (2026-11-06: "Make Root Canal Many VACC
+                    powered"): the VACC unless it is not set up here, which
+                    the run bar settles into `at`. */
+                 where: 'vacc', at: 'local' };
 
   /* SINGLE OR POOLED, remembered per viewer. Browser storage, because it is
      a convenience of the person looking and nothing else reads it; wrapped,
@@ -1152,22 +1156,39 @@ BARRY.rootcanal = (function () {
      back to. */
   function modeSwitch() {
     const mode = bulk.on ? 'many' : 'one';
+    /* Where and how many, through the run bar (constitution §6d). Many
+       reads on the VACC too (2026-11-06): every ticked set goes up as one
+       batch and is read there side by side. One reads here, so VACC offers
+       Many alone and choosing it switches to Many. Without VACC Mode or an
+       account the bar shows How many alone, as it did. */
+    const bar = BARRY.ui.runBar({
+      modes: { local: ['one', 'many'], vacc: ['many'] },
+      where: bulk.on ? bulk.where : 'local', count: mode,
+      onChange: (w, c) => {
+        /* Into Many from One: where Many was last, the VACC to begin
+           with (One's bar says This computer, which is One's, not Many's). */
+        if (!bulk.on && c === 'many' && w === 'local') w = bulk.where;
+        bulk.where = w;
+        bulk.on = w === 'vacc' || c === 'many';
+        render();
+        if (bulk.on && (!bulk.plan || bulk.kind !== bulkKind())) loadBulk();
+      },
+    });
+    bulk.at = bar.where;
+    const vacc = bulk.on && bulk.at === 'vacc';
     return el('div', { class: 'card rc-mode' }, [
-      /* How many, through the run bar (constitution §6d): one component
-         for the choice every tool makes, rather than a seg each tool drew
-         for itself. Only local modes, so the bar shows How many alone. */
-      BARRY.ui.runBar({
-        modes: { local: ['one', 'many'] }, where: 'local', count: mode,
-        onChange: (w, c) => {
-          bulk.on = c === 'many';
-          render();
-          if (bulk.on && (!bulk.plan || bulk.kind !== bulkKind())) loadBulk();
-        },
-      }),
+      bar,
       // Said once here; the card under it says what a tick costs.
-      el('span', { class: 'hint', text: bulk.on
-        ? 'Read many sets in one go, while you do something else. Each is '
-          + 'still looked at and banked by a person, one at a time.'
+      el('span', { class: 'hint', text: vacc
+        ? 'Every ticked set goes to the VACC as one batch and is read there, '
+          + 'side by side, while you do something else; a set the cluster '
+          + 'has no copy of is read on this computer. Each read comes home, '
+          + 'and is still looked at and banked by a person, one at a time.'
+        : bulk.on
+        ? 'Read many sets in one go, one after another on this computer, '
+          + 'while you do something else; a set only the VACC has is read '
+          + 'there. Each is still looked at and banked by a person, one at '
+          + 'a time.'
         : 'Pick an aligned set, read it once, then look at what it splits '
           + 'into.' }),
       bulk.job && !bulk.on
@@ -4408,7 +4429,7 @@ BARRY.rootcanal = (function () {
         } },
       { key: 'left', enter: false, sig: [bulk.rev, fs],
         build: () => bulkLeft(left) },
-      { key: 'go', enter: false, sig: [bulk.rev, tk, !!bulk.sending],
+      { key: 'go', enter: false, sig: [bulk.rev, tk, !!bulk.sending, bulk.at],
         build: () => bulkGo(ticked) },
     ];
   }
@@ -4621,6 +4642,10 @@ BARRY.rootcanal = (function () {
       r.group ? 'group ' + r.group : null,
       r.subgroup ? 'subgroup ' + r.subgroup : null,
       r.condition || null,
+      // Where it would be read, when that is not where the bar says.
+      !r.cached && r.here === false ? 'only on the VACC, so read there'
+        : !r.cached && bulk.at === 'vacc' && r.cluster === false
+          ? 'the VACC has no copy, so read here' : null,
     ].filter(Boolean).join('  ·  ');
   }
 
@@ -4764,15 +4789,30 @@ BARRY.rootcanal = (function () {
     return box;
   }
 
-  /* The cost, said before it is spent, and the one primary, last. */
+  /* Where one set not read yet would be read: the VACC when the cluster
+     is chosen and can read it, or when only the cluster has it. */
+  const bulkThere = (r) => r.here === false
+    || (bulk.at === 'vacc' && r.cluster !== false);
+
+  /* The cost, said before it is spent, and the one primary, last. On the
+     VACC the sets are split by where each will be read. */
   function bulkGo(ticked) {
     const fresh = ticked.filter((r) => !r.cached);
     const again = ticked.length - fresh.length;
-    const evs = fresh.reduce((s, r) => s + (Number(r.n_good) || 0), 0);
+    const up = fresh.filter(bulkThere);
+    const home = fresh.filter((r) => !bulkThere(r));
+    const evs = (rs) => rs.reduce((s, r) => s + (Number(r.n_good) || 0), 0)
+      .toLocaleString();
+    const s = (n) => (n === 1 ? '' : 's');
     const words = !ticked.length ? 'Tick the sets to read, above.'
-      : [fresh.length ? fresh.length + ' to read (' + evs.toLocaleString()
-                        + ' events), one after another, minutes each'
-                      : null,
+      : [up.length ? up.length + ' to read on the VACC (' + evs(up)
+                     + ' events), side by side' : null,
+         home.length ? home.length + ' to read on this computer ('
+                       + evs(home) + ' events), one after another, minutes '
+                       + 'each' + (bulk.at === 'vacc'
+                         ? ' — the cluster has no copy of ' + (home.length === 1
+                           ? 'it' : 'them') : '')
+                     : null,
          again ? again + ' already read, which ' + (again === 1 ? 'lands' : 'land')
                  + ' at once' : null].filter(Boolean).join('  ·  ')
         + '. Each can be opened and banked as soon as it lands; the batch '
@@ -4780,8 +4820,14 @@ BARRY.rootcanal = (function () {
     return BARRY.ui.actions([
       el('p', { class: 'hint rc-bulk-cost', text: words }),
       BARRY.ui.button({ kind: 'primary', extra: 'rc-bulk-go',
-        text: ticked.length ? 'Read the ' + ticked.length + ' ticked'
-                            : 'Read the ticked',
+        text: !ticked.length ? 'Read the ticked'
+          : up.length && !home.length
+            ? 'Read the ' + ticked.length + ' ticked on the VACC'
+            : 'Read the ' + ticked.length + ' ticked',
+        title: up.length ? up.length + ' set' + s(up.length) + ' go'
+                           + (up.length === 1 ? 'es' : '') + ' to the VACC '
+                           + 'as one batch; each read comes home to this '
+                           + 'computer when it is done.' : null,
         disabled: !ticked.length || bulk.sending, onclick: runBulk }),
     ], { extra: 'rc-bulk-go-row' });
   }
@@ -4801,12 +4847,20 @@ BARRY.rootcanal = (function () {
                                            status: 'waiting' }));
   }
 
+  /* A row's state in this card's words. The cluster's half says it in the
+     VACC batch's (`vaccrun.collect`): queued, failed, and skipped for one
+     another computer already has on the cluster. */
+  const bulkState = (m) => (m.status === 'failed' || m.status === 'skipped'
+    ? 'error' : m.status === 'queued' ? 'waiting' : (m.status || 'waiting'));
+
   function bulkTally(ms) {
     const n = { waiting: 0, running: 0, done: 0, cached: 0, error: 0,
-                stopped: 0 };
+                stopped: 0, vacc: 0 };
     for (const m of ms) {
       if (m.status === 'done' && m.cached) n.cached += 1;
-      n[m.status in n ? m.status : 'waiting'] += 1;
+      if (m.where === 'vacc') n.vacc += 1;
+      const st = bulkState(m);
+      n[st in n ? st : 'waiting'] += 1;
     }
     return n;
   }
@@ -4828,7 +4882,7 @@ BARRY.rootcanal = (function () {
           el('i', { class: 'run' })]),
         update: (b) => paintBulkBar(b, ms, n) },
       { key: 'rrows', enter: false,
-        sig: ms.map((m) => [m.id, m.status, m.cached ? 1 : 0, m.error || '']
+        sig: ms.map((m) => [m.id, bulkState(m), m.cached ? 1 : 0, m.error || '']
           .join(':')).join('|'),
         build: () => bulkRunRows(ms),
         // How far the one reading has got, without rebuilding the rows.
@@ -4859,6 +4913,7 @@ BARRY.rootcanal = (function () {
         n.waiting ? n.waiting + ' waiting' : null,
         n.error ? n.error + ' failed' : null,
         n.stopped ? n.stopped + ' stopped' : null,
+        n.vacc ? n.vacc + ' on the VACC' : null,
       ].filter(Boolean).join('  ·  ') || 'starting' }),
     ]);
   }
@@ -4884,11 +4939,36 @@ BARRY.rootcanal = (function () {
       + (n.error ? ', ' + n.error + ' failed' : '');
   }
 
+  /* The cluster's steps, in this card's words. Slurm's own states come
+     through lower-cased ("pending", "running"); the rest are said by the
+     server ("queued on 123456", "bringing the read home"). */
+  function bulkVaccStep(m) {
+    const st = String(m.step || '');
+    if (!st || st === 'waiting' || st === 'pending'
+        || /^waiting for the cluster/.test(st)) {
+      return 'waiting for the cluster';
+    }
+    if (/^queued on /.test(st)) return 'queued on the VACC (job ' + st.slice(10) + ')';
+    if (st === 'running') return 'reading on the VACC';
+    if (st === 'fetching') return 'read on the VACC; fetching it';
+    return st;
+  }
+
   function bulkMemberWords(m) {
-    if (m.status === 'error') return 'failed: ' + (m.error || 'no reason given');
+    if (m.status === 'skipped') {
+      return 'not sent: ' + (m.step || 'another computer is reading it on the VACC');
+    }
+    if (m.status === 'error' || m.status === 'failed') {
+      return 'failed: ' + (m.error || 'no reason given');
+    }
     if (m.status === 'done') {
       return m.cached ? 'already read — opens at once'
-                      : 'read — open it to look, or bank it';
+        : m.where === 'vacc' ? 'read on the VACC — open it to look, or bank it'
+        : 'read — open it to look, or bank it';
+    }
+    if (m.where === 'vacc' && (m.status === 'running' || m.status === 'queued'
+                               || m.status === 'waiting')) {
+      return bulkVaccStep(m);
     }
     if (m.status === 'running') {
       return m.of ? 'reading channel ' + Math.min((m.done || 0) + 1, m.of)
@@ -4896,6 +4976,7 @@ BARRY.rootcanal = (function () {
                   : 'getting it ready';
     }
     if (m.status === 'stopped') return 'stopped part-way; nothing of it kept';
+    if (m.step === 'opening the recording') return 'opening the recording';
     return 'waiting its turn';
   }
 
@@ -4903,7 +4984,8 @@ BARRY.rootcanal = (function () {
     const box = el('div', { class: 'dop-batch rc-bulk-run',
                             'data-keep-scroll': 'rc-bulk-run' });
     for (const m of ms) {
-      const st = m.status === 'error' ? 'failed' : (m.status || 'waiting');
+      const st = { error: 'failed', waiting: m.status === 'queued' ? 'queued'
+                   : 'waiting' }[bulkState(m)] || bulkState(m);
       const ready = m.status === 'done';
       box.appendChild(el('div', {
         class: 'dop-batch-row rc-bulk-member ' + st, 'data-mid': m.id,
@@ -4933,7 +5015,8 @@ BARRY.rootcanal = (function () {
         extra: 'rc-bulk-stop',
         disabled: !j.id || bulk.stopping || j.status === 'canceled',
         title: 'Stop the batch. The sets already read are kept; the one '
-             + 'being read stops where it is, and nothing of it is kept.',
+             + 'being read stops where it is, and nothing of it is kept. '
+             + 'Sets still on the VACC are cancelled there.',
         onclick: stopBulk }),
     ]);
   }
@@ -5013,7 +5096,8 @@ BARRY.rootcanal = (function () {
       }
       const got = await apiPost('/api/rootcanal/batch',
                                 { entries: rows.map((r) => r.entry_id),
-                                  picks: picks });
+                                  picks: picks,
+                                  where: bulk.at === 'vacc' ? 'vacc' : 'here' });
       bulk.job = got.job;
       watchBulk();
     } catch (e) {
@@ -5071,14 +5155,20 @@ BARRY.rootcanal = (function () {
     bulk.stopping = false;
     for (const m of ms) if (m.status === 'done') delete bulk.want[m.id];
     const n = ms.filter((m) => m.status === 'done').length;
+    const up = ms.filter((m) => m.status === 'done' && !m.cached
+                                && m.where === 'vacc').length;
     const quit = done && done.status === 'canceled';
     bulk.last = { n, of: ms.length, quit,
-                  failed: ms.filter((m) => m.status === 'error')
-                    .map((m) => ({ label: m.label || m.id, why: m.error })) };
+                  failed: ms.filter((m) => bulkState(m) === 'error')
+                    .map((m) => ({ label: m.label || m.id,
+                                   why: m.error || m.step })) };
     toast(quit
       ? 'Stopped. ' + n + ' of ' + ms.length + ' were read and are kept; '
-        + 'the rest were not started.'
-      : 'Read ' + n + ' of ' + ms.length + '. Nothing was banked.',
+        + 'the rest were stopped'
+        + (ms.some((m) => m.where === 'vacc') ? ', and cancelled on the VACC'
+                                              : '') + '.'
+      : 'Read ' + n + ' of ' + ms.length
+        + (up ? ' (' + up + ' on the VACC)' : '') + '. Nothing was banked.',
       quit ? 'warn' : 'ok', 8000);
     bulk.plan = null;
     if (bulk.on) { bulkRefresh(); loadBulk(); } else swap('.rc-mode', modeSwitch());

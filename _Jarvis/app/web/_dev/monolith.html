@@ -1023,10 +1023,27 @@ window.MONO_FIXTURE = {
 
   head('1 · what was kept, first');
   const tabs = () => Array.from(D().querySelectorAll('#tabs > button[role="tab"]'));
-  check('thirteen tabs, in the order they are read', tabs().map((b) => txt(b)).join(' | ') === '1 · What was kept | 2 · The Monolith | 3 · Cue 2 − Cue 1 | 4 · How a number is made | 5 · Events first | 6 · Physical vs balanced cue | 7 · Narrowing down | 8 · Joe’s data | 9 · Joe’s figures | 10 · Joe export | 11 · Narrowing down (even more) | 12 · The final stage | 13 · Sanity check report',
+  check('fourteen tabs, in the order they are read', tabs().map((b) => txt(b)).join(' | ') === '1 · What was kept | 2 · The Monolith | 3 · Cue 2 − Cue 1 | 4 · How a number is made | 5 · Events first | 6 · Physical vs balanced cue | 7 · Narrowing down | 8 · Joe’s data | 9 · Joe’s figures | 10 · Joe export | 11 · Narrowing down (even more) | 12 · The final stage | 13 · Sanity check report | 14 · Joe Prompt',
         tabs().map((b) => txt(b)).join(' | '));
   check('a fresh page opens on what was kept, the Monolith behind it', M.state.tab === 'cov' && !D().getElementById('covpane').hidden
         && D().getElementById('mainpane').hidden && D().getElementById('tab-cov').getAttribute('aria-selected') === 'true', M.state.tab);
+  {
+    // Follow-up only (2026-11-06): off to start with; on shows tab 14 alone; the browser's own setting put back
+    const ls = D().defaultView.localStorage;
+    let had = null;
+    try { had = ls.getItem('barry.mono.followup'); } catch (e) { /* none */ }
+    const fb = D().getElementById('followonly');
+    check('Follow-up only: its switch is there, off', !!fb && fb.getAttribute('aria-pressed') === 'false', fb && fb.getAttribute('aria-pressed'));
+    if (fb) {
+      fb.click();
+      check('Follow-up only shows tab 14 alone', tabs().filter((b) => !b.hidden).map((b) => b.id).join() === 'tab-prompt' && M.state.tab === 'prompt'
+            && !D().getElementById('promptpane').hidden, [tabs().filter((b) => !b.hidden).map((b) => b.id), M.state.tab]);
+      fb.click();
+      check('off again: every tab back', tabs().every((b) => !b.hidden) && fb.getAttribute('aria-pressed') === 'false', tabs().filter((b) => b.hidden).length);
+      M.showTab('cov');
+    }
+    try { if (had === null) ls.removeItem('barry.mono.followup'); else ls.setItem('barry.mono.followup', had); } catch (e) { /* none */ }
+  }
   const dmg = () => D().getElementById('damage');
   await until(() => M.damage && dmg().querySelector('svg.dmap'), 120);
   const dt = txt(dmg());

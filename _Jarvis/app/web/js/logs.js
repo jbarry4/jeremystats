@@ -2536,6 +2536,11 @@ BARRY.views.errors = (function () {
             text: g.resolved ? 'Reopen' : 'Mark resolved',
             onclick: (e) => { e.stopPropagation(); resolve(g, !g.resolved); },
           }),
+          BARRY.floss ? el('button', {
+            class: 'btn ghost sm', text: 'Ask Hater of AI',
+            title: 'Have Hater of AI look for the cause and offer a small fix',
+            onclick: (e) => { e.stopPropagation(); BARRY.floss.open({ error: g.records[0] }); },
+          }) : null,
           el('button', {
             class: 'btn ghost sm', text: 'Copy bundle for this',
             onclick: async (e) => {

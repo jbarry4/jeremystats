@@ -49,9 +49,14 @@ window.MONO = (function () {
   const TABS = [['cov', '1 · What was kept'], ['main', '2 · The Monolith'], ['c21', '3 · Cue 2 − Cue 1'], ['avg', '4 · How a number is made'],
                 ['ev', '5 · Events first'], ['phys', '6 · Physical vs balanced cue'], ['narrow', '7 · Narrowing down'],
                 ['joe', '8 · Joe’s data'], ['figs', '9 · Joe’s figures'], ['joex', '10 · Joe export'], ['more', '11 · Narrowing down (even more)'], ['final', '12 · The final stage'],
-                ['sanity', '13 · Sanity check report']];
+                ['sanity', '13 · Sanity check report'], ['prompt', '14 · Joe Prompt']];
   const PANES = { cov: 'covpane', main: 'mainpane', c21: 'mainpane', avg: 'avgpane', ev: 'evpane', phys: 'physpane', narrow: 'narrowpane',
-                  joe: 'joepane', figs: 'figspane', joex: 'joexpane', more: 'morepane', final: 'finalpane', sanity: 'sanitypane' };
+                  joe: 'joepane', figs: 'figspane', joex: 'joexpane', more: 'morepane', final: 'finalpane', sanity: 'sanitypane', prompt: 'promptpane' };
+  // Follow-up only (Joe's prompt 1, 2026-11-06): tab 14 alone, off by
+  // default, remembered in this browser.
+  const FOLLOW_KEY = 'barry.mono.followup';
+  let follow = false;
+  try { follow = localStorage.getItem(FOLLOW_KEY) === '1'; } catch (e) { /* no storage: off */ }
   // The windows by their meeting names; the switch is cue 1 giving way to cue 2.
   const WLABEL = { pre: 'Pre-baseline', cue1: 'Cue 1', cue2: 'Cue 2', post: 'Post-baseline', pair: 'Cue 1 + Cue 2',
                    onset: 'Onset', switch: 'Switch', offset: 'Offset', c21: 'Cue 2 − Cue 1' };
@@ -464,9 +469,14 @@ window.MONO = (function () {
     // A staged workflow, in order: what the data allow, then the result,
     // then how one value of it was made (the lab meeting, 2026-10-02).
     if (!TABS.some((t) => t[0] === st.tab) || (st.tab === 'c21' && !hasContrast())) st.tab = 'cov';
+    if (follow) st.tab = 'prompt';
     app.appendChild(el('div', { class: 'tabs', role: 'tablist', id: 'tabs' }, TABS.filter(([id]) => id !== 'c21' || hasContrast()).map(([id, label]) =>
-      el('button', { type: 'button', role: 'tab', id: 'tab-' + id, 'aria-selected': String(st.tab === id),
+      el('button', { type: 'button', role: 'tab', id: 'tab-' + id, 'aria-selected': String(st.tab === id), hidden: follow && id !== 'prompt' ? 'hidden' : null,
                      text: label, onclick: () => showTab(id) }))));
+    app.appendChild(el('div', { class: 'followrow' }, [
+      el('button', { type: 'button', id: 'followonly', class: 'followtgl', 'aria-pressed': String(follow),
+                     title: 'Show only tab 14, Joe Prompt (the Aim 2 follow-up)', onclick: () => setFollow(!follow) },
+        [el('span', { class: 'knob', 'aria-hidden': 'true' }), 'Follow-up only'])]));
     const cp = el('div', { id: 'covpane', role: 'tabpanel', hidden: st.tab === 'cov' ? null : 'hidden' }, [
       el('div', { class: 'card', id: 'damage' }, [el('p', { class: 'loading', text: 'Counting what was kept…' })]),
       el('div', { class: 'card', id: 'minusfpwrap' }, [el('div', { id: 'minusfp' })]),
@@ -486,6 +496,7 @@ window.MONO = (function () {
     app.appendChild(el('div', { id: 'morepane', role: 'tabpanel', hidden: st.tab === 'more' ? null : 'hidden' }));
     app.appendChild(el('div', { id: 'finalpane', role: 'tabpanel', hidden: st.tab === 'final' ? null : 'hidden' }));
     app.appendChild(el('div', { id: 'sanitypane', role: 'tabpanel', hidden: st.tab === 'sanity' ? null : 'hidden' }));
+    app.appendChild(el('div', { id: 'promptpane', role: 'tabpanel', hidden: st.tab === 'prompt' ? null : 'hidden' }));
     // Where a value comes from, and the way back: the trail over the result.
     mp.appendChild(el('nav', { class: 'trail', id: 'trail', 'aria-label': 'Where this value comes from' }));
     mp.appendChild(el('div', { class: 'card', id: 'verdict' }));
@@ -540,7 +551,19 @@ window.MONO = (function () {
      When we averaged: one line of the circuit, from the raw trace up
      ================================================================== */
   const AV = { seq: 0, detail: null, leaf: null, err: null, leafErr: null, rat: null, day: 'Precon4', unit: null, key: null };
+  function setFollow(v) {
+    follow = !!v;
+    try { localStorage.setItem(FOLLOW_KEY, follow ? '1' : '0'); } catch (e) { /* none */ }
+    const b = $('followonly');
+    if (b) b.setAttribute('aria-pressed', String(follow));
+    for (const [id] of TABS) {
+      const tb = $('tab-' + id);
+      if (tb) tb.hidden = follow && id !== 'prompt';
+    }
+    showTab(follow ? 'prompt' : st.tab);
+  }
   function showTab(t) {
+    if (follow) t = 'prompt';
     st.tab = TABS.some((x) => x[0] === t) && (t !== 'c21' || hasContrast()) ? t : 'main';
     for (const [id] of TABS) {
       const b = $('tab-' + id);
@@ -562,6 +585,7 @@ window.MONO = (function () {
     if (st.tab === 'more' && window.MONO_EVENMORE) window.MONO_EVENMORE.show();
     if (st.tab === 'final' && window.MONO_FINAL) window.MONO_FINAL.show();
     if (st.tab === 'sanity' && window.MONO_SANITY) window.MONO_SANITY.show();
+    if (st.tab === 'prompt' && window.MONO_PROMPT) window.MONO_PROMPT.show();
     if (st.tab === 'main' || st.tab === 'c21') renderTrail();
     try { scrollTo(0, 0); } catch (e) { /* none */ }
   }
@@ -3784,6 +3808,7 @@ window.MONO = (function () {
     if (st.tab === 'more' && window.MONO_EVENMORE) window.MONO_EVENMORE.show();
     if (st.tab === 'final' && window.MONO_FINAL) window.MONO_FINAL.show();
     if (st.tab === 'sanity' && window.MONO_SANITY) window.MONO_SANITY.show();
+    if (st.tab === 'prompt' && window.MONO_PROMPT) window.MONO_PROMPT.show();
     document.dispatchEvent(new CustomEvent('monolith:ready'));
   }
 
@@ -3796,7 +3821,7 @@ window.MONO = (function () {
     get ghost() { return { pair: GH.pair, stack: GH.stack.slice(), lifted: GH.lifted, detail: GH.detail, info: GH.info }; },
     get ready() { return !!D.ready; },
     set, go, openGhost, closeGhost, push, ghostTo, renderAll, LEVELS, Q, openLeaf, closeLeaf, stepLeaf, switchDay,
-    rangeBins, switchSplit, topOf, showTab, renderTrail, levelMeans, renderPacSelf, openPacExample, get pacSelf() { return PS; },
+    rangeBins, switchSplit, topOf, showTab, setFollow, get follow() { return follow; }, renderTrail, levelMeans, renderPacSelf, openPacExample, get pacSelf() { return PS; },
     // For js/monolith_events.js: the same door to the server (and to the
     // harness's fixture), the same ? and the same hover.
     getJSON, postJSON, qh, el, hover, renderTraj,

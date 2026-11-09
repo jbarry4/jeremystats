@@ -15,6 +15,128 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.06.4 - Tab 14, Joe Prompt: Joe's final round of Aim 2 follow-ups
+
+Needs a restart and a reload.
+
+- **A new tab, 14 · Joe Prompt, in the Monolith and on Joe's site.** It holds
+  every request of Joe's run sheet (`Aim2_Jarvis_Run_Sheet_Final_2026-11-06.docx`,
+  23 requests, A1 to C5), on J6–J11 only (PER 5).
+- **Its parts:**
+  - Overview: his summary table, with filters for priority and status and a
+    one-line result per request, and the Confirmations;
+  - Volume conduction (moved here from Wrapping up);
+  - Data cleaning;
+  - Coherence;
+  - Power and FOOOF;
+  - Granger and coupling;
+  - H2 and behavior;
+  - Technical checks.
+- **What each request card shows:**
+  - what was run, and what it found, with estimates, 95% CIs, p and q;
+  - leave-one-rat-out and the mixed model;
+  - the run sheet's reading for it;
+  - its tables and figures;
+  - its PDF and CSV, named by ID (`A1_..._NoJ3J4.pdf`), all in one Aim 2
+    follow-up folder (one zip on the site).
+- **Follow-up only,** on both: a switch that shows this tab alone. It is off
+  by default and remembered.
+- **Reused, not recomputed:**
+  - C1 is tab 11's coherence by period;
+  - B1 and A6 use tab 12's FOOOF fits and rows;
+  - B7 uses tier 1's GEE;
+  - C2 and C3 use tab 12's Granger and modulation index;
+  - C5 uses the SPSS behavior results.
+- **New, from one more pass over the recordings** (`python -m backend.joeprompt
+  measure`, cached per rat-day; it reproduces tab 11's pooled spectra to 2e-7):
+  - debiased wPLI and PPC;
+  - 2-s windows;
+  - each trial's own spectra (trial halves, and paired against unpaired cues
+    for H2).
+- **Not run, by Shahriar's choice:**
+  - B6, movement (the tracking files exist);
+  - B12, the cue-pair split;
+  - B11's automatic screen: its part explains the cleaning instead, with
+    figures and methods text;
+  - EMG at 100–200 Hz;
+  - conditional Granger;
+  - the rebuilt MI.
+- **Graphs say Early and Late.**
+- **Volume conduction, in plain English.** The part is now a walk-through:
+  - what volume conduction is;
+  - four checks, each with its figure, "How to read it" and "What it shows";
+  - a table that gives each coherence change a verdict;
+  - the bottom line.
+
+  A2's full numbers are folded underneath. The four figures are new: the
+  idea, how often signals line up at zero delay, the six changes against
+  the lag-only measure, and why J3 and J4 were left out. The old explainer's
+  "still open" list said the lag-only test was not done yet, so it is no
+  longer shown here.
+- **One figure style for the whole tab,** matching the publication set:
+  - no headline sentence inside a figure (the caption carries it);
+  - bold panel letters;
+  - plain titles and the house font sizes.
+
+  The cleaning figure is redrawn: rats grouped Early and Late, the share of
+  pieces omitted beside each bar, and the steps numbered with the artifact
+  steps marked.
+- Made by `python -m backend.joepromptfigs`; `backend/joeexport.py` adds it
+  to tab 10's list and the site.
+
+## 2026.11.06.3 - Root Canal's Many reads on the VACC
+
+Needs a restart and a reload.
+
+- **Where: VACC in Many.** Root Canal's run bar now has Where, as Incisor's
+  and Braces' do. On the VACC, every ticked set the cluster can read goes up
+  as one batch and is read side by side on compute nodes. A set the cluster
+  has no copy of is read on this computer at the same time. Many opens on
+  the VACC when it is set up; One still reads here.
+- **Each read comes home.** It is filed as if it were read here, so Open
+  and Bank… work the moment its row turns done. The node also puts it on
+  the lab's shelf, so every other computer has it without this one sending
+  it back up.
+- **A set only the cluster has** is read there in either mode. Before, Many
+  tried to read it over the live link.
+- **What it says first.** Each row says if the VACC has no copy ("read
+  here") or if only the VACC has it. The cost line splits the ticked sets
+  into "N to read on the VACC" and "M on this computer". While it runs,
+  each row says queued (with its Slurm job), reading on the VACC, bringing
+  the read home, read, or failed with why.
+- **Stop** cancels the sets still on the cluster.
+- **A restart** picks the batch up again: reads still on the cluster are
+  brought home and filed, like Braces' batches.
+- **Measured on the real data:** PTEN m6 s4 and PTEN_DKO m44 s1 (DS), one
+  array of two, 5 min 10 s from press to both filed. m6 s4 had been read
+  here before, and the cluster's read matches it: 15 of 17 arrays identical,
+  and the two spectra within 1 part in 10 million (float rounding).
+
+## 2026.11.06.2 - Hater of AI, a bug fixer anyone can ask
+
+Needs a restart and a reload. Works once the lab key is set up
+(`tools/floss_setup.py`, see `docs/floss.md`; inside the code he is
+"floss"); until then the dialog says
+so.
+
+- **Hater of AI** in the rail, and **Ask Hater of AI** on each fault in
+  History > Errors. He opens as a small pop-up beside the rail, so the app
+  stays usable while he works. Say what went wrong; Claude Code, on the lab's Claude account,
+  looks for the cause in a private copy of this machine's code and makes
+  the smallest fix it can. You read what it found and choose **Use it
+  here** or **Leave it for review**. A used fix can be taken out again.
+- Bugs, and small changes you ask for (wording, layout, a broken control).
+  Paste, drop or attach screenshots; he reads them first. They stay on
+  this computer, never in git.
+- Limited by rule, not by request: 8 files and 250 lines at most, existing
+  code files only, never the sync, sign-ins or his own code. Anything
+  bigger is kept for review and never offered here.
+- The first time on a machine, the dialog installs Claude Code (one click)
+  and asks for the lab PIN (once).
+- Every ask is a ticket in `GUI_logs/floss/`, which travels by git; the
+  main Claude session reviews and integrates them
+  (`tools/floss_inbox.py`). Checked by `tools/check_floss.py`.
+
 ## 2026.11.06.1 - A check that Ambiguous borrows the run before an edit
 
 From the daily error pass (TRIAGE.md, pass 12). Nothing the app runs

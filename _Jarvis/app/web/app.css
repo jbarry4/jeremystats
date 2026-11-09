@@ -17813,3 +17813,65 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
 .wf-thumb-empty { display: flex; align-items: center; justify-content: center; text-align: center;
   font-size: var(--fs-11); color: var(--text-3); border: 1px dashed var(--line);
   border-radius: var(--radius-sm); padding: var(--sp-6); box-sizing: border-box; }
+
+/* Hater of AI, the bug fixer anyone can ask (js/floss.js): a small pop-up
+   beside the rail chip that opened it, not a modal, so the app stays usable
+   while he works. Below the modals (70) and toasts. */
+.hoa-pop { position: fixed; z-index: 65; width: min(420px, calc(100vw - 24px));
+  display: flex; flex-direction: column; min-height: 0;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); animation: hoa-in 140ms ease-out; transform-origin: bottom left; }
+@keyframes hoa-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } }
+@media (prefers-reduced-motion: reduce) { .hoa-pop { animation: none; } }
+.hoa-head { display: flex; align-items: center; gap: var(--sp-8); flex: none;
+  padding: 10px 10px 10px 14px; border-bottom: 1px solid var(--line-soft); }
+.hoa-head .hint { font-size: var(--fs-12); }
+.hoa-head .spacer, .hoa-foot .spacer, .hoa-actions .spacer { flex: 1; }
+.hoa-actions { display: flex; align-items: center; gap: var(--sp-6); }
+.floss-ask.drop { border-color: var(--accent-line); background: var(--bg-3); }
+.hoa-shots { display: flex; flex-wrap: wrap; gap: var(--sp-6); }
+.hoa-shot { position: relative; display: block; width: 84px; height: 60px; flex: none;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden;
+  background: var(--bg); }
+.hoa-shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hoa-shot-x { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; padding: 0;
+  display: grid; place-items: center; border: none; border-radius: 50%; cursor: pointer;
+  background: rgba(0, 0, 0, 0.6); color: #fff; }
+.hoa-shot-x svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2.4; fill: none; }
+.hoa-body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: var(--sp-10); }
+.hoa-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); flex: none;
+  padding: 10px 14px; border-top: 1px solid var(--line-soft); }
+.floss-card { display: flex; flex-direction: column; gap: var(--sp-8); }
+.floss-card p { margin: 0; line-height: 1.5; }
+.floss-ask { width: 100%; box-sizing: border-box; padding: 9px 11px; resize: vertical;
+  line-height: 1.5; min-height: 96px; }
+.floss-pin { width: 12em; flex: none; padding: 6px 9px; }
+.floss-err { font-size: var(--fs-12); color: var(--text-2); overflow-wrap: anywhere; }
+.floss-steps { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column;
+  gap: 3px; font-size: var(--fs-12); color: var(--text-2); overflow-wrap: anywhere; }
+.floss-steps li:last-child { color: var(--text); }
+.floss-quote { margin: 0; padding: 6px 12px; border-left: 3px solid var(--line);
+  color: var(--text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.floss-words { white-space: pre-wrap; overflow-wrap: anywhere; }
+.floss-field { display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: var(--sp-8);
+  font-size: var(--fs-13); overflow-wrap: anywhere; }
+.floss-field b { color: var(--text-2); font-weight: 600; }
+.floss-held, .floss-needs { font-size: var(--fs-13); }
+.floss-held ul, .floss-needs ul { margin: 4px 0 0; padding-left: 1.4em; }
+.floss-held b { color: var(--warn); }
+.floss-bad { color: var(--warn); overflow-wrap: anywhere; }
+.floss-diff { margin: 6px 0 0; max-height: 34vh; overflow: auto; padding: 10px 12px;
+  font-family: var(--mono); font-size: var(--fs-11); line-height: 1.5;
+  white-space: pre; color: var(--text-2); background: var(--bg-2);
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm); }
+.floss-after { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8);
+  font-size: var(--fs-13); }
+.floss-history { display: flex; flex-direction: column; gap: var(--sp-6);
+  border-top: 1px solid var(--line-soft); padding-top: var(--sp-10); }
+.floss-history > b { font-size: var(--fs-12); color: var(--text-2); font-weight: 600; }
+.floss-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--sp-8);
+  align-items: start; width: 100%; padding: 6px 8px; text-align: left; background: none;
+  border: 1px solid transparent; border-radius: var(--radius-sm); cursor: pointer; }
+.floss-row:hover { background: var(--bg-3); border-color: var(--line-soft); }
+.floss-row-ask { overflow-wrap: anywhere; font-size: var(--fs-13); }

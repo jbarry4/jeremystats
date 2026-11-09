@@ -1043,6 +1043,19 @@ BARRY.views.toolkit = (function () {
       without: 'Only pooled sets whose recording is on this computer could '
              + 'be lined up.',
     },
+    rootcanal: {
+      why: 'A Root Canal read takes every contact round every event of a '
+         + 'set: minutes of disk per set, so a batch of forty ties this '
+         + 'computer up for hours.',
+      what: 'In Many: every ticked set the cluster can read is read on a '
+          + 'compute node, many side by side, by the same screen and the '
+          + 'same read as here. Each read comes home and is filed as if it '
+          + 'were made here, and goes on the lab’s shelf for every other '
+          + 'computer. Fitting, the pictures and banking stay here.',
+      without: 'Many reads one set after another on this computer, and a '
+             + 'set whose recording only the cluster has is read there one '
+             + 'at a time.',
+    },
     panning: {
       why: 'Panning sorts a pooled set on the traces. For a recording only '
          + 'on the cluster, there is nothing here to draw them from.',
