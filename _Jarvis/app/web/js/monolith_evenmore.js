@@ -101,7 +101,7 @@ window.MONO_EVENMORE = (function () {
   const R = () => window.MONO_RATS;
   const O = () => window.MONO_ONLY;
   /* One result a set of rats, read when first asked for. */
-  const P = { sets: {}, errs: {}, loading: false, seq: 0, making: false, makeNote: '', makeErr: null, band: 'theta',
+  const P = { sets: {}, errs: {}, cond: undefined, loading: false, seq: 0, making: false, makeNote: '', makeErr: null, band: 'theta',
               get data() { return this.sets[R().get()] || null; }, get err() { return this.errs[R().get()] || null; } };
   const $ = (id) => document.getElementById(id);
   const el = (...a) => M().el(...a);
@@ -424,7 +424,21 @@ window.MONO_EVENMORE = (function () {
       (D.notes || []).length ? el('details', {}, [el('summary', { text: D.notes.length + ' note' + (D.notes.length === 1 ? '' : 's') + ' from reading the recordings' }),
         el('ul', {}, D.notes.map((n) => el('li', { class: 'small', text: n })))]) : null]);
     const bar = el('div', { class: 'morebar' }, [tiles, F().node(el, 'morefdr'), R().node(el, 'morerats'), O().node(el, 'moreonly')]);
-    pane.replaceChildren(intro(D), flag(D), bar, ph1, ph2, ph3, rob, ex);
+    pane.replaceChildren(intro(D), flag(D), conduction(), bar, ph1, ph2, ph3, rob, ex);
+  }
+
+  /* How volume conduction was handled (backend/conduction.py, 2026-11-05):
+     the same words Joe's site shows, drawn by joe_export.js. One for every
+     set of rats; read once, and left out until it has been worded. */
+  function conduction() {
+    if (P.cond === undefined) {
+      P.cond = null;
+      M().getJSON('/data/conduction').then((C) => { if (C && C.ok) { P.cond = C; render(); } }).catch(() => { /* not worded yet */ });
+    }
+    const C = P.cond;
+    if (!C || !window.JOE_EXPORT || !window.JOE_EXPORT.conductionNode) return null;
+    return card('moreconduction', C.title, null, [el('p', { text: C.say }),
+      el('details', { class: 'moremore' }, [el('summary', { text: 'More' }), window.JOE_EXPORT.conductionNode(C)])]);
   }
 
   document.addEventListener('mono:fdr', () => { if ($('morepane') && !$('morepane').hidden) render(); });

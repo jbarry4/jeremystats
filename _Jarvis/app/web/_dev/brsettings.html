@@ -112,9 +112,9 @@ async function until(fn, ms) {
     await sleep(400);
     if (tool === 'lock') {
       w = watch();
-      $$('.br-band button').find((b) => /IED/.test(txt(b))).click();
+      $$('.br-band button').find((b) => /P-spike/.test(txt(b))).click();
       await sleep(150);
-      check('the filter shows at once', /IED/.test(txt($('.br-band button.active'))));
+      check('the filter shows at once', /P-spike/.test(txt($('.br-band button.active'))));
       await until(() => ((B.lock._state().plan || {}).spec || {}).band
                         && B.lock._state().plan.spec.band[0] === 1, 30000);
       await sleep(300);
@@ -167,10 +167,10 @@ async function until(fn, ms) {
     $$('.br-bulk-settings .br-measure button')[0].click();
     await sleep(300);
     if (tool === 'lock') {
-      $$('.br-bulk-settings .br-band button').find((b) => /IED/.test(txt(b))).click();
+      $$('.br-bulk-settings .br-band button').find((b) => /P-spike/.test(txt(b))).click();
       await sleep(300);
       check('the filter shows at once',
-            /IED/.test(txt($('.br-bulk-settings .br-band button.active'))),
+            /P-spike/.test(txt($('.br-bulk-settings .br-band button.active'))),
             txt($('.br-bulk-settings .br-band button.active')));
       $$('.br-bulk-settings .br-band button').find((b) => /Dentate/.test(txt(b))).click();
       await sleep(300);

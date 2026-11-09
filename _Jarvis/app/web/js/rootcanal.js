@@ -274,15 +274,21 @@ BARRY.rootcanal = (function () {
                  pick: {}, kind: null,
                  // The send in flight and what it sent, a Stop pressed, and
                  // the batch before, said on the picker until the next.
-                 sending: false, sent: null, stopping: false, last: null };
+                 sending: false, sent: null, stopping: false, last: null,
+                 /* Where Many reads (2026-11-06: "Make Root Canal Many VACC
+                    powered"): the VACC unless it is not set up here, which
+                    the run bar settles into `at`. */
+                 where: 'vacc', at: 'local' };
 
   /* SINGLE OR POOLED, remembered per viewer. Browser storage, because it is
      a convenience of the person looking and nothing else reads it; wrapped,
      because a browser set to block site data throws on the accessor. */
   const VIEW_KEY = 'barry.rootcanal.view';
   let viewMode = (() => {
-    try { return localStorage.getItem(VIEW_KEY) === 'pooled' ? 'pooled' : 'single'; }
-    catch (e) { return 'single'; }
+    try {
+      const v = localStorage.getItem(VIEW_KEY);
+      return v === 'pooled' || v === 'workflow' ? v : 'single';
+    } catch (e) { return 'single'; }
   })();
 
   /* The pool, while one is open. See "POOLED" below. */
@@ -1055,6 +1061,11 @@ BARRY.rootcanal = (function () {
     box.appendChild(intro());
     box.appendChild(viewBar());
     if (viewMode === 'pooled') { paintPool(box); return; }
+    // The workflows (2026-11-05): their own module, their own part.
+    if (viewMode === 'workflow') {
+      box.appendChild(BARRY.rcWorkflow.node(workflowHelpers()));
+      return;
+    }
     if (!cands) { box.appendChild(loading('Reading the event bank')); return; }
     if (!cands.length) { box.appendChild(nothing()); return; }
     box.appendChild(modeSwitch());
@@ -1098,7 +1109,7 @@ BARRY.rootcanal = (function () {
         ? 'Teases a pooled set apart — Incisor’s and Doppler’s events '
           + 'together, sorted in Panning and lined up in Lock — by '
           + 'amplitude, half-width and high-frequency power, each dot '
-          + 'coloured by its DS / IED call. Nothing is taken out: each '
+          + 'coloured by its DS / P-spike call. Nothing is taken out: each '
           + 'event is named by its cluster.'
         : 'Takes the interictal discharges out of an aligned set of '
           + 'dentate spikes — amplitude, half-width and high-frequency '
@@ -1145,22 +1156,39 @@ BARRY.rootcanal = (function () {
      back to. */
   function modeSwitch() {
     const mode = bulk.on ? 'many' : 'one';
+    /* Where and how many, through the run bar (constitution §6d). Many
+       reads on the VACC too (2026-11-06): every ticked set goes up as one
+       batch and is read there side by side. One reads here, so VACC offers
+       Many alone and choosing it switches to Many. Without VACC Mode or an
+       account the bar shows How many alone, as it did. */
+    const bar = BARRY.ui.runBar({
+      modes: { local: ['one', 'many'], vacc: ['many'] },
+      where: bulk.on ? bulk.where : 'local', count: mode,
+      onChange: (w, c) => {
+        /* Into Many from One: where Many was last, the VACC to begin
+           with (One's bar says This computer, which is One's, not Many's). */
+        if (!bulk.on && c === 'many' && w === 'local') w = bulk.where;
+        bulk.where = w;
+        bulk.on = w === 'vacc' || c === 'many';
+        render();
+        if (bulk.on && (!bulk.plan || bulk.kind !== bulkKind())) loadBulk();
+      },
+    });
+    bulk.at = bar.where;
+    const vacc = bulk.on && bulk.at === 'vacc';
     return el('div', { class: 'card rc-mode' }, [
-      /* How many, through the run bar (constitution §6d): one component
-         for the choice every tool makes, rather than a seg each tool drew
-         for itself. Only local modes, so the bar shows How many alone. */
-      BARRY.ui.runBar({
-        modes: { local: ['one', 'many'] }, where: 'local', count: mode,
-        onChange: (w, c) => {
-          bulk.on = c === 'many';
-          render();
-          if (bulk.on && (!bulk.plan || bulk.kind !== bulkKind())) loadBulk();
-        },
-      }),
+      bar,
       // Said once here; the card under it says what a tick costs.
-      el('span', { class: 'hint', text: bulk.on
-        ? 'Read many sets in one go, while you do something else. Each is '
-          + 'still looked at and banked by a person, one at a time.'
+      el('span', { class: 'hint', text: vacc
+        ? 'Every ticked set goes to the VACC as one batch and is read there, '
+          + 'side by side, while you do something else; a set the cluster '
+          + 'has no copy of is read on this computer. Each read comes home, '
+          + 'and is still looked at and banked by a person, one at a time.'
+        : bulk.on
+        ? 'Read many sets in one go, one after another on this computer, '
+          + 'while you do something else; a set only the VACC has is read '
+          + 'there. Each is still looked at and banked by a person, one at '
+          + 'a time.'
         : 'Pick an aligned set, read it once, then look at what it splits '
           + 'into.' }),
       bulk.job && !bulk.on
@@ -1519,7 +1547,7 @@ BARRY.rootcanal = (function () {
         title: r.saved.n_versions + ' version' + (r.saved.n_versions === 1
           ? '' : 's') + ' kept. The newest, v' + sv.v + ': '
           + [sv.k != null ? 'k = ' + sv.k : null, sv.filter,
-             sv.ds != null ? sv.ds + ' DS, ' + (sv.ied || 0) + ' IED' : null,
+             sv.ds != null ? sv.ds + ' DS, ' + (sv.ied || 0) + ' P-spike' : null,
              'saved by ' + (sv.by || 'someone')
                + (sv.machine ? ' on ' + sv.machine : '')
                + (sv.at ? ', ' + doneStamp(sv.at) : '')]
@@ -1536,7 +1564,7 @@ BARRY.rootcanal = (function () {
           + (b.at ? ', ' + doneStamp(b.at) : '')
           + (r.banked.n > 1 ? '. Banked ' + r.banked.n + ' times.' : '.'),
         text: 'banked v' + b.ds_version + (b.ds != null
-          ? ' · ' + b.ds + ' DS · ' + (b.ied || 0) + ' IED' : '') }));
+          ? ' · ' + b.ds + ' DS · ' + (b.ied || 0) + ' P-spike' : '') }));
     }
     if (rd) {
       const where = rd.here ? 'read here'
@@ -1800,7 +1828,7 @@ BARRY.rootcanal = (function () {
           'Reading from v' + want.name + ', the version the last Root Canal '
           + 'started from, not from its output: a second pass over a set '
           + 'that has already been cleaned would still split it in two, and '
-          + 'the "IEDs" it found would be the loudest dentate spikes.' }));
+          + 'the "P-spikes" it found would be the loudest dentate spikes.' }));
       }
     }
     if (cur && !cur.aligned) {
@@ -1945,7 +1973,7 @@ BARRY.rootcanal = (function () {
       text: 'Keep banked v' + b.ds_version + ' as a saved version',
       title: 'Banked ' + String(b.at || '').replace('T', ' ').slice(0, 16)
         + (b.k ? ' at k = ' + b.k : '') + ': ' + (b.counts.ds || 0) + ' DS, '
-        + (b.counts.ied || 0) + ' IED. Kept '
+        + (b.counts.ied || 0) + ' P-spike. Kept '
         + (b.here ? 'from its read, refitted' : 'from the numbers the bank '
                     + 'filed (its read is not on this machine)')
         + ', so it can be pooled and reopened like any version.',
@@ -1974,7 +2002,7 @@ BARRY.rootcanal = (function () {
                  x.margin ? 'calls carried from a pool' : null].filter(Boolean);
     const cnt = [ns.events != null ? ns.events + ' events' : null,
                  ns.ds != null ? ns.ds + ' DS' : null,
-                 ns.ied != null ? ns.ied + ' IED' : null,
+                 ns.ied != null ? ns.ied + ' P-spike' : null,
                  (ns.names || []).length ? 'names: ' + ns.names.join(', ')
                                          : null].filter(Boolean);
     return ['v' + x.v + ' · ' + (x.nickname || 'no nickname'),
@@ -2531,7 +2559,7 @@ BARRY.rootcanal = (function () {
         el('p', { class: 'rc-rule', text: fit.rule || '' }),
         el('div', { class: 'chip-row' }, [
           chipC('DS ' + (c.ds || 0), 'ds'),
-          chipC('IED ' + (c.ied || 0), 'ied'),
+          chipC('P-spike ' + (c.ied || 0), 'ied'),
           c.unmeasured ? BARRY.ui.chip((c.unmeasured) + ' not measured', {
             title: 'An unresolved half-width or a missed HF window. Left out '
                  + 'of the clustering and drawn hollow — never filled in.' })
@@ -2589,7 +2617,7 @@ BARRY.rootcanal = (function () {
               refit();
             }),
             onAvg: (c) => showAverage('cluster #' + (c.rank + 1) + ' '
-                                       + (c.name || c.call.toUpperCase()),
+                                       + (c.name || callWord(c.call)),
                                        (fit.events || []).filter(
                                          (e) => e.cluster === c.rank)),
             onRemove: (c) => { q.drawn.splice(c.rank - (fit.k || 0), 1);
@@ -2620,7 +2648,7 @@ BARRY.rootcanal = (function () {
           extra: 'rc-bank',
           disabled: fitting || !fit.ok || !!savedOnly,
           title: 'Bank the DS class as the next version of this set and the '
-               + 'IED class as a set of candidate IEDs. A dialog first.',
+               + 'P-spike class as a set of candidate P-spikes. A dialog first.',
           onclick: bankDialog }),
       ].filter(Boolean)),
     ];
@@ -2657,8 +2685,8 @@ BARRY.rootcanal = (function () {
       Array.from({ length: K_MAX }, (_, j) => [String(j + 1), String(j + 1),
         j === 0 ? 'One cluster: no split, every event DS — the null a split '
                   + 'is compared against.'
-        : j === 1 ? 'Two clusters: DS and IED, as this tool was built.'
-        : (j + 1) + ' clusters, ranked by HF power; the highest is IED by '
+        : j === 1 ? 'Two clusters: DS and P-spike, as this tool was built.'
+        : (j + 1) + ' clusters, ranked by HF power; the highest is P-spike by '
           + 'the rule, and any can be relabelled.']),
       String(cur), (v) => onPick(Number(v)), { extra: 'rc-kseg' });
   }
@@ -2679,20 +2707,20 @@ BARRY.rootcanal = (function () {
       title: 'Cluster ' + (c.rank + 1) + ' of ' + clusters.length + ': '
            + (c.n || 0) + ' events, centre ' + hz(c.centre_raw[0]) + ' µV, '
            + hz(c.centre_raw[1]) + ' ms, ' + hz(c.centre_raw[2]) + ' dB. '
-           + 'Called ' + c.call.toUpperCase() + ' '
+           + 'Called ' + callWord(c.call) + ' '
            + (c.call_by === 'hand' ? 'by hand' : c.call_by === 'margin'
               ? 'by the calls this ' + (viewMode === 'pooled' ? 'pool' : 'version')
                 + ' carries' : c.call_by === 'drawn'
               ? 'as drawn round by hand' : c.call_by === 'name'
               ? 'by its name, ‘' + c.name + '’' : 'by the rule') + '. '
            + (c.name && ex.onName ? 'Press to rename it.'
-              : 'Press to call it ' + (c.call === 'ied' ? 'DS' : 'IED') + '.'),
+              : 'Press to call it ' + (c.call === 'ied' ? 'DS' : 'P-spike') + '.'),
       onclick: () => (c.name && ex.onName ? ex.onName(c)
                       : onToggle(c.rank, c.call === 'ied' ? 'ds' : 'ied')),
     }, [
       el('i', { class: 'rc-swatch', style: 'background:' + cluFill(c.rank, c.call) }),
       el('span', { text: '#' + (c.rank + 1) + ' '
-                         + (c.name ? c.name : c.call.toUpperCase())
+                         + (c.name ? c.name : callWord(c.call))
                          + ' · ' + (c.n || 0)
                          + (c.call_by === 'hand' ? ' · by hand'
                             : c.call_by === 'margin' ? ' · carried'
@@ -2702,8 +2730,8 @@ BARRY.rootcanal = (function () {
       ex.onName ? el('button', { type: 'button', class: 'rc-clu-x rc-clu-name',
         text: c.name ? 'rename' : 'name',
         title: 'Give cluster ' + (c.rank + 1) + ' a name from the lab’s list, '
-             + 'or a new one -- “DS slow”, “IED big”. The name says whether it '
-             + 'is a DS or an IED, travels with the version, the pool and the '
+             + 'or a new one -- “DS slow”, “P-spike big”. The name says whether it '
+             + 'is a DS or a P-spike, travels with the version, the pool and the '
              + 'bank, and becomes a chip to pool by.',
         onclick: () => ex.onName(c) }) : null,
       /* Its average: the four pictures of a dot, over every event in it. */
@@ -2748,13 +2776,13 @@ BARRY.rootcanal = (function () {
                                 placeholder: 'A new name', value: '' });
     const errP = el('p', { class: 'hint rc-warn rc-name-err', text: '' });
     const typeSeg = BARRY.ui.seg([['ds', 'DS', 'A dentate spike name.'],
-                                  ['ied', 'IED', 'An IED name.']],
+                                  ['ied', 'P-spike', 'A P-spike name.']],
       typ, (v) => { typ = v; }, { extra: 'rc-name-type' });
     const use = (nm) => { closeModal(); onDone(nm); };
     const byType = (t) => names.filter((n) => n.type === t);
     const list = (t) => byType(t).length ? el('div', { class: 'chip-row' },
       [el('span', { class: 'rc-sel-k', text: t === 'ds' ? 'DS names'
-                                                       : 'IED names' })]
+                                                       : 'P-spike names' })]
         .concat(byType(t).map((n) => BARRY.ui.button({ kind: 'mini',
           text: n.name, extra: 'rc-name-pick', on: c.name === n.name,
           title: 'Added by ' + (n.by || 'someone')
@@ -2953,8 +2981,8 @@ BARRY.rootcanal = (function () {
      ignoring more and more outliers (backend/rcborder.py `envelope`). A
      border with no `kind` is an older one, and is "between". */
   const isEnv = (b) => !!b && b.kind === 'envelope';
-  const bGroup = (b) => ((b && b.group) === 'ied' ? 'IED' : 'DS');
-  const bOther = (b) => ((b && b.group) === 'ied' ? 'DS' : 'IED');
+  const bGroup = (b) => ((b && b.group) === 'ied' ? 'P-spike' : 'DS');
+  const bOther = (b) => ((b && b.group) === 'ied' ? 'DS' : 'P-spike');
   const bspan = (r) => bnum((r || {}).lo) + '–' + bnum((r || {}).hi);
   const sameG = (a, b) => a != null && b != null
                           && Math.abs(Number(a) - Number(b)) < 1e-9;
@@ -2988,7 +3016,7 @@ BARRY.rootcanal = (function () {
       return 'Envelope · ' + bGroup(r) + ' · '
         + BAX.map(([k, , unit]) => bspan(st[k]) + ' ' + unit).join(' · ');
     }
-    return 'Between DS and IED · '
+    return 'Between DS and P-spike · '
       + BAX.map(([k, , unit]) => bnum(st[k]) + ' ' + unit).join(' · ');
   }
 
@@ -3013,7 +3041,7 @@ BARRY.rootcanal = (function () {
       return (n[b.group === 'ied' ? 'ied' : 'ds'] || 0) + ' inside · '
              + (n.amb || 0) + ' outside';
     }
-    return (n.ds || 0) + ' solid DS · ' + (n.ied || 0) + ' solid IED · '
+    return (n.ds || 0) + ' solid DS · ' + (n.ied || 0) + ' solid P-spike · '
            + (n.amb || 0) + ' ambiguous';
   }
 
@@ -3088,7 +3116,7 @@ BARRY.rootcanal = (function () {
     const rule = isEnv(r)
       ? 'Solid ' + bGroup(r) + ' inside the box, ambiguous outside it on any '
         + 'axis. At no grace the box is ' + edgeWords(r, st) + '.'
-      : 'Solid IED past all three cut-offs, solid DS short of all three, '
+      : 'Solid P-spike past all three cut-offs, solid DS short of all three, '
         + 'anything else ambiguous. The cut-offs: ' + BAX.map(([k, word, unit]) =>
           word + ' ' + bnum(st[k]) + ' ' + unit).join(' · ') + '.';
     const on = r.artifact_id === ctx.pickId();
@@ -3102,7 +3130,7 @@ BARRY.rootcanal = (function () {
           el('strong', { text: r.nickname || r.name || r.artifact_id }),
           v != null ? el('span', { class: 'hint', text: 'v' + v }) : null,
           BARRY.ui.chip(isEnv(r) ? 'drawn around the ' + bGroup(r) + ' events'
-                                 : 'drawn between DS and IED',
+                                 : 'drawn between DS and P-spike',
                         { extra: 'rc-border-kind' }),
           ctx.appliedId === r.artifact_id
             ? BARRY.ui.chip('applied here', { kind: 'ok', extra: 'rc-border-here' })
@@ -3322,7 +3350,7 @@ BARRY.rootcanal = (function () {
                   + 'any axis is ambiguous, drawn in its own call’s colour, '
                   + 'faded, with a dotted edge. An event missing one of the '
                   + 'three numbers counts as outside.'
-                : 'Every event by its three numbers alone: solid DS, solid IED '
+                : 'Every event by its three numbers alone: solid DS, solid P-spike '
                   + 'or ambiguous -- an ambiguous one in its own call’s '
                   + 'colour, faded, with a dotted edge.' }),
             c.none ? BARRY.ui.chip(c.none + ' with no numbers', {
@@ -3346,7 +3374,7 @@ BARRY.rootcanal = (function () {
               + 'outside it shaded.'
             : 'On the flat views it is two dashed lines on each axis, with '
               + 'the ambiguous band between them shaded: where solid DS ends '
-              + '(in the DS colour) and where solid IED begins (in the IED '
+              + '(in the DS colour) and where solid P-spike begins (in the P-spike '
               + 'colour).' }) : null,
         ])
       : el('p', { class: 'rc-border-now rc-border-none',
@@ -3475,14 +3503,14 @@ BARRY.rootcanal = (function () {
         text: env
           ? 'the box: ' + edgeWords(b, lv.edges) + '; it '
             + graceMeans(b, lv.grace)
-          : 'solid IED: ' + edgeWords(b, lv.edges, 'ied') + '; solid DS: '
+          : 'solid P-spike: ' + edgeWords(b, lv.edges, 'ied') + '; solid DS: '
             + edgeWords(b, lv.edges, 'ds')
             + (lv.s_sd ? ' (band ±' + lv.s_sd + ' SD)' : ' (no band)') })]));
     }
     const heads = env
       ? ['grace', 'solid ' + bGroup(b) + ' (inside)', bGroup(b) + ' left outside',
          bOther(b) + ' inside']
-      : ['grace', 'solid DS', 'solid IED', 'ambiguous', 'switches'];
+      : ['grace', 'solid DS', 'solid P-spike', 'ambiguous', 'switches'];
     return el('table', { class: 'tbl rc-border-tab' + (env ? ' rc-border-env' : '') }, [
       el('thead', {}, [el('tr', {}, heads.map((t) => el('th', { text: t })))]),
       el('tbody', {}, rows)]);
@@ -3567,7 +3595,7 @@ BARRY.rootcanal = (function () {
         + 'between the events’ own identities: ' + (lvl === 'double'
           ? 'what each event’s own pool called it (v0)'
           : 'what each event’s single called it')
-        + '. Past all three is solid IED, short of all three solid DS, and '
+        + '. Past all three is solid P-spike, short of all three solid DS, and '
         + 'anything else ambiguous. It is the same border only where things '
         + 'are measured the same way (' + filtWords + ').' }),
       el('p', { class: 'rc-border-strict', text: 'The border: '
@@ -3597,7 +3625,7 @@ BARRY.rootcanal = (function () {
     return BARRY.ui.bankDialog({
       kind: 'entry', name: sugg, what,
       title: env ? 'Save a border around the ' + bGroup(prev) + ' events'
-                 : 'Save a DS / IED border',
+                 : 'Save a DS / P-spike border',
       okText: 'Save the border',
       onBank: async ({ name, note }) => {
         const nick = String(name || '').trim();
@@ -3660,8 +3688,8 @@ BARRY.rootcanal = (function () {
       c.wide ? c.wide + ' by the widened search' : null,
     ].filter(Boolean);
     return 'Bank: ' + nDs + ' DS as ' + (nx ? BARRY.ui.versionLabel(nx) : 'a new version')
-      + ', ' + (c.ied || 0) + ' IED as '
-      + (ied ? 'a new version of its IED set' : 'a new entry')
+      + ', ' + (c.ied || 0) + ' P-spike as '
+      + (ied ? 'a new version of its P-spike set' : 'a new entry')
       + (flags.length ? ' (' + flags.join(', ') + ')' : '');
   }
 
@@ -3695,7 +3723,7 @@ BARRY.rootcanal = (function () {
          events were flipped by hand still says so. */
       e.cls == null
         ? BARRY.ui.chip('not measured, so no class', { extra: 'rc-ev-call' })
-        : BARRY.ui.chip(e.cls.toUpperCase() + (e.cluster != null
+        : BARRY.ui.chip(callWord(e.cls) + (e.cluster != null
             ? ' · cluster #' + (e.cluster + 1) : ''), {
             kind: e.cls === 'ied' ? 'warn' : null, extra: 'rc-ev-call',
             title: 'Its cluster’s call. An event’s identity follows its '
@@ -3876,9 +3904,9 @@ BARRY.rootcanal = (function () {
     const byBorder = !!(fit && fit.border_used);
     return el('div', { class: 'rc-legend' }, [
       item('rc-lg-ds', byBorder ? 'solid DS' : 'DS'),
-      item('rc-lg-ied', byBorder ? 'solid IED' : 'IED'),
+      item('rc-lg-ied', byBorder ? 'solid P-spike' : 'P-spike'),
       byBorder ? item('rc-lg-amb rc-lg-amb-ds', 'outside, called DS') : null,
-      byBorder ? item('rc-lg-amb rc-lg-amb-ied', 'outside, called IED') : null,
+      byBorder ? item('rc-lg-amb rc-lg-amb-ied', 'outside, called P-spike') : null,
       item('rc-lg-square', 'on 2 of 3 axes'),
       item('rc-lg-wide', 'half-width by the widened search'),
       item('rc-lg-flip', 'set by hand'),
@@ -4028,7 +4056,7 @@ BARRY.rootcanal = (function () {
                          + 'they are. Nothing is taken out: a pooled set is '
                          + 'meant to hold both kinds.' }),
         el('li', { text: (c.ds || 0) + ' are named by a DS-like cluster and '
-                         + (c.ied || 0) + ' by an IED-like one, each with its '
+                         + (c.ied || 0) + ' by a P-spike-like one, each with its '
                          + 'cluster’s name' + (c.unmeasured
                            ? '; ' + c.unmeasured + ' could not be measured '
                              + 'and keep no name' : '') + '.' }),
@@ -4050,13 +4078,13 @@ BARRY.rootcanal = (function () {
         c.unmeasured
           ? el('li', { text: c.unmeasured + ' could not be measured and were '
                              + 'never clustered. Nothing showed them to be '
-                             + 'IEDs, so they are counted with the dentate '
+                             + 'P-spikes, so they are counted with the dentate '
                              + 'spikes above; the reply says where they '
                              + 'actually went.' })
           : null,
-        el('li', { text: (c.ied || 0) + ' go to “Hidden IEDs (Root Canal)” '
+        el('li', { text: (c.ied || 0) + ' go to “Hidden P-spikes (Root Canal)” '
                          + 'as candidates, not decisions — a classifier said '
-                         + 'this, not a person, so Checkup’s IED kind can go '
+                         + 'this, not a person, so Checkup’s P-spike kind can go '
                          + 'through them.' }),
         (c.partial || c.wide)
           ? el('li', { text: [
@@ -4116,7 +4144,7 @@ BARRY.rootcanal = (function () {
         el('p', { class: 'hint', text:
           'Reading from the version before it is almost always what was '
           + 'meant: pick it under “Read the stamps from”. Cleaning again '
-          + 'takes events out of a set that has already had its IEDs '
+          + 'takes events out of a set that has already had its P-spikes '
           + 'removed.' }),
       ])]),
       BARRY.ui.modalFoot([], [
@@ -4183,7 +4211,7 @@ BARRY.rootcanal = (function () {
       const nm = rep.named || {};
       toast('Banked: every event named by its cluster, as v' + rep.ds_version
             + ' — ' + (nm.ds || 0) + ' DS-like, ' + (nm.ied || 0)
-            + ' IED-like, nothing removed. The previous version is kept.',
+            + ' P-spike-like, nothing removed. The previous version is kept.',
             'ok', 10000);
       BARRY.activity.log('rootcanal.commit', {
         gid: q.gid, entry: q.entry, ds_version: rep.ds_version,
@@ -4196,9 +4224,9 @@ BARRY.rootcanal = (function () {
     }
     toast('Banked: the set as v' + rep.ds_version + ' with ' + rep.kept
           + ' kept' + (rep.ied_entry
-            ? ', and ' + rep.removed + ' IED' + (rep.removed === 1 ? '' : 's')
-              + ' as v' + rep.ied_version + ' of “Hidden IEDs (Root Canal)”'
-            : ', and no IEDs to bank')
+            ? ', and ' + rep.removed + ' P-spike' + (rep.removed === 1 ? '' : 's')
+              + ' as v' + rep.ied_version + ' of “Hidden P-spikes (Root Canal)”'
+            : ', and no P-spikes to bank')
           + '. The previous version is kept.', 'ok', 10000);
     const want = (expect.ds || 0) + (expect.unmeasured || 0);
     if (rep.kept !== want || rep.removed !== (expect.ied || 0)) {
@@ -4401,7 +4429,7 @@ BARRY.rootcanal = (function () {
         } },
       { key: 'left', enter: false, sig: [bulk.rev, fs],
         build: () => bulkLeft(left) },
-      { key: 'go', enter: false, sig: [bulk.rev, tk, !!bulk.sending],
+      { key: 'go', enter: false, sig: [bulk.rev, tk, !!bulk.sending, bulk.at],
         build: () => bulkGo(ticked) },
     ];
   }
@@ -4614,6 +4642,10 @@ BARRY.rootcanal = (function () {
       r.group ? 'group ' + r.group : null,
       r.subgroup ? 'subgroup ' + r.subgroup : null,
       r.condition || null,
+      // Where it would be read, when that is not where the bar says.
+      !r.cached && r.here === false ? 'only on the VACC, so read there'
+        : !r.cached && bulk.at === 'vacc' && r.cluster === false
+          ? 'the VACC has no copy, so read here' : null,
     ].filter(Boolean).join('  ·  ');
   }
 
@@ -4757,15 +4789,30 @@ BARRY.rootcanal = (function () {
     return box;
   }
 
-  /* The cost, said before it is spent, and the one primary, last. */
+  /* Where one set not read yet would be read: the VACC when the cluster
+     is chosen and can read it, or when only the cluster has it. */
+  const bulkThere = (r) => r.here === false
+    || (bulk.at === 'vacc' && r.cluster !== false);
+
+  /* The cost, said before it is spent, and the one primary, last. On the
+     VACC the sets are split by where each will be read. */
   function bulkGo(ticked) {
     const fresh = ticked.filter((r) => !r.cached);
     const again = ticked.length - fresh.length;
-    const evs = fresh.reduce((s, r) => s + (Number(r.n_good) || 0), 0);
+    const up = fresh.filter(bulkThere);
+    const home = fresh.filter((r) => !bulkThere(r));
+    const evs = (rs) => rs.reduce((s, r) => s + (Number(r.n_good) || 0), 0)
+      .toLocaleString();
+    const s = (n) => (n === 1 ? '' : 's');
     const words = !ticked.length ? 'Tick the sets to read, above.'
-      : [fresh.length ? fresh.length + ' to read (' + evs.toLocaleString()
-                        + ' events), one after another, minutes each'
-                      : null,
+      : [up.length ? up.length + ' to read on the VACC (' + evs(up)
+                     + ' events), side by side' : null,
+         home.length ? home.length + ' to read on this computer ('
+                       + evs(home) + ' events), one after another, minutes '
+                       + 'each' + (bulk.at === 'vacc'
+                         ? ' — the cluster has no copy of ' + (home.length === 1
+                           ? 'it' : 'them') : '')
+                     : null,
          again ? again + ' already read, which ' + (again === 1 ? 'lands' : 'land')
                  + ' at once' : null].filter(Boolean).join('  ·  ')
         + '. Each can be opened and banked as soon as it lands; the batch '
@@ -4773,8 +4820,14 @@ BARRY.rootcanal = (function () {
     return BARRY.ui.actions([
       el('p', { class: 'hint rc-bulk-cost', text: words }),
       BARRY.ui.button({ kind: 'primary', extra: 'rc-bulk-go',
-        text: ticked.length ? 'Read the ' + ticked.length + ' ticked'
-                            : 'Read the ticked',
+        text: !ticked.length ? 'Read the ticked'
+          : up.length && !home.length
+            ? 'Read the ' + ticked.length + ' ticked on the VACC'
+            : 'Read the ' + ticked.length + ' ticked',
+        title: up.length ? up.length + ' set' + s(up.length) + ' go'
+                           + (up.length === 1 ? 'es' : '') + ' to the VACC '
+                           + 'as one batch; each read comes home to this '
+                           + 'computer when it is done.' : null,
         disabled: !ticked.length || bulk.sending, onclick: runBulk }),
     ], { extra: 'rc-bulk-go-row' });
   }
@@ -4794,12 +4847,20 @@ BARRY.rootcanal = (function () {
                                            status: 'waiting' }));
   }
 
+  /* A row's state in this card's words. The cluster's half says it in the
+     VACC batch's (`vaccrun.collect`): queued, failed, and skipped for one
+     another computer already has on the cluster. */
+  const bulkState = (m) => (m.status === 'failed' || m.status === 'skipped'
+    ? 'error' : m.status === 'queued' ? 'waiting' : (m.status || 'waiting'));
+
   function bulkTally(ms) {
     const n = { waiting: 0, running: 0, done: 0, cached: 0, error: 0,
-                stopped: 0 };
+                stopped: 0, vacc: 0 };
     for (const m of ms) {
       if (m.status === 'done' && m.cached) n.cached += 1;
-      n[m.status in n ? m.status : 'waiting'] += 1;
+      if (m.where === 'vacc') n.vacc += 1;
+      const st = bulkState(m);
+      n[st in n ? st : 'waiting'] += 1;
     }
     return n;
   }
@@ -4821,7 +4882,7 @@ BARRY.rootcanal = (function () {
           el('i', { class: 'run' })]),
         update: (b) => paintBulkBar(b, ms, n) },
       { key: 'rrows', enter: false,
-        sig: ms.map((m) => [m.id, m.status, m.cached ? 1 : 0, m.error || '']
+        sig: ms.map((m) => [m.id, bulkState(m), m.cached ? 1 : 0, m.error || '']
           .join(':')).join('|'),
         build: () => bulkRunRows(ms),
         // How far the one reading has got, without rebuilding the rows.
@@ -4852,6 +4913,7 @@ BARRY.rootcanal = (function () {
         n.waiting ? n.waiting + ' waiting' : null,
         n.error ? n.error + ' failed' : null,
         n.stopped ? n.stopped + ' stopped' : null,
+        n.vacc ? n.vacc + ' on the VACC' : null,
       ].filter(Boolean).join('  ·  ') || 'starting' }),
     ]);
   }
@@ -4877,11 +4939,36 @@ BARRY.rootcanal = (function () {
       + (n.error ? ', ' + n.error + ' failed' : '');
   }
 
+  /* The cluster's steps, in this card's words. Slurm's own states come
+     through lower-cased ("pending", "running"); the rest are said by the
+     server ("queued on 123456", "bringing the read home"). */
+  function bulkVaccStep(m) {
+    const st = String(m.step || '');
+    if (!st || st === 'waiting' || st === 'pending'
+        || /^waiting for the cluster/.test(st)) {
+      return 'waiting for the cluster';
+    }
+    if (/^queued on /.test(st)) return 'queued on the VACC (job ' + st.slice(10) + ')';
+    if (st === 'running') return 'reading on the VACC';
+    if (st === 'fetching') return 'read on the VACC; fetching it';
+    return st;
+  }
+
   function bulkMemberWords(m) {
-    if (m.status === 'error') return 'failed: ' + (m.error || 'no reason given');
+    if (m.status === 'skipped') {
+      return 'not sent: ' + (m.step || 'another computer is reading it on the VACC');
+    }
+    if (m.status === 'error' || m.status === 'failed') {
+      return 'failed: ' + (m.error || 'no reason given');
+    }
     if (m.status === 'done') {
       return m.cached ? 'already read — opens at once'
-                      : 'read — open it to look, or bank it';
+        : m.where === 'vacc' ? 'read on the VACC — open it to look, or bank it'
+        : 'read — open it to look, or bank it';
+    }
+    if (m.where === 'vacc' && (m.status === 'running' || m.status === 'queued'
+                               || m.status === 'waiting')) {
+      return bulkVaccStep(m);
     }
     if (m.status === 'running') {
       return m.of ? 'reading channel ' + Math.min((m.done || 0) + 1, m.of)
@@ -4889,6 +4976,7 @@ BARRY.rootcanal = (function () {
                   : 'getting it ready';
     }
     if (m.status === 'stopped') return 'stopped part-way; nothing of it kept';
+    if (m.step === 'opening the recording') return 'opening the recording';
     return 'waiting its turn';
   }
 
@@ -4896,7 +4984,8 @@ BARRY.rootcanal = (function () {
     const box = el('div', { class: 'dop-batch rc-bulk-run',
                             'data-keep-scroll': 'rc-bulk-run' });
     for (const m of ms) {
-      const st = m.status === 'error' ? 'failed' : (m.status || 'waiting');
+      const st = { error: 'failed', waiting: m.status === 'queued' ? 'queued'
+                   : 'waiting' }[bulkState(m)] || bulkState(m);
       const ready = m.status === 'done';
       box.appendChild(el('div', {
         class: 'dop-batch-row rc-bulk-member ' + st, 'data-mid': m.id,
@@ -4926,7 +5015,8 @@ BARRY.rootcanal = (function () {
         extra: 'rc-bulk-stop',
         disabled: !j.id || bulk.stopping || j.status === 'canceled',
         title: 'Stop the batch. The sets already read are kept; the one '
-             + 'being read stops where it is, and nothing of it is kept.',
+             + 'being read stops where it is, and nothing of it is kept. '
+             + 'Sets still on the VACC are cancelled there.',
         onclick: stopBulk }),
     ]);
   }
@@ -5006,7 +5096,8 @@ BARRY.rootcanal = (function () {
       }
       const got = await apiPost('/api/rootcanal/batch',
                                 { entries: rows.map((r) => r.entry_id),
-                                  picks: picks });
+                                  picks: picks,
+                                  where: bulk.at === 'vacc' ? 'vacc' : 'here' });
       bulk.job = got.job;
       watchBulk();
     } catch (e) {
@@ -5064,14 +5155,20 @@ BARRY.rootcanal = (function () {
     bulk.stopping = false;
     for (const m of ms) if (m.status === 'done') delete bulk.want[m.id];
     const n = ms.filter((m) => m.status === 'done').length;
+    const up = ms.filter((m) => m.status === 'done' && !m.cached
+                                && m.where === 'vacc').length;
     const quit = done && done.status === 'canceled';
     bulk.last = { n, of: ms.length, quit,
-                  failed: ms.filter((m) => m.status === 'error')
-                    .map((m) => ({ label: m.label || m.id, why: m.error })) };
+                  failed: ms.filter((m) => bulkState(m) === 'error')
+                    .map((m) => ({ label: m.label || m.id,
+                                   why: m.error || m.step })) };
     toast(quit
       ? 'Stopped. ' + n + ' of ' + ms.length + ' were read and are kept; '
-        + 'the rest were not started.'
-      : 'Read ' + n + ' of ' + ms.length + '. Nothing was banked.',
+        + 'the rest were stopped'
+        + (ms.some((m) => m.where === 'vacc') ? ', and cancelled on the VACC'
+                                              : '') + '.'
+      : 'Read ' + n + ' of ' + ms.length
+        + (up ? ' (' + up + ' on the VACC)' : '') + '. Nothing was banked.',
       quit ? 'warn' : 'ok', 8000);
     bulk.plan = null;
     if (bulk.on) { bulkRefresh(); loadBulk(); } else swap('.rc-mode', modeSwitch());
@@ -5090,12 +5187,19 @@ BARRY.rootcanal = (function () {
       /* Meaning, not looks: a dentate spike is what the set keeps, an IED
          is what comes out of it. The semantic tokens say exactly that in
          every theme. */
-      ds: tok('--ok'), ied: tok('--err'),
+      ds: tok('--call-ds'), ied: tok('--call-p'),
     };
   }
 
+  /* A call as a person reads it (2026-11-05): the stored 'ied' is a
+     P-spike on screen. Never upper-case a call to show it. */
+  const CALL_WORD = { ds: 'DS', ied: 'P-spike' };
+  function callWord(cls) {
+    return CALL_WORD[cls] || String(cls || '').toUpperCase();
+  }
+
   function colOf(cls) {
-    return cls === 'ied' ? tok('--err') : cls === 'ds' ? tok('--ok')
+    return cls === 'ied' ? tok('--call-p') : cls === 'ds' ? tok('--call-ds')
                                                         : tok('--text-3');
   }
 
@@ -5610,7 +5714,7 @@ BARRY.rootcanal = (function () {
     g.fillStyle = k.text;
     g.font = FONT(9.5, true);
     // Numbered as the chips are: "#3 IED" is the third cluster by HF power.
-    const text = '#' + ((c.k || 0) + 1) + ' ' + (c.cls === 'ied' ? 'IED' : 'DS');
+    const text = '#' + ((c.k || 0) + 1) + ' ' + (c.cls === 'ied' ? 'P-spike' : 'DS');
     const at = placeLabel(g, text, x, y, taken);
     g.fillText(text, at.x, at.y);
     g.restore();
@@ -5953,7 +6057,7 @@ BARRY.rootcanal = (function () {
        says how many dots sit on the edge without a value (top left). */
     const gw = bu.grace_words || graceWords(bu.grace);
     const text = env ? bGroup(bu) + ' envelope · grace ' + gw
-                     : 'DS / IED border · grace ' + gw;
+                     : 'DS / P-spike border · grace ' + gw;
     g.save();
     const ft = fitText(g, text, Math.max(40, w - 12), 9, true);
     const lh = ft.pt + 2;
@@ -6658,7 +6762,7 @@ BARRY.rootcanal = (function () {
         onclick: () => showAverage('the ' + evs.length + ' drawn round', evs) }),
       BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Make a DS cluster',
         extra: 'rc-lasso-ds', onclick: () => addDrawn(evs, 'ds') }),
-      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Make an IED cluster',
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Make a P-spike cluster',
         extra: 'rc-lasso-ied', onclick: () => addDrawn(evs, 'ied') }),
       BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Clear',
         extra: 'rc-lasso-clear', onclick: () => setLassoSel([]) }),
@@ -7056,11 +7160,11 @@ BARRY.rootcanal = (function () {
         gid: xt.gid,
         labels: [
           { id: 'DS', name: 'DS', color: colOf('ds') },
-          { id: 'IED', name: 'IED', color: colOf('ied') },
+          { id: 'P-spike', name: 'P-spike', color: colOf('ied') },
         ],
         events: evs.map((e) => ({
           start: e.t,
-          label: e.cls === 'ied' ? 'IED' : e.cls === 'ds' ? 'DS' : null,
+          label: e.cls === 'ied' ? 'P-spike' : e.cls === 'ds' ? 'DS' : null,
         })),
       };
       if (xf.setChannelLines) {
@@ -7068,7 +7172,7 @@ BARRY.rootcanal = (function () {
           key: 'rootcanal-max',
           // Faded and hidden with the marks (2026-10-21): it is one of them.
           followsMarks: true,
-          label: 'max amp' + (now.cls ? ' · ' + now.cls.toUpperCase() : ''),
+          label: 'max amp' + (now.cls ? ' · ' + callWord(now.cls) : ''),
           colour: colOf(now.cls), number: Number(now.contact),
         }] : []);
       }
@@ -7103,7 +7207,7 @@ BARRY.rootcanal = (function () {
      artifact of its own, under a label somebody types.
      ================================================================== */
   function setView(mode) {
-    const want = mode === 'pooled' ? 'pooled' : 'single';
+    const want = mode === 'pooled' || mode === 'workflow' ? mode : 'single';
     viewMode = want;
     try { localStorage.setItem(VIEW_KEY, want); } catch (e) { /* fine */ }
     press = null;
@@ -7120,12 +7224,77 @@ BARRY.rootcanal = (function () {
         ['single', 'Single', 'One recording: read it, split it, bank it.'],
         ['pooled', 'Pooled', 'Many recordings in one space: two clear groups, '
                            + 'or one spectrum?'],
+        ['workflow', 'Workflow', 'Define a border, apply it to a pool, extract '
+                               + 'what is inside: verified dentate spikes, '
+                               + 'verified P-spikes, and the ambiguous ones.'],
       ], viewMode, setView, { extra: 'rc-viewseg' }),
       el('span', { class: 'hint', text: viewMode === 'pooled'
         ? 'Root Canal singles pooled into one space. Nothing here is banked; '
           + 'a pool is saved under a label of its own.'
+        : viewMode === 'workflow'
+        ? 'Each workflow is versioned and pinned to what it read; its results '
+          + 'go to the Bank as one entry.'
         : 'One aligned set at a time, banked as the next version of that set.' }),
     ]);
+  }
+
+  /* What the Workflow tab borrows from here: the page, a recording's path
+     for Xplorefinder, and Pooled itself -- a stage opened there is the same
+     picture with the border applied, its click panel and all. */
+  function workflowHelpers() {
+    /* THE CLICK PANEL ITSELF (2026-11-05: "everything you'd see in Root
+       Canal normally"): the same four cells and the same four drawings
+       Single and Pooled use -- the ids are theirs, and the Workflow view
+       has no other copy of them on the page. */
+    const cell = (id, title, sub) => el('div', { class: 'rc-ev-cell' }, [
+      el('div', { class: 'rc-ev-t' }, [
+        el('strong', { text: title }),
+        sub ? el('span', { class: 'hint', text: sub }) : null,
+      ].filter(Boolean)),
+      el('canvas', { class: 'rc-canvas rc-ev', id }),
+    ]);
+    return {
+      eventGrid: (d, opt) => {
+        const o = opt || {};
+        const c = (d && d.trace && d.trace.contact != null) ? d.trace.contact : o.contact;
+        return el('div', { class: 'rc-ev-grid wf-ev-grid' }, [
+          cell('rcTrace', o.average ? 'Average, max-amp contact' : 'Max-amp contact',
+               (c != null ? 'CSC' + c : 'the contact the read names')
+               + (d && d.filter_label ? ', ' + d.filter_label : '')),
+          cell('rcSpec', 'Spectrum', o.average ? 'the events’ against their baselines'
+                                               : 'event against its baseline'),
+          cell('rcStack', 'Every contact', 'max contact marked'),
+          cell('rcCsd', 'CSD', ((d && d.csd && d.csd.filter)
+                                || '5–100 Hz, 60 Hz mains taken out') + ' · down the probe'),
+        ]);
+      },
+      drawEvent: (d, e) => {
+        const ok = d && d.ok !== false;
+        const ev = Object.assign({ missing: [], partial: false, wide: false, m: -1 },
+                                 e || {}, { contact: ok && d.trace ? d.trace.contact
+                                                    : (e || {}).contact });
+        drawTrace(ok ? d.trace : null, ev, d);
+        drawSpec(ok ? d.spectrum : null, d);
+        drawStack(ok ? d.stack : null, ev, d);
+        drawCsd(ok ? d.csd : null, ok ? d.stack : null, ev, d);
+      },
+      render: () => render(),
+      recordingPath: (gid) => recordingPath(gid),
+      openPool: async (ref, border) => {
+        if (pool.level === 'double') pool.level = 'pool';
+        viewMode = 'pooled';
+        try { localStorage.setItem(VIEW_KEY, 'pooled'); } catch (e) { /* fine */ }
+        render();
+        const got = await openSaved(ref.artifact_id, ref.version);
+        if (got && border) {
+          pool.border = { artifact_id: border.artifact_id,
+                          version: border.version, grace: border.grace };
+          pool.colour = 'border';
+          runPool();
+        }
+        return got;
+      },
+    };
   }
 
   /* One read of the lists at a time (2026-10-19): the ToolKit paints twice
@@ -10257,7 +10426,7 @@ BARRY.rootcanal = (function () {
             runPool();
           }),
           onAvg: (c) => showAverage('pooled cluster #' + (c.rank + 1) + ' '
-                                     + (c.name || c.call.toUpperCase()),
+                                     + (c.name || callWord(c.call)),
                                      poolEvents().filter(
                                        (e) => e.cluster === c.rank)),
           onRemove: (c) => { pool.drawn.splice(c.rank - ((f && f.k) || 0), 1);
@@ -10309,7 +10478,7 @@ BARRY.rootcanal = (function () {
           + 'placement included.' }),
         el('div', { class: 'chip-row' }, [
           chipC('DS ' + (c.ds || 0), 'ds'),
-          chipC('IED ' + (c.ied || 0), 'ied'),
+          chipC('P-spike ' + (c.ied || 0), 'ied'),
           c.unmeasured ? BARRY.ui.chip(c.unmeasured + ' not measured') : null,
           c.partial ? BARRY.ui.chip(c.partial + ' on 2 of 3 axes', { kind: 'warn' })
                     : null,
@@ -10348,8 +10517,8 @@ BARRY.rootcanal = (function () {
           ? 'half-width unresolved' : fmt(e.hw_ms, 1) + ' ms') + '  ·  '
         + (e.hf_db == null || !isFinite(e.hf_db) ? 'no HF' : fmt(e.hf_db, 1) + ' dB') }),
       el('span', { class: 'hint rc-calls', text:
-        'pooled ' + (e.cls_pool ? e.cls_pool.toUpperCase() : '—') + ', single '
-        + (e.cls_single ? e.cls_single.toUpperCase() : '—') }),
+        'pooled ' + (e.cls_pool ? callWord(e.cls_pool) : '—') + ', single '
+        + (e.cls_single ? callWord(e.cls_single) : '—') }),
       e.switched ? BARRY.ui.chip('switched', { kind: 'warn' }) : null,
       e.partial ? BARRY.ui.chip('2 of 3 axes', { kind: 'warn' }) : null,
       e.wide ? BARRY.ui.chip('widened search', { kind: 'warn' }) : null,
@@ -10384,15 +10553,15 @@ BARRY.rootcanal = (function () {
     const kids = [el('span', { class: 'rc-lg-h', text: (COLOURS.find(
       ([id]) => id === mode) || [0, ''])[1] + ':' })];
     if (mode === 'border' && pool.fit && pool.fit.border_used) {
-      kids.push(item('rc-lg-ds', 'solid DS'), item('rc-lg-ied', 'solid IED'),
+      kids.push(item('rc-lg-ds', 'solid DS'), item('rc-lg-ied', 'solid P-spike'),
                 item('rc-lg-amb rc-lg-amb-ds', 'outside, pooled as DS'),
-                item('rc-lg-amb rc-lg-amb-ied', 'outside, pooled as IED'));
+                item('rc-lg-amb rc-lg-amb-ied', 'outside, pooled as P-spike'));
     } else if (mode === 'pool' || mode === 'single' || mode === 'border') {
-      kids.push(item('rc-lg-ds', 'DS'), item('rc-lg-ied', 'IED'));
+      kids.push(item('rc-lg-ds', 'DS'), item('rc-lg-ied', 'P-spike'));
     } else if (mode === 'switches') {
       kids.push(item('rc-lg-same', 'unchanged'),
-                item('rc-lg-d2i', 'DS → IED when pooled'),
-                item('rc-lg-i2d', 'IED → DS when pooled'));
+                item('rc-lg-d2i', 'DS → P-spike when pooled'),
+                item('rc-lg-i2d', 'P-spike → DS when pooled'));
     } else {
       const list = catList(mode);
       list.forEach((key, at) => {
@@ -10738,7 +10907,7 @@ BARRY.rootcanal = (function () {
     if (ag && ag.ari != null && isFinite(ag.ari)) {
       kids.push(el('table', { class: 'tbl rc-gmm-tab rc-gmm-agree' }, [
         el('tbody', {}, [el('tr', {}, [
-          el('th', { text: 'agreement with the DS / IED call (adjusted Rand, '
+          el('th', { text: 'agreement with the DS / P-spike call (adjusted Rand, '
                          + '1 = same split, 0 = chance)' }),
           el('td', { text: Number(ag.ari).toFixed(2) }),
         ])]),
@@ -10747,12 +10916,12 @@ BARRY.rootcanal = (function () {
       const n2 = (a, b) => String(((x[a] || {})[b]) || 0);
       kids.push(el('table', { class: 'tbl rc-gmm-tab rc-gmm-x' }, [
         el('thead', {}, [el('tr', {}, ['k-means call ↓  GMM component →',
-                                       'DS-like', 'IED-like']
+                                       'DS-like', 'P-spike-like']
           .map((t) => el('th', { text: t })))]),
         el('tbody', {}, [
           el('tr', {}, [el('th', { text: 'DS' }), el('td', { text: n2('ds', 'ds_like') }),
                         el('td', { text: n2('ds', 'ied_like') })]),
-          el('tr', {}, [el('th', { text: 'IED' }), el('td', { text: n2('ied', 'ds_like') }),
+          el('tr', {}, [el('th', { text: 'P-spike' }), el('td', { text: n2('ied', 'ds_like') }),
                         el('td', { text: n2('ied', 'ied_like') })]),
         ]),
       ]));
@@ -10900,13 +11069,13 @@ BARRY.rootcanal = (function () {
       g.fillText('← DS side', F.x0 + 4, F.y0 + 11);
       g.fillStyle = colOf('ied');
       g.textAlign = 'right';
-      g.fillText('IED side →', F.x1 - 4, F.y0 + 11);
+      g.fillText('P-spike side →', F.x1 - 4, F.y0 + 11);
       g.textAlign = 'left';
     } else {
       g.fillStyle = colOf('ds');
       g.fillText('DS', F.x1 - 44, F.y0 + 11);
       g.fillStyle = colOf('ied');
-      g.fillText('IED', F.x1 - 24, F.y0 + 11);
+      g.fillText('P-spike', F.x1 - 24, F.y0 + 11);
     }
     GEOM.hist = GEOM.hist || {};
     GEOM.hist[id] = { xl, yl: 'events', n: fin.length, lo, hi,
@@ -11024,8 +11193,8 @@ BARRY.rootcanal = (function () {
             : 'this ' + noun + ', which is not saved: save it first for the '
               + 'entries to name it') + '.' }),
         el('ul', {}, [
-          el('li', { text: 'Of type “Ambiguous DS / IED”, never DS or IED: '
-            + 'nothing that reads a recording’s DS set or its IED candidates '
+          el('li', { text: 'Of type “Ambiguous DS / P-spike”, never DS or P-spike: '
+            + 'nothing that reads a recording’s DS set or its P-spike candidates '
             + 'picks these up.' }),
           el('li', { text: 'Each stamp keeps what the recording’s own set has '
             + 'at that time. Why it is here -- its calls, its border class, '
@@ -11088,7 +11257,7 @@ BARRY.rootcanal = (function () {
         + 'they come from by mouse, type, group, subgroup and condition, '
         + 'export them as a CSV and bank them.' }));
       kids.push(el('p', { class: 'hint rc-deep-recipe', text: 'Steps 7–10: '
-        + 'pool the controls with “every event is DS”, pool the IED mice at '
+        + 'pool the controls with “every event is DS”, pool the P-spike mice at '
         + 'k = 2, pool those two pools (“Pool pools”), draw a border from the '
         + 'identity switches, apply it, then open this.' }));
       if (d && d.err) {
@@ -11104,8 +11273,8 @@ BARRY.rootcanal = (function () {
     const c = d.counts || {};
     const bu = d.border_used;
     kids.push(el('p', { class: 'rc-deep-count', text: c.rows + ' of ' + c.n
-      + ' events: ' + c.switched + ' switched (' + c.ds_to_ied + ' DS → IED, '
-      + c.ied_to_ds + ' IED → DS)'
+      + ' events: ' + c.switched + ' switched (' + c.ds_to_ied + ' DS → P-spike, '
+      + c.ied_to_ds + ' P-spike → DS)'
       + (bu ? ', ' + c.ambiguous + ' ambiguous under the border ‘'
               + bu.nickname + '’ at grace ' + bu.grace_words : '')
       + ', from ' + c.recordings + ' recording'
@@ -11145,7 +11314,7 @@ BARRY.rootcanal = (function () {
           .map((x) => x.session_label + ', ' + x.why).join('; ') : '') + '.' }));
     }
     const callTd = (v) => el('td', { class: v ? 'rc-call-' + v : null,
-                                     text: v ? v.toUpperCase() : '—' });
+                                     text: v ? callWord(v) : '—' });
     const head = ['session', 't · s', 'amp · µV', 'hw · ms', 'HF · dB',
                   'single', dbl ? 'pool (v0)' : 'pool',
                   dbl ? 'pool of pools' : null, bu ? 'border' : null, 'why']
@@ -11164,7 +11333,7 @@ BARRY.rootcanal = (function () {
           el('td', { text: fmt(r.hf_db, 1) }),
           callTd(r.single), callTd(r.pool), dbl ? callTd(r.double) : null,
           bu ? el('td', { text: r.border === 'amb' ? 'ambiguous'
-            : r.border ? 'solid ' + r.border.toUpperCase() : '—' }) : null,
+            : r.border ? 'solid ' + callWord(r.border) : '—' }) : null,
           el('td', { text: (r.why || []).join('; ') }),
         ].filter(Boolean)))),
       ])]));
@@ -11176,7 +11345,7 @@ BARRY.rootcanal = (function () {
     kids.push(el('div', { class: 'rc-deep-scroll rc-deep-sumwrap' }, [
       el('table', { class: 'tbl rc-deep-sum' }, [
         el('thead', {}, [el('tr', {}, [sm.label || d.group, 'recordings', 'events',
-          'switched', 'DS → IED', 'IED → DS', bu ? 'ambiguous' : null]
+          'switched', 'DS → P-spike', 'P-spike → DS', bu ? 'ambiguous' : null]
           .filter(Boolean).map((h) => el('th', { text: h })))]),
         el('tbody', {}, (sm.rows || []).map((x) => el('tr', {}, [
           el('td', { text: x.value }),
@@ -11220,7 +11389,7 @@ BARRY.rootcanal = (function () {
       el('strong', { text: title }),
       el('table', { class: 'tbl rc-sw-tab' }, [
         el('thead', {}, [el('tr', {}, ['', 'events', 'switched', 'rate',
-                                       'DS → IED', 'IED → DS']
+                                       'DS → P-spike', 'P-spike → DS']
           .map((t) => el('th', { text: t })))]),
         el('tbody', {}, rows),
       ]),
@@ -11236,8 +11405,8 @@ BARRY.rootcanal = (function () {
         : 'Identity switches: each event’s own call against the pooled one' }),
       sw2 ? el('p', { class: 'hint rc-sw-single', text: 'Against its single '
         + 'instead: ' + (sw2.switched || 0) + ' of ' + (sw2.n || 0) + ' ('
-        + pct(sw2.rate) + ') -- ' + (sw2.ds_to_ied || 0) + ' DS → IED, '
-        + (sw2.ied_to_ds || 0) + ' IED → DS.' }) : null,
+        + pct(sw2.rate) + ') -- ' + (sw2.ds_to_ied || 0) + ' DS → P-spike, '
+        + (sw2.ied_to_ds || 0) + ' P-spike → DS.' }) : null,
       /* Steps 8-9: the border between these identities, with grace. */
       el('div', { class: 'chip-row rc-border-go-row' }, [
         BARRY.ui.button({ kind: 'mini', extra: 'rc-border-go',
@@ -11245,7 +11414,7 @@ BARRY.rootcanal = (function () {
           title: 'Three cut-offs, in µV, dB and ms, between the events’ own '
                + 'identities (' + (dbl ? 'their own pools’ calls'
                                        : 'their singles’ calls')
-               + '): past all three is solid IED, short of all three solid '
+               + '): past all three is solid P-spike, short of all three solid '
                + 'DS, anything else ambiguous. With grace, the switch rate '
                + 'allowed. Previewed before it is saved. A pool that is all '
                + 'one identity gets a box drawn around it instead.',
@@ -11253,12 +11422,12 @@ BARRY.rootcanal = (function () {
       el('div', { class: 'rc-sw-top' }, [
         el('table', { class: 'tbl rc-crosstab' }, [
           el('thead', {}, [el('tr', {}, [(pool.fit && pool.fit.level === 'double'
-              ? 'pool ↓  double →' : 'single ↓  pooled →'), 'DS', 'IED']
+              ? 'pool ↓  double →' : 'single ↓  pooled →'), 'DS', 'P-spike']
             .map((t) => el('th', { text: t })))]),
           el('tbody', {}, [
             el('tr', {}, [el('th', { text: 'DS' }), el('td', { text: cell('ds', 'ds') }),
                           el('td', { class: 'rc-sw-off', text: cell('ds', 'ied') })]),
-            el('tr', {}, [el('th', { text: 'IED' }),
+            el('tr', {}, [el('th', { text: 'P-spike' }),
                           el('td', { class: 'rc-sw-off', text: cell('ied', 'ds') }),
                           el('td', { text: cell('ied', 'ied') })]),
           ]),

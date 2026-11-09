@@ -383,7 +383,7 @@ BARRY.views.toolkit = (function () {
        second: it measures at the stamp, so the stamps have to be lined up,
        and X-ray should split dentate spikes, not dentate spikes with the
        interictal discharges Incisor let through still in them. */
-    ['rootcanal', 'Root Canal', 'take the IEDs out'],
+    ['rootcanal', 'Root Canal', 'take the P-spikes out'],
     ['dspca', 'X-ray', 'tell them apart'],
   ];
 
@@ -1042,6 +1042,19 @@ BARRY.views.toolkit = (function () {
           + 'proposals come back side by side.',
       without: 'Only pooled sets whose recording is on this computer could '
              + 'be lined up.',
+    },
+    rootcanal: {
+      why: 'A Root Canal read takes every contact round every event of a '
+         + 'set: minutes of disk per set, so a batch of forty ties this '
+         + 'computer up for hours.',
+      what: 'In Many: every ticked set the cluster can read is read on a '
+          + 'compute node, many side by side, by the same screen and the '
+          + 'same read as here. Each read comes home and is filed as if it '
+          + 'were made here, and goes on the lab’s shelf for every other '
+          + 'computer. Fitting, the pictures and banking stay here.',
+      without: 'Many reads one set after another on this computer, and a '
+             + 'set whose recording only the cluster has is read there one '
+             + 'at a time.',
     },
     panning: {
       why: 'Panning sorts a pooled set on the traces. For a recording only '
@@ -2221,7 +2234,11 @@ BARRY.views.toolkit = (function () {
         BARRY.setPicker ? BARRY.setPicker.bankChip(st) : null,
       ].filter(Boolean),
       count: pr.specified + ' / ' + pr.total
-             + (done ? '  ✓' : '  ·  ' + pr.left + ' left'),
+             + (done ? '  ✓' : '  ·  ' + pr.left + ' left')
+             // Prospector's flags are left until a person settles them
+             // (curation.progress), and the card says which those are.
+             + (pr.ai_flags ? ', ' + pr.ai_flags + ' of them Prospector’s '
+                              + (pr.ai_flags === 1 ? 'flag' : 'flags') : ''),
       owner: { name: who, onAssign: () => assignSet(st) },
       // The id the push files it under (cloudsync.rows_curation).
       sync: { kind: 'curation', id: st.gid + '__' + st.kind },

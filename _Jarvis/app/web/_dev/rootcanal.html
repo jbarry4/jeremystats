@@ -140,7 +140,7 @@ const ENTRY = '46fd29a77cc7';
   eq('and says what this one does',
      ((stepEls[3] || {}).querySelector
        ? (stepEls[3].querySelector('.tk-step-s') || {}).textContent : null),
-     'take the IEDs out');
+     'take the P-spikes out');
   eq('the header counts them',
      ((dentist || D()).querySelector('.tk-bundle-c') || {}).textContent,
      '5 tools');
@@ -278,10 +278,10 @@ const ENTRY = '46fd29a77cc7';
   const cD = (f0.centres || []).find((c) => c.cls === 'ds');
   const cI = (f0.centres || []).find((c) => c.cls === 'ied');
   ok('two centres, one of each class', !!(cD && cI));
-  ok('and the IED one is the one with more HF power (the naming rule)',
+  ok('and the P-spike one is the one with more HF power (the naming rule)',
      !!(cD && cI) && cI.raw[2] > cD.raw[2],
      JSON.stringify([cD && cD.raw, cI && cI.raw]));
-  ok('the rule is said in a sentence', /IED/.test(f0.rule || ''), f0.rule);
+  ok('the rule is said in a sentence', /P-spike/.test(f0.rule || ''), f0.rule);
   const whyText = (D().querySelector('.rc-why') || {}).textContent || '';
   ok('and the panel says it', whyText.indexOf(f0.rule) >= 0,
      whyText.slice(0, 160));
@@ -634,7 +634,7 @@ const ENTRY = '46fd29a77cc7';
   ok('ranked by HF power, lowest first',
      st().fit.clusters.every((c, i, a2) => i === 0
                              || a2[i - 1].centre_raw[2] <= c.centre_raw[2]));
-  ok('the highest is IED by the rule, the rest DS',
+  ok('the highest is P-spike by the rule, the rest DS',
      st().fit.clusters.map((c) => c.call).join() === 'ds,ds,ied'
      && st().fit.clusters.every((c) => c.call_by === 'rule'));
   eq('one chip per cluster', D().querySelectorAll('.rc-why .rc-clu').length, 3);
@@ -677,11 +677,11 @@ const ENTRY = '46fd29a77cc7';
   ok('each chip’s swatch is its centre’s colour, by call', kColourOk());
   ok('and by call that is the call’s colour',
      ((geom().space || {}).centres || []).every((c) =>
-       c.fill === (c.cls === 'ied' ? kTok('--err') : kTok('--ok'))),
+       c.fill === (c.cls === 'ied' ? kTok('--call-p') : kTok('--call-ds'))),
      JSON.stringify(((geom().space || {}).centres || []).map((c) => c.fill)));
   ok('centres are numbered as the chips are',
      ((geom().space || {}).centres || []).map((c) => c.label && c.label.text)
-       .join() === '#1 DS,#2 DS,#3 IED',
+       .join() === '#1 DS,#2 DS,#3 P-spike',
      JSON.stringify(((geom().space || {}).centres || []).map((c) => c.label)));
   kBtn(6).click();
   await until(() => st().fit && st().fit.k === 6 && !st().fitting, 30000, 'k = 6');
@@ -717,7 +717,7 @@ const ENTRY = '46fd29a77cc7';
 
   kBtn(1).click();
   await until(() => st().fit && st().fit.k === 1 && !st().fitting, 30000, 'k = 1');
-  ok('k = 1 is no split: nothing called IED, and it says why',
+  ok('k = 1 is no split: nothing called P-spike, and it says why',
      st().fit.counts.ied === 0 && /no split/.test(st().fit.rule), st().fit.rule);
 
   /* MARGINS WERE TAKEN OUT (2026-10-21): there is no card to pick, apply
@@ -900,7 +900,7 @@ const ENTRY = '46fd29a77cc7';
   await until(() => !st().fitting && (st().fit.clusters || [])
                     .some((c) => c.call_by === 'drawn'), 30000, 'the drawn cluster');
   const gD = st().fit.clusters.find((c) => c.call_by === 'drawn');
-  ok('“Make an IED cluster” makes one, after k-means’ own, called IED',
+  ok('“Make a P-spike cluster” makes one, after k-means’ own, called P-spike',
      gD && gD.rank === st().fit.k && gD.call === 'ied' && gD.n === gWant.length,
      JSON.stringify(gD));
   eq('the request carries it', (ev(RC + '._lastBody()').drawn[0] || {}).events
@@ -1127,13 +1127,13 @@ const ENTRY = '46fd29a77cc7';
   const cnt0 = Object.assign({}, st().fit.counts);
   /* Asked for 2026-10-06: no identity switch on a single event. The bar
      says the event's call and offers no way to change it. */
-  ok('there is no DS/IED toggle on the picked event’s bar',
+  ok('there is no DS/P-spike toggle on the picked event’s bar',
      !D().querySelector('.rc-pickbar .rc-toggle')
      && !Array.from(D().querySelectorAll('.rc-pickbar button'))
-       .some((b) => /^(DS|IED)$/.test(b.textContent.trim())));
+       .some((b) => /^(DS|P-spike)$/.test(b.textContent.trim())));
   const callChip = D().querySelector('.rc-pickbar .rc-ev-call');
   ok('its call is shown instead, with its cluster',
-     !!callChip && callChip.textContent.indexOf(was.toUpperCase()) === 0
+     !!callChip && callChip.textContent.indexOf(was === 'ied' ? 'P-spike' : was.toUpperCase()) === 0
      && /cluster #\d/.test(callChip.textContent),
      callChip && callChip.textContent);
   /* A result banked before the toggle went can carry flips: they are fit
@@ -1259,7 +1259,7 @@ const ENTRY = '46fd29a77cc7';
      /* v[\d.]+ -- reading an older version makes the bank a branch, and a
         branch is named v2.1, not the tip plus one. */
      new RegExp('^Bank: ' + (c1.ds + c1.unmeasured) + ' DS as (v[\\d.]+|a new '
-                + 'version), ' + c1.ied + ' IED as ').test(lab), lab);
+                + 'version), ' + c1.ied + ' P-spike as ').test(lab), lab);
   /* The card's own row of actions, not the Borders card's inside it
      (2026-10-19). */
   const acts = D().querySelector('.rc-why > .head-actions');
@@ -1371,7 +1371,7 @@ const ENTRY = '46fd29a77cc7';
      btns.length >= 2 && /Cancel/.test(btns[btns.length - 2].textContent)
      && /Bank it/.test(btns[btns.length - 1].textContent),
      btns.map((b) => b.textContent).join(' | '));
-  ok('and says the IEDs arrive as candidates, not decisions',
+  ok('and says the P-spikes arrive as candidates, not decisions',
      /candidates/.test((D().querySelector('#bigModal .rc-ask') || {}).textContent || ''));
   /* The shared bank dialog's sentence, about the version this was read
      from -- not "the tip plus one", which is wrong whenever an older
@@ -1541,7 +1541,7 @@ const ENTRY = '46fd29a77cc7';
      answer on it, the set is left out of a batch -- rightly, its live set
      is Root Canal's own output -- and saying so is the right answer too. */
   const cleaned = (bp.blocked || []).find((r) => r.entry_id === ENTRY
-    && /already taken the IEDs out/.test(r.why || ''));
+    && /already taken the P-spikes out/.test(r.why || ''));
   ok('and PTEN m13 s2 is already read in it' + (cleaned
        ? ' -- or, banked since, left out because Root Canal has cleaned it' : ''),
      (bp.done || []).some((r) => r.entry_id === ENTRY) || !!cleaned,
@@ -1579,6 +1579,23 @@ const ENTRY = '46fd29a77cc7';
      + ' return W.__hbFetch.apply(this, arguments); }; })()');
   ev('(function(){ var b = ' + RC + '._bulk(); b.plan = null; b.want = {};'
      + ' b.filt = { q: "" }; b.last = null; return 1; })()');
+  /* VACC status, stood in for and put back (uiparts.html's way): off for
+     the checks on this computer, on for the VACC's below. `last` is a
+     getter, so it is redefined rather than assigned. */
+  const hbB = ev('BARRY');
+  const hbLast = Object.getOwnPropertyDescriptor(hbB.vacc, 'last');
+  const hbVacc = hbB.state.vacc;
+  const hbVaccOn = (on) => {
+    hbB.state.vacc = on;
+    Object.defineProperty(hbB.vacc, 'last', { configurable: true,
+      get: () => ({ configured: on, available: on }) });
+  };
+  const hbVaccBack = () => {
+    hbB.state.vacc = hbVacc;
+    if (hbLast) Object.defineProperty(hbB.vacc, 'last', hbLast);
+  };
+  hbVaccOn(false);
+  ev(RC + '._render()');
   const manyB = Array.from(D().querySelectorAll('.rc-mode .seg button'))
     .find((b) => /many/i.test(b.textContent));
   ok('One or many is the run bar’s choice', !!manyB);
@@ -1692,6 +1709,104 @@ const ENTRY = '46fd29a77cc7';
      listRows().every((r) => !r.querySelector('input').checked));
   eq('nothing was sent to be read', JSON.parse(ev('JSON.stringify(window.__hbSent)')), []);
 
+  /* ================================================================== */
+  head('MANY ON THE VACC (VACC STOOD IN FOR; NOTHING IS READ)');
+
+  /* 2026-11-06: "Make Root Canal Many VACC powered". The plan says which
+     sets the cluster can read (`cluster`) and which only it has (`here`
+     false); hb-0 has no copy there, hb-2 is only there. */
+  ev('(function(){ var p = window.__hbPlan; p.vacc = true;'
+     + ' p.todo.forEach(function(r){ r.here = true; r.cluster = true; });'
+     + ' p.todo.forEach(function(r){ if (r.entry_id === "hb-0") r.cluster = false;'
+     + '   if (r.entry_id === "hb-2") r.here = false; }); return 1; })()');
+  /* Many on this computer until VACC is pressed, so pressing it is a
+     change the bar acts on. */
+  ev('(function(){ var b = ' + RC + '._bulk(); b.plan = null; b.want = {};'
+     + ' b.where = "local"; return 1; })()');
+  hbVaccOn(true);
+  ev(RC + '._render()');
+  const vaccB = Array.from(D().querySelectorAll('.rc-mode .seg button'))
+    .find((b) => /^VACC$/.test(b.textContent.trim()));
+  ok('Where offers the VACC once it is set up', !!vaccB);
+  if (vaccB) vaccB.click();
+  await until(() => listRows().length === 30
+              && ev(RC + '._bulk().at') === 'vacc', 8000, 'Many on the VACC');
+  eq('the bar settles on the VACC, in Many',
+     [ev(RC + '._bulk().at'), ev(RC + '._bulk().on')], ['vacc', true]);
+  ok('and says the sets go up as one batch, side by side',
+     /goes to the VACC as one batch and is read there, side by side/
+       .test((D().querySelector('.rc-mode .hint') || {}).textContent || ''));
+  const rowOf = (id) => D().querySelector('.rc-bulk-card .rc-bulk-row[data-id="'
+                                          + id + '"]');
+  ok('a set the cluster has no copy of says it is read here',
+     /the VACC has no copy, so read here/.test((rowOf('hb-0') || {}).textContent || ''));
+  ok('a set only the cluster has says it is read there',
+     /only on the VACC, so read there/.test((rowOf('hb-2') || {}).textContent || ''));
+  ok('a set both have says nothing about it',
+     !/VACC/.test((rowOf('hb-4') || {}).textContent || ''));
+  for (const id of ['hb-0', 'hb-2', 'hb-4']) rowOf(id).querySelector('input').click();
+  await until(() => wantIds().length === 3, 4000, 'three ticks');
+  const costTxt = () => ((D().querySelector('.rc-bulk-cost') || {}).textContent || '');
+  ok('the cost splits them by where they are read',
+     /2 to read on the VACC \(\S+ events\), side by side/.test(costTxt())
+     && /1 to read on this computer .* the cluster has no copy of it/.test(costTxt()),
+     costTxt());
+  eq('a mixed batch’s primary says how many',
+     D().querySelector('.rc-bulk-go').textContent, 'Read the 3 ticked');
+  rowOf('hb-0').querySelector('input').click();
+  await until(() => wantIds().length === 2, 4000, 'two ticks');
+  eq('all of them on the VACC, it says so',
+     D().querySelector('.rc-bulk-go').textContent, 'Read the 2 ticked on the VACC');
+  D().querySelector('.rc-bulk-go').click();
+  await until(() => JSON.parse(ev('JSON.stringify(window.__hbSent)')).length, 4000,
+              'the batch asked for');
+  const sentV = JSON.parse(ev('JSON.stringify(window.__hbSent)'));
+  eq('the batch is asked for on the VACC, with the ticked sets',
+     [sentV.length, sentV[0] && sentV[0].where, sentV[0] && sentV[0].entries],
+     [1, 'vacc', ['hb-2', 'hb-4']]);
+
+  /* The cluster's rows, in the card's words (vaccrun.collect's states). */
+  ev(RC + '._fakeBulk(' + JSON.stringify([
+    { id: 'hb-2', label: 'HarnessA m3 s1', status: 'queued', where: 'vacc',
+      step: 'queued on 6245967' },
+    { id: 'hb-4', label: 'HarnessA m5 s1', status: 'running', where: 'vacc',
+      step: 'running' },
+    { id: 'hb-6', label: 'HarnessA m7 s1', status: 'failed', where: 'vacc',
+      error: 'harness: the node fell over' },
+    { id: 'hb-8', label: 'HarnessA m9 s1', status: 'done', where: 'vacc' },
+    { id: 'hb-10', label: 'HarnessA m11 s1', status: 'skipped', where: 'vacc',
+      step: 'already running on VACC, from Strawbarry -- following that one' },
+    { id: 'hb-0', label: 'HarnessA m1 s1', status: 'running', where: 'here',
+      done: 3, of: 64 },
+  ]) + ')');
+  await until(() => D().querySelectorAll('.rc-bulk-member').length === 6, 6000,
+              'the batch card');
+  const mRow = (id) => D().querySelector('.rc-bulk-member[data-mid="' + id + '"]');
+  const mTxt = (id) => ((mRow(id) || {}).querySelector
+    ? (mRow(id).querySelector('.dop-batch-state') || {}).textContent : '') || '';
+  eq('each row says where it stands on the cluster',
+     ['hb-2', 'hb-4', 'hb-6', 'hb-8', 'hb-10', 'hb-0'].map(mTxt),
+     ['queued on the VACC (job 6245967)', 'reading on the VACC',
+      'failed: harness: the node fell over',
+      'read on the VACC — open it to look, or bank it',
+      'not sent: already running on VACC, from Strawbarry -- following that one',
+      'reading channel 4 of 64']);
+  eq('and is drawn as queued, running, failed or done',
+     ['hb-2', 'hb-4', 'hb-6', 'hb-8', 'hb-10'].map((id) =>
+       ['queued', 'running', 'failed', 'done'].find((c) =>
+         mRow(id) && mRow(id).classList.contains(c)) || null),
+     ['queued', 'running', 'failed', 'done', 'failed']);
+  ok('a set read on the VACC opens and banks like any other',
+     !!(mRow('hb-8') && mRow('hb-8').querySelector('.rc-bulk-open')
+        && mRow('hb-8').querySelector('.rc-bulk-bank')));
+  ok('the line counts the failed and the ones on the VACC',
+     /2 failed/.test((D().querySelector('.rc-bulk-line') || {}).textContent || '')
+     && /5 on the VACC/.test((D().querySelector('.rc-bulk-line') || {}).textContent || ''),
+     (D().querySelector('.rc-bulk-line') || {}).textContent);
+  ev(RC + '._endBulk()');
+  ev('(function(){ var b = ' + RC + '._bulk(); b.where = "vacc"; return 1; })()');
+  hbVaccBack();
+
   ev('(function(){ var W = window; if (W.__hbFetch) { W.fetch = W.__hbFetch;'
      + ' delete W.__hbFetch; } })()');
   ev('(function(){ var b = ' + RC + '._bulk(); b.plan = null; b.want = {};'
@@ -1715,7 +1830,7 @@ const ENTRY = '46fd29a77cc7';
      + '   if (o && o.method === "POST") { W.__rnSent.push(JSON.parse(o.body ||'
      + '     "{}")); r = { ok: true, added: true, names: [] }; }'
      + '   else r = { ok: true, names: [{ name: "DS slow", type: "ds" },'
-     + '     { name: "IED big", type: "ied" }] };'
+     + '     { name: "P-spike big", type: "ied" }] };'
      + '   return Promise.resolve(new Response(JSON.stringify(r), { status: 200,'
      + '     headers: { "Content-Type": "application/json" } })); }'
      + ' return W.__rnFetch.apply(this, arguments); }; })()');
@@ -1727,7 +1842,7 @@ const ENTRY = '46fd29a77cc7';
               8000, 'the name picker');
   const picks = Array.from(D().querySelectorAll('#bigModal .rc-name-pick'));
   eq('the picker offers the lab’s names, by type',
-     picks.map((b) => b.textContent), ['DS slow', 'IED big']);
+     picks.map((b) => b.textContent), ['DS slow', 'P-spike big']);
   picks[0].click();
   await until(() => !st().fitting && st().fit.clusters
     .some((cl) => cl.name === 'DS slow'), 20000, 'the named cluster');
@@ -1745,18 +1860,18 @@ const ENTRY = '46fd29a77cc7';
   nmBtns()[iedRank].click();
   await until(() => D().querySelector('#bigModal:not(.hidden) .rc-name-in'),
               8000, 'the picker again');
-  D().querySelector('#bigModal .rc-name-in').value = 'IED harness';
+  D().querySelector('#bigModal .rc-name-in').value = 'P-spike harness';
   const tIed = Array.from(D().querySelectorAll('#bigModal .rc-name-type button'))
-    .find((b) => b.textContent.trim() === 'IED');
+    .find((b) => b.textContent.trim() === 'P-spike');
   if (tIed) tIed.click();
   D().querySelector('#bigModal .rc-name-add').click();
   await until(() => !st().fitting && st().fit.clusters
-    .some((cl) => cl.name === 'IED harness'), 20000, 'the typed name');
+    .some((cl) => cl.name === 'P-spike harness'), 20000, 'the typed name');
   eq('a typed name joins the lab’s list, with its type',
      JSON.parse(ev('JSON.stringify(window.__rnSent)')),
-     [{ name: 'IED harness', type: 'ied' }]);
-  ok('and names the cluster, called IED',
-     st().fit.clusters.find((cl) => cl.name === 'IED harness').call === 'ied');
+     [{ name: 'P-spike harness', type: 'ied' }]);
+  ok('and names the cluster, called P-spike',
+     st().fit.clusters.find((cl) => cl.name === 'P-spike harness').call === 'ied');
   /* Pressing a named chip renames it; the picker can take the name off. */
   Array.from(D().querySelectorAll('.rc-why .rc-clu'))
     .find((b) => /DS slow/.test(b.textContent)).click();
@@ -1818,7 +1933,7 @@ const ENTRY = '46fd29a77cc7';
      ['v2 · three clusters', 'v1 · two clusters']);
   ok('each one’s hover says its settings, counts, and who, where and when',
      /Settings: k3 · LFP filter/.test(sOpts[0].title)
-     && /Counts: \d+ events · 10 DS · 5 IED/.test(sOpts[0].title)
+     && /Counts: \d+ events · 10 DS · 5 P-spike/.test(sOpts[0].title)
      && /Saved by Harness on Elsewhere, 2026-10-06 12:00/.test(sOpts[0].title),
      sOpts[0].title);
   ok('the set’s sync state is marked beside them',
@@ -1981,11 +2096,11 @@ const ENTRY = '46fd29a77cc7';
       sigclust: { p: 0.62, n_sim: 200, genuine: false, say: 'p = 0.620: one '
         + 'Gaussian cloud split in two does as well -- the split could be forced' },
       dip: { dip: 0.02, p: 0.71, genuine: false,
-             say: 'dip 0.0200, p = 0.710: one hump along the DS→IED line' },
+             say: 'dip 0.0200, p = 0.710: one hump along the DS→P-spike line' },
       stability: { ari_mean: 0.95, genuine: true, say: 'adjusted Rand 0.95 over '
         + '50 resamples; 2% of events change cluster in more than 1 in 10' },
       gmm: { delta: 30.1, agree: 0.2, genuine: false,
-             say: 'ΔBIC = +30.1: two Gaussians, barely the DS / IED split' } } };
+             say: 'ΔBIC = +30.1: two Gaussians, barely the DS / P-spike split' } } };
   ev('window.__stReply = ' + JSON.stringify(stReply));
   ev('(function(){ var W = window; if (W.__stFetch) return; W.__stFetch = W.fetch;'
      + ' W.__stSent = []; W.__stFail = null; W.fetch = function(u, o) {'
@@ -2119,7 +2234,7 @@ const ENTRY = '46fd29a77cc7';
      + '   (j.events || []).forEach(function(e, k) { e.border = ["ds", "ied", "amb"][k % 3];'
      + '     n[e.border] += 1; });'
      + '   j.border_used = { artifact_id: "hb-s", version: 1, nickname: "single border",'
-     + '     grace: 0.05, grace_words: "5%", rule: "Solid IED: harness. Solid DS: harness.",'
+     + '     grace: 0.05, grace_words: "5%", rule: "Solid P-spike: harness. Solid DS: harness.",'
      + '     counts: n, wrong: 0, switch_rate: null, n_identity: 0 };'
      + '   return new Response(JSON.stringify(j), { status: 200,'
      + '     headers: { "Content-Type": "application/json" } }); }); }; })()');
@@ -2129,7 +2244,7 @@ const ENTRY = '46fd29a77cc7';
      .artifact_id === 'hb-s');
   ok('the call shown is the border’s: the legend says so, with the '
      + 'ones outside it',
-     /solid DS\s*solid IED\s*outside, called DS\s*outside, called IED/
+     /solid DS\s*solid P-spike\s*outside, called DS\s*outside, called P-spike/
        .test(D().querySelector('.rc-legend').textContent),
      D().querySelector('.rc-legend').textContent.slice(0, 120));
 
@@ -2147,21 +2262,21 @@ const ENTRY = '46fd29a77cc7';
     g.fillStyle = c; return String(g.fillStyle); };
   const outCls = new Set(st().fit.events.filter((e) => e.border === 'amb')
     .map((e) => e.cls).filter((c) => c === 'ds' || c === 'ied'));
-  eq('solid DS and solid IED in two full colours', solidF.size, 2);
+  eq('solid DS and solid P-spike in two full colours', solidF.size, 2);
   eq('outside it, one faded colour per call it had', outF.size, outCls.size);
   ok('none of them the plain grey, nor a solid colour',
      outF.size > 0 && Array.from(outF).every((c) => norm(c) !== greyF
        && !solidF.has(c)), JSON.stringify([Array.from(outF), greyF]));
   /* Folded in Single (it sits above the pictures), its line saying it. */
   ok('the Borders card’s folded line says the border and what it made of '
-     + 'the set', /^Borders · Classified by ‘single border’ at grace 5%: \d+ solid DS · \d+ solid IED · \d+ ambiguous$/
+     + 'the set', /^Borders · Classified by ‘single border’ at grace 5%: \d+ solid DS · \d+ solid P-spike · \d+ ambiguous$/
        .test(D().querySelector('.rc-why .rc-border-sum').textContent)
-     && /solid DS · \d+ solid IED · \d+ ambiguous/.test(
+     && /solid DS · \d+ solid P-spike · \d+ ambiguous/.test(
        D().querySelector('.rc-why .rc-border-on').textContent));
   ev(RC + '._setBorder(null)');
   await until(() => !st().fitting && !st().fit.border_used, 20000, 'the border off');
   ok('taken off, the call is k-means’ again',
-     /^\s*DS\s*IED/.test((D().querySelector('.rc-legend') || {}).textContent || ''),
+     /^\s*DS\s*P-spike/.test((D().querySelector('.rc-legend') || {}).textContent || ''),
      (D().querySelector('.rc-legend') || {}).textContent);
   ev('(function(){ var W = window; if (W.__bdFetch) { W.fetch = W.__bdFetch;'
      + ' delete W.__bdFetch; } })()');

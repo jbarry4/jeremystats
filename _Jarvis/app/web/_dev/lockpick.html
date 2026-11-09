@@ -187,10 +187,10 @@ async function until(fn, ms) {
       check('and the plan reads the dentate-spike band',
             pl.ok === false || ((pl.spec || {}).band || [])[0] === 5,
             JSON.stringify((pl.spec || {}).band));
-      band.find((b) => /IED/.test(txt(b))).click();
+      band.find((b) => /P-spike/.test(txt(b))).click();
       await until(() => ((B.lock._state().plan || {}).spec || {}).band
                         && B.lock._state().plan.spec.band[0] === 1, 30000);
-      check('IED is one press away, and the plan follows',
+      check('P-spike is one press away, and the plan follows',
             (((B.lock._state().plan || {}).spec || {}).band || [])[0] === 1);
       $$('.br-band button').find((b) => /Dentate/.test(txt(b))).click();
       await until(() => (((B.lock._state().plan || {}).spec || {}).band || [])[0] === 5,

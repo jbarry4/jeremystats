@@ -1,0 +1,116 @@
+{
+  "_at": {
+    "added": "2026-11-05T21:18:21.701037+00:00",
+    "deleted": "2026-11-05T21:18:39.584441+00:00",
+    "id": "2026-11-05T21:18:21.701037+00:00",
+    "kind": "2026-11-05T21:18:21.701037+00:00",
+    "name": "2026-11-05T21:18:21.701037+00:00",
+    "nickname": "2026-11-05T21:18:21.701037+00:00",
+    "schema": "2026-11-05T21:18:21.701037+00:00",
+    "subject": "2026-11-05T21:18:21.701037+00:00",
+    "subject_key": "2026-11-05T21:18:21.701037+00:00",
+    "version": "2026-11-05T21:18:39.584441+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "93e602c3a905": [
+        "set",
+        "2026-11-05T21:18:39.584441+00:00"
+      ],
+      "badf5ce4a3c9": [
+        "set",
+        "2026-11-05T21:18:21.701037+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-05T21:18:39.584441+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-05T16:18:21-05:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "ab9613cbc7c2",
+  "kind": "rootcanal_workflow",
+  "name": "Verified dentate spikes \u00b7 Verified DS Test flow",
+  "nickname": "Verified DS Test flow",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "kind": "ds",
+    "name": "Verified dentate spikes \u00b7 Verified DS Test flow",
+    "workflow_key": "d8472257b2844492821c69bb030c4680"
+  },
+  "subject_key": "rootcanal_workflow|d8472257b2844492821c69bb030c4680",
+  "version": 2,
+  "versions": [
+    {
+      "app_version": "2026.11.05.5",
+      "at": "2026-11-05T16:18:21-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "e899bb65",
+      "digest": "e8be90a86490",
+      "id": "badf5ce4a3c9",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": null,
+        "events": null,
+        "grace": 0.05,
+        "kept": null,
+        "kind": "ds",
+        "ran": false,
+        "target": "PTEN ALL PTEN Baseline Full Incisor"
+      },
+      "nickname": "defined",
+      "nickname_at": "2026-11-05T16:18:21-05:00",
+      "note": null,
+      "params": {
+        "kind": "ds"
+      },
+      "params_hash": "d28da2c765a2",
+      "v": 1
+    },
+    {
+      "app_version": "2026.11.05.5",
+      "at": "2026-11-05T16:18:39-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "e899bb65",
+      "digest": "567ff7b5eadd",
+      "id": "93e602c3a905",
+      "inputs": [
+        {
+          "artifact_id": "f669e8c87dc9",
+          "kind": "rootcanal_pool",
+          "version": 1
+        },
+        {
+          "artifact_id": "292d870b84ff",
+          "kind": "rootcanal_pool",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "bank": "c42d07d8260d",
+        "events": 2198,
+        "grace": 0.05,
+        "kept": 1857,
+        "kind": "ds",
+        "ran": true,
+        "target": "PTEN ALL PTEN Baseline Full Incisor"
+      },
+      "note": "Run",
+      "params": {
+        "grace": 0.05,
+        "kind": "ds"
+      },
+      "params_hash": "dd288b5e8d73",
+      "v": 2
+    }
+  ]
+}

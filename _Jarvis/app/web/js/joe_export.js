@@ -35,7 +35,8 @@ window.JOE_EXPORT = (function () {
   color: var(--ink); text-decoration: none; background: var(--surface-2, var(--surface)); min-width: 0; }
 .jx .jx-file:hover { border-color: var(--ink-3); }
 .jx .jx-file b { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
-.jx .jx-file span { font-size: 12.5px; color: var(--ink-3); }
+.jx .jx-file span { font-size: 12.5px; color: var(--ink-3); overflow-wrap: anywhere; }
+.jx .jx-file { max-width: 100%; box-sizing: border-box; }
 .jx .jx-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; }
 .jx .jx-nav a { font-size: 13px; padding: 3px 10px; border-radius: 999px; background: var(--chip); color: var(--ink); text-decoration: none; }
 .jx .jx-fig { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 16px; padding: 14px 0; border-top: 1px solid var(--line); }
@@ -83,7 +84,7 @@ window.JOE_EXPORT = (function () {
   color: var(--ink-3); }
 .jx .jx-badge.yes { background: var(--jlit, #0072B2); border-color: var(--jlit, #0072B2); color: #fff; }
 .jx .jx-badge.near { border-color: var(--jcheck, #D55E00); color: var(--jcheck, #D55E00); }
-.jx table.jx-tests { border-collapse: collapse; font-size: 13.5px; width: 100%; margin: 6px 0; }
+.jx table.jx-tests { display: table; border-collapse: collapse; font-size: 13.5px; width: 100%; margin: 6px 0; }
 .jx table.jx-tests th, .jx table.jx-tests td { padding: 4px 7px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .jx table.jx-tests tr.yes td, .jx table.jx-tests tr.yes th { font-weight: 650; }
 .jx table.jx-tests th { font-weight: 600; color: var(--ink-2); }
@@ -100,11 +101,66 @@ window.JOE_EXPORT = (function () {
 .jx .jx-flag.jx-san-green { border-left-color: var(--jlit, #0072B2); background: color-mix(in srgb, var(--jlit, #0072B2) 9%, transparent); }
 .jx .jx-sanity code { overflow-wrap: anywhere; }
 .jx .jx-msec h3 { margin: 18px 0 6px; }
+.jx .jx-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 14px 0 -17px; border-bottom: 1px solid var(--line); }
+.jx .jx-tab { font: inherit; font-size: 15px; font-weight: 600; padding: 8px 16px; border: 1px solid transparent; border-bottom: 0;
+  border-radius: 6px 6px 0 0; background: none; color: var(--ink-2); cursor: pointer; margin-bottom: -1px; }
+.jx .jx-tab[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--ink); }
+.jx .jx-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.jx .jx-cv-step { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.jx .jx-cv-no { width: 24px; height: 24px; border-radius: 50%; background: var(--chip); font-size: 13px; font-weight: 650;
+  display: flex; align-items: center; justify-content: center; }
+.jx .jx-conduction table.jx-tests td, .jx .jx-conduction table.jx-tests th { white-space: nowrap; }
+.jx .jx-cv-open { margin: 6px 0 0; padding-left: 20px; }
+.jx .jx-cv-open li { margin-bottom: 6px; }
+.jx .jx-subtabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+.jx .jx-subtab { font: inherit; font-size: 13.5px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface);
+  color: var(--ink); cursor: pointer; }
+.jx .jx-subtab[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.jx .jx-subtab:focus-visible, .jx .jx-chip:focus-visible, .jx .jx-follow:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.jx .jx-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+.jx .jx-chip { font: inherit; font-size: 13px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface);
+  color: var(--ink-2); cursor: pointer; }
+.jx .jx-chip[aria-pressed="true"] { background: var(--chip); color: var(--ink); border-color: var(--ink-3); font-weight: 600; }
+.jx table.jx-tracker td, .jx table.jx-tracker th { vertical-align: top; }
+.jx table.jx-tracker td.jx-nw { white-space: nowrap; }
+.jx table.jx-tracker td.jx-tf a { font-size: 12.5px; overflow-wrap: anywhere; }
+.jx table.jx-tracker td.jx-tf { min-width: 150px; max-width: 260px; }
+.jx table.jx-tracker a { color: var(--ink); }
+.jx .jx-st { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line-2);
+  color: var(--ink-3); white-space: nowrap; }
+.jx .jx-st.done { background: var(--jlit, #0072B2); border-color: var(--jlit, #0072B2); color: #fff; }
+.jx .jx-st.needs { border-color: var(--jcheck, #D55E00); color: var(--jcheck, #D55E00); }
+.jx .jx-st.failed { background: var(--jcheck, #D55E00); border-color: var(--jcheck, #D55E00); color: #fff; }
+.jx .jx-req { scroll-margin-top: 12px; }
+.jx .jx-req h2 { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.jx .jx-req ul { margin: 4px 0 8px; padding-left: 20px; }
+.jx .jx-req li { margin-bottom: 4px; overflow-wrap: anywhere; }
+.jx .jx-req .jx-tablewrap { margin: 4px 0 10px; }
+.jx .jx-req table.jx-tests td { white-space: normal; min-width: 60px; }
+.jx .jx-vc .jx-vc-p { font-size: 15.5px; line-height: 1.6; max-width: 78ch; }
+.jx .jx-vc-check { padding: 14px 0 6px; border-top: 1px solid var(--line); margin-top: 12px; }
+.jx .jx-vc-check .jx-thumb { max-width: 920px; margin: 6px 0 10px; }
+.jx .jx-vc-read { max-width: 78ch; margin: 6px 0; }
+.jx .jx-vc-read p { margin: 2px 0 0; font-size: 15px; line-height: 1.55; }
+.jx .jx-vc-bottom p { margin: 6px 0 0; font-size: 15px; }
+.jx details.jx-vc-numbers > summary { font-size: 15px; font-weight: 600; color: var(--ink); padding: 8px 0; }
+.jx .jx-rfig { margin: 12px 0; }
+.jx .jx-rfig .jx-thumb { max-width: 920px; }
+.jx .jx-follow { font: inherit; font-size: 13.5px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--surface);
+  color: var(--ink); cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+.jx .jx-follow[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.jx .jx-follow .jx-knob { width: 26px; height: 14px; border-radius: 7px; background: var(--line-2); position: relative; flex: none; }
+.jx .jx-follow .jx-knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--surface);
+  transition: left .15s; }
+.jx .jx-follow[aria-pressed="true"] .jx-knob { background: var(--jlit, #0072B2); }
+.jx .jx-follow[aria-pressed="true"] .jx-knob::after { left: 14px; }
+@media (prefers-reduced-motion: reduce) { .jx .jx-follow .jx-knob::after { transition: none; } }
 @media (max-width: 640px) {
   .jx .jx-fig { grid-template-columns: minmax(0, 1fr); }
   .jx .jx-thumb { max-width: 320px; }
   .jx .jx-pubfig .jx-thumb { max-width: 100%; }
   .jx .jx-prose { font-size: 15.5px; }
+  .jx .jx-tab { padding: 8px 7px; font-size: 13.5px; }
 }`;
 
   function el(tag, attrs, kids) {
@@ -146,6 +202,7 @@ window.JOE_EXPORT = (function () {
     for (const g of part.groups || []) g.figures.forEach(fig);
     for (const gs of Object.values(part.sets || {})) for (const g of gs) g.figures.forEach(fig);
     (part.figures || []).forEach(fig);
+    ((part.prompt && part.prompt.files_all) || []).forEach(take);
     return Array.from(out.values());
   }
 
@@ -513,6 +570,218 @@ window.JOE_EXPORT = (function () {
     return el('div', { class: 'jx-sanity' }, kids);
   }
 
+  /* How volume conduction was handled (backend/conduction.py, 2026-11-05):
+     the problem in two paragraphs, then each step with what it found in one
+     line and the rest behind a More, then what is still open. Tab 11 shows
+     the same node through conductionNode. */
+  function conductionPart(C) {
+    const kids = (C.what || []).map((t) => el('p', { text: t }));
+    (C.steps || []).forEach((s, i) => {
+      const more = (s.more || []).map((t) => el('p', { text: t }));
+      if (s.table && s.table.rows && s.table.rows.length) {
+        more.push(el('div', { class: 'jx-tablewrap' }, el('table', { class: 'jx-tests' }, [
+          el('thead', {}, el('tr', {}, s.table.head.map((h) => el('th', { text: String(h) })))),
+          el('tbody', {}, s.table.rows.map((r) => el('tr', { class: r.some((x) => /marked/.test(String(x))) ? 'yes' : null },
+            r.map((x) => el('td', { text: String(x) })))))])));
+      }
+      kids.push(el('div', { class: 'jx-cv-step', 'data-step': s.key }, [
+        el('span', { class: 'jx-cv-no', 'aria-hidden': 'true', text: String(i + 1) }),
+        el('div', {}, [el('div', { class: 'jx-figname', text: s.title }), el('div', { text: s.line || '' }),
+          more.length ? el('details', {}, [el('summary', { text: 'More' })].concat(more)) : null])]));
+    });
+    if ((C.open || []).length) {
+      kids.push(el('h3', { text: 'Still open' }));
+      kids.push(el('ul', { class: 'jx-cv-open' }, C.open.map((t) => el('li', { text: t }))));
+    }
+    return el('div', { class: 'jx-conduction' }, kids);
+  }
+  function conductionNode(C) {
+    style();
+    return el('div', { class: 'jx' }, conductionPart(C));
+  }
+
+  /* Joe Prompt (2026-11-06): Joe's run sheet of 23 follow-ups, in parts.
+     The overview is his summary table (filters by priority and status, a
+     row per request, its files and one line of its result) and the
+     Confirmations; each other part holds its requests' cards: what was run,
+     what it found, its robustness lines, the run sheet's reading, its
+     tables behind a More, its figures and its PDF and CSV. Volume
+     conduction opens its part with the explainer the methods use. The
+     Monolith's tab 14 draws the same node through promptNode. */
+  const ST_CLASS = { 'Done': 'done', 'Needs decision': 'needs', 'Failed': 'failed' };
+  const PART_KEY = 'jx.prompt.part';
+  function tableNode(t, open) {
+    return el('details', { open: open ? true : null }, [el('summary', { text: t.title }),
+      el('div', { class: 'jx-tablewrap' }, el('table', { class: 'jx-tests' }, [
+        el('thead', {}, el('tr', {}, t.head.map((h) => el('th', { text: String(h) })))),
+        el('tbody', {}, t.rows.map((row, i) => el('tr', { class: t.bold && t.bold[i] ? 'yes' : null }, row.map((c) => el('td', { text: String(c) })))))])),
+      t.note ? el('p', { class: 'jx-muted', text: t.note }) : null]);
+  }
+  /* Volume conduction in plain English (2026-11-06): what it is, then each
+     check as a figure with how to read it and what it shows, a row per
+     coherence change, and the bottom line. Figures are A2's, found by id. */
+  function vcStory(S, A2, url, preview) {
+    const figs = {};
+    ((A2 && A2.figures) || []).forEach((f) => { figs[f.id] = f; });
+    const kids = [el('h2', { text: S.title })].concat((S.what || []).map((t) => el('p', { class: 'jx-vc-p', text: t })));
+    for (const c of S.checks || []) {
+      const f = figs[c.fig];
+      kids.push(el('div', { class: 'jx-vc-check', 'data-fig': c.fig || '' }, [
+        el('h3', { text: c.title }),
+        f ? el('a', { class: 'jx-thumb', href: f.pdf ? url(f.pdf.name) : '#', target: '_blank', rel: 'noopener', title: 'Open the PDF' },
+          el('img', { alt: c.title, loading: 'lazy', src: f.preview ? preview(f.preview) : '' })) : null,
+        el('div', { class: 'jx-vc-read' }, [el('span', { class: 'jx-blabel', text: 'How to read it' }), el('p', { text: c.read })]),
+        el('div', { class: 'jx-vc-read' }, [el('span', { class: 'jx-blabel', text: 'What it shows' }), el('p', { text: c.shows })]),
+        f && f.pdf ? el('div', { class: 'jx-files' }, [fileLink(f.pdf, url)]) : null]));
+    }
+    if (S.table) kids.push(el('h3', { text: S.table.title }), tableNode(S.table, true));
+    if ((S.bottom || []).length) {
+      kids.push(el('div', { class: 'jx-flag jx-vc-bottom', role: 'note' }, [el('b', { text: 'The bottom line' })]
+        .concat(S.bottom.map((t) => el('p', { text: t })))));
+    }
+    return el('div', { class: 'jx-card jx-vc', id: 'jx-vc-story' }, kids);
+  }
+  function requestCard(r, url, preview, opts) {
+    opts = opts || {};
+    const files = [r.files && r.files.pdf, r.files && r.files.csv].filter(Boolean).map((f) => fileLink(f, url));
+    const kids = [
+      el('h2', {}, [r.id + '. ' + r.name, el('span', { class: 'jx-st ' + (ST_CLASS[r.status] || ''), text: r.status }),
+        el('span', { class: 'jx-badge', text: r.priority })]),
+      el('p', { class: 'jx-muted', text: [r.rats, r.n, r.date ? 'run ' + day(r.date + 'T12:00:00') : ''].filter(Boolean).join(' · ') }),
+      el('p', {}, [el('b', { text: 'Decides. ' }), r.decides || ''])];
+    if ((r.summary || []).length) kids.push(el('h3', { text: 'What it found' }), el('ul', {}, r.summary.map((s) => el('li', { text: s }))));
+    if ((r.notes || []).length) kids.push(el('div', { class: 'jx-flag', role: 'note' }, r.notes.map((t) => el('p', { text: t }))));
+    if ((r.reading || []).length) kids.push(el('p', { class: 'jx-gsay' }, [el('b', { text: 'Reading (from the run sheet). ' }), r.reading.join(' ')]));
+    if ((r.robust || []).length) {
+      kids.push(el('details', {}, [el('summary', { text: 'Robustness: leave-one-rat-out and the mixed model (' + r.robust.length + ')' }),
+        el('ul', {}, r.robust.map((s) => el('li', { text: s })))]));
+    }
+    if (r.ran) kids.push(el('details', {}, [el('summary', { text: 'What was run' }), el('p', { text: r.ran }), r.source ? el('p', { class: 'jx-muted', text: 'From: ' + r.source }) : null]));
+    if ((r.methods || []).length) kids.push(prose('Methods text, ready to use', r.methods));
+    for (const f of opts.noFigs ? [] : r.figures || []) {
+      const pdf = f.pdf;
+      kids.push(el('div', { class: 'jx-rfig' }, [
+        el('a', { class: 'jx-thumb', href: pdf ? url(pdf.name) : '#', target: '_blank', rel: 'noopener', title: 'Open the PDF' },
+          el('img', { alt: f.caption || f.id, loading: 'lazy', src: f.preview ? preview(f.preview) : '' })),
+        f.caption ? el('p', { class: 'jx-legend', text: f.caption }) : null,
+        pdf ? el('div', { class: 'jx-files' }, [fileLink(pdf, url)]) : null]));
+    }
+    (r.tables || []).forEach((t, i) => kids.push(tableNode(t, i === 0 && (r.tables.length < 3))));
+    if (files.length) kids.push(el('div', { class: 'jx-files' }, files));
+    return el('div', { class: 'jx-card jx-req', id: 'jx-req-' + r.id, 'data-req': r.id }, kids);
+  }
+  function promptPart(P, url, preview) {
+    const box = el('div', { class: 'jx-prompt' });
+    const panels = {};
+    const btns = [];
+    let cur = 'overview';
+    const setPart = (k, remember) => {
+      if (!panels[k]) k = 'overview';
+      cur = k;
+      btns.forEach((b) => { const on = b.dataset.part === k; b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; });
+      for (const p in panels) panels[p].hidden = p !== k;
+      if (remember) { try { localStorage.setItem(PART_KEY, k); } catch (e) { /* none */ } }
+    };
+    const go = (r) => {
+      setPart(r.part, true);
+      // A2 is told by the volume-conduction walk-through; its numbers are folded under it
+      const n = (r.id === 'A2' && box.querySelector('#jx-vc-story')) || box.querySelector('#jx-req-' + r.id);
+      const fold = n && n.closest('details');
+      if (fold) fold.open = true;
+      if (n) n.scrollIntoView({ block: 'start' });
+    };
+    for (const p of P.parts) {
+      panels[p.key] = el('div', { class: 'jx-ppanel', id: 'jx-part-' + p.key, role: 'tabpanel', 'aria-labelledby': 'jx-partbtn-' + p.key });
+      btns.push(el('button', { type: 'button', role: 'tab', class: 'jx-subtab', id: 'jx-partbtn-' + p.key, 'data-part': p.key,
+                               'aria-controls': 'jx-part-' + p.key, text: p.say, on: { click: () => setPart(p.key, true) } }));
+    }
+    const bar = el('div', { class: 'jx-subtabs', role: 'tablist', 'aria-label': 'Parts of Joe Prompt' }, btns);
+    bar.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const i = P.parts.findIndex((p) => p.key === cur);
+      const n = P.parts[(i + (e.key === 'ArrowRight' ? 1 : P.parts.length - 1)) % P.parts.length].key;
+      setPart(n, true);
+      btns.find((b) => b.dataset.part === n).focus();
+    });
+    const status = el('div', { class: 'jx-status', role: 'status' });
+    const folderBtn = el('button', { type: 'button', class: 'jx-btn', text: 'Download the Aim 2 follow-up folder (' + (P.files_all || []).length + ' files)' });
+    folderBtn.addEventListener('click', () => zipDown(P.files_all || [], () => 'Aim 2 follow-up', 'Aim 2 follow-up.zip', url, (t) => { status.textContent = t; }, folderBtn));
+    box.appendChild(el('div', { class: 'jx-card' }, [
+      el('div', { class: 'jx-head' }, [el('div', {}, [el('h2', { text: P.title }), el('p', { class: 'jx-muted', text: P.say })]), folderBtn]),
+      status, bar]));
+    for (const k in panels) box.appendChild(panels[k]);
+    // the overview: the summary table, its filters, the confirmations
+    const F = { pri: 'all', st: 'all' };
+    const reqs = P.requests || [];
+    const trs = reqs.map((r) => el('tr', { 'data-req': r.id }, [
+      el('td', { class: 'jx-nw' }, el('a', { href: '#jx-req-' + r.id, text: r.id, on: { click: (e) => { e.preventDefault(); go(r); } } })),
+      el('td', { text: r.name }), el('td', { class: 'jx-nw', text: r.priority }),
+      el('td', {}, el('span', { class: 'jx-st ' + (ST_CLASS[r.status] || ''), text: r.status })),
+      el('td', { class: 'jx-nw', text: r.date || '' }),
+      el('td', { class: 'jx-tf' }, [r.files && r.files.pdf, r.files && r.files.csv].filter(Boolean).map((f) => el('div', {}, el('a', { href: url(f.name), download: f.name, text: f.name })))),
+      el('td', { text: r.line || '' })]));
+    const shown = el('p', { class: 'jx-muted' });
+    const filter = () => {
+      let n = 0;
+      trs.forEach((tr, i) => {
+        const r = reqs[i];
+        tr.hidden = (F.pri !== 'all' && r.priority !== F.pri) || (F.st !== 'all' && r.status !== F.st);
+        if (!tr.hidden) n += 1;
+      });
+      shown.textContent = 'Showing ' + n + ' of ' + reqs.length + ' requests.';
+    };
+    const chips = (label, key, opts) => {
+      const bs = [];
+      const set = (v) => { F[key] = v; bs.forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === v ? 'true' : 'false')); filter(); };
+      for (const [v, say] of [['all', 'All']].concat(opts.map((o) => [o, o]))) {
+        bs.push(el('button', { type: 'button', class: 'jx-chip', 'data-v': v, 'aria-pressed': v === F[key] ? 'true' : 'false', text: say, on: { click: () => set(v) } }));
+      }
+      return el('div', { class: 'jx-chips', role: 'group', 'aria-label': label }, [el('span', { class: 'jx-muted', text: label + ':' })].concat(bs));
+    };
+    const ov = panels.overview;
+    ov.appendChild(el('div', { class: 'jx-card', id: 'jx-prompt-tracker' }, [
+      el('h2', { text: 'Summary table' }),
+      chips('Priority', 'pri', P.priorities || ['P1', 'P2', 'P3']), chips('Status', 'st', P.statuses || []), shown,
+      el('div', { class: 'jx-tablewrap' }, el('table', { class: 'jx-tests jx-tracker' }, [
+        el('thead', {}, el('tr', {}, ['ID', 'Request', 'Priority', 'Status', 'Date run', 'Output files', 'Result'].map((h) => el('th', { text: h })))),
+        el('tbody', {}, trs)]))]));
+    filter();
+    if ((P.confirmations || []).length) {
+      ov.appendChild(el('div', { class: 'jx-card', id: 'jx-prompt-confirm' }, [el('h2', { text: 'Confirmations' }),
+        el('p', { class: 'jx-muted', text: 'The run sheet’s Confirm items, answered from the data and the code before anything ran.' })]
+        .concat(P.confirmations.map((c) => el('div', { class: 'jx-san-row' }, [el('span', { class: 'jx-badge', text: c.id }),
+          el('div', {}, [el('div', { class: 'jx-figname', text: c.title }), el('div', { text: c.answer }), c.table ? tableNode(c.table, false) : null])])))));
+    }
+    // volume conduction: the plain-English walk-through first, A2's numbers folded under it
+    const A2 = reqs.find((r) => r.id === 'A2');
+    if (panels.vc && P.vc_story) panels.vc.appendChild(vcStory(P.vc_story, A2, url, preview));
+    else if (panels.vc && P.conduction) {
+      panels.vc.appendChild(el('div', { class: 'jx-card', id: 'jx-conduction' }, [el('h2', { text: 'Volume conduction: how it was handled' }),
+        el('p', { class: 'jx-muted', text: P.conduction.say || '' }), conductionPart(P.conduction)]));
+    }
+    for (const r of reqs) {
+      if (!panels[r.part]) continue;
+      if (r.id === 'A2' && P.vc_story) {
+        const card = requestCard(r, url, preview, { noFigs: true });
+        panels.vc.appendChild(el('details', { class: 'jx-vc-numbers', id: 'jx-vc-numbers' }, [
+          el('summary', { text: 'All the numbers behind this (request A2: every pair, both bands, every measure)' }), card]));
+        continue;
+      }
+      panels[r.part].appendChild(requestCard(r, url, preview));
+    }
+    let first = 'overview';
+    try { first = localStorage.getItem(PART_KEY) || first; } catch (e) { /* none */ }
+    const h = /(?:^#|&)part=(\w+)/.exec(location.hash || '');
+    setPart(h ? h[1] : first, false);
+    return box;
+  }
+  function promptNode(P, opts) {
+    style();
+    opts = opts || {};
+    const url = opts.url || ((n) => 'files/' + encodeURIComponent(n));
+    return el('div', { class: 'jx' }, promptPart(P, url, opts.preview || url));
+  }
+
   function lights(rows) {
     const cell = (r, b) => {
       const x = r.bands[b];
@@ -533,6 +802,11 @@ window.JOE_EXPORT = (function () {
       el('thead', {}, el('tr', {}, [el('th', { text: '#' }), el('th', { text: 'Comparison' }), el('th', { text: 'Theta' }), el('th', { text: 'Gamma' })])),
       el('tbody', {}, trs)]), none]);
   }
+
+  const TABS = [['results', 'Results'], ['sanity', 'Sanity check'], ['wrap', 'Wrapping up'], ['prompt', 'Joe Prompt']];
+  const TAB_OF = { sanity: 'sanity', conduction: 'wrap', methods: 'wrap', prompt: 'prompt' };
+  const TAB_KEY = 'jx.tab';
+  const FOLLOW_KEY = 'jx.followup';
 
   function render(root, M, opts) {
     style();
@@ -561,21 +835,71 @@ window.JOE_EXPORT = (function () {
     const folder = new Map();
     for (const s of M.sections) for (const f of filesOf(s)) folder.set(f.name, s.title);
     allBtn.addEventListener('click', () => zipDown(all, (f) => folder.get(f.name), 'Joe_export_' + (M.made || '').slice(0, 10) + '.zip', url, say, allBtn));
+    // three tabs (2026-11-05): Results, Sanity check, Wrapping up (volume
+    // conduction and the methods for the dissertation)
+    const panels = {};
+    const tabBtns = [];
+    const tabOf = (s) => s.tab || TAB_OF[s.id] || 'results';
+    const tabs = TABS.filter(([k]) => k === 'results' || M.sections.some((s) => tabOf(s) === k));
+    // Follow-up only (2026-11-06, Joe's prompt 1): shows Joe Prompt alone,
+    // off by default, remembered in this browser
+    let follow = false;
+    try { follow = localStorage.getItem(FOLLOW_KEY) === '1'; } catch (e) { /* none */ }
+    const setTab = (k, remember) => {
+      if (!panels[k]) k = 'results';
+      if (follow && panels.prompt) k = 'prompt';
+      SW.tab = k;
+      tabBtns.forEach((b) => { const on = b.dataset.tab === k; b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; });
+      for (const t in panels) panels[t].hidden = t !== k;
+      if (remember) { try { localStorage.setItem(TAB_KEY, k); } catch (e) { /* none */ } }
+    };
+    for (const [k, say] of tabs) {
+      panels[k] = el('div', { class: 'jx-panel', id: 'jx-tab-' + k, role: 'tabpanel', 'aria-labelledby': 'jx-tabbtn-' + k });
+      tabBtns.push(el('button', { type: 'button', role: 'tab', class: 'jx-tab', id: 'jx-tabbtn-' + k, 'data-tab': k, 'aria-controls': 'jx-tab-' + k,
+                                  text: say, on: { click: () => setTab(k, true) } }));
+    }
+    const tabBar = el('div', { class: 'jx-tabs', role: 'tablist', 'aria-label': 'Parts of this page' }, tabBtns);
+    tabBar.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      const vis = tabs.filter(([k]) => !follow || k === 'prompt');
+      const i = vis.findIndex(([k]) => k === SW.tab);
+      const n = vis[(i + (e.key === 'ArrowRight' ? 1 : vis.length - 1)) % vis.length][0];
+      setTab(n, true);
+      tabBtns.find((b) => b.dataset.tab === n).focus();
+    });
+    const followBtn = el('button', { type: 'button', class: 'jx-follow', id: 'jx-follow', 'aria-pressed': follow ? 'true' : 'false',
+                                     title: 'Show only the Joe Prompt tab (the Aim 2 follow-up)' },
+      [el('span', { class: 'jx-knob', 'aria-hidden': 'true' }), 'Follow-up only']);
+    const setFollow = (v) => {
+      follow = v;
+      followBtn.setAttribute('aria-pressed', v ? 'true' : 'false');
+      tabBtns.forEach((b) => { b.hidden = v && b.dataset.tab !== 'prompt'; });
+      try { localStorage.setItem(FOLLOW_KEY, v ? '1' : '0'); } catch (e) { /* none */ }
+      setTab(v ? 'prompt' : SW.tab || 'results', false);
+    };
+    followBtn.addEventListener('click', () => setFollow(!follow));
     wrap.appendChild(el('div', { class: 'jx-card' }, [
       el('div', { class: 'jx-head' }, [
         el('div', {}, [
           el('div', { class: 'jx-big', text: 'Coherence across preconditioning: figures and data' }),
           el('div', { class: 'jx-muted', text: 'DEWEY, ' + M.rats + ' rats, ' + (M.days || []).join(' and ') + '. Made ' + day(M.made) + ' from the analysis of '
             + day(M.joe_at) + ' and the figures of ' + day(M.figs_at) + '.' })]),
-        allBtn]),
+        el('div', { class: 'jx-files' }, [panels.prompt ? followBtn : null, allBtn])]),
       status,
+      tabs.length > 1 ? tabBar : null]));
+    for (const k in panels) wrap.appendChild(panels[k]);
+    const inTab = (k) => M.sections.filter((s) => tabOf(s) === k);
+    panels.results.appendChild(el('div', { class: 'jx-card' }, [
       el('ul', { class: 'jx-read' }, [
         el('li', { text: 'The question, from the proposal: did the cues’ effect on coherence between regions change from Precon1 to Precon4, in theta (5–12 Hz) and gamma (30–90 Hz)?' }),
         el('li', { text: 'A cue effect is the cue window’s coherence minus the baseline’s. Each ring figure has three rows: the Precon1 cue effect, the Precon4 cue effect, and the change in cue effect (Precon4’s minus Precon1’s), which is the question. Supplementary Figure S1 shows it on one pair.' }),
         el('li', { text: 'Every result is held to three tests, FP first: FP (' + (M.fp && M.fp.fake_trials ? M.fp.fake_trials.toLocaleString('en-US') + ' ' : '') + 'fake trials from the same rats’ FP1 and FP2, with no cues), the shuffles (each trial’s baseline and cue swapped at random inside its session) and the rats (every way of flipping the sign of each rat’s change, or a t-test). A filled dot is a test passed (P < 0.05).' }),
         el('li', { text: 'No P value in the figures section is corrected for the number of tests. Read them as leads to test again, not findings.' }),
-        M.rat_sets
-          ? el('li', { text: 'Methods, for the dissertation: how the data were processed and analysed, from the recordings to the statistics, written to be adapted. Each section has a Copy button; the same text comes as Word and as plain text.' })
+        M.rat_sets && panels.wrap
+          ? el('li', { text: 'Wrapping up holds the methods for the dissertation: how the data were processed and analysed, from the recordings to the statistics, written to be adapted, each section with a Copy button and the same text as Word and plain text. Sanity check holds the report on whether the right data and logic went in.' })
+          : null,
+        panels.prompt
+          ? el('li', { text: 'Joe Prompt holds the final round of Aim 2 follow-ups from Joe’s run sheet (J6–J11): the summary table of all 23 requests, the confirmations, and each request’s results, figures, PDF and CSV, in parts, including how volume conduction was handled and how the data were cleaned. “Follow-up only” shows that tab alone.' })
           : null,
         M.sections.some((s) => s.id === 'dickson')
           ? el('li', { text: M.rat_sets
@@ -586,8 +910,17 @@ window.JOE_EXPORT = (function () {
           ? el('li', { text: 'Part 2 is the final stage: power inside each region, the background under it, and, on the coherence results that pass, which region leads and theta–gamma coupling; with the methods written from the run. Every figure here is a PDF.' })
           : null]),
       switchNode(M),
-      el('div', { class: 'jx-nav' }, M.sections.map((s) => el('a', { href: '#jx-' + s.id, text: s.title })))]));
+      el('div', { class: 'jx-nav' }, inTab('results').map((s) => el('a', { href: '#jx-' + s.id, text: s.title })))]));
+    for (const k in panels) {
+      if (k !== 'results' && inTab(k).length > 1) {
+        panels[k].appendChild(el('div', { class: 'jx-card' }, el('div', { class: 'jx-nav' }, inTab(k).map((s) => el('a', { href: '#jx-' + s.id, text: s.title })))));
+      }
+    }
     for (const s of M.sections) {
+      if (s.prompt) {
+        panels[tabOf(s)].appendChild(promptPart(s.prompt, url, preview));
+        continue;
+      }
       const sFiles = filesOf(s);
       const card = el('div', { class: 'jx-card', id: 'jx-' + s.id }, [
         el('div', { class: 'jx-head' }, [el('div', {}, [el('h2', { text: s.title }), el('p', { class: 'jx-muted', text: s.say })])]),
@@ -597,6 +930,7 @@ window.JOE_EXPORT = (function () {
       if (s.methods && s.methods.length) card.appendChild(el('div', {}, [el('h3', { text: 'Methods' }), methods(s.methods)]));
       if (s.prose && s.prose.length) card.appendChild(methodsProse(s.prose));
       if (s.sanity) card.appendChild(sanityPart(s.sanity));
+      if (s.conduction) card.appendChild(conductionPart(s.conduction));
       if (s.sets) card.appendChild(setPart(s, url, preview));
       if (s.groups) {
         const navs = s.groups.map((g) => el('a', { href: '#jx-g-' + g.key.replace('|', '-'), text: g.title }));
@@ -624,10 +958,16 @@ window.JOE_EXPORT = (function () {
         SW.after.push(() => { none.hidden = !(SW.only && boxes.every((b) => b.hidden)); });
         card.appendChild(none);
       }
-      if (!s.files.length && !sFiles.length && !s.sanity) card.appendChild(el('p', { class: 'jx-muted', text: 'Not made yet.' }));
-      wrap.appendChild(card);
+      if (!s.files.length && !sFiles.length && !s.sanity && !s.conduction) card.appendChild(el('p', { class: 'jx-muted', text: 'Not made yet.' }));
+      panels[tabOf(s)].appendChild(card);
     }
+    // the tab: #tab=<key> in the address, else the last one picked, else Results
+    let first = 'results';
+    try { first = localStorage.getItem(TAB_KEY) || first; } catch (e) { /* none */ }
+    const h = /(?:^#|&)tab=(\w+)/.exec(location.hash || '');
+    if (follow && panels.prompt) setFollow(true);
+    else setTab(h ? h[1] : first, false);
   }
 
-  return { render, filesOf };
+  return { render, filesOf, conductionNode, promptNode };
 }());

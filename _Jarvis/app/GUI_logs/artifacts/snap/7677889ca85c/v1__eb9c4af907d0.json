@@ -1,0 +1,31 @@
+{
+ "definition": {
+  "kind": "pca",
+  "pools": [
+   {
+    "artifact_id": "0fb7e710f1b9",
+    "nickname": "PTEN Baseline",
+    "version": 1
+   },
+   {
+    "artifact_id": "3fcedd33613b",
+    "nickname": "CTL Baseline",
+    "version": 1
+   }
+  ],
+  "uses": {
+   "ds": {
+    "artifact_id": "ab9613cbc7c2",
+    "nickname": "Verified DS Test flow",
+    "version": 4
+   },
+   "pspike": {
+    "artifact_id": "abe99ac5d1b6",
+    "nickname": "Verified P-Spike",
+    "version": 5
+   }
+  }
+ },
+ "run": null,
+ "schema": 1
+}

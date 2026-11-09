@@ -816,7 +816,7 @@ MEASURES = [
             "where the biggest wire is."},
     {"id": "voltage", "name": "Voltage",
      "why": "The mean of |V| across depth. Louder and steadier than the "
-            "CSD, and the thing an IED is usually described by -- but it "
+            "CSD, and the thing a P-spike is usually described by -- but it "
             "sees anything large anywhere near the probe."},
     {"id": "slope", "name": "Steepest slope",
      "why": "The mean of |dV/dt| across depth. Peaks on the sharpest part "

@@ -806,7 +806,7 @@ BARRY.spotter = (function () {
     const at = events().slice(0, index + 1).filter(wanted).length;
 
     bar.appendChild(el('div', { class: 'cur-where' }, [
-      el('strong', { text: set_.name || 'IEDs' }),
+      el('strong', { text: set_.name || 'P-spikes' }),
       el('span', { class: 'cur-sub', text: clock(ev && ev.start) }),
       ev && ev.channel != null
         ? el('span', { class: 'cur-sub', text: 'CSC' + ev.channel }) : null,
@@ -845,7 +845,7 @@ BARRY.spotter = (function () {
         style: '--cat:' + lab.color,
         'data-cat': lab.id,
         title: lab.name + (key ? '  [' + key + ']' : '')
-               + (lab.custom ? ' · added in Spotter, in every IED set' : ''),
+               + (lab.custom ? ' · added in Spotter, in every P-spike set' : ''),
         onclick: () => assign(lab.id),
       }, [
         el('span', { text: lab.name }),
@@ -855,7 +855,7 @@ BARRY.spotter = (function () {
     }
     cats.appendChild(el('button', {
       class: 'cur-cat cur-cat-new',
-      title: 'A new category, for every IED set on every recording',
+      title: 'A new category, for every P-spike set on every recording',
       disabled: forging ? 'disabled' : null,
       onclick: newCategory,
     }, [el('span', { text: '+ New category' })]));

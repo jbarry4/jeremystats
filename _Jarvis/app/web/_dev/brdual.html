@@ -89,7 +89,7 @@ async function until(fn, ms) {
     const t0 = aTraces()[0];
     check('its own band is the dentate-spike one', t0.filt && t0.filt.hp === 5,
           JSON.stringify(t0.filt));
-    check('the IED band is read beside it, point for point',
+    check('the P-spike band is read beside it, point for point',
           t0._win2 && t0._win && t0._win2.n_points === t0._win.n_points
             && t0._win2.series.length === t0._win.series.length
             && (t0._win2.dual || {}).hp === 1,

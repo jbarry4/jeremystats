@@ -1,0 +1,48 @@
+{
+ "definition": {
+  "grace": 0.05,
+  "kind": "pspike",
+  "source": {
+   "entries": [
+    {
+     "entry_id": "15de830c8b35",
+     "n": 8,
+     "session_label": "PTEN m28 s2 2024-06-18",
+     "version": null
+    },
+    {
+     "entry_id": "2bcb129a3db5",
+     "n": 6,
+     "session_label": "PTEN m34 s5 2024-06-10",
+     "version": null
+    },
+    {
+     "entry_id": "754a4ab49e03",
+     "n": 11,
+     "session_label": "PTEN m3 s2 2023-09-20",
+     "version": null
+    },
+    {
+     "entry_id": "51c1d1150100",
+     "n": 3,
+     "session_label": "PTEN m5 s2 2023-11-16",
+     "version": null
+    },
+    {
+     "entry_id": "964aac87949e",
+     "n": 11,
+     "session_label": "PTEN m13 s2 2023-08-01",
+     "version": null
+    }
+   ],
+   "type": "sets"
+  },
+  "target": {
+   "artifact_id": "f669e8c87dc9",
+   "nickname": "PTEN ALL PTEN Baseline Full Incisor",
+   "version": 1
+  }
+ },
+ "run": null,
+ "schema": 1
+}

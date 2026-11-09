@@ -885,7 +885,7 @@ BARRY.views.storyboard = (function () {
     wrap.appendChild(el('div', { class: 'res-toolbar' }, [
       el('button', { class: 'btn', text: '+ New deck',
         onclick: async () => {
-          const t = await askPath('Name this deck', 'e.g. "IED propagation, figure 3"');
+          const t = await askPath('Name this deck', 'e.g. "P-spike propagation, figure 3"');
           if (!t) return;
           deck = newDeck(t);
           markDirty(); render();
@@ -1865,7 +1865,7 @@ BARRY.views.storyboard = (function () {
     init,
     addResults,
     newDeck: async () => {
-      const t = await askPath('Name this deck', 'e.g. "IED propagation"');
+      const t = await askPath('Name this deck', 'e.g. "P-spike propagation"');
       if (!t) return;
       deck = newDeck(t);
       slideIndex = 0;

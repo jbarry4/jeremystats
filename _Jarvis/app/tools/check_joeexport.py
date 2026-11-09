@@ -90,8 +90,8 @@ if os.path.isfile(PUBj):
     PUB = json.load(open(PUBj, encoding="utf-8"))
     from backend import evenmore as E_, finalstage as FS_
     sets_ = [s["key"] for s in PUB["sets"]]
-    check("the methods for the dissertation come first, every section with its words, as Word and as text",
-          man["sections"][0]["id"] == "methods" and len(secs["methods"]["prose"]) >= 10
+    check("the methods for the dissertation come first (after volume conduction, in Wrapping up), every section with its words, as Word and as text",
+          [s["id"] for s in man["sections"] if s["id"] != "conduction"][0] == "methods" and len(secs["methods"]["prose"]) >= 10
           and all(s["paras"] for s in secs["methods"]["prose"])
           and {f["name"] for f in secs["methods"]["files"]} == {"Methods_for_the_dissertation.docx", "Methods_for_the_dissertation.txt"})
     meth = " ".join(p for s in secs["methods"]["prose"] for p in s["paras"])
@@ -168,13 +168,68 @@ if os.path.isfile(PUBj):
           gr and all(f.get("reading") and any("Granger causality" in p for p in f["reading"]) and "Two cautions" in f["reading"][-1] for f in gr))
     if "sanity" in secs:
         sr = secs["sanity"]["sanity"]
-        check("the sanity check report is the last section, with its verdict and every check's status, result and how",
-              man["sections"][-1]["id"] == "sanity" and sr.get("verdict") in ("green", "amber", "red")
+        check("the sanity check report is the last section (Joe Prompt aside), with its verdict and every check's status, result and how",
+              [s["id"] for s in man["sections"] if s["id"] != "prompt"][-1] == "sanity" and sr.get("verdict") in ("green", "amber", "red")
               and all(c.get("status") in ("ok", "warn", "fail", "info") and c.get("result") and c.get("how")
                       for s in sr["sections"] for c in s["checks"]))
+    # how volume conduction was handled (backend/conduction.py, 2026-11-05); since
+    # 2026-11-06 in Joe Prompt's Volume conduction part once that is built
+    PRm = (secs.get("prompt") or {}).get("prompt")
+    cv = ((PRm or {}).get("conduction") if PRm else (secs.get("conduction") or {}).get("conduction")) or {}
+    m_cv = next((s for s in secs["methods"].get("prose") or [] if s["title"] == "Volume conduction"), None)
+    refs = " ".join(next((s["paras"] for s in secs["methods"].get("prose") or [] if s["title"] == "References"), []))
+    check("volume conduction: in Joe Prompt (or, before it is built, first in Wrapping up), every step with a line and a More, what is still open, "
+          "and a methods section whose citations are in the references",
+          ("conduction" not in secs and [s["id"] for s in man["sections"]][0] == "methods" if PRm else [s["id"] for s in man["sections"]][:2] == ["conduction", "methods"])
+          and len(cv.get("steps") or []) >= 6
+          and all(s.get("title") and s.get("line") and s.get("more") for s in cv["steps"]) and bool(cv.get("open"))
+          and m_cv is not None and all(a in refs for a in ("Nolte G", "Stam CJ", "Vinck M")),
+          ([s["id"] for s in man["sections"]][:3], len(cv.get("steps") or []), m_cv is not None))
+    lag = next((s for s in cv.get("steps") or [] if s["key"] == "lag"), None)
+    lagn = (cv.get("numbers") or {}).get("lag") or []
+    j3 = next((x for x in lagn if x["rat"] == 3 and x["day"] == "Precon4"), None)
+    rest = [x for x in lagn if x["rat"] not in (3, 4)]
+    check("volume conduction: J3's Precon4 excess is at zero lag, as its words say (coherence far above, imaginary part inside the rest)",
+          lag and j3 and rest and j3["coh"] > 2 * max(x["coh"] for x in rest) and j3["icoh"] <= max(x["icoh"] for x in rest), j3)
+    # Joe Prompt (tab 14, 2026-11-06): his run sheet's 23 requests, J6-J11
+    if PRm:
+        from backend import joeprompt as JPm
+        ids = [r["id"] for r in PRm["requests"]]
+        check("Joe Prompt: the last section, in its own tab, every request of the run sheet in its order (23)",
+              man["sections"][-1]["id"] == "prompt" and secs["prompt"].get("tab") == "prompt" and ids == [x[0] for x in JPm.REQUESTS])
+        check("each request in its part, with a status Joe's filters know; B6 and B12 skipped (Shahriar), none failed",
+              all(r["part"] in [p["key"] for p in PRm["parts"]] and r["status"] in PRm["statuses"] for r in PRm["requests"])
+              and {r["id"] for r in PRm["requests"] if r["status"] == "Skipped"} == {"B6", "B12"}
+              and not any(r["status"] == "Failed" for r in PRm["requests"]), [(r["id"], r["status"]) for r in PRm["requests"] if r["status"] != "Done"])
+        check("every request has its PDF (named by its ID, NoJ3J4), a one-line result and a date; every one run on new values has its CSV",
+              all(r["files"].get("pdf") and r["files"]["pdf"]["name"].startswith(r["id"] + "_") and r["files"]["pdf"]["name"].endswith("_NoJ3J4.pdf")
+                  and r.get("line") and r.get("date") for r in PRm["requests"])
+              and all(r["files"].get("csv") for r in PRm["requests"] if r["status"] == "Done" and r["id"] != "C3"),
+              [r["id"] for r in PRm["requests"] if not r["files"].get("pdf") or (r["status"] == "Done" and r["id"] != "C3" and not r["files"].get("csv"))])
+        figs_ = [f for r in PRm["requests"] for f in r.get("figures") or []]
+        check("every figure (%d) has its PDF, its preview and its caption; the folder download holds every PDF, CSV and figure" % len(figs_),
+              figs_ and all(f.get("pdf") and f.get("preview") and f.get("caption") and f["preview"] in paths for f in figs_)
+              and {x["name"] for x in PRm["files_all"]} == {f["name"] for r in PRm["requests"] for f in r["files"].values()} | {f["pdf"]["name"] for f in figs_})
+        A2r = next(r for r in PRm["requests"] if r["id"] == "A2")
+        check("A2, the volume-conduction test, is in the Volume conduction part with its four figures; B11 has its methods text",
+              A2r["part"] == "vc" and len(A2r["figures"]) == 4 and len(next(r for r in PRm["requests"] if r["id"] == "B11").get("methods") or []) >= 3)
+        VS = PRm.get("vc_story") or {}
+        check("volume conduction in plain English: what it is, four checks each with a figure of A2's, how to read it and what it shows, "
+              "a row per coherence change, the bottom line",
+              len(VS.get("what") or []) >= 3 and len(VS.get("checks") or []) == 4
+              and all(c.get("read") and c.get("shows") and c.get("fig") in {f["id"] for f in A2r["figures"]} for c in VS["checks"])
+              and len((VS.get("table") or {}).get("rows") or []) >= 1 and len(VS.get("bottom") or []) >= 3, [c.get("fig") for c in VS.get("checks") or []])
+        check("the confirmations: every Confirm item of the run sheet (B12, B11, B8, B5, B9, C2) answered",
+              [c["id"] for c in PRm["confirmations"]] == ["B12", "B11", "B8", "B5", "B9", "C2"] and all(c.get("answer") for c in PRm["confirmations"]))
+        a3 = " ".join(next(r for r in PRm["requests"] if r["id"] == "A3")["summary"])
+        check("A3 reproduces the run sheet's H1 numbers (theta χ²(9) = 24.33, p = .004; gamma χ²(9) = 20.02, p = .018)",
+              "χ²(9) = 24.33, p = .004" in a3 and "χ²(9) = 20.02, p = .018" in a3, a3)
+        check("J6-J11 only: no J3 or J4 row in any request's tables except the screen that excluded them",
+              not any(row and row[0] in ("J3", "J4") for r in PRm["requests"] for t in r["tables"] for row in t["rows"]
+                      if "screen" not in t["title"].lower()))
     raw_json = json.dumps(man, ensure_ascii=False)
     check("the side question never reaches Joe: no figure, no file, no word of it",
-          "side_question" not in raw_json and "Side question" not in raw_json and not any("side" in n.lower() for n in paths))
+          "side_question" not in raw_json and "Side question" not in raw_json and not any(re.search(r"(^|_)side(_|\.)", n.lower()) for n in paths))
     check("Granger and coupling figures say which side of the switch they belong to; the rats' sets are offered, all of them first",
           all(f.get("show_in") is not None for rs in sets_ for g in secs["final"]["sets"][rs] if g["key"] == "follow" for f in g["figures"])
           and [s["key"] for s in man["rat_sets"]][0] == "all" and man.get("switch", {}).get("default") == "fdr")
@@ -193,7 +248,7 @@ if os.path.isfile(FNj) and not os.path.isfile(PUBj):
           len(ffig) == nf and all([v["key"] for v in f["views"]] == ["fdr", "raw"] for f in ffig))
     raw_json = json.dumps(man, ensure_ascii=False)
     check("the side question never reaches Joe: no figure, no file, no word of it",
-          "side_question" not in raw_json and "Side question" not in raw_json and not any("side" in n.lower() for n in paths), )
+          "side_question" not in raw_json and "Side question" not in raw_json and not any(re.search(r"(^|_)side(_|\.)", n.lower()) for n in paths), )
     with zipfile.ZipFile(paths["Final_GEE_files.zip"]) as z:
         check("Part 2's zip holds the methods (Word and text), the rows and SPSS's coefficients, and no side question",
               {"final_methods.docx", "final_methods.txt", "final_long.csv", "final_coefficients_spss.csv"} <= set(z.namelist())

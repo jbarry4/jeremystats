@@ -1,30 +1,34 @@
 {
   "_at": {
     "added": "2026-10-20T18:38:14.119783+00:00",
-    "deleted": "2026-10-20T18:46:43.788735+00:00",
-    "id": "2026-10-20T18:38:14.119783+00:00",
-    "kind": "2026-10-20T18:38:14.119783+00:00",
-    "name": "2026-10-20T18:38:14.119783+00:00",
-    "nickname": "2026-10-20T18:46:43.788735+00:00",
-    "schema": "2026-10-20T18:38:14.119783+00:00",
-    "subject": "2026-10-20T18:38:14.119783+00:00",
-    "subject_key": "2026-10-20T18:38:14.119783+00:00",
-    "version": "2026-10-20T18:46:43.788735+00:00"
+    "deleted": "2026-11-05T21:38:58.666313+00:00",
+    "id": "2026-10-20T20:31:53.458058+00:00",
+    "kind": "2026-10-20T20:31:53.458058+00:00",
+    "name": "2026-10-20T20:31:53.458058+00:00",
+    "nickname": "2026-11-05T21:38:58.666313+00:00",
+    "schema": "2026-10-20T20:31:53.458058+00:00",
+    "subject": "2026-10-20T20:31:53.458058+00:00",
+    "subject_key": "2026-10-20T20:31:53.458058+00:00",
+    "version": "2026-11-05T21:38:58.666313+00:00"
   },
   "_keys": {
     "versions": {
+      "568cb1fbe44e": [
+        "set",
+        "2026-11-05T21:38:58.666313+00:00"
+      ],
       "cd10a7453c19": [
         "set",
-        "2026-10-20T18:38:14.119783+00:00"
+        "2026-10-20T20:31:53.458058+00:00"
       ],
       "d40b0b52a5cb": [
         "set",
-        "2026-10-20T18:46:43.788735+00:00"
+        "2026-10-20T20:31:53.458058+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-20T18:46:43.788735+00:00",
+    "at": "2026-11-05T21:38:58.666313+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -48,7 +52,7 @@
     "session_label": "PTEN m60 s1 2025-07-10"
   },
   "subject_key": "rootcanal_single|adc84ab8c916",
-  "version": 2,
+  "version": 3,
   "versions": [
     {
       "app_version": "2026.10.20.5",
@@ -205,6 +209,91 @@
       },
       "params_hash": "6e1bc79aa7e2",
       "v": 2
+    },
+    {
+      "app_version": "2026.11.05.5",
+      "at": "2026-11-05T16:37:55-05:00",
+      "by": "Aggie Krempasky",
+      "commit": "c0b5e857",
+      "digest": "93443f292d29",
+      "id": "568cb1fbe44e",
+      "inputs": [
+        {
+          "entry_id": "adc84ab8c916",
+          "from_version": null,
+          "read": "10d4684ca3a7",
+          "rows_digest": "1c14f69be7d6"
+        },
+        {
+          "artifact_id": "3fcedd33613b",
+          "kind": "pool",
+          "margin": {
+            "artifact_id": "ef2b1bce5621",
+            "mode": "fixed",
+            "version": 1
+          },
+          "nickname": "CTL Baseline",
+          "version": 1
+        }
+      ],
+      "machine": "Strawbarry",
+      "n_summary": {
+        "ds": 196,
+        "events": 495,
+        "filter": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+        "ied": 298,
+        "k": 2,
+        "names": [],
+        "stats": null
+      },
+      "nickname": "from pool \u2018CTL Baseline\u2019 v1",
+      "nickname_at": "2026-11-05T16:37:55-05:00",
+      "note": "The pool's identity, as a margin applied fixed.",
+      "params": {
+        "band_hi": 1000.0,
+        "band_lo": 500.0,
+        "centres": null,
+        "cluster_calls": {},
+        "cluster_names": {},
+        "complete_only": false,
+        "cross_ms": 100.0,
+        "drawn": [],
+        "filt": "ds",
+        "flank_ms": [
+          30.0,
+          60.0
+        ],
+        "flips": [],
+        "hi_hz": 100.0,
+        "k": 2,
+        "lo_hz": 5.0,
+        "mains_out": true,
+        "margin": {
+          "artifact_id": "ef2b1bce5621",
+          "mode": "fixed",
+          "version": 1
+        },
+        "measure": {
+          "band_hi": 1000.0,
+          "band_lo": 500.0,
+          "cross_ms": 100.0,
+          "filt": "ds",
+          "filter_label": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+          "hi_hz": 100.0,
+          "lo_hz": 5.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 25.0
+        },
+        "n_init": 10,
+        "order": 3,
+        "read": "10d4684ca3a7",
+        "retry": [],
+        "seed": 0,
+        "win_ms": 25.0
+      },
+      "params_hash": "58562588fe3b",
+      "v": 3
     }
   ]
 }

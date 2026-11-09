@@ -83,9 +83,9 @@ async function until(fn, ms, what) {
     ok('its panel is Braces’ (the picker or the Alignments list)',
        !!($('#tkResult .br-pick') || $('#tkResult .br-recent')),
        ($('#tkResult') || {}).textContent.slice(0, 200));
-    ok('...asking for IED sets', asked.some((u) => /braces\/candidates/.test(u)));
+    ok('...asking for P-spike sets', asked.some((u) => /braces\/candidates/.test(u)));
     const ec = B.eye._cands() || [];
-    ok('every set offered is an IED set', ec.every((c) => (c.type || 'ied') === 'ied'),
+    ok('every set offered is a P-spike set', ec.every((c) => (c.type || 'ied') === 'ied'),
        ec.map((c) => c.type).join(','));
     ok('Braces no longer lists Eye’s alignments', B.braces._cfg.setTypes === 'ds');
 

@@ -4,7 +4,7 @@
     "added": {
       "Aggie Krempasky": [
         "set",
-        "2026-11-02T19:24:47.345410+00:00"
+        "2026-11-05T18:10:49.426425+00:00"
       ],
       "Avery (AI)": [
         "set",
@@ -32,7 +32,11 @@
       ],
       "Jeremy": [
         "set",
-        "2026-11-02T19:24:47.325283+00:00"
+        "2026-11-03T18:03:47.357604+00:00"
+      ],
+      "Maddie Massad": [
+        "set",
+        "2026-11-06T17:18:00.342156+00:00"
       ],
       "Prospector (AI)": [
         "set",
@@ -137,7 +141,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-05T15:09:39.267623+00:00",
+    "at": "2026-11-06T17:18:00.342156+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -274,9 +278,9 @@
       "role": "Gradstudent"
     },
     {
-      "at": "2026-11-02T19:24:47.325281+00:00",
-      "by": "Rain Younger",
-      "edited_at": "2026-11-02T19:24:47.325282+00:00",
+      "at": "2026-11-03T18:03:47.357602+00:00",
+      "by": "Isabella Piatek",
+      "edited_at": "2026-11-03T18:03:47.357603+00:00",
       "email": "jeremy.barry@uvm.edu",
       "id": "Jeremy",
       "initials": "JB",
@@ -284,9 +288,16 @@
       "role": "PI"
     },
     {
+      "at": "2026-11-05T15:09:39.267090+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-11-05T15:09:39.267103+00:00",
+      "id": "Prospector (AI)",
+      "name": "Prospector (AI)"
+    },
+    {
       "at": "2026-11-02T19:24:47.345408+00:00",
-      "by": "Rain Younger",
-      "edited_at": "2026-11-02T19:24:47.345409+00:00",
+      "by": "Aggie Krempasky",
+      "edited_at": "2026-11-05T18:10:49.426424+00:00",
       "email": "akrempas@uvm.edu",
       "id": "Aggie Krempasky",
       "initials": "AK",
@@ -294,11 +305,14 @@
       "role": "Undergraduate Student"
     },
     {
-      "at": "2026-11-05T15:09:39.267090+00:00",
+      "at": "2026-11-06T17:18:00.341414+00:00",
       "by": "Shahriar Tafti",
-      "edited_at": "2026-11-05T15:09:39.267103+00:00",
-      "id": "Prospector (AI)",
-      "name": "Prospector (AI)"
+      "edited_at": "2026-11-06T17:18:00.341443+00:00",
+      "email": "mmassad@uvm.edu",
+      "id": "Maddie Massad",
+      "initials": "MM",
+      "name": "Maddie Massad",
+      "role": "Undergraduate Student"
     }
   ]
 }

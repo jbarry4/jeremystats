@@ -35,14 +35,18 @@ from . import shards
 CACHE_S = 5.0
 
 
-def install(app, *, cloud_sync, stores, registry, last, touch, lock):
+def install(app, *, cloud_sync, stores, registry, last, touch, lock,
+            extra=None):
     """Wire the change hook and the status route.
 
     `cloud_sync` is the cloudsync.Sync; `stores` the directories whose
     records are shared (a Book whose directory is under one of them asks
     for a push); `registry` the sessreg.Registry; `last` app.py's
     `_cloud_last`; `touch(urgent=True)` its `cloud_touch`; `lock` the sync
-    lock, held while a sync runs.
+    lock, held while a sync runs. `extra()` is more of the answer, asked
+    fresh on every poll rather than cached: what else a page wants to hear
+    about as it arrives (the feedback's revision), on a poll it already
+    makes.
     """
     roots = tuple(os.path.normcase(os.path.abspath(d)).rstrip("\\/") + os.sep
                   for d in stores if d)
@@ -82,6 +86,12 @@ def install(app, *, cloud_sync, stores, registry, last, touch, lock):
         except Exception:                                # noqa: BLE001
             return None
 
+    def fresh():
+        try:
+            return dict(extra() or {}) if extra else {}
+        except Exception:                                # noqa: BLE001
+            return {}
+
     @app.route("/api/cloud/items")
     def api_cloud_items():
         """Per record: synced, waiting, or never travels. And why not, when
@@ -104,7 +114,7 @@ def install(app, *, cloud_sync, stores, registry, last, touch, lock):
         with guard:
             if (cache["key"] == key and cache["body"] is not None
                     and time.time() - cache["at"] < CACHE_S):
-                return jsonify(cache["body"])
+                return jsonify(dict(cache["body"], **fresh()))
 
         configured = bool(getattr(c, "configured", False))
         # The same test the background loop makes before syncing anything.
@@ -135,6 +145,6 @@ def install(app, *, cloud_sync, stores, registry, last, touch, lock):
         }
         with guard:
             cache.update(at=time.time(), key=key, body=body)
-        return jsonify(body)
+        return jsonify(dict(body, **fresh()))
 
     return changed

@@ -1,0 +1,19 @@
+{
+ "definition": {
+  "grace": 0.1,
+  "kind": "ds",
+  "source": {
+   "artifact_id": "07cdcb084c86",
+   "nickname": "CTL Baseline v2",
+   "type": "pool",
+   "version": 1
+  },
+  "target": {
+   "artifact_id": "3561fc988afd",
+   "nickname": "CTL & PTEN Baseline v2",
+   "version": 1
+  }
+ },
+ "run": null,
+ "schema": 1
+}

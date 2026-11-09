@@ -416,7 +416,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
     const nTile = $('#tkResult .dop-stat[data-k="n"] .dop-stat-v');
     check('the counts describe the list underneath them',
           !!nTile && nTile.textContent.trim() === '3'
-          && /IEDs/.test(($('#tkResult .dop-stat[data-k="n"]') || {}).textContent || ''),
+          && /P-spikes/.test(($('#tkResult .dop-stat[data-k="n"]') || {}).textContent || ''),
           nTile ? nTile.textContent : 'no count tile');
     check('nothing on the report is cut short with an ellipsis',
           !/…|\.\.\./.test(($('#tkResult .dop-params summary') || {})
@@ -662,7 +662,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
 
   const kinds = await (await fetch('/api/curation/kinds')).json();
   const ied = (kinds.kinds || []).find((k) => k.id === 'ied');
-  check('there is an IED vocabulary', !!ied);
+  check('there is a P-spike vocabulary', !!ied);
   if (ied) {
     /* The built-in four, first and in order. Categories added in Spotter
        come after them (curation.Categories), so they are left out here --
@@ -747,7 +747,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
         (ms.measures || []).every((m) => (m.why || '').length > 20));
 
   const cands = await (await fetch('/api/braces/candidates?type=ied')).json();
-  check('the alignment candidate list can be asked about IEDs', !!cands.ok,
+  check('the alignment candidate list can be asked about P-spikes', !!cands.ok,
         cands.error || '');
   const dsCands = await (await fetch('/api/braces/candidates')).json();
   check('and still defaults to dentate spikes for everyone else',

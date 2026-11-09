@@ -359,6 +359,37 @@ def _pub(add):
 _MAKING = threading.RLock()
 
 
+def _prompt(add):
+    """Joe Prompt's record (joeprompt.json) with every file it names made a
+    file entry (name, size), figures with their previews; None until built."""
+    P = _read(_mono()._path("joeprompt", "joeprompt.json"))
+    if not P or not P.get("ok"):
+        return None
+    od = lambda n: _mono()._path("joeprompt", "Aim 2 follow-up", n)    # noqa: E731
+    every = []
+    reqs = []
+    for r in P.get("requests") or []:
+        r = dict(r)
+        fl = {}
+        for k, say in (("pdf", "PDF"), ("csv", "CSV of the per-rat values")):
+            n = (r.get("files") or {}).get(k)
+            got = add(od(n), say=say) if n else None
+            if got:
+                fl[k] = got
+                every.append(got)
+        r["files"] = fl
+        figs = []
+        for f in r.get("figures") or []:
+            pdf = add(od(f["pdf"]), say="Figure PDF")
+            if pdf:
+                every.append(pdf)
+            figs.append({"id": f.get("id"), "caption": f.get("caption"), "pdf": pdf,
+                         "preview": _preview(add, od(f["png"]), f["png"]) if f.get("png") else None})
+        r["figures"] = figs
+        reqs.append(r)
+    return dict(P, requests=reqs, files_all=every)
+
+
 def manifest():
     """Everything that goes to Joe, with each file's name, size and where it
     is here (`files`: name -> path, kept out of what the page is sent)."""
@@ -422,6 +453,12 @@ def _manifest():
                             "say": "How the data were processed and analysed, from the recordings to the statistics, written to be adapted "
                                    "for the dissertation. Bracketed text marks what still has to be added.",
                             "prose": P.get("methods") or [], "files": mfiles})
+        # how volume conduction was handled (backend/conduction.py, 2026-11-05): first in
+        # the site's Wrapping up tab, before the methods; since 2026-11-06 in Joe
+        # Prompt's own Volume conduction part instead, once that is built
+        C = _read(os.path.join(_mono()._path("joepub"), "conduction.json"))
+        if C and C.get("ok") and not _read(_mono()._path("joeprompt", "joeprompt.json")):
+            sections.insert(0, {"id": "conduction", "title": "Volume conduction", "say": C["say"], "conduction": C, "files": []})
         E = _read(os.path.join(_mono()._path("evenmore"), "evenmore.json")) or {}
         sections.append({"id": "dickson", "title": "Coherence between regions",
                          "say": "Ten region pairs (RSC, dHC, ACC, OFC and PER, each with each), Early (Precon1) against Late (Precon4), in theta and "
@@ -481,6 +518,10 @@ def _manifest():
                          "say": "Whether the right data went in, the right logic was applied, the words match the numbers, and it can "
                                 "be made again from the raw data; checked on %s." % str(SR.get("made"))[:10],
                          "sanity": SR, "files": []})
+    # 5. Joe Prompt (tab 14, backend/joeprompt*.py): his final round of Aim 2 follow-ups
+    JP_ = _prompt(add)
+    if JP_:
+        sections.append({"id": "prompt", "title": "Joe Prompt", "tab": "prompt", "say": JP_["say"], "prompt": JP_, "files": []})
     total = sum(os.path.getsize(p) for p in paths.values())
     n_fig = sum(len(g["figures"]) for s in sections for g in s.get("groups") or []) + \
         sum(len(g["figures"]) for s in sections for gs in (s.get("sets") or {}).values() for g in gs)

@@ -79,7 +79,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
     if (!j.set) { target = s; break; }
   }
   if (!target) {
-    say('no reachable recording without an IED set; nothing to curate', 'bad');
+    say('no reachable recording without a P-spike set; nothing to curate', 'bad');
     fails++;
     throw new Error('no fixture');
   }
@@ -114,7 +114,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
     gid, project: target.project, mouse: target.mouse,
     session: target.session, session_label: target.label,
     session_path: target.here[0],
-    type: 'ied', type_name: 'IED',
+    type: 'ied', type_name: 'P-spike',
     name: 'spotter harness — delete me',
     note: 'Made by web/_dev/spotter.html. Deleted on the way out.',
     events: evts,

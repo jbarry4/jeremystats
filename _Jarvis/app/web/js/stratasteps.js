@@ -1353,7 +1353,7 @@ BARRY.strataSteps = (function () {
       name: BARRY.bankName.suggest(row, 'Ripples ch ' + rip.channel),
       what: 'They go in as a detector\u2019s output, not as a curated set: '
           + 'nothing is decided. Checkup cannot vet ripples yet (it knows '
-          + 'dentate spikes and IEDs), so for now this is the record of '
+          + 'dentate spikes and P-spikes), so for now this is the record of '
           + 'what the detector found.',
       where: 'Filed under ' + [row.project || 'Unfiled',
                                row.mouse != null ? 'm' + row.mouse : null,

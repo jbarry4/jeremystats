@@ -348,6 +348,16 @@ def _read_channel_window(session, ch, t0, t1):
     """Return (samples, actual_t0, fs) for one channel over [t0, t1) seconds."""
     if session["source"] == "demo":
         return demo.read_window(session, ch, t0, t1)
+    if session["source"] == "vacc":
+        # Its samples are on the cluster. Falling through to the .mat
+        # reader below said "[WinError 2] The system cannot find the file
+        # specified: 'vacc:s9a8f6138b49e'" (Isabella's laptop, 2026-11-05),
+        # which tells nobody what happened or what to do.
+        raise ValueError(
+            "This recording is open off the cluster (VACC), and this step "
+            "reads the recording's files on this computer, which has no "
+            "copy of it. Run it on a computer that has the recording, or "
+            "use the step's cluster run where it has one.")
     if session["source"] == "ncs":
         return nlx.read_ncs_range(ch["file"], t0, t1, invert=session.get("invert", True))
 

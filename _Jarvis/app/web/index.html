@@ -348,6 +348,12 @@
         <svg viewBox="0 0 20 20"><path d="M10 3 2 7l8 4 8-4z"/><path d="M5 9v4c0 1.7 2.2 3 5 3s5-1.3 5-3V9"/></svg>
         <span>Guide</span>
       </button>
+      <!-- Hater of AI (floss, 2026-11-06): say what went wrong and Claude, on the lab's
+           account, looks for the cause and offers a small fix (js/floss.js). -->
+      <button class="chip-btn" id="flossBtn" title="Hater of AI: ask for a bug to be fixed">
+        <svg viewBox="0 0 20 20"><path d="M7.5 6.5a2.5 2.5 0 0 1 5 0"/><rect x="6" y="6.5" width="8" height="10" rx="4"/><path d="M10 9v7M2.5 10h3.5M14 10h3.5M3 15.5l3-1.5M17 15.5l-3-1.5"/></svg>
+        <span>Hater of AI</span>
+      </button>
       <button class="chip-btn" id="themeToggle" title="Toggle light / dark">
         <svg viewBox="0 0 20 20"><path d="M10 3a7 7 0 1 0 7 7 5.5 5.5 0 0 1-7-7z"/></svg>
         <span>Theme</span>
@@ -378,7 +384,7 @@
     <section class="view" id="view-pipeline">
       <header class="view-head">
         <div class="head-titles">
-          <h1>IED Pipeline</h1>
+          <h1>P-spike Pipeline</h1>
           <p class="sub">Point it at a folder and walk the stages in order.</p>
         </div>
         <div class="track-switch" id="trackSwitch">
@@ -892,6 +898,7 @@
     <script src="js/panning.js"></script>
 <script src="js/braces.js"></script>
 <script src="js/rootcanal.js"></script>
+<script src="js/rcworkflow.js"></script>
 <script src="js/dspca.js"></script>
 <script src="js/arc.js"></script>
 <script src="js/circuit.js"></script>
@@ -912,6 +919,7 @@
 <script src="js/tourmodules.js"></script>
 <script src="js/radio.js"></script>
 <script src="js/misc.js"></script>
+<script src="js/floss.js"></script>
 <script>BARRY.init();</script>
 </body>
 </html>

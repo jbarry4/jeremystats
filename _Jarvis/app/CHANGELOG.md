@@ -15,6 +15,455 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.11.06.4 - Tab 14, Joe Prompt: Joe's final round of Aim 2 follow-ups
+
+Needs a restart and a reload.
+
+- **A new tab, 14 · Joe Prompt, in the Monolith and on Joe's site.** It holds
+  every request of Joe's run sheet (`Aim2_Jarvis_Run_Sheet_Final_2026-11-06.docx`,
+  23 requests, A1 to C5), on J6–J11 only (PER 5).
+- **Its parts:**
+  - Overview: his summary table, with filters for priority and status and a
+    one-line result per request, and the Confirmations;
+  - Volume conduction (moved here from Wrapping up);
+  - Data cleaning;
+  - Coherence;
+  - Power and FOOOF;
+  - Granger and coupling;
+  - H2 and behavior;
+  - Technical checks.
+- **What each request card shows:**
+  - what was run, and what it found, with estimates, 95% CIs, p and q;
+  - leave-one-rat-out and the mixed model;
+  - the run sheet's reading for it;
+  - its tables and figures;
+  - its PDF and CSV, named by ID (`A1_..._NoJ3J4.pdf`), all in one Aim 2
+    follow-up folder (one zip on the site).
+- **Follow-up only,** on both: a switch that shows this tab alone. It is off
+  by default and remembered.
+- **Reused, not recomputed:**
+  - C1 is tab 11's coherence by period;
+  - B1 and A6 use tab 12's FOOOF fits and rows;
+  - B7 uses tier 1's GEE;
+  - C2 and C3 use tab 12's Granger and modulation index;
+  - C5 uses the SPSS behavior results.
+- **New, from one more pass over the recordings** (`python -m backend.joeprompt
+  measure`, cached per rat-day; it reproduces tab 11's pooled spectra to 2e-7):
+  - debiased wPLI and PPC;
+  - 2-s windows;
+  - each trial's own spectra (trial halves, and paired against unpaired cues
+    for H2).
+- **Not run, by Shahriar's choice:**
+  - B6, movement (the tracking files exist);
+  - B12, the cue-pair split;
+  - B11's automatic screen: its part explains the cleaning instead, with
+    figures and methods text;
+  - EMG at 100–200 Hz;
+  - conditional Granger;
+  - the rebuilt MI.
+- **Graphs say Early and Late.**
+- **Volume conduction, in plain English.** The part is now a walk-through:
+  - what volume conduction is;
+  - four checks, each with its figure, "How to read it" and "What it shows";
+  - a table that gives each coherence change a verdict;
+  - the bottom line.
+
+  A2's full numbers are folded underneath. The four figures are new: the
+  idea, how often signals line up at zero delay, the six changes against
+  the lag-only measure, and why J3 and J4 were left out. The old explainer's
+  "still open" list said the lag-only test was not done yet, so it is no
+  longer shown here.
+- **One figure style for the whole tab,** matching the publication set:
+  - no headline sentence inside a figure (the caption carries it);
+  - bold panel letters;
+  - plain titles and the house font sizes.
+
+  The cleaning figure is redrawn: rats grouped Early and Late, the share of
+  pieces omitted beside each bar, and the steps numbered with the artifact
+  steps marked.
+- Made by `python -m backend.joepromptfigs`; `backend/joeexport.py` adds it
+  to tab 10's list and the site.
+
+## 2026.11.06.3 - Root Canal's Many reads on the VACC
+
+Needs a restart and a reload.
+
+- **Where: VACC in Many.** Root Canal's run bar now has Where, as Incisor's
+  and Braces' do. On the VACC, every ticked set the cluster can read goes up
+  as one batch and is read side by side on compute nodes. A set the cluster
+  has no copy of is read on this computer at the same time. Many opens on
+  the VACC when it is set up; One still reads here.
+- **Each read comes home.** It is filed as if it were read here, so Open
+  and Bank… work the moment its row turns done. The node also puts it on
+  the lab's shelf, so every other computer has it without this one sending
+  it back up.
+- **A set only the cluster has** is read there in either mode. Before, Many
+  tried to read it over the live link.
+- **What it says first.** Each row says if the VACC has no copy ("read
+  here") or if only the VACC has it. The cost line splits the ticked sets
+  into "N to read on the VACC" and "M on this computer". While it runs,
+  each row says queued (with its Slurm job), reading on the VACC, bringing
+  the read home, read, or failed with why.
+- **Stop** cancels the sets still on the cluster.
+- **A restart** picks the batch up again: reads still on the cluster are
+  brought home and filed, like Braces' batches.
+- **Measured on the real data:** PTEN m6 s4 and PTEN_DKO m44 s1 (DS), one
+  array of two, 5 min 10 s from press to both filed. m6 s4 had been read
+  here before, and the cluster's read matches it: 15 of 17 arrays identical,
+  and the two spectra within 1 part in 10 million (float rounding).
+
+## 2026.11.06.2 - Hater of AI, a bug fixer anyone can ask
+
+Needs a restart and a reload. Works once the lab key is set up
+(`tools/floss_setup.py`, see `docs/floss.md`; inside the code he is
+"floss"); until then the dialog says
+so.
+
+- **Hater of AI** in the rail, and **Ask Hater of AI** on each fault in
+  History > Errors. He opens as a small pop-up beside the rail, so the app
+  stays usable while he works. Say what went wrong; Claude Code, on the lab's Claude account,
+  looks for the cause in a private copy of this machine's code and makes
+  the smallest fix it can. You read what it found and choose **Use it
+  here** or **Leave it for review**. A used fix can be taken out again.
+- Bugs, and small changes you ask for (wording, layout, a broken control).
+  Paste, drop or attach screenshots; he reads them first. They stay on
+  this computer, never in git.
+- Limited by rule, not by request: 8 files and 250 lines at most, existing
+  code files only, never the sync, sign-ins or his own code. Anything
+  bigger is kept for review and never offered here.
+- The first time on a machine, the dialog installs Claude Code (one click)
+  and asks for the lab PIN (once).
+- Every ask is a ticket in `GUI_logs/floss/`, which travels by git; the
+  main Claude session reviews and integrates them
+  (`tools/floss_inbox.py`). Checked by `tools/check_floss.py`.
+
+## 2026.11.06.1 - A check that Ambiguous borrows the run before an edit
+
+From the daily error pass (TRIAGE.md, pass 12). Nothing the app runs
+changed, so a reload or a restart is not needed for this entry. The fix it
+checks is in 2026.11.05.6, which needs a restart.
+
+- **Checked: "has not been run yet, so it has no border to lend".** On
+  11-05 Shahriar's Ambiguous workflow refused to save twice (17:06 and
+  17:07). Its P-spike workflow had run at 17:04:05 as v2, then its
+  definition was saved again at 17:04:09 as v3, with no run of its own.
+  2026.11.05.6 (`_wf_last_run` in `backend/app.py`) lends the newest
+  version that holds a run. The new check,
+  `tools/check_wf_border_lend.py`, builds that history in memory. It
+  passes 7 of 7 on the code on disk. With `--head` it runs HEAD's own
+  `_wf_definition` and fails 3 of 5 with Shahriar's exact message.
+
+## 2026.11.05.6 - Workflow: banking you can see, P-spike sets made ready by themselves, Root Canal's own click panel
+
+Restart Jarvis: the server changed.
+
+### Changed
+
+- **Banking is its own step.** Each strip has **Run and bank…** and **Run
+  without banking**.
+  - Run and bank first works out what would be banked, then opens a dialog
+    that says:
+    - how many events, and from how many recordings;
+    - whether they go into a new entry or the next version of its entry;
+    - under what name (which can be changed), with a note.
+  - Its button reads "Run and bank N events", and nothing is written until
+    it is pressed.
+  - Run without banking keeps the run as a version and writes nothing to
+    the Bank.
+  - Every workflow says what it has in the Bank, and has an **Open in the
+    Event Bank** button.
+  - The Extract stage has a card for the same thing.
+- **A P-spike workflow makes its hand-sorted sets ready by itself.** Run
+  retimes, aligns (Eye) and reads whichever sets need it, says each step
+  on the strip, then runs on the sets' new versions. Before, it stopped
+  with "could not be measured here: … Read it first".
+- **It measures the sets as prepared.** A P-spike workflow saved before its
+  sets were aligned pointed at their unaligned versions, so it found no
+  reads even once they were ready. Its stages stayed empty because it had
+  never run. A run now always measures each set's newest aligned version.
+  A stage with no run says so instead of showing a blank space.
+- **An edit no longer hides the run before it.** Editing a workflow saves
+  a new definition with no run of its own. Before, that made the workflow
+  read as "not run yet": its strip lost its pictures, and Ambiguous refused
+  to borrow its border ("has not been run yet, so it has no border to
+  lend"). Now:
+  - the strip and the open workflow show the newest run, saying "vN saved
+    since, not run yet";
+  - Ambiguous borrows each workflow's newest run;
+  - Ambiguous is out of date only when a newer run exists.
+  On the real data: DS only 684, P-spike only 208, inside both 1,173,
+  outside both 133, so 1,306 ambiguous.
+- **A clicked dot shows Root Canal's own click panel** as soon as it is
+  clicked: the max-amp contact with its peak and half-width, the spectrum
+  against its baseline, every contact, and the CSD. Averages of a class
+  are drawn the same way.
+- **Every chart has axes with values and a legend that names every mark.**
+  - The legend lists the dots with their counts and shares, each box
+    (solid at the grace, dashed at no grace), and the frame. The faint box
+    is the frame: the axes, from the lowest value on show to the highest.
+    It is not a border.
+  - The 3D view has tick values on its front edges, a floor grid, and
+    depth shading on the dots.
+  - The 2D views and the distance histograms have proper axes and say how
+    many events are in and out on each axis.
+  - The grace sweep has two labelled axes and says what the chosen grace
+    gives.
+  - The flow names its two columns.
+
+### Checked
+
+- rcworkflow.html: 65 checks (was 57). New: the dialog's words, banking
+  under the name and note given, Run without banking writing nothing, the
+  four pictures, and the full legend.
+- The throwaway end-to-end run: 33 checks. A run without banking leaves
+  the Bank as it was; banking again goes into the same entry's next
+  version.
+- These suites pass:
+  - rootcanalpool 294;
+  - rootcanalborder 103;
+  - confluence 56;
+  - bankscroll 17.
+- rootcanal fails on two checks that this change does not touch:
+  - the "Lock hasn't lined this set up yet" wording, which was already
+    failing;
+  - a check that has passed and failed between runs before.
+- rootcanaldone fails one caret check that has also passed and failed
+  between runs before.
+
+## 2026.11.05.5 - Root Canal: a Workflow tab (define a border, apply it, extract)
+
+Restart Jarvis: there are new server routes.
+
+### Added
+
+- **Workflow, beside Single and Pooled.** There are three kinds of workflow,
+  each saved, versioned and shared between machines like a pool:
+  - **Verified dentate spikes.** The border is drawn around DS from a pool
+    whose every event is DS (the controls), at a grace you pick (5% by
+    default), and applied to a target pool. Everything inside it is banked
+    as **one Root Canal entry for the whole pool**. Each event keeps the
+    recording and set it came from.
+  - **Verified P-spikes.** The same, with the border drawn around the
+    hand-sorted P-spike sets (the "IED spikes (hand-sorted)" imports are
+    ticked; the confirmed ones are offered unticked). The sets are measured
+    the way the target was.
+  - **Ambiguous.** It borrows both borders. Events outside both, or inside
+    both, are shown, not banked. You tick the ones you want and bank them.
+- **Every stage in 3D.** Define border, Apply border and Extract each draw
+  the dots with the border's box: solid at the grace, dashed at no grace.
+  You can turn and zoom the view and click any dot. A strip per workflow
+  shows the three stages as small pictures with their counts.
+- **Beside the 3D view:**
+  - the three 2D views with the cut-offs;
+  - how far every event is from the box on each axis;
+  - the grace sweep, before the grace is chosen;
+  - the flow from each mouse to each class;
+  - a small picture per mouse with how many came out;
+  - class averages;
+  - and, for Ambiguous, the conflicts.
+- **Trace-back.** A clicked dot shows its three numbers against the
+  cut-offs (inside or outside, and by how many box widths). It also shows
+  its history: recording and time, set and version, pool, border and
+  workflow version, and bank entry. From there, "Show its waveform" draws
+  the trace and the CSD, and "Open in Xplorefinder" opens the recording at
+  that moment. "Open in Pooled" opens the same picture there, with the
+  border applied.
+- **Versions you can rebuild.** Every run is a version that pins the exact
+  versions it read. A newer input marks the workflow **out of date** and
+  offers "Run with the newest inputs"; nothing reruns by itself. Each run
+  says how many events changed class since the run before, and which. "Show
+  this version" and "Rebuild from here" are on every line. Each run's
+  border is saved as an ordinary Root Canal border, so the Borders card can
+  apply it anywhere.
+- **Archive.** Archiving a workflow hides it for everyone and archives the
+  bank entries it made. Nothing is deleted, and it can be put back.
+- **The side branch.** A DS set whose events went into a workflow's entry
+  says so in its version tree, under the version they came from. The note
+  is shown, not stored, so the set's newest version stays where it is.
+- **Preparing the hand-sorted sets.** "Check the sets" shows, for each set,
+  whether it is on the recording's own clock, aligned and read here.
+  "Prepare all" retimes what needs it, aligns the rest in Eye (committed as
+  each lands) and reads each one. Two need retiming: PTEN m5 s7 (up to
+  4.5 ms) and PTEN m34 s8 (up to 121 ms).
+
+### Changed
+
+- **The hand-sort's clock.** "IED hand-sort (ETS)" sets are now known to be
+  in the hand-sort's concatenated time, which squeezes out the recording's
+  pauses (measured on PTEN M34 s8). So the Session view offers to retime
+  them too.
+
+### Checked
+
+- New harness rcworkflow.html: 57 checks, on fixtures. It writes nothing.
+- An end-to-end run of all three workflows in throwaway stores: 29 checks.
+  - Workflow 1 on the real pools: 1,857 of 2,198 events inside the DS
+    border at 5%, banked as one entry, each event with its recording.
+  - Run again: same entry, new version, nothing moved.
+  - A newer pool makes it out of date.
+  - Workflow 2's source was stood in for, because the hand-sorted sets are
+    not read here yet.
+- Suites still passing:
+  - rootcanal 353 of 355. The 2 failures are on the "Lock hasn't lined this
+    set up yet" wording, which was already failing.
+  - rootcanalpool 294 (its view-bar check now includes Workflow).
+  - rootcanalborder, rootcanaldone, rootcanalfolders, rootcanalxplore and
+    confluence.
+  - check_rootcanal 464, and test_retime.
+- Not run for real: "Prepare all". It writes real bank versions (retiming
+  and alignment) when it is pressed.
+
+## 2026.11.05.4 - Prospector and Tooth Fairy sweep recordings only the cluster has; Prospector's calls are loud in Panning; feedback arrives live; a mode's keys work from its support window
+
+Restart Jarvis: most of this is the server.
+
+### Fixed
+
+- **A mode's keys did nothing in its support window.** In Checkup,
+  Spotter, Panning, StrataScope, Braces, Lock and Eye, clicking a panel
+  in the second window and pressing 1 opened Sessions instead of labelling
+  the event, because that window is a copy of the app with no mode in it.
+  - Every key pressed there now goes to the mode in the main window first,
+    exactly as if it had been pressed there: labels, the arrows, n/p,
+    undo, merge.
+  - What the mode doesn't use stays the support window's own (zoom, pan).
+  - The view numbers never move a support window.
+  - Esc and typing in a field are left alone there.
+  - Prospector's badge now shows on the support window's panels too.
+
+- **Prospector failed with "[WinError 2] The system cannot find the file
+  specified: 'vacc:s9a8f6138b49e'".** This was Isabella's laptop on
+  KCNT1 m1606 s1, which only the cluster has. The sweep's reads open the
+  recording's files on this computer, and a recording opened off the
+  cluster has none here.
+  - A pool like that is now read on a compute node, by the same reader,
+    the way Root Canal's reads go. The read comes home and is scored here.
+    The sweep screen says "Waiting for the cluster" and "Bringing the read
+    home".
+  - Tooth Fairy's sweep of a Checkup set does the same.
+  - Checked against the real cluster on m1606 s1 by reading each set both
+    ways. Prospector: 1038 of 1038 calls the same, p identical, in 152 s
+    on the cluster. Tooth Fairy: 586 of 586 calls the same.
+  - A set still on the old joined-up clock, whose recording only the
+    cluster has, is refused with a sentence, since its stamps can't be
+    corrected here.
+  - Any other step that reads a recording's files, given one opened off
+    the cluster, now says so in a sentence instead of "WinError 2".
+- **Prospector's progress bar never moved.** Its job stages were never
+  declared to the job machinery, so the sweep screen said "Working" over
+  an empty bar from start to finish.
+
+### Changed
+
+- **Prospector's calls in Panning (Rain).** Its two flags lit none of
+  Spike, Garbage or Flag, and showed only as faint text on the trace.
+  - "Likely spike" and "Likely garbage" now sit among the options with
+    their counts. The one the event carries is filled in its own colour.
+    They are shown, not offered: only Prospector gives them, and a person
+    settles one with Spike, Garbage or Flag.
+  - On the trace, Prospector's call is a filled badge
+    ("✦ Prospector: Likely garbage").
+  - When Prospector called an event Spike, the bar also says
+    "Prospector's call".
+- **Prospector's flags count as left, not decided.** A swept pool read
+  "195 decided · 0 left" in Panning and "195 / 195 ✓" on its card while
+  183 flags were waiting for a person.
+  - Panning now reads "12 decided · 183 left". The pill's hover says how
+    many of those are Prospector's.
+  - The card adds ", 183 of them Prospector's flags".
+- **Feedback arrives live.** Isabella's report reached this machine at
+  13:37, and History went on saying "Nothing open". The sync-status poll
+  every page already makes now carries the feedback's revision.
+  - When the revision moves, the list is read again and the Feedback
+    pill's count follows.
+  - A report from somebody else says so in a toast, wherever you are.
+  - It never redraws while you are typing a report or a note.
+
+### Checked
+
+- test_prospector_routes: 22 ok.
+- panai 20 (new), fblive 7 (new), aidkeys 12 (new), prospector 50,
+  panmany 40, confluence 56, panfold 21, curate 57, toothfairy 63,
+  toothfairyxwin 8, devarchive 5, uikit 52.
+- syncmarks (3 failing) and syncpanel (1 failing) fail the same way on
+  HEAD without these changes.
+
+## 2026.11.05.3 - "IED" is "P-spike" everywhere you read it; DS blue, P-spikes red
+
+Restart Jarvis: the server writes many of these words.
+
+### Changed
+
+- **Every "IED" a person reads now says "P-spike".** Buttons, legends,
+  chips, hovers, dialogs, toasts, rule sentences, bank names Jarvis gives
+  new sets ("Hidden P-spikes (Root Canal)"), the Event Bank's type list,
+  the built-in filter (now "P-spike"), Braces' band, Doppler's counts,
+  Spotter's and Checkup's categories, the tour and the reveal, the
+  pipeline page ("P-spike Pipeline"), and Root Canal's figures. That is
+  about 340 strings in 46 files.
+- **What stays as it was, on purpose:**
+  - The stored id is still `ied` (event types, calls, keys, CSV columns),
+    so every set made before keeps working and syncing.
+  - Sets already banked keep their stored type name, but the Bank's lists
+    show it as "P-spike".
+  - Names people typed, and set names saved before today, are unchanged.
+  - The lab's subgroup values `IED+` / `IED-` come from the workbook and
+    the mouse book and are matched as typed, so they stay.
+  - Folder paths on disk (`IED/03_IED_Detection/...`) stay.
+  - Code comments are unchanged.
+- **One colour code: DS blue, P-spikes red.** The new tokens are
+  `--call-ds` (a lighter blue on dark themes, a deeper one on light ones)
+  and `--call-p` (each theme's own red). They apply to:
+  - Root Canal's dots, centres, chips, legends, cut-offs and switch table;
+  - the "which detector found it" colours (`--o-incisor` /
+    `--o-doppler`), so the stream, Junction, Panning and the Incisor /
+    Doppler tool colours follow;
+  - Root Canal's figures (P-spikes were orange).
+  DS was green before.
+
+### Checked
+
+- check_rootcanal: 464 ok.
+- rootcanal 353 of 355, rootcanalpool 294, rootcanalborder 103,
+  rootcanaldone 24, rootcanalfolders 32, rootcanalxplore 15,
+  confluence 56.
+- braces 19, bracessee 32, brdual 9, brsettings 25, fixes1030 20,
+  jarvisname 96.
+- Failing, but on checks that don't involve these words:
+  - rootcanal: one check expects every set that isn't aligned to name
+    Braces, but pooled sets now say Lock.
+  - lockpick: expects "holds Incisor only", and the plan says "Lines up
+    Incisor only".
+  - storm: "doppler and eye both have an onHide".
+  - vtreetools: `B.eye._versionCard is not a function`.
+- Not run, because they write real curation or bank data: spotter, eye,
+  curate. Their strings were renamed the same way.
+- The bank, artifacts and curation are untouched by the runs.
+
+## 2026.11.05.2 - Volume conduction: how it was handled, in tab 11 and on Joe's site
+
+- **A new explainer, "Volume conduction: how it was handled".** It is a card in tab 11, under Read this first, and its own section on Joe's site, right after the methods. Both draw the same words, from `backend/conduction.py`. It covers:
+  - what volume conduction is;
+  - seven steps, each with what it found in one line and a More;
+  - what is still open.
+- **The steps:**
+  1. Each rat is compared with itself.
+  2. Every recording was screened for one signal on every wire. 3 of 16 recordings were marked, with a wide gap to the rest.
+  3. That signal is at zero lag. J3 Precon4's gamma coherence was 0.73, but its imaginary coherence was 0.07, inside the other recordings' 0.05–0.13. It was as high across the hemispheres as within one.
+  4. Every set of rats, side by side. 2 of the 3 changes found with every rat hold without J3 and J4.
+  5. The measures that ignore zero lag.
+  6. Granger's caution.
+  7. J8–J10's reference switch.
+- **Nothing new is tested.** The explainer reads the spectra and checks that were already made.
+- **The methods for the dissertation** gain a "Volume conduction" section, with Nolte 2004, Stam 2007 and Vinck 2011 added to the references.
+- **Restart Jarvis** for tab 11's card: it is read through a new route, `/data/conduction`.
+- **Fixed:** tables in Joe's site's sanity report and in this section were laid out as one flex row. They are tables again.
+- **Joe's site (and tab 10) is now three tabs:**
+  - **Results:** the figures, the statistics and the switches.
+  - **Sanity check:** the report.
+  - **Wrapping up:** volume conduction, then the methods for the dissertation.
+- The site opens on Results, remembers the last tab you picked, and `#tab=wrap` (or `sanity`) in the address opens that tab.
+
 ## 2026.11.05.1 - A renamed folder says so, tab 10 survives a redraw, a long poll is not "stuck"
 
 From the daily error pass (TRIAGE.md, pass 11). Restart Jarvis for the first

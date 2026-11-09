@@ -218,8 +218,13 @@ def _samples(order_ok, n=N_SAMPLES, seed=None):
 
 
 def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
-          slot="tooth_fairy", ds_loss=None):
-    """Score every candidate in one set. Returns the sweep record."""
+          slot="tooth_fairy", ds_loss=None, read_remote=None):
+    """Score every candidate in one set. Returns the sweep record.
+
+    `read_remote(spec, dest, job)` reads a set whose recording only the
+    cluster has, on a compute node (app.py `_pr_read_vacc`, Prospector's
+    reader, which is this one's), and leaves the read where a local read is
+    kept."""
     st = status(runs, slot)
     if not st["ready"]:
         raise AI.AiBetaError(st["why"])
@@ -245,9 +250,17 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
     # What was actually read: a probe laid out in columns is read whole.
     which = rec.get("subset") or "all"
     sess = rec["session"]
+    from . import vaccio
+    remote = vaccio.is_vacc(sess.get("path"))
+    if remote and basis == retime.CONCAT:
+        raise AI.AiBetaError(
+            "This set's times are on the old joined-up clock, and its "
+            "recording is only on the cluster, so they cannot be put on the "
+            "recording's own clock here. Sweep it on a computer that has "
+            "the recording.")
     report = None
     try:
-        report = continuity.check(sess.get("path"))
+        report = None if remote else continuity.check(sess.get("path"))
     except Exception:                                    # noqa: BLE001
         report = None
     times = []
@@ -288,6 +301,32 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
                 cached = True
         except Exception:                                # noqa: BLE001
             fam = None
+
+    if fam is None and remote:
+        # Only the cluster has the recording (Isabella's laptop, 2026-11-05,
+        # where the read said "[WinError 2] ... 'vacc:s9a8f6138b49e'"). The
+        # same two reads, on a compute node, through Prospector's reader.
+        from . import prospector as pr
+        read_fams = [f for f in fams if f not in AI.DERIVED]
+        if read_remote is None:
+            raise AI.AiBetaError("This recording is only on the cluster, and "
+                                 "this sweep cannot send its reads there.")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        read_remote({
+            "channels": [int(c["number"]) for c in rec["channels"]],
+            "probe": rec["probe"], "bad": sorted(int(b) for b in rec["bad"]),
+            "spacing": rec.get("spacing"), "times": times,
+            "picks": [int(i) for i in picks], "read_fams": read_fams,
+            "stages": ["tf read", "tf physio"], "workers": READ_WORKERS,
+            "n_events": len(events)}, path, job)
+        kept = pr.load_block(path, read_fams)
+        if kept is None:
+            raise AI.AiBetaError(
+                "The cluster read this set, but what came home does not hold "
+                "every input Tooth Fairy scores. Sweep it again.")
+        fam, ok, traces, kept_picks = kept
+        if kept_picks is not None:
+            picks = kept_picks
 
     stamps = [t for t in times if t is not None]
     if fam is None and job and picks:
