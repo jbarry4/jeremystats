@@ -10,13 +10,13 @@
     "kind": "2026-11-04T21:26:01.041396+00:00",
     "labels": "2026-11-04T21:26:01.041396+00:00",
     "name": "2026-11-04T21:26:01.041396+00:00",
-    "open": "2026-11-04T22:20:35.300304+00:00",
-    "opened_at": "2026-11-04T21:26:01.098204+00:00",
-    "opened_by": "2026-11-04T21:26:01.098204+00:00",
+    "open": "2026-11-06T18:04:27.490815+00:00",
+    "opened_at": "2026-11-06T18:05:06.386728+00:00",
+    "opened_by": "2026-11-06T18:04:27.490815+00:00",
     "schema": "2026-11-04T21:26:01.041396+00:00",
     "session_label": "2026-11-04T21:26:01.041396+00:00",
     "source": "2026-11-04T21:26:01.041396+00:00",
-    "updated": "2026-11-09T15:33:53.491279+00:00"
+    "updated": "2026-11-09T19:09:46.777831+00:00"
   },
   "_keys": {
     "events": {
@@ -230,7 +230,7 @@
       ],
       "e0e7965f011": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:57:40.823600+00:00"
       ],
       "e0e9b6f0df9": [
         "set",
@@ -298,7 +298,7 @@
       ],
       "e12efc3c8ae": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:00:21.824770+00:00"
       ],
       "e131e0a8460": [
         "set",
@@ -334,7 +334,7 @@
       ],
       "e1409ce03e9": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:05:52.510028+00:00"
       ],
       "e141e625ea0": [
         "set",
@@ -486,7 +486,7 @@
       ],
       "e215184229d": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:54:49.927771+00:00"
       ],
       "e216b096d32": [
         "set",
@@ -726,7 +726,7 @@
       ],
       "e353def34e3": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:03:45.117027+00:00"
       ],
       "e354344901b": [
         "set",
@@ -770,7 +770,7 @@
       ],
       "e38caaf0e32": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:47:23.756404+00:00"
       ],
       "e390876d328": [
         "set",
@@ -874,7 +874,7 @@
       ],
       "e3ea6b1ba13": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:04:12.309534+00:00"
       ],
       "e3ec0b03ab8": [
         "set",
@@ -1186,7 +1186,7 @@
       ],
       "e5836769aa4": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:07:06.919634+00:00"
       ],
       "e58677068ff": [
         "set",
@@ -1298,7 +1298,7 @@
       ],
       "e62646373b8": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:04:12.309534+00:00"
       ],
       "e6339740171": [
         "set",
@@ -1414,7 +1414,7 @@
       ],
       "e6b7bb347d3": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:54:49.927771+00:00"
       ],
       "e6b8359f0c9": [
         "set",
@@ -1446,7 +1446,7 @@
       ],
       "e6d3949405b": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:00:21.824770+00:00"
       ],
       "e6dca313a12": [
         "set",
@@ -1486,7 +1486,7 @@
       ],
       "e70f3e15a09": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:50:15.150263+00:00"
       ],
       "e7131e0f6eb": [
         "set",
@@ -1502,7 +1502,7 @@
       ],
       "e7192aeeb6a": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:07:36.488322+00:00"
       ],
       "e719c53099b": [
         "set",
@@ -1546,7 +1546,7 @@
       ],
       "e741fe9d05d": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:09:46.777831+00:00"
       ],
       "e741fea65b4": [
         "set",
@@ -1614,7 +1614,7 @@
       ],
       "e7ac4bb6ea4": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:51:04.514659+00:00"
       ],
       "e7b18bc9905": [
         "set",
@@ -1634,7 +1634,7 @@
       ],
       "e7b818989c0": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:50:15.150263+00:00"
       ],
       "e7b916ff13e": [
         "set",
@@ -1674,7 +1674,7 @@
       ],
       "e7fad6bec90": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:08:03.094449+00:00"
       ],
       "e7fdd5915a1": [
         "set",
@@ -1782,7 +1782,7 @@
       ],
       "e87a3f39521": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:01:58.362572+00:00"
       ],
       "e87dc9aebe8": [
         "set",
@@ -1802,11 +1802,11 @@
       ],
       "e897203e43d": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:09:18.187358+00:00"
       ],
       "e897e378166": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:47:23.756404+00:00"
       ],
       "e897f722c92": [
         "set",
@@ -2070,7 +2070,7 @@
       ],
       "e9a3068d762": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:50:15.150263+00:00"
       ],
       "e9a35907006": [
         "set",
@@ -2250,7 +2250,7 @@
       ],
       "ea66a5595f6": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:57:40.823600+00:00"
       ],
       "ea6841072f3": [
         "set",
@@ -2282,7 +2282,7 @@
       ],
       "ea99d0e7675": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:44:05.920065+00:00"
       ],
       "ea9b5828077": [
         "set",
@@ -2458,7 +2458,7 @@
       ],
       "eb7fccc9469": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:55:49.982187+00:00"
       ],
       "eb80a87755e": [
         "set",
@@ -2486,7 +2486,7 @@
       ],
       "eb996e67e81": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:45:12.483102+00:00"
       ],
       "eb9c7559655": [
         "set",
@@ -2538,7 +2538,7 @@
       ],
       "ebebf677756": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:45:41.631960+00:00"
       ],
       "ebfecd7050b": [
         "set",
@@ -2546,7 +2546,7 @@
       ],
       "ec09c586ba7": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:59:34.259987+00:00"
       ],
       "ec0fc2e5bca": [
         "set",
@@ -2578,7 +2578,7 @@
       ],
       "ec454820af1": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:44:36.902299+00:00"
       ],
       "ec4582099e1": [
         "set",
@@ -2614,7 +2614,7 @@
       ],
       "ec6976e0567": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:03:45.117027+00:00"
       ],
       "ec69acb42a6": [
         "set",
@@ -2662,7 +2662,7 @@
       ],
       "ec8c5b3c21e": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:48:01.588569+00:00"
       ],
       "ec90cc2970c": [
         "set",
@@ -2678,7 +2678,7 @@
       ],
       "eca76cc4e16": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:54:49.927771+00:00"
       ],
       "eca8c8cb2e6": [
         "set",
@@ -2746,7 +2746,7 @@
       ],
       "ecfcef658bc": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:57:40.823600+00:00"
       ],
       "ed0e36ec5b3": [
         "set",
@@ -2854,7 +2854,7 @@
       ],
       "ed97c0b1440": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:55:19.299627+00:00"
       ],
       "ed9a5d3cde9": [
         "set",
@@ -3058,7 +3058,7 @@
       ],
       "ee774dbd570": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:51:04.514659+00:00"
       ],
       "ee78327f63e": [
         "set",
@@ -3074,7 +3074,7 @@
       ],
       "ee8716e50ef": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T19:06:38.184289+00:00"
       ],
       "ee8c2e81278": [
         "set",
@@ -3150,7 +3150,7 @@
       ],
       "eece3d412af": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:51:31.016798+00:00"
       ],
       "eed5216fd22": [
         "set",
@@ -3194,7 +3194,7 @@
       ],
       "ef09f78f603": [
         "set",
-        "2026-11-04T22:12:44.046555+00:00"
+        "2026-11-09T18:53:08.591885+00:00"
       ],
       "ef125afea03": [
         "set",
@@ -3415,7 +3415,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-09T15:33:53.491279+00:00",
+    "at": "2026-11-09T19:09:46.777831+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -5355,11 +5355,11 @@
     },
     {
       "amplitude": 415.9667,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:43:18+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "ea99d0e7675",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5372,11 +5372,11 @@
     },
     {
       "amplitude": 428.3688,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:43:39+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "ec454820af1",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5389,11 +5389,11 @@
     },
     {
       "amplitude": 478.389,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:44:56+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "eb996e67e81",
-      "label": "likely_garbage",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
@@ -5406,11 +5406,11 @@
     },
     {
       "amplitude": 342.1019,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:45:19+00:00",
+      "by": "Angelina Woychosky",
       "channel": 5,
       "id": "ebebf677756",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5423,11 +5423,11 @@
     },
     {
       "amplitude": 469.3656,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:46:03+00:00",
+      "by": "Angelina Woychosky",
       "channel": 9,
       "id": "e38caaf0e32",
-      "label": "likely_garbage",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
@@ -5440,11 +5440,11 @@
     },
     {
       "amplitude": 556.4252,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:46:24+00:00",
+      "by": "Angelina Woychosky",
       "channel": 5,
       "id": "e897e378166",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "both",
       "pair_t": 331.01029,
       "reviews": [
@@ -5458,11 +5458,11 @@
     },
     {
       "amplitude": 391.4766,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:47:13+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "ec8c5b3c21e",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5475,11 +5475,11 @@
     },
     {
       "amplitude": 589.4923,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:48:28+00:00",
+      "by": "Angelina Woychosky",
       "channel": 40,
       "id": "e9a3068d762",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5492,11 +5492,11 @@
     },
     {
       "amplitude": 365.3838,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:49:40+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "e70f3e15a09",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5509,11 +5509,11 @@
     },
     {
       "amplitude": 433.8314,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:49:50+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "e7b818989c0",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5526,11 +5526,11 @@
     },
     {
       "amplitude": 732.166,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:50:06+00:00",
+      "by": "Angelina Woychosky",
       "channel": 27,
       "id": "ee774dbd570",
-      "label": "likely_garbage",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
@@ -5543,11 +5543,11 @@
     },
     {
       "amplitude": 409.8658,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:50:33+00:00",
+      "by": "Angelina Woychosky",
       "channel": 2,
       "id": "e7ac4bb6ea4",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5560,11 +5560,11 @@
     },
     {
       "amplitude": 372.5183,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:51:12+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "eece3d412af",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5577,11 +5577,11 @@
     },
     {
       "amplitude": 432.9202,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:52:46+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "ef09f78f603",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5594,11 +5594,11 @@
     },
     {
       "amplitude": 371.9128,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:53:28+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "e6b7bb347d3",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5611,11 +5611,11 @@
     },
     {
       "amplitude": 356.0395,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:53:52+00:00",
+      "by": "Angelina Woychosky",
       "channel": 4,
       "id": "e215184229d",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5628,11 +5628,11 @@
     },
     {
       "amplitude": 460.1947,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:54:12+00:00",
+      "by": "Angelina Woychosky",
       "channel": 42,
       "id": "eca76cc4e16",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5645,11 +5645,11 @@
     },
     {
       "amplitude": 365.3269,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:54:56+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "ed97c0b1440",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5662,11 +5662,11 @@
     },
     {
       "amplitude": 601.8549,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:55:13+00:00",
+      "by": "Angelina Woychosky",
       "channel": 39,
       "id": "eb7fccc9469",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5679,11 +5679,11 @@
     },
     {
       "amplitude": 352.5416,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:56:23+00:00",
+      "by": "Angelina Woychosky",
       "channel": 3,
       "id": "ecfcef658bc",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5696,11 +5696,11 @@
     },
     {
       "amplitude": 360.9624,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:56:50+00:00",
+      "by": "Angelina Woychosky",
       "channel": 2,
       "id": "ea66a5595f6",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5713,11 +5713,11 @@
     },
     {
       "amplitude": 671.3643,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:57:11+00:00",
+      "by": "Angelina Woychosky",
       "channel": 37,
       "id": "e0e7965f011",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5730,11 +5730,11 @@
     },
     {
       "amplitude": 497.108,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:59:02+00:00",
+      "by": "Angelina Woychosky",
       "channel": 2,
       "id": "ec09c586ba7",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5747,11 +5747,11 @@
     },
     {
       "amplitude": 499.9658,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:59:42+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "e6d3949405b",
-      "label": "likely_garbage",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
@@ -5764,11 +5764,11 @@
     },
     {
       "amplitude": 698.8547,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T18:59:55+00:00",
+      "by": "Angelina Woychosky",
       "channel": 27,
       "id": "e12efc3c8ae",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5781,11 +5781,11 @@
     },
     {
       "amplitude": 317.508,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T19:01:16+00:00",
+      "by": "Angelina Woychosky",
       "channel": 2,
       "id": "e87a3f39521",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "doppler",
       "reviews": [
         {
@@ -5798,11 +5798,11 @@
     },
     {
       "amplitude": 471.548,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T19:02:38+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "e353def34e3",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5815,11 +5815,11 @@
     },
     {
       "amplitude": 417.4722,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T19:02:47+00:00",
+      "by": "Angelina Woychosky",
       "channel": 3,
       "id": "ec6976e0567",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5832,11 +5832,11 @@
     },
     {
       "amplitude": 499.8146,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T19:03:30+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "e62646373b8",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5849,11 +5849,11 @@
     },
     {
       "amplitude": 444.2989,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T19:03:40+00:00",
+      "by": "Angelina Woychosky",
       "channel": 9,
       "id": "e3ea6b1ba13",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5866,11 +5866,11 @@
     },
     {
       "amplitude": 404.8567,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T19:05:10+00:00",
+      "by": "Angelina Woychosky",
       "channel": 12,
       "id": "e1409ce03e9",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5883,11 +5883,11 @@
     },
     {
       "amplitude": 485.8638,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T19:05:41+00:00",
+      "by": "Angelina Woychosky",
       "channel": 10,
       "id": "ee8716e50ef",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5900,11 +5900,11 @@
     },
     {
       "amplitude": 355.3059,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T19:06:40+00:00",
+      "by": "Angelina Woychosky",
       "channel": 2,
       "id": "e5836769aa4",
-      "label": "likely_garbage",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
@@ -5917,11 +5917,11 @@
     },
     {
       "amplitude": 390.2255,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T19:07:09+00:00",
+      "by": "Angelina Woychosky",
       "channel": 8,
       "id": "e7192aeeb6a",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5934,11 +5934,11 @@
     },
     {
       "amplitude": 350.0906,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T19:07:31+00:00",
+      "by": "Angelina Woychosky",
       "channel": 5,
       "id": "e7fad6bec90",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "reviews": [
         {
@@ -5951,11 +5951,11 @@
     },
     {
       "amplitude": 419.782,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T19:08:32+00:00",
+      "by": "Angelina Woychosky",
       "channel": 12,
       "id": "e897203e43d",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "reviews": [
         {
@@ -5968,11 +5968,11 @@
     },
     {
       "amplitude": 357.5621,
-      "at": "2026-11-04T17:12:44-0500",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T19:09:25+00:00",
+      "by": "Angelina Woychosky",
       "channel": 1,
       "id": "e741fe9d05d",
-      "label": "likely_garbage",
+      "label": "flag",
       "origin": "incisor",
       "reviews": [
         {
@@ -18035,9 +18035,9 @@
     }
   ],
   "name": "KCNT1 m531 s1 2026-07-22 \u2014 pooled (Incisor + Doppler, 20 ms)",
-  "open": false,
-  "opened_at": "2026-11-04T16:26:01-0500",
-  "opened_by": "Rain Younger",
+  "open": true,
+  "opened_at": "2026-11-06T13:05:06-0500",
+  "opened_by": "Maddie Massad",
   "schema": 1,
   "session_label": "KCNT1 m531 s1 2026-07-22",
   "source": {
@@ -18049,9 +18049,9 @@
     "version": 0
   },
   "updated": {
-    "app_version": "2026.11.05.1",
-    "at": "2026-11-09T10:33:53-05:00",
-    "commit": "37b8eb0b",
+    "app_version": "2026.11.06.4",
+    "at": "2026-11-09T14:09:46-05:00",
+    "commit": "a76eae4b",
     "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
     "machine": "Blackbarry",
