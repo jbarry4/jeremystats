@@ -32,7 +32,11 @@
       ],
       "Jeremy": [
         "set",
-        "2026-11-02T19:24:47.325283+00:00"
+        "2026-11-03T18:03:47.357604+00:00"
+      ],
+      "Maddie Massad": [
+        "set",
+        "2026-11-06T17:14:41.052776+00:00"
       ],
       "Prospector (AI)": [
         "set",
@@ -44,7 +48,7 @@
       ],
       "Rain Younger": [
         "set",
-        "2026-10-29T17:30:32.405300+00:00"
+        "2026-11-06T21:24:59.783965+00:00"
       ],
       "Shahriar": [
         "set",
@@ -125,7 +129,7 @@
     }
   },
   "_shard": {
-    "at": "2026-11-05T18:10:49.426425+00:00",
+    "at": "2026-11-06T21:24:59.783965+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -234,19 +238,6 @@
     },
     {
       "aliases": [
-        "rain"
-      ],
-      "at": "2026-09-29T18:04:01.532204+00:00",
-      "by": "Rain Younger",
-      "edited_at": "2026-10-29T17:30:32.405299+00:00",
-      "email": "rain.younger@uvm.edu",
-      "id": "Rain Younger",
-      "initials": "RY",
-      "name": "Rain Younger",
-      "role": "Graduate Student"
-    },
-    {
-      "aliases": [
         "a colleague",
         "fatima",
         "shahriar",
@@ -262,9 +253,9 @@
       "role": "Gradstudent"
     },
     {
-      "at": "2026-11-02T19:24:47.325281+00:00",
-      "by": "Rain Younger",
-      "edited_at": "2026-11-02T19:24:47.325282+00:00",
+      "at": "2026-11-03T18:03:47.357602+00:00",
+      "by": "Isabella Piatek",
+      "edited_at": "2026-11-03T18:03:47.357603+00:00",
       "email": "jeremy.barry@uvm.edu",
       "id": "Jeremy",
       "initials": "JB",
@@ -287,6 +278,29 @@
       "initials": "AK",
       "name": "Aggie Krempasky",
       "role": "Undergraduate Student"
+    },
+    {
+      "at": "2026-11-06T17:14:27.373213+00:00",
+      "by": "Maddie Massad",
+      "edited_at": "2026-11-06T17:14:41.052775+00:00",
+      "email": "mmassad@uvm.edu",
+      "id": "Maddie Massad",
+      "initials": "MM",
+      "name": "Maddie Massad",
+      "role": "Undergraduate Student"
+    },
+    {
+      "aliases": [
+        "rain"
+      ],
+      "at": "2026-09-29T18:04:01.532204+00:00",
+      "by": "Rain Younger",
+      "edited_at": "2026-11-06T21:24:59.783964+00:00",
+      "email": "rain.younger@uvm.edu",
+      "id": "Rain Younger",
+      "initials": "RY",
+      "name": "Rain Younger",
+      "role": "Graduate Student"
     }
   ]
 }

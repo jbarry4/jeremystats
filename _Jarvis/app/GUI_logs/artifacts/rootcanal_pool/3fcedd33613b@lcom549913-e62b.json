@@ -1,0 +1,487 @@
+{
+  "_at": {
+    "added": "2026-11-09T15:33:56.598881+00:00",
+    "deleted": "2026-11-09T15:33:56.598881+00:00",
+    "id": "2026-11-09T15:33:56.598881+00:00",
+    "kind": "2026-11-09T15:33:56.598881+00:00",
+    "name": "2026-11-09T15:33:56.598881+00:00",
+    "nickname": "2026-11-09T15:33:56.598881+00:00",
+    "schema": "2026-11-09T15:33:56.598881+00:00",
+    "subject": "2026-11-09T15:33:56.598881+00:00",
+    "subject_key": "2026-11-09T15:33:56.598881+00:00",
+    "version": "2026-11-09T15:33:56.598881+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "3fcedd33613b:7a26d230d4df>7677889ca85c:2": [
+        "set",
+        "2026-11-09T15:33:56.598881+00:00"
+      ],
+      "3fcedd33613b:7a26d230d4df>ab9613cbc7c2:4": [
+        "set",
+        "2026-11-09T15:33:56.598881+00:00"
+      ]
+    },
+    "versions": {
+      "7a26d230d4df": [
+        "set",
+        "2026-11-09T15:33:56.598881+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-11-09T15:33:56.598881+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-11-05T16:37:35-05:00",
+    "by": "Aggie Krempasky",
+    "machine": "Strawbarry"
+  },
+  "cited": [
+    {
+      "at": "2026-11-06T21:08:19+00:00",
+      "by_id": "ab9613cbc7c2",
+      "by_version": 4,
+      "digest": "18d89c6e7bce",
+      "id": "3fcedd33613b:7a26d230d4df>ab9613cbc7c2:4",
+      "version": 1,
+      "version_id": "7a26d230d4df"
+    },
+    {
+      "at": "2026-11-06T21:30:59+00:00",
+      "by_id": "7677889ca85c",
+      "by_version": 2,
+      "digest": "18d89c6e7bce",
+      "id": "3fcedd33613b:7a26d230d4df>7677889ca85c:2",
+      "version": 1,
+      "version_id": "7a26d230d4df"
+    }
+  ],
+  "deleted": null,
+  "id": "3fcedd33613b",
+  "kind": "rootcanal_pool",
+  "name": "Root Canal pool \u00b7 PTEN \u00b7 9 recordings, 9 mice",
+  "nickname": "CTL Baseline",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "gids": [
+      "s016e132432c8",
+      "s0a9e96cf1739",
+      "s37c7c8edfe10",
+      "s43b16cd74bcb",
+      "s79ba9ba163c4",
+      "s8d7f397b9708",
+      "s9eb56573e0b4",
+      "sd42a6992b76c",
+      "sd94396e874c7"
+    ],
+    "n_mice": 9,
+    "n_recordings": 9,
+    "name": "Root Canal pool \u00b7 PTEN \u00b7 9 recordings, 9 mice",
+    "pool_key": "2cf0a53aa92f47fe99b7df700af7c621",
+    "projects": [
+      "PTEN"
+    ]
+  },
+  "subject_key": "rootcanal_pool|2cf0a53aa92f47fe99b7df700af7c621",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.11.05.5",
+      "at": "2026-11-05T16:37:35-05:00",
+      "by": "Aggie Krempasky",
+      "commit": "c0b5e857",
+      "digest": "18d89c6e7bce",
+      "id": "7a26d230d4df",
+      "inputs": [
+        {
+          "banked": true,
+          "ds_version": "11",
+          "entry_id": "841aad39cfff",
+          "key": "b:s79ba9ba163c4:794f364902db",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 1,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "794f364902db",
+          "read": "fd3eecdb78a0",
+          "rows_digest": "1f7a635c3b37"
+        },
+        {
+          "banked": true,
+          "ds_version": "8",
+          "entry_id": "3fc6bf1e2588",
+          "key": "b:s9eb56573e0b4:537cc0094b1e",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 1,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "537cc0094b1e",
+          "read": "cdfcb2512f96",
+          "rows_digest": "08e0bd450c0b"
+        },
+        {
+          "banked": true,
+          "ds_version": "10",
+          "entry_id": "c0e55458531c",
+          "key": "b:s37c7c8edfe10:f9eb47567bd2",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 1,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "f9eb47567bd2",
+          "read": "0d7d8f50ab15",
+          "rows_digest": "4520b3419773"
+        },
+        {
+          "banked": true,
+          "ds_version": "9",
+          "entry_id": "af587732a900",
+          "key": "b:s0a9e96cf1739:ec490a36c32f",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 1,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "ec490a36c32f",
+          "read": "8a57a52f0d2b",
+          "rows_digest": "e1aabb470dda"
+        },
+        {
+          "banked": true,
+          "ds_version": "9",
+          "entry_id": "39d439a95f7c",
+          "key": "b:s016e132432c8:edb424a99c37",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 1,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "edb424a99c37",
+          "read": "438a7811fddf",
+          "rows_digest": "cb7782e47eab"
+        },
+        {
+          "banked": true,
+          "ds_version": "10",
+          "entry_id": "6a2ade1040d3",
+          "key": "b:sd94396e874c7:f74f640e02a3",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 1,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "f74f640e02a3",
+          "read": "5c3632bd1972",
+          "rows_digest": "c266e28ac5dc"
+        },
+        {
+          "banked": true,
+          "ds_version": "11",
+          "entry_id": "dbf2676df67a",
+          "key": "b:sd42a6992b76c:3171d78d5cff",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 1,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "3171d78d5cff",
+          "read": "e71371416371",
+          "rows_digest": "d2b67d740dce"
+        },
+        {
+          "banked": true,
+          "ds_version": "12",
+          "entry_id": "adc84ab8c916",
+          "key": "b:s8d7f397b9708:179d6410941e",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 1,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "179d6410941e",
+          "read": "10d4684ca3a7",
+          "rows_digest": "0e473a500d7f"
+        },
+        {
+          "banked": true,
+          "ds_version": "9",
+          "entry_id": "9b801cb6e235",
+          "key": "b:s43b16cd74bcb:5088a74a8776",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cluster_calls": {},
+            "cluster_names": {},
+            "complete_only": true,
+            "cross_ms": 100.0,
+            "drawn": [],
+            "filt": "ds",
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "k": 1,
+            "lo_hz": 5.0,
+            "mains_out": true,
+            "margin": null,
+            "n_init": 10,
+            "order": 3,
+            "retry": [],
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "params_hash": "5088a74a8776",
+          "read": "e3d333c9e67b",
+          "rows_digest": "9fea131b7225"
+        }
+      ],
+      "machine": "Strawbarry",
+      "n_summary": {
+        "delta_bic": 23.163207366040297,
+        "events": 1477,
+        "members": 9,
+        "mice": 9,
+        "stats": null,
+        "switch_rate": 0.2677966101694915,
+        "unbanked": 0
+      },
+      "note": null,
+      "params": {
+        "all_ds": false,
+        "band": [
+          500.0,
+          1000.0
+        ],
+        "band_pool": false,
+        "cluster_calls": {},
+        "cluster_names": {},
+        "complete_only": false,
+        "dbic_scale": [
+          [
+            2.0,
+            "no support for two groups"
+          ],
+          [
+            6.0,
+            "positive support for two groups"
+          ],
+          [
+            10.0,
+            "strong support for two groups"
+          ],
+          [
+            null,
+            "very strong support for two groups"
+          ]
+        ],
+        "drawn": [],
+        "gmm": {
+          "compare": [
+            1,
+            2
+          ],
+          "covariance": "full",
+          "min_n": 20,
+          "n_init": 5,
+          "random_state": 0
+        },
+        "k": 2,
+        "margin_mode": null,
+        "measure": {
+          "band_hi": 1000.0,
+          "band_lo": 500.0,
+          "cross_ms": 100.0,
+          "filt": "ds",
+          "filter_label": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+          "hi_hz": 100.0,
+          "lo_hz": 5.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 25.0
+        },
+        "n_init": 10,
+        "random_state": 0,
+        "scale": "pooled raw"
+      },
+      "params_hash": "4b546b206b07",
+      "v": 1
+    }
+  ]
+}

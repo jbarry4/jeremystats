@@ -19,7 +19,7 @@
     "schema": "2026-09-03T00:08:57.168634+00:00",
     "session": "2026-09-03T00:08:57.168634+00:00",
     "start": "2026-09-03T00:08:57.168634+00:00",
-    "updated": "2026-11-05T21:32:20.976481+00:00",
+    "updated": "2026-11-06T18:04:06.019137+00:00",
     "view_state": "2026-11-05T15:26:01.399939+00:00"
   },
   "_keys": {
@@ -44,12 +44,12 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-11-05T21:32:20.976481+00:00"
+        "2026-11-06T18:04:06.019137+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-05T21:32:20.976481+00:00",
+    "at": "2026-11-06T18:04:06.019137+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -97,8 +97,8 @@
       "scan": "scan_94ff1eb81c"
     },
     "barrylab-d8e8": {
-      "at": "2026-11-05T16:32:19-05:00",
-      "by": "Aggie Krempasky",
+      "at": "2026-11-06T13:04:02-05:00",
+      "by": "Maddie Massad",
       "copies": {
         "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0591\\KCNT1_m0591_s03_081026\\2026-08-10_15-02-31": {
           "at": "2026-10-29T13:09:53-04:00",
@@ -116,14 +116,14 @@
   "session": 3,
   "start": "2026-08-10T15:02:31",
   "updated": {
-    "app_version": "2026.11.05.5",
-    "at": "2026-11-05T16:32:20-05:00",
-    "commit": "c0b5e857",
-    "email": "akrempas@uvm.edu",
+    "app_version": "2026.11.06.1",
+    "at": "2026-11-06T13:04:06-05:00",
+    "commit": "47b7b5c1",
+    "email": "mmassad@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Aggie Krempasky"
+    "user": "Maddie Massad"
   },
   "view_state": {
     "channels": [
