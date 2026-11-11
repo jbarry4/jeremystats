@@ -35,6 +35,7 @@ two `paths` lists should be unioned while two `note` strings should not.
 | `presets/` | Named filter presets, event-import presets, figure layouts. |
 | `prefs/` | Workbench preferences. Theme and pane sizes stay on the machine that set them; favourites and collections are shared. |
 | `errors/`, `activity/` | One JSONL file per day **per machine**, one record per line. |
+| `weekly/` | "Last 7 days' work" printouts (`backend/weekly.py`), one file per printout, written once by the machine that printed it. |
 | `.cache/` | Derived roll-ups. Git ignores this: a file regenerated on every boot conflicts on every pull, and anyone can rebuild it in a second. |
 
 ## How the merge decides

@@ -1,0 +1,585 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>extraction: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:760px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0;background:#fff}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/extraction.html?harness=1&theme=light"></iframe>
+<script>
+/* The Extraction Room's page (2026-11-10): web/extraction.html.
+
+   ON FIXTURES. The page is started with a fetch of our own
+   (erRoom.start(fetch)), so every /api/extraction* answer is made here from
+   two synthetic recordings -- a control and a PTEN mouse -- and the page is
+   checked against known numbers:
+     - one tab, Dentate Spike;
+     - what was extracted, from where, its version, and Extract again;
+     - a card per recording: its %KO chip (0% for the control), its
+       separation, a CSD per class and the depth profile, drawn;
+     - "mean sink" says each class's sink and its delta, "mean source" its
+       source -- in the words under each card and in the numbers table;
+     - the pictures switch: CSD and depth profile, CSD only, profiles only;
+     - Extract again sends the room and the folder; correcting a %KO sends
+       the mouse and the number;
+     - five sub-tabs: Recordings, Round I, Separation rate, Round II, The
+       numbers -- each shows its own, and a dot on a chart takes you to its
+       recording;
+     - Separation rate: each group's rate with its 95% interval, Fisher,
+       Freeman-Halton, the Cochran-Armitage trend, the logistic odds per 10%
+       KO, and a call changed from its table;
+     - Round II: asked for with the version and the Low KO line, ranked by
+       p, each with its q, a finding and a lead told apart;
+     - each card's state at a glance: a wash and a tag for separable, not
+       separable, too few, and gray for left out of the stats, with a key
+       that counts them, and the same wash on the tables' rows;
+     - the usual tests by default (one test, picked by the residuals;
+       Boschloo for a rate; nothing gated on q), the strict a press away;
+     - a set per X-ray Many folder, each with its own versions and its own
+       calls (sent with the folder); a folder not in the room yet, and one
+       with newer X-ray results, say so; a new extraction made elsewhere is
+       opened, whether the room asks again or the ToolKit tells it;
+     - against %KO is the dose, among the PTEN mice alone, with the
+       controls-at-0% number beside it and named for what it measures; three
+       groups ask the trend in order first; who is left out is said.
+   IT WRITES NOTHING: every POST is answered here. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => { const n = document.createElement('span'); if (cls) n.className = cls;
+  n.textContent = s + '\n'; L.appendChild(n); L.scrollTop = L.scrollHeight; };
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(60), 'dim'); };
+const ok = (name, good, why) => { if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); } };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) { const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) { try { if (await fn()) return true; } catch (e) { /* not yet */ } await sleep(80); }
+  say('       timed out waiting for ' + (what || 'something'), 'dim'); return false; }
+
+/* ---------- fixtures ---------- */
+const NC = 16, NT = 21;
+const contacts = Array.from({ length: NC }, (_, i) => i + 1);
+const t_ms = Array.from({ length: NT }, (_, j) => -50 + j * 5);
+function csdOf(sinkRow, srcRow, gain) {
+  return contacts.map((c, i) => t_ms.map((t) => {
+    const w = Math.exp(-(t * t) / 200);
+    return +(gain * w * (Math.exp(-((i - srcRow) ** 2) / 2) - 1.2 * Math.exp(-((i - sinkRow) ** 2) / 2))).toFixed(4);
+  }));
+}
+function profOf(sinkRow, srcRow, gain) {
+  return { contacts, band: [3, 14],
+           mean: contacts.map((c, i) => +(gain * (Math.exp(-((i - srcRow) ** 2) / 2) - 1.2 * Math.exp(-((i - sinkRow) ** 2) / 2))).toFixed(4)),
+           sem: contacts.map(() => 0.01) };
+}
+function rec(gid, label, group, mk, ko, verdict, k) {
+  k = k || 1;
+  return { gid, session_label: label, mouse_key: mk, group, ko_pct: ko, ko_said: ko == null ? 'not on the sheet' : 'sheet',
+    ied: group === 'PTEN' ? true : null, n: 120, counts: { 1: 50, 2: 70 },
+    separation: { verdict, dbic: 42.5, min_share: 0.4167, n: 120 },
+    box: { sel_lo: 3, sel_hi: 14, t_lo_ms: 0, t_hi_ms: 0, auto: false },
+    contacts, t_ms, spacing_um: 50, unit: 'µA/mm² (CSD, 5–100 Hz)', bad: [],
+    classes: [
+      { c: 1, name: 'DS1', n: 50, csd: csdOf(6, 9, 0.4 * k), profile: profOf(6, 9, 0.4 * k),
+        sink: { csc: 7, value: -0.48, sem: 0.02, unit: 'µA/mm²' },
+        delta: { contacts: 6.5, sem: 0.3, um: 325, um_sem: 15, n: 50 }, source: { csc: 10, value: 0.4, sem: 0.01 } },
+      { c: 2, name: 'DS2', n: 70, csd: csdOf(11, 8, 0.6 * k), profile: profOf(11, 8, 0.6 * k),
+        sink: { csc: 12, value: -0.72, sem: 0.03, unit: 'µA/mm²' },
+        delta: { contacts: 8.25, sem: 0.2, um: 412.5, um_sem: 10, n: 70 }, source: { csc: 9, value: 0.6, sem: 0.02 } },
+    ] };
+}
+const PAY = { schema: 'extraction.ds/1', room: 'dentate_spike', room_name: 'Dentate Spike',
+  source: { folder: 'xm-h5', folder_name: 'Harness 5%', workflow: { artifact_id: 'wH', version: 2, nickname: 'Harness DS 5%' } },
+  ko_from: 'JB % hits (harness)',
+  recordings: [rec('harness-c1', 'PTEN m2 s3 (harness)', 'CTL', 'PTEN|m2', 0, 'yes'),
+               rec('harness-p1', 'PTEN m7 s2 (harness)', 'PTEN', 'PTEN|m7', 24.12, 'no', 2)],
+  left_out: [] };
+const IDX = { ok: true, ko: { 'PTEN|m7': 24.12 },
+  rooms: [{ room: 'dentate_spike', name: 'Dentate Spike', artifact_id: 'erH', version: 2,
+            versions: [{ v: 1, at: '2026-11-10T12:00:00Z', by: 'Debug_Bot', n: 2, folder: 'Harness 5%', folder_id: 'xm-h5' },
+                       { v: 2, at: '2026-11-10T13:00:00Z', by: 'Debug_Bot', n: 2, folder: 'Harness 5%', folder_id: 'xm-h5' }] }],
+  folders: [{ id: 'xm-h5', name: 'Harness 5%', bundles: 2, in_room: { v: 2, at: '2026-11-10T13:00:00Z', by: 'Debug_Bot' }, new: 0 },
+            { id: 'xm-h10', name: 'Harness 10%', bundles: 0, in_room: null, new: 0 },
+            { id: 'xm-h7', name: 'Harness 7%', bundles: 2, in_room: null, new: 2 }] };
+// Which set each version of the room was extracted from.
+const VFOLDER = { 1: 'xm-h5', 2: 'xm-h5', 3: 'xm-h5', 4: 'xm-h7' };
+const FNAME = { 'xm-h5': 'Harness 5%', 'xm-h7': 'Harness 7%' };
+const MET = (key, name, unit, ctlv, ptenv) => ({ key, name, unit, words: name + ' (harness).',
+  values: [{ gid: 'harness-c1', label: 'c1', group: 'CTL', ko: 0, ko_group: 'CTL', value: ctlv },
+           { gid: 'harness-p1', label: 'p1', group: 'PTEN', ko: 24.12, ko_group: 'High KO', value: ptenv }],
+  two: { ctl: { n: 9, mean: ctlv, sem: 0.01 }, pten: { n: 9, mean: ptenv, sem: 0.01 }, welch_p: 0.012, mwu_p: 0.03, g: 1.21, why: null },
+  three: { CTL: { n: 9, mean: ctlv }, 'Low KO': { n: 3, mean: ptenv }, 'High KO': { n: 6, mean: ptenv },
+           anova_p: 0.2, kw_p: 0.3, why: null, pairs: [{ a: 'CTL', b: 'Low KO', holm_p: 0.4 }, { a: 'CTL', b: 'High KO', holm_p: 0.5 }, { a: 'Low KO', b: 'High KO', holm_p: 1 }] },
+  spearman: { rho: -0.45, p: 0.01, n: 18 },
+  dose: { rho: -0.2, p: 0.6, n: 9, fit: { slope: -0.001, intercept: ptenv, ko: [3.89, 28.43] } },
+  usual: { two: { test: 'welch', p: 0.012, normal_p: 0.4 },
+           three: { test: 'kw', p: 0.3, normal_p: 0.01, post: 'dunn', jt_p: 0.02, jt_z: -2.3,
+                    pairs: [{ a: 'CTL', b: 'Low KO', p: 0.6 }, { a: 'CTL', b: 'High KO', p: 0.04 }, { a: 'Low KO', b: 'High KO', p: 1 }] } } });
+const STATS = { ok: true, split: 10, min_n: 5, n: 18, skipped: [],
+  groups: { CTL: 9, PTEN: 9, 'Low KO': 3, 'High KO': 6, 'no KO': [] },
+  metrics: [MET('ds1_sink', 'DS1 sink strength', 'csd', 0.34, 0.30), MET('ds1_delta', 'DS1 delta', 'um', 968, 1082)],
+  only_sep: false,
+  separability: {
+    two: { CTL: { n: 8, yes: 6, rate: 0.75, ci: [0.41, 0.93] }, PTEN: { n: 9, yes: 5, rate: 0.556, ci: [0.27, 0.81] }, fisher_p: 0.62, boschloo_p: 0.48 },
+    three: { CTL: { n: 8, yes: 6, rate: 0.75, ci: [0.41, 0.93] }, 'Low KO': { n: 3, yes: 1, rate: 0.333, ci: [0.06, 0.79] },
+             'High KO': { n: 6, yes: 4, rate: 0.667, ci: [0.3, 0.9] }, exact_p: 0.66, trend_p: 0.32, trend_z: -1.0,
+             pairs: [{ a: 'CTL', b: 'Low KO', holm_p: 0.9, boschloo_holm_p: 0.8 }, { a: 'CTL', b: 'High KO', holm_p: 1, boschloo_holm_p: 0.7 },
+                     { a: 'Low KO', b: 'High KO', holm_p: 1, boschloo_holm_p: 1 }] },
+    ko: { yes: { n: 11, median: 0 }, no: { n: 6, median: 4.8 }, mwu_p: 0.5, logit: { or10: 0.743, p: 0.5, n: 17 },
+          logit_pten: { or10: 1.1, p: 0.8, n: 9 } },
+    not_counted: ['PTEN m51 s1 (harness)'], by_hand: [],
+    values: [{ gid: 'harness-c1', label: 'c1', group: 'CTL', ko: 0, ko_group: 'CTL', sep: true, verdict: 'yes', by_hand: false },
+             { gid: 'harness-p1', label: 'p1', group: 'PTEN', ko: 24.12, ko_group: 'High KO', sep: false, verdict: 'no', by_hand: false }] } };
+const MET2 = (key, name, unit, ctlv, ptenv, p2, p3, pk, q, u2, qu) => Object.assign(MET(key, name, unit, ctlv, ptenv), {
+  usual: { two: { test: u2[0], p: u2[1], normal_p: u2[0] === 'welch' ? 0.5 : 0.01 },
+           three: { test: 'anova', p: p3, normal_p: 0.3, post: 'tukey', pairs: [] } },
+  q_usual: qu,
+  two: { ctl: { n: 9, mean: ctlv, sem: 0.01 }, pten: { n: 9, mean: ptenv, sem: 0.01 }, welch_p: p2, mwu_p: p2, g: -1.1, why: null },
+  three: { CTL: { n: 9, mean: ctlv }, 'Low KO': { n: 3, mean: ptenv }, 'High KO': { n: 6, mean: ptenv }, anova_p: p3, kw_p: p3, why: null, pairs: [] },
+  spearman: { rho: -0.62, p: pk, n: 18 }, dose: { rho: -0.7, p: pk, n: 9, fit: null }, q });
+const R2 = { ok: true, n: 18, split: 10, groups: { CTL: 9, 'Low KO': 3, 'High KO': 6, PTEN: 9 },
+  metrics: [MET2('events_min', 'Events per minute', '/min', 1.9, 2.1, 0.3, 0.5, 0.4, { two: 0.5, three: 0.6, ko: 0.6 },
+                 ['welch', 0.02], { two: 0.03, three: 0.6, ko: 0.6 }),
+            MET2('ds_like', 'Share that look like control DS', 'share', 0.9, 0.82, 0.01, 0.03, 0.006, { two: 0.04, three: 0.15, ko: 0.066 },
+                 ['mwu', 0.01], { two: 0.03, three: 0.15, ko: 0.066 }),
+            MET2('ds_amp', 'DS amplitude', 'uV', 900, 1010, 0.04, 0.2, 0.2, { two: 0.2, three: 0.4, ko: 0.4 },
+                 ['welch', 0.3], { two: 0.3, three: 0.4, ko: 0.4 })] };
+const sent = [];
+function stubFetch(u, o) {
+  const s = String(u), p = s.split('?')[0];
+  const body = o && o.body ? JSON.parse(o.body) : null;
+  const json = (x, st) => Promise.resolve(new Response(JSON.stringify(x), { status: st || 200, headers: { 'Content-Type': 'application/json' } }));
+  sent.push([p, body, s]);
+  if (p === '/api/extraction') return json(IDX);
+  if (p === '/api/extraction/extract') return json({ ok: true, artifact_id: 'erH', version: 3, n: 2, left: [] });
+  if (p === '/api/extraction/ko') return json({ ok: true, ko: { 'PTEN|m7': body.pct } });
+  if (p === '/api/extraction/flip') return json({ ok: true, flips: body.flip ? { [body.gid]: { flip: true, by: 'Debug_Bot', at: '2026-11-10T14:00:00Z' } } : {} });
+  if (p === '/api/extraction/stats') return json(STATS);
+  if (p === '/api/extraction/round2') return json(R2);
+  if (p === '/api/extraction/sep') return json({ ok: true, seps: body.verdict ? { [body.gid]: { verdict: body.verdict, by: 'Debug_Bot', at: '2026-11-10T15:00:00Z' } } : {} });
+  if (p === '/api/extraction/erH') {
+    const v = Number(new URLSearchParams(s.split('?')[1]).get('version')) || 2;
+    const pay = JSON.parse(JSON.stringify(PAY));
+    pay.source.folder = VFOLDER[v];
+    pay.source.folder_name = FNAME[VFOLDER[v]];
+    return json({ ok: true, payload: pay, version: v });
+  }
+  return json({ ok: false, error: 'harness: no such route ' + p }, 404);
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow, D = () => frame.contentDocument;
+  await until(() => !!W.erRoom, 8000, 'the page');
+  const txt = (sel, root) => ((root || D()).querySelector(sel) || {}).textContent || '';
+  const cards = () => Array.from(D().querySelectorAll('#erGrid .rec'));
+  const inked = (cv) => { if (!cv || !cv.width) return 0; const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++; return n; };
+  const btn = (re, root) => Array.from((root || D()).querySelectorAll('button')).find((b) => re.test(b.textContent.trim()));
+  const goSub = async (id) => { D().querySelector('#erSubs button[data-sub="' + id + '"]').click();
+    await until(() => W.erRoom.state().sub === id && !!D().querySelector('#erSubs button[data-sub="' + id + '"][aria-selected="true"]'),
+                3000, 'the ' + id + ' tab'); };
+  try {
+    await W.erRoom.start(stubFetch);
+    await until(() => cards().length === 2, 8000, 'the cards');
+
+    head('THE ROOM, AND WHAT IS IN IT');
+    ok('one tab, Dentate Spike, chosen', Array.from(D().querySelectorAll('#erTabs button')).map((b) => b.textContent).join('|') === 'Dentate Spike'
+       && D().querySelector('#erTabs button').getAttribute('aria-selected') === 'true');
+    ok('it says where it was extracted from', /Extracted from X-ray Many · ‘Harness 5%’/.test(txt('#erBody .card'))
+       && /events inside ‘Harness DS 5%’ v2/.test(txt('#erBody .card')), txt('#erBody .card').slice(0, 200));
+    ok('the version on show is the newest, with the others offered', D().querySelector('#erVersion').value === '2'
+       && D().querySelectorAll('#erVersion option').length === 2);
+    ok('a card per recording, the control first', cards().map((c) => c.dataset.gid).join(',') === 'harness-c1,harness-p1');
+    ok('the sets: the one extracted, chosen; a folder with nothing run is not offered',
+       Array.from(D().querySelectorAll('#erSets button')).map((b) => b.textContent).join('|') === 'Harness 5% · v2'
+       && D().querySelector('#erSets button').getAttribute('aria-pressed') === 'true'
+       && !/Harness 10%/.test(txt('#erSource')), txt('#erSets'));
+    ok('a folder run in X-ray Many but not in the room yet says so, with its press',
+       !!btn(/^Extract ‘Harness 7%’ · 2 X-ray results, not in the room yet$/, D().querySelector('#erSource')));
+
+    head('SUB-TABS');
+    const subs = () => Array.from(D().querySelectorAll('#erSubs button'));
+    ok('five sub-tabs, Recordings chosen', subs().map((b) => b.textContent).join('|')
+       === 'Recordings|Round I · does it differ?|Separation rate|Round II|The numbers'
+       && subs()[0].getAttribute('aria-selected') === 'true', subs().map((b) => b.textContent).join('|'));
+    ok('Recordings shows the cards, and none of the stats or the table', cards().length === 2
+       && !D().querySelector('#erStatsCard') && !D().querySelector('#erTable') && !D().querySelector('#erRound2'));
+
+    head('%KO, BESIDE EACH ONE');
+    const ko = (i) => cards()[i].querySelector('.chip.ko');
+    ok('the control says 0% KO', ko(0) && ko(0).textContent === '0% KO' && ko(0).classList.contains('ctl'), ko(0) && ko(0).textContent);
+    ok('the PTEN mouse its own %KO', ko(1) && ko(1).textContent === '24.12% KO', ko(1) && ko(1).textContent);
+    ok('and its separation, said in words', /not separable/.test(txt('.chip.no', cards()[1])) && /separable/.test(txt('.chip.yes', cards()[0])));
+
+    head('EACH CARD’S STATE, AT A GLANCE');
+    const wash = (c) => W.getComputedStyle(c).backgroundImage;
+    ok('a separable card: washed, and it says so on top', cards()[0].classList.contains('st-yes')
+       && txt('.state-tag', cards()[0]) === 'Separable' && /gradient/.test(wash(cards()[0])), txt('.state-tag', cards()[0]));
+    ok('a not separable one: a different wash, and it says so', cards()[1].classList.contains('st-no')
+       && txt('.state-tag', cards()[1]) === 'Not separable' && wash(cards()[1]) !== wash(cards()[0]), wash(cards()[1]));
+    ok('a key that counts them', /Separable · 1/.test(txt('#erStateKey')) && /Not separable · 1/.test(txt('#erStateKey'))
+       && /Too few to call · 0/.test(txt('#erStateKey')) && /Left out of the stats · 0/.test(txt('#erStateKey')), txt('#erStateKey'));
+    const ns0 = sent.length;
+    btn(/^Leave out of the stats$/, cards()[0]).click();
+    await until(() => cards()[0] && cards()[0].classList.contains('st-out'), 3000, 'left out');
+    ok('left out of the stats: gray, said, counted, and the stats asked again without it',
+       txt('.state-tag', cards()[0]) === 'Left out of the stats' && wash(cards()[0]) !== wash(cards()[1])
+       && /Left out of the stats · 1/.test(txt('#erStateKey'))
+       && (sent.slice(ns0).find((x) => x[0] === '/api/extraction/stats') || [])[1].skip.join() === 'harness-c1',
+       txt('.state-tag', cards()[0]));
+    await goSub('stats');
+    await until(() => !!W.erRoom.state().stats, 6000, 'the stats');
+    ok('and the stats tabs say who is left out', /^Left out of these stats: PTEN m2 s3 \(harness\)\. Every number here is without it; put them back on the Recordings tab\.$/
+       .test(txt('#erStatsCard .er-left')), txt('#erStatsCard .er-left'));
+    await goSub('recordings');
+    btn(/^Put back in the stats$/, cards()[0]).click();
+    await until(() => cards()[0] && cards()[0].classList.contains('st-yes'), 3000, 'put back');
+    ok('and put back: separable again', txt('.state-tag', cards()[0]) === 'Separable' && /Left out of the stats · 0/.test(txt('#erStateKey')));
+
+    head('THE PICTURES, DRAWN');
+    await until(() => cards().every((c) => Array.from(c.querySelectorAll('canvas')).every((cv) => inked(cv) > 200)), 6000, 'the pictures');
+    ok('each card: a CSD per class and the depth profile, drawn',
+       cards().every((c) => c.querySelectorAll('canvas.csd').length === 2 && c.querySelectorAll('canvas.prof').length === 1
+         && Array.from(c.querySelectorAll('canvas')).every((cv) => inked(cv) > 200)),
+       cards().map((c) => Array.from(c.querySelectorAll('canvas')).map(inked).join('/')).join(' '));
+
+    head('MEAN SINK, WITH ITS DELTA; MEAN SOURCE');
+    const vals = (i) => txt('.vals', cards()[i]);
+    ok('mean sink says each class’s sink and its delta, in contacts and µm',
+       /DS1sink -0\.480 ± 0\.020 at CSC7 · Δ 6\.5 ± 0\.3 contacts \(325 ± 15 µm\)/.test(vals(0))
+       && /DS2sink -0\.720 ± 0\.030 at CSC12 · Δ 8\.3 ± 0\.2 contacts \(413 ± 10 µm\)/.test(vals(0)), vals(0));
+    await goSub('numbers');
+    ok('The numbers: the table has the sinks and the deltas, and no cards',
+       /DS1 sink.*DS2 sink.*DS1 Δ contacts/.test(txt('#erTable thead')) && !cards().length, txt('#erTable thead'));
+    await goSub('recordings');
+    const csdSink = inked(cards()[0].querySelector('canvas.csd'));
+    btn(/^mean source$/, D().querySelector('#erMode')).click();
+    await until(() => /source/.test(vals(0)), 4000, 'the source words');
+    ok('mean source says each class’s source, and no delta',
+       /DS1source \+0\.400 ± 0\.010 at CSC10/.test(vals(0)) && !/Δ/.test(vals(0)), vals(0));
+    await goSub('numbers');
+    ok('and the table swaps to the sources, its own switch pressed there too', /DS1 source.*DS2 source/.test(txt('#erTable thead'))
+       && !/Δ/.test(txt('#erTable thead'))
+       && btn(/^mean source$/, D().querySelector('#erModeN')).getAttribute('aria-pressed') === 'true');
+    await goSub('recordings');
+    await until(() => inked(cards()[0].querySelector('canvas.csd')) > 200, 4000, 'redrawn');
+    ok('the switch is pressed where it says', btn(/^mean source$/, D().querySelector('#erMode')).getAttribute('aria-pressed') === 'true');
+    btn(/^mean sink$/, D().querySelector('#erMode')).click();
+    await until(() => /Δ/.test(vals(0)), 4000, 'back to sinks');
+
+    head('THE PICTURES SWITCH');
+    btn(/^CSD view$/, D().querySelector('#erShow')).click();
+    await until(() => !cards()[0].querySelector('canvas.prof'), 3000, 'CSD only');
+    ok('CSD view: the CSDs, no profile', cards().every((c) => c.querySelectorAll('canvas.csd').length === 2 && !c.querySelector('canvas.prof')));
+    btn(/^depth profiles$/, D().querySelector('#erShow')).click();
+    await until(() => !cards()[0].querySelector('canvas.csd'), 3000, 'profiles only');
+    ok('depth profiles: the profile, no CSDs', cards().every((c) => !c.querySelector('canvas.csd') && !!c.querySelector('canvas.prof')));
+    btn(/^CSD and depth profile$/, D().querySelector('#erShow')).click();
+    await until(() => !!cards()[0].querySelector('canvas.csd') && !!cards()[0].querySelector('canvas.prof'), 3000, 'both');
+
+    head('ONE SCALE FOR EVERY RECORDING');
+    const r0 = W.erRoom._range('harness-c1'), r1 = W.erRoom._range('harness-p1');
+    ok('by default every depth profile shares one x axis, and every CSD one colour scale',
+       JSON.stringify(r0.x) === JSON.stringify(r1.x) && r0.clim === r1.clim, JSON.stringify([r0, r1]));
+    btn(/^each its own$/, D().querySelector('#erScale')).click();
+    await until(() => W.erRoom.state().scale === 'own', 3000, 'own scales');
+    const o0 = W.erRoom._range('harness-c1'), o1 = W.erRoom._range('harness-p1');
+    ok('“each its own” gives each recording its own', JSON.stringify(o0.x) !== JSON.stringify(o1.x) && o0.clim !== o1.clim,
+       JSON.stringify([o0, o1]));
+    btn(/^the same for every recording$/, D().querySelector('#erScale')).click();
+
+    head('DS1 AND DS2 SWAPPED BY HAND');
+    const nf = sent.length;
+    btn(/^Swap DS1 ↔ DS2$/, cards()[0]).click();
+    await until(() => sent.slice(nf).some((x) => x[0] === '/api/extraction/flip'), 4000, 'the swap');
+    const fb = sent.slice(nf).find((x) => x[0] === '/api/extraction/flip');
+    ok('the swap is sent: this room, this set, this recording, on', fb && fb[1].room === 'dentate_spike'
+       && fb[1].folder === 'xm-h5' && fb[1].gid === 'harness-c1' && fb[1].flip === true, JSON.stringify(fb && fb[1]));
+    await until(() => /swapped by hand/.test(cards()[0].textContent), 4000, 'the swapped card');
+    ok('the card says so', /DS1 ↔ DS2 swapped by hand/.test(cards()[0].textContent));
+    ok('and X-ray’s DS2 is now called DS1: its sink is DS1’s',
+       /DS1sink -0\.720 ± 0\.030 at CSC12/.test(txt('.vals', cards()[0])) && /DS2sink -0\.480/.test(txt('.vals', cards()[0])),
+       txt('.vals', cards()[0]));
+    ok('the CSDs follow: the first picture is the new DS1, X-ray’s DS2',
+       /DS170 events · X-ray’s DS2/.test(txt('.pics .pic .cap', cards()[0])), txt('.pics .pic .cap', cards()[0]));
+    ok('and the stats are asked again', sent.slice(nf).some((x) => x[0] === '/api/extraction/stats'));
+    btn(/^Put DS1 and DS2 back$/, cards()[0]).click();
+    await until(() => !/swapped by hand/.test(cards()[0].textContent), 4000, 'back');
+    ok('and back', /DS1sink -0\.480/.test(txt('.vals', cards()[0])));
+
+    head('ROUND I · DOES IT DIFFER?');
+    await goSub('stats');
+    ok('Round I shows its card, and no cards of recordings', !!D().querySelector('#erStatsCard') && !cards().length);
+    await until(() => D().querySelectorAll('#erStatsCard .stat').length === 3
+                && Array.from(D().querySelectorAll('.stat-cv')).every((c) => inked(c) > 100), 6000, 'the stats');
+    ok('a panel for separable, and one per measure, each with its chart drawn',
+       D().querySelectorAll('#erStatsCard .stat').length === 3
+       && D().querySelector('#erStatsCard .stat').classList.contains('sep')
+       && Array.from(D().querySelectorAll('.stat-cv')).every((c) => inked(c) > 100));
+    const sp = () => txt('#erStatsCard .stat:not(.sep)');
+    const sepw = () => txt('#erStatsCard .stat.sep');
+    ok('the usual tests by default', W.erRoom.state().tests === 'usual'
+       && btn(/^the usual ones$/, D().querySelector('#erTests')).getAttribute('aria-pressed') === 'true');
+    ok('usual, PTEN vs CTL: one test, picked by the residuals, and why',
+       /Welch’s t-test p = 0\.012 \(the residuals look normal, Shapiro–Wilk p = 0\.4\) · g \+1\.21/.test(sp())
+       && !/Mann–Whitney/.test(sp()) && /differs/.test(txt('#erStatsCard .stat:not(.sep) .verdict')), sp());
+    ok('usual, separable: Boschloo’s exact test, Fisher’s beside it',
+       /Separable: PTEN 5 of 9, CTL 6 of 8 · Boschloo’s exact p = 0\.48 \(Fisher’s p = 0\.62\)/.test(sepw()), sepw());
+    ok('and the footnote says which tests', /The usual tests: one per question/.test(txt('#erStatsCard')));
+    btn(/^CTL · Low KO · High KO$/, D().querySelector('#erCmp')).click();
+    await until(() => /Kruskal/.test(sp()), 3000, 'usual three');
+    ok('usual, three groups: Kruskal–Wallis when the residuals are not normal, then Dunn’s pairs',
+       /Kruskal–Wallis p = 0\.3 \(the residuals are not normal, Shapiro–Wilk p = 0\.01, so ranks\) · pairs \(Dunn’s, Holm\): CTL–Low KO p = 0\.6, CTL–High KO p = 0\.04, Low KO–High KO p = 1/.test(sp())
+       && !/ANOVA/.test(sp()), sp());
+    ok('usual, three groups: the trend in order first, and it decides the word',
+       /in order, CTL → Low KO → High KO \(Jonckheere–Terpstra\) p = 0\.02 · Kruskal–Wallis/.test(sp())
+       && txt('#erStatsCard .stat:not(.sep) .verdict') === 'falls CTL → Low → High'
+       && D().querySelector('#erStatsCard .stat:not(.sep)').classList.contains('hit'), txt('#erStatsCard .stat:not(.sep) .verdict'));
+    ok('usual, separable in three groups: the trend, and Boschloo’s pairs',
+       /trend, CTL → Low KO → High KO \(Cochran–Armitage\) p = 0\.32 · pairs \(Boschloo, Holm\): CTL–Low KO p = 0\.8/.test(sepw()), sepw());
+    btn(/^PTEN vs CTL$/, D().querySelector('#erCmp')).click();
+    btn(/^strict$/, D().querySelector('#erTests')).click();
+    await until(() => W.erRoom.state().tests === 'strict' && /Mann–Whitney p/.test(sp()), 3000, 'strict');
+    ok('strict: both tests again, and its footnote', /Welch p = 0\.012 · Mann–Whitney p = 0\.03/.test(sp())
+       && /Strict: two groups need/.test(txt('#erStatsCard')), sp());
+    ok('separable, PTEN vs CTL: how many of each, and Fisher’s exact test',
+       /Separable: PTEN 5 of 9, CTL 6 of 8 · Fisher’s exact p = 0\.62/.test(sepw())
+       && /Too few events to say, so not counted: PTEN m51 s1/.test(sepw()), sepw());
+    ok('PTEN vs CTL: both tests, the effect size, said', /Welch p = 0\.012 · Mann–Whitney p = 0\.03 · g \+1\.21/.test(sp())
+       && /differs/.test(txt('#erStatsCard .stat:not(.sep) .verdict')), sp());
+    btn(/^CTL · Low KO · High KO$/, D().querySelector('#erCmp')).click();
+    await until(() => /ANOVA/.test(sp()), 3000, 'three groups');
+    ok('CTL, Low KO, High KO: ANOVA, Kruskal–Wallis and each pair, Holm-adjusted',
+       /ANOVA p = 0\.2 · Kruskal–Wallis p = 0\.3/.test(sp()) && /CTL–High KO p = 0\.5/.test(sp())
+       && /no clear difference/.test(txt('#erStatsCard .stat:not(.sep) .verdict')), sp());
+    ok('separable, three groups: each group, the exact test, each pair',
+       /Separable: CTL 6 of 8 · Low KO 1 of 3 · High KO 4 of 6 · exact \(Freeman–Halton\) p = 0\.66/.test(sepw()), sepw());
+    ok('with the Low KO line to move', !!D().querySelector('#erSplit') && D().querySelector('#erSplit').value === '10');
+    const ns = sent.length;
+    D().querySelector('#erSplit').value = '15';
+    D().querySelector('#erSplit').dispatchEvent(new W.Event('change', { bubbles: true }));
+    await until(() => sent.slice(ns).some((x) => x[0] === '/api/extraction/stats'), 3000, 'asked again');
+    ok('moving it asks again, with the new line', (sent.slice(ns).find((x) => x[0] === '/api/extraction/stats') || [])[1].split === 15);
+    btn(/^against %KO$/, D().querySelector('#erCmp')).click();
+    await until(() => /Spearman/.test(sp()), 3000, 'against %KO');
+    ok('against %KO: the dose among PTEN alone, and the controls-at-0% one beside it, named for what it measures',
+       /The dose, among the PTEN mice alone: Spearman ρ -0\.20 · p = 0\.6 · n 9 · all mice, the controls at 0%: ρ -0\.45 · p = 0\.01 \(mostly PTEN against controls\)/.test(sp()), sp());
+    ok('lower than controls with no dose trend says exactly that, and is not lit as a hit',
+       txt('#erStatsCard .stat:not(.sep) .verdict') === 'lower in PTEN, no dose trend'
+       && !D().querySelector('#erStatsCard .stat:not(.sep)').classList.contains('hit'), txt('#erStatsCard .stat:not(.sep) .verdict'));
+    ok('separable against %KO: the dose among PTEN alone', /The dose, among PTEN alone: odds of separating × 1\.10 per 10% KO, p = 0\.8 \(n 9\)/.test(sepw()), sepw());
+    ok('separable against %KO: the %KO of the separable and of the rest',
+       /%KO of the separable: median 0\.0% \(n 11\) vs the rest 4\.8% \(n 6\) · Mann–Whitney p = 0\.5/.test(sepw()), sepw());
+    btn(/^PTEN vs CTL$/, D().querySelector('#erCmp')).click();
+    const no = sent.length;
+    btn(/^the separable ones only$/, D().querySelector('#erOnlySep')).click();
+    await until(() => sent.slice(no).some((x) => x[0] === '/api/extraction/stats'), 3000, 'asked again');
+    ok('“the separable ones only” asks for the measures from those alone',
+       (sent.slice(no).find((x) => x[0] === '/api/extraction/stats') || [])[1].only_sep === true);
+    btn(/^every recording$/, D().querySelector('#erOnlySep')).click();
+
+    head('SEPARATION RATE');
+    await goSub('seprate');
+    const sr = () => txt('#erSepRateCard .stat');
+    await until(() => !!D().querySelector('#erSepRateCard canvas.stat-cv') && inked(D().querySelector('#erSepRateCard canvas.stat-cv')) > 100,
+                4000, 'the rate chart');
+    ok('its own tab: the rate chart drawn', inked(D().querySelector('#erSepRateCard canvas.stat-cv')) > 100);
+    ok('PTEN vs CTL: each rate with its 95% interval, and Fisher’s exact test',
+       /PTEN 56% \(5 of 9; 95% CI 27%–81%\)/.test(sr()) && /CTL 75% \(6 of 8; 95% CI 41%–93%\)/.test(sr())
+       && /Fisher’s exact test p = 0\.62/.test(sr()) && /no clear difference/.test(txt('#erSepRateCard .verdict')), sr());
+    btn(/^CTL · Low KO · High KO$/, D().querySelector('#erSepRateCard #erCmp')).click();
+    await until(() => /Cochran/.test(sr()), 3000, 'three groups');
+    ok('three groups: the exact test, and the trend in order, CTL → Low KO → High KO',
+       /Low KO 33% \(1 of 3; 95% CI 6%–79%\)/.test(sr()) && /Freeman–Halton exact test p = 0\.66/.test(sr())
+       && /Cochran–Armitage trend, CTL → Low KO → High KO: p = 0\.32 \(z -1\.00, falling\)/.test(sr()), sr());
+    ok('the comparison is the same one Round I shows', W.erRoom.state().cmp === 'three');
+    btn(/^against %KO$/, D().querySelector('#erSepRateCard #erCmp')).click();
+    await until(() => /logistic regression/.test(sr()), 3000, 'against %KO');
+    ok('against %KO: the dose among PTEN alone decides; all mice beside it',
+       /The dose, among PTEN alone: logistic regression, odds of separating × 1\.10 per 10% KO, p = 0\.8 \(n 9\)/.test(sr())
+       && /All mice, controls at 0%: odds of separating × 0\.74 per 10% KO, p = 0\.5 \(n 17\)/.test(sr())
+       && txt('#erSepRateCard .verdict') === 'no clear trend with %KO', sr());
+    btn(/^PTEN vs CTL$/, D().querySelector('#erSepRateCard #erCmp')).click();
+    btn(/^the usual ones$/, D().querySelector('#erSepRateCard #erTests')).click();
+    await until(() => /Boschloo/.test(sr()), 3000, 'usual');
+    ok('usual: Boschloo’s exact test, with Fisher’s said beside it',
+       /Boschloo’s exact test p = 0\.48 \(an exact test never less powerful than Fisher’s; Fisher’s p = 0\.62\)/.test(sr()), sr());
+    btn(/^CTL · Low KO · High KO$/, D().querySelector('#erSepRateCard #erCmp')).click();
+    await until(() => /Boschloo, Holm/.test(sr()), 3000, 'usual three');
+    ok('usual, three groups: the trend decides, Boschloo’s pairs, the strict exact test said last',
+       /pairs \(Boschloo, Holm\): CTL–Low KO p = 0\.8, CTL–High KO p = 0\.7/.test(sr())
+       && /Freeman–Halton exact test, the strict one: p = 0\.66/.test(sr())
+       && /no clear difference/.test(txt('#erSepRateCard .verdict')), sr());
+    btn(/^PTEN vs CTL$/, D().querySelector('#erSepRateCard #erCmp')).click();
+    btn(/^strict$/, D().querySelector('#erSepRateCard #erTests')).click();
+    const srow = () => D().querySelector('#erSepTable tr[data-gid="harness-p1"]');
+    ok('each row washed as its card is', srow() && srow().classList.contains('st-no')
+       && D().querySelector('#erSepTable tr[data-gid="harness-c1"]').classList.contains('st-yes'));
+    ok('a row per recording: X-ray’s call, the call that counts, and the press to change it',
+       D().querySelectorAll('#erSepTable tbody tr').length === 2 && /not separable \(ΔBIC 42\.5, smaller class 42%\)/.test(txt('td:nth-child(4)', srow()))
+       && !!btn(/^Call it separable$/, srow()), srow() && srow().textContent);
+    const n3 = sent.length;
+    btn(/^Call it separable$/, srow()).click();
+    await until(() => sent.slice(n3).some((x) => x[0] === '/api/extraction/sep'), 4000, 'the call');
+    await until(() => /by hand/.test(txt('td:nth-child(5)', srow())), 4000, 'the row');
+    ok('called from the table: sent, said, and the tab stays put',
+       (sent.slice(n3).find((x) => x[0] === '/api/extraction/sep') || [])[1].verdict === 'yes'
+       && txt('td:nth-child(5)', srow()) === 'separable · by hand' && W.erRoom.state().sub === 'seprate'
+       && sent.slice(n3).some((x) => x[0] === '/api/extraction/stats'), txt('td:nth-child(5)', srow()));
+    btn(/^Back to X-ray’s call$/, srow()).click();
+    await until(() => !/by hand/.test(txt('td:nth-child(5)', srow())), 4000, 'back');
+
+    head('ROUND II');
+    const n4 = sent.length;
+    await goSub('round2');
+    await until(() => sent.slice(n4).some((x) => x[0] === '/api/extraction/round2'), 4000, 'round 2 asked');
+    const r2b = (sent.slice(n4).find((x) => x[0] === '/api/extraction/round2') || [])[1] || {};
+    ok('opened, it asks for this extraction, this version, the Low KO line',
+       r2b.artifact_id === 'erH' && r2b.version === 2 && r2b.split === 15 && Array.isArray(r2b.skip), JSON.stringify(r2b));
+    await until(() => D().querySelectorAll('#erRound2Card .stat').length === 3, 4000, 'the panels');
+    const r2names = () => Array.from(D().querySelectorAll('#erRound2Card .stat .stat-h b')).map((b) => b.textContent);
+    ok('a panel per measure, ranked by p', r2names().join('|') === 'Share that look like control DS|DS amplitude|Events per minute',
+       r2names().join('|'));
+    const r2p = (i) => D().querySelectorAll('#erRound2Card .stat')[i];
+    ok('one the q clears is a finding; one only the p clears is a lead',
+       r2p(0).classList.contains('hit') && /^finding \(q = 0\.04\)$/.test(txt('.chip.q', r2p(0)))
+       && r2p(1).classList.contains('lead') && !r2p(1).classList.contains('hit') && /^lead \(q = 0\.2\)$/.test(txt('.chip.q', r2p(1)))
+       && !r2p(2).classList.contains('hit') && !r2p(2).classList.contains('lead') && txt('.chip.q', r2p(2)) === 'q = 0.5',
+       Array.from(D().querySelectorAll('#erRound2Card .chip.q')).map((c) => c.textContent).join(' / '));
+    ok('and it says what it found, in words', /^Found: Share that look like control DS \(p = 0\.01, q = 0\.04\)\.$/.test(txt('.r2-say')),
+       txt('.r2-say'));
+    ok('in its units: per minute, µV, a share', /events per minute/.test(txt('.muted', r2p(2))) && /µV/.test(txt('.muted', r2p(1)))
+       && /PTEN 82% ± 1%/.test(r2p(0).textContent), r2p(1).textContent);
+    btn(/^against %KO$/, D().querySelector('#erRound2Card #erCmp')).click();
+    await until(() => /Spearman/.test(txt('#erRound2Card .stat')), 3000, 'against %KO');
+    ok('against %KO: none clears the false discovery rate, the lead said as a lead',
+       /^Nothing clears the false discovery rate\. Leads, under 0\.05 on their own: Share that look like control DS \(p = 0\.006, q = 0\.066\)\.$/
+         .test(txt('.r2-say')) && !D().querySelector('#erRound2Card .stat.hit'), txt('.r2-say'));
+    await until(() => Array.from(D().querySelectorAll('#erRound2Card canvas.stat-cv')).every((c) => inked(c) > 100), 4000, 'the charts');
+    ok('every chart drawn', Array.from(D().querySelectorAll('#erRound2Card canvas.stat-cv')).every((c) => inked(c) > 100));
+    const n5 = sent.length;
+    btn(/^CTL · Low KO · High KO$/, D().querySelector('#erRound2Card #erCmp')).click();
+    await until(() => !!D().querySelector('#erRound2Card #erSplit'), 3000, 'the line');
+    D().querySelector('#erRound2Card #erSplit').value = '12';
+    D().querySelector('#erRound2Card #erSplit').dispatchEvent(new W.Event('change', { bubbles: true }));
+    await until(() => sent.slice(n5).some((x) => x[0] === '/api/extraction/round2'), 3000, 'asked again');
+    ok('moving the Low KO line asks Round II and Round I again',
+       (sent.slice(n5).find((x) => x[0] === '/api/extraction/round2') || [])[1].split === 12
+       && sent.slice(n5).some((x) => x[0] === '/api/extraction/stats'));
+    btn(/^PTEN vs CTL$/, D().querySelector('#erRound2Card #erCmp')).click();
+    btn(/^the usual ones$/, D().querySelector('#erRound2Card #erTests')).click();
+    await until(() => /^Under 0\.05/.test(txt('.r2-say')), 3000, 'usual round 2');
+    ok('usual: ranked by each measure’s own test', r2names().join('|') === 'Share that look like control DS|Events per minute|DS amplitude',
+       r2names().join('|'));
+    ok('usual: under 0.05 differs, said with its test and its q, q not a gate',
+       r2p(0).classList.contains('hit') && r2p(1).classList.contains('hit') && !r2p(2).classList.contains('hit')
+       && !D().querySelector('#erRound2Card .stat.lead')
+       && /^Under 0\.05: Share that look like control DS \(Mann–Whitney p = 0\.01, q = 0\.03\); Events per minute \(Welch’s t-test p = 0\.02, q = 0\.03\)\. Holding across all 3: Share that look like control DS, Events per minute\.$/
+         .test(txt('.r2-say')), txt('.r2-say'));
+    ok('a q under 0.05 is said to hold across all of them, and only that one is green',
+       /^holds across all 3 \(q = 0\.03\)$/.test(txt('.chip.q', r2p(0))) && r2p(0).querySelector('.chip.q').classList.contains('holds')
+       && txt('.chip.q', r2p(2)) === 'q = 0.3' && !r2p(2).querySelector('.chip.q').classList.contains('holds'), txt('.chip.q', r2p(0)));
+    await until(() => D().querySelectorAll('#erRound2Card .stat').length === 3
+                && inked(D().querySelector('#erRound2Card canvas.stat-cv')) > 100, 3000, 'redrawn');
+    const cv = D().querySelector('#erRound2Card canvas.stat-cv');
+    const pt = (cv.__pts || []).find((q) => q.v.gid === 'harness-p1');
+    const cb = cv.getBoundingClientRect();
+    cv.dispatchEvent(new W.MouseEvent('click', { clientX: cb.left + pt.x, clientY: cb.top + pt.y, bubbles: true }));
+    await until(() => W.erRoom.state().sub === 'recordings' && cards().length === 2, 3000, 'the recordings');
+    ok('a dot clicked takes you to its recording, lit', W.erRoom.state().sub === 'recordings'
+       && !!D().querySelector('#erGrid .rec.flash[data-gid="harness-p1"]'));
+
+    head('SEPARABLE OR NOT, CALLED BY HAND');
+    const card1 = () => cards()[1];
+    ok('X-ray’s call is on the card, with the press to overrule it',
+       /not separable/.test(txt('.sepchip', card1())) && !!btn(/^Call it separable$/, card1()));
+    const n2 = sent.length;
+    btn(/^Call it separable$/, card1()).click();
+    await until(() => sent.slice(n2).some((x) => x[0] === '/api/extraction/sep'), 4000, 'the call');
+    const sb = sent.slice(n2).find((x) => x[0] === '/api/extraction/sep');
+    ok('the call is sent: this room, this set, this recording, separable', sb && sb[1].room === 'dentate_spike'
+       && sb[1].folder === 'xm-h5' && sb[1].gid === 'harness-p1' && sb[1].verdict === 'yes', JSON.stringify(sb && sb[1]));
+    await until(() => /by hand/.test(txt('.sepchip', card1())), 4000, 'the chip');
+    ok('and its wash follows the call: separable, your call', card1().classList.contains('st-yes')
+       && txt('.state-tag', card1()) === 'Separable · your call', txt('.state-tag', card1()));
+    ok('the card says separable, by hand, and offers X-ray’s call back',
+       txt('.sepchip', card1()) === 'separable · by hand' && !!btn(/^Back to X-ray’s call$/, card1())
+       && !!btn(/^Call it not separable$/, card1()), txt('.sepchip', card1()));
+    ok('and the stats are asked again, Round II with them once it has been opened',
+       sent.slice(n2).some((x) => x[0] === '/api/extraction/stats') && sent.slice(n2).some((x) => x[0] === '/api/extraction/round2'));
+    await goSub('numbers');
+    ok('the table says so too', /separable \(by hand\)/.test(txt('#erTable')));
+    await goSub('recordings');
+    btn(/^Back to X-ray’s call$/, card1()).click();
+    await until(() => !/by hand/.test(txt('.sepchip', card1())), 4000, 'back');
+    const sb2 = sent.filter((x) => x[0] === '/api/extraction/sep').pop();
+    ok('and back: the call given back to X-ray', sb2 && sb2[1].verdict === null && /not separable/.test(txt('.sepchip', card1())));
+
+    head('EXTRACT AGAIN, AND A %KO CORRECTED');
+    const n0 = sent.length;
+    btn(/^Extract again$/).click();
+    await until(() => sent.slice(n0).some((x) => x[0] === '/api/extraction/extract'), 4000, 'the extract');
+    const ex = sent.slice(n0).find((x) => x[0] === '/api/extraction/extract');
+    ok('Extract again sends the room and the folder', ex && ex[1].room === 'dentate_spike' && ex[1].folder === 'xm-h5', JSON.stringify(ex && ex[1]));
+    await until(() => sent.slice(n0).some((x) => /version=3/.test(x[2])), 4000, 'the new version');
+    ok('and opens the new version', sent.slice(n0).some((x) => /\/api\/extraction\/erH\?version=3/.test(x[2])));
+    await until(() => cards().length === 2, 4000, 'the cards again');
+    W.prompt = () => '30';
+    ko(1).click();
+    await until(() => sent.some((x) => x[0] === '/api/extraction/ko'), 4000, 'the %KO');
+    const kb = sent.find((x) => x[0] === '/api/extraction/ko');
+    ok('clicking a PTEN mouse’s %KO corrects it, for everybody', kb && kb[1].mouse_key === 'PTEN|m7' && kb[1].pct === 30, JSON.stringify(kb && kb[1]));
+    await until(() => ko(1) && ko(1).textContent === '30% KO', 4000, 'the chip');
+    ok('and the chip says the new number', ko(1) && ko(1).textContent === '30% KO', ko(1) && ko(1).textContent);
+    const c0 = sent.filter((x) => x[0] === '/api/extraction/ko').length;
+    ko(0).click();
+    await sleep(200);
+    ok('a control’s 0% is not editable', sent.filter((x) => x[0] === '/api/extraction/ko').length === c0);
+
+    head('A NEW EXTRACTION, MADE ELSEWHERE');
+    const room = IDX.rooms[0];
+    room.versions.push({ v: 3, at: '2026-11-11T10:00:00Z', by: 'Debug_Bot', n: 2, folder: 'Harness 5%', folder_id: 'xm-h5' },
+                       { v: 4, at: '2026-11-11T11:00:00Z', by: 'Debug_Bot', n: 2, folder: 'Harness 7%', folder_id: 'xm-h7' });
+    room.version = 4;
+    IDX.folders[0].in_room = { v: 3, at: '2026-11-11T10:00:00Z', by: 'Debug_Bot' };
+    IDX.folders[2].in_room = { v: 4, at: '2026-11-11T11:00:00Z', by: 'Debug_Bot' };
+    IDX.folders[2].new = 0;
+    await W.erRoom._poll();
+    await until(() => W.erRoom.state().version === 4 && cards().length === 2, 4000, 'v4');
+    ok('asked again, the room opens the new one, and says so', W.erRoom.state().folder === 'xm-h7'
+       && /^Opened v4, ‘Harness 7%’, extracted .* by Debug_Bot: the newest in the room\.$/.test(txt('.er-note')), txt('.er-note'));
+    const setb = () => Array.from(D().querySelectorAll('#erSets button'));
+    ok('each folder is a set of its own, the new one chosen; nothing is waiting now',
+       setb().map((b) => b.textContent).join('|') === 'Harness 5% · v3|Harness 7% · v4'
+       && setb()[1].getAttribute('aria-pressed') === 'true' && !D().querySelector('.er-take'),
+       setb().map((b) => b.textContent).join('|'));
+    ok('its versions are its own', Array.from(D().querySelectorAll('#erVersion option')).map((o) => o.value).join() === '4');
+    const n6 = sent.length;
+    setb()[0].click();
+    await until(() => W.erRoom.state().folder === 'xm-h5' && cards().length === 2, 4000, 'back to 5%');
+    ok('the other set opens at its newest, with its versions', sent.slice(n6).some((x) => /\/api\/extraction\/erH\?version=3/.test(x[2]))
+       && Array.from(D().querySelectorAll('#erVersion option')).map((o) => o.value).join() === '3,2,1');
+    IDX.folders[0].new = 1;
+    await W.erRoom._poll();
+    await until(() => !!D().querySelector('#erNew'), 3000, 'the notice');
+    ok('newer X-ray results than this set’s version say so, with the press that takes them',
+       /^1 X-ray result in ‘Harness 5%’ is newer than this set’s v3\. Extract them$/.test(txt('#erNew')) && !!btn(/^Extract them$/, D().querySelector('#erNew')),
+       txt('#erNew'));
+    IDX.folders[0].new = 0;
+    const bc = new BroadcastChannel('barry-extraction');
+    bc.postMessage({ type: 'extracted', room: 'dentate_spike', version: 4, folder: 'xm-h7', folder_name: 'Harness 7%' });
+    await until(() => W.erRoom.state().version === 4, 4000, 'the word from the ToolKit');
+    ok('told by the ToolKit, the room opens what it just extracted', W.erRoom.state().folder === 'xm-h7'
+       && /^Opened v4, just extracted from ‘Harness 7%’\.$/.test(txt('.er-note')), txt('.er-note'));
+    bc.close();
+    ok('nothing went anywhere but the stub', sent.every((x) => /^\/api\/extraction/.test(x[0])));
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message) + ' | ' + String((err && err.stack) || '').split('\n').slice(0, 3).join(' | '), 'bad');
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'extraction: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

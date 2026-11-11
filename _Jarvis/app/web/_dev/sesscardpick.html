@@ -1,0 +1,79 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>sesscardpick: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:520px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:520px;top:0;width:1366px;height:768px;border:0}</style></head>
+<body><pre id="log"></pre>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The + on a Sessions card sat on top of the sync chip (2026-11-09,
+   screenshot): the button is absolutely placed in the card's top-right
+   corner and the chip is pushed to the right end of the top row. Measured,
+   not eyeballed: on every card that has both, their boxes must not touch,
+   and the chip must still be inside the card. Nothing is written. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(150);
+  }
+  return null;
+}
+(async () => {
+  const fr = document.getElementById('app');
+  const W = () => fr.contentWindow, D = () => fr.contentDocument;
+  try {
+    await new Promise((r) => fr.addEventListener('load', r, { once: true }));
+    await until(() => W().eval('typeof BARRY === "object" && BARRY.state.catalog'), 30000);
+    W().eval('setView')('sessions');
+    const cards = await until(() => {
+      const cs = Array.from(D().querySelectorAll('.sess-card'))
+        .filter((c) => c.querySelector('.sc-pick') && c.querySelector('.sc-top .sync-chip')
+          // Drawn, not just built: a card still off the page measures 0.
+          && c.querySelector('.sc-pick').getBoundingClientRect().width > 0
+          && c.querySelector('.sc-top .sync-chip').getBoundingClientRect().width > 0);
+      return cs.length ? cs : null;
+    }, 60000);
+    check('cards with both the + and a sync chip are on screen', !!cards,
+          cards ? cards.length + ' cards' : 'none');
+    if (cards) {
+      let worst = null, outside = 0, minGap = Infinity;
+      for (const c of cards.slice(0, 200)) {
+        const a = c.querySelector('.sc-pick').getBoundingClientRect();
+        const b = c.querySelector('.sc-top .sync-chip').getBoundingClientRect();
+        const box = c.getBoundingClientRect();
+        if (!a.width || !b.width) continue;
+        const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+        const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+        const over = overlapX > 0 && overlapY > 0 ? overlapX : 0;
+        if (!worst || over > worst.over) worst = { over, gap: a.left - b.right };
+        minGap = Math.min(minGap, a.left - b.right);
+        if (b.right > box.right - 1) outside++;
+      }
+      check('the + never overlaps the sync chip', worst && worst.over === 0,
+            worst && ('worst overlap ' + worst.over.toFixed(1) + ' px, gap '
+                      + worst.gap.toFixed(1) + ' px'));
+      check('with a visible gap between them', minGap >= 2, minGap.toFixed(1) + ' px at the closest');
+      check('and the chip stays inside its card', outside === 0, outside + ' outside');
+    }
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'sesscardpick: ' + fails + ' FAILED' : 'sesscardpick: passed';
+  fr.src = 'about:blank';
+})();
+</script>
+</body></html>

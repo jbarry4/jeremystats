@@ -77,15 +77,16 @@ async function until(fn, ms, what) {
     .find((b) => /The Dentist/.test(b.textContent));
   ok('the ToolKit rail carries The Dentist', !!bundle);
   const steps = bundle ? [...bundle.querySelectorAll('.tk-step')] : [];
-  eq('with five numbered steps', steps.length, 5);
+  // Six since The Extraction Room went in after X-ray (2026-11-10).
+  eq('with six numbered steps', steps.length, 6);
   eq('named in the order they happen',
      steps.map((s) => s.querySelector('.tk-step-n').textContent),
-     ['Incisor', 'Checkup', 'Braces', 'Root Canal', 'X-ray']);
+     ['Incisor', 'Checkup', 'Braces', 'Root Canal', 'X-ray', 'The Extraction Room']);
   // In order on the rail, each step its tool's mark (no printed numbers
   // since 2026-10-21); the order is kept on `data-n`.
   ok('and in order, because the order is a real dependency',
      steps.map((s) => s.querySelector('.tk-step-i').dataset.n)
-       .join('') === '12345'
+       .join('') === '123456'
      && steps.every((s) => s.querySelector('.tk-step-i svg.tk-ico')));
 
   /* Pressing step 3 must open Braces, not merely highlight the step. */

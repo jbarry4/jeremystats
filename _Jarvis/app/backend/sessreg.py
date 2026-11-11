@@ -251,6 +251,57 @@ def warm_opens(paths, workers=16):
     dead = set(dead_paths)
     pool_map(_probe, [p for p in fresh if p not in dead])
     pool_map(_opens, [p for p in uniq if is_here(p)])
+    save_opens()
+
+
+# The `_opens` answers, kept on disk between starts (2026-11-07).
+#
+# In memory only, every restart threw them away, and the first registry read
+# after it walked every folder again: 30-35 s, three times on 11-06 (TRIAGE
+# pass 13), with every other request queued behind it. An answer is keyed on
+# the folder's mtime, which the stat `_probe` makes anyway, so one written
+# down last time is exactly as good as one worked out now -- until the
+# folder changes, when it is worked out again. Machine-local, in
+# GUI_logs/.cache (git ignores it); `keep_opens` is told where by app.py.
+_OPENS_FILE = [None]
+_OPENS_SAVED = [None]           # what was last written, to skip a rewrite
+
+
+def keep_opens(path):
+    """Where the answers live, and load them. Best-effort: a missing or
+    unreadable file is an empty cache, never an error."""
+    _OPENS_FILE[0] = path
+    try:
+        import json
+        with open(path, encoding="utf-8") as fh:
+            got = json.load(fh) or {}
+        for p, (stamp, ok) in (got.get("opens") or {}).items():
+            _OPENS.setdefault(p, (stamp, bool(ok)))
+        _OPENS_SAVED[0] = (len(_OPENS), hash(frozenset(_OPENS.items())))
+    except (OSError, ValueError, TypeError, AttributeError):
+        pass
+
+
+def save_opens():
+    path = _OPENS_FILE[0]
+    if not path:
+        return
+    snap = dict(_OPENS)
+    sig = (len(snap), hash(frozenset(snap.items())))
+    if sig == _OPENS_SAVED[0]:
+        return
+    try:
+        import json
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = "%s.%d.tmp" % (path, os.getpid())
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump({"at": time.time(),
+                       "opens": {p: [s, ok] for p, (s, ok) in snap.items()}},
+                      fh)
+        os.replace(tmp, path)
+        _OPENS_SAVED[0] = sig
+    except (OSError, TypeError, ValueError):
+        pass
 
 
 COPY_FACTS = ("n_channels", "fs", "duration_s")

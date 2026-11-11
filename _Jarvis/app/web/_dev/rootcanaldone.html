@@ -65,7 +65,9 @@ async function until(fn, ms, what) {
   try { viewWas = ev('localStorage.getItem("barry.rootcanal.view")'); } catch (e) { /* none */ }
 
   ev('(function(){ var W = window; if (W.__rcdPrefSet) return;'
-     + ' W.__rcdPrefSet = BARRY.prefs.set; W.__rcdMem = {}; W.__rcdPrefGet = BARRY.prefs.get;'
+     + ' W.__rcdPrefSet = BARRY.prefs.set; W.__rcdPrefGet = BARRY.prefs.get;'
+     // No single archived (2026-11-06), whatever this machine's are.
+     + ' W.__rcdMem = { rootcanal_single_archive: {} };'
      + ' BARRY.prefs.set = function(k, v) { W.__rcdMem[k] = v; return v; };'
      + ' BARRY.prefs.get = function(k, d) { if (k in W.__rcdMem) return W.__rcdMem[k];'
      + '   return W.__rcdPrefGet.apply(BARRY.prefs, arguments); };'
@@ -184,6 +186,43 @@ async function until(fn, ms, what) {
     sortSel.value = 'recent';
     sortSel.dispatchEvent(new (W().Event)('change', { bubbles: true }));
     await sleep(300);
+
+    /* A SAVED SINGLE ARCHIVED (2026-11-06): out of the list, nothing
+       deleted, Show archived puts it back on show with Put back. */
+    head('A SAVED SINGLE ARCHIVED, AND PUT BACK');
+    const sv = S.find((r) => r.saved && r.saved.artifact_id);
+    const smem = () => JSON.parse(ev('JSON.stringify(window.__rcdMem.rootcanal_single_archive || {})'));
+    const rowE = (id) => D().querySelector('.rc-done-row[data-entry="' + id + '"]');
+    const showA = () => D().querySelector('.rc-done-show-arch');
+    if (!sv) {
+      say('       no set here has a saved version; skipped', 'dim');
+    } else {
+      ok('only a set with saved versions offers Archive',
+         rowsShown().every((r) => !!r.querySelector('.rc-done-archive')
+           === !!(S.find((x) => x.entry_id === r.dataset.entry) || {}).saved));
+      rowE(sv.entry_id).querySelector('.rc-done-archive').click();
+      await until(() => smem()[sv.saved.artifact_id] && !rowE(sv.entry_id), 4000, 'the archive');
+      ok('archived by its single, in the shared preference held here, with when',
+         JSON.stringify(Object.keys(smem())) === JSON.stringify([sv.saved.artifact_id])
+         && !!smem()[sv.saved.artifact_id].at, JSON.stringify(smem()));
+      ok('it leaves the list, and the toggle counts one fewer',
+         !rowE(sv.entry_id) && rowsShown().length === N - 1
+         && toggle().textContent === '▾  Already through Root Canal  ·  ' + (N - 1) + ' set'
+            + (N - 1 === 1 ? '' : 's'), toggle().textContent);
+      ok('Show archived · 1 is offered', !!showA() && showA().textContent === 'Show archived · 1',
+         showA() && showA().textContent);
+      showA().click();
+      await until(() => rowE(sv.entry_id), 4000, 'shown');
+      ok('shown: faded, said archived, with Put back', rowE(sv.entry_id).classList.contains('archived')
+         && /archived/.test(rowE(sv.entry_id).querySelector('.csr-did').textContent)
+         && !!rowE(sv.entry_id).querySelector('.rc-done-unarchive'));
+      rowE(sv.entry_id).querySelector('.rc-done-unarchive').click();
+      await until(() => !Object.keys(smem()).length, 4000, 'put back');
+      if (showA()) showA().click();               // Hide archived · 0
+      await until(() => rowsShown().length === N && !showA(), 4000, 'back');
+      ok('put back: in the list as it was, nothing left archived',
+         rowsShown().length === N && !rowE(sv.entry_id).classList.contains('archived') && !showA());
+    }
 
     head('OPEN: A SET WHOSE READ IS HERE');
     const here = S.find((r) => !r.saved && r.reads && r.reads.here && r.readable !== false);

@@ -69,6 +69,11 @@
      and a deeper one on the light ones, set in their blocks below. */
   --call-ds: #5aa9ff;
   --call-p: var(--err);
+  /* Ambiguous, between the two (2026-11-06: "purple for the ambiguous ones,
+     not that brown"): inside both borders the full purple, outside both its
+     paler shade. Deeper on the light themes, below. */
+  --call-amb: #b07cff;
+  --call-amb-2: #d9c4ff;
 
   /* Which detector found an event (The Confluence): Incisor's, Doppler's.
      Categorical, so taken from the palette above -- and through var(), so
@@ -295,6 +300,8 @@
    more of the ground in it to stay readable. */
 :root[data-theme="light"], :root[data-theme="parchment"],
 :root[data-theme="horizon"], :root[data-theme="jirai-shiro"] {
+  --call-amb: #7c3aed;
+  --call-amb-2: #b69cf5;
   --shadow-c:        rgba(16, 32, 24, .14);
   --shadow-c-soft:   rgba(16, 32, 24, .08);
   --shadow-c-strong: rgba(16, 32, 24, .22);
@@ -4030,6 +4037,12 @@ body.dragging-session .pane { transition: outline .1s; }
   border: 1px solid var(--line); background: var(--bg);
   color: var(--text-3); cursor: pointer; font-size: var(--fs-11); line-height: 1;
 }
+/* Room for it in the row it sits over. The sync chip is pushed to the right
+   end of that row (syncchip.css), which is exactly where the button is, so
+   the two overlapped (2026-11-09). 6 px in + 18 px wide, less the card's
+   9 px padding, plus a gap. Only cards with the button: the cluster-only
+   ones have none, and keep the full row. */
+.sc-pick + .sc-top { padding-right: 19px; }
 .sc-pick:hover { border-color: var(--accent); color: var(--accent); }
 .sc-pick.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .pick-bar {
@@ -13616,7 +13629,11 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .dp-bulk tr.bad td { color: var(--err); }
 /* A row whose read has finished, and is therefore a thing you can open. */
 .dp-bulk tr.ready td:first-child { font-weight: 600; }
-.dp-done-list { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+/* One row per line, scrolling down: with wrap on, a column flex list
+   that ran past its max-height wrapped into side-by-side columns that
+   scrolled sideways (2026-11-09). Each row still wraps its own text. */
+.dp-done-list { display: flex; flex-direction: column; flex-wrap: nowrap; gap: var(--sp-4); }
+.dp-done-list > .bm-row { flex: none; }
 
 /* Whether a version has reached the shared table. Three states, and they
    are different things: not up at all, up without the snapshot that makes
@@ -13944,6 +13961,115 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .dp-spacer { display: none; }
 .dp-pca { display: flex; flex-direction: column; gap: var(--sp-8); }
 .dp-pca .dp-canvas { flex: 1 1 auto; }
+
+/* ==========================================================================
+   X-ray Many (js/dspcamany.js, 2026-11-07).
+
+   Folders of a Root Canal workflow's kept recordings, the folder's
+   global parameters, the reads, and a grid of ~260 px tiles: each one's
+   average CSD with its box, and the answer under it. Nothing is cut off:
+   names, verdicts and errors wrap. `flex: none` because `.tk-result` is
+   a flex column that would otherwise crush these to slivers.
+   ========================================================================== */
+.xm { display: flex; flex-direction: column; gap: var(--sp-12); min-width: 0; flex: none; }
+.xm > * { flex: none; min-width: 0; }
+.xm .spacer { flex: 1 1 0; min-width: 0; }
+
+/* The folder bar. */
+.xm-bar { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-10); }
+.xm-folders { display: flex; flex-wrap: wrap; gap: var(--sp-8); flex: 1 1 320px; min-width: 0; }
+.xm-folder { display: flex; align-items: stretch; min-width: 0; max-width: 100%;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); }
+.xm-folder.on { border-color: var(--accent-line); background: var(--accent-soft); }
+.xm-folder.archived { opacity: .7; border-style: dashed; }
+.xm-folder-pick { display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  min-width: 0; padding: 7px 10px; text-align: left; cursor: pointer;
+  background: none; border: 0; color: var(--text); font: inherit; }
+.xm-folder-name { font-size: var(--fs-13); overflow-wrap: anywhere; }
+.xm-folder-n { font-size: var(--fs-11); color: var(--text-2); overflow-wrap: anywhere; }
+.xm-folder-arch { align-self: center; margin-right: 8px; flex: none; }
+.xm-bar-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
+
+/* "New folder from a workflow". */
+.xm-wfs { display: flex; flex-direction: column; gap: var(--sp-6); margin: 8px 0; }
+.xm-wf { display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 8px 10px; text-align: left; cursor: pointer; font: inherit; color: var(--text);
+  background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.xm-wf:hover { background: var(--bg-hover); }
+.xm-wf.on { border-color: var(--accent-line); background: var(--accent-soft); }
+.xm-wf strong, .xm-wf .hint { overflow-wrap: anywhere; }
+.xm-new-lab { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8);
+  font-size: var(--fs-13); }
+.xm-new-name { flex: 1 1 220px; min-width: 0; padding: 6px 9px; }
+
+/* The global parameters. */
+.xm-params { display: flex; flex-direction: column; gap: var(--sp-8); }
+.xm-params .section-label { margin: 0; }
+.xm-prow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-10); }
+.xm-plab { flex: 0 0 9.5em; font-size: var(--fs-12); color: var(--text-2); }
+.xm-seg { flex-wrap: wrap; }
+.xm-params > .hint { margin: 0; }
+
+/* The reads. */
+.xm-job { display: flex; flex-direction: column; gap: var(--sp-6); }
+.xm-job .section-label { margin: 0; }
+.xm-jobline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8) var(--sp-10); }
+.xm-jobline .hint { flex: 1 1 260px; min-width: 0; margin: 0; }
+.xm-jobwords { font-size: var(--fs-13); overflow-wrap: anywhere; }
+.xm-job .dp-bar { margin: 2px 0 0; }
+
+/* The grid. */
+.xm-gridcard { display: flex; flex-direction: column; gap: var(--sp-10); }
+.xm-gridhead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6) var(--sp-10); }
+.xm-gridhead .section-label { margin: 0; }
+.xm-gridhead .hint { margin: 0; }
+.xm-runall-sub { flex: 1 0 100%; text-align: right; }
+.xm-ferr { flex: 1 0 100%; margin: 0; overflow-wrap: anywhere; }
+.xm-runall-words { font-size: var(--fs-13); }
+.xm-grid { display: grid; gap: var(--sp-10);
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
+.xm-tile { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0;
+  padding: 8px; background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); }
+.xm-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--sp-6); }
+.xm-label { font-size: var(--fs-13); overflow-wrap: anywhere; min-width: 0; }
+.xm-n { font-size: var(--fs-11); color: var(--text-2); font-family: var(--mono); }
+.xm-group { font-size: var(--fs-10); padding: 1px 7px; }
+.xm-pic { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.xm-cv { display: block; width: 100%; cursor: crosshair; touch-action: none;
+  border-radius: var(--radius-sm); background: var(--bg-3); }
+.xm-empty { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--sp-6); height: 180px; padding: 0 10px; text-align: center;
+  font-size: var(--fs-12); color: var(--text-2); overflow-wrap: anywhere;
+  background: var(--bg-3); border-radius: var(--radius-sm); }
+.xm-picnote { margin: 0; overflow-wrap: anywhere; }
+.xm-info { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0; }
+.xm-box { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--sp-6); }
+.xm-boxwords { font-size: var(--fs-12); color: var(--text-2); overflow-wrap: anywhere; min-width: 0; }
+.xm-box-btns { display: flex; flex-wrap: wrap; gap: 4px; }
+/* The Extraction Room's step in the ToolKit (2026-11-10): the door to its
+   own page, web/extraction.html. */
+.er-step { display: flex; flex-direction: column; gap: var(--sp-8); }
+.er-folders { display: flex; flex-direction: column; gap: var(--sp-4); }
+.er-folder { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8);
+  font-size: var(--fs-12); overflow-wrap: anywhere; }
+.er-go { display: flex; justify-content: flex-end; }
+.xm-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); }
+.xm-vbtn { max-width: 100%; }
+.xm-err { margin: 0; overflow-wrap: anywhere; }
+
+/* The answer: counts, the separation verdict, the sinks. */
+.xm-result { display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0;
+  padding-top: 6px; border-top: 1px solid var(--line-soft); }
+.xm-result.older { border-top-style: dashed; }
+.xm-older { margin: 0; }
+.xm-result .stat-chip { overflow-wrap: anywhere; white-space: normal; }
+.xm-sep strong { font-weight: 600; }
+.xm-sinks { display: flex; flex-direction: column; gap: 2px; }
+.xm-sink { display: flex; align-items: baseline; gap: var(--sp-6); font-size: var(--fs-12);
+  overflow-wrap: anywhere; min-width: 0; }
+.xm-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.xm-sinkwords { font-size: var(--fs-12); color: var(--text); overflow-wrap: anywhere; }
 
 /* ==========================================================================
    Arrivals -- BARRY.ui.sections (js/ui.js).
@@ -15058,6 +15184,42 @@ details.rc-ver-pick { position: relative; flex: none; }
 .rc-pool-cands tr.on td { color: var(--text); font-weight: 600; }
 .rc-pool-cands td .flagchip { margin-right: var(--sp-4); }
 .rc-pool-pick { flex: none; }
+/* The pool's ticks (2026-11-06: "odd check boxes -- make it nicer"). Still
+   a real checkbox -- focusable, labelled, clicked by the harnesses -- drawn
+   in the theme: a rounded box on the line colour that fills with the
+   accent, a tick cut into it, when it is on. */
+input[type="checkbox"].rc-tick {
+  -webkit-appearance: none; appearance: none;
+  display: inline-grid; place-content: center; flex: none;
+  width: 18px; height: 18px; margin: 0; padding: 0; vertical-align: middle;
+  border: 1.5px solid var(--line); border-radius: var(--r-6);
+  background: var(--bg-2); cursor: pointer;
+  transition: background var(--dur-2), border-color var(--dur-2);
+}
+input[type="checkbox"].rc-tick::before {
+  content: ""; width: 10px; height: 10px; background: var(--on-accent);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0, 43% 62%);
+  transform: scale(0); transition: transform var(--dur-2);
+}
+input[type="checkbox"].rc-tick:hover { border-color: var(--accent-line);
+                                       background: var(--bg-hover); }
+input[type="checkbox"].rc-tick:checked { background: var(--accent);
+                                         border-color: var(--accent); }
+input[type="checkbox"].rc-tick:checked::before { transform: scale(1); }
+input[type="checkbox"].rc-tick:focus-visible { outline: var(--focus-ring);
+                                               outline-offset: var(--focus-offset); }
+input[type="checkbox"].rc-tick:disabled { opacity: .5; cursor: default; }
+@media (prefers-reduced-motion: reduce) {
+  input[type="checkbox"].rc-tick, input[type="checkbox"].rc-tick::before {
+    transition: none; }
+}
+.rc-pool-cands td.rc-tick-cell { width: 1%; padding-right: var(--sp-4);
+                                 vertical-align: middle; }
+/* "Every event is DS", the same tick with its words beside it. */
+.rc-all-ds { display: inline-flex; align-items: center; gap: var(--sp-8);
+             align-self: flex-start; font-size: var(--fs-12);
+             color: var(--text-2); cursor: pointer; }
+.rc-all-ds:hover { color: var(--text); }
 .rc-types { display: flex; flex-wrap: wrap; gap: var(--sp-6) var(--sp-16); }
 .rc-type { display: inline-flex; flex-wrap: wrap; align-items: center;
            gap: var(--sp-4) var(--sp-8); }
@@ -15160,10 +15322,27 @@ details.rc-ver-pick { position: relative; flex: none; }
    The table scrolls across inside its own box on a narrow panel. */
 .rc-pool-cands-wrap { max-width: 100%; min-width: 0; overflow-x: auto; }
 .rc-pool-cands td.rc-rec-answer { min-width: 0; }
-/* As wide as its longest answer where the table has the room, narrower --
-   wrapping, never cut -- where it has not: a select's percentage width
-   lets the column give way on a narrow panel. */
-.rc-in.rc-rec-src { width: max-content; max-width: 100%; white-space: normal; }
+/* The row's choice of answer (2026-11-06): the version button's look, with
+   the version of the set it is about, what it is, and how many answers
+   there are; it opens the set's versions as a tree. Wraps, never cut. */
+.vbtn.rc-ans-btn { max-width: 100%; vertical-align: middle; font-weight: 400; }
+.rc-ans-kind { color: var(--text-2); overflow-wrap: anywhere; }
+.rc-ans-kind.rc-ans-read, .rc-ans-kind.rc-ans-unread { color: var(--warn); }
+.rc-pool-cands tr.on .rc-ans-kind:not(.rc-ans-read):not(.rc-ans-unread) {
+  color: var(--text); }
+/* Its events: a version not read yet says the count is the bank's. */
+.rc-rec-n-v { font-variant-numeric: tabular-nums; }
+.rc-rec-n-say { display: block; font-size: var(--fs-11); font-weight: 400;
+                color: var(--text-3); }
+/* The tree it opens: each answer a node on its version. */
+.vpop.rc-ans-pop .mb { min-width: min(640px, 90vw); }
+.vtree-row.rc-ans-row .flagchip.rc-ans-kind-chip { margin: 0; }
+.vtree-row.rc-ans-unread-row .vtree-count { color: var(--warn); }
+.rc-ans-older { margin: var(--sp-6) 0 var(--sp-2);
+                padding-left: calc(var(--vt-gutter, 22px) + 4px);
+                font-size: var(--fs-11); color: var(--text-3);
+                text-transform: uppercase; letter-spacing: .06em; }
+.vtree.rc-ans-loose { --vt-gutter: 4px; }
 .rc-rec-chips { display: inline-flex; flex-wrap: wrap; gap: var(--sp-4);
                 margin-left: var(--sp-4); vertical-align: middle; }
 .rc-rec-chips .flagchip { margin-right: 0; }
@@ -17235,6 +17414,20 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
                                                font-family: inherit; }
 .rc-save-folder-row { display: flex; flex-wrap: wrap; align-items: center;
                       gap: var(--sp-4) var(--sp-8); margin-top: var(--sp-8); }
+/* Archived saved pools, folders and saved singles (2026-11-06): on show
+   only while Show archived is on, faded, each with Put back. */
+.rc-shelf-row.archived, .rc-folder.archived, .rc-done-row.archived { opacity: .62; }
+.rc-shelf-row.archived:hover, .rc-folder.archived:hover,
+.rc-done-row.archived:hover { opacity: .9; }
+.rc-folder.archived { border-style: dashed; }
+.stat-chip.rc-shelf-is-archived, .stat-chip.rc-folder-is-archived,
+.stat-chip.rc-done-is-archived { flex: none; }
+.btn.rc-shelf-archive, .btn.rc-shelf-unarchive, .btn.rc-folder-archive,
+.btn.rc-folder-unarchive, .btn.rc-show-arch, .btn.rc-done-archive,
+.btn.rc-done-unarchive, .btn.rc-done-show-arch { flex: none; }
+.rc-done-countrow { display: flex; flex-wrap: wrap; align-items: center;
+                    gap: var(--sp-4) var(--sp-8); margin: 0 0 2px; }
+.rc-done-countrow .rc-done-count { margin: 0; }
 .rc-save-folder-row .section-label { margin: 0; }
 
 /* Root Canal Single: the folds under the clusters, side by side while shut
@@ -17662,8 +17855,69 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
    ================================================================== */
 .wf { display: flex; flex-direction: column; gap: var(--sp-10); }
 .wf-head { display: flex; flex-direction: column; gap: var(--sp-6); }
+/* THE META WORKFLOW (2026-11-11, rcmeta.js): one answer per instance. */
+.meta { display: flex; flex-direction: column; gap: var(--sp-8); }
+.meta-list { display: flex; flex-direction: column; gap: var(--sp-8); }
+.meta-newcard select, .meta-newcard input { max-width: 100%; }
+.meta-card { display: flex; flex-direction: column; gap: var(--sp-8); }
+.meta-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-8); }
+.meta-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.meta-answer { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: var(--sp-8) var(--sp-16); align-items: start; }
+.meta-big { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.meta-num { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.meta-of { font-weight: 600; }
+.meta-was { color: var(--text-2); }
+.meta-purple-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--call-amb); align-self: center; }
+.meta-tablewrap { overflow-x: auto; min-width: 0; }
+.meta-table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.meta-table th, .meta-table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.meta-table thead th { font-size: 12px; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+.meta-table tbody th { font-weight: 600; }
+.meta-table tr.meta-changed td:last-child { font-weight: 700; color: var(--accent); }
+.meta-bars { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.meta-barrow { display: grid; grid-template-columns: 3.5em minmax(0, 1fr); gap: 8px; align-items: center; }
+.meta-barlab { font-size: 12.5px; color: var(--text-2); }
+.meta-bar { display: flex; height: 18px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--bg-2, transparent); }
+.meta-seg { min-width: 0; }
+.meta-c-both { background: var(--call-amb); }
+.meta-c-ds { background: var(--call-ds); }
+.meta-c-p { background: var(--call-p); }
+.meta-c-none { background: var(--text-2); opacity: .45; }
+.meta-key { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.meta-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.meta-fold summary { cursor: pointer; font-weight: 600; }
+.meta-trail, .meta-checks { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+/* While it searches (2026-11-11): the plan, ticked; the running step with a bar. */
+.meta-progress { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--bg-2); }
+.meta-prog-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.meta-sofar { font-weight: 600; color: var(--call-amb); font-variant-numeric: tabular-nums; }
+.meta-steps { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.meta-step { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: start; }
+.meta-step.todo { color: var(--text-2); opacity: .7; }
+.meta-step.done .meta-tick { color: var(--ok, var(--accent)); font-weight: 700; }
+.meta-tick { display: inline-flex; justify-content: center; }
+.meta-spin { width: 12px; height: 12px; margin-top: 3px; border-radius: 50%; border: 2px solid var(--line);
+  border-top-color: var(--accent); animation: meta-spin .9s linear infinite; }
+@keyframes meta-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .meta-spin { animation: none; border-top-color: var(--accent); } }
+.meta-now { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.meta-now-words { font-weight: 600; }
+.meta-prog { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.meta-prog > span { display: block; height: 100%; background: var(--accent); transition: width .4s; }
+.meta-now-item { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.meta-stopped { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--bg-2); }
+.meta-last { margin-top: 4px; }
+@media (max-width: 760px) { .meta-answer { grid-template-columns: minmax(0, 1fr); } }
 .wf-head-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
 .wf-list { display: flex; flex-direction: column; gap: var(--sp-8); }
+/* Workflow folders (2026-11-11): Shape > Grace, each opened or closed. */
+.wf-folder { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--bg-2); }
+.wf-folder > summary { cursor: pointer; display: flex; align-items: baseline; gap: 10px; padding: 4px 2px; }
+.wf-folder-name { font-weight: 700; }
+.wf-folder-body { display: flex; flex-direction: column; gap: var(--sp-8); padding: 6px 0 4px 12px; }
+.wf-extent { color: var(--text-2); }
 .wf-strip { display: flex; flex-direction: column; gap: var(--sp-8); }
 .wf-strip.on { outline: 2px solid var(--accent-line, var(--accent)); }
 .wf-strip.archived { opacity: 0.7; }
@@ -17674,7 +17928,8 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
   border-radius: var(--radius-sm); border: 1px solid var(--line); }
 .wf-kind-ds { color: var(--call-ds); border-color: var(--call-ds); }
 .wf-kind-pspike { color: var(--call-p); border-color: var(--call-p); }
-.wf-kind-ambiguous { color: var(--warn); border-color: var(--warn); }
+.wf-kind-ambiguous { color: var(--call-amb); border-color: var(--call-amb); }
+.wf-kind-pca { color: var(--text); border-color: var(--text-2); }
 .wf-stages { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--sp-8); }
 .wf-stage { display: flex; flex-direction: column; gap: var(--sp-2);
@@ -17724,7 +17979,7 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
 .wf-venn-c strong { font-size: var(--fs-15); }
 .wf-venn-c.ds { border-color: var(--call-ds); }
 .wf-venn-c.p { border-color: var(--call-p); }
-.wf-venn-c.both { border-color: var(--warn); }
+.wf-venn-c.both { border-color: var(--call-amb); }
 .wf-avg-btns { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
 .wf-insp { display: flex; flex-direction: column; gap: var(--sp-6);
   border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--sp-8); }
@@ -17813,6 +18068,32 @@ html.gb-on .toast.err::after { content: '  🦃 Pass the gravy and try again.'; 
 .wf-thumb-empty { display: flex; align-items: center; justify-content: center; text-align: center;
   font-size: var(--fs-11); color: var(--text-3); border: 1px dashed var(--line);
   border-radius: var(--radius-sm); padding: var(--sp-6); box-sizing: border-box; }
+/* Pooled PCA (2026-11-06): the 2D PCA large, the 3D view beside it. */
+.wf-views-pca { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
+.wf-pca { width: 100%; height: 470px; display: block; cursor: crosshair;
+  background: var(--bg-2); border-radius: var(--radius-sm); }
+.wf-3d.wf-3d-side { height: 446px; }
+.wf-side-h { font-size: var(--fs-12); }
+.wf-pca-l { min-width: 0; }
+.wf-lg-cross, .wf-lg-arrow { font-weight: 700; color: var(--text); width: 12px;
+  text-align: center; }
+.wf-th-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+  margin-right: 6px; }
+.wf-pools { max-height: 260px; overflow-y: auto; padding-right: var(--sp-4); }
+/* Archived pools in the builder (2026-11-06), when Show archived pools is
+   on; and Colour by mouse or recording -- each one's name, wrapped. */
+.wf-set.archived { opacity: 0.62; }
+.wf-lg.wf-lg-cat span { overflow-wrap: anywhere; }
+.wf-bypool-cat .wf-legend-row { gap: var(--sp-4) var(--sp-10); }
+/* The panels follow the stage (2026-11-06): each says which events it is
+   showing; the Grace key's quiet curve is faded with it. */
+.wf-panel-what { font-size: var(--fs-115); font-weight: 600; color: var(--text-2);
+  overflow-wrap: anywhere; }
+.wf-lg.wf-lg-dim { opacity: 0.5; }
+.hint.wf-mouse-n { overflow-wrap: anywhere; }
+.hint.wf-avg-none { margin: 0; }
+.btn.wf-avg-go { flex: none; }
+@media (max-width: 900px) { .wf-views-pca { grid-template-columns: minmax(0, 1fr); } }
 
 /* Hater of AI, the bug fixer anyone can ask (js/floss.js): a small pop-up
    beside the rail chip that opened it, not a modal, so the app stays usable

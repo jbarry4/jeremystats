@@ -612,6 +612,29 @@ register_kind("rootcanal_workflow", _rcworkflow_key,
               _rcworkflow_summary, lambda s: [], "Root Canal workflow")
 
 
+# A Root Canal META WORKFLOW (2026-11-11, backend/rcmeta.py): the
+# measurement settings that leave the fewest events ambiguous under an
+# Ambiguous Dataset workflow's two boxes, at a grace. Each run is a version.
+def _rcmeta_key(subject):
+    _need(subject, ("meta_key",), "Root Canal meta workflow")
+    return "rootcanal_meta|%s" % subject["meta_key"]
+
+
+def _rcmeta_summary(payload):
+    p = payload or {}
+    r = p.get("result") or {}
+    best, today = r.get("best") or {}, r.get("today") or {}
+    return {"grace": (p.get("definition") or {}).get("grace"), "ran": bool(r),
+            "purple": (best.get("score") or {}).get("purple"),
+            "purple_today": (today.get("score") or {}).get("purple"),
+            "best": best.get("words")}
+
+
+register_kind("rootcanal_meta", _rcmeta_key,
+              lambda s: s.get("name") or "Root Canal meta workflow",
+              _rcmeta_summary, lambda s: [], "Root Canal meta workflow")
+
+
 # The lab's list of Root Canal cluster names: one artifact, each change a
 # version; read as the union of every version (see app.py, RC_NAMES_SUBJECT).
 def _rcnames_key(subject):
@@ -623,6 +646,71 @@ register_kind("rootcanal_names", _rcnames_key,
               lambda s: "Root Canal cluster names",
               lambda p: {"names": len((p or {}).get("names") or [])},
               lambda s: [], "list of Root Canal cluster names")
+
+
+# An X-ray BUNDLE (2026-11-07, X-ray Many): one recording of one Many folder
+# -- a Root Canal workflow's "inside" stamps for it -- read, boxed and split
+# into DS1/DS2, kept as numbers: every event's call, the class profiles, the
+# separation test and the sink strengths (backend/xraymany.py). One artifact
+# per folder and recording; a run that differs is a version, the same run
+# again confirms it. The read is cache and stays where it was made.
+def _xray_single_key(subject):
+    _need(subject, ("folder", "gid"), "X-ray bundle")
+    return "xray_single|%s|%s" % (subject["folder"], subject["gid"])
+
+
+def _xray_single_name(subject):
+    return "X-ray · %s · %s" % (
+        subject.get("session_label") or subject.get("gid"),
+        subject.get("folder_name") or subject.get("folder"))
+
+
+def _xray_single_summary(payload):
+    # What a list shows without opening the payload: the Many grid's chips
+    # and Single's "previously processed" read it off the version row.
+    p = payload or {}
+    sep = p.get("separation") or {}
+    return {"events": len((p.get("cols") or {}).get("t") or []),
+            "counts": p.get("counts") or {},
+            "method": (p.get("params") or {}).get("method"),
+            # `words` is the sinks in plain words ("DS2 sink 2.3× DS1"),
+            # which the grid shows under the badge (2026-11-07).
+            "separation": {k: sep.get(k)
+                           for k in ("verdict", "dbic", "min_share", "n",
+                                     "words")},
+            "sinks": [{k: s.get(k) for k in ("cls", "csc", "value", "sem",
+                                             "unit")}
+                      for s in p.get("sinks") or []],
+            "box": p.get("box")}
+
+
+register_kind("xray_single", _xray_single_key, _xray_single_name,
+              _xray_single_summary,
+              lambda s: [s["gid"]] if s.get("gid") else [], "X-ray bundle")
+
+
+# THE EXTRACTION ROOM (2026-11-10), the sixth and last step of The Dentist
+# (backend/extraction.py): one artifact per room ("dentate_spike"); each
+# extraction of an X-ray Many folder's bundles is a version, holding every
+# number the room shows, so it keeps showing what was extracted.
+def _extraction_key(subject):
+    _need(subject, ("room",), "Extraction Room")
+    return "extraction|%s" % subject["room"]
+
+
+def _extraction_summary(payload):
+    p = payload or {}
+    recs = p.get("recordings") or []
+    return {"room": p.get("room"), "folder": (p.get("source") or {}).get("folder_name"),
+            "recordings": len(recs),
+            "events": sum(int(r.get("n") or 0) for r in recs)}
+
+
+register_kind("extraction", _extraction_key,
+              lambda s: "The Extraction Room · %s" % (s.get("room_name")
+                                                       or s.get("room")),
+              _extraction_summary,
+              lambda s: list(s.get("gids") or []), "Extraction Room")
 
 
 def subject_key(kind, subject):

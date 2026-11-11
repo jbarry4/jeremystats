@@ -174,7 +174,14 @@ class Params:
     # to anything else must not, because the box being live is the point.
     READ_KEYS = ("lfp_fs", "band", "window_ms", "surround_ms", "pad",
                  "refine", "spacing", "probe", "line", "line_q", "invert",
-                 "channels", "bad")
+                 "channels", "bad",
+                 # WHICH STAMPS, when they are not a bank set's (2026-11-07,
+                 # X-ray Many reads a workflow's "inside" events). Without it
+                 # the 5% and 10% reads of one recording share a name and
+                 # load each other. Only ever in a hash when it is set:
+                 # `read_params` drops it at None and `params_hash` skips
+                 # None, so every read made the old way keeps its name.
+                 "stamps_hash")
 
     # What was ASKED of it. These name the answer, not the read.
     FIT_KEYS = ("notch", "screen", "csd_bad_x", "csd_span", "nclasses",
@@ -220,6 +227,9 @@ class Params:
         # applied. The automatic screens are NOT in here -- they are a
         # function of the data, so they cannot change without it.
         self.bad = sorted(int(n) for n in (kw.get("bad") or []))
+        # rootcanal.stamps_hash of the stamps read, or None for a bank
+        # set's (whose read has always been named without it).
+        self.stamps_hash = kw.get("stamps_hash") or None
 
         # -- the CSD ----------------------------------------------------
         self.cond = float(kw.get("cond") or T_COND)
@@ -306,8 +316,14 @@ class Params:
                 % (MAX_CLASSES, self.nclasses))
 
     def read_params(self):
-        """Just the fields that decide what comes off the disk."""
-        return {k: getattr(self, k) for k in self.READ_KEYS}
+        """Just the fields that decide what comes off the disk.
+
+        `stamps_hash` only when it is set, so a bank set's read -- and every
+        record and hash made from this dict -- is exactly what it was."""
+        out = {k: getattr(self, k) for k in self.READ_KEYS}
+        if out.get("stamps_hash") is None:
+            out.pop("stamps_hash", None)
+        return out
 
     def fit_params(self):
         return {k: getattr(self, k) for k in self.FIT_KEYS}
@@ -883,6 +899,7 @@ def read(session, channels, stamps, p, bad=None, job=None, stop=None):
         "probe": p.probe,
         "spacing_um": float(p.spacing),
         "surround_ms": float(p.surround_ms),
+        "stamps_hash": getattr(p, "stamps_hash", None),
         # Carried with the arrays rather than recomputed at fit time: the
         # columns are a fact about what was read, and a fit that disagreed
         # with its own read about where a column ends would be the one bug
@@ -1618,7 +1635,11 @@ def _working(types, prof, ns, marker, labels, k, p, layers):
 ARRAYS = ("raw", "notch", "band")
 
 _META_KEYS = ("rows", "nums", "bad", "missed", "mains_uv", "wideband_uv",
-              "fs", "probe", "spacing_um", "surround_ms", "runs")
+              "fs", "probe", "spacing_um", "surround_ms", "runs",
+              # Which stamps, when they were not a bank set's (2026-11-07):
+              # so a fit names its HF pass by the same stamps. None on a
+              # read made before, and on every bank set's.
+              "stamps_hash")
 
 
 def save_read(path, got):

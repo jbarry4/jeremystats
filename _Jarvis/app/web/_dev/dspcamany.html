@@ -1,0 +1,709 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>dspcamany: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* X-ray Many (2026-11-07), js/dspcamany.js.
+
+   WHAT WAS ASKED: "For the many: everything that went through the PCA
+   analysis should be preprocessed in the Many, ready for me to come in and
+   select the border for. A grid of the average CSD where for each I can
+   draw the line / click one sample, and run one by one or run all. Then
+   become visible in Single, and also openable in the many run set. For
+   each one indicate if separation was possible, and how powerful the sinks
+   were, then bank that."
+
+   ON FIXTURES. Every /api/dspca/many* answer, the pictures, the bundles,
+   the workflows and the read job are made here, so the page is checked
+   against known numbers:
+     - X-ray's run bar, on Many, mounts BARRY.dspcaMany where the read-only
+       batch was, and keeps the same node across renders;
+     - the folder bar: each folder with its counts, archived ones hidden,
+       Archive / Put back through BARRY.prefs.mergeKey (with the record's
+       `at` and `by` kept), a new folder from a workflow that has run;
+     - the global parameters as segs, saved per folder with mergeKey;
+     - a tile per member: label, group chip, events, the picture, the box
+       in words, or "not read yet" and Read;
+     - a drag is a box and a click is one sample: mergeKey'd and drawn;
+     - Run sends the folder, the gid, the parameters and that box; the
+       answer lands on the tile in place;
+     - Run all runs every tile with a read, one at a time, and leaves the
+       unread one out;
+     - the badges (separable / weak / not separable / too few) with their
+       numbers, and the sinks with their unit and the words;
+     - an older version is shown on its tile, and Open in Single hands
+       BARRY.dspca.openBundle the bundle and that version;
+     - Read all not read yet starts one job, says so, and Stop stops it.
+
+   IT WRITES NOTHING. Prefs are held in memory here (get, set, mergeKey and
+   load are stubbed), the activity log is quiet, every write is answered
+   or refused here, and Single's openBundle is stubbed. Gids start
+   "harness-". */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(120);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+const J = (x) => JSON.stringify(x);
+
+/* ---------- the fixtures ---------- */
+const UNIT = 'µA/mm² (CSD, 5–100 Hz)';
+const F5 = 'harness-f5', F10 = 'harness-f10', FA = 'harness-farch', FN = 'harness-fnew';
+const G = (k) => 'harness-xm-' + k;
+const SRC5 = { artifact_id: 'harness-wDS5', version: 2, nickname: 'Verified DS 5% · harness', grace: 0.05 };
+const SRC10 = { artifact_id: 'harness-wDS10', version: 2, nickname: 'Verified DS 10% · harness', grace: 0.1 };
+function sinks(v1, v2) {
+  return [{ cls: 1, csc: 9, depth_row: 8, value: v1, sem: 0.12, unit: UNIT },
+          { cls: 2, csc: 14, depth_row: 13, value: v2, sem: 0.3, unit: UNIT }];
+}
+function bundle(aid, v, verdict, dbic, share, n, counts, sk) {
+  return { artifact_id: aid, version: v, at: '2026-11-07T12:00:00Z', by: 'Debug_Bot',
+           counts, separation: { verdict, dbic, min_share: share, n }, sinks: sk };
+}
+function mem(k, o) {
+  return Object.assign({ gid: G(k), entry_id: 'harness-e-' + k, session_label: 'harness m' + k + ' s1',
+                         mouse_key: 'harness|m' + k, stamps_hash: 'sh-' + k,
+                         read: null, read_here: false, box: null, bundle: null }, o);
+}
+const FIX = {
+  folders: [
+    { id: F5, name: 'Verified DS 5%', source: SRC5, archived: false, params: null, members: [
+      mem('a', { group: 'CTL', n: 120, read: 'r-a', read_here: true,
+                 bundle: bundle('harness-xa', 2, 'yes', 34.2, 0.31, 120, { 1: 83, 2: 37 }, sinks(-2.31, -5.4)) }),
+      mem('b', { group: 'PTEN', n: 60, read: 'r-b', read_here: true,
+                 box: { sel_lo: 8, sel_hi: 14, t_lo_ms: -2, t_hi_ms: 3, at: '2026-11-07T10:00:00Z', by: 'Debug_Bot' },
+                 bundle: bundle('harness-xb', 1, 'weak', 4.1, 0.18, 60, { 1: 49, 2: 11 }, sinks(-1.2, -1.5)) }),
+      mem('c', { group: 'PTEN', n: 45, read: 'r-c', read_here: true,
+                 bundle: bundle('harness-xc', 1, 'no', 0.6, 0.07, 45, { 1: 42, 2: 3 }, sinks(-0.8, -0.9)) }),
+      mem('d', { group: 'CTL', n: 12, read: 'r-d', read_here: true,
+                 bundle: bundle('harness-xd', 1, 'too_few', null, null, 12, { 1: 8, 2: 4 }, []) }),
+      mem('e', { group: 'PTEN', n: 30 }),
+    ] },
+    { id: F10, name: 'Verified DS 10%', source: SRC10, archived: false, params: null, members: [
+      mem('a', { group: 'CTL', n: 140, stamps_hash: 'sh10-a' }),
+      mem('b', { group: 'PTEN', n: 70, stamps_hash: 'sh10-b' }),
+    ] },
+    { id: FA, name: 'An archived folder', source: SRC5, archived: true, params: null, members: [] },
+  ],
+  vers: { 'harness-xa': [1, 2], 'harness-xb': [1], 'harness-xc': [1], 'harness-xd': [1] },
+  wfs: [
+    { artifact_id: 'harness-wDS', nickname: 'Verified DS 7% · harness', name: 'Verified DS', kind: 'ds',
+      ran: true, version: 5, run_version: 4, kept: 900, n: 1200, updated: '2026-11-06T10:00:00Z' },
+    { artifact_id: 'harness-wP', nickname: 'Verified P · harness', name: 'Verified P', kind: 'pspike',
+      ran: true, version: 2, run_version: 2, kept: 300, n: 410, updated: '2026-11-06T09:00:00Z' },
+    { artifact_id: 'harness-wAmb', nickname: 'Ambiguous · harness', name: 'Ambiguous', kind: 'ambiguous',
+      ran: true, version: 1, run_version: 1, kept: 20, n: 40, updated: '2026-11-06T08:00:00Z' },
+    { artifact_id: 'harness-wNo', nickname: 'Never run · harness', name: 'Never run', kind: 'ds',
+      ran: false, version: 1, run_version: null, updated: '2026-11-06T07:00:00Z' },
+  ],
+  // One banked set X-ray's Single can see but not read, so its run bar is
+  // drawn and nothing is read on its own.
+  cands: [{ id: 'harness-xm-set', name: 'harness X-ray Many', gid: G('a'), n: 10,
+            project: 'harness', mouse: '1', session: '1', session_label: 'harness m1 s1',
+            session_path: null, by_label: {}, n_good: 0, current_version: 1,
+            current_name: '1', newest_name: '1', newest_usable_name: null,
+            newest_aligned_name: null, aligned: null, added: '2026-11-07T00:00:00Z',
+            readable: false, why: 'harness: not readable',
+            versions: [{ v: 1, name: '1', ref: 'harness-xm-set@1', n: 10, at: '2026-11-07T00:00:00Z',
+                         by: 'Debug_Bot', note: null, aligned: false, usable: false, tag: null,
+                         newest: true }] }],
+};
+// The picture: a sink and a source on 16 rows by 101 samples.
+const IMG = (() => {
+  const c = document.createElement('canvas');
+  c.width = 101; c.height = 16;
+  const g = c.getContext('2d');
+  for (let r = 0; r < 16; r++) {
+    for (let k = 0; k < 101; k++) {
+      const v = Math.exp(-((k - 50) ** 2) / 120) * (r < 8 ? -1 : 1) * Math.exp(-((r % 8 - 4) ** 2) / 6);
+      g.fillStyle = v < 0 ? 'rgb(' + Math.round(40 + 60 * (1 + v)) + ',60,' + Math.round(140 - 100 * v) + ')'
+                          : 'rgb(' + Math.round(140 + 100 * v) + ',60,' + Math.round(40 + 60 * (1 - v)) + ')';
+      g.fillRect(k, r, 1, 1);
+    }
+  }
+  return c.toDataURL('image/png');
+})();
+const RASTER = { ok: true, what: 'shank', title: 'mean of 120', image: IMG, extent: [-50, 50],
+                 clim: [-1, 1], contacts: Array.from({ length: 16 }, (_, k) => k + 1), lo: 1, hi: 16,
+                 line: { values: [], contacts: [], window_ms: [-4.5, 5.5], peaks: [], sinks: null,
+                         band: [6, 13], signal: null },
+                 layers: {} };
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow;
+  const ev = (c) => W.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'), 25000, 'the app to boot');
+  await until(() => ev('!!(BARRY.prefs && BARRY.dspca && BARRY.dspcaMany)'), 10000, 'the modules');
+  const B = ev('BARRY');
+  const XM = B.dspcaMany;
+  const PICK = 'barry.dspcamany.folder';
+  let pickWas = null;
+  try { pickWas = W.localStorage.getItem(PICK); W.localStorage.removeItem(PICK); } catch (e) { /* none */ }
+
+  /* ---------- the stubs ---------- */
+  const sent = [];          // [route, body, url]
+  const merges = [];        // [key, id, value]
+  const memP = {};          // the prefs this page holds
+  let prefLoads = 0;
+  const was = { fetch: W.fetch, get: B.prefs.get, set: B.prefs.set, mergeKey: B.prefs.mergeKey,
+                load: B.prefs.load, log: B.activity && B.activity.log,
+                ob: B.dspca.openBundle, hadOb: 'openBundle' in B.dspca };
+  const OURS = /^dspca_many_/;
+  // Many's keys start empty here, whatever this machine holds: a known start.
+  B.prefs.get = function (k, d) {
+    if (k in memP) return memP[k];
+    if (OURS.test(k)) return {};
+    return was.get.apply(B.prefs, arguments);
+  };
+  // Every key held here, so nothing the page presses reaches the shared
+  // prefs; Many's own keys must only ever go through mergeKey.
+  B.prefs.set = function (k, v) { memP[k] = v; sent.push(['prefs.set', null, k]); return v; };
+  B.prefs.mergeKey = function (k, id, v) {
+    const val = v === undefined ? null : JSON.parse(J(v));
+    merges.push([k, id, val]);
+    const m = Object.assign({}, memP[k] || {});
+    if (val === null) delete m[id]; else m[id] = val;
+    memP[k] = m;
+    return val;
+  };
+  /* What the server would answer: the folder record it made itself, which
+     this page had not loaded. */
+  B.prefs.load = async function () {
+    prefLoads += 1;
+    const m = Object.assign({}, memP.dspca_many_folders || {});
+    if (!m[F10]) {
+      m[F10] = { name: 'Verified DS 10%', at: '2026-11-07T08:00:00Z', by: 'Debug_Bot', source: SRC10 };
+    }
+    memP.dspca_many_folders = m;
+    return {};
+  };
+  if (B.activity) B.activity.log = function () {};
+  B.dspca.openBundle = function (aid, v) { W.__xmOpened = [aid, v]; };
+
+  const json = (o, st) => Promise.resolve(new W.Response(J(o),
+    { status: st || 200, headers: { 'Content-Type': 'application/json' } }));
+  let job = null;
+  W.fetch = function (u, o) {
+    const s = String(u);
+    const p = s.split('?')[0];
+    const q = new URLSearchParams(s.split('?')[1] || '');
+    const method = (o && o.method) || 'GET';
+    let body = null;
+    try { body = o && o.body ? JSON.parse(o.body) : null; } catch (e) { body = null; }
+    const hit = (k) => sent.push([k, body, s]);
+    if (p === '/api/dspca/candidates') { hit('cands'); return json({ ok: true, sets: FIX.cands, n: 1 }); }
+    if (p === '/api/dspca/batch/plan') {
+      hit('batchplan');
+      return json({ ok: true, todo: [], done: [], blocked: [], n: 0, n_done: 0, n_blocked: 0 });
+    }
+    if (p === '/api/dspca/many' && method === 'GET') { hit('many'); return json({ ok: true, folders: FIX.folders }); }
+    if (p === '/api/dspca/many/folder') {
+      hit('folder');
+      FIX.folders.push({ id: FN, name: body.name, source: Object.assign({}, body.source, { nickname: body.name }),
+                         archived: false, params: null,
+                         members: [mem('n', { group: 'CTL', n: 77, stamps_hash: 'shn' })] });
+      return json({ ok: true, id: FN });
+    }
+    if (p === '/api/dspca/many/read') {
+      hit('read');
+      const f = FIX.folders.find((x) => x.id === body.folder);
+      const todo = (f.members || []).filter((m) => !(m.read && m.read_here)
+                                                  && (!body.gids || body.gids.includes(m.gid)));
+      job = { id: 'harness-job-' + sent.length, status: 'running', polls: 0, finishes: !!body.gids,
+              folder: body.folder, elapsed: 0, eta_s: null,
+              members: todo.map((m) => ({ id: m.gid, label: m.session_label, status: 'waiting',
+                                          error: null, cached: false })) };
+      return json({ ok: true, job: JSON.parse(J(job)) });
+    }
+    let m = p.match(/^\/api\/cfc\/job\/(harness-job-\d+)(\/cancel)?$/);
+    if (m && job && m[1] === job.id) {
+      if (m[2]) { hit('cancel'); job.canceled = true; return json({ ok: true }); }
+      hit('poll');
+      job.polls += 1;
+      job.elapsed = job.polls;
+      if (job.canceled) job.status = 'canceled';
+      else if (job.finishes) {
+        if (job.polls < 3) job.members.forEach((x) => { x.status = 'running'; });
+        else {
+          job.members.forEach((x) => {
+            x.status = 'done';
+            x.read = 'r-' + x.id.slice(-1);
+            const f = FIX.folders.find((ff) => ff.id === job.folder);
+            const mm = f.members.find((y) => y.gid === x.id);
+            mm.read = x.read; mm.read_here = true;
+          });
+          job.status = 'done';
+        }
+      }
+      return json({ ok: true, job: JSON.parse(J(job)) });
+    }
+    if (p === '/api/dspca/many/run') {
+      hit('run');
+      const f = FIX.folders.find((x) => x.id === body.folder);
+      const results = (body.gids || []).map((gid) => {
+        const mm = f.members.find((y) => y.gid === gid);
+        if (!mm || !mm.read) return { gid, ok: false, error: 'not read yet' };
+        if (gid === G('d')) return { gid, ok: false, error: 'harness: the fit refused it' };
+        const b = mm.bundle;
+        const aid = b.artifact_id;
+        const v = FIX.vers[aid].length + 1;
+        FIX.vers[aid].push(v);
+        const sep = Object.assign({}, b.separation, { bic1: 100, bic2: 100 - (b.separation.dbic || 0),
+          words: gid === G('a') ? 'DS2 sink 2.4x DS1, said by the server' : null });
+        mm.bundle = Object.assign({}, b, { version: v });
+        return { gid, ok: true, bundle: { artifact_id: aid, version: v }, counts: b.counts,
+                 separation: sep, sinks: b.sinks, box: body.boxes[gid] };
+      });
+      return json({ ok: true, results });
+    }
+    if (p === '/api/dspca/raster') {
+      if (body && /^harness-/.test(body.gid || '')) { hit('raster'); return json(RASTER); }
+    }
+    m = p.match(/^\/api\/artifacts\/(harness-x[a-z])$/);
+    if (m) {
+      hit('versions');
+      return json({ ok: true, cited_by: [], artifact: { id: m[1], kind: 'xray_single',
+        versions: FIX.vers[m[1]].map((v) => ({ v, id: m[1] + '-' + v, at: '2026-11-0' + Math.min(9, v) + 'T12:00:00Z',
+                                               by: 'Debug_Bot', note: null, here: true,
+                                               n_summary: { events: 120 } })) } });
+    }
+    m = p.match(/^\/api\/dspca\/bundle\/(harness-x[a-z])$/);
+    if (m) {
+      hit('bundle');
+      return json({ ok: true, artifact: { id: m[1] }, payload: {
+        schema: 'xray.single/1', counts: { 1: 70, 2: 50 },
+        separation: { verdict: 'weak', dbic: 5, min_share: 0.42, n: 120, words: 'v' + q.get('version') + ' words' },
+        sinks: sinks(-2, -3), box: null, novocaine: { ready: true, extracted: false } } });
+    }
+    if (p === '/api/rootcanal/workflows') { hit('wfs'); return json({ ok: true, workflows: FIX.wfs }); }
+    if (p === '/api/prefs' && method !== 'GET') { hit('refused'); return json({ ok: false, error: 'harness: no writes' }, 400); }
+    if (method !== 'GET' && /^\/api\/(dspca|bank|artifacts|rootcanal|session|prefs)/.test(p)) {
+      hit('refused'); return json({ ok: false, error: 'harness: no writes' }, 400);
+    }
+    return was.fetch.apply(this, arguments);
+  };
+
+  const of = (k) => sent.filter((x) => x[0] === k);
+  const mergesOf = (k) => merges.filter((x) => x[0] === k);
+  const toasts = () => Array.from(D().querySelectorAll('#toasts .toast')).map((n) => n.textContent);
+  const tile = (k) => D().querySelector('.xm-tile[data-gid="' + G(k) + '"]');
+  const txt = (n, sel) => { const x = n && (sel ? n.querySelector(sel) : n); return x ? x.textContent : null; };
+  const btn = (re, scope) => Array.from((scope || D()).querySelectorAll('button'))
+    .find((b) => re.test(b.textContent.trim()));
+  const inked = (cv) => {
+    if (!cv || !cv.width) return 0;
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
+    return n;
+  };
+  const r1 = (v) => Math.round(v * 10) / 10;
+  // A pointer gesture on a tile's canvas, at fractions of the plot area.
+  const gesture = (k, from, to) => {
+    const g = XM._geom(G(k));
+    const cv = tile(k).querySelector('canvas');
+    const at = (f) => ({ clientX: g.left + g.x0 + f[0] * g.pw, clientY: g.top + g.y0 + f[1] * g.ph });
+    const fire = (type, f) => cv.dispatchEvent(new W.PointerEvent(type, Object.assign(
+      { bubbles: true, cancelable: true, button: 0, pointerId: 7, pointerType: 'mouse' }, at(f))));
+    fire('pointerdown', from);
+    if (to) {
+      fire('pointermove', [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2]);
+      fire('pointermove', to);
+      fire('pointerup', to);
+    } else {
+      fire('pointerup', from);
+    }
+    return g;
+  };
+  const DEF = { method: 'delta', rule: 'tort', features: 'minmax', notch: true,
+                min_sep: 5, gap_weight: 1, nclasses: 2 };
+
+  try {
+    head('X-RAY’S RUN BAR, ON MANY, MOUNTS X-RAY MANY');
+    ev('setView("toolkit")');
+    await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
+    const step = Array.from(D().querySelectorAll('.tk-step')).find((b) => /X-ray/.test(b.textContent));
+    ok('the X-ray step is there', !!step);
+    if (step) step.click();
+    await until(() => D().querySelectorAll('.dp-mode .seg button').length === 2, 20000, 'the run bar');
+    const seg = () => D().querySelectorAll('.dp-mode .seg button');
+    ok('One and Many', J(Array.from(seg()).map((b) => b.textContent)) === '["One","Many"]',
+       J(Array.from(seg()).map((b) => b.textContent)));
+    seg()[1].click();
+    await until(() => D().querySelector('.tk-result .xm'), 10000, 'Many');
+    ok('Many is X-ray Many, in X-ray’s own panel', !!D().querySelector('#tkResult .xm'));
+    ok('and not the old read-only batch', !D().querySelector('.dp-bulk-card'));
+    ok('which is not asked for either', !of('batchplan').length, of('batchplan').length + ' batch plans');
+    ok('the hint says what Many is now',
+       /Root Canal workflow kept/.test(txt(D().querySelector('.dp-mode'), ':scope > .hint') || ''),
+       txt(D().querySelector('.dp-mode'), ':scope > .hint'));
+    await until(() => D().querySelectorAll('.xm-tile').length === 5, 10000, 'the tiles');
+    ok('the folders are asked for once', of('many').length === 1, of('many').length + ' asks');
+    const root0 = D().querySelector('.xm');
+
+    head('THE FOLDER BAR');
+    const folders = () => Array.from(D().querySelectorAll('.xm-folder'));
+    ok('a folder each, the archived one left out',
+       J(folders().map((n) => n.dataset.fid)) === J([F5, F10]), J(folders().map((n) => n.dataset.fid)));
+    ok('the first is open', folders()[0] && folders()[0].classList.contains('on'));
+    ok('each says its name', J(folders().map((n) => txt(n, '.xm-folder-name')))
+       === J(['Verified DS 5%', 'Verified DS 10%']));
+    ok('and its recordings, reads, runs and how many separate',
+       txt(folders()[0], '.xm-folder-n') === '5 recordings · 4 read · 4 run · 1 separable',
+       txt(folders()[0], '.xm-folder-n'));
+    ok('the other’s too', txt(folders()[1], '.xm-folder-n') === '2 recordings · 0 read · 0 run · 0 separable',
+       txt(folders()[1], '.xm-folder-n'));
+    ok('the archived one is a button away', /^Show archived · 1$/.test(txt(D(), '.xm-show-arch') || ''),
+       txt(D(), '.xm-show-arch'));
+    ok('every folder has Archive', folders().every((n) => txt(n, '.xm-folder-arch') === 'Archive'));
+    ok('and New folder from a workflow…', !!btn(/^New folder from a workflow…$/, D().querySelector('.xm-bar')));
+
+    head('THE GLOBAL PARAMETERS');
+    const pc = () => D().querySelector('.xm-params');
+    ok('no radio buttons anywhere in Many', D().querySelectorAll('.xm input[type=radio]').length === 0);
+    ok('method, which is DS1 and the notch are segs',
+       !!pc().querySelector('.seg.xm-seg-method') && !!pc().querySelector('.seg.xm-seg-rule')
+       && !!pc().querySelector('.seg.xm-seg-notch'));
+    ok('the methods Single offers', J(Array.from(pc().querySelectorAll('.xm-seg-method button')).map((b) => b.textContent))
+       === J(['delta only', 'PCA + gap', 'PCA, no gap']));
+    ok('delta on to begin with, features hidden (delta has none)',
+       /active/.test(pc().querySelector('.xm-seg-method button').className) && !pc().querySelector('.xm-seg-features'));
+    ok('the parameters are the defaults', J(XM._params()) === J(DEF), J(XM._params()));
+    const nR0 = of('raster').length;
+    btn(/^PCA \+ gap$/, pc()).click();
+    const pm = mergesOf('dspca_many_params');
+    ok('a change is saved for this folder, through mergeKey',
+       pm.length === 1 && pm[0][1] === F5 && pm[0][2].method === 'pca_gap', J(pm));
+    ok('as every parameter, not just the one changed',
+       pm.length && J(Object.keys(pm[0][2]).sort()) === J(Object.keys(DEF).sort()), pm.length && J(Object.keys(pm[0][2])));
+    ok('features and the gap column appear for PCA + gap',
+       !!pc().querySelector('.xm-seg-features') && !!pc().querySelector('.xm-gapw'));
+    await until(() => of('raster').length >= nR0 + 4, 8000, 'the pictures again');
+    const nr = of('raster').slice(nR0);
+    ok('the automatic box is asked for again under the new method, for each read',
+       nr.length === 4 && nr.every((x) => x[1].method === 'pca_gap'), nr.length + ' ' + J(nr.map((x) => x[1].method)));
+    const ms = pc().querySelector('.xm-minsep');
+    ms.value = '7';
+    ms.dispatchEvent(new W.Event('change', { bubbles: true }));
+    ok('two sinks at least: saved', mergesOf('dspca_many_params').slice(-1)[0][2].min_sep === 7);
+    btn(/^off$/, pc().querySelector('.xm-seg-notch')).click();
+    ok('the notch: saved', mergesOf('dspca_many_params').slice(-1)[0][2].notch === false);
+    // Back as they were.
+    btn(/^on$/, pc().querySelector('.xm-seg-notch')).click();
+    const ms2 = pc().querySelector('.xm-minsep');
+    ms2.value = '5';
+    ms2.dispatchEvent(new W.Event('change', { bubbles: true }));
+    btn(/^delta only$/, pc().querySelector('.xm-seg-method')).click();
+    ok('and back to the defaults', J(XM._params()) === J(DEF), J(XM._params()));
+
+    head('A TILE PER RECORDING');
+    const tiles = () => Array.from(D().querySelectorAll('.xm-grid .xm-tile'));
+    ok('one per member, in the folder’s order',
+       J(tiles().map((n) => n.dataset.gid)) === J(['a', 'b', 'c', 'd', 'e'].map(G)), J(tiles().map((n) => n.dataset.gid)));
+    ok('the header: session, group chip, events',
+       txt(tile('a'), '.xm-label') === 'harness ma s1' && txt(tile('a'), '.xm-group') === 'CTL'
+       && txt(tile('a'), '.xm-n') === '120 events', txt(tile('a'), '.xm-head'));
+    ok('PTEN said as PTEN', txt(tile('b'), '.xm-group') === 'PTEN');
+    ok('an unread one says so, with Read', /not read yet/.test(txt(tile('e'), '.xm-empty') || '')
+       && !!tile('e').querySelector('.xm-read') && !tile('e').querySelector('canvas'));
+    ok('and has no Run to press', tile('e').querySelector('.xm-run').disabled);
+    await until(() => ['a', 'b', 'c', 'd'].every((k) => (XM._drawn(G(k)) || {}).image), 10000, 'the pictures');
+    ok('each read one has its average CSD drawn',
+       ['a', 'b', 'c', 'd'].every((k) => (XM._drawn(G(k)) || {}).image
+                                         && inked(tile(k).querySelector('canvas')) > 2000));
+    const rb = of('raster').find((x) => x[1].gid === G('a'));
+    ok('the picture is the read’s shank average, notched',
+       !!rb && rb[1].what === 'shank' && rb[1].read === 'r-a' && rb[1].notch === true, rb && J(rb[1]));
+    ok('with no box drawn, the server’s box is drawn dashed and called auto',
+       (XM._drawn(G('a')).mark || {}).auto === true && XM._drawn(G('a')).mark.kind === 'box');
+    ok('and said in words',
+       txt(tile('a'), '.xm-boxwords') === 'Automatic box: CSC6–13, −4.5 to +5.5 ms', txt(tile('a'), '.xm-boxwords'));
+    ok('a box somebody drew is drawn solid',
+       (XM._drawn(G('b')).mark || {}).auto === false, J(XM._drawn(G('b'))));
+    ok('and said in words', txt(tile('b'), '.xm-boxwords') === 'Box: CSC8–14, −2.0 to +3.0 ms',
+       txt(tile('b'), '.xm-boxwords'));
+    ok('the sinks of the answer are marked on the picture', XM._drawn(G('a')).sinks === 2);
+
+    head('THE BADGES, THE SINKS AND THEIR WORDS');
+    const sep = (k) => tile(k).querySelector('.xm-sep');
+    ok('separable, with ΔBIC and the smaller share',
+       txt(sep('a')) === 'separable ΔBIC 34.2 · smaller class 31%' && sep('a').classList.contains('good'), txt(sep('a')));
+    ok('weak', txt(sep('b')) === 'weak ΔBIC 4.1 · smaller class 18%' && sep('b').classList.contains('warn'),
+       txt(sep('b')));
+    ok('not separable', txt(sep('c')) === 'not separable ΔBIC 0.6 · smaller class 7%'
+       && !sep('c').classList.contains('good') && !sep('c').classList.contains('warn'), txt(sep('c')));
+    ok('too few, with how many', txt(sep('d')) === 'too few 12 events', txt(sep('d')));
+    ok('the counts', txt(tile('a'), '.xm-counts') === 'DS1 83 · DS2 37', txt(tile('a'), '.xm-counts'));
+    const sk = Array.from(tile('a').querySelectorAll('.xm-sink')).map((n) => n.textContent);
+    ok('each sink with its strength, its SEM and the unit',
+       J(sk) === J(['DS1 sink at CSC9: -2.31 ± 0.12 ' + UNIT, 'DS2 sink at CSC14: -5.40 ± 0.30 ' + UNIT]), J(sk));
+    // A summary carries no words, so the tile makes them as the server
+    // does (xraymany.sink_words).
+    ok('and how they compare, in words', txt(tile('a'), '.xm-sinkwords') === 'DS2 sink 2.3× DS1',
+       txt(tile('a'), '.xm-sinkwords'));
+    ok('the verdict words the server might send are all understood',
+       J(['yes', 'separable', 'weak', 'no', 'not separable', 'too few', 'too_few'].map((v) => XM._verdict({ verdict: v })))
+       === J(['yes', 'yes', 'weak', 'no', 'no', 'too_few', 'too_few']));
+    ok('the bundle’s version on a version button', txt(tile('a'), '.xm-vbtn .vbtn-n') === 'v2',
+       txt(tile('a'), '.xm-vbtn .vbtn-n'));
+
+    head('DRAG A BOX, CLICK ONE SAMPLE');
+    const cv0 = tile('a').querySelector('canvas');
+    const node0 = tile('a');
+    const g = gesture('a', [0.4, 0.3], [0.6, 0.7]);
+    const span = g.hi - g.lo + 1;
+    const csc = (f) => Math.round(g.lo + f * span - 0.5);
+    const want = { sel_lo: csc(0.3), sel_hi: csc(0.7),
+                   t_lo_ms: r1(g.ext[0] + 0.4 * (g.ext[1] - g.ext[0])),
+                   t_hi_ms: r1(g.ext[0] + 0.6 * (g.ext[1] - g.ext[0])) };
+    let bm = mergesOf('dspca_many_boxes');
+    const last = () => mergesOf('dspca_many_boxes').slice(-1)[0];
+    ok('a drag is saved through mergeKey, by folder and recording',
+       bm.length === 1 && bm[0][1] === F5 + '|' + G('a'), J(bm));
+    ok('as the depth and time dragged',
+       bm.length && ['sel_lo', 'sel_hi', 't_lo_ms', 't_hi_ms'].every((k) => bm[0][2][k] === want[k]),
+       J(bm[0] && bm[0][2]) + ' want ' + J(want));
+    ok('with who and when', bm.length && !!bm[0][2].at && 'by' in bm[0][2]);
+    const dr = XM._drawn(G('a')).mark;
+    ok('and drawn: a solid box where it was dragged',
+       dr && dr.kind === 'box' && dr.auto === false && Math.abs(dr.x0 - (g.x0 + 0.4 * g.pw)) < 1.5
+       && Math.abs(dr.x1 - (g.x0 + 0.6 * g.pw)) < 1.5, J(dr));
+    ok('said in words', txt(tile('a'), '.xm-boxwords') === 'Box: CSC' + want.sel_lo + '–' + want.sel_hi
+       + ', −10.0 to +10.0 ms', txt(tile('a'), '.xm-boxwords'));
+    ok('the tile is the same tile, the canvas the same canvas',
+       tile('a') === node0 && tile('a').querySelector('canvas') === cv0);
+    gesture('a', [0.75, 0.5]);
+    ok('a click is one time sample, keeping the depth',
+       J(['sel_lo', 'sel_hi', 't_lo_ms', 't_hi_ms'].map((k) => last()[2][k]))
+       === J([want.sel_lo, want.sel_hi, 25, 25]), J(last()));
+    ok('drawn as a line', (XM._drawn(G('a')).mark || {}).kind === 'line', J(XM._drawn(G('a'))));
+    ok('said in words', /one sample at \+25\.0 ms$/.test(txt(tile('a'), '.xm-boxwords')), txt(tile('a'), '.xm-boxwords'));
+    gesture('c', [0.5, 0.5]);
+    ok('a click where there is no box keeps the automatic depth',
+       last()[1] === F5 + '|' + G('c') && last()[2].sel_lo === null && last()[2].sel_hi === null
+       && last()[2].t_lo_ms === 0 && last()[2].t_hi_ms === 0, J(last()));
+    ok('said so', txt(tile('c'), '.xm-boxwords') === 'Box: automatic depth, one sample at 0.0 ms',
+       txt(tile('c'), '.xm-boxwords'));
+    btn(/^automatic box$/, tile('c')).click();
+    ok('"automatic box" takes it away, through mergeKey',
+       last()[1] === F5 + '|' + G('c') && last()[2] === null && XM._box(G('c')) === null, J(last()));
+    ok('and the tile says the server picks it again', /^Automatic box: CSC6–13/.test(txt(tile('c'), '.xm-boxwords')));
+
+    /* CENTRE AND 1 SAMPLE, ON EVERY TILE (2026-11-09), beside "automatic
+       box" -- each keeping the depth. */
+    ok('every tile with a read offers automatic box, centre and 1 sample',
+       Array.from(D().querySelectorAll('.xm-tile')).filter((n) => n.querySelector('canvas'))
+         .every((n) => !!n.querySelector('.xm-auto') && !!n.querySelector('.xm-centre')
+                       && !!n.querySelector('.xm-one')));
+    ok('automatic box is greyed where the box is automatic already',
+       !!tile('c').querySelector('.xm-auto') && tile('c').querySelector('.xm-auto').disabled);
+    gesture('c', [0.2, 0.3], [0.6, 0.7]);
+    const dragged = last()[2];
+    btn(/^centre$/, tile('c')).click();
+    const cen = last()[2];
+    ok('centre moves the window onto the stamp, as wide, at the same depth',
+       last()[1] === F5 + '|' + G('c') && cen.sel_lo === dragged.sel_lo && cen.sel_hi === dragged.sel_hi
+       && Math.abs(cen.t_lo_ms + cen.t_hi_ms) < 0.11
+       && Math.abs((cen.t_hi_ms - cen.t_lo_ms) - (dragged.t_hi_ms - dragged.t_lo_ms)) < 0.21, J([dragged, cen]));
+    btn(/^1 sample$/, tile('c')).click();
+    const one = last()[2];
+    ok('1 sample makes it one instant at its middle -- with centre, the stamp',
+       one.t_lo_ms === one.t_hi_ms && Math.abs(one.t_lo_ms) < 0.11 && one.sel_lo === dragged.sel_lo,
+       J(one));
+    ok('and both are greyed once there is nothing left for them to do',
+       tile('c').querySelector('.xm-centre').disabled && tile('c').querySelector('.xm-one').disabled);
+    btn(/^automatic box$/, tile('c')).click();
+
+    head('RUN ONE');
+    btn(/^Run$/, tile('a')).click();
+    await until(() => of('run').length === 1, 8000, 'the run');
+    const run1 = of('run')[0] && of('run')[0][1];
+    ok('Run sends the folder, that recording, the parameters and its box',
+       !!run1 && run1.folder === F5 && J(run1.gids) === J([G('a')]) && J(run1.params) === J(DEF)
+       && J(run1.boxes) === J({ [G('a')]: { sel_lo: want.sel_lo, sel_hi: want.sel_hi, t_lo_ms: 25, t_hi_ms: 25 } }),
+       J(run1));
+    await until(() => txt(tile('a'), '.xm-sinkwords') === 'DS2 sink 2.4x DS1, said by the server', 8000, 'the answer');
+    ok('the answer lands on the tile, with the server’s own words',
+       txt(tile('a'), '.xm-sinkwords') === 'DS2 sink 2.4x DS1, said by the server', txt(tile('a'), '.xm-sinkwords'));
+    ok('in place: the same tile and canvas', tile('a') === node0 && tile('a').querySelector('canvas') === cv0);
+    await until(() => txt(tile('a'), '.xm-vbtn .vbtn-n') === 'v3', 8000, 'the new version');
+    ok('as the bundle’s next version', txt(tile('a'), '.xm-vbtn .vbtn-n') === 'v3', txt(tile('a'), '.xm-vbtn .vbtn-n'));
+
+    head('AN OLDER VERSION, AND OPEN IN SINGLE');
+    tile('a').querySelector('.xm-vbtn').click();
+    await until(() => D().querySelector('#bigModal:not(.hidden) .vtree-row[data-ref="1"]'), 5000, 'the versions');
+    ok('the version button opens every version',
+       D().querySelectorAll('#bigModal:not(.hidden) .vtree-row').length === 3,
+       D().querySelectorAll('#bigModal:not(.hidden) .vtree-row').length + ' rows');
+    D().querySelector('#bigModal:not(.hidden) .vtree-row[data-ref="1"]').click();
+    await until(() => tile('a').querySelector('.xm-older'), 5000, 'v1');
+    ok('picking v1 fetches that version', of('bundle').some((x) => /version=1$/.test(x[2])));
+    ok('and shows it on the tile, said as older',
+       txt(tile('a'), '.xm-older') === 'Showing v1, an older version.' && txt(tile('a'), '.xm-sinkwords') === 'v1 words',
+       txt(tile('a'), '.xm-result'));
+    W.__xmOpened = null;
+    const rootA = D().querySelector('.xm');
+    btn(/^Open in Single$/, tile('a')).click();
+    await until(() => W.__xmOpened, 5000, 'openBundle');
+    ok('Open in Single hands Single the bundle and the version on show',
+       J(W.__xmOpened) === J(['harness-xa', 1]), J(W.__xmOpened));
+    ok('and the run bar goes back to One', !B.dspca._bulk().on && !D().querySelector('.xm'));
+    const asks = of('many').length;
+    seg()[1].click();
+    await until(() => D().querySelector('#tkResult .xm'), 5000, 'Many again');
+    ok('back on Many, the same panel, not a new one', D().querySelector('.xm') === rootA && rootA === root0);
+    await until(() => of('many').length === asks + 1, 5000, 'the look again');
+    ok('and it looks again once, for bundles Single saved meanwhile', of('many').length === asks + 1,
+       (of('many').length - asks) + ' asks');
+
+    head('RUN ALL');
+    await until(() => !XM._loading(), 5000, 'the reload');
+    const sub = txt(D(), '.xm-runall-sub');
+    ok('it says how many have no box, and that the unread one is left out',
+       sub === '4 with a read; 2 with no box drawn use the automatic box; 1 not read yet, left out', sub);
+    const nRun = of('run').length;
+    btn(/^Run all$/, D().querySelector('.xm-gridhead')).click();
+    await until(() => of('run').length === nRun + 4 && !XM._state().runAll, 15000, 'run all');
+    const ra = of('run').slice(nRun).map((x) => x[1]);
+    ok('one run per recording with a read, in turn',
+       J(ra.map((b) => b.gids)) === J([[G('a')], [G('b')], [G('c')], [G('d')]]), J(ra.map((b) => b.gids)));
+    ok('the unread one is not sent', !ra.some((b) => b.gids.includes(G('e'))));
+    ok('each with its own box, or none for the automatic one',
+       J(ra.map((b) => b.boxes[b.gids[0]])) === J([
+         { sel_lo: want.sel_lo, sel_hi: want.sel_hi, t_lo_ms: 25, t_hi_ms: 25 },
+         { sel_lo: 8, sel_hi: 14, t_lo_ms: -2, t_hi_ms: 3 }, null, null]), J(ra.map((b) => b.boxes)));
+    ok('and the same parameters', ra.every((b) => J(b.params) === J(DEF)));
+    await until(() => tile('d').querySelector('.xm-err'), 5000, 'the refusal');
+    ok('a refusal is said on its tile', txt(tile('d'), '.xm-err') === 'harness: the fit refused it',
+       txt(tile('d'), '.xm-err'));
+    ok('and in the toast', toasts().some((t) => t === 'Ran 4. 3 saved as a bundle version.'), J(toasts()));
+    ok('the run on show is the newest again', !tile('a').querySelector('.xm-older'));
+
+    head('READ ALL NOT READ YET, AND STOP');
+    const jc = () => D().querySelector('.xm-job');
+    ok('the cost is said before it starts', /^1 recording, 30 events\./.test(txt(jc(), '.hint') || ''), txt(jc(), '.hint'));
+    btn(/^Read all not read yet$/, jc()).click();
+    await until(() => D().querySelector('.xm-stop'), 5000, 'the job line');
+    ok('one read job for the folder, every unread one', of('read').length === 1
+       && J(of('read')[0][1]) === J({ folder: F5 }), J(of('read')[0] && of('read')[0][1]));
+    ok('a line says how far it is', /^Reading 0 of 1 recording/.test(txt(jc(), '.xm-jobwords') || ''),
+       txt(jc(), '.xm-jobwords'));
+    ok('the tile says it is waiting', /waiting its turn/.test(txt(tile('e'), '.xm-empty') || ''),
+       txt(tile('e'), '.xm-empty'));
+    D().querySelector('.xm-stop').click();
+    await until(() => of('cancel').length === 1, 5000, 'Stop');
+    ok('Stop cancels the job', of('cancel').length === 1);
+    await until(() => !D().querySelector('.xm-stop') && btn(/^Read all not read yet$/, jc()), 8000, 'stopped');
+    ok('and says so', toasts().some((t) => /^Stopped\. 0 read and kept/.test(t)), J(toasts().slice(-2)));
+    tile('e').querySelector('.xm-read').click();
+    await until(() => of('read').length === 2, 5000, 'one read');
+    ok('Read on a tile reads that one alone', J(of('read')[1][1]) === J({ folder: F5, gids: [G('e')] }),
+       J(of('read')[1] && of('read')[1][1]));
+    await until(() => /reading…/.test(txt(tile('e'), '.xm-empty') || ''), 5000, 'reading');
+    ok('the tile says it is reading', /reading…/.test(txt(tile('e'), '.xm-empty') || ''), txt(tile('e'), '.xm-empty'));
+    await until(() => tile('e').querySelector('canvas') && (XM._drawn(G('e')) || {}).image, 10000, 'its picture');
+    ok('read, it has its picture', !!tile('e').querySelector('canvas') && (XM._drawn(G('e')) || {}).image);
+    ok('drawn from its new read', of('raster').some((x) => x[1].gid === G('e') && x[1].read === 'r-e'));
+    ok('and the folder counts it', txt(folders()[0], '.xm-folder-n') === '5 recordings · 5 read · 4 run · 1 separable',
+       txt(folders()[0], '.xm-folder-n'));
+
+    head('ARCHIVE, PUT BACK, AND A NEW FOLDER');
+    btn(/^Archive$/, D().querySelector('.xm-folder[data-fid="' + F10 + '"]')).click();
+    await until(() => !D().querySelector('.xm-folder[data-fid="' + F10 + '"]'), 5000, 'archived');
+    const fm = mergesOf('dspca_many_folders');
+    ok('Archive is a mergeKey of that folder alone', fm.length === 1 && fm[0][1] === F10, J(fm));
+    ok('the prefs were read again first, the folder not being in this page’s copy', prefLoads === 1, prefLoads + ' loads');
+    ok('so the record keeps who made it and when',
+       fm.length && fm[0][2].archived === true && !!fm[0][2].archived_at && fm[0][2].by === 'Debug_Bot'
+       && fm[0][2].at === '2026-11-07T08:00:00Z' && fm[0][2].name === 'Verified DS 10%', J(fm[0] && fm[0][2]));
+    ok('it leaves the bar', !D().querySelector('.xm-folder[data-fid="' + F10 + '"]')
+       && /^Show archived · 2$/.test(txt(D(), '.xm-show-arch') || ''), txt(D(), '.xm-show-arch'));
+    D().querySelector('.xm-show-arch').click();
+    const f10 = () => D().querySelector('.xm-folder[data-fid="' + F10 + '"]');
+    ok('Show archived shows it, said as archived', !!f10() && f10().classList.contains('archived'));
+    btn(/^Put back$/, f10()).click();
+    await until(() => mergesOf('dspca_many_folders').length === 2, 5000, 'put back');
+    const pb = mergesOf('dspca_many_folders')[1];
+    ok('Put back writes it back, the same way', pb && pb[1] === F10 && pb[2].archived === false
+       && !('archived_at' in pb[2]) && pb[2].by === 'Debug_Bot', J(pb));
+    ok('with no second read of the prefs', prefLoads === 1, prefLoads + ' loads');
+    D().querySelector('.xm-show-arch').click();
+    ok('and it is with the others again', !!f10() && !f10().classList.contains('archived'));
+
+    btn(/^New folder from a workflow…$/, D().querySelector('.xm-bar')).click();
+    await until(() => D().querySelector('#bigModal:not(.hidden) .xm-new'), 5000, 'the new folder');
+    const wfb = Array.from(D().querySelectorAll('#bigModal:not(.hidden) .xm-wf'));
+    ok('only the verified DS and P-spike workflows that have run',
+       J(wfb.map((n) => n.dataset.wf)) === J(['harness-wDS', 'harness-wP']), J(wfb.map((n) => n.dataset.wf)));
+    const make = btn(/^Make the folder$/, D().querySelector('#bigModal'));
+    ok('nothing to make until one is picked', make && make.disabled);
+    wfb[0].click();
+    ok('picking one names the folder after it',
+       D().querySelector('.xm-new-name').value === 'Verified DS 7% · harness' && !make.disabled);
+    make.click();
+    await until(() => of('folder').length === 1, 5000, 'the folder');
+    ok('it is made from that workflow’s run',
+       J(of('folder')[0][1]) === J({ name: 'Verified DS 7% · harness', source: { artifact_id: 'harness-wDS', version: 4 } }),
+       J(of('folder')[0] && of('folder')[0][1]));
+    await until(() => XM._state().cur === FN && D().querySelector('.xm-tile[data-gid="' + G('n') + '"]'), 8000, 'it opens');
+    ok('and it opens, with its recordings', XM._state().cur === FN && D().querySelectorAll('.xm-tile').length === 1);
+    D().querySelector('.xm-folder[data-fid="' + F5 + '"] .xm-folder-pick').click();
+    ok('another folder is a click away', XM._state().cur === F5 && D().querySelectorAll('.xm-tile').length === 5);
+
+    head('NOTHING WAS WRITTEN');
+    // Many's routes, the prefs, the Bank and the artifacts. What Single
+    // does on its own behind the run bar is web/_dev/dspca.html's.
+    const wrote = of('refused').filter((x) => /\/api\/(dspca\/many|prefs|bank|artifacts)/.test(x[2]));
+    ok('no write reached the server', !wrote.length, J(wrote.map((x) => x[2])));
+    const whole = of('prefs.set').filter((x) => OURS.test(x[2]));
+    ok('no Many preference was written whole', !whole.length, J(whole.map((x) => x[2])));
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       THREW L' + ((String((err && err.stack) || '').split('\n').slice(1).join(' ').match(/:(\d+):\d+/) || [])[1]) + ': ' + (err && err.message ? err.message : String(err)), 'bad');
+    say('       ' + String((err && err.stack) || '').split('\n').slice(0, 4).join(' | '), 'dim');
+  } finally {
+    try {
+      XM.reset();
+      W.fetch = was.fetch;
+      B.prefs.get = was.get; B.prefs.set = was.set; B.prefs.mergeKey = was.mergeKey; B.prefs.load = was.load;
+      if (B.activity && was.log) B.activity.log = was.log;
+      if (was.hadOb) B.dspca.openBundle = was.ob; else delete B.dspca.openBundle;
+      try {
+        if (pickWas == null) W.localStorage.removeItem(PICK);
+        else W.localStorage.setItem(PICK, pickWas);
+      } catch (e) { /* none */ }
+    } catch (e) { /* gone */ }
+    await sleep(300);
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'dspcamany: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

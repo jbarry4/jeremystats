@@ -3,20 +3,20 @@
     "assignee": "2026-11-03T19:54:51.102829+00:00",
     "based_on": "2026-11-03T19:54:51.141480+00:00",
     "based_on_at": "2026-11-03T19:54:51.141480+00:00",
-    "closed_at": "2026-11-03T20:28:38.837412+00:00",
+    "closed_at": "2026-11-04T22:17:48.964092+00:00",
     "created": "2026-11-03T19:54:51.066782+00:00",
     "gid": "2026-11-03T19:54:51.066782+00:00",
     "imports": "2026-11-03T19:54:51.066782+00:00",
     "kind": "2026-11-03T19:54:51.066782+00:00",
-    "labels": "2026-11-03T19:54:51.066782+00:00",
+    "labels": "2026-11-09T21:15:41.162327+00:00",
     "name": "2026-11-03T19:54:51.066782+00:00",
-    "open": "2026-11-03T20:28:38.837412+00:00",
-    "opened_at": "2026-11-03T19:54:51.102829+00:00",
+    "open": "2026-11-04T22:17:48.964092+00:00",
+    "opened_at": "2026-11-04T21:24:59.947439+00:00",
     "opened_by": "2026-11-03T19:54:51.102829+00:00",
     "schema": "2026-11-03T19:54:51.066782+00:00",
     "session_label": "2026-11-03T19:54:51.066782+00:00",
     "source": "2026-11-03T19:54:51.066782+00:00",
-    "updated": "2026-11-05T15:09:33.163911+00:00"
+    "updated": "2026-11-09T21:15:41.162327+00:00"
   },
   "_keys": {
     "events": {
@@ -186,7 +186,7 @@
       ],
       "e1a04a5f968": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "e1a097a9206": [
         "set",
@@ -198,7 +198,7 @@
       ],
       "e1a8b591651": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "e1acb53114d": [
         "set",
@@ -282,7 +282,7 @@
       ],
       "e27cffc1644": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "e27d28732d1": [
         "set",
@@ -318,7 +318,7 @@
       ],
       "e2c22338c2e": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "e2d49369ae9": [
         "set",
@@ -386,7 +386,7 @@
       ],
       "e35391e33d9": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "e35704812ec": [
         "set",
@@ -426,7 +426,7 @@
       ],
       "e39cf2f7067": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "e39d53b9da3": [
         "set",
@@ -582,7 +582,7 @@
       ],
       "e4ecb96883e": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "e4f03e1347a": [
         "set",
@@ -590,7 +590,7 @@
       ],
       "e4f3b331c85": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "e4fbbb479cc": [
         "set",
@@ -682,7 +682,7 @@
       ],
       "e57cb74d653": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "e57e8563102": [
         "set",
@@ -706,7 +706,7 @@
       ],
       "e59e9d5427f": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "e5a07db99cb": [
         "set",
@@ -786,7 +786,7 @@
       ],
       "e65664f84d9": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "e68871be6a1": [
         "set",
@@ -982,7 +982,7 @@
       ],
       "e89e8545b64": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "e8b07aa4021": [
         "set",
@@ -990,7 +990,7 @@
       ],
       "e8b3198bbff": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "e8b4ac279e7": [
         "set",
@@ -1138,7 +1138,7 @@
       ],
       "ea0d0717c3d": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "ea1b317feb2": [
         "set",
@@ -1258,7 +1258,7 @@
       ],
       "eb0810096ad": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "eb0de934d9f": [
         "set",
@@ -1386,7 +1386,7 @@
       ],
       "ec319efe5c8": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "ec33b535d34": [
         "set",
@@ -1522,7 +1522,7 @@
       ],
       "ed563b27849": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "ed5cfa5ab2c": [
         "set",
@@ -1550,7 +1550,7 @@
       ],
       "edcf099c78b": [
         "set",
-        "2026-11-03T19:54:51.066782+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "eddc2de39cf": [
         "set",
@@ -1662,7 +1662,7 @@
       ],
       "eebb3b0af54": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "eee70268f89": [
         "set",
@@ -1714,7 +1714,7 @@
       ],
       "ef57cbc6867": [
         "set",
-        "2026-11-05T15:09:33.163911+00:00"
+        "2026-11-09T21:15:41.162327+00:00"
       ],
       "ef610cc4ec6": [
         "set",
@@ -1803,14 +1803,14 @@
     }
   },
   "_shard": {
-    "at": "2026-11-05T15:09:33.163911+00:00",
+    "at": "2026-11-09T21:15:41.162327+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "assignee": "Rain Younger",
   "based_on": "ea8a8f62c2c1",
   "based_on_at": "2026-11-03T14:54:51-0500",
-  "closed_at": "2026-11-03T15:28:38-0500",
+  "closed_at": "2026-11-04T17:17:48-0500",
   "created": {
     "app_version": "2026.11.03.1",
     "at": "2026-11-03T14:54:51-05:00",
@@ -1824,21 +1824,21 @@
   "events": [
     {
       "amplitude": 1110.6027,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:25:31+00:00",
+      "by": "Rain Younger",
       "channel": 51,
       "id": "e39cf2f7067",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "start": 6.820028
     },
     {
       "amplitude": 701.0498,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:26:03+00:00",
+      "by": "Rain Younger",
       "channel": 5,
       "id": "e57cb74d653",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "start": 9.081037
     },
@@ -1864,11 +1864,11 @@
     },
     {
       "amplitude": 960.2301,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:26:17+00:00",
+      "by": "Rain Younger",
       "channel": 16,
       "id": "ef57cbc6867",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "start": 13.708056
     },
@@ -1884,11 +1884,11 @@
     },
     {
       "amplitude": 820.7901,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:27:03+00:00",
+      "by": "Rain Younger",
       "channel": 54,
       "id": "e4ecb96883e",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "start": 25.527104
     },
@@ -1915,142 +1915,142 @@
     },
     {
       "amplitude": 1004.9429,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:27:23+00:00",
+      "by": "Rain Younger",
       "channel": 13,
       "id": "e4f3b331c85",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "start": 33.533137
     },
     {
       "amplitude": 1384.3849,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:27:38+00:00",
+      "by": "Rain Younger",
       "channel": 49,
       "id": "eebb3b0af54",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "start": 33.569137
     },
     {
       "amplitude": 1185.133,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:27:49+00:00",
+      "by": "Rain Younger",
       "channel": 49,
       "id": "e59e9d5427f",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "start": 34.960143
     },
     {
       "amplitude": 791.2795,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:28:00+00:00",
+      "by": "Rain Younger",
       "channel": 55,
       "id": "e8b3198bbff",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "start": 35.689146
     },
     {
       "amplitude": 1018.2085,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:28:21+00:00",
+      "by": "Rain Younger",
       "channel": 5,
       "id": "e89e8545b64",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "start": 35.808146
     },
     {
       "amplitude": 991.515,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:28:22+00:00",
+      "by": "Rain Younger",
       "channel": 20,
       "id": "e65664f84d9",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "doppler",
       "start": 35.836146
     },
     {
       "amplitude": 1061.0966,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:28:33+00:00",
+      "by": "Rain Younger",
       "channel": 17,
       "id": "eb0810096ad",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "start": 35.860146
     },
     {
       "amplitude": 745.0186,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:29:04+00:00",
+      "by": "Rain Younger",
       "channel": 5,
       "id": "e35391e33d9",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "start": 39.561161
     },
     {
       "amplitude": 1314.7034,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:29:11+00:00",
+      "by": "Rain Younger",
       "channel": 49,
       "id": "e1a8b591651",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "start": 39.764162
     },
     {
       "amplitude": 1285.7975,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:29:16+00:00",
+      "by": "Rain Younger",
       "channel": 49,
       "id": "e1a04a5f968",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "start": 39.970163
     },
     {
       "amplitude": 817.1454,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:30:27+00:00",
+      "by": "Rain Younger",
       "channel": 55,
       "id": "ed563b27849",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "start": 40.210164
     },
     {
       "amplitude": 803.3277,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:30:45+00:00",
+      "by": "Rain Younger",
       "channel": 12,
       "id": "e27cffc1644",
-      "label": "likely_garbage",
+      "label": "garbage",
       "origin": "incisor",
       "start": 40.466165
     },
     {
       "amplitude": 1335.9713,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:30:54+00:00",
+      "by": "Rain Younger",
       "channel": 48,
       "id": "e2c22338c2e",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "both",
       "pair_t": 40.514165,
       "start": 40.513165
     },
     {
       "amplitude": 1337.049,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:31:14+00:00",
+      "by": "Rain Younger",
       "channel": 18,
       "id": "ea0d0717c3d",
-      "label": "likely_garbage",
+      "label": "spike",
       "origin": "incisor",
       "start": 40.543165
     },
@@ -2067,11 +2067,11 @@
     },
     {
       "amplitude": 1903.5481,
-      "at": "2026-11-04T22:13:00+00:00",
-      "by": "Prospector (AI)",
+      "at": "2026-11-09T15:31:44+00:00",
+      "by": "Rain Younger",
       "channel": 49,
       "id": "ec319efe5c8",
-      "label": "likely_spike",
+      "label": "spike",
       "origin": "incisor",
       "start": 48.334197
     },
@@ -6331,9 +6331,11 @@
     },
     {
       "amplitude": 1730.7648,
+      "at": "2026-11-09T15:24:51+00:00",
+      "by": "Rain Younger",
       "channel": 48,
       "id": "edcf099c78b",
-      "label": null,
+      "label": "spike",
       "origin": "incisor",
       "start": 959.490973
     }
@@ -6384,11 +6386,29 @@
         "f"
       ],
       "name": "Flag"
+    },
+    {
+      "ai": true,
+      "color": "#c8553d",
+      "computed": true,
+      "flagged": true,
+      "id": "likely_garbage",
+      "keys": [],
+      "name": "Flag \u00b7 likely garbage"
+    },
+    {
+      "ai": true,
+      "color": "#7fb069",
+      "computed": true,
+      "flagged": true,
+      "id": "likely_spike",
+      "keys": [],
+      "name": "Flag \u00b7 likely spike"
     }
   ],
   "name": "KCNT1 m1603 s2 2026-06-24 \u2014 pooled (Incisor + Doppler, 20 ms)",
   "open": false,
-  "opened_at": "2026-11-03T14:54:51-0500",
+  "opened_at": "2026-11-04T16:24:59-0500",
   "opened_by": "Rain Younger",
   "schema": 1,
   "session_label": "KCNT1 m1603 s2 2026-06-24",
@@ -6401,9 +6421,9 @@
     "version": 0
   },
   "updated": {
-    "app_version": "2026.11.05.1",
-    "at": "2026-11-05T10:09:33-05:00",
-    "commit": "cc8275ca",
+    "app_version": "2026.11.06.4",
+    "at": "2026-11-09T16:15:41-05:00",
+    "commit": "11fcd58a",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

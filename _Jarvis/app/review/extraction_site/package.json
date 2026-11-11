@@ -1,0 +1,12 @@
+{
+  "name": "extraction-room",
+  "private": true,
+  "type": "module",
+  "description": "The Extraction Room's results, preliminary. Assembled by BARRY GUI/tools/export_extraction.py from BARRY GUI/review/extraction_site; edit those, not the assembled copy.",
+  "dependencies": {
+    "@vercel/functions": "^3.9.11"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

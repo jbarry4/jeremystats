@@ -1,6 +1,6 @@
 {
   "_at": {
-    "added": "2026-11-05T15:08:21.891662+00:00",
+    "added": "2026-11-04T22:12:43.913944+00:00",
     "by_label": "2026-11-05T15:08:21.891662+00:00",
     "curation_label": "2026-11-05T15:08:21.891662+00:00",
     "duration_s": "2026-11-05T15:08:21.891662+00:00",
@@ -28,34 +28,40 @@
     "version": "2026-11-05T15:08:21.891662+00:00"
   },
   "_keys": {
+    "history": {
+      "{\"at\": \"2026-11-04T17:12:43-05:00\", \"by\": \"Prospector (AI)\", \"changed\": [\"events\"], \"now_n\": 848, \"was_n\": 848, \"why\": \"re-banked from the curation set\"}": [
+        "set",
+        "2026-11-04T22:12:43.913944+00:00"
+      ]
+    },
     "versions": {
       "18b3a97712db": [
         "set",
-        "2026-11-05T15:08:21.891662+00:00"
+        "2026-11-05T15:19:54.849798+00:00"
       ],
       "76c20e5bce67": [
         "set",
-        "2026-11-05T15:08:24.770316+00:00"
+        "2026-11-11T20:33:39.368895+00:00"
       ],
       "e4c5c0d93b2d": [
         "set",
-        "2026-11-05T15:08:24.770316+00:00"
+        "2026-11-11T20:32:59.241241+00:00"
       ],
       "v0-66462224": [
         "set",
-        "2026-11-05T15:08:21.891662+00:00"
+        "2026-11-05T15:19:54.849798+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-05T15:08:24.770316+00:00",
+    "at": "2026-11-11T20:33:39.368895+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "added": {
-    "at": "2026-11-05T10:08:21-05:00",
+    "at": "2026-11-04T16:17:00-05:00",
     "by": "Rain Younger",
-    "machine": "DESKTOP-4H65AI7"
+    "machine": "BarryLab"
   },
   "by_label": {
     "Flag \u00b7 likely garbage": 686,
@@ -6120,6 +6126,18 @@
     }
   ],
   "gid": "s69cf561a98cf",
+  "history": [
+    {
+      "at": "2026-11-04T17:12:43-05:00",
+      "by": "Prospector (AI)",
+      "changed": [
+        "events"
+      ],
+      "now_n": 848,
+      "was_n": 848,
+      "why": "re-banked from the curation set"
+    }
+  ],
   "id": "41ef63b03da9",
   "label_names": {},
   "mouse": 531,
@@ -6182,25 +6200,6 @@
       "machine": "BarryLab",
       "n": 848,
       "note": "Junction's pool: 587 from Incisor, 144 from Doppler, 117 merged within 20 ms.",
-      "snap_elsewhere": true,
-      "tag": "junction",
-      "v": 0
-    },
-    {
-      "at": "2026-11-05T10:08:21-05:00",
-      "by": "Rain Younger",
-      "by_label": {
-        "unspecified": 848
-      },
-      "changed": 0,
-      "gained": 0,
-      "id": "v0-66462224",
-      "imported": true,
-      "lost": 0,
-      "machine": "DESKTOP-4H65AI7",
-      "moves": {},
-      "n": 848,
-      "note": "Imported from The Confluence: Junction (Incisor + Doppler, 20 ms). 848 candidates, none decided yet.",
       "snap": [
         [
           7.307951,
@@ -9595,7 +9594,21 @@
           null
         ]
       ],
-      "synthesized": true,
+      "tag": "junction",
+      "v": 0
+    },
+    {
+      "at": "2026-11-05T10:08:21-05:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 848
+      },
+      "id": "v0-66462224",
+      "imported": true,
+      "machine": "DESKTOP-4H65AI7",
+      "n": 848,
+      "note": "Imported from The Confluence: Junction (Incisor + Doppler, 20 ms). 848 candidates, none decided yet.",
+      "snap_elsewhere": true,
       "v": 0
     },
     {
@@ -9612,32 +9625,6 @@
       "machine": "BarryLab",
       "n": 848,
       "note": "Prospector sweep, run pr20261104-071200, Spike at 0.9790 (above 99% of the training recordings' garbage): 10 Spike, 152 Flag \u00b7 likely spike, 686 Flag \u00b7 likely garbage. Calls by a model -- the AI's first calls, banked for the record -- not a person's pass.",
-      "snap_elsewhere": true,
-      "tag": "prospector",
-      "v": 1
-    },
-    {
-      "at": "2026-11-05T10:08:21-05:00",
-      "by": "Rain Younger",
-      "by_label": {
-        "Flag \u00b7 likely garbage": 686,
-        "Flag \u00b7 likely spike": 152,
-        "Spike": 10
-      },
-      "changed": 848,
-      "from_id": null,
-      "from_v": 0,
-      "gained": 0,
-      "id": "18b3a97712db",
-      "lost": 0,
-      "machine": "DESKTOP-4H65AI7",
-      "moves": {
-        "undecided \u2192 likely_garbage": 686,
-        "undecided \u2192 likely_spike": 152,
-        "undecided \u2192 spike": 10
-      },
-      "n": 848,
-      "note": "",
       "snap": [
         [
           7.307951,
@@ -13032,6 +13019,23 @@
           "likely_garbage"
         ]
       ],
+      "tag": "prospector",
+      "v": 1
+    },
+    {
+      "at": "2026-11-05T10:08:21-05:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "Flag \u00b7 likely garbage": 686,
+        "Flag \u00b7 likely spike": 152,
+        "Spike": 10
+      },
+      "from_v": 0,
+      "id": "18b3a97712db",
+      "machine": "DESKTOP-4H65AI7",
+      "n": 848,
+      "note": "",
+      "snap_elsewhere": true,
       "v": 1
     }
   ]

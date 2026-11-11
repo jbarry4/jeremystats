@@ -1,7 +1,7 @@
 {
   "_at": {
     "added": "2026-11-05T21:18:39.267781+00:00",
-    "deleted": "2026-11-05T21:18:39.267781+00:00",
+    "deleted": "2026-11-07T18:02:51.260919+00:00",
     "id": "2026-11-05T21:18:39.267781+00:00",
     "kind": "2026-11-05T21:18:39.267781+00:00",
     "name": "2026-11-05T21:18:39.267781+00:00",
@@ -9,18 +9,26 @@
     "schema": "2026-11-05T21:18:39.267781+00:00",
     "subject": "2026-11-05T21:18:39.267781+00:00",
     "subject_key": "2026-11-05T21:18:39.267781+00:00",
-    "version": "2026-11-05T21:18:39.267781+00:00"
+    "version": "2026-11-06T21:45:48.795218+00:00"
   },
   "_keys": {
     "versions": {
+      "77d3729e8997": [
+        "set",
+        "2026-11-06T21:08:19.347750+00:00"
+      ],
       "9480e4d55c00": [
         "set",
         "2026-11-05T21:18:39.267781+00:00"
+      ],
+      "e8d90aa18122": [
+        "set",
+        "2026-11-07T18:02:51.260919+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-11-05T21:18:39.267781+00:00",
+    "at": "2026-11-07T18:02:51.260919+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -53,7 +61,7 @@
     "name": "Envelope \u00b7 DS \u00b7 258 to 3612 \u00b5V \u00b7 -4.3 to 25.8 dB \u00b7 6.1 to 63.4 ms"
   },
   "subject_key": "rootcanal_border|wf-ca6be25649c04694a5aff46c8b2a75a7",
-  "version": 1,
+  "version": 3,
   "versions": [
     {
       "app_version": "2026.11.05.5",
@@ -145,6 +153,195 @@
       },
       "params_hash": "96e0856ecb48",
       "v": 1
+    },
+    {
+      "app_version": "2026.11.06.4",
+      "at": "2026-11-06T16:08:19-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "digest": "5eaeb88a11f8",
+      "id": "77d3729e8997",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 1477,
+        "filter": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+        "grace": 0.05,
+        "group": "ds",
+        "kind": "envelope",
+        "level": "workflow",
+        "levels": [
+          {
+            "counts": {
+              "amb": 0,
+              "ds": 1475,
+              "ied": 0,
+              "none": 2
+            },
+            "grace": 0.0,
+            "outside_rate": 0.0,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 12,
+              "ds": 1463,
+              "ied": 0,
+              "none": 2
+            },
+            "grace": 0.01,
+            "outside_rate": 0.008135593220338983,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 71,
+              "ds": 1404,
+              "ied": 0,
+              "none": 2
+            },
+            "grace": 0.05,
+            "outside_rate": 0.04813559322033898,
+            "switch_rate": 0.0
+          }
+        ],
+        "mice": 9,
+        "recordings": 9,
+        "source": "CTL Baseline",
+        "strict": {
+          "amp_uV": {
+            "hi": 3611.557056898117,
+            "lo": 257.8189111482049
+          },
+          "hf_db": {
+            "hi": 25.813953777460526,
+            "lo": -4.304612886179199
+          },
+          "hw_ms": {
+            "hi": 63.423733008442106,
+            "lo": 6.142640948639979
+          }
+        }
+      },
+      "note": "Workflow run",
+      "params": {
+        "grace": 0.05,
+        "level": "workflow",
+        "measure": {
+          "band_hi": 1000.0,
+          "band_lo": 500.0,
+          "cross_ms": 100.0,
+          "filt": "ds",
+          "filter_label": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+          "hi_hz": 100.0,
+          "lo_hz": 5.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 25.0
+        }
+      },
+      "params_hash": "96e0856ecb48",
+      "v": 2
+    },
+    {
+      "app_version": "2026.11.06.4",
+      "at": "2026-11-06T16:45:48-05:00",
+      "by": "Shahriar Tafti",
+      "commit": "11fcd58a",
+      "confirmed": [
+        {
+          "app_version": "2026.11.06.4",
+          "at": "2026-11-07T13:02:51-05:00",
+          "by": "Shahriar Tafti",
+          "commit": "11fcd58a",
+          "machine": "Bluebarry",
+          "note": "Workflow run",
+          "params_hash": "96e0856ecb48"
+        }
+      ],
+      "digest": "cf324f09dffa",
+      "id": "e8d90aa18122",
+      "inputs": [],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "events": 2185,
+        "filter": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+        "grace": 0.05,
+        "group": "ds",
+        "kind": "envelope",
+        "level": "workflow",
+        "levels": [
+          {
+            "counts": {
+              "amb": 0,
+              "ds": 2183,
+              "ied": 0,
+              "none": 2
+            },
+            "grace": 0.0,
+            "outside_rate": 0.0,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 21,
+              "ds": 2162,
+              "ied": 0,
+              "none": 2
+            },
+            "grace": 0.01,
+            "outside_rate": 0.00961978928080623,
+            "switch_rate": 0.0
+          },
+          {
+            "counts": {
+              "amb": 109,
+              "ds": 2074,
+              "ied": 0,
+              "none": 2
+            },
+            "grace": 0.05,
+            "outside_rate": 0.04993128721942281,
+            "switch_rate": 0.0
+          }
+        ],
+        "mice": 9,
+        "recordings": 9,
+        "source": "CTL Baseline v2",
+        "strict": {
+          "amp_uV": {
+            "hi": 3611.557056898117,
+            "lo": 198.62015065261326
+          },
+          "hf_db": {
+            "hi": 25.358565636871482,
+            "lo": -5.1227495565039325
+          },
+          "hw_ms": {
+            "hi": 63.423733008442106,
+            "lo": 5.982065540213711
+          }
+        }
+      },
+      "note": "Workflow run",
+      "params": {
+        "grace": 0.05,
+        "level": "workflow",
+        "measure": {
+          "band_hi": 1000.0,
+          "band_lo": 500.0,
+          "cross_ms": 100.0,
+          "filt": "ds",
+          "filter_label": "DS filter, 5\u2013100 Hz, 60 Hz mains out",
+          "hi_hz": 100.0,
+          "lo_hz": 5.0,
+          "mains_out": true,
+          "order": 3,
+          "win_ms": 25.0
+        }
+      },
+      "params_hash": "96e0856ecb48",
+      "v": 3
     }
   ]
 }
